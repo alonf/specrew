@@ -8,7 +8,7 @@
 # It makes PowerShell Core an INTERNAL dependency, not a manual prerequisite:
 #   1. detect the platform / package manager,
 #   2. if `pwsh` is absent, auto-install PowerShell Core from the vendor-recommended
-#      source (Ubuntu/Debian: the Microsoft apt repository),
+#      source (Ubuntu/Debian: the Microsoft apt repository; macOS: Homebrew),
 #   3. install/update the Specrew module from the PowerShell Gallery (skipped if the
 #      module is already present — e.g. a pre-seeded local module under PSModulePath),
 #   4. install the native `specrew` shell wrappers.
@@ -16,19 +16,23 @@
 # Safety (FR-016): vendor-recommended source only (never an untrusted curl|bash beyond
 # THIS trusted bootstrap); install-only-if-absent (never clobber an existing pwsh);
 # idempotent repository registration; privilege escalation is SURFACED through the normal
-# sudo prompt (never silent); on an unsupported platform/version or a failed install it
-# FAILS CLOSED with manual-install guidance (no partial install reported as success).
+# sudo prompt (never silent; macOS Homebrew runs as the user, never sudo); on an
+# unsupported platform/version or a failed install it FAILS CLOSED with manual-install
+# guidance (no partial install reported as success).
 #
-# Scope (this release): Ubuntu/Debian auto-install. macOS + other distros fail closed with
-# manual guidance (planned for a later iteration). The thin wrappers never install pwsh.
+# Scope (this release): Ubuntu/Debian (apt) + macOS (Homebrew) auto-install. Other distros
+# fail closed with manual guidance (planned for a later iteration). The thin wrappers never
+# install pwsh.
 set -eu
 
 # --- configuration ---------------------------------------------------------
 SPECREW_INSTALL_URL="${SPECREW_INSTALL_URL:-https://raw.githubusercontent.com/alonf/specrew/main/install.sh}"
 PWSH_MANUAL_DOCS_URL="https://learn.microsoft.com/powershell/scripting/install/installing-powershell"
+HOMEBREW_DOCS_URL="https://brew.sh"
 OS_RELEASE_FILE="${SPECREW_OS_RELEASE_FILE:-/etc/os-release}"
 SPECREW_BIN_DIR=""
 MODE="install"
+PRERELEASE=0
 
 PLATFORM_DISTRO=""
 PLATFORM_VERSION=""
@@ -55,15 +59,19 @@ Specrew Unix bootstrap installer.
 
 Usage: install.sh [options]
        curl -fsSL <url> | sh
+       curl -fsSL <url> | sh -s -- --prerelease
 
 Options:
   --bin-dir <dir>   Install the shell wrappers into <dir> (default: ~/.local/bin).
+  --prerelease      Install a PRERELEASE (beta) Specrew from the PowerShell Gallery
+                    (Install-Module -AllowPrerelease). Default is the stable release.
   --check           Detect the platform and report whether auto-install is supported, then exit.
                     Makes no changes (no install, no elevation).
   -h, --help        Show this help and exit.
 
 PowerShell Core is installed automatically as a dependency on supported platforms
-(Ubuntu/Debian). On unsupported platforms the installer fails closed with manual docs.
+(Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew). On unsupported
+platforms the installer fails closed with manual docs.
 EOF
 }
 
@@ -76,6 +84,7 @@ while [ "$#" -gt 0 ]; do
       SPECREW_BIN_DIR="$1"
       ;;
     --bin-dir=*) SPECREW_BIN_DIR="${1#--bin-dir=}" ;;
+    --prerelease) PRERELEASE=1 ;;
     --check|--detect-only) MODE="check" ;;
     -h|--help) usage; exit 0 ;;
     *) err "unknown option: $1"; usage >&2; exit 2 ;;
@@ -83,19 +92,28 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
-# --- platform detection (T012) ---------------------------------------------
+# --- platform detection (T012 Linux; T018 macOS) ---------------------------
 # Identifies the OS + distro + version and confirms the auto-install path is in scope.
-# Reads os-release from $OS_RELEASE_FILE (overridable via SPECREW_OS_RELEASE_FILE for tests).
+# `uname -s` is overridable via SPECREW_UNAME_OVERRIDE so the macOS branch is reachable
+# from Linux CI for testing; os-release is overridable via SPECREW_OS_RELEASE_FILE.
 detect_platform() {
-  os="$(uname -s 2>/dev/null || echo unknown)"
+  os="${SPECREW_UNAME_OVERRIDE:-$(uname -s 2>/dev/null || echo unknown)}"
   case "$os" in
-    Linux) : ;;
-    Darwin)
-      fail_closed "macOS auto-install of PowerShell is not yet supported by this Specrew release (planned for a later iteration). Install PowerShell (e.g. 'brew install --cask powershell'), then re-run." ;;
+    Linux)  detect_platform_linux ;;
+    Darwin) detect_platform_macos ;;
     *)
       fail_closed "Unsupported operating system '$os' for auto-install. Install PowerShell manually, then re-run." ;;
   esac
+}
 
+# macOS: Homebrew is the package manager; there is no /etc/os-release. The product
+# version is informational only (Homebrew handles version compatibility).
+detect_platform_macos() {
+  PLATFORM_DISTRO="macos"
+  PLATFORM_VERSION="$(sw_vers -productVersion 2>/dev/null || echo '')"
+}
+
+detect_platform_linux() {
   [ -r "$OS_RELEASE_FILE" ] || fail_closed "Cannot read '$OS_RELEASE_FILE' to identify the Linux distribution. Install PowerShell manually, then re-run."
 
   # Source os-release in a subshell to read ID / VERSION_ID (the Microsoft-documented
@@ -110,7 +128,7 @@ detect_platform() {
   case "$PLATFORM_DISTRO" in
     ubuntu|debian) : ;;
     *)
-      fail_closed "Auto-install currently supports Ubuntu and Debian only (detected '$PLATFORM_DISTRO'). Install PowerShell manually, then re-run." ;;
+      fail_closed "Auto-install currently supports Ubuntu, Debian, and macOS only (detected '$PLATFORM_DISTRO'). Install PowerShell manually, then re-run." ;;
   esac
 
   [ -n "$PLATFORM_VERSION" ] || fail_closed "Could not determine the version of '$PLATFORM_DISTRO' from '$OS_RELEASE_FILE'. Install PowerShell manually, then re-run."
@@ -122,6 +140,7 @@ detect_platform() {
 #   non-root + tty  -> surfaced sudo (sudo prompts on its own /dev/tty)
 #   non-root no tty -> fail closed with download-then-run guidance (never silent, never hang)
 # The script never reads from stdin in the piped path (so 'curl | sh' is never consumed).
+# NOTE: this is the apt (Linux) elevation path; macOS Homebrew runs as the user (no sudo).
 usable_tty() {
   # True if a controlling terminal exists that sudo can prompt on.
   { true >/dev/tty; } 2>/dev/null
@@ -157,7 +176,7 @@ run_privileged() {
   esac
 }
 
-# --- PowerShell auto-install (T013) ----------------------------------------
+# --- PowerShell auto-install (T013 apt; T018 brew) -------------------------
 # Install-only-if-absent: never clobber/upgrade an existing working pwsh.
 ensure_pwsh() {
   if have pwsh; then
@@ -165,9 +184,9 @@ ensure_pwsh() {
     return 0
   fi
   log "PowerShell Core (pwsh) not found; installing it as a dependency..."
-  resolve_privilege
   case "$PLATFORM_DISTRO" in
-    ubuntu|debian) install_pwsh_apt ;;
+    ubuntu|debian) resolve_privilege; install_pwsh_apt ;;
+    macos)         install_pwsh_brew ;;
     *) fail_closed "No supported auto-install path for '$PLATFORM_DISTRO'. Install PowerShell manually, then re-run." ;;
   esac
   have pwsh || fail_closed "PowerShell install ran but 'pwsh' is still not on PATH. Install manually, then re-run."
@@ -198,17 +217,53 @@ install_pwsh_apt() {
   run_privileged apt-get install -y powershell
 }
 
+# Homebrew flow (macOS), per the current MS macOS install docs.
+# Homebrew is the vendor-recommended source on macOS. It manages its own privileges and
+# REFUSES to run under sudo, so this path never elevates (the surfaced-never-silent rule
+# is honored trivially: there is no privileged step). Install-only-if-absent is enforced
+# by ensure_pwsh's `have pwsh` guard; absent Homebrew fails closed with manual guidance.
+install_pwsh_brew() {
+  have brew || fail_closed "macOS auto-install needs Homebrew, but 'brew' was not found. Install Homebrew from ${HOMEBREW_DOCS_URL}, then re-run (or install PowerShell manually)."
+  log "Installing PowerShell from Homebrew (brew install --cask powershell)..."
+  brew install --cask powershell || fail_closed "Homebrew failed to install PowerShell ('brew install --cask powershell'). Install PowerShell manually, then re-run."
+}
+
 # --- Specrew module (install-if-absent; PSGallery in production) -----------
 # If the Specrew module is already discoverable (e.g. a local module pre-seeded onto
-# PSModulePath in CI), skip the gallery fetch and use it. Production installs from PSGallery.
+# PSModulePath in CI), skip the gallery fetch and use it. Production installs from PSGallery
+# (stable by default; a beta with --prerelease). After a fresh gallery install we verify the
+# installed module exposes the native `specrew` wrapper surface (FR-017 version/source check).
 ensure_specrew_module() {
   if pwsh -NoProfile -NonInteractive -Command "if (Get-Module -ListAvailable -Name Specrew) { exit 0 } else { exit 1 }" >/dev/null 2>&1; then
     log "Specrew module already available; skipping PowerShell Gallery install."
     return 0
   fi
-  log "Installing the Specrew module from the PowerShell Gallery..."
-  pwsh -NoProfile -NonInteractive -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber" \
-    || fail_closed "Failed to install the Specrew module from the PowerShell Gallery."
+  if [ "$PRERELEASE" = "1" ]; then
+    log "Installing the Specrew module (PRERELEASE / beta) from the PowerShell Gallery..."
+    pwsh -NoProfile -NonInteractive -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber -AllowPrerelease" \
+      || fail_closed "Failed to install the PRERELEASE Specrew module from the PowerShell Gallery."
+  else
+    log "Installing the Specrew module (stable) from the PowerShell Gallery..."
+    pwsh -NoProfile -NonInteractive -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber" \
+      || fail_closed "Failed to install the Specrew module from the PowerShell Gallery."
+  fi
+  verify_specrew_wrapper_surface
+}
+
+# FR-017: the freshly installed module MUST expose the native `specrew` wrapper command
+# surface. A version predating the Unix wrappers ships no `bin/specrew` wrapper, so a
+# version/source mismatch (e.g. installing an old stable when a beta was intended) fails
+# closed with a clear incompatibility message rather than a confusing later wrapper error.
+# `wrapper_surface_present` is a pure predicate (unit-testable without pwsh).
+wrapper_surface_present() {
+  [ -n "${1:-}" ] && [ -e "$1/bin/specrew" ]
+}
+
+verify_specrew_wrapper_surface() {
+  module_base="$(pwsh -NoProfile -NonInteractive -Command "(Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending | Select-Object -First 1).ModuleBase" 2>/dev/null || true)"
+  if ! wrapper_surface_present "$module_base"; then
+    fail_closed "The installed Specrew module does not expose the native 'specrew' wrapper command surface (a version/source mismatch — e.g. a version predating the Unix wrappers). This installed version is not compatible with the shell-native install; install a compatible version, then re-run."
+  fi
 }
 
 # --- shell wrappers --------------------------------------------------------
@@ -227,7 +282,15 @@ install_wrappers() {
 main() {
   detect_platform
   if [ "$MODE" = "check" ]; then
-    log "supported: ${PLATFORM_DISTRO} ${PLATFORM_VERSION} (Ubuntu/Debian apt auto-install path; the exact version is verified against the Microsoft repository at install time)."
+    case "$PLATFORM_DISTRO" in
+      macos)
+        have brew || fail_closed "macOS auto-install needs Homebrew, but 'brew' was not found. Install Homebrew from ${HOMEBREW_DOCS_URL}, then re-run (or install PowerShell manually)."
+        log "supported: macOS ${PLATFORM_VERSION:-(version unknown)} (Homebrew 'brew install --cask powershell' path)."
+        ;;
+      *)
+        log "supported: ${PLATFORM_DISTRO} ${PLATFORM_VERSION} (Ubuntu/Debian apt auto-install path; the exact version is verified against the Microsoft repository at install time)."
+        ;;
+    esac
     exit 0
   fi
   ensure_pwsh
@@ -237,4 +300,6 @@ main() {
   log "If the wrapper directory is not on your PATH, add it using the hint printed above, then run: specrew version"
 }
 
-main
+# Run main unless sourced for unit testing (SPECREW_NO_MAIN=1 sources the function
+# definitions without executing the installer, so pure helpers can be asserted directly).
+[ "${SPECREW_NO_MAIN:-0}" = "1" ] || main
