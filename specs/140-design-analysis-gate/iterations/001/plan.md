@@ -2,8 +2,8 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
-**Capacity**: 18/20 story_points
+**Status**: executing
+**Capacity**: 20/20 story_points
 **Started**: 2026-06-02
 **Completed**:
 
@@ -11,7 +11,7 @@
 
 Iteration 001 implements the first slice of the design-analysis gate: a reusable artifact helper, active plan-boundary sync enforcement, focused validation tests, and narrow coordinator guidance. The selected architecture remains Option B from the feature plan: helper plus active plan-boundary sync enforcement. Prompt-only enforcement is not acceptable for this slice.
 
-The protected implementation core is T003-T012. If capacity pressure appears during implementation, T014 full command/workflow metadata is the first deferral candidate. Broad validator rollout, all existing/in-flight project enforcement, full Proposal 137, broad multi-host slash-command deployment, Unix wrapper/install work, bootstrap work, and release publishing remain out of scope.
+The protected implementation core is T003-T012. Capacity reconciliation during implementation deferred T014 command/workflow metadata first. Broad validator rollout, all existing/in-flight project enforcement, full Proposal 137, broad multi-host slash-command deployment, Unix wrapper/install work, bootstrap work, and release publishing remain out of scope.
 
 | Requirement | Summary | Stories |
 | --- | --- | --- |
@@ -26,22 +26,22 @@ The protected implementation core is T003-T012. If capacity pressure appears dur
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T001 | Confirm scope, Option B, and overrun handling before implementation | FR-018, FR-019, FR-020, FR-021, TG-004, TG-005, SC-011, SC-012, SC-013 | US0 | 1 | Spec Steward | `specs/140-design-analysis-gate/**` | planned | codex | pending | pending |
-| T002 | Add first-slice applicability constants and excluded-surface guard comments | FR-002, FR-018, FR-019, FR-020, TG-005, SC-011, SC-012 | US0 | 1 | Implementer | `scripts/internal/design-analysis-gate.ps1` | planned | codex | pending | pending |
-| T003 | Create design-analysis artifact validator with required top-level sections | FR-003, FR-004, FR-013, FR-014, SC-001, SC-002, SC-010 | US1 | 2 | Implementer | `scripts/internal/design-analysis-gate.ps1` | planned | codex | pending | pending |
-| T004 | Validate Simplest/Reasonable options, required option fields, conditional By-the-book, and diagram evidence | FR-005, FR-006, FR-007, FR-015, SC-003, SC-004, SC-005, SC-010 | US1 | 2 | Implementer | `scripts/internal/design-analysis-gate.ps1` | planned | codex | pending | pending |
-| T005 | Validate populated recommendation and Human Decision evidence | FR-008, FR-009, FR-011, FR-016, SC-006, SC-008, SC-010 | US1, US2 | 1 | Implementer | `scripts/internal/design-analysis-gate.ps1` | planned | codex | pending | pending |
-| T006 | Wire helper into the active plan-boundary sync path and fail closed for missing active evidence | FR-001, FR-002, FR-010, FR-017, SC-001, SC-007, SC-010 | US1 | 2 | Implementer | `scripts/internal/sync-boundary-state.ps1` | planned | codex | pending | pending |
-| T007 | Read selected option/modifications from design-analysis evidence for downstream plan input or sync evidence | FR-011, FR-012, SC-008, SC-009 | US2 | 1 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/internal/design-analysis-gate.ps1` | planned | codex | pending | pending |
-| T008 | Keep compatibility narrow so historical/in-flight projects do not hard-fail solely for missing artifacts | FR-002, FR-018, FR-021, SC-012, SC-013 | US3 | 1 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/internal/design-analysis-gate.ps1` | planned | codex | pending | pending |
-| T009 | Add unit tests and fixtures for artifact presence, sections, alternatives, option fields, and By-the-book conditionality | FR-003, FR-004, FR-005, FR-006, FR-007, FR-013, FR-014, FR-015, SC-001, SC-002, SC-003, SC-004, SC-005, SC-010 | US1, US3 | 2 | Implementer | `tests/unit/design-analysis-gate.tests.ps1`, `tests/fixtures/**` | planned | codex | pending | pending |
-| T010 | Add unit tests for recommendation and Human Decision validation | FR-008, FR-009, FR-011, FR-016, SC-006, SC-008, SC-010 | US2, US3 | 1 | Implementer | `tests/unit/design-analysis-gate.tests.ps1`, `tests/fixtures/**` | planned | codex | pending | pending |
-| T011 | Add integration tests for active plan-boundary block/pass and compatibility skip/warn behavior | FR-010, FR-017, FR-018, FR-021, SC-007, SC-010, SC-012, SC-013 | US3 | 2 | Implementer | `tests/integration/design-analysis-boundary.tests.ps1` | planned | codex | pending | pending |
-| T012 | Preserve boundary-sync atomicity and verdict-history coverage | FR-010, FR-011, FR-017, TG-006, SC-007, SC-008, SC-010 | US0 | 1 | Reviewer | `tests/integration/boundary-sync-atomic.tests.ps1` | planned | codex | pending | pending |
-| T013 | Update generated lifecycle guidance for the design-analysis stop and verdict shape | FR-001, FR-008, FR-009, FR-012, SC-006, SC-008, SC-009 | US1, US2 | 1 | Spec Steward | `scripts/specrew-start.ps1` | planned | codex | pending | pending |
-| T014 | Update only cheap existing command/workflow metadata if the narrow pattern is obvious | FR-001, FR-018, FR-021, TG-005, SC-012, SC-013 | US0 | 1 | Spec Steward | `extensions/specrew-speckit/commands/**`, `.specify/extensions/specrew-speckit/commands/**` | planned | codex | pending | pending |
-| T015 | Refresh quickstart/contract compatibility notes after implementation details stabilize | FR-018, FR-021, TG-004, TG-005, SC-010, SC-012, SC-013 | US3 | 1 | Planner | `specs/140-design-analysis-gate/quickstart.md`, `specs/140-design-analysis-gate/contracts/design-analysis-gate.md` | planned | codex | pending | pending |
-| T016 | Run governance validation and confirm excluded surfaces were not touched | FR-019, FR-020, TG-006, SC-011 | US0 | 1 | Reviewer | `specs/140-design-analysis-gate/iterations/001/**` | planned | codex | pending | pending |
+| T001 | Confirm scope, Option B, and overrun handling before implementation | FR-018, FR-019, FR-020, FR-021, TG-004, TG-005, SC-011, SC-012, SC-013 | US0 | 1 | Spec Steward | `specs/140-design-analysis-gate/**` | done | codex | Option B, protected core, first deferral candidate, and excluded surfaces confirmed. | pass |
+| T002 | Add first-slice applicability constants and excluded-surface guard comments | FR-002, FR-018, FR-019, FR-020, TG-005, SC-011, SC-012 | US0 | 1 | Implementer | `scripts/internal/design-analysis-gate.ps1` | done | codex | Helper constrains enforcement to the first-slice active plan-boundary path. | pass |
+| T003 | Create design-analysis artifact validator with required top-level sections | FR-003, FR-004, FR-013, FR-014, SC-001, SC-002, SC-010 | US1 | 2 | Implementer | `scripts/internal/design-analysis-gate.ps1` | done | codex | Validator requires populated problem framing, decision points, alternatives, Crew recommendation, and Human Decision. | pass |
+| T004 | Validate Simplest/Reasonable options, required option fields, conditional By-the-book, and diagram evidence | FR-005, FR-006, FR-007, FR-015, SC-003, SC-004, SC-005, SC-010 | US1 | 2 | Implementer | `scripts/internal/design-analysis-gate.ps1` | done | codex | Option validation covers Simplest, Reasonable, conditional By-the-book rationale, required fields, and diagram evidence. | pass |
+| T005 | Validate populated recommendation and Human Decision evidence | FR-008, FR-009, FR-011, FR-016, SC-006, SC-008, SC-010 | US1, US2 | 1 | Implementer | `scripts/internal/design-analysis-gate.ps1` | done | codex | Recommendation and Human Decision validation reject placeholders and require selected option, reason/modifications, verdict, and commit hash. | pass |
+| T006 | Wire helper into the active plan-boundary sync path and fail closed for missing active evidence | FR-001, FR-002, FR-010, FR-017, SC-001, SC-007, SC-010 | US1 | 2 | Implementer | `scripts/internal/sync-boundary-state.ps1` | done | codex | Plan-boundary sync invokes the helper before lifecycle state mutation. | pass |
+| T007 | Read selected option/modifications from design-analysis evidence for downstream plan input or sync evidence | FR-011, FR-012, SC-008, SC-009 | US2 | 1 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/internal/design-analysis-gate.ps1` | done | codex | Artifact validation result extracts the chosen option for gate evidence. | pass |
+| T008 | Keep compatibility narrow so historical/in-flight projects do not hard-fail solely for missing artifacts | FR-002, FR-018, FR-021, SC-012, SC-013 | US3 | 1 | Implementer | `scripts/internal/sync-boundary-state.ps1`, `scripts/internal/design-analysis-gate.ps1` | done | codex | Compatibility skips legacy baselines and unrelated active-feature contexts unless an artifact opted in. | pass |
+| T009 | Add unit tests and fixtures for artifact presence, sections, alternatives, option fields, and By-the-book conditionality | FR-003, FR-004, FR-005, FR-006, FR-007, FR-013, FR-014, FR-015, SC-001, SC-002, SC-003, SC-004, SC-005, SC-010 | US1, US3 | 2 | Implementer | `tests/unit/design-analysis-gate.tests.ps1`, `tests/fixtures/**` | done | codex | Unit coverage proves artifact presence, sections, alternatives, option fields, and conditional By-the-book handling. | pass |
+| T010 | Add unit tests for recommendation and Human Decision validation | FR-008, FR-009, FR-011, FR-016, SC-006, SC-008, SC-010 | US2, US3 | 1 | Implementer | `tests/unit/design-analysis-gate.tests.ps1`, `tests/fixtures/**` | done | codex | Unit coverage rejects placeholder recommendation, missing Human Decision, and missing decision commit hash. | pass |
+| T011 | Add integration tests for active plan-boundary block/pass and compatibility skip/warn behavior | FR-010, FR-017, FR-018, FR-021, SC-007, SC-010, SC-012, SC-013 | US3 | 2 | Implementer | `tests/integration/design-analysis-boundary.tests.ps1` | done | codex | Integration coverage proves missing artifact blocks without state advancement, valid artifact passes, and compatibility skips hold. | pass |
+| T012 | Preserve boundary-sync atomicity and verdict-history coverage | FR-010, FR-011, FR-017, TG-006, SC-007, SC-008, SC-010 | US0 | 1 | Reviewer | `tests/integration/boundary-sync-atomic.tests.ps1` | done | codex | Existing boundary-sync atomicity regression remains passing. | pass |
+| T013 | Update generated lifecycle guidance for the design-analysis stop and verdict shape | FR-001, FR-008, FR-009, FR-012, SC-006, SC-008, SC-009 | US1, US2 | 1 | Spec Steward | `scripts/specrew-start.ps1` | done | codex | Start prompt guidance includes the design-analysis stop and required verdict shape. | pass |
+| T014 | Update only cheap existing command/workflow metadata if the narrow pattern is obvious | FR-001, FR-018, FR-021, TG-005, SC-012, SC-013 | US0 | 1 | Spec Steward | `extensions/specrew-speckit/commands/**`, `.specify/extensions/specrew-speckit/commands/**` | deferred | codex | Deferred first during implementation capacity reconciliation; command/workflow metadata edits were not retained. | deferred |
+| T015 | Refresh quickstart/contract compatibility notes after implementation details stabilize | FR-018, FR-021, TG-004, TG-005, SC-010, SC-012, SC-013 | US3 | 1 | Planner | `specs/140-design-analysis-gate/quickstart.md`, `specs/140-design-analysis-gate/contracts/design-analysis-gate.md` | done | codex | Quickstart and contract document the helper API, active applicability rule, and compatibility path. | pass |
+| T016 | Run governance validation and confirm excluded surfaces were not touched | FR-019, FR-020, TG-006, SC-011 | US0 | 1 | Reviewer | `specs/140-design-analysis-gate/iterations/001/**` | done | codex | Mechanical checks and governance validation passed; excluded install/wrapper/bootstrap/release surfaces were not touched. | pass |
 
 ## Effort Model
 
@@ -93,9 +93,9 @@ The protected implementation core is T003-T012. If capacity pressure appears dur
 ## Readiness Notes
 
 - **Overall Verdict**: ready
-- **Capacity**: 18/20 story_points
+- **Capacity**: 20/20 story_points after deferring T014.
 - **Protected core**: T003-T012 are not deferrable without explicit human approval.
-- **First deferral candidate**: T014 command/workflow metadata if implementation discovers capacity overrun.
+- **First deferral candidate**: T014 command/workflow metadata; deferred during implementation capacity reconciliation.
 - **Compatibility scope**: active-iteration plan-boundary enforcement only; broad validator rollout and all existing/in-flight project hard enforcement remain deferred.
 - **Scope exclusions**: no Unix install, shell wrapper, bootstrap, beta publish, or stable publish surfaces are planned.
 - **Implementation hold**: source implementation must not start until the human explicitly approves the before-implement readiness gate.

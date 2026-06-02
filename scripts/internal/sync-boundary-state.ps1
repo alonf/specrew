@@ -19,6 +19,12 @@ if (-not (Test-Path -LiteralPath $featureClaimsHelperPath -PathType Leaf)) {
 }
 . $featureClaimsHelperPath
 
+$designAnalysisGateHelperPath = Join-Path $PSScriptRoot 'design-analysis-gate.ps1'
+if (-not (Test-Path -LiteralPath $designAnalysisGateHelperPath -PathType Leaf)) {
+    throw "Missing design-analysis gate helper '$designAnalysisGateHelperPath'."
+}
+. $designAnalysisGateHelperPath
+
 $sessionConfigHelperPath = Join-Path $PSScriptRoot 'session-config.ps1'
 if (-not (Test-Path -LiteralPath $sessionConfigHelperPath -PathType Leaf)) {
     throw "Missing session-config helper '$sessionConfigHelperPath'."
@@ -1129,6 +1135,13 @@ function Invoke-SpecrewBoundaryStateSync {
                 throw
             }
         }
+    }
+
+    if ($BoundaryType -eq 'plan') {
+        Invoke-SpecrewDesignAnalysisPlanBoundaryGate `
+            -ProjectRoot $paths.ProjectRoot `
+            -FeatureRef $effectiveFeatureRef `
+            -IterationNumber $effectiveIterationNumber | Out-Null
     }
 
     $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot

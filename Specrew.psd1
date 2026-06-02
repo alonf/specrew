@@ -159,6 +159,7 @@
         'scripts/internal/coordinator-prompt-surgery.ps1',
         'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',
+        'scripts/internal/design-analysis-gate.ps1',
         'scripts/internal/detect-hosts.ps1',
         'scripts/internal/feature-claims.ps1',
         'scripts/internal/file-classification.ps1',
