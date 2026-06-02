@@ -10,7 +10,7 @@ Ship POSIX `sh` wrapper commands over Specrew's exported alias surface so macOS/
 ## Technical Context
 
 **Language/Version**: PowerShell 7 (Core) for the module/generator/installer; POSIX `sh` for the wrappers + `install.sh`
-**Primary Dependencies**: `pwsh` (PowerShell Core, runtime — verified, never auto-installed); PSGallery (`Install-Module Specrew`); Pester (PS unit tests)
+**Primary Dependencies**: `pwsh` (PowerShell Core, runtime — **auto-installed by `install.sh` on supported platforms** per FR-007/FR-016; verified-only by the thin wrappers per FR-004); PSGallery (`Install-Module Specrew`); Pester (PS unit tests)
 **Storage**: N/A (no persisted state; wrappers + bootstrap are stateless forwarders/installers)
 **Testing**: Pester unit tests (generator, installer, parity) on any platform; shell integration tests on Ubuntu + macOS CI (authoritative); packaging parity test
 **Target Platform**: macOS + Linux (native command surface); Windows unchanged except docs
@@ -28,7 +28,7 @@ Ship POSIX `sh` wrapper commands over Specrew's exported alias surface so macOS/
 3. **Wrapper template** — POSIX `sh`: `#!/usr/bin/env sh`, `set -eu`, `pwsh` presence check (clear error + install hint on failure), symlink-resolution loop, `module_root` resolution, then `exec pwsh -NoProfile -ExecutionPolicy Bypass -File "$module_root/scripts/<entrypoint>.ps1" "$@"`. Entrypoint mapping is 1:1 (`specrew` → `scripts/specrew.ps1`; `specrew-init` → `scripts/specrew-init.ps1`; etc.).
 4. **Committed `bin/` wrappers** — 8 generated files, reviewable in-repo, shipped via `FileList`.
 5. **`install-shell-wrappers`** — a new subcommand of the root `specrew` (dispatched by `scripts/specrew.ps1`, backed by a PowerShell function + script). Copies the committed `bin/` wrappers into a bin dir (default `$HOME/.local/bin`); `-BinDir`, `-Force` (required to create a missing dir), `-WhatIf` (dry-run); idempotent; warns (no profile mutation) when the bin dir is not on `PATH`; never mutates outside the requested dir; prints the exact commands installed.
-6. **`install.sh` bootstrap** — repo-committed, runnable via `curl … | sh`: verify `pwsh` (error + hint otherwise; never installs pwsh) → `Install-Module Specrew` via pwsh → `specrew install-shell-wrappers` (module first, wrappers second).
+6. **`install.sh` bootstrap** — repo-committed, runnable via `curl … | sh`; the **user-facing entrypoint**: detect platform/package-manager → **auto-install `pwsh` from the vendor-recommended source when absent** (Ubuntu/Debian via the Microsoft apt repo first — Iteration 2; macOS/other distros — Iteration 3; unsupported → fail closed + manual-docs link) → `Install-Module Specrew` via pwsh → `specrew install-shell-wrappers` (module first, wrappers second). Safety constraints per FR-016. *(Thin wrappers still never install pwsh — FR-004 unchanged.)*
 7. **Parity machinery** — CI: (a) regenerate wrappers + diff vs committed `bin/`; (b) registry ↔ `bin/` parity; (c) `bin/` + `install.sh` ↔ `Specrew.psd1` `FileList`; (d) docs examples ↔ registry (allowlist where needed). On failure CI names the cascade: registry → wrappers → installer → FileList → docs.
 8. **CI lanes** — extend `.github/workflows/cross-platform-validation.yml` with Ubuntu + macOS jobs that exercise the wrappers at runtime (the authoritative surface); parity checks run in the PS test lane.
 9. **`FileList`** — add `bin/specrew`, `bin/specrew-*` (8), `install.sh`, the generator + template.
@@ -48,7 +48,7 @@ Ship POSIX `sh` wrapper commands over Specrew's exported alias surface so macOS/
 | FR-004 pwsh-missing error | PATH-without-pwsh negative test | Ubuntu + macOS CI |
 | FR-005 install-shell-wrappers | installer into temp bin | PS unit + CI |
 | FR-006 idempotent/safe/-Force/-WhatIf/PATH-warn | installer unit tests | PS unit |
-| FR-007 install.sh bootstrap | bootstrap run on clean host | Ubuntu + macOS CI |
+| FR-007 install.sh + auto-install pwsh | clean no-pwsh container → install.sh → `specrew version` | Ubuntu CI (Iter 2); macOS manual (Iter 3) |
 | FR-008 thin forwarder (no reparse) | unknown-option passthrough test | Ubuntu + macOS CI |
 | FR-009 generate-then-commit | regenerate + `git diff --exit-code` | PS/CI |
 | FR-010 FileList inclusion | packaging parity test | PS/CI |
@@ -56,7 +56,8 @@ Ship POSIX `sh` wrapper commands over Specrew's exported alias surface so macOS/
 | FR-012 Ubuntu + macOS validation | the lanes themselves | CI |
 | FR-013 Windows unchanged | Windows lane unaffected + docs | CI/manual |
 | FR-014 native-first docs | docs review + example parity | manual + CI |
-| FR-015 release gate | greenfield + brownfield installed validation | manual (release) |
+| FR-015 release gate | greenfield + brownfield installed validation | manual (release, Iter 3) |
+| FR-016 auto-install provenance/elevation/fail-closed | vendor-source-only + verified key + surfaced `sudo` + fail-closed; security lens | Ubuntu CI + security review |
 
 ## Phase 1 Quality Planning
 
@@ -79,7 +80,7 @@ Ship POSIX `sh` wrapper commands over Specrew's exported alias surface so macOS/
 | `design-quality-and-separation-of-concerns` | required | thin-forwarder contract: option parsing stays in PowerShell, never in shell |
 | `verification-confidence` | required | Unix runtime proven on real Ubuntu/macOS, not smoke-only or Git-Bash proxy |
 | `maintainability` | required | generate-then-commit + parity keeps the cascade drift-proof |
-| `security` | required | bin-dir confinement, no profile mutation, `ExecutionPolicy Bypass` scope, no auto-install of pwsh |
+| `security` | required | bin-dir confinement, no profile mutation, `ExecutionPolicy Bypass` scope; **`install.sh` auto-install supply-chain (FR-016): vendor-source-only + verified repo key + surfaced (never silent) `sudo` + install-if-absent + idempotent repo-add + fail-closed** |
 | `robustness` | required | pwsh-missing, symlink chains, quoting/spaces, missing bin dir — explicit failure semantics |
 
 ### Quality Tool Bundle
@@ -182,12 +183,18 @@ docs/                                       # README + getting-started + user-gu
 
 ## Capacity & Iteration Structure
 
-Rough estimate **~24-29 SP** (generator + template + parity + installer + install.sh + FileList/packaging + Ubuntu/macOS CI + docs + unit tests + greenfield/brownfield installed validation) exceeds the 20 SP cap, and the cross-platform CI/install-validation surface is large. Per the maintainer instruction, split into two iterations along the defined boundary:
+Originally a 2-iteration split. The **2026-06-02 auto-install correction** (FR-007/FR-016 — `install.sh`
+auto-installs `pwsh` via the platform package manager, with platform detection + a supply-chain security
+review + a `curl | sh` elevation path) pushes the original Iteration 2 from ~14 SP to **~26-30 SP, over the
+20 SP cap**. Per the project's "split, don't raise the cap" stance, this is **proposed as a 3-iteration
+feature** (the split is a feature-shape change surfaced for maintainer approval at plan → tasks — not
+executed unilaterally; only Iteration 2 is decomposed/scaffolded here):
 
-- **Iteration 1 — wrappers + generator + installer (platform-agnostic core, ~12-14 SP)**: registry reader, generator + template, committed `bin/` wrappers, registry↔wrapper parity, `install-shell-wrappers` subcommand, `FileList`/package inclusion + packaging parity test, PS unit tests. Verifiable without a Unix host (Pester + packaging).
-- **Iteration 2 — bootstrap + cross-platform proof + release gate (~12-15 SP)**: `install.sh`, Ubuntu + macOS CI runtime lanes (forwarding/symlink/pwsh-missing/install), docs (native-first), and the greenfield + brownfield installed validation that also covers the bundled Spec Kit 0.9.0 support.
+- **Iteration 1 — wrappers + generator + installer (platform-agnostic core, 19 SP) — CLOSED.** Registry reader, generator + template, committed `bin/` wrappers, registry↔wrapper parity, `install-shell-wrappers` subcommand, `FileList`/package inclusion + packaging parity test, PS unit tests.
+- **Iteration 2 — `install.sh` + Ubuntu/Debian auto-install, proven on Ubuntu CI (~18 SP)**: orchestration + platform-detection framework + Ubuntu/Debian `pwsh` auto-install (MS apt repo) + the `curl|sh` elevation path + the **Ubuntu CI runtime proof** (clean no-`pwsh` container, end-to-end) which also discharges the Iteration-1-deferred Unix wrapper runtime on Ubuntu, + the parity-cascade CI guard + the auto-install security lens. Auto-install is intrinsically runtime code, so this iteration **builds AND proves** the primary platform (no build-now/prove-later deferral). See `iterations/002/plan.md`.
+- **Iteration 3 — macOS + remaining distros + docs + release gate (~12-15 SP, SKETCH)**: macOS/Homebrew + other MS-supported distros, each proven on its surface (macOS lacks a clean no-`pwsh` CI env → manual proof budgeted); native-first docs (FR-014); greenfield + brownfield installed validation (FR-015) incl. bundled Spec Kit 0.9.0. Decomposed when Iteration 2 closes.
 
-Exact per-task SP confirmed at `/speckit.tasks` + capacity. Iteration 1 is decomposed first.
+Exact per-task SP confirmed at `/speckit.tasks` + capacity per iteration. Iteration 2 is decomposed in `iterations/002/plan.md`.
 
 ## Complexity Tracking
 

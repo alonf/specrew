@@ -4,7 +4,7 @@
 **Plan**: [plan.md](./plan.md) | **Spec**: [spec.md](./spec.md)
 **Date**: 2026-06-02
 
-Tasks cover the whole feature, tagged by iteration. **Iteration 1 is the active, ready-to-implement decomposition** (approved at plan → tasks). Iteration 2 is listed for traceability + planning and is decomposed in detail when Iteration 1 closes. Every task traces to ≥1 FR/SC; every FR/SC has ≥1 task (see Traceability Matrix).
+Tasks cover the whole feature, tagged by iteration. **Iteration 1 is CLOSED.** The 2026-06-02 auto-install correction (FR-007/FR-016) expands `install.sh` beyond the original ~14 SP Iteration 2, so the feature is **proposed as a 3-iteration split** (a feature-shape change for maintainer decision at plan → tasks): **Iteration 2 (Ubuntu-first auto-install, proven on Ubuntu CI) is the active decomposition**; **Iteration 3 (macOS + remaining distros + docs + release gate) is sketched** (no task table yet) and decomposed in detail when Iteration 2 closes. Every task traces to ≥1 FR/SC; every FR/SC has ≥1 task (see Traceability Matrix).
 
 Effort unit: story points (SP). Iteration cap: 20 SP.
 
@@ -24,42 +24,60 @@ Effort unit: story points (SP). Iteration cap: 20 SP.
 
 **Iteration 1 SP**: 1+2+3+1+2+2+4+2+2 = **19 / 20**.
 
-## Iteration 2 — bootstrap + cross-platform proof + release gate (planned; ~14 SP)
+## Iteration 2 — install.sh + Ubuntu/Debian auto-install, proven on Ubuntu CI (active; ~18 SP)
+
+Detailed decomposition in `iterations/002/plan.md`. Ubuntu-first because a clean no-`pwsh` container is the cheapest **honest** runtime proof; auto-install is built AND proven in this iteration (no build-now/prove-later deferral on the high-risk surface).
 
 | ID | Task | FR / SC | SP | Owner | Deps |
 | --- | --- | --- | --- | --- | --- |
-| T010 | `install.sh` bootstrap (`curl \| sh`): verify `pwsh` (error+hint; never installs pwsh) → `Install-Module Specrew` → `specrew install-shell-wrappers` | FR-007 | 3 | Implementer | T007 |
-| T011 | Ubuntu + macOS CI runtime lanes (extend `cross-platform-validation.yml`): install→PATH→`specrew version`/`start --help`, quoting/spaces forwarding, symlink resolution, pwsh-missing negative test, unknown-option passthrough | FR-012, FR-002, FR-003, FR-004, FR-008, SC-001, SC-003 | 4 | Reviewer | T004, T007 |
-| T012 | CI parity-cascade job: regenerate + `git diff --exit-code`; registry↔bin↔FileList↔docs; name the cascade on failure | FR-011, FR-009 | 2 | Reviewer | T006, T009 |
-| T013 | Native-first docs (`README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `docs/troubleshooting.md`) + doc-example parity/allowlist | FR-014, SC-005 | 2 | Spec Steward | T007, T010 |
-| T014 | Greenfield + brownfield installed validation (release gate; covers bundled Spec Kit 0.9.0); record evidence; **no beta/stable publish without explicit maintainer authorization** | FR-015, SC-006 | 3 | Reviewer | T010, T011, T013 |
+| T010 | `install.sh` orchestration: shebang + `set -eu`, shell lint, happy path (detect → ensure pwsh → `Install-Module Specrew` → `install-shell-wrappers`), fail-closed structure, arg surface (`--bin-dir`/`--help`), non-interactive/CI mode | FR-007 | 2 | Implementer | T007 |
+| T011 | Platform + package-manager detection framework (`/etc/os-release` ID/VERSION_ID; apt/dnf/brew/snap); **unsupported → fail closed + manual-docs link**; table-driven os-release fixtures + tests | FR-007, FR-016 | 3 | Implementer | T010 |
+| T012 | Ubuntu/Debian pwsh auto-install (Microsoft apt repo + verified signing key + `apt-get install -y powershell`); **install-only-if-absent**; **idempotent repo-add**; non-interactive flags for CI | FR-007, FR-016 | 3 | Implementer | T011 |
+| T013 | `curl \| sh` tty / elevation handling: detect non-tty stdin; resolve interactive `sudo` (`/dev/tty` re-exec or download-then-run guidance); surface the privileged command; never silently elevate | FR-007, FR-016 | 2 | Implementer | T010 |
+| T014 | **Ubuntu CI runtime proof** (extend `cross-platform-validation.yml`): clean no-`pwsh` container end-to-end (install.sh → auto-install pwsh → `Install-Module` → `install-shell-wrappers` → `specrew version`/`start --help`) + Ubuntu wrapper runtime suite (forwarding spaces/quotes/`--`/empty, symlink resolution, pwsh-missing negative, unknown-option passthrough) + shellcheck gate | FR-012, FR-002, FR-003, FR-004, FR-008, FR-007, SC-001, SC-003, SC-007 | 4 | Reviewer | T010, T011, T012, T013 |
+| T015 | Parity-cascade CI job: regenerate + `git diff --exit-code`; registry↔`bin/`↔`FileList` arm; name the cascade on failure (docs arm → Iter 3) | FR-011, FR-009 | 2 | Reviewer | T006, T009 |
+| T016 | Security lens evidence for the auto-install surface: supply-chain provenance (MS repo + verified key trust), surfaced elevation, fail-closed, install-if-absent, idempotent repo-add, **no untrusted `curl \| bash` beyond the trusted Specrew bootstrap** | FR-016 | 2 | Reviewer | T011, T012, T013 |
 
-**Iteration 2 SP**: 3+4+2+2+3 = **14 / 20**. Feature total ≈ **33 SP** across 2 iterations (each ≤ 20).
+**Iteration 2 SP**: 2+3+3+2+4+2+2 = **18 / 20** (Ubuntu auto-install + wrapper runtime proven in-iteration).
+
+## Iteration 3 — macOS + remaining distros + docs + release gate (SKETCH; ~12-15 SP; not yet decomposed)
+
+Decomposed in detail when Iteration 2 closes (no task table yet, per the planning boundary). Sketch scope:
+
+- macOS/Homebrew `pwsh` auto-install + remaining MS-supported distros (e.g. RHEL/Fedora via the MS dnf repo), each proven on its surface — macOS lacks a clean no-`pwsh` CI env, so **manual proof** is budgeted. (FR-007, FR-016, FR-012 macOS, SC-007 macOS)
+- macOS wrapper runtime lane: forwarding / symlink / pwsh-missing / passthrough. (FR-002/003/004/008 macOS, SC-001/SC-003 macOS)
+- Docs-example parity arm of the cascade. (FR-011 docs arm)
+- Native-first docs (`README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `docs/troubleshooting.md`): bash/zsh-first, pwsh as internal dependency, unsupported/manual fallback documented. (FR-014, SC-005)
+- Greenfield + brownfield installed validation (release gate; covers bundled Spec Kit 0.9.0); **no beta/stable publish without explicit maintainer authorization**. (FR-015, SC-006)
+
+Feature total ≈ **49-52 SP** across 3 iterations (each ≤ 20) — pending maintainer approval of the split.
 
 ## Traceability Matrix
 
 | FR / SC | Covered by |
 | --- | --- |
 | FR-001 | T001, T003, T004 |
-| FR-002 | T002, T011 |
-| FR-003 | T002, T011 |
-| FR-004 | T002, T011 |
+| FR-002 | T002, T014 (Ubuntu); Iter 3 (macOS) |
+| FR-003 | T002, T014 (Ubuntu); Iter 3 (macOS) |
+| FR-004 | T002, T014 (Ubuntu); Iter 3 (macOS) |
 | FR-005 | T007 |
 | FR-006 | T007, T008 |
-| FR-007 | T010 |
-| FR-008 | T002, T011 |
-| FR-009 | T003, T005, T006, T012 |
+| FR-007 | T010, T011, T012, T013, T014 (Ubuntu auto-install); Iter 3 (macOS/other distros) |
+| FR-008 | T002, T014 (Ubuntu); Iter 3 (macOS) |
+| FR-009 | T003, T005, T006, T015 |
 | FR-010 | T009 |
-| FR-011 | T006, T009, T012 |
-| FR-012 | T011 |
+| FR-011 | T006, T009, T015 (registry↔bin↔FileList arm); Iter 3 (docs arm) |
+| FR-012 | T014 (Ubuntu); Iter 3 (macOS) |
 | FR-013 | T007 |
-| FR-014 | T013 |
-| FR-015 | T014 |
-| SC-001 | T011 |
+| FR-014 | Iter 3 |
+| FR-015 | Iter 3 |
+| FR-016 | T011, T012, T013, T014, T016 |
+| SC-001 | T014 (Ubuntu); Iter 3 (macOS) |
 | SC-002 | T006 |
-| SC-003 | T011 |
+| SC-003 | T014 (Ubuntu); Iter 3 (macOS) |
 | SC-004 | T008 |
-| SC-005 | T013 |
-| SC-006 | T014 |
+| SC-005 | Iter 3 |
+| SC-006 | Iter 3 |
+| SC-007 | T014 (Ubuntu auto-install); Iter 3 (macOS) |
 
-Every task maps to ≥1 FR/SC; every FR/SC maps to ≥1 task.
+Every task maps to ≥1 FR/SC; every FR/SC maps to ≥1 task (Iteration 3 coverage is sketched pending its decomposition).
