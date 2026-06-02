@@ -77,4 +77,3 @@ Reviewed honestly against the accepted Iteration 1 model — **not** as a host-h
 ## Gap Ledger
 
 - No requirement (FR/SC) gaps for the Iteration 1 scope: all in-scope requirements verified: fixed-now.
-- FR-009 / FR-010 (Applicable Lenses) deferred-within-feature to a later Feature 141 iteration with recorded human approval (2026-06-02 directive): deferred.
