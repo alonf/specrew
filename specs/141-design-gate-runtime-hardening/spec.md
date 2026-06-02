@@ -304,14 +304,19 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   bootstrap files owned by the parallel Unix-install feature unless a smoke-bug fix
   genuinely requires it, in which case the change MUST be minimal and explicitly
   scoped.
-- **FR-020**: [NEEDS CLARIFICATION: Must the design-analysis typed packet be
-  persisted as a durable gate artifact (a 155-lite stored packet under the
-  iteration directory), or is rendered-and-validated-transiently sufficient for
-  this feature?]
-- **FR-021**: [NEEDS CLARIFICATION: Must "validate before plan.md generation" be
-  runtime-enforced by a script/hook that blocks the write, or is coordinator-prompt
-  enforcement (a generated instruction the coordinator must follow, consistent with
-  the current non-Squad runtime) sufficient for Iteration 1?]
+- **FR-020**: Specrew MUST at minimum render-and-validate the design-analysis gate
+  packet from typed fields. Durable persistence of the rendered packet is preferred
+  when it stays narrow and cheap; if included, the stored packet MUST be scoped to
+  the design-analysis gate only (e.g., under `specs/<feature>/gates/` or an
+  equivalent design-analysis-scoped path) and MUST NOT be generalized to other
+  boundaries (continuing FR-006).
+- **FR-021**: Specrew MUST enforce "no substantive `plan.md` before the
+  design-analysis artifact and human design-gate decision are valid" via
+  coordinator-prompt enforcement plus a callable pre-plan validator in Iteration 1.
+  The binding requirement is the outcome (substantive `plan.md` is not authored
+  before a valid artifact and a recorded human decision), not a specific host-hook
+  mechanism. Host-native write-blocking hook enforcement (Proposal 105) MUST NOT be
+  pulled into Iteration 1.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -352,8 +357,8 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 | FR-017 | Spec Steward, Reviewer | All iterations |
 | FR-018 | Spec Steward, Reviewer | All iterations |
 | FR-019 | Spec Steward, Implementer, Reviewer | All iterations |
-| FR-020 | Spec Steward, Planner | Clarify / design-analysis |
-| FR-021 | Spec Steward, Planner | Clarify / design-analysis |
+| FR-020 | Implementer, Reviewer | Iteration 1 |
+| FR-021 | Implementer, Reviewer | Iteration 1 |
 | TG-001 | Planner, Reviewer | All iterations |
 | TG-002 | Planner, Reviewer | All iterations |
 | TG-003 | Planner, Reviewer | All iterations |
@@ -418,8 +423,9 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 ## Assumptions
 
 - The current non-Squad coordinator-prose runtime is the primary execution mode;
-  "block before plan.md" may be realized as a generated coordinator instruction
-  plus a callable pre-plan validator, pending the FR-021 clarification.
+  per the clarify decision, "block before plan.md" is realized as a generated
+  coordinator instruction plus a callable pre-plan validator in Iteration 1, with
+  no host-native hooks (Proposal 105 deferred).
 - The Feature 140 validator contract
   (file:///C:/Dev/Specrew-design-analysis/specs/140-design-analysis-gate/contracts/design-analysis-gate.md)
   is the authoritative shape the scaffold must match.
@@ -436,6 +442,10 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 
 - Typed/rendered packets are scoped to the design-analysis gate only; do not
   implement full Proposal 155.
+- Durable packet storage, if included, is scoped to the design-analysis gate only
+  (under `specs/<feature>/gates/` or equivalent); do not generalize to other
+  boundaries.
+- Do not pull host-native hook enforcement (Proposal 105) into Iteration 1.
 - Lens integration is lightweight read-only (Applicable Lenses section); defer
   Proposal 156 overrides, schema validation, and broad automation.
 - Keep all four smoke-test bugs inside this feature; do not push them to another
@@ -446,6 +456,36 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   explicitly-scoped, unavoidable smoke-bug fixes.
 - Do not rewrite the Feature 140 helper or its plan-boundary enforcement; extend
   them.
+
+## Clarifications
+
+### Session 2026-06-02
+
+- Q: How should "block before `plan.md` is authored" (FR-021) be enforced in
+  Iteration 1? A: Coordinator-prompt enforcement plus a callable pre-plan
+  validator. The binding requirement is the outcome — the Crew MUST NOT author
+  substantive `plan.md` before the design-analysis artifact and the human
+  design-gate decision are valid. Host-native hook enforcement (Proposal 105) is
+  explicitly NOT pulled into Iteration 1.
+- Q: Must the typed design-analysis gate packet be persisted (FR-020)? A: The
+  minimum acceptable behavior is render-and-validate from typed fields. A durable
+  "155-lite" packet for the design-analysis gate is preferred when it stays narrow
+  and cheap; if included, it is scoped to the design-analysis gate only (e.g., under
+  `specs/<feature>/gates/` or an equivalent design-analysis-scoped path) and is not
+  generalized to all boundaries.
+- Q: What is the iteration split (FR-016)? A: Multi-iteration feature in a single
+  feature. Iteration 1 hardens the design-gate runtime path only: exact
+  `design-analysis.md` scaffold/template, pre-plan validation before `plan.md`,
+  typed/rendered design-gate packet, and optional lightweight read-only Proposal 156
+  lens inclusion. Later iterations stay in this feature and cover the four
+  smoke-test defects: empty `specs//...` start-packet paths, noisy downstream
+  warnings, fresh greenfield baseline commit handling, and host wording leaks. The
+  plan proposes the concrete split and capacity model.
+- Q: How should feature 141 relate to the unmerged Feature 140 branch (FR-017)? A:
+  Stacking 141 on the Feature 140 tip is acceptable because Iteration 1 depends on
+  Feature 140 runtime code that is not yet on main. The dependency is kept explicit
+  in the artifacts, and the branch is ready to rebase/refresh after Feature 140
+  merges.
 
 ## Governance Alignment *(mandatory)*
 

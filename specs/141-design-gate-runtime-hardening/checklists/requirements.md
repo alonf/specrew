@@ -27,10 +27,10 @@
 - [x] Drift signals identify mismatches across scaffold, Feature 140 validator contract, plan input, boundary state, packet evidence, and review evidence
 - [x] Out-of-scope boundaries preserve Proposal 137 first-slice scope, scope Proposal 155 to one gate, and limit Proposal 156 to lightweight read-only
 
-## Clarification Candidates *(open — to resolve at clarify)*
+## Clarification Candidates *(resolved — Session 2026-06-02)*
 
-- [ ] FR-020: Persist the design-analysis typed packet as a durable gate artifact (155-lite stored packet), or render-and-validate transiently for this feature?
-- [ ] FR-021: Enforce "validate before plan.md generation" via a script/hook that blocks the write, or via coordinator-prompt enforcement consistent with the current non-Squad runtime, for Iteration 1?
-- [ ] Iteration split: confirm Iteration 1 = design-gate runtime path (FR-001..FR-008, plus FR-009/FR-010 if cheap) and the number/grouping of later smoke-bug iterations (plan deliverable per FR-016).
-- [ ] Lens inclusion: confirm whether FR-009/FR-010 lens "Applicable Lenses" section lands in Iteration 1 or defers if it grows beyond lightweight read-only.
-- [ ] Smoke-bug acceptance bars: confirm the measurable "no spurious warnings" set (SC-008) and host-wording audit scope (SC-010) per host.
+- [x] FR-021: Coordinator-prompt enforcement plus a callable pre-plan validator in Iteration 1; the binding requirement is that substantive `plan.md` is not authored before a valid artifact and recorded human decision. Proposal 105 host hooks NOT pulled into Iteration 1.
+- [x] FR-020: Minimum is render-and-validate from typed fields; a durable 155-lite packet is preferred if narrow and cheap, scoped to the design-analysis gate only (e.g., `specs/<feature>/gates/`), not generalized to all boundaries.
+- [x] Iteration split: Iteration 1 = design-gate runtime path only (scaffold/template, pre-plan validation, typed/rendered packet, optional lightweight read-only lens); later iterations stay in this feature and carry the four smoke-test defects. The plan proposes the concrete split + capacity model.
+- [x] Lens inclusion: FR-009/FR-010 "Applicable Lenses" is optional lightweight read-only in Iteration 1; defer if it grows beyond lightweight read-only.
+- [ ] Smoke-bug acceptance bars (SC-008 spurious-warning set, SC-010 per-host wording audit): deferred to each smoke-bug iteration's planning, where reproduction is confirmed.
