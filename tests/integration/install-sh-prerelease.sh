@@ -25,6 +25,9 @@ fi
 # 2. wrapper_surface_present predicate (FR-017 version/source mismatch check).
 # Source install.sh as a library (SPECREW_NO_MAIN=1, empty $@) and assert the pure predicate.
 pred() {
+  # The $1/$2/$d/$m below are INTENTIONALLY literal — they expand inside the inner `sh -c`
+  # (fed the positional params `_ "$1" "$repo/install.sh"`), not in this outer string.
+  # shellcheck disable=SC2016
   "$shbin" -c 'd="$1"; m="$2"; set --; SPECREW_NO_MAIN=1; export SPECREW_NO_MAIN; . "$m"; set +e; wrapper_surface_present "$d"; echo $?' _ "$1" "$repo/install.sh"
 }
 
@@ -33,9 +36,9 @@ mkdir -p "$present_dir/bin"
 : > "$present_dir/bin/specrew"
 absent_dir="$(mktemp -d 2>/dev/null || mktemp -d -t specrew-absent)"
 
-[ "$(pred "$present_dir")" = "0" ] && ok "module with bin/specrew -> surface present" || no "module with bin/specrew -> surface present"
-[ "$(pred "$absent_dir")" != "0" ] && ok "module without bin/specrew -> mismatch (fail closed)" || no "module without bin/specrew -> mismatch"
-[ "$(pred "")" != "0" ] && ok "empty module base -> mismatch (fail closed)" || no "empty module base -> mismatch"
+if [ "$(pred "$present_dir")" = "0" ]; then ok "module with bin/specrew -> surface present"; else no "module with bin/specrew -> surface present"; fi
+if [ "$(pred "$absent_dir")" != "0" ]; then ok "module without bin/specrew -> mismatch (fail closed)"; else no "module without bin/specrew -> mismatch"; fi
+if [ "$(pred "")" != "0" ]; then ok "empty module base -> mismatch (fail closed)"; else no "empty module base -> mismatch"; fi
 
 rm -rf "$present_dir" "$absent_dir" 2>/dev/null || true
 
