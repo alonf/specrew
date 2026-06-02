@@ -98,7 +98,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [014](014-red-team-agent.md) | Red Team Agent | phase-2 | 22 |
 | [015](015-expertise-aware-adaptive-interaction.md) | Expertise-Aware Adaptive Interaction | phase-2 | 25 |
 | [016](016-outcome-scoring.md) | Outcome Scoring | phase-4 | 27 |
-| [017](017-learning-loop-closure.md) | Learning Loop Closure | phase-2 | 13 |
+| [017](017-learning-loop-closure.md) | Learning Loop Closure — retro/review/drift feedback loop covering corpus graduation, known-trap consultation, reviewer-instruction triage, and planning calibration/root-cause feedback for story points, solution choice, task ordering, tests, and deferrals | phase-2 | 22-30 |
 | [018](018-source-spec-fidelity-contract.md) | Source-Spec Fidelity Contract | phase-2 | 30 |
 | [019](019-spec-arithmetic-mechanical-check.md) | Spec-Arithmetic Mechanical Check | phase-2 | 10 |
 | [020](020-spec-scenario-integration-tests.md) | Spec-Scenario Integration Test Mandate | phase-2 | 15 |
