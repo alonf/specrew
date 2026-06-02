@@ -238,10 +238,17 @@ explicitly acceptable.
 
 ## Human Decision
 
-*(Populated after the design-analysis verdict — left intentionally empty so the
-gate blocks plan until a decision is recorded.)*
-
-- **Chosen option**: <A | B | C | modified-B | ...>
-- **Reason**: <human rationale>
-- **Modifications**: <any scope tweaks to the chosen option>
-- **Decided at commit**: <hash>
+- **Chosen option**: Option B (Reasonable)
+- **Reason**: Selected the recommended balanced option. The feature's purpose is a
+  trustworthy, enforced design gate, which justifies durable, verifiable evidence
+  over the smallest possible change. Option B delivers every clarify decision — a
+  narrow design-analysis-scoped durable 155-lite packet (FR-020), a callable
+  pre-plan validator with coordinator-prompt enforcement and no Proposal 105 hooks
+  (FR-021), a template-file scaffold reconciled with the validator contract
+  (TG-007), the lightweight read-only Applicable Lenses section (FR-009), and real
+  block/pass tests — within the iteration cap.
+- **Modifications**: None. Durable 155-lite packet stays scoped to the
+  design-analysis gate only (`specs/<feature>/gates/`); no generalization to other
+  boundaries.
+- **Decided at commit**: `337e2523` (design-analysis state reviewed and approved;
+  verdict `approved for plan with Option B`).
