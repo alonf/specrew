@@ -19,6 +19,7 @@ flowchart LR
   Tests --> Helper
   Tests --> Sync
 ```
+
 ## Sequence: Active Plan Boundary
 
 ```mermaid
