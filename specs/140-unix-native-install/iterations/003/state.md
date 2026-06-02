@@ -1,6 +1,7 @@
 # Iteration State: 003
 
 **Schema**: v1
+**Current Phase**: reviewing
 **Iteration Status**: reviewing
 **Last Completed Task**: T023 (docs-parity cascade arm)
 **Tasks Remaining**: T021 (blocked — needs a real macOS host), T024 (blocked — needs maintainer beta-publish authorization)
