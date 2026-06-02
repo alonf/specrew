@@ -153,7 +153,7 @@ flowchart LR
   Lenses[existing lens files] -.read-only.-> DA
 ```
 
-### Option C: By the book — Hook-enforced, hashed/replayable, lens-index-driven
+### Option C: By-the-book — Hook-enforced, hashed/replayable, lens-index-driven
 
 **Approach**: Everything in B, plus integrate the pre-plan validator into the
 before-plan extension hook as a hard readiness FAIL, add packet hashing + a
@@ -217,38 +217,39 @@ flowchart LR
 
 ## Crew recommendation
 
-**Recommended: Option B (Reasonable).**
+**Recommended: Option B.**
 
 Rationale: This feature's entire purpose is to make the design gate *trustworthy
 and enforced*, which argues for durable, verifiable evidence over the smallest
-possible change. Option B delivers exactly your clarify-decided preferences — a
+possible change. Option B delivers exactly the clarify-decided preferences — a
 narrow, design-analysis-scoped durable 155-lite packet (FR-020), a callable
-pre-plan validator with prompt enforcement and no Proposal 105 hooks (FR-021), a
-template-file scaffold that stays reconciled with the validator contract (TG-007),
-the lightweight read-only Applicable Lenses section (FR-009), and real block/pass
-tests — all within the iteration cap (~13–18 SP). Option A is cheaper but leaves
-the approval object unauditable and risks scaffold/validator drift, undercutting
-the trust goal. Option C is the right *eventual* shape but its distinguishing
-features are exactly the scope you deferred and it breaks the cap, so it is not an
-Iteration 1 candidate.
+pre-plan validator with coordinator-prompt enforcement and no host hooks (FR-021),
+a template-file scaffold that stays reconciled with the validator contract
+(TG-007), the lightweight read-only Applicable Lenses section (FR-009), and real
+block/pass tests — all within the iteration cap. The minimal prompt-only
+alternative is cheaper but leaves the approval object unauditable and risks
+scaffold/validator drift, undercutting the trust goal. The fuller hook-based
+alternative is the right *eventual* shape, but its distinguishing features are
+exactly the deferred scope and it breaks the cap, so it is not an Iteration 1
+candidate.
 
-This recommendation would flip toward Option A only under hard time pressure where
-shipping a minimal prompt-enforced gate now and adding durability later is
-explicitly acceptable.
+This recommendation would flip toward the minimal alternative only under hard time
+pressure where shipping a minimal prompt-enforced gate now and adding durability
+later is explicitly acceptable.
 
 ## Human Decision
 
-- **Chosen option**: Option B (Reasonable)
-- **Reason**: Selected the recommended balanced option. The feature's purpose is a
-  trustworthy, enforced design gate, which justifies durable, verifiable evidence
+- **Chosen option**: Option B
+- **Reason**: Selected the recommended balanced approach. The feature's purpose is
+  a trustworthy, enforced design gate, which justifies durable, verifiable evidence
   over the smallest possible change. Option B delivers every clarify decision — a
   narrow design-analysis-scoped durable 155-lite packet (FR-020), a callable
-  pre-plan validator with coordinator-prompt enforcement and no Proposal 105 hooks
+  pre-plan validator with coordinator-prompt enforcement and no host hooks
   (FR-021), a template-file scaffold reconciled with the validator contract
   (TG-007), the lightweight read-only Applicable Lenses section (FR-009), and real
   block/pass tests — within the iteration cap.
-- **Modifications**: None. Durable 155-lite packet stays scoped to the
+- **Modifications**: None. The durable 155-lite packet stays scoped to the
   design-analysis gate only (`specs/<feature>/gates/`); no generalization to other
   boundaries.
-- **Decided at commit**: `337e2523` (design-analysis state reviewed and approved;
-  verdict `approved for plan with Option B`).
+- **Decided at commit**: `337e2523` (reviewed design-analysis state; verdict
+  `approved for plan with Option B`).
