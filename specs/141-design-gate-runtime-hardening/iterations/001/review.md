@@ -77,3 +77,49 @@ Reviewed honestly against the accepted Iteration 1 model — **not** as a host-h
 ## Gap Ledger
 
 - No requirement (FR/SC) gaps for the Iteration 1 scope: all in-scope requirements verified: fixed-now.
+
+## Proposal 145 Compliance Addendum
+
+### 1. Seven review phases (all run)
+
+| # | Phase | Verdict | Basis |
+| --- | --- | --- | --- |
+| 1 | Context load | pass | Clarified spec, Option B decision, plan, and the FR-021 review-emphasis points loaded. |
+| 2 | Branch hygiene | pass | All work committed (`32ed8383`→`b8cc5685`); only unrelated runtime/agent churn uncommitted. |
+| 3 | Functional correctness | pass | Scaffold, pre-plan block/pass, packet render/validate/persist, selected-option, validator robustness all behave per spec. |
+| 4 | NFR / security | pass | No auth/secrets/network/eval; durable packet scoped to the gate; no Proposal 105 hooks. |
+| 5 | Code quality | pass | Isolated functions; reuses the validation core; Feature 140 helper extended, not rewritten. |
+| 6 | Test coverage + integrity | pass | New unit + integration suites assert runtime behavior with negative cases; not file-presence. |
+| 7 | System safety + ops | pass | At-sync plan-boundary backstop intact; boundary-sync atomicity preserved; validator clean. |
+
+No phase was N/A; all seven ran.
+
+### 2. FR × phase coverage
+
+| Requirement | Verifying phase(s) |
+| --- | --- |
+| FR-001 (scaffold) | 3 Functional, 6 Test |
+| FR-002 / FR-003 (block before plan) | 3 Functional, 6 Test, 7 System safety |
+| FR-004 / FR-005 (typed packet) | 3 Functional, 6 Test |
+| FR-006 (packet scope) | 4 NFR, 5 Code quality |
+| FR-007 (selected-option continuity) | 3 Functional, 6 Test |
+| FR-008 (extend not rewrite) | 5 Code quality, regression check |
+| FR-020 (durable packet scoped) | 3 Functional, 4 NFR |
+| FR-021 (enforcement) | 3 Functional, 7 System safety (see §3) |
+| FR-022 / FR-023 (validator robustness) | 3 Functional, 6 Test, regression check |
+| FR-016 / FR-017 / FR-018 / FR-019 (sequencing/scope/governance) | 2 Branch hygiene, 7 System safety |
+
+Every in-scope FR maps to at least one phase.
+
+### 3. FR-021 honest classification
+
+Implemented/enforced by **cooperative coordinator instruction** (`scripts/specrew-start.ps1` generated guidance) **plus a callable pre-plan validator** (`Invoke-SpecrewDesignAnalysisPrePlanGate`), **backed by the at-sync plan-boundary hard gate** (`Invoke-SpecrewDesignAnalysisPlanBoundaryGate` in `sync-boundary-state.ps1`). It is **NOT** a host-native mechanical write-block and **NOT** Proposal 105 hook enforcement; a non-cooperating process could still write `plan.md` bytes. No review claim asserts mechanical write-prevention.
+
+### 4. Feature 140 shared-helper regression
+
+`scripts/internal/design-analysis-gate.ps1` (Feature 140 runtime) was extended. Regression checked: Feature 140 unit + integration suites re-run at `b8cc5685` — pass. FR-022/FR-023 broaden acceptance only; existing valid artifacts are unaffected.
+
+### 5. Evidence integrity
+
+- No review claim relies on uncommitted or working-tree-only evidence. All implementation (`32ed8383`, `f4172cb4`, `2926dea0`, `74aba427`) and review artifacts (`e3951c35`, `9bb5f13b`, `b8cc5685`) are committed; the only uncommitted working-tree files are unrelated runtime/agent churn, not feature evidence.
+- Tests and mechanical checks cited in this review were **re-run at commit `b8cc5685`** (current HEAD): Feature 140 unit + integration, Feature 141 unit + integration all pass; `mechanical-findings.json` is empty. The runtime code (`design-analysis-gate.ps1`, `design-analysis.template.md`, the two test suites) is unchanged since `32ed8383`/`74aba427`; the later commits touched only review documentation.
