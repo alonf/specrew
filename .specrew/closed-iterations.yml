@@ -170,3 +170,6 @@ closed:
   - feature: 140-design-analysis-gate
     iteration: 001
     closed_at: 2026-06-02T06:59:33Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 001
+    closed_at: 2026-06-02T18:33:32Z
