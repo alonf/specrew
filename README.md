@@ -16,7 +16,18 @@
 
 ## ⚡ Try it now (5 min)
 
-From any directory you like (PowerShell 7+ on Windows, macOS, or Linux):
+### macOS / Linux — native shell (zsh/bash)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/alonf/specrew/main/install.sh | sh
+mkdir hello-specrew && cd hello-specrew && git init
+specrew init
+specrew start "Build a tip calculator with a web UI"
+```
+
+No `pwsh`, no `Install-Module`. `install.sh` does it all: it auto-installs PowerShell Core as an internal dependency if it is missing (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew), installs Specrew from the PowerShell Gallery, and puts the native `specrew` command on your `PATH`. To validate a beta instead of the stable release, append `-s -- --prerelease` to the `curl … | sh` line.
+
+### Windows — PowerShell 7+
 
 ```powershell
 Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
@@ -29,15 +40,17 @@ That's it. Specrew now drives you through the spec-driven lifecycle: you'll co-a
 
 ### Prerequisites
 
-PowerShell 7+, git, and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Cursor](https://cursor.com/), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/).
+git and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Cursor](https://cursor.com/), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/). PowerShell 7+ is the runtime: on **macOS/Linux it is an internal dependency that `install.sh` auto-installs for you** (you never invoke `pwsh` directly); on **Windows** you run Specrew from PowerShell 7+.
 
-**Install PowerShell 7+ if you don't already have it:**
+**Installing PowerShell 7+ manually** (only needed if you bypass `install.sh`):
 
-- **Windows:** preinstalled on Windows 11; on Windows 10, install via `winget install Microsoft.PowerShell` or [microsoft.com/powershell](https://github.com/PowerShell/PowerShell/releases)
+- **Windows:** preinstalled on Windows 11; on Windows 10, `winget install Microsoft.PowerShell` or [microsoft.com/powershell](https://github.com/PowerShell/PowerShell/releases)
 - **macOS:** `brew install --cask powershell` (then run `pwsh` to enter)
 - **Linux:** [official install guide](https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-linux) (Ubuntu, Debian, Fedora, Arch all supported)
 
-See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm), and brownfield-project bootstrap.
+> **macOS/Linux fallback — module install instead of `install.sh`:** run `Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck` **from inside `pwsh`**, not zsh/bash (`Install-Module` does not exist in your login shell — running it there prints `command not found`). The PowerShell Gallery prompt defaults to **`N`**, so pressing Enter *declines* the install — choose **`A` / Yes to All** (or add `-Force`). The native `install.sh` path above avoids both pitfalls.
+
+See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm, Node, Spec Kit), and brownfield-project bootstrap.
 
 ## What just happened
 

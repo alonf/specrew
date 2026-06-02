@@ -26,7 +26,7 @@ If any are missing:
 - **PowerShell 7**: [https://aka.ms/powershell](https://aka.ms/powershell)
 - **Git**: [https://git-scm.com/downloads](https://git-scm.com/downloads)
 - **uv**: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"` (Windows) or `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux)
-- **Node.js + npm**: [https://nodejs.org/](https://nodejs.org/) (LTS)
+- **Node.js + npm**: [https://nodejs.org/](https://nodejs.org/) (Node 24+). On macOS with `nvm`, a `brew`-installed Node can be *shadowed* by an older `nvm` default — verify `node -v` **inside `pwsh`** (the runtime Specrew uses), not only in your login shell. See [troubleshooting](troubleshooting.md#macos-node-version-shadowed-by-nvm).
 - **GitHub CLI**: [https://cli.github.com/](https://cli.github.com/) — used for the PR-creation lifecycle gates
 
 #### Pick at least one host CLI
@@ -48,13 +48,25 @@ When `--host` is omitted in interactive mode, Specrew shows a numbered menu of i
 
 Reserved-but-deferred kind: `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe — partially implemented via the F-043 first-run menu but `auto` literal still rejected). Specrew rejects this with explicit "deferred" guidance rather than silently falling back.
 
-### 2. Install Specrew from PowerShell Gallery
+### 2. Install Specrew
+
+#### macOS / Linux — native shell (recommended)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/alonf/specrew/main/install.sh | sh
+```
+
+`install.sh` is the user-facing entrypoint. It auto-installs PowerShell Core as an internal dependency if it is missing (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew — `brew` runs as you, never `sudo`), installs Specrew from the PowerShell Gallery, and installs the native `specrew` command wrappers onto your `PATH`. You never type `pwsh` or `Install-Module`. Append `-s -- --prerelease` to install a beta. On an unsupported platform it fails closed with a manual-install link (it never reports a half-finished install as success).
+
+#### Windows — PowerShell Gallery
 
 ```powershell
 Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
 ```
 
 The `-SkipPublisherCheck` flag is required because the module is currently signed with a self-signed certificate. A CA-signed release is planned.
+
+> **macOS/Linux module fallback (only if you skip `install.sh`):** `Install-Module` exists only inside PowerShell — run `pwsh` first, then `Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck`. Running it in zsh/bash prints `command not found: Install-Module`. The PowerShell Gallery prompt defaults to **`N`** (pressing Enter *declines* the install) — answer **`A` / Yes to All** or pass `-Force`. After the module is installed, run `specrew install-shell-wrappers` to get the native `specrew` command without `pwsh`.
 
 Verify:
 
