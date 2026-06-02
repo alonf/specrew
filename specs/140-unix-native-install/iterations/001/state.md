@@ -1,6 +1,8 @@
 # Iteration State: 001
 
 **Schema**: v1
+**Current Phase**: review
+**Iteration Status**: reviewing
 **Last Completed Task**: T009 (Group D: T009 — FileList inclusion + packaging parity)
 **Tasks Remaining**: (none — all Iteration 1 tasks T001-T009 complete; review-signoff next)
 **In Progress**: (none)

@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 19/20 story_points
 **Started**: 2026-06-02
 **Completed**:
@@ -38,15 +38,15 @@ Iteration 1 of the 2-iteration split: wrappers + generator + parity + installer 
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Canonical registry reader (AliasesToExport + root) | FR-001, FR-009 | US1 | 1 | Implementer | `scripts/internal/**` | planned | | | |
-| T002 | POSIX sh wrapper template (module-root + pwsh check + exec) | FR-002, FR-003, FR-004, FR-008 | US1 | 2 | Implementer | `scripts/internal/**` | planned | | | |
-| T003 | generate-shell-wrappers.ps1 generator (deterministic/idempotent) | FR-009, FR-001 | US3 | 3 | Implementer | `scripts/internal/**` | planned | | | |
-| T004 | Generate + commit the 8 bin/ wrappers | FR-001 | US1 | 1 | Implementer | `bin/**` | planned | | | |
-| T005 | Generator unit tests (parse, render, idempotency) | FR-009 | US3 | 2 | Implementer | `tests/unit/**` | planned | | | |
-| T006 | Registry ↔ wrapper parity test | FR-009, FR-011 | US3 | 2 | Reviewer | `tests/unit/**` | planned | | | |
-| T007 | install-shell-wrappers subcommand (copy/-Force/-WhatIf/PATH-warn/confine + dispatch) | FR-005, FR-006, FR-013 | US2 | 4 | Implementer | `scripts/**` | planned | | | |
-| T008 | Installer unit tests (idempotency, -Force, -WhatIf, confinement) | FR-006 | US2 | 2 | Implementer | `tests/unit/**` | planned | | | |
-| T009 | FileList inclusion + packaging parity test | FR-010, FR-011 | US3 | 2 | Reviewer | `Specrew.psd1`, `tests/unit/**` | planned | | | |
+| T001 | Canonical registry reader (AliasesToExport + root) | FR-001, FR-009 | US1 | 1 | Implementer | `scripts/internal/**` | done | | | pass |
+| T002 | POSIX sh wrapper template (module-root + pwsh check + exec) | FR-002, FR-003, FR-004, FR-008 | US1 | 2 | Implementer | `scripts/internal/**` | done | | | pass |
+| T003 | generate-shell-wrappers.ps1 generator (deterministic/idempotent) | FR-009, FR-001 | US3 | 3 | Implementer | `scripts/internal/**` | done | | | pass |
+| T004 | Generate + commit the 8 bin/ wrappers | FR-001 | US1 | 1 | Implementer | `bin/**` | done | | | pass |
+| T005 | Generator unit tests (parse, render, idempotency) | FR-009 | US3 | 2 | Implementer | `tests/unit/**` | done | | | pass |
+| T006 | Registry ↔ wrapper parity test | FR-009, FR-011 | US3 | 2 | Reviewer | `tests/unit/**` | done | | | pass |
+| T007 | install-shell-wrappers subcommand (copy/-Force/-WhatIf/PATH-warn/confine + dispatch) | FR-005, FR-006, FR-013 | US2 | 4 | Implementer | `scripts/**` | done | | | pass |
+| T008 | Installer unit tests (idempotency, -Force, -WhatIf, confinement) | FR-006 | US2 | 2 | Implementer | `tests/unit/**` | done | | | pass |
+| T009 | FileList inclusion + packaging parity test | FR-010, FR-011 | US3 | 2 | Reviewer | `Specrew.psd1`, `tests/unit/**` | done | | | pass |
 
 ## Required Quality Gates
 

@@ -43,3 +43,6 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# Specrew atomic-write staging residue (transient)
+*.pending
