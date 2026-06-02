@@ -263,6 +263,7 @@ Alternative splitting: Pillars 1+3+4 ships the minimal viable gate (~12-17 SP); 
 | **Proposal 121 (Review-Diagrams Mermaid Template Hardening)** | Mermaid template patterns from 121 apply to design-analysis diagrams (Pillar 2 each-alternative diagram requirement) |
 | **Proposal 128 (Decomposition-Strategy Clarify Question)** | Adjacent — 128 surfaces decomposition strategy at clarify; THIS surfaces design alternatives at NEW boundary. 128 informs which decomposition the alternatives align with (e.g., walking-skeleton vs layered) |
 | **Proposal 135 (Per-User-Story Multi-View Design Diagrams)** | Composes naturally — 135 fleshes out diagrams for the CHOSEN design as plan input; 137 surfaces alternatives BEFORE one is chosen. 137 + 135 = full design-rigor pipeline |
+| **Proposal 156 (Design Analysis Lens Knowledge Catalog)** | Knowledge-data companion — 137 defines the lifecycle gate and artifact shape; 156 supplies reusable domain lenses (data/storage, UI/UX, DevOps/operations, security, observability, APIs, component design) that the gate can activate without hard-coded prompt prose |
 | **Proposal 055 (Slice-Type Catalog)** | Applicability driver — slice-type catalog determines which slices require design-analysis vs skip; chore/small-fix/bug-fix/doc-only skip; substantive slices require |
 | **Proposal 105 (Host-Native Hook Deployment)** | Direct enforcement layer — `PreToolUse` hooks on plan-boundary can mechanically enforce design-analysis-verdict-required-first |
 | **Proposal 052 (Specrew Profile System)** | Profile overrides — strict-quality profile may force C-flavor for all iterations; rapid-prototype profile may allow A-flavor default. Profile-aware applicability per 052 architecture |
@@ -312,6 +313,7 @@ Brady was interested in Specrew as "a nice evolution of spec-kit". Proposal 137 
 - file:///C:/Dev/Specrew/proposals/121-review-diagrams-mermaid-template-hardening.md — Mermaid template patterns
 - file:///C:/Dev/Specrew/proposals/128-decomposition-strategy-clarify-question.md — adjacent at clarify boundary
 - file:///C:/Dev/Specrew/proposals/135-per-user-story-multi-view-design-diagrams.md — composes for AFTER-plan diagram fleshing
+- file:///C:/Dev/Specrew/proposals/156-design-analysis-lens-knowledge-catalog.md — knowledge-data companion for domain-specific design-analysis lenses
 - file:///C:/Dev/Specrew/proposals/055-always-in-flow-bug-fix-lifecycle.md — slice-type applicability driver
 - file:///C:/Dev/Specrew/proposals/105-host-native-hook-deployment.md — direct enforcement layer
 - file:///C:/Dev/Specrew/proposals/052-specrew-profile-system.md — profile overrides
