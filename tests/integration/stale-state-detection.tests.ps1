@@ -136,7 +136,7 @@ Sync-PlanBoundary -ProjectRoot $mergedProject -SyncScript $syncScript
 $null = & git -C $mergedProject add -A 2>&1
 $null = & git -C $mergedProject commit -m 'Record plan boundary state' --quiet 2>&1
 $null = & git -C $mergedProject checkout main 2>&1
-$null = & git -C $mergedProject merge --no-ff 020-session-state-durability -m 'Merge feature 020' 2>&1
+$null = & git -C $mergedProject merge --no-ff 020-session-state-durability -m 'Merge pull request #999 from alonf/020-session-state-durability' 2>&1
 $mergedResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $mergedProject, '-NoLaunch', '-RecoveryChoice', 'C')
 if ($mergedResult.ExitCode -ne 0 -or (($mergedResult.Output -join [Environment]::NewLine) -notmatch 'Stale state detected' -or ($mergedResult.Output -join [Environment]::NewLine) -notmatch 'merge history on main')) {
     Write-Fail 'Merged-feature scenario did not surface the expected stale-state recovery guidance.'

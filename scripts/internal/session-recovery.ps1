@@ -138,6 +138,13 @@ function Test-SpecrewFeatureMergedToMain {
         [AllowNull()][string]$FeatureRef
     )
 
+    # Strict merge detection (Feature 141 FR-024). Match the FULL feature ref slug
+    # (e.g. "141-design-gate-runtime-hardening", which appears in PR-merge bodies as
+    # "...from alonf/141-design-gate-runtime-hardening"), NEVER the bare numeric id.
+    # Grepping the bare number falsely classified Feature 141 as merged because an
+    # unrelated Feature 049 merge body said "Proposal 120 + 141" — proposal 141 is not
+    # feature 141. --fixed-strings makes this an exact substring match (no regex), and
+    # the Get-SpecrewFeatureNumber guard still rejects refs that lack the NNN- shape.
     $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
     if ([string]::IsNullOrWhiteSpace($featureNumber)) {
         return [pscustomobject]@{ IsMerged = $false; Detail = $null }
@@ -148,7 +155,7 @@ function Test-SpecrewFeatureMergedToMain {
         $bootstrapDate = '90 days ago'
     }
 
-    $logOutput = @(& git -C $ProjectRoot log main --since="$bootstrapDate" --merges --oneline --grep="$featureNumber" 2>&1)
+    $logOutput = @(& git -C $ProjectRoot log main --since="$bootstrapDate" --merges --oneline --fixed-strings --grep="$FeatureRef" 2>&1)
     if ($LASTEXITCODE -ne 0) {
         return [pscustomobject]@{ IsMerged = $false; Detail = $null }
     }
@@ -156,7 +163,7 @@ function Test-SpecrewFeatureMergedToMain {
     if ($logOutput.Count -gt 0) {
         return [pscustomobject]@{
             IsMerged = $true
-            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $featureNumber, ($logOutput[0].ToString().Trim()))
+            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $FeatureRef, ($logOutput[0].ToString().Trim()))
         }
     }
 

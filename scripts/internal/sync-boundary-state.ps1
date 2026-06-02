@@ -234,12 +234,16 @@ function Test-SpecrewFeatureMergedToMain {
         [AllowNull()][string]$FeatureRef
     )
 
+    # Strict merge detection (Feature 141 FR-024) — see the matching helper in
+    # session-recovery.ps1. Match the FULL feature ref slug as an exact substring,
+    # never the bare numeric id, so unrelated merge bodies that merely mention a
+    # proposal number ("Proposal 120 + 141") cannot false-positive a feature.
     $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
     if ([string]::IsNullOrWhiteSpace($featureNumber)) {
         return [pscustomobject]@{ IsMerged = $false; Detail = $null }
     }
 
-    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --grep="$featureNumber" 2>&1)
+    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --fixed-strings --grep="$FeatureRef" 2>&1)
     if ($LASTEXITCODE -ne 0) {
         return [pscustomobject]@{ IsMerged = $false; Detail = $null }
     }
@@ -247,7 +251,7 @@ function Test-SpecrewFeatureMergedToMain {
     if ($logOutput.Count -gt 0) {
         return [pscustomobject]@{
             IsMerged = $true
-            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $featureNumber, ($logOutput[0].ToString().Trim()))
+            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $FeatureRef, ($logOutput[0].ToString().Trim()))
         }
     }
 

@@ -202,5 +202,48 @@ Assert-Equal $false $ctxConfirmed 'Confirmed decision deactivates the stale sess
 Write-Pass 'Enforcement decision performs runtime cleanup when confirmed'
 Remove-Item -Recurse -Force $rootDecision
 
+Write-Host '--- Group 7: FR-024 strict merge detection (no false positive on a proposal-number mention) ---'
+# Regression for the real incident: e175fab6 was a Feature 049 merge whose body said
+# "Proposal 120 + 141". The old --grep="$featureNumber" matched the bare "141" and falsely
+# classified Feature 141 as merged. Build a real git repo with that exact shape and prove
+# the strict full-slug match rejects it while still detecting a genuine 141 merge.
+$utf8NoBom = [System.Text.UTF8Encoding]::new($false)
+function Invoke-FixtureGit { param([string]$Repo, [string[]]$GitArgs) $null = & git -C $Repo @GitArgs 2>&1 }
+
+$mergeRepo = New-TempRoot
+& git -C $mergeRepo init -b main *> $null
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('config', 'user.email', 'test@specrew.local')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('config', 'user.name', 'Specrew Test')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('config', 'commit.gpgsign', 'false')
+[System.IO.File]::WriteAllText((Join-Path $mergeRepo 'README.md'), 'init', $utf8NoBom)
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('add', '-A')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('commit', '-m', 'chore: init')
+
+# Feature 049 branch merged with a body that mentions proposal 141 (the false-positive trap)
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('checkout', '-b', 'alonf/049-pipeline-hardening-intake')
+[System.IO.File]::WriteAllText((Join-Path $mergeRepo 'f049.txt'), '049 work', $utf8NoBom)
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('add', '-A')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('commit', '-m', 'feat(049): pipeline hardening intake')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('checkout', 'main')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('merge', '--no-ff', 'alonf/049-pipeline-hardening-intake', '-m', 'Merge pull request #1152 from alonf/049-pipeline-hardening-intake', '-m', 'Proposal 120 + 141')
+
+$falsePositive = Test-SpecrewFeatureMergedToMain -ProjectRoot $mergeRepo -FeatureRef '141-design-gate-runtime-hardening'
+Assert-Equal $false $falsePositive.IsMerged 'Feature 141 is NOT marked merged by a Feature 049 merge whose body says "Proposal 120 + 141"'
+Write-Pass 'Strict merge detection rejects a bare proposal-number mention in an unrelated merge body'
+
+# A genuine merge of alonf/141-design-gate-runtime-hardening must still be detected
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('checkout', '-b', 'alonf/141-design-gate-runtime-hardening')
+[System.IO.File]::WriteAllText((Join-Path $mergeRepo 'f141.txt'), '141 work', $utf8NoBom)
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('add', '-A')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('commit', '-m', 'feat(141): design gate runtime hardening')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('checkout', 'main')
+Invoke-FixtureGit -Repo $mergeRepo -GitArgs @('merge', '--no-ff', 'alonf/141-design-gate-runtime-hardening', '-m', 'Merge pull request #9999 from alonf/141-design-gate-runtime-hardening')
+
+$legitMerge = Test-SpecrewFeatureMergedToMain -ProjectRoot $mergeRepo -FeatureRef '141-design-gate-runtime-hardening'
+Assert-Equal $true $legitMerge.IsMerged 'A real merge of alonf/141-design-gate-runtime-hardening IS detected as merged'
+Assert-True ([bool]($legitMerge.Detail -match '141-design-gate-runtime-hardening')) 'Merged detail names the full feature ref, not just the number'
+Write-Pass 'Strict merge detection still detects a genuine feature-branch merge'
+Remove-Item -Recurse -Force $mergeRepo
+
 Write-Host ''
 Write-Host 'All session-recovery extraction + FR-024 tests passed.' -ForegroundColor Green
