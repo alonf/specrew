@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: iteration-closeout
-**Captured At**: 2026-06-02T12:16:28Z
+**Captured At**: 2026-06-02T17:31:11Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
@@ -12,7 +12,7 @@
 
 ```text
 SPECREW VELOCITY DASHBOARD
-Summary: → F-141 Design Gate Runtime Hardening + Smoke-Test Bundle | Implementation Complete · implement (stopped at implement -> review) | 10.55 SP/day (10 closed iterations, high)
+Summary: → F-141 Design Gate Runtime Hardening + Smoke-Test Bundle | Implementation Complete · review-signoff | 10.55 SP/day (10 closed iterations, high)
 Today 2026-06-02 | Repo Specrew-design-analysis
 Rendering rich
 ACTIVE

@@ -5,12 +5,30 @@
 **Overall Verdict**: accepted
 **Review Style**: Proposal 145 structured review
 **Implementation Commit**: `32ed8383`
-**Final Implement Commit**: `74aba427`
+**Smoke Send-Back Fixes Commit**: `eedf1604`
+**Re-tested At**: `eedf1604`
 
 ## Findings
 
 - No blocking findings.
 - The scaffolder's form-vs-meaning heuristic notes 10 completed tasks vs 15 changed files. This is an expected count mismatch, not a gap: the 15 files are 6 source/test files (helper, template, start-prompt, manifest, 2 test suites) plus 9 governance/spec artifacts, and several tasks legitimately touch the shared helper. All work is committed (`32ed8383` → `74aba427`); the heuristic's 1:1 task-to-file expectation does not hold for a single-helper feature.
+
+## Smoke Send-Back and Fixes (2026-06-02)
+
+An external manual smoke (`C:\Temp\SpecrewTrials\test1234`, feature
+`001-azure-bicep-upgrade-scanner`) sent this iteration back from review. The smoke
+was honest and correct: the helpers existed but were not wired into the enforced
+flow. Evidence and the per-observation pass/fail table are in
+`iterations/001/manual-smoke.md`. Four in-scope gaps were fixed and re-verified;
+one UX gap is correctly deferred-within-feature:
+
+- **Packet not in the real flow (FR-020, fixed)**: `Invoke-SpecrewDesignAnalysisPrePlanGate` now **requires** the durable `gates/` packet (exists + valid); packet persistence is enforced, not an unused helper. Dogfooded — Feature 141 now has `specs/141-design-gate-runtime-hardening/gates/design-analysis-001.md`.
+- **Pre-plan validator not exercised (FR-002/FR-003/FR-021, fixed)**: the generated handoff mandates the explicit sequence (record decision → render packet → validate → persist → call the pre-plan validator) before `plan.md`.
+- **Decision-commit drift (FR-008 refinement, fixed)**: the validator rejects recording the design-analysis draft commit as the decision commit; the Human Decision model now separates `Design-analysis draft commit` from `Decision recorded in commit`. Feature 141's own artifact was corrected (`337e2523` draft vs `e07446b4` decision).
+- **Shallow handoff (FR-004 refinement, fixed)**: the template presents a per-option "Design principle / why this matters" rationale.
+- **Lens activation (FR-009/FR-010, deferred-within-feature)**: not activated in the smoke, which is expected for Iteration 1 only because lenses were pre-deferred; remains a named later-iteration obligation, not an Iteration 1 in-scope failure.
+
+All four code fixes are re-verified at `eedf1604`: 141 unit + integration suites pass (incl. missing-packet-blocks, decision-commit-drift-rejected, and at-sync backstop), Feature 140 suites still pass, mechanical checks empty, governance validator clean.
 
 ## Proposal 145 Structured Review
 
@@ -28,7 +46,7 @@
 
 Reviewed honestly against the accepted Iteration 1 model — **not** as a host-hook or tool-level mechanical write-block:
 
-- **Implemented / enforced by**: cooperative coordinator instruction (generated guidance in `scripts/specrew-start.ps1` tells the coordinator it MUST NOT author substantive `plan.md` until the pre-plan validator passes) **plus** a callable pre-plan validator (`Invoke-SpecrewDesignAnalysisPrePlanGate`) that fails closed on missing/invalid artifact or Human Decision.
+- **Implemented / enforced by**: cooperative coordinator instruction (generated guidance in `scripts/specrew-start.ps1` mandates the explicit record → render → validate → persist → call sequence before `plan.md`) **plus** a callable pre-plan validator (`Invoke-SpecrewDesignAnalysisPrePlanGate`) that fails closed on a missing/invalid artifact, Human Decision, **or durable `gates/` packet** (smoke-amended 2026-06-02 — packet now required-in-flow, not an unused helper).
 - **Backed by**: the at-sync plan-boundary hard gate (`Invoke-SpecrewDesignAnalysisPlanBoundaryGate`, invoked in `sync-boundary-state.ps1` for the `plan` boundary) — if the coordinator bypasses the pre-plan call, the plan-boundary sync still blocks before state advancement.
 - **NOT**: a host-native mechanical write-block and **not** Proposal 105 hook-level enforcement. A non-cooperating process could still write `plan.md` bytes; the guarantee is cooperative-plus-backstop, not OS/tool interception.
 - **Overclaim check**: no delivered artifact claims `plan.md` "cannot be written mechanically" or implies Proposal 105 hooks. The spec FR-021, the plan, and the contract all state the cooperative-prompt + callable-validator + sync-backstop model explicitly. No correction required.
@@ -122,4 +140,4 @@ Implemented/enforced by **cooperative coordinator instruction** (`scripts/specre
 ### 5. Evidence integrity
 
 - No review claim relies on uncommitted or working-tree-only evidence. All implementation (`32ed8383`, `f4172cb4`, `2926dea0`, `74aba427`) and review artifacts (`e3951c35`, `9bb5f13b`, `b8cc5685`) are committed; the only uncommitted working-tree files are unrelated runtime/agent churn, not feature evidence.
-- Tests and mechanical checks cited in this review were **re-run at commit `b8cc5685`** (current HEAD): Feature 140 unit + integration, Feature 141 unit + integration all pass; `mechanical-findings.json` is empty. The runtime code (`design-analysis-gate.ps1`, `design-analysis.template.md`, the two test suites) is unchanged since `32ed8383`/`74aba427`; the later commits touched only review documentation.
+- Tests and mechanical checks cited in this review were **re-run at commit `eedf1604`** (the smoke-fix commit): Feature 140 unit + integration, Feature 141 unit + integration all pass; `mechanical-findings.json` is empty. The smoke-driven runtime fixes (enforced packet, pre-plan packet requirement, decision-commit integrity, design-principle template, plus the 141 dogfood packet and updated tests) are committed at `eedf1604`; no review claim relies on uncommitted evidence.

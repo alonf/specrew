@@ -6,12 +6,12 @@
 **In Progress**: (none)
 **Baseline Ref**: 936f1c3789d3da6bfd7563f67c9b3de402b94dc2
 **Updated**: 2026-06-02T11:10:00Z
-**Current Phase**: before-implement
-**Iteration Status**: executing
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
 
 ## Execution Summary
 
-- **Sent back from review (2026-06-02)** after an external manual smoke (`C:\Temp\SpecrewTrials\test1234`, feature `001-azure-bicep-upgrade-scanner`) proved the packet/pre-plan helpers were not wired into the enforced flow (no `gates/` packet; decision-commit metadata drift). Re-doing implementation to wire them in honestly. See `manual-smoke.md`.
+- **Sent back from review (2026-06-02)** after an external manual smoke (`C:\Temp\SpecrewTrials\test1234`, feature `001-azure-bicep-upgrade-scanner`) proved the packet/pre-plan helpers were not wired into the enforced flow (no `gates/` packet; decision-commit metadata drift). **Fixes implemented and review redone** at `eedf1604`: packet now required-in-flow (enforced by the pre-plan validator), explicit handoff sequence, decision-commit integrity check, design-principle handoff, plus the Feature 141 dogfood packet. Lens (FR-009/FR-010) confirmed deferred-within-feature. See `manual-smoke.md`.
 - Implemented T001-T007 and T009-T011 (18 SP firm). T008 (Applicable Lenses, FR-009/FR-010) deferred-within-feature per the 2026-06-02 directive.
 - T002: `design-analysis.template.md` + `New-SpecrewDesignAnalysisArtifact` scaffold (non-destructive).
 - T005: `Invoke-SpecrewDesignAnalysisPrePlanGate` callable pre-plan validator + generated start-prompt enforcement (no host hooks).
