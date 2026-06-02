@@ -36,7 +36,7 @@ Sourced from `Specrew.psd1` `AliasesToExport` + the root `specrew` (v1; Proposal
 
 ### Lifecycle / Relationships
 
-Generated from a `CommandRegistryEntry` by the generator; committed; copied (not symlinked, by default) into a user bin dir by the installer. Drift between committed content and a fresh generation is a CI failure.
+Generated from a `CommandRegistryEntry` by the generator; committed; **symlinked** into a user bin dir by the installer (so the wrapper's symlink-resolution loop locates the module root per FR-003; corrected from "copied" — see drift D-001). Drift between committed content and a fresh generation is a CI failure.
 
 ## Entity: WrapperInstallRequest *(transient)*
 

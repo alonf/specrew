@@ -21,7 +21,7 @@ A POSIX `sh` thin forwarder: resolves the module root (following symlinks), veri
 
 | Symbol | Signature | Purpose | Errors |
 | --- | --- | --- | --- |
-| `install-shell-wrappers` | `specrew install-shell-wrappers [-BinDir <path>] [-Force] [-WhatIf]` | copy committed `bin/` wrappers into `BinDir` (default `$HOME/.local/bin`); idempotent | refuses to create a missing `BinDir` without `-Force` |
+| `install-shell-wrappers` | `specrew install-shell-wrappers [-BinDir <path>] [-Force] [-WhatIf]` | symlink committed `bin/` wrappers into `BinDir` (default `$HOME/.local/bin`); idempotent | refuses to create a missing `BinDir` without `-Force` |
 
 ### Invariants
 

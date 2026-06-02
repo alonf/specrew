@@ -22,13 +22,18 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 1
+**Resolution rate**: 100% (1/1 resolved)
+**Specification drift**: 1 planning-artifact correction (installer copy → symlink), resolved
 
 ## Events
 
-No specification drift detected during Iteration 001 execution to date.
+### D-001 - Installer mechanism: copy -> symlink (resolved)
+
+- **Detected**: T007 implementation (2026-06-02).
+- **Drift**: `data-model.md` + `contracts/unix-native-install.md` described the installer as *copying* wrappers into the bin dir; the implementation uses a **symlink**.
+- **Why**: FR-003 requires the wrapper to resolve the module root when invoked through a symlink from `~/.local/bin`. A copied wrapper resolves `module_root` to `~` (wrong); a symlink lets the symlink-resolution loop find the module's real `bin/`. Symlink is the only mechanism consistent with FR-003.
+- **Resolution**: implementation-aligned (kept symlink — the correct design); corrected `data-model.md` + `contracts/unix-native-install.md` to say "symlinked". No spec FR change (FR-006 already allowed "copy or symlink"; FR-003 mandates symlink for module-root resolution).
 
 ### Resolution Strategies (Unused)
 

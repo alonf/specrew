@@ -55,6 +55,7 @@ Commands:
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
   version  Show the installed Specrew version and slash-command compatibility
+  install-shell-wrappers  Install/refresh the Unix shell wrappers (macOS/Linux)
   help     Show this help message
 
 Examples:
@@ -572,6 +573,20 @@ switch ($Command) {
         }
 
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $versionScript @Arguments
+        exit $LASTEXITCODE
+    }
+
+    'install-shell-wrappers' {
+        # feature 140 / Proposal 153: install/refresh Unix shell wrappers (macOS/Linux).
+        # Module-level command (no project required). The installer validates its own
+        # args (PS-style -BinDir/-Force/-WhatIf and shell-style --bin-dir/--force/--whatif).
+        $installShellWrappersScript = Join-Path $scriptRoot 'specrew-install-shell-wrappers.ps1'
+        if (-not (Test-Path -LiteralPath $installShellWrappersScript)) {
+            Write-Host "ERROR: specrew-install-shell-wrappers.ps1 not found at $installShellWrappersScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $installShellWrappersScript @Arguments
         exit $LASTEXITCODE
     }
 
