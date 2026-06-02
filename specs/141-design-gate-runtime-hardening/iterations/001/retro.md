@@ -50,6 +50,26 @@ in Phase Variance below, not per-task estimation error. T008 (lens) deferred-wit
 - Feature 141 was dogfooded against its own gate: it now has a real `gates/` packet and its own pre-plan gate passes.
 - Feature 140 regression stayed green throughout; the validator-robustness changes broadened acceptance only.
 
+## Second External Smoke — Fix Confirmation (2026-06-02)
+
+A second external manual smoke (`C:\Temp\SpecrewTrials\test141b`, feature
+`001-log-incident-analyzer`) confirmed the send-back fixes work end-to-end (verified
+directly against the smoke repo):
+
+- design-analysis.md appeared before plan.md; the option decision happened before plan.
+- The durable gate packet was created in the real flow at `specs/001-log-incident-analyzer/gates/design-analysis-001.md` (FR-020 fix — packet is no longer an unused helper).
+- Human Decision separated `Design-analysis draft commit: 79780ef` from `Decision recorded in commit: 7d47567` (FR-008 decision-commit-integrity fix — no draft-as-decision drift).
+- The persisted packet was committed before plan: commit sequence `79780ef` draft → `7d47567` decision → `82aa817` persist validated packet → `f0532a1` plan. plan.md was authored only after the validated packet.
+- plan.md references Option B and the durable packet path.
+
+This is exactly the runtime-flow behavior the first smoke proved missing — the fixes are confirmed in a fresh external repo.
+
+### Remaining gaps from smoke 2 (carried; not Iteration 1 in-scope)
+
+- **Empty start-packet paths** (e.g. `specs//spec.md`, `specs//iterations//dashboard.md`) still appear in the generated start packet — carried to **Iteration 2 (start-packet correctness, FR-011)**.
+- **Gate-harness trailing `$LASTEXITCODE` wrapper error** printed after `GATE_VALID: True` — non-blocking; minor cleanup candidate.
+- **First quality/prereq command path** was wrong but self-corrected — non-blocking; minor robustness candidate.
+
 ## What Didn't Go Well
 
 - **Form-vs-runtime gap (load-bearing lesson).** The packet renderer/validator/persist and the pre-plan validator were implemented and unit-tested, but they were **callable, optional helpers — not wired into the enforced flow**. The real flow never rendered/persisted a packet (no `gates/` artifact) and never visibly invoked the pre-plan validator. Direct-helper unit tests passed, the in-repo validator passed, and the Proposal 145 addendum I authored classified FR-020 as "implemented" — yet the runtime did not exercise them. Only the **external manual smoke** caught it.
@@ -62,6 +82,7 @@ in Phase Variance below, not per-task estimation error. T008 (lens) deferred-wit
 2. Owner: Reviewer | Phase: review | Type: discipline | Expected effect: review must verify each helper is INVOKED by the enforced flow (grep the flow/guidance plus a gate-fails-without-it test), not merely present — an explicit anti-"unused helper" check.
 3. Owner: Spec Steward | Phase: future slice | Type: methodology | Expected effect: treat an external manual smoke against the real runtime as a required gate for runtime-surfacing features before claiming accepted, consistent with the "beta validation must test the runtime deliverable" discipline.
 4. Owner: Spec Steward | Phase: future iteration | Type: scope | Expected effect: keep FR-009/FR-010 lens activation and the four smoke-bundle defects (FR-011-FR-014) as named later-iteration obligations within Feature 141, not vague future work.
+5. Owner: Implementer | Phase: future iteration | Type: cleanup | Expected effect: fix the gate-harness trailing `$LASTEXITCODE` wrapper error printed after `GATE_VALID: True` (smoke 2, non-blocking) and the first-run quality/prereq command-path that self-corrected; bundle with Iteration 2 start-packet correctness.
 
 ## Calibration Suggestion
 
