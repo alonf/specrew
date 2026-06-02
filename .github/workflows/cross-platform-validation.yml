@@ -203,6 +203,24 @@ jobs:
           $commands = Get-Command -Module Specrew
           Write-Host "✅ Module imported; $($commands.Count) commands exported" -ForegroundColor Green
       
+      - name: Wrapper runtime suite (FR-002/003/004/008) on macOS (T020)
+        shell: bash
+        run: |
+          sh tests/integration/wrapper-runtime.sh
+
+      - name: Native wrapper install + command surface on macOS (T020)
+        shell: bash
+        run: |
+          # Real install-shell-wrappers -> PATH -> native specrew commands on macOS.
+          bindir="$HOME/.local/specrew-bin"
+          mkdir -p "$bindir"
+          pwsh -NoProfile -Command "Import-Module ./Specrew.psd1 -Force; specrew install-shell-wrappers --bin-dir '$bindir'"
+          export PATH="$bindir:$PATH"
+          command -v specrew
+          specrew version
+          specrew start --help
+          echo "native specrew wrapper surface works on macOS"
+
       - name: Summary
         shell: pwsh
         run: |
@@ -225,12 +243,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
-          shellcheck install.sh tests/integration/install-sh-detect.sh tests/integration/wrapper-runtime.sh
+          shellcheck install.sh tests/integration/install-sh-detect.sh tests/integration/install-sh-prerelease.sh tests/integration/wrapper-runtime.sh
 
-      - name: Detection + fail-closed (table-driven os-release fixtures; no root, no network)
+      - name: Detection + fail-closed (os-release fixtures + macOS Homebrew branch) + --prerelease surface
         shell: bash
         run: |
           sh tests/integration/install-sh-detect.sh
+          sh tests/integration/install-sh-prerelease.sh
 
       - name: install.sh end-to-end in a clean no-pwsh Ubuntu container (root path)
         shell: bash
