@@ -14,6 +14,7 @@
 - **T018-T020, T022, T023 implemented + committed**: `install.sh` macOS Homebrew auto-install (T018) + `--prerelease` + wrapper-surface mismatch check (T019); macOS CI wrapper-runtime lane (T020); native-first docs (T022); docs-parity cascade arm (T023). Shell + docs-parity tests green locally; workflow YAML valid.
 - **T021 (macOS manual proof) BLOCKED**: requires a real macOS host. Procedure + evidence template at `quality/macos-manual-proof.md` (status PENDING). The automated Crew (Windows authoring host) cannot run it.
 - **T024 (release gate) BLOCKED**: requires explicit maintainer beta-publish authorization. Procedure + evidence template at `quality/release-gate.md` (status BLOCKED). No beta/stable published.
+- **CI GREEN** (run 26852247885, SHA 224bbd6f): macOS Validation + Ubuntu bootstrap/detection/clean-container + parity cascade all pass — T020 and the macOS halves of FR-012 / SC-001 / SC-003 are CI-proven. Interim review filed (review.md; implemented slice PASS).
 - Iteration 3 cannot reach review-signoff / closeout until T021 + T024 are executed on a real Unix host with maintainer authorization.
 
 ## Notes

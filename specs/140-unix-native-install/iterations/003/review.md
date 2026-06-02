@@ -14,7 +14,7 @@
 | ---- | ----------- | ------- | ----- |
 | T018 | FR-007, FR-016 | pass | macOS Homebrew auto-install; install-if-absent; brew-as-user; fail-closed if brew absent; macOS-aware `--check`. Shell tests green. |
 | T019 | FR-017 | pass | `--prerelease` -> `-AllowPrerelease`; stable/prerelease output; wrapper-surface mismatch fail-closed. Surface + predicate unit-tested. |
-| T020 | FR-012, FR-002, FR-003, FR-004, FR-008, SC-001, SC-003 | pass | macOS wrapper-runtime lane + real `install-shell-wrappers` -> `specrew version`/`start --help` wired; YAML valid. macOS CI run pending branch push (see Findings). |
+| T020 | FR-012, FR-002, FR-003, FR-004, FR-008, SC-001, SC-003 | pass | macOS wrapper-runtime lane + real `install-shell-wrappers` -> `specrew version`/`start --help` wired; YAML valid. **macOS CI GREEN** — run 26852247885 (SHA 224bbd6f): macOS Validation + Ubuntu bootstrap/detection/clean-container + parity cascade all pass. |
 | T021 | FR-007, FR-016, SC-007 | needs-work | BLOCKED: needs a real macOS host. Procedure + evidence template filed (`quality/macos-manual-proof.md`, PENDING). |
 | T022 | FR-014, SC-005 | pass | Native-first docs; manual `Install-Module` demoted + PSGallery default-`N` note; nvm/Spec-Kit prerequisites documented. Lint clean. |
 | T023 | FR-011, FR-009 | pass | Docs-parity arm: every `specrew-*` doc token resolves to alias/skill/allowlist; cascade-named on failure; wired into CI. Test green. |
@@ -68,8 +68,9 @@
 
 - **T021** macOS manual proof (SC-007 macOS) — needs a real Mac.
 - **T024** release gate (SC-006, SC-008) — needs maintainer beta-publish authorization.
-- **T020** macOS CI lane is wired + YAML-valid but has **not yet run** on a macOS runner (branch not
-  pushed). Pushing the branch / opening the PR triggers it; its green result is required for review-signoff.
+- **T020** macOS CI lane **RAN GREEN** (run 26852247885, SHA 224bbd6f): macOS Validation (wrapper runtime +
+  native command surface) + the Ubuntu shellcheck/detection/clean-no-pwsh container + the parity cascade
+  (incl. the docs arm) all pass. No longer a closeout blocker.
 
 ## Gap Ledger
 
@@ -77,9 +78,9 @@
 
 ## Notes
 
-- Overall Verdict `needs-rework` reflects that the **iteration** is not acceptable yet (T021/T024 blocked;
-  macOS CI not yet run), NOT that the implemented slice needs changes — every T018-T023 verdict is `pass`.
-- review-signoff for the full iteration is pending three things: (1) the macOS CI lane green on push,
-  (2) T021 evidence filed from a real Mac, (3) T024 release-gate executed under explicit maintainer
-  authorization.
+- Overall Verdict `needs-rework` reflects that the **iteration** is not acceptable yet (T021/T024 blocked),
+  NOT that the implemented slice needs changes — every T018-T023 verdict is `pass` and CI is fully green
+  (run 26852247885, SHA 224bbd6f).
+- review-signoff for the full iteration is now pending two things: (1) T021 evidence filed from a real Mac,
+  (2) T024 release-gate executed under explicit maintainer authorization. (The macOS CI lane is green.)
 - Drift: none introduced this slice (drift-log clean).
