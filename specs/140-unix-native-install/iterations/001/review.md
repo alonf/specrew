@@ -32,3 +32,4 @@
 - **Scope**: FR-007, FR-012, FR-014, FR-015 are Iteration 2 (`install.sh`, CI lanes, docs, greenfield/brownfield release gate) — out of this iteration.
 - **Verdict semantics**: "accepted" is the Reviewer recommendation for the iteration's work; the maintainer's **review-signoff** is the boundary approval.
 - **No publish**: beta/stable remains gated on explicit maintainer authorization (release gate is Iteration 2).
+- **Proposal 145 structured review**: a 7-phase structured pass was run before sign-off (`review-145.md`); all phases pass; synthesis verdict **APPROVE WITH DEFERRED RUNTIME PROOF** (Unix runtime = accepted deferred scope to Iteration 2 CI, classified explicitly — not a missed test gap).
