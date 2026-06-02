@@ -48,7 +48,7 @@ Carried out of Iteration 2: FR-012/FR-013 (greenfield/downstream hygiene) -> Ite
 | T005 | Tests: no `specs//` in generated paths; per-host wording; clean harness exit | SC-007, SC-010 | US4 | 2 | Implementer | tests/unit/**, tests/integration/** | planned | claude | — | — |
 | T007 | Detect stale cross-worktree session: classify saved session stale when feature path missing OR completed/merged outside current worktree; never re-anchor to a deleted external worktree | FR-024 | US0 | 3 | Implementer | scripts/internal/session-recovery.ps1, scripts/specrew-start.ps1 | done | claude | 3 | — |
 | T008 | Safe confirm-gated cleanup: clear stale active-sessions/start-context refs (no artifact touch, no lifecycle commits); report branch + stale refs + active-feature candidate; require human confirmation | FR-024 | US0 | 2 | Implementer | scripts/internal/session-recovery.ps1, scripts/specrew-start.ps1 | done | claude | 2 | — |
-| T009 | Regression tests for the stale cross-worktree recovery scenario (deleted/merged external worktree -> stale -> no re-anchor -> confirm-gated cleanup) | FR-024 | US0 | 2 | Reviewer | tests/unit/**, tests/integration/** | in-progress | claude | — | — |
+| T009 | Regression tests for the stale cross-worktree recovery scenario (deleted/merged external worktree -> stale -> no re-anchor -> confirm-gated cleanup) | FR-024 | US0 | 2 | Reviewer | tests/unit/**, tests/integration/** | done | claude | 2 | — |
 | T006 | Docs + review evidence (quickstart/contract notes for start-packet + stale-session behavior) | TG-006 | US0 | 1 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
 
 ## Effort Model

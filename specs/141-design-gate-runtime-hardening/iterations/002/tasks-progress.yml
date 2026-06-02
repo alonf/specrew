@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "002"
-updated_at: "2026-06-02T21:44:59Z"
+updated_at: "2026-06-02T22:31:44.2936990Z"
 tasks:
   T001:
     title: "Confirm scope; reproduce empty-path + host-wording in fixtures; record in drift-log"
