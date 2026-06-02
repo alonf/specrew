@@ -11,3 +11,4 @@
 {"payload":{"auth_commit_hash":"66761b4d","task_id":null,"boundary_type":"plan","iteration_number":"001","feature_ref":"141-design-gate-runtime-hardening"},"recorded_at":"2026-06-02T09:53:35Z","schema":"v1","event_type":"boundary-sync"}
 {"payload":{"auth_commit_hash":"3d65dbc3","task_id":null,"boundary_type":"tasks","iteration_number":"001","feature_ref":"141-design-gate-runtime-hardening"},"recorded_at":"2026-06-02T09:53:54Z","schema":"v1","event_type":"boundary-sync"}
 {"event_type":"boundary-sync","schema":"v1","recorded_at":"2026-06-02T10:53:31Z","payload":{"boundary_type":"before-implement","feature_ref":"141-design-gate-runtime-hardening","task_id":null,"auth_commit_hash":"734a64cf","iteration_number":"001"}}
+{"payload":{"task_id":null,"iteration_number":"001","boundary_type":"review-signoff","auth_commit_hash":"a227e08f","feature_ref":"141-design-gate-runtime-hardening"},"event_type":"boundary-sync","recorded_at":"2026-06-02T18:07:46Z","schema":"v1"}
