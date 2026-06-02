@@ -70,9 +70,9 @@ Most unknowns were resolved at `/speckit.clarify` (Session 2026-06-02). This rec
 - **Iteration split rationale**: Ubuntu/Debian (apt) is the cheapest **honest** proof — a clean container with no `pwsh` runs `install.sh` end-to-end in CI. macOS runners cannot provide a clean no-`pwsh` environment and the interactive-`sudo` path is not CI-reachable, so the Homebrew + interactive paths ride Iteration 3 where **manual proof** is budgeted. This keeps each iteration's runtime claim honest (no "CI-validated" label on a path CI never ran).
 - **Alternatives**: (a) bundle/vendor a `pwsh` binary in Specrew — rejected: licensing, size, and update burden vs. the OS package manager; (b) snap-only — rejected: not universal, needs `snapd`; (c) generic `curl | bash` from an unofficial PowerShell installer — rejected: violates FR-016 provenance.
 
-## D11a — piped `curl | sh` + `sudo`/no-tty elevation: recommended resolution (T010; ratify at before-implement)
+## D11a — piped `curl | sh` + `sudo`/no-tty elevation: RATIFIED resolution (T010, 2026-06-02)
 
-This is the explicit, flow-gating decision the maintainer required to be settled before writing the install flow. **Recommendation below; the ratified choice is recorded by T010 and verified empirically on Ubuntu CI (T015) — it is a direction, not yet a runtime claim.**
+This is the explicit, flow-gating decision the maintainer required to be settled before writing the install flow. **RATIFIED by the maintainer 2026-06-02** (the binding rules are restated at the end of this section); the behavior is verified empirically on Ubuntu CI (T015) before the hardening-gate Blocking concerns can close.
 
 - **Problem**: `curl -fsSL <url> | sh` feeds the *script* to `sh` on **stdin**, so stdin is not the terminal. `sudo` reads its password from the controlling terminal (`/dev/tty`), not stdin — so it *can* still prompt when a controlling tty exists, but (1) any script-level `read` would consume the script text, not user input, and (2) with **no** controlling tty (CI without root, detached shells) an interactive prompt hangs or fails.
 - **Options weighed (from D11)**: (a) re-exec interactive prompts against `/dev/tty` when stdin is not a tty but `/dev/tty` is openable — keeps the one-liner UX in an interactive terminal; (b) detect non-usable-tty → print the exact safe download-then-run commands and exit (never hang); (c) documented passwordless-`sudo` — fragile, poor UX, rejected as the primary path.
@@ -81,3 +81,13 @@ This is the explicit, flow-gating decision the maintainer required to be settled
   2. Else a controlling tty is available: use it for the normal `sudo` prompt (surfaced — the user sees the exact `sudo apt-get …` command); redirect any script `read` from `/dev/tty`.
   3. Else (no tty, not root): **fail closed** with a clear message + the exact download-then-run commands + the manual-dependency-docs link. Never silently elevate; never hang.
 - **Why**: preserves the `curl | sh` UX in the common interactive-terminal case, keeps elevation surfaced (FR-016), and fails closed in non-interactive contexts — avoiding (c)'s fragile requirement. The exact tty behavior is verified on the real Ubuntu CI during T015.
+
+**Ratified rules (binding — maintainer, 2026-06-02):**
+
+1. **Running as root**: proceed without `sudo` (this is the CI/container path; `$SUDO` resolves to empty).
+2. **Not root, usable controlling tty exists**: keep the one-liner UX with normal **surfaced** `sudo` behavior; any script-level interactive read is taken from `/dev/tty` (never from stdin).
+3. **Not root, no usable tty**: **fail closed** — do not hang; print the exact download-then-run commands plus the manual-docs link.
+4. Do **not** require passwordless `sudo` as the primary path.
+5. **Never** silently elevate.
+6. **Never** consume the script body from stdin by prompting through stdin (so `sudo` relies on its own `/dev/tty`; the script performs no `read` from stdin in the piped path).
+7. The implementation must **prove this empirically in Ubuntu CI (T015)** before the hardening-gate Blocking concerns can close (root path + the fail-closed path are CI-provable; the interactive-`sudo`-password path needs a human and is acknowledged as manual).
