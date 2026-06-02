@@ -127,6 +127,17 @@ function Get-SpecrewHostOrientationBlock {
         "How this works: Specrew governs the spec -> plan -> implement -> review -> retro`nlifecycle. This session follows the saved lifecycle prompt and structured start`ncontext directly; a separate role runtime is not active for this launch."
     }
 
+    # FR-011: when no feature exists yet (greenfield/intake) do NOT emit a file:/// browse URL with a
+    # <feature> segment — the coordinator substitutes <feature> per Rule 48, and with no feature that
+    # collapses to `specs//`. Emit explicit-placeholder guidance instead; surface the concrete file:///
+    # browse paths only on a resolved-feature resume (where the substituted feature segment is non-empty).
+    $browseLine = if ([string]::IsNullOrWhiteSpace($FeatureRef)) {
+        'What you can browse: no feature exists yet — once you create one, its artifacts land under `specs/<feature-id>/` (spec.md, plan.md, tasks.md) with per-iteration files under `specs/<feature-id>/iterations/<NNN>/`. Open another terminal and run `code .` to browse the workspace; I will share the exact file:/// paths once the feature is scaffolded.'
+    }
+    else {
+        'What you can browse: artifacts land under file:///<project-root-url>/specs/<feature>/ — spec file file:///<project-root-url>/specs/<feature>/spec.md, plan file file:///<project-root-url>/specs/<feature>/plan.md, tasks file file:///<project-root-url>/specs/<feature>/tasks.md, plus the iteration artifacts under file:///<project-root-url>/specs/<feature>/iterations/001/. Open another terminal and run `code .` to browse them while I work. After each iteration close, your dashboard lives at file:///<project-root-url>/specs/<feature>/iterations/<NNN>/dashboard.md.'
+    }
+
     return @"
 ``````markdown
 $openingLine
@@ -140,7 +151,7 @@ What I'll ask from you: clarify questions when something is genuinely ambiguous
 (2-3 max per phase), and an approve/redirect verdict at each boundary stop. I'll
 emit a clear human re-entry packet every time I need you.
 
-What you can browse: artifacts land under file:///<project-root-url>/specs/<feature>/ — spec file file:///<project-root-url>/specs/<feature>/spec.md, plan file file:///<project-root-url>/specs/<feature>/plan.md, tasks file file:///<project-root-url>/specs/<feature>/tasks.md, plus the iteration artifacts under file:///<project-root-url>/specs/<feature>/iterations/001/. Open another terminal and run ``code .`` to browse them while I work. After each iteration close, your dashboard lives at file:///<project-root-url>/specs/<feature>/iterations/<NNN>/dashboard.md.
+$browseLine
 
 Starting now: <one specific action — e.g. "creating feature 001-tip-calculator
 and drafting the spec">.

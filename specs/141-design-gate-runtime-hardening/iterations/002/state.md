@@ -1,11 +1,11 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: T009
-**Tasks Remaining**: T001, T002, T003, T004, T005, T006
-**In Progress**: (none — FR-024 complete; remaining tasks are FR-011/FR-014/harness-exit + docs, gated to the next slice)
+**Last Completed Task**: T003
+**Tasks Remaining**: T004, T006
+**In Progress**: T005 (FR-011/FR-014 test coverage landed; clean-harness-exit portion paired with deferred T004)
 **Baseline Ref**: 464e0d3e97cf031525447690447fe81d8e98b7d4
-**Updated**: 2026-06-02T21:57:51Z
+**Updated**: 2026-06-02T23:07:19Z
 **Current Phase**: before-implement
 **Iteration Status**: executing
 
@@ -29,6 +29,19 @@ Latent follow-up (not chased here, out of scope): the start-context regeneration
 Regression green this slice (re-run after the FR-024 e2e + start-flow fix): `start-recovery-flow` (6/6, incl. the new FR-024 e2e enforcement test), `design-gate-runtime-hardening` unit (all groups incl. Group 7; 0 transcript-noise lines), `stale-state-detection` (5/5), `feature-051-iteration2a-callsite-wiring` (6/6).
 
 **Transcript noise — FIXED this slice.** `Test-SpecrewFeatureBranchExists` now redirects the `git show-ref` stderr (`2>$null`); the decision is taken purely from `$LASTEXITCODE`, so behavior is unchanged. The FR-024 unit test re-run emits **0** `fatal: not a git repository` lines (verified), so the previously-noted noise is gone and the transcript is clean.
+
+## Slice: FR-011 (empty `specs//` paths) + FR-014 (host-wording leak)
+
+Reproduce-first, committed in this slice:
+
+- **T001 (done)** — Reproduced both defects. FR-011: the empty `specs//` is born when the coordinator substitutes the `<feature>` placeholder per Rule 48 with no feature (greenfield/intake); confirmed via the renderer `Get-SpecrewHostOrientationBlock` emitting a `file:///…/specs/<feature>/` browse URL even when `$FeatureRef` is empty (a file-layer grep is vacuous because the file holds the literal placeholder). FR-014: a greenfield `specrew start --host claude` prints "Copilot approval mode: allow-all" (`specrew-start.ps1`, unconditional). Recorded in the drift-log Reproduction Evidence section.
+- **T002 (done, FR-011)** — `Get-SpecrewHostOrientationBlock` now guards the "What you can browse" line: when `$FeatureRef` is empty it emits explicit-placeholder guidance (no `file:///…/specs/<feature>/` URL that collapses to `specs//`); a resolved-feature resume still surfaces the concrete browse paths. Renderer-level reproduce-first test in `tests/integration/multi-host-launch-path.tests.ps1` (Test 9b).
+- **T003 (done, FR-014)** — Two host-wording leaks fixed in `scripts/specrew-start.ps1`: the approval-mode launch line is now host-neutral ("Approval mode:" not "Copilot approval mode"), and the new-window delegation success line uses the host-aware `$hostLabel` instead of a hardcoded "Delegated to Copilot". Test 18b asserts both are absent. Runtime-verified: greenfield `--host claude` now prints "Approval mode: allow-all" and the greenfield browse line carries no collapsing feature URL.
+- **T005 (in-progress)** — FR-011 (no `specs//`) + FR-014 (per-host wording) test coverage landed; the clean-harness-exit portion is paired with T004 (deferred) and remains.
+
+Regression green this slice: `multi-host-launch-path` (incl. Test 9b + Test 18b), `start-recovery-flow` (6/6), `start-command`.
+
+**Still remaining (per maintainer sequencing):** T004 (gate-harness trailing `$LASTEXITCODE` exit cleanup) and T006 (docs). FR-011/FR-014 were prioritized first; T004/docs are the later slice.
 
 ## Notes
 

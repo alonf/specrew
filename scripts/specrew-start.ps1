@@ -3913,7 +3913,7 @@ $summaryDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resol
 Write-Info ("Prompt:  {0}" -f $promptDisplayPath)
 Write-Info ("Context: {0}" -f $contextDisplayPath)
 Write-Info ("Summary: {0}" -f $summaryDisplayPath)
-Write-Info ("Copilot approval mode: {0}" -f $allowAllRuntimePlan.DisplayMode)
+Write-Info ("Approval mode: {0}" -f $allowAllRuntimePlan.DisplayMode)
 if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
     Write-Info ("Unresolved template-refresh artifacts detected: {0}" -f $artifactPaths.TemplateRefreshArtifacts.Count)
     foreach ($artifact in $artifactPaths.TemplateRefreshArtifacts) {
@@ -3982,6 +3982,6 @@ if (-not $hostStarted) {
 }
 
 if ($launchMode -eq 'new-window') {
-    Write-Success ("Delegated to Copilot + {0} in a new PowerShell window." -f $Agent)
+    Write-Success ("Delegated to {0} in a new PowerShell window." -f $hostLabel)
     Write-Info "Continue the lifecycle in the new window. This terminal can stay open for reference."
 }
