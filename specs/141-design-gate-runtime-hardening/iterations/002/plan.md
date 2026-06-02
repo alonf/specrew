@@ -51,6 +51,7 @@ Carried out of Iteration 2: FR-012/FR-013 (greenfield/downstream hygiene) -> Ite
 | Effort Unit | story_points | |
 | Capacity per Iteration | 20 | |
 | Iteration Bounding | scope | |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
 | Overcommit Threshold | 1.0 | 9/20 — comfortable headroom. |
 | Defer Strategy | manual | |
 | Calibration Enabled | true | |

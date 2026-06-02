@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: complete
 **Capacity**: 18/20 story_points
 **Started**: 2026-06-02
 **Completed**:
