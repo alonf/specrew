@@ -170,6 +170,7 @@
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/session-config.ps1',
         'scripts/internal/session-management.ps1',
+        'scripts/internal/session-recovery.ps1',
         'scripts/internal/skill-catalog-state.ps1',
         'scripts/internal/specrew-time.ps1',
         'scripts/internal/supported-versions.yml',
