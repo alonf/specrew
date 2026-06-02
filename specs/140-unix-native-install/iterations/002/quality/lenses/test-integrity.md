@@ -10,7 +10,7 @@ install-bootstrap end-to-end, wrapper-runtime 4/4, detection 5/5, parity-cascade
 
 | Path | How proven | Surface |
 | --- | --- | --- |
-| Ubuntu/Debian apt auto-install, end-to-end (no pwsh → `specrew version`) | clean `ubuntu:24.04` container, **branch** module pre-seeded on `PSModulePath` | CI (`feature140-install-bootstrap`) |
+| **Ubuntu** apt auto-install, end-to-end (no pwsh → `specrew version`); Debian = detection-proven + shared code path (PMC install not exercised) | clean `ubuntu:24.04` container, **branch** module pre-seeded on `PSModulePath` | CI (`feature140-install-bootstrap`) |
 | Platform detection + fail-closed (distro/version/os-release) | table-driven os-release fixtures via `install.sh --check` | CI (`install-sh-detect.sh`) |
 | Wrapper runtime: forwarding (FR-002), symlink (FR-003), pwsh-missing (FR-004), passthrough (FR-008) | committed wrapper vs a stub module-root that echoes args, on real sh + pwsh | CI (`wrapper-runtime.sh`) |
 | `install.sh` / shell tests lint | `shellcheck` | CI |

@@ -24,11 +24,13 @@ the 3 lenses, and the CI run `26812981387` job logs.
 
 ### Phase 2 — Functional correctness → `pass`
 
-`install.sh` detection (os-release → Ubuntu/Debian; unsupported → fail-closed), Ubuntu/Debian pwsh
-auto-install (MS apt repo; install-if-absent; idempotent repo-add; PMC 404 → fail-closed), ratified
-tty/elevation (`run_privileged`), module install-if-absent, and wrapper install — all traced and
+`install.sh` detection (os-release → Ubuntu/Debian; unsupported → fail-closed), the Ubuntu/Debian pwsh
+auto-install code path (MS apt repo; install-if-absent; idempotent repo-add; PMC 404 → fail-closed),
+ratified tty/elevation (`run_privileged`), module install-if-absent, and wrapper install — all traced and
 **proven end-to-end on a clean no-pwsh Ubuntu container** (CI log: pwsh genuinely absent → 7.6.2 installed
-from MS repo → branch module → 8 wrappers → `specrew version`). Not a no-op green.
+from MS repo → branch module → 8 wrappers → `specrew version`). Not a no-op green. **Debian** shares that
+identical apt/PMC code path and is **detection-proven** (`--check` routes it to apt), but its PMC install
+was not executed this iteration — only Ubuntu runtime proof was required.
 
 ### Phase 3 — NFR / security → `pass`
 
@@ -73,11 +75,15 @@ verdict:
 ## Runtime-proof classification: PROVEN (Ubuntu) — not deferred
 
 Unlike Iteration 1 (which legitimately deferred Unix runtime), **Iteration 2's Unix runtime is proven in
-this iteration** on the authoritative Ubuntu CI surface (run `26812981387`): the auto-install, detection,
-fail-closed, and wrapper runtime all executed and passed. The Iteration-1 deferral on the Ubuntu paths is
-thereby **discharged**. macOS/Homebrew + other distros + docs + the greenfield/brownfield release gate
-(incl. Spec Kit 0.9.0) + `Install-Module`-from-PSGallery are **accepted Iteration-3 scope** (the
-maintainer-approved 2→3 split), classified explicitly — not a missed test gap.
+this iteration** on the authoritative Ubuntu CI surface (run `26812981387` on `aa33fbee`; re-proved green
+on the tip `d70b2ec5` as run `26813561040`): the auto-install, detection, fail-closed, and wrapper runtime
+all executed and passed. The Iteration-1 deferral on the Ubuntu paths is thereby **discharged**.
+macOS/Homebrew + non-Ubuntu/Debian distros + native-first docs + the greenfield/brownfield release gate
+(incl. Spec Kit 0.9.0) + `Install-Module`-from-PSGallery + any publish are **accepted Iteration-3 scope**
+(the maintainer-approved 2→3 split), classified explicitly — not a missed test gap. (Debian's apt/PMC path
+is Iteration-2 code, detection-proven + sharing the Ubuntu-proven code path; an explicit Debian-container
+runtime proof is an optional cheap add if desired.) **FR-012 is half-met**: the green macOS CI job proves
+only that the module imports on macOS, not macOS auto-install/wrapper runtime (Iteration 3).
 
 ## Verdict: **APPROVE**
 
