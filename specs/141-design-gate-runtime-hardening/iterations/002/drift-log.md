@@ -22,13 +22,19 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 1
+**Resolution rate**: 100% (1/1 resolved)
+**Specification drift**: 1 implementation-vs-spec drift, resolved in-iteration (see Event 1)
 
 ## Events
 
-No specification drift detected during Iteration 002 execution to date.
+### Event 1 — FR-024 confirm-gated cleanup silently undone within the same start run
+
+- **Detected**: 2026-06-02, by the T009 end-to-end enforcement test (`tests/integration/start-recovery-flow.tests.ps1`).
+- **Type**: implementation-vs-spec drift (implementation diverged from the FR-024 requirement).
+- **Surface**: `scripts/specrew-start.ps1` recovery flow.
+- **Drift**: FR-024 requires the confirm-gated cleanup to clear the runtime session references "that would otherwise re-anchor the next start" (the `Clear-SpecrewStaleSessionReference` contract). The cleanup did clear `start-context.json` `session_state` on disk, but the SAME `specrew start` run's end-of-run start-context regeneration re-serialized the stale in-memory `$validatedSessionState`, re-anchoring the deleted feature (`active=true`, `feature_ref: 051-old-merged`). Net effect: the cleanup did not stick for `start-context.json` (active-sessions.yml cleared correctly), so the next start would re-detect the identical stale session — an endless re-anchor loop. The unit tests passed because they exercise `Clear-SpecrewStaleSessionReference` in isolation; only the end-to-end flow exposed it.
+- **Resolution** (`implementation-fixed`): after a confirmed+cleared cleanup, `scripts/specrew-start.ps1` nulls `$validatedSessionState` so the regenerated context records no active session and the mode falls to intake-or-resume. Verified by the new e2e enforcement test (asserts `session_state` is cleared and not re-anchored after the full run) and by re-running the targeted suite green.
 
 ### Resolution Strategies (Unused)
 

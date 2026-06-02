@@ -3699,6 +3699,13 @@ elseif ($staleSessionStateCheck.IsStale) {
         $cleanupOutcome = Invoke-SpecrewStaleSessionCleanupDecision -RecoveryPlan $recoveryPlan -ProjectRoot $resolvedProjectPath -SessionState $validatedSessionState -Confirmed $confirmStaleCleanup
         if ($cleanupOutcome.Confirmed -and $null -ne $cleanupOutcome.Result -and $cleanupOutcome.Result.Cleared) {
             Write-Output ("Cleared stale references: {0}" -f ($cleanupOutcome.Result.ClearedRefs -join ', '))
+            # FR-024: the stale session_state was just cleared on disk, but the end-of-run
+            # start-context regeneration would otherwise re-serialize this in-memory copy and
+            # silently re-anchor the deleted feature — defeating the cleanup and re-detecting the
+            # same stale session on the next start. Drop the in-memory session so the regenerated
+            # context records no active session (mode falls to intake-or-resume). Every downstream
+            # use of $validatedSessionState already guards on $null.
+            $validatedSessionState = $null
         }
         elseif ($cleanupOutcome.Attempted -and -not $cleanupOutcome.Confirmed) {
             Write-Output 'Skipped stale-reference cleanup (not confirmed). The stale anchor remains; rerun specrew start to decide again.'

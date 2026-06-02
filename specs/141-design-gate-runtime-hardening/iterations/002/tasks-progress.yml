@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "002"
-updated_at: "2026-06-02T21:13:42Z"
+updated_at: "2026-06-02T21:44:59Z"
 tasks:
   T001:
     title: "Confirm scope; reproduce empty-path + host-wording in fixtures; record in drift-log"
@@ -47,10 +47,10 @@ tasks:
     blocked_reason: ""
   T009:
     title: "Regression tests for the stale cross-worktree recovery scenario (deleted/merged external worktree -> stale -> no re-anchor -> confirm-gated cleanup)"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-06-02T20:35:24Z"
-    completed_at: ""
-    blocked_reason: "End-to-end confirm->cleanup start-flow enforcement test still pending; blocked by pre-existing stdout-drain deadlock in Invoke-InteractiveStart (WaitForExit before ReadToEnd). Unit/function regression coverage complete, including strict-merge-detection Group 7 (fix 65e157fa)."
+    completed_at: "2026-06-02T21:44:59Z"
+    blocked_reason: ""
   T006:
     title: "Docs + review evidence (quickstart/contract notes for start-packet + stale-session behavior)"
     status: "pending"

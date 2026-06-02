@@ -180,12 +180,16 @@ function Test-SpecrewFeatureBranchExists {
         return $true
     }
 
-    & git -C $ProjectRoot show-ref --verify --quiet ("refs/heads/{0}" -f $FeatureRef)
+    # 2>$null: in a non-repo (or when the ref is absent) git writes "fatal: not a git
+    # repository" / "fatal: bad ref" to stderr. The decision is taken purely from
+    # $LASTEXITCODE, so silence the stderr to keep test transcripts clean (it otherwise
+    # leaks through to the FR-024 unit test's non-repo temp fixtures).
+    & git -C $ProjectRoot show-ref --verify --quiet ("refs/heads/{0}" -f $FeatureRef) 2>$null
     if ($LASTEXITCODE -eq 0) {
         return $true
     }
 
-    & git -C $ProjectRoot show-ref --verify --quiet ("refs/remotes/origin/{0}" -f $FeatureRef)
+    & git -C $ProjectRoot show-ref --verify --quiet ("refs/remotes/origin/{0}" -f $FeatureRef) 2>$null
     return ($LASTEXITCODE -eq 0)
 }
 
