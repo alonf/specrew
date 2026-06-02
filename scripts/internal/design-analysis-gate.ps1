@@ -123,8 +123,11 @@ function Get-SpecrewDesignAnalysisOptionBlock {
         [Parameter(Mandatory = $true)][string]$OptionName
     )
 
-    $escaped = [regex]::Escape($OptionName)
-    $regex = "(?ims)^#{2,6}\s*(?:Option\s+[A-Z]\s*[:\-]\s*)?$escaped\b.*?\r?\n(?<body>.*?)(?=^#{2,6}\s+(?:Option\s+[A-Z]\s*[:\-]\s*)?(?:Simplest|Reasonable|By-the-book)\b|\z)"
+    # FR-022: tolerate normal authored prose for By-the-book ("By the book" with or
+    # without a hyphen) while still enforcing the required option shape.
+    $namePattern = if ($OptionName -match '(?i)^by[-\s]?the[-\s]?book$') { 'By[-\s]+the[-\s]+book' } else { [regex]::Escape($OptionName) }
+    $terminator = '(?:Simplest|Reasonable|By[-\s]+the[-\s]+book)'
+    $regex = "(?ims)^#{2,6}\s*(?:Option\s+[A-Z]\s*[:\-]\s*)?$namePattern\b.*?\r?\n(?<body>.*?)(?=^#{2,6}\s+(?:Option\s+[A-Z]\s*[:\-]\s*)?$terminator\b|\z)"
     $match = [regex]::Match($AlternativesText, $regex)
     if (-not $match.Success) {
         return $null
@@ -148,13 +151,13 @@ function Get-SpecrewDesignAnalysisNamedOption {
 
     if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
 
-    $matches = [regex]::Matches($Text, '(?i)\b(Option\s+[A-Z]|Simplest|Reasonable|By-the-book)\b')
+    $matches = [regex]::Matches($Text, '(?i)\b(Option\s+[A-Z]|Simplest|Reasonable|By[-\s]?the[-\s]?book)\b')
     $unique = New-Object System.Collections.Generic.List[string]
     foreach ($match in $matches) {
         $value = $match.Groups[1].Value.Trim()
         $normalized = if ($value -match '(?i)^option\s+([A-Z])$') {
             'Option ' + $Matches[1].ToUpperInvariant()
-        } elseif ($value -match '(?i)^by-the-book$') {
+        } elseif ($value -match '(?i)^by[-\s]?the[-\s]?book$') {
             'By-the-book'
         } elseif ($value -match '(?i)^simplest$') {
             'Simplest'
@@ -171,6 +174,28 @@ function Get-SpecrewDesignAnalysisNamedOption {
     if ($unique.Count -eq 1) { return $unique[0] }
     if ($unique.Count -gt 1) { return ($unique -join ', ') }
     return $null
+}
+
+function Get-SpecrewDesignAnalysisMarkedOption {
+    # FR-023: resolve exactly one option from a section that carries an explicit
+    # marker line (e.g., "Recommended: Option B" or "Chosen option: Option B"),
+    # tolerating bold/list markup, so contextual mentions of rejected options in the
+    # surrounding rationale do not make the section look multi-valued. Falls back to
+    # the legacy whole-text single-token detection when no marker line is present.
+    param(
+        [AllowNull()][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Marker
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+
+    $pattern = '(?im)^\s*[-*>\s]*\**\s*' + $Marker + '\**\s*[:\-]?\s*\**\s*(?<opt>Option\s+[A-Z]|Simplest|Reasonable|By[-\s]?the[-\s]?book)\b'
+    $markerMatch = [regex]::Match($Text, $pattern)
+    if ($markerMatch.Success) {
+        return (Get-SpecrewDesignAnalysisNamedOption -Text $markerMatch.Groups['opt'].Value)
+    }
+
+    return (Get-SpecrewDesignAnalysisNamedOption -Text $Text)
 }
 
 function Test-SpecrewDesignAnalysisGateRequired {
@@ -275,12 +300,12 @@ function Test-SpecrewDesignAnalysisArtifact {
             }
         }
 
-        if ([string]::IsNullOrWhiteSpace($byTheBook) -and $alternatives.Body -notmatch '(?is)by-the-book.*(?:not\s+meaningfully\s+distinct|not\s+distinct|not-applicable|not\s+applicable|deferred)') {
+        if ([string]::IsNullOrWhiteSpace($byTheBook) -and $alternatives.Body -notmatch '(?is)by[-\s]?the[-\s]?book.*(?:not\s+meaningfully\s+distinct|not\s+distinct|not-applicable|not\s+applicable|deferred)') {
             $errors.Add('Alternatives must include By-the-book when distinct, or state why By-the-book is not meaningfully distinct.') | Out-Null
         }
     }
 
-    $recommendedOption = Get-SpecrewDesignAnalysisNamedOption -Text $recommendation.Body
+    $recommendedOption = Get-SpecrewDesignAnalysisMarkedOption -Text $recommendation.Body -Marker 'Recommended'
     if ($recommendation.Found) {
         if (Test-SpecrewDesignAnalysisPlaceholderText -Text $recommendation.Body) {
             $errors.Add('Crew Recommendation must be populated and cannot be placeholder text.') | Out-Null
@@ -293,7 +318,7 @@ function Test-SpecrewDesignAnalysisArtifact {
         }
     }
 
-    $selectedOption = Get-SpecrewDesignAnalysisNamedOption -Text $humanDecision.Body
+    $selectedOption = Get-SpecrewDesignAnalysisMarkedOption -Text $humanDecision.Body -Marker 'Chosen\s+Option'
     if ($humanDecision.Found) {
         if (Test-SpecrewDesignAnalysisPlaceholderText -Text $humanDecision.Body) {
             $errors.Add('Human Decision must be populated and cannot be placeholder text.') | Out-Null
@@ -341,6 +366,227 @@ function Invoke-SpecrewDesignAnalysisPlanBoundaryGate {
         $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
         foreach ($error in $result.Errors) {
             $messageLines.Add(("  - {0}" -f $error)) | Out-Null
+        }
+        throw ($messageLines -join [Environment]::NewLine)
+    }
+
+    return $result
+}
+
+$script:SpecrewDesignAnalysisPacketSections = @(
+    'What I Just Did',
+    'Why I Stopped',
+    'What Needs Your Review',
+    'What Happens Next',
+    'Discussion Prompts',
+    'What I Need From You'
+)
+
+function New-SpecrewDesignAnalysisGatePacket {
+    # FR-004: render the design-analysis human gate packet from typed fields, so the
+    # authoritative approval object is Specrew-rendered rather than free-form prose.
+    # Scoped to the design-analysis gate only (FR-006) — not a general packet system.
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Fields
+    )
+
+    $feature = if ($Fields.ContainsKey('Feature')) { [string]$Fields['Feature'] } else { '<feature>' }
+    $iteration = if ($Fields.ContainsKey('Iteration')) { [string]$Fields['Iteration'] } else { '001' }
+    $verdict = if ($Fields.ContainsKey('Verdict')) { [string]$Fields['Verdict'] } else { 'approved for plan with Option <X>' }
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('---') | Out-Null
+    $lines.Add('gate: design-analysis') | Out-Null
+    $lines.Add(('feature: {0}' -f $feature)) | Out-Null
+    $lines.Add(('iteration: "{0}"' -f $iteration)) | Out-Null
+    $lines.Add('from_boundary: design-analysis') | Out-Null
+    $lines.Add('to_boundary: plan') | Out-Null
+    $lines.Add(('verdict_shape: "{0}"' -f $verdict)) | Out-Null
+    $lines.Add('---') | Out-Null
+    $lines.Add('') | Out-Null
+
+    foreach ($section in $script:SpecrewDesignAnalysisPacketSections) {
+        $key = $section -replace '[^A-Za-z]', ''
+        $body = if ($Fields.ContainsKey($key)) { [string]$Fields[$key] } else { '<to be filled>' }
+        $lines.Add(('## {0}' -f $section)) | Out-Null
+        $lines.Add('') | Out-Null
+        $lines.Add($body.Trim()) | Out-Null
+        $lines.Add('') | Out-Null
+    }
+
+    return (($lines -join [Environment]::NewLine).TrimEnd() + [Environment]::NewLine)
+}
+
+function Test-SpecrewDesignAnalysisGatePacket {
+    # FR-005: validate the rendered design-analysis gate packet — six human re-entry
+    # sections present, the `approved for plan with Option <X>` verdict shape present,
+    # and no bare artifact paths in prose (file:/// URLs and code spans are exempt).
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][string]$PacketText
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    if ([string]::IsNullOrWhiteSpace($PacketText)) {
+        $errors.Add('Packet text is empty.') | Out-Null
+        return [pscustomobject]@{ Valid = $false; Errors = @($errors) }
+    }
+
+    foreach ($section in $script:SpecrewDesignAnalysisPacketSections) {
+        $pattern = '(?im)^#{1,3}\s*' + [regex]::Escape($section) + '\s*$'
+        if ($PacketText -notmatch $pattern) {
+            $errors.Add(("Packet is missing required section: {0}." -f $section)) | Out-Null
+        }
+    }
+
+    if ($PacketText -notmatch '(?i)approved for plan with option\b') {
+        $errors.Add('Packet must reference the verdict shape `approved for plan with Option <X>`.') | Out-Null
+    }
+
+    # Strip code blocks, inline code, and file:/// URLs, then flag any remaining bare
+    # artifact-path reference in prose.
+    $stripped = $PacketText
+    $stripped = [regex]::Replace($stripped, '(?s)```.*?```', '')
+    $stripped = [regex]::Replace($stripped, '`[^`]*`', '')
+    $stripped = [regex]::Replace($stripped, '(?i)file:///\S+', '')
+    $barePaths = [regex]::Matches($stripped, '(?<![\w./])(?:specs|\.specrew|\.squad|tests)[\\/]\S')
+    if ($barePaths.Count -gt 0) {
+        $errors.Add('Packet prose contains a bare artifact path; use a file:/// URL or a code span.') | Out-Null
+    }
+
+    return [pscustomobject]@{ Valid = ($errors.Count -eq 0); Errors = @($errors) }
+}
+
+function Get-SpecrewDesignAnalysisGatePacketPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    $iteration = Normalize-SpecrewDesignAnalysisIterationNumber -IterationNumber $IterationNumber
+    # FR-020 / FR-006: durable packet scoped to the design-analysis gate only.
+    return Join-Path $ProjectRoot ("specs\{0}\gates\design-analysis-{1}.md" -f $feature, $iteration)
+}
+
+function Save-SpecrewDesignAnalysisGatePacket {
+    # FR-020: persist the validated packet as a narrow durable 155-lite record under
+    # specs/<feature>/gates/ for the design-analysis gate only. Validates before save.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber,
+        [Parameter(Mandatory = $true)][string]$PacketText
+    )
+
+    $validation = Test-SpecrewDesignAnalysisGatePacket -PacketText $PacketText
+    if (-not $validation.Valid) {
+        $messageLines = New-Object System.Collections.Generic.List[string]
+        $messageLines.Add('[design-analysis-gate-packet] Refusing to persist an invalid design-analysis gate packet.') | Out-Null
+        foreach ($err in $validation.Errors) {
+            $messageLines.Add(("  - {0}" -f $err)) | Out-Null
+        }
+        throw ($messageLines -join [Environment]::NewLine)
+    }
+
+    $packetPath = Get-SpecrewDesignAnalysisGatePacketPath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+    $directory = Split-Path -Parent $packetPath
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $directory -Force
+    }
+
+    [System.IO.File]::WriteAllText($packetPath, ($PacketText.TrimEnd() + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+    return [pscustomobject]@{ Path = $packetPath; Valid = $true }
+}
+
+function Get-SpecrewDesignAnalysisSelectedOption {
+    # FR-007: expose the human-selected option as authoritative plan input. Returns
+    # the single selected option string, or $null when the artifact is missing/invalid.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $result = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+    if (-not $result.Valid) { return $null }
+    return $result.SelectedOption
+}
+
+function Get-SpecrewDesignAnalysisTemplatePath {
+    # Resolve the versioned design-analysis template that the scaffold emits.
+    # Reconciled with the validator contract (FR-001 / TG-007). Prefers the
+    # repo/module source path; falls back to the deployed .specify mirror.
+    $moduleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    $candidates = @(
+        (Join-Path $moduleRoot 'extensions\specrew-speckit\templates\design-analysis.template.md'),
+        (Join-Path $moduleRoot '.specify\extensions\specrew-speckit\templates\design-analysis.template.md')
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return $null
+}
+
+function New-SpecrewDesignAnalysisArtifact {
+    # FR-001: scaffold a per-iteration design-analysis.md from the template if it
+    # does not already exist. Never overwrites an existing decision record.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) {
+        throw 'New-SpecrewDesignAnalysisArtifact requires a non-empty feature ref.'
+    }
+
+    $artifactPath = Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+        return [pscustomobject]@{ Path = $artifactPath; Created = $false; Reason = 'exists' }
+    }
+
+    $templatePath = Get-SpecrewDesignAnalysisTemplatePath
+    if ($null -eq $templatePath) {
+        throw 'design-analysis.template.md not found under extensions/specrew-speckit/templates; cannot scaffold the design-analysis artifact.'
+    }
+
+    $directory = Split-Path -Parent $artifactPath
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $directory -Force
+    }
+
+    $template = Get-Content -LiteralPath $templatePath -Raw -Encoding UTF8
+    [System.IO.File]::WriteAllText($artifactPath, $template, [System.Text.UTF8Encoding]::new($false))
+    return [pscustomobject]@{ Path = $artifactPath; Created = $true; Reason = 'scaffolded-from-template' }
+}
+
+function Invoke-SpecrewDesignAnalysisPrePlanGate {
+    # FR-002 / FR-003 / FR-021: callable pre-plan validator invoked BEFORE plan.md
+    # is authored (in addition to the at-sync plan-boundary gate). Coordinator-prompt
+    # enforcement (no host-native hooks) calls this; it fails closed when the active
+    # substantive iteration's design-analysis artifact or human decision is invalid.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+
+    $required = Test-SpecrewDesignAnalysisGateRequired -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (-not $required) { return $null }
+
+    $result = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (-not $result.Valid) {
+        $messageLines = New-Object System.Collections.Generic.List[string]
+        $messageLines.Add(("[design-analysis-pre-plan-gate] Do not author plan.md for active substantive feature '{0}' until design analysis is valid." -f $feature)) | Out-Null
+        $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
+        foreach ($err in $result.Errors) {
+            $messageLines.Add(("  - {0}" -f $err)) | Out-Null
         }
         throw ($messageLines -join [Environment]::NewLine)
     }

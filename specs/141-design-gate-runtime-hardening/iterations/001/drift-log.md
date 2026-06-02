@@ -30,6 +30,12 @@
 
 No specification drift detected during Iteration 001 execution to date.
 
+### Scope confirmation (T001)
+
+- Implementation scope confirmed against `plan.md`: Option B design-gate runtime path + FR-022/FR-023 validator robustness, 18 SP firm.
+- No overrun found. FR-009/FR-010 lens pre-deferred within Feature 141 (human-approved 2026-06-02); FR-011–FR-015 smoke bundle in later iterations.
+- Guardrails carried into execution: no Proposal 105 hooks, no broad typed-packet generalization beyond the design-analysis gate, no Unix/wrapper/bootstrap/release surfaces, Feature 141 state authoritative.
+
 ### Resolution Strategies (Unused)
 
 The following resolution strategies remain available if drift is detected later in execution:
