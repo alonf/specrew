@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "002"
-updated_at: "2026-06-02T23:40:26Z"
+updated_at: "2026-06-02T23:45:01Z"
 tasks:
   T001:
     title: "Confirm scope; reproduce empty-path + host-wording in fixtures; record in drift-log"
@@ -53,7 +53,7 @@ tasks:
     blocked_reason: ""
   T006:
     title: "Docs + review evidence (quickstart/contract notes for start-packet + stale-session behavior)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-06-02T23:42:00Z"
+    completed_at: "2026-06-02T23:45:01Z"
     blocked_reason: ""

@@ -83,17 +83,31 @@ Implemented by extending `scripts/internal/design-analysis-gate.ps1` (Feature 14
 - Read-only: no project-local overrides, no lens-schema validation, no broad lens
   automation (Proposal 156 deeper scope deferred).
 
-## Smoke-Bundle Surfaces (later iterations)
+## As-built Iteration 2 surface (start-packet correctness + stale-session recovery)
 
 | Surface | Signature / Shape | Purpose | Errors |
 | --- | --- | --- | --- |
-| Start-packet path generation | `scripts/specrew-start.ps1` generated paths | Every emitted artifact path has a non-empty feature segment. | No `specs//` empty-segment path (FR-011). |
-| Host-conditional wording | `scripts/specrew-start.ps1` generated guidance | Wording reflects only the selected host. | No non-selected-host terminology, e.g. "Copilot approval mode" on Claude (FR-014). |
+| `Get-SpecrewHostOrientationBlock` | `(HostKind, ..., FeatureRef) -> orientation block` (`scripts/internal/coordinator-prompt-surgery.ps1`) | Greenfield/intake (empty `FeatureRef`) emits explicit-placeholder browse guidance; a resolved feature emits the concrete `file:///<project-root-url>/specs/<feature>/` paths. | No `file:///…/specs/<feature>/` URL when no feature exists, so coordinator substitution per Rule 48 cannot collapse to `specs//` (FR-011, SC-007). |
+| `specrew-start.ps1` launch guidance | console launch lines | Host-accurate wording. | `Approval mode:` (not `Copilot approval mode`); the new-window delegation line uses the host-aware label, not a hardcoded `Copilot` (FR-014, SC-010). |
+| `Test-SpecrewFeatureMergedToMain` | `(ProjectRoot, FeatureRef) -> {IsMerged, Detail}` | Detect a feature merged to main by the FULL feature-ref slug (`--fixed-strings`), never the bare numeric id. | A merge body mentioning a bare proposal number ("Proposal 120 + 141") does NOT mark Feature 141 merged (FR-024 support). |
+| `Test-SpecrewStaleSessionState` / `Resolve-SpecrewRecoverySelection` | `scripts/internal/session-recovery.ps1` | Flag a saved session whose `feature_path` is missing/outside the worktree; recovery choice A refuses to re-anchor and requests confirm-gated cleanup. | Never re-anchors to a deleted/external worktree (FR-024). |
+| `Clear-SpecrewStaleSessionReference` / `Invoke-SpecrewStaleSessionCleanupDecision` | confirm-gated cleanup | On explicit confirmation, clear ONLY start-context `session_state` + the matching `active-sessions` entry; the cleared state persists across the same start run. | Never touches `specs/**` artifacts; never makes lifecycle commits; no-op without `-Confirmed` (FR-024). |
+| `Invoke-SpecrewDesignAnalysisPlanBoundaryGate` | `(ProjectRoot, FeatureRef, IterationNumber) -> result` | Plan-boundary gate harness. | Returns `Valid` with a clean `$LASTEXITCODE` (no stray error) on a valid artifact (T004 verify-clean). |
+
+### Invariants
+
+- FR-011 is satisfied by "omit/placeholder the path explicitly" in the no-feature case, never by emitting an empty segment.
+- FR-024 cleanup is runtime-only and confirm-gated: feature artifacts and git history are never touched, and the cleanup sticks (the end-of-run start-context regeneration does not re-anchor the cleared session).
+
+## Smoke-Bundle Surfaces (Iteration 3, future)
+
+| Surface | Signature / Shape | Purpose | Errors |
+| --- | --- | --- | --- |
 | Greenfield warning scope | Greenfield/downstream lifecycle warning logic | Emit only genuinely actionable warnings. | No spurious self-host/in-flight warnings in greenfield/downstream (FR-012). |
 | Greenfield baseline commit | First-boundary baseline handling | Resolve baseline to a real commit, recorded consistently. | No missing/wrong baseline hash (FR-013). |
 
 ### Invariants
 
-- The four smoke defects stay inside this feature (FR-015).
+- The four smoke defects stay inside this feature (FR-015); FR-011/FR-014 shipped in Iteration 2, FR-012/FR-013 carry to Iteration 3.
 - Unix/wrapper/bootstrap surfaces are untouched except for minimal, explicitly
   scoped, unavoidable fixes; no beta/stable publishing.

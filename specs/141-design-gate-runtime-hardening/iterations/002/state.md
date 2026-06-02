@@ -1,11 +1,11 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: T005
-**Tasks Remaining**: T006
+**Last Completed Task**: T006
+**Tasks Remaining**: (none — all iteration-002 tasks complete)
 **In Progress**: (none)
 **Baseline Ref**: 464e0d3e97cf031525447690447fe81d8e98b7d4
-**Updated**: 2026-06-02T23:40:26Z
+**Updated**: 2026-06-02T23:45:01Z
 **Current Phase**: before-implement
 **Iteration Status**: executing
 
@@ -52,7 +52,11 @@ Honest reconciliation — NOT a backdated record. Implementation of iteration 00
 - **T004 (done — verify-clean, maintainer-approved disposition 2026-06-02).** Reproduce-first showed the iteration-1 smoke symptoms are not produced by any committed code path: `GATE_VALID: True` is in no source (improvised manual echo), `Invoke-SpecrewDesignAnalysisPlanBoundaryGate` returns `Valid=True` with `$LASTEXITCODE=0` and no stray error on a valid artifact (verified on 141/001 and a unit fixture), and both quality/prereq command paths resolve. No code change; closed with a durable guard test in file:///C:/Dev/Specrew-design-analysis/tests/unit/design-gate-runtime-hardening.tests.ps1 (asserts clean exit code + path resolution). See drift-log Reproduction Evidence.
 - **T005 (done).** All three test concerns covered: no `specs//` (FR-011 Test 9b) + per-host wording (FR-014 Test 18b) in `multi-host-launch-path.tests.ps1`, and clean harness exit (the T004 guard) in the feature-141 unit test.
 
-**Only T006 (docs/review evidence) remains before the review-signoff gate.**
+## Slice: T006 (docs/review evidence) + implement-phase complete
+
+- **T006 (done).** Updated file:///C:/Dev/Specrew-design-analysis/specs/141-design-gate-runtime-hardening/quickstart.md (Iteration 2 delivered section with concrete verification steps + test names for FR-011/FR-014/FR-024 + the gate clean-exit) and file:///C:/Dev/Specrew-design-analysis/specs/141-design-gate-runtime-hardening/contracts/design-gate-runtime-hardening.md (as-built Iteration 2 surface: the orientation-block guard, host-neutral launch wording, strict merge detection, the stale-session recovery/cleanup functions, and the gate clean-exit invariant; FR-012/FR-013 reshaped to the Iteration 3 smoke-bundle).
+
+**All iteration-002 tasks are complete (T001-T009).** The implement phase is done; the iteration is stopped at the **review-signoff** gate awaiting the maintainer's verdict. The boundary has NOT been crossed (no review-signoff verdict recorded); review.md + reviewer artifacts will follow the maintainer authorizing review.
 
 ## Notes
 
