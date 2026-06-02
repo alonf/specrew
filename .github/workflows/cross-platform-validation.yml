@@ -314,11 +314,11 @@ jobs:
           git diff --exit-code -- bin/
           if ($LASTEXITCODE -ne 0) { Write-Error "Committed bin/ wrappers differ from the generator output."; exit 1 }
 
-      - name: Registry + FileList parity tests
+      - name: Registry + FileList + docs parity tests (cascade docs arm, T023)
         shell: pwsh
         run: |
           $failed = $false
-          foreach ($t in @('./tests/unit/wrapper-registry-parity.tests.ps1','./tests/unit/wrapper-filelist-parity.tests.ps1')) {
+          foreach ($t in @('./tests/unit/wrapper-registry-parity.tests.ps1','./tests/unit/wrapper-filelist-parity.tests.ps1','./tests/unit/wrapper-docs-parity.tests.ps1')) {
             Write-Host "── $t ──" -ForegroundColor Cyan
             $out = & $t *>&1 | Out-String
             Write-Host $out
