@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 18/20 story_points
 **Started**: 2026-06-02
 **Completed**:
@@ -45,16 +45,16 @@ Deferred this iteration (carried within Feature 141): FR-009, FR-010, SC-006
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Confirm scope/Option B/cap + guardrails | FR-016, FR-017, FR-018, FR-019 | US0 | 1 | Spec Steward | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
-| T002 | Template file + scaffold path | FR-001, FR-008, TG-007 | US1 | 3 | Implementer | extensions/specrew-speckit/templates/design-analysis.template.md, scripts/internal/design-analysis-gate.ps1 | planned | claude | — | — |
-| T003 | Tolerant By-the-book detection | FR-022 | US1 | 1 | Implementer | scripts/internal/design-analysis-gate.ps1 | planned | claude | — | — |
-| T004 | Single-recommendation parser + unit tests | FR-023 | US1 | 2 | Implementer | scripts/internal/design-analysis-gate.ps1, tests/unit/** | planned | claude | — | — |
-| T005 | Callable pre-plan validator + prompt enforcement | FR-002, FR-003, FR-021 | US1 | 3 | Implementer | scripts/internal/design-analysis-gate.ps1, scripts/specrew-start.ps1 | planned | claude | — | — |
-| T006 | Typed packet renderer + validator | FR-004, FR-005 | US2 | 2 | Implementer | scripts/internal/design-analysis-gate.ps1 | planned | claude | — | — |
-| T007 | Durable 155-lite packet + plan-input continuity | FR-006, FR-007, FR-020 | US2 | 2 | Implementer | scripts/internal/design-analysis-gate.ps1, scripts/internal/sync-boundary-state.ps1 | planned | claude | — | — |
-| T009 | Unit tests (scaffold/packet/validator-robustness) | SC-001, SC-004, SC-014 | US1 | 2 | Implementer | tests/unit/** | planned | claude | — | — |
-| T010 | Integration tests (block/pass, compatibility) | FR-002, FR-003, SC-012 | US1 | 1 | Reviewer | tests/integration/** | planned | claude | — | — |
-| T011 | Docs refresh + review gap ledger | TG-006, SC-011 | US0 | 1 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
+| T001 | Confirm scope/Option B/cap + guardrails | FR-016, FR-017, FR-018, FR-019 | US0 | 1 | Spec Steward | specs/141-design-gate-runtime-hardening/** | done | claude | — | pass |
+| T002 | Template file + scaffold path | FR-001, FR-008, TG-007 | US1 | 3 | Implementer | extensions/specrew-speckit/templates/design-analysis.template.md, scripts/internal/design-analysis-gate.ps1 | done | claude | — | pass |
+| T003 | Tolerant By-the-book detection | FR-022 | US1 | 1 | Implementer | scripts/internal/design-analysis-gate.ps1 | done | claude | — | pass |
+| T004 | Single-recommendation parser + unit tests | FR-023 | US1 | 2 | Implementer | scripts/internal/design-analysis-gate.ps1, tests/unit/** | done | claude | — | pass |
+| T005 | Callable pre-plan validator + prompt enforcement | FR-002, FR-003, FR-021 | US1 | 3 | Implementer | scripts/internal/design-analysis-gate.ps1, scripts/specrew-start.ps1 | done | claude | — | pass |
+| T006 | Typed packet renderer + validator | FR-004, FR-005 | US2 | 2 | Implementer | scripts/internal/design-analysis-gate.ps1 | done | claude | — | pass |
+| T007 | Durable 155-lite packet + plan-input continuity | FR-006, FR-007, FR-020 | US2 | 2 | Implementer | scripts/internal/design-analysis-gate.ps1, scripts/internal/sync-boundary-state.ps1 | done | claude | — | pass |
+| T009 | Unit tests (scaffold/packet/validator-robustness) | SC-001, SC-004, SC-014 | US1 | 2 | Implementer | tests/unit/** | done | claude | — | pass |
+| T010 | Integration tests (block/pass, compatibility) | FR-002, FR-003, SC-012 | US1 | 1 | Reviewer | tests/integration/** | done | claude | — | pass |
+| T011 | Docs refresh + review gap ledger | TG-006, SC-011 | US0 | 1 | Planner | specs/141-design-gate-runtime-hardening/** | done | claude | — | pass |
 
 ## Effort Model
 

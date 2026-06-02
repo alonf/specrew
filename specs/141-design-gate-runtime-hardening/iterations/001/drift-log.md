@@ -25,6 +25,7 @@
 **Total drift events**: 0
 **Resolution rate**: 100% (0/0 resolved)
 **Specification drift**: None detected
+**Batch drift check (review)**: PASS — delivered scaffold, pre-plan validator, typed packet, validator robustness, tests, and docs match FR-001–FR-008/FR-020–FR-023 and SC-001–SC-005/SC-011–SC-014. FR-009/FR-010 deferred-within-feature (recorded approval); FR-011–FR-015 later-iteration scope.
 
 ## Events
 
