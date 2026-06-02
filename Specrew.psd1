@@ -37,6 +37,7 @@
         'bin/specrew-update',
         'bin/specrew-version',
         'bin/specrew-where',
+        'install.sh',
         'docs/dashboard-guide.md',
         'docs/getting-started.md',
         'docs/github-project.md',
