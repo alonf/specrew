@@ -2,10 +2,10 @@
   "schemaVersion": "v1",
   "featureRef": "specs/140-unix-native-install/spec.md",
   "iterationRef": "specs/140-unix-native-install/iterations/003",
-  "generatedAt": "2026-06-02T20:25:50Z",
+  "generatedAt": "2026-06-02T21:44:04Z",
   "generator": {
-    "name": "specrew-iteration-scaffold",
-    "version": "1.0.0"
+    "name": "specrew-mechanical-checks",
+    "version": "0.30.0"
   },
   "findings": []
 }
