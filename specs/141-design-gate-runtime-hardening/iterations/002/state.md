@@ -43,6 +43,10 @@ Regression green this slice: `multi-host-launch-path` (incl. Test 9b + Test 18b)
 
 **Still remaining (per maintainer sequencing):** T004 (gate-harness trailing `$LASTEXITCODE` exit cleanup) and T006 (docs). FR-011/FR-014 were prioritized first; T004/docs are the later slice.
 
+## Boundary Authorization Reconciliation (2026-06-02)
+
+Honest reconciliation — NOT a backdated record. Implementation of iteration 002 (FR-024, FR-011, FR-014) had already proceeded this session under the maintainer's explicit per-slice go-aheads, but `boundary_enforcement.verdict_history` was never written, so `specrew start` resumed at `before-implement` with an empty verdict ledger (the validator soft-warned `state-advance-without-verdict`). The missing `tasks -> before-implement` authorization was recorded **now** via `Add-SpecrewBoundaryAuthorization` with the **current** commit (`2e80e9e2`) and timestamp (`2026-06-02T23:24:28Z`) and `authorizing_human: Alon Fliess` — deliberately **not** backdated to the original `07294d58` / `2026-06-02T18:48:03Z`. The verdict_history entry lives in file:///C:/Dev/Specrew-design-analysis/.specrew/start-context.json (the canonical runtime location the validator reads; gitignored), so this committed note is its durable audit trail.
+
 ## Notes
 
 - Update this file after each task completes.
