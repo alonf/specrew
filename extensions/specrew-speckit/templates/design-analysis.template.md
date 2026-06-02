@@ -50,6 +50,8 @@ what is being solved and the key constraints.>
 - (+) <upside>
 - (−) <downside>
 
+**Design principle / why this matters**: <the principle behind this option — e.g. dependency isolation, ports/adapters or layering, report-contract stability, reversibility cost; for Simplest, why it is cheaper but more coupled; for By-the-book, why it may be premature or overbuilt>
+
 **Recommended for**: <context where this option fits>
 
 **Diagram**:
@@ -70,6 +72,8 @@ flowchart LR
 
 - (+) <upside>
 - (−) <downside>
+
+**Design principle / why this matters**: <the principle behind this option — e.g. dependency isolation, ports/adapters or layering, report-contract stability, reversibility cost; for Simplest, why it is cheaper but more coupled; for By-the-book, why it may be premature or overbuilt>
 
 **Recommended for**: <context>
 
@@ -96,6 +100,8 @@ that By-the-book is not meaningfully distinct for this problem and why.>
 - (+) <upside>
 - (−) <downside>
 
+**Design principle / why this matters**: <the principle behind this option — e.g. dependency isolation, ports/adapters or layering, report-contract stability, reversibility cost; for Simplest, why it is cheaper but more coupled; for By-the-book, why it may be premature or overbuilt>
+
 **Recommended for**: <context>
 
 **Diagram**:
@@ -118,7 +124,9 @@ contextually is fine; name only one as recommended.>
 <Populated after the design-analysis verdict — left empty until then so the gate
 blocks plan until a decision is recorded.>
 
+- **Decision verdict**: approved for plan with Option <X>
 - **Chosen option**: <Option X | modified-Option X>
 - **Reason**: <human rationale>
 - **Modifications**: <any scope tweaks to the chosen option, or None>
-- **Decided at commit**: <commit hash>
+- **Design-analysis draft commit**: <the commit that first drafted these options>
+- **Decision recorded in commit**: <the commit that contains THIS populated Human Decision — NOT the draft commit>

@@ -335,6 +335,14 @@ function Test-SpecrewDesignAnalysisArtifact {
         if ($humanDecision.Body -notmatch '(?i)\b[0-9a-f]{7,40}\b') {
             $errors.Add('Human Decision must record a commit hash.') | Out-Null
         }
+        # FR-003 metadata integrity (Fix 3, 2026-06-02 smoke): the decision commit must be
+        # the commit that contains the populated Human Decision, NOT the design-analysis
+        # draft commit. Reject recording the draft commit as the decision commit.
+        $draftCommit = [regex]::Match($humanDecision.Body, '(?im)^\s*[-*]?\s*\**\s*Design-analysis draft commit\**\s*[:\-]\s*`?([0-9a-f]{7,40})`?')
+        $decisionCommit = [regex]::Match($humanDecision.Body, '(?im)^\s*[-*]?\s*\**\s*Decision recorded in commit\**\s*[:\-]\s*`?([0-9a-f]{7,40})`?')
+        if ($draftCommit.Success -and $decisionCommit.Success -and $draftCommit.Groups[1].Value -eq $decisionCommit.Groups[1].Value) {
+            $errors.Add('Human Decision "Decision recorded in commit" must differ from the "Design-analysis draft commit"; record the commit that contains the populated decision, not the draft.') | Out-Null
+        }
     }
 
     return [pscustomobject]@{
@@ -591,5 +599,30 @@ function Invoke-SpecrewDesignAnalysisPrePlanGate {
         throw ($messageLines -join [Environment]::NewLine)
     }
 
-    return $result
+    # FR-004/FR-005/FR-020 enforced flow (Fix 1/2, 2026-06-02 smoke): the durable
+    # design-gate packet MUST exist and validate before plan.md is authored, so packet
+    # persistence is a required step in the real flow, not an unused helper. The at-sync
+    # plan-boundary gate stays the artifact/decision backstop if this call is bypassed.
+    $packetPath = Get-SpecrewDesignAnalysisGatePacketPath -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (-not (Test-Path -LiteralPath $packetPath -PathType Leaf)) {
+        throw ("[design-analysis-pre-plan-gate] Do not author plan.md for active substantive feature '{0}': the durable design-gate packet is missing at {1}. Render, validate, and persist it (Save-SpecrewDesignAnalysisGatePacket) before plan.md." -f $feature, $packetPath)
+    }
+    $packetText = Get-Content -LiteralPath $packetPath -Raw -Encoding UTF8
+    $packetCheck = Test-SpecrewDesignAnalysisGatePacket -PacketText $packetText
+    if (-not $packetCheck.Valid) {
+        $packetLines = New-Object System.Collections.Generic.List[string]
+        $packetLines.Add(("[design-analysis-pre-plan-gate] Durable design-gate packet at {0} is invalid:" -f $packetPath)) | Out-Null
+        foreach ($perr in $packetCheck.Errors) {
+            $packetLines.Add(("  - {0}" -f $perr)) | Out-Null
+        }
+        throw ($packetLines -join [Environment]::NewLine)
+    }
+
+    return [pscustomobject]@{
+        Valid          = $true
+        ArtifactPath   = $result.ArtifactPath
+        Errors         = @()
+        SelectedOption = $result.SelectedOption
+        PacketPath     = $packetPath
+    }
 }

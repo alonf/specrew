@@ -239,6 +239,7 @@ later is explicitly acceptable.
 
 ## Human Decision
 
+- **Decision verdict**: approved for plan with Option B
 - **Chosen option**: Option B
 - **Reason**: Selected the recommended balanced approach. The feature's purpose is
   a trustworthy, enforced design gate, which justifies durable, verifiable evidence
@@ -251,5 +252,5 @@ later is explicitly acceptable.
 - **Modifications**: None. The durable 155-lite packet stays scoped to the
   design-analysis gate only (`specs/<feature>/gates/`); no generalization to other
   boundaries.
-- **Decided at commit**: `337e2523` (reviewed design-analysis state; verdict
-  `approved for plan with Option B`).
+- **Design-analysis draft commit**: `337e2523`
+- **Decision recorded in commit**: `e07446b4`

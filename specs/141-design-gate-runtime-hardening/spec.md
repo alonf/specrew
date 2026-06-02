@@ -307,12 +307,13 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   bootstrap files owned by the parallel Unix-install feature unless a smoke-bug fix
   genuinely requires it, in which case the change MUST be minimal and explicitly
   scoped.
-- **FR-020**: Specrew MUST at minimum render-and-validate the design-analysis gate
-  packet from typed fields. Durable persistence of the rendered packet is preferred
-  when it stays narrow and cheap; if included, the stored packet MUST be scoped to
-  the design-analysis gate only (e.g., under `specs/<feature>/gates/` or an
-  equivalent design-analysis-scoped path) and MUST NOT be generalized to other
-  boundaries (continuing FR-006).
+- **FR-020**: Specrew MUST render, validate, AND persist the design-analysis gate
+  packet as part of the enforced pre-plan flow: the packet is stored under
+  `specs/<feature>/gates/` (design-analysis gate only, scoped per FR-006, not
+  generalized to other boundaries), and the pre-plan validator MUST fail when the
+  durable packet is missing or invalid. (Smoke-amended 2026-06-02 from "preferred"
+  to required after the external smoke showed packet persistence was an unused
+  helper that never produced a `gates/` artifact in the real flow.)
 - **FR-021**: Specrew MUST enforce "no substantive `plan.md` before the
   design-analysis artifact and human design-gate decision are valid" via
   coordinator-prompt enforcement plus a callable pre-plan validator in Iteration 1.
@@ -525,6 +526,30 @@ than deferring to another feature.
   wiring, and parser behavior), FR-009/FR-010 (Applicable Lenses) are pre-deferred
   to a later Feature 141 iteration. This is deferred-within-feature, not dropped;
   FR-022/FR-023 stay firm in Iteration 1.
+
+### Smoke amendment 2026-06-02 (post external manual smoke)
+
+An external manual smoke (`C:\Temp\SpecrewTrials\test1234`, feature
+`001-azure-bicep-upgrade-scanner`) sent the iteration back from review. The smoke
+proved the helpers were not wired into the enforced flow. The following are
+in-scope Iteration 1 corrections (see `iterations/001/manual-smoke.md`):
+
+- FR-020 elevated from "preferred" to **required-in-flow**: the pre-plan validator
+  fails when the durable `gates/` packet is missing/invalid, so packet persistence
+  is enforced, not optional.
+- FR-002/FR-003/FR-021: the generated handoff mandates the explicit sequence
+  (record decision → render packet → validate → persist → call the pre-plan
+  validator) before `plan.md`; the pre-plan validator is the enforcement point, the
+  at-sync plan-boundary gate is the artifact/decision backstop.
+- FR-008 refinement (decision-commit integrity): the Human Decision records the
+  commit that contains the populated decision (distinct from the design-analysis
+  draft commit); the validator rejects recording the draft commit as the decision
+  commit.
+- FR-004 refinement (handoff depth): the template/handoff presents a per-option
+  "design principle / why this matters" rationale.
+- FR-009/FR-010 (lens activation): confirmed **not** activated in the smoke; this is
+  expected for Iteration 1 only because lenses were pre-deferred, and remains a
+  named later-iteration obligation, not an Iteration 1 in-scope failure.
 
 ## Governance Alignment *(mandatory)*
 

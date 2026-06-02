@@ -40,6 +40,7 @@ This substantive lifecycle governance feature changes boundary enforcement, help
             } | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
 }
 
+# Valid artifact using the Fix-3 metadata model: distinct draft vs decision commits.
 function Get-ValidArtifact {
     return @'
 # Design Analysis: Runtime Hardening
@@ -66,6 +67,8 @@ Surface alternatives before plan so the design is chosen explicitly.
 - (+) cheap
 - (-) unauditable
 
+**Design principle / why this matters**: Cheapest but most coupled; no durable evidence.
+
 **Diagram**:
 
 ```mermaid
@@ -85,6 +88,8 @@ flowchart LR
 - (+) auditable
 - (-) larger
 
+**Design principle / why this matters**: Dependency isolation with a durable report contract; reversible.
+
 **Diagram**:
 
 ```mermaid
@@ -100,11 +105,29 @@ By-the-book is not meaningfully distinct from Reasonable for this slice, so it i
 
 ## Human Decision
 
+- **Decision verdict**: approved for plan with Option B
 - **Chosen option**: Option B
 - **Reason**: Balanced.
 - **Modifications**: None.
-- **Decided at commit**: `1a2b3c4d`
+- **Design-analysis draft commit**: `1111111`
+- **Decision recorded in commit**: `2222222`
 '@
+}
+
+function Save-FixturePacket {
+    param([string]$ProjectRoot, [string]$FeatureRef)
+    $packet = New-SpecrewDesignAnalysisGatePacket -Fields @{
+        Feature             = $FeatureRef
+        Iteration           = '001'
+        Verdict             = 'approved for plan with Option B'
+        WhatIJustDid        = 'Authored design-analysis.md.'
+        WhyIStopped         = 'Design-analysis decision gate.'
+        WhatNeedsYourReview = 'Review file:///C:/x/design-analysis.md'
+        WhatHappensNext     = 'Plan after decision.'
+        DiscussionPrompts   = 'Which option?'
+        WhatINeedFromYou    = 'Approve an option.'
+    }
+    Save-SpecrewDesignAnalysisGatePacket -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber '001' -PacketText $packet | Out-Null
 }
 
 $projectRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-141-int-" + [guid]::NewGuid().ToString('N'))
@@ -114,28 +137,36 @@ try {
 
     # --- Block: missing artifact (FR-002 / FR-003) ---
     New-RuntimeHardeningFixture -ProjectRoot $projectRoot
-    $blockedMissing = Test-Throws { Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $projectRoot -FeatureRef $feature -IterationNumber '001' }
-    Assert-True $blockedMissing 'Pre-plan gate blocks plan authoring when design-analysis.md is missing'
+    Assert-True (Test-Throws { Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $projectRoot -FeatureRef $feature -IterationNumber '001' }) 'Pre-plan gate blocks when design-analysis.md is missing'
     Write-Pass 'Pre-plan gate blocks before plan when the artifact is missing'
 
     # --- Block: artifact present but Human Decision invalid ---
     $noDecision = (Get-ValidArtifact) -replace '(?s)## Human Decision.*$', "## Human Decision`n`n- **Chosen option**: <pending>`n"
     [System.IO.File]::WriteAllText($artifactPath, $noDecision, [System.Text.UTF8Encoding]::new($false))
-    $blockedNoDecision = Test-Throws { Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $projectRoot -FeatureRef $feature -IterationNumber '001' }
-    Assert-True $blockedNoDecision 'Pre-plan gate blocks plan authoring when the Human Decision is not recorded'
+    Assert-True (Test-Throws { Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $projectRoot -FeatureRef $feature -IterationNumber '001' }) 'Pre-plan gate blocks when the Human Decision is not recorded'
     Write-Pass 'Pre-plan gate blocks before plan when the human decision is missing'
 
-    # --- Pass: valid artifact + decision ---
+    # --- Block: valid artifact + decision but MISSING durable packet (Fix 1/2) ---
     [System.IO.File]::WriteAllText($artifactPath, (Get-ValidArtifact), [System.Text.UTF8Encoding]::new($false))
-    $passResult = Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $projectRoot -FeatureRef $feature -IterationNumber '001'
-    Assert-True ($null -ne $passResult -and $passResult.Valid -eq $true) 'Pre-plan gate passes for a valid artifact + recorded decision'
-    Write-Pass 'Pre-plan gate passes only when artifact and decision are valid'
+    Assert-True (Test-Throws { Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $projectRoot -FeatureRef $feature -IterationNumber '001' }) 'Pre-plan gate blocks when the durable design-gate packet is missing'
+    Write-Pass 'Fix 1/2: pre-plan gate blocks before plan when the durable packet is missing'
 
-    # --- Compatibility skip: gate not required for a feature that is not the active session feature ---
+    # --- Pass: valid artifact + decision + valid packet ---
+    Save-FixturePacket -ProjectRoot $projectRoot -FeatureRef $feature
+    $passResult = Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $projectRoot -FeatureRef $feature -IterationNumber '001'
+    Assert-True ($null -ne $passResult -and $passResult.Valid -eq $true) 'Pre-plan gate passes for a valid artifact + decision + packet'
+    Assert-True ($passResult.PacketPath -match 'gates[\\/]design-analysis-001\.md') 'Pre-plan result records the durable packet path'
+    Write-Pass 'Pre-plan gate passes only when artifact, decision, AND packet are valid'
+
+    # --- Backstop: at-sync plan-boundary gate still blocks on missing artifact even if pre-plan is bypassed ---
+    Remove-Item -LiteralPath $artifactPath -Force
+    Assert-True (Test-Throws { Invoke-SpecrewDesignAnalysisPlanBoundaryGate -ProjectRoot $projectRoot -FeatureRef $feature -IterationNumber '001' }) 'At-sync plan-boundary gate blocks on missing artifact (backstop)'
+    Write-Pass 'Backstop: at-sync plan-boundary gate catches a bypassed pre-plan call'
+
+    # --- Compatibility skip: gate not required for a non-active-session feature ---
     $otherRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-141-int-other-" + [guid]::NewGuid().ToString('N'))
     New-RuntimeHardeningFixture -ProjectRoot $otherRoot -FeatureRef '099-unrelated-feature' -SessionFeatureRef '141-design-gate-runtime-hardening'
-    $skip = Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $otherRoot -FeatureRef '099-unrelated-feature' -IterationNumber '001'
-    Assert-True ($null -eq $skip) 'Pre-plan gate skips (no hard-fail) for a feature that is not the active substantive session feature'
+    Assert-True ($null -eq (Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $otherRoot -FeatureRef '099-unrelated-feature' -IterationNumber '001')) 'Pre-plan gate skips a feature that is not the active substantive session feature'
     Write-Pass 'Compatibility: pre-plan gate is scoped to the active substantive feature'
     Remove-Item -LiteralPath $otherRoot -Recurse -Force -ErrorAction SilentlyContinue
 
@@ -143,8 +174,7 @@ try {
     $legacyRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-141-int-legacy-" + [guid]::NewGuid().ToString('N'))
     New-RuntimeHardeningFixture -ProjectRoot $legacyRoot -SpecrewVersion '0.29.0'
     Remove-Item -LiteralPath (Join-Path $legacyRoot ('specs\{0}\iterations\001\design-analysis.md' -f $feature)) -Force -ErrorAction SilentlyContinue
-    $legacySkip = Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $legacyRoot -FeatureRef $feature -IterationNumber '001'
-    Assert-True ($null -eq $legacySkip) 'Pre-plan gate does not hard-fail a pre-0.30.0 legacy project without an artifact'
+    Assert-True ($null -eq (Invoke-SpecrewDesignAnalysisPrePlanGate -ProjectRoot $legacyRoot -FeatureRef $feature -IterationNumber '001')) 'Pre-plan gate does not hard-fail a pre-0.30.0 legacy project without an artifact'
     Write-Pass 'Compatibility: legacy pre-0.30.0 project without artifact is not hard-failed'
     Remove-Item -LiteralPath $legacyRoot -Recurse -Force -ErrorAction SilentlyContinue
 

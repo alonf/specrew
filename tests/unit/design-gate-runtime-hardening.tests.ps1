@@ -195,6 +195,21 @@ try {
     Assert-True ($saved.Path -match 'specs[\\/]141-design-gate-runtime-hardening[\\/]gates[\\/]') 'FR-020/FR-006: packet is stored under the feature gates/ directory only'
     Write-Pass 'FR-020: durable 155-lite packet persisted under gates/'
 
+    # --- Fix 3 (decision-commit metadata integrity) ---
+    $newDecisionBlock = "## Human Decision`n`n- **Decision verdict**: approved for plan with Option B`n- **Chosen option**: Option B`n- **Reason**: Balanced.`n- **Modifications**: None.`n- **Design-analysis draft commit**: aaaaaaa`n- **Decision recorded in commit**: bbbbbbb`n"
+    $newModelOk = (Get-ToleranceFixtureArtifact) -replace '(?s)## Human Decision.*$', $newDecisionBlock
+    [System.IO.File]::WriteAllText($scaffold.Path, $newModelOk, [System.Text.UTF8Encoding]::new($false))
+    $okRes = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $projectRoot -FeatureRef '141-design-gate-runtime-hardening' -IterationNumber '001'
+    Assert-True ($okRes.Valid -eq $true) ("New decision-commit model with distinct draft/decision commits validates (errors: " + ($okRes.Errors -join '; ') + ')')
+    Write-Pass 'FR-003: new decision-commit metadata model (distinct draft/decision commits) validates'
+
+    $driftBlock = "## Human Decision`n`n- **Decision verdict**: approved for plan with Option B`n- **Chosen option**: Option B`n- **Reason**: Balanced.`n- **Modifications**: None.`n- **Design-analysis draft commit**: aaaaaaa`n- **Decision recorded in commit**: aaaaaaa`n"
+    $driftArtifact = (Get-ToleranceFixtureArtifact) -replace '(?s)## Human Decision.*$', $driftBlock
+    [System.IO.File]::WriteAllText($scaffold.Path, $driftArtifact, [System.Text.UTF8Encoding]::new($false))
+    $driftRes = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $projectRoot -FeatureRef '141-design-gate-runtime-hardening' -IterationNumber '001'
+    Assert-True ($driftRes.Valid -eq $false) 'FR-003: recording the draft commit as the decision commit is rejected'
+    Write-Pass 'FR-003: decision-commit == draft-commit drift is rejected'
+
     Write-Pass 'Design-gate runtime hardening unit tests passed'
 }
 finally {
