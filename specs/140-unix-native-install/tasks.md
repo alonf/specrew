@@ -41,7 +41,7 @@ Detailed decomposition in `iterations/002/plan.md`. Ubuntu-first because a clean
 
 **Iteration 2 SP**: 1+2+3+3+2+4+2+2 = **19 / 20** (Ubuntu auto-install + wrapper runtime proven in-iteration; T010 decision gates the flow).
 
-## Iteration 3 — macOS + remaining distros + docs + release gate (SKETCH; ~12-15 SP; not yet decomposed)
+## Iteration 3 — macOS + remaining distros + prerelease install + docs + release gate (SKETCH; ~14-18 SP; not yet decomposed)
 
 Decomposed in detail when Iteration 2 closes (no task table yet, per the planning boundary). Sketch scope:
 
@@ -49,9 +49,10 @@ Decomposed in detail when Iteration 2 closes (no task table yet, per the plannin
 - macOS wrapper runtime lane: forwarding / symlink / pwsh-missing / passthrough. (FR-002/003/004/008 macOS, SC-001/SC-003 macOS)
 - Docs-example parity arm of the cascade. (FR-011 docs arm)
 - Native-first docs (`README.md`, `docs/getting-started.md`, `docs/user-guide.md`, `docs/troubleshooting.md`): bash/zsh-first, pwsh as internal dependency, unsupported/manual fallback documented. (FR-014, SC-005)
-- Greenfield + brownfield installed validation (release gate; covers bundled Spec Kit 0.9.0); **no beta/stable publish without explicit maintainer authorization**. (FR-015, SC-006)
+- **`install.sh --prerelease` (FR-017)**: install Specrew **beta** from PSGallery (`Install-Module -AllowPrerelease` / PSResourceGet `-Prerelease` equivalent); `--help` + installer output state stable vs prerelease; version/source mismatch (installed module lacks the `specrew` wrapper command) → **fail closed** non-zero with an incompatibility message. Built AND proven here — a published beta exists at the release-gate moment, so the prerelease install + the mismatch check are exercised for real. (FR-017, SC-008)
+- Greenfield + brownfield installed validation (release gate; covers bundled Spec Kit 0.9.0), exercised via the **shell-native prerelease flow** `curl … | sh -s -- --prerelease` → `specrew version` / `specrew init` / `specrew start`; **no beta/stable publish without explicit maintainer authorization**. (FR-015, SC-006)
 
-Feature total ≈ **49-52 SP** across 3 iterations (each ≤ 20) — pending maintainer approval of the split.
+Feature total ≈ **51-55 SP** across 3 iterations (each ≤ 20) — pending maintainer approval of the split.
 
 ## Traceability Matrix
 
@@ -73,6 +74,7 @@ Feature total ≈ **49-52 SP** across 3 iterations (each ≤ 20) — pending mai
 | FR-014 | Iter 3 |
 | FR-015 | Iter 3 |
 | FR-016 | T010, T012, T013, T014, T017 |
+| FR-017 | Iter 3 (`--prerelease` built + proven with the release gate) |
 | SC-001 | T015 (Ubuntu); Iter 3 (macOS) |
 | SC-002 | T006 |
 | SC-003 | T015 (Ubuntu); Iter 3 (macOS) |
@@ -80,5 +82,6 @@ Feature total ≈ **49-52 SP** across 3 iterations (each ≤ 20) — pending mai
 | SC-005 | Iter 3 |
 | SC-006 | Iter 3 |
 | SC-007 | T015 (Ubuntu auto-install); Iter 3 (macOS) |
+| SC-008 | Iter 3 (`install.sh --prerelease` proven at the release gate) |
 
 Every task maps to ≥1 FR/SC; every FR/SC maps to ≥1 task (Iteration 3 coverage is sketched pending its decomposition).

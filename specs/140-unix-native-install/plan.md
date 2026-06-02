@@ -58,6 +58,7 @@ Ship POSIX `sh` wrapper commands over Specrew's exported alias surface so macOS/
 | FR-014 native-first docs | docs review + example parity | manual + CI |
 | FR-015 release gate | greenfield + brownfield installed validation | manual (release, Iter 3) |
 | FR-016 auto-install provenance/elevation/fail-closed | vendor-source-only + verified key + surfaced `sudo` + fail-closed; security lens | Ubuntu CI + security review |
+| FR-017 `--prerelease` install (beta-before-stable) | `install.sh --prerelease` → beta from PSGallery; stable/prerelease stated; mismatch→fail-closed | manual (Iter-3 release gate, against a published beta) |
 
 ## Phase 1 Quality Planning
 
@@ -192,7 +193,7 @@ executed unilaterally; only Iteration 2 is decomposed/scaffolded here):
 
 - **Iteration 1 — wrappers + generator + installer (platform-agnostic core, 19 SP) — CLOSED.** Registry reader, generator + template, committed `bin/` wrappers, registry↔wrapper parity, `install-shell-wrappers` subcommand, `FileList`/package inclusion + packaging parity test, PS unit tests.
 - **Iteration 2 — `install.sh` + Ubuntu/Debian auto-install, proven on Ubuntu CI (~18 SP)**: orchestration + platform-detection framework + Ubuntu/Debian `pwsh` auto-install (MS apt repo) + the `curl|sh` elevation path + the **Ubuntu CI runtime proof** (clean no-`pwsh` container, end-to-end) which also discharges the Iteration-1-deferred Unix wrapper runtime on Ubuntu, + the parity-cascade CI guard + the auto-install security lens. Auto-install is intrinsically runtime code, so this iteration **builds AND proves** the primary platform (no build-now/prove-later deferral). See `iterations/002/plan.md`.
-- **Iteration 3 — macOS + remaining distros + docs + release gate (~12-15 SP, SKETCH)**: macOS/Homebrew + other MS-supported distros, each proven on its surface (macOS lacks a clean no-`pwsh` CI env → manual proof budgeted); native-first docs (FR-014); greenfield + brownfield installed validation (FR-015) incl. bundled Spec Kit 0.9.0. Decomposed when Iteration 2 closes.
+- **Iteration 3 — macOS + remaining distros + prerelease install + docs + release gate (~14-18 SP, SKETCH)**: macOS/Homebrew + other MS-supported distros, each proven on its surface (macOS lacks a clean no-`pwsh` CI env → manual proof budgeted); **`install.sh --prerelease` (FR-017)** — beta from PSGallery + stable/prerelease output + version/source-mismatch fail-closed, built AND proven here against a published beta; native-first docs (FR-014); greenfield + brownfield installed validation (FR-015) incl. bundled Spec Kit 0.9.0, exercised via the `curl … | sh -s -- --prerelease` flow. Decomposed when Iteration 2 closes.
 
 Exact per-task SP confirmed at `/speckit.tasks` + capacity per iteration. Iteration 2 is decomposed in `iterations/002/plan.md`.
 
