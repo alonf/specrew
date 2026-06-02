@@ -5,3 +5,4 @@
 {"payload":{"boundary_type":"before-implement","task_id":null,"auth_commit_hash":"d58e2d90","iteration_number":"001","feature_ref":"140-design-analysis-gate"},"event_type":"boundary-sync","recorded_at":"2026-06-02T00:18:26Z","schema":"v1"}
 {"schema":"v1","event_type":"boundary-sync","payload":{"task_id":null,"auth_commit_hash":"17f9e073","boundary_type":"review-signoff","iteration_number":"001","feature_ref":"140-design-analysis-gate"},"recorded_at":"2026-06-02T06:42:38Z"}
 {"recorded_at":"2026-06-02T06:55:16Z","schema":"v1","event_type":"boundary-sync","payload":{"auth_commit_hash":"c780a1da","feature_ref":"140-design-analysis-gate","boundary_type":"retro","task_id":null,"iteration_number":"001"}}
+{"schema":"v1","payload":{"boundary_type":"iteration-closeout","iteration_number":"001","feature_ref":"140-design-analysis-gate","auth_commit_hash":"8485aa35","task_id":null},"event_type":"boundary-sync","recorded_at":"2026-06-02T06:59:31Z"}
