@@ -252,8 +252,9 @@ Assert-Match -Text ($coverageErrors -join "`n") -Pattern 'architecture-core' 'FR
 Assert-Match -Text ($coverageErrors -join "`n") -Pattern 'data-storage' 'FR-026 (SC-016): failure names the unaddressed lens'
 Write-Pass 'FR-026: unaddressed/placeholder selected lenses are blocked and named (SC-016)'
 
-# Grandfather-safe: a pre-FR-026 section (lenses listed, NO Addressed: entries) is skipped.
-$coverageGrandfather = @'
+# Bypass-closed (Proposal 145 Phase 5): selected lenses + NO Addressed entries + NO grandfather
+# marker -> FAIL naming every unaddressed lens. Deleting all Addressed lines must NOT no-op the gate.
+$coverageNoAddressed = @'
 # X
 
 ## Applicable Lenses
@@ -261,7 +262,17 @@ $coverageGrandfather = @'
 - **architecture-core** - `x`
 - **data-storage** - `x`
 '@
-Assert-True (@(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageGrandfather -IterationDirectory $coverageDir).Count -eq 0) 'FR-026: pre-FR-026 artifact (no Addressed entries) is grandfather-skipped'
+$noAddressedErrors = @(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageNoAddressed -IterationDirectory $coverageDir)
+Assert-True ($noAddressedErrors.Count -eq 2) 'FR-026: selected lenses + no Addressed entries (no grandfather marker) -> FAIL, not no-op'
+Assert-Match -Text ($noAddressedErrors -join "`n") -Pattern 'architecture-core' 'FR-026: no-Addressed failure names architecture-core'
+Assert-Match -Text ($noAddressedErrors -join "`n") -Pattern 'data-storage' 'FR-026: no-Addressed failure names data-storage'
+
+# EXPLICIT grandfather: a pre-FR-026 artifact carrying fr026_grandfathered:true is exempt (PASS),
+# even with selected lenses and no Addressed entries.
+$grandfatherDir = Join-Path $scratchRoot 'fr026-grandfather'
+$null = New-Item -ItemType Directory -Path $grandfatherDir -Force
+[System.IO.File]::WriteAllText((Join-Path $grandfatherDir 'lens-applicability.json'), '{"schema":"v1","fr026_grandfathered":true,"selected":["architecture-core","data-storage"]}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageNoAddressed -IterationDirectory $grandfatherDir).Count -eq 0) 'FR-026: explicit fr026_grandfathered marker exempts a pre-FR-026 artifact (PASS)'
 
 # No recorded selection -> no-op (SC-006 graceful).
 $coverageNoJson = Join-Path $scratchRoot 'fr026-no-json'
@@ -278,7 +289,7 @@ Assert-True (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value '') 'FR-0
 Assert-True (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value 'TBD') 'FR-026 placeholder: TBD token'
 Assert-True (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value '<fill me in>') 'FR-026 placeholder: angle-bracket template default'
 Assert-True (-not (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value 'see Option B Trade-offs')) 'FR-026 placeholder: a real pointer is not a placeholder'
-Write-Pass 'FR-026: grandfather-safe, no-op without selection, deterministic, placeholder-aware'
+Write-Pass 'FR-026: enforce-by-default, EXPLICIT-marker grandfather (bypass closed), no-op without selection, deterministic, placeholder-aware'
 
 Write-Pass 'Design-analysis gate unit tests passed'
 exit 0

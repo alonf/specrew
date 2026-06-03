@@ -14,9 +14,18 @@ load-bearing discipline, accepted by the maintainer at the design-analysis gate,
 lives in the analysis, not the gate**: FR-026 is a deterministic, LLM/network-free **anti-omission
 backstop**, not a quality guarantee; genuine engagement is enforced by the human design-analysis gate
 plus a **blocking delete-the-`Addressed:`-lines discriminator** at review-signoff. All six tasks
-(T001-T006) are `done`; selector suite **31/0**, design-analysis-gate suite **22/0** (no regression),
-three additional gate suites green, validator **PASS** (6/6). The **dogfood converged and the
-discriminator passed** (below). Verdict: **accepted**.
+(T001-T006) are `done`; selector suite **38/0**, design-analysis-gate suite **38 assertions / 14
+checkpoints, 0 fail** (no regression), three additional gate suites green, validator **PASS** (6/6).
+The **dogfood converged and the discriminator passed** (below).
+
+**Rework — first review-signoff was sent back.** The Proposal 145 Phase 5 gate-completeness review
+caught that grandfathering was *inferred* from "the section has no `Addressed:` lines", so deleting
+every `Addressed:` entry would silently no-op the gate even when `lens-applicability.json` recorded
+selected lenses — contradicting FR-026/SC-016. **Fixed:** grandfathering is now an **explicit**
+`fr026_grandfathered: true` marker in the questionnaire JSON; enforcement is the default, so absence
+of `Addressed:` entries FAILS and names every selected lens. Iteration 4's questionnaire carries the
+explicit marker (grandfather-safe, no retroactive failure). Bypass verified closed: stripping
+iteration 5's `Addressed:` lines now FAILS 4/4. Re-reviewed: **accepted**.
 
 Reviewed against the Proposal 145 dimensions (state truth, branch hygiene, functional correctness,
 test integrity, evidence integrity) plus the dogfood + discriminator evidence.
@@ -37,14 +46,14 @@ test integrity, evidence integrity) plus the dogfood + discriminator evidence.
 ### Functional correctness
 
 - **FR-009 (decision points feed the analysis):** file:///C:/Dev/Specrew-design-analysis/scripts/internal/lens-applicability.ps1 — `Get-SpecrewLensDecisionPoints` is a pure extractor of a lens file's `## Design Decision Points` (continuation lines folded; graceful `@()` when absent); `Format-SpecrewApplicableLensesSection -CatalogDir` renders each selected lens's decision points + an `Addressed:` pointer. No network/LLM.
-- **FR-026 (coverage enforcement):** file:///C:/Dev/Specrew-design-analysis/scripts/internal/design-analysis-gate.ps1 — `Test-SpecrewDesignAnalysisLensCoverage` reads the recorded `selected` set and requires a non-placeholder `Addressed:` entry per selected lens, else an error **naming** the lens; wired into `Test-SpecrewDesignAnalysisArtifact` so the pre-plan / plan-boundary gate blocks. Deterministic, LLM/network-free, **grandfather-safe** (only FR-026-shaped artifacts — those carrying `Addressed:` entries — are enforced, so Iteration 4 never retroactively fails).
+- **FR-026 (coverage enforcement):** file:///C:/Dev/Specrew-design-analysis/scripts/internal/design-analysis-gate.ps1 — `Test-SpecrewDesignAnalysisLensCoverage` reads the recorded `selected` set and requires a non-placeholder `Addressed:` entry per selected lens, else an error **naming** the lens; wired into `Test-SpecrewDesignAnalysisArtifact` so the pre-plan / plan-boundary gate blocks. Deterministic, LLM/network-free, and **enforce-by-default with an EXPLICIT grandfather marker**: a pre-FR-026 questionnaire must carry `fr026_grandfathered: true` to be exempt (Iteration 4's does), so deleting every `Addressed:` entry from an FR-026-era artifact cannot silently no-op the gate (the Phase 5 hole, now closed).
 - **FR-010 (still scoped):** no lens-file schema validation, no overrides, no standalone command, no auto-rationale — the deferred Proposal 156 deep scope stays out.
 - **Honest framing (no overclaim):** the gate's own error string and the docs call it ANTI-OMISSION, explicitly not a quality guarantee.
 
 ### Test integrity
 
-- file:///C:/Dev/Specrew-design-analysis/tests/unit/lens-applicability-selector.tests.ps1 — **31 pass / 0 fail**: the Iteration-4 selector tests plus T001 extraction (verbatim content, multi-line fold, missing-lens/missing-dir/empty-id graceful) and T002 enriched render (decision points + `Addressed:` placeholder, MD049-safe, back-compat without `-CatalogDir`).
-- file:///C:/Dev/Specrew-design-analysis/tests/unit/design-analysis-gate.tests.ps1 — **22 pass / 0 fail**: the Iteration-1 gate tests plus FR-026 / SC-016 (unaddressed selected lens FAILS naming it, all-addressed PASSES, placeholder/empty/TBD FAIL, no-json no-op, grandfather skip, determinism, placeholder detection).
+- file:///C:/Dev/Specrew-design-analysis/tests/unit/lens-applicability-selector.tests.ps1 — **38 pass / 0 fail**: the Iteration-4 selector tests plus T001 extraction (verbatim content, multi-line fold, missing-lens/missing-dir/empty-id graceful) and T002 enriched render (decision points + `Addressed:` placeholder, MD049-safe, back-compat without `-CatalogDir`).
+- file:///C:/Dev/Specrew-design-analysis/tests/unit/design-analysis-gate.tests.ps1 — **38 assertions / 14 checkpoints, 0 fail**: the Iteration-1 gate tests plus FR-026 / SC-016 (unaddressed selected lens FAILS naming it, all-addressed PASSES, placeholder/empty/TBD FAIL, no-json no-op, determinism, placeholder detection) plus the Phase-5 rework cases (**selected lenses + no `Addressed:` entries + no marker → FAIL naming all**, and **explicit `fr026_grandfathered` marker → PASS**).
 - Three additional gate suites green: design-gate-runtime-hardening (unit + integration) and design-analysis-boundary (integration). Validator **PASS**, all 6 iterations incl. 141/005.
 
 ### Evidence integrity
@@ -78,7 +87,7 @@ Iteration-5 quickstart render command.
 | T002 | FR-009, SC-006 | pass | Enriched render (decision points + `Addressed:` pointer); back-compat without `-CatalogDir`. |
 | T003 | FR-026, FR-010 | pass | `Test-SpecrewDesignAnalysisLensCoverage` wired into the gate; anti-omission; grandfather-safe; names the lens (SC-016). |
 | T004 | FR-009 | pass | Template nudge: decision points shape the options; `Addressed:` points into the comparison. |
-| T005 | FR-026, SC-016, SC-006 | pass | 31/0 selector + 22/0 gate incl. SC-016 + grandfather + determinism. |
+| T005 | FR-026, SC-016, SC-006 | pass | 38/0 selector + 38-assertion gate incl. SC-016, the Phase-5 bypass-closed + explicit-marker grandfather cases, determinism. |
 | T006 | TG-006, FR-009 | pass | quickstart Iteration-5 + dogfood + blocking discriminator (passed). |
 
 ## TG-006 classification (Rule 39 — implemented / enforced / observable / documented)
@@ -95,7 +104,7 @@ Iteration-5 quickstart render command.
 
 ## Follow-ups (not iteration-005 gaps)
 
-- The grandfather signal is "the artifact carries `Addressed:` entries"; a future author could bypass FR-026 by deleting all entries — that is precisely the discriminator scenario the blocking review-signoff step catches. A stronger machine signal (a versioned marker in `lens-applicability.json`) is a candidate hardening, not an iteration-005 gap.
+- **(Resolved this iteration — Proposal 145 Phase 5 send-back.)** Grandfathering is now the explicit `fr026_grandfathered` marker in `lens-applicability.json`, not the presence of `Addressed:` entries; enforcement is the default. Deleting every `Addressed:` entry from an FR-026-era artifact now FAILS the gate (verified, 4/4). The blocking delete-the-`Addressed:`-lines discriminator remains the genuine-engagement check layered on top of the omission gate.
 - Deferred Proposal 156 deep scope (lens-file schema-validation enforcement, overrides, standalone `specrew lens` command, per-lens rationale automation) remains future; FR-010 keeps it out here.
 
 ## Notes

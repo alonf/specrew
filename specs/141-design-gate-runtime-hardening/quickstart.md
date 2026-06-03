@@ -140,7 +140,10 @@ pwsh -File tests/integration/design-analysis-boundary.tests.ps1
   comparison *still* visibly engages each selected lens (its Trade-offs / Quality features). If the
   analysis goes blank, it was a checkbox and the iteration is sent back. This iteration dogfooded it
   on its own design analysis — the discriminator passed.
-- **Grandfather-safe.** FR-026 enforces only artifacts that carry `Addressed:` entries, so pre-FR-026
-  design analyses (e.g. Iteration 4) never retroactively fail.
+- **Grandfather-safe via an explicit marker (enforce-by-default).** A pre-FR-026 questionnaire must
+  carry `fr026_grandfathered: true` in its `lens-applicability.json` to be exempt (Iteration 4 does),
+  so it never retroactively fails. Grandfathering is **not** inferred from missing `Addressed:`
+  lines — deleting every `Addressed:` entry from an FR-026-era artifact FAILS the gate (naming each
+  selected lens) rather than silently no-opping it.
 - **Still deferred (FR-010):** the deeper Proposal 156 automation above remains out (lens-file schema
   validation, overrides, standalone command, auto-rationale).

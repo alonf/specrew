@@ -20,9 +20,10 @@ comparison itself, not a list of names) and **gate-enforced** (FR-026 — the pr
 `plan.md` when a selected lens is unaddressed). The gate is a **deterministic, LLM/network-free
 anti-omission backstop** — it guarantees no selected lens is silently omitted, *not* that engagement
 is genuine. Genuine engagement is enforced by the human design-analysis gate plus a **blocking
-delete-the-`Addressed:`-lines discriminator** at review-signoff. Grandfather-safe: FR-026 fires only
-for FR-026-shaped artifacts (those carrying `Addressed:` coverage entries), so pre-FR-026 iterations
-(e.g. Iteration 4) are untouched. Carried constraints: `index.yml` stays pure (gating map in the
+delete-the-`Addressed:`-lines discriminator** at review-signoff. Grandfather-safe via an EXPLICIT
+`fr026_grandfathered` marker (enforce-by-default): a pre-FR-026 questionnaire carries the marker to
+stay exempt (Iteration 4 does), so deleting all `Addressed:` entries from an FR-026-era artifact
+still FAILS rather than no-ops. Carried constraints: `index.yml` stays pure (gating map in the
 sibling file); no deferred Proposal 156 deep automation (lens-file schema validation, standalone
 command, auto-rationale, overrides); no release/Unix/wrapper surfaces; no push/PR while 141 is open.
 Capacity 17/20, within cap.
@@ -45,7 +46,7 @@ Capacity 17/20, within cap.
 | T002 | Enrich `Format-SpecrewApplicableLensesSection`: render per selected lens its decision points + a non-placeholder `Addressed:` pointer entry; keep graceful degradation ("none available") + MD049 asterisk emphasis | FR-009, SC-006 | US3 | 3 | Implementer | scripts/internal/lens-applicability.ps1 | done | claude | — | — |
 | T003 | FR-026 gate: `Test-SpecrewDesignAnalysisLensCoverage` reads `lens-applicability.json` `selected` + the artifact's Applicable Lenses `Addressed:` entries; each selected lens needs a non-placeholder entry, else error naming it. Wire into `Test-SpecrewDesignAnalysisArtifact`. Grandfather-safe (only FR-026-shaped artifacts); deterministic, LLM/network-free; honest "anti-omission" message | FR-026, FR-010 | US3 | 4 | Implementer | scripts/internal/design-analysis-gate.ps1 | done | claude | — | — |
 | T004 | Coordinator nudge in the template: instruct that each selected lens's decision points must shape the option Trade-offs and the `Addressed:` entry must point into the option comparison (engagement in the options, not a checklist) | FR-009 | US3 | 1 | Spec Steward | extensions/specrew-speckit/templates/design-analysis.template.md | done | claude | — | — |
-| T005 | Tests (reproduce-first): extraction present/absent/malformed; enriched render + graceful degradation + MD049 guard; FR-026 — SC-016 unaddressed-lens FAILS naming it, all-addressed PASSES, placeholder FAILS, no-json/no-lenses no-ops, grandfather (no `Addressed:` → skip), determinism | FR-026, SC-016, SC-006 | US3 | 4 | Reviewer | tests/unit/**, tests/integration/** | done | claude | — | — |
+| T005 | Tests (reproduce-first): extraction present/absent/malformed; enriched render + graceful degradation + MD049 guard; FR-026 — SC-016 unaddressed-lens FAILS naming it, all-addressed PASSES, placeholder FAILS, no-json/no-lenses no-ops, explicit-marker grandfather (PASS) + bypass-closed (no marker + no `Addressed:` → FAIL), determinism | FR-026, SC-016, SC-006 | US3 | 4 | Reviewer | tests/unit/**, tests/integration/** | done | claude | — | — |
 | T006 | Docs + dogfood + gap ledger (TG-006): quickstart Iteration-5 section; re-dogfood — the enriched render reproduces Iteration 5's own hand-authored Applicable Lenses section; apply the **blocking** delete-`Addressed:` discriminator; implemented/enforced/observable/documented gap ledger | TG-006, FR-009 | US0 | 2 | Planner | specs/141-design-gate-runtime-hardening/** | done | claude | — | — |
 
 ## Effort Model
@@ -93,9 +94,11 @@ Capacity 17/20, within cap.
   **blocking** step: if removing the coverage entries leaves the option comparison still visibly
   shaped by the lenses, engagement is real; if the analysis goes blank, the iteration is sent back
   to itself.
-- **Grandfather-safe by construction** (T003): FR-026 enforces coverage only for FR-026-shaped
-  artifacts (those carrying `Addressed:` entries). Iteration 4's design-analysis has none and is
-  unaffected — no retroactive failure. This mirrors the Proposal 144 grandfather discipline.
+- **Grandfather-safe via an EXPLICIT marker** (T003): enforcement is the default; a pre-FR-026
+  questionnaire carries `fr026_grandfathered: true` to be exempt (Iteration 4 does). Grandfathering
+  is never inferred from missing `Addressed:` entries, so deleting them from an FR-026-era artifact
+  FAILS rather than no-ops (the Proposal 145 Phase 5 gate-completeness fix). Mirrors the Proposal 144
+  grandfather discipline.
 - Reproduction/determinism first (T005): the extractor, render, and coverage check are pure
   functions, so SC-016 (unaddressed FAILS, all-addressed PASSES, placeholder FAILS) is a
   deterministic unit test, not a file-presence check.

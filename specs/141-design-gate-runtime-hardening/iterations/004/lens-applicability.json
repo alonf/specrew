@@ -1,6 +1,7 @@
 {
   "schema": "v1",
-  "note": "Iteration 4 design-analysis applicability answers (dogfood: new JSON artifact + sibling map = data/state).",
+  "note": "Iteration 4 design-analysis applicability answers (dogfood: new JSON artifact + sibling map = data/state). This iteration predates the FR-026 lens-coverage gate (Iteration 5 / Amendment A2); fr026_grandfathered marks it explicitly exempt from coverage enforcement.",
+  "fr026_grandfathered": true,
   "answers": {
     "ui": false,
     "security": false,

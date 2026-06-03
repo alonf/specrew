@@ -249,9 +249,13 @@ function Test-SpecrewDesignAnalysisLensCoverage {
     # genuine — a deterministic check cannot. Genuine engagement is enforced by the human design-
     # analysis gate plus the blocking delete-the-`Addressed:`-lines discriminator at review-signoff.
     #
-    # Grandfather-safe: only FR-026-shaped artifacts (those carrying >=1 "Addressed:" entry) are
-    # enforced, so pre-FR-026 design analyses (e.g. Iteration 4) never retroactively fail. Returns a
-    # string[] of error messages (empty = OK / not applicable).
+    # Enforcement is the DEFAULT whenever a questionnaire recorded selected lenses: absence of the
+    # "Addressed:" entries FAILS (every selected lens is reported unaddressed). Grandfathering is
+    # EXPLICIT, never inferred from missing "Addressed:" lines — a pre-FR-026 artifact must carry an
+    # explicit `fr026_grandfathered: true` marker in its lens-applicability.json to be exempt. This
+    # closes the deleting-all-`Addressed:`-lines bypass that would otherwise silently no-op the gate
+    # (the gate-completeness hole found by the Proposal 145 Phase 5 review). Returns a string[] of
+    # error messages (empty = OK / not applicable).
     param(
         [Parameter(Mandatory = $true)][string]$Content,
         [Parameter(Mandatory = $true)][string]$IterationDirectory
@@ -259,26 +263,30 @@ function Test-SpecrewDesignAnalysisLensCoverage {
 
     $errors = New-Object System.Collections.Generic.List[string]
 
-    # Selected lenses come from the recorded questionnaire artifact (decoupled; the JSON is the audit
-    # record). No artifact / no selection -> nothing to enforce (SC-006 graceful no-op).
+    # Selected lenses + the explicit grandfather marker both come from the recorded questionnaire
+    # artifact (decoupled; the JSON is the audit record). No artifact / no selection -> nothing to
+    # enforce (SC-006 graceful no-op).
     $answersPath = Join-Path $IterationDirectory 'lens-applicability.json'
     if (-not (Test-Path -LiteralPath $answersPath -PathType Leaf)) { return @() }
 
-    $selected = @()
-    try {
-        $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($null -ne $doc -and $doc.PSObject.Properties['selected']) {
-            $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-        }
-    }
+    $doc = $null
+    try { $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json }
     catch { return @() }
+    if ($null -eq $doc) { return @() }
+
+    $selected = @()
+    if ($doc.PSObject.Properties['selected']) {
+        $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
     if ($selected.Count -eq 0) { return @() }
+
+    # EXPLICIT grandfather (not inferred): a recorded `fr026_grandfathered: true` marker exempts a
+    # pre-FR-026 artifact. Enforcement is otherwise the default, so deleting every "Addressed:" line
+    # from an FR-026-era artifact does NOT no-op the gate — every selected lens is reported below.
+    if ($doc.PSObject.Properties['fr026_grandfathered'] -and [bool]$doc.fr026_grandfathered) { return @() }
 
     $section = Get-SpecrewDesignAnalysisSection -Content $Content -HeadingPatterns @('Applicable\s+Lenses')
     $body = if ($section.Found) { $section.Body } else { '' }
-
-    # Grandfather: enforce only FR-026-shaped artifacts (those carrying >=1 "Addressed:" entry).
-    if ($body -notmatch '(?im)^\s*[-*]?\s*Addressed\s*:') { return @() }
 
     foreach ($id in $selected) {
         $blockRegex = '(?ims)^[-*]\s*\*\*' + [regex]::Escape($id) + '\*\*.*?(?=^[-*]\s*\*\*|\z)'
