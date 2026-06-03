@@ -50,7 +50,7 @@ function _Read-SpecrewVersionFromPsd1 {
 
 # Path 0: explicit env override (iter-006 T001).
 if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) {
-    $candidate = Join-Path $env:SPECREW_MODULE_PATH 'scripts\internal\sync-boundary-state.ps1'
+    $candidate = Join-Path $env:SPECREW_MODULE_PATH 'scripts' 'internal' 'sync-boundary-state.ps1'
     if (Test-Path -LiteralPath $candidate -PathType Leaf) {
         $internalScriptPath = $candidate
         $resolvedModuleBase = $env:SPECREW_MODULE_PATH
@@ -62,8 +62,8 @@ if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) {
 if ([string]::IsNullOrWhiteSpace($internalScriptPath)) {
     $searchRoot = $PSScriptRoot
     while (-not [string]::IsNullOrWhiteSpace($searchRoot)) {
-        $candidate = Join-Path $searchRoot 'scripts\internal\sync-boundary-state.ps1'
-        $configExists = Test-Path -LiteralPath (Join-Path $searchRoot '.specrew\config.yml') -PathType Leaf
+        $candidate = Join-Path $searchRoot 'scripts' 'internal' 'sync-boundary-state.ps1'
+        $configExists = Test-Path -LiteralPath (Join-Path $searchRoot '.specrew' 'config.yml') -PathType Leaf
         $candidateExists = Test-Path -LiteralPath $candidate -PathType Leaf
         if ($configExists -and $candidateExists) {
             $internalScriptPath = $candidate
@@ -86,7 +86,7 @@ if ([string]::IsNullOrWhiteSpace($internalScriptPath)) {
         Sort-Object Version -Descending |
         Select-Object -First 1
     if ($null -ne $specrewModule) {
-        $candidate = Join-Path $specrewModule.ModuleBase 'scripts\internal\sync-boundary-state.ps1'
+        $candidate = Join-Path $specrewModule.ModuleBase 'scripts' 'internal' 'sync-boundary-state.ps1'
         if (Test-Path -LiteralPath $candidate -PathType Leaf) {
             $internalScriptPath = $candidate
             $resolvedModuleBase = $specrewModule.ModuleBase
@@ -110,7 +110,7 @@ Fix one of:
 }
 
 # iter-006 T001: stale-install detection — compare resolved version against project's expected version.
-$projectConfigPath = Join-Path $ProjectPath '.specrew\config.yml'
+$projectConfigPath = Join-Path $ProjectPath '.specrew' 'config.yml'
 if ((Test-Path -LiteralPath $projectConfigPath -PathType Leaf) -and ($null -ne $resolvedModuleVersion)) {
     $configLines = Get-Content -LiteralPath $projectConfigPath -ErrorAction SilentlyContinue
     $expectedRaw = $configLines | ForEach-Object {

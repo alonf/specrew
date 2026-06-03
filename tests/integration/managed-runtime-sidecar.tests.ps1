@@ -124,6 +124,23 @@ finally {
     if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
 }
 
+# ----------------------------------------------------------------------------
+# Source/mirror parity (FR-005/SC-005): the deployed .specify mirror must carry
+# the same provenance-by-content marker fix as the source. The fingerprint is the
+# ordinal exact-match guard added by the Feature 160 fix.
+# ----------------------------------------------------------------------------
+$fixFingerprint = '[System.String]::Equals($content, $canonical, [System.StringComparison]::Ordinal)'
+$deployMirror = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1'
+Assert-True ((Get-Content -LiteralPath $deployScript -Raw).Contains($fixFingerprint)) `
+    "Source deploy-squad-runtime.ps1 carries the provenance-by-content marker fix"
+if (Test-Path -LiteralPath $deployMirror -PathType Leaf) {
+    Assert-True ((Get-Content -LiteralPath $deployMirror -Raw).Contains($fixFingerprint)) `
+        ".specify mirror deploy-squad-runtime.ps1 carries the same fix (source/mirror parity)"
+}
+else {
+    Write-Info "deploy mirror not present (downstream layout); parity check skipped"
+}
+
 if ($script:Failures.Count -gt 0) {
     Write-Host ("`n{0} assertion(s) failed:" -f $script:Failures.Count) -ForegroundColor Red
     foreach ($f in $script:Failures) { Write-Host "  - $f" -ForegroundColor Red }
