@@ -276,36 +276,53 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 - **FR-008**: Specrew MUST build on the existing Feature 140 design-analysis-gate
   helper and plan-boundary enforcement rather than rewriting them.
 
-#### Lens catalog + applicability selection (Iterations 4-5; amended 2026-06-03 — Amendments A1, A2)
+#### Lens catalog + applicability selection (Iterations 4-6; amended 2026-06-04 — Amendments A1, A2, A3)
 
-- **FR-009**: Specrew MUST reference the existing repo-local design-lens files
-  (`extensions/specrew-speckit/knowledge/design-lenses/`) as read-only input and render an
-  "Applicable Lenses" section in `design-analysis.md` that, for each lens selected by the FR-025
-  questionnaire, surfaces the lens's **Design Decision Points** so the option comparison is genuinely
-  informed by the lens knowledge (not merely a list of names); the analysis MUST address each
-  selected lens (enforced by FR-026).
-- **FR-025**: Specrew MUST determine lens applicability via a small, fixed **applicability
-  questionnaire** (e.g. "user-facing UI?", "auth/secrets/PII/compliance?", "persistent data?",
-  "external service/API integration?", "deployment/CI/release changes?", "performance/scale or
-  resilience concerns?"), recorded as a JSON artifact in the iteration directory. Lens selection
-  MUST be a **deterministic function** of the recorded answers and a question→lens map
-  (foundational lenses always-on; specialized lenses gated by their mapped answer), so identical
-  answers always yield the same `Applicable Lenses` set and the JSON serves as the audit trail for
-  why each lens was or was not selected. The questionnaire MAY be answered by the Crew with human
-  confirmation. The JSON-to-selection step MUST NOT itself require network or an LLM (the answers
-  are the only judgment input; the mapping is mechanical).
+- **FR-009**: The repo-local design-lens knowledge (`extensions/specrew-speckit/knowledge/design-lenses/`)
+  MUST inform the lifecycle, not merely a single design-analysis section: for each selected lens, its
+  **Design Decision Points** surface into the work so the requirements (specify), the design's option
+  comparison, and the plan are genuinely informed by the lens knowledge (not a list of names). The
+  design analysis MUST address each selected lens (enforced by FR-026). *(Amended — A3: broadened from
+  "render an Applicable Lenses section in design-analysis.md" to "inform requirements + design + plan.")*
+- **FR-025**: Specrew MUST determine lens applicability via an **interactive, expertise-adapted
+  applicability questionnaire** the Crew poses to the human **early — before clarify (FR-027)** —
+  covering the material areas (user-facing UI? auth/secrets/PII/compliance? persistent data? external
+  service/API integration? deployment/CI/release changes? performance/scale or resilience?). The Crew
+  MUST **ask the human** these questions, adapting question depth to the recorded user-profile expertise
+  dials per the F-016 interaction model (concise expert-level questions where a dial is high; explain +
+  recommend a default where it is low), surface the resulting lens decisions for confirmation, and MUST
+  NOT silently auto-resolve a material lens area. Answers are recorded as a JSON artifact; lens
+  selection from the answers remains a **deterministic, LLM/network-free function** of the answers + a
+  question→lens map (foundational always-on; specialized gated by their mapped answer), so identical
+  answers yield the same set and the JSON is the audit trail. *(Amended — A3: was "a fixed questionnaire
+  that MAY be answered by the Crew"; the Iteration 4-5 deterministic selector + sibling map + decision-
+  point extractor are retained as the mechanism.)*
 - **FR-026**: The pre-plan design-analysis gate MUST enforce **lens coverage** — for each lens the
   FR-025 questionnaire selected, the design analysis MUST record that the lens's decision points were
-  addressed (a deterministic per-lens "Addressed:" coverage entry). The gate MUST block `plan.md`
-  when a selected lens is unaddressed, naming it. The check is deterministic and LLM/network-free (it
-  verifies a non-placeholder coverage entry per selected lens; it does not judge semantics).
-- **FR-010**: The lens integration MUST stay scoped. Questionnaire-driven selection (FR-025),
-  decision-point surfacing (FR-009), and the lens-coverage enforcement gate (FR-026) are in scope
-  (Iterations 4-5; FR-026 un-deferred 2026-06-03 — Amendment A2). **Truly-deep Proposal 156
-  automation — project-local lens overrides, validation of the lens FILES against a schema, and
-  broad cross-phase lens automation — remains deferred** and MUST NOT be implemented here. The
-  "Applicable Lenses" section MUST degrade gracefully (state "none available") when the catalog or
-  the answers are absent (e.g. a downstream project without lenses).
+  addressed (a deterministic per-lens "Addressed:" coverage entry, with explicit grandfathering — not
+  inferred from missing entries). The gate MUST block `plan.md` when a selected lens is unaddressed,
+  naming it. The check is deterministic and LLM/network-free (it verifies a non-placeholder coverage
+  entry per selected lens; it does not judge semantics — an anti-omission backstop, not a quality
+  guarantee).
+- **FR-027**: The lens-applicability intake (FR-025) MUST run as an **early lifecycle step, before
+  clarify**, so its recorded answers are an input that shapes the requirements (specify), the clarify
+  questions, the design analysis, and the plan — not only the `design-analysis.md` "Applicable Lenses"
+  section. The selected lenses' decision points MUST be available to those earlier phases. *(New — A3.)*
+- **FR-028**: File references MUST obey their rendering context. Human-facing **console/terminal** prose
+  (orientation, boundary packets, narration) uses bare `file:///` URLs (terminal-clickable); **persisted
+  `.md` artifacts** (design-gate packets, review, design-analysis, retro, etc.) use markdown links
+  `[text](relative-path)` so they navigate in an editor — a reference MAY carry both. The boundary-handoff
+  bare-path rule MUST honor this context and MUST NOT flag non-path `token/token` prose (e.g. `RRT/Bug1`,
+  `FR/SC`) as a bare path. *(New — A3; supersedes the blanket "bare `file:///` everywhere" reading of the
+  packet rule.)*
+- **FR-010**: The lens integration MUST stay scoped. The A3 re-scope changes **when** the questionnaire
+  runs (early — FR-027), **who** answers (the human, interactively — FR-025), and **how** the answers
+  flow (into requirements/design/plan — FR-009); it **retains** the Iteration 4-5 engine (deterministic
+  selector, sibling map, decision-point extractor, FR-026 coverage gate). **Truly-deep Proposal 156
+  automation — project-local lens overrides, validation of the lens FILES against a schema, and broad
+  cross-phase lens automation — remains deferred** and MUST NOT be implemented here. The questionnaire +
+  "Applicable Lenses" surface MUST degrade gracefully (state "none available") when the catalog or the
+  answers are absent (e.g. a downstream project without lenses).
 
 > **Amendment A1 (2026-06-03, maintainer-directed):** FR-009/FR-010 were originally pre-deferred
 > (2026-06-02) as a *lightweight read-only* surface-the-catalog slice, with all selection
@@ -326,6 +343,19 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 > unaddressed). This **un-defers the enforcement** that A1/FR-010 had parked; only validation of the
 > lens FILES against a schema + project-local overrides + broad cross-phase automation stay deferred.
 > Maintainer directive: "implement all, the complete package, state of the art."
+>
+> **Amendment A3 (2026-06-04, maintainer-directed after an empirical manual end-to-end test):** A fresh
+> greenfield run of the Iteration 4-5 lens feature surfaced that it **missed its core intent** — the
+> questionnaire was *auto-answered by the agent* at the *design-analysis stop* (post-clarify). The
+> maintainer's intent is that lens selection is an **interactive, expertise-adapted human intake**
+> (FR-025) run **early, before clarify** (FR-027), so its answers shape the requirements, clarify,
+> design, and plan (FR-009), and that file references obey a **console-vs-persisted context model**
+> (FR-028). The Iteration 4-5 *mechanics* (selector, sibling map, decision-point extractor, FR-026
+> coverage gate) are sound and **retained as the engine**; what changes is the placement, the
+> interactivity, and the flow. **Iteration 5 is closed (mechanics delivered); the re-scope is built in
+> Iteration 6.** Two cross-feature flow bugs the test exposed (downstream `Specrew.psd1` FileList-sort
+> warning; handoff-validator `token/token` bare-path false-positive) are bundled — see the Smoke-test
+> bug bundle. Maintainer directive: "extend the effort to do things right — replan, fix all."
 
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
@@ -343,6 +373,14 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   during a launch on a different host.
 - **FR-015**: The four smoke-test defects (FR-011 through FR-014) MUST remain
   within this feature and MUST NOT be pushed to a separate feature.
+- **FR-029**: Boundary-state sync MUST NOT emit a spurious `Specrew.psd1` FileList-sort
+  warning in a downstream project that has no module manifest; the FileList-sort step is a
+  Specrew-repo-only operation and MUST be guarded (skipped when no `Specrew.psd1` is present).
+  (Added 2026-06-04 — Amendment A3; manual-test flow bug. The companion handoff `token/token`
+  bare-path false-positive is covered by FR-028.) Lower-priority manual-test observations —
+  `.specify/feature.json` being gitignored while the agent attempts to stage it, and the
+  version-display inconsistency (`0.31.1-beta1` banner vs `0.31.1` config vs `0.31.0` installed)
+  — are noted for triage but are not blocking FRs.
 
 #### Sequencing, scope, and governance
 
@@ -435,10 +473,12 @@ than deferring to another feature.
 | FR-006 | Spec Steward, Planner, Reviewer | Iteration 1 |
 | FR-007 | Planner, Implementer, Reviewer | Iteration 1 |
 | FR-008 | Implementer, Reviewer | Iteration 1 |
-| FR-009 | Implementer, Reviewer | Iteration 4 (un-deferred 2026-06-03 — Amendment A1) |
-| FR-010 | Spec Steward, Planner, Reviewer | Iteration 4 (un-deferred 2026-06-03 — Amendment A1) |
-| FR-025 | Implementer, Reviewer | Iteration 4 (added 2026-06-03 — Amendment A1) |
+| FR-009 | Implementer, Reviewer | Iteration 4 (A1); re-scoped to Iteration 6 (informs requirements/design/plan — A3) |
+| FR-010 | Spec Steward, Planner, Reviewer | Iteration 4 (A1); re-scoped Iteration 6 (engine retained — A3) |
+| FR-025 | Implementer, Reviewer | Iteration 4 (A1); re-scoped to Iteration 6 (interactive, expertise-adapted, early — A3) |
 | FR-026 | Implementer, Reviewer | Iteration 5 (added 2026-06-03 — Amendment A2; lens-coverage enforcement) |
+| FR-027 | Implementer, Reviewer | Iteration 6 (added 2026-06-04 — Amendment A3; lens intake before clarify) |
+| FR-028 | Implementer, Reviewer | Iteration 6 (added 2026-06-04 — Amendment A3; console-vs-persisted file references) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -508,6 +548,15 @@ than deferring to another feature.
   the failure names the unaddressed lens; once every selected lens carries a non-placeholder
   "Addressed:" coverage entry, the gate passes. The check is deterministic and LLM/network-free.
   (Added 2026-06-03 — Amendment A2; FR-026.)
+- **SC-017**: The lens-applicability intake runs before clarify, and its recorded answers are
+  demonstrably available as input to the requirements, clarify questions, design analysis, and plan
+  (not only the design-analysis "Applicable Lenses" section). (Added 2026-06-04 — Amendment A3; FR-027.)
+- **SC-018**: The lens questionnaire is posed to the human interactively — no material lens area is
+  silently auto-resolved — and the question depth adapts to the recorded user-profile expertise dials
+  (concise where high; explain + recommend where low). (Added 2026-06-04 — Amendment A3; FR-025.)
+- **SC-019**: Console/terminal prose renders file references as `file:///` URLs while persisted `.md`
+  artifacts render them as navigable markdown links, and the boundary-handoff bare-path rule does not
+  flag non-path `token/token` prose (e.g. `RRT/Bug1`, `FR/SC`). (Added 2026-06-04 — Amendment A3; FR-028.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.
