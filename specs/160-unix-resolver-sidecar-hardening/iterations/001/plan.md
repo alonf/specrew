@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 19.5/20 story_points
 **Started**: 2026-06-03
 **Completed**:
@@ -38,24 +38,36 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Classify dirty tree; record unrelated files to exclude | FR-010 | US3 | 0.5 | Implementer | — | planned | claude | — | — |
-| T002 | Create Iteration 001 evidence note with two finding headings | FR-001 | US3 | 0.5 | Spec Steward | `specs/160-unix-resolver-sidecar-hardening/iterations/001/**` | planned | claude | — | — |
-| T003 | Inspect resolver path surfaces; record candidate expressions | FR-002 | US1 | 1.0 | Implementer | `Specrew.psm1`, `scripts/specrew.ps1` | planned | claude | — | — |
-| T004 | Add deterministic resolver path-semantics probe (pre-fix) | FR-002 | US1 | 2.0 | Implementer | `tests/integration/unix-resolver-path-semantics.tests.ps1` | planned | claude | — | — |
-| T005 | Run resolver probe; record confirmed/not-confirmed/blocked | FR-001 | US1 | 1.0 | Reviewer | `tests/integration/unix-resolver-path-semantics.tests.ps1` | planned | claude | — | — |
-| T006 | Inspect managed-refresh + marker surfaces; record files | FR-006 | US2 | 1.0 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`, `hosts/**` | planned | claude | — | — |
-| T007 | Add direct deploy-logic fixture for marker create/recognize | FR-005 | US2 | 2.5 | Implementer | `tests/integration/managed-runtime-sidecar.tests.ps1` | planned | claude | — | — |
-| T008 | Run sidecar fixture; record confirmed/not-confirmed/blocked | FR-005 | US2 | 1.0 | Reviewer | `tests/integration/managed-runtime-sidecar.tests.ps1` | planned | claude | — | — |
-| T009 | No-blind-fix gate: verify dispositions; activate/skip fixes | FR-009 | US3 | 1.0 | Reviewer | `specs/160-unix-resolver-sidecar-hardening/iterations/001/**` | planned | claude | — | — |
-| T010 | Conditional resolver fix (only if confirmed) | FR-003 | US1 | 1.5 | Implementer | `Specrew.psm1`, `scripts/specrew.ps1` | planned | claude | — | — |
-| T011 | Conditional resolver regression proof (only if T010 ran) | FR-004 | US1 | 1.0 | Reviewer | `tests/integration/unix-resolver-path-semantics.tests.ps1` | planned | claude | — | — |
-| T012 | Conditional sidecar fix (only if confirmed broken) | FR-007 | US2 | 1.5 | Implementer | `hosts/**`, `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | planned | claude | — | — |
-| T013 | Conditional sidecar regression proof (only if T012 ran) | FR-008 | US2 | 1.0 | Reviewer | `tests/integration/managed-runtime-sidecar.tests.ps1` | planned | claude | — | — |
-| T014 | Conditional docs update (only on confirmed behavior change) | FR-010 | US3 | 1.0 | Spec Steward | `docs/**`, `README.md` | planned | claude | — | — |
-| T015 | Run focused tests + governance validation; record results | FR-010 | US3 | 1.0 | Reviewer | `tests/integration/**` | planned | claude | — | — |
-| T016 | Assemble review evidence + final dispositions | FR-009 | US3 | 0.75 | Reviewer | `specs/160-unix-resolver-sidecar-hardening/iterations/001/**` | planned | claude | — | — |
-| T017 | Update drift log on scope/environment/source divergence | FR-009 | US3 | 0.5 | Spec Steward | `specs/160-unix-resolver-sidecar-hardening/iterations/001/drift-log.md` | planned | claude | — | — |
-| T018 | Complete reviewer readiness before review signoff | FR-010 | US3 | 0.75 | Reviewer | `specs/160-unix-resolver-sidecar-hardening/iterations/001/**` | planned | claude | — | — |
+| T001 | Classify dirty tree; record unrelated files to exclude | FR-010 | US3 | 0.5 | Implementer | — | done | claude | — | accepted |
+| T002 | Create Iteration 001 evidence note with two finding headings | FR-001 | US3 | 0.5 | Spec Steward | `specs/160-unix-resolver-sidecar-hardening/iterations/001/**` | done | claude | — | accepted |
+| T003 | Inspect resolver path surfaces; record candidate expressions | FR-002 | US1 | 1.0 | Implementer | `Specrew.psm1`, `scripts/specrew.ps1` | done | claude | — | accepted |
+| T004 | Add deterministic resolver path-semantics probe (pre-fix) | FR-002 | US1 | 2.0 | Implementer | `tests/integration/unix-resolver-path-semantics.tests.ps1` | done | claude | — | accepted |
+| T005 | Run resolver probe; record confirmed/not-confirmed/blocked | FR-001 | US1 | 1.0 | Reviewer | `tests/integration/unix-resolver-path-semantics.tests.ps1` | done | claude | — | accepted |
+| T006 | Inspect managed-refresh + marker surfaces; record files | FR-006 | US2 | 1.0 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`, `hosts/**` | done | claude | — | accepted |
+| T007 | Add direct deploy-logic fixture for marker create/recognize | FR-005 | US2 | 2.5 | Implementer | `tests/integration/managed-runtime-sidecar.tests.ps1` | done | claude | — | accepted |
+| T008 | Run sidecar fixture; record confirmed/not-confirmed/blocked | FR-005 | US2 | 1.0 | Reviewer | `tests/integration/managed-runtime-sidecar.tests.ps1` | done | claude | — | accepted |
+| T009 | No-blind-fix gate: verify dispositions; activate/skip fixes | FR-009 | US3 | 1.0 | Reviewer | `specs/160-unix-resolver-sidecar-hardening/iterations/001/**` | done | claude | — | accepted |
+| T010 | Conditional resolver fix (only if confirmed) | FR-003 | US1 | 1.5 | Implementer | `Specrew.psm1`, `scripts/specrew.ps1` | done | claude | — | accepted |
+| T011 | Conditional resolver regression proof (only if T010 ran) | FR-004 | US1 | 1.0 | Reviewer | `tests/integration/unix-resolver-path-semantics.tests.ps1` | done | claude | — | accepted |
+| T012 | Conditional sidecar fix (only if confirmed broken) | FR-007 | US2 | 1.5 | Implementer | `hosts/**`, `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | done | claude | — | accepted |
+| T013 | Conditional sidecar regression proof (only if T012 ran) | FR-008 | US2 | 1.0 | Reviewer | `tests/integration/managed-runtime-sidecar.tests.ps1` | done | claude | — | accepted |
+| T014 | Conditional docs update (only on confirmed behavior change) | FR-010 | US3 | 1.0 | Spec Steward | `docs/**`, `README.md` | done | claude | — | accepted |
+| T015 | Run focused tests + governance validation; record results | FR-010 | US3 | 1.0 | Reviewer | `tests/integration/**` | done | claude | — | accepted |
+| T016 | Assemble review evidence + final dispositions | FR-009 | US3 | 0.75 | Reviewer | `specs/160-unix-resolver-sidecar-hardening/iterations/001/**` | done | claude | — | accepted |
+| T017 | Update drift log on scope/environment/source divergence | FR-009 | US3 | 0.5 | Spec Steward | `specs/160-unix-resolver-sidecar-hardening/iterations/001/drift-log.md` | done | claude | — | accepted |
+| T018 | Complete reviewer readiness before review signoff | FR-010 | US3 | 0.75 | Reviewer | `specs/160-unix-resolver-sidecar-hardening/iterations/001/**` | done | claude | — | accepted |
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
+| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
 
 ## Concurrency Rationale
 

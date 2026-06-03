@@ -22,13 +22,38 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 2
+**Resolution rate**: 100% (2/2 resolved)
+**Specification drift**: None — both events are scope-boundary discoveries handled within plan, not spec/impl divergence
 
 ## Events
 
-No specification drift detected during Iteration 001 execution to date.
+### D-001 — Resolver backslash pattern is codebase-wide (scope boundary, not drift)
+
+- **Type**: scope-discovery (no spec/impl divergence).
+- **Observed**: While fixing the boundary-sync resolver (Finding 1), a grep found the
+  same embedded-backslash `Join-Path`/`Test-Path` ChildPath pattern in ~105
+  occurrences across 18 production scripts, including a sibling resolver in
+  `validate-governance.ps1` (L1491/L1500, dashboard-renderer dev-tree-vs-installed
+  resolution) with the identical latent Unix bug.
+- **Decision**: Out of scope for Feature 160. Proposal 160 explicitly scoped only
+  the boundary-sync resolver, and a blind 105-site sweep would violate the
+  no-blind-fix discipline and iteration capacity.
+- **Resolution**: `deferred` to a follow-up proposal (codebase-wide Unix
+  path-separator portability sweep + a CI lint rejecting new embedded-backslash
+  ChildPaths). Recorded in `review.md` "Scope Boundary" section. No spec change
+  required; Feature 160's spec already scoped exactly two suspicions.
+
+### D-002 — Self-host scaffolder template defects (tooling note, not feature drift)
+
+- **Type**: tooling observation in the self-host tree (not a spec/impl gap for F-160).
+- **Observed**: (a) `scaffold-iteration-artifacts.ps1` emitted `drift-log.md` without
+  a trailing newline, tripping the pre-boundary markdownlint gate (MD047) on the
+  first boundary-sync; (b) the same scaffold emitted `state.md` without the
+  canonical `Current Phase` / `Iteration Status` fields the validator requires.
+- **Resolution**: `fixed-now` locally (newline added; canonical state.md fields
+  populated). Flagged for retro as real defects in this repo's scaffolder, since
+  this is the Specrew self-host tree. No Feature-160 spec impact.
 
 ### Resolution Strategies (Unused)
 

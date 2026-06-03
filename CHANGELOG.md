@@ -6,6 +6,11 @@ baseline that each release number represents.
 
 ## Unreleased
 
+### Fixed
+
+- **Feature 160 — Unix resolver path portability (Proposal 160).** The boundary-sync wrapper (`extensions/specrew-speckit/scripts/sync-boundary-state.ps1` and its deployed `.specify` mirror) built its module-resolution candidate paths with hardcoded backslash separators (`scripts\internal\sync-boundary-state.ps1`, `.specrew\config.yml`). On Unix, PowerShell does not interpret an embedded `\` as a separator, so `Test-Path` saw a single literal filename and Path 0/1/2 (plus the stale-install config probe) could never match — the wrapper threw "Unable to locate the internal sync-boundary-state helper" on Linux/macOS. All candidate construction now uses separator-safe multi-segment `Join-Path` (identical on Windows, correct on Unix). The Windows symptom seen during Feature-140 closeout was confirmed to be the `$env:SPECREW_MODULE_PATH` override selecting the installed module by design, not a walk-up bug.
+- **Feature 160 — managed-skill "stuck preserving" marker provenance (Proposal 161).** `Test-IsManagedLegacySkillDirectory` in `deploy-squad-runtime.ps1` (source + `.specify` mirror) treated any front-matter (`---`) SKILL.md as user-edited when no `.specrew-managed` marker was present. Because every current canonical skill template starts with front matter, a marker-less legacy `.copilot/skills/specrew-*` dir holding Specrew's own canonical content was misclassified as user-edited and frozen. The classifier now recognizes content that byte-matches the definition's canonical content (ordinal exact match) as managed before the front-matter heuristic. The change is data-loss-safe: genuinely user-edited content never matches and stays preserved.
+
 ## [0.31.0] - 2026-06-03
 
 Stable release — promoted from `0.31.0-beta4` after beta-before-stable validation (Linux-validated; macOS CI-covered + manual-waived). Consolidates the `0.31.0-beta1`…`beta4` entries below.
