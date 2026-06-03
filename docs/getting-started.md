@@ -11,44 +11,9 @@
 
 Four commands. A new directory, a one-line feature description, and Specrew runs the full spec-driven lifecycle end-to-end. Read the [README](../README.md) first if you want the philosophy; this page just gets you running.
 
-### 1. Check dependencies
+### 1. Install Specrew
 
-```powershell
-pwsh --version          # PowerShell 7.x or later
-git --version
-uv --version            # required for Spec Kit install/repair
-npm --version           # required for Squad install
-gh --version            # required for PR-creation surfaces (optional but recommended)
-```
-
-If any are missing:
-
-- **PowerShell 7**: [https://aka.ms/powershell](https://aka.ms/powershell)
-- **Git**: [https://git-scm.com/downloads](https://git-scm.com/downloads)
-- **uv**: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"` (Windows) or `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux)
-- **Node.js + npm**: [https://nodejs.org/](https://nodejs.org/) (Node 24+). On macOS with `nvm`, a `brew`-installed Node can be *shadowed* by an older `nvm` default — verify `node -v` **inside `pwsh`** (the runtime Specrew uses), not only in your login shell. See [troubleshooting](troubleshooting.md#macos-node-version-shadowed-by-nvm).
-- **GitHub CLI**: [https://cli.github.com/](https://cli.github.com/) — used for the PR-creation lifecycle gates
-
-#### Pick at least one host CLI
-
-Specrew needs one of the supported **agent host CLIs** to actually run a lifecycle session. There are five supported hosts — install at least one. You select which one at launch time via `specrew start --host <kind>`. **Two defaults to keep in mind:**
-
-- **`--host` flag default (non-interactive / CI / automation)**: `copilot` — most-tested host, predictable for headless runs
-- **Interactive menu default (TTY, multiple installed hosts)**: highest-priority installed host in the order **Claude → Cursor → Codex → Copilot → Antigravity**. The interactive menu shows installed hosts in priority order; `[default 1]` selects the highest-priority one
-
-When `--host` is omitted in interactive mode, Specrew shows a numbered menu of installed hosts (plus an "(not installed)" group with install URLs).
-
-| Host | `--host` value | CLI binary | Install URL | Notes |
-|---|---|---|---|---|
-| **GitHub Copilot** *(`--host` flag default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; the `--host` flag falls back to `copilot` in non-interactive contexts. Interactive menu priority: 4 of 5 |
-| **Claude Code** | `claude` | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) | Headless `claude -p` invocation; rich subagent + hook surface (see [Proposal 105](../proposals/105-host-native-hook-deployment.md) for the hook-deployment follow-up) |
-| **Cursor** | `cursor` | `cursor-agent` | [cursor.com/cli](https://cursor.com/cli) | Interactive `cursor-agent "<prompt>" --workspace <path>` invocation; `--force` maps from `--allow-all`. No user-defined slash commands (like Codex) — skills + Crew charters deploy as `.cursor/rules/*.mdc` context; coordinator prompt via `AGENTS.md`. Menu priority 2 of 5 (between Claude and Codex). Added in F-050 |
-| **Codex CLI** | `codex` | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) | `codex exec --cd` invocation; no user-defined slash commands so the Crew uses pwsh-form boundary-advance instructions instead |
-| **Antigravity** | `antigravity` | `agy` | [antigravity.google](https://antigravity.google/) | `agy -i <prompt> --add-dir <path>` invocation; `--dangerously-skip-permissions` maps from `--allow-all`. Graduated from deferred to supported in v0.27.0 (F-044 iter-005) |
-
-Reserved-but-deferred kind: `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe — partially implemented via the F-043 first-run menu but `auto` literal still rejected). Specrew rejects this with explicit "deferred" guidance rather than silently falling back.
-
-### 2. Install Specrew
+Start here. The dependency details are below the install commands, but the happy path is intentionally short.
 
 #### macOS / Linux — native shell (recommended)
 
@@ -73,6 +38,46 @@ Verify:
 ```powershell
 specrew --version
 ```
+
+### 2. Dependencies Specrew uses
+
+You do not need to memorize this list before installing. Use it when an install/bootstrap step reports a missing tool or when you are preparing a machine manually.
+
+```powershell
+specrew --version
+git --version
+pwsh --version          # Windows: required shell/runtime; macOS/Linux: auto-installed by install.sh when missing
+uv --version            # used for Spec Kit install/repair
+npm --version           # used for Squad install when Copilot/Squad surfaces are needed
+gh --version            # optional but recommended for PR-creation surfaces
+```
+
+Required or commonly used dependencies:
+
+- **Git**: [https://git-scm.com/downloads](https://git-scm.com/downloads)
+- **PowerShell 7**: [https://aka.ms/powershell](https://aka.ms/powershell). On macOS/Linux, the native `install.sh` path auto-installs it as an internal dependency when missing. On Windows, run Specrew from PowerShell 7+.
+- **uv**: `powershell -c "irm https://astral.sh/uv/install.ps1 | iex"` (Windows) or `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux)
+- **Node.js + npm**: [https://nodejs.org/](https://nodejs.org/) (Node 24+). On macOS with `nvm`, a `brew`-installed Node can be *shadowed* by an older `nvm` default — verify `node -v` **inside `pwsh`** (the runtime Specrew uses), not only in your login shell. See [troubleshooting](troubleshooting.md#macos-node-version-shadowed-by-nvm).
+- **GitHub CLI**: [https://cli.github.com/](https://cli.github.com/) — used for the PR-creation lifecycle gates
+
+#### Pick at least one host CLI
+
+Specrew also needs one supported **agent host CLI** to run a lifecycle session. Install at least one. You select which one at launch time via `specrew start --host <kind>`. Two defaults matter:
+
+- **`--host` flag default (non-interactive / CI / automation)**: `copilot` — most-tested host, predictable for headless runs
+- **Interactive menu default (TTY, multiple installed hosts)**: highest-priority installed host in the order **Claude → Cursor → Codex → Copilot → Antigravity**. The interactive menu shows installed hosts in priority order; `[default 1]` selects the highest-priority one
+
+When `--host` is omitted in interactive mode, Specrew shows a numbered menu of installed hosts (plus an "(not installed)" group with install URLs).
+
+| Host | `--host` value | CLI binary | Install URL | Notes |
+|---|---|---|---|---|
+| **GitHub Copilot** *(`--host` flag default)* | `copilot` | `copilot` | [docs.github.com/en/copilot/how-tos/copilot-cli](https://docs.github.com/en/copilot/how-tos/copilot-cli) | Most-tested host; the `--host` flag falls back to `copilot` in non-interactive contexts. Interactive menu priority: 4 of 5 |
+| **Claude Code** | `claude` | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) | Headless `claude -p` invocation; rich subagent + hook surface (see [Proposal 105](../proposals/105-host-native-hook-deployment.md) for the hook-deployment follow-up) |
+| **Cursor** | `cursor` | `cursor-agent` | [cursor.com/cli](https://cursor.com/cli) | Interactive `cursor-agent "<prompt>" --workspace <path>` invocation; `--force` maps from `--allow-all`. No user-defined slash commands (like Codex) — skills + Crew charters deploy as `.cursor/rules/*.mdc` context; coordinator prompt via `AGENTS.md`. Menu priority 2 of 5 (between Claude and Codex). Added in F-050 |
+| **Codex CLI** | `codex` | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) | `codex exec --cd` invocation; no user-defined slash commands so the Crew uses pwsh-form boundary-advance instructions instead |
+| **Antigravity** | `antigravity` | `agy` | [antigravity.google](https://antigravity.google/) | `agy -i <prompt> --add-dir <path>` invocation; `--dangerously-skip-permissions` maps from `--allow-all`. Graduated from deferred to supported in v0.27.0 (F-044 iter-005) |
+
+Reserved-but-deferred kind: `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe — partially implemented via the F-043 first-run menu but `auto` literal still rejected). Specrew rejects this with explicit "deferred" guidance rather than silently falling back.
 
 ### Updating Specrew later
 
