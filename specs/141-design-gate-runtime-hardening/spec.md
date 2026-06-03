@@ -276,7 +276,7 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 - **FR-008**: Specrew MUST build on the existing Feature 140 design-analysis-gate
   helper and plan-boundary enforcement rather than rewriting them.
 
-#### Lens catalog + applicability selection (Iterations 4-6; amended 2026-06-04 — Amendments A1, A2, A3)
+#### Lens catalog + applicability selection (Iterations 4-7; amended 2026-06-04 — Amendments A1, A2, A3, A4)
 
 - **FR-009**: The repo-local design-lens knowledge (`extensions/specrew-speckit/knowledge/design-lenses/`)
   MUST inform the lifecycle, not merely a single design-analysis section: for each selected lens, its
@@ -284,24 +284,36 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   comparison, and the plan are genuinely informed by the lens knowledge (not a list of names). The
   design analysis MUST address each selected lens (enforced by FR-026). *(Amended — A3: broadened from
   "render an Applicable Lenses section in design-analysis.md" to "inform requirements + design + plan.")*
-- **FR-025**: Specrew MUST determine lens applicability via an **interactive, expertise-adapted
-  applicability questionnaire** the Crew poses to the human **early — before clarify (FR-027)** —
-  covering the material areas (user-facing UI? auth/secrets/PII/compliance? persistent data? external
-  service/API integration? deployment/CI/release changes? performance/scale or resilience?). The Crew
-  MUST **ask the human** these questions, adapting question depth to the recorded user-profile expertise
-  dials per the F-016 interaction model (concise expert-level questions where a dial is high; explain +
-  recommend a default where it is low), surface the resulting lens decisions for confirmation, and MUST
-  NOT silently auto-resolve a material lens area. Specrew MUST also **surface the assumed expertise** it
-  adapts to — the recorded profile rendered in the visible session orientation as a concise, correctable
-  one-liner (e.g. "I'll treat you as expert on Software Architecture, mid-level on UX/UI Design — correct
-  me if that's off"), whose level bands match the runtime adaptation cutoffs — so the human sees and can
-  correct the assumed level before adaptation (the transparency half of expertise-adaptation). Answers
-  are recorded as a JSON artifact; lens
-  selection from the answers remains a **deterministic, LLM/network-free function** of the answers + a
-  question→lens map (foundational always-on; specialized gated by their mapped answer), so identical
-  answers yield the same set and the JSON is the audit trail. *(Amended — A3: was "a fixed questionnaire
-  that MAY be answered by the Crew"; the Iteration 4-5 deterministic selector + sibling map + decision-
-  point extractor are retained as the mechanism.)*
+- **FR-025**: Specrew MUST conduct lens intake as an **interactive, expertise-adapted, per-lens design
+  workshop** the Crew runs with the human **early — before clarify (FR-027)** — **not** a binary
+  applicability questionnaire. (a) **Applicability is AI-inferred, human-confirmed:** the Crew proposes
+  which lenses apply (with its reasoning) and the human confirms or adjusts; the Crew MUST NOT make the
+  human answer *obvious* applicability (a screen-capture app plainly has UI) and MUST NOT silently
+  auto-resolve a material lens area. (b) **Per-lens facilitated discussion:** for each applicable lens
+  the Crew acts as workshop coordinator — raising that lens's substantive design questions (drawn from
+  the lens's decision points, FR-009; e.g. UI → theme, controls, layout, contrast, DPI, smoothness,
+  technology), offering options where useful, capturing the human's needs, decisions, and explicit
+  agreement, and **iterating until the human says "move on"** before proceeding to the next lens. (c)
+  **Depth adapts to expertise:** explain more and recommend defaults where the relevant dial is low; ask
+  concise expert-level questions where it is high (F-016 interaction model). (d) **Right-sized:** the
+  workshop scales to the feature, the inferred applicability, and expertise — not a fixed nine-lens
+  marathon. MCQ MAY be used *within* the discussion, but the intake MUST NOT collapse into a one-shot
+  multiple-choice prompt; it is a guided conversation until the human is done. Specrew MUST also
+  **surface the assumed expertise** it adapts to — the recorded profile rendered in the visible session
+  orientation as a concise, correctable one-liner (e.g. "I'll treat you as expert on Software
+  Architecture, mid-level on UX/UI Design — correct me if that's off"), whose level bands match the
+  runtime adaptation cutoffs — so the human sees and can correct the assumed level before adaptation
+  (the transparency half of expertise-adaptation). The confirmed applicability and the per-lens design
+  decisions/agreement are recorded as a JSON artifact; lens **selection** from the confirmed
+  applicability remains a **deterministic, LLM/network-free function** of that applicability + a
+  question→lens map (foundational always-on; specialized gated by their mapped applicability), so
+  identical inputs yield the same set and the JSON is the audit trail. The workshop conduct itself is
+  behavioral (prompt-driven); the deterministic gate (FR-026) enforces only that a per-lens decision was
+  *recorded*, not its quality — runtime dogfooding is the quality check. *(Amended — A3: was a fixed
+  questionnaire the Crew MAY answer → interactive, early, expertise-adapted; A4: the questionnaire form
+  is replaced by a per-lens facilitated workshop with AI-inferred applicability, built Iteration 7; the
+  Iteration 4-6 selector, sibling map, decision-point extractor, and coverage gate are retained as the
+  engine beneath the workshop.)*
 - **FR-026**: The pre-plan design-analysis gate MUST enforce **lens coverage** — for each lens the
   FR-025 questionnaire selected, the design analysis MUST record that the lens's decision points were
   addressed (a deterministic per-lens "Addressed:" coverage entry, with explicit grandfathering — not
@@ -361,6 +373,40 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 > Iteration 6.** Two cross-feature flow bugs the test exposed (downstream `Specrew.psd1` FileList-sort
 > warning; handoff-validator `token/token` bare-path false-positive) are bundled — see the Smoke-test
 > bug bundle. Maintainer directive: "extend the effort to do things right — replan, fix all."
+>
+> **Amendment A4 (2026-06-04, maintainer-directed after a second empirical manual end-to-end test):**
+> A fresh greenfield run confirmed the Iteration 6 intake is now interactive, early, and
+> expertise-adapted — but still a **binary applicability questionnaire** ("which of these apply: UI?
+> security? data?…"), which the maintainer rejects on two counts: (1) it asks the human to confirm
+> *obvious* applicability the AI already infers correctly (a capture-plus-gallery app plainly has UI),
+> and (2) it never *discusses* any lens. The intended model is a **per-lens facilitated design
+> workshop**: the AI **infers** which lenses apply (human confirms or adjusts — no obvious yes/no),
+> then for each applicable lens acts as **workshop coordinator** — raising the substantive design
+> questions for that lens (e.g. UI → theme, controls, layout, contrast, DPI, smoothness, technology),
+> offering options, capturing the human's needs, decisions, and explicit agreement, adapting how much
+> it explains to the recorded expertise dial, and iterating **until the human says "move on"** before
+> proceeding to the next lens. This is the architecture **requirements-workshop** method (the architect
+> is obligated to ask the quality-attribute questions the customer will not; questionnaires fail for
+> lack of an interactive, guided conversation). The workshop is **right-sized** to the feature, the
+> inferred applicability, and expertise — not a fixed nine-lens marathon. **Honest scope:** this is
+> primarily a **behavioral/prompt** capability. The second test proved the deterministic FR-026
+> coverage gate **cannot** enforce interaction quality — the agent emitted a structurally valid
+> `lens-applicability.json` the gate would PASS while the behavior was exactly what the maintainer
+> rejected. The enforceable surface is therefore thin (a per-lens decision/agreement record exists and
+> is non-placeholder); the real validation is a **runtime dogfood**. The workshop builds on the
+> **existing** per-lens decision points (FR-009 / `Get-SpecrewLensDecisionPoints`), enriched into
+> discussable prompts using the maintainer's architecture references for phrasing and depth — not a new
+> parallel question bank — and retains the Iteration 4-6 selector, sibling map, and coverage gate as
+> the engine. **Iteration 6 closes** (deterministic intake plus the expertise-transparency surfacing
+> delivered; the second dogfood surfaced this workshop gap, which was its purpose); the workshop is
+> built in **Iteration 7**. Two side observations from the same test are NOT folded into this feature:
+> the six-section human re-entry packet (Rule 46) collapsed into the verdict menu on the Claude host — a
+> known, persistent prompt-adherence weakness (handoff-quality track, not 141); and the
+> expertise-transparency line (FR-025) was absent from the test transcript — committed but
+> runtime-unverified, to be confirmed on a fresh `specrew start`. Maintainer directive: "the intake has
+> to be a long discussion until done… the AI is the workshop coordinator, but the human opinion and
+> agreement are important… according to the human level the agent can explain more or less about each
+> lens."
 
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
@@ -478,9 +524,9 @@ than deferring to another feature.
 | FR-006 | Spec Steward, Planner, Reviewer | Iteration 1 |
 | FR-007 | Planner, Implementer, Reviewer | Iteration 1 |
 | FR-008 | Implementer, Reviewer | Iteration 1 |
-| FR-009 | Implementer, Reviewer | Iteration 4 (A1); re-scoped to Iteration 6 (informs requirements/design/plan — A3) |
+| FR-009 | Implementer, Reviewer | Iteration 4 (A1); Iteration 6 (informs requirements/design/plan — A3); decision points drive the per-lens workshop discussion — Iteration 7 (A4) |
 | FR-010 | Spec Steward, Planner, Reviewer | Iteration 4 (A1); re-scoped Iteration 6 (engine retained — A3) |
-| FR-025 | Implementer, Reviewer | Iteration 4 (A1); re-scoped to Iteration 6 (interactive, expertise-adapted, early — A3) |
+| FR-025 | Implementer, Reviewer | Iteration 4 (A1); Iteration 6 (interactive, early — A3); re-scoped to Iteration 7 (per-lens facilitated workshop, AI-inferred applicability — A4) |
 | FR-026 | Implementer, Reviewer | Iteration 5 (added 2026-06-03 — Amendment A2; lens-coverage enforcement) |
 | FR-027 | Implementer, Reviewer | Iteration 6 (added 2026-06-04 — Amendment A3; lens intake before clarify) |
 | FR-028 | Implementer, Reviewer | Iteration 6 (added 2026-06-04 — Amendment A3; console-vs-persisted file references) |
@@ -562,6 +608,16 @@ than deferring to another feature.
 - **SC-019**: Console/terminal prose renders file references as `file:///` URLs while persisted `.md`
   artifacts render them as navigable markdown links, and the boundary-handoff bare-path rule does not
   flag non-path `token/token` prose (e.g. `RRT/Bug1`, `FR/SC`). (Added 2026-06-04 — Amendment A3; FR-028.)
+- **SC-020**: Lens intake is conducted as a per-lens facilitated discussion, not a one-shot
+  applicability questionnaire: the Crew infers applicability and asks the human only to confirm or
+  adjust it (no obvious yes/no), then for each applicable lens raises that lens's design questions,
+  captures the human's decisions and explicit agreement, and proceeds to the next lens only on the
+  human's "move on". The conduct is behavioral; it is validated by a runtime dogfood, not a unit test.
+  (Added 2026-06-04 — Amendment A4; FR-025.)
+- **SC-021**: For each applicable lens, the recorded intake artifact carries a non-placeholder per-lens
+  design decision/agreement entry — the deterministic, gate-checkable floor under the behavioral
+  workshop; a missing or placeholder entry for a selected lens fails the coverage gate (FR-026).
+  (Added 2026-06-04 — Amendment A4; FR-025/FR-026.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.
