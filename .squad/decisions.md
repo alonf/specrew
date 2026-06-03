@@ -23080,3 +23080,30 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: de5adcaa731a92a723dabe05f7d67b034dddc85d
 - **Recorded At**: 2026-05-31T11:06:53Z
+
+## 2026-06-03T13:42:17Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 140-unix-native-install
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: a43eea3d8660cd92b981c558692876f0943d646a
+- **Recorded At**: 2026-06-03T13:42:16Z
+
+## 2026-06-03T13:42:38Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 140-unix-native-install
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: a43eea3d8660cd92b981c558692876f0943d646a
+- **Recorded At**: 2026-06-03T13:42:37Z
+
+## 2026-06-03T13:42:54Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 140-unix-native-install
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: a43eea3d8660cd92b981c558692876f0943d646a
+- **Recorded At**: 2026-06-03T13:42:53Z

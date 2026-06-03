@@ -1,0 +1,6 @@
+claims:
+  - feature_id: "140-unix-native-install"
+    claimed_by: "alon@HOMEALON11"
+    claim_start_time: "2026-06-03T13:13:33Z"
+    last_refresh_time: "2026-06-03T13:42:53Z"
+    branch_name: "140-unix-native-install"

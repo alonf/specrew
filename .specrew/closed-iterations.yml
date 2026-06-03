@@ -167,3 +167,6 @@ closed:
   - feature: 139-boundary-authorization-prompt-truth
     iteration: 001
     closed_at: 2026-06-01T13:09:51Z
+  - feature: 140-unix-native-install
+    iteration: 003
+    closed_at: 2026-06-03T13:42:55Z
