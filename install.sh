@@ -33,6 +33,7 @@ OS_RELEASE_FILE="${SPECREW_OS_RELEASE_FILE:-/etc/os-release}"
 SPECREW_BIN_DIR=""
 MODE="install"
 PRERELEASE=0
+SPECREW_MODULE_VERSION=""
 
 PLATFORM_DISTRO=""
 PLATFORM_VERSION=""
@@ -228,17 +229,38 @@ install_pwsh_brew() {
   brew install --cask powershell || fail_closed "Homebrew failed to install PowerShell ('brew install --cask powershell'). Install PowerShell manually, then re-run."
 }
 
-# --- Specrew module (install-if-absent; PSGallery in production) -----------
-# If the Specrew module is already discoverable (e.g. a local module pre-seeded onto
-# PSModulePath in CI), skip the gallery fetch and use it. Production installs from PSGallery
-# (stable by default; a beta with --prerelease). After a fresh gallery install we verify the
-# installed module exposes the native `specrew` wrapper surface (FR-017 version/source check).
+# --- Specrew module --------------------------------------------------------
+# Echo the (base) version of the highest installed Specrew module that ships the native
+# `bin/specrew` wrapper surface; empty if none. Prereleases are included (their Version is the
+# BASE, e.g. 0.31.0 for 0.31.0-beta1), so install_wrappers can `Import-Module -RequiredVersion`
+# that exact version and load the beta even when an older stable is also installed.
+resolve_specrew_module_version() {
+  pwsh -NoProfile -NonInteractive -Command "
+    \$m = Get-Module -ListAvailable -Name Specrew |
+      Where-Object { Test-Path -LiteralPath (Join-Path \$_.ModuleBase 'bin/specrew') } |
+      Sort-Object Version -Descending | Select-Object -First 1
+    if (\$m) { \$m.Version.ToString() }
+  " 2>/dev/null || true
+}
+
+# Pure predicate: does a module base expose the native wrapper surface? Sourced + asserted by
+# tests/integration/install-sh-prerelease.sh (the FR-017 mismatch check); resolve_specrew_module_version
+# applies the same rule in PowerShell at runtime.
+# shellcheck disable=SC2329  # invoked by the test suite via SPECREW_NO_MAIN sourcing, not within install.sh
+wrapper_surface_present() {
+  [ -n "${1:-}" ] && [ -e "$1/bin/specrew" ]
+}
+
+# Install/resolve the Specrew module. Skip the gallery fetch ONLY when a WRAPPER-CAPABLE module
+# (one shipping bin/specrew) is already installed AND we are not explicitly fetching a prerelease.
+# A pre-existing OLD Specrew (predating the Unix wrappers) is NOT reused — it lacks the
+# `install-shell-wrappers` command. `--prerelease` always fetches the latest published beta.
+# Afterward, resolve the wrapper-capable version and FAIL CLOSED if none — never a partial success
+# reported as done (FR-016/FR-017).
 ensure_specrew_module() {
-  if pwsh -NoProfile -NonInteractive -Command "if (Get-Module -ListAvailable -Name Specrew) { exit 0 } else { exit 1 }" >/dev/null 2>&1; then
-    log "Specrew module already available; skipping PowerShell Gallery install."
-    return 0
-  fi
-  if [ "$PRERELEASE" = "1" ]; then
+  if [ "$PRERELEASE" != "1" ] && [ -n "$(resolve_specrew_module_version)" ]; then
+    log "A wrapper-capable Specrew module is already installed; skipping the PowerShell Gallery install."
+  elif [ "$PRERELEASE" = "1" ]; then
     log "Installing the Specrew module (PRERELEASE / beta) from the PowerShell Gallery..."
     pwsh -NoProfile -NonInteractive -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber -AllowPrerelease" \
       || fail_closed "Failed to install the PRERELEASE Specrew module from the PowerShell Gallery."
@@ -247,23 +269,13 @@ ensure_specrew_module() {
     pwsh -NoProfile -NonInteractive -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber" \
       || fail_closed "Failed to install the Specrew module from the PowerShell Gallery."
   fi
-  verify_specrew_wrapper_surface
-}
 
-# FR-017: the freshly installed module MUST expose the native `specrew` wrapper command
-# surface. A version predating the Unix wrappers ships no `bin/specrew` wrapper, so a
-# version/source mismatch (e.g. installing an old stable when a beta was intended) fails
-# closed with a clear incompatibility message rather than a confusing later wrapper error.
-# `wrapper_surface_present` is a pure predicate (unit-testable without pwsh).
-wrapper_surface_present() {
-  [ -n "${1:-}" ] && [ -e "$1/bin/specrew" ]
-}
-
-verify_specrew_wrapper_surface() {
-  module_base="$(pwsh -NoProfile -NonInteractive -Command "(Get-Module -ListAvailable -Name Specrew | Sort-Object Version -Descending | Select-Object -First 1).ModuleBase" 2>/dev/null || true)"
-  if ! wrapper_surface_present "$module_base"; then
-    fail_closed "The installed Specrew module does not expose the native 'specrew' wrapper command surface (a version/source mismatch — e.g. a version predating the Unix wrappers). This installed version is not compatible with the shell-native install; install a compatible version, then re-run."
-  fi
+  # FR-017 version/source check: an OLD Specrew (no bin/specrew) does NOT count — and on a host
+  # where an old stable sits side-by-side with the new beta, a plain `Import-Module` would load
+  # the old stable, so we pin the resolved wrapper-capable version in install_wrappers.
+  SPECREW_MODULE_VERSION="$(resolve_specrew_module_version)"
+  [ -n "$SPECREW_MODULE_VERSION" ] || fail_closed "No installed Specrew version exposes the native 'specrew' wrapper command surface (a version/source mismatch — e.g. only an older Specrew without the Unix wrappers is present). Re-run 'install.sh --prerelease' to fetch the beta, or install a compatible version, then re-run."
+  log "Using Specrew module version ${SPECREW_MODULE_VERSION} (native wrapper surface present)."
 }
 
 # --- shell wrappers --------------------------------------------------------
@@ -276,11 +288,13 @@ install_wrappers() {
   # `curl | sh` install would fail at this step on a clean host. (The standalone
   # `specrew install-shell-wrappers` command, run outside the bootstrap, stays safe-by-default:
   # it creates managed wrappers without --force but refuses to clobber a foreign file/symlink.)
+  # Import the RESOLVED wrapper-capable version explicitly — a plain `Import-Module Specrew` loads
+  # the highest *stable* (which may be an old, pre-wrappers version installed side-by-side).
   if [ -n "$SPECREW_BIN_DIR" ]; then
-    pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -Force; specrew install-shell-wrappers --bin-dir '$SPECREW_BIN_DIR' --force" \
+    pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -RequiredVersion '$SPECREW_MODULE_VERSION' -Force; specrew install-shell-wrappers --bin-dir '$SPECREW_BIN_DIR' --force" \
       || fail_closed "Failed to install the shell wrappers into '$SPECREW_BIN_DIR'."
   else
-    pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -Force; specrew install-shell-wrappers --force" \
+    pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -RequiredVersion '$SPECREW_MODULE_VERSION' -Force; specrew install-shell-wrappers --force" \
       || fail_closed "Failed to install the shell wrappers."
   fi
 }
