@@ -1,19 +1,19 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Last Completed Task**: (none — iteration opening; design-analysis in progress)
-**Tasks Remaining**: (plan not yet authored — gated on the design-analysis human decision)
-**In Progress**: design-analysis (FR-009 decision-point surfacing + FR-026 lens-coverage gate)
-**Baseline Ref**: 5dc56482
-**Updated**: 2026-06-03T16:40:00Z
-**Current Phase**: clarify
+**Last Completed Task**: (none — plan authored; awaiting before-implement go-ahead)
+**Tasks Remaining**: T001-T006
+**In Progress**: (none — plan + pre-implementation hardening gate authored)
+**Baseline Ref**: 0e758032
+**Updated**: 2026-06-03T18:30:00Z
+**Current Phase**: plan
 **Iteration Status**: planning
 
 ## Execution Summary
 
 - Iteration 5 scope (Amendment A2): the complete, state-of-the-art lens package — FR-009 decision-point surfacing (the option comparison genuinely informed by lens knowledge, not a list of names) + FR-026 lens-coverage gate (block `plan.md` when a selected lens is unaddressed; deterministic, LLM/network-free, anti-omission).
-- Design-analysis authored (draft) and **stopped at the design-analysis human gate** for the option decision. Applicable lenses (architecture-core, component-design, requirements-nfr, data-storage) surfaced with decision points; the option comparison is shaped by them (Option B dogfooded on the artifact itself — the delete-the-`Addressed:`-lines discriminator passes here).
-- Crew recommendation: **Option B** (decision points feed the option comparison; the gate is an honest anti-omission backstop, not a quality guarantee; genuine engagement is human-gated + verified by the review-signoff discriminator).
+- Design-analysis gate **PASSED** (Valid=true); maintainer selected **Option B** — decision commit `0e758032`, draft `d83082e2`. Applicable lenses (architecture-core, component-design, requirements-nfr, data-storage) surfaced with decision points; the option comparison is shaped by them (Option B dogfooded on the artifact itself — the delete-the-`Addressed:`-lines discriminator passes here). Durable design-gate packet persisted (FR-020).
+- `plan` boundary synced (new-iteration reset; AHEAD warning expected). Plan T001-T006 (17/20 SP) + the planning-time pre-implementation hardening gate (`Overall Verdict: ready`) authored. Option B: decision points feed the option comparison; the gate is an honest anti-omission backstop (not a quality guarantee); genuine engagement is human-gated + verified by the blocking review-signoff discriminator. FR-026 is grandfather-safe.
 - Carried constraints: deterministic + LLM/network-free; `index.yml` pure (gating map stays in the sibling file); no deferred Proposal 156 deep automation; no release/Unix/wrapper surfaces; no push/PR while Feature 141 is in progress.
 
 ## Notes
