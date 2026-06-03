@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/160-unix-resolver-sidecar-hardening/spec.md",
+  "iterationRef": "specs/160-unix-resolver-sidecar-hardening/iterations/001",
+  "generatedAt": "2026-06-03T16:28:58Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.31.0"
+  },
+  "findings": []
+}
