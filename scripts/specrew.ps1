@@ -55,6 +55,7 @@ Commands:
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
   version  Show the installed Specrew version and slash-command compatibility
+  install-shell-wrappers  Install/refresh the Unix shell wrappers (macOS/Linux)
   help     Show this help message
 
 Examples:
@@ -419,6 +420,32 @@ if (-not $Command -or $Command -eq 'help' -or $Command -eq '--help' -or $Command
     exit 0
 }
 
+# feature 140: Unix interactive `start` must launch the host (copilot/claude/codex) in
+# module-FUNCTION context, not script context. The native wrapper (bin/specrew) and
+# clone-mode both run this dispatcher via `pwsh -File`, which is SCRIPT context. On
+# Linux/macOS, PowerShell strips the controlling TTY from native command children
+# spawned in a script body, so specrew-start.ps1 falls into its no-TTY fallback
+# (`& copilot ...` with the comment "TUI won't render but the command will run") — the
+# host runs headless once and exits straight back to the shell instead of opening an
+# interactive session. The TTY-preserving launch lives in the module function
+# Invoke-SpecrewScript (the proven R-019-V2 deferred-launch handoff). Re-dispatch
+# `start` THROUGH that module function so the launch happens in function context.
+#
+# Guard on SPECREW_DEFERRED_LAUNCH_FILE, which is set ONLY by Invoke-SpecrewScript, so
+# the in-process re-entry it triggers (`& specrew.ps1 start`) skips this block and runs
+# the normal start arm. (Do NOT guard on SPECREW_INVOKED_FROM_MODULE: bin/specrew sets
+# that too, so it cannot distinguish the already-in-module-flow re-entry.) Import the
+# module BY PATH (module root = parent of scripts/) to avoid the side-by-side trap where
+# `Import-Module Specrew` by name loads the highest STABLE instead of this build.
+if (-not $IsWindows -and $Command -eq 'start' -and [string]::IsNullOrEmpty($env:SPECREW_DEFERRED_LAUNCH_FILE)) {
+    $specrewManifestPath = Join-Path (Split-Path -Parent $scriptRoot) 'Specrew.psd1'
+    if (Test-Path -LiteralPath $specrewManifestPath -PathType Leaf) {
+        Import-Module -Name $specrewManifestPath -Force
+        Invoke-Specrew @(@($Command) + @($Arguments))
+        exit $LASTEXITCODE
+    }
+}
+
 switch ($Command) {
     'init' {
         $initScript = Join-Path $scriptRoot 'specrew-init.ps1'
@@ -572,6 +599,20 @@ switch ($Command) {
         }
 
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $versionScript @Arguments
+        exit $LASTEXITCODE
+    }
+
+    'install-shell-wrappers' {
+        # feature 140 / Proposal 153: install/refresh Unix shell wrappers (macOS/Linux).
+        # Module-level command (no project required). The installer validates its own
+        # args (PS-style -BinDir/-Force/-WhatIf and shell-style --bin-dir/--force/--whatif).
+        $installShellWrappersScript = Join-Path $scriptRoot 'specrew-install-shell-wrappers.ps1'
+        if (-not (Test-Path -LiteralPath $installShellWrappersScript)) {
+            Write-Host "ERROR: specrew-install-shell-wrappers.ps1 not found at $installShellWrappersScript" -ForegroundColor Red
+            exit 1
+        }
+
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $installShellWrappersScript @Arguments
         exit $LASTEXITCODE
     }
 

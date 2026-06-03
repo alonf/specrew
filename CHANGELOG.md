@@ -6,8 +6,38 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.31.0-beta4] - 2026-06-03
+
+### Changed
+
+- **`specrew version` surfaces the prerelease label** — the report now prints e.g. `0.31.0-beta3` instead of a bare `0.31.0` that was indistinguishable from a stable build. The base version still feeds every compatibility / slash-command semver comparison unchanged (only the "Installed version" display line gains the label). Resolves finding #2 from the 0.31.0-beta2/beta3 Linux validation.
+
+### Internal
+
+- **Interactive-`start` regression test now proves TTY survival, not just routing** — `tests/integration/start-deferred-launch.sh` runs the broken entry paths under a pseudo-TTY (`python3 pty.spawn`, uniform on Linux+macOS) and the stub host asserts it has a controlling terminal (`[ -t 0 ] && [ -t 1 ]`), so a green run proves the TTY survives the function-context launch. `tests/integration/version-info-states.tests.ps1` (incl. the new prerelease-label parse test) is now wired into the Specrew CI lane.
+
+## [0.31.0-beta3] - 2026-06-03
+
+### Fixed
+
+- **Interactive `specrew start` on Unix** — the native wrapper (and clone-mode) ran the dispatcher via `pwsh -File` (script context), where PowerShell on Linux/macOS strips the controlling TTY from native command children, so `specrew start` launched the host (Copilot) headless and exited to the shell instead of opening an interactive session. The dispatcher now re-dispatches `start` on Unix through the module function so the host launches in TTY-preserving function context (the proven deferred-launch handoff; the mechanism was reconfirmed on a real Linux host before publish). A regression test (`tests/integration/start-deferred-launch.sh`, Ubuntu + macOS lanes) asserts the mechanism engages on both broken entry paths. Found by the 0.31.0-beta2 Linux beta-before-stable validation.
+- **Installer cursor artifact** — `install.sh` now sets `$ProgressPreference = 'SilentlyContinue'` for the `Install-Module` step, so the PowerShell module install no longer draws a progress bar that left the terminal cursor mid-screen after install. Reported during the 0.31.0-beta2 Linux validation.
+
+## [0.31.0-beta2] - 2026-06-03
+
+### Fixed
+
+Three Unix-install bugs found by the 0.31.0-beta1 Linux beta-before-stable validation (all invisible to the clean-container CI):
+
+- **Unix install on a host with an existing Specrew** — `install.sh` no longer skips the Gallery when an older (pre-wrappers) Specrew is already present: it installs the requested version, imports the resolved wrapper-capable version explicitly (defeating side-by-side stable shadowing), and fails closed instead of falsely reporting "Done".
+- **Wrapper execute bit** — `install.sh` + `install-shell-wrappers` restore `+x` on the wrappers after `Install-Module` (NuGet/PSGallery strips the Unix execute bit), fixing `Permission denied` on the native `specrew` command. The clean-container CI test now simulates the strip to guard it.
+- **Native command guidance** — the shell wrappers signal module mode (`SPECREW_INVOKED_FROM_MODULE`), so `specrew init` prints native `specrew …` guidance instead of the clone-mode `pwsh -File …` fallback, and omits the clone-only PATH section.
+
+## [0.31.0-beta1] - 2026-06-03
+
 ### Added
 
+- **Feature 140 (Unix-Native Install & Command Surface)** — native `specrew` shell wrappers + an `install.sh` bootstrap so macOS/Linux users run Specrew from zsh/bash without typing `pwsh`. `install.sh` auto-installs PowerShell Core as an internal dependency (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew), installs Specrew from the PowerShell Gallery (`--prerelease` installs a beta), then installs the wrappers; registry ↔ wrapper ↔ FileList ↔ docs parity is CI-guarded; docs lead with the native `install.sh` path. First prerelease bundling this batch (Features 051 + 140, Spec Kit 0.9.0, Proposal 152). **Validation status:** Ubuntu + macOS wrapper runtime CI-proven; the Linux beta-install validation and the macOS clean-install (T021) + release-gate evidence are exercised against this prerelease before any stable promotion.
 - **Feature 051 (Multi-Session Foundation)** — introduces multi-session coordination primitives across three closed iterations:
   - Session-mode configuration and per-file session-surface classification.
   - Session locks and feature claims for same-feature coordination.

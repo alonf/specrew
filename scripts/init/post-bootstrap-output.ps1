@@ -88,11 +88,11 @@ function Write-PostBootstrapGuidance {
         Write-Host '  specrew team update <member-name> --charter "<new-charter>"' -ForegroundColor White
         Write-Host '  specrew team remove <member-name>' -ForegroundColor White
     } else {
-        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team add <member-name> --role <role> --charter "<charter-text>"' -ForegroundColor White
-        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 start' -ForegroundColor White
-        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team list' -ForegroundColor White
-        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team update <member-name> --charter "<new-charter>"' -ForegroundColor White
-        Write-Host '  pwsh -File <specrew-repo>\scripts\specrew.ps1 team remove <member-name>' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>/scripts/specrew.ps1 team add <member-name> --role <role> --charter "<charter-text>"' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>/scripts/specrew.ps1 start' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>/scripts/specrew.ps1 team list' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>/scripts/specrew.ps1 team update <member-name> --charter "<new-charter>"' -ForegroundColor White
+        Write-Host '  pwsh -File <specrew-repo>/scripts/specrew.ps1 team remove <member-name>' -ForegroundColor White
     }
 
     Write-Host ''

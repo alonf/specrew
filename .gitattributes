@@ -3,3 +3,9 @@
 .squad/agents/*/history.md merge=union
 .squad/log/** merge=union
 .squad/orchestration-log/** merge=union
+
+# feature 140: Unix wrappers + bootstrap are POSIX sh and MUST stay LF (overrides core.autocrlf)
+bin/* text eol=lf
+install.sh text eol=lf
+tests/integration/*.sh text eol=lf
+tests/fixtures/install-sh/** text eol=lf
