@@ -9,21 +9,21 @@ and the on-host validation are maintainer-driven and require real Unix hosts.
 
 ## The beta + its version (READ FIRST)
 
-This feature's beta MUST be **`0.31.0-beta1`** — NOT a `0.30.0-betaN`. `0.30.0` stable is already published,
+This feature's beta MUST be **`0.31.0-beta2`** — NOT a `0.30.0-betaN`. `0.30.0` stable is already published,
 and a `0.30.0-betaN` sorts *below* `0.30.0` in semver, so `Install-Module -AllowPrerelease` would silently
 install the **stable**, never the beta. The PSGallery prerelease label cannot contain a dot, so the tag is
-**`v0.31.0-beta1`** (dotless — matches the published `v0.30.0-beta1 … beta6` convention; a dotted
+**`v0.31.0-beta2`** (dotless — matches the published `v0.30.0-beta1 … beta6` convention; a dotted
 `beta.1` is normalized to `beta1` anyway). The branch already carries Spec Kit 0.9.0 (commit `ca897ee6`),
 Feature 051, and Proposal 152, so a **branch-cut** beta from `140-unix-native-install` validates FR-015's
 0.9.0 claim without a premature merge to main.
 
 **Version prep (committed on the branch; tag/publish intentionally NOT done by the Crew):**
-`.specrew/config.yml` `specrew_version: "0.31.0"`; `Specrew.psd1` `ModuleVersion = '0.31.0'` / `Prerelease = 'beta1'`;
-CHANGELOG `## [0.31.0-beta1]` entry.
+`.specrew/config.yml` `specrew_version: "0.31.0"`; `Specrew.psd1` `ModuleVersion = '0.31.0'` / `Prerelease = 'beta2'`;
+CHANGELOG `## [0.31.0-beta2]` entry.
 
 ## The gate (universal beta-before-stable mandate)
 
-No stable promotion without first publishing the **`0.31.0-beta1`** beta, installing it on real Unix hosts,
+No stable promotion without first publishing the **`0.31.0-beta2`** beta, installing it on real Unix hosts,
 and validating BOTH a greenfield and a brownfield project on **EACH required surface**. This also validates
 the bundled Spec Kit 0.9.0 support (PR #1626).
 
@@ -41,12 +41,12 @@ the parity cascade incl. the docs arm (T023) — run `26852247885`.
 ## Publish (maintainer-driven; the Crew did NOT do this)
 
 ```text
-0. PRECONDITION: maintainer explicitly authorizes the 0.31.0-beta1 beta publish. (Do not proceed without it.)
-1. Tag the 140-unix-native-install HEAD `v0.31.0-beta1` and push it (-> publish-module.yml publish-prerelease),
+0. PRECONDITION: maintainer explicitly authorizes the 0.31.0-beta2 beta publish. (Do not proceed without it.)
+1. Tag the 140-unix-native-install HEAD `v0.31.0-beta2` and push it (-> publish-module.yml publish-prerelease),
    OR run the "Publish Specrew module" workflow via workflow_dispatch ON the 140 branch with
-   release_mode=publish-prerelease, release_tag=v0.31.0-beta1.
+   release_mode=publish-prerelease, release_tag=v0.31.0-beta2.
    The workflow stamps the manifest from the tag and cross-checks .specrew/config.yml specrew_version (0.31.0).
-2. Confirm 0.31.0-beta1 is live on the PowerShell Gallery.
+2. Confirm 0.31.0-beta2 is live on the PowerShell Gallery.
 ```
 
 ## Validate — per surface (run on a clean host; record outputs; commit)
@@ -59,7 +59,7 @@ A. Install the PUBLISHED beta via the BRANCH install.sh (main has no install.sh 
    (or, from a 140 checkout: bash ./install.sh --prerelease)
    Expect: output STATES PRERELEASE; pwsh auto-installed if absent (Linux: apt; macOS: Homebrew);
    the wrapper-surface mismatch check passes (the beta exposes bin/specrew).
-B. specrew version            # MUST report 0.31.0-beta1 (proves the prerelease installed, not the stable)
+B. specrew version            # MUST report 0.31.0-beta2 (proves the prerelease installed, not the stable)
 C. GREENFIELD: mkdir gf && cd gf && git init && specrew init && specrew start "build something small"
    -- specrew init MUST actually bootstrap/validate Spec Kit (0.9.0 exercised here -- the real deliverable,
       not just `specrew version`)
@@ -73,9 +73,9 @@ Stable promotion is a SEPARATE, separately-authorized step AFTER **both** surfac
 
 | Step | Expected | Actual | Pass? |
 | --- | --- | --- | --- |
-| Beta published (0.31.0-beta1) | version + Gallery link | (record) | ☐ |
+| Beta published (0.31.0-beta2) | version + Gallery link | (record) | ☐ |
 | install.sh `--prerelease` (branch URL) | states PRERELEASE; pwsh ensured (apt); mismatch check passes | (paste) | ☐ |
-| `specrew version` | reports 0.31.0-beta1 | (paste) | ☐ |
+| `specrew version` | reports 0.31.0-beta2 | (paste) | ☐ |
 | Greenfield `init` / `start` | succeeds; Spec Kit 0.9.0 bootstrapped | (paste) | ☐ |
 | Brownfield `init` / `start` | succeeds on existing content | (paste) | ☐ |
 
@@ -86,7 +86,7 @@ Stable promotion is a SEPARATE, separately-authorized step AFTER **both** surfac
 | Step | Expected | Actual | Pass? |
 | --- | --- | --- | --- |
 | install.sh `--prerelease` (branch URL) | states PRERELEASE; pwsh ensured (Homebrew); mismatch check passes | (paste) | ☐ |
-| `specrew version` | reports 0.31.0-beta1 | (paste) | ☐ |
+| `specrew version` | reports 0.31.0-beta2 | (paste) | ☐ |
 | Greenfield `init` / `start` | succeeds; Spec Kit 0.9.0 bootstrapped | (paste) | ☐ |
 | Brownfield `init` / `start` | succeeds on existing content | (paste) | ☐ |
 
@@ -103,4 +103,4 @@ Clean no-`pwsh` auto-install manual proof: see `macos-manual-proof.md` (T021).
 
 ## Authorization
 
-**Authorized by**: (name) · **Beta version**: 0.31.0-beta1 · **Date**: (YYYY-MM-DD)
+**Authorized by**: (name) · **Beta version**: 0.31.0-beta2 · **Date**: (YYYY-MM-DD)

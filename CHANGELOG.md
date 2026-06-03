@@ -6,6 +6,16 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.31.0-beta2] - 2026-06-03
+
+### Fixed
+
+Three Unix-install bugs found by the 0.31.0-beta1 Linux beta-before-stable validation (all invisible to the clean-container CI):
+
+- **Unix install on a host with an existing Specrew** — `install.sh` no longer skips the Gallery when an older (pre-wrappers) Specrew is already present: it installs the requested version, imports the resolved wrapper-capable version explicitly (defeating side-by-side stable shadowing), and fails closed instead of falsely reporting "Done".
+- **Wrapper execute bit** — `install.sh` + `install-shell-wrappers` restore `+x` on the wrappers after `Install-Module` (NuGet/PSGallery strips the Unix execute bit), fixing `Permission denied` on the native `specrew` command. The clean-container CI test now simulates the strip to guard it.
+- **Native command guidance** — the shell wrappers signal module mode (`SPECREW_INVOKED_FROM_MODULE`), so `specrew init` prints native `specrew …` guidance instead of the clone-mode `pwsh -File …` fallback, and omits the clone-only PATH section.
+
 ## [0.31.0-beta1] - 2026-06-03
 
 ### Added
