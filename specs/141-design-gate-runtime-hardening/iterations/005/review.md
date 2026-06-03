@@ -27,6 +27,8 @@ of `Addressed:` entries FAILS and names every selected lens. Iteration 4's quest
 explicit marker (grandfather-safe, no retroactive failure). Bypass verified closed: stripping
 iteration 5's `Addressed:` lines now FAILS 4/4. Re-reviewed: **accepted**.
 
+**Post-signoff (maintainer manual end-to-end test — honest record).** A fresh greenfield run surfaced that the lens feature **missed its core intent**: the questionnaire is auto-answered by the agent at the design-analysis stop (post-clarify), whereas it should be an interactive, expertise-adapted human intake run *before clarify* that shapes requirements/clarify/design/plan. The Crew's dogfood verified the *mechanics* but never tested the *human experience* — that gap was caught only by the maintainer's manual run. The delivered mechanics (selector, sibling map, decision-point extractor, FR-026 gate) stand and are retained; the placement/interaction/sequencing are **re-scoped to Iteration 6 via Amendment A3** (FR-025/FR-027/FR-009/FR-028) — forward work, not a defect in Iteration 5's code. Iteration 5 closes on its delivered scope.
+
 Reviewed against the Proposal 145 dimensions (state truth, branch hygiene, functional correctness,
 test integrity, evidence integrity) plus the dogfood + discriminator evidence.
 
