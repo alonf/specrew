@@ -199,9 +199,9 @@ say so in the decision and I'll carry it as a B-modification rather than adoptin
 
 ## Human Decision
 
-- **Decision verdict**: (pending human decision)
-- **Chosen option**: (pending)
-- **Reason**: (pending)
-- **Modifications**: (pending)
-- **Design-analysis draft commit**: (pending)
-- **Decision recorded in commit**: (pending)
+- **Decision verdict**: approved for plan with Option B
+- **Chosen option**: Option B (decoupled variant)
+- **Reason**: B is the only option that satisfies FR-025/SC-015 within the 20 SP cap and Amendment A1's scope — a machine-readable JSON answer artifact and a pure, deterministic, unit-testable selector. A (answers-in-prose, hardcoded map) is untestable and weak on audit; C pulls FR-010's still-deferred deeper automation forward and breaks the cap.
+- **Modifications**: Decoupled map — keep the Proposal 156 `index.yml` PURE; the question-to-lens gating map lives in a SEPARATE sibling map file beside the catalog (not as a `gated_by` field in `index.yml`). Do NOT adopt C's standalone `specrew lens` command, schema-validation enforcement, or rationale automation — those remain deferred (FR-010). Question set + always-on lenses confirmed: 6 questions mapping to ui-ux / security-compliance / data-storage / integration-api / devops-operations / observability-resilience; always-on foundational lenses architecture-core, component-design, requirements-nfr.
+- **Design-analysis draft commit**: `fb4b31e0`
+- **Decision recorded in commit**: (stamped in the follow-up commit)
