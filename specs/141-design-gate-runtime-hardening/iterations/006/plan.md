@@ -98,3 +98,13 @@ retained. Also ships **FR-028** (console `file:///` vs persisted markdown links 
 - Engine retained (selector, sibling map, extractor, FR-026 gate); deferred Proposal 156 deep
   automation stays out (FR-010). No release/Unix/wrapper surfaces; no push/PR while 141 is in progress.
 - This iteration writes code + prompt/governance; it stops at before-implement for the go-ahead.
+
+## Approved-for-implement (maintainer, 2026-06-04) — mandatory acceptance criteria
+
+Before-implement approved WITH instructions. These are binding acceptance criteria carried into the named tasks:
+
+1. **Preserve FR-026 after the early move (T002 + T006).** Moving lens-applicability to an early/feature-level artifact MUST NOT silently disable FR-026, which today reads `iterations/<NNN>/lens-applicability.json`. T002 MUST either (a) teach the FR-026 gate (`Test-SpecrewDesignAnalysisLensCoverage`) to resolve the early feature-level artifact, OR (b) synchronize/copy the selected-lenses artifact into the iteration directory before design-analysis. T006 MUST add a regression test proving a selected lens without an `Addressed:` entry still FAILS the gate and names the lens, AFTER the early-placement move.
+2. **Human-experience dogfood = a real downstream run (T007).** Not helper tests: a real `specrew start` downstream run from this branch whose evidence shows the Crew asked the material lens questions, adapted depth to the user profile, surfaced UI/performance/resilience decisions, amended `spec.md` + the checklist BEFORE sync-specify, and only then proceeded to clarify.
+3. **FR-028 covers persisted artifacts (T004).** Persisted `.md` uses navigable markdown links; console text uses `file:///` URLs; `RRT/Bug1` and `FR/SC` are not flagged as bare paths (console-vs-persisted context honored).
+4. **Deferred follow-ups (maintainer-approved), not covered by T001-T007:** (a) `.specify/feature.json` is gitignored yet the coordinator attempts to stage it — decide track-it vs stop-staging-it; (b) version-display inconsistency (`0.31.1-beta1` banner vs `0.31.1` config vs installed `0.31.0`). Recorded here as explicit deferred follow-ups, filed for a follow-up chore/proposal — not silently dropped.
+5. **Validator gate:** implementation MUST NOT start until a FRESH validator run returns hard=0 / medium=0 (the prior summary was stale).
