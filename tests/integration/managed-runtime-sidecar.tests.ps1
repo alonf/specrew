@@ -31,10 +31,10 @@ function Assert-True {
     if ($Condition) { Write-Pass $Message } else { $script:Failures.Add($Message) | Out-Null; Write-Host "FAIL: $Message" -ForegroundColor Red }
 }
 
-$repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
-$deployScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1'
-$sharedGovernance = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
-$skillsTemplateRoot = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\skills'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+$deployScript = Join-Path $repoRoot 'extensions' 'specrew-speckit' 'scripts' 'deploy-squad-runtime.ps1'
+$sharedGovernance = Join-Path $repoRoot 'extensions' 'specrew-speckit' 'scripts' 'shared-governance.ps1'
+$skillsTemplateRoot = Join-Path $repoRoot 'extensions' 'specrew-speckit' 'squad-templates' 'skills'
 
 foreach ($p in @($deployScript, $sharedGovernance, $skillsTemplateRoot)) {
     if (-not (Test-Path -LiteralPath $p)) { throw "Required path not found: $p" }
@@ -130,7 +130,7 @@ finally {
 # ordinal exact-match guard added by the Feature 160 fix.
 # ----------------------------------------------------------------------------
 $fixFingerprint = '[System.String]::Equals($content, $canonical, [System.StringComparison]::Ordinal)'
-$deployMirror = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1'
+$deployMirror = Join-Path $repoRoot '.specify' 'extensions' 'specrew-speckit' 'scripts' 'deploy-squad-runtime.ps1'
 Assert-True ((Get-Content -LiteralPath $deployScript -Raw).Contains($fixFingerprint)) `
     "Source deploy-squad-runtime.ps1 carries the provenance-by-content marker fix"
 if (Test-Path -LiteralPath $deployMirror -PathType Leaf) {

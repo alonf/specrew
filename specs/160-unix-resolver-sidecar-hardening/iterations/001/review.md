@@ -73,5 +73,10 @@ All FR-001..FR-010 and SC-001..SC-005 are satisfied within scope: both suspicion
 
 ## Notes
 
+- **Proposal 145 structured review run at the maintainer's direction**: see `review-145.md` for the
+  7-phase pass (all phases pass; overall `APPROVE for review-signoff`). The structured pass found and
+  fixed two Phase-5 integrity gaps before signoff: the new tests were not wired into any CI lane, and
+  the test files themselves used the embedded-backslash anti-pattern under test. It also completed the
+  missing `quality/quality-evidence.md` + `quality/lenses/*` runtime evidence.
 - Verdict `accepted` reflects that the work is correct and complete **within F-160's scope**. The sidecar harm-reachability nuance and the codebase-wide scope boundary are documented above as honest caveats + follow-up recommendations, not in-scope gaps.
 - The reviewer's `accepted` is a recommendation; the human review-signoff verdict is the authoritative gate.

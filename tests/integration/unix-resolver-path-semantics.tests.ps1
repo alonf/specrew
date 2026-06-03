@@ -29,7 +29,7 @@ function Assert-True {
     if ($Condition) { Write-Pass $Message } else { $script:Failures.Add($Message) | Out-Null; Write-Host "FAIL: $Message" -ForegroundColor Red }
 }
 
-$repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
 $isWindowsHost = ($null -ne ([System.Char]([System.IO.Path]::DirectorySeparatorChar))) -and ([System.IO.Path]::DirectorySeparatorChar -eq '\')
 Write-Info ("Host DirectorySeparatorChar = '{0}' (treated as {1})" -f [System.IO.Path]::DirectorySeparatorChar, ($(if ($isWindowsHost) { 'Windows' } else { 'POSIX' })))
 
@@ -88,8 +88,8 @@ finally {
 # FAILS before the fix (embedded-backslash literals present) and PASSES after.
 # ----------------------------------------------------------------------------
 $resolverFiles = @(
-    (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\sync-boundary-state.ps1'),
-    (Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1')
+    (Join-Path $repoRoot 'extensions' 'specrew-speckit' 'scripts' 'sync-boundary-state.ps1'),
+    (Join-Path $repoRoot '.specify' 'extensions' 'specrew-speckit' 'scripts' 'sync-boundary-state.ps1')
 )
 foreach ($resolverFile in $resolverFiles) {
     if (-not (Test-Path -LiteralPath $resolverFile -PathType Leaf)) {
