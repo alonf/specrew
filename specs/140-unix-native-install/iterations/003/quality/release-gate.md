@@ -112,14 +112,15 @@ Stable promotion is a SEPARATE, separately-authorized step AFTER **both** surfac
 
 | Step | Expected | Actual | Pass? |
 | --- | --- | --- | --- |
-| Beta published (0.31.0-beta3) | version + Gallery link | (record) | ☐ |
-| install.sh `--prerelease` (branch URL) | states PRERELEASE; pwsh ensured (apt); mismatch check passes | (paste) | ☐ |
-| Prerelease confirmed | `Get-Module … Prerelease` shows 0.31.0 / beta3 | (paste) | ☐ |
-| **Interactive `specrew start`** | an interactive host session OPENS (not a headless one-shot) | (paste) | ☐ |
-| Greenfield `init` / `start` | succeeds; Spec Kit 0.9.0 bootstrapped | (paste) | ☐ |
-| Brownfield `init` / `start` | succeeds on existing content | (paste) | ☐ |
+| Beta published (0.31.0-beta3) | version + Gallery link | published; `Find-Module … -RequiredVersion 0.31.0-beta3 -AllowPrerelease` → FOUND; GitHub release `v0.31.0-beta3` | ✅ |
+| install.sh `--prerelease` (branch URL) | states PRERELEASE; pwsh ensured; mismatch check passes | maintainer-run 2026-06-03: "Installing the Specrew module (PRERELEASE / beta)…"; pwsh 7.6.1 already present (no-pwsh apt path NOT exercised here — covered by the clean-container CI job); 8 wrappers installed; native `specrew` works | ✅ |
+| Prerelease confirmed | beta3 actually installed | beta3 behavior present (the interactive-start fix below); explicit `Get-Module … Prerelease` recommended as the canonical check (finding #2: `specrew version` still prints base `0.31.0`) | ✅ |
+| **Interactive `specrew start`** | an interactive host session OPENS (not a headless one-shot) | **maintainer-confirmed 2026-06-03: interactive Copilot session opened** (the beta2 headless exit is resolved) | ✅ |
+| Greenfield `init` / `start` | succeeds; Spec Kit 0.9.0 bootstrapped | (pending — fresh greenfield run not yet recorded) | ☐ |
+| Brownfield `init` / `start` | succeeds on existing content | `specrew start` confirmed interactive in the existing `~/testspecrew` project; full `init`/`start` greenfield evidence still pending | ◑ |
 
-**Linux host**: (distro + version) · **By**: (name) · **Date**: (YYYY-MM-DD)
+**Linux host**: HOMEALON11 (Linux, pwsh 7.6.1 present) · **By**: Alon Fliess · **Date**: 2026-06-03
+**Note**: the headline interactive-`start` deliverable is PROVEN on Linux. Remaining for a complete Linux gate: a fresh greenfield `init`/`start` exercising the Spec Kit 0.9.0 bootstrap.
 
 ## Evidence — macOS surface (REQUIRED; external tester)
 
