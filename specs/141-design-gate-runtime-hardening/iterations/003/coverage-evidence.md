@@ -37,8 +37,7 @@ home is the committed, **locally-green** `tests/integration/design-gate-runtime-
 (6 pass / 0 fail, watched pass against repo code). The co-located baseline-hygiene SC-009 is a bonus whose
 execution is NOT verified in this packet (the local suite halts at the pre-existing gate and CI status is
 unconfirmed here) — it is not relied on as evidence. SC-009 part-2 calls the same repo functions the boundary
-sync uses (`Get-SpecrewCurrentHeadCommitHash`
-+ `Update-BaselineCommitHashInFrontmatter`).
+sync uses (`Get-SpecrewCurrentHeadCommitHash` and `Update-BaselineCommitHashInFrontmatter`).
 
 ## TG-006 Gap Ledger (implemented / enforced / observable / documented)
 

@@ -64,8 +64,8 @@ pwsh -File tests/integration/design-analysis-boundary.tests.ps1
 
 - **No spurious multi-developer warning in a fresh project (FR-012)**: a single-developer
   freshly bootstrapped greenfield no longer surfaces `Multiple developers detected
-  (N close-together shared-state writes)`. Specrew's own bootstrap writes (`start-context.json`
-  + `last-start-prompt.md` + `decisions.md`, all written within ~1s by `init`/`start`) used to
+  (N close-together shared-state writes)`. Specrew's own bootstrap writes (`start-context.json`,
+  `last-start-prompt.md`, and `decisions.md`, all written within ~1s by `init`/`start`) used to
   trip the write-signal trigger alone; close-together writes now only **corroborate** a genuine
   distinct-actor signal (≥2 git authors, ≥2 active-session machines, or ≥3 numbered-branch
   fanout) and never trigger the recommendation on their own. Genuine multi-developer activity
