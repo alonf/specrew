@@ -1,21 +1,21 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
-**Last Completed Task**: T023 (docs-parity cascade arm)
-**Tasks Remaining**: T021 (blocked — needs a real macOS host), T024 (blocked — needs maintainer beta-publish authorization)
+**Current Phase**: feature-closeout
+**Iteration Status**: closing (review-signoff APPROVE — *acceptable, macOS manual WAIVED*; pending PR #1628 merge + 0.31.0 stable promotion)
+**Last Completed Task**: T024 (release gate — 0.31.0-beta4 published + Linux-validated)
+**Tasks Remaining**: (none) — T021 WAIVED (maintainer; macOS CI-covered); T024 DONE (beta4 Linux-validated)
 **In Progress**: (none)
 **Baseline Ref**: 99360a566f6861b9c2968b43276b508f558fc0ee
-**Updated**: 2026-06-02T20:21:13Z
+**Updated**: 2026-06-03
 
 ## Execution Summary
 
 - **T018-T020, T022, T023 implemented + committed**: `install.sh` macOS Homebrew auto-install (T018) + `--prerelease` + wrapper-surface mismatch check (T019); macOS CI wrapper-runtime lane (T020); native-first docs (T022); docs-parity cascade arm (T023). Shell + docs-parity tests green locally; workflow YAML valid.
-- **T021 (macOS manual proof) BLOCKED**: requires a real macOS host. Procedure + evidence template at `quality/macos-manual-proof.md` (status PENDING). The automated Crew (Windows authoring host) cannot run it.
-- **T024 (release gate) BLOCKED**: requires explicit maintainer beta-publish authorization. Procedure + evidence template at `quality/release-gate.md` (status BLOCKED). No beta/stable published.
-- **CI GREEN** (run 26852247885, SHA 224bbd6f): macOS Validation + Ubuntu bootstrap/detection/clean-container + parity cascade all pass — T020 and the macOS halves of FR-012 / SC-001 / SC-003 are CI-proven. Interim review filed (review.md; implemented slice PASS).
-- Iteration 3 cannot reach review-signoff / closeout until T021 + T024 are executed on a real Unix host with maintainer authorization.
+- **T021 (macOS manual proof) WAIVED** 2026-06-03 (maintainer reactive-fix decision; macOS CI-covered). Template retained at `quality/macos-manual-proof.md`.
+- **T024 (release gate) DONE**: beta1→beta4 published; **0.31.0-beta4 Linux-validated 2026-06-03** — interactive `specrew start` opens + `specrew version` reports `0.31.0-beta4` (the label fix). Evidence in `quality/release-gate.md`.
+- **CI GREEN** on branch HEAD: macOS + Ubuntu validation + parity cascade + the interactive-`start` PTY TTY-survival regression all pass. review.md verdict = `acceptable` (macOS manual waived).
+- Iteration 3 is the final iteration; review-signoff complete. Remaining = the irreversible closeout steps the maintainer authorizes: **merge PR #1628** (merge-commit) → **promote 0.31.0 stable** (`promote-prerelease` workflow, tag `v0.31.0-beta4`).
 
 ## Notes
 

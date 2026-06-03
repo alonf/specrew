@@ -2,11 +2,15 @@
 
 **Schema**: v1
 **Reviewed**: 2026-06-03
-**Overall Verdict**: needs-rework
+**Overall Verdict**: accepted — *iteration acceptable with macOS manual validation (T021) WAIVED per maintainer decision 2026-06-03; see note below*
 
-> Interim review of the **implemented slice (T018-T023)** per maintainer request ("review the implemented
-> slice now"). This is NOT iteration closeout. Overall Verdict is `needs-rework` **only** because T021 +
-> T024 are blocked on external execution — the implemented slice itself needs no rework (all T018-T023 pass).
+> Updated 2026-06-03 for iteration closeout. The earlier interim verdict was `needs-rework` ONLY because
+> T021 (macOS manual proof) + T024 (beta-publish validation) were blocked on external execution. Both are
+> now resolved: **T024 PASSED** — `0.31.0-beta4` is Linux-validated (interactive `specrew start` opens + the
+> `specrew version` label fix confirmed on a real host) — and **T021 is WAIVED** (maintainer accepts a
+> reactive-fix posture; macOS is CI-covered, see `quality/release-gate.md`). The implemented slice never
+> needed rework (all T018-T023 pass). The verdict is `acceptable` on the **explicit condition** that the
+> macOS manual surface is *waived, not validated*.
 
 ## Task Verdicts
 
@@ -15,10 +19,10 @@
 | T018 | FR-007, FR-016 | pass | macOS Homebrew auto-install; install-if-absent; brew-as-user; fail-closed if brew absent; macOS-aware `--check`. Shell tests green. |
 | T019 | FR-017 | pass | `--prerelease` -> `-AllowPrerelease`; stable/prerelease output; wrapper-surface mismatch fail-closed. Surface + predicate unit-tested. |
 | T020 | FR-012, FR-002, FR-003, FR-004, FR-008, SC-001, SC-003 | pass | macOS wrapper-runtime lane + real `install-shell-wrappers` -> `specrew version`/`start --help` wired; YAML valid. **macOS CI GREEN** — run 26852247885 (SHA 224bbd6f): macOS Validation + Ubuntu bootstrap/detection/clean-container + parity cascade all pass. |
-| T021 | FR-007, FR-016, SC-007 | needs-work | BLOCKED: needs a real macOS host. Procedure + evidence template filed (`quality/macos-manual-proof.md`, PENDING). |
+| T021 | FR-007, FR-016, SC-007 | pass | Acceptable for closeout **via maintainer WAIVER 2026-06-03** — the macOS manual proof was BLOCKED on a real Mac and the maintainer waived it (reactive-fix posture; macOS CI-covered: `validate-macos` + the interactive-`start` PTY TTY-survival regression). Not executed, not scheduled. `pass` = accepted-via-waiver, NOT validated. Template retained (`quality/macos-manual-proof.md`). |
 | T022 | FR-014, SC-005 | pass | Native-first docs; manual `Install-Module` demoted + PSGallery default-`N` note; nvm/Spec-Kit prerequisites documented. Lint clean. |
 | T023 | FR-011, FR-009 | pass | Docs-parity arm: every `specrew-*` doc token resolves to alias/skill/allowlist; cascade-named on failure; wired into CI. Test green. |
-| T024 | FR-015, FR-017, SC-006, SC-008 | needs-work | BLOCKED: needs maintainer beta-publish authorization. Procedure + evidence template filed (`quality/release-gate.md`, BLOCKED). |
+| T024 | FR-015, FR-017, SC-006, SC-008 | pass | beta-before-stable executed: `0.31.0-beta1`→`beta4` published; **`0.31.0-beta4` Linux-validated 2026-06-03** (interactive `specrew start` opens + the `specrew version` label fix). Evidence in `quality/release-gate.md`. |
 
 ## Findings
 
@@ -64,13 +68,14 @@
 - `verify_specrew_wrapper_surface`'s `Sort-Object Version -Descending` ignores prerelease tags on the base
   `Version`; benign on the clean release-gate host (only the beta present). Flag for the T024 run.
 
-### Pending runtime evidence before closeout (blocked tasks; tracked in plan.md / state.md)
+### Runtime evidence at closeout (resolved 2026-06-03)
 
-- **T021** macOS manual proof (SC-007 macOS) — needs a real Mac.
-- **T024** release gate (SC-006, SC-008) — needs maintainer beta-publish authorization.
-- **T020** macOS CI lane **RAN GREEN** (run 26852247885, SHA 224bbd6f): macOS Validation (wrapper runtime +
-  native command surface) + the Ubuntu shellcheck/detection/clean-no-pwsh container + the parity cascade
-  (incl. the docs arm) all pass. No longer a closeout blocker.
+- **T024** release gate (SC-006, SC-008) — **DONE.** `0.31.0-beta4` published + Linux-validated: interactive
+  `specrew start` opens; `specrew version` reports `0.31.0-beta4` (the label fix). See `quality/release-gate.md`.
+- **T021** macOS manual proof (SC-007 macOS) — **WAIVED** (maintainer, reactive-fix; macOS CI-covered).
+- **CI floor under the waiver:** the macOS lane (run 26852247885) + the interactive-`start` **PTY
+  TTY-survival** regression (now green on the Ubuntu *and* macOS lanes) cover the macOS surface short of a
+  live on-host run.
 
 ## Gap Ledger
 
@@ -78,9 +83,10 @@
 
 ## Notes
 
-- Overall Verdict `needs-rework` reflects that the **iteration** is not acceptable yet (T021/T024 blocked),
-  NOT that the implemented slice needs changes — every T018-T023 verdict is `pass` and CI is fully green
-  (run 26852247885, SHA 224bbd6f).
-- review-signoff for the full iteration is now pending two things: (1) T021 evidence filed from a real Mac,
-  (2) T024 release-gate executed under explicit maintainer authorization. (The macOS CI lane is green.)
-- Drift: none introduced this slice (drift-log clean).
+- Overall Verdict `acceptable` reflects the full iteration at closeout: T018-T023 `pass`, T024 `pass`
+  (beta4 Linux-validated), T021 `waived` (macOS manual, maintainer decision). The verdict is explicitly
+  conditioned on the macOS-manual waiver — macOS is CI-covered, not on-host-validated.
+- A late-cycle fast-follow (post-beta3) added the `specrew version` prerelease label + a TTY-survival
+  regression test; shipped in `0.31.0-beta4` and Linux-validated. Two known fast-follows remain (charter
+  sidecar investigation; `version-checks.tests.ps1` dev-box-only seam) — neither blocks closeout.
+- Drift: none (drift-log clean).

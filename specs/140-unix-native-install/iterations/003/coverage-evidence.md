@@ -2,14 +2,14 @@
 
 **Schema**: v1
 **Reviewed**: 2026-06-03
-**Overall Verdict**: needs-rework
+**Overall Verdict**: acceptable — *macOS manual (SC-007 live) WAIVED per maintainer decision 2026-06-03*
 
 > **Note on the form-vs-meaning warning (scaffolder heuristic):** the scaffolder flagged "5 completed tasks
 > vs 19 files in diff". That delta is expected and benign here: the implemented slice spans code
 > (`install.sh`), CI (`cross-platform-validation.yml`), 4 docs, 3 test files, and the iteration-3 spec
-> artifacts — more files than the 5 *code/doc* tasks. T021 and T024 are **blocked** (not done), so the
-> 5-done count is accurate. All cited files are committed (HEAD), satisfying the review-evidence-integrity
-> rule (Shape-5).
+> artifacts — more files than the 5 *code/doc* tasks. (At closeout: T024 is **done** — `0.31.0-beta4`
+> Linux-validated; T021 is **waived** — macOS manual.) All cited files are committed, satisfying the
+> review-evidence-integrity rule (Shape-5).
 
 ## Test Strategy
 
@@ -43,19 +43,21 @@ path is labeled CI-proven vs manual so closeout cannot overstate coverage.
 
 | Requirement | Verified by | CI-proven? |
 | ----------- | ----------- | ---------- |
-| FR-007 (macOS install) | `install-sh-detect.sh` (macOS supported/fail-closed cases); full brew auto-install → T021 manual | partial (detection CI; install manual) |
+| FR-007 (macOS install) | `install-sh-detect.sh` (macOS supported/fail-closed cases); full brew auto-install → T021 **WAIVED** | detection CI-proven; live brew install waived (reactive-fix) |
 | FR-016 (macOS supply-chain) | `install-sh-detect.sh` (no-Homebrew fail-closed); `security-surface.md` lens | partial |
-| FR-017 (`--prerelease`) | `install-sh-prerelease.sh` (`--help` + mismatch predicate); live prerelease install → T024 | partial (surface CI; live install release-gate) |
+| FR-017 (`--prerelease`) | `install-sh-prerelease.sh` (`--help` + mismatch predicate); live prerelease install **DONE** (beta4 Linux 2026-06-03) | surface CI + live install validated |
 | FR-012, FR-002/003/004/008 (macOS) | `wrapper-runtime.sh` on `validate-macos` (T020) + Ubuntu T015 mechanism | **yes** (run 26852247885) |
 | FR-014 (native-first docs) | manual review + markdownlint + `wrapper-docs-parity.tests.ps1` (no stale refs) | yes (lint + parity) |
 | FR-011, FR-009 (docs-parity arm) | `wrapper-docs-parity.tests.ps1` (+ existing registry/FileList parity) | yes |
 | SC-005 (docs lead native) | README/getting-started/user-guide reviewed; `Install-Module` demoted | yes |
 | SC-001/SC-003 (macOS) | `wrapper-runtime.sh` on macOS (T020) | **yes** (run 26852247885) |
-| SC-007 (macOS auto-install) | T021 manual proof | NO — manual, PENDING |
-| SC-006, SC-008 (release gate / prerelease beta) | T024 release gate | NO — manual, BLOCKED on maintainer auth |
+| SC-007 (macOS auto-install) | T021 manual proof **WAIVED** (maintainer; macOS CI-covered) | waived (reactive-fix) |
+| SC-006, SC-008 (release gate / prerelease beta) | T024 — `0.31.0-beta4` published + Linux-validated | **yes** (beta4, 2026-06-03) |
 
-## Closeout-blocking coverage gaps
+## Closeout-blocking coverage gaps — RESOLVED
 
-- SC-007 (macOS clean auto-install): requires T021 on a real Mac.
-- SC-006 / SC-008 (greenfield+brownfield + prerelease beta): requires T024 under maintainer authorization.
-- FR-012 + macOS halves of SC-001/SC-003: **CLEARED** — `validate-macos` ran green (run 26852247885, SHA 224bbd6f).
+- SC-006 / SC-008 (greenfield/brownfield + prerelease beta): **CLEARED** — `0.31.0-beta4` published +
+  Linux-validated 2026-06-03 (T024; interactive `specrew start` + `specrew version` label fix).
+- SC-007 (macOS clean auto-install): **WAIVED** — maintainer reactive-fix decision; macOS is CI-covered
+  (`validate-macos` + the interactive-`start` PTY TTY-survival regression). Not a closeout blocker.
+- FR-012 + macOS halves of SC-001/SC-003: **CLEARED** — `validate-macos` ran green (run 26852247885).

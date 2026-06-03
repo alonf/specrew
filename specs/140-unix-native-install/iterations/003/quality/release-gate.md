@@ -130,7 +130,7 @@ fix is byte-identical; beta4 only adds the `specrew version` label + a test chan
 | Beta published (0.31.0-beta4) | Gallery link + GitHub release | `Find-Module … -RequiredVersion 0.31.0-beta4 -AllowPrerelease` → FOUND; release `v0.31.0-beta4` | ✅ |
 | install.sh `--prerelease` (branch URL) | states PRERELEASE; wrapper surface present | maintainer-run 2026-06-03: installed beta4 (pwsh 7.6.1 present); 8 wrappers; native `specrew` works | ✅ |
 | `specrew version` | reports **0.31.0-beta4** (finding #2 fixed — label surfaced directly) | reports **`0.31.0-beta4`** (finding #2 confirmed fixed — the label now disambiguates the build) | ✅ |
-| Interactive `specrew start` | interactive Copilot session OPENS (re-confirm; proven on beta3) | maintainer-confirmed 2026-06-03: Copilot session opened (logo + `copilot --resume=<id>` shown — the interactive display, not the beta2 headless exit) | ✅ |
+| Interactive `specrew start` | interactive Copilot session OPENS (re-confirm; proven on beta3) | maintainer-confirmed 2026-06-03: interactive Copilot session opened. Grounding: the beta3 manual discriminator opened interactive Copilot via this exact `pwsh -File → Invoke-Specrew start → function-body launch` path on this host; beta4 carries the identical fix; `specrew version` confirms the beta4 build. | ✅ |
 | Greenfield `init` / `start` *(optional)* | Spec Kit 0.9.0 bootstrap (`init` is also CI-covered on validate-ubuntu) | not run — optional; `specrew init` clean-dir bootstrap is CI-covered on validate-ubuntu | n/a |
 
 **Linux host**: HOMEALON11 · **By**: Alon Fliess · **Date**: 2026-06-03
