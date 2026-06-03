@@ -1,13 +1,13 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "004"
-updated_at: "2026-06-03T15:38:13Z"
+updated_at: "2026-06-03T15:52:42Z"
 tasks:
   T001:
     title: "Sibling question->lens map file (index.yml untouched) + fixed 6-question set + always-on foundational lenses"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-06-03T15:52:42Z"
+    completed_at: "2026-06-03T15:52:42Z"
     blocked_reason: ""
   T002:
     title: "Questionnaire intake at design-analysis scaffold (human-confirmed) + write lens-applicability.json artifact"
@@ -17,9 +17,9 @@ tasks:
     blocked_reason: ""
   T003:
     title: "Pure deterministic selector: answers + sibling map -> selected lenses (always-on + gated); no network/LLM"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-06-03T15:52:42Z"
+    completed_at: "2026-06-03T15:52:42Z"
     blocked_reason: ""
   T004:
     title: "Render Applicable Lenses section from selected + graceful degradation (no catalog/answers -> none available)"
@@ -29,10 +29,10 @@ tasks:
     blocked_reason: ""
   T005:
     title: "Tests (reproduce-first): SC-015 determinism + JSON audit; SC-006 scope + degradation; never hide an always-on lens"
-    status: "planned"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-06-03T15:52:42Z"
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "selector-level tests green (19/0); render+intake assertions land with T002/T004"
   T006:
     title: "Docs + review evidence (TG-006): quickstart Iteration-4 + implemented/enforced/observable/documented gap ledger"
     status: "planned"
