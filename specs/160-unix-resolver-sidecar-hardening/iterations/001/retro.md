@@ -97,6 +97,13 @@ Proposal 145 structured review, which added evidence work and two in-review fixe
    (validator or review checklist item) asserting new test files are referenced by a workflow — third
    line of defense for the recurring F-140 lesson.
 
+**Human-approved carry** (retro verdict: approve with instructions, Alon Fliess, 2026-06-03):
+the retro is accepted with the 20 SP calibration kept as-is, and Actions 1 and 2 are explicitly
+queued as post-closeout work — (1) the codebase-wide Unix path-separator sweep proposal MUST include
+a CI/lint guard against new embedded-backslash ChildPaths; (2) the scaffolder chore/proposal covers
+at minimum the D-002 defects (drift-log trailing newline; missing canonical `Current Phase` /
+`Iteration Status` fields in scaffolded state.md).
+
 ## Calibration Suggestion
 
 - Suggested capacity adjustment: current baseline -> keep 20 SP cap; keep conditional-fix capacity
