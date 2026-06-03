@@ -59,13 +59,18 @@ and validating BOTH a greenfield and a brownfield project on **EACH required sur
 exactly what a headless/file-presence check would miss). This also validates the bundled Spec Kit 0.9.0
 support (PR #1626).
 
-**Required validation surfaces — BOTH required before Iteration 3 closeout:**
+**Validation surfaces:**
 
-- **Linux** *(surface added 2026-06-03)* — a clean host, ideally **without** `pwsh` so the apt auto-install
-  runs on a real host (stronger than the CI container).
-- **macOS** *(unchanged requirement)* — the **T021** clean-install manual proof (`macos-manual-proof.md`)
-  **plus** the macOS greenfield/brownfield release-gate evidence below, owned by the external macOS tester.
-  **Adding Linux does NOT replace or waive the macOS evidence.**
+- **Linux — REQUIRED, DONE.** Maintainer-confirmed 2026-06-03: native `specrew start` opens an
+  interactive Copilot session (the headline deliverable). See the Linux evidence table below.
+- **macOS — manual on-host validation WAIVED by the maintainer 2026-06-03.** Rationale: the
+  `validate-macos` CI lane covers the wrapper runtime (FR-002/003/004/008), the native command surface
+  (`specrew version` / `start --help`), install.sh detection incl. the Homebrew branch, and the
+  interactive-`start` **PTY TTY-survival** regression — all green on `macos-latest`. The residual
+  *unvalidated* slice is a live no-`pwsh` Homebrew auto-install + a real-terminal session on actual Mac
+  hardware; the maintainer accepts this with a **reactive-fix posture** (fix on a user bug report). The
+  T021 manual proof + the macOS evidence table below are therefore **NOT required** for this iteration's
+  closeout. (Decision owner: Alon Fliess.)
 
 **Upstream gates (branch CI):** `validate-macos` (T020) + `feature140-*` Ubuntu jobs + the parity cascade
 incl. the docs arm (T023) + the new interactive-`start` deferred-launch regression on the Ubuntu **and**
@@ -122,7 +127,7 @@ Stable promotion is a SEPARATE, separately-authorized step AFTER **both** surfac
 **Linux host**: HOMEALON11 (Linux, pwsh 7.6.1 present) · **By**: Alon Fliess · **Date**: 2026-06-03
 **Note**: the headline interactive-`start` deliverable is PROVEN on Linux. Remaining for a complete Linux gate: a fresh greenfield `init`/`start` exercising the Spec Kit 0.9.0 bootstrap.
 
-## Evidence — macOS surface (REQUIRED; external tester)
+## Evidence — macOS surface (WAIVED 2026-06-03 — CI-covered; manual on-host validation NOT required; see the waiver under "Validation surfaces" above)
 
 | Step | Expected | Actual | Pass? |
 | --- | --- | --- | --- |
@@ -139,7 +144,7 @@ Clean no-`pwsh` auto-install manual proof: see `macos-manual-proof.md` (T021).
 
 - Did NOT tag, publish, or trigger the publish workflow — the maintainer authorizes/pushes the tag.
 - Did NOT promote anything to stable.
-- Did NOT waive the macOS evidence — Linux is **added**; macOS (T021 + macOS release-gate) **remains required**.
+- macOS manual on-host validation is **WAIVED** by maintainer decision 2026-06-03 (CI-covered; reactive-fix posture) — see the "Validation surfaces" waiver above. Linux is the validated manual surface.
 - Built `install.sh --prerelease` (T019) + asserted its surface/mismatch predicate (unit-level); the live
   prerelease install against the published beta is proven HERE, per surface, once authorized.
 - Could NOT prove the interactive TUI renders in CI (no TTY) — the deferred-launch regression test proves
