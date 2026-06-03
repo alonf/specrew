@@ -264,10 +264,26 @@ function Test-SpecrewDesignAnalysisLensCoverage {
     $errors = New-Object System.Collections.Generic.List[string]
 
     # Selected lenses + the explicit grandfather marker both come from the recorded questionnaire
-    # artifact (decoupled; the JSON is the audit record). No artifact / no selection -> nothing to
-    # enforce (SC-006 graceful no-op).
-    $answersPath = Join-Path $IterationDirectory 'lens-applicability.json'
-    if (-not (Test-Path -LiteralPath $answersPath -PathType Leaf)) { return @() }
+    # artifact (decoupled; the JSON is the audit record). Resolution order (A3 — the lens intake is
+    # now feature/specify-phase truth, recorded once at the feature level, not copied per iteration):
+    #   1. iterations/<NNN>/lens-applicability.json   (override / Iteration 4-5 back-compat)
+    #   2. feature-level lens-applicability.json       (the specify-phase truth)
+    #   3. neither present -> graceful no-op (SC-006)
+    # Resolving (not copying) keeps a single source of truth and avoids drift between duplicates.
+    $iterationArtifact = Join-Path $IterationDirectory 'lens-applicability.json'
+    $featureDirectory = Split-Path -Parent (Split-Path -Parent $IterationDirectory)
+    $featureArtifact = if (-not [string]::IsNullOrWhiteSpace($featureDirectory)) { Join-Path $featureDirectory 'lens-applicability.json' } else { $null }
+
+    $answersPath = if (Test-Path -LiteralPath $iterationArtifact -PathType Leaf) {
+        $iterationArtifact
+    }
+    elseif ($null -ne $featureArtifact -and (Test-Path -LiteralPath $featureArtifact -PathType Leaf)) {
+        $featureArtifact
+    }
+    else {
+        $null
+    }
+    if ($null -eq $answersPath) { return @() }
 
     $doc = $null
     try { $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json }

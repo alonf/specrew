@@ -10,9 +10,9 @@ tasks:
     completed_at: "2026-06-04T08:10:00Z"
     blocked_reason: ""
   T002:
-    title: "Lifecycle wiring: interactive lens intake INSIDE specify, before sync-specify (placement rule a/b/c); coordinator/governance + specify ordering"
-    status: "planned"
-    started_at: ""
+    title: "Lifecycle wiring: interactive lens intake INSIDE specify, before sync-specify (placement rule a/b/c); coordinator/governance + specify ordering. PART 1 DONE: FR-026 feature/iteration resolution order (instruction #1) implemented + verified (3 scenarios) + no regression. REMAINING: coordinator-prompt/lifecycle wiring of the interactive intake."
+    status: "in-progress"
+    started_at: "2026-06-04T08:12:00Z"
     completed_at: ""
     blocked_reason: ""
   T003:
