@@ -1,10 +1,10 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: retro
-**Last Completed Task**: T018 (reviewer readiness) + review-signoff approved (Alon Fliess, approve as-is, 2026-06-03)
-**Tasks Remaining**: (none — retro written; iteration-closeout pending human verdict)
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: retro approved with instructions; iteration-closeout approved with instructions (Alon Fliess, 2026-06-03)
+**Tasks Remaining**: (none — Iteration 001 closed; no Iteration 002; feature-closeout pending separate explicit go-ahead)
 **In Progress**: (none)
 **Baseline Ref**: ee8ef1fcbe9334790bdd142780f548721e9cc2ec
 **Updated**: 2026-06-03T18:05:00Z
@@ -22,6 +22,12 @@
 
 ## Notes
 
+- **Iteration-closeout instructions (Alon Fliess, approve with instructions, 2026-06-03)**: close
+  Iteration 001 as complete with NO Iteration 002; keep the codebase-wide Unix path-separator sweep and
+  the scaffolder newline/state-field defects as separate follow-up proposals/chores, not F-160 scope.
+  Feature-closeout must explicitly note: both original findings were confirmed and fixed repro-first;
+  the sidecar fix remains narrow and data-loss-safe; no push/PR/beta happens without a separate
+  explicit go-ahead.
 - Update this file after each task completes.
 - Keep task identifiers aligned to plan.md.
 
