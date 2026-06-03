@@ -56,8 +56,11 @@ Write-Pass 'Test-DirOnPath detects PATH membership (with trailing-slash toleranc
 $cases = @(
     @{ Existing = 'none'; Force = $false; DryRun = $false; Expect = 'create' }
     @{ Existing = 'none'; Force = $false; DryRun = $true; Expect = 'would-create' }
-    @{ Existing = 'symlink'; Force = $false; DryRun = $false; Expect = 'replace-symlink' }
-    @{ Existing = 'symlink'; Force = $false; DryRun = $true; Expect = 'would-replace-symlink' }
+    @{ Existing = 'symlink-managed'; Force = $false; DryRun = $false; Expect = 'replace-symlink' }
+    @{ Existing = 'symlink-managed'; Force = $false; DryRun = $true; Expect = 'would-replace-symlink' }
+    @{ Existing = 'symlink-foreign'; Force = $false; DryRun = $false; Expect = 'skip-needs-force' }
+    @{ Existing = 'symlink-foreign'; Force = $true; DryRun = $false; Expect = 'replace-symlink' }
+    @{ Existing = 'symlink-foreign'; Force = $true; DryRun = $true; Expect = 'would-replace-symlink' }
     @{ Existing = 'file'; Force = $false; DryRun = $false; Expect = 'skip-needs-force' }
     @{ Existing = 'file'; Force = $true; DryRun = $false; Expect = 'overwrite-file' }
     @{ Existing = 'file'; Force = $true; DryRun = $true; Expect = 'would-overwrite-file' }
@@ -66,7 +69,38 @@ foreach ($c in $cases) {
     $got = Get-WrapperInstallPlan -Existing $c.Existing -Force:$c.Force -DryRun:$c.DryRun
     if ($got -ne $c.Expect) { Write-Fail "install-plan($($c.Existing),Force=$($c.Force),DryRun=$($c.DryRun)) = '$got', expected '$($c.Expect)'" }
 }
-Write-Pass 'Get-WrapperInstallPlan returns the correct action for all existing/Force/DryRun combinations (incl. skip-needs-force for non-symlink files)'
+Write-Pass 'Get-WrapperInstallPlan: managed symlink replaces freely; foreign symlink + regular file require -Force (skip-needs-force otherwise)'
+
+# --- Get-ExistingTargetKind (managed vs foreign symlink detection) ---
+$tmpRoot = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "specrew-kind-$([System.IO.Path]::GetRandomFileName())")
+New-Item -ItemType Directory -Force -Path $tmpRoot | Out-Null
+try {
+    $absent = Join-Path $tmpRoot 'absent'
+    if ((Get-ExistingTargetKind -Path $absent -ExpectedTarget 'x') -ne 'none') { Write-Fail "absent path should be 'none'" }
+
+    $expected = Join-Path $tmpRoot 'real-wrapper'; Set-Content -LiteralPath $expected -Value '#!/bin/sh' -NoNewline
+    $other = Join-Path $tmpRoot 'other-target'; Set-Content -LiteralPath $other -Value 'x' -NoNewline
+    $plainFile = Join-Path $tmpRoot 'plain'; Set-Content -LiteralPath $plainFile -Value 'x' -NoNewline
+    if ((Get-ExistingTargetKind -Path $plainFile -ExpectedTarget $expected) -ne 'file') { Write-Fail "regular file should be 'file'" }
+
+    # Symlink cases only where the platform/privileges allow creating symlinks (Unix CI; Windows needs admin/dev-mode).
+    $managedLink = Join-Path $tmpRoot 'managed-link'
+    $linkOk = $true
+    try { New-Item -ItemType SymbolicLink -Path $managedLink -Target $expected -ErrorAction Stop | Out-Null } catch { $linkOk = $false }
+    if ($linkOk) {
+        if ((Get-ExistingTargetKind -Path $managedLink -ExpectedTarget $expected) -ne 'symlink-managed') { Write-Fail "symlink -> expected should be 'symlink-managed'" }
+        $foreignLink = Join-Path $tmpRoot 'foreign-link'
+        New-Item -ItemType SymbolicLink -Path $foreignLink -Target $other -ErrorAction Stop | Out-Null
+        if ((Get-ExistingTargetKind -Path $foreignLink -ExpectedTarget $expected) -ne 'symlink-foreign') { Write-Fail "symlink -> other should be 'symlink-foreign'" }
+        Write-Pass 'Get-ExistingTargetKind: none/file + managed-vs-foreign symlink classified correctly'
+    }
+    else {
+        Write-Pass 'Get-ExistingTargetKind: none/file classified; symlink cases skipped (symlink creation not permitted here) — covered on Unix CI'
+    }
+}
+finally {
+    Remove-Item -Recurse -Force -LiteralPath $tmpRoot -ErrorAction SilentlyContinue
+}
 
 # --- Windows explained-no-op end-to-end (Windows runner only) ---
 $onWindows = $env:OS -eq 'Windows_NT' -or ($PSVersionTable.Platform -eq 'Win32NT')

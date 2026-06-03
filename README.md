@@ -27,6 +27,8 @@ specrew start "Build a tip calculator with a web UI"
 
 No `pwsh`, no `Install-Module`. `install.sh` does it all: it auto-installs PowerShell Core as an internal dependency if it is missing (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew), installs Specrew from the PowerShell Gallery, and puts the native `specrew` command on your `PATH`. To validate a beta instead of the stable release, append `-s -- --prerelease` to the `curl … | sh` line.
 
+> **Validating an unreleased prerelease?** The `main` URL above serves the *released* `install.sh`. When you're beta-testing a feature branch or tag that isn't merged yet, fetch the script from that ref instead — e.g. `curl -fsSL https://raw.githubusercontent.com/alonf/specrew/<branch-or-tag>/install.sh | sh -s -- --prerelease`.
+
 ### Windows — PowerShell 7+
 
 ```powershell

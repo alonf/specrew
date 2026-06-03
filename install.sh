@@ -269,11 +269,18 @@ verify_specrew_wrapper_surface() {
 # --- shell wrappers --------------------------------------------------------
 install_wrappers() {
   log "Installing the native 'specrew' shell wrappers..."
+  # The bootstrap is an explicit, user-invoked install, so it must CREATE the target bin
+  # directory if it is missing (a fresh account often has no ~/.local/bin) — pass --force,
+  # which install-shell-wrappers requires both to create a missing dir and to overwrite a
+  # non-Specrew entry at a wrapper path (FR-006). Without it, the advertised one-step
+  # `curl | sh` install would fail at this step on a clean host. (The standalone
+  # `specrew install-shell-wrappers` command, run outside the bootstrap, stays safe-by-default:
+  # it creates managed wrappers without --force but refuses to clobber a foreign file/symlink.)
   if [ -n "$SPECREW_BIN_DIR" ]; then
-    pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -Force; specrew install-shell-wrappers --bin-dir '$SPECREW_BIN_DIR'" \
+    pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -Force; specrew install-shell-wrappers --bin-dir '$SPECREW_BIN_DIR' --force" \
       || fail_closed "Failed to install the shell wrappers into '$SPECREW_BIN_DIR'."
   else
-    pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -Force; specrew install-shell-wrappers" \
+    pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -Force; specrew install-shell-wrappers --force" \
       || fail_closed "Failed to install the shell wrappers."
   fi
 }

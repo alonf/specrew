@@ -99,11 +99,13 @@ function Test-DirOnPath {
 
 function Get-WrapperInstallPlan {
     # Pure decision logic for one wrapper. Returns an action without touching disk.
-    #   Existing: $null (absent) | 'symlink' | 'file'
-    # Actions: would-create | would-replace-symlink | create | replace-symlink |
-    #          skip-needs-force | overwrite-file
+    #   Existing: 'none' | 'symlink-managed' (already -> our wrapper) | 'symlink-foreign' (-> other target) | 'file'
+    # Actions: would-create | create | would-replace-symlink | replace-symlink |
+    #          skip-needs-force | would-overwrite-file | overwrite-file
+    # A MANAGED symlink (already points at our module wrapper) is replaced freely (idempotent).
+    # A FOREIGN symlink (points elsewhere) or a regular file is NOT clobbered without -Force.
     param(
-        [Parameter(Mandatory = $true)][ValidateSet('none', 'symlink', 'file')][string]$Existing,
+        [Parameter(Mandatory = $true)][ValidateSet('none', 'symlink-managed', 'symlink-foreign', 'file')][string]$Existing,
         [bool]$Force,
         [bool]$DryRun
     )
@@ -111,12 +113,15 @@ function Get-WrapperInstallPlan {
     if ($Existing -eq 'none') {
         return $(if ($DryRun) { 'would-create' } else { 'create' })
     }
-    if ($Existing -eq 'symlink') {
+    if ($Existing -eq 'symlink-managed') {
         return $(if ($DryRun) { 'would-replace-symlink' } else { 'replace-symlink' })
     }
-    # Existing real file (not a managed symlink): require -Force to overwrite.
+    # Foreign symlink or regular file at the target: do not clobber a user-owned entry without -Force.
     if (-not $Force) {
         return 'skip-needs-force'
+    }
+    if ($Existing -eq 'symlink-foreign') {
+        return $(if ($DryRun) { 'would-replace-symlink' } else { 'replace-symlink' })
     }
     return $(if ($DryRun) { 'would-overwrite-file' } else { 'overwrite-file' })
 }
@@ -130,14 +135,31 @@ function Test-IsUnixPlatform {
 }
 
 function Get-ExistingTargetKind {
-    param([Parameter(Mandatory = $true)][string]$Path)
+    # Classify what already exists at $Path, relative to the wrapper we intend to install:
+    #   'none' | 'symlink-managed' (symlink already points at $ExpectedTarget) |
+    #   'symlink-foreign' (symlink points somewhere else) | 'file' (regular file/dir)
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [string]$ExpectedTarget
+    )
 
     $item = Get-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue
     if ($null -eq $item) { return 'none' }
     $isLink = ($item.LinkType -eq 'SymbolicLink') -or `
         (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -eq [System.IO.FileAttributes]::ReparsePoint)
-    if ($isLink) { return 'symlink' }
-    return 'file'
+    if (-not $isLink) { return 'file' }
+
+    # A symlink is "managed" only if it already points at the exact wrapper we would install;
+    # anything else is foreign and must not be clobbered without -Force.
+    $actualTarget = $item.Target
+    if ($actualTarget -is [array]) { $actualTarget = $actualTarget | Select-Object -First 1 }
+    if ([string]::IsNullOrWhiteSpace($ExpectedTarget) -or [string]::IsNullOrWhiteSpace([string]$actualTarget)) {
+        return 'symlink-foreign'
+    }
+    $normActual = try { [System.IO.Path]::GetFullPath([string]$actualTarget) } catch { [string]$actualTarget }
+    $normExpected = try { [System.IO.Path]::GetFullPath($ExpectedTarget) } catch { $ExpectedTarget }
+    if ($normActual -eq $normExpected) { return 'symlink-managed' }
+    return 'symlink-foreign'
 }
 
 # --- Main (skipped when the file is dot-sourced for unit testing) ---
@@ -185,12 +207,12 @@ function Invoke-SpecrewInstallShellWrappers {
 
     foreach ($wrapper in $wrappers) {
         $link = Join-Path $resolvedBinDir $wrapper.Name
-        $existing = if ($DryRun) { Get-ExistingTargetKind -Path $link } else { Get-ExistingTargetKind -Path $link }
+        $existing = Get-ExistingTargetKind -Path $link -ExpectedTarget $wrapper.FullName
         $action = Get-WrapperInstallPlan -Existing $existing -Force:$Force -DryRun:$DryRun
 
         switch ($action) {
             'skip-needs-force' {
-                Write-Warning "skipping $($wrapper.Name): '$link' exists and is not a Specrew-managed symlink; re-run with -Force to overwrite."
+                Write-Warning "skipping $($wrapper.Name): '$link' already exists and is not a Specrew-managed wrapper (a regular file, or a symlink pointing elsewhere); re-run with -Force to overwrite it."
                 $skipped.Add($wrapper.Name)
                 continue
             }

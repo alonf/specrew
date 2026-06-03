@@ -39,12 +39,12 @@ $stale = @($binInFileList | Where-Object { -not (Test-Path -LiteralPath (Join-Pa
 if ($stale.Count -gt 0) { Write-Fail "FileList bin/ entries with no file on disk: $($stale -join ', ')" }
 Write-Pass "every FileList bin/ entry exists on disk ($($binInFileList.Count))"
 
-# The generator + installer scripts must ship too.
-foreach ($required in @('scripts/internal/generate-shell-wrappers.ps1', 'scripts/specrew-install-shell-wrappers.ps1')) {
-    if ($required -notin $fileListNorm) { Write-Fail "required script not in FileList: $required" }
-    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $required) -PathType Leaf)) { Write-Fail "required script not on disk: $required" }
+# The user-facing bootstrap (install.sh) + the generator + installer scripts must ship too.
+foreach ($required in @('install.sh', 'scripts/internal/generate-shell-wrappers.ps1', 'scripts/specrew-install-shell-wrappers.ps1')) {
+    if ($required -notin $fileListNorm) { Write-Fail "required runtime file not in FileList: $required" }
+    if (-not (Test-Path -LiteralPath (Join-Path $repoRoot $required) -PathType Leaf)) { Write-Fail "required runtime file not on disk: $required" }
 }
-Write-Pass 'generator + installer scripts are declared in FileList and present on disk'
+Write-Pass 'install.sh + generator + installer scripts are declared in FileList and present on disk'
 
 Write-Host ''
 Write-Host 'All wrapper-filelist-parity tests passed.' -ForegroundColor Green
