@@ -5,15 +5,21 @@ param()
 #
 # Suspected issue: the boundary-sync wrapper resolver builds candidate paths with
 # hardcoded backslash separators ('scripts\internal\sync-boundary-state.ps1',
-# '.specrew\config.yml'). On Windows '\' is the path separator so this works; on
-# Unix PowerShell does NOT rewrite an embedded '\', so the candidate becomes a
-# single literal filename containing backslashes and Test-Path returns $false —
-# Path 0/1/2 of the resolver can never match on Linux/macOS.
+# '.specrew\config.yml'), hypothesized to make Path 0/1/2 unable to match on
+# Linux/macOS.
+#
+# REAL-HOST REFINEMENT (Ubuntu CI, 2026-06-03): the first real-Linux execution of
+# this probe REFUTED the runtime half of that hypothesis — PowerShell provider
+# cmdlets (Join-Path/Test-Path, which the wrapper uses) normalize '\' to '/' on
+# POSIX, so the wrapper resolves even with the old construction. What remains
+# true and proven: (a) at the STRING level '\' is not a POSIX separator, and
+# (b) raw .NET IO APIs do NOT normalize — so embedded-backslash paths are a real
+# hazard in non-provider contexts. The applied multi-segment Join-Path fix is
+# platform-hygiene hardening, not the repair of a reproduced runtime failure.
 #
 # This probe is REPRO-FIRST (FR-001/FR-002): the SEMANTIC and BEHAVIORAL sections
-# document the interpretation and pass on every platform; the SOURCE REGRESSION
-# section asserts the live resolver uses separator-safe construction. That section
-# FAILS before the fix (bug present) and PASSES after (FR-003/FR-004).
+# document the platform interpretation per layer; the SOURCE REGRESSION section
+# asserts the live resolver uses separator-safe construction (FAILED pre-fix).
 #
 # Runs identically on Windows, Linux, and macOS PowerShell (Proposal 160 AC4).
 
@@ -71,11 +77,26 @@ try {
     $buggyResolves = Test-Path -LiteralPath $buggyCandidate -PathType Leaf
     if ($isWindowsHost) {
         Assert-True ($buggyResolves -eq $true) `
-            "Windows: embedded-backslash candidate resolves (bug is LATENT on Windows — why it went unnoticed)"
+            "Windows: embedded-backslash candidate resolves ('\' is the native separator)"
     }
     else {
-        Assert-True ($buggyResolves -eq $false) `
-            "POSIX: embedded-backslash candidate does NOT resolve (CONFIRMS the resolver bug on Unix)"
+        # REAL-HOST REFINEMENT (Ubuntu CI run 26907556536, 2026-06-03): PowerShell
+        # PROVIDER cmdlets (Join-Path / Test-Path) normalize '\' to '/' on POSIX,
+        # so the embedded-backslash candidate RESOLVES at the provider layer —
+        # refuting the original hypothesis that the wrapper's Test-Path probes
+        # could never match on Unix. The residual portability hazard is limited to
+        # NON-provider contexts: raw .NET IO APIs, string comparisons/splits, and
+        # paths handed to native commands.
+        Write-Info ("POSIX buggy candidate string: '{0}' (string still contains backslash: {1})" -f $buggyCandidate, $buggyCandidate.Contains([char]92))
+        Assert-True ($buggyResolves -eq $true) `
+            "POSIX: provider cmdlets NORMALIZE the embedded-backslash candidate (resolves at runtime; original never-matches hypothesis refuted on a real host)"
+
+        # The hazard that DOES survive on POSIX: the raw .NET IO layer treats the
+        # embedded backslash as a literal filename character. Build the candidate
+        # by plain string interpolation (no provider involvement) to prove it.
+        $rawCandidate = "$scratch/$buggyChildPath"
+        Assert-True (-not [System.IO.File]::Exists($rawCandidate)) `
+            "POSIX: raw .NET [IO.File]::Exists does NOT resolve the embedded-backslash path (the residual non-provider hazard class)"
     }
 }
 finally {

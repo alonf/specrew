@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 100% (2/2 resolved)
-**Specification drift**: None — both events are scope-boundary discoveries handled within plan, not spec/impl divergence
+**Total drift events**: 3
+**Resolution rate**: 100% (3/3 resolved)
+**Specification drift**: None — events are scope-boundary discoveries and an evidence refinement, not spec/impl divergence
 
 ## Events
 
@@ -54,6 +54,22 @@
 - **Resolution**: `fixed-now` locally (newline added; canonical state.md fields
   populated). Flagged for retro as real defects in this repo's scaffolder, since
   this is the Specrew self-host tree. No Feature-160 spec impact.
+
+### D-003 — Real-host evidence refined Finding 1's runtime disposition (post-closeout CI)
+
+- **Type**: evidence refinement at the feature-closeout CI gate (FR-009/TG-005 follow-through).
+- **Observed**: The first real-Linux execution of the resolver probe (Ubuntu run
+  `26907556536`, PR #1694) showed PowerShell provider cmdlets normalize `\` to
+  `/` on POSIX — the wrapper's old construction RESOLVES at runtime, refuting the
+  "Path 0/1/2 can never match on Unix" hypothesis. The string-level semantics and
+  the raw-.NET-layer hazard remain proven.
+- **Decision**: `human-decision` — keep-the-hardening vs revert presented to the
+  maintainer before merge; evidence note, probe, CHANGELOG, and feature review
+  corrected to the refined truth. Sweep-proposal scope re-aimed at the
+  non-provider hazard class.
+- **Resolution**: recorded honestly the same day; the deterministic-fixture
+  fallback's limit (string semantics ≠ provider behavior) is itself a lesson
+  feeding the clarify policy for future investigations.
 
 ### Resolution Strategies (Unused)
 

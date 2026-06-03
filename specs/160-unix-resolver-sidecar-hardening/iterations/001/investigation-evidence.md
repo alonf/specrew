@@ -46,11 +46,29 @@ mirror embed `scripts\internal\sync-boundary-state.ps1` and `.specrew\config.yml
 as single backslash ChildPaths. The repro-first test fails on the live source,
 proving the bug is present (it will pass once the fix lands).
 
-**Disposition**: **CONFIRMED**. The resolver builds non-POSIX-safe candidate
-paths (Path 0/1/2 + the config probe) in both the source and the deployed mirror.
-The fix is low-risk: multi-segment `Join-Path` / `[IO.Path]::Combine`, which is
-identical behavior on Windows and correct on Unix. Conditional fix T010/T011
-ACTIVE.
+**Disposition**: **CONFIRMED** (at the string/construction level — see real-host
+refinement below). The resolver builds non-POSIX-safe candidate paths (Path
+0/1/2 + the config probe) in both the source and the deployed mirror. The fix is
+low-risk: multi-segment `Join-Path` / `[IO.Path]::Combine`, which is identical
+behavior on Windows and correct on Unix. Conditional fix T010/T011 ACTIVE.
+
+**REAL-HOST REFINEMENT (Ubuntu CI run 26907556536 at feature-closeout,
+2026-06-03)**: the first execution of the probe on real Linux pwsh REFUTED the
+runtime half of the hypothesis. PowerShell **provider cmdlets normalize `\` to
+`/` on POSIX**: `Test-Path -LiteralPath` over the embedded-backslash candidate
+returned **true** on Ubuntu, so the wrapper's Path 0/1/2 probes resolve even with
+the OLD construction — the suspected "Unable to locate the internal helper" Unix
+failure is **not-confirmed at runtime** on stock pwsh. What stays proven: at the
+string level `\` is not a POSIX separator, and raw .NET IO APIs
+(`[IO.File]::Exists` etc.) do NOT normalize — so embedded-backslash paths remain
+a real hazard in NON-provider contexts (raw .NET IO, string comparisons/splits,
+native commands). **Runtime disposition therefore revised: the applied fix is
+platform-hygiene hardening (byte-identical on Windows — live-sync proven;
+normalized strings on Unix), NOT the repair of a reproduced runtime failure.**
+Keep-vs-revert presented to the maintainer at feature-closeout; this also
+re-scopes the follow-up sweep proposal to the non-provider hazard class. The
+probe's POSIX branch was corrected to assert observed provider normalization and
+to prove the residual .NET-layer hazard deterministically.
 
 **Windows symptom root-cause (Proposal 160 Open Question / AC3)**: Observed live
 during this iteration's own before-implement sync — the wrapper resolved the

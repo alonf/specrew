@@ -102,6 +102,21 @@ verdict:
 - **No push / PR / beta has occurred**; all outward steps (SDLC 5–13) await the maintainer's separate
   explicit go-ahead.
 
+## Addendum — first real-Linux CI run refined Finding 1 (post-approval, 2026-06-03)
+
+The PR's Ubuntu deterministic-gate run (`26907556536`) — the exact real-host execution this review
+insisted on wiring — REFUTED the runtime half of the resolver hypothesis: PowerShell provider cmdlets
+normalize `\` to `/` on POSIX, so the old construction resolved at runtime (`Test-Path` true). The
+probe's POSIX branch originally asserted the opposite and correctly FAILED, halting the gate. Honest
+follow-through applied before merge: probe corrected to assert observed provider normalization AND to
+prove the residual raw-.NET-layer hazard deterministically; investigation evidence, CHANGELOG, and
+drift log (D-003) revised — Finding 1's runtime disposition is now **not-confirmed-at-runtime /
+string-level-confirmed**, and the applied fix is reclassified as platform-hygiene hardening
+(byte-identical on Windows, live-sync proven). Keep-vs-revert escalated to the maintainer; the
+follow-up sweep proposal re-scopes to the non-provider hazard class. Phase 5's verdict stands on the
+corrected evidence; this addendum supersedes the earlier "CONFIRMS the resolver bug on Unix" phrasing
+wherever the two conflict.
+
 ## Verdict: **APPROVE for feature-closeout entry**
 
 All seven phases pass at the branch tip across the entire feature. The repository-side work is
