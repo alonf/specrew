@@ -235,6 +235,31 @@ if ($copilotOrientation -notmatch 'GitHub Copilot CLI' -or $copilotOrientation -
 }
 Write-Pass 'Host orientation rendering is accurate for Codex, Claude, and Copilot/Squad initial/resume cases'
 
+# Test 9b-FR025 (transparency half): when an expertise line is provided, the orientation surfaces the
+# assumed expertise, positions it after "How this works" and before "What I'll ask", and invites
+# correction. Reproduce-first: the regression was the orientation never surfacing the recorded profile
+# ("I do not see what the system knows about me"); a provided line must now appear in the visible block.
+$expertiseLine = "What I know about you: I'll treat you as expert on Software Architecture, mid-level on UX/UI Design - correct me if that's off."
+$withExpertise = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'claude' -CrewRuntimeStatus 'bootstrap_only' -SpecrewVersion '0.31.1' -LifecycleMode 'resume-feature' -FeatureRef '141-design-gate-runtime-hardening' -BoundaryType 'plan' -ExpertiseLine $expertiseLine
+if ($withExpertise -notmatch 'What I know about you: I''ll treat you as expert on Software Architecture') {
+    Write-Fail "FR-025: orientation did not surface the provided expertise line:`n$withExpertise"
+}
+if ($withExpertise -notmatch 'correct me if that''s off') {
+    Write-Fail 'FR-025: orientation expertise line did not invite correction.'
+}
+$howIdx = $withExpertise.IndexOf('How this works:')
+$knowIdx = $withExpertise.IndexOf('What I know about you:')
+$askIdx = $withExpertise.IndexOf("What I'll ask from you:")
+if (-not ($howIdx -ge 0 -and $knowIdx -gt $howIdx -and $askIdx -gt $knowIdx)) {
+    Write-Fail "FR-025: expertise line is not positioned after 'How this works' and before 'What I'll ask':`n$withExpertise"
+}
+# Graceful (back-compat): with no expertise line the section is omitted entirely.
+$noExpertise = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'claude' -CrewRuntimeStatus 'bootstrap_only' -SpecrewVersion '0.31.1' -LifecycleMode 'new-feature'
+if ($noExpertise -match 'What I know about you:') {
+    Write-Fail "FR-025: orientation surfaced an expertise section with no expertise line provided (should be omitted):`n$noExpertise"
+}
+Write-Pass 'FR-025: orientation surfaces the assumed expertise (positioned, invites correction) and omits it gracefully when absent'
+
 # Test 9c: host interaction guidance is rendered by the selected host package
 $interactionPrompt = @'
 53. **Structured verdict menu**

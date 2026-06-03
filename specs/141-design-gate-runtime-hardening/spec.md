@@ -291,7 +291,12 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   MUST **ask the human** these questions, adapting question depth to the recorded user-profile expertise
   dials per the F-016 interaction model (concise expert-level questions where a dial is high; explain +
   recommend a default where it is low), surface the resulting lens decisions for confirmation, and MUST
-  NOT silently auto-resolve a material lens area. Answers are recorded as a JSON artifact; lens
+  NOT silently auto-resolve a material lens area. Specrew MUST also **surface the assumed expertise** it
+  adapts to — the recorded profile rendered in the visible session orientation as a concise, correctable
+  one-liner (e.g. "I'll treat you as expert on Software Architecture, mid-level on UX/UI Design — correct
+  me if that's off"), whose level bands match the runtime adaptation cutoffs — so the human sees and can
+  correct the assumed level before adaptation (the transparency half of expertise-adaptation). Answers
+  are recorded as a JSON artifact; lens
   selection from the answers remains a **deterministic, LLM/network-free function** of the answers + a
   question→lens map (foundational always-on; specialized gated by their mapped answer), so identical
   answers yield the same set and the JSON is the audit trail. *(Amended — A3: was "a fixed questionnaire

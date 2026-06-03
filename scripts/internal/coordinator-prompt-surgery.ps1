@@ -77,7 +77,12 @@ function Get-SpecrewHostOrientationBlock {
 
         [AllowNull()][string]$FeatureRef,
 
-        [AllowNull()][string]$BoundaryType
+        [AllowNull()][string]$BoundaryType,
+
+        # FR-025 transparency half: a pre-rendered one-line expertise summary ("I'll treat you as
+        # expert on X, mid-level on Y - correct me if that's off"). The integration layer renders it
+        # from the current Crew Interaction Profile and passes it in, so this stays a pure renderer.
+        [AllowNull()][string]$ExpertiseLine
     )
 
     $manifest = Get-HostManifest -Kind $HostKind
@@ -138,6 +143,16 @@ function Get-SpecrewHostOrientationBlock {
         'What you can browse: artifacts land under file:///<project-root-url>/specs/<feature>/ — spec file file:///<project-root-url>/specs/<feature>/spec.md, plan file file:///<project-root-url>/specs/<feature>/plan.md, tasks file file:///<project-root-url>/specs/<feature>/tasks.md, plus the iteration artifacts under file:///<project-root-url>/specs/<feature>/iterations/001/. Open another terminal and run `code .` to browse them while I work. After each iteration close, your dashboard lives at file:///<project-root-url>/specs/<feature>/iterations/<NNN>/dashboard.md.'
     }
 
+    # FR-025 transparency half: surface the assumed expertise (and invite correction) right after the
+    # "how this works" framing, so the human sees the level Specrew adapts to before any questions. Omit
+    # the whole line gracefully when no profile was passed (back-compat: block is otherwise unchanged).
+    $expertiseBlock = if ([string]::IsNullOrWhiteSpace($ExpertiseLine)) {
+        ''
+    }
+    else {
+        "$ExpertiseLine`n`n"
+    }
+
     return @"
 ``````markdown
 $openingLine
@@ -147,7 +162,7 @@ $lifecycleLine
 
 $howThisWorks
 
-What I'll ask from you: clarify questions when something is genuinely ambiguous
+${expertiseBlock}What I'll ask from you: clarify questions when something is genuinely ambiguous
 (2-3 max per phase), and an approve/redirect verdict at each boundary stop. I'll
 emit a clear human re-entry packet every time I need you.
 
@@ -273,7 +288,11 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
 
         [AllowNull()][string]$FeatureRef,
 
-        [AllowNull()][string]$BoundaryType
+        [AllowNull()][string]$BoundaryType,
+
+        # FR-025 transparency half: pre-rendered expertise summary, threaded straight to the
+        # orientation renderer (the start script renders it from the current profile).
+        [AllowNull()][string]$ExpertiseLine
     )
 
     if ([string]::IsNullOrEmpty($Prompt)) {
@@ -287,7 +306,7 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
 
     # Surgery 1b: host-facing orientation block rendered from the selected host package.
     $orientationMarker = [regex]::Escape((Get-SpecrewHostOrientationMarker))
-    $orientationBlock = Get-SpecrewHostOrientationBlock -HostKind $HostKind -CrewRuntimeStatus $CrewRuntimeStatus -SpecrewVersion $SpecrewVersion -LifecycleMode $LifecycleMode -FeatureRef $FeatureRef -BoundaryType $BoundaryType
+    $orientationBlock = Get-SpecrewHostOrientationBlock -HostKind $HostKind -CrewRuntimeStatus $CrewRuntimeStatus -SpecrewVersion $SpecrewVersion -LifecycleMode $LifecycleMode -FeatureRef $FeatureRef -BoundaryType $BoundaryType -ExpertiseLine $ExpertiseLine
     $result = [regex]::Replace($result, $orientationMarker, [System.Text.RegularExpressions.MatchEvaluator]{ param($m) $orientationBlock })
 
     # Surgery 1c: host-facing interaction guidance rendered from the selected host package.

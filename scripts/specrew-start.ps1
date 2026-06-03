@@ -3838,7 +3838,8 @@ $promptContent = Invoke-SpecrewCoordinatorPromptSurgery `
     -SpecrewVersion $specrewRuntimeVersion `
     -LifecycleMode $mode `
     -FeatureRef $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_ref)) { [string]$validatedSessionState.feature_ref } elseif ($resolvedFeaturePath) { Split-Path -Leaf $resolvedFeaturePath } else { $null }) `
-    -BoundaryType $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.boundary_type)) { [string]$validatedSessionState.boundary_type } else { $null })
+    -BoundaryType $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.boundary_type)) { [string]$validatedSessionState.boundary_type } else { $null }) `
+    -ExpertiseLine (Get-SpecrewProfileOrientationLine)
 
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
