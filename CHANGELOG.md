@@ -6,6 +6,17 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.31.0] - 2026-06-03
+
+Stable release — promoted from `0.31.0-beta4` after beta-before-stable validation (Linux-validated; macOS CI-covered + manual-waived). Consolidates the `0.31.0-beta1`…`beta4` entries below.
+
+### Added
+
+- **Feature 140 — Unix-Native Install & Command Surface.** Native `specrew` shell wrappers + an `install.sh` bootstrap so macOS/Linux users run Specrew from zsh/bash without typing `pwsh`. `install.sh` auto-installs PowerShell Core as an internal dependency (Ubuntu/Debian via the Microsoft apt repo; macOS via Homebrew), installs Specrew from the PowerShell Gallery (`--prerelease` installs a beta), and installs the wrappers. Interactive `specrew start` opens a host session on Unix (TTY-preserving function-context launch); `specrew version` surfaces the prerelease label. Registry ↔ wrapper ↔ FileList ↔ docs parity is CI-guarded; docs lead with the native `install.sh` path.
+- Also ships **Feature 051 (Multi-Session Foundation)**, **Spec Kit 0.9.0 support**, and **Proposal 152**.
+
+See the `0.31.0-beta1`…`beta4` sections below for the full per-beta detail (including the interactive-`start` TTY fix and the installer hardening surfaced by on-host validation).
+
 ## [0.31.0-beta4] - 2026-06-03
 
 ### Changed
