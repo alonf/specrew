@@ -1,7 +1,7 @@
 # Quickstart: Design Gate Runtime Hardening
 
 **Feature**: 141-design-gate-runtime-hardening  
-**Last verified**: 2026-06-02 (Iteration 2 delivered: start-packet correctness, host wording, stale-session recovery)
+**Last verified**: 2026-06-03 (Iteration 3 delivered: greenfield/downstream hygiene — FR-012 spurious multi-dev warning suppression, FR-013 baseline guidance)
 
 ## Run it
 
@@ -60,10 +60,29 @@ pwsh -File tests/integration/design-analysis-boundary.tests.ps1
   clean `$LASTEXITCODE` (no stray error) on a valid artifact. Verify:
   `pwsh -File tests/unit/design-gate-runtime-hardening.tests.ps1`.
 
-## Iteration 3 (future)
+## Iteration 3 (delivered 2026-06-03): greenfield/downstream hygiene (FR-012, FR-013)
 
-- **Downstream warnings (FR-012)**: run a lifecycle command in a greenfield/downstream project →
-  only genuinely actionable warnings appear.
-- **Greenfield baseline (FR-013)**: bootstrap a fresh greenfield project and record the first
-  boundary → the baseline commit resolves to a real hash and is consistent across start context
-  and boundary state.
+- **No spurious multi-developer warning in a fresh project (FR-012)**: a single-developer
+  freshly bootstrapped greenfield no longer surfaces `Multiple developers detected
+  (N close-together shared-state writes)`. Specrew's own bootstrap writes (`start-context.json`
+  + `last-start-prompt.md` + `decisions.md`, all written within ~1s by `init`/`start`) used to
+  trip the write-signal trigger alone; close-together writes now only **corroborate** a genuine
+  distinct-actor signal (≥2 git authors, ≥2 active-session machines, or ≥3 numbered-branch
+  fanout) and never trigger the recommendation on their own. Genuine multi-developer activity
+  still surfaces. Verify: `pwsh -File tests/unit/feature-051-iteration2b.tests.ps1` (SC-008), or
+  call `Get-SpecrewMultiDeveloperSignals` in a fresh single-dev repo and confirm
+  `has_multi_developer_signal` is `False`.
+- **Fresh-greenfield baseline commit (FR-013)**: the baseline resolves to a real commit hash and
+  refreshes consistently at every boundary **once a commit exists** (the existing Feature-029
+  contract). A repo with **no commit yet** has nothing to resolve to: Specrew preserves the
+  zero-commit fail-safe (it does **not** stamp a baseline and does **not** create a commit on
+  your behalf) and instead emits a guidance line at `specrew start` telling you to make an
+  initial commit so governance can anchor a baseline. Verify:
+  `pwsh -File tests/integration/baseline-hygiene.tests.ps1` (SC-009), or run `specrew start` in a
+  `git init`'d repo with no commit and confirm the guidance appears and no baseline is stamped.
+- **Spec note (resolved-by-clarification)**: US6-AC1 ("baseline MUST resolve to a real commit
+  hash … with no prior history") is satisfied the moment a commit exists; the literal zero-commit
+  case is handled by the Feature-029 fail-safe + the guidance nudge rather than by auto-creating a
+  commit (which would contradict the `baseline-hygiene.tests.ps1` tested contract). FR-012's
+  version-mismatch-vs-placeholder and author/branch-fanout signals are self-host-only and were not
+  reproduced as greenfield/downstream leaks (follow-ups, not changed here).

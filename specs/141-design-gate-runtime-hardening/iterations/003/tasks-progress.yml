@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "003"
-updated_at: "2026-06-03T11:15:39Z"
+updated_at: "2026-06-03T11:26:34Z"
 tasks:
   T001:
     title: "Reproduce-first + CLASSIFY greenfield/downstream warnings + prove FR-013 baseline defect; record in drift-log"
@@ -29,7 +29,7 @@ tasks:
     blocked_reason: "SC-008 added with T002 + SC-009 with T003 per reproduce-first (tests interleaved with fixes); both verified against repo code"
   T005:
     title: "Docs + review evidence (TG-006): greenfield/downstream warning scope + baseline-commit behavior; gap ledger"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-06-03T11:15:39Z"
-    completed_at: ""
+    completed_at: "2026-06-03T11:26:34Z"
     blocked_reason: ""
