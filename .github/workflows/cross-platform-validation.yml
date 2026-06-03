@@ -221,6 +221,12 @@ jobs:
           specrew start --help
           echo "native specrew wrapper surface works on macOS"
 
+      - name: Interactive `start` deferred-launch regression on macOS (beta2 TTY bug)
+        shell: bash
+        run: |
+          # Same deferred-launch engagement proof on the macOS surface (required surface).
+          sh tests/integration/start-deferred-launch.sh
+
       - name: Summary
         shell: pwsh
         run: |
@@ -243,7 +249,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y shellcheck
-          shellcheck install.sh tests/integration/install-sh-detect.sh tests/integration/install-sh-prerelease.sh tests/integration/wrapper-runtime.sh
+          shellcheck install.sh tests/integration/install-sh-detect.sh tests/integration/install-sh-prerelease.sh tests/integration/wrapper-runtime.sh tests/integration/start-deferred-launch.sh
 
       - name: Detection + fail-closed (os-release fixtures + macOS Homebrew branch) + --prerelease surface
         shell: bash
@@ -296,6 +302,14 @@ jobs:
         shell: bash
         run: |
           sh tests/integration/wrapper-runtime.sh
+
+      - name: Interactive `start` deferred-launch regression (beta2 TTY bug)
+        shell: bash
+        run: |
+          # Proves `specrew start` via the native wrapper / `pwsh -File` re-dispatches through
+          # the module function so the host launches in TTY-preserving function context (not the
+          # script-context headless fallback). CI has no TTY: proves the mechanism ENGAGES.
+          sh tests/integration/start-deferred-launch.sh
 
   feature140-parity-cascade:
     name: Wrapper parity cascade (generate-then-commit drift + FileList parity)
