@@ -19,9 +19,11 @@ After `specrew init`, start feature work with:
 specrew start
 ```
 
-`specrew start` is the canonical downstream entrypoint. The `specrew` command
-resolves through the PowerShell module alias (installed via `Install-Module
-Specrew -Scope CurrentUser -SkipPublisherCheck`, or via
+`specrew start` is the canonical downstream entrypoint. On **macOS/Linux**, `specrew`
+is a native shell command installed by `install.sh` (or `specrew install-shell-wrappers`)
+that forwards to the runtime internally — you never type `pwsh`. On **Windows**, the
+`specrew` command resolves through the PowerShell module alias (installed via
+`Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck`, or via
 `Import-Module C:\Dev\Specrew\Specrew.psd1` from a local clone). For environments
 that can't load the module, the direct-script fallback is
 `pwsh -File C:\Dev\Specrew\scripts\specrew.ps1 start` — same arguments otherwise.

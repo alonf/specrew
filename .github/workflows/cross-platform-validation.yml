@@ -6,6 +6,7 @@ on:
       - main
       - 'feature/**'
       - '0*-*'  # Feature branches like 019-specrew-distribution-module
+      - '1*-*'  # Feature branches like 140-unix-native-install
   pull_request:
     branches:
       - main
@@ -202,6 +203,30 @@ jobs:
           $commands = Get-Command -Module Specrew
           Write-Host "✅ Module imported; $($commands.Count) commands exported" -ForegroundColor Green
       
+      - name: Wrapper runtime suite (FR-002/003/004/008) on macOS (T020)
+        shell: bash
+        run: |
+          sh tests/integration/wrapper-runtime.sh
+
+      - name: Native wrapper install + command surface on macOS (T020)
+        shell: bash
+        run: |
+          # Real install-shell-wrappers -> PATH -> native specrew commands on macOS.
+          bindir="$HOME/.local/specrew-bin"
+          mkdir -p "$bindir"
+          pwsh -NoProfile -Command "Import-Module ./Specrew.psd1 -Force; specrew install-shell-wrappers --bin-dir '$bindir'"
+          export PATH="$bindir:$PATH"
+          command -v specrew
+          specrew version
+          specrew start --help
+          echo "native specrew wrapper surface works on macOS"
+
+      - name: Interactive `start` deferred-launch regression on macOS (beta2 TTY bug)
+        shell: bash
+        run: |
+          # Same deferred-launch engagement proof on the macOS surface (required surface).
+          sh tests/integration/start-deferred-launch.sh
+
       - name: Summary
         shell: pwsh
         run: |
@@ -210,3 +235,113 @@ jobs:
           Write-Host "OS: $($PSVersionTable.OS)" -ForegroundColor White
           Write-Host "PowerShell: $($PSVersionTable.PSVersion)" -ForegroundColor White
           Write-Host "✅ macOS validation checks passed" -ForegroundColor Green
+
+  # ── Feature 140 (Unix-native install) Iteration 2: Ubuntu-first auto-install proof ──
+  feature140-install-bootstrap:
+    name: install.sh - shellcheck + detection + clean no-pwsh proof
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: shellcheck install.sh + shell tests
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          shellcheck install.sh tests/integration/install-sh-detect.sh tests/integration/install-sh-prerelease.sh tests/integration/wrapper-runtime.sh tests/integration/start-deferred-launch.sh
+
+      - name: Detection + fail-closed (os-release fixtures + macOS Homebrew branch) + --prerelease surface
+        shell: bash
+        run: |
+          sh tests/integration/install-sh-detect.sh
+          sh tests/integration/install-sh-prerelease.sh
+
+      - name: install.sh end-to-end in a clean no-pwsh Ubuntu container (root path)
+        shell: bash
+        run: |
+          # A bare ubuntu:24.04 container has no pwsh and no sudo: this exercises the ratified
+          # root path ($SUDO empty) and the real auto-install. The BRANCH module is pre-seeded
+          # onto PSModulePath so install.sh's "module already present -> skip the gallery" path
+          # uses local code (Install-Module from PSGallery is Iteration-3 release-gate scope).
+          docker run --rm -v "$PWD:/src:ro" ubuntu:24.04 sh -c '
+            set -eu
+            apt-get update >/dev/null
+            apt-get install -y --no-install-recommends ca-certificates git >/dev/null
+            mkdir -p /opt/psmods/Specrew
+            cp -a /src/. /opt/psmods/Specrew/
+            rm -rf /opt/psmods/Specrew/.git
+            # Simulate the PSGallery/NuGet round-trip: Install-Module does NOT preserve the Unix
+            # execute bit. Strip +x from the packaged wrappers; install.sh + install-shell-wrappers
+            # MUST restore it, else the symlinked specrew fails with "Permission denied".
+            chmod -x /opt/psmods/Specrew/bin/* || true
+            export PSModulePath=/opt/psmods:${PSModulePath:-}
+            sh /opt/psmods/Specrew/install.sh --bin-dir /usr/local/bin
+            command -v pwsh
+            command -v specrew
+            test -x /opt/psmods/Specrew/bin/specrew || { echo "FAIL: wrapper exec bit not restored after PSGallery-strip simulation"; exit 1; }
+            specrew version
+            echo "OK: clean-container no-pwsh bootstrap proved end-to-end (branch code; +x restored after PSGallery-strip simulation)"
+          '
+
+  feature140-wrapper-runtime:
+    name: Ubuntu wrapper runtime proof (forwarding/symlink/pwsh-missing/passthrough)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PowerShell
+        shell: bash
+        run: |
+          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell_7.4.1-1.deb_amd64.deb
+          sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb || sudo apt-get install -f -y
+          pwsh --version
+
+      - name: Wrapper runtime suite (FR-002/003/004/008) on real Ubuntu sh + pwsh
+        shell: bash
+        run: |
+          sh tests/integration/wrapper-runtime.sh
+
+      - name: Interactive `start` deferred-launch regression (beta2 TTY bug)
+        shell: bash
+        run: |
+          # Proves `specrew start` via the native wrapper / `pwsh -File` re-dispatches through
+          # the module function so the host launches in TTY-preserving function context (not the
+          # script-context headless fallback). CI has no TTY: proves the mechanism ENGAGES.
+          sh tests/integration/start-deferred-launch.sh
+
+  feature140-parity-cascade:
+    name: Wrapper parity cascade (generate-then-commit drift + FileList parity)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PowerShell
+        shell: bash
+        run: |
+          wget -q https://github.com/PowerShell/PowerShell/releases/download/v7.4.1/powershell_7.4.1-1.deb_amd64.deb
+          sudo dpkg -i powershell_7.4.1-1.deb_amd64.deb || sudo apt-get install -f -y
+          pwsh --version
+
+      - name: Regenerate wrappers and assert no drift (registry -> bin)
+        shell: pwsh
+        run: |
+          ./scripts/internal/generate-shell-wrappers.ps1 -Check
+          if ($LASTEXITCODE -ne 0) { Write-Error "Wrapper drift detected (generator -Check)."; exit 1 }
+          git diff --exit-code -- bin/
+          if ($LASTEXITCODE -ne 0) { Write-Error "Committed bin/ wrappers differ from the generator output."; exit 1 }
+
+      - name: Registry + FileList + docs parity tests (cascade docs arm, T023)
+        shell: pwsh
+        run: |
+          $failed = $false
+          foreach ($t in @('./tests/unit/wrapper-registry-parity.tests.ps1','./tests/unit/wrapper-filelist-parity.tests.ps1','./tests/unit/wrapper-docs-parity.tests.ps1')) {
+            Write-Host "── $t ──" -ForegroundColor Cyan
+            $out = & $t *>&1 | Out-String
+            Write-Host $out
+            if ($LASTEXITCODE -ne 0 -or $out -match '(?im)^\s*FAIL') { $failed = $true }
+          }
+          if ($failed) { Write-Error "Parity cascade tests failed."; exit 1 }
+          Write-Host "✅ parity cascade green" -ForegroundColor Green

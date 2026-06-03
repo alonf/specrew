@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.30.0'
+    ModuleVersion = '0.31.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -29,6 +29,15 @@
         'specrew-where'
     )
     FileList = @(
+        'bin/specrew',
+        'bin/specrew-init',
+        'bin/specrew-review',
+        'bin/specrew-start',
+        'bin/specrew-team',
+        'bin/specrew-update',
+        'bin/specrew-version',
+        'bin/specrew-where',
+        'install.sh',
         'docs/dashboard-guide.md',
         'docs/getting-started.md',
         'docs/github-project.md',
@@ -164,6 +173,7 @@
         'scripts/internal/detect-hosts.ps1',
         'scripts/internal/feature-claims.ps1',
         'scripts/internal/file-classification.ps1',
+        'scripts/internal/generate-shell-wrappers.ps1',
         'scripts/internal/host-flag-translation.ps1',
         'scripts/internal/host-history.ps1',
         'scripts/internal/host-runtime-inventory.ps1',
@@ -185,6 +195,7 @@
         'scripts/specrew-config.ps1',
         'scripts/specrew-host.ps1',
         'scripts/specrew-init.ps1',
+        'scripts/specrew-install-shell-wrappers.ps1',
         'scripts/specrew-review.ps1',
         'scripts/specrew-start.ps1',
         'scripts/specrew-team.ps1',
@@ -234,15 +245,13 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state for the next intended release (v0.30.0-beta1, F-054 Activate Spec Surfaces). The
-            # publish-module.yml workflow stamps the actual published version from the git tag
-            # (release_ref_name) at release time, so this is the coherent source default, not the
-            # authoritative publish value. Cleared to '' when promoting to stable.
-            # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only
-            # [a-zA-Z0-9] and a leading hyphen. Use dotless forms (beta1, beta2, rc1); a
-            # dotted 'beta.1' is silently normalized to 'beta1' on publish. Tag accordingly
-            # (v0.30.0-beta1, not v0.30.0-beta.1).
-            Prerelease = 'beta1'
+            # Source prerelease state. EMPTY = 0.31.0 is a STABLE release (F-140 Unix-Native Install; also
+            # carries F-051, Spec Kit 0.9.0, Proposal 152) — promoted to stable 2026-06-03 from v0.31.0-beta4.
+            # The publish-module.yml workflow stamps the actual published version from the git tag at release
+            # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
+            # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
+            # leading hyphen. Use dotless forms (beta1, rc1); a dotted 'beta.1' normalizes to 'beta1'.
+            Prerelease = ''
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'

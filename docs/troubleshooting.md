@@ -21,6 +21,8 @@ If you run `specrew update` when the installed module itself is stale, you only 
 | `specrew update` throws during runtime deployment | The project assets are out of sync with the installed module, or the update run is partial | Go to [Deploy-script exceptions during `specrew update`](#deploy-script-exceptions-during-specrew-update). |
 | `specrew start` resumes the wrong feature or boundary | Local session-state files are stale | Go to [Stale session-state or wrong-feature resume](#stale-session-state-or-wrong-feature-resume). |
 | You want the cleanest recovery path after repeated drift | Mixed module versions or stale local assets | Go to [Clean reinstall flow](#clean-reinstall-flow). |
+| `specrew init` says Node is too old right after a `brew` upgrade (macOS) | `nvm` shadows the Homebrew Node on `PATH`; `pwsh` uses the same old Node | Go to [macOS: Node version shadowed by nvm](#macos-node-version-shadowed-by-nvm). |
+| `specrew init` says Spec Kit is missing or too old | `specify-cli` is absent or below the supported floor | Go to [Spec Kit missing or too old](#spec-kit-missing-or-too-old). |
 
 ## PSGallery side-by-side installs or stale cache
 
@@ -157,3 +159,48 @@ git ls-tree -r HEAD --name-only |
 ```
 
 If the file is not present in the committed tree under review, it is not shipped evidence yet.
+
+## macOS: Node version shadowed by nvm
+
+On macOS, `specrew init` can fail dependency validation with a Node version *older* than what you just installed:
+
+```text
+[macOS] Node.js v22.17.0 / required: 24.0+
+```
+
+— even right after `brew install node` / `brew upgrade node`. The usual cause is **`nvm` shadowing the Homebrew Node**: the `nvm` shim sits ahead of Homebrew on your `PATH`, so `node` resolves to an old `nvm` default no matter what `brew` installed. PowerShell — the runtime Specrew actually uses — inherits the same `PATH`, so it sees the old Node too.
+
+Diagnose:
+
+```sh
+which -a node          # an nvm shim ahead of the Homebrew path means nvm wins
+node -v                # the ACTIVE version (what Specrew sees)
+```
+
+Fix it through `nvm` (not `brew`), then confirm in the runtime Specrew uses:
+
+```sh
+nvm install 24
+nvm use 24
+nvm alias default 24
+node -v                              # v24.x in your login shell
+pwsh -NoProfile -Command "node -v"   # MUST also report v24.x — this is the one Specrew checks
+```
+
+The last line is the one that matters: always verify `node -v` **inside `pwsh`**, not only in zsh/bash. If the two disagree, `nvm` is still shadowing and `specrew init` will keep failing.
+
+## Spec Kit missing or too old
+
+`specrew init` validates the bundled Spec Kit (`specify-cli`) against Specrew's supported baseline and fails closed if it is missing or below the floor:
+
+```text
+Specrew requires Spec Kit >= 0.8.4 but found 0.0.22.
+```
+
+The supported floor and the latest validated version are declared in `scripts/internal/supported-versions.yml` (`speckit.min` / `speckit.max_tested`) — currently floor **0.8.4**, validated up to **0.9.0**. `specrew init` prints the exact remediation command for the floor; run it (add `--force` to replace an existing tool install):
+
+```sh
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.4 --force
+```
+
+Then re-run `specrew init`. (`uv` is required — see [getting-started](getting-started.md#1-check-dependencies).) The `@v…` tag tracks Specrew's supported floor; if the command `specrew init` prints names a different version, prefer the printed one — it is generated from the runtime baseline, not from this doc.

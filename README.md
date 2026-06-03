@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.30.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.31.0--beta4-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
@@ -16,7 +16,20 @@
 
 ## ⚡ Try it now (5 min)
 
-From any directory you like (PowerShell 7+ on Windows, macOS, or Linux):
+### macOS / Linux — native shell (zsh/bash)
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/alonf/specrew/main/install.sh | sh
+mkdir hello-specrew && cd hello-specrew && git init
+specrew init
+specrew start "Build a tip calculator with a web UI"
+```
+
+No `pwsh`, no `Install-Module`. `install.sh` does it all: it auto-installs PowerShell Core as an internal dependency if it is missing (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew), installs Specrew from the PowerShell Gallery, and puts the native `specrew` command on your `PATH`. To validate a beta instead of the stable release, append `-s -- --prerelease` to the `curl … | sh` line.
+
+> **Validating an unreleased prerelease?** The `main` URL above serves the *released* `install.sh`. When you're beta-testing a feature branch or tag that isn't merged yet, fetch the script from that ref instead — e.g. `curl -fsSL https://raw.githubusercontent.com/alonf/specrew/<branch-or-tag>/install.sh | sh -s -- --prerelease`.
+
+### Windows — PowerShell 7+
 
 ```powershell
 Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
@@ -29,15 +42,17 @@ That's it. Specrew now drives you through the spec-driven lifecycle: you'll co-a
 
 ### Prerequisites
 
-PowerShell 7+, git, and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Cursor](https://cursor.com/), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/).
+git and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-cli), [Claude Code](https://docs.anthropic.com/en/docs/claude-code/installation), [Cursor](https://cursor.com/), [Codex CLI](https://developers.openai.com/codex/cli), or [Antigravity](https://antigravity.google/). PowerShell 7+ is the runtime: on **macOS/Linux it is an internal dependency that `install.sh` auto-installs for you** (you never invoke `pwsh` directly); on **Windows** you run Specrew from PowerShell 7+.
 
-**Install PowerShell 7+ if you don't already have it:**
+**Installing PowerShell 7+ manually** (only needed if you bypass `install.sh`):
 
-- **Windows:** preinstalled on Windows 11; on Windows 10, install via `winget install Microsoft.PowerShell` or [microsoft.com/powershell](https://github.com/PowerShell/PowerShell/releases)
+- **Windows:** preinstalled on Windows 11; on Windows 10, `winget install Microsoft.PowerShell` or [microsoft.com/powershell](https://github.com/PowerShell/PowerShell/releases)
 - **macOS:** `brew install --cask powershell` (then run `pwsh` to enter)
 - **Linux:** [official install guide](https://learn.microsoft.com/powershell/scripting/install/installing-powershell-on-linux) (Ubuntu, Debian, Fedora, Arch all supported)
 
-See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm), and brownfield-project bootstrap.
+> **macOS/Linux fallback — module install instead of `install.sh`:** run `Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck` **from inside `pwsh`**, not zsh/bash (`Install-Module` does not exist in your login shell — running it there prints `command not found`). The PowerShell Gallery prompt defaults to **`N`**, so pressing Enter *declines* the install — choose **`A` / Yes to All** (or add `-Force`). The native `install.sh` path above avoids both pitfalls.
+
+See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm, Node, Spec Kit), and brownfield-project bootstrap.
 
 ## What just happened
 
@@ -130,7 +145,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Active development line**: 0.30.0 (F-054 — Discoverable Spec Kit Surfaces: `/speckit.checklist` surfaced before-plan + `/speckit.analyze` surfaced before-implement after complete `tasks.md`; `/speckit.taskstoissues` explicitly deferred)
+- **Active development line**: 0.31.0-beta4 (F-140 — Unix-Native Install: native `specrew` shell wrappers + `install.sh` bootstrap so macOS/Linux users skip `pwsh`; also bundles F-051 Multi-Session Foundation, Spec Kit 0.9.0 support, and Proposal 152)
 - **Latest stable baseline**: promoted per the beta-before-stable release discipline — see [CHANGELOG.md](CHANGELOG.md) for the current released version
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).

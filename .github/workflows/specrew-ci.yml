@@ -246,6 +246,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/process-quality-scorer.ps1
 
+      - name: Integration - version info states + prerelease-label parse (Proposal 079 + finding #2)
+        shell: pwsh
+        run: ./tests/integration/version-info-states.tests.ps1
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest
