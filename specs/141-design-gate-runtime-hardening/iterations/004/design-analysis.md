@@ -162,23 +162,19 @@ flowchart LR
 
 ## Applicable Lenses
 
-*(Dogfooding the lightweight read-only surface for this iteration — selection here is hand-judged
-against each lens's "Applicability Signals" because FR-025's questionnaire is what this iteration
-builds. Catalog: `extensions/specrew-speckit/knowledge/design-lenses/`.)*
+*(Dogfood-rendered via the implemented FR-025 path: answers recorded in `lens-applicability.json`,
+selected by `Get-SpecrewApplicableLenses`, rendered by `Format-SpecrewApplicableLensesSection`. The
+render converges exactly with the recorded JSON `selected` and with the original hand-judged set —
+new JSON artifact + sibling map = data/state, so `data=yes`; no UI/security/API/ops/perf surface.)*
 
-- **architecture-core** — Applicable. The map-location and selection-timing choices are
-  costly-to-reverse structural decisions about a new mechanism + artifact.
-- **component-design** — Applicable. The selector/scaffold/render seam and where the pure function
-  lives are component-boundary decisions.
-- **data-storage** — Applicable. A new persistent artifact (`lens-applicability.json`) and an
-  additive `index.yml` schema field are data/state + migration-compatibility decisions.
-- **requirements-nfr** — Applicable. Determinism + testability (SC-015) and graceful degradation
-  are the binding NFRs.
-- **security-compliance** — Not applicable. No auth/secrets/PII/network; reads local lens files and
-  writes a local JSON.
-- **ui-ux**, **integration-api**, **devops-operations**, **observability-resilience** — Not
-  applicable. No user-facing UI, no external API, no deploy/release change, no runtime
-  perf/resilience surface.
+Selected by the applicability questionnaire (recorded in `lens-applicability.json`):
+
+- **architecture-core** - `extensions/specrew-speckit/knowledge/design-lenses/architecture-core.md`
+- **component-design** - `extensions/specrew-speckit/knowledge/design-lenses/component-design.md`
+- **requirements-nfr** - `extensions/specrew-speckit/knowledge/design-lenses/requirements-nfr.md`
+- **data-storage** - `extensions/specrew-speckit/knowledge/design-lenses/data-storage.md`
+
+*Not selected: ui-ux (ui=no), security-compliance (security=no), integration-api (integration=no), devops-operations (ops=no), observability-resilience (perf=no).*
 
 ## Crew recommendation
 

@@ -70,6 +70,7 @@ Assert-True ($renderSome -match '## Applicable Lenses') "render: section heading
 Assert-True ($renderSome -match 'ui-ux' -and $renderSome -match 'security-compliance' -and $renderSome -match 'architecture-core') "render: selected lenses listed"
 Assert-True ($renderSome -match 'Not selected:' -and $renderSome -match 'data-storage') "render: not-selected lenses listed with their reason"
 Assert-True ($renderSome -notmatch '(?m)^\s*\+ ') "render: no '+'-at-line-start (markdownlint-safe prose)"
+Assert-True ($renderSome -match '\*Not selected:' -and $renderSome -notmatch '_Not selected') "render: not-selected uses asterisk emphasis, not underscore (MD049-safe)"
 $renderNone = Format-SpecrewApplicableLensesSection -Map $null -Answers $null
 Assert-True ($renderNone -match '## Applicable Lenses' -and $renderNone -match 'None available') "render: absent map/answers -> none available (SC-006)"
 

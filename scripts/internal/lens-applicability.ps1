@@ -196,7 +196,7 @@ function Format-SpecrewApplicableLensesSection {
     if (@($sel.excluded).Count -gt 0) {
         $notSel = (@($sel.excluded) | ForEach-Object { '{0} ({1})' -f $_.id, ($_.reason -replace "gated by '", '' -replace "' = ", '=') }) -join ', '
         $lines.Add('') | Out-Null
-        $lines.Add(('_Not selected: {0}._' -f $notSel)) | Out-Null
+        $lines.Add(('*Not selected: {0}.*' -f $notSel)) | Out-Null
     }
 
     return (($lines -join [Environment]::NewLine).TrimEnd() + [Environment]::NewLine)
