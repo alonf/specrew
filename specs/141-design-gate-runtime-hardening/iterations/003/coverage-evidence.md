@@ -22,19 +22,21 @@
 | Command | Result | Pass | Fail | Exit | Notes |
 | ------- | ------ | ---- | ---- | ---- | ----- |
 | `pwsh -File tests/unit/feature-051-iteration2b.tests.ps1` | pass | 21 | 0 | 0 | FR-012 / SC-008: single-dev bootstrap → no multi-dev signal/recommendation; genuine 2-author signal still fires with write-signal corroboration (no over-suppression). Co-located with the detector it covers (auto-detection.ps1). |
-| `pwsh -File tests/integration/baseline-hygiene.tests.ps1` (SC-009) | pass (verified vs repo code) | — | — | — | SC-009: zero-commit greenfield start emits guidance + does NOT stamp a baseline + no corruption; post-commit the baseline-refresh path resolves to HEAD + stays consistent. See the PRE-EXISTING local-env note below. |
+| `pwsh -File tests/integration/design-gate-runtime-hardening-greenfield-baseline.tests.ps1` | pass | 6 | 0 | 0 | SC-009 **primary** (committed, runs green LOCALLY): zero-commit greenfield start emits guidance, does NOT stamp a baseline, creates NO commit; post-commit the repo baseline-refresh path (`Get-SpecrewCurrentHeadCommitHash` + `Update-BaselineCommitHashInFrontmatter`) resolves to HEAD + stays consistent. |
+| `pwsh -File tests/integration/baseline-hygiene.tests.ps1` (SC-009 co-located) | CI-reached (see note) | — | — | — | Co-located SC-009 in the Feature-029 baseline suite for when CI reaches it; locally the suite halts earlier (PRE-EXISTING — see note below). The primary SC-009 enforcement is the row above. |
 | `pwsh -File tests/unit/design-gate-runtime-hardening.tests.ps1` | pass | 17 | 0 | 0 | Feature-141 unit suite — no regression from the FR-013 `specrew-start.ps1` guidance change. |
 | `pwsh -File tests/integration/multi-host-launch-path.tests.ps1` | pass | 24 | 0 | 0 | Iteration-2 FR-011/FR-014 — no regression from the `specrew-start.ps1` change. |
 | Governance validator (`extensions/specrew-speckit/scripts/validate-governance.ps1 -NoCacheRead`) | pass | — | — | 0 | Iteration 003 PASS (after state.md canonical fields reconciled). |
 
-**Pre-existing local-env note (honest):** the full `baseline-hygiene.tests.ps1` suite halts locally at
-its EXISTING repeated-tasks idempotency sub-check — the installed-module F-033 markdownlint pre-boundary
-gate auto-fixes the regenerated `last-start-prompt.md` and halts. Confirmed PRE-EXISTING by stashing the
-iteration-003 changes and re-running at HEAD (identical halt). It is environmental (local `markdownlint-cli`
-present) and passes in CI, where the suite reaches the SC-009 block. SC-009 was therefore verified against
-repo code via a standalone harness (zero-commit guidance + no-stamp; post-commit resolve-to-HEAD +
-consistency) — ALL PASS — and SC-009 part-2 calls the same repo functions the boundary sync uses
-(`Get-SpecrewCurrentHeadCommitHash` + `Update-BaselineCommitHashInFrontmatter`).
+**Pre-existing local-env note (honest):** the full `baseline-hygiene.tests.ps1` suite halts locally at its
+EXISTING repeated-tasks idempotency sub-check — the installed-module F-033 markdownlint pre-boundary gate
+auto-fixes the regenerated `last-start-prompt.md` and halts. Confirmed PRE-EXISTING by stashing the
+iteration-003 changes and re-running at HEAD (identical halt); it is environmental (local `markdownlint-cli`
+present). To avoid resting SC-009 enforcement on an unverified "green in CI" assumption, SC-009's PRIMARY
+home is the committed, **locally-green** `tests/integration/design-gate-runtime-hardening-greenfield-baseline.tests.ps1`
+(6 pass / 0 fail, watched pass against repo code); the baseline-hygiene SC-009 is a co-located bonus reached
+in CI. SC-009 part-2 calls the same repo functions the boundary sync uses (`Get-SpecrewCurrentHeadCommitHash`
++ `Update-BaselineCommitHashInFrontmatter`).
 
 ## TG-006 Gap Ledger (implemented / enforced / observable / documented)
 
@@ -42,10 +44,10 @@ consistency) — ALL PASS — and SC-009 part-2 calls the same repo functions th
 | -------- | ----------- | --------------- | -------------------- | ---------- |
 | FR-012 — single-dev bootstrap writes do not trigger the multi-dev recommendation | `scripts/auto-detection.ps1` (`$writeSignals` corroborates a distinct-actor signal, never triggers alone) | SC-008 (`tests/unit/feature-051-iteration2b.tests.ps1`) | `Get-SpecrewMultiDeveloperSignals` → `has_multi_developer_signal=False` in a fresh single-dev repo; no recommendation surfaced at the first feature boundary | quickstart.md Iteration-3 + drift-log.md classification |
 | FR-012 — genuine multi-developer activity still surfaces | same (≥2 authors / ≥2 machines / ≥3 numbered branches still trigger; write count shown as corroborating detail) | SC-008 over-suppression guard (2-author repo still recommends) | recommendation message includes "close-together shared-state writes" alongside a genuine signal | quickstart.md Iteration-3 |
-| FR-013 — zero-commit greenfield: fail-safe + guidance | `scripts/specrew-start.ps1` `Save-StartArtifacts` else-branch (guidance line; no stamp; no commit created) | SC-009 part 1 (`tests/integration/baseline-hygiene.tests.ps1`) | `specrew start` in a no-commit repo emits "No baseline commit yet … make an initial commit"; no `baseline_commit_hash` stamped | quickstart.md Iteration-3 + drift-log.md |
-| FR-013 — baseline resolves once a commit exists, consistently | existing Feature-029 boundary refresh (`sync-boundary-state.ps1:1209-1210`), preserved | SC-009 part 2 + Feature-029 lifecycle test | post-commit `baseline_commit_hash == HEAD`; `Get-BaselineCommitHash` returns the same value | quickstart.md Iteration-3 |
-| SC-008 (test) | n/a | `tests/unit/feature-051-iteration2b.tests.ps1` | reproduce-first (failed pre-fix, passes after) | this ledger |
-| SC-009 (test) | n/a | `tests/integration/baseline-hygiene.tests.ps1` | verified vs repo code (standalone) | this ledger |
+| FR-013 — zero-commit greenfield: fail-safe + guidance | `scripts/specrew-start.ps1` `Save-StartArtifacts` else-branch (guidance line; no stamp; no commit created) | SC-009 part 1 (`tests/integration/design-gate-runtime-hardening-greenfield-baseline.tests.ps1`) | `specrew start` in a no-commit repo emits "No baseline commit yet … make an initial commit"; no `baseline_commit_hash` stamped; no commit created | quickstart.md Iteration-3 + drift-log.md |
+| FR-013 — baseline resolves once a commit exists, consistently | existing Feature-029 boundary refresh (`sync-boundary-state.ps1:1209-1210`), preserved | SC-009 part 2 (`design-gate-runtime-hardening-greenfield-baseline.tests.ps1`) + Feature-029 lifecycle test | post-commit `baseline_commit_hash == HEAD`; the stamped value matches what the reader resolves | quickstart.md Iteration-3 |
+| SC-008 (test) | n/a | `tests/unit/feature-051-iteration2b.tests.ps1` (21/0, locally green) | reproduce-first (failed pre-fix, passes after) | this ledger |
+| SC-009 (test) | n/a | `tests/integration/design-gate-runtime-hardening-greenfield-baseline.tests.ps1` (6/0, locally green, primary) + `baseline-hygiene.tests.ps1` (CI co-located) | verified against repo code | this ledger |
 
 ## Spec note (resolved-by-clarification, per maintainer)
 
