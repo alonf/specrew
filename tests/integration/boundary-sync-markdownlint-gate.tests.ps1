@@ -42,13 +42,15 @@ if ($syncBoundaryContent -notmatch 'function Invoke-PreBoundaryMarkdownLintGate\
 }
 Write-Pass 'Invoke-PreBoundaryMarkdownLintGate function present in sync-boundary-state.ps1'
 
-# Test 5: Invoke-SpecrewBoundaryStateSync calls the gate BEFORE state-file writes
-# Look for the gate invocation at the start of Invoke-SpecrewBoundaryStateSync
-$mainSyncBody = [regex]::Match($syncBoundaryContent, 'function Invoke-SpecrewBoundaryStateSync \{[\s\S]*?\$paths = Get-SpecrewSessionStatePaths').Value
+# Test 5: Invoke-SpecrewBoundaryStateSync calls the gate BEFORE state mutation.
+# The gate runs after read-only path resolution but BEFORE boundary resolution + state writes
+# (`$latestBoundary = Get-LatestSpecrewBoundarySyncState` starts the record-and-write logic), so the
+# span from the function start to that marker must contain the gate call.
+$mainSyncBody = [regex]::Match($syncBoundaryContent, 'function Invoke-SpecrewBoundaryStateSync \{[\s\S]*?\$latestBoundary = Get-LatestSpecrewBoundarySyncState').Value
 if ($mainSyncBody -notmatch 'Invoke-PreBoundaryMarkdownLintGate -ProjectPath \$ProjectPath') {
-    Write-Fail "Invoke-SpecrewBoundaryStateSync does not call Invoke-PreBoundaryMarkdownLintGate before state-file writes"
+    Write-Fail "Invoke-SpecrewBoundaryStateSync does not call Invoke-PreBoundaryMarkdownLintGate before state mutation"
 }
-Write-Pass 'Invoke-SpecrewBoundaryStateSync calls Invoke-PreBoundaryMarkdownLintGate BEFORE state-file writes'
+Write-Pass 'Invoke-SpecrewBoundaryStateSync calls Invoke-PreBoundaryMarkdownLintGate BEFORE state mutation'
 
 # Functional tests via direct helper invocation
 
@@ -117,6 +119,38 @@ else {
 
 # Cleanup
 Remove-Item -LiteralPath $fixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
+
+# Test 8: Get-ChangedMarkdownFiles excludes .squad/ append-only logs but keeps prose docs.
+# Regression guard for the 2026-06-03 false-positive fix: the gate ran markdownlint on
+# .squad/decisions.md (embedded YAML decision-blocks whose `---` separators markdownlint
+# mis-reads as setext headings → unfixable MD003), which HALTED every feature closeout.
+$squadFixtureRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\boundary-sync-gate-squad-exclusion'
+if (Test-Path -LiteralPath $squadFixtureRoot) { Remove-Item -LiteralPath $squadFixtureRoot -Recurse -Force }
+$null = New-Item -ItemType Directory -Path $squadFixtureRoot -Force
+$null = & git -C $squadFixtureRoot init --quiet 2>&1
+$null = & git -C $squadFixtureRoot config user.email 'test@example.com' 2>&1
+$null = & git -C $squadFixtureRoot config user.name 'Test' 2>&1
+$null = New-Item -ItemType Directory -Path (Join-Path -Path $squadFixtureRoot -ChildPath '.squad') -Force
+[IO.File]::WriteAllText((Join-Path -Path $squadFixtureRoot -ChildPath '.squad\decisions.md'), "# log$([Environment]::NewLine)", [System.Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText((Join-Path -Path $squadFixtureRoot -ChildPath 'prose.md'), "# Doc$([Environment]::NewLine)", [System.Text.UTF8Encoding]::new($false))
+
+$invokeChanged = @"
+. '$sharedGovernance'
+`$files = @(Get-ChangedMarkdownFiles -ProjectRoot '$squadFixtureRoot')
+[pscustomobject]@{
+    IncludesSquad = [bool](`$files | Where-Object { `$_ -match '[\\/]\.squad[\\/]' })
+    IncludesProse = [bool](`$files | Where-Object { `$_ -match 'prose\.md$' })
+} | ConvertTo-Json
+"@
+$squadResult = pwsh -NoProfile -Command $invokeChanged 2>&1 | Out-String
+if ($squadResult -notmatch '"IncludesSquad":\s*false') {
+    Write-Fail ".squad/ append-only logs were NOT excluded from the gate. Result:`n$squadResult"
+}
+if ($squadResult -notmatch '"IncludesProse":\s*true') {
+    Write-Fail "Non-.squad prose .md was wrongly excluded from the gate. Result:`n$squadResult"
+}
+Write-Pass 'Get-ChangedMarkdownFiles excludes .squad/ logs but keeps prose docs (closeout-gate false-positive fix)'
+Remove-Item -LiteralPath $squadFixtureRoot -Recurse -Force -ErrorAction SilentlyContinue
 
 Write-Host ''
 Write-Host 'Boundary-sync markdownlint gate integration: all assertions pass'

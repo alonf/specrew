@@ -250,6 +250,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/version-info-states.tests.ps1
 
+      - name: Integration - boundary-sync markdownlint gate (.squad exclusion regression guard)
+        shell: pwsh
+        run: ./tests/integration/boundary-sync-markdownlint-gate.tests.ps1
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest
