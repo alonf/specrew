@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.31.0'
+    ModuleVersion = '0.31.1'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -242,13 +242,15 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state. EMPTY = 0.31.0 is a STABLE release (F-140 Unix-Native Install; also
-            # carries F-051, Spec Kit 0.9.0, Proposal 152) — promoted to stable 2026-06-03 from v0.31.0-beta4.
+            # Source prerelease state. 0.31.1-beta1 = F-160 Unix Resolver Sidecar Hardening (resolver
+            # path-portability hardening + managed-skill marker provenance fix; Proposals 160/161,
+            # both repro-first). Beta-before-stable mandate: stable promotion only after manual
+            # fresh-install validation passes (promote-prerelease workflow_dispatch).
             # The publish-module.yml workflow stamps the actual published version from the git tag at release
             # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
             # leading hyphen. Use dotless forms (beta1, rc1); a dotted 'beta.1' normalizes to 'beta1'.
-            Prerelease = ''
+            Prerelease = 'beta1'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
