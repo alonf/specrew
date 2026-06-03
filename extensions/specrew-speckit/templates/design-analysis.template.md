@@ -111,6 +111,23 @@ flowchart LR
   A[Input] --> B[Option C shape] --> C[Output]
 ```
 
+## Applicable Lenses
+
+<!--
+  FR-009/FR-010/FR-025 (Feature 141 Iteration 4): applicability is determined by a fixed
+  questionnaire, NOT a hand-listed guess.
+  1. Emit + answer the questionnaire: write `lens-applicability.json` in this iteration directory
+     (questions from the decoupled sibling map
+     `extensions/specrew-speckit/knowledge/design-lenses/applicability-map.json`; answer each
+     true/false). Helper: New-SpecrewLensApplicabilityTemplate (scripts/internal/lens-applicability.ps1).
+  2. Render this section from the answers: Format-SpecrewApplicableLensesSection -Map <map> -Answers <answers>
+     (always-on foundational lenses + specialized lenses gated by a "yes"; deterministic, no network/LLM).
+  The catalog `index.yml` stays pure (the gating map is the decoupled sibling). Degrades to
+  "none available" when the catalog or answers are absent.
+-->
+
+None available - no recorded questionnaire answers yet (replace with the rendered selection).
+
 ## Crew Recommendation
 
 **Recommended: Option <X>.**

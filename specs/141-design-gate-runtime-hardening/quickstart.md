@@ -86,3 +86,30 @@ pwsh -File tests/integration/design-analysis-boundary.tests.ps1
   commit (which would contradict the `baseline-hygiene.tests.ps1` tested contract). FR-012's
   version-mismatch-vs-placeholder and author/branch-fanout signals are self-host-only and were not
   reproduced as greenfield/downstream leaks (follow-ups, not changed here).
+
+## Iteration 4 (delivered 2026-06-03): questionnaire-driven Applicable Lenses (FR-009/FR-010/FR-025)
+
+- **Applicable Lenses are selected, not guessed (FR-025).** A fixed applicability questionnaire
+  (UI? auth/secrets/PII? persistent data? external API? deploy/release? perf/resilience?) is
+  recorded as `lens-applicability.json`, and a deterministic selector picks the lenses: foundational
+  lenses (architecture-core, component-design, requirements-nfr) are always-on; specialized lenses
+  are gated by a "yes" answer. Verify: `pwsh -File tests/unit/lens-applicability-selector.tests.ps1`,
+  or:
+
+  ```powershell
+  . ./scripts/internal/lens-applicability.ps1
+  $map = Read-SpecrewLensApplicabilityMap -Path extensions/specrew-speckit/knowledge/design-lenses/applicability-map.json
+  Get-SpecrewApplicableLenses -Map $map -Answers @{ ui=$false; security=$true; data=$true; integration=$false; ops=$false; perf=$false }
+  # -> architecture-core, component-design, requirements-nfr, security-compliance, data-storage
+  ```
+
+- **Decoupled (Option B decoupled).** The question-to-lens gating map is a sibling file
+  (`extensions/specrew-speckit/knowledge/design-lenses/applicability-map.json`); the Proposal 156
+  catalog `index.yml` stays PURE. Selection is deterministic (SC-015: identical answers -> identical
+  set) and LLM/network-free; the JSON records the per-lens include/exclude rationale.
+- **Graceful degradation (SC-006).** Absent catalog or absent answers render "none available"
+  rather than erroring. The `design-analysis.md` template now carries an "Applicable Lenses" section
+  rendered by `Format-SpecrewApplicableLensesSection`.
+- **Deferred (still out, FR-010):** project-local lens overrides, lens-schema validation
+  enforcement, broad cross-phase automation, a standalone `specrew lens` command, and per-lens
+  rationale automation remain Proposal 156's deeper scope.
