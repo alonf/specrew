@@ -276,12 +276,14 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 - **FR-008**: Specrew MUST build on the existing Feature 140 design-analysis-gate
   helper and plan-boundary enforcement rather than rewriting them.
 
-#### Lens catalog + applicability selection (Iteration 4; amended 2026-06-03 — see Amendment A1)
+#### Lens catalog + applicability selection (Iterations 4-5; amended 2026-06-03 — Amendments A1, A2)
 
 - **FR-009**: Specrew MUST reference the existing repo-local design-lens files
   (`extensions/specrew-speckit/knowledge/design-lenses/`) as read-only input and render an
-  "Applicable Lenses" section in `design-analysis.md` naming the lenses applicable to the active
-  feature, where applicability is determined by the FR-025 questionnaire (not a hand-listed guess).
+  "Applicable Lenses" section in `design-analysis.md` that, for each lens selected by the FR-025
+  questionnaire, surfaces the lens's **Design Decision Points** so the option comparison is genuinely
+  informed by the lens knowledge (not merely a list of names); the analysis MUST address each
+  selected lens (enforced by FR-026).
 - **FR-025**: Specrew MUST determine lens applicability via a small, fixed **applicability
   questionnaire** (e.g. "user-facing UI?", "auth/secrets/PII/compliance?", "persistent data?",
   "external service/API integration?", "deployment/CI/release changes?", "performance/scale or
@@ -292,12 +294,18 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   why each lens was or was not selected. The questionnaire MAY be answered by the Crew with human
   confirmation. The JSON-to-selection step MUST NOT itself require network or an LLM (the answers
   are the only judgment input; the mapping is mechanical).
-- **FR-010**: The lens integration MUST stay scoped. The questionnaire-driven selection (FR-025)
-  is in scope for Iteration 4, but **truly-deep Proposal 156 automation — project-local lens
-  overrides, lens-schema validation enforcement, and broad cross-phase lens automation — remains
-  deferred** and MUST NOT be implemented here. The "Applicable Lenses" section MUST degrade
-  gracefully (state "none available") when the catalog or the answers are absent (e.g. a
-  downstream project without lenses).
+- **FR-026**: The pre-plan design-analysis gate MUST enforce **lens coverage** — for each lens the
+  FR-025 questionnaire selected, the design analysis MUST record that the lens's decision points were
+  addressed (a deterministic per-lens "Addressed:" coverage entry). The gate MUST block `plan.md`
+  when a selected lens is unaddressed, naming it. The check is deterministic and LLM/network-free (it
+  verifies a non-placeholder coverage entry per selected lens; it does not judge semantics).
+- **FR-010**: The lens integration MUST stay scoped. Questionnaire-driven selection (FR-025),
+  decision-point surfacing (FR-009), and the lens-coverage enforcement gate (FR-026) are in scope
+  (Iterations 4-5; FR-026 un-deferred 2026-06-03 — Amendment A2). **Truly-deep Proposal 156
+  automation — project-local lens overrides, validation of the lens FILES against a schema, and
+  broad cross-phase lens automation — remains deferred** and MUST NOT be implemented here. The
+  "Applicable Lenses" section MUST degrade gracefully (state "none available") when the catalog or
+  the answers are absent (e.g. a downstream project without lenses).
 
 > **Amendment A1 (2026-06-03, maintainer-directed):** FR-009/FR-010 were originally pre-deferred
 > (2026-06-02) as a *lightweight read-only* surface-the-catalog slice, with all selection
@@ -309,6 +317,15 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 > Only the *truly-deep* 156 items (overrides, schema-validation enforcement, broad automation) stay
 > deferred. Because FR-025 introduces a new mechanism + artifact, Iteration 4 is **substantive** and
 > runs the design-analysis gate (FR-001..FR-008) it built — the first such use within this feature.
+>
+> **Amendment A2 (2026-06-03, maintainer-directed):** Iteration 4 shipped the selection plumbing +
+> a lens-name list, which under-delivered FR-009's stated intent ("the option comparison *informed
+> by* the lens knowledge"). **Iteration 5** completes it as the complete, state-of-the-art package:
+> FR-009 now surfaces each selected lens's **Design Decision Points** into the analysis, and **FR-026
+> (new)** makes the pre-plan gate **enforce lens coverage** (block `plan.md` if a selected lens is
+> unaddressed). This **un-defers the enforcement** that A1/FR-010 had parked; only validation of the
+> lens FILES against a schema + project-local overrides + broad cross-phase automation stay deferred.
+> Maintainer directive: "implement all, the complete package, state of the art."
 
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
@@ -421,6 +438,7 @@ than deferring to another feature.
 | FR-009 | Implementer, Reviewer | Iteration 4 (un-deferred 2026-06-03 — Amendment A1) |
 | FR-010 | Spec Steward, Planner, Reviewer | Iteration 4 (un-deferred 2026-06-03 — Amendment A1) |
 | FR-025 | Implementer, Reviewer | Iteration 4 (added 2026-06-03 — Amendment A1) |
+| FR-026 | Implementer, Reviewer | Iteration 5 (added 2026-06-03 — Amendment A2; lens-coverage enforcement) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -486,6 +504,10 @@ than deferring to another feature.
 - **SC-015**: Lens selection is a deterministic function of the recorded questionnaire JSON —
   identical answers yield an identical "Applicable Lenses" set across runs — and the JSON records
   the per-lens include/exclude rationale. (Added 2026-06-03 — Amendment A1.)
+- **SC-016**: A design analysis that leaves a selected lens unaddressed FAILS the pre-plan gate, and
+  the failure names the unaddressed lens; once every selected lens carries a non-placeholder
+  "Addressed:" coverage entry, the gate passes. The check is deterministic and LLM/network-free.
+  (Added 2026-06-03 — Amendment A2; FR-026.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.
