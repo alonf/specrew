@@ -147,6 +147,50 @@ sessions:
 }
 finally { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
 
+# --- SC-008 (Feature 141 FR-012): a single developer's own bootstrap writes must NOT
+#     trigger a spurious "Multiple developers detected" recommendation. Reproduce-first:
+#     `specrew init`/`specrew start` write start-context.json + last-start-prompt.md +
+#     decisions.md within ~1s of each other on every fresh project, so writeSignals>=1 even
+#     with 0 git authors / 0 machines / 0 branch fanout. Close-together shared-state writes
+#     cannot attribute activity to distinct actors, so they must only CORROBORATE a genuine
+#     signal, never trigger the recommendation alone. ---
+$p = New-TempProject
+try {
+    Set-Content -LiteralPath (Join-Path $p '.specrew/start-context.json') -Value '{"schema":"v2"}' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $p '.specrew/last-start-prompt.md') -Value "---`nx: 1`n---`n" -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $p '.squad/decisions.md') -Value "# Decisions`n" -Encoding UTF8
+    $bootstrapInstant = [DateTime]::UtcNow
+    foreach ($f in @('.specrew/start-context.json', '.specrew/last-start-prompt.md', '.squad/decisions.md')) {
+        (Get-Item -LiteralPath (Join-Path $p $f)).LastWriteTimeUtc = $bootstrapInstant
+    }
+    $signals = Get-SpecrewMultiDeveloperSignals -ProjectRoot $p
+    Assert-True ($signals.unique_git_author_count -eq 0 -and $signals.unique_machine_count -eq 0 -and $signals.branch_fanout_count -eq 0) "SC-008: fixture is a single-developer fresh project (0 authors, 0 machines, 0 branch fanout)"
+    Assert-True ($signals.concurrent_write_count -ge 1) "SC-008: bootstrap writes ARE close-together (the spurious-warning precondition is present)"
+    Assert-True (-not $signals.has_multi_developer_signal) "SC-008/FR-012: single-developer bootstrap writes do NOT set a multi-developer signal"
+    Assert-True ([string]::IsNullOrWhiteSpace([string]$signals.recommendation_message)) "SC-008/FR-012: no spurious 'Multiple developers detected' recommendation for a lone developer"
+}
+finally { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
+
+# --- SC-008 (Feature 141 FR-012, preserve actionable): genuine multi-developer signals
+#     (>=2 unique git authors) MUST still produce a recommendation, and close-together writes
+#     remain as corroborating detail. Guards against over-suppression. ---
+$p = New-TempProject
+try {
+    Invoke-Git -ProjectRoot $p -Arguments @('init') | Out-Null
+    Invoke-Git -ProjectRoot $p -Arguments @('-c','user.name=Dev One','-c','user.email=dev1@example.test','commit','--allow-empty','-m','one') | Out-Null
+    Invoke-Git -ProjectRoot $p -Arguments @('-c','user.name=Dev Two','-c','user.email=dev2@example.test','commit','--allow-empty','-m','two') | Out-Null
+    Set-Content -LiteralPath (Join-Path $p '.specrew/start-context.json') -Value '{"schema":"v2"}' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $p '.specrew/last-start-prompt.md') -Value "---`nx: 1`n---`n" -Encoding UTF8
+    $bootstrapInstant = [DateTime]::UtcNow
+    foreach ($f in @('.specrew/start-context.json', '.specrew/last-start-prompt.md')) {
+        (Get-Item -LiteralPath (Join-Path $p $f)).LastWriteTimeUtc = $bootstrapInstant
+    }
+    $signals = Get-SpecrewMultiDeveloperSignals -ProjectRoot $p
+    Assert-True ($signals.has_multi_developer_signal -and -not [string]::IsNullOrWhiteSpace($signals.recommendation_message)) "SC-008/FR-012: a genuine 2-author signal still produces a recommendation (no over-suppression)"
+    Assert-Match ([string]$signals.recommendation_message) 'close-together shared-state writes' "SC-008/FR-012: write signals remain as corroborating detail alongside a genuine signal"
+}
+finally { Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue }
+
 Write-Host ""
 Write-Host "All Feature-051 Iteration 2b acceptance tests passed." -ForegroundColor Green
 exit 0
