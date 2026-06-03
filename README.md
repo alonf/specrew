@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.31.0--beta2-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.31.0--beta3-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
@@ -145,7 +145,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Active development line**: 0.31.0-beta2 (F-140 — Unix-Native Install: native `specrew` shell wrappers + `install.sh` bootstrap so macOS/Linux users skip `pwsh`; also bundles F-051 Multi-Session Foundation, Spec Kit 0.9.0 support, and Proposal 152)
+- **Active development line**: 0.31.0-beta3 (F-140 — Unix-Native Install: native `specrew` shell wrappers + `install.sh` bootstrap so macOS/Linux users skip `pwsh`; also bundles F-051 Multi-Session Foundation, Spec Kit 0.9.0 support, and Proposal 152)
 - **Latest stable baseline**: promoted per the beta-before-stable release discipline — see [CHANGELOG.md](CHANGELOG.md) for the current released version
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).

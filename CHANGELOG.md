@@ -6,6 +6,12 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.31.0-beta3] - 2026-06-03
+
+### Fixed
+
+- **Interactive `specrew start` on Unix** — the native wrapper (and clone-mode) ran the dispatcher via `pwsh -File` (script context), where PowerShell on Linux/macOS strips the controlling TTY from native command children, so `specrew start` launched the host (Copilot) headless and exited to the shell instead of opening an interactive session. The dispatcher now re-dispatches `start` on Unix through the module function so the host launches in TTY-preserving function context (the proven deferred-launch handoff). A regression test (`tests/integration/start-deferred-launch.sh`, Ubuntu + macOS lanes) asserts the mechanism engages on both broken entry paths. Found by the 0.31.0-beta2 Linux beta-before-stable validation.
+
 ## [0.31.0-beta2] - 2026-06-03
 
 ### Fixed
