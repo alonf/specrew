@@ -60,7 +60,8 @@ try {
     if ($rootContent -notmatch 'command -v pwsh') { Write-Fail 'wrapper missing pwsh presence check' }
     if ($rootContent -notmatch 'while \[ -L') { Write-Fail 'wrapper missing symlink-resolution loop' }
     if ($rootContent -match 'getopts') { Write-Fail 'wrapper must not parse options (getopts found)' }
-    Write-Pass 'wrappers are thin forwarders (pwsh check + symlink loop; no option parsing)'
+    if ($rootContent -notmatch 'export SPECREW_INVOKED_FROM_MODULE=1') { Write-Fail 'wrapper must signal module mode (export SPECREW_INVOKED_FROM_MODULE=1) so init/runtime guidance stays native' }
+    Write-Pass 'wrappers are thin forwarders (pwsh check + symlink loop + module-mode signal; no option parsing)'
 
     $before = (Get-FileHash (Join-Path $bin 'specrew')).Hash
     if ((Invoke-Generator -Root $testRoot) -ne 0) { Write-Fail 'second generation exited non-zero' }

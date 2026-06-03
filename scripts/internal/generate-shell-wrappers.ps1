@@ -99,6 +99,11 @@ function New-WrapperContent {
         'specrew_bindir="$(cd "$(dirname "$specrew_self")" && pwd)"'
         'specrew_module_root="$(cd "$specrew_bindir/.." && pwd)"'
         ''
+        '# The wrapper IS the installed module''s native command surface, so signal module mode'
+        '# (matching the module alias in Specrew.psm1). Keeps init/runtime guidance native'
+        '# (`specrew ...`) instead of the clone-mode `pwsh -File ...` fallback.'
+        'export SPECREW_INVOKED_FROM_MODULE=1'
+        ''
         $execLine
     )
 
