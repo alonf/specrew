@@ -226,6 +226,10 @@ function Invoke-SpecrewInstallShellWrappers {
                     Remove-Item -LiteralPath $link -Force
                 }
                 New-Item -ItemType SymbolicLink -Path $link -Target $wrapper.FullName | Out-Null
+                # Install-Module (NuGet/PSGallery) strips the Unix execute bit from packaged files, so a
+                # symlink to the wrapper would be non-executable ("Permission denied"). Restore +x on the
+                # target (Unix-only code path; no-op if already executable).
+                if (Get-Command chmod -ErrorAction SilentlyContinue) { & chmod +x -- "$($wrapper.FullName)" 2>$null }
                 $installed.Add($wrapper.Name)
             }
         }

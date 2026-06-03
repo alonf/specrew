@@ -265,12 +265,17 @@ jobs:
             mkdir -p /opt/psmods/Specrew
             cp -a /src/. /opt/psmods/Specrew/
             rm -rf /opt/psmods/Specrew/.git
+            # Simulate the PSGallery/NuGet round-trip: Install-Module does NOT preserve the Unix
+            # execute bit. Strip +x from the packaged wrappers; install.sh + install-shell-wrappers
+            # MUST restore it, else the symlinked specrew fails with "Permission denied".
+            chmod -x /opt/psmods/Specrew/bin/* || true
             export PSModulePath=/opt/psmods:${PSModulePath:-}
             sh /opt/psmods/Specrew/install.sh --bin-dir /usr/local/bin
             command -v pwsh
             command -v specrew
+            test -x /opt/psmods/Specrew/bin/specrew || { echo "FAIL: wrapper exec bit not restored after PSGallery-strip simulation"; exit 1; }
             specrew version
-            echo "OK: clean-container no-pwsh bootstrap proved end-to-end (branch code)"
+            echo "OK: clean-container no-pwsh bootstrap proved end-to-end (branch code; +x restored after PSGallery-strip simulation)"
           '
 
   feature140-wrapper-runtime:

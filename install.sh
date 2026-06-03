@@ -297,6 +297,15 @@ install_wrappers() {
     pwsh -NoProfile -NonInteractive -Command "Import-Module Specrew -RequiredVersion '$SPECREW_MODULE_VERSION' -Force; specrew install-shell-wrappers --force" \
       || fail_closed "Failed to install the shell wrappers."
   fi
+
+  # Install-Module (NuGet/PSGallery) strips the Unix execute bit from the packaged wrappers, so the
+  # freshly symlinked targets can be non-executable ("Permission denied"). Restore +x on the module's
+  # wrapper sources (the symlink targets) — defense-in-depth alongside install-shell-wrappers' own
+  # chmod; no-op if already executable.
+  module_bin="$(pwsh -NoProfile -NonInteractive -Command "(Get-Module -ListAvailable -Name Specrew | Where-Object { \$_.Version.ToString() -eq '$SPECREW_MODULE_VERSION' } | Select-Object -First 1).ModuleBase" 2>/dev/null || true)"
+  if [ -n "$module_bin" ] && [ -d "$module_bin/bin" ]; then
+    chmod +x "$module_bin"/bin/* 2>/dev/null || true
+  fi
 }
 
 # --- orchestration (T011) --------------------------------------------------
