@@ -98,26 +98,39 @@ are missing.
 
 As a developer doing design analysis, I want the Crew to reference the repo-local
 design-lens files and render an "Applicable Lenses" section in `design-analysis.md`
-so the option comparison is informed by the existing lens knowledge without a heavy
-new subsystem.
+that lists only the lenses that actually apply to my feature — chosen by a short
+applicability questionnaire (recorded as JSON) — so the option comparison is informed
+by the relevant lens knowledge without noise and without a heavy new subsystem.
 
-**Why this priority**: This raises design-analysis quality cheaply by reusing
-existing lens files. It is explicitly the lightweight, read-only slice of Proposal
-156; deeper lens automation is deferred.
+**Why this priority**: This raises design-analysis quality by reusing existing lens
+files and tailoring them per feature. Per Amendment A1 (2026-06-03), the
+questionnaire-driven selection (FR-025) is now in scope for Iteration 4; only the
+truly-deep Proposal 156 automation (overrides, schema-validation enforcement, broad
+cross-phase automation) remains deferred.
 
-**Independent Test**: Run design analysis for a feature with a clear quality
-profile and confirm `design-analysis.md` contains an "Applicable Lenses" section
-naming the relevant existing lens files, and confirm no project-local override,
-lens-schema validation, or broad lens automation was introduced.
+**Independent Test**: Run design analysis for a feature with a clear quality profile,
+answer the applicability questionnaire, and confirm `design-analysis.md`'s "Applicable
+Lenses" section names exactly the selected lenses, that re-running with the same answers
+yields the same set (deterministic), that a recorded JSON artifact explains each
+include/exclude, that it degrades gracefully when no lenses/answers exist, and that no
+project-local override, lens-schema validator, or broad lens automation was introduced.
 
 **Acceptance Scenarios**:
 
-1. **Given** existing repo-local lens files, **When** design analysis runs for a
-   substantive feature, **Then** `design-analysis.md` includes an "Applicable
-   Lenses" section referencing the relevant lenses read-only.
-2. **Given** the lightweight scope, **When** review inspects the change, **Then**
-   no project-local lens override, lens-schema validator, or broad lens-loading
-   automation was added by this feature.
+1. **Given** existing repo-local lens files and recorded questionnaire answers, **When**
+   design analysis runs for a substantive feature, **Then** `design-analysis.md` includes
+   an "Applicable Lenses" section listing exactly the lenses the answers select
+   (foundational always-on + specialized lenses gated by a "yes"), read-only.
+2. **Given** the same recorded answers, **When** selection runs again, **Then** the
+   selected lens set is identical (deterministic), and the JSON artifact records why each
+   lens was or was not selected.
+3. **Given** the scope boundary, **When** review inspects the change, **Then** no
+   project-local lens override, lens-schema validator, or broad cross-phase lens-loading
+   automation was added by this feature (the questionnaire selection is in scope; the
+   deeper 156 automation is not).
+4. **Given** a downstream project with no lens catalog or no answers, **When** design
+   analysis runs, **Then** the "Applicable Lenses" section degrades gracefully (states
+   none available) rather than erroring.
 
 ---
 
@@ -263,15 +276,39 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 - **FR-008**: Specrew MUST build on the existing Feature 140 design-analysis-gate
   helper and plan-boundary enforcement rather than rewriting them.
 
-#### Lens catalog (Iteration 1, lightweight read-only)
+#### Lens catalog + applicability selection (Iteration 4; amended 2026-06-03 — see Amendment A1)
 
-- **FR-009**: Specrew SHOULD reference the existing repo-local design-lens files as
-  read-only input and render an "Applicable Lenses" section in `design-analysis.md`
-  naming the lenses relevant to the active feature.
-- **FR-010**: The lens integration in this feature MUST remain lightweight and
-  read-only. Project-local lens overrides, lens-schema validation, and broad lens
-  automation (Proposal 156 deeper scope) MUST be deferred and MUST NOT be
-  implemented here unless a cheap, obvious path is found and explicitly approved.
+- **FR-009**: Specrew MUST reference the existing repo-local design-lens files
+  (`extensions/specrew-speckit/knowledge/design-lenses/`) as read-only input and render an
+  "Applicable Lenses" section in `design-analysis.md` naming the lenses applicable to the active
+  feature, where applicability is determined by the FR-025 questionnaire (not a hand-listed guess).
+- **FR-025**: Specrew MUST determine lens applicability via a small, fixed **applicability
+  questionnaire** (e.g. "user-facing UI?", "auth/secrets/PII/compliance?", "persistent data?",
+  "external service/API integration?", "deployment/CI/release changes?", "performance/scale or
+  resilience concerns?"), recorded as a JSON artifact in the iteration directory. Lens selection
+  MUST be a **deterministic function** of the recorded answers and a question→lens map
+  (foundational lenses always-on; specialized lenses gated by their mapped answer), so identical
+  answers always yield the same `Applicable Lenses` set and the JSON serves as the audit trail for
+  why each lens was or was not selected. The questionnaire MAY be answered by the Crew with human
+  confirmation. The JSON-to-selection step MUST NOT itself require network or an LLM (the answers
+  are the only judgment input; the mapping is mechanical).
+- **FR-010**: The lens integration MUST stay scoped. The questionnaire-driven selection (FR-025)
+  is in scope for Iteration 4, but **truly-deep Proposal 156 automation — project-local lens
+  overrides, lens-schema validation enforcement, and broad cross-phase lens automation — remains
+  deferred** and MUST NOT be implemented here. The "Applicable Lenses" section MUST degrade
+  gracefully (state "none available") when the catalog or the answers are absent (e.g. a
+  downstream project without lenses).
+
+> **Amendment A1 (2026-06-03, maintainer-directed):** FR-009/FR-010 were originally pre-deferred
+> (2026-06-02) as a *lightweight read-only* surface-the-catalog slice, with all selection
+> automation deferred to Proposal 156's deeper scope. They are now **un-deferred into Iteration 4**
+> and expanded to include questionnaire-driven applicability selection (FR-025). **Rationale:** the
+> selection work is ~12-15 SP (one iteration, under the 20 SP cap) and the release-overhead of a
+> separate feature (branch + universal beta-publish + manual install validation + PR + closeout)
+> is not justified for that size when Feature 141 is already open and will ship one release cycle.
+> Only the *truly-deep* 156 items (overrides, schema-validation enforcement, broad automation) stay
+> deferred. Because FR-025 introduces a new mechanism + artifact, Iteration 4 is **substantive** and
+> runs the design-analysis gate (FR-001..FR-008) it built — the first such use within this feature.
 
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
@@ -294,11 +331,11 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 
 - **FR-016**: This feature MUST be delivered across multiple iterations: Iteration
   1 delivers the design-gate runtime path (FR-001 through FR-008) plus FR-022/FR-023
-  validator robustness (firm), at 18 SP. FR-009/FR-010 (Applicable Lenses) are
-  pre-deferred (2026-06-02) to a later Feature 141 iteration — deferred-within-
-  feature, not dropped. Later iterations deliver the smoke-test bug fixes and the
-  deferred lens section. The plan MUST propose the concrete iteration split and a
-  capacity model.
+  validator robustness (firm), at 18 SP. FR-009/FR-010/FR-025 (Applicable Lenses +
+  questionnaire-driven selection) were pre-deferred (2026-06-02) but are now scheduled as
+  **Iteration 4** (un-deferred 2026-06-03 — Amendment A1); Iterations 2-3 delivered the
+  smoke-test bug fixes (FR-011..FR-014 + FR-024). The plan MUST propose the concrete
+  iteration split and a capacity model.
 - **FR-017**: This feature MUST NOT force Feature 140 feature-closeout; Feature 140
   remains open behind its dirty working-tree gate, and this feature stacks on the
   Feature 140 branch tip.
@@ -381,8 +418,9 @@ than deferring to another feature.
 | FR-006 | Spec Steward, Planner, Reviewer | Iteration 1 |
 | FR-007 | Planner, Implementer, Reviewer | Iteration 1 |
 | FR-008 | Implementer, Reviewer | Iteration 1 |
-| FR-009 | Implementer, Reviewer | Later Feature 141 iteration (pre-deferred 2026-06-02) |
-| FR-010 | Spec Steward, Planner, Reviewer | Later Feature 141 iteration (pre-deferred 2026-06-02) |
+| FR-009 | Implementer, Reviewer | Iteration 4 (un-deferred 2026-06-03 — Amendment A1) |
+| FR-010 | Spec Steward, Planner, Reviewer | Iteration 4 (un-deferred 2026-06-03 — Amendment A1) |
+| FR-025 | Implementer, Reviewer | Iteration 4 (added 2026-06-03 — Amendment A1) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -441,9 +479,13 @@ than deferring to another feature.
 - **SC-005**: The typed-packet capability is demonstrably scoped to the
   design-analysis gate; no full Proposal 155 multi-boundary packet system is
   introduced.
-- **SC-006**: `design-analysis.md` includes an "Applicable Lenses" section
-  referencing relevant existing lens files when lenses apply, and degrades
-  gracefully when none apply; no lens override/schema/automation subsystem is added.
+- **SC-006**: `design-analysis.md` includes an "Applicable Lenses" section listing the
+  lenses selected by the FR-025 questionnaire (foundational always-on + specialized lenses
+  gated by their answer), and degrades gracefully when the catalog or answers are absent; no
+  lens override / schema-validation / broad-automation subsystem is added.
+- **SC-015**: Lens selection is a deterministic function of the recorded questionnaire JSON —
+  identical answers yield an identical "Applicable Lenses" set across runs — and the JSON records
+  the per-lens include/exclude rationale. (Added 2026-06-03 — Amendment A1.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.
@@ -488,8 +530,9 @@ than deferring to another feature.
   (under `specs/<feature>/gates/` or equivalent); do not generalize to other
   boundaries.
 - Do not pull host-native hook enforcement (Proposal 105) into Iteration 1.
-- Lens integration is lightweight read-only (Applicable Lenses section); defer
-  Proposal 156 overrides, schema validation, and broad automation.
+- Lens integration: Iteration 4 adds questionnaire-driven applicability selection (FR-025,
+  un-deferred per Amendment A1); still defer the truly-deep Proposal 156 scope — project-local
+  overrides, lens-schema validation enforcement, and broad cross-phase automation.
 - Keep all four smoke-test bugs inside this feature; do not push them to another
   feature.
 - Do not force Feature 140 feature-closeout past its dirty working-tree gate.
@@ -518,9 +561,10 @@ than deferring to another feature.
 - Q: What is the iteration split (FR-016)? A: Multi-iteration feature in a single
   feature. Iteration 1 hardens the design-gate runtime path only: exact
   `design-analysis.md` scaffold/template, pre-plan validation before `plan.md`,
-  typed/rendered design-gate packet, and optional lightweight read-only Proposal 156
-  lens inclusion. Later iterations stay in this feature and cover the four
-  smoke-test defects: empty `specs//...` start-packet paths, noisy downstream
+  typed/rendered design-gate packet. (Lens inclusion was pre-deferred from Iteration 1 and is
+  now Iteration 4 — questionnaire-driven selection, Amendment A1.) Later iterations stay in this
+  feature: Iterations 2-3 cover the four smoke-test defects: empty `specs//...` start-packet
+  paths, noisy downstream
   warnings, fresh greenfield baseline commit handling, and host wording leaks. The
   plan proposes the concrete split and capacity model.
 - Q: How should feature 141 relate to the unmerged Feature 140 branch (FR-017)? A:
@@ -539,9 +583,10 @@ than deferring to another feature.
   later-iteration obligation rather than deferring to another feature.
 - Lens pre-deferral: to keep Iteration 1 at 18 SP with implementation headroom
   (the runtime gate path already touches scaffold, validator, packet, boundary
-  wiring, and parser behavior), FR-009/FR-010 (Applicable Lenses) are pre-deferred
-  to a later Feature 141 iteration. This is deferred-within-feature, not dropped;
-  FR-022/FR-023 stay firm in Iteration 1.
+  wiring, and parser behavior), FR-009/FR-010 (Applicable Lenses) were pre-deferred
+  from Iteration 1. They are now scheduled as **Iteration 4** and expanded with
+  questionnaire-driven selection (FR-025) per Amendment A1 — deferred-within-feature,
+  not dropped; FR-022/FR-023 stayed firm in Iteration 1.
 
 ### Smoke amendment 2026-06-02 (post external manual smoke)
 
@@ -563,9 +608,9 @@ in-scope Iteration 1 corrections (see `iterations/001/manual-smoke.md`):
   commit.
 - FR-004 refinement (handoff depth): the template/handoff presents a per-option
   "design principle / why this matters" rationale.
-- FR-009/FR-010 (lens activation): confirmed **not** activated in the smoke; this is
-  expected for Iteration 1 only because lenses were pre-deferred, and remains a
-  named later-iteration obligation, not an Iteration 1 in-scope failure.
+- FR-009/FR-010 (lens activation): confirmed **not** activated in the smoke; this was
+  expected for Iteration 1 because lenses were pre-deferred — now scheduled as Iteration 4
+  with questionnaire-driven selection (FR-025, Amendment A1), not an Iteration 1 in-scope failure.
 
 ## Governance Alignment *(mandatory)*
 
