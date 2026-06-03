@@ -785,3 +785,39 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
     }
     return [pscustomobject]@{ Valid = $true; ArtifactPath = $artifact }
 }
+
+function Format-SpecrewFileReference {
+    # FR-028 (Amendment A3): render a file reference for its context. Human-facing console/terminal
+    # prose uses a bare file:/// URL (terminal-clickable); a persisted .md artifact uses a markdown
+    # link [text](relative) so it navigates in an editor; 'both' emits a markdown link whose target is
+    # the file:/// URL. Forward slashes throughout. -RelativeTo (e.g. the artifact's own directory)
+    # produces accurate relative links for the persisted form; otherwise relative to -ProjectRoot.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][ValidateSet('console', 'persisted', 'both')][string]$Context,
+        [string]$ProjectRoot,
+        [string]$RelativeTo,
+        [string]$LinkText
+    )
+
+    $isRooted = [System.IO.Path]::IsPathRooted($Path)
+    $absolute = if (-not $isRooted -and -not [string]::IsNullOrWhiteSpace($ProjectRoot)) { Join-Path $ProjectRoot $Path } else { $Path }
+    $fileUrl = 'file:///' + ($absolute -replace '\\', '/')
+    $text = if ([string]::IsNullOrWhiteSpace($LinkText)) { Split-Path -Leaf $Path } else { $LinkText }
+
+    switch ($Context) {
+        'console' { return $fileUrl }
+        'both' { return ('[{0}]({1})' -f $text, $fileUrl) }
+        'persisted' {
+            $rel = $Path
+            $relRoot = if (-not [string]::IsNullOrWhiteSpace($RelativeTo)) { $RelativeTo }
+            elseif (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) { $ProjectRoot }
+            else { $null }
+            if ($isRooted -and $null -ne $relRoot) {
+                try { $rel = [System.IO.Path]::GetRelativePath($relRoot, $Path) } catch { $rel = $Path }
+            }
+            return ('[{0}]({1})' -f $text, ($rel -replace '\\', '/'))
+        }
+    }
+}

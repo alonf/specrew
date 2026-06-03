@@ -1319,11 +1319,16 @@ function Invoke-SpecrewBoundaryStateSync {
         Write-Warning ("Boundary sync '{0}' could not split decisions by iteration: {1}" -f $BoundaryType, $_.Exception.Message)
     }
 
-    try {
-        Sort-SpecrewManifestFileList -ManifestPath (Join-Path $paths.ProjectRoot 'Specrew.psd1') | Out-Null
-    }
-    catch {
-        Write-Warning ("Boundary sync '{0}' could not sort Specrew.psd1 FileList: {1}" -f $BoundaryType, $_.Exception.Message)
+    # FR-029: the Specrew.psd1 FileList-sort is a Specrew-repo-only operation. Downstream projects have
+    # no module manifest, so guard on its presence — never emit the "Manifest not found" warning there.
+    $manifestPath = Join-Path $paths.ProjectRoot 'Specrew.psd1'
+    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+        try {
+            Sort-SpecrewManifestFileList -ManifestPath $manifestPath | Out-Null
+        }
+        catch {
+            Write-Warning ("Boundary sync '{0}' could not sort Specrew.psd1 FileList: {1}" -f $BoundaryType, $_.Exception.Message)
+        }
     }
 
     try {
