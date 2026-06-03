@@ -1,0 +1,35 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "003"
+updated_at: "2026-06-03T10:18:42Z"
+tasks:
+  T001:
+    title: "Reproduce-first + CLASSIFY greenfield/downstream warnings + prove FR-013 baseline defect; record in drift-log"
+    status: "done"
+    started_at: "2026-06-03T09:56:37Z"
+    completed_at: "2026-06-03T10:18:42Z"
+    blocked_reason: ""
+  T002:
+    title: "Suppress ONLY reproduced-spurious FR-012 warning: single-author/single-machine bootstrap writes must not trigger multi-dev recommendation"
+    status: "in-progress"
+    started_at: "2026-06-03T10:18:42Z"
+    completed_at: ""
+    blocked_reason: ""
+  T003:
+    title: "Fix fresh-greenfield (no-prior-history) baseline commit: establish + resolve a real hash, recorded consistently across start-context + boundary state"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T004:
+    title: "Tests (reproduce-first): SC-008 greenfield/downstream warning scope; SC-009 fresh-greenfield baseline resolution + cross-file consistency"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T005:
+    title: "Docs + review evidence (TG-006): greenfield/downstream warning scope + baseline-commit behavior; gap ledger"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
