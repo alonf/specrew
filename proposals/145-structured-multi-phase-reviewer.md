@@ -3,7 +3,7 @@ proposal: 145
 title: Host-Neutral Structured Multi-Phase Reviewer (7-Phase Checklist + FR×Phase Coverage Matrix + Static Validator)
 status: candidate
 phase: phase-2
-estimated-sp: 35-50
+estimated-sp: 45-65
 priority-tier: 1
 discussion: surfaced 2026-05-30 after F-049 + F-050 dogfooding revealed 8+ "review missed X" instances despite review-signoff verdicts of accepted; pattern is structural (single-pass narrative reviewer with no per-dimension coverage enforcement), not exhortation-fixable
 ---
@@ -61,6 +61,57 @@ Important sources and findings:
 
 Therefore Proposal 145 must not depend on any one host's reviewer agent, subagent system, or hook system. It must define the artifacts and validation contract that any host can satisfy.
 
+## Research update — AI false-completion reports and evidence discipline (2026-06-04)
+
+Follow-up research on "AI says the job is done" failures reinforces the core design rule for
+145: **the agent's report is an artifact under test, not testimony.** A completion report,
+review verdict, or "tests pass" claim is not accepted because the agent wrote it; it is accepted
+only when the repository, commands, logs, design trace, and validator agree.
+
+Important sources and findings:
+
+- **AI code assistants can increase overconfidence.** Perry et al. found that participants with
+  access to an AI code assistant wrote less secure code and were more likely to believe they had
+  written secure code. This is directly relevant to review-signoff: an AI-generated "secure/done"
+  statement can raise confidence faster than it raises evidence. Source:
+  <https://arxiv.org/abs/2211.03622>
+- **Generated code can be plausibly complete but vulnerable.** Pearce et al. generated 1,689
+  Copilot programs across high-risk CWE scenarios and found approximately 40% vulnerable. A
+  structured review must therefore include security/code-quality checks against the actual code,
+  not only acceptance of task completion prose. Source: <https://arxiv.org/abs/2108.09293>
+- **Generated dependencies can be hallucinated.** Spracklen et al. analyzed 576,000 generated
+  code samples and found package hallucinations across commercial and open-source models. Any
+  review claim about new dependencies must be verified against manifests, lockfiles, registry
+  evidence, or an explicit no-new-dependency proof. Source: <https://arxiv.org/abs/2406.10279>
+- **Executable evaluation is the reliable pattern.** SWE-bench evaluates a generated patch against
+  a real GitHub issue, real repository state, and a reproducible Docker evaluation harness, with
+  logs and final evaluation results as artifacts. The useful lesson for Specrew is not the exact
+  benchmark, but the trust model: patch + reproducible evidence outranks model narrative. Source:
+  <https://github.com/SWE-bench/SWE-bench>
+- **Inspectable trajectories matter.** SWE-agent and mini-SWE-agent emphasize runnable agent
+  trajectories, local/sandboxed execution, and inspectable histories. For Specrew, every
+  review-signoff should leave a replayable proof trail: changed files, commands, exit codes,
+  logs, evidence artifacts, and the final structured report. Sources:
+  <https://github.com/SWE-agent/SWE-agent>, <https://github.com/SWE-agent/mini-swe-agent>
+
+### Design conclusion from the false-completion research
+
+- Treat `review.md`, `review-report.yml`, and any agent-authored "job done" packet as
+  **claims to validate**, not ground truth.
+- Require a **claim-to-evidence ledger**: each material report claim maps to file/line,
+  test command/log, design node, diagram edge, commit, or manual evidence.
+- Require a **design/code/diagram trace**: every material design component, flow, and diagram
+  edge maps to implementation files/functions and at least one test/evidence pointer, or records
+  an explicit drift/deferral.
+- Add deterministic **anti-pattern scans** for common AI/developer shortcuts (sleep-based
+  synchronization, broad catch-and-ignore, hidden global state, unbounded retries, test-only
+  production behavior, fake fixtures, hallucinated dependencies).
+- Add a dedicated **report-falsification step** before approval: try to disprove the report by
+  rerunning claimed commands, checking uncommitted evidence, comparing code to design, and
+  looking for stronger-than-proof language.
+- Preserve the existing boundary: semantic judgment still belongs to reviewer/human, but the
+  validator must reject unsupported or over-strong claims.
+
 ## Gate review model — cheap gate checks plus full review-signoff
 
 145 is the deep implementation review for the `review-signoff` boundary. Running all seven phases after every gate would be too heavy and would turn normal governance into review fatigue.
@@ -93,6 +144,9 @@ Reviewer skill loads:
 - Prior iteration retros + drift logs
 - Code-map for the iteration's diff
 - Data structures + flows referenced in spec/plan
+- Design artifacts, diagrams, Mermaid blocks, architecture notes, and data-flow descriptions
+- Agent completion packets, review drafts, coverage evidence, and other generated reports whose
+  claims must be validated
 - Prior boundary commits + their evidence pointers
 - Existing reviewer-instructions.md playbook (Proposal 140 surface)
 
@@ -120,6 +174,11 @@ Checks:
 - Concurrency + race conditions
 - Data integrity (transactional boundaries, atomicity)
 - Idempotency (for distributed / retry paths)
+- **Design/code/diagram conformance:** every material design component, diagram node/edge, and
+  data-flow claim maps to implementation files/functions and behavioral evidence; mismatches are
+  recorded as drift, rework, or accepted design change with rationale
+- **Claim-to-code trace:** any report claim that "X was implemented" cites the changed files,
+  functions, commits, or generated artifacts that implement X
 
 ### Phase 3 — Non-functional requirements
 
@@ -145,6 +204,13 @@ Checks:
 - DTOs / type discipline at boundaries (no leaking internals)
 - Clean code: naming, cognitive complexity, magic numbers, file organization
 - Dependency intent (license, cost, alternatives, reversibility) per `[[project-plan-time-dependency-intent-proposal-candidate-2026-05-27]]`
+- Dependency reality check: new package/import/module claims are verified against manifests,
+  lockfiles, repository files, registry evidence, or an explicit no-new-dependency proof
+- Anti-pattern catalog scan (deterministic where practical, reviewer judgment where needed):
+  sleep/time-delay as synchronization, broad catch-and-ignore, hidden/global mutable state,
+  unbounded retries/poll loops, command output swallowed without assertion, test-only behavior in
+  production paths, generated placeholder logic, over-broad regex/path matching, hard-coded
+  environment assumptions, and fake/synthetic fixtures where real evidence is required
 - No dead code / commented-out blocks
 - Comment-vs-comment-rot discipline per `[[proposal-074-code-commentary-standards]]`
 
@@ -160,6 +226,12 @@ Checks:
 - Gate completeness (Shape 8): does the gate cover what its spec CLAIMS, not just exist? Inverse-direction checks?
 - Guardrails: explicit assertions on invariants
 - Tests-actually-run-at-review evidence (closes coverage-evidence drift from F-050 iter-002)
+- Evidence replay: material "tests pass" claims include exact command, environment/scope,
+  exit code, timestamp or run id, and log/result path; reviewer reruns or explains why replay is
+  not possible
+- Negative/falsification cases: where a gate or validator is added, review must include at least
+  one failure-mode proof showing the gate fails for the target defect class, not only a passing
+  happy path
 
 ### Phase 6 — System safety + ops
 
@@ -173,7 +245,7 @@ Checks:
 - Audit trail: who/when/what
 - Multi-developer collision surface per `[[project-multi-dev-constraint-2026-05-27]]`
 
-### Phase 7 — Output synthesis
+### Phase 7 — Output synthesis + report falsification
 
 Machine-readable `review-report.yml` augmenting human-readable `review.md`:
 
@@ -188,6 +260,20 @@ matrix:
       phase_4: { applicable: yes, finding: clean }
       phase_5: { applicable: yes, finding: skip-guard-provenance-documented, severity: info }
       phase_6: { applicable: no, reason: "no ops impact" }
+claim_ledger:
+  - claim: "FR-005 implemented"
+    evidence:
+      - type: code
+        path: src/example.ps1
+        symbol: Invoke-Example
+      - type: test
+        command: ./tests/example.tests.ps1
+        exit_code: 0
+design_trace:
+  - design_ref: design-analysis.md#option-b-flow
+    implementation: [src/example.ps1]
+    evidence: [tests/example.tests.ps1]
+    status: matched
 verdict:
   per_phase: { phase_0: pass, phase_1: pass, phase_2: pass, phase_3: n/a, phase_4: pass, phase_5: pass, phase_6: n/a }
   overall: APPROVE for review-signoff
@@ -200,6 +286,16 @@ Verdict aggregation rule:
 - All applicable phases = `pass` → overall `APPROVE for review-signoff` (per `[[feedback-verdict-boundary-naming-2026-05-22]]`)
 - Phases marked `n/a` require a populated `reason` field (static validator enforces this)
 
+Report-falsification rule:
+
+- Before approval, the reviewer must attempt to disprove the generated report by checking that
+  cited evidence exists, is committed/reachable, matches the claim strength, and is not contradicted
+  by the diff, design artifacts, test logs, or validator output.
+- A report claim with no supporting evidence is downgraded to `unsupported`.
+- A report claim that is stronger than the evidence (for example, "CI passed" with only a local
+  run, "security reviewed" with only lint, or "diagram implemented" with no code/diagram trace)
+  is a `rework` finding unless explicitly corrected before signoff.
+
 ## Architecture (deliverable shape)
 
 - Host-neutral review protocol, with a Squad/Copilot reviewer agent as the first executor implementation
@@ -207,8 +303,8 @@ Verdict aggregation rule:
 - Agent-mediated phase fan-out: each semantic review phase is executed by the coordinator/reviewer agent, using focused sub-agents where available (per `[[proposal-139-multi-agent-subagent-orchestration]]` / F-051)
 - Without F-051: sequential single-agent phase execution (lower fidelity but functional)
 - Deterministic scripts own workplan generation, schema validation, completeness checks, and aggregation; they do not directly invoke LLM reviewers as hidden side effects
-- Output artifacts: `review-workplan.yml` (required phases, prompt files, input artifacts, expected outputs, schemas, ordering constraints), per-phase structured findings under `review-findings/`, `review-report.yml` machine-readable + traceable, and `review.md` human prose synthesizing the matrix
-- Static coverage validator: rule in `validate-governance.ps1` that fails the review-signoff boundary if structured outputs are missing, schema-invalid, incomplete, or have FR phase coverage gaps without explicit `n/a + reason`; it validates evidence shape and aggregation rules, not semantic correctness by itself
+- Output artifacts: `review-workplan.yml` (required phases, prompt files, input artifacts, expected outputs, schemas, ordering constraints), per-phase structured findings under `review-findings/`, `review-report.yml` machine-readable + traceable, `review-claim-ledger.yml` for claim-to-evidence validation, `design-code-trace.yml` for design/diagram/code conformance, and `review.md` human prose synthesizing the matrix
+- Static coverage validator: rule in `validate-governance.ps1` that fails the review-signoff boundary if structured outputs are missing, schema-invalid, incomplete, have FR phase coverage gaps without explicit `n/a + reason`, or contain unsupported/over-strong report claims; it validates evidence shape, reachability, claim strength, and aggregation rules, not semantic correctness by itself
 - Per-phase memoization (Proposal 086 Pillar 1) — context-load is the most expensive phase; cache per-iteration
 
 ### Host-neutral execution contract
@@ -222,6 +318,8 @@ Required inputs:
 - Boundary history and commit evidence (`pre_sha`, `post_sha`, boundary verdicts, and gate-local evidence).
 - Changed files and branch status.
 - Test commands + results, with explicit distinction between local-only, CI-reached, skipped, and not-run evidence.
+- Design diagrams, data-flow descriptions, option decisions, and accepted design deltas.
+- Agent-authored completion/review/coverage reports whose material claims must be verified.
 - Prior review/retro findings and unresolved deferrals.
 - `/specrew.refocus` output once that command exists; until then, the equivalent context pack produced by the existing start/resume surfaces.
 
@@ -230,6 +328,10 @@ Required outputs:
 - `review-workplan.yml`: the deterministic plan for the seven phases, required inputs, expected outputs, schemas, order/parallelism rules, and applicability hints.
 - `review-findings/phase-0-context.yml` through `review-findings/phase-6-system-safety.yml`: one structured finding file per semantic phase.
 - `review-report.yml`: machine-readable aggregation and FR/SC × phase coverage matrix.
+- `review-claim-ledger.yml`: every material approval/completion/test/design/dependency claim from
+  `review.md` or generated packets mapped to supporting evidence, or marked `unsupported`.
+- `design-code-trace.yml`: design components, diagrams, data flows, and option decisions mapped to
+  implementation files/functions and tests/evidence, or marked drift/deferral with rationale.
 - `review.md`: human-readable synthesis, with links to the structured report and any blocking findings.
 
 Validator obligations:
@@ -240,9 +342,18 @@ Validator obligations:
 - Fail if a phase is marked `n/a` without a non-empty reason.
 - Fail if `review.md` cites evidence that is not committed or not reachable.
 - Fail if test evidence claims are stronger than the recorded proof (for example, "CI-reached" without a CI run/link/hash).
+- Fail if a material `review.md` / completion-packet claim lacks a `review-claim-ledger.yml`
+  entry, or the entry has no evidence.
+- Fail if a code/design/diagram conformance claim lacks a `design-code-trace.yml` entry.
+- Fail if a dependency/import/package claim is not backed by manifest, lockfile, local file, or
+  registry/source evidence.
+- Fail if a command/test claim lacks command text, exit code, and result/log evidence.
+- Fail if anti-pattern scans find blocking patterns without a documented reviewer disposition
+  (`accepted_with_rationale`, `false_positive`, or `rework`).
 - Fail if review-signoff is approved while any phase verdict is `reject` or `rework`.
 
-Semantic judgment remains with the reviewer agent/human reviewer. Structural completeness belongs to deterministic validation.
+Semantic judgment remains with the reviewer agent/human reviewer. Structural completeness, evidence
+presence, evidence reachability, and claim-strength discipline belong to deterministic validation.
 
 ### Executor topologies
 
