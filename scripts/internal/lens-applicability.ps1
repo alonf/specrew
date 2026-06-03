@@ -129,3 +129,75 @@ function Get-SpecrewLensSelection {
         excluded = $excluded.ToArray()
     }
 }
+
+function New-SpecrewLensApplicabilityTemplate {
+    # T002: emit a lens-applicability.json template (questions + empty answers) from the map for the
+    # design-analysis questionnaire. Does not overwrite an existing file unless -Force. Returns the path.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()]$Map,
+        [Parameter(Mandatory = $true)][string]$OutPath,
+        [switch]$Force
+    )
+
+    if ($null -eq $Map) { return $null }
+    if ((Test-Path -LiteralPath $OutPath -PathType Leaf) -and -not $Force) { return $OutPath }
+
+    $answers = [ordered]@{}
+    $questions = [System.Collections.Generic.List[object]]::new()
+    foreach ($q in @($Map.questions)) {
+        $answers[[string]$q.id] = $false
+        $questions.Add([ordered]@{ id = [string]$q.id; prompt = [string]$q.prompt }) | Out-Null
+    }
+
+    $doc = [ordered]@{
+        schema    = 'v1'
+        note      = 'Answer each question true/false (the design-analysis applicability questionnaire). Lens selection is then a deterministic function of these answers + the sibling applicability-map.json.'
+        questions = $questions.ToArray()
+        answers   = $answers
+        selected  = @()
+    }
+
+    $parent = Split-Path -Parent $OutPath
+    if (-not [string]::IsNullOrWhiteSpace($parent) -and -not (Test-Path -LiteralPath $parent -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $parent -Force
+    }
+    [System.IO.File]::WriteAllText($OutPath, ($doc | ConvertTo-Json -Depth 6), [System.Text.UTF8Encoding]::new($false))
+    return $OutPath
+}
+
+function Format-SpecrewApplicableLensesSection {
+    # T004: render the "## Applicable Lenses" markdown section from the selector. Read-only; graceful
+    # degradation to "none available" when the map or answers are absent.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()]$Map,
+        [Parameter(Mandatory = $true)][AllowNull()]$Answers,
+        [string]$CatalogRelativeDir = 'extensions/specrew-speckit/knowledge/design-lenses'
+    )
+
+    $sel = Get-SpecrewLensSelection -Map $Map -Answers $Answers
+    $lines = [System.Collections.Generic.List[string]]::new()
+    $lines.Add('## Applicable Lenses') | Out-Null
+    $lines.Add('') | Out-Null
+
+    if (@($sel.selected).Count -eq 0) {
+        $lines.Add('None available - no design-lens catalog or no recorded questionnaire answers for this project.') | Out-Null
+        return (($lines -join [Environment]::NewLine).TrimEnd() + [Environment]::NewLine)
+    }
+
+    $lines.Add('Selected by the applicability questionnaire (recorded in `lens-applicability.json`):') | Out-Null
+    $lines.Add('') | Out-Null
+    $rel = $CatalogRelativeDir.TrimEnd('/')
+    foreach ($id in $sel.selected) {
+        $lines.Add(('- **{0}** - `{1}/{2}.md`' -f $id, $rel, $id)) | Out-Null
+    }
+
+    if (@($sel.excluded).Count -gt 0) {
+        $notSel = (@($sel.excluded) | ForEach-Object { '{0} ({1})' -f $_.id, ($_.reason -replace "gated by '", '' -replace "' = ", '=') }) -join ', '
+        $lines.Add('') | Out-Null
+        $lines.Add(('_Not selected: {0}._' -f $notSel)) | Out-Null
+    }
+
+    return (($lines -join [Environment]::NewLine).TrimEnd() + [Environment]::NewLine)
+}

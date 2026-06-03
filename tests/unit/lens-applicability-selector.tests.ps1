@@ -64,6 +64,27 @@ Assert-True (@($audit.selected).Count -eq 6) "audit selected count matches selec
 Assert-True (@($audit.included | Where-Object { $_.id -eq 'ui-ux' }).Count -eq 1) "audit marks a yes-gated lens included"
 Assert-True (@($audit.excluded | Where-Object { $_.id -eq 'data-storage' -and $_.reason -match "data.*= no" }).Count -eq 1) "audit records why an excluded lens was excluded"
 
+# T004 render (SC-006): section lists selected + not-selected; graceful degradation; markdownlint-safe.
+$renderSome = Format-SpecrewApplicableLensesSection -Map $map -Answers $some
+Assert-True ($renderSome -match '## Applicable Lenses') "render: section heading present"
+Assert-True ($renderSome -match 'ui-ux' -and $renderSome -match 'security-compliance' -and $renderSome -match 'architecture-core') "render: selected lenses listed"
+Assert-True ($renderSome -match 'Not selected:' -and $renderSome -match 'data-storage') "render: not-selected lenses listed with their reason"
+Assert-True ($renderSome -notmatch '(?m)^\s*\+ ') "render: no '+'-at-line-start (markdownlint-safe prose)"
+$renderNone = Format-SpecrewApplicableLensesSection -Map $null -Answers $null
+Assert-True ($renderNone -match '## Applicable Lenses' -and $renderNone -match 'None available') "render: absent map/answers -> none available (SC-006)"
+
+# T002 questionnaire artifact: template emit with empty answers; no overwrite of a filled file.
+$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("lens-appl-{0}.json" -f ([System.Guid]::NewGuid().ToString('N')))
+try {
+    $p = New-SpecrewLensApplicabilityTemplate -Map $map -OutPath $tmp
+    $doc = Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True (@($doc.questions).Count -eq 6 -and $doc.answers.ui -eq $false -and @($doc.selected).Count -eq 0) "template emit: 6 questions + answers default false + empty selected"
+    Set-Content -LiteralPath $tmp -Value '{"answers":{"ui":true}}' -Encoding UTF8
+    $null = New-SpecrewLensApplicabilityTemplate -Map $map -OutPath $tmp
+    Assert-True ((Get-Content -LiteralPath $tmp -Raw) -match '"ui":\s*true') "template emit: does not overwrite an existing (filled) answers file"
+}
+finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+
 Write-Host ""
 Write-Host "All lens-applicability selector tests passed." -ForegroundColor Green
 exit 0
