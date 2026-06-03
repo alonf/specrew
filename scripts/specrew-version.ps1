@@ -112,8 +112,12 @@ if ($parsedArgs.HelpMode) {
 $resolvedProjectPath = Resolve-ProjectPath -Path $parsedArgs.ProjectPath
 
 # --- Installed version ---
+# Get-SpecrewInstalledVersion returns the BASE version (feeds every semver comparison below).
+# Get-SpecrewInstalledVersionInfo adds the prerelease label for the DISPLAY line only, so the
+# report can show 0.31.0-beta3 instead of a bare 0.31.0 indistinguishable from a stable build.
 $installedVersionText = Get-SpecrewInstalledVersion -ProjectRoot $resolvedProjectPath
 $installedVersion = ConvertTo-SpecrewSemanticVersion -Value $installedVersionText
+$installedVersionInfo = Get-SpecrewInstalledVersionInfo -ProjectRoot $resolvedProjectPath
 
 # --- Project baseline version ---
 $projectBaselineVersion = Get-SpecrewVersionConfigValue -ProjectRoot $resolvedProjectPath -Key 'specrew_version'
@@ -175,7 +179,10 @@ Write-Host ''
 Write-Host 'Specrew Version Report' -ForegroundColor Cyan
 Write-Host '----------------------' -ForegroundColor Cyan
 
-$installedDisplay = if ($null -ne $installedVersion) { $installedVersionText } else { '(unknown)' }
+$installedDisplay = if ($null -ne $installedVersion) {
+    if ($null -ne $installedVersionInfo -and -not [string]::IsNullOrWhiteSpace($installedVersionInfo.Display)) { $installedVersionInfo.Display } else { $installedVersionText }
+}
+else { '(unknown)' }
 $baselineDisplay = if (-not [string]::IsNullOrWhiteSpace($projectBaselineVersion)) { $projectBaselineVersion } else { '(not found in .specrew/config.yml)' }
 
 Write-Host "  Installed version  : $installedDisplay"

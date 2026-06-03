@@ -86,6 +86,111 @@ function Get-SpecrewInstalledVersion {
     return $null
 }
 
+function Get-SpecrewVersionInfoFromManifest {
+    <#
+    .SYNOPSIS
+    Read a Specrew manifest and return its base version + prerelease label (for DISPLAY).
+    .DESCRIPTION
+    Pure manifest parse (no module resolution), so it is deterministically unit-testable.
+    The prerelease label lives in PrivateData.PSData.Prerelease; stable manifests carry an
+    empty string there.
+    .OUTPUTS
+    pscustomobject @{ Version; Prerelease; Display } or $null when the manifest is unreadable
+    or has no ModuleVersion.
+    #>
+    param([Parameter(Mandatory = $true)][string]$ManifestPath)
+
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        return $null
+    }
+
+    try {
+        $manifest = Import-PowerShellDataFile -LiteralPath $ManifestPath
+    }
+    catch {
+        return $null
+    }
+
+    if (-not ($manifest -and $manifest.ContainsKey('ModuleVersion'))) {
+        return $null
+    }
+    $baseVersion = [string]$manifest.ModuleVersion
+
+    $prerelease = ''
+    if ($manifest.ContainsKey('PrivateData') -and $manifest.PrivateData -is [hashtable]) {
+        $privateData = $manifest.PrivateData
+        if ($privateData.ContainsKey('PSData') -and $privateData.PSData -is [hashtable] -and $privateData.PSData.ContainsKey('Prerelease')) {
+            $prerelease = [string]$privateData.PSData.Prerelease
+        }
+    }
+
+    $display = if (-not [string]::IsNullOrWhiteSpace($prerelease)) { "$baseVersion-$prerelease" } else { $baseVersion }
+    return [pscustomobject]@{
+        Version    = $baseVersion
+        Prerelease = $prerelease
+        Display    = $display
+    }
+}
+
+function Get-SpecrewInstalledVersionInfo {
+    <#
+    .SYNOPSIS
+    Resolve the installed Specrew version AND its prerelease label, for the version report.
+    .DESCRIPTION
+    Get-SpecrewInstalledVersion returns the BASE version only and stays that way, so every
+    semver comparison (compatibility gate, slash-command minimum) is unaffected. This reads
+    the SAME resolved manifest to also surface the prerelease label, so `specrew version` can
+    report e.g. 0.31.0-beta3 instead of a bare 0.31.0 that cannot be told apart from a stable
+    0.31.0. Resolution mirrors Get-SpecrewInstalledVersion: highest installed module first,
+    then the repo-root / project-root manifest.
+    .OUTPUTS
+    pscustomobject @{ Version; Prerelease; Display } or $null.
+    #>
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $manifestPath = $null
+
+    try {
+        $module = @(Get-Module -Name Specrew -ListAvailable -ErrorAction SilentlyContinue |
+            Sort-Object Version -Descending |
+            Select-Object -First 1)
+        if ($module.Count -gt 0 -and $module[0].ModuleBase) {
+            $candidate = Join-Path $module[0].ModuleBase 'Specrew.psd1'
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                $manifestPath = $candidate
+            }
+        }
+    }
+    catch {
+        # Fall through to the manifest path search.
+    }
+
+    if (-not $manifestPath) {
+        $manifestCandidates = @(
+            (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) 'Specrew.psd1')
+        )
+        try {
+            $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+            $manifestCandidates += (Join-Path $resolvedProjectRoot 'Specrew.psd1')
+        }
+        catch {
+            # ProjectRoot may be unresolvable; the repo-root manifest is still tried.
+        }
+        foreach ($candidate in (@($manifestCandidates) | Select-Object -Unique)) {
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                $manifestPath = $candidate
+                break
+            }
+        }
+    }
+
+    if (-not $manifestPath) {
+        return $null
+    }
+
+    return Get-SpecrewVersionInfoFromManifest -ManifestPath $manifestPath
+}
+
 function ConvertTo-SpecrewSemanticVersion {
     param([AllowNull()][string]$Value)
 

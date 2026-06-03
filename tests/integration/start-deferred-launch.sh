@@ -15,8 +15,11 @@
 # mechanism engaged: SPECREW_DEFERRED_LAUNCH_FILE was set when start ran, and the host was
 # launched by the module consumer with that env var set.
 #
-# IMPORTANT: CI has no TTY, so this proves the mechanism ENGAGES, not that the TUI renders.
-# The real interactive proof is the maintainer's on-host validation (release gate).
+# When python3 is available the broken entry paths run under a pseudo-TTY (pty.spawn) and the
+# stub host additionally asserts it has a controlling terminal ([ -t 0 ] && [ -t 1 ]) — so a
+# green run proves the TTY SURVIVES the function-context launch, not merely that re-dispatch
+# happened. Without python3 it falls back to the routing-only assertion (and says so). Even the
+# PTY proof is a proxy for a real terminal; the maintainer's on-host run remains the final word.
 set -u
 
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -52,6 +55,7 @@ export SPECREW_TEST_HOST_LAUNCHED="$work/host-launched.txt"
 export SPECREW_TEST_HOST_ENV="$work/host-saw-deferred-env.txt"
 export SPECREW_TEST_STUB_HOST="$work/stub-host"
 export SPECREW_TEST_WORKDIR="$work"
+export SPECREW_TEST_HOST_TTY="$work/host-saw-tty.txt"
 # Must start unset so the dispatcher guard fires; Invoke-SpecrewScript sets it.
 unset SPECREW_DEFERRED_LAUNCH_FILE 2>/dev/null || true
 unset SPECREW_INVOKED_FROM_MODULE 2>/dev/null || true
@@ -65,6 +69,12 @@ if [ -n "${SPECREW_DEFERRED_LAUNCH_FILE:-}" ]; then
   echo 1 > "$SPECREW_TEST_HOST_ENV"
 else
   echo 0 > "$SPECREW_TEST_HOST_ENV"
+fi
+# Did the host inherit a controlling TTY? (the load-bearing property the fix must preserve)
+if [ -t 0 ] && [ -t 1 ]; then
+  echo 1 > "$SPECREW_TEST_HOST_TTY"
+else
+  echo 0 > "$SPECREW_TEST_HOST_TTY"
 fi
 exit 0
 EOF
@@ -107,21 +117,47 @@ fail=0
 ok() { pass=$((pass + 1)); printf 'PASS  %s\n' "$1"; }
 no() { fail=$((fail + 1)); printf 'FAIL  %s\n  %s\n' "$1" "$2"; }
 
+# Run "$@" under a pseudo-TTY so the host can prove it inherited a controlling terminal from the
+# function-context launch (not just that re-dispatch happened). python3's pty.spawn is uniform
+# across Linux + macOS (BSD `script` has incompatible syntax). When python3 is absent we run
+# directly and skip the TTY assertion.
+have_pty=0
+if command -v python3 >/dev/null 2>&1; then have_pty=1; fi
+run_under_pty() {
+  python3 -c 'import pty,sys; pty.spawn(sys.argv[1:])' "$@"
+}
+
 run_case() {
   desc="$1"
   shift
-  rm -f "$SPECREW_TEST_START_ENV" "$SPECREW_TEST_HOST_LAUNCHED" "$SPECREW_TEST_HOST_ENV"
-  "$@" >/dev/null 2>&1 || true
+  rm -f "$SPECREW_TEST_START_ENV" "$SPECREW_TEST_HOST_LAUNCHED" "$SPECREW_TEST_HOST_ENV" "$SPECREW_TEST_HOST_TTY"
+  if [ "$have_pty" = "1" ]; then
+    run_under_pty "$@" >/dev/null 2>&1 || true
+  else
+    "$@" >/dev/null 2>&1 || true
+  fi
   start_seen="$(cat "$SPECREW_TEST_START_ENV" 2>/dev/null || echo missing)"
   host_ran=0
   [ -f "$SPECREW_TEST_HOST_LAUNCHED" ] && host_ran=1
   host_seen="$(cat "$SPECREW_TEST_HOST_ENV" 2>/dev/null || echo missing)"
-  # 1/1/1 = re-dispatch happened and the host launched via the module function (deferred path).
-  # 0/1/* = start ran in script context and used the fallback = the bug.
-  if [ "$start_seen" = "1" ] && [ "$host_ran" = "1" ] && [ "$host_seen" = "1" ]; then
-    ok "$desc (deferred-launch engaged; host launched in function context)"
+  host_tty="$(cat "$SPECREW_TEST_HOST_TTY" 2>/dev/null || echo missing)"
+  # routing: re-dispatch happened and the host launched via the module function (deferred path).
+  #   1/1/1 good ; 0/* = start ran in script context and used the fallback = the bug.
+  routing_ok=0
+  if [ "$start_seen" = "1" ] && [ "$host_ran" = "1" ] && [ "$host_seen" = "1" ]; then routing_ok=1; fi
+  if [ "$have_pty" = "1" ]; then
+    # TTY-survival: under a PTY the host MUST see a controlling terminal, else the fix is hollow.
+    if [ "$routing_ok" = "1" ] && [ "$host_tty" = "1" ]; then
+      ok "$desc (re-dispatch + TTY survived the function-context launch)"
+    else
+      no "$desc" "start_saw_env=$start_seen host_ran=$host_ran host_saw_env=$host_seen host_saw_tty=$host_tty (expected 1/1/1/1; host_saw_tty=0 = TTY stripped = the bug)"
+    fi
   else
-    no "$desc" "start_saw_env=$start_seen host_ran=$host_ran host_saw_env=$host_seen (expected 1/1/1; 0/* = script-context fallback = the bug)"
+    if [ "$routing_ok" = "1" ]; then
+      ok "$desc (re-dispatch engaged; TTY assertion skipped — no python3 for a PTY)"
+    else
+      no "$desc" "start_saw_env=$start_seen host_ran=$host_ran host_saw_env=$host_seen (expected 1/1/1)"
+    fi
   fi
 }
 

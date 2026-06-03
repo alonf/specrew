@@ -93,7 +93,7 @@ try {
 
     Write-Host ""
     Write-Host "Test 4: Missing-file fallback returns null (graceful degradation)"
-    $bogusPath = Join-Path $repoRoot '.scratch\does-not-exist-supported-versions.yml'
+    $bogusPath = Join-Path $repoRoot '.scratch/does-not-exist-supported-versions.yml'
     if (Test-Path -LiteralPath $bogusPath -PathType Leaf) {
         Remove-Item -LiteralPath $bogusPath -Force
     }
@@ -101,7 +101,7 @@ try {
 
     Write-Host ""
     Write-Host "Test 5: Malformed yml fallback returns null"
-    $scratchDir = Join-Path $repoRoot '.scratch\version-info-states'
+    $scratchDir = Join-Path $repoRoot '.scratch/version-info-states'
     if (Test-Path -LiteralPath $scratchDir) { Remove-Item -LiteralPath $scratchDir -Recurse -Force }
     $null = New-Item -ItemType Directory -Path $scratchDir -Force
     $malformedPath = Join-Path $scratchDir 'malformed.yml'
@@ -155,6 +155,27 @@ squad:
     Assert-Equal -Expected 'current' -Actual (Get-SpecrewVersionStatus -Current '0.9.0' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.9.0 == max_tested 0.9.0 returns current"
     Assert-Equal -Expected 'update-available-supported' -Actual (Get-SpecrewVersionStatus -Current '0.8.18' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.8.18 < max_tested 0.9.0 returns update-available-supported"
     Assert-Equal -Expected 'ahead-of-supported' -Actual (Get-SpecrewVersionStatus -Current '0.9.1' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.9.1 > max_tested 0.9.0 returns ahead-of-supported"
+
+    Write-Host ""
+    Write-Host "Test 9: Get-SpecrewVersionInfoFromManifest surfaces the prerelease label (finding #2)"
+    # The report must show 0.31.0-beta3, not a bare 0.31.0 indistinguishable from a stable build —
+    # while the BASE version (Version) still feeds every semver comparison unchanged.
+    $preManifest = Join-Path $scratchDir 'prerelease.psd1'
+    Set-Content -LiteralPath $preManifest -Encoding UTF8 -Value "@{ ModuleVersion = '0.31.0'; PrivateData = @{ PSData = @{ Prerelease = 'beta3' } } }"
+    $preInfo = Get-SpecrewVersionInfoFromManifest -ManifestPath $preManifest
+    Assert-Equal -Expected '0.31.0' -Actual $preInfo.Version -Message "prerelease manifest: base Version 0.31.0 (feeds semver compare)"
+    Assert-Equal -Expected 'beta3' -Actual $preInfo.Prerelease -Message "prerelease manifest: Prerelease label parsed"
+    Assert-Equal -Expected '0.31.0-beta3' -Actual $preInfo.Display -Message "prerelease manifest: Display = base-label"
+
+    $stableManifest = Join-Path $scratchDir 'stable.psd1'
+    Set-Content -LiteralPath $stableManifest -Encoding UTF8 -Value "@{ ModuleVersion = '0.31.0'; PrivateData = @{ PSData = @{ Prerelease = '' } } }"
+    Assert-Equal -Expected '0.31.0' -Actual (Get-SpecrewVersionInfoFromManifest -ManifestPath $stableManifest).Display -Message "stable manifest: Display is bare base (no -label)"
+
+    $noPsData = Join-Path $scratchDir 'no-psdata.psd1'
+    Set-Content -LiteralPath $noPsData -Encoding UTF8 -Value "@{ ModuleVersion = '0.29.0' }"
+    Assert-Equal -Expected '0.29.0' -Actual (Get-SpecrewVersionInfoFromManifest -ManifestPath $noPsData).Display -Message "manifest without PSData: Display is base version"
+
+    Assert-Null -Actual (Get-SpecrewVersionInfoFromManifest -ManifestPath (Join-Path $scratchDir 'does-not-exist.psd1')) -Message "missing manifest returns null"
 }
 finally {
     [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SPECKIT', $originalSpeckitMax, 'Process')

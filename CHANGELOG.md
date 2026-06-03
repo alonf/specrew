@@ -6,6 +6,14 @@ baseline that each release number represents.
 
 ## Unreleased
 
+### Changed
+
+- **`specrew version` surfaces the prerelease label** — the report now prints e.g. `0.31.0-beta3` instead of a bare `0.31.0` that was indistinguishable from a stable build. The base version still feeds every compatibility / slash-command semver comparison unchanged (only the "Installed version" display line gains the label). Resolves finding #2 from the 0.31.0-beta2/beta3 Linux validation.
+
+### Internal
+
+- **Interactive-`start` regression test now proves TTY survival, not just routing** — `tests/integration/start-deferred-launch.sh` runs the broken entry paths under a pseudo-TTY (`python3 pty.spawn`, uniform on Linux+macOS) and the stub host asserts it has a controlling terminal (`[ -t 0 ] && [ -t 1 ]`), so a green run proves the TTY survives the function-context launch. `tests/integration/version-info-states.tests.ps1` (incl. the new prerelease-label parse test) is now wired into the Specrew CI lane.
+
 ## [0.31.0-beta3] - 2026-06-03
 
 ### Fixed
