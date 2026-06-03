@@ -2,9 +2,13 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: complete
 **Capacity**: 19/20 story_points
 **Started**: 2026-06-04
+
+**Closeout (2026-06-04):** 6 of 7 tasks delivered = **16/20 SP delivered**; **T003 (3 SP) deferred →
+Iteration 7** (subsumed by the A4 per-lens workshop). Capacity above stays 19/20 (the planned row-sum,
+including the deferred row). See review.md / retro.md.
 
 <!--
   Validator schema: Iteration Status one of planning|executing|reviewing|retro|complete|abandoned.
@@ -42,7 +46,7 @@ retained. Also ships **FR-028** (console `file:///` vs persisted markdown links 
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T001 | Dial→depth mapping helper: given the user-profile expertise dials + a question's material area, return the interaction depth (terse-expert / explain-recommend); pure, deterministic, testable | FR-025 | US3 | 3 | Implementer | scripts/internal/lens-applicability.ps1 | planned | claude | — | — |
 | T002 | Lifecycle wiring (placement rule): the Crew runs the interactive lens intake INSIDE specify, before sync-specify — (a) ask before /speckit.specify if possible, else (b) scaffold draft → intake → record lens-applicability.json (feature-level, early) → amend spec.md + checklist → validate → sync-specify; (c) never between sync and clarify. Coordinator/governance + specify-ordering guidance | FR-025, FR-027 | US3 | 4 | Spec Steward | extensions/specrew-speckit/**, scripts/internal/** | planned | claude | — | — |
-| T003 | Lens-informed flow: surface the selected lenses' decision points to specify (requirements), clarify (questions), and plan; design-analysis + coordinator guidance consume the early JSON | FR-009 | US3 | 3 | Implementer | extensions/specrew-speckit/**, scripts/internal/lens-applicability.ps1 | planned | claude | — | — |
+| T003 | Lens-informed flow: surface the selected lenses' decision points to specify (requirements), clarify (questions), and plan; design-analysis + coordinator guidance consume the early JSON | FR-009 | US3 | 3 | Implementer | extensions/specrew-speckit/**, scripts/internal/lens-applicability.ps1 | deferred | claude | — | deferred → Iteration 7 (subsumed by the A4 per-lens workshop; only the high-level flow sentence shipped in Rule 9a) |
 | T004 | FR-028 file-reference render helper (console `file:///` vs persisted markdown links) + fix the handoff-validator bare-path rule to not flag non-path `token/token` prose and to honor the console-vs-persisted context | FR-028 | US0 | 3 | Implementer | scripts/internal/**, extensions/specrew-speckit/validators/handoff-governance-validator.ps1 | planned | claude | — | — |
 | T005 | FR-029: guard the `Specrew.psd1` FileList-sort in boundary sync — skip (no warning) when no manifest is present (downstream project) | FR-029 | US0 | 1 | Implementer | scripts/internal/sync-boundary-state.ps1 | planned | claude | — | — |
 | T006 | Tests (reproduce-first): dial→depth mapping; intake JSON recording + early/in-specify placement; lens-decision-point availability to specify/clarify/plan; FR-028 render contexts + handoff bare-path no-false-positive (RRT/Bug1, FR/SC); FR-029 no-warning-downstream | FR-025, FR-027, FR-028, FR-029, SC-017, SC-018, SC-019 | US3 | 4 | Reviewer | tests/unit/**, tests/integration/** | planned | claude | — | — |
