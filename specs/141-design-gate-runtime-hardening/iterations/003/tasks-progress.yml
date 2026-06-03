@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "003"
-updated_at: "2026-06-03T10:23:56Z"
+updated_at: "2026-06-03T11:15:39Z"
 tasks:
   T001:
     title: "Reproduce-first + CLASSIFY greenfield/downstream warnings + prove FR-013 baseline defect; record in drift-log"
@@ -16,20 +16,20 @@ tasks:
     completed_at: "2026-06-03T10:23:56Z"
     blocked_reason: ""
   T003:
-    title: "Fix fresh-greenfield (no-prior-history) baseline commit: establish + resolve a real hash, recorded consistently across start-context + boundary state"
-    status: "in-progress"
+    title: "FR-013 prove-first verify-clean + C+nudge: preserve zero-commit fail-safe (no auto-commit), add greenfield baseline-guidance line; baseline resolves to HEAD once a commit exists"
+    status: "done"
     started_at: "2026-06-03T10:23:56Z"
-    completed_at: ""
+    completed_at: "2026-06-03T11:15:39Z"
     blocked_reason: ""
   T004:
     title: "Tests (reproduce-first): SC-008 greenfield/downstream warning scope; SC-009 fresh-greenfield baseline resolution + cross-file consistency"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: ""
+    status: "done"
+    started_at: "2026-06-03T10:18:42Z"
+    completed_at: "2026-06-03T11:15:39Z"
+    blocked_reason: "SC-008 added with T002 + SC-009 with T003 per reproduce-first (tests interleaved with fixes); both verified against repo code"
   T005:
     title: "Docs + review evidence (TG-006): greenfield/downstream warning scope + baseline-commit behavior; gap ledger"
-    status: "planned"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-06-03T11:15:39Z"
     completed_at: ""
     blocked_reason: ""

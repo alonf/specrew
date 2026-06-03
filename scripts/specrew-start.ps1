@@ -2912,6 +2912,13 @@ function Save-StartArtifacts {
     if ($null -ne $currentHead -and $currentHead -match '^[0-9a-f]{40}$') {
         $frontmatterLines += "baseline_commit_hash: $currentHead"
     }
+    else {
+        # FR-013 greenfield guidance: a repo with no resolvable git HEAD (no commit yet) has
+        # no commit to anchor a baseline. Preserve the Feature-029 zero-commit fail-safe -- do
+        # NOT stamp a baseline and do NOT create a commit on the user's behalf -- and instead
+        # nudge the user to establish history so governance can anchor a baseline themselves.
+        Write-Warning 'No baseline commit yet: this project has no resolvable git HEAD. Make an initial commit (for example: `git add -A; git commit -m "chore: initial commit"`) so Specrew can anchor a baseline commit for change detection.'
+    }
     if ($null -ne $SessionState) {
         $frontmatterLines += ('session_state_active: {0}' -f $SessionState.active)
         $frontmatterLines += ('session_state_boundary: {0}' -f $SessionState.boundary_type)
