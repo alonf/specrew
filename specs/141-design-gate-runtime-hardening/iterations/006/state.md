@@ -1,12 +1,12 @@
 # Iteration State: 006
 
 **Schema**: v1
-**Last Completed Task**: (none — iteration opening; design-analysis in progress)
-**Tasks Remaining**: (plan not yet authored — gated on the design-analysis human decision)
-**In Progress**: design-analysis (interactive pre-clarify lens intake — Amendment A3)
-**Baseline Ref**: c19f6874
-**Updated**: 2026-06-04T07:45:00Z
-**Current Phase**: clarify
+**Last Completed Task**: (none — plan authored; awaiting before-implement go-ahead)
+**Tasks Remaining**: T001-T007
+**In Progress**: (none — plan + pre-implementation hardening gate authored)
+**Baseline Ref**: 3e610c4a
+**Updated**: 2026-06-04T08:00:00Z
+**Current Phase**: plan
 **Iteration Status**: planning
 
 ## Execution Summary

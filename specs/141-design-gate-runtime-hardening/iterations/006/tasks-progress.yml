@@ -1,0 +1,47 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "006"
+updated_at: "2026-06-04T08:00:00Z"
+tasks:
+  T001:
+    title: "Dial->depth mapping helper (user-profile dials + question area -> interaction depth); pure, deterministic"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T002:
+    title: "Lifecycle wiring: interactive lens intake INSIDE specify, before sync-specify (placement rule a/b/c); coordinator/governance + specify ordering"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T003:
+    title: "Lens-informed flow: selected lenses' decision points inform specify/clarify/plan (consume the early JSON)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T004:
+    title: "FR-028 file-reference render helper (console file:/// vs persisted markdown) + handoff bare-path fix (no token/token false-positive)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T005:
+    title: "FR-029: guard Specrew.psd1 FileList-sort in boundary sync (skip when no manifest, downstream)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T006:
+    title: "Tests (reproduce-first): dial->depth; intake recording + placement; flow; FR-028 contexts + handoff bare-path; FR-029 no-warning"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T007:
+    title: "Docs + human-experience dogfood (real interactive dial-adapted intake run) + gap ledger (TG-006)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
