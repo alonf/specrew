@@ -254,6 +254,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/boundary-sync-markdownlint-gate.tests.ps1
 
+      - name: Integration - version mismatch warning (start, non-blocking + actionable)
+        shell: pwsh
+        run: ./tests/integration/version-checks.tests.ps1
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest
