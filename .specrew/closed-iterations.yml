@@ -173,3 +173,6 @@ closed:
   - feature: 141-design-gate-runtime-hardening
     iteration: 001
     closed_at: 2026-06-02T18:33:32Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 002
+    closed_at: 2026-06-03T00:40:46Z
