@@ -11,9 +11,9 @@ tasks:
     blocked_reason: ""
   T002:
     title: "Lifecycle wiring: interactive lens intake INSIDE specify, before sync-specify (placement rule a/b/c); coordinator/governance + specify ordering. DONE: FR-026 feature/iteration resolution (instruction #1); the ENFORCED specify-boundary lens gate (Invoke-SpecrewSpecifyBoundaryLensGate, wired into sync-boundary-state) refusing sync-specify before the feature-level artifact + the committed scripted-proof test (maintainer mandate: prompt-only is not enough). REMAINING: coordinator-prompt/governance wiring that tells the Crew to run the interactive dial-adapted intake + amend spec/checklist before sync-specify."
-    status: "in-progress"
+    status: "done"
     started_at: "2026-06-04T08:12:00Z"
-    completed_at: ""
+    completed_at: "2026-06-04T08:35:00Z"
     blocked_reason: ""
   T003:
     title: "Lens-informed flow: selected lenses' decision points inform specify/clarify/plan (consume the early JSON)"
