@@ -7,6 +7,19 @@
 Feature-140 fast-follow investigations, without blind-fixing shipped module
 behavior."
 
+## Clarifications
+
+### 2026-06-03
+
+- Q: Should planning prefer real Unix/macOS PowerShell reproduction first, with
+  deterministic cross-platform fixture fallback?
+  A: Yes. Prefer real Unix/macOS PowerShell evidence first, and use a
+  deterministic cross-platform fixture as fallback when it proves equivalent
+  path or marker semantics.
+- No additional clarify questions are open. The feature remains
+  investigation-first: reproduce before fixing, and record not-confirmed
+  evidence instead of modifying behavior when a finding cannot be reproduced.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Prove Resolver Path Behavior (Priority: P1)
