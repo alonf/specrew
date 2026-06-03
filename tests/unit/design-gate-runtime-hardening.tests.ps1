@@ -229,6 +229,45 @@ try {
     Assert-True ($driftRes.Valid -eq $false) 'FR-003: recording the draft commit as the decision commit is rejected'
     Write-Pass 'FR-003: decision-commit == draft-commit drift is rejected'
 
+    # --- T002 (FR-027 / Amendment A3): specify-boundary lens gate — ENFORCED, not prompt-only ---
+    # Scripted proof (maintainer-mandated) that sync-specify cannot finalize before the feature-level
+    # lens-applicability.json exists (i.e. the interactive lens intake ran). The applicability map +
+    # a substantive spec make the intake required.
+    $specifyRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-141-specify-gate-" + [guid]::NewGuid().ToString('N'))
+    try {
+        $mapDir = Join-Path $specifyRoot 'extensions\specrew-speckit\knowledge\design-lenses'
+        $featDir = Join-Path $specifyRoot 'specs\001-test-feature'
+        $null = New-Item -ItemType Directory -Path $mapDir -Force
+        $null = New-Item -ItemType Directory -Path $featDir -Force
+        [System.IO.File]::WriteAllText((Join-Path $mapDir 'applicability-map.json'), '{"always_on":["architecture-core"],"questions":[]}', [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::WriteAllText((Join-Path $featDir 'spec.md'), "# Spec`nThis governance lifecycle feature changes boundary enforcement and validation.", [System.Text.UTF8Encoding]::new($false))
+
+        # (1) substantive + map present + NO feature-level artifact -> the gate THROWS (sync-specify blocked).
+        $specifyBlocked = $false
+        try { Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature' | Out-Null }
+        catch {
+            $specifyBlocked = $true
+            Assert-True ($_.Exception.Message -match 'specify-lens-gate' -and $_.Exception.Message -match '001-test-feature') 'specify-lens-gate failure names the gate and the feature'
+        }
+        Assert-True $specifyBlocked 'FR-027: sync-specify is BLOCKED before the feature-level lens-applicability.json exists (enforced, not prompt-only)'
+        Write-Pass 'FR-027/A3: specify boundary refuses to finalize before the lens-intake artifact'
+
+        # (2) feature-level artifact present -> the gate PASSES.
+        [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v1","selected":["architecture-core"]}', [System.Text.UTF8Encoding]::new($false))
+        $specifyOk = Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature'
+        Assert-True ($null -ne $specifyOk -and $specifyOk.Valid -eq $true) 'FR-027: sync-specify is allowed once the feature-level lens artifact exists'
+        Write-Pass 'FR-027/A3: specify boundary passes once the lens-intake artifact is recorded'
+
+        # (3) no applicability map (downstream project without lenses) -> graceful no-op (null).
+        Remove-Item -LiteralPath (Join-Path $featDir 'lens-applicability.json') -Force
+        Remove-Item -LiteralPath (Join-Path $mapDir 'applicability-map.json') -Force
+        Assert-True ($null -eq (Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature')) 'FR-027: no applicability map -> specify gate is a graceful no-op (downstream without lenses)'
+        Write-Pass 'FR-027/A3: specify gate degrades gracefully when no lens catalog is present'
+    }
+    finally {
+        if (Test-Path -LiteralPath $specifyRoot) { Remove-Item -LiteralPath $specifyRoot -Recurse -Force }
+    }
+
     Write-Pass 'Design-gate runtime hardening unit tests passed'
 }
 finally {

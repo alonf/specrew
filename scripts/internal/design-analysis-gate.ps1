@@ -724,3 +724,64 @@ function Invoke-SpecrewDesignAnalysisPrePlanGate {
         PacketPath     = $packetPath
     }
 }
+
+function Get-SpecrewLensApplicabilityMapPath {
+    # The decoupled question->lens applicability map (Iteration 4). Its presence means the lens intake
+    # applies to this project; absent (e.g. a downstream project without lenses) => graceful skip.
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    foreach ($rel in @(
+            'extensions\specrew-speckit\knowledge\design-lenses\applicability-map.json',
+            '.specify\extensions\specrew-speckit\knowledge\design-lenses\applicability-map.json')) {
+        $candidate = Join-Path $ProjectRoot $rel
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return $null
+}
+
+function Get-SpecrewFeatureLensApplicabilityPath {
+    # FR-027 (A3): the lens intake records its answers ONCE at the feature level (the specify-phase
+    # truth); the FR-026 coverage gate resolves this when no iteration-level artifact is present.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef
+    )
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+    return Join-Path $ProjectRoot ("specs\{0}\lens-applicability.json" -f $feature)
+}
+
+function Test-SpecrewSpecifyLensIntakeRequired {
+    # The lens intake is required at the specify boundary when (a) the applicability map is present
+    # (graceful skip for downstream projects without lenses) AND (b) the feature is substantive
+    # (trivial doc/bugfix features are exempt — the same substantive test the design-analysis gate uses).
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $false }
+    if ($null -eq (Get-SpecrewLensApplicabilityMapPath -ProjectRoot $ProjectRoot)) { return $false }
+    return (Test-SpecrewDesignAnalysisSubstantiveFeature -ProjectRoot $ProjectRoot -FeatureRef $feature)
+}
+
+function Invoke-SpecrewSpecifyBoundaryLensGate {
+    # FR-027 (Amendment A3): the lens-applicability intake MUST complete before the specify boundary
+    # is finalized/synced, so the ACCEPTED spec is lens-informed. This is ENFORCED, not prompt-only:
+    # sync-specify is refused for a substantive feature (in a lens-catalog project) until the
+    # feature-level lens-applicability.json exists (i.e. the interactive intake ran and the spec was
+    # amended before sync). Deterministic + LLM/network-free. Returns $null when the intake does not
+    # apply (graceful skip — no map, or trivial feature).
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+    if (-not (Test-SpecrewSpecifyLensIntakeRequired -ProjectRoot $ProjectRoot -FeatureRef $feature)) { return $null }
+
+    $artifact = Get-SpecrewFeatureLensApplicabilityPath -ProjectRoot $ProjectRoot -FeatureRef $feature
+    if ($null -eq $artifact -or -not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
+        throw ("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the lens-applicability intake has not run. Run the interactive, expertise-adapted lens intake, record the feature-level lens-applicability.json, and amend spec.md + the requirements checklist with the lens-informed requirements BEFORE sync-specify (FR-027 / Amendment A3). Expected artifact: {1}" -f $feature, $artifact)
+    }
+    return [pscustomobject]@{ Valid = $true; ArtifactPath = $artifact }
+}

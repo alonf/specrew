@@ -1141,6 +1141,16 @@ function Invoke-SpecrewBoundaryStateSync {
         }
     }
 
+    if ($BoundaryType -eq 'specify') {
+        # FR-027 (A3): the lens-applicability intake must complete before the specify boundary is
+        # synced, so the accepted spec is lens-informed. Enforced here (not prompt-only): refuses
+        # sync-specify for a substantive feature in a lens-catalog project until the feature-level
+        # lens-applicability.json exists.
+        Invoke-SpecrewSpecifyBoundaryLensGate `
+            -ProjectRoot $paths.ProjectRoot `
+            -FeatureRef $effectiveFeatureRef | Out-Null
+    }
+
     if ($BoundaryType -eq 'plan') {
         Invoke-SpecrewDesignAnalysisPlanBoundaryGate `
             -ProjectRoot $paths.ProjectRoot `
