@@ -268,6 +268,32 @@ try {
         if (Test-Path -LiteralPath $specifyRoot) { Remove-Item -LiteralPath $specifyRoot -Recurse -Force }
     }
 
+    # --- T004 (FR-028): handoff bare-path matcher no longer false-flags token/token prose ---
+    $handoffValidator = Join-Path $repoRootForT004 'extensions\specrew-speckit\validators\handoff-governance-validator.ps1'
+    $handoffText = @'
+## What I Just Did
+Compared RRT/Bug1 strategies and mapped FR/SC coverage; wrote contracts/robot-path-viz.md.
+## Why I Stopped
+plan boundary.
+## What Needs Your Review
+the plan.
+## What Happens Next
+tasks.
+## Discussion Prompts
+1. ok?
+## What I Need From You
+approve.
+'@
+    $handoffOut = @(& $handoffValidator -ProjectRoot $repoRootForT004 -ResponseText $handoffText -BoundaryName plan -ResponseScope boundary-handoff -BarePathBoundaryHandoffSeverity validation-fail 2>&1)
+    $barePathLine = ($handoffOut | Select-String -Pattern 'bare-path') -join "`n"
+    Assert-True ($barePathLine -notmatch 'RRT/Bug1') 'FR-028: handoff bare-path no longer false-flags RRT/Bug1 (acronym pair)'
+    Assert-True ($barePathLine -notmatch 'FR/SC') 'FR-028: handoff bare-path no longer false-flags FR/SC (abbreviation pair)'
+    Assert-True ($barePathLine -match 'contracts/robot-path-viz\.md') 'FR-028: handoff bare-path still flags a genuine bare path'
+    # The handoff validator exits 1 on the genuine bare-path finding (expected); clear the leaked
+    # exit code so this suite's own exit stays clean.
+    $global:LASTEXITCODE = 0
+    Write-Pass 'FR-028: handoff bare-path matcher distinguishes real paths from token/token prose'
+
     Write-Pass 'Design-gate runtime hardening unit tests passed'
 }
 finally {

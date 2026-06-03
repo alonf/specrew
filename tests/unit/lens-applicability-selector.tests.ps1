@@ -109,6 +109,15 @@ Assert-True ($enriched -notmatch '_Not selected') "enriched render: asterisk emp
 $legacy = Format-SpecrewApplicableLensesSection -Map $map -Answers $some
 Assert-True ($legacy -notmatch 'Decision points:' -and $legacy -notmatch 'Addressed:') "render back-compat: no -CatalogDir -> legacy name-list (no enrichment)"
 
+# Iteration 6 T001 (FR-025 / SC-018) — Get-SpecrewLensQuestionDepth: dial -> interaction depth.
+$dials = @{ 'architect' = 10; 'ux-ui-specialist' = 7; 'product-manager' = 8; 'ai-researcher-project-manager' = 7 }
+Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials $dials -Area 'perf') -eq 'expert-terse') "dial depth: perf -> architect dial 10 -> expert-terse"
+Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials $dials -Area 'ui') -eq 'moderate') "dial depth: ui -> ux-ui dial 7 -> moderate"
+Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials @{ 'ux-ui-specialist' = 2 } -Area 'ui') -eq 'guided-explain') "dial depth: ui -> ux-ui dial 2 -> guided-explain"
+Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials $dials -Area 'whatever') -eq 'expert-terse') "dial depth: unknown area falls back to architect dial"
+Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials @{} -Area 'ui') -eq 'moderate') "dial depth: absent dial -> fail-safe moderate"
+Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials $null -Area 'perf') -eq 'moderate') "dial depth: null profile -> fail-safe moderate"
+
 Write-Host ""
 Write-Host "All lens-applicability selector tests passed." -ForegroundColor Green
 exit 0

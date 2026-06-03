@@ -291,5 +291,39 @@ Assert-True (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value '<fill me
 Assert-True (-not (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value 'see Option B Trade-offs')) 'FR-026 placeholder: a real pointer is not a placeholder'
 Write-Pass 'FR-026: enforce-by-default, EXPLICIT-marker grandfather (bypass closed), no-op without selection, deterministic, placeholder-aware'
 
+# --- T006 (FR-026 resolution order, Amendment A3 / instruction #1) ---
+# The coverage gate resolves the lens-applicability artifact: iteration-level (override / back-compat),
+# then feature-level (the specify-phase truth), then graceful no-op. Mandated regression set.
+$resolveRoot = Join-Path $scratchRoot 'fr026-resolution'
+$noAddressedBody = "# X`n`n## Applicable Lenses`n`n- **architecture-core** - ``x```n- **data-storage** - ``x```n"
+
+# (a) feature-level selected lens + missing Addressed entry => FR-026 fails and names the lens.
+$featOnly = Join-Path $resolveRoot 'feat-a\iterations\006'
+$null = New-Item -ItemType Directory -Path $featOnly -Force
+[System.IO.File]::WriteAllText((Join-Path (Join-Path $resolveRoot 'feat-a') 'lens-applicability.json'), '{"schema":"v1","selected":["architecture-core","data-storage"]}', [System.Text.UTF8Encoding]::new($false))
+$featErrors = @(Test-SpecrewDesignAnalysisLensCoverage -Content $noAddressedBody -IterationDirectory $featOnly)
+Assert-True ($featErrors.Count -eq 2) 'FR-026 resolution: feature-level artifact (no iteration-level) is resolved; missing Addressed entries FAIL'
+Assert-Match -Text ($featErrors -join "`n") -Pattern 'architecture-core' 'FR-026 resolution: feature-level failure names the lens'
+
+# (b) iteration-level artifact OVERRIDES feature-level when present.
+$override = Join-Path $resolveRoot 'feat-b\iterations\006'
+$null = New-Item -ItemType Directory -Path $override -Force
+[System.IO.File]::WriteAllText((Join-Path (Join-Path $resolveRoot 'feat-b') 'lens-applicability.json'), '{"schema":"v1","selected":["architecture-core","data-storage"]}', [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $override 'lens-applicability.json'), '{"schema":"v1","selected":["ui-ux"]}', [System.Text.UTF8Encoding]::new($false))
+$overrideBody = "# X`n`n## Applicable Lenses`n`n- **ui-ux** - ``x```n  - Addressed: see Option B`n"
+Assert-True (@(Test-SpecrewDesignAnalysisLensCoverage -Content $overrideBody -IterationDirectory $override).Count -eq 0) 'FR-026 resolution: iteration-level artifact overrides feature-level (only ui-ux required, addressed)'
+
+# (c) neither artifact present => graceful no-op.
+$neither = Join-Path $resolveRoot 'feat-c\iterations\006'
+$null = New-Item -ItemType Directory -Path $neither -Force
+Assert-True (@(Test-SpecrewDesignAnalysisLensCoverage -Content $noAddressedBody -IterationDirectory $neither).Count -eq 0) 'FR-026 resolution: neither iteration- nor feature-level artifact => graceful no-op'
+Write-Pass 'FR-026 resolution order (iteration -> feature -> no-op) verified (instruction #1 regression set)'
+
+# --- T006 (FR-028 file-reference render helper, Amendment A3) ---
+Assert-True ((Format-SpecrewFileReference -Path 'specs/x/review.md' -Context console -ProjectRoot 'C:\repo') -eq 'file:///C:/repo/specs/x/review.md') 'FR-028: console context renders a file:/// URL'
+Assert-True ((Format-SpecrewFileReference -Path 'specs/x/review.md' -Context persisted -LinkText 'review') -eq '[review](specs/x/review.md)') 'FR-028: persisted context renders a markdown link'
+Assert-True ((Format-SpecrewFileReference -Path 'specs/x/review.md' -Context both -ProjectRoot 'C:\repo' -LinkText 'review') -eq '[review](file:///C:/repo/specs/x/review.md)') 'FR-028: both renders a markdown link to the file:/// URL'
+Write-Pass 'FR-028: file-reference render helper (console file:/// vs persisted markdown vs both)'
+
 Write-Pass 'Design-analysis gate unit tests passed'
 exit 0
