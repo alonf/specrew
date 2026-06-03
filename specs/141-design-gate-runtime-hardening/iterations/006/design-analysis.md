@@ -131,9 +131,9 @@ The honest scope note: Option B is likely a **2-part iteration** (intake + lifec
 
 ## Human Decision
 
-- **Decision verdict**: *awaiting human decision at the design-analysis gate*
-- **Chosen option**: *pending*
-- **Reason**: *pending*
-- **Modifications**: *pending — in particular, confirm placement (before `specify` vs between `specify` and `clarify`) and the dial→depth interaction model*
-- **Design-analysis draft commit**: *(this draft; the decision will be recorded in a later commit that differs from the draft commit)*
-- **Decision recorded in commit**: *pending*
+- **Decision verdict**: approved for plan with Option B
+- **Chosen option**: Option B
+- **Reason**: Option B faithfully encodes the A3 re-scope — an interactive, expertise-adapted lens intake that shapes the lifecycle, reusing the F-016 interaction model + user-profile dials + the Iteration 4-5 engine. Option A's flat prompt half-meets the expertise-adapted intent; Option C pulls deferred Proposal 156 automation.
+- **Modifications (PLACEMENT CLARIFIED — binding)**: The lens intake is **part of the `specify` phase** and MUST complete **before the `specify` boundary is finalized/synced** (and therefore before `clarify`), so the **accepted specify output is lens-informed**. Implementation rule, in priority order: **(a)** if the Crew can ask the lens questions *before* invoking `/speckit.specify`, do that; **(b)** otherwise it is acceptable for Spec Kit to scaffold the initial spec draft first — then immediately run the interactive lens intake, record `lens-applicability.json`, **amend `spec.md` + the requirements checklist with the lens-informed requirements, validate, and only then run sync-specify**; **(c)** "between specify-sync and clarify" is **NOT** acceptable, because then the accepted specify output was not lens-informed. Keep Option B's **dial-adapted interaction model**: ask the human about the material areas (e.g. UI, performance/resilience), adapt depth to the user profile, explain/recommend where useful, and **surface the final lens decisions before writing them into artifacts**. **FR-028 and FR-029 are included** in this iteration's scope. (This is a stricter satisfaction of FR-027's "before clarify" — specify-sync precedes clarify.)
+- **Design-analysis draft commit**: `92286c76`
+- **Decision recorded in commit**: `__DECISION_COMMIT__` (filled by the follow-up commit; differs from the draft commit `92286c76`)
