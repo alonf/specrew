@@ -6,6 +6,13 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.31.1-beta1] - 2026-06-03
+
+### Fixed
+
+- **Feature 160 — Unix resolver path portability hardening (Proposal 160).** The boundary-sync wrapper (`extensions/specrew-speckit/scripts/sync-boundary-state.ps1` and its deployed `.specify` mirror) built its module-resolution candidate paths with hardcoded backslash separators (`scripts\internal\sync-boundary-state.ps1`, `.specrew\config.yml`). All candidate construction now uses separator-safe multi-segment `Join-Path` (byte-identical on Windows — proven by a live boundary-sync through the fixed wrapper). **Real-host refinement (Ubuntu CI at feature-closeout):** PowerShell provider cmdlets normalize `\` to `/` on POSIX, so the old construction actually resolved at runtime on stock Linux pwsh — the suspected "Unable to locate the internal helper" Unix failure did NOT reproduce on a real host. The change is therefore platform-hygiene hardening: it removes reliance on provider normalization and protects the non-provider hazard class (raw .NET IO APIs, string comparisons, native commands), which the regression test now proves deterministically on the Ubuntu CI lane. The Windows symptom seen during Feature-140 closeout was confirmed to be the `$env:SPECREW_MODULE_PATH` override selecting the installed module by design, not a walk-up bug.
+- **Feature 160 — managed-skill "stuck preserving" marker provenance (Proposal 161).** `Test-IsManagedLegacySkillDirectory` in `deploy-squad-runtime.ps1` (source + `.specify` mirror) treated any front-matter (`---`) SKILL.md as user-edited when no `.specrew-managed` marker was present. Because every current canonical skill template starts with front matter, a marker-less legacy `.copilot/skills/specrew-*` dir holding Specrew's own canonical content was misclassified as user-edited and frozen. The classifier now recognizes content that exactly matches the definition's canonical content (ordinal comparison of the decoded text) as managed before the front-matter heuristic. The change is data-loss-safe: genuinely user-edited content never matches and stays preserved.
+
 ## [0.31.0] - 2026-06-03
 
 Stable release — promoted from `0.31.0-beta4` after beta-before-stable validation (Linux-validated; macOS CI-covered + manual-waived). Consolidates the `0.31.0-beta1`…`beta4` entries below.

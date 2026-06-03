@@ -523,6 +523,25 @@ function Test-IsManagedLegacySkillDirectory {
         return $false
     }
 
+    # Feature 160 (Proposal 161): provenance-by-content. A dir whose SKILL.md
+    # text equals this definition's canonical content — ordinal comparison of the
+    # DECODED text (line endings are significant; file encoding/BOM is not part
+    # of the contract) — is Specrew-managed even without a marker, including when
+    # canonical content carries front matter, which the heuristic below would
+    # otherwise classify as user-edited. An exact text match means there are no
+    # user customizations, so recognizing it as managed cannot lose user data.
+    # The marker (checked above) remains the primary signal; this recovers
+    # marker-less legacy dirs that still hold our canonical content. Genuinely
+    # user-edited content does not match and stays preserved.
+    foreach ($propertyName in @('CurrentContent', 'LegacyContent')) {
+        if ($Definition.PSObject.Properties.Name -contains $propertyName) {
+            $canonical = [string]$Definition.$propertyName
+            if (-not [string]::IsNullOrEmpty($canonical) -and [System.String]::Equals($content, $canonical, [System.StringComparison]::Ordinal)) {
+                return $true
+            }
+        }
+    }
+
     if ($content.TrimStart().StartsWith('---', [System.StringComparison]::Ordinal)) {
         return $false
     }

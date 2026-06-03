@@ -119,7 +119,35 @@ feature so the active branches do not absorb uncontrolled scope.
 - Composability with: Proposal 137 design-analysis gate, Proposal 063
   substantive intake, Proposal 141 persona/lens separation.
 
+## Implementation status (2026-06-03)
+
+This proposal is being delivered in slices, not all at once:
+
+- **Shipped (read-only catalog):** the lens knowledge catalog —
+  `extensions/specrew-speckit/knowledge/design-lenses/` (`index.yml`, schema, template, and the
+  initial lenses: architecture-core, requirements-nfr, data-storage, ui-ux, devops-operations,
+  integration-api, security-compliance, observability-resilience, component-design) — is on `main`
+  and usable as read-only input. Feature 141 Iteration 1 dogfooded it (a lightweight "Applicable
+  Lenses" reference).
+- **In progress (Feature 141, Iteration 4 — Amendment A1):** **questionnaire-driven applicability
+  selection.** A small fixed applicability questionnaire ("UI? auth/secrets/PII? persistent data?
+  external API? deploy/release? perf/resilience?") is recorded as a `lens-applicability.json`
+  artifact, and a **deterministic** selector maps answers to lenses (foundational lenses always-on;
+  specialized lenses gated by their answer) via a **decoupled sibling map file** (the catalog
+  `index.yml` stays pure). Tracked as Feature 141 FR-009/FR-010/FR-025 + SC-006/SC-015; the selector
+  is a pure function (no network/LLM), unit-testable. Maintainer decision 2026-06-03: Option B /
+  decoupled.
+- **Future (still deferred — this proposal's remaining scope):** project-local lens overrides,
+  lens-schema validation enforcement, broad cross-phase lens automation, a standalone `specrew lens`
+  command, a schema-validated answer/selection artifact, and auto-generated per-lens rationale.
+  These are intentionally NOT in Feature 141 (FR-010 keeps them deferred); they remain the open
+  scope of this proposal for a later feature.
+
 ## Status history
 
 - 2026-06-02: candidate proposal created with initial knowledge catalog seeded
   from the architecture book markdown and Software Architecture course material.
+- 2026-06-03: catalog confirmed shipped on `main` (read-only); the questionnaire-driven
+  applicability-selection slice was un-deferred into Feature 141 Iteration 4 (Amendment A1,
+  decoupled Option B). Truly-deep automation remains this proposal's deferred scope. See the
+  Implementation status section above.

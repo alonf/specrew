@@ -250,6 +250,22 @@ jobs:
         shell: pwsh
         run: ./tests/integration/version-info-states.tests.ps1
 
+      - name: Integration - boundary-sync markdownlint gate (.squad exclusion regression guard)
+        shell: pwsh
+        run: ./tests/integration/boundary-sync-markdownlint-gate.tests.ps1
+
+      - name: Integration - version mismatch warning (start, non-blocking + actionable)
+        shell: pwsh
+        run: ./tests/integration/version-checks.tests.ps1
+
+      - name: Integration - Unix resolver path semantics (F-160 / Proposal 160; POSIX branch runs on this Ubuntu lane)
+        shell: pwsh
+        run: ./tests/integration/unix-resolver-path-semantics.tests.ps1
+
+      - name: Integration - managed runtime sidecar marker provenance (F-160 / Proposal 161)
+        shell: pwsh
+        run: ./tests/integration/managed-runtime-sidecar.tests.ps1
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest

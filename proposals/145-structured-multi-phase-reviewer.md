@@ -1,14 +1,14 @@
 ---
 proposal: 145
-title: Structured Multi-Phase Reviewer Skill (7-Phase Checklist + FR×Phase Coverage Matrix + Static Validator)
+title: Host-Neutral Structured Multi-Phase Reviewer (7-Phase Checklist + FR×Phase Coverage Matrix + Static Validator)
 status: candidate
 phase: phase-2
-estimated-sp: 30-45
+estimated-sp: 35-50
 priority-tier: 1
 discussion: surfaced 2026-05-30 after F-049 + F-050 dogfooding revealed 8+ "review missed X" instances despite review-signoff verdicts of accepted; pattern is structural (single-pass narrative reviewer with no per-dimension coverage enforcement), not exhortation-fixable
 ---
 
-# Structured Multi-Phase Reviewer Skill (7-Phase Checklist + FR×Phase Coverage Matrix + Static Validator)
+# Host-Neutral Structured Multi-Phase Reviewer (7-Phase Checklist + FR×Phase Coverage Matrix + Static Validator)
 
 ## Why
 
@@ -35,6 +35,50 @@ Reviews keep missing things. The empirical record from this session (~10 days, F
 Reviews today depend on narrative assertions about quality dimensions, not enforced per-dimension evaluation evidence. Even with `[[proposal-140-reviewer-instruction-surface]]` (project-local review playbook) and `[[proposal-102-cross-model-independent-reviewer]]` (independent reviewer) in flight, the underlying problem is that a reviewer can write `**Overall Verdict**: accepted` without having structurally proven that every relevant dimension (functional / non-functional / code quality / test coverage / system safety / branch hygiene / context-load) was checked against every in-scope FR/SC.
 
 The dimensions a competent reviewer needs to evaluate are large (>20 distinct concerns), specialized (security ≠ performance ≠ accessibility ≠ test isolation ≠ dependency intent), and easy to forget in a single-pass review. Single-agent narrative review is structurally bounded — too many dimensions for one agent to evaluate well in one pass, no enforcement that any specific dimension was actually evaluated.
+
+## Research update — host memory, skills, hooks, and enforcement (2026-06-03)
+
+This proposal was originally written from the current Specrew runtime reality: Squad is the only multi-agent runtime we are actively using, and the current practical host for Squad is Copilot. The follow-up question was whether Proposal 145 should be implemented as a "better Squad reviewer agent" or as a host-neutral review protocol that can later move to agent teams across Claude, Codex, Copilot, Cursor, Gemini/Antigravity-style hosts, and other AI hosts.
+
+The research conclusion: **145 must be a host-neutral protocol with deterministic artifacts and validator enforcement.** A dedicated Squad reviewer agent is only one executor topology.
+
+Important sources and findings:
+
+- **Claude Code memory** — Claude Code has `CLAUDE.md` and auto memory, both loaded into sessions, but the documentation explicitly frames them as context, not enforced configuration. The same documentation says a blocking guarantee belongs in hooks, for example `PreToolUse`. Source: <https://docs.anthropic.com/en/docs/claude-code/memory.md>
+- **Claude Code hooks** — Claude Code has the richest lifecycle hook surface found in the survey, including `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `PreCompact`, and `PostCompact`. These hooks are a good fit for automatic `/specrew.refocus` before/after context compaction and for local fast-fail guardrails, but they are host-specific and cannot be the only enforcement mechanism. Source: <https://docs.anthropic.com/en/docs/claude-code/hooks.md>
+- **OpenAI Codex customization** — Codex positions `AGENTS.md` as durable project guidance, skills as reusable workflows, and external enforcement (pre-commit hooks, linters, type checkers) as the way to prevent recurring mistakes. Codex also supports project/user config layers, skills, and lifecycle hooks/rules, so it can implement strong refocus and gate-local hooks. Sources: <https://developers.openai.com/codex/concepts/customization.md>, <https://developers.openai.com/codex/config-reference.md>, <https://developers.openai.com/codex/config-advanced.md>
+- **GitHub Copilot custom instructions** — Copilot supports repository-wide `.github/copilot-instructions.md`, path-specific `.github/instructions/*.instructions.md`, and agent instructions such as `AGENTS.md`, `CLAUDE.md`, or `GEMINI.md` for some agent features. This is useful for making Specrew rules visible to Copilot/Squad, but local lifecycle hooks are weaker than Claude/Codex. For Copilot, GitHub Actions / PR checks are the strongest enforcement surface. Source: <https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/add-custom-instructions/add-repository-instructions>
+- **Cursor rules** — Cursor supports `.cursor/rules/*.mdc`, user/team rules, and `AGENTS.md`. The documentation states that rules provide persistent reusable context at the prompt level. They are good for making Specrew's protocol visible, but weak as hard gates. Source: <https://cursor.com/docs/rules.md>
+- **Gemini CLI / Antigravity-style hosts** — Gemini CLI has hierarchical `GEMINI.md`, configurable context filenames such as `AGENTS.md`, `/memory show`, `/memory reload`, workspace/user skills, custom commands, and auto-memory that proposes memory/skill updates for approval. This maps well to Specrew skills plus a deterministic refocus command. Sources: <https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/cli/gemini-md.md>, <https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/cli/skills.md>, <https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/cli/auto-memory.md>, <https://raw.githubusercontent.com/google-gemini/gemini-cli/main/docs/cli/custom-commands.md>
+- **CrewAI** — CrewAI's comparable lesson is that tasks, expected outputs, guardrails, memory, human-input steps, and LLM/tool execution hooks are first-class runtime constructs. Review reliability improves when task output shape and guardrails are structured, not when the reviewer is merely asked to "be careful." Sources: <https://docs.crewai.com/concepts/memory.md>, <https://docs.crewai.com/concepts/tasks.md>, <https://docs.crewai.com/learn/execution-hooks.md>, <https://docs.crewai.com/learn/human-in-the-loop.md>
+
+### Design conclusion from the survey
+
+- Persistent instruction files (`CLAUDE.md`, `AGENTS.md`, `.github/copilot-instructions.md`, `.cursor/rules/*.mdc`, `GEMINI.md`) **teach and remind**.
+- Skills/rules/commands package repeatable Specrew workflows and make gate-specific knowledge discoverable, but they still operate through model context.
+- Hooks can refresh context and provide local fast feedback where the host supports them.
+- **Specrew-owned artifacts, schemas, validators, and CI are the enforcement authority.**
+
+Therefore Proposal 145 must not depend on any one host's reviewer agent, subagent system, or hook system. It must define the artifacts and validation contract that any host can satisfy.
+
+## Gate review model — cheap gate checks plus full review-signoff
+
+145 is the deep implementation review for the `review-signoff` boundary. Running all seven phases after every gate would be too heavy and would turn normal governance into review fatigue.
+
+The better model is two-tier:
+
+1. **Gate-local checks after every boundary.** Each gate runs a small checklist for only the responsibilities of that gate, records evidence, then commits the boundary. These checks are cheap, deterministic where possible, and designed to catch drift near the source.
+2. **Full Proposal 145 review at `review-signoff`.** The structured reviewer loads the earlier gate-local evidence, then runs the seven-phase implementation review.
+
+Gate-local examples:
+
+- `before-spec`: requirements captured, assumptions and clarifications recorded, no implementation drift.
+- `before-plan`: FR/SC traceability exists, risks/capacity visible, no hidden overcommit.
+- `before-implement`: tasks map to FR/SC, hardening gate ready, no unresolved send-back.
+- `review-signoff`: full seven-phase structured review.
+- `retro`: evidence, drift, lessons, deferrals, closeout consistency.
+
+This makes the final review more likely to pass for the right reason: earlier boundaries already produced structured evidence, and the final reviewer is not rediscovering basic governance drift at the end.
 
 ## What — 7-Phase Structured Reviewer
 
@@ -158,7 +202,8 @@ Verdict aggregation rule:
 
 ## Architecture (deliverable shape)
 
-- Invocable Reviewer skill at `extensions/specrew-speckit/squad-templates/skills/specrew-review-structured/SKILL.md` deployed per-host (`.claude/skills/`, `.github/skills/`, etc. per Proposal 058)
+- Host-neutral review protocol, with a Squad/Copilot reviewer agent as the first executor implementation
+- Invocable Reviewer skill at `extensions/specrew-speckit/squad-templates/skills/specrew-review-structured/SKILL.md` deployed per-host (`.agents/skills/`, `.claude/skills/`, `.copilot/skills/`, `.github/skills/`, `.cursor/rules/`, etc. per Proposal 058)
 - Agent-mediated phase fan-out: each semantic review phase is executed by the coordinator/reviewer agent, using focused sub-agents where available (per `[[proposal-139-multi-agent-subagent-orchestration]]` / F-051)
 - Without F-051: sequential single-agent phase execution (lower fidelity but functional)
 - Deterministic scripts own workplan generation, schema validation, completeness checks, and aggregation; they do not directly invoke LLM reviewers as hidden side effects
@@ -166,17 +211,84 @@ Verdict aggregation rule:
 - Static coverage validator: rule in `validate-governance.ps1` that fails the review-signoff boundary if structured outputs are missing, schema-invalid, incomplete, or have FR phase coverage gaps without explicit `n/a + reason`; it validates evidence shape and aggregation rules, not semantic correctness by itself
 - Per-phase memoization (Proposal 086 Pillar 1) — context-load is the most expensive phase; cache per-iteration
 
+### Host-neutral execution contract
+
+The contract is expressed as files and validator rules, not as a particular host's agent topology.
+
+Required inputs:
+
+- Active feature + iteration state (`state.md`, `tasks-progress.yml`, `plan.md`, `spec.md`, drift log, coverage evidence, quality gates).
+- FR/SC matrix and task ledger.
+- Boundary history and commit evidence (`pre_sha`, `post_sha`, boundary verdicts, and gate-local evidence).
+- Changed files and branch status.
+- Test commands + results, with explicit distinction between local-only, CI-reached, skipped, and not-run evidence.
+- Prior review/retro findings and unresolved deferrals.
+- `/specrew.refocus` output once that command exists; until then, the equivalent context pack produced by the existing start/resume surfaces.
+
+Required outputs:
+
+- `review-workplan.yml`: the deterministic plan for the seven phases, required inputs, expected outputs, schemas, order/parallelism rules, and applicability hints.
+- `review-findings/phase-0-context.yml` through `review-findings/phase-6-system-safety.yml`: one structured finding file per semantic phase.
+- `review-report.yml`: machine-readable aggregation and FR/SC × phase coverage matrix.
+- `review.md`: human-readable synthesis, with links to the structured report and any blocking findings.
+
+Validator obligations:
+
+- Fail or warn (per adoption phase) if any required artifact is missing.
+- Fail if YAML schema is invalid.
+- Fail if any FR/SC lacks coverage for an applicable phase.
+- Fail if a phase is marked `n/a` without a non-empty reason.
+- Fail if `review.md` cites evidence that is not committed or not reachable.
+- Fail if test evidence claims are stronger than the recorded proof (for example, "CI-reached" without a CI run/link/hash).
+- Fail if review-signoff is approved while any phase verdict is `reject` or `rework`.
+
+Semantic judgment remains with the reviewer agent/human reviewer. Structural completeness belongs to deterministic validation.
+
+### Executor topologies
+
+Any of these topologies may satisfy the same file contract:
+
+1. **Current Squad/Copilot topology** — one reviewer agent coordinates all phases and may ask other Squad roles for evidence. This is the immediate implementation path.
+2. **Squad phase-specialist topology** — reviewer orchestrates phase-specific agents (functional reviewer, test-integrity reviewer, ops reviewer, etc.) when the host/runtime supports it.
+3. **Claude/Codex subagent or hook-assisted topology** — host lifecycle hooks run `/specrew.refocus`; review skills execute phases; deterministic validators enforce artifact shape.
+4. **Cursor/Copilot rules topology** — always-loaded rules/custom instructions keep the protocol visible; the reviewer agent or human explicitly runs the structured review; CI/validator enforces outputs.
+5. **Human-assisted topology** — if a host cannot reliably execute a phase, the workplan permits a human to fill the phase finding file, but the schema and validator still apply.
+
+The proposal intentionally separates "who performs the review" from "what evidence must exist." This is what preserves portability when Specrew moves from Copilot/Squad-only multi-agent execution to teams in other AI hosts.
+
+### Host capability matrix
+
+| Host | Persistent rule surface | Workflow packaging | Lifecycle hooks / triggers | Specrew enforcement posture |
+| --- | --- | --- | --- | --- |
+| Copilot + Squad | `.github/copilot-instructions.md`, `.github/instructions/*.instructions.md`, `AGENTS.md`, `.github/agents/*.agent.md` where supported | `.copilot/skills/*`, agent charters, Squad roles | Weak local lifecycle; strong GitHub Actions / PR checks | Use Squad reviewer as first executor; enforce with Specrew validator + CI |
+| Claude Code | `CLAUDE.md`, `.claude/CLAUDE.md`, `.claude/rules/*`, auto memory | `.claude/skills/*`, slash commands | Strong: `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `Stop`, `PreCompact`, `PostCompact` | Good candidate for automatic refocus and hook-assisted local gate checks; still validate artifacts |
+| Codex | `AGENTS.md`, nested `AGENTS.md`, `.codex/config.toml`, project/user config | `.agents/skills/*`, plugins, custom skills | Strong: project/user hooks including `SessionStart`, `UserPromptSubmit`, `PreToolUse`, `PostToolUse`, `PreCompact`, `PostCompact`, `Stop`; command rules | Good candidate for automatic refocus and managed hook policy; still validate artifacts |
+| Cursor | `.cursor/rules/*.mdc`, `AGENTS.md`, user/team rules | Cursor rules, prompts, skills where available | Limited lifecycle compared with Claude/Codex | Use rules for visibility; rely on explicit command + validator/CI for enforcement |
+| Gemini CLI / Antigravity-style | `GEMINI.md`, configurable context filenames such as `AGENTS.md`, memory reload/show | `.gemini/skills`, `.agents/skills`, custom commands | Host-specific; less standard than Claude/Codex for Specrew today | Use skills/commands + refocus; validator remains authority |
+| CrewAI-style framework | Programmatic agent/task definitions and memory | Tasks, expected outputs, guardrails, flows | LLM/tool execution hooks, human-input workflows | Design reference: make review outputs and guardrails first-class |
+
+### Prompt/context vs enforcement rule
+
+145 adopts the following non-negotiable rule:
+
+- Instruction files, skills, rules, and memory make Specrew knowledge available to the host.
+- Hooks refresh or block opportunistically where the host supports them.
+- The Specrew validator and CI are the only authority for whether the `review-signoff` boundary is valid.
+
+This prevents a host migration from weakening review discipline. A host may forget a rule; the boundary cannot pass without the required files and validator checks.
+
 ### Deterministic-script / agent-execution boundary
 
 Structured review uses an agent-mediated fan-out protocol. Scripts may prepare and validate review work, but they must not directly invoke LLM reviewers as hidden side effects.
 
 Flow:
 
-1. A deterministic script emits `review-workplan.yml` describing the required phase checks, prompt files, input artifacts, expected output files, schemas, and dependency/order constraints.
-2. The coordinator or reviewer agent reads the workplan and executes each semantic phase review, using subagents where available (Proposal 139) or sequential single-agent phase execution otherwise.
-3. Each phase writes a structured result such as `review-findings/phase-<n>.yml` with verdict, evidence, findings, and `n/a` reasons.
-4. A deterministic aggregation/validation script checks schemas, required phase coverage, file existence, FR/SC coverage, and verdict aggregation rules, then produces or verifies `review-report.yml`.
-5. `validate-governance.ps1` gates the boundary on the presence and schema/completeness of the structured outputs; it does not itself perform semantic LLM judgment.
+1. The session runs `/specrew.refocus` when available, or the current equivalent resume/start context pack, to reconstruct state from artifacts rather than chat memory.
+2. A deterministic script emits `review-workplan.yml` describing the required phase checks, prompt files, input artifacts, expected output files, schemas, and dependency/order constraints.
+3. The coordinator or reviewer agent reads the workplan and executes each semantic phase review, using subagents where available (Proposal 139) or sequential single-agent phase execution otherwise.
+4. Each phase writes a structured result such as `review-findings/phase-<n>.yml` with verdict, evidence, findings, and `n/a` reasons.
+5. A deterministic aggregation/validation script checks schemas, required phase coverage, file existence, FR/SC coverage, and verdict aggregation rules, then produces or verifies `review-report.yml`.
+6. `validate-governance.ps1` gates the boundary on the presence and schema/completeness of the structured outputs; it does not itself perform semantic LLM judgment.
 
 This keeps scripts deterministic and auditable while keeping semantic review in the agent layer.
 
@@ -185,11 +297,13 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - `[[proposal-140-reviewer-instruction-surface]]` — runtime realization of the Per-Boundary Checklist Matrix; 145 makes 140's playbook structurally enforceable
 - `[[proposal-102-cross-model-independent-reviewer]]` — different reviewer models per phase (specialty per phase) — Phase 2 functional review could use one model, Phase 3 security review another
 - `[[proposal-139-multi-agent-subagent-orchestration]]` (F-051) — runtime substrate for multi-agent dispatch
+- `[[proposal-157-verdict-menu-instruction-text-capture]]` — adjacent gate UX bug: instruction-bearing verdict options must capture free-form text before dispatch; 145 depends on verdict packets being truthful
 - `[[proposal-086-validation-pipeline-performance-bundle]]` — Pillar 1 memoization applies per-phase
 - `[[proposal-021-bypass-detector]]` — Phase 5 gate-completeness check is structural realization of the bypass-detector concept
 - `[[proposal-074-code-commentary-standards]]` — Phase 4 code-quality references the commentary standards
 - `[[proposal-070-token-economy-mvp]]` — Phase 3 cost check references the per-iteration cost.yml
 - `[[proposal-142-state-truth-integrity-validator]]` — Phase 1 state-truth check composes with 142's validator rule
+- `/specrew.refocus` (proposal/spec TBD) — prerequisite or companion for host-neutral re-entry after compaction/session drift; 145 consumes its output but should not own the whole refocus feature
 - `[[project-iter5-undercoverage-producer-consumer-2026-05-29]]` — formalized as Phase 5 sub-check
 - `[[project-shape8-filelist-directional-blindspot-2026-05-30]]` — formalized as Phase 5 gate-completeness sub-check
 - `[[project-multi-dev-constraint-2026-05-27]]` — Phase 6 collision-class checks
@@ -197,12 +311,15 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 
 ## Sizing + sequencing
 
-- ~30-45 SP, 3-iteration decomposition:
-  - **Iter 1 (~10-15 SP):** core skill scaffold + Phase 0-2 (context load + branch hygiene + functional correctness) + skeleton matrix output
+- ~35-50 SP, 3-iteration decomposition plus optional prep slice:
+  - **Iter 0 / prep slice (~3-5 SP, optional):** host-neutral contract finalization, schema names, and `/specrew.refocus` input contract alignment if the refocus proposal/spec lands first
+  - **Iter 1 (~10-15 SP):** core skill scaffold + Phase 0-2 (context load + branch hygiene + functional correctness) + skeleton matrix output, implemented first for the current Squad/Copilot reviewer topology
   - **Iter 2 (~10-15 SP):** Phase 3-5 (NFR + code quality + test coverage + integrity)
   - **Iter 3 (~10-15 SP):** Phase 6-7 + static coverage validator + integration with existing review.md + host deployment
 - Natural slot: F-053 or replaces F-052 (Design Alternatives Gate per the post-F-049 sequencing); user decides at sequencing review whether to substitute
 - Prerequisite: F-051 multi-agent subagent orchestration (Proposal 139) for multi-agent dispatch; without it, sequential single-agent phase invocation is functional but lower fidelity
+- Host migration strategy: implement the artifact contract once, then add host adapters incrementally. Do not block the first implementation on perfect host parity.
+- Boundary strategy: add cheap gate-local checks as a companion path, but keep the full seven-phase review scoped to `review-signoff`.
 
 ## Open questions for proposal-to-spec conversion
 
@@ -213,6 +330,10 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - Integration with existing `review.md` format: does the structured report SUPERSEDE or AUGMENT? Recommendation: augment for migration safety, propose supersede as a follow-up after empirical adoption.
 - Backward compatibility for reviewers/Crews that don't have the skill installed: fall back to current narrative review with a soft warning?
 - Should the static coverage validator hard-block boundary advancement, or warn? Recommendation: warn during adoption period, hard-block after 3+ features ship through it.
+- Should gate-local checks live in this proposal or a sibling refocus/gate-hardening proposal? Recommendation: define the interface here, implement broad gate-local checks in the refocus/gate-hardening work so 145 stays focused on full review.
+- Should host hooks be installed automatically by Specrew update/init, or only generated as opt-in examples? Recommendation: opt-in at first, because hook support and trust prompts differ by host.
+- How should a human reviewer fill phase files when an AI host cannot execute a phase reliably? Recommendation: allow manual phase files if they satisfy the schema and include `reviewer: human`.
+- How should phase outputs cite web/current external evidence? Recommendation: require links in evidence arrays and an explicit "external evidence used" flag when a phase relies on current docs/laws/prices/security advisories.
 
 ## Open work items (deferred to spec)
 
@@ -221,6 +342,9 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - Define the per-phase agent charter (charter snippet for each phase agent, similar to existing role charters)
 - Decide on the host-deployment shape for the invocable skill (Proposal 058 SDK alignment)
 - Backfill strategy: do we re-run structured review on closed iterations as a one-shot quality audit?
+- Define the gate-local checklist interface consumed by 145 at review-signoff (boundary verdicts, commit evidence, validator results, drift-log references).
+- Define the host adapter mapping for the first four supported surfaces: Copilot/Squad, Claude Code, Codex, and Cursor.
+- Define the "instruction visibility" invariant that must be deployed to always-loaded host files: before a Specrew gate, reconstruct state from artifacts and validators, not from chat memory.
 
 ## Risks
 
@@ -228,3 +352,6 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - **Phase-agent disagreement:** multi-agent dispatch may produce conflicting verdicts. Mitigate via verdict aggregation rule (defined above) + escalation to human at conflict.
 - **Static validator false-positives during adoption:** rules may flag legitimate `n/a` patterns. Mitigate via warn-then-block adoption phasing.
 - **Skill installation drift across hosts:** the structured skill needs deployment in `.claude/skills/`, `.github/skills/`, etc. — risk of host drift. Mitigate via Proposal 058 SDK + Proposal 132 mirror-parity validator.
+- **Prompt-only false confidence:** host instruction files and skills can still be ignored or dropped after compaction. Mitigate by treating them as reminders only; the validator must enforce artifacts.
+- **Hook portability gap:** Claude/Codex have useful lifecycle hooks, while Copilot/Cursor/Gemini-style hosts differ. Mitigate by making hooks optional accelerators, never the only gate enforcement.
+- **Current Squad/Copilot coupling:** the first implementation will naturally fit the current reviewer-agent flow. Mitigate by keeping the file contract host-neutral and documenting Squad as one executor topology, not the protocol itself.

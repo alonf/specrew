@@ -1964,7 +1964,23 @@ function Get-ChangedMarkdownFiles {
         }
     }
 
-    return @($markdownFiles.ToArray())
+    # Closeout-gate false-positive fix (2026-06-03): exclude the .squad/ append-only runtime logs
+    # (decisions.md, identity/now.md, …) from the lint gate. Those embed YAML decision-blocks whose
+    # `---` separators markdownlint mis-reads as setext heading underlines (MD003) — unfixable false
+    # positives that otherwise HALT every boundary-sync / feature closeout. They are append-only
+    # runtime logs, not prose docs the gate should enforce; iteration artifacts + repo docs still lint.
+    $filtered = @($markdownFiles.ToArray() | Where-Object {
+        $keep = $true
+        if ([string]::IsNullOrWhiteSpace($_)) {
+            $keep = $false
+        }
+        elseif ($_.StartsWith($resolvedProjectRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+            $relative = $_.Substring($resolvedProjectRoot.Length).TrimStart('\', '/')
+            if ((($relative -split '[\\/]', 2)[0]) -eq '.squad') { $keep = $false }
+        }
+        $keep
+    })
+    return @($filtered)
 }
 
 function Invoke-MarkdownLintAutoFix {
