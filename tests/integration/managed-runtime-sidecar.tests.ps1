@@ -40,7 +40,12 @@ foreach ($p in @($deployScript, $sharedGovernance, $skillsTemplateRoot)) {
     if (-not (Test-Path -LiteralPath $p)) { throw "Required path not found: $p" }
 }
 
-# Dependency for Get-LegacySpecrewSkillDefinitions (Get-SlashCommandSkillCatalog etc.).
+# Reproduce the deploy script's normal execution environment: deploy-squad-runtime.ps1
+# dot-sources shared-governance.ps1 at startup, so its helper functions are in scope
+# when the deploy functions run. The functions under test themselves
+# (Get-LegacySpecrewSkillDefinitions, Get-SlashCommandSkillCatalog,
+# Test-IsManagedLegacySkillDirectory, Get-ManagedSkillMarkerContent) are defined in
+# deploy-squad-runtime.ps1 and AST-extracted below.
 . $sharedGovernance | Out-Null
 
 # AST-extract the deploy script's function definitions — defines the live source
