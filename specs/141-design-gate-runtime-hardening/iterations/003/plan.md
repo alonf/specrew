@@ -41,8 +41,8 @@ Carried out of Iteration 3: FR-009/FR-010 (Proposal 156 Applicable Lenses) remai
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Confirm scope; reproduce spurious greenfield/downstream warnings (FR-012) and the fresh-greenfield baseline-commit defect (FR-013) in fixtures; record in drift-log | FR-012, FR-013, FR-015 | US0 | 1 | Spec Steward | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
-| T002 | Suppress spurious greenfield/downstream warnings: gate the multi-developer-collision, version-mismatch (placeholder version), and PSGallery/runtime warnings on genuine applicability so a freshly bootstrapped/downstream project emits none outside its actionable set | FR-012 | US5 | 3 | Implementer | scripts/internal/auto-detection.ps1, scripts/internal/version-check.ps1, scripts/specrew-start.ps1 | planned | claude | — | — |
+| T001 | Reproduce-first + CLASSIFY: capture fresh-greenfield AND downstream `specrew init`/`specrew start` transcripts, classify EVERY emitted warning as actionable-vs-spurious (multi-developer-collision, version-mismatch-vs-placeholder, PSGallery noise are SUSPECTED classes, not assumed), and record the full classification in drift-log.md BEFORE any fix; also prove the FR-013 baseline-commit defect in a fresh greenfield fixture before changing behavior | FR-012, FR-013, FR-015 | US0 | 1 | Spec Steward | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
+| T002 | Suppress ONLY the warnings T001 reproduced and classified as spurious in greenfield/downstream (gate them on genuine applicability); never suppress a genuinely-actionable warning. Additional spurious warnings reproduced in the same surfaces: include if within the 10 SP cap, else record as follow-ups | FR-012 | US5 | 3 | Implementer | scripts/internal/auto-detection.ps1, scripts/internal/version-check.ps1, scripts/specrew-start.ps1 | planned | claude | — | — |
 | T003 | Fix fresh-greenfield baseline commit handling: establish + resolve the baseline to a real commit hash and record it consistently across start-context.json and boundary state (no missing/placeholder baseline) | FR-013 | US6 | 3 | Implementer | scripts/specrew-init.ps1, scripts/specrew-start.ps1, scripts/internal/sync-boundary-state.ps1 | planned | claude | — | — |
 | T004 | Tests (reproduce-first): greenfield/downstream warning scope (SC-008) and fresh-greenfield baseline-commit resolution + cross-file consistency (SC-009) | SC-008, SC-009 | US5, US6 | 2 | Reviewer | tests/unit/**, tests/integration/** | planned | claude | — | — |
 | T005 | Docs + review evidence (TG-006): quickstart/contract notes for greenfield/downstream warning scope + baseline-commit behavior; record the implemented/enforced/observable/documented gap ledger | TG-006 | US0 | 1 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
@@ -82,5 +82,13 @@ Carried out of Iteration 3: FR-009/FR-010 (Proposal 156 Applicable Lenses) remai
 ## Notes
 
 - Reproduction first (T001): the FR-012 spurious warnings + FR-013 baseline-commit defect reproduce in a fresh `specrew init` + `specrew start` greenfield fixture (and a downstream fixture for FR-012); reproduce before fixing so each test proves the fix.
-- The `recorded_at` ISO->`MM/dd/yyyy` coercion remains a deferred follow-up; fold it in ONLY if the FR-013 start-context/baseline regeneration work directly touches that serialization path.
 - This iteration writes code; it will stop at before-implement for the human start-implementation go-ahead, as usual.
+
+### Approved-with-instructions (maintainer, 2026-06-03)
+
+1. **Keep FR-012 + FR-013 together** in this 10 SP iteration — the shared greenfield/downstream fixture surface makes the bundle reasonable.
+2. **FR-012 warning set is NOT assumed.** Multi-developer-collision, version-mismatch-vs-placeholder, and PSGallery noise are SUSPECTED classes only. T001 must capture fresh greenfield + downstream transcripts, classify every warning actionable-vs-spurious, and record that classification in drift-log.md before any fix.
+3. **Fix only reproduced spurious warnings.** If reproduction surfaces additional spurious warnings in the same surfaces, include them if within the 10 SP cap; otherwise record them as follow-ups.
+4. **FR-013 prove-first.** Prove the baseline-commit defect in a fresh greenfield fixture before changing behavior; the fix must demonstrate the baseline resolves to a real commit hash and is consistent across start-context.json and boundary state.
+5. **`recorded_at` coercion stays deferred** unless the FR-013 work directly touches the same serialization path AND a small, tested fix is clearly cheaper than preserving the defect.
+6. **No push / no PR** — Feature 141 remains in progress.
