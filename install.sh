@@ -262,11 +262,14 @@ ensure_specrew_module() {
     log "A wrapper-capable Specrew module is already installed; skipping the PowerShell Gallery install."
   elif [ "$PRERELEASE" = "1" ]; then
     log "Installing the Specrew module (PRERELEASE / beta) from the PowerShell Gallery..."
-    pwsh -NoProfile -NonInteractive -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber -AllowPrerelease" \
+    # \$ProgressPreference suppresses Install-Module's Write-Progress bar (it renders via cursor
+    # positioning and otherwise leaves the terminal cursor mid-screen after the install). \$ escaped
+    # so POSIX sh passes the literal token to pwsh instead of expanding it as a shell variable.
+    pwsh -NoProfile -NonInteractive -Command "\$ProgressPreference='SilentlyContinue'; Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber -AllowPrerelease" \
       || fail_closed "Failed to install the PRERELEASE Specrew module from the PowerShell Gallery."
   else
     log "Installing the Specrew module (stable) from the PowerShell Gallery..."
-    pwsh -NoProfile -NonInteractive -Command "Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber" \
+    pwsh -NoProfile -NonInteractive -Command "\$ProgressPreference='SilentlyContinue'; Set-PSRepository -Name PSGallery -InstallationPolicy Trusted -ErrorAction SilentlyContinue; Install-Module -Name Specrew -Scope CurrentUser -Force -AllowClobber" \
       || fail_closed "Failed to install the Specrew module from the PowerShell Gallery."
   fi
 
