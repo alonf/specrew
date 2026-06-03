@@ -73,7 +73,7 @@ functional correctness, test integrity, evidence integrity) plus a dirty/stash c
 
 ## Gap Ledger
 
-- No requirement (FR/SC) gaps: FR-012, FR-013, SC-008, SC-009, TG-006 all verified.
+- No requirement (FR/SC) gaps: FR-012, FR-013, SC-008, SC-009, TG-006 all verified: fixed-now.
 
 ## Follow-ups (not iteration-003 requirement gaps)
 

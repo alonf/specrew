@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Updated**: 2026-06-03
-**Iteration Status**: executing (implementation complete; at review-signoff)
+**Iteration Status**: complete (review-signoff accepted; retro recorded; iteration closed out)
 
 ## Progress
 
@@ -36,4 +36,4 @@
 
 ## Next
 
-- review-signoff verdict recorded → retro → iteration-closeout. stash@{0} parked (non-141).
+- Iteration 003 closed (review-signoff accepted → retro → iteration-closeout). No push/PR (feature 141 in progress). stash@{0} parked (non-141). FR-009/FR-010 lens slice remains deferred.
