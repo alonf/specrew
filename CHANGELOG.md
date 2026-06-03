@@ -6,6 +6,8 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.31.0-beta4] - 2026-06-03
+
 ### Changed
 
 - **`specrew version` surfaces the prerelease label** — the report now prints e.g. `0.31.0-beta3` instead of a bare `0.31.0` that was indistinguishable from a stable build. The base version still feeds every compatibility / slash-command semver comparison unchanged (only the "Installed version" display line gains the label). Resolves finding #2 from the 0.31.0-beta2/beta3 Linux validation.
