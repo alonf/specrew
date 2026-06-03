@@ -147,3 +147,35 @@ pwsh -File tests/integration/design-analysis-boundary.tests.ps1
   selected lens) rather than silently no-opping it.
 - **Still deferred (FR-010):** the deeper Proposal 156 automation above remains out (lens-file schema
   validation, overrides, standalone command, auto-rationale).
+
+## Iteration 6 (2026-06-04): interactive, pre-specify lens intake + FR-028/FR-029 (Amendment A3)
+
+- **The lens intake is interactive + expertise-adapted, and runs inside specify before sync (FR-025/FR-027).**
+  The Crew poses the applicability questions to the human (no silent auto-resolve), adapting depth to the
+  user-profile expertise dials. Verify the depth mapping:
+  `pwsh -File tests/unit/lens-applicability-selector.tests.ps1`, or:
+
+  ```powershell
+  . ./scripts/internal/lens-applicability.ps1
+  Get-SpecrewLensQuestionDepth -ExpertiseDials @{ architect=10; 'ux-ui-specialist'=2 } -Area ui   # -> guided-explain
+  Get-SpecrewLensQuestionDepth -ExpertiseDials @{ architect=10 } -Area perf                        # -> expert-terse
+  ```
+
+- **sync-specify is GATE-ENFORCED, not prompt-only (FR-027).** For a substantive feature in a
+  lens-catalog project, the specify boundary refuses to finalize until the feature-level
+  `specs/<feature>/lens-applicability.json` exists — so the accepted spec is lens-informed. Verify:
+  `pwsh -File tests/unit/design-gate-runtime-hardening.tests.ps1` (the FR-027 block).
+- **FR-026 resolves the artifact (iteration → feature → no-op).** Moving the intake to the feature
+  level did not weaken coverage: the gate resolves the iteration-level artifact first (override /
+  Iteration 4-5 back-compat), then the feature-level one, else a graceful no-op.
+- **File references obey context (FR-028).** `Format-SpecrewFileReference -Context console` emits a
+  `file:///` URL; `-Context persisted` emits a navigable markdown link. The handoff bare-path rule no
+  longer flags `token/token` prose like `RRT/Bug1` or `FR/SC`, while real paths are still caught.
+- **Downstream FileList-sort warning silenced (FR-029).** Boundary sync skips the `Specrew.psd1`
+  FileList-sort when no manifest is present (downstream projects).
+- **Human-experience dogfood (the acceptance evidence for FR-025/FR-027).** This is a *real* run, not a
+  helper test: from a fresh project, `Import-Module <dev>/Specrew.psd1 -Force`, `specrew init`,
+  `specrew start --host claude`, then create a substantive feature. Confirm the Crew **asks** the lens
+  questions (UI, performance/resilience, etc.), adapts depth to your profile, surfaces the decisions,
+  amends `spec.md` + the checklist with the lens-informed requirements, and only then syncs specify —
+  and that attempting sync-specify before the intake is **refused** by the gate.
