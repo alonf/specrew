@@ -127,13 +127,14 @@ fix is byte-identical; beta4 only adds the `specrew version` label + a test chan
 
 | Step | Expected | Actual | Pass? |
 | --- | --- | --- | --- |
-| Beta published (0.31.0-beta4) | Gallery link + GitHub release | (record on publish) | ☐ |
-| install.sh `--prerelease` (branch URL) | states PRERELEASE; wrapper surface present | (paste) | ☐ |
-| `specrew version` | reports **0.31.0-beta4** (finding #2 fixed — label surfaced directly) | (paste) | ☐ |
-| Interactive `specrew start` | interactive Copilot session OPENS (re-confirm; proven on beta3) | (paste) | ☐ |
-| Greenfield `init` / `start` *(optional)* | Spec Kit 0.9.0 bootstrap (`init` is also CI-covered on validate-ubuntu) | (optional) | ☐ |
+| Beta published (0.31.0-beta4) | Gallery link + GitHub release | `Find-Module … -RequiredVersion 0.31.0-beta4 -AllowPrerelease` → FOUND; release `v0.31.0-beta4` | ✅ |
+| install.sh `--prerelease` (branch URL) | states PRERELEASE; wrapper surface present | maintainer-run 2026-06-03: installed beta4 (pwsh 7.6.1 present); 8 wrappers; native `specrew` works | ✅ |
+| `specrew version` | reports **0.31.0-beta4** (finding #2 fixed — label surfaced directly) | reports **`0.31.0-beta4`** (finding #2 confirmed fixed — the label now disambiguates the build) | ✅ |
+| Interactive `specrew start` | interactive Copilot session OPENS (re-confirm; proven on beta3) | maintainer-confirmed 2026-06-03: Copilot session opened (logo + `copilot --resume=<id>` shown — the interactive display, not the beta2 headless exit) | ✅ |
+| Greenfield `init` / `start` *(optional)* | Spec Kit 0.9.0 bootstrap (`init` is also CI-covered on validate-ubuntu) | not run — optional; `specrew init` clean-dir bootstrap is CI-covered on validate-ubuntu | n/a |
 
-**Linux host**: HOMEALON11 · **By**: Alon Fliess · **Date**: (beta4 run)
+**Linux host**: HOMEALON11 · **By**: Alon Fliess · **Date**: 2026-06-03
+**Result**: beta4 (the to-be-stable build) PASSES on Linux — both the headline interactive `start` and the finding-#2 label fix confirmed. macOS manual waived (see Validation surfaces). Release gate satisfied for stable promotion.
 
 ## Evidence — macOS surface (WAIVED 2026-06-03 — CI-covered; manual on-host validation NOT required; see the waiver under "Validation surfaces" above)
 
