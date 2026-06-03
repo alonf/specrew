@@ -1,13 +1,13 @@
 # Iteration State: 006
 
 **Schema**: v1
-**Last Completed Task**: (none — plan authored; awaiting before-implement go-ahead)
-**Tasks Remaining**: T001-T007
-**In Progress**: (none — plan + pre-implementation hardening gate authored)
+**Last Completed Task**: T001 (dial→depth helper)
+**Tasks Remaining**: T002-T007
+**In Progress**: T002 next — FR-026-preserving lifecycle wiring (interactive intake inside specify)
 **Baseline Ref**: 3e610c4a
-**Updated**: 2026-06-04T08:00:00Z
-**Current Phase**: plan
-**Iteration Status**: planning
+**Updated**: 2026-06-04T08:10:00Z
+**Current Phase**: before-implement
+**Iteration Status**: executing
 
 ## Execution Summary
 

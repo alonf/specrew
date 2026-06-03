@@ -5,9 +5,9 @@ updated_at: "2026-06-04T08:00:00Z"
 tasks:
   T001:
     title: "Dial->depth mapping helper (user-profile dials + question area -> interaction depth); pure, deterministic"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    status: "done"
+    started_at: "2026-06-04T08:05:00Z"
+    completed_at: "2026-06-04T08:10:00Z"
     blocked_reason: ""
   T002:
     title: "Lifecycle wiring: interactive lens intake INSIDE specify, before sync-specify (placement rule a/b/c); coordinator/governance + specify ordering"

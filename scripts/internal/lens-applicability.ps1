@@ -212,6 +212,54 @@ function Get-SpecrewLensDecisionPoints {
     return $points.ToArray()
 }
 
+function Get-SpecrewLensQuestionDepth {
+    # T001 (FR-025 / SC-018): map a material lens-question area + the user-profile expertise dials to
+    # an interaction depth, so the lens intake adapts question depth to the human's expertise (the
+    # F-016 interaction model). Returns 'expert-terse' (dial >= 8 — ask a concise expert question and
+    # assume the human decides), 'guided-explain' (dial <= 3 — explain the area and recommend a
+    # default), or 'moderate' (in between, or as the fail-safe when the dial/profile is absent).
+    # Pure + deterministic; no network/LLM.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()]$ExpertiseDials,
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$Area
+    )
+
+    # Each material lens area maps to the most-relevant persona-lens dial; architect is the technical
+    # default for areas without a dedicated dial.
+    $areaToPersona = @{
+        ui          = 'ux-ui-specialist'
+        security    = 'architect'
+        data        = 'architect'
+        integration = 'architect'
+        ops         = 'ai-researcher-project-manager'
+        perf        = 'architect'
+        architecture = 'architect'
+    }
+
+    $key = if ([string]::IsNullOrWhiteSpace($Area)) { '' } else { $Area.Trim().ToLowerInvariant() }
+    $persona = if ($areaToPersona.ContainsKey($key)) { $areaToPersona[$key] } else { 'architect' }
+
+    $dial = $null
+    if ($null -ne $ExpertiseDials) {
+        if ($ExpertiseDials -is [System.Collections.IDictionary]) {
+            if ($ExpertiseDials.Contains($persona)) { $dial = $ExpertiseDials[$persona] }
+        }
+        else {
+            $prop = $ExpertiseDials.PSObject.Properties[$persona]
+            if ($prop) { $dial = $prop.Value }
+        }
+    }
+
+    $value = 0
+    if ($null -ne $dial -and [int]::TryParse([string]$dial, [ref]$value)) {
+        if ($value -ge 8) { return 'expert-terse' }
+        if ($value -le 3) { return 'guided-explain' }
+        return 'moderate'
+    }
+    return 'moderate'  # fail-safe: absent/unparseable dial -> moderate depth
+}
+
 function Format-SpecrewApplicableLensesSection {
     # Iteration 4 T004 + Iteration 5 T002 (FR-009): render the "## Applicable Lenses" markdown
     # section from the selector. Read-only; graceful degradation to "none available" when the map or
