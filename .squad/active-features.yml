@@ -1,1 +1,6 @@
-claims: []
+claims:
+  - feature_id: "160-unix-resolver-sidecar-hardening"
+    claimed_by: "alon@HOMEALON11"
+    claim_start_time: "2026-06-03T15:28:58Z"
+    last_refresh_time: "2026-06-03T18:59:07Z"
+    branch_name: "160-unix-resolver-sidecar-hardening"

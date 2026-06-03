@@ -23372,3 +23372,12 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 99adfc07
 - **Recorded At**: 2026-06-03T18:59:07Z
+
+## 2026-06-03T19:48:50Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 160-unix-resolver-sidecar-hardening
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: bb1e8e4868d44af926063e9797adbf0629ca4fb1
+- **Recorded At**: 2026-06-03T19:48:49Z
