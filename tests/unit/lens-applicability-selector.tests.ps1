@@ -86,6 +86,29 @@ try {
 }
 finally { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
 
+# Iteration 5 T001 (FR-009) — Get-SpecrewLensDecisionPoints: pure extractor of a lens file's
+# "## Design Decision Points" bullets, so the analysis can be genuinely informed (not just named).
+$catalogDir = Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\design-lenses'
+$acPoints = @(Get-SpecrewLensDecisionPoints -LensId 'architecture-core' -CatalogDir $catalogDir)
+Assert-True ($acPoints.Count -ge 3) "decision points: architecture-core yields its decision-point bullets"
+Assert-True (($acPoints -join ' ') -match 'building blocks') "decision points: content extracted verbatim from the lens file"
+$dsPoints = @(Get-SpecrewLensDecisionPoints -LensId 'data-storage' -CatalogDir $catalogDir)
+Assert-True (@($dsPoints | Where-Object { $_ -match 'storage model fits:.*hybrid' }).Count -eq 1) "decision points: a wrapped multi-line bullet is folded into one point"
+Assert-True (@(Get-SpecrewLensDecisionPoints -LensId 'no-such-lens' -CatalogDir $catalogDir).Count -eq 0) "decision points: missing lens file -> empty (graceful)"
+Assert-True (@(Get-SpecrewLensDecisionPoints -LensId 'architecture-core' -CatalogDir (Join-Path $repoRoot 'does-not-exist')).Count -eq 0) "decision points: missing catalog dir -> empty (graceful)"
+Assert-True (@(Get-SpecrewLensDecisionPoints -LensId '' -CatalogDir $catalogDir).Count -eq 0) "decision points: empty lens id -> empty (no throw)"
+
+# Iteration 5 T002 (FR-009) — enriched render: each selected lens carries its decision points + an
+# "Addressed:" coverage placeholder pointing into the option comparison.
+$enriched = Format-SpecrewApplicableLensesSection -Map $map -Answers $some -CatalogDir $catalogDir
+Assert-True ($enriched -match '(?m)^\s*- Decision points: ') "enriched render: each selected lens carries a Decision points line"
+Assert-True ($enriched -match '(?m)^\s*- Addressed: <') "enriched render: each selected lens carries an Addressed: placeholder to fill"
+Assert-True ($enriched -match 'ui-ux' -and $enriched -match '\*Not selected:') "enriched render: still lists selected + not-selected lenses"
+Assert-True ($enriched -notmatch '_Not selected') "enriched render: asterisk emphasis, not underscore (MD049-safe)"
+# Back-compat: without -CatalogDir the legacy name-list render is unchanged (no enrichment lines).
+$legacy = Format-SpecrewApplicableLensesSection -Map $map -Answers $some
+Assert-True ($legacy -notmatch 'Decision points:' -and $legacy -notmatch 'Addressed:') "render back-compat: no -CatalogDir -> legacy name-list (no enrichment)"
+
 Write-Host ""
 Write-Host "All lens-applicability selector tests passed." -ForegroundColor Green
 exit 0

@@ -166,14 +166,66 @@ function New-SpecrewLensApplicabilityTemplate {
     return $OutPath
 }
 
+function Get-SpecrewLensDecisionPoints {
+    # T001 (FR-009): pure extractor of a lens file's "## Design Decision Points" bullets so the
+    # design analysis can be genuinely informed by the lens knowledge (not just named). Returns an
+    # ordered string[] of decision points with continuation lines folded into their bullet. Graceful
+    # @() when the catalog dir, the lens file, or the section is absent. No network/LLM; read-only.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$LensId,
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$CatalogDir
+    )
+
+    if ([string]::IsNullOrWhiteSpace($LensId) -or [string]::IsNullOrWhiteSpace($CatalogDir)) { return @() }
+    $path = Join-Path $CatalogDir ('{0}.md' -f $LensId)
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @() }
+
+    $content = ''
+    try { $content = Get-Content -LiteralPath $path -Raw -Encoding UTF8 }
+    catch { return @() }
+    if ([string]::IsNullOrWhiteSpace($content)) { return @() }
+
+    # Isolate the "## Design Decision Points" section body (until the next ## heading or EOF).
+    $section = [regex]::Match($content, '(?ims)^##\s+Design\s+Decision\s+Points\s*$\r?\n(?<body>.*?)(?=^##\s+|\z)')
+    if (-not $section.Success) { return @() }
+
+    $points = [System.Collections.Generic.List[string]]::new()
+    $current = $null
+    foreach ($rawLine in ($section.Groups['body'].Value -split '\r?\n')) {
+        if ($rawLine -match '^\s*[-*]\s+(.*)$') {
+            if ($null -ne $current) { $points.Add(($current -replace '\s+', ' ').Trim()) | Out-Null }
+            $current = $Matches[1].Trim()
+        }
+        elseif ($null -ne $current -and $rawLine -match '^\s+\S') {
+            # Indented continuation of the current bullet -> fold it in.
+            $current = ('{0} {1}' -f $current, $rawLine.Trim())
+        }
+        else {
+            # Blank line or non-indented prose ends the current bullet.
+            if ($null -ne $current) { $points.Add(($current -replace '\s+', ' ').Trim()) | Out-Null }
+            $current = $null
+        }
+    }
+    if ($null -ne $current) { $points.Add(($current -replace '\s+', ' ').Trim()) | Out-Null }
+
+    return $points.ToArray()
+}
+
 function Format-SpecrewApplicableLensesSection {
-    # T004: render the "## Applicable Lenses" markdown section from the selector. Read-only; graceful
-    # degradation to "none available" when the map or answers are absent.
+    # Iteration 4 T004 + Iteration 5 T002 (FR-009): render the "## Applicable Lenses" markdown
+    # section from the selector. Read-only; graceful degradation to "none available" when the map or
+    # answers are absent. When -CatalogDir (absolute path to the lens files) is supplied, ENRICH each
+    # selected lens with its Design Decision Points (via Get-SpecrewLensDecisionPoints) plus an
+    # "Addressed:" coverage placeholder the author fills by pointing into the option comparison, so
+    # the analysis is genuinely lens-informed (FR-009) and the FR-026 gate has a coverage entry to
+    # check. With no -CatalogDir the legacy name-list render is preserved (back-compat).
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][AllowNull()]$Map,
         [Parameter(Mandatory = $true)][AllowNull()]$Answers,
-        [string]$CatalogRelativeDir = 'extensions/specrew-speckit/knowledge/design-lenses'
+        [string]$CatalogRelativeDir = 'extensions/specrew-speckit/knowledge/design-lenses',
+        [AllowNull()][AllowEmptyString()][string]$CatalogDir
     )
 
     $sel = Get-SpecrewLensSelection -Map $Map -Answers $Answers
@@ -189,8 +241,16 @@ function Format-SpecrewApplicableLensesSection {
     $lines.Add('Selected by the applicability questionnaire (recorded in `lens-applicability.json`):') | Out-Null
     $lines.Add('') | Out-Null
     $rel = $CatalogRelativeDir.TrimEnd('/')
+    $enrich = -not [string]::IsNullOrWhiteSpace($CatalogDir)
     foreach ($id in $sel.selected) {
         $lines.Add(('- **{0}** - `{1}/{2}.md`' -f $id, $rel, $id)) | Out-Null
+        if ($enrich) {
+            $points = @(Get-SpecrewLensDecisionPoints -LensId $id -CatalogDir $CatalogDir)
+            if ($points.Count -gt 0) {
+                $lines.Add(('  - Decision points: {0}' -f ($points -join '; '))) | Out-Null
+            }
+            $lines.Add('  - Addressed: <how these decision points shaped the option comparison — name the option(s) and Trade-offs>') | Out-Null
+        }
     }
 
     if (@($sel.excluded).Count -gt 0) {

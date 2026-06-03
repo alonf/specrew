@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 17/20 story_points
 **Started**: 2026-06-03
 
@@ -41,12 +41,12 @@ Capacity 17/20, within cap.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | `Get-SpecrewLensDecisionPoints` — pure function extracting a lens file's `## Design Decision Points` bullets (graceful `@()` when the file/section is absent); no network/LLM | FR-009 | US3 | 3 | Implementer | scripts/internal/lens-applicability.ps1 | planned | claude | — | — |
-| T002 | Enrich `Format-SpecrewApplicableLensesSection`: render per selected lens its decision points + a non-placeholder `Addressed:` pointer entry; keep graceful degradation ("none available") + MD049 asterisk emphasis | FR-009, SC-006 | US3 | 3 | Implementer | scripts/internal/lens-applicability.ps1 | planned | claude | — | — |
-| T003 | FR-026 gate: `Test-SpecrewDesignAnalysisLensCoverage` reads `lens-applicability.json` `selected` + the artifact's Applicable Lenses `Addressed:` entries; each selected lens needs a non-placeholder entry, else error naming it. Wire into `Test-SpecrewDesignAnalysisArtifact`. Grandfather-safe (only FR-026-shaped artifacts); deterministic, LLM/network-free; honest "anti-omission" message | FR-026, FR-010 | US3 | 4 | Implementer | scripts/internal/design-analysis-gate.ps1 | planned | claude | — | — |
-| T004 | Coordinator nudge in the template: instruct that each selected lens's decision points must shape the option Trade-offs and the `Addressed:` entry must point into the option comparison (engagement in the options, not a checklist) | FR-009 | US3 | 1 | Spec Steward | extensions/specrew-speckit/templates/design-analysis.template.md | planned | claude | — | — |
-| T005 | Tests (reproduce-first): extraction present/absent/malformed; enriched render + graceful degradation + MD049 guard; FR-026 — SC-016 unaddressed-lens FAILS naming it, all-addressed PASSES, placeholder FAILS, no-json/no-lenses no-ops, grandfather (no `Addressed:` → skip), determinism | FR-026, SC-016, SC-006 | US3 | 4 | Reviewer | tests/unit/**, tests/integration/** | planned | claude | — | — |
-| T006 | Docs + dogfood + gap ledger (TG-006): quickstart Iteration-5 section; re-dogfood — the enriched render reproduces Iteration 5's own hand-authored Applicable Lenses section; apply the **blocking** delete-`Addressed:` discriminator; implemented/enforced/observable/documented gap ledger | TG-006, FR-009 | US0 | 2 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
+| T001 | `Get-SpecrewLensDecisionPoints` — pure function extracting a lens file's `## Design Decision Points` bullets (graceful `@()` when the file/section is absent); no network/LLM | FR-009 | US3 | 3 | Implementer | scripts/internal/lens-applicability.ps1 | done | claude | — | — |
+| T002 | Enrich `Format-SpecrewApplicableLensesSection`: render per selected lens its decision points + a non-placeholder `Addressed:` pointer entry; keep graceful degradation ("none available") + MD049 asterisk emphasis | FR-009, SC-006 | US3 | 3 | Implementer | scripts/internal/lens-applicability.ps1 | done | claude | — | — |
+| T003 | FR-026 gate: `Test-SpecrewDesignAnalysisLensCoverage` reads `lens-applicability.json` `selected` + the artifact's Applicable Lenses `Addressed:` entries; each selected lens needs a non-placeholder entry, else error naming it. Wire into `Test-SpecrewDesignAnalysisArtifact`. Grandfather-safe (only FR-026-shaped artifacts); deterministic, LLM/network-free; honest "anti-omission" message | FR-026, FR-010 | US3 | 4 | Implementer | scripts/internal/design-analysis-gate.ps1 | done | claude | — | — |
+| T004 | Coordinator nudge in the template: instruct that each selected lens's decision points must shape the option Trade-offs and the `Addressed:` entry must point into the option comparison (engagement in the options, not a checklist) | FR-009 | US3 | 1 | Spec Steward | extensions/specrew-speckit/templates/design-analysis.template.md | done | claude | — | — |
+| T005 | Tests (reproduce-first): extraction present/absent/malformed; enriched render + graceful degradation + MD049 guard; FR-026 — SC-016 unaddressed-lens FAILS naming it, all-addressed PASSES, placeholder FAILS, no-json/no-lenses no-ops, grandfather (no `Addressed:` → skip), determinism | FR-026, SC-016, SC-006 | US3 | 4 | Reviewer | tests/unit/**, tests/integration/** | done | claude | — | — |
+| T006 | Docs + dogfood + gap ledger (TG-006): quickstart Iteration-5 section; re-dogfood — the enriched render reproduces Iteration 5's own hand-authored Applicable Lenses section; apply the **blocking** delete-`Addressed:` discriminator; implemented/enforced/observable/documented gap ledger | TG-006, FR-009 | US0 | 2 | Planner | specs/141-design-gate-runtime-hardening/** | done | claude | — | — |
 
 ## Effort Model
 

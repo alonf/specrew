@@ -229,6 +229,73 @@ function Test-SpecrewDesignAnalysisGateRequired {
     return (Test-SpecrewDesignAnalysisSubstantiveFeature -ProjectRoot $ProjectRoot -FeatureRef $feature)
 }
 
+function Test-SpecrewDesignAnalysisLensAddressedPlaceholder {
+    # FR-026: an "Addressed:" coverage value does NOT count as addressing a lens when it is empty, a
+    # TBD-class token, or the unfilled angle-bracket template default emitted by the enriched render.
+    param([AllowNull()][string]$Value)
+
+    if (Test-SpecrewDesignAnalysisPlaceholderText -Text $Value) { return $true }
+    return ([string]$Value).Trim() -match '^<.*>$'
+}
+
+function Test-SpecrewDesignAnalysisLensCoverage {
+    # FR-026 (Amendment A2): deterministic, LLM/network-free lens-coverage enforcement. For each lens
+    # the FR-025 questionnaire selected (lens-applicability.json `selected`), the design analysis MUST
+    # carry a non-placeholder "Addressed:" coverage entry in its "## Applicable Lenses" section; else
+    # the gate blocks plan, naming the unaddressed lens.
+    #
+    # This is an ANTI-OMISSION backstop, NOT a quality guarantee: it proves no selected lens was
+    # silently dropped from the analysis. It deliberately does NOT judge whether the engagement is
+    # genuine — a deterministic check cannot. Genuine engagement is enforced by the human design-
+    # analysis gate plus the blocking delete-the-`Addressed:`-lines discriminator at review-signoff.
+    #
+    # Grandfather-safe: only FR-026-shaped artifacts (those carrying >=1 "Addressed:" entry) are
+    # enforced, so pre-FR-026 design analyses (e.g. Iteration 4) never retroactively fail. Returns a
+    # string[] of error messages (empty = OK / not applicable).
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][string]$IterationDirectory
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    # Selected lenses come from the recorded questionnaire artifact (decoupled; the JSON is the audit
+    # record). No artifact / no selection -> nothing to enforce (SC-006 graceful no-op).
+    $answersPath = Join-Path $IterationDirectory 'lens-applicability.json'
+    if (-not (Test-Path -LiteralPath $answersPath -PathType Leaf)) { return @() }
+
+    $selected = @()
+    try {
+        $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($null -ne $doc -and $doc.PSObject.Properties['selected']) {
+            $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+    }
+    catch { return @() }
+    if ($selected.Count -eq 0) { return @() }
+
+    $section = Get-SpecrewDesignAnalysisSection -Content $Content -HeadingPatterns @('Applicable\s+Lenses')
+    $body = if ($section.Found) { $section.Body } else { '' }
+
+    # Grandfather: enforce only FR-026-shaped artifacts (those carrying >=1 "Addressed:" entry).
+    if ($body -notmatch '(?im)^\s*[-*]?\s*Addressed\s*:') { return @() }
+
+    foreach ($id in $selected) {
+        $blockRegex = '(?ims)^[-*]\s*\*\*' + [regex]::Escape($id) + '\*\*.*?(?=^[-*]\s*\*\*|\z)'
+        $blockMatch = [regex]::Match($body, $blockRegex)
+        $addressed = $null
+        if ($blockMatch.Success) {
+            $addressedMatch = [regex]::Match($blockMatch.Value, '(?im)^\s*[-*]?\s*Addressed\s*:\s*(?<v>.*)$')
+            if ($addressedMatch.Success) { $addressed = $addressedMatch.Groups['v'].Value }
+        }
+        if ($null -eq $addressed -or (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value $addressed)) {
+            $errors.Add(("design-analysis.md does not address selected lens '{0}' (FR-026 anti-omission): add a non-placeholder 'Addressed:' coverage entry for it in the Applicable Lenses section, pointing into the option comparison." -f $id)) | Out-Null
+        }
+    }
+
+    return $errors.ToArray()
+}
+
 function Test-SpecrewDesignAnalysisArtifact {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
@@ -343,6 +410,13 @@ function Test-SpecrewDesignAnalysisArtifact {
         if ($draftCommit.Success -and $decisionCommit.Success -and $draftCommit.Groups[1].Value -eq $decisionCommit.Groups[1].Value) {
             $errors.Add('Human Decision "Decision recorded in commit" must differ from the "Design-analysis draft commit"; record the commit that contains the populated decision, not the draft.') | Out-Null
         }
+    }
+
+    # FR-026 (Amendment A2): lens-coverage enforcement. Each questionnaire-selected lens must carry a
+    # non-placeholder "Addressed:" entry (anti-omission); grandfather-safe + LLM/network-free.
+    $iterationDirectory = Split-Path -Parent $artifactPath
+    foreach ($coverageError in @(Test-SpecrewDesignAnalysisLensCoverage -Content $content -IterationDirectory $iterationDirectory)) {
+        $errors.Add($coverageError) | Out-Null
     }
 
     return [pscustomobject]@{

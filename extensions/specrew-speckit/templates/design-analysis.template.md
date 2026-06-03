@@ -114,14 +114,24 @@ flowchart LR
 ## Applicable Lenses
 
 <!--
-  FR-009/FR-010/FR-025 (Feature 141 Iteration 4): applicability is determined by a fixed
-  questionnaire, NOT a hand-listed guess.
+  FR-009/FR-010/FR-025/FR-026 (Feature 141 Iterations 4-5): applicability is determined by a fixed
+  questionnaire, NOT a hand-listed guess; and the analysis must be genuinely INFORMED by the lenses.
   1. Emit + answer the questionnaire: write `lens-applicability.json` in this iteration directory
      (questions from the decoupled sibling map
      `extensions/specrew-speckit/knowledge/design-lenses/applicability-map.json`; answer each
      true/false). Helper: New-SpecrewLensApplicabilityTemplate (scripts/internal/lens-applicability.ps1).
-  2. Render this section from the answers: Format-SpecrewApplicableLensesSection -Map <map> -Answers <answers>
+  2. Render this section from the answers WITH the catalog dir so each selected lens carries its
+     Design Decision Points + an "Addressed:" line:
+     Format-SpecrewApplicableLensesSection -Map <map> -Answers <answers> -CatalogDir <catalog-dir>
      (always-on foundational lenses + specialized lenses gated by a "yes"; deterministic, no network/LLM).
+  3. INFORM THE OPTIONS, do not just list names: each selected lens's decision points must visibly
+     shape the option comparison above (its Trade-offs / Quality features). Then replace each
+     "Addressed:" placeholder with a real pointer INTO that comparison (e.g. "see Option B
+     Trade-offs - eventual-consistency invariant"). FR-026 blocks plan.md when any selected lens is
+     left unaddressed (a placeholder or a missing entry), naming it. The gate is ANTI-OMISSION only:
+     it cannot judge engagement quality. That is checked by the reviewer's blocking
+     delete-the-"Addressed:"-lines discriminator at review-signoff - removing the entries must leave
+     the options still visibly shaped by the lenses, or the analysis is sent back.
   The catalog `index.yml` stays pure (the gating map is the decoupled sibling). Degrades to
   "none available" when the catalog or answers are absent.
 -->

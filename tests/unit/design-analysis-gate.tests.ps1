@@ -218,5 +218,67 @@ Assert-Match -Text $startScript -Pattern 'approved for plan with Option <X>' 'Ge
 Assert-Match -Text $startScript -Pattern 'Human Decision must record the chosen option' 'Generated lifecycle guidance is missing Human Decision evidence requirements.'
 Write-Pass 'Lifecycle guidance mentions design-analysis stop and verdict shape'
 
+# Iteration 5 T003 (FR-026 / SC-016) — lens-coverage gate: each questionnaire-selected lens needs a
+# non-placeholder "Addressed:" entry; anti-omission; grandfather-safe; deterministic; LLM/network-free.
+$coverageDir = Join-Path $scratchRoot 'fr026-coverage'
+$null = New-Item -ItemType Directory -Path $coverageDir -Force
+[System.IO.File]::WriteAllText((Join-Path $coverageDir 'lens-applicability.json'), '{"schema":"v1","selected":["architecture-core","data-storage"]}', [System.Text.UTF8Encoding]::new($false))
+
+$coverageAddressed = @'
+# X
+
+## Applicable Lenses
+
+- **architecture-core** - `x`
+  - Addressed: see Option B Trade-offs (binding constraints rule C out)
+- **data-storage** - `x`
+  - Addressed: see Option B (selected-subset-addressed invariant)
+'@
+Assert-True (@(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageAddressed -IterationDirectory $coverageDir).Count -eq 0) 'FR-026: all selected lenses addressed -> passes'
+
+$coverageUnaddressed = @'
+# X
+
+## Applicable Lenses
+
+- **architecture-core** - `x`
+  - Addressed: <how these decision points shaped the option comparison — name the option(s) and Trade-offs>
+- **data-storage** - `x`
+  - Decision points: a; b
+'@
+$coverageErrors = @(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageUnaddressed -IterationDirectory $coverageDir)
+Assert-True ($coverageErrors.Count -eq 2) 'FR-026: a placeholder entry and a missing entry are both flagged'
+Assert-Match -Text ($coverageErrors -join "`n") -Pattern 'architecture-core' 'FR-026 (SC-016): failure names the placeholder-addressed lens'
+Assert-Match -Text ($coverageErrors -join "`n") -Pattern 'data-storage' 'FR-026 (SC-016): failure names the unaddressed lens'
+Write-Pass 'FR-026: unaddressed/placeholder selected lenses are blocked and named (SC-016)'
+
+# Grandfather-safe: a pre-FR-026 section (lenses listed, NO Addressed: entries) is skipped.
+$coverageGrandfather = @'
+# X
+
+## Applicable Lenses
+
+- **architecture-core** - `x`
+- **data-storage** - `x`
+'@
+Assert-True (@(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageGrandfather -IterationDirectory $coverageDir).Count -eq 0) 'FR-026: pre-FR-026 artifact (no Addressed entries) is grandfather-skipped'
+
+# No recorded selection -> no-op (SC-006 graceful).
+$coverageNoJson = Join-Path $scratchRoot 'fr026-no-json'
+$null = New-Item -ItemType Directory -Path $coverageNoJson -Force
+Assert-True (@(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageUnaddressed -IterationDirectory $coverageNoJson).Count -eq 0) 'FR-026: no lens-applicability.json -> no-op'
+
+# Determinism: identical inputs -> identical errors.
+$cov1 = (@(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageUnaddressed -IterationDirectory $coverageDir)) -join '|'
+$cov2 = (@(Test-SpecrewDesignAnalysisLensCoverage -Content $coverageUnaddressed -IterationDirectory $coverageDir)) -join '|'
+Assert-True ($cov1 -eq $cov2) 'FR-026: coverage check is deterministic'
+
+# Placeholder detection: empty / TBD-class / angle-bracket default all count as not-addressed; a real pointer does not.
+Assert-True (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value '') 'FR-026 placeholder: empty value'
+Assert-True (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value 'TBD') 'FR-026 placeholder: TBD token'
+Assert-True (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value '<fill me in>') 'FR-026 placeholder: angle-bracket template default'
+Assert-True (-not (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value 'see Option B Trade-offs')) 'FR-026 placeholder: a real pointer is not a placeholder'
+Write-Pass 'FR-026: grandfather-safe, no-op without selection, deterministic, placeholder-aware'
+
 Write-Pass 'Design-analysis gate unit tests passed'
 exit 0

@@ -1,7 +1,7 @@
 # Quickstart: Design Gate Runtime Hardening
 
 **Feature**: 141-design-gate-runtime-hardening  
-**Last verified**: 2026-06-03 (Iteration 3 delivered: greenfield/downstream hygiene — FR-012 spurious multi-dev warning suppression, FR-013 baseline guidance)
+**Last verified**: 2026-06-03 (Iteration 5 delivered: lens-informed analysis + FR-026 coverage gate — FR-009 decision-point surfacing, FR-026 anti-omission enforcement)
 
 ## Run it
 
@@ -113,3 +113,34 @@ pwsh -File tests/integration/design-analysis-boundary.tests.ps1
 - **Deferred (still out, FR-010):** project-local lens overrides, lens-schema validation
   enforcement, broad cross-phase automation, a standalone `specrew lens` command, and per-lens
   rationale automation remain Proposal 156's deeper scope.
+
+## Iteration 5 (delivered 2026-06-03): lens-informed analysis + FR-026 coverage gate (FR-009/FR-026)
+
+- **The analysis is informed by the lenses, not just named by them (FR-009).** The enriched render
+  surfaces each selected lens's **Design Decision Points** (verbatim from the lens files) plus an
+  `Addressed:` line the author fills by pointing into the option comparison. Verify:
+  `pwsh -File tests/unit/lens-applicability-selector.tests.ps1`, or:
+
+  ```powershell
+  . ./scripts/internal/lens-applicability.ps1
+  $map = Read-SpecrewLensApplicabilityMap -Path extensions/specrew-speckit/knowledge/design-lenses/applicability-map.json
+  $ans = @{ ui=$false; security=$false; data=$true; integration=$false; ops=$false; perf=$false }
+  Format-SpecrewApplicableLensesSection -Map $map -Answers $ans -CatalogDir extensions/specrew-speckit/knowledge/design-lenses
+  # -> each selected lens renders its Decision points + an "Addressed:" placeholder to fill
+  ```
+
+- **The gate enforces lens coverage (FR-026).** Before `plan.md`, the design-analysis gate blocks
+  when any questionnaire-selected lens is left unaddressed (a placeholder or a missing `Addressed:`
+  entry), and the failure **names** the lens (SC-016). The check is deterministic and
+  LLM/network-free. It is an **anti-omission backstop, not a quality guarantee** — a deterministic
+  gate cannot judge whether engagement is genuine. Verify:
+  `pwsh -File tests/unit/design-analysis-gate.tests.ps1` (the FR-026 block).
+- **Genuine engagement is proven by the discriminator, not the gate.** At review-signoff the
+  reviewer applies a **blocking** check: delete every `Addressed:` line and confirm the option
+  comparison *still* visibly engages each selected lens (its Trade-offs / Quality features). If the
+  analysis goes blank, it was a checkbox and the iteration is sent back. This iteration dogfooded it
+  on its own design analysis — the discriminator passed.
+- **Grandfather-safe.** FR-026 enforces only artifacts that carry `Addressed:` entries, so pre-FR-026
+  design analyses (e.g. Iteration 4) never retroactively fail.
+- **Still deferred (FR-010):** the deeper Proposal 156 automation above remains out (lens-file schema
+  validation, overrides, standalone command, auto-rationale).
