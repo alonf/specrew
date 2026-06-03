@@ -93,3 +93,11 @@ deferred (FR-010). Capacity 14/20, within cap.
   stays deferred (FR-010) — out of scope for this iteration.
 - This iteration writes code; it will stop at before-implement for the human start-implementation
   go-ahead, as usual. No push/PR while Feature 141 is in progress.
+
+### Approved-for-tasks (maintainer, 2026-06-03)
+
+Plan approved (14/20 SP split + traceability accepted). Carried design-gate constraints (binding through implementation):
+
+1. **Option B decoupled is authoritative.** The question-to-lens gating map lives in a SEPARATE sibling file; the Proposal 156 catalog `index.yml` stays PURE (not modified).
+2. **Selection is deterministic and LLM/network-free.** The JSON-answers-to-selected-lenses step is a pure function; the only judgment input is the recorded questionnaire answers.
+3. **Do NOT pull in deferred Proposal 156 scope** — no project-local overrides, no lens-schema validation enforcement, no broad cross-phase automation, no standalone `specrew lens` command, no per-lens rationale automation (FR-010 keeps these deferred).

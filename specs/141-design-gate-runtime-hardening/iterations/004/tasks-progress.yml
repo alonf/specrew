@@ -1,0 +1,41 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "004"
+updated_at: "2026-06-03T15:38:13Z"
+tasks:
+  T001:
+    title: "Sibling question->lens map file (index.yml untouched) + fixed 6-question set + always-on foundational lenses"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T002:
+    title: "Questionnaire intake at design-analysis scaffold (human-confirmed) + write lens-applicability.json artifact"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T003:
+    title: "Pure deterministic selector: answers + sibling map -> selected lenses (always-on + gated); no network/LLM"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T004:
+    title: "Render Applicable Lenses section from selected + graceful degradation (no catalog/answers -> none available)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T005:
+    title: "Tests (reproduce-first): SC-015 determinism + JSON audit; SC-006 scope + degradation; never hide an always-on lens"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T006:
+    title: "Docs + review evidence (TG-006): quickstart Iteration-4 + implemented/enforced/observable/documented gap ledger"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
