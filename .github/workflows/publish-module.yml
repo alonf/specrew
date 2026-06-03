@@ -294,27 +294,31 @@ jobs:
           $tag = '${{ steps.release_context.outputs.release_ref_name }}'
           $zipPath = '${{ steps.build_artifact.outputs.release_zip }}'
           $notesPath = '${{ steps.extract_changelog.outputs.notes_path }}'
-
-          $ghArgs = @(
-            'release', 'create', $tag,
-            '--title', "Specrew $tag"
-          )
           $releaseFlag = '${{ steps.release_context.outputs.release_flag }}'
 
-          if (-not [string]::IsNullOrWhiteSpace($releaseFlag)) {
-            $ghArgs += $releaseFlag
-          }
+          # A promote-prerelease run reuses an EXISTING prerelease tag whose GitHub release
+          # already exists, so `gh release create` errors ("a release with the same tag name
+          # already exists") AFTER the PSGallery publish has already succeeded — a false failure.
+          # Make this idempotent: if the release exists, (re)attach the artifact and refresh
+          # notes/flags (on a promote, mark it latest + non-prerelease); otherwise create it fresh.
+          gh release view $tag *> $null
+          $releaseExists = ($LASTEXITCODE -eq 0)
+          $global:LASTEXITCODE = 0
 
-          if ($notesPath -and (Test-Path $notesPath)) {
-            $ghArgs += @('--notes-file', $notesPath)
+          if ($releaseExists) {
+            Write-Host "GitHub release '$tag' already exists - updating it (artifact + notes/flags), not re-creating."
+            gh release upload $tag $zipPath --clobber
+            $editArgs = @('release', 'edit', $tag)
+            if ($notesPath -and (Test-Path $notesPath)) { $editArgs += @('--notes-file', $notesPath) }
+            if ($releaseFlag -eq '--latest') { $editArgs += @('--latest', '--prerelease=false') }
+            gh @editArgs
           } else {
-            $ghArgs += @('--generate-notes')
+            $ghArgs = @('release', 'create', $tag, '--title', "Specrew $tag")
+            if (-not [string]::IsNullOrWhiteSpace($releaseFlag)) { $ghArgs += $releaseFlag }
+            if ($notesPath -and (Test-Path $notesPath)) { $ghArgs += @('--notes-file', $notesPath) } else { $ghArgs += @('--generate-notes') }
+            $ghArgs += $zipPath
+            Write-Host "Creating GitHub Release for $tag with artifact $zipPath"
+            gh @ghArgs
           }
-
-          # Attach the module zip
-          $ghArgs += $zipPath
-
-          Write-Host "Creating GitHub Release for $tag with artifact $zipPath"
-          gh @ghArgs
 
           Write-Host "Release page: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/$tag"
