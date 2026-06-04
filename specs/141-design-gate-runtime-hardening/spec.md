@@ -276,7 +276,7 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 - **FR-008**: Specrew MUST build on the existing Feature 140 design-analysis-gate
   helper and plan-boundary enforcement rather than rewriting them.
 
-#### Lens catalog + applicability selection (Iterations 4-8; amended 2026-06-04 — Amendments A1, A2, A3, A4, A5)
+#### Lens catalog + applicability selection (Iterations 4-9; amended 2026-06-04 — Amendments A1, A2, A3, A4, A5; 2026-06-05 — Amendment A6)
 
 - **FR-009**: The repo-local design-lens knowledge (`extensions/specrew-speckit/knowledge/design-lenses/`)
   MUST inform the lifecycle, not merely a single design-analysis section: for each selected lens, its
@@ -443,6 +443,60 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   cleaned at iteration close. **Keepers** are inline mermaid in the design document (version-controlled
   text); svg/html is persisted as a referenced file ONLY when richer-than-mermaid is required.
 
+#### Collaborative architecture & design (Iteration 9 — Amendment A6)
+
+> **Amendment A6 (2026-06-05, maintainer-directed after the third empirical manual end-to-end test):**
+> The iteration-8 visual dogfood (testLenses4, feature 001-doc-translation) was a strong run — the
+> per-lens workshop (A4) and the visuals (A5) both fired — but it exposed that the design work is still
+> **a questionnaire followed by a unilateral deliverable, not a collaboration**: (1) the Crew never
+> offered the **design method / decomposition style** (DDD / IDesign / modular monolith / microservices /
+> layered) as a discussion — the human had to drag it out; (2) at design-analysis the Crew authored three
+> finished architectures (service lists, responsibilities, transports, stores) for the human to pick from
+> — the human never **co-designed** the components, their responsibilities, or the flows; (3) the workshop
+> never framed the phases (that intake gathers inputs and the system structure is decided *with the human*
+> at design-analysis); and (4) — folding in the A5 surfacing gap — the per-lens diagrams were written to
+> disk but never **surfaced in-band**, so the human saw none (and the ui-ux lens produced none). The
+> maintainer dispositioned the fix **inside Feature 141** (not a new feature): make the design-analysis a
+> genuine **co-design session**. Like A4/A5 this is primarily a **behavioral/prompt** capability with a
+> thin deterministic floor — the gate cannot judge whether a real collaboration happened (a structurally
+> valid co-design record would PASS while the behavior was unilateral), so the acceptance evidence is a
+> **runtime dogfood** (SC-024); the enforceable floor (SC-025) is only that a co-design record
+> (component-to-responsibility map + at least one agreed flow + a human-agreed marker) was *recorded*. The
+> two-tier model the same test suggested — an app/product-level workshop once, then a short per-feature
+> workshop — is **genuinely new structure and is NOT in A6**; it is filed as a separate proposal.
+> Maintainer directive: "we need to collaborate about the components, their responsibility, the flows."
+
+- **FR-034**: The lens workshop MUST **frame the phases** for the human at the outset — that the workshop
+  gathers inputs and constraints, and that the system **structure** (components, responsibilities, flows)
+  is co-designed *with the human* at the design-analysis step, not decided during intake — so the human
+  knows the collaboration is coming and what each phase decides.
+- **FR-035**: For a feature with an architecture-core lens, the workshop MUST raise the **design method /
+  decomposition style** (e.g. DDD bounded-contexts, IDesign volatility-based, modular monolith,
+  microservices, layered) as an explicit, **expertise-adapted discussion** — explaining the candidates and
+  trade-offs at a depth matched to the dial, recommending where the dial is low, and capturing the human's
+  choice as a binding constraint for the design analysis and plan. It MUST NOT be a bare multiple-choice
+  prompt and MUST NOT be silently assumed by the Crew.
+- **FR-036**: The design-analysis MUST be conducted as a **co-design session**, not a unilateral
+  deliverable. Before presenting the consequential options/recommendation, the Crew MUST co-build, **with
+  the human**: (a) the **component/service breakdown with each component's responsibility**, inviting the
+  human to rename, split, merge, or reassign; and (b) at least one key **flow** (user actions + system
+  actions) walked through those components — iterating until the human agrees the decomposition,
+  responsibilities, and flows are right. ONLY THEN does the Crew present the remaining trade-off **options**
+  (e.g. transport, store technology, granularity) for the human's verdict. Depth adapts to expertise: where
+  the architecture dial is low the Crew MAY drive the decomposition and explain more, but MUST still
+  **confirm** the responsibilities and flows with the human rather than authoring them silently. The
+  visuals (A5 / FR-030, FR-031) are the medium — the co-design is conducted on a shared diagram. The
+  conduct is behavioral (validated by the dogfood, SC-024); the deterministic floor (SC-025) enforces only
+  that the co-design record was recorded.
+- **FR-037**: When the workshop or design-analysis produces a visual, it MUST be **surfaced in-band** in
+  the human-facing conversation — an inline render (a fenced mermaid block or console ASCII) and/or a
+  **clickable `file:///` link** to the written file — **never written to disk only**. A per-lens diagram is
+  **expected** (not merely permitted) for structural lenses (architecture-core, data-storage,
+  security-compliance, integration-api, devops-operations) and for any UI-bearing feature (ui-ux: a
+  layout/flow sketch). This tightens FR-031's tier policy from *may-surface* to **must-surface-in-band**
+  and supersedes the permissive reading that allowed a disk-only artifact. *(Folds the Iteration-8
+  visual-dogfood findings #3 and #5.)*
+
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
 - **FR-011**: Generated start/handoff packets MUST NOT emit empty or malformed
@@ -569,6 +623,10 @@ than deferring to another feature.
 | FR-031 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; tiered render+surface) |
 | FR-032 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; bidirectional per-lens visual intake) |
 | FR-033 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; ephemeral temp + mermaid-inline keepers) |
+| FR-034 | Spec Steward, Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; phase-framing) |
+| FR-035 | Spec Steward, Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; design-method co-decision) |
+| FR-036 | Spec Steward, Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; collaborative co-design at design-analysis) |
+| FR-037 | Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; in-band visual surfacing — folds i8 dogfood #3/#5) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -671,6 +729,18 @@ than deferring to another feature.
   catalog resolves a diagram type + render form per selected lens, degrading gracefully when a lens has
   no mapping. Presence/shape only — the diagram's quality is SC-022's dogfood. (Added 2026-06-04 —
   Amendment A5; FR-030/FR-031/FR-033.)
+- **SC-024**: In a runtime dogfood, the design-analysis is conducted as a **co-design**: the human shapes
+  the component/responsibility breakdown and at least one flow (renaming, splitting, or reassigning — not
+  merely approving) **before** the Crew presents the consequential options, the **design method** is
+  discussed (not assumed), and per-lens diagrams **surface in-band** (inline render and/or a clickable
+  `file:///` link, confirming FR-037 and re-confirming SC-022's surfacing clause). Behavioral — validated
+  by the dogfood, not a unit test. (Added 2026-06-05 — Amendment A6; FR-034/FR-035/FR-036/FR-037.)
+- **SC-025**: The design-analysis artifact carries a non-placeholder **co-design record** — a
+  component-to-responsibility map and at least one agreed flow, with an explicit human-agreed marker —
+  recorded before the options/recommendation. The gate enforces the non-placeholder **presence** of this
+  record when the artifact marks co-design (marker-gated; pre-A6 artifacts no-op, grandfather-safe); it
+  does NOT assess collaboration quality (that is SC-024's dogfood). The check is deterministic and
+  LLM/network-free. (Added 2026-06-05 — Amendment A6; FR-036.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.
