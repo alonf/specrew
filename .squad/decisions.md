@@ -23929,3 +23929,14 @@ Iteration 6 delivered the deterministic interactive intake; the per-lens worksho
   > Maintainer-approved as part of the Amendment A4 re-scope and the "Continue 141" container decision (2026-06-04). T003 folds forward to Iteration 7.
 
 Recorded in: spec.md Amendment A4 (commit a50d5413); iteration-006 closeout (commit dccb80ae); review.md / retro.md.
+
+## 2026-06-05T08:00:00Z — Canonical defer entry (Feature 141 iteration 008 SC-022 surfacing-clause carry to iteration 009 / Amendment A6)
+
+- **Decision ID**: defer-141-i008-sc022-surfacing-to-i009-a6
+- **Type**: defer
+- **Affected Requirement**: FR-031
+- **Affected Iteration**: specs\141-design-gate-runtime-hardening\iterations\008
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-05T08:00:00Z
+- **Next Action**: Strengthen Rule 9b in iteration 009 (Amendment A6) so workshop visuals MUST surface in-band (inline render or a clickable file:/// link, never written to disk only) and are expected for structural + UI-bearing lenses; re-confirm SC-022's surfacing clause in the i9 downstream dogfood alongside the collaborative-design conduct.
+- **Rationale**: The iteration-8 visual dogfood (testLenses4, feature 001-doc-translation) proved the A5 capability FIRES — a per-lens architecture component diagram + ERD were authored from diagram-vocabulary.json — but the agent wrote them only to a persisted .specrew\workshop-visuals\*.html file with no in-band clickable file:/// link and no inline render, so the maintainer saw no diagram, and the ui-ux lens produced none. SC-022's "surfaced per the tier policy" clause was therefore not met. The SC-023 deterministic floor (catalog + emit helper + intake-reference, 15 assertions) fully passed. The maintainer dispositioned the fix INSIDE Feature 141 as Amendment A6 / iteration 009 (collaborative design + visual-surfacing strengthening), so iteration 8 closes on its delivered + tested capability with the surfacing-clause confirmation carried to iteration 009.

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "008"
-updated_at: "2026-06-04T14:40:00Z"
+updated_at: "2026-06-05T08:00:00Z"
 tasks:
   T001:
     title: "Per-lens diagram catalog (diagram-vocabulary.json, sibling; index.yml pure) + reader Get-SpecrewLensDiagramType (graceful). FR-030. DONE: catalog (9 lenses + cross-cutting flows/comparison) + reader; verified (security/data/flows resolve; missing -> null)."
@@ -28,8 +28,8 @@ tasks:
     completed_at: "2026-06-04T14:40:00Z"
     blocked_reason: ""
   T005:
-    title: "SC-022 runtime visual dogfood: downstream run renders >=1 per-lens catalog diagram, surfaced per tier (inline and/or file:/// temp link), keeper persisted as inline mermaid. Behavioral acceptance gate (needs maintainer)."
-    status: "planned"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: "Needs a maintainer downstream run (the visual dogfood) — the behavioral acceptance evidence (SC-022); unit tests (T004) cover the deterministic floor only."
+    title: "SC-022 runtime visual dogfood (testLenses4, 001-doc-translation): RAN — capability fired (per-lens architecture component diagram + ERD authored from the catalog); SC-022 surfacing clause unmet (written to disk only, no in-band file:/// link / inline render); ui-ux produced no visual. Maintainer-dispositioned to i9/A6 (Rule 9b strengthening). Deterministic floor (T004) green."
+    status: "done"
+    started_at: "2026-06-04T23:50:00Z"
+    completed_at: "2026-06-05T07:30:00Z"
+    blocked_reason: ""

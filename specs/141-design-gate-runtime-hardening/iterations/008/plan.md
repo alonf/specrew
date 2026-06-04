@@ -2,9 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: complete
 **Capacity**: 17/20 story_points
 **Started**: 2026-06-04
+**Completed**: 2026-06-05
 
 <!--
   Validator schema: Iteration Status one of planning|executing|reviewing|retro|complete|abandoned.
@@ -34,11 +35,11 @@ unit-tested floor.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Per-lens diagram catalog (diagram-vocabulary.json, sibling to applicability-map.json; index.yml pure) + reader Get-SpecrewLensDiagramType (graceful) | FR-030 | US-V | 3 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/**, scripts/internal/lens-applicability.ps1 | planned | claude | — | — |
-| T002 | Emit helper Format-SpecrewWorkshopVisual: tiered inline (fenced) / temp-file (write under .specrew/workshop-visuals/ + clickable file:/// ref, FR-028 console form) / persisted (mermaid-inline; svg/html referenced); gitignore the temp dir (FR-033) | FR-031, FR-033 | US-V | 5 | Implementer | scripts/internal/lens-applicability.ps1, templates/** (.gitignore) | planned | claude | — | — |
-| T003 | Intake-reference helper (record a provided artifact path/image as a referenced input) + conduct-rule addition: per applicable lens, offer the catalog diagram + ask for an existing artifact; render via the tier policy | FR-032, FR-030 | US-V | 3 | Spec Steward | scripts/internal/lens-applicability.ps1, scripts/specrew-start.ps1 | planned | claude | — | — |
-| T004 | Tests (reproduce-first, SC-023 floor): catalog resolves diagram-type+render-form per lens (graceful on missing); emit helper inline/temp/persisted tiers (temp writes + returns file:/// ref; persisted mermaid-inline; svg/html referenced); intake-reference records the input. NOT a proof of diagram quality | SC-023, FR-030, FR-031 | US-V | 4 | Reviewer | tests/unit/** | planned | claude | — | — |
-| T005 | SC-022 runtime visual dogfood: a downstream run where the workshop renders ≥1 per-lens diagram from the catalog, surfaced per the tier policy (inline and/or clickable file:/// temp link), with a keeper persisted as inline mermaid. The acceptance gate (behavioral) | SC-022 | US-V | 2 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
+| T001 | Per-lens diagram catalog (diagram-vocabulary.json, sibling to applicability-map.json; index.yml pure) + reader Get-SpecrewLensDiagramType (graceful) | FR-030 | US-V | 3 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/**, scripts/internal/lens-applicability.ps1 | done | claude | 3 | pass |
+| T002 | Emit helper Format-SpecrewWorkshopVisual: tiered inline (fenced) / temp-file (write under .specrew/workshop-visuals/ + clickable file:/// ref, FR-028 console form) / persisted (mermaid-inline; svg/html referenced); gitignore the temp dir (FR-033) | FR-031, FR-033 | US-V | 5 | Implementer | scripts/internal/lens-applicability.ps1, templates/** (.gitignore) | done | claude | 5 | pass |
+| T003 | Intake-reference helper (record a provided artifact path/image as a referenced input) + conduct-rule addition: per applicable lens, offer the catalog diagram + ask for an existing artifact; render via the tier policy | FR-032, FR-030 | US-V | 3 | Spec Steward | scripts/internal/lens-applicability.ps1, scripts/specrew-start.ps1 | done | claude | 3 | pass |
+| T004 | Tests (reproduce-first, SC-023 floor): catalog resolves diagram-type+render-form per lens (graceful on missing); emit helper inline/temp/persisted tiers (temp writes + returns file:/// ref; persisted mermaid-inline; svg/html referenced); intake-reference records the input. NOT a proof of diagram quality | SC-023, FR-030, FR-031 | US-V | 4 | Reviewer | tests/unit/** | done | claude | 4 | pass |
+| T005 | SC-022 runtime visual dogfood: a downstream run where the workshop renders ≥1 per-lens diagram from the catalog, surfaced per the tier policy (inline and/or clickable file:/// temp link), with a keeper persisted as inline mermaid. The acceptance gate (behavioral) | SC-022 | US-V | 2 | Planner | specs/141-design-gate-runtime-hardening/** | done | claude | 2 | pass |
 
 ## Effort Model
 
