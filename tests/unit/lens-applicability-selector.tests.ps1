@@ -122,6 +122,7 @@ Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials $null -Area 'perf') -
 $wsAgenda = @(Get-SpecrewLensWorkshopAgenda -LensId 'architecture-core' -CatalogDir $catalogDir)
 Assert-True ($wsAgenda.Count -ge 3) "workshop agenda: architecture-core yields its decision-point prompts"
 Assert-True ((($wsAgenda) -join '|') -eq ((@(Get-SpecrewLensDecisionPoints -LensId 'architecture-core' -CatalogDir $catalogDir)) -join '|')) "workshop agenda IS the lens decision points (reuses the extractor; no parallel bank)"
+Assert-True ((($wsAgenda) -join ' ') -match '(?i)design method|decomposition style') "workshop agenda: architecture-core raises the design-method/decomposition-style discussion (A6/FR-035)"
 Assert-True (@(Get-SpecrewLensWorkshopAgenda -LensId 'no-such-lens' -CatalogDir $catalogDir).Count -eq 0) "workshop agenda: missing lens -> empty (graceful)"
 $wsRender = Format-SpecrewLensWorkshopAgenda -SelectedLenses @('architecture-core', 'data-storage') -CatalogDir $catalogDir
 Assert-True ($wsRender -match '## Workshop Agenda') "workshop agenda render: section heading"

@@ -352,5 +352,68 @@ Assert-True (Test-SpecrewLensWorkshopRecordPlaceholder -Value '<TBD>') 'SC-021 p
 Assert-True (-not (Test-SpecrewLensWorkshopRecordPlaceholder -Value 'use X')) 'SC-021 placeholder: a real value is not a placeholder'
 Write-Pass 'SC-021: per-lens workshop-record floor (presence-only, marker-gated, grandfather-safe)'
 
+# --- Iteration 9 T004/T005 (SC-025, Amendment A6): co-design-record floor ---
+# Marker-gated by `co_design` in lens-applicability.json + grandfather-safe; presence-only (the
+# collaboration QUALITY is SC-024's runtime dogfood, not this gate). Mirrors the SC-021 floor shape.
+$cdRoot = Join-Path $scratchRoot 'codesign\iterations\009'
+$null = New-Item -ItemType Directory -Path $cdRoot -Force
+$cdPath = Join-Path $cdRoot 'lens-applicability.json'
+$cdComplete = @'
+# X
+
+## Co-Design Record
+
+**Components and responsibilities (co-designed with the human):**
+
+- **WebApi**: hosts the UI and the BFF; owns no domain responsibility.
+- **JobManager**: owns the translation workflow; delegates to engines.
+
+**Flow (agreed):**
+
+```mermaid
+sequenceDiagram
+  User->>WebApi: upload
+  WebApi->>JobManager: enqueue
+```
+
+- **Human-agreed**: yes
+'@
+
+# (a) co_design marked + complete record -> PASS
+[System.IO.File]::WriteAllText($cdPath, '{"co_design":true,"selected":["architecture-core"]}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdComplete -IterationDirectory $cdRoot).Count -eq 0) 'SC-025: co_design marked + complete Co-Design Record -> PASS'
+
+# (b) co_design marked + missing section -> FAIL naming the section
+$cdNoSection = "# X`n`n## Problem Framing`n`nsomething useful`n"
+$cdE1 = @(Test-SpecrewDesignCoDesignRecord -Content $cdNoSection -IterationDirectory $cdRoot)
+Assert-True ($cdE1.Count -ge 1 -and (($cdE1 -join '|') -match 'Co-Design Record')) 'SC-025: co_design marked + missing Co-Design Record section -> FAIL naming it'
+
+# (c) co_design marked + section present but missing flow + missing agreed marker -> FAIL listing the gaps
+$cdPartial = @'
+# X
+
+## Co-Design Record
+
+**Components and responsibilities (co-designed with the human):**
+
+- **WebApi**: hosts the UI; owns no domain responsibility.
+'@
+$cdE2 = @(Test-SpecrewDesignCoDesignRecord -Content $cdPartial -IterationDirectory $cdRoot)
+Assert-True ($cdE2.Count -ge 1 -and (($cdE2 -join '|') -match 'flow') -and (($cdE2 -join '|') -match 'human-agreed')) 'SC-025: marked + incomplete record (no flow, no agreed marker) -> FAIL listing the gaps'
+
+# (d) NO co_design marker (pre-A6) -> no-op (grandfather: never retroactively fails i1-i8/140)
+[System.IO.File]::WriteAllText($cdPath, '{"selected":["architecture-core"]}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdNoSection -IterationDirectory $cdRoot).Count -eq 0) 'SC-025: no co_design marker (pre-A6) -> no-op (grandfather-safe)'
+
+# (e) explicit fr026_grandfathered exempts even when co_design is set
+[System.IO.File]::WriteAllText($cdPath, '{"co_design":true,"fr026_grandfathered":true,"selected":["architecture-core"]}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdNoSection -IterationDirectory $cdRoot).Count -eq 0) 'SC-025: explicit fr026_grandfathered exempts'
+
+# (f) no lens-applicability.json -> graceful no-op
+$cdNoJson = Join-Path $scratchRoot 'codesign-no-json'
+$null = New-Item -ItemType Directory -Path $cdNoJson -Force
+Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdNoSection -IterationDirectory $cdNoJson).Count -eq 0) 'SC-025: no lens-applicability.json -> no-op'
+Write-Pass 'SC-025: co-design-record floor (presence-only, marker-gated, grandfather-safe)'
+
 Write-Pass 'Design-analysis gate unit tests passed'
 exit 0

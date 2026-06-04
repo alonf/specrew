@@ -22,6 +22,10 @@ before planning locks one path.
 
 ## Design Decision Points
 
+- Which **design method / decomposition style** governs the structure (for example DDD bounded-contexts,
+  IDesign volatility-based, modular monolith, microservices, or layered)? Decide it explicitly with the
+  human — discuss the candidates and trade-offs, recommend a default where the architecture dial is low, and
+  record the choice as a binding constraint for the analysis and plan. Do not silently assume it.
 - What are the major building blocks and their responsibilities?
 - Which areas are volatile and should be isolated behind data, interfaces, or
   extension points?

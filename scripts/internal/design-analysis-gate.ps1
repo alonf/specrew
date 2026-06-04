@@ -401,6 +401,77 @@ function Test-SpecrewLensWorkshopRecords {
     return $errors.ToArray()
 }
 
+function Test-SpecrewDesignCoDesignRecord {
+    # SC-025 (Amendment A6): the deterministic, marker-gated FLOOR under the behavioral co-design session.
+    # When the iteration's recorded lens-applicability.json opts in via an explicit `co_design: true` marker,
+    # the design-analysis.md MUST carry a non-placeholder `## Co-Design Record` section with (a) a
+    # component-to-responsibility map, (b) at least one agreed flow, and (c) a truthy human-agreed marker.
+    # Enforces PRESENCE only — it does NOT, and cannot, assess whether the collaboration was genuine (that is
+    # SC-024's runtime dogfood). Marker-gated + grandfather-safe (the SC-021/FR-026 precedent): a pre-A6
+    # artifact carries no `co_design` marker and no-ops, so it is NEVER retroactively failed; an A6 artifact
+    # that sets the marker but omits the record CANNOT bypass the gate. `fr026_grandfathered` also exempts.
+    # Resolution mirrors FR-026 (iteration-level lens-applicability.json first, else feature-level). Returns a
+    # string[] of error messages (empty = OK / not applicable).
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][string]$IterationDirectory
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    $iterationArtifact = Join-Path $IterationDirectory 'lens-applicability.json'
+    $featureDirectory = Split-Path -Parent (Split-Path -Parent $IterationDirectory)
+    $featureArtifact = if (-not [string]::IsNullOrWhiteSpace($featureDirectory)) { Join-Path $featureDirectory 'lens-applicability.json' } else { $null }
+    $answersPath = if (Test-Path -LiteralPath $iterationArtifact -PathType Leaf) {
+        $iterationArtifact
+    }
+    elseif ($null -ne $featureArtifact -and (Test-Path -LiteralPath $featureArtifact -PathType Leaf)) {
+        $featureArtifact
+    }
+    else {
+        $null
+    }
+    if ($null -eq $answersPath) { return @() }
+
+    $doc = $null
+    try { $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return @() }
+    if ($null -eq $doc) { return @() }
+
+    if ($doc.PSObject.Properties['fr026_grandfathered'] -and [bool]$doc.fr026_grandfathered) { return @() }
+    # SC-025 enforces ONLY for A6 co-design-era artifacts (explicit marker). A pre-A6 artifact (no marker)
+    # no-ops, so it is never retroactively failed. An A6 artifact that sets the marker but omits the record
+    # CANNOT bypass the gate (the record is required below).
+    $isCoDesign = $doc.PSObject.Properties['co_design'] -and [bool]$doc.co_design
+    if (-not $isCoDesign) { return @() }
+
+    $section = Get-SpecrewDesignAnalysisSection -Content $Content -HeadingPatterns @('Co-?Design\s+Record')
+    if (-not $section.Found -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $section.Body)) {
+        $errors.Add("design-analysis.md is missing a populated '## Co-Design Record' section (SC-025): record the co-designed component-to-responsibility map, at least one agreed flow, and a human-agreed marker.") | Out-Null
+        return $errors.ToArray()
+    }
+
+    $body = $section.Body
+    $missing = New-Object System.Collections.Generic.List[string]
+
+    if ($body -notmatch '(?i)responsib') {
+        $missing.Add('a component-to-responsibility map') | Out-Null
+    }
+    if ($body -notmatch '(?is)```mermaid' -and $body -notmatch '(?im)\bflow\b') {
+        $missing.Add('at least one agreed flow (a mermaid flow/sequence or a labeled flow)') | Out-Null
+    }
+    $agreed = [regex]::Match($body, '(?im)^\s*[-*]?\s*\**\s*(?:human[- ]?agreed|human\s+agreement|agreed\s+by\s+(?:the\s+)?human)\**\s*[:\-]\s*(?<v>.+)$')
+    if (-not $agreed.Success -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $agreed.Groups['v'].Value) -or ($agreed.Groups['v'].Value -notmatch '(?i)\b(yes|true|confirmed|agreed|approved)\b')) {
+        $missing.Add('a truthy human-agreed marker (for example "Human-agreed: yes")') | Out-Null
+    }
+
+    if ($missing.Count -gt 0) {
+        $errors.Add(("'## Co-Design Record' is incomplete (SC-025): missing {0}." -f ($missing -join ', '))) | Out-Null
+    }
+
+    return $errors.ToArray()
+}
+
 function Test-SpecrewDesignAnalysisArtifact {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
@@ -522,6 +593,12 @@ function Test-SpecrewDesignAnalysisArtifact {
     $iterationDirectory = Split-Path -Parent $artifactPath
     foreach ($coverageError in @(Test-SpecrewDesignAnalysisLensCoverage -Content $content -IterationDirectory $iterationDirectory)) {
         $errors.Add($coverageError) | Out-Null
+    }
+    # SC-025 (Amendment A6): co-design-record floor under the behavioral co-design session. Marker-gated by
+    # `co_design` in the iteration's lens-applicability.json + grandfather-safe, so pre-A6 artifacts no-op;
+    # presence-only (collaboration quality is SC-024's runtime dogfood).
+    foreach ($coDesignError in @(Test-SpecrewDesignCoDesignRecord -Content $content -IterationDirectory $iterationDirectory)) {
+        $errors.Add($coDesignError) | Out-Null
     }
     # NOTE: the SC-021 per-lens workshop-record floor is enforced at the SPECIFY boundary
     # (Invoke-SpecrewSpecifyBoundaryLensGate) against the FEATURE-level workshop artifact, NOT here — the

@@ -1,12 +1,12 @@
 # Iteration State: 009
 
 **Schema**: v1
-**Last Completed Task**: (none yet — design recorded; build pending the before-implement go-ahead)
-**Tasks Remaining**: T001-T006
-**In Progress**: design-analysis recorded (Option B, decision 1beb17ff); authoring plan → before-implement → build
+**Last Completed Task**: T005 (SC-025 floor tests + the FR-035 agenda assertion; all three relevant suites green)
+**Tasks Remaining**: T006 (the SC-024 co-design dogfood — needs a maintainer downstream run)
+**In Progress**: T006 — the runtime co-design dogfood (behavioral acceptance, awaiting the maintainer)
 **Baseline Ref**: 0ca464ac
-**Updated**: 2026-06-05T09:00:00Z
-**Current Phase**: plan
+**Updated**: 2026-06-05T10:00:00Z
+**Current Phase**: implement (build T001-T005 done; awaiting the dogfood)
 **Iteration Status**: planning
 
 ## Execution Summary
