@@ -324,6 +324,47 @@ function Format-SpecrewLensWorkshopAgenda {
     return $sb.ToString().TrimEnd()
 }
 
+function Format-SpecrewLensWorkshopDecisions {
+    # Iteration 7 T004 (FR-009, Amendment A4): surface the RECORDED per-lens workshop decisions from a
+    # lens-applicability.json so the workshop output concretely flows into the design analysis and plan
+    # (not only the decision points). Reads the `workshop` records for the `selected` lenses. Graceful
+    # "None recorded" when absent. Pure + deterministic; no network/LLM; markdownlint-safe.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$ArtifactPath
+    )
+
+    $sb = [System.Text.StringBuilder]::new()
+    [void]$sb.AppendLine('## Lens Decisions (recorded in the workshop)')
+    [void]$sb.AppendLine('')
+
+    $doc = $null
+    if (-not [string]::IsNullOrWhiteSpace($ArtifactPath) -and (Test-Path -LiteralPath $ArtifactPath -PathType Leaf)) {
+        try { $doc = Get-Content -LiteralPath $ArtifactPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+        catch { $doc = $null }
+    }
+
+    $selected = @()
+    if ($null -ne $doc -and $doc.PSObject.Properties['selected']) {
+        $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+    $workshop = if ($null -ne $doc -and $doc.PSObject.Properties['workshop']) { $doc.workshop } else { $null }
+
+    if ($selected.Count -eq 0 -or $null -eq $workshop) {
+        [void]$sb.AppendLine('*None recorded* (no workshop decisions in the intake artifact).')
+        return $sb.ToString().TrimEnd()
+    }
+
+    foreach ($id in $selected) {
+        $rec = if ($workshop.PSObject.Properties[$id]) { $workshop.$id } else { $null }
+        $decision = if ($null -ne $rec -and $rec.PSObject.Properties['decision'] -and -not [string]::IsNullOrWhiteSpace([string]$rec.decision)) { [string]$rec.decision } else { '*not recorded*' }
+        $depth = if ($null -ne $rec -and $rec.PSObject.Properties['depth'] -and -not [string]::IsNullOrWhiteSpace([string]$rec.depth)) { [string]$rec.depth } else { 'unknown' }
+        [void]$sb.AppendLine(('- **{0}** (depth: {1}): {2}' -f $id, $depth, $decision))
+    }
+
+    return $sb.ToString().TrimEnd()
+}
+
 function Format-SpecrewApplicableLensesSection {
     # Iteration 4 T004 + Iteration 5 T002 (FR-009): render the "## Applicable Lenses" markdown
     # section from the selector. Read-only; graceful degradation to "none available" when the map or
