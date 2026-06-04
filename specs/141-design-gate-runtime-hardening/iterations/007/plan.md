@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: planning
 **Capacity**: 19/20 story_points
 **Started**: 2026-06-04
 
@@ -79,7 +79,8 @@ parallel question bank; `index.yml` stays pure. Carries FR-009 (the decision-poi
 
 - Iteration 7 scope: FR-025 (workshop conduct), FR-009 (decision-point flow, carried from i006), FR-026/SC-021 (per-lens decision floor), SC-020 (runtime dogfood).
 - Design-analysis: **completed** — gate passed; maintainer-selected **Option B**; decision commit `57974536`, draft `ad7bea7e`. Authoritative plan input (FR-007).
-- FR mapping: FR-025→T001/T003; FR-009→T001/T004; FR-026/SC-021→T002/T005; SC-020→T006. Run specrew-traceability-check after the task table.
+- FR mapping: FR-025→T001/T003; FR-009→T001/T004/T005; FR-026→T002/T005; SC-021→T002/T005; SC-020→T006.
+- **Traceability check (2026-06-04): PASS** — 100% coverage; every in-scope requirement (FR-025, FR-009, FR-026, SC-020, SC-021) maps to ≥1 task; no orphan tasks; every task carries a valid requirement ref + owner + effort + story (maintainer instruction: traceability confirmed before tasks).
 
 ## Maintainer instructions (binding acceptance criteria — from the design-analysis verdict)
 
