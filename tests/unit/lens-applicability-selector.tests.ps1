@@ -143,6 +143,41 @@ try {
 }
 finally { Remove-Item -LiteralPath $wsTmp -Force -ErrorAction SilentlyContinue }
 
+# Iteration 8 T004 (FR-030/FR-031/FR-032, Amendment A5) — the SC-023 deterministic floor for the visuals.
+# Catalog reader (Get-SpecrewLensDiagramType).
+$dvSec = Get-SpecrewLensDiagramType -LensId 'security-compliance' -CatalogDir $catalogDir
+Assert-True ($null -ne $dvSec -and $dvSec.RenderForm -eq 'mermaid' -and $dvSec.DiagramType -match 'attack surface') "diagram catalog: security-compliance -> trust-boundary/attack-surface (mermaid)"
+$dvData = Get-SpecrewLensDiagramType -LensId 'data-storage' -CatalogDir $catalogDir
+Assert-True ($null -ne $dvData -and $dvData.DiagramType -match 'ERD' -and $dvData.DiagramType -match 'JSON-path') "diagram catalog: data-storage -> ERD + NoSQL doc-relations by JSON-path"
+$dvFlows = Get-SpecrewLensDiagramType -LensId 'flows' -CatalogDir $catalogDir
+Assert-True ($null -ne $dvFlows -and $dvFlows.RenderForm -eq 'mermaid') "diagram catalog: cross-cutting 'flows' resolves (sequence)"
+Assert-True ($null -eq (Get-SpecrewLensDiagramType -LensId 'no-such-lens' -CatalogDir $catalogDir)) "diagram catalog: missing lens -> null (graceful)"
+Assert-True ($null -eq (Get-SpecrewLensDiagramType -LensId 'security-compliance' -CatalogDir (Join-Path $repoRoot 'does-not-exist'))) "diagram catalog: missing catalog dir -> null (graceful)"
+
+# Emit helper (Format-SpecrewWorkshopVisual) — tiered surface.
+$inl = Format-SpecrewWorkshopVisual -Content 'flowchart LR' -RenderForm mermaid -Tier inline
+Assert-True (($inl -match 'mermaid') -and ($inl -match 'flowchart LR') -and ($inl -ne 'flowchart LR')) "emit inline: fenced mermaid block carrying the content"
+$tbl = Format-SpecrewWorkshopVisual -Content '| a | b |' -RenderForm table -Tier inline
+Assert-True ($tbl -eq '| a | b |') "emit inline: a table is emitted raw (no fence)"
+$wvTmp = Join-Path ([System.IO.Path]::GetTempPath()) ("wv-{0}/diag.mmd" -f ([System.Guid]::NewGuid().ToString('N')))
+try {
+    $tref = Format-SpecrewWorkshopVisual -Content 'flowchart LR' -RenderForm mermaid -Tier temp -DestinationPath $wvTmp
+    Assert-True ((Test-Path -LiteralPath $wvTmp) -and ($tref -like 'file:///*')) "emit temp: writes the file + returns a clickable file:/// ref (FR-028 console form)"
+    $pmer = Format-SpecrewWorkshopVisual -Content 'flowchart LR' -RenderForm mermaid -Tier persisted
+    Assert-True ($pmer -match 'mermaid') "emit persisted: a mermaid keeper is inline (versioned text)"
+    $svgPath = Join-Path ([System.IO.Path]::GetTempPath()) ("wv-{0}/d.svg" -f ([System.Guid]::NewGuid().ToString('N')))
+    $psvg = Format-SpecrewWorkshopVisual -Content '<svg/>' -RenderForm svg -Tier persisted -DestinationPath $svgPath
+    Assert-True ((Test-Path -LiteralPath $svgPath) -and ($psvg -match '^\[diagram\]\(')) "emit persisted: svg/html writes a referenced file + returns a markdown link (FR-028 persisted form)"
+    $threw = $false
+    try { $null = Format-SpecrewWorkshopVisual -Content 'x' -RenderForm mermaid -Tier temp } catch { $threw = $true }
+    Assert-True $threw "emit temp: missing -DestinationPath throws clearly (no silent no-op)"
+}
+finally { Remove-Item -LiteralPath (Split-Path -Parent $wvTmp) -Recurse -Force -ErrorAction SilentlyContinue }
+
+# Intake-reference helper (Format-SpecrewVisualIntakeReference).
+Assert-True ((Format-SpecrewVisualIntakeReference -ArtifactPath 'C:\x\fig.png' -Note 'sibling') -match '^file:///C:/x/fig.png — sibling') "intake-reference: returns a clickable file:/// ref + note"
+Assert-True ($null -eq (Format-SpecrewVisualIntakeReference -ArtifactPath '')) "intake-reference: empty path -> null (graceful)"
+
 Write-Host ""
 Write-Host "All lens-applicability selector tests passed." -ForegroundColor Green
 exit 0

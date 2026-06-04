@@ -365,6 +365,104 @@ function Format-SpecrewLensWorkshopDecisions {
     return $sb.ToString().TrimEnd()
 }
 
+function Get-SpecrewLensDiagramType {
+    # Iteration 8 T001 (FR-030, Amendment A5): read the per-lens diagram vocabulary
+    # (diagram-vocabulary.json, a sibling to applicability-map.json) and return the diagram type + default
+    # render form for a lens, so a lens's workshop discussion can be made concrete with its native diagram.
+    # Graceful $null when the catalog dir, the file, or the lens entry is absent. Pure + deterministic; no
+    # network/LLM. index.yml stays pure (the vocabulary is a decoupled sibling).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$LensId,
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$CatalogDir
+    )
+
+    if ([string]::IsNullOrWhiteSpace($LensId) -or [string]::IsNullOrWhiteSpace($CatalogDir)) { return $null }
+    $path = Join-Path $CatalogDir 'diagram-vocabulary.json'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+
+    $doc = $null
+    try { $doc = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return $null }
+    if ($null -eq $doc) { return $null }
+
+    $key = $LensId.Trim()
+    foreach ($group in @('lenses', 'cross_cutting')) {
+        if ($doc.PSObject.Properties[$group] -and $doc.$group.PSObject.Properties[$key]) {
+            $entry = $doc.$group.$key
+            $dt = if ($entry.PSObject.Properties['diagram_type']) { [string]$entry.diagram_type } else { $null }
+            $rf = if ($entry.PSObject.Properties['render_form']) { [string]$entry.render_form } else { $null }
+            return [pscustomobject]@{ LensId = $key; DiagramType = $dt; RenderForm = $rf }
+        }
+    }
+    return $null
+}
+
+function Format-SpecrewWorkshopVisual {
+    # Iteration 8 T002 (FR-031/FR-033, Amendment A5): the deterministic emit half of the visuals whiteboard.
+    # The agent authors the diagram CONTENT (behavioral); THIS surfaces it in one of three tiers:
+    #   inline    -> a fenced block for quick console display (mermaid/text fence; a table is emitted raw)
+    #   temp      -> writes Content to DestinationPath (under .specrew/workshop-visuals/) and returns a
+    #                clickable file:/// reference (FR-028 console form — forward slashes)
+    #   persisted -> a keeper: mermaid/ascii/table return the inline block to embed in the design doc;
+    #                svg/html are written to DestinationPath and returned as a markdown link (FR-028 persisted)
+    # Pure for inline; writes a file for temp / persisted-svg-html. LLM/network-free. Throws CLEARLY when a
+    # destination is required but absent (no silent no-op).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$Content,
+        [Parameter(Mandatory = $true)][ValidateSet('mermaid', 'ascii', 'table', 'svg', 'html')][string]$RenderForm,
+        [Parameter(Mandatory = $true)][ValidateSet('inline', 'temp', 'persisted')][string]$Tier,
+        [AllowNull()][string]$DestinationPath
+    )
+
+    $fence = {
+        param($c, $rf)
+        switch ($rf) {
+            'mermaid' { "``````mermaid`n$c`n``````" }
+            'table' { $c }
+            default { "``````text`n$c`n``````" }
+        }
+    }
+
+    if ($Tier -eq 'inline') { return (& $fence $Content $RenderForm) }
+
+    if ($Tier -eq 'persisted') {
+        if ($RenderForm -in @('svg', 'html')) {
+            if ([string]::IsNullOrWhiteSpace($DestinationPath)) { throw 'Format-SpecrewWorkshopVisual: persisted svg/html requires -DestinationPath.' }
+            $pdir = Split-Path -Parent $DestinationPath
+            if (-not [string]::IsNullOrWhiteSpace($pdir) -and -not (Test-Path -LiteralPath $pdir -PathType Container)) { $null = New-Item -ItemType Directory -Path $pdir -Force }
+            [System.IO.File]::WriteAllText($DestinationPath, $Content, [System.Text.UTF8Encoding]::new($false))
+            return ('[diagram]({0})' -f ($DestinationPath -replace '\\', '/'))
+        }
+        return (& $fence $Content $RenderForm)
+    }
+
+    # temp tier
+    if ([string]::IsNullOrWhiteSpace($DestinationPath)) { throw 'Format-SpecrewWorkshopVisual: temp tier requires -DestinationPath (under .specrew/workshop-visuals/).' }
+    $tdir = Split-Path -Parent $DestinationPath
+    if (-not [string]::IsNullOrWhiteSpace($tdir) -and -not (Test-Path -LiteralPath $tdir -PathType Container)) { $null = New-Item -ItemType Directory -Path $tdir -Force }
+    [System.IO.File]::WriteAllText($DestinationPath, $Content, [System.Text.UTF8Encoding]::new($false))
+    return ('file:///{0}' -f ($DestinationPath -replace '\\', '/'))
+}
+
+function Format-SpecrewVisualIntakeReference {
+    # Iteration 8 T003 (FR-032, Amendment A5): the bring-your-own half of the bidirectional intake. Records a
+    # human-provided artifact (an existing diagram, doc, Figma export, or whiteboard photo) as a referenced
+    # design input — returns a clickable file:/// reference for the path (FR-028 console form), with an
+    # optional note. Accept-a-path/image only (no fetch/API). Graceful $null when the path is empty.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$ArtifactPath,
+        [AllowNull()][AllowEmptyString()][string]$Note
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ArtifactPath)) { return $null }
+    $ref = 'file:///{0}' -f ($ArtifactPath.Trim() -replace '\\', '/')
+    if (-not [string]::IsNullOrWhiteSpace($Note)) { return ('{0} — {1}' -f $ref, $Note.Trim()) }
+    return $ref
+}
+
 function Format-SpecrewApplicableLensesSection {
     # Iteration 4 T004 + Iteration 5 T002 (FR-009): render the "## Applicable Lenses" markdown
     # section from the selector. Read-only; graceful degradation to "none available" when the map or
