@@ -1,0 +1,41 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "009"
+updated_at: "2026-06-05T09:00:00Z"
+tasks:
+  T001:
+    title: "Conduct: Rule 9a phase-framing + new Rule 9c collaborative co-design at design-analysis (co-build component/responsibility map + >=1 flow WITH the human, iterate to agreement, BEFORE options; expertise-adapted). FR-034/FR-036. The core behavioral capability."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T002:
+    title: "Conduct: Rule 9b surfacing strengthened MAY->MUST in-band (inline render and/or clickable file:/// link, never disk-only); per-lens diagram EXPECTED for structural + UI lenses. FR-037 (folds i8 #3/#5)."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T003:
+    title: "Lens data: add a design-method/decomposition-style decision point to architecture-core (DDD/IDesign/modular-monolith/microservices/layered) so the agenda generator raises it as a discussion; verify Get-SpecrewLensWorkshopAgenda surfaces it. FR-035."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T004:
+    title: "Gate floor: Test-SpecrewDesignCoDesignRecord (marker-gated by co_design in lens-applicability.json; grandfather-safe) requires a non-placeholder ## Co-Design Record (component->responsibility map + >=1 agreed flow + human-agreed marker); wire into Test-SpecrewDesignAnalysisArtifact; reuse SC-021 placeholder helper + FR-026 resolution. SC-025/FR-036."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T005:
+    title: "Tests (reproduce-first, SC-025 floor): co_design marked+complete -> PASS; marked+placeholder/missing -> FAIL naming the gap; unmarked -> no-op (grandfather), real feature-vs-iteration layout; agenda-includes-design-method assertion. NOT co-design quality. SC-025/FR-035."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T006:
+    title: "SC-024 runtime co-design dogfood: downstream run where design-analysis is conducted as co-design (human shapes component/responsibility map + a flow before options; design method discussed) and per-lens diagrams surface in-band (re-confirming SC-022). Behavioral acceptance gate (needs maintainer)."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: "Needs a maintainer downstream run (the co-design dogfood) — the behavioral acceptance evidence (SC-024); unit tests (T005) cover the deterministic floor only."
