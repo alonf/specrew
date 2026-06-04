@@ -103,7 +103,7 @@ The downstream run surfaced three things:
 | T006 | TG-006 | pass | Formal test set; validator PASS 7/7. |
 | T007 | TG-006, dogfood | pass (its purpose) | The human-experience dogfood RAN and surfaced the workshop gap + the two side findings — exactly what 005's improvement action required. Docs delivered (`54caa4bb`). |
 
-*(T003 / FR-009 is not in this table — it was not delivered this iteration; it is `deferred` to Iteration 7, classified in the Gap Ledger below.)*
+*(T003 / FR-009 is not a 006 task — it was carried to Iteration 7 (subsumed by the A4 workshop); recorded as deferred in the Gap Ledger + the canonical defer entry in `.squad\decisions.md`.)*
 
 ## TG-006 classification (Rule 39)
 
@@ -117,8 +117,8 @@ The downstream run surfaced three things:
 
 ## Gap Ledger
 
-- **FR-025 lens-intake interaction model (workshop):** the intake is an interactive questionnaire, not the per-lens workshop; engine retained, not an Iteration-6 code defect. **deferred** to Amendment A4 / Iteration 7 — canonical defer entry + maintainer approval in file:///C:/Dev/Specrew-design-analysis/.squad/decisions.md ("Feature 141 Iteration 006 Gap Ledger Deferrals").
-- **T003 / FR-009 per-phase decision-point flow:** only the high-level Rule 9a sentence shipped; subsumed by the A4 workshop. **deferred** to Iteration 7 — same canonical defer entry in file:///C:/Dev/Specrew-design-analysis/.squad/decisions.md.
+- **FR-025 lens-intake interaction model (workshop):** the intake is an interactive questionnaire, not the per-lens workshop; engine retained, not an Iteration-6 code defect. **deferred** to Amendment A4 / Iteration 7 — canonical defer entry (approving human: Alon Fliess) in `.squad\decisions.md` (decision `f141-i006-defer-fr025-workshop`).
+- **T003 / FR-009 per-phase decision-point flow:** only the high-level Rule 9a sentence shipped; subsumed by the A4 workshop. **deferred** to Iteration 7 — canonical defer entry in `.squad\decisions.md` (decision `f141-i006-defer-fr009-flow`).
 - **Delivered deterministic surfaces — no FR/SC gaps:** FR-025(depth)/FR-026/FR-027/FR-028/FR-029 implemented, enforced, observable, and tested (validator PASS 7/7). **fixed-now.**
 
 ## Follow-ups (not iteration-006 gaps)

@@ -15,12 +15,9 @@ tasks:
     started_at: "2026-06-04T08:12:00Z"
     completed_at: "2026-06-04T08:35:00Z"
     blocked_reason: ""
-  T003:
-    title: "Lens-informed flow: selected lenses' decision points inform specify/clarify/plan (consume the early JSON). PARTIAL: the high-level guidance shipped in Rule 9a (T002, c349b6a5) — 'the selected lenses then inform clarify, the design analysis, and the plan' — and the iter-5 enriched render surfaces decision points. The DISCRETE per-phase decision-point flow + a dedicated test were not completed. Its full intent (per-lens decision points driving requirements/design/plan) is SUBSUMED by the A4 per-lens workshop -> deferred to Iteration 7."
-    status: "deferred"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: "Subsumed by the Amendment A4 per-lens workshop (Iteration 7); only the high-level flow sentence shipped in Rule 9a. Deferred, not dropped."
+  # T003 (FR-009 decision-point flow) carried to Iteration 7 — subsumed by the A4 per-lens workshop;
+  # only the high-level Rule 9a flow sentence shipped in i006. Recorded as deferred in review.md Gap
+  # Ledger + the canonical defer entry in .squad/decisions.md (f141-i006-defer-fr009-flow).
   T004:
     title: "FR-028 file-reference render helper (Format-SpecrewFileReference: console file:/// vs persisted markdown) + handoff bare-path fix (RRT/Bug1 + FR/SC no longer flagged; real paths still are). Verified; 3 passing handoff/interaction suites still pass."
     status: "done"

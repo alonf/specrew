@@ -23900,25 +23900,32 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 
 ---
 
-### Reviewer: Feature 141 Iteration 006 Gap Ledger Deferrals (Canonical Classification)
+## 2026-06-04 — Defer: Feature 141 Iteration 006 FR-025 lens-intake workshop re-scope
 
-- **Decision ID**: f141-i006-gap-ledger-deferrals
-- **Type**: deferred-scope ledger for review-signoff gap classification
-- **Feature**: 141-design-gate-runtime-hardening
-- **Iteration**: 006
-- **Boundary**: review-signoff / iteration-closeout
-- **Authority**: Alon Fliess (maintainer; downstream-dogfood directive to redesign the lens intake as a per-lens workshop — Amendment A4)
+- **Decision ID**: f141-i006-defer-fr025-workshop
+- **Type**: defer
+- **Boundary**: review-signoff
+- **Affected Requirement**: FR-025
+- **Affected Iteration**: specs\141-design-gate-runtime-hardening\iterations\006
+- **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-06-04
+- **Next Action**: Implement the per-lens facilitated design workshop in Iteration 7 (Amendment A4); the Iteration 4-6 engine (selector, dial→depth, specify-boundary gate, FR-026 resolution) is retained beneath it.
+- **Authorization Text**:
+  > The lenses intake is wrong. What we need is the agent raises questions until all related questions are collected from the user and when the user says we can move on, we do it to the next lens. The AI is the workshop coordinator, but the human opinion and agreement are important. Container decision: Continue 141 (Amendment A4).
 
-#### Deferred Scope Ledger (specs/141-design-gate-runtime-hardening/iterations/006)
+Iteration 6 delivered the deterministic interactive intake; the per-lens workshop *conduct* (behavioral/prompt, runtime-dogfood-validated — the FR-026 gate PASSES a valid-but-shallow artifact) is re-scoped forward, not dropped.
 
-- **Deferred**: FR-025 lens-intake interaction model — the per-lens facilitated design workshop (AI infers applicability + per-lens discussion until the human says "move on") is re-scoped to Amendment A4 / Iteration 7. Iteration 6 delivered the deterministic interactive intake; the workshop *conduct* is the re-scope.
-- **Deferred**: T003 / FR-009 per-phase decision-point flow — only the high-level Rule 9a flow sentence shipped; the discrete per-phase flow is subsumed by the A4 workshop and folds forward to Iteration 7.
+## 2026-06-04 — Defer: Feature 141 Iteration 006 FR-009 decision-point flow
 
-**Deferral rationale**: A second maintainer downstream `specrew start --host claude` dogfood (the human-experience test Iteration 5's retro required) showed the delivered intake is an interactive *questionnaire*, not the intended per-lens *workshop*. The deterministic engine (selector, dial→depth helper, enforced specify-boundary gate, FR-026 resolution, FR-028/FR-029) is sound and retained; the workshop conduct is a behavioral/prompt capability the FR-026 coverage gate cannot enforce (a structurally valid `lens-applicability.json` PASSES while the behavior is rejected), so it is re-scoped to Iteration 7 under Amendment A4 and validated by a runtime dogfood. T003's per-phase decision-point flow is exactly what the workshop implements, so it folds forward rather than being rushed in Iteration 6. Neither is dropped.
+- **Decision ID**: f141-i006-defer-fr009-flow
+- **Type**: defer
+- **Boundary**: review-signoff
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\141-design-gate-runtime-hardening\iterations\006
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-04
+- **Next Action**: T003's per-phase decision-point flow is subsumed by the Iteration 7 workshop (the workshop IS the decision-point flow); only the high-level Rule 9a sentence shipped in Iteration 6.
+- **Authorization Text**:
+  > Maintainer-approved as part of the Amendment A4 re-scope and the "Continue 141" container decision (2026-06-04). T003 folds forward to Iteration 7.
 
-#### Approval Evidence
-
-- **Approving authority**: Alon Fliess
-- **Approval context**: Maintainer directive after the second downstream dogfood: "the lenses intake is wrong … what we need is the agent raises questions until all related questions are collected from the user and when the user says we can move on, we do it to the next lens … the AI is the workshop coordinator, but the human opinion and agreement are important." Container decision: "Continue 141 (Amendment A4)."
-- **Recorded in**: spec.md Amendment A4 (commit a50d5413); iteration-006 closeout (commit dccb80ae); review.md / retro.md.
+Recorded in: spec.md Amendment A4 (commit a50d5413); iteration-006 closeout (commit dccb80ae); review.md / retro.md.
