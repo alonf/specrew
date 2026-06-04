@@ -105,7 +105,7 @@ per_phase: { p0: pass, p1: pass, p2: pass, p3: pass, p4: pass, p5: pass, p6: pas
 
 ## Gap Ledger
 
-- **No FR/SC gaps in delivered scope:** FR-025 (conduct, dogfood-validated), FR-009, FR-026/SC-021 (floor, fixed + tested), SC-020 (dogfood ran) all delivered and verified. The SC-021 mis-fire was **fixed this iteration** (`a0b78cbc`), not deferred. **fixed-now.**
+- **No FR/SC gaps in delivered scope:** FR-025 (conduct, dogfood-validated), FR-009, FR-026/SC-021 (floor, fixed + tested), SC-020 (dogfood ran) all delivered and verified. The SC-021 mis-fire was **fixed this iteration** (`a0b78cbc`) — resolved in scope, not carried forward. **fixed-now.**
 
 ## Follow-ups (not iteration-7 gaps)
 
