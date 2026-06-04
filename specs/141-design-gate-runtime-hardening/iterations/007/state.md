@@ -3,10 +3,10 @@
 **Schema**: v1
 **Last Completed Task**: (none yet — plan authored; T001-T006 pending)
 **Tasks Remaining**: T001-T006
-**In Progress**: plan authored (Option B); next stop is plan → tasks (then before-implement). No tasks executing yet.
+**In Progress**: before-implement stop — tasks ledger + hardening gate authored; awaiting the implementation go-ahead. No tasks executing yet.
 **Baseline Ref**: 57974536
-**Updated**: 2026-06-04T11:10:00Z
-**Current Phase**: plan
+**Updated**: 2026-06-04T11:25:00Z
+**Current Phase**: before-implement
 **Iteration Status**: planning
 
 ## Execution Summary
