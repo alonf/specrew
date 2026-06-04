@@ -615,9 +615,13 @@ than deferring to another feature.
   human's "move on". The conduct is behavioral; it is validated by a runtime dogfood, not a unit test.
   (Added 2026-06-04 — Amendment A4; FR-025.)
 - **SC-021**: For each applicable lens, the recorded intake artifact carries a non-placeholder per-lens
-  design decision/agreement entry — the deterministic, gate-checkable floor under the behavioral
-  workshop; a missing or placeholder entry for a selected lens fails the coverage gate (FR-026).
-  (Added 2026-06-04 — Amendment A4; FR-025/FR-026.)
+  entry capturing: (a) the **generated discussion agenda** (the questions raised, from the lens decision
+  points), (b) a **human decision/agreement summary**, (c) the **question depth used**, and (d) an
+  explicit **"move on"/agreement marker**. This is the deterministic, gate-checkable floor under the
+  behavioral workshop: the gate enforces the non-placeholder **presence** of these fields per selected
+  lens — it does NOT, and cannot, assess their quality (that is SC-020's runtime dogfood). A missing or
+  placeholder entry for a selected lens fails the coverage gate (FR-026). (Added 2026-06-04 — Amendment
+  A4; FR-025/FR-026.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.

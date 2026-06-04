@@ -3,7 +3,7 @@
 **Feature**: 141-design-gate-runtime-hardening
 **Iteration**: 007 (lens intake becomes a per-lens facilitated design workshop — FR-025/FR-009, Amendment A4)
 **Date**: 2026-06-04
-**Spec**: file:///C:/Dev/Specrew-design-analysis/specs/141-design-gate-runtime-hardening/spec.md
+**Spec**: [spec.md](../../spec.md)
 **Builds on**: Iterations 4-6 (the deterministic selector, sibling `applicability-map.json`, decision-point extractor `Get-SpecrewLensDecisionPoints`, the FR-026 coverage gate, the enforced specify-boundary lens gate, and the dial→depth helper — all retained as the engine beneath the workshop).
 
 ## Problem Framing
@@ -137,9 +137,14 @@ The honest scope note carried into the plan: **conduct quality (SC-020) is behav
 
 ## Human Decision
 
-- **Decision verdict**: PENDING — awaiting the maintainer's architecture verdict at the design-analysis stop.
-- **Chosen option**: (pending)
-- **Reason**: (pending)
-- **Modifications**: (pending)
-- **Design-analysis draft commit**: (this draft; the populated decision will be recorded in a distinct follow-up commit per the decision-commit two-step)
-- **Decision recorded in commit**: (pending)
+- **Decision verdict**: approved for plan with Option B
+- **Chosen option**: Option B (prompt rule for conduct + discussable-prompt generator from the decision points + thin per-lens-decision gate)
+- **Reason**: Prompt-driven workshop conduct plus deterministic support where it actually helps — agenda generated from the lens decision points, and a thin SC-021 gate requiring a non-placeholder per-lens decision/agreement record. Option A is too weak (likely repeats the questionnaire failure); Option C is overbuilt and drifts into deferred Proposal 156 scope.
+- **Modifications (maintainer instructions — binding pre-plan acceptance criteria)**:
+  1. **006 closeout clean before planning** — SATISFIED: validator PASS for iteration 006 (hard=0/medium=0); T003 carried to this iteration; canonical defer entries recorded. Planning is authorized.
+  2. **Boundary packet shape** — boundary stops MUST be presented and recorded as the canonical six-section human re-entry packet (Rule 46), not ad-hoc prose. The before-implement stop will use it.
+  3. **SC-021 precise** — the per-lens record captures the generated agenda, a human decision/agreement summary, the depth used, and an explicit "move on"/agreement marker; the gate enforces non-placeholder PRESENCE only, never claims quality. (Spec SC-021 updated.)
+  4. **Runtime dogfood is mandatory acceptance evidence** — unit tests cover the generator/schema/gate; review MUST require a real downstream run where the Crew facilitates the workshop lens by lens (SC-020). Not acceptable on unit tests alone.
+  5. **Dogfood FR-028** — persisted .md artifacts use markdown links; console packets use visible file:/// URLs. (This design-analysis reconciled to markdown links; plan + review hold the line.)
+- **Design-analysis draft commit**: `ad7bea7e`
+- **Decision recorded in commit**: `__DECISION_COMMIT__`
