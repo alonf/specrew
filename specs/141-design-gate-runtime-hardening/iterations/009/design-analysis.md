@@ -173,5 +173,5 @@ A5's visuals were — the floor (SC-025) is the anti-omission backstop, not a qu
   shape the maintainer has accepted across iterations 7 and 8; no modifications. The collaboration-quality
   acceptance is the iteration-9 runtime dogfood (SC-024), which the maintainer runs downstream.
 - **Decision date**: 2026-06-05
-- **Design-analysis draft commit**: `__DRAFT_COMMIT__`
+- **Design-analysis draft commit**: `abfe785e`
 - **Decision recorded in commit**: `__DECISION_COMMIT__`
