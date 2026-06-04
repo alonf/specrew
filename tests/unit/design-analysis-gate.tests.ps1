@@ -415,5 +415,49 @@ $null = New-Item -ItemType Directory -Path $cdNoJson -Force
 Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdNoSection -IterationDirectory $cdNoJson).Count -eq 0) 'SC-025: no lens-applicability.json -> no-op'
 Write-Pass 'SC-025: co-design-record floor (presence-only, marker-gated, grandfather-safe)'
 
+# SC-025 INTEGRATION (the i7 wiring lesson, applied to A6): prove the floor fires THROUGH the real gate
+# entry point Test-SpecrewDesignAnalysisArtifact — not just in isolation. The full-suite validator never
+# exercised this path because iteration 9's own lens-applicability.json carries no `co_design` marker, so
+# the floor no-ops on the only artifact in the run; and the T006 dogfood cannot catch a fail-open floor
+# (a genuine co-design HAS the record, so the gate passes whether the floor is live or dead). Only the
+# negative path through the wired-in gate proves the wiring. `selected:[]` keeps FR-026 a no-op so the
+# co-design floor is the sole discriminator.
+$cdIntFail = Join-Path $scratchRoot 'codesign-integration-fail'
+New-DesignAnalysisFixtureProject -ProjectRoot $cdIntFail
+$cdIntFailIterDir = Split-Path -Parent (Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $cdIntFail -FeatureRef '140-design-analysis-gate' -IterationNumber '001')
+[System.IO.File]::WriteAllText((Join-Path $cdIntFailIterDir 'lens-applicability.json'), '{"schema":"v1","co_design":true,"selected":[]}', [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $cdIntFail -FeatureRef '140-design-analysis-gate' -IterationNumber '001'), (Get-ValidDesignAnalysisFixture), [System.Text.UTF8Encoding]::new($false))
+$cdIntFailResult = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $cdIntFail -FeatureRef '140-design-analysis-gate' -IterationNumber '001'
+Assert-True (-not $cdIntFailResult.Valid) 'SC-025 integration: co_design marker + no Co-Design Record makes the FULL gate (Test-SpecrewDesignAnalysisArtifact) FAIL -> the wiring fires, not a silent no-op'
+Assert-Match -Text ($cdIntFailResult.Errors -join "`n") -Pattern 'Co-Design Record' 'SC-025 integration: the full-gate failure names the missing Co-Design Record'
+
+$cdIntPass = Join-Path $scratchRoot 'codesign-integration-pass'
+New-DesignAnalysisFixtureProject -ProjectRoot $cdIntPass
+$cdIntPassIterDir = Split-Path -Parent (Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $cdIntPass -FeatureRef '140-design-analysis-gate' -IterationNumber '001')
+[System.IO.File]::WriteAllText((Join-Path $cdIntPassIterDir 'lens-applicability.json'), '{"schema":"v1","co_design":true,"selected":[]}', [System.Text.UTF8Encoding]::new($false))
+$cdRecord = @'
+
+
+## Co-Design Record
+
+**Components and responsibilities (co-designed with the human):**
+
+- **Helper**: validates the artifact; owns no boundary state.
+- **Sync**: records boundary state; consumes the helper.
+
+**Flow (agreed):**
+
+```mermaid
+flowchart LR
+  Artifact --> Helper --> Sync
+```
+
+- **Human-agreed**: yes
+'@
+[System.IO.File]::WriteAllText((Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $cdIntPass -FeatureRef '140-design-analysis-gate' -IterationNumber '001'), ((Get-ValidDesignAnalysisFixture) + $cdRecord), [System.Text.UTF8Encoding]::new($false))
+$cdIntPassResult = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $cdIntPass -FeatureRef '140-design-analysis-gate' -IterationNumber '001'
+Assert-True $cdIntPassResult.Valid ("SC-025 integration: co_design marker + a complete Co-Design Record passes the FULL gate (valid path intact): {0}" -f ($cdIntPassResult.Errors -join '; '))
+Write-Pass 'SC-025 integration: the co-design floor fires through Test-SpecrewDesignAnalysisArtifact (wiring proven on the negative path; valid path intact)'
+
 Write-Pass 'Design-analysis gate unit tests passed'
 exit 0
