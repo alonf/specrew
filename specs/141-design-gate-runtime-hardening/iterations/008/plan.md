@@ -47,6 +47,7 @@ unit-tested floor.
 | Effort Unit | story_points | |
 | Capacity per Iteration | 20 | |
 | Iteration Bounding | scope | |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
 | Overcommit Threshold | 1.0 | 17/20. |
 | Defer Strategy | manual | |
 | Calibration Enabled | true | |
