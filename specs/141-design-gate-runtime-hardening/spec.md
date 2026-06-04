@@ -276,7 +276,7 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 - **FR-008**: Specrew MUST build on the existing Feature 140 design-analysis-gate
   helper and plan-boundary enforcement rather than rewriting them.
 
-#### Lens catalog + applicability selection (Iterations 4-7; amended 2026-06-04 — Amendments A1, A2, A3, A4)
+#### Lens catalog + applicability selection (Iterations 4-8; amended 2026-06-04 — Amendments A1, A2, A3, A4, A5)
 
 - **FR-009**: The repo-local design-lens knowledge (`extensions/specrew-speckit/knowledge/design-lenses/`)
   MUST inform the lifecycle, not merely a single design-analysis section: for each selected lens, its
@@ -408,6 +408,41 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 > agreement are important… according to the human level the agent can explain more or less about each
 > lens."
 
+#### Workshop visuals — per-lens diagram vocabulary (Iteration 8 — Amendment A5)
+
+> **Amendment A5 (2026-06-04, maintainer-directed via a per-lens workshop — the Iteration 7 capability
+> dogfooded on Feature 141 itself):** the lens workshop and design discussions gain a **visual
+> whiteboard**. The decisive reframe from the workshop: visuals are a **per-lens diagram vocabulary** —
+> each design lens gets its native diagram, making that lens's discussion concrete — NOT "UI mockups".
+> Decisions are recorded in
+> file:///C:/Dev/Specrew-design-analysis/specs/141-design-gate-runtime-hardening/iterations/008/lens-applicability.json
+> (the workshop record, SC-021 shape). The capability is the same **behavioral-content / deterministic-emit**
+> split as the workshop conduct (FR-025): the agent authors the diagram content; a deterministic helper
+> emits the file + clickable link. Validated by a runtime dogfood (behavioral), with the catalog + emit
+> helper as a unit-tested deterministic floor.
+
+- **FR-030**: The lens workshop and design-analysis MAY render a **per-lens diagram** to make a lens's
+  discussion concrete, from a `lens → diagram-type → render-form` catalog: security-compliance →
+  trust-boundary + attack-surface; data-storage → ERD (relational) and NoSQL document relations
+  (references by JSON-path of identities); architecture-core → component/service/flow;
+  devops-operations → deployment topology; ui-ux → layout/wireframe, screen-navigation flow, state; plus
+  cross-cutting **flows** (user + system actions, sequence) and **comparison tables** (options/trade-offs).
+  The catalog is a sibling data file; `index.yml` stays pure.
+- **FR-031**: Visuals MUST be surfaced in **tiers** — inline (console ASCII or a fenced mermaid block)
+  for quick/ephemeral; a **temp file + clickable `file:///` link** for richer or kept-while-discussing;
+  **persisted** (inline mermaid in the design doc) for keepers. Mermaid is the default form; ASCII for
+  console; svg/html for richer wireframes. The agent authors the diagram content; a **deterministic,
+  LLM/network-free helper** writes the file + emits the link, reusing the FR-028 console-vs-persisted
+  reference model.
+- **FR-032**: Intake MUST be **bidirectional, offered per lens** — the Crew offers to plot the lens's
+  diagram from the discussion AND asks whether the human has an existing diagram, document, Figma export,
+  or whiteboard photo. A provided artifact is referenced via a `file:///` link, used as design context,
+  and MAY be transcribed to mermaid so it persists. Accept-a-file/image only — no live external API
+  (Figma intake is an export, not an OAuth integration).
+- **FR-033**: Temp visuals MUST be **ephemeral** — under `.specrew/workshop-visuals/`, gitignored,
+  cleaned at iteration close. **Keepers** are inline mermaid in the design document (version-controlled
+  text); svg/html is persisted as a referenced file ONLY when richer-than-mermaid is required.
+
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
 - **FR-011**: Generated start/handoff packets MUST NOT emit empty or malformed
@@ -530,6 +565,10 @@ than deferring to another feature.
 | FR-026 | Implementer, Reviewer | Iteration 5 (added 2026-06-03 — Amendment A2; lens-coverage enforcement) |
 | FR-027 | Implementer, Reviewer | Iteration 6 (added 2026-06-04 — Amendment A3; lens intake before clarify) |
 | FR-028 | Implementer, Reviewer | Iteration 6 (added 2026-06-04 — Amendment A3; console-vs-persisted file references) |
+| FR-030 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; per-lens diagram vocabulary) |
+| FR-031 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; tiered render+surface) |
+| FR-032 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; bidirectional per-lens visual intake) |
+| FR-033 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; ephemeral temp + mermaid-inline keepers) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -622,6 +661,16 @@ than deferring to another feature.
   lens — it does NOT, and cannot, assess their quality (that is SC-020's runtime dogfood). A missing or
   placeholder entry for a selected lens fails the coverage gate (FR-026). (Added 2026-06-04 — Amendment
   A4; FR-025/FR-026.)
+- **SC-022**: In a runtime dogfood, the workshop renders at least one per-lens diagram from the catalog
+  for a discussed lens, surfaced per the tier policy (inline and/or a clickable `file:///` temp-file
+  link), and a keeper is persisted as inline mermaid in the design doc. (Behavioral — validated by the
+  dogfood, not a unit test.) (Added 2026-06-04 — Amendment A5; FR-030/FR-031/FR-032.)
+- **SC-023**: The deterministic emit helper + the `lens → diagram-type` catalog are unit-tested (the
+  floor): the helper writes the agent-authored content to the correct tier destination and returns the
+  correct surface reference (inline block / `file:///` temp link / persisted embed) reusing FR-028; the
+  catalog resolves a diagram type + render form per selected lens, degrading gracefully when a lens has
+  no mapping. Presence/shape only — the diagram's quality is SC-022's dogfood. (Added 2026-06-04 —
+  Amendment A5; FR-030/FR-031/FR-033.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.
