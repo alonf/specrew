@@ -99,4 +99,4 @@ flowchart LR
 - **Reason**: Settled in the per-lens workshop the maintainer drove on this feature (decisions in lens-applicability.json): the per-lens diagram vocabulary + tiered render+surface + bidirectional intake + the catalog/emit/intake-reference build shape + ephemeral-temp/mermaid-inline keepers. The workshop IS the design authority for this iteration.
 - **Modifications**: None beyond the workshop decisions (carried as the plan's acceptance criteria).
 - **Design-analysis draft commit**: `aed6dd60`
-- **Decision recorded in commit**: `__DECISION_COMMIT__`
+- **Decision recorded in commit**: `18721b9e` (differs from the draft `aed6dd60`)
