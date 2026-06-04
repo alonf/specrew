@@ -147,4 +147,4 @@ The honest scope note carried into the plan: **conduct quality (SC-020) is behav
   4. **Runtime dogfood is mandatory acceptance evidence** — unit tests cover the generator/schema/gate; review MUST require a real downstream run where the Crew facilitates the workshop lens by lens (SC-020). Not acceptable on unit tests alone.
   5. **Dogfood FR-028** — persisted .md artifacts use markdown links; console packets use visible file:/// URLs. (This design-analysis reconciled to markdown links; plan + review hold the line.)
 - **Design-analysis draft commit**: `ad7bea7e`
-- **Decision recorded in commit**: `__DECISION_COMMIT__`
+- **Decision recorded in commit**: `57974536` (differs from the draft commit `ad7bea7e`)
