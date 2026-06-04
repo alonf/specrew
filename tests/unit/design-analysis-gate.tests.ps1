@@ -325,5 +325,32 @@ Assert-True ((Format-SpecrewFileReference -Path 'specs/x/review.md' -Context per
 Assert-True ((Format-SpecrewFileReference -Path 'specs/x/review.md' -Context both -ProjectRoot 'C:\repo' -LinkText 'review') -eq '[review](file:///C:/repo/specs/x/review.md)') 'FR-028: both renders a markdown link to the file:/// URL'
 Write-Pass 'FR-028: file-reference render helper (console file:/// vs persisted markdown vs both)'
 
+# --- Iteration 7 T002 (SC-021, Amendment A4): per-lens workshop-record floor ---
+$wsRoot = Join-Path $scratchRoot 'workshop\iterations\007'
+$null = New-Item -ItemType Directory -Path $wsRoot -Force
+$wsPath = Join-Path $wsRoot 'lens-applicability.json'
+# (a) A4 workshop artifact: 'a' complete, 'b' has no record -> FAIL naming b
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"selected":["a","b"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"moderate","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
+$wsE1 = @(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot)
+Assert-True ($wsE1.Count -eq 1 -and (($wsE1 -join '|') -match "'b'")) 'SC-021: selected lens with no workshop record FAILS and names it'
+# (b) 'b' present but placeholder decision + missing moved_on -> FAIL listing the fields
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"selected":["a","b"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"moderate","moved_on":true},"b":{"agenda":["q2"],"decision":"<TBD>","depth":"moderate"}}}', [System.Text.UTF8Encoding]::new($false))
+$wsE2 = @(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot)
+Assert-True ($wsE2.Count -eq 1 -and (($wsE2 -join '|') -match 'decision') -and (($wsE2 -join '|') -match 'moved_on')) 'SC-021: placeholder decision + missing moved_on FAILS, naming the missing fields'
+# (c) all complete -> PASS
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"selected":["a"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"expert-terse","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot).Count -eq 0) 'SC-021: complete per-lens records -> PASS'
+# (d) no workshop_intake marker (pre-A4 questionnaire) -> no-op (never retroactively fails iter 4-6)
+[System.IO.File]::WriteAllText($wsPath, '{"selected":["a","b"]}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot).Count -eq 0) 'SC-021: no workshop_intake marker -> no-op (pre-A4 questionnaire artifacts not retroactively failed)'
+# (e) grandfathered -> no-op
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"fr026_grandfathered":true,"selected":["a"]}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot).Count -eq 0) 'SC-021: explicit fr026_grandfathered exempts'
+# placeholder detector
+Assert-True (Test-SpecrewLensWorkshopRecordPlaceholder -Value @()) 'SC-021 placeholder: empty agenda array is a placeholder'
+Assert-True (Test-SpecrewLensWorkshopRecordPlaceholder -Value '<TBD>') 'SC-021 placeholder: angle-bracket template default is a placeholder'
+Assert-True (-not (Test-SpecrewLensWorkshopRecordPlaceholder -Value 'use X')) 'SC-021 placeholder: a real value is not a placeholder'
+Write-Pass 'SC-021: per-lens workshop-record floor (presence-only, marker-gated, grandfather-safe)'
+
 Write-Pass 'Design-analysis gate unit tests passed'
 exit 0

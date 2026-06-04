@@ -28,10 +28,10 @@ tasks:
     completed_at: "2026-06-04T12:14:00Z"
     blocked_reason: ""
   T005:
-    title: "Tests (reproduce-first, deterministic floor): agenda generated from decision points; per-lens schema fields; SC-021 gate FAILs + names the lens when any per-lens record is missing/placeholder; back-compat (grandfather). NOT a proof of conduct quality. FR-026/SC-021/FR-009."
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    title: "Tests (reproduce-first, deterministic floor): agenda generated from decision points; per-lens schema fields; SC-021 gate FAILs + names the lens when any per-lens record is missing/placeholder; back-compat (grandfather). NOT a proof of conduct quality. FR-026/SC-021/FR-009. DONE: selector suite (agenda gen + render + decisions render) + gate suite (SC-021 floor: missing/placeholder fails+names, complete passes, no-marker no-op, grandfathered no-op, placeholder detector) all green; feature + design-gate suites still green; no test pinned the old Rule 9a wording."
+    status: "done"
+    started_at: "2026-06-04T12:15:00Z"
+    completed_at: "2026-06-04T12:28:00Z"
     blocked_reason: ""
   T006:
     title: "Docs + the MANDATORY runtime dogfood (SC-020): a real downstream specrew start --host claude run where the Crew facilitates the workshop lens by lens (infer->confirm->per-lens discussion->'move on'), evidence recorded; TG ledger. The real acceptance gate (maintainer instruction #4)."

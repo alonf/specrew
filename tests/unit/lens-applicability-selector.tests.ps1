@@ -118,6 +118,31 @@ Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials $dials -Area 'whateve
 Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials @{} -Area 'ui') -eq 'moderate') "dial depth: absent dial -> fail-safe moderate"
 Assert-True ((Get-SpecrewLensQuestionDepth -ExpertiseDials $null -Area 'perf') -eq 'moderate') "dial depth: null profile -> fail-safe moderate"
 
+# Iteration 7 T001 (FR-009/FR-025, Amendment A4) — the per-lens workshop agenda generator + render.
+$wsAgenda = @(Get-SpecrewLensWorkshopAgenda -LensId 'architecture-core' -CatalogDir $catalogDir)
+Assert-True ($wsAgenda.Count -ge 3) "workshop agenda: architecture-core yields its decision-point prompts"
+Assert-True ((($wsAgenda) -join '|') -eq ((@(Get-SpecrewLensDecisionPoints -LensId 'architecture-core' -CatalogDir $catalogDir)) -join '|')) "workshop agenda IS the lens decision points (reuses the extractor; no parallel bank)"
+Assert-True (@(Get-SpecrewLensWorkshopAgenda -LensId 'no-such-lens' -CatalogDir $catalogDir).Count -eq 0) "workshop agenda: missing lens -> empty (graceful)"
+$wsRender = Format-SpecrewLensWorkshopAgenda -SelectedLenses @('architecture-core', 'data-storage') -CatalogDir $catalogDir
+Assert-True ($wsRender -match '## Workshop Agenda') "workshop agenda render: section heading"
+Assert-True ($wsRender -match '(?m)^### data-storage') "workshop agenda render: per-lens heading"
+Assert-True ($wsRender -match '(?m)^1\. ') "workshop agenda render: numbered discussion prompts"
+Assert-True ($wsRender -match 'Decision / agreement:' -and $wsRender -match 'Depth used:' -and $wsRender -match 'Moved on:') "workshop agenda render: captures decision/agreement, depth, moved-on"
+Assert-True ($wsRender -notmatch '(?m)^\s*\+ ') "workshop agenda render: no '+'-at-line-start (markdownlint-safe)"
+Assert-True ((Format-SpecrewLensWorkshopAgenda -SelectedLenses @() -CatalogDir $catalogDir) -match 'None available') "workshop agenda render: no lenses -> None available (graceful)"
+
+# Iteration 7 T004 (FR-009, Amendment A4) — the recorded workshop decisions surface for the design analysis.
+$wsTmp = Join-Path ([System.IO.Path]::GetTempPath()) ("ws-dec-{0}.json" -f ([System.Guid]::NewGuid().ToString('N')))
+try {
+    Set-Content -LiteralPath $wsTmp -Encoding UTF8 -Value (@{ selected = @('ui-ux', 'data-storage'); workshop = @{ 'ui-ux' = @{ decision = 'dark theme, high-contrast, DPI-aware'; depth = 'moderate' }; 'data-storage' = @{ decision = 'blob + metadata table'; depth = 'expert-terse' } } } | ConvertTo-Json -Depth 8)
+    $wsDec = Format-SpecrewLensWorkshopDecisions -ArtifactPath $wsTmp
+    Assert-True ($wsDec -match '## Lens Decisions') "workshop decisions render: section heading"
+    Assert-True ($wsDec -match 'ui-ux.*dark theme') "workshop decisions render: surfaces the recorded ui-ux decision"
+    Assert-True ($wsDec -match 'expert-terse') "workshop decisions render: surfaces the recorded depth"
+    Assert-True ((Format-SpecrewLensWorkshopDecisions -ArtifactPath (Join-Path ([System.IO.Path]::GetTempPath()) 'no-such-ws-artifact.json')) -match 'None recorded') "workshop decisions render: absent artifact -> None recorded (graceful)"
+}
+finally { Remove-Item -LiteralPath $wsTmp -Force -ErrorAction SilentlyContinue }
+
 Write-Host ""
 Write-Host "All lens-applicability selector tests passed." -ForegroundColor Green
 exit 0
