@@ -337,36 +337,26 @@ function Test-SpecrewLensWorkshopRecordPlaceholder {
 
 function Test-SpecrewLensWorkshopRecords {
     # Iteration 7 (SC-021, Amendment A4): the deterministic per-lens-decision FLOOR under the behavioral
-    # workshop. For each selected lens, the recorded intake artifact (lens-applicability.json) MUST carry
-    # a non-placeholder `workshop` record with agenda (non-empty), decision/agreement (non-placeholder),
-    # depth (set), and an explicit moved_on marker (truthy). Enforces PRESENCE only — it does NOT, and
-    # cannot, assess quality (that is SC-020's runtime dogfood). Enforcement is gated by an explicit
-    # `workshop_intake: true` marker, so it applies to A4 workshop runs and NEVER retroactively fails the
-    # pre-A4 questionnaire artifacts (iterations 4-6); `fr026_grandfathered` also exempts. Same artifact
-    # resolution (iteration -> feature -> no-op) as the FR-026 coverage gate. Returns a string[] of
-    # errors (empty = OK / not applicable).
+    # workshop. For each selected lens, the given intake artifact MUST carry a non-placeholder `workshop`
+    # record with agenda (non-empty), decision/agreement (non-placeholder), depth (set), and an explicit
+    # moved_on marker (truthy). Enforces PRESENCE only — it does NOT, and cannot, assess quality (that is
+    # SC-020's runtime dogfood). Enforcement is gated by an explicit `workshop_intake: true` marker, so it
+    # applies to A4 workshop runs and NEVER retroactively fails the pre-A4 questionnaire artifacts;
+    # `fr026_grandfathered` also exempts. Takes the EXACT artifact path so the caller controls resolution:
+    # the workshop records live in the FEATURE-level lens-applicability.json (the specify-phase truth,
+    # FR-027) — NOT the iteration-level design-analysis questionnaire — so the specify-boundary gate passes
+    # the feature-level path here. (i007 dogfood fix: the earlier iteration-first resolution no-opped on
+    # the feature-level workshop artifact, so the floor never fired.) Returns a string[] of errors
+    # (empty = OK / not applicable).
     param(
-        [Parameter(Mandatory = $true)][string]$IterationDirectory
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$ArtifactPath
     )
 
     $errors = New-Object System.Collections.Generic.List[string]
-
-    $iterationArtifact = Join-Path $IterationDirectory 'lens-applicability.json'
-    $featureDirectory = Split-Path -Parent (Split-Path -Parent $IterationDirectory)
-    $featureArtifact = if (-not [string]::IsNullOrWhiteSpace($featureDirectory)) { Join-Path $featureDirectory 'lens-applicability.json' } else { $null }
-    $answersPath = if (Test-Path -LiteralPath $iterationArtifact -PathType Leaf) {
-        $iterationArtifact
-    }
-    elseif ($null -ne $featureArtifact -and (Test-Path -LiteralPath $featureArtifact -PathType Leaf)) {
-        $featureArtifact
-    }
-    else {
-        $null
-    }
-    if ($null -eq $answersPath) { return @() }
+    if ([string]::IsNullOrWhiteSpace($ArtifactPath) -or -not (Test-Path -LiteralPath $ArtifactPath -PathType Leaf)) { return @() }
 
     $doc = $null
-    try { $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    try { $doc = Get-Content -LiteralPath $ArtifactPath -Raw -Encoding UTF8 | ConvertFrom-Json }
     catch { return @() }
     if ($null -eq $doc) { return @() }
 
@@ -533,14 +523,10 @@ function Test-SpecrewDesignAnalysisArtifact {
     foreach ($coverageError in @(Test-SpecrewDesignAnalysisLensCoverage -Content $content -IterationDirectory $iterationDirectory)) {
         $errors.Add($coverageError) | Out-Null
     }
-
-    # SC-021 (Amendment A4): per-lens workshop-record floor. For an A4 workshop-era artifact (explicit
-    # `workshop_intake: true` marker), each selected lens must carry a non-placeholder workshop record
-    # (agenda + decision/agreement + depth + moved_on). Presence-only, marker-gated so pre-A4
-    # questionnaire artifacts no-op; LLM/network-free.
-    foreach ($workshopError in @(Test-SpecrewLensWorkshopRecords -IterationDirectory $iterationDirectory)) {
-        $errors.Add($workshopError) | Out-Null
-    }
+    # NOTE: the SC-021 per-lens workshop-record floor is enforced at the SPECIFY boundary
+    # (Invoke-SpecrewSpecifyBoundaryLensGate) against the FEATURE-level workshop artifact, NOT here — the
+    # design-analysis gate resolves the iteration-level questionnaire (FR-026), which is the wrong artifact
+    # for the workshop floor (i007 dogfood fix).
 
     return [pscustomobject]@{
         Valid             = ($errors.Count -eq 0)
@@ -882,6 +868,20 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
     if ($null -eq $artifact -or -not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
         throw ("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the lens-applicability intake has not run. Run the interactive, expertise-adapted lens intake, record the feature-level lens-applicability.json, and amend spec.md + the requirements checklist with the lens-informed requirements BEFORE sync-specify (FR-027 / Amendment A3). Expected artifact: {1}" -f $feature, $artifact)
     }
+
+    # SC-021 (Amendment A4): the per-lens workshop-record FLOOR, enforced HERE against the feature-level
+    # workshop artifact (the specify-phase truth). For an A4 workshop intake (explicit `workshop_intake:
+    # true`), each selected lens MUST carry a non-placeholder workshop record (agenda + decision/agreement
+    # + depth + moved_on). Presence-only, marker-gated so a pre-A4 questionnaire artifact no-ops; the
+    # workshop's QUALITY is SC-020's runtime dogfood, not this gate.
+    $workshopErrors = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $artifact)
+    if ($workshopErrors.Count -gt 0) {
+        $lines = New-Object System.Collections.Generic.List[string]
+        $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the per-lens workshop records are incomplete (SC-021). Record agenda + decision/agreement + depth + a moved_on marker for each selected lens in {1} before sync-specify." -f $feature, $artifact)) | Out-Null
+        foreach ($wsErr in $workshopErrors) { $lines.Add(("  - {0}" -f $wsErr)) | Out-Null }
+        throw ($lines -join [Environment]::NewLine)
+    }
+
     return [pscustomobject]@{ Valid = $true; ArtifactPath = $artifact }
 }
 

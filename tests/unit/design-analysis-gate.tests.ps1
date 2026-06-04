@@ -331,21 +331,21 @@ $null = New-Item -ItemType Directory -Path $wsRoot -Force
 $wsPath = Join-Path $wsRoot 'lens-applicability.json'
 # (a) A4 workshop artifact: 'a' complete, 'b' has no record -> FAIL naming b
 [System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"selected":["a","b"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"moderate","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
-$wsE1 = @(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot)
+$wsE1 = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath)
 Assert-True ($wsE1.Count -eq 1 -and (($wsE1 -join '|') -match "'b'")) 'SC-021: selected lens with no workshop record FAILS and names it'
 # (b) 'b' present but placeholder decision + missing moved_on -> FAIL listing the fields
 [System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"selected":["a","b"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"moderate","moved_on":true},"b":{"agenda":["q2"],"decision":"<TBD>","depth":"moderate"}}}', [System.Text.UTF8Encoding]::new($false))
-$wsE2 = @(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot)
+$wsE2 = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath)
 Assert-True ($wsE2.Count -eq 1 -and (($wsE2 -join '|') -match 'decision') -and (($wsE2 -join '|') -match 'moved_on')) 'SC-021: placeholder decision + missing moved_on FAILS, naming the missing fields'
 # (c) all complete -> PASS
 [System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"selected":["a"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"expert-terse","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
-Assert-True (@(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot).Count -eq 0) 'SC-021: complete per-lens records -> PASS'
+Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 0) 'SC-021: complete per-lens records -> PASS'
 # (d) no workshop_intake marker (pre-A4 questionnaire) -> no-op (never retroactively fails iter 4-6)
 [System.IO.File]::WriteAllText($wsPath, '{"selected":["a","b"]}', [System.Text.UTF8Encoding]::new($false))
-Assert-True (@(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot).Count -eq 0) 'SC-021: no workshop_intake marker -> no-op (pre-A4 questionnaire artifacts not retroactively failed)'
+Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 0) 'SC-021: no workshop_intake marker -> no-op (pre-A4 questionnaire artifacts not retroactively failed)'
 # (e) grandfathered -> no-op
 [System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"fr026_grandfathered":true,"selected":["a"]}', [System.Text.UTF8Encoding]::new($false))
-Assert-True (@(Test-SpecrewLensWorkshopRecords -IterationDirectory $wsRoot).Count -eq 0) 'SC-021: explicit fr026_grandfathered exempts'
+Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 0) 'SC-021: explicit fr026_grandfathered exempts'
 # placeholder detector
 Assert-True (Test-SpecrewLensWorkshopRecordPlaceholder -Value @()) 'SC-021 placeholder: empty agenda array is a placeholder'
 Assert-True (Test-SpecrewLensWorkshopRecordPlaceholder -Value '<TBD>') 'SC-021 placeholder: angle-bracket template default is a placeholder'

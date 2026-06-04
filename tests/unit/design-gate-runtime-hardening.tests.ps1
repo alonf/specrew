@@ -258,6 +258,20 @@ try {
         Assert-True ($null -ne $specifyOk -and $specifyOk.Valid -eq $true) 'FR-027: sync-specify is allowed once the feature-level lens artifact exists'
         Write-Pass 'FR-027/A3: specify boundary passes once the lens-intake artifact is recorded'
 
+        # (2b) SC-021 (Amendment A4) — the per-lens workshop FLOOR fires HERE, on the FEATURE-level
+        # workshop artifact (the i007 dogfood fix: the earlier wiring checked the iteration-level
+        # questionnaire and no-opped). An A4 workshop artifact (workshop_intake) with an INCOMPLETE
+        # per-lens record blocks sync-specify and names the lens; a complete record passes.
+        [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"<TBD>","depth":"moderate"}}}', [System.Text.UTF8Encoding]::new($false))
+        $sc021Blocked = $false
+        try { Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature' | Out-Null }
+        catch { $sc021Blocked = ($_.Exception.Message -match 'SC-021' -and $_.Exception.Message -match 'architecture-core') }
+        Assert-True $sc021Blocked 'SC-021: sync-specify is BLOCKED when an A4 workshop artifact has an incomplete per-lens record (names the lens)'
+        [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
+        $sc021Ok = Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature'
+        Assert-True ($null -ne $sc021Ok -and $sc021Ok.Valid -eq $true) 'SC-021: sync-specify passes once each selected lens has a complete workshop record'
+        Write-Pass 'SC-021: specify gate enforces the per-lens workshop floor on the feature-level artifact (i007 dogfood fix)'
+
         # (3) no applicability map (downstream project without lenses) -> graceful no-op (null).
         Remove-Item -LiteralPath (Join-Path $featDir 'lens-applicability.json') -Force
         Remove-Item -LiteralPath (Join-Path $mapDir 'applicability-map.json') -Force
