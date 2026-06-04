@@ -23836,3 +23836,89 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 66226da20b2c0cf3b62ab5a7aeb3c65782472cd0
 - **Recorded At**: 2026-06-03T13:47:48Z
+
+## 2026-06-03T21:17:31Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 141-design-gate-runtime-hardening
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9e813afc
+- **Recorded At**: 2026-06-03T21:17:30Z
+
+## 2026-06-03T21:17:40Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 141-design-gate-runtime-hardening
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9e813afc
+- **Recorded At**: 2026-06-03T21:17:39Z
+
+## 2026-06-03T21:17:48Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 141-design-gate-runtime-hardening
+- **Iteration Number**: 005
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9e813afc
+- **Recorded At**: 2026-06-03T21:17:48Z
+
+## 2026-06-03T21:30:07Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-03T21:30:07Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-06-03T21:30:08Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 141-design-gate-runtime-hardening
+- **Iteration Number**: 006
+- **Task ID**: (none)
+- **Auth Commit Hash**: bc2acbb5
+- **Recorded At**: 2026-06-03T21:30:07Z
+
+## 2026-06-03T21:34:38Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 141-design-gate-runtime-hardening
+- **Iteration Number**: 006
+- **Task ID**: (none)
+- **Auth Commit Hash**: 81d8ce2e
+- **Recorded At**: 2026-06-03T21:34:37Z
+
+## 2026-06-03T21:48:11Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 141-design-gate-runtime-hardening
+- **Iteration Number**: 006
+- **Task ID**: (none)
+- **Auth Commit Hash**: e93cfd25
+- **Recorded At**: 2026-06-03T21:48:10Z
+
+---
+
+### Reviewer: Feature 141 Iteration 006 Gap Ledger Deferrals (Canonical Classification)
+
+- **Decision ID**: f141-i006-gap-ledger-deferrals
+- **Type**: deferred-scope ledger for review-signoff gap classification
+- **Feature**: 141-design-gate-runtime-hardening
+- **Iteration**: 006
+- **Boundary**: review-signoff / iteration-closeout
+- **Authority**: Alon Fliess (maintainer; downstream-dogfood directive to redesign the lens intake as a per-lens workshop — Amendment A4)
+- **Recorded At**: 2026-06-04
+
+#### Deferred Scope Ledger (specs/141-design-gate-runtime-hardening/iterations/006)
+
+- **Deferred**: FR-025 lens-intake interaction model — the per-lens facilitated design workshop (AI infers applicability + per-lens discussion until the human says "move on") is re-scoped to Amendment A4 / Iteration 7. Iteration 6 delivered the deterministic interactive intake; the workshop *conduct* is the re-scope.
+- **Deferred**: T003 / FR-009 per-phase decision-point flow — only the high-level Rule 9a flow sentence shipped; the discrete per-phase flow is subsumed by the A4 workshop and folds forward to Iteration 7.
+
+**Deferral rationale**: A second maintainer downstream `specrew start --host claude` dogfood (the human-experience test Iteration 5's retro required) showed the delivered intake is an interactive *questionnaire*, not the intended per-lens *workshop*. The deterministic engine (selector, dial→depth helper, enforced specify-boundary gate, FR-026 resolution, FR-028/FR-029) is sound and retained; the workshop conduct is a behavioral/prompt capability the FR-026 coverage gate cannot enforce (a structurally valid `lens-applicability.json` PASSES while the behavior is rejected), so it is re-scoped to Iteration 7 under Amendment A4 and validated by a runtime dogfood. T003's per-phase decision-point flow is exactly what the workshop implements, so it folds forward rather than being rushed in Iteration 6. Neither is dropped.
+
+#### Approval Evidence
+
+- **Approving authority**: Alon Fliess
+- **Approval context**: Maintainer directive after the second downstream dogfood: "the lenses intake is wrong … what we need is the agent raises questions until all related questions are collected from the user and when the user says we can move on, we do it to the next lens … the AI is the workshop coordinator, but the human opinion and agreement are important." Container decision: "Continue 141 (Amendment A4)."
+- **Recorded in**: spec.md Amendment A4 (commit a50d5413); iteration-006 closeout (commit dccb80ae); review.md / retro.md.

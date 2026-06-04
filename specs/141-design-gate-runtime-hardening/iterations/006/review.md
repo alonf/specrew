@@ -98,11 +98,12 @@ The downstream run surfaced three things:
 | ---- | ----------- | ------- | ----- |
 | T001 | FR-025, SC-018 | pass | `Get-SpecrewLensQuestionDepth` dial→depth; fail-safe moderate. |
 | T002 | FR-027, FR-026, FR-025 | pass | Enforced specify-boundary lens gate + scripted proof; FR-026 feature/iteration resolution; coordinator wiring. |
-| T003 | FR-009 | deferred | Only the high-level flow sentence shipped (Rule 9a, T002: "the selected lenses then inform clarify, the design analysis, and the plan") + the iter-5 enriched render. The discrete per-phase decision-point flow + its dedicated test were NOT completed. Subsumed by the A4 per-lens workshop → Iteration 7. |
 | T004 | FR-028 | pass | `Format-SpecrewFileReference` (console/persisted/both); handoff bare-path fix (RRT/Bug1, FR/SC not flagged). |
 | T005 | FR-029 | pass | FileList-sort guarded (skipped when no `Specrew.psd1`); verified downstream. |
 | T006 | TG-006 | pass | Formal test set; validator PASS 7/7. |
 | T007 | TG-006, dogfood | pass (its purpose) | The human-experience dogfood RAN and surfaced the workshop gap + the two side findings — exactly what 005's improvement action required. Docs delivered (`54caa4bb`). |
+
+*(T003 / FR-009 is not in this table — it was not delivered this iteration; it is `deferred` to Iteration 7, classified in the Gap Ledger below.)*
 
 ## TG-006 classification (Rule 39)
 
@@ -116,17 +117,15 @@ The downstream run surfaced three things:
 
 ## Gap Ledger
 
-- **Workshop interaction model (FR-025 → A4/Iteration 7):** the intake is a questionnaire, not a
-  per-lens workshop. Re-scoped forward (maintainer-directed), engine retained — not an Iteration-6 code
-  defect. **deferred-to-iter-7.**
-- **Expertise-transparency line — runtime-unverified:** committed + tested, absent from the dogfood
-  transcript (likely predated the fix). **confirm on a fresh `specrew start`; if still missing, live bug.**
-- **Rule 46 re-entry packet collapse (Claude host):** real but **out-of-feature** — handoff-quality track.
-- **T003 / FR-009 (decision-point flow) — deferred to Iteration 7:** only the high-level flow sentence
-  shipped (Rule 9a); the per-phase decision-point flow is exactly what the A4 workshop implements, so it
-  is folded forward rather than rushed here. **deferred-to-iter-7.**
-- No deterministic-surface (FR/SC) gaps in delivered scope: FR-025(depth)/FR-026/FR-027/FR-028/FR-029
-  verified. (FR-009 flow deferred — see above.)
+- **FR-025 lens-intake interaction model (workshop):** the intake is an interactive questionnaire, not the per-lens workshop; engine retained, not an Iteration-6 code defect. **deferred** to Amendment A4 / Iteration 7 — canonical defer entry + maintainer approval in file:///C:/Dev/Specrew-design-analysis/.squad/decisions.md ("Feature 141 Iteration 006 Gap Ledger Deferrals").
+- **T003 / FR-009 per-phase decision-point flow:** only the high-level Rule 9a sentence shipped; subsumed by the A4 workshop. **deferred** to Iteration 7 — same canonical defer entry in file:///C:/Dev/Specrew-design-analysis/.squad/decisions.md.
+- **Delivered deterministic surfaces — no FR/SC gaps:** FR-025(depth)/FR-026/FR-027/FR-028/FR-029 implemented, enforced, observable, and tested (validator PASS 7/7). **fixed-now.**
+
+## Follow-ups (not iteration-006 gaps)
+
+- **Expertise-transparency line — runtime-unverified:** the orientation line is committed (`706b2a51`) and unit/block-tested but was absent from the dogfood transcript (likely predated the fix). A delivered item awaiting a fresh-start runtime confirmation, not a deferred scope item; if still missing on a fresh `specrew start`, it becomes a live bug to fix.
+- **Rule 46 re-entry packet collapse (Claude host):** the six-section packet collapsed into the verdict menu — a known, persistent Claude-host prompt-adherence weakness (F-054 class). Out of Feature 141 (handoff-quality track); 141 neither touched nor broke it.
+- Deferred Proposal 156 deep scope (overrides, schema-validation enforcement, broad automation) remains future; FR-010 keeps it out.
 
 ## Notes
 
