@@ -260,6 +260,70 @@ function Get-SpecrewLensQuestionDepth {
     return 'moderate'  # fail-safe: absent/unparseable dial -> moderate depth
 }
 
+function Get-SpecrewLensWorkshopAgenda {
+    # Iteration 7 T001 (FR-009 / FR-025, Amendment A4): produce the per-lens workshop AGENDA — the
+    # ordered design questions the Crew raises for one lens during the facilitated intake. The agenda IS
+    # the lens's "## Design Decision Points" (reused via Get-SpecrewLensDecisionPoints) surfaced as the
+    # discussion the coordinator runs; the architecture-book phrasing lives in the lens files, so this
+    # stays a pure, deterministic, LLM/network-free surfacing — no new parallel question bank. Graceful
+    # @() when the lens/section/catalog is absent. This agenda is what the SC-021 per-lens record stores.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$LensId,
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$CatalogDir
+    )
+
+    return @(Get-SpecrewLensDecisionPoints -LensId $LensId -CatalogDir $CatalogDir)
+}
+
+function Format-SpecrewLensWorkshopAgenda {
+    # Iteration 7 T001 (FR-025, Amendment A4): render the human-visible "## Workshop Agenda" the Crew
+    # surfaces during the per-lens facilitated intake — for each selected lens, its decision-point
+    # questions as a numbered discussion agenda, with a per-lens decision/agreement line to capture and
+    # a "move on" marker. Markdownlint-safe (asterisk emphasis; no '+'-at-line-start). Graceful
+    # "None available" when nothing is selectable. Pure + deterministic; no network/LLM.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()]$SelectedLenses,
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$CatalogDir
+    )
+
+    $lenses = @($SelectedLenses | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+    $sb = [System.Text.StringBuilder]::new()
+    [void]$sb.AppendLine('## Workshop Agenda')
+    [void]$sb.AppendLine('')
+    [void]$sb.AppendLine('For each applicable lens the Crew raises these design questions, adapts depth to your expertise, and records your decision and explicit agreement before moving on to the next lens.')
+    [void]$sb.AppendLine('')
+
+    if ($lenses.Count -eq 0) {
+        [void]$sb.AppendLine('*None available* (no lenses selected, or the catalog is absent).')
+        return $sb.ToString().TrimEnd()
+    }
+
+    foreach ($lens in $lenses) {
+        [void]$sb.AppendLine(('### {0}' -f $lens))
+        [void]$sb.AppendLine('')
+        $agenda = @(Get-SpecrewLensWorkshopAgenda -LensId ([string]$lens) -CatalogDir $CatalogDir)
+        if ($agenda.Count -eq 0) {
+            [void]$sb.AppendLine('*No decision points found for this lens* (discuss its scope directly).')
+        }
+        else {
+            $n = 1
+            foreach ($item in $agenda) {
+                [void]$sb.AppendLine(('{0}. {1}' -f $n, $item))
+                $n++
+            }
+        }
+        [void]$sb.AppendLine('')
+        [void]$sb.AppendLine('- Decision / agreement: <captured during the workshop>')
+        [void]$sb.AppendLine('- Depth used: <expert-terse | moderate | guided-explain>')
+        [void]$sb.AppendLine('- Moved on: <yes, on the human''s confirmation>')
+        [void]$sb.AppendLine('')
+    }
+
+    return $sb.ToString().TrimEnd()
+}
+
 function Format-SpecrewApplicableLensesSection {
     # Iteration 4 T004 + Iteration 5 T002 (FR-009): render the "## Applicable Lenses" markdown
     # section from the selector. Read-only; graceful degradation to "none available" when the map or

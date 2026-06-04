@@ -4,10 +4,10 @@ iteration: "007"
 updated_at: "2026-06-04T11:20:00Z"
 tasks:
   T001:
-    title: "Discussable-prompt (agenda) generator: turn each selected lens's Design Decision Points (Get-SpecrewLensDecisionPoints) into the per-lens discussion agenda; book-informed phrasing baked into the lens .md decision points (no parallel bank; index.yml pure). Pure, deterministic. FR-009/FR-025."
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    title: "Discussable-prompt (agenda) generator: turn each selected lens's Design Decision Points (Get-SpecrewLensDecisionPoints) into the per-lens discussion agenda; book-informed phrasing baked into the lens .md decision points (no parallel bank; index.yml pure). Pure, deterministic. FR-009/FR-025. DONE: Get-SpecrewLensWorkshopAgenda (per-lens agenda = decision points) + Format-SpecrewLensWorkshopAgenda (human-visible numbered agenda + decision/agreement/depth/move-on lines); verified (arch-core 5 prompts, graceful, lint-safe)."
+    status: "done"
+    started_at: "2026-06-04T11:30:00Z"
+    completed_at: "2026-06-04T11:40:00Z"
     blocked_reason: ""
   T002:
     title: "Per-lens decision schema + SC-021 gate: extend lens-applicability.json with a per-lens record (agenda, decision/agreement summary, depth used, explicit 'move on' marker); extend the FR-026 coverage gate to require a NON-PLACEHOLDER per-lens record for each selected lens (presence only, never quality); names the lens on failure. FR-026/SC-021."
