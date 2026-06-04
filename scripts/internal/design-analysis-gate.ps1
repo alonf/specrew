@@ -320,6 +320,97 @@ function Test-SpecrewDesignAnalysisLensCoverage {
     return $errors.ToArray()
 }
 
+function Test-SpecrewLensWorkshopRecordPlaceholder {
+    # SC-021 (Amendment A4): a per-lens workshop field does NOT count as recorded when it is null/empty,
+    # a TBD-class placeholder, or the angle-bracket template default. An array field (agenda) is a
+    # placeholder when empty.
+    param([AllowNull()]$Value)
+
+    if ($null -eq $Value) { return $true }
+    if (($Value -is [System.Collections.IEnumerable]) -and ($Value -isnot [string])) {
+        return (@($Value).Count -eq 0)
+    }
+    $s = [string]$Value
+    if (Test-SpecrewDesignAnalysisPlaceholderText -Text $s) { return $true }
+    return $s.Trim() -match '^<.*>$'
+}
+
+function Test-SpecrewLensWorkshopRecords {
+    # Iteration 7 (SC-021, Amendment A4): the deterministic per-lens-decision FLOOR under the behavioral
+    # workshop. For each selected lens, the recorded intake artifact (lens-applicability.json) MUST carry
+    # a non-placeholder `workshop` record with agenda (non-empty), decision/agreement (non-placeholder),
+    # depth (set), and an explicit moved_on marker (truthy). Enforces PRESENCE only — it does NOT, and
+    # cannot, assess quality (that is SC-020's runtime dogfood). Enforcement is gated by an explicit
+    # `workshop_intake: true` marker, so it applies to A4 workshop runs and NEVER retroactively fails the
+    # pre-A4 questionnaire artifacts (iterations 4-6); `fr026_grandfathered` also exempts. Same artifact
+    # resolution (iteration -> feature -> no-op) as the FR-026 coverage gate. Returns a string[] of
+    # errors (empty = OK / not applicable).
+    param(
+        [Parameter(Mandatory = $true)][string]$IterationDirectory
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    $iterationArtifact = Join-Path $IterationDirectory 'lens-applicability.json'
+    $featureDirectory = Split-Path -Parent (Split-Path -Parent $IterationDirectory)
+    $featureArtifact = if (-not [string]::IsNullOrWhiteSpace($featureDirectory)) { Join-Path $featureDirectory 'lens-applicability.json' } else { $null }
+    $answersPath = if (Test-Path -LiteralPath $iterationArtifact -PathType Leaf) {
+        $iterationArtifact
+    }
+    elseif ($null -ne $featureArtifact -and (Test-Path -LiteralPath $featureArtifact -PathType Leaf)) {
+        $featureArtifact
+    }
+    else {
+        $null
+    }
+    if ($null -eq $answersPath) { return @() }
+
+    $doc = $null
+    try { $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return @() }
+    if ($null -eq $doc) { return @() }
+
+    if ($doc.PSObject.Properties['fr026_grandfathered'] -and [bool]$doc.fr026_grandfathered) { return @() }
+    # SC-021 enforces ONLY for A4 workshop-era artifacts (explicit marker). A pre-A4 questionnaire
+    # artifact (no marker) no-ops, so it is never retroactively failed. An A4 artifact that sets the
+    # marker but omits the records CANNOT bypass the gate (the records are required below).
+    $isWorkshop = $doc.PSObject.Properties['workshop_intake'] -and [bool]$doc.workshop_intake
+    if (-not $isWorkshop) { return @() }
+
+    $selected = @()
+    if ($doc.PSObject.Properties['selected']) {
+        $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+    if ($selected.Count -eq 0) { return @() }
+
+    $workshop = if ($doc.PSObject.Properties['workshop']) { $doc.workshop } else { $null }
+
+    foreach ($id in $selected) {
+        $rec = $null
+        if ($null -ne $workshop -and $workshop.PSObject.Properties[$id]) { $rec = $workshop.$id }
+        if ($null -eq $rec) {
+            $errors.Add(("lens-applicability.json has no workshop record for selected lens '{0}' (SC-021): record agenda + decision/agreement + depth + a moved_on marker." -f $id)) | Out-Null
+            continue
+        }
+
+        $missing = New-Object System.Collections.Generic.List[string]
+        $agenda = if ($rec.PSObject.Properties['agenda']) { $rec.agenda } else { $null }
+        if (Test-SpecrewLensWorkshopRecordPlaceholder -Value $agenda) { $missing.Add('agenda') | Out-Null }
+        $decision = if ($rec.PSObject.Properties['decision']) { $rec.decision } else { $null }
+        if (Test-SpecrewLensWorkshopRecordPlaceholder -Value $decision) { $missing.Add('decision') | Out-Null }
+        $depth = if ($rec.PSObject.Properties['depth']) { $rec.depth } else { $null }
+        if (Test-SpecrewLensWorkshopRecordPlaceholder -Value $depth) { $missing.Add('depth') | Out-Null }
+        $movedOn = if ($rec.PSObject.Properties['moved_on']) { $rec.moved_on } else { $null }
+        if ($null -eq $movedOn -or -not [bool]$movedOn) { $missing.Add('moved_on') | Out-Null }
+
+        if ($missing.Count -gt 0) {
+            $errors.Add(("workshop record for selected lens '{0}' is incomplete (SC-021): missing or placeholder {1}." -f $id, ($missing -join ', '))) | Out-Null
+        }
+    }
+
+    return $errors.ToArray()
+}
+
 function Test-SpecrewDesignAnalysisArtifact {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
@@ -441,6 +532,14 @@ function Test-SpecrewDesignAnalysisArtifact {
     $iterationDirectory = Split-Path -Parent $artifactPath
     foreach ($coverageError in @(Test-SpecrewDesignAnalysisLensCoverage -Content $content -IterationDirectory $iterationDirectory)) {
         $errors.Add($coverageError) | Out-Null
+    }
+
+    # SC-021 (Amendment A4): per-lens workshop-record floor. For an A4 workshop-era artifact (explicit
+    # `workshop_intake: true` marker), each selected lens must carry a non-placeholder workshop record
+    # (agenda + decision/agreement + depth + moved_on). Presence-only, marker-gated so pre-A4
+    # questionnaire artifacts no-op; LLM/network-free.
+    foreach ($workshopError in @(Test-SpecrewLensWorkshopRecords -IterationDirectory $iterationDirectory)) {
+        $errors.Add($workshopError) | Out-Null
     }
 
     return [pscustomobject]@{

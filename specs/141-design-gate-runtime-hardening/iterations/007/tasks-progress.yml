@@ -10,10 +10,10 @@ tasks:
     completed_at: "2026-06-04T11:40:00Z"
     blocked_reason: ""
   T002:
-    title: "Per-lens decision schema + SC-021 gate: extend lens-applicability.json with a per-lens record (agenda, decision/agreement summary, depth used, explicit 'move on' marker); extend the FR-026 coverage gate to require a NON-PLACEHOLDER per-lens record for each selected lens (presence only, never quality); names the lens on failure. FR-026/SC-021."
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    title: "Per-lens decision schema + SC-021 gate: extend lens-applicability.json with a per-lens record (agenda, decision/agreement summary, depth used, explicit 'move on' marker); extend the FR-026 coverage gate to require a NON-PLACEHOLDER per-lens record for each selected lens (presence only, never quality); names the lens on failure. FR-026/SC-021. DONE: Test-SpecrewLensWorkshopRecords + Test-SpecrewLensWorkshopRecordPlaceholder, wired into Test-SpecrewDesignAnalysisArtifact; marker-gated (workshop_intake) so pre-A4 + grandfathered artifacts no-op; verified (names missing/placeholder lens; complete=0; no-marker=0; grandfathered=0)."
+    status: "done"
+    started_at: "2026-06-04T11:42:00Z"
+    completed_at: "2026-06-04T11:55:00Z"
     blocked_reason: ""
   T003:
     title: "Workshop conduct prompt rule: rewrite the lens-intake lifecycle rule so the Crew infers applicability + asks the human only to confirm/adjust (no obvious yes/no), then per applicable lens raises the agenda, captures decisions + explicit agreement, adapts depth (Get-SpecrewLensQuestionDepth), advances only on 'move on'; right-sized. Behavioral. FR-025."
