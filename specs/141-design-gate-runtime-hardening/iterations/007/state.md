@@ -1,13 +1,13 @@
 # Iteration State: 007
 
 **Schema**: v1
-**Last Completed Task**: (none yet — plan authored; T001-T006 pending)
-**Tasks Remaining**: T001-T006
-**In Progress**: before-implement stop — tasks ledger + hardening gate authored; awaiting the implementation go-ahead. No tasks executing yet.
-**Baseline Ref**: 57974536
-**Updated**: 2026-06-04T11:25:00Z
-**Current Phase**: before-implement
-**Iteration Status**: planning
+**Last Completed Task**: T006 (runtime dogfood — SC-020 validated)
+**Tasks Remaining**: (none — T001-T006 delivered)
+**In Progress**: (none — iteration closed; the per-lens workshop conduct + the deterministic floor are delivered and validated)
+**Baseline Ref**: a0b78cbc
+**Updated**: 2026-06-04T13:35:00Z
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 
 ## Execution Summary
 

@@ -34,8 +34,8 @@ tasks:
     completed_at: "2026-06-04T12:28:00Z"
     blocked_reason: ""
   T006:
-    title: "Docs + the MANDATORY runtime dogfood (SC-020): a real downstream specrew start --host claude run where the Crew facilitates the workshop lens by lens (infer->confirm->per-lens discussion->'move on'), evidence recorded; TG ledger. The real acceptance gate (maintainer instruction #4)."
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    title: "Docs + the MANDATORY runtime dogfood (SC-020): a real downstream specrew start --host claude run where the Crew facilitates the workshop lens by lens (infer->confirm->per-lens discussion->'move on'), evidence recorded; TG ledger. The real acceptance gate (maintainer instruction #4). DONE: testLenses3 downstream run (001-photo-foundation) VALIDATED the workshop conduct (SC-020) — inferred applicability + confirm, 7 per-lens sessions with real design questions + ASCII layout mockups, iterate-until-'move on', depth-adapted, recorded workshop_intake + per-lens records; the expertise line surfaced (#16 settled). The dogfood ALSO caught the SC-021 floor not firing (feature-vs-iteration resolution) -> fixed (a0b78cbc, re-homed to the specify gate). Findings -> A5/iter-8 (visuals) + 2 small follow-ups (FR-026 *Addressed* emphasis; installed-vs-dev module/helpers + feature.json gitignore)."
+    status: "done"
+    started_at: "2026-06-04T12:30:00Z"
+    completed_at: "2026-06-04T13:10:00Z"
     blocked_reason: ""
