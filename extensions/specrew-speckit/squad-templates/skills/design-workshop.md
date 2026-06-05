@@ -73,7 +73,11 @@ both in view.
 6. **Capture the agreements (A4/A6/SC-021/SC-025).**
    - Per-lens workshop record in the feature-level `lens-applicability.json` (`workshop_intake: true`, the
      `selected` lenses, and a per-lens `workshop` record: agenda + decision/agreement + depth + a `moved_on`
-     marker).
+     marker). **Persist each keeper diagram you render for a lens** (the trust-boundary diagram, the ERD, the
+     component map, the sequence, etc.) — write the ASCII (or mermaid) to a workshop folder,
+     `specs/<feature>/workshop/<lens-id>.md`, and set that lens's `diagram` field to a **reference to that
+     file** (the path + a one-line caption), NOT a prose description. A diagram that lives only in the chat
+     scrollback is lost; the workshop folder makes the design reviewable from the artifacts.
    - At design-analysis, a `## Co-Design Record` in `design-analysis.md` with the agreed
      component-to-responsibility map + at least one agreed flow + a human-agreed marker, and — when ui-ux is in
      scope — the **agreed UI/screen layout** (the ASCII sketch the human approved). Set `co_design: true` in the
