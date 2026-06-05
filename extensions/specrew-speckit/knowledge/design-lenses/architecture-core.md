@@ -33,6 +33,12 @@ before planning locks one path.
 - What is deliberately out of scope for this iteration?
 - Which option best balances simplicity, reversibility, and future cost?
 
+## Workshop Conduct
+
+- **Diagram for this lens**: component / service / flow — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
+- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, co-design the component map and at least one flow WITH the human before presenting options, and co-decide the design method / decomposition style, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
+- **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.
+
 ## Question Bank
 
 - What structural decision will be hardest to change later?

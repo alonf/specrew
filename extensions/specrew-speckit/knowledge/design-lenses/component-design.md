@@ -26,6 +26,12 @@ coupling, cohesion, extension needs, and testability.
 - What extension mechanism fits: inheritance, composition, configuration,
   events, aspect, plugin, or generated code?
 
+## Workshop Conduct
+
+- **Diagram for this lens**: component + dependency direction — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
+- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, name each component with its one-line responsibility and show dependency direction; invite the human to rename, split, merge, or reassign, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
+- **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.
+
 ## Question Bank
 
 - What is the unit of responsibility?
