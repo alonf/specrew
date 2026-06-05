@@ -135,9 +135,9 @@ new structural half, and the dogfood is the gate.
 
 ## Human Decision
 
-- **Decision verdict**: <populated after the design-analysis verdict — left empty until then so the gate blocks plan until a decision is recorded>
-- **Chosen Option**: <Option X | modified-Option X>
-- **Reason / modifications**: <human rationale>
+- **Decision verdict**: approved for plan with Option B
+- **Chosen Option**: Option B
+- **Reason / modifications**: Maintainer approved Option B at the design-analysis stop (structured verdict, 2026-06-05) after the full scope was co-developed across the session — the confirmation-integrity invariant + the one delegate/skip exception + the per-lens provenance field + the three intake-UX touchpoints. The grandfather mechanism (a new `confirmation_required` marker, mirroring `workshop_intake`) was surfaced and accepted. The honest limit was stated and accepted: the SC-026 floor forces an auditable per-lens declaration but cannot verify the human was asked, so the **Squad re-dogfood (SC-027)** is the acceptance — Option C's verbatim-quote check was rejected as fakeable-but-proof-looking. No modifications.
 - **Decision date**: 2026-06-05
-- **Design-analysis draft commit**: <the commit that first drafted these options>
-- **Decision recorded in commit**: <the commit that contains THIS populated Human Decision — NOT the draft commit>
+- **Design-analysis draft commit**: `e7a6588c`
+- **Decision recorded in commit**: `__DECISION_COMMIT__`
