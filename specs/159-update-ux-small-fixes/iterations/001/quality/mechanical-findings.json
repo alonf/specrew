@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/159-update-ux-small-fixes/spec.md",
+  "iterationRef": "specs/159-update-ux-small-fixes/iterations/001",
+  "generatedAt": "2026-06-06T00:00:00Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.31.1"
+  },
+  "findings": []
+}
