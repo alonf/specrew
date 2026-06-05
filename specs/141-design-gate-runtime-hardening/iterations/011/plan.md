@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 18/20 story_points
+**Capacity**: 20/20 story_points
 **Started**: 2026-06-05
 
 <!--
@@ -39,7 +39,8 @@ floor forces an auditable per-lens declaration but cannot verify the human was a
 | T003 | `squad.agent.md` stopping-completeness rule (the root-cause lever): the coordinator MUST NOT declare intake "specific enough" until every selected lens is confirmed/delegated/skipped; never backfill an agreement — modeled on the working greenfield-intake interactive rule, prominent against the launch-aggressively persona | FR-038 | US-CI | 3 | Implementer | .github/agents/squad.agent.md | planned | claude | — | — |
 | T004 | FR-040 intake UX: prep announcement ("preparing the workshop, takes a moment") + the agenda "assignment" (lenses + each lens's decision so the human prepares) + per-lens lazy-load progress cue ("preparing lens X of N: <lens>, get ready"); in the skill + a Rule 9a pointer | FR-040 | US-CI | 3 | Spec Steward | extensions/specrew-speckit/squad-templates/skills/**, scripts/specrew-start.ps1 | planned | claude | — | — |
 | T005 | Tests + validator: SC-026 floor (positive / missing / invalid / grandfather-no-op) + presence-lock the FR-038 invariant + count + exception + the FR-040 UX conduct in the skill + the `squad.agent.md` rule; all touched suites + the full validator green | SC-026 | US-CI | 3 | Reviewer | tests/unit/** | planned | claude | — | — |
-| T006 | SC-027 Squad re-dogfood: a Copilot/Squad downstream run where the workshop does NOT record agreements for un-surfaced lenses (the testLenses7codex failure does not recur), delegated/skipped lenses are honestly attributed, and the intake announces prep + agenda + per-lens progress. Behavioral acceptance gate (needs the maintainer) | SC-027 | US-CI | 2 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
+| T006 | SC-027 Squad re-dogfood: a Copilot/Squad downstream run where the workshop does NOT record agreements for un-surfaced lenses (the testLenses7codex failure does not recur), delegated/skipped lenses are honestly attributed, and the intake announces prep + agenda + per-lens progress. ALSO confirms the T007 fix on a Claude re-run (the component map is rendered in-band before the approval point). Behavioral acceptance gate (needs the maintainer) | SC-027 | US-CI | 2 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
+| T007 | FR-037 in-band-at-approval tightening (the testLenses8 cross-host finding: Claude wrote the component map to the workshop file and asked the human to approve "13 named components" it never rendered, while Copilot + Antigravity rendered it in-band first): the skill MUST render the diagram/component map in-band IN THE SAME MESSAGE as any approve / move-on / co-design prompt — never by file path or bare count; the workshop file is written after + in addition, never instead. Folded into i11 per maintainer direction; presence-locked in lens-conduct-delivery | FR-037 | US-CI | 2 | Spec Steward | extensions/specrew-speckit/squad-templates/skills/**, tests/unit/** | planned | claude | — | — |
 
 ## Effort Model
 
@@ -49,7 +50,7 @@ floor forces an auditable per-lens declaration but cannot verify the human was a
 | Capacity per Iteration | 20 | |
 | Iteration Bounding | scope | |
 | Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
-| Overcommit Threshold | 1.0 | 18/20. |
+| Overcommit Threshold | 1.0 | 20/20 (FR-037 tightening T007 folded in per the testLenses8 finding). |
 | Defer Strategy | manual | |
 | Calibration Enabled | true | |
 
@@ -64,7 +65,7 @@ floor forces an auditable per-lens declaration but cannot verify the human was a
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
 | Planning | 1 | Design-analysis (Option B, decision `3ea67b32`). |
-| Implementation | 13 | T001 floor (4) + T002 skill (3) + T003 squad.agent.md (3) + T004 UX (3). |
+| Implementation | 15 | T001 floor (4) + T002 skill (3) + T003 squad.agent.md (3) + T004 UX (3) + T007 FR-037 in-band tightening (2). |
 | Review | 5 | T005 tests (3) + T006 the Squad dogfood (2). |
 | Rework | 0 | Buffer via the 18/20 headroom. |
 

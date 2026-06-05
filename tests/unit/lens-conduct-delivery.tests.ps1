@@ -88,6 +88,12 @@ Assert-Match -Text $skill -Pattern '(?i)preparing the workshop' 'skill A7: the p
 Assert-Match -Text $skill -Pattern '(?i)agenda as an assignment' 'skill A7: the agenda assignment (FR-040)'
 Assert-Match -Text $skill -Pattern '(?i)preparing lens' 'skill A7: the per-lens lazy-load progress cue (FR-040)'
 Write-Pass 'skill A7: confirmation-integrity invariant + count + delegate/skip exception + provenance field + intake UX (presence-locked; SC-027 dogfood is the behavioral gate)'
+# FR-037 in-band-at-approval tightening (testLenses8 Claude fix): at any approval point the map MUST be rendered
+# in-band in the same message, never referenced by a file path or a bare count; the file is written after, not
+# instead. Copilot + Antigravity already render in-band; this pulls Claude up to the same bar.
+Assert-Match -Text $skill -Pattern '(?i)approves what\s+is on screen' 'skill FR-037: at an approval point the diagram is rendered in-band, not referenced by file/count'
+Assert-Match -Text $skill -Pattern '(?i)IN ADDITION TO the\s+in-band render' 'skill FR-037: the workshop file is written AFTER + in addition to the in-band render, never instead'
+Write-Pass 'skill FR-037: in-band render mandatory at approval points (never by file-ref or bare count) — the testLenses8 Claude under-surfacing fix'
 
 # The coordinator-governance template (injected into squad.agent.md at deploy) carries the stopping-completeness
 # rule — the Squad root-cause lever (the testLenses7 stopping-judgment fix must reach downstream coordinators).

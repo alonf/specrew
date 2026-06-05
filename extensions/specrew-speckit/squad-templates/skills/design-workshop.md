@@ -61,7 +61,14 @@ both in view.
    never let the human reach a decision while a diagram lives only in a file or only as mermaid source. A
    per-lens diagram is **expected** for the structural lenses (architecture, data, security, integration,
    devops) and any UI-bearing feature (ui-ux: a layout sketch). Intake is bidirectional: offer to plot the
-   lens's diagram AND ask whether the human has an existing diagram/Figma/whiteboard photo to bring.
+   lens's diagram AND ask whether the human has an existing diagram/Figma/whiteboard photo to bring. **At ANY
+   approval point — "approve" / "move on" / "co-design" / "does this work as the baseline" — the diagram or
+   component map MUST be rendered in console-ASCII IN THE SAME MESSAGE as the question; NEVER stand in a
+   reference to it (a file path, or a bare count like "13 components" / "4 managers"). The human approves what
+   is on screen, not what is in a file.** Persist the keeper to the workshop file AFTER and IN ADDITION TO the
+   in-band render (step 6) — never INSTEAD of it. (Empirically: testLenses8 on the Claude host wrote the
+   component map to the workshop file and asked the human to approve "13 named components" it never showed,
+   while Copilot and Antigravity rendered it in-band first — writing the file is not surfacing.)
 5. **Co-design — do NOT hand down finished options (A6/FR-035/FR-036).** At the design-analysis stop:
    - **Co-decide the design method / decomposition style** (DDD bounded-contexts, IDesign volatility-based,
      modular monolith, microservices, layered) as an expertise-adapted discussion; record the choice as a
