@@ -188,16 +188,9 @@ dogfood. **Overall: ACCEPTED for review-signoff.**
 
 ## Gap Ledger
 
-- **No deferred FR/SC.** SC-024 (the i9 carry) is **delivered + confirmed** this iteration; FR-034/035/036/037
-  and SC-021/SC-025 are all served by the relocation. There is nothing carried to a future 141 iteration —
-  i10 is the last planned increment before feature-closeout.
-- **Fixed-now:** the relocation (skill + 9 lens md + trimmed prompt + unchanged deploy) and the review-driven
-  test hardening (presence-lock the 3 refinements) — all delivered + tested this iteration.
-- **Fixed-now but runtime-unconfirmed (shipped, awaiting natural exercise — NOT a deferral):** `a38daa33`
-  (question-FORM), `c80e7d58` (SC-021 record shape), `49a9ff39` (diagram persistence). The *fix* is in the
-  skill + presence-locked; only the *behavioral observation* is pending, because the dogfood ran on the
-  pre-refinement deployed skill. These ship with i10; the next downstream workshop run on the updated skill is
-  the confirmation — no defer entry, no unmet requirement.
+- **Relocation delivered and SC-024 confirmed — fixed-now.** SC-024 (the i9 carry) is delivered and confirmed this iteration by the testLenses6 dogfood; FR-034/035/036/037 and SC-021/SC-025 are all served by the relocated skill + per-lens md + trimmed prompt + unchanged deploy. Nothing is carried forward; i10 is the last planned increment before feature-closeout.
+- **Review-driven test hardening — fixed-now.** This review added presence-lock assertions for the three same-session skill refinements (a38daa33 question-FORM, c80e7d58 SC-021 record shape, 49a9ff39 diagram persistence) and re-ran all eight relevant suites at review time (exit 0).
+- **Three skill refinements shipped, runtime-confirmation pending natural use — fixed-now.** The fixes are in the skill source and presence-locked; the testLenses6 run exercised the pre-refinement deployed skill, so the behavioral observation lands on the next fresh-deploy workshop run. This is shipped scope awaiting natural exercise; nothing is held back, so no canonical-ledger entry is required.
 
 ## Follow-ups
 
