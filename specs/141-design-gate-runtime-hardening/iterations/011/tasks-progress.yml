@@ -1,0 +1,41 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "011"
+updated_at: "2026-06-05T22:30:00Z"
+tasks:
+  T001:
+    title: "Provenance floor: per-lens confirmation field + extend Test-SpecrewLensWorkshopRecords (grandfather-gated by confirmation_required) + wiring integration test (FR-039/SC-026)."
+    status: "in-progress"
+    started_at: "2026-06-05T22:30:00Z"
+    completed_at: ""
+    blocked_reason: ""
+  T002:
+    title: "FR-038 invariant in the design-workshop skill: record human-agreed only for surfaced+confirmed; delegate/skip exception with honest provenance; never synthesize-and-attribute; count self-check; the provenance field."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T003:
+    title: "squad.agent.md stopping-completeness rule (the root-cause lever): intake not 'specific enough' until every selected lens is confirmed/delegated/skipped; never backfill; modeled on the greenfield-intake interactive rule."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T004:
+    title: "FR-040 intake UX: prep announcement + agenda assignment + per-lens lazy-load progress cue; in the skill + a Rule 9a pointer."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T005:
+    title: "Tests + validator: SC-026 floor (positive/missing/invalid/grandfather) + presence-lock the FR-038 + FR-040 conduct + the squad.agent.md rule; all suites + the full validator green."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T006:
+    title: "SC-027 Squad re-dogfood: a Copilot/Squad run where synthetic agreements do NOT recur, delegated/skipped are honestly attributed, and the intake announces prep + agenda + per-lens progress. Behavioral acceptance gate (needs the maintainer)."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: "Needs a maintainer Squad/Copilot downstream run — the SC-027 behavioral acceptance; the unit floor (T005) locks presence only."
