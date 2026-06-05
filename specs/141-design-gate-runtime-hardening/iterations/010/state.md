@@ -1,12 +1,12 @@
 # Iteration State: 010
 
 **Schema**: v1
-**Last Completed Task**: T005 (lens-conduct-delivery tests + all touched suites green)
-**Tasks Remaining**: T006 (the SC-024 re-confirm dogfood — needs a maintainer downstream run, scheduled by the maintainer for the next session)
-**In Progress**: T006 — the runtime re-confirm dogfood (behavioral acceptance, awaiting the maintainer)
+**Last Completed Task**: T006 (the SC-024 re-confirm dogfood — testLenses6 / 001-skill-mcp-catalog — PASSED)
+**Tasks Remaining**: none (T001-T006 all done)
+**In Progress**: none — build + SC-024 dogfood complete; ready for the 145 review-signoff
 **Baseline Ref**: 55d726b6
-**Updated**: 2026-06-05T17:30:00Z
-**Current Phase**: implement (build T001-T005 done; awaiting the dogfood)
+**Updated**: 2026-06-05T20:30:00Z
+**Current Phase**: review-signoff (build T001-T005 + the SC-024 dogfood T006 all done)
 **Iteration Status**: planning
 
 ## Execution Summary
