@@ -33,7 +33,7 @@ foreach ($trigger in @('design lens', 'workshop', 'design-analysis', 'architectu
 # Body carries the relocated conduct (A/C/D + the per-lens loop + self-reinvocation + self-containment).
 Assert-Match -Text $skill -Pattern '(?i)console ASCII' 'skill body: ASCII is the inline default (A — a terminal mermaid block is source text, not a picture)'
 Assert-Match -Text $skill -Pattern '(?i)file:///' 'skill body: write richer diagrams to a file and surface the clickable link'
-Assert-Match -Text $skill -Pattern '(?i)by name with its (one-line )?responsibility' 'skill body: name components + responsibilities, never a count (C)'
+Assert-Match -Text $skill -Pattern '(?i)(by name with its (one-line )?responsibility|every component named and its one-line\s+responsibility)' 'skill body: name components + responsibilities, never a count (C)'
 Assert-Match -Text $skill -Pattern '(?i)UI/screen layout|agreed UI' 'skill body: capture the agreed UI layout (D)'
 Assert-Match -Text $skill -Pattern 'design-lenses/<lens-id>\.md|design-lenses/<id>\.md' 'skill body: loads each lens md per stage (point-of-use)'
 Assert-Match -Text $skill -Pattern '(?i)re-invoke' 'skill body: self-reinvocation — re-invoke for the next lens (the 4 hosts do not document reload)'
@@ -101,6 +101,13 @@ Assert-Match -Text $skill -Pattern '(?i)Be verbose' 'skill FR-037 general: be ve
 Assert-Match -Text $skill -Pattern '(?i)menu is good UX' 'skill FR-037 general: the menu stays (good UX); the fix is the missing render, never the menu'
 Assert-Match -Text $skill -Pattern '(?i)agenda \+ depths' 'skill FR-037 general: the lens agenda + depths is an explicit confirm-point (the testLenses11 gap the diagram-scoped rule missed)'
 Write-Pass 'skill FR-037: render+explain before the confirm menu at EVERY confirm point (agenda/diagram/map/options/verdict), verbose, menu kept — the testLenses8/11 Claude under-surfacing fix'
+# Component-map FORM (testLenses11: the agent referenced "11-component map above" + counted "6 resource accessors"
+# instead of rendering the full diagram + a vocabulary-grouped named list). Fix = a prescriptive fill-in TEMPLATE
+# the agent completes (form > prose; harder to under-deliver; also helps weaker hosts), rendered before the ask.
+Assert-Match -Text $skill -Pattern '(?i)fill-in template' 'skill component-map: a fill-in presentation template (the agent completes it, vs improvising the form)'
+Assert-Match -Text $skill -Pattern '(?i)named list grouped by the decomposition vocabulary' 'skill component-map: a named list grouped by the chosen vocabulary (IDesign/DDD/layered/microservices), every component named'
+Assert-Match -Text $skill -Pattern 'Proposed component map' 'skill component-map: the template skeleton is present (diagram + vocabulary-grouped named list + key flow)'
+Write-Pass 'skill component-map: prescriptive fill-in template (diagram + vocabulary-grouped named list + flow), render-before-ask, re-render-on-change — the testLenses11 form fix'
 
 # The coordinator-governance template (injected into squad.agent.md at deploy) carries the stopping-completeness
 # rule — the Squad root-cause lever (the testLenses7 stopping-judgment fix must reach downstream coordinators).

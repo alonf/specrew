@@ -88,11 +88,37 @@ and Antigravity rendered + explained in prose first.)
    - **Co-decide the design method / decomposition style** (DDD bounded-contexts, IDesign volatility-based,
      modular monolith, microservices, layered) as an expertise-adapted discussion; record the choice as a
      binding constraint. Not a bare multiple-choice prompt; do not silently assume it.
-   - **Co-build the component map**: present **every component BY NAME with its one-line responsibility**
-     (e.g. `CatalogManager — owns plan + exercise CRUD and search`), **never a bare count** like "4 managers,
-     3 engines"; render it as an in-band console-ASCII diagram; invite the human to rename, split, merge, or
-     reassign; walk at least one key **flow** (user + system actions) through it together; iterate until the
-     human agrees the decomposition, responsibilities, and flows are right.
+   - **Co-build the component map — render the FULL form, never a summary or a count.** Whenever you present
+     the component map (at the component-design lens AND at the design-analysis stop), put this IN YOUR MESSAGE,
+     in order: **(1)** a **console-ASCII diagram** of all components on their layers with dependency arrows;
+     **(2) then a named list grouped by the decomposition vocabulary** you bound at the design-method step —
+     Managers / Engines / ResourceAccessors for IDesign; bounded contexts / aggregates / entities for DDD;
+     layers for layered; services for microservices — with **EVERY component named and its one-line
+     responsibility** (e.g. `TrayClient — owns the tray UI + global hotkey`). **NEVER a bare count** ("6
+     resource accessors", "3 engines") and never a "map above" / file reference — list every component by name.
+     ONLY after the diagram + the full named list are on screen do you ask the human to approve / rename /
+     split / merge / reassign, and walk at least one key **flow** (user + system actions) through it together.
+     **If they ask for a change, re-render the updated diagram + list, then ask again** — iterate until the
+     human agrees the decomposition, responsibilities, and flows are right. **Use this fill-in template so the
+     form is consistent** — copy it into your message and replace every `<...>`, list EVERY component (never a
+     count), group by your chosen vocabulary, render it in-band BEFORE the approve/change question, and
+     re-render the filled template on any change:
+
+     ```text
+     Proposed component map
+
+     <console-ASCII diagram: every component on its layer, dependency arrows pointing inward>
+
+     <vocabulary group 1 — Managers | Bounded Contexts | Layers | Services>:
+       <ComponentName> — <one-line responsibility>
+       <ComponentName> — <one-line responsibility>
+     <vocabulary group 2 — Engines | Aggregates | ...>:
+       <ComponentName> — <one-line responsibility>
+     <vocabulary group 3 — Resource Accessors | Repositories | ...>:
+       <ComponentName> — <one-line responsibility>
+
+     Key flow: <actor action> -> <Component> -> <Component> -> <outcome>
+     ```
    - **Only then present the remaining trade-off options** (transport, store technology, granularity) for the
      human's verdict — the leftover consequential choices, not the whole design handed down.
    - Where the human's architecture expertise is low you MAY drive the decomposition and explain more, but you
