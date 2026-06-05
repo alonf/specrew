@@ -126,6 +126,12 @@ Assert-Match -Text $skill -Pattern '(?i)parallel catalog' 'skill A8: explicit no
 Assert-Match -Text $skill -Pattern '(?i)never a menu first' 'skill A8: open-question-first — never open a lens with a menu'
 Assert-Match -Text $skill -Pattern '(?i)Binary\s+test: did this lens open' 'skill A8: the binary open-question-first test (a lens opened with a presentation, or a menu)'
 Write-Pass 'skill A8/FR-041: catalog-at-open (front-loading, reuse index.yml + lens md) + open-question-first (the binary conduct lever) — the i12 corrected implementation of FR-037/FR-040'
+# Pacing (i12 T004 dogfood finding — testLenses11claude): the open-question-first presentation WORKED (lens 1
+# opened with a rich ASCII diagram + decision points, no menu) but a dense lens (5 multi-part questions) lands
+# as an overwhelming wall. After presenting, offer all-at-once OR one-at-a-time so the human can chunk it.
+Assert-Match -Text $skill -Pattern '(?i)pacing choice' 'skill A8: dense-lens pacing offer (all-at-once or one-at-a-time)'
+Assert-Match -Text $skill -Pattern '(?i)one at a time' 'skill A8: the one-at-a-time pacing path (chunk a dense lens decision-by-decision)'
+Write-Pass 'skill A8: dense-lens pacing offer (all-at-once vs one-at-a-time) — the i12 dogfood UX finding'
 
 # The coordinator-governance template (injected into squad.agent.md at deploy) carries the stopping-completeness
 # rule — the Squad root-cause lever (the testLenses7 stopping-judgment fix must reach downstream coordinators).

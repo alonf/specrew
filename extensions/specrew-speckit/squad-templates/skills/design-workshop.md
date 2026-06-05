@@ -115,7 +115,14 @@ available conduct lever — keep the menu, but never re-open a lens with one.
    move that lets the content collapse into the menu's question field and never get rendered (the A8
    `AskUserQuestion` tool-gravity failure). The structured menu is good UX and stays — but only **after** the
    lens's content is on screen, for a crisp discrete choice (e.g. the decomposition vocabulary in step 5). Binary
-   test: did this lens open with a rendered presentation, or with a menu? Open with the presentation. Then, for
+   test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
+   **Pace a dense lens — after presenting, offer all-at-once OR one-at-a-time (A8/FR-041b UX).** A lens with
+   several decision points (architecture-core, component-design, security-compliance) lands as an overwhelming
+   wall if you present everything and end with five multi-part questions at once. So your closing move on a dense
+   lens SHOULD offer the human a **pacing choice** — *answer it all in one go, or have me take you through the
+   decisions one at a time* (ask decision 1, wait for the answer, then decision 2, …). Respect their pick; never
+   force the whole wall on someone who wants to step through it. A light single-decision lens skips the offer —
+   just ask the one open question. Then, for
    the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
    until the human says "move on"** before the next lens. Adapt depth to the user-profile expertise dials

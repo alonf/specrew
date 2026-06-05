@@ -3,9 +3,9 @@
 **Schema**: v1
 **Last Completed Task**: T003 (the A8 presence-locks; T001–T003 built + green)
 **Tasks Remaining**: T004 (the maintainer consolidated cross-host re-dogfood)
-**In Progress**: none — build done (T001–T003); T004 is the behavioral dogfood
+**In Progress**: T004 (the consolidated cross-host re-dogfood — ROUND 1 on Claude confirmed open-question-first WORKS; dense-lens pacing offer added; component-map render at design-analysis + Squad A7 still pending)
 **Baseline Ref**: 26ef631e
-**Updated**: 2026-06-06T00:40:00Z
+**Updated**: 2026-06-06T01:10:00Z
 **Current Phase**: review-signoff (T001–T003 built + green via lens-conduct-delivery + skill-templates; T004 the consolidated cross-host re-dogfood is the behavioral acceptance)
 **Iteration Status**: executing
 
