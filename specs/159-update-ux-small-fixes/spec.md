@@ -16,6 +16,14 @@ The work is intentionally separate from:
 - Proposal 160 path-resolver and managed-skill sidecar work in the separate worktree.
 - Any release promotion, beta publish, or stable tag operation.
 
+## Clarifications
+
+### Session 2026-06-05
+
+- Q: Should the stale-module guard apply only to default Specrew asset refresh, or to every mutating `specrew update` scope? → A: Apply it broadly to every mutating update scope, including `--all`, `--specrew`, `--spec-kit`, and `--squad`; an older running Specrew module must not mutate a newer-baseline project at all.
+- Q: Should `0.24.0` be removed everywhere or only from active user-facing/generated guidance? → A: Remove or reword it from active generated governance, active slash-command skill templates, and routine update/version UX; keep historical references in changelogs, closed specs, proposals, and migration history where they describe the actual release line.
+- Q: How should Proposal 145 be applied for this small fix? → A: Apply Proposal 145 at review-signoff through branch hygiene, functional correctness, non-functional review, code quality, test-integrity checks, collision/scope review, claim-to-evidence verification, and an explicit gap ledger.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Refuse Project Downgrade From Stale Module (Priority: P1)
