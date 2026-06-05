@@ -114,6 +114,18 @@ Write-Pass 'skill component-map: prescriptive fill-in template (diagram + vocabu
 Assert-Match -Text $skill -Pattern '(?i)Workshop agenda' 'skill agenda: a fill-in agenda template (rendered in-band before the confirm menu, not crammed into the menu question)'
 Assert-Match -Text $skill -Pattern '(?i)the decision this lens will ask' 'skill agenda: the agenda template carries each lens depth + the concrete decision it raises (not just the name)'
 Write-Pass 'skill agenda: prescriptive fill-in agenda template (lenses + depth + per-lens decision, render-before-menu) — the testLenses11 agenda-render fix'
+# A8 / FR-041 (i12): the two structural reinforcements after i11 proved render-before-the-menu CONDUCT is
+# defeated on Claude by the AskUserQuestion tool-gravity. (a) catalog-at-open = STRUCTURAL front-loading (show
+# all 9 lenses once, up front, so later menus are informed) reusing index.yml + the lens md (no parallel
+# catalog); (b) open-question-first = the strongest CONDUCT lever (binary — a lens opened with a presentation
+# or with a menu).
+Assert-Match -Text $skill -Pattern '(?i)complete lens catalog' 'skill A8: step 1 presents the COMPLETE lens catalog at workshop open (structural front-loading)'
+Assert-Match -Text $skill -Pattern '(?i)Design lens catalog —' 'skill A8: the catalog-at-open render template header'
+Assert-Match -Text $skill -Pattern '(?i)index\.yml' 'skill A8: the catalog is sourced from index.yml (reuse, not a parallel catalog that drifts)'
+Assert-Match -Text $skill -Pattern '(?i)parallel catalog' 'skill A8: explicit no-parallel-catalog rule (reuse the lens md)'
+Assert-Match -Text $skill -Pattern '(?i)never a menu first' 'skill A8: open-question-first — never open a lens with a menu'
+Assert-Match -Text $skill -Pattern '(?i)Binary\s+test: did this lens open' 'skill A8: the binary open-question-first test (a lens opened with a presentation, or a menu)'
+Write-Pass 'skill A8/FR-041: catalog-at-open (front-loading, reuse index.yml + lens md) + open-question-first (the binary conduct lever) — the i12 corrected implementation of FR-037/FR-040'
 
 # The coordinator-governance template (injected into squad.agent.md at deploy) carries the stopping-completeness
 # rule — the Squad root-cause lever (the testLenses7 stopping-judgment fix must reach downstream coordinators).
