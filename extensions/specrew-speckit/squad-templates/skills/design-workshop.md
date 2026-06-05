@@ -46,7 +46,7 @@ both in view.
 3. **Per-lens facilitated discussion (A4/FR-025).** For the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
    until the human says "move on"** before the next lens. Adapt depth to the user-profile expertise dials
-   (concise where high; explain + recommend a default where low). Right-size — not a fixed nine-lens marathon.
+   (concise where high; explain + recommend a default where low). Right-size — not a fixed nine-lens marathon. **Match the question FORM to the question**: for a discrete, enumerable choice (e.g. decomposition vocabulary — IDesign / Clean Architecture / modular; one service vs split; fixed vs open taxonomy) ask a **multiple-choice question with the full options spelled out and an explicit "other / let me explain" path** so the human can pick fast; for a genuinely open question, discuss in prose. Both are fine — do not force a discrete pick into long prose, nor an open design question into a rigid one-shot MCQ.
 4. **Surface visuals IN-BAND so the human can SEE them (A5/A6/FR-030–FR-031/FR-037).** On a terminal/console
    host a fenced ```mermaid``` block is **source text, not a rendered picture** — only **console ASCII**
    actually renders inline. So the diagram you show the human MUST be **console ASCII art rendered directly in
