@@ -90,6 +90,11 @@ the nine `knowledge/design-lenses/*.md` + `lens-template.md` (each +`## Workshop
   `## Workshop Conduct` + ASCII + the re-invoke; the prompt points to the skill, 9a is the pointer, 9b/9c are
   stubs, the verbose 9b body is gone. SC-024 (runtime quality) is **behavioral → the dogfood, not a unit
   test** (stated in the suite header).
+- **Evidence replay (run at THIS review, not inherited):** all eight relevant suites re-run with real exit
+  codes this review — `skill-templates` (0), `design-analysis-gate` (0), `design-gate-runtime-hardening` unit
+  + integration (0 / 0), `...-session-recovery` (0), `...-greenfield-baseline` (0),
+  `lens-applicability-selector` (0), `lens-conduct-delivery` (0). The first-pass review asserted four of these
+  green from inherited state — the **F-050 coverage-evidence-drift Shape**; this replay grounds the claim.
 - **Gate-completeness (Shape 8) — review-driven fix this iteration:** the suite guarded the relocation but
   asserted **none of the three same-session skill refinements**, so a later skill edit could silently drop
   them — the said-it/didn't-do-it hole this feature's reviews keep missing. This review **closed the
@@ -104,8 +109,11 @@ the nine `knowledge/design-lenses/*.md` + `lens-template.md` (each +`## Workshop
 ## Phase 6 — System safety + ops
 
 - Backward compatibility: the deploy is an idempotent file copy (re-deploy overwrites the managed `SKILL.md`);
-  skills enumerate dynamically; the skill ships to `.claude/skills` + `.agents/skills` (the two-folder covering
-  set for all five hosts per the agentskills.io open standard). No release/publish/push while 141 is in
+  skills enumerate dynamically; the skill ships to **all four active skill roots** (`.claude\skills`,
+  `.cursor\rules`, `.github\skills`, `.agents\skills`) via the unchanged `Get-ActiveSkillRoots` loop —
+  covering all five hosts (Claude, Cursor, Copilot/GitHub, Codex + Antigravity via `.agents`). **Verified this
+  review by a live deploy probe** (`deploy-squad-runtime.ps1` against a throwaway project, exit 0;
+  `specrew-design-workshop/SKILL.md` present in all four roots). No release/publish/push while 141 is in
   progress. **Verdict: pass.**
 
 ## FR × Phase Coverage Matrix
@@ -128,7 +136,8 @@ the nine `knowledge/design-lenses/*.md` + `lens-template.md` (each +`## Workshop
 | The i9 failure mode did NOT recur | no terse manager count, no diagram-written-to-file-never-shown, no missing co-design record |
 | Relocation structure is locked | `lens-conduct-delivery` suite: skill + 9 lens md + trimmed prompt assertions green |
 | **The three refinements (a38daa33/c80e7d58/49a9ff39)** | **PRESENCE-locked only** (this review's assertions). **Runtime-UNCONFIRMED** — the deployed skill the dogfood ran predated them (old SC-021 shape hit; prose diagram fields). Behavioral confirmation = a fresh-deploy dogfood. |
-| Skill re-invocation is viable cross-host | web docs (i9): name+description always resident; body loaded on-demand, multiple times/session; deployed two-folder covering set for all five hosts |
+| Skill re-invocation is viable cross-host | web docs (i9): name+description always resident; body loaded on-demand, multiple times/session; deploys to all four active skill roots (live probe exit 0) covering all five hosts |
+| ~~"two-folder covering set"~~ (my earlier review claim) | **CORRECTED this review** — the deploy uses the standard `Get-ActiveSkillRoots` 4-root loop, not a 2-root set. The original claim was a report error (design-time covering-set reasoning mistaken for deploy behavior); fixed against the live probe. |
 
 ## Design → Code → Test Trace
 
@@ -137,7 +146,7 @@ the nine `knowledge/design-lenses/*.md` + `lens-template.md` (each +`## Workshop
 | Relocate conduct to a re-invokable skill | `squad-templates/skills/design-workshop.md` | testLenses6 (auto-load + re-invoke) + suite | matched (confirmed) |
 | Co-locate per-lens conduct | `## Workshop Conduct` in 9 lens md | suite (all 9 asserted) | matched |
 | Trim the launch prompt | `specrew-start.ps1` 9a pointer + 9b/9c stubs | suite (pointer + stubs + verbose-gone) | matched |
-| Deploy unchanged (auto-discovery) | existing `Get-LegacySpecrewSkillDefinitions` path | skill-templates dynamic enumeration | matched |
+| Deploy unchanged (auto-discovery) | existing `Get-LegacySpecrewSkillDefinitions` + 4-root `Get-ActiveSkillRoots` loop | **live deploy probe: 4 roots, exit 0** | matched (design's 2-root covering-set realized as the standard 4-root deploy — benign over-delivery) |
 | SC-021 record shape pin | skill step 6 exact JSON shape | presence-lock (c80e7d58) | content matched; **runtime-carried** |
 | Diagram persistence | skill step 6 workshop-folder ref | presence-lock (49a9ff39) | content matched; **runtime-carried** |
 
@@ -152,6 +161,12 @@ the nine `knowledge/design-lenses/*.md` + `lens-template.md` (each +`## Workshop
   presence-locked + runtime-carried, NOT proven.
 - **No claim stronger than its evidence:** the relocation/SC-024 claim rests on the transcript; the structure
   claim on the suite; the three refinements are explicitly DOWNGRADED to presence + carried.
+- **Corrected two false/inherited claims against the code (the report-falsification step actually working).**
+  (a) My first-pass review stated the skill ships to a "two-folder covering set"; the real
+  `Get-ActiveSkillRoots` loop deploys to four roots — caught by reading the loop + a live deploy probe (exit 0,
+  four roots present) and corrected here. (b) The first pass asserted four test suites green from inherited
+  state; I re-ran all eight at this review with real exit codes. Both were claims stronger than their
+  review-time evidence — the exact failure mode 145 names — found and fixed before signoff, not shipped.
 
 ## Per-Phase Verdict + Overall
 
@@ -167,7 +182,7 @@ dogfood. **Overall: ACCEPTED for review-signoff.**
 | T001 | FR-034..FR-037 (delivery) | pass | The `specrew-design-workshop` skill: auto-load description + self-contained, self-reinvoking body. |
 | T002 | FR-034..FR-037 (delivery) | pass | `## Workshop Conduct` co-located in all 9 lens md + lens-template. |
 | T003 | FR-037 / SC-021 / SC-025 (refs) | pass | Prompt trimmed to a skill pointer; gate refs retained; parse-clean. |
-| T004 | (deploy) | pass | Auto-discovery deploy unchanged; dynamic enumeration; ships to the two-folder covering set. |
+| T004 | (deploy) | pass | Auto-discovery deploy unchanged (i10 diff does not touch `deploy-squad-runtime.ps1`); dynamic enumeration; **live probe** ships `specrew-design-workshop/SKILL.md` to all four active skill roots (exit 0). Design said "2-root covering set"; implementation reuses the standard 4-root loop — benign over-delivery, accepted (Phase 7). |
 | T005 | (tests) | pass | `lens-conduct-delivery` suite green; **extended this review** to presence-lock the 3 refinements; skill-templates + design-analysis-gate + design-gate-runtime-hardening + selector green. |
 | T006 | SC-024 | pass | testLenses6 **confirmed** the relocation surfaces in-band + co-designs (the i9 failure did not recur). The three post-build refinements are runtime-carried (the deployed skill predated them). |
 
