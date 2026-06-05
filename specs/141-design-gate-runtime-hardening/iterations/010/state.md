@@ -3,11 +3,11 @@
 **Schema**: v1
 **Last Completed Task**: T006 (the SC-024 re-confirm dogfood — testLenses6 / 001-skill-mcp-catalog — PASSED)
 **Tasks Remaining**: none (T001-T006 all done)
-**In Progress**: none — build + SC-024 dogfood complete; ready for the 145 review-signoff
+**In Progress**: none — iteration complete (review-signoff ACCEPTED; retro done)
 **Baseline Ref**: 55d726b6
-**Updated**: 2026-06-05T20:30:00Z
-**Current Phase**: review-signoff (build T001-T005 + the SC-024 dogfood T006 all done)
-**Iteration Status**: reviewing
+**Updated**: 2026-06-05T22:00:00Z
+**Current Phase**: complete (relocation + 3 refinements confirmed; i11 opened for the Squad confirmation-integrity blocker)
+**Iteration Status**: complete
 
 ## Execution Summary
 

@@ -185,3 +185,9 @@ closed:
   - feature: 140-unix-native-install
     iteration: 003
     closed_at: 2026-06-03T13:42:55Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 005
+    closed_at: 2026-06-03T21:17:49Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 010
+    closed_at: 2026-06-05T22:00:00Z

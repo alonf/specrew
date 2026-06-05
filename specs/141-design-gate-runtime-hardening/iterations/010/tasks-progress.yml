@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "010"
-updated_at: "2026-06-05T20:30:00Z"
+updated_at: "2026-06-05T22:00:00Z"
 tasks:
   T001:
     title: "Author the specrew-design-workshop skill (frontmatter auto-load description + self-contained, self-reinvoking body: big-picture lens map + general method [ASCII-inline-default, co-design-not-unilateral, capture-agreements] + per-lens load loop). DONE: squad-templates/skills/design-workshop.md; skill-templates test green."
