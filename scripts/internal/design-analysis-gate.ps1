@@ -445,6 +445,11 @@ function Test-SpecrewDesignCoDesignRecord {
     $isCoDesign = $doc.PSObject.Properties['co_design'] -and [bool]$doc.co_design
     if (-not $isCoDesign) { return @() }
 
+    $selected = @()
+    if ($doc.PSObject.Properties['selected']) {
+        $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
     $section = Get-SpecrewDesignAnalysisSection -Content $Content -HeadingPatterns @('Co-?Design\s+Record')
     if (-not $section.Found -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $section.Body)) {
         $errors.Add("design-analysis.md is missing a populated '## Co-Design Record' section (SC-025): record the co-designed component-to-responsibility map, at least one agreed flow, and a human-agreed marker.") | Out-Null
@@ -463,6 +468,11 @@ function Test-SpecrewDesignCoDesignRecord {
     $agreed = [regex]::Match($body, '(?im)^\s*[-*]?\s*\**\s*(?:human[- ]?agreed|human\s+agreement|agreed\s+by\s+(?:the\s+)?human)\**\s*[:\-]\s*(?<v>.+)$')
     if (-not $agreed.Success -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $agreed.Groups['v'].Value) -or ($agreed.Groups['v'].Value -notmatch '(?i)\b(yes|true|confirmed|agreed|approved)\b')) {
         $missing.Add('a truthy human-agreed marker (for example "Human-agreed: yes")') | Out-Null
+    }
+    # A6 finding D (iteration-9 dogfood): when ui-ux is a selected lens, the agreed UI/screen layout MUST be
+    # captured in the record too — an agreed layout that lives only in the chat scrollback is lost.
+    if (($selected -contains 'ui-ux') -and ($body -notmatch '(?im)(?:ui|screen)[ -]?layout')) {
+        $missing.Add('a captured UI/screen-layout agreement (ui-ux is a selected lens)') | Out-Null
     }
 
     if ($missing.Count -gt 0) {

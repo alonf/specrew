@@ -489,8 +489,10 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   conduct is behavioral (validated by the dogfood, SC-024); the deterministic floor (SC-025) enforces only
   that the co-design record was recorded.
 - **FR-037**: When the workshop or design-analysis produces a visual, it MUST be **surfaced in-band** in
-  the human-facing conversation — an inline render (a fenced mermaid block or console ASCII) and/or a
-  **clickable `file:///` link** to the written file — **never written to disk only**. A per-lens diagram is
+  the human-facing conversation — an inline render that actually DISPLAYS on the host (**console ASCII on a
+  terminal host, where a fenced mermaid block is source text, not a rendered picture**) and/or a **clickable
+  `file:///` link** to a written mermaid/svg/html file — **never written to disk only, and never only as
+  mermaid source the human cannot see**. A per-lens diagram is
   **expected** (not merely permitted) for structural lenses (architecture-core, data-storage,
   security-compliance, integration-api, devops-operations) and for any UI-bearing feature (ui-ux: a
   layout/flow sketch). This tightens FR-031's tier policy from *may-surface* to **must-surface-in-band**
@@ -736,8 +738,8 @@ than deferring to another feature.
   `file:///` link, confirming FR-037 and re-confirming SC-022's surfacing clause). Behavioral — validated
   by the dogfood, not a unit test. (Added 2026-06-05 — Amendment A6; FR-034/FR-035/FR-036/FR-037.)
 - **SC-025**: The design-analysis artifact carries a non-placeholder **co-design record** — a
-  component-to-responsibility map and at least one agreed flow, with an explicit human-agreed marker —
-  recorded before the options/recommendation. The gate enforces the non-placeholder **presence** of this
+  component-to-responsibility map, at least one agreed flow, and — when ui-ux is a selected lens — the agreed
+  UI/screen layout, with an explicit human-agreed marker — recorded before the options/recommendation. The gate enforces the non-placeholder **presence** of this
   record when the artifact marks co-design (marker-gated; pre-A6 artifacts no-op, grandfather-safe); it
   does NOT assess collaboration quality (that is SC-024's dogfood). The check is deterministic and
   LLM/network-free. (Added 2026-06-05 — Amendment A6; FR-036.)

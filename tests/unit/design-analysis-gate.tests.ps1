@@ -413,7 +413,21 @@ Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdNoSection -Iteration
 $cdNoJson = Join-Path $scratchRoot 'codesign-no-json'
 $null = New-Item -ItemType Directory -Path $cdNoJson -Force
 Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdNoSection -IterationDirectory $cdNoJson).Count -eq 0) 'SC-025: no lens-applicability.json -> no-op'
-Write-Pass 'SC-025: co-design-record floor (presence-only, marker-gated, grandfather-safe)'
+
+# (g) A6 finding D (testLenses5 dogfood): with ui-ux a selected lens, the SAME complete record FAILS unless
+# it also captures the agreed UI/screen layout (an agreed layout living only in chat scrollback is lost).
+[System.IO.File]::WriteAllText($cdPath, '{"co_design":true,"selected":["architecture-core","ui-ux"]}', [System.Text.UTF8Encoding]::new($false))
+$cdUiMissing = @(Test-SpecrewDesignCoDesignRecord -Content $cdComplete -IterationDirectory $cdRoot)
+Assert-True ($cdUiMissing.Count -ge 1 -and (($cdUiMissing -join '|') -match '(?i)layout')) 'SC-025/D: ui-ux selected + no captured UI/screen layout -> FAIL naming the layout gap'
+
+# (h) ui-ux selected + a captured UI/screen-layout agreement -> PASS
+$cdWithUi = $cdComplete + "`n`n**UI layout (agreed):** sidebar + list-to-detail; drawer create/edit forms (human approved the ASCII sketch).`n"
+Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdWithUi -IterationDirectory $cdRoot).Count -eq 0) 'SC-025/D: ui-ux selected + captured UI/screen-layout agreement -> PASS'
+
+# (i) ui-ux NOT selected -> the UI-layout requirement does not fire (the complete record still passes)
+[System.IO.File]::WriteAllText($cdPath, '{"co_design":true,"selected":["architecture-core"]}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewDesignCoDesignRecord -Content $cdComplete -IterationDirectory $cdRoot).Count -eq 0) 'SC-025/D: ui-ux NOT selected -> UI-layout requirement does not fire'
+Write-Pass 'SC-025: co-design-record floor (presence-only, marker-gated, grandfather-safe; ui-ux layout capture per finding D)'
 
 # SC-025 INTEGRATION (the i7 wiring lesson, applied to A6): prove the floor fires THROUGH the real gate
 # entry point Test-SpecrewDesignAnalysisArtifact — not just in isolation. The full-suite validator never
