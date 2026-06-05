@@ -276,7 +276,7 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 - **FR-008**: Specrew MUST build on the existing Feature 140 design-analysis-gate
   helper and plan-boundary enforcement rather than rewriting them.
 
-#### Lens catalog + applicability selection (Iterations 4-9; amended 2026-06-04 — Amendments A1, A2, A3, A4, A5; 2026-06-05 — Amendment A6)
+#### Lens catalog + applicability selection (Iterations 4-11; amended 2026-06-04 — Amendments A1, A2, A3, A4, A5; 2026-06-05 — Amendments A6, A7)
 
 - **FR-009**: The repo-local design-lens knowledge (`extensions/specrew-speckit/knowledge/design-lenses/`)
   MUST inform the lifecycle, not merely a single design-analysis section: for each selected lens, its
@@ -499,6 +499,48 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   and supersedes the permissive reading that allowed a disk-only artifact. *(Folds the Iteration-8
   visual-dogfood findings #3 and #5.)*
 
+#### Confirmation integrity & intake responsiveness (Iteration 11 — Amendment A7)
+
+> **Amendment A7 (2026-06-05, maintainer-directed after the testLenses7codex Copilot/Squad dogfood):**
+> The iteration-10 relocation succeeded — the `specrew-design-workshop` skill auto-loads and surfaces in-band
+> on Claude (testLenses6), and the testLenses7codex run confirmed the iteration-10 refinements (the SC-021
+> record shape, diagram persistence, and MCQ form). But on the **Squad/Copilot host** that same run exposed
+> that the workshop recorded **seven "Human agreed" per-lens decisions after only ~three human questions** —
+> five lenses were never surfaced; the coordinator judged intake "specific enough" and the specify dispatch
+> **backfilled synthetic, attributed agreements**. Root cause (empirically traced, advisor-corrected): not
+> delegation — the coordinator asked the first three interactively — but its **stopping judgment**, driven by
+> the Squad "launch aggressively / background-default" persona; the per-lens loop for the remaining lenses was
+> never entered. This makes FR-036 co-design **host-dependent**: it holds on Claude's single-agent loop and
+> collapses under Squad's coordinator-dispatch. The maintainer dispositioned the fix **inside Feature 141**
+> ("the feature is not done if we find such a huge problem"): an integrity invariant the agent cannot satisfy
+> by manufacturing agreement, plus an intake UX that turns the unavoidable prep latency into productive human
+> preparation. As with A4/A5/A6 the collaboration quality is **behavioral** — the deterministic floor (SC-026)
+> can enforce that a per-lens **provenance value** is present but cannot verify the human was actually asked —
+> so the acceptance is a **Squad re-dogfood** (SC-027). The "never synthesize agreement" rule has **one
+> explicit exception**: the human may ask to skip a lens or to have the agent decide it.
+
+- **FR-038**: The workshop MUST record a per-lens decision as **human-agreed only when the human was surfaced
+  that lens and confirmed it**. It MUST NOT manufacture an agreement and attribute it to the human for a lens
+  the human never saw. The human MAY explicitly **delegate** ("you decide") or **skip** a lens or the
+  remainder; when they do, the agent MAY proceed, but MUST record the lens **honestly by its provenance**
+  (delegated/skipped, with the human's actual instruction) — **never** as a fabricated "Human agreed:
+  \<position>". Intake MUST NOT be declared "specific enough" while selected lenses remain neither confirmed
+  nor explicitly delegated/skipped. The agent MUST self-check the **count**: if N lens agreements are recorded,
+  the human was asked — or explicitly delegated/skipped — N times.
+- **FR-039**: Each selected lens's workshop record MUST carry a **provenance** value —
+  `human-confirmed | human-delegated | human-skipped` — and the specify boundary MUST NOT finalize until every
+  selected lens carries one. This is the deterministic, structural half of FR-038: the gate cannot verify the
+  human was asked, but it can require the agent to **declare** how each lens resolved, making a synthetic
+  agreement an explicit, auditable claim rather than buried prose.
+- **FR-040**: The workshop MUST keep the human oriented through the intake preparation latency. Before the
+  heavy prep it MUST (a) **announce** that it is preparing the workshop and that this takes a moment (so a
+  pause does not read as a hang), and (b) present the **agenda as an assignment** — the lenses to be worked and
+  the decision each one asks of the human — so the human can prepare or research while waiting. When lenses are
+  loaded lazily, each lens transition MUST surface a **progress cue** ("preparing lens X of N: \<lens>") and
+  tell the human what that lens will decide so they can get ready. Part of the prep latency is host/model, not
+  Specrew's to remove; this requirement governs the **experience** — turning dead air into preparation, which
+  also reinforces FR-038 since a prepared, per-lens-cued human cannot be silently skipped.
+
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
 - **FR-011**: Generated start/handoff packets MUST NOT emit empty or malformed
@@ -629,6 +671,9 @@ than deferring to another feature.
 | FR-035 | Spec Steward, Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; design-method co-decision) |
 | FR-036 | Spec Steward, Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; collaborative co-design at design-analysis) |
 | FR-037 | Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; in-band visual surfacing — folds i8 dogfood #3/#5) |
+| FR-038 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; confirmation-integrity invariant + delegate/skip exception) |
+| FR-039 | Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; per-lens provenance value + specify-boundary structural floor) |
+| FR-040 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; intake responsiveness — prep announcement + agenda assignment + per-lens progress) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -743,6 +788,17 @@ than deferring to another feature.
   record when the artifact marks co-design (marker-gated; pre-A6 artifacts no-op, grandfather-safe); it
   does NOT assess collaboration quality (that is SC-024's dogfood). The check is deterministic and
   LLM/network-free. (Added 2026-06-05 — Amendment A6; FR-036.)
+- **SC-026**: The specify-boundary lens-workshop floor (SC-021) FAILS when any selected lens lacks a valid
+  **provenance** value (`human-confirmed | human-delegated | human-skipped`) — extending SC-021 from "a record
+  exists" to "a record declares how it was resolved". Marker-gated + grandfather-safe (pre-A7 artifacts no-op);
+  deterministic and LLM/network-free. It cannot verify the human was asked (that is SC-027's dogfood).
+  (Added 2026-06-05 — Amendment A7; FR-038/FR-039.)
+- **SC-027**: In a runtime dogfood on a **multi-agent / coordinator host** (Squad/Copilot), the workshop does
+  NOT record agreements for un-surfaced lenses — every "human-confirmed" lens was actually surfaced and
+  confirmed; delegated/skipped lenses are honestly attributed; and the intake announces prep, presents the
+  agenda assignment, and cues each lazily-loaded lens. The testLenses7codex failure (synthetic agreements for
+  five un-asked lenses) does NOT recur. Behavioral — validated by the re-dogfood, not a unit test.
+  (Added 2026-06-05 — Amendment A7; FR-038/FR-039/FR-040.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.
