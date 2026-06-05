@@ -556,31 +556,30 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
 > instruction does not fix it. The behavior holds on Copilot + Antigravity (they render in prose first) and fails
 > on Claude, making in-band surfacing **host-dependent**. The maintainer **keeps the structured menu** (it is
 > good UX; Copilot uses it correctly) and dispositions the fix **inside Feature 141** as the **corrected
-> implementation** of FR-037 + FR-040 (folded into Iteration 11, as T007 was) along **two measures of differing
-> strength** (the honest distinction, advisor-checked pre-build): the **agenda** is fixed *structurally* by
-> front-loading the lens catalog (show all lenses + decisions once, up front, so the later menu is informed —
-> this holds by construction), while **generated content** (the component map) gets the strongest available
-> *conduct* lever, open-question-first (never open a lens with a menu). The latter is behavioral, not a
-> guarantee; its acceptance is the dogfood (SC-028), and if a host still stuffs a generated visual into its menu
-> the resolution is a host-specific `PreToolUse` hook or documented host-variance — **not** another instruction.
-> A deterministic floor can only check the catalog-at-open surface is present.
+> implementation** of FR-037 + FR-040 (folded into Iterations 11-12, as T007 was). The cross-host dogfood
+> (testLenses11) settled which measure holds: **open-question-first per lens** (open with a presentation + an open
+> question, never a menu — plus a pacing offer for a dense lens, on every host) RENDERS the lens content on Claude
+> and is the win; a **front-load-the-catalog** measure was REVERTED (a before-a-menu render, it skimmed on Claude
+> and was redundant on prose hosts that render the agenda inline). The **governing model**: open-discussion
+> renders hold on Claude; before-a-menu renders (catalog, component-map) skim → a `PreToolUse` hook or documented
+> host-variance, **never another instruction**. A deterministic floor can only presence-lock the conduct; the
+> cross-host dogfood (SC-028) is the acceptance.
 
-- **FR-041**: The workshop MUST reduce its reliance on the agent *choosing* to render confirm-point content —
-  proven unreliable on Claude (the `AskUserQuestion` tool-gravity, A8) — through **two measures of differing
-  strength**: (a) **Front-load the lens catalog (structural).** At workshop open, BEFORE the applicability menu,
-  the workshop MUST present the full lens catalog — every lens with the one-line decision it raises — sourced
-  from the existing per-lens definitions (`design-lenses/<id>.md`), NOT a parallel catalog that can drift.
-  Front-loading decouples *showing the lenses* from *confirming the selection*, so the later applicability/depth
-  menu is informed by content already on screen rather than standing on a count; this holds by construction.
-  (b) **Open-question-first per lens (conduct).** Each lens's FIRST turn MUST be a rendered presentation followed
-  by an **open (free-text) question** — never an `AskUserQuestion`/structured menu as the opening move; a
-  structured menu MAY appear only AFTER the lens's content is on screen, and MUST reference only on-screen
-  content. For generated visuals (FR-037) the presentation is the in-band render (writing to a file is
-  additional, never instead). This is the strongest available *conduct* lever — binary (the lens did or did not
-  open with a menu) and not satisfiable by stuffing the menu's question field — but it remains **behavioral**,
-  not a mechanism guarantee. The structured menu is retained throughout. **Honest scope:** (a) makes the agenda
-  robust by construction; (b) is the best-effort conduct fix for generated content, whose render is the
-  behavioral case the dogfood actually tests (SC-028).
+- **FR-041**: After i11 proved render-before-the-menu *conduct* unreliable on Claude (the `AskUserQuestion`
+  tool-gravity, A8), the workshop MUST open each lens with a **presentation followed by an open (free-text)
+  question — never a structured menu as the lens's first move** (a structured menu MAY appear only AFTER the
+  lens's content is on screen). This is the strongest available *conduct* lever — binary (the lens did or did not
+  open with a menu) and not satisfiable by stuffing the menu's question field — and it is the move that actually
+  rendered the lens content on Claude in the dogfood. For a **dense lens (three or more decision points)** the
+  closing move MUST offer a **pacing choice** — answer all at once, or step through the decisions one at a time —
+  so a dense lens does not land as a wall (a single open question bundling five subjects is as hard on
+  Copilot/Codex/Antigravity as on Claude); this applies on **every host**. **Governing model (the load-bearing A8
+  lesson, dogfood-proven cross-host):** content whose next move is **open discussion** (the per-lens open) renders
+  reliably on Claude; content that must render **right before a structured menu** (a lens catalog before the
+  agenda-confirm; a component map before its approve menu) is defeated by the tool-gravity and **skims on
+  Claude** — its reliable fix is a host-specific `PreToolUse` hook or accepting documented host-variance, **never
+  another instruction**. (An earlier front-load-the-catalog measure was reverted: a before-a-menu render, it
+  skimmed on Claude and was redundant on prose hosts that already render the agenda inline.)
 
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
@@ -715,7 +714,7 @@ than deferring to another feature.
 | FR-038 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; confirmation-integrity invariant + delegate/skip exception) |
 | FR-039 | Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; per-lens provenance value + specify-boundary structural floor) |
 | FR-040 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; intake responsiveness — prep announcement + agenda assignment + per-lens progress) |
-| FR-041 | Spec Steward, Implementer, Reviewer | Iteration 12 (added 2026-06-05 — Amendment A8; front-loaded lens catalog [structural] + open-question-first [conduct]; corrected implementation of FR-037/FR-040) |
+| FR-041 | Spec Steward, Implementer, Reviewer | Iteration 12 (added 2026-06-05 — Amendment A8; open-question-first + cross-host dense-lens pacing [the working conduct]; catalog front-load reverted — a before-a-menu render skims on Claude → hook/host-variance) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -841,16 +840,14 @@ than deferring to another feature.
   agenda assignment, and cues each lazily-loaded lens. The testLenses7codex failure (synthetic agreements for
   five un-asked lenses) does NOT recur. Behavioral — validated by the re-dogfood, not a unit test.
   (Added 2026-06-05 — Amendment A7; FR-038/FR-039/FR-040.)
-- **SC-028**: In the consolidated cross-host re-dogfood, the lens catalog is **front-loaded at workshop open**
-  (every lens + its one-line decision, shown once before the applicability menu) and each lens **opens with a
-  presentation + an open question** rather than a menu. The **agenda is expected to hold on every host**
-  (front-loading is structural). The **component-map render before its approve menu is the behavioral case under
-  test** — the discretionary case front-loading does not cover, and the testLenses8/11 failure mode (a generated
-  visual confirmed by count/reference, never rendered). Where a host still stuffs a generated visual into its
-  menu, that is recorded as **documented host-variance, not a silent pass** (resolution: a host-specific
-  `PreToolUse` hook, decided with the maintainer — never another instruction edit). Behavioral — validated by
-  the dogfood; the deterministic floor checks only that the catalog-at-open surface is present. (Added
-  2026-06-05 — Amendment A8; FR-041.)
+- **SC-028**: In the consolidated cross-host re-dogfood, each lens **opens with a presentation + an open
+  question** (not a menu first), and a **dense lens offers the pacing choice** (all-at-once or one-at-a-time) —
+  confirmed WORKING on Claude (testLenses11: the per-lens render held and the step-through was used) and required
+  on every host (Copilot's per-lens bundled five subjects into one open question — the same wall). The
+  **before-a-menu renders** (the component map at the design-analysis stop) are the **governing-model edge
+  case**: expected to skim on Claude (the tool-gravity), and where they do, the resolution is a host-specific
+  `PreToolUse` hook or **documented host-variance — never another instruction edit**. Behavioral — validated by
+  the dogfood. (Added 2026-06-05 — Amendment A8; FR-041.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.

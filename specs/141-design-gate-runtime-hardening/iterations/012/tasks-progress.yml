@@ -1,16 +1,16 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "012"
-updated_at: "2026-06-06T01:10:00Z"
+updated_at: "2026-06-06T01:40:00Z"
 tasks:
   T001:
-    title: "Catalog-at-open: skill step 1 presents the full 9-lens catalog (ids from index.yml; each one-line decision from design-lenses/<id>.md — reuse, no parallel catalog) BEFORE inferring applicability (FR-041a, structural). DONE: skill step 1 rewritten — the 'Design lens catalog' render template (9 lens ids + <decision> placeholders filled from each lens md) + 'agenda as an assignment' framing preserved (FR-040)."
+    title: "Catalog-at-open: skill step 1 presents the full 9-lens catalog (ids from index.yml; each one-line decision from design-lenses/<id>.md — reuse, no parallel catalog) BEFORE inferring applicability (FR-041a, structural). DONE: skill step 1 rewritten — the 'Design lens catalog' render template (9 lens ids + <decision> placeholders filled from each lens md) + 'agenda as an assignment' framing preserved (FR-040). REVERTED (testLenses11 cross-host dogfood): the catalog-at-open SKIMMED on Claude (a before-a-menu render — the agent jumped to the agenda confirm menu) AND was REDUNDANT on prose hosts (Copilot rendered the catalog + the agenda = the nine lenses twice). Step 1 reverted to framing + agenda-assignment. Governing model: open-discussion renders hold on Claude; before-a-menu renders skim -> hook/host-variance, not another instruction."
     status: "done"
     started_at: "2026-06-06T00:10:00Z"
     completed_at: "2026-06-06T00:25:00Z"
     blocked_reason: ""
   T002:
-    title: "Open-question-first: skill step 3 opens each lens with a presentation + an OPEN free-text question, never an AskUserQuestion menu as the first move; menu only after content on screen; + Big-Picture A8 note (FR-041b, conduct). DONE: skill step 3 opening rewritten ('never a menu first' + the binary test) + the Big-Picture A8 two-reinforcements note. REFINED (testLenses11claude dogfood): added the dense-lens PACING offer (all-at-once or one-at-a-time) — open-question-first WORKED but a 5-decision lens lands as an overwhelming wall, so the closing move offers to chunk it."
+    title: "Open-question-first: skill step 3 opens each lens with a presentation + an OPEN free-text question, never an AskUserQuestion menu as the first move; menu only after content on screen; + Big-Picture A8 note (FR-041b, conduct). DONE: skill step 3 opening rewritten ('never a menu first' + the binary test) + the Big-Picture A8 two-reinforcements note. REFINED (testLenses11claude dogfood): added the dense-lens PACING offer (all-at-once or one-at-a-time) — open-question-first WORKED but a 5-decision lens lands as an overwhelming wall, so the closing move offers to chunk it. STRENGTHENED (testLenses11 cross-host): the pacing is now MANDATORY for a dense lens on EVERY host — Copilot's per-lens bundled 5 subjects into one open question (the same wall as Claude), so it is not Claude-only. Open-question-first CONFIRMED WORKING on Claude (the per-lens render held, cross-host)."
     status: "done"
     started_at: "2026-06-06T00:25:00Z"
     completed_at: "2026-06-06T00:33:00Z"

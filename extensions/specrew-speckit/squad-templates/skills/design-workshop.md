@@ -50,47 +50,25 @@ render and the terse wording, never the menu. (testLenses8/11 on the Claude host
 lenses at the depths shown" and to approve "13 named components" with the content never rendered, while Copilot
 and Antigravity rendered + explained in prose first.)
 
-**(A8/FR-041) Two structural reinforcements of that rule** — because render-before-the-menu *conduct* alone did
-not hold on Claude (the `AskUserQuestion` tool-gravity is stronger than a prose rule): **(1)** open the workshop
-with the **full lens catalog** (all nine lenses + the decision each raises, once, up front — The Method step 1),
-so every later "which apply / confirm the agenda" menu is informed by content already on screen; and **(2)** open
-**each lens** with a presentation + an open question, **never a menu** (The Method step 3). The agenda now holds
-*by construction* (front-loading); for a generated component map, opening with the presentation is the strongest
-available conduct lever — keep the menu, but never re-open a lens with one.
+**(A8/FR-041) Open each lens with a presentation + an open question, never a menu** (The Method step 3) — this is
+what actually rendered the lens content on Claude in the dogfood (the per-lens open has no competing menu, so the
+content cannot collapse into one). **Governing model (dogfood-proven):** content whose next move is *open
+discussion* renders reliably on Claude; content that must render *right before a structured menu* (a lens catalog
+before the agenda-confirm; a component map before its approve menu) is defeated by the `AskUserQuestion`
+tool-gravity and skims on Claude — its reliable fix is a host-specific `PreToolUse` hook or accepting documented
+host-variance, **never another instruction**. (An earlier catalog-at-open front-load was reverted — it skimmed on
+Claude and was redundant on prose hosts that render the agenda inline.)
 
 ## The Method (the same for every lens)
 
-1. **Open with the full lens catalog, then frame the phases (A8/FR-041a, A6/FR-034, A7/FR-040).** Your **first
-   message** MUST present the **complete lens catalog** — all nine lenses with the one-line decision each one
-   raises — BEFORE you infer applicability or raise any menu. This is the structural fix for the on-Claude
-   failure where the lenses appeared only inside the `AskUserQuestion` menu (A8 / testLenses11): show the whole
-   map once, up front, so every later "which apply?" / "confirm the agenda" menu is a confirmation against
-   content already on screen. Source it from `knowledge/design-lenses/index.yml` (the nine ids) and each lens's
-   `design-lenses/<id>.md` (its one-line decision — the Purpose / first Design Decision Point); do **NOT** invent
-   a parallel catalog. Render it in this form:
-
-   ```text
-   Design lens catalog — the nine lenses I can run for your feature (then I'll propose which apply)
-
-   architecture-core — <the core structural approach + scope/boundaries it decides>
-   requirements-nfr — <the quality attributes + measurable targets it decides>
-   data-storage — <the data model + store technology it decides>
-   ui-ux — <the screens, flows, interaction it decides>
-   devops-operations — <the packaging, deployment, operations it decides>
-   integration-api — <the external contracts + integration points it decides>
-   security-compliance — <the trust boundaries, attack surface, compliance it decides>
-   observability-resilience — <the failure modes, telemetry, recovery it decides>
-   component-design — <the component breakdown + responsibilities it decides>
-   ```
-
-   Fill each `<...>` from that lens's md. THEN frame the phases: the workshop *gathers* inputs and constraints;
-   the system **structure** (components, responsibilities, flows) is designed *with* the human at the
-   design-analysis step — not decided in intake. **Keep them oriented (FR-040):** say plainly that you are
-   *preparing the workshop and it will take a moment* (so a pause does not read as a hang), and hand the catalog
-   to the human as the **agenda as an assignment** — the lenses + the decision each raises, up front, to think or
-   research against while you load (FR-040). With the catalog already on screen, step 2's applicability confirm is
-   then a short check of the applicable subset, not a re-listing — and a prepared human engages per-lens (which is
-   what keeps the integrity rule in step 6 honest).
+1. **Frame the phases + hand over the agenda (A6/FR-034, A7/FR-040).** Tell the human up front: the workshop
+   *gathers* inputs and constraints; the system **structure** (components, responsibilities, flows) is designed
+   *with* them at the design-analysis step — not decided in intake. So they know the collaboration is coming.
+   **Before the heavy prep, keep them oriented (FR-040):** say plainly that you are *preparing the workshop and
+   it will take a moment* (so a pause does not read as a hang), and hand them the **agenda as an assignment** —
+   list the lenses you will work and, for each, the decision it will ask of them — so they can think or research
+   while you load. The wait becomes preparation, and a prepared human engages per-lens (which is what keeps the
+   integrity rule in step 6 honest).
 2. **Infer applicability, then confirm (A4/FR-025).** Propose which lenses apply WITH your reasoning; ask the
    human only to confirm or adjust. Never make them answer obvious yes/no applicability; never silently
    auto-resolve a material area. **Render the agenda IN-BAND before the confirm menu — fill this template, do
@@ -116,13 +94,16 @@ available conduct lever — keep the menu, but never re-open a lens with one.
    `AskUserQuestion` tool-gravity failure). The structured menu is good UX and stays — but only **after** the
    lens's content is on screen, for a crisp discrete choice (e.g. the decomposition vocabulary in step 5). Binary
    test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
-   **Pace a dense lens — after presenting, offer all-at-once OR one-at-a-time (A8/FR-041b UX).** A lens with
-   several decision points (architecture-core, component-design, security-compliance) lands as an overwhelming
-   wall if you present everything and end with five multi-part questions at once. So your closing move on a dense
-   lens SHOULD offer the human a **pacing choice** — *answer it all in one go, or have me take you through the
-   decisions one at a time* (ask decision 1, wait for the answer, then decision 2, …). Respect their pick; never
-   force the whole wall on someone who wants to step through it. A light single-decision lens skips the offer —
-   just ask the one open question. Then, for
+   **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
+   A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
+   overwhelming **wall** if you present everything and end with one open question that secretly bundles five
+   subjects — and a numbered list of subjects reads like pickable options when it is not. So on a dense lens
+   (**three or more** decision points) your closing move **MUST** offer the human a **pacing choice** — *answer it
+   all in one go, or have me take you through the decisions one at a time* (then ask decision 1, wait for the
+   answer, then decision 2, …, each as its own focused question). This is **not optional on a dense lens and
+   applies on every host** — a single open question covering five subjects is as hard on Copilot/Codex/Antigravity
+   as on Claude; do not bundle. Respect their pick; never force the whole wall on someone who wants to step
+   through it. A light single-decision lens skips the offer — just ask the one open question. Then, for
    the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
    until the human says "move on"** before the next lens. Adapt depth to the user-profile expertise dials
