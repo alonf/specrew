@@ -37,16 +37,21 @@ both in view.
 
 ## The Method (the same for every lens)
 
-1. **Frame the phases (A6/FR-034).** Tell the human up front: the workshop *gathers* inputs and constraints;
-   the system **structure** (components, responsibilities, flows) is designed *with* them at the design-analysis
-   step — not decided in intake. So they know the collaboration is coming.
+1. **Frame the phases + hand over the agenda (A6/FR-034, A7/FR-040).** Tell the human up front: the workshop
+   *gathers* inputs and constraints; the system **structure** (components, responsibilities, flows) is designed
+   *with* them at the design-analysis step — not decided in intake. So they know the collaboration is coming.
+   **Before the heavy prep, keep them oriented (FR-040):** say plainly that you are *preparing the workshop and
+   it will take a moment* (so a pause does not read as a hang), and hand them the **agenda as an assignment** —
+   list the lenses you will work and, for each, the decision it will ask of them — so they can think or research
+   while you load. The wait becomes preparation, and a prepared human engages per-lens (which is what keeps the
+   integrity rule in step 6 honest).
 2. **Infer applicability, then confirm (A4/FR-025).** Propose which lenses apply WITH your reasoning; ask the
    human only to confirm or adjust. Never make them answer obvious yes/no applicability; never silently
    auto-resolve a material area.
 3. **Per-lens facilitated discussion (A4/FR-025).** For the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
    until the human says "move on"** before the next lens. Adapt depth to the user-profile expertise dials
-   (concise where high; explain + recommend a default where low). Right-size — not a fixed nine-lens marathon. **Match the question FORM to the question**: for a discrete, enumerable choice (e.g. decomposition vocabulary — IDesign / Clean Architecture / modular; one service vs split; fixed vs open taxonomy) ask a **multiple-choice question with the full options spelled out and an explicit "other / let me explain" path** so the human can pick fast; for a genuinely open question, discuss in prose. Both are fine — do not force a discrete pick into long prose, nor an open design question into a rigid one-shot MCQ.
+   (concise where high; explain + recommend a default where low). Right-size — not a fixed nine-lens marathon. **Match the question FORM to the question**: for a discrete, enumerable choice (e.g. decomposition vocabulary — IDesign / Clean Architecture / modular; one service vs split; fixed vs open taxonomy) ask a **multiple-choice question with the full options spelled out and an explicit "other / let me explain" path** so the human can pick fast; for a genuinely open question, discuss in prose. Both are fine — do not force a discrete pick into long prose, nor an open design question into a rigid one-shot MCQ. **Surface EVERY selected lens to the human and get a real answer before you record it (A7/FR-038):** intake is NOT "specific enough" until each selected lens has either the human's confirmation OR an explicit "you decide / skip" from them. You may NOT decide after a few questions that intake is done and then write up the remaining lenses yourself — that is the exact failure this rule exists to stop. When you move to the next lens (loading it lazily), announce it so the pause is legible: *"preparing lens X of N: &lt;lens&gt; — get ready, this one decides …"* (FR-040).
 4. **Surface visuals IN-BAND so the human can SEE them (A5/A6/FR-030–FR-031/FR-037).** On a terminal/console
    host a fenced ```mermaid``` block is **source text, not a rendered picture** — only **console ASCII**
    actually renders inline. So the diagram you show the human MUST be **console ASCII art rendered directly in
@@ -71,24 +76,34 @@ both in view.
    - Where the human's architecture expertise is low you MAY drive the decomposition and explain more, but you
      MUST still confirm the responsibilities and flows with them, not author them silently.
 6. **Capture the agreements (A4/A6/SC-021/SC-025).**
-   - Per-lens workshop record in the feature-level `lens-applicability.json` — set `workshop_intake: true`, the
-     `selected` lens-id list, and a SINGLE top-level `workshop` object **keyed by lens id**, each value carrying
-     the EXACT fields the SC-021 gate checks: `agenda` (array of questions raised), `decision` (a SINGLE STRING
-     summarizing the decision + agreement), `depth`, and `moved_on: true`. Exact shape — get it right the first
-     time:
+   - Per-lens workshop record in the feature-level `lens-applicability.json` — set `workshop_intake: true`,
+     `confirmation_required: true`, the `selected` lens-id list, and a SINGLE top-level `workshop` object
+     **keyed by lens id**, each value carrying the EXACT fields the gate checks: `agenda` (array of questions
+     raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true`, and
+     **`confirmation`** — the provenance, one of `human-confirmed | human-delegated | human-skipped` (A7/FR-039,
+     SC-026). Exact shape — get it right the first time:
 
      ```json
-     { "workshop_intake": true, "selected": ["architecture-core"],
-       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true } } }
+     { "workshop_intake": true, "confirmation_required": true, "selected": ["architecture-core"],
+       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed" } } }
      ```
 
-     It is `workshop` -> `<lens-id>` -> fields (NOT `<lens-id>` -> `workshop`), and the field is `decision`
-     (a singular string), NOT a `decisions` array — the inverted nesting or a `decisions` array FAILS the SC-021
-     specify-boundary gate. Extra fields (such as the `diagram` reference below) are fine. **Persist each keeper diagram you render for a lens** (the trust-boundary diagram, the ERD, the
+     It is `workshop` -> `<lens-id>` -> fields (NOT `<lens-id>` -> `workshop`), and `decision` is a singular
+     string, NOT a `decisions` array — the inverted nesting or a `decisions` array FAILS the SC-021 gate. Extra
+     fields (such as the `diagram` reference below) are fine. **Persist each keeper diagram you render for a lens** (the trust-boundary diagram, the ERD, the
      component map, the sequence, etc.) — write the ASCII (or mermaid) to a workshop folder,
      `specs/<feature>/workshop/<lens-id>.md`, and set that lens's `diagram` field to a **reference to that
      file** (the path + a one-line caption), NOT a prose description. A diagram that lives only in the chat
      scrollback is lost; the workshop folder makes the design reviewable from the artifacts.
+   - **Integrity — never manufacture agreement (A7/FR-038, SC-026).** Set `confirmation: human-confirmed` ONLY
+     for a lens you actually surfaced and the human confirmed. If the human explicitly said "you decide" or
+     "skip", set `human-delegated` / `human-skipped` and say so honestly in `decision` — do NOT write a
+     fabricated "the human agreed to X" for a lens they never saw. **Count self-check before you record:** you
+     are about to write N lens records — you must have asked, or been explicitly told to decide/skip, N times.
+     If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill
+     in the remaining lenses yourself. The SC-026 gate blocks the specify boundary until every selected lens
+     carries a `confirmation` — but it cannot see whether you really asked; that integrity is on you, and the
+     Squad re-dogfood checks it.
    - At design-analysis, a `## Co-Design Record` in `design-analysis.md` with the agreed
      component-to-responsibility map + at least one agreed flow + a human-agreed marker, and — when ui-ux is in
      scope — the **agreed UI/screen layout** (the ASCII sketch the human approved). Set `co_design: true` in the

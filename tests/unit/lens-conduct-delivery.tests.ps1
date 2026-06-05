@@ -75,5 +75,34 @@ Assert-Match -Text $start -Pattern '(?m)^9c\. \(Folded into' 'launch prompt: Rul
 Assert-True ($start -notmatch '(?m)^9b\. \*\*Workshop visuals \(Amendment A5\)') 'launch prompt: the verbose 9b visuals rule body was relocated (not left inline)'
 Write-Pass 'launch prompt: trimmed to a skill pointer; the verbose 9a/9b/9c conduct relocated to the skill'
 
+# --- Iteration 11 (Amendment A7): confirmation integrity + intake UX conduct (presence-locked) ---
+# FR-038 (integrity + count + delegate/skip exception) + FR-039 (provenance field) + FR-040 (intake UX) in the
+# skill; the squad.agent.md stopping-completeness rule in the coordinator-governance template; the Rule 9a A7
+# clause. Presence only — the behavioral payoff (the agent stops manufacturing agreement) is the SC-027 Squad
+# re-dogfood, not unit-provable.
+Assert-Match -Text $skill -Pattern '(?i)never manufacture agreement|fabricated' 'skill A7: the never-manufacture-agreement integrity rule (FR-038)'
+Assert-Match -Text $skill -Pattern '(?i)confirmation_required' 'skill A7: the confirmation_required marker (FR-039)'
+Assert-Match -Text $skill -Pattern 'human-confirmed \| human-delegated \| human-skipped' 'skill A7: the provenance enum incl. the delegate/skip exception (FR-038/FR-039)'
+Assert-Match -Text $skill -Pattern '(?i)count self-check' 'skill A7: the count self-check (FR-038)'
+Assert-Match -Text $skill -Pattern '(?i)preparing the workshop' 'skill A7: the prep announcement (FR-040)'
+Assert-Match -Text $skill -Pattern '(?i)agenda as an assignment' 'skill A7: the agenda assignment (FR-040)'
+Assert-Match -Text $skill -Pattern '(?i)preparing lens' 'skill A7: the per-lens lazy-load progress cue (FR-040)'
+Write-Pass 'skill A7: confirmation-integrity invariant + count + delegate/skip exception + provenance field + intake UX (presence-locked; SC-027 dogfood is the behavioral gate)'
+
+# The coordinator-governance template (injected into squad.agent.md at deploy) carries the stopping-completeness
+# rule — the Squad root-cause lever (the testLenses7 stopping-judgment fix must reach downstream coordinators).
+$govPath = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md'
+Assert-True (Test-Path -LiteralPath $govPath) "coordinator-governance template exists ($govPath)"
+$gov = Get-Content -LiteralPath $govPath -Raw
+Assert-Match -Text $gov -Pattern '(?i)every selected lens' 'governance A7: intake not complete until every selected lens is resolved (FR-038 stopping rule)'
+Assert-Match -Text $gov -Pattern '(?i)specific enough' 'governance A7: do not declare intake specific-enough early (the root-cause lever)'
+Assert-Match -Text $gov -Pattern '(?i)background sub-agent|backfill' 'governance A7: do not delegate to a background sub-agent / backfill'
+Write-Pass 'governance A7: the squad.agent.md stopping-completeness rule (the Squad root-cause lever) is in the coordinator-governance template'
+
+# Rule 9a carries the A7 clause (the launch-prompt pointer names A7 + the provenance gate)
+Assert-Match -Text $start -Pattern 'A4/A5/A6/A7' 'launch prompt A7: Rule 9a names Amendment A7'
+Assert-Match -Text $start -Pattern '(?i)confirmation.{0,20}provenance|SC-026' 'launch prompt A7: Rule 9a carries the confirmation-provenance / SC-026 reference'
+Write-Pass 'launch prompt A7: Rule 9a names A7 + the confirmation provenance / SC-026'
+
 Write-Pass 'Lens-conduct delivery relocation (iteration 010) unit tests passed'
 exit 0
