@@ -2,9 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: complete
 **Capacity**: 18/20 story_points
 **Started**: 2026-06-05
+**Completed**: 2026-06-05
 
 <!--
   Validator schema: Iteration Status one of planning|executing|reviewing|retro|complete|abandoned.
@@ -35,12 +36,12 @@ co-design-record floor) is the deterministic, unit-tested floor.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Conduct: Rule 9a phase-framing + new Rule 9c collaborative co-design at design-analysis (co-build component/responsibility map + >=1 flow WITH the human, iterate to agreement, BEFORE options; expertise-adapted drive-more-for-novices but still confirm). The core behavioral capability | FR-034, FR-036 | US-CD | 4 | Spec Steward | scripts/specrew-start.ps1 | planned | claude | — | — |
-| T002 | Conduct: Rule 9b surfacing strengthened MAY->MUST in-band (inline render and/or clickable file:/// link, never disk-only); a per-lens diagram is EXPECTED for structural lenses + any UI-bearing feature (folds i8 #3/#5) | FR-037 | US-CD | 2 | Implementer | scripts/specrew-start.ps1 | planned | claude | — | — |
-| T003 | Lens data: add a design-method/decomposition-style decision point to architecture-core (DDD / IDesign / modular-monolith / microservices / layered) so the existing agenda generator raises it as a discussion (FR-035); verify Get-SpecrewLensWorkshopAgenda surfaces it | FR-035 | US-CD | 2 | Spec Steward | extensions/specrew-speckit/knowledge/design-lenses/architecture-core.md | planned | claude | — | — |
-| T004 | Gate floor: Test-SpecrewDesignCoDesignRecord (marker-gated by co_design in lens-applicability.json; grandfather-safe — pre-A6 artifacts no-op) requires a non-placeholder ## Co-Design Record in design-analysis.md (component->responsibility map + >=1 agreed flow + a human-agreed marker); wire into Test-SpecrewDesignAnalysisArtifact; reuse the SC-021 placeholder helper + FR-026 resolution | SC-025, FR-036 | US-CD | 4 | Implementer | scripts/internal/design-analysis-gate.ps1 | planned | claude | — | — |
-| T005 | Tests (reproduce-first, SC-025 floor): co_design marked + complete record -> PASS; marked + placeholder/missing -> FAIL naming the gap; unmarked (pre-A6) -> no-op (grandfather), modelling the real feature-vs-iteration layout; agenda-includes-design-method assertion. NOT a proof of co-design quality | SC-025, FR-035 | US-CD | 4 | Reviewer | tests/unit/** | planned | claude | — | — |
-| T006 | SC-024 runtime co-design dogfood: a downstream run where the design-analysis is conducted as a co-design (the human shapes the component/responsibility map + a flow before options; the design method is discussed) and per-lens diagrams surface in-band (re-confirming SC-022). The behavioral acceptance gate (needs maintainer) | SC-024, FR-037 | US-CD | 2 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
+| T001 | Conduct: Rule 9a phase-framing + new Rule 9c collaborative co-design at design-analysis (co-build component/responsibility map + >=1 flow WITH the human, iterate to agreement, BEFORE options; expertise-adapted drive-more-for-novices but still confirm). The core behavioral capability | FR-034, FR-036 | US-CD | 4 | Spec Steward | scripts/specrew-start.ps1 | done | claude | 4 | pass |
+| T002 | Conduct: Rule 9b surfacing strengthened MAY->MUST in-band (inline render and/or clickable file:/// link, never disk-only); a per-lens diagram is EXPECTED for structural lenses + any UI-bearing feature (folds i8 #3/#5) | FR-037 | US-CD | 2 | Implementer | scripts/specrew-start.ps1 | done | claude | 2 | pass |
+| T003 | Lens data: add a design-method/decomposition-style decision point to architecture-core (DDD / IDesign / modular-monolith / microservices / layered) so the existing agenda generator raises it as a discussion (FR-035); verify Get-SpecrewLensWorkshopAgenda surfaces it | FR-035 | US-CD | 2 | Spec Steward | extensions/specrew-speckit/knowledge/design-lenses/architecture-core.md | done | claude | 2 | pass |
+| T004 | Gate floor: Test-SpecrewDesignCoDesignRecord (marker-gated by co_design in lens-applicability.json; grandfather-safe — pre-A6 artifacts no-op) requires a non-placeholder ## Co-Design Record in design-analysis.md (component->responsibility map + >=1 agreed flow + a human-agreed marker); wire into Test-SpecrewDesignAnalysisArtifact; reuse the SC-021 placeholder helper + FR-026 resolution | SC-025, FR-036 | US-CD | 4 | Implementer | scripts/internal/design-analysis-gate.ps1 | done | claude | 4 | pass |
+| T005 | Tests (reproduce-first, SC-025 floor): co_design marked + complete record -> PASS; marked + placeholder/missing -> FAIL naming the gap; unmarked (pre-A6) -> no-op (grandfather), modelling the real feature-vs-iteration layout; agenda-includes-design-method assertion. NOT a proof of co-design quality | SC-025, FR-035 | US-CD | 4 | Reviewer | tests/unit/** | done | claude | 4 | pass |
+| T006 | SC-024 runtime co-design dogfood: a downstream run where the design-analysis is conducted as a co-design (the human shapes the component/responsibility map + a flow before options; the design method is discussed) and per-lens diagrams surface in-band (re-confirming SC-022). The behavioral acceptance gate (needs maintainer) | SC-024, FR-037 | US-CD | 2 | Planner | specs/141-design-gate-runtime-hardening/** | done | claude | 2 | pass |
 
 ## Effort Model
 

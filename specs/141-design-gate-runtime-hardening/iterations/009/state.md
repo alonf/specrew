@@ -1,13 +1,13 @@
 # Iteration State: 009
 
 **Schema**: v1
-**Last Completed Task**: T005 (SC-025 floor tests + the FR-035 agenda assertion; all three relevant suites green)
-**Tasks Remaining**: T006 (the SC-024 co-design dogfood — needs a maintainer downstream run)
-**In Progress**: T006 — the runtime co-design dogfood (behavioral acceptance, awaiting the maintainer)
+**Last Completed Task**: T006 (SC-024 dogfood ran — testLenses5; conduct works, in-band-surfacing delivery carried to i10)
+**Tasks Remaining**: (none — T001-T006 terminal)
+**In Progress**: (none — iteration complete)
 **Baseline Ref**: 0ca464ac
-**Updated**: 2026-06-05T10:00:00Z
-**Current Phase**: implement (build T001-T005 done; awaiting the dogfood)
-**Iteration Status**: planning
+**Updated**: 2026-06-05T16:00:00Z
+**Current Phase**: complete
+**Iteration Status**: complete
 
 ## Execution Summary
 
@@ -24,6 +24,7 @@
   (pre-A6 artifacts no-op); no release/push while 141 in progress; deferred Proposal 156 scope stays out.
   SC-024 (behavioral) is the co-design dogfood; SC-025 (the marker-gated co-design-record floor) is the
   unit-tested floor. FR-037 also re-confirms SC-022's surfacing clause carried from iteration 8.
+- **Closeout (2026-06-05)**: the co-design conduct + the SC-025 floor (incl. the wiring integration test + the D ui-ux extension) delivered + tested. The SC-024 dogfood (testLenses5, Claude + Codex) confirmed the conduct works but found the agent under-surfaces in-conversation because the conduct lives in a ~50-rule one-shot launch prompt — the content sub-bugs (A: ASCII-not-mermaid on terminals; C: named components; D: ui-ux capture floor) were FIXED; the delivery/dilution cause is carried to iteration 010 (the relocation to a re-invokable workshop skill + on-demand per-lens md + trimmed prompt). SC-024 full in-band-surfacing pass + the relocation deferred to i10 (`.squad\decisions.md`, FR-036). Review per Proposal 145. See review.md / retro.md / drift-log.md.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "141-design-gate-runtime-hardening"
 iteration: "009"
-updated_at: "2026-06-05T10:00:00Z"
+updated_at: "2026-06-05T16:00:00Z"
 tasks:
   T001:
     title: "Conduct: Rule 9a phase-framing + new Rule 9c collaborative co-design at design-analysis (co-build component/responsibility map + >=1 flow WITH the human, iterate to agreement, BEFORE options; expertise-adapted). FR-034/FR-036. DONE: Rule 9a clause (e) phase-framing + new Rule 9c (specrew-start.ps1); parse-clean (double-backticks for the here-string)."
@@ -34,8 +34,8 @@ tasks:
     completed_at: "2026-06-05T10:00:00Z"
     blocked_reason: ""
   T006:
-    title: "SC-024 runtime co-design dogfood: downstream run where design-analysis is conducted as co-design (human shapes component/responsibility map + a flow before options; design method discussed) and per-lens diagrams surface in-band (re-confirming SC-022). Behavioral acceptance gate (needs maintainer)."
-    status: "planned"
-    started_at: ""
-    completed_at: ""
-    blocked_reason: "Needs a maintainer downstream run (the co-design dogfood) — the behavioral acceptance evidence (SC-024); unit tests (T005) cover the deterministic floor only."
+    title: "SC-024 runtime co-design dogfood (testLenses5, 001-training-admin, Claude + Codex): RAN — the co-design CONDUCT works (human co-designed the IDesign map + 2 flows, recorded) and the SC-025 floor holds; but the agent under-surfaces in-conversation (diagram written to a file and unshown; terse '4 managers' counts; ui-ux layout uncaptured) because the conduct lives in a ~50-rule one-shot launch prompt. A (ASCII-inline)/C (named components)/D (ui-ux capture floor) fixed in-iteration; the delivery/dilution cause -> iteration 010 (the relocation). SC-024 full in-band-surfacing pass carried to i10."
+    status: "done"
+    started_at: "2026-06-05T13:00:00Z"
+    completed_at: "2026-06-05T15:30:00Z"
+    blocked_reason: ""
