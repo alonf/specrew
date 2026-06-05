@@ -108,6 +108,12 @@ Assert-Match -Text $skill -Pattern '(?i)fill-in template' 'skill component-map: 
 Assert-Match -Text $skill -Pattern '(?i)named list grouped by the decomposition vocabulary' 'skill component-map: a named list grouped by the chosen vocabulary (IDesign/DDD/layered/microservices), every component named'
 Assert-Match -Text $skill -Pattern 'Proposed component map' 'skill component-map: the template skeleton is present (diagram + vocabulary-grouped named list + key flow)'
 Write-Pass 'skill component-map: prescriptive fill-in template (diagram + vocabulary-grouped named list + flow), render-before-ask, re-render-on-change — the testLenses11 form fix'
+# Agenda fill-in template (testLenses11: the prose render-before-menu was skimmed at the AGENDA step — the agent
+# crammed the lens list into the menu question instead of rendering the agenda-with-decisions in-band). Same
+# template lever as the component map (prose skimmed -> template holds).
+Assert-Match -Text $skill -Pattern '(?i)Workshop agenda' 'skill agenda: a fill-in agenda template (rendered in-band before the confirm menu, not crammed into the menu question)'
+Assert-Match -Text $skill -Pattern '(?i)the decision this lens will ask' 'skill agenda: the agenda template carries each lens depth + the concrete decision it raises (not just the name)'
+Write-Pass 'skill agenda: prescriptive fill-in agenda template (lenses + depth + per-lens decision, render-before-menu) — the testLenses11 agenda-render fix'
 
 # The coordinator-governance template (injected into squad.agent.md at deploy) carries the stopping-completeness
 # rule — the Squad root-cause lever (the testLenses7 stopping-judgment fix must reach downstream coordinators).

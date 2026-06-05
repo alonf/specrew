@@ -62,7 +62,21 @@ and Antigravity rendered + explained in prose first.)
    integrity rule in step 6 honest).
 2. **Infer applicability, then confirm (A4/FR-025).** Propose which lenses apply WITH your reasoning; ask the
    human only to confirm or adjust. Never make them answer obvious yes/no applicability; never silently
-   auto-resolve a material area.
+   auto-resolve a material area. **Render the agenda IN-BAND before the confirm menu — fill this template, do
+   NOT cram the lens list into the menu question** (a prose "render first" gets skimmed on some hosts; the
+   filled template is what the human reads while you prepare):
+
+   ```text
+   Workshop agenda — <N> lenses
+
+   <lens-id> (<full | medium | light>) — <the decision this lens will ask you to make for THIS feature>
+   <lens-id> (<full | medium | light>) — <the decision …>
+   ...
+   Skipped: <lens-id> — <why it does not apply here>
+   ```
+
+   Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
+   name); render the whole filled block in your message, THEN raise the confirm/adjust menu that references it.
 3. **Per-lens facilitated discussion (A4/FR-025).** For the current lens, raise its decision points (from its
    md), offer options where useful, capture the human's needs + decisions + explicit agreement, and **iterate
    until the human says "move on"** before the next lens. Adapt depth to the user-profile expertise dials
