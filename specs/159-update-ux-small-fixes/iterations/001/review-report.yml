@@ -1,0 +1,65 @@
+schema: v1
+feature: 159-update-ux-small-fixes
+iteration: "001"
+reviewed_at: "2026-06-06T00:00:00Z"
+proposal_145_mode: structured-review-discipline
+overall_verdict: accepted
+phases:
+  phase_0_context:
+    verdict: pass
+    evidence:
+      - specs/159-update-ux-small-fixes/spec.md
+      - specs/159-update-ux-small-fixes/plan.md
+      - specs/159-update-ux-small-fixes/tasks.md
+      - specs/159-update-ux-small-fixes/iterations/001/plan.md
+  phase_1_branch_hygiene:
+    verdict: pass
+    evidence:
+      - git status --short --branch
+      - git stash list --max-count=8
+      - governance validation passed with known repository warnings
+  phase_2_functional_correctness:
+    verdict: pass
+    evidence:
+      - scripts/specrew-update.ps1
+      - scripts/specrew.ps1
+      - tests/integration/update-command.ps1
+  phase_3_non_functional:
+    verdict: pass
+    evidence:
+      - fail-closed stale baseline behavior
+      - no new network, credential, service, retry, or privilege surface
+  phase_4_code_quality:
+    verdict: pass
+    evidence:
+      - centralized guard functions
+      - parser tokenization passed for changed PowerShell files
+      - dependency-report.md
+  phase_5_test_integrity:
+    verdict: pass
+    evidence:
+      - coverage-evidence.md
+      - deterministic protected-surface snapshot in tests/integration/update-command.ps1
+      - Select-String fallback scan in tests/integration/slash-command-compatibility.tests.ps1
+  phase_6_system_safety:
+    verdict: pass
+    evidence:
+      - review-signoff collision check found no Proposal 160 overlap
+      - Feature 141 governance-template overlap is one-line stale wording cleanup only
+coverage:
+  FR-001: [T001, T003]
+  FR-002: [T001, T002, T003]
+  FR-003: [T002, T003]
+  FR-004: [T001, T003]
+  FR-005: [T001, T003]
+  FR-006: [T004, T005]
+  FR-007: [T004]
+  FR-008: [T003, T005, T006]
+  FR-009: [T004, T006]
+gaps:
+  - id: GAP-001
+    status: fixed-now
+    summary: No Feature 159 FR/SC gaps remain.
+  - id: GAP-002
+    status: fixed-now
+    summary: Adjacent slash-command distribution assertion drift was repaired and rerun green.

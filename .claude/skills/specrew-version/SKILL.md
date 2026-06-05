@@ -45,11 +45,12 @@ Backed by: `specrew version` / `scripts/specrew-version.ps1`
 - Installed Specrew version (from module or `Specrew.psd1`)
 - Project baseline version (from `.specrew/config.yml`)
 - Slash-command compatibility state:
-  - `compatible` — the installed version ships the Feature 024 multi-host slash-command surface
-  - `incompatible` — the installed version predates the multi-host slash-command surface; upgrade guidance is shown
+  - `compatible` — the installed version can service the project baseline recorded in `.specrew/config.yml`
+  - `incompatible` — the installed version is older than the project baseline; upgrade guidance is shown
   - `unknown` — the installed version cannot be determined
 - Remediation guidance when compatibility is not met:
   - For outdated installed version: `Update-Module Specrew` or equivalent
+  - For a matching development tree: set `SPECREW_MODULE_PATH`
   - For outdated project baseline: `specrew update`
 
 ## Argument Whitelist
@@ -63,11 +64,11 @@ Only `--project-path` is accepted in v1. Unknown arguments are rejected with exp
 | Unsupported argument | Rejected immediately with command-specific help guidance |
 | Missing project setup | Continue with version inspection, report the project baseline as missing, and point to `specrew init` if the project has not been bootstrapped yet |
 | Version cannot be determined | Report `unknown` state and suggest verifying the Specrew module installation |
-| Incompatible baseline | Report upgrade guidance (`specrew update` or `Update-Module Specrew`) |
+| Incompatible baseline | Report upgrade guidance (`Update-Module Specrew`, `SPECREW_MODULE_PATH`, then `specrew update`) |
 
-## Compatibility Baseline
+## Compatibility State
 
-The minimum compatible version is the **first published Specrew release that ships Feature 024** (the multi-host slash-command surface). Projects running on a pre-v0.24.0 baseline must upgrade to access the full `/specrew-*` command surface.
+Compatibility is evaluated against the installed/running Specrew version and the project baseline recorded in `.specrew/config.yml`. If the project baseline is newer than the running module, use `Update-Module Specrew` or `SPECREW_MODULE_PATH` to select a matching development tree before refreshing project assets.
 
 ## Coexistence
 

@@ -373,6 +373,27 @@ function Assert-ProjectSetup {
     exit 1
 }
 
+function Get-SpecrewDispatcherRuntimeVersion {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot
+    )
+
+    $moduleManifestPath = Join-Path (Split-Path -Parent $scriptRoot) 'Specrew.psd1'
+    if (Test-Path -LiteralPath $moduleManifestPath -PathType Leaf) {
+        try {
+            $manifest = Import-PowerShellDataFile -LiteralPath $moduleManifestPath
+            if ($manifest -and $manifest.ContainsKey('ModuleVersion')) {
+                return [string]$manifest.ModuleVersion
+            }
+        }
+        catch {
+            # Fall through to installed module resolution.
+        }
+    }
+
+    return Get-SpecrewInstalledVersion -ProjectRoot $ProjectRoot
+}
+
 function Assert-SlashCommandCompatibility {
     param(
         [Parameter(Mandatory = $true)][string]$CommandName,
@@ -385,33 +406,21 @@ function Assert-SlashCommandCompatibility {
     }
 
     $resolvedProjectPath = Resolve-ProjectPath -Path $projectPath
-    $slashCommandMinVersionText = Get-SpecrewSlashCommandMinVersion
-    $slashCommandMinVersion = ConvertTo-SpecrewSemanticVersion -Value $slashCommandMinVersionText
-    if ($null -eq $slashCommandMinVersion) {
-        return
-    }
-
-    $reasons = New-Object System.Collections.Generic.List[string]
     $projectBaselineVersionText = Get-SpecrewVersionConfigValue -ProjectRoot $resolvedProjectPath -Key 'specrew_version'
     $projectBaselineVersion = ConvertTo-SpecrewSemanticVersion -Value $projectBaselineVersionText
-    if ($null -ne $projectBaselineVersion -and $projectBaselineVersion -lt $slashCommandMinVersion) {
-        $reasons.Add(("project baseline {0}" -f $projectBaselineVersionText)) | Out-Null
-    }
-
-    $installedVersionText = Get-SpecrewInstalledVersion -ProjectRoot $resolvedProjectPath
-    $installedVersion = ConvertTo-SpecrewSemanticVersion -Value $installedVersionText
-    if ($null -ne $installedVersion -and $installedVersion -lt $slashCommandMinVersion) {
-        $reasons.Add(("installed version {0}" -f $installedVersionText)) | Out-Null
-    }
-
-    if ($reasons.Count -eq 0) {
+    if ($null -eq $projectBaselineVersion) {
         return
     }
 
-    Write-Output "WARNING: Slash-command compatibility check failed for 'specrew $CommandName'."
-    Write-Host ("ERROR: 'specrew {0}' requires Specrew {1} or later." -f $CommandName, $slashCommandMinVersionText) -ForegroundColor Red
-    Write-Host ("Observed: {0}." -f ($reasons -join '; ')) -ForegroundColor Yellow
-    Write-Host "Run 'specrew update' to refresh project assets or 'Update-Module Specrew' to upgrade the installed module." -ForegroundColor Yellow
+    $installedVersionText = Get-SpecrewDispatcherRuntimeVersion -ProjectRoot $resolvedProjectPath
+    $installedVersion = ConvertTo-SpecrewSemanticVersion -Value $installedVersionText
+    if ($null -eq $installedVersion -or $installedVersion -ge $projectBaselineVersion) {
+        return
+    }
+
+    Write-Output "WARNING: Specrew module is older than this project's recorded baseline for 'specrew $CommandName'."
+    Write-Host ("ERROR: 'specrew {0}' cannot safely run with Specrew version {1} against project baseline {2}." -f $CommandName, $installedVersionText, $projectBaselineVersionText) -ForegroundColor Red
+    Write-Host 'Update the module with Update-Module Specrew, or set SPECREW_MODULE_PATH to a matching Specrew development tree before retrying.' -ForegroundColor Yellow
     exit 1
 }
 

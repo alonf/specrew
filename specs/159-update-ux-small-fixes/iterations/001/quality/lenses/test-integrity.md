@@ -2,7 +2,7 @@
 
 **Feature**: 159-update-ux-small-fixes  
 **Lens Ref**: test-integrity@v1.0.0  
-**Phase**: before-implement planning
+**Phase**: review-signoff
 
 ## Planned Review
 
@@ -15,7 +15,11 @@
 
 ## Runtime Evidence Needed
 
-- `pwsh -File tests/integration/update-command.ps1`
-- `pwsh -File tests/integration/slash-command-compatibility.tests.ps1`
-- Active-message scan evidence using `rg` or fallback path.
-- Proposal 145 review claim ledger and gap ledger.
+- Complete. `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\update-command.ps1` exited 0.
+- Complete. `pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\slash-command-compatibility.tests.ps1` exited 0.
+- Complete. Active-message scan used default `rg` path when available and forced `Select-String` fallback path in the same test.
+- Complete. Proposal 145 review claim ledger and gap ledger are recorded in `review-claim-ledger.yml` and `review.md`.
+
+## Verdict
+
+pass

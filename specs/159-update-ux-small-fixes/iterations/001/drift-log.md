@@ -24,11 +24,19 @@
 
 **Total drift events**: 0
 **Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Specification drift**: None detected after T001-T006 batch review
 
 ## Events
 
-No specification drift detected during Iteration 001 execution to date.
+No specification drift detected during Iteration 001 execution or review-signoff.
+
+## Batch Drift Check
+
+- **Task refs**: T001, T002, T003, T004, T005, T006
+- **Requirement refs**: FR-001 through FR-009, SC-001 through SC-006, TG-005
+- **Verdict**: PASS
+- **Evidence**: `review.md`, `review-report.yml`, `review-claim-ledger.yml`, `design-code-trace.yml`, changed-file collision check, planned tests, and governance validation.
+- **Decision**: No drift event required. Implementation stayed within Proposal 159 Tier 1, active-only `0.24.0` cleanup, and the approved Feature 141/Proposal 160 collision boundary.
 
 ### Resolution Strategies (Unused)
 

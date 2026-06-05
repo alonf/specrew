@@ -35,11 +35,7 @@ Outputs:
   - Installed Specrew version
   - Project baseline version (from .specrew/config.yml)
   - Slash-command compatibility state (compatible / incompatible / unknown)
-  - Remediation guidance when compatibility is not met
-
-Compatibility baseline:
-  Minimum version for the slash-command surface is the first published Specrew
-  release that ships Feature 024. Projects on a pre-v0.24.0 baseline must upgrade.
+  - Remediation guidance when the installed module is older than the project baseline
 
 Examples:
   specrew version
@@ -125,29 +121,15 @@ if ([string]::IsNullOrWhiteSpace($projectBaselineVersion)) {
     $projectBaselineVersion = Get-SpecrewVersionConfigValue -ProjectRoot $resolvedProjectPath -Key 'version'
 }
 
-# --- Slash-command minimum version ---
-# Feature 024 slash-command minimum version: 0.24.0
-$slashCommandMinVersionText = Get-SpecrewSlashCommandMinVersion
-$slashCommandMinVersion = ConvertTo-SpecrewSemanticVersion -Value $slashCommandMinVersionText
-
 # --- Compatibility verdict ---
 $compatibilityVerdict = 'unknown'
 $compatibilityDetails = New-Object System.Collections.Generic.List[string]
 
-if ($null -eq $slashCommandMinVersion) {
-    $compatibilityDetails.Add('Slash-command minimum version could not be parsed.') | Out-Null
-}
-elseif ($null -ne $installedVersion) {
-    if ($installedVersion -ge $slashCommandMinVersion) {
-        $compatibilityDetails.Add(("Installed version {0} meets the slash-command minimum ({1})." -f $installedVersionText, $slashCommandMinVersionText)) | Out-Null
-    }
-    else {
-        $compatibilityDetails.Add(("Installed version {0} is older than the slash-command minimum ({1})." -f $installedVersionText, $slashCommandMinVersionText)) | Out-Null
-        $compatibilityVerdict = 'incompatible'
-    }
+if ($null -eq $installedVersion) {
+    $compatibilityDetails.Add('Installed version could not be determined. Verify your Specrew module installation.') | Out-Null
 }
 else {
-    $compatibilityDetails.Add('Installed version could not be determined. Verify your Specrew module installation.') | Out-Null
+    $compatibilityDetails.Add(("Installed version {0} is available for slash-command routing." -f $installedVersionText)) | Out-Null
 }
 
 $projectBaselineSemanticVersion = ConvertTo-SpecrewSemanticVersion -Value $projectBaselineVersion
@@ -157,16 +139,16 @@ if ([string]::IsNullOrWhiteSpace($projectBaselineVersion)) {
 elseif ($null -eq $projectBaselineSemanticVersion) {
     $compatibilityDetails.Add(("Project baseline '{0}' could not be parsed." -f $projectBaselineVersion)) | Out-Null
 }
-elseif ($projectBaselineSemanticVersion -lt $slashCommandMinVersion) {
-    $compatibilityDetails.Add(("Project baseline {0} predates the slash-command minimum ({1})." -f $projectBaselineVersion, $slashCommandMinVersionText)) | Out-Null
+elseif ($null -ne $installedVersion -and $installedVersion -lt $projectBaselineSemanticVersion) {
+    $compatibilityDetails.Add(("Project baseline {0} is newer than installed Specrew {1}." -f $projectBaselineVersion, $installedVersionText)) | Out-Null
     $compatibilityVerdict = 'incompatible'
 }
 else {
-    $compatibilityDetails.Add(("Project baseline {0} meets the slash-command minimum ({1})." -f $projectBaselineVersion, $slashCommandMinVersionText)) | Out-Null
+    $compatibilityDetails.Add(("Project baseline {0} is serviceable by the installed Specrew version." -f $projectBaselineVersion)) | Out-Null
 }
 
 if ($compatibilityVerdict -ne 'incompatible') {
-    if ($null -ne $installedVersion -and $installedVersion -ge $slashCommandMinVersion -and $null -ne $projectBaselineSemanticVersion -and $projectBaselineSemanticVersion -ge $slashCommandMinVersion) {
+    if ($null -ne $installedVersion -and $null -ne $projectBaselineSemanticVersion -and $installedVersion -ge $projectBaselineSemanticVersion) {
         $compatibilityVerdict = 'compatible'
     }
     else {
@@ -187,7 +169,7 @@ $baselineDisplay = if (-not [string]::IsNullOrWhiteSpace($projectBaselineVersion
 
 Write-Host "  Installed version  : $installedDisplay"
 Write-Host "  Project baseline   : $baselineDisplay"
-Write-Host "  Slash-cmd minimum  : $slashCommandMinVersionText"
+Write-Host '  Slash-command UX   : bundled with current Specrew runtime'
 Write-Host ''
 
 switch ($compatibilityVerdict) {
@@ -203,10 +185,11 @@ switch ($compatibilityVerdict) {
             Write-Host "  $detail"
         }
         Write-Host ''
-        Write-Output "WARNING: Specrew multi-host slash-command surface requires version $slashCommandMinVersionText or later."
+        Write-Output 'WARNING: Installed Specrew is older than this project baseline.'
         Write-Host 'Remediation:' -ForegroundColor Yellow
-        Write-Host "  To upgrade the installed module : Update-Module Specrew"
-        Write-Host "  To refresh project assets       : specrew update"
+        Write-Host '  To upgrade the installed module : Update-Module Specrew'
+        Write-Host '  To use a matching development tree: set SPECREW_MODULE_PATH'
+        Write-Host '  To refresh project assets after matching the module: specrew update'
     }
     'unknown' {
         Write-Host "  Compatibility      : UNKNOWN" -ForegroundColor Yellow

@@ -2,7 +2,7 @@
 
 **Feature**: 159-update-ux-small-fixes  
 **Lens Ref**: robustness-baseline@v1.0.0  
-**Phase**: before-implement planning
+**Phase**: review-signoff
 
 ## Planned Review
 
@@ -15,6 +15,10 @@
 
 ## Runtime Evidence Needed
 
-- Update-command regression run.
-- Explicit output assertions for refusal message.
-- Before/after protected-surface snapshots.
+- Complete. `tests/integration/update-command.ps1` exits 0.
+- Complete. Test 0 asserts refusal output contains `Update-Module Specrew`, `SPECREW_MODULE_PATH`, project baseline, and no-change text.
+- Complete. Test 0 compares before/after protected-surface SHA256 snapshots and does not rely on `git status`.
+
+## Verdict
+
+pass

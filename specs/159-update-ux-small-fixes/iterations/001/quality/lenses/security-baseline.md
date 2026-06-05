@@ -2,7 +2,7 @@
 
 **Feature**: 159-update-ux-small-fixes  
 **Lens Ref**: security-baseline@v1.0.0  
-**Phase**: before-implement planning
+**Phase**: review-signoff
 
 ## Planned Review
 
@@ -13,6 +13,10 @@
 
 ## Runtime Evidence Needed
 
-- Stale refusal test with deterministic protected-surface snapshot/no-mutation proof.
-- Equal/newer pass-through regression.
-- Changed-file scope review proving Proposal 160 and Feature 141 surfaces are not changed except for explicitly justified shared active-message wording.
+- Complete. `tests/integration/update-command.ps1` proves stale refusal before protected-surface mutation with deterministic snapshots/hashes.
+- Complete. Equal/newer pass-through regression remains green in update-command Tests 3, 5, and 6.
+- Complete. Changed-file scope review found no Proposal 160 overlap and only the pre-approved one-line Feature 141 governance-template wording cleanup.
+
+## Verdict
+
+pass

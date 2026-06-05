@@ -2,7 +2,7 @@
 
 **Schema**: v1  
 **Spec**: [../../spec.md](../../spec.md)  
-**Status**: planning  
+**Status**: reviewing
 **Capacity**: 6/20 story_points  
 **Started**: 2026-06-06  
 **Completed**:
@@ -31,12 +31,12 @@ No Tier 2 self-update, no Proposal 160 resolver/sidecar files, no Feature 141 de
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T001 | Add stale-module preflight decision in `scripts/specrew-update.ps1` before any mutating action; skip refusal for `--info`; fail closed for older running module or unparsable present baseline; continue absent/equal/newer behavior. | FR-001, FR-002, FR-004, FR-005, SC-001, SC-003 | US1, US2 | 1.5 | Implementer | `scripts/specrew-update.ps1` | planned | codex | | |
-| T002 | Add actionable refusal output and non-zero exit semantics naming running/project versions plus `Update-Module Specrew` and `SPECREW_MODULE_PATH` remediation. | FR-002, FR-003, SC-001, SC-002 | US1 | 0.5 | Implementer | `scripts/specrew-update.ps1` | planned | codex | | |
-| T003 | Extend update-command regression coverage with deterministic protected-surface snapshots/hashes and equal/newer no-regression cases. | FR-001, FR-002, FR-004, FR-005, FR-008, SC-001, SC-003 | US1, US2 | 1.5 | Reviewer | `tests/integration/update-command.ps1` | planned | codex | | |
-| T004 | Clean active `0.24.0` compatibility-baseline wording in canonical active sources first; generated active surfaces are allowed only if parity/tests require them and only for stale wording. | FR-006, FR-007, FR-009, SC-004, SC-006 | US3 | 1 | Spec Steward | `scripts/specrew-version.ps1`, `scripts/internal/version-check.ps1`, `extensions/specrew-speckit/squad-templates/**`, `.github/agents/squad.agent.md` | planned | codex | | |
-| T005 | Update compatibility-message tests and active-message scan coverage with `Select-String` fallback when `rg` is unavailable. | FR-006, FR-008, SC-004 | US3 | 1 | Reviewer | `tests/integration/slash-command-compatibility.tests.ps1`, `tests/**` | planned | codex | | |
-| T006 | Produce Proposal 145 review-signoff evidence: branch hygiene, functional/NFR/code/test/scope review, Feature 141 and Proposal 160 collision check, claim ledger, and gap ledger. | FR-008, FR-009, TG-005, SC-005, SC-006 | US1, US2, US3 | 0.5 | Reviewer | `specs/159-update-ux-small-fixes/iterations/001/**` | planned | codex | | |
+| T001 | Add stale-module preflight decision in `scripts/specrew-update.ps1` before any mutating action; skip refusal for `--info`; fail closed for older running module or unparsable present baseline; continue absent/equal/newer behavior. | FR-001, FR-002, FR-004, FR-005, SC-001, SC-003 | US1, US2 | 1.5 | Implementer | `scripts/specrew-update.ps1` | done | codex | 1.5 | pass |
+| T002 | Add actionable refusal output and non-zero exit semantics naming running/project versions plus `Update-Module Specrew` and `SPECREW_MODULE_PATH` remediation. | FR-002, FR-003, SC-001, SC-002 | US1 | 0.5 | Implementer | `scripts/specrew-update.ps1` | done | codex | 0.5 | pass |
+| T003 | Extend update-command regression coverage with deterministic protected-surface snapshots/hashes and equal/newer no-regression cases. | FR-001, FR-002, FR-004, FR-005, FR-008, SC-001, SC-003 | US1, US2 | 1.5 | Reviewer | `tests/integration/update-command.ps1` | done | codex | 1.5 | pass |
+| T004 | Clean active `0.24.0` compatibility-baseline wording in canonical active sources first; generated active surfaces are allowed only if parity/tests require them and only for stale wording. | FR-006, FR-007, FR-009, SC-004, SC-006 | US3 | 1 | Spec Steward | `scripts/specrew-version.ps1`, `scripts/internal/version-check.ps1`, `extensions/specrew-speckit/squad-templates/**`, `.github/agents/squad.agent.md` | done | codex | 1 | pass |
+| T005 | Update compatibility-message tests and active-message scan coverage with `Select-String` fallback when `rg` is unavailable. | FR-006, FR-008, SC-004 | US3 | 1 | Reviewer | `tests/integration/slash-command-compatibility.tests.ps1`, `tests/**` | done | codex | 1 | pass |
+| T006 | Produce Proposal 145 review-signoff evidence: branch hygiene, functional/NFR/code/test/scope review, Feature 141 and Proposal 160 collision check, claim ledger, and gap ledger. | FR-008, FR-009, TG-005, SC-005, SC-006 | US1, US2, US3 | 0.5 | Reviewer | `specs/159-update-ux-small-fixes/iterations/001/**` | done | codex | 0.5 | pass |
 
 ## Before-Implement Controls
 
@@ -92,7 +92,9 @@ Before-implement check on 2026-06-06 found only `.specify/feature.json` overlap 
 | Planned Effort | 6 | Approved 5 SP implementation scope plus 1 SP review/rework buffer. |
 | Iteration Bounding | scope | `scope` keeps requirements fixed. |
 | Overcommit Threshold | 1.0 | Warn if planned task effort exceeds 20 story_points. |
+| Time Limit (hours) | n/a | Not used for this scope-bounded iteration. |
 | Defer Strategy | manual | No deferrals planned. |
+| Calibration Enabled | true | Retrospective should compare planned and actual effort for future small-fix calibration. |
 
 ## Concurrency Rationale
 
@@ -119,4 +121,4 @@ Every FR/SC in scope is covered by at least one task. Every task maps to at leas
 ## Notes
 
 - Existing stashes are preserved and must not be applied or folded into this branch.
-- No implementation code has been written at this boundary.
+- Implementation and review evidence are complete for review-signoff.
