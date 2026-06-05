@@ -541,6 +541,37 @@ other non-selected-host) wording appears in the generated guidance; repeat per h
   Specrew's to remove; this requirement governs the **experience** — turning dead air into preparation, which
   also reinforces FR-038 since a prepared, per-lens-cued human cannot be silently skipped.
 
+#### Non-discretionary confirm-point presentation (Iteration 11 — Amendment A8)
+
+> **Amendment A8 (2026-06-05, maintainer-directed after the testLenses8 + testLenses11 Claude dogfoods):**
+> FR-037 (visual in-band) and FR-040 (agenda assignment) were first implemented as **conduct** — a skill rule to
+> "render the content in your message before the confirm menu," reinforced by fill-in templates. On the Claude
+> host this was proven insufficient **twice** (testLenses8: a component map "approve 13 named components" never
+> rendered; testLenses11: a lens agenda "8 lenses at the depths shown" never rendered) — even after the skill
+> named the exact anti-pattern and shipped a template the agent was to fill. Empirical root cause
+> (advisor-confirmed): `AskUserQuestion` is a tool call whose `question` + option `description` fields are
+> themselves a place to put content, so the host's gravity is to put the thing-being-confirmed **into the tool
+> call** instead of rendering it first. Every conduct rule shares the shape "render somewhere other than the tool
+> call" — exactly what that gravity defeats — so prose and template fail for the same reason and a further
+> instruction does not fix it. The behavior holds on Copilot + Antigravity (they render in prose first) and fails
+> on Claude, making in-band surfacing **host-dependent**. The maintainer **keeps the structured menu** (it is
+> good UX; Copilot uses it correctly) and dispositions the fix **inside Feature 141** as the **corrected
+> implementation** of FR-037 + FR-040 (folded into Iteration 11, as T007 was): the presentation must not depend
+> on the agent *choosing* to render. As with A4–A7 the conduct is behavioral — the consolidated cross-host
+> re-dogfood (SC-027, extended by SC-028) is the acceptance; a deterministic floor can only check the mechanical
+> surface is present.
+
+- **FR-041**: Confirm-point content MUST be presented **non-discretionarily** — not left to an in-band render the
+  agent may skip in favor of a structured menu. Specifically: (a) the **lens catalog / agenda** MUST be surfaced
+  as a **mechanical opening surface** — the output of an action (a catalog the workshop emits at open, listing
+  every lens with the decision it raises and its depth) rather than prose composed at the agent's discretion;
+  and (b) each lens MUST **open with a rendered presentation followed by an open (free-text) question** — NEVER
+  an `AskUserQuestion`/structured menu as the lens's first move. A structured confirm/select menu MAY appear
+  only **after** the content is on screen and MUST reference only on-screen content. For generated visuals
+  (FR-037) the presentation is the in-band render (writing to a file is additional, never instead). This
+  supersedes the conduct-only reading of FR-037/FR-040 under which the agent could satisfy the requirement by
+  naming the content inside the menu question. The structured menu itself is retained.
+
 #### Smoke-test bug bundle (later iterations, kept in this feature)
 
 - **FR-011**: Generated start/handoff packets MUST NOT emit empty or malformed
@@ -674,6 +705,7 @@ than deferring to another feature.
 | FR-038 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; confirmation-integrity invariant + delegate/skip exception) |
 | FR-039 | Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; per-lens provenance value + specify-boundary structural floor) |
 | FR-040 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; intake responsiveness — prep announcement + agenda assignment + per-lens progress) |
+| FR-041 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A8; non-discretionary confirm-point presentation — mechanical catalog emit + open-question-before-menu; corrected implementation of FR-037/FR-040) |
 | FR-011 | Implementer, Reviewer | Later iteration |
 | FR-012 | Implementer, Reviewer | Later iteration |
 | FR-013 | Implementer, Reviewer | Later iteration |
@@ -799,6 +831,14 @@ than deferring to another feature.
   agenda assignment, and cues each lazily-loaded lens. The testLenses7codex failure (synthetic agreements for
   five un-asked lenses) does NOT recur. Behavioral — validated by the re-dogfood, not a unit test.
   (Added 2026-06-05 — Amendment A7; FR-038/FR-039/FR-040.)
+- **SC-028**: In the consolidated cross-host re-dogfood, on **every host including Claude**, each confirm point's
+  content is on screen **before** its structured menu — the lens catalog/agenda is emitted at workshop open
+  (every lens with the decision it raises and its depth), each lens opens with a rendered presentation + an open
+  question (not a menu as the first move), and the component map / options render in-band before any
+  approve/select menu (the testLenses8/11 "approve 13 components / 8 lenses shown above" with nothing rendered
+  failures do NOT recur). Behavioral — validated by the dogfood (the gate cannot see conversation flow); the
+  deterministic floor checks only that the mechanical catalog surface exists. (Added 2026-06-05 — Amendment A8;
+  FR-041.)
 - **SC-007**: No generated packet emits an empty path segment such as `specs//`.
 - **SC-008**: A freshly bootstrapped greenfield project and a downstream project
   emit no spurious warnings outside their genuinely-actionable set.
