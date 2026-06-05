@@ -85,3 +85,11 @@ floor forces an auditable per-lens declaration but cannot verify the human was a
   edited in place); no release/push while 141 is in progress; the deferred Proposal 156 scope stays out.
 - The grandfather marker `confirmation_required: true` keeps pre-A7 `workshop_intake` artifacts (testLenses4–7,
   i1–i10) no-op — the `workshop_intake`/`fr026_grandfathered` precedent.
+- **T007 was generalized (testLenses11):** the first cut scoped the in-band rule to "diagram/component map", so
+  the lens AGENDA (a list) confirmed-by-count slipped through. Re-anchored on the MECHANISM — *render + explain
+  before ANY confirm menu; the menu may only reference on-screen content* — covering the agenda + every confirm
+  point. **The structured menu STAYS (maintainer: it is good UX);** the fix is the missing render + terse
+  wording (be verbose), never dropping the menu. There is no deterministic backstop for "rendered in chat
+  before asking" (the gate can't see conversation flow), so T006 is the **consolidated all-confirm-points
+  cross-host re-dogfood** (anti-whack-a-mole) and the only real gate; escalation if Claude still skips is
+  stronger render/wording, not a menu change.

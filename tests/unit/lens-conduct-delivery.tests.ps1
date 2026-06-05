@@ -93,7 +93,14 @@ Write-Pass 'skill A7: confirmation-integrity invariant + count + delegate/skip e
 # instead. Copilot + Antigravity already render in-band; this pulls Claude up to the same bar.
 Assert-Match -Text $skill -Pattern '(?i)approves what\s+is on screen' 'skill FR-037: at an approval point the diagram is rendered in-band, not referenced by file/count'
 Assert-Match -Text $skill -Pattern '(?i)IN ADDITION TO the\s+in-band render' 'skill FR-037: the workshop file is written AFTER + in addition to the in-band render, never instead'
-Write-Pass 'skill FR-037: in-band render mandatory at approval points (never by file-ref or bare count) — the testLenses8 Claude under-surfacing fix'
+# General mechanism rule (testLenses11: the lens AGENDA was confirmed by count without rendering — a list, not
+# a diagram, so the diagram-scoped rule missed it). Anchored on render-before-the-menu; covers EVERY confirm
+# point incl. the agenda; keep-the-menu (good UX, maintainer-directed); be verbose.
+Assert-Match -Text $skill -Pattern '(?i)render \+ explain, THEN ask' 'skill FR-037 general: render+explain before the confirm menu (mechanism-anchored, not artifact-enumerated)'
+Assert-Match -Text $skill -Pattern '(?i)Be verbose' 'skill FR-037 general: be verbose — explain in prose first + self-explanatory menu wording'
+Assert-Match -Text $skill -Pattern '(?i)menu is good UX' 'skill FR-037 general: the menu stays (good UX); the fix is the missing render, never the menu'
+Assert-Match -Text $skill -Pattern '(?i)agenda \+ depths' 'skill FR-037 general: the lens agenda + depths is an explicit confirm-point (the testLenses11 gap the diagram-scoped rule missed)'
+Write-Pass 'skill FR-037: render+explain before the confirm menu at EVERY confirm point (agenda/diagram/map/options/verdict), verbose, menu kept — the testLenses8/11 Claude under-surfacing fix'
 
 # The coordinator-governance template (injected into squad.agent.md at deploy) carries the stopping-completeness
 # rule — the Squad root-cause lever (the testLenses7 stopping-judgment fix must reach downstream coordinators).

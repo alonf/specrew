@@ -35,6 +35,21 @@ You are facilitating a design conversation with a human, **one lens at a time**.
 The per-lens *knowledge* is in the lens md; this skill is the *method* that ties the lenses together. Keep
 both in view.
 
+**Render before you ask — the confirm menu may only reference what is on screen (A6/A7/FR-037).** Before you
+raise ANY structured confirm/approve question (an AskUserQuestion menu, a "does this work? / move on? /
+approve" prompt) about the lens **agenda + depths**, a per-lens diagram, the component map, an options/trade-off
+set, or a design verdict — the thing you are asking about MUST already be **rendered in your assistant message
+in THIS exchange**, in prose / console-ASCII the human can see. The menu may reference ONLY content that is on
+screen. **Never** raise a menu that stands on a count ("8 lenses", "13 components"), a summary ("the agenda",
+"the map"), or a "shown above / as proposed" that was not actually shown. The failure mode this exists to stop
+is **menu-before-render**: render + explain, THEN ask. **Be verbose** — explain the agenda / diagram / map /
+options fully in prose first, and word the menu's own question and option labels so they are self-explanatory
+(not a terse "does this work? — 8 lenses"). The structured **menu is good UX — keep it**: Copilot uses the same
+kind of selection and gets it right *because it renders + explains in prose first*; the fix is the missing
+render and the terse wording, never the menu. (testLenses8/11 on the Claude host raised the menu to confirm "8
+lenses at the depths shown" and to approve "13 named components" with the content never rendered, while Copilot
+and Antigravity rendered + explained in prose first.)
+
 ## The Method (the same for every lens)
 
 1. **Frame the phases + hand over the agenda (A6/FR-034, A7/FR-040).** Tell the human up front: the workshop
