@@ -7,7 +7,7 @@
 **Baseline Ref**: 55d726b6
 **Updated**: 2026-06-05T20:30:00Z
 **Current Phase**: review-signoff (build T001-T005 + the SC-024 dogfood T006 all done)
-**Iteration Status**: planning
+**Iteration Status**: reviewing
 
 ## Execution Summary
 
