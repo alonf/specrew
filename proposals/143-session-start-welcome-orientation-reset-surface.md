@@ -3,10 +3,10 @@ proposal: 143
 title: Session Start Welcome Orientation + Reset Surface (Transparency + Recovery)
 status: draft
 phase: phase-2
-estimated-sp: 15-25
+estimated-sp: 18-30
 priority-tier: 1
 type: tooling
-discussion: surfaced 2026-05-29 during F-049 v0.28.0 dogfooding (TelegramFeed downstream-project trial). Maintainer empirically observed Squad Coordinator on Copilot asked "What do you want to build?" with ZERO orientation — no Specrew version, no host indication, no project state, no Crew Interaction Profile acknowledgment. Maintainer-stated directive: "we must provide a message at the beginning, for example, it even doesn't say the Specrew version. It has to tell the user about what it knows before starting. Also there should be a way to reset these parameters." Bulletproof requirement explicit.
+discussion: surfaced 2026-05-29 during F-049 v0.28.0 dogfooding (TelegramFeed downstream-project trial). Maintainer empirically observed Squad Coordinator on Copilot asked "What do you want to build?" with ZERO orientation — no Specrew version, no host indication, no project state, no Crew Interaction Profile acknowledgment. Maintainer-stated directive: "we must provide a message at the beginning, for example, it even doesn't say the Specrew version. It has to tell the user about what it knows before starting. Also there should be a way to reset these parameters." Bulletproof requirement explicit. Amended 2026-06-05 with named runtime Crew Interaction Profiles: `specrew start --profile <name>` lets the same human test or work under different capability/verbosity profiles (for example `alon_theUX_expert`, `novice_user`, `architect_reviewer`) without mutating the default profile or committing personal dials to the repo.
 composes-with:
   - 015  # Expertise-aware adaptive intake — orientation references the user-profile content this composes around
   - 133  # Specrew Primer (persistent host instructions) — primer + orientation are dual surfaces
@@ -43,6 +43,7 @@ This is bigger than the FR-038 in-situ visibility gap noted in F-049 iter-5 retr
 | Active host + capability summary | Yes — "what's the runtime?" | NOT surfaced |
 | Project state classification | Yes — "what does this repo look like to Specrew?" | Mentioned in start-context.json but not in coordinator output |
 | Crew Interaction Profile (user_profile) | Yes — "what does Specrew know about ME?" | In start-context.json (FR-038 ✓) but coordinator doesn't surface it visibly |
+| Active named profile | Yes — "which interaction profile did this session load?" | Only one implicit default user profile exists; no `specrew start --profile <name>` |
 | Last authorized boundary + lifecycle position | Yes — "where am I in the flow?" | In start-context.json but not surfaced |
 | Active configuration (capacity, profile, governance) | Yes — "what rules apply?" | NOT surfaced |
 | Reset paths | Yes — "how do I undo bad state?" | Not discoverable; no CLI surface |
@@ -68,7 +69,7 @@ This proposal addresses gaps surfaced in:
 - F-050 iter-1 multi-cycle iteration-closeout (3 decline cycles): partly because stale state files weren't visible to anyone — maintainer didn't know now.md/start-context.json/last-start-prompt.md were stale until cross-reviewer caught it. A welcome-orientation surface would have shown the actual session state earlier
 - Cross-reviewer empirical bundle (memory `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]`): 5 of 13 instances were state-truth integrity gaps that became visible only when cross-reviewer read state artifacts. Welcome orientation makes them visible at session start, not at iteration-closeout cross-review
 
-## What — 3 Pillars
+## What — 4 Pillars
 
 ### Pillar 1: Welcome Orientation Surface (~6-10 SP)
 
@@ -89,6 +90,8 @@ A structured welcome message the coordinator emits at session start, BEFORE aski
 │    Pending next:    <boundary | none>                             │
 │                                                                  │
 │  Crew Interaction Profile (current user):                         │
+│    Active profile:          <default | profile-name>               │
+│    Profile source:          <path>                                 │
 │    Product Strategy:        <dial> (<calibration-label>)          │
 │    UX/UI Design:            <dial> (<calibration-label>)          │
 │    Software Architecture:   <dial> (<calibration-label>)          │
@@ -127,7 +130,73 @@ A structured welcome message the coordinator emits at session start, BEFORE aski
 - `/specrew-where` skill — extends to show the same orientation on demand
 - `specrew start` CLI output — emits to stdout before invoking the host
 
-### Pillar 2: Reset Surface (~6-10 SP)
+### Pillar 2: Named Runtime Crew Interaction Profiles (~3-5 SP)
+
+Allow the user to select a named Crew Interaction Profile at session start:
+
+```powershell
+specrew start --profile alon_theUX_expert
+specrew start --profile novice_user
+specrew start --profile architect_reviewer
+```
+
+The selected profile changes the session's interaction dials (Product Strategy, UX/UI Design,
+Software Architecture, AI Delivery Planning) and therefore changes verbosity, explanation depth,
+recommendation strength, and how much judgment Specrew expects from the human for that run. This is
+useful for:
+
+- testing Specrew behavior under different user expertise levels without editing the default profile;
+- letting one human intentionally work in different modes (for example "UX expert" vs. "new user");
+- supporting teams where different humans launch the same project with different local profiles;
+- dogfooding interaction features by replaying the same project with different profiles.
+
+**Storage model**:
+
+```text
+~/.specrew/user-profile.yml                  # default profile (existing path; backward compatible)
+~/.specrew/profiles/<profile-name>.yml       # named profiles
+```
+
+`--profile default` (or absence of `--profile`) loads the existing default `user-profile.yml`. A named
+profile loads `~/.specrew/profiles/<profile-name>.yml`. Profile names are identifiers, not paths:
+`^[A-Za-z0-9_.-]+$`; path separators, drive prefixes, `..`, and shell metacharacters are rejected.
+
+**Session context output**:
+
+The resolved profile is written into `.specrew/start-context.json` as session-local context:
+
+```json
+{
+  "user_profile": {
+    "profile_name": "alon_theUX_expert",
+    "profile_source": "C:\\Users\\alon.HOME\\.specrew\\profiles\\alon_theUX_expert.yml",
+    "shared_project_truth": false,
+    "decision_areas": { "...": "..." },
+    "expertise_dials": { "...": "..." }
+  }
+}
+```
+
+The profile choice MUST NOT mutate the default profile unless the user explicitly asks to save/copy
+profiles through the profile-management surface. It also MUST NOT write concrete per-user dial values
+into shared durable project instructions (`AGENTS.md`, `CLAUDE.md`, constitution, installed charters).
+
+**Minimum management surface**:
+
+```text
+specrew profile list
+specrew profile show <name>
+specrew profile copy <from> <to>
+specrew profile delete <name>      # confirmation required
+specrew profile edit <name>        # can delegate to the existing profile questionnaire/editor
+```
+
+The existing `/specrew-user-profile` skill MAY be extended to offer the same named-profile operations.
+If `specrew start --profile <name>` references a missing profile, Specrew fails fast with a clear error
+that lists available profiles and suggests `specrew profile copy default <name>` or
+`specrew profile edit <name>`.
+
+### Pillar 3: Reset Surface (~6-10 SP)
 
 CLI command surface + Crew skill + documented recipes.
 
@@ -177,12 +246,13 @@ Every reset (except `--dry-run`) records an entry in `.squad/decisions.md`:
 
 Same operations exposed as a Specrew skill so users can invoke reset from within an active Crew session without exiting. Per F-049 iter-3 skill-deployment pattern, deployed to all hosts (`.claude/skills/`, `.github/skills/`, `.agents/skills/`, future `.cursor/rules/`).
 
-### Pillar 3: Discoverability (~3-5 SP)
+### Pillar 4: Discoverability (~3-5 SP)
 
 - **`specrew help`** root command lists `welcome` and `reset` as discoverable verbs
+- **`specrew help profile`** lists named-profile operations and the `specrew start --profile <name>` form
 - **`specrew help reset`** shows reset subcommands with explanations
 - **Welcome orientation** mentions reset paths in its content (Pillar 1 already does this)
-- **README.md + docs/user-guide.md** sections for "What Specrew knows about you" + "Resetting Specrew state"
+- **README.md + docs/user-guide.md** sections for "What Specrew knows about you", "Using named profiles", and "Resetting Specrew state"
 - **Skill help** (`/specrew-reset --help` or equivalent host-specific) lists in-Crew reset options
 - **`specrew-help` skill** (if it exists) extended with reset awareness
 
@@ -204,6 +274,14 @@ Same operations exposed as a Specrew skill so users can invoke reset from within
 - **FR-014**: Reset audit entries MUST be parseable by `.squad/decisions.md` validator (existing canonical decision-entry schema)
 - **FR-015**: Welcome Orientation MUST be FAST (<200ms perceived latency) — no remote calls, no expensive state recomputation; read from already-generated `.specrew/start-context.json`
 - **FR-016**: All charter updates MUST mirror to `.specify/extensions/specrew-speckit/squad-templates/` (mirror parity per F-047 FR-014)
+- **FR-017**: `specrew start --profile <profile-name>` MUST load the named Crew Interaction Profile from the user-level profile store and make it the active profile for that session.
+- **FR-018**: Absence of `--profile` MUST preserve backward-compatible behavior by loading the existing default user profile at `~/.specrew/user-profile.yml`; `--profile default` MUST be an explicit alias for the same behavior.
+- **FR-019**: Profile names MUST be validated as safe identifiers and MUST NOT be interpreted as filesystem paths. Path traversal, path separators, drive prefixes, and shell metacharacters MUST be rejected with a clear error.
+- **FR-020**: `.specrew/start-context.json` MUST record the active profile name, source path, resolved dials, and `shared_project_truth: false` so agents can adapt behavior while preserving multi-developer safety.
+- **FR-021**: `specrew start --profile <name>` MUST NOT mutate the default profile or write concrete per-user dial values into shared durable project instructions.
+- **FR-022**: A missing named profile MUST fail fast before host launch, list available profiles, and suggest the profile-management command needed to create or copy one.
+- **FR-023**: Specrew MUST provide a minimal named-profile management surface (`specrew profile list/show/copy/delete/edit` or equivalent) so users can discover, create, and maintain profiles without manually editing YAML.
+- **FR-024**: The Welcome Orientation MUST display the active profile name and source alongside the dial summary so the human can immediately see whether the intended profile was loaded.
 
 ### Success Criteria
 
@@ -216,6 +294,9 @@ Same operations exposed as a Specrew skill so users can invoke reset from within
 - **SC-007**: Cross-platform rendering verified on Windows / Linux / macOS terminals (rich + ASCII modes)
 - **SC-008**: Welcome Orientation latency <200ms verified on cold start with existing user-profile + project state
 - **SC-009**: Empirical maintainer verification: after this proposal ships, restart `specrew start` in a project with existing profile + lifecycle state → maintainer sees the orientation surface with correct values BEFORE any question — the gap empirically documented 2026-05-29 is closed
+- **SC-010**: `specrew start --profile alon_theUX_expert` loads that named profile, writes the profile name/source into start-context, and the first visible orientation shows the selected profile before any intake/resume question.
+- **SC-011**: Two starts of the same project with two different named profiles produce different dial summaries and interaction guidance without modifying shared project files.
+- **SC-012**: Invalid or missing profile names fail before host launch with a clear, actionable error and no partial start-context mutation.
 
 ## How — Implementation Effort
 
@@ -231,7 +312,17 @@ Same operations exposed as a Specrew skill so users can invoke reset from within
 | `specrew-where` skill extension to show same orientation | `extensions/specrew-speckit/squad-templates/skills/where.md` + per-host skill deploys | 1-2 SP |
 | Unit + integration tests | `tests/integration/welcome-orientation.tests.ps1` | 1-2 SP |
 
-### Iteration 2: Reset Surface (~6-10 SP)
+### Iteration 2: Named Runtime Profiles (~3-5 SP)
+
+| Component | File | Effort |
+|---|---|---|
+| `specrew start --profile <name>` parameter + resolver | `scripts/specrew-start.ps1`, `scripts/internal/user-profile.ps1` | 1-1.5 SP |
+| Named-profile store + validation (`~/.specrew/profiles/<name>.yml`) | `scripts/internal/user-profile.ps1` | 0.5-1 SP |
+| Minimal `specrew profile list/show/copy/delete/edit` surface | new or existing profile script/skill surface | 1-1.5 SP |
+| Welcome Orientation active-profile display | `scripts/internal/welcome-orientation.ps1` | 0.5 SP |
+| Unit/integration tests for default, named, missing, invalid, and multi-profile behavior | `tests/integration/user-profile-selection.tests.ps1` | 1 SP |
+
+### Iteration 3: Reset Surface (~6-10 SP)
 
 | Component | File | Effort |
 |---|---|---|
@@ -241,16 +332,17 @@ Same operations exposed as a Specrew skill so users can invoke reset from within
 | In-Crew skill `/specrew-reset` content + deploy targets | `extensions/specrew-speckit/squad-templates/skills/specrew-reset/SKILL.md` + per-host deploys | 1-2 SP |
 | Integration tests for all 6 subcommands + dry-run + confirmation prompts | `tests/integration/reset-surface.tests.ps1` | 2-3 SP |
 
-### Iteration 3: Discoverability + Docs + Cross-Platform Validation (~3-5 SP)
+### Iteration 4: Discoverability + Docs + Cross-Platform Validation (~3-5 SP)
 
 | Component | File | Effort |
 |---|---|---|
 | `specrew help reset` extension | `scripts/specrew-help.ps1` | 0.5 SP |
-| `README.md` + `docs/user-guide.md` additions ("What Specrew knows about you" + "Resetting Specrew state") | 2 files | 1-1.5 SP |
+| `specrew help profile` extension | `scripts/specrew-help.ps1` | 0.5 SP |
+| `README.md` + `docs/user-guide.md` additions ("What Specrew knows about you" + "Using named profiles" + "Resetting Specrew state") | 2 files | 1-1.5 SP |
 | Skill-help integration (specrew-help skill extension) | `extensions/specrew-speckit/squad-templates/skills/specrew-help/SKILL.md` + deploys | 0.5 SP |
 | Cross-platform validation (Linux + macOS rendering) | manual + CI integration | 1-2 SP |
 
-**Total**: ~15-25 SP across 3 iterations.
+**Total**: ~18-30 SP across 4 iterations.
 
 ## Composition
 
@@ -260,6 +352,7 @@ Same operations exposed as a Specrew skill so users can invoke reset from within
 | **Proposal 133** (Specrew Primer — Persistent Host Instructions) | DUAL SURFACES. Primer ships durable host instructions; Welcome Orientation ships per-session orientation. Composable: primer instructs hosts to load orientation at session start. |
 | **Proposal 140** (Reviewer Instruction Surface) | METHODOLOGY KIN. Both ship per-session-context surfaces (playbook vs orientation). Orientation could reference reviewer-instructions presence in its output. |
 | **Proposal 141** (Crew Interaction Profile / Persona Lens Separation) | DIRECT EXTENSION. Iter-5 shipped the profile + start-context.json producer (FR-038). This proposal closes the visibility loop by surfacing it. FR-038-in-situ gap from iter-5 retro is the EMPIRICAL motivation for this proposal. |
+| **Named Runtime Profiles** | NEW IN THIS PROPOSAL. `specrew start --profile <name>` extends Proposal 141's Crew Interaction Profile from one implicit default profile to multiple user-local named profiles selected per session. |
 | **Proposal 047** (Project Governance Profile) | COMPOSES. Welcome Orientation surfaces resolved governance profile (per-project capacity, quality tier, etc.) when applicable. |
 | **Proposal 028** (Proposal Metadata Schema) | COMPOSES. Proposal lifecycle surface (if shipped) could be referenced in orientation output. |
 | **Proposal 092** (Specrew Dashboard Web App) | RELATED. Web dashboard shows the same session state; orientation surface is the CLI equivalent. |
@@ -268,6 +361,9 @@ Same operations exposed as a Specrew skill so users can invoke reset from within
 ## Risks
 
 - **Welcome Orientation rendering noise**: too much content per session start becomes friction. Mitigation: FR-013 ASCII fallback; FR-015 latency cap; user can opt for `--quiet` orientation mode (configured in profile preferences)
+- **Profile confusion**: users may forget which named profile is active and misinterpret Crew behavior. Mitigation: FR-024 makes the active profile name/source visible in every Welcome Orientation and `specrew where` can surface it on demand.
+- **Profile-name path risk**: `--profile` could be abused as a path if treated naively. Mitigation: FR-019 safe-identifier validation; profile names are not paths.
+- **Shared-repo leakage**: named profiles could accidentally write personal dial values into project files. Mitigation: FR-020/FR-021 keep resolved values in session context only and preserve shared instructions as loader rules.
 - **Reset operations destructive without recovery**: confirmation prompts (FR-006) + dry-run mode (FR-005) + protected paths (FR-008) mitigate; reset audit trail (FR-007) provides forensic trail
 - **Skill catalog drift across hosts**: `/specrew-reset` deployed via existing skill-catalog pattern (F-049 iter-3 engine + data); inherits the duplicate-row deploy bug per memory `[[project-specrew-update-deploy-duplicate-rows-2026-05-27]]` — must wait for that fix or include workaround
 - **Audit trail bloat**: every reset writes to decisions.md; could grow large in heavy-reset workflows. Mitigation: orientation surface could show last N reset operations as awareness; rotation policy out of scope for v1
@@ -291,3 +387,4 @@ Phase 2 Tier 1. Maintainer explicit "bulletproof" requirement + empirical sessio
 ## Status history
 
 - **2026-05-29** — Drafted in direct response to maintainer's explicit "we must provide a message at the beginning ... It has to tell the user about what it knows before starting. Also there should be a way to reset these parameters. I want this feature to be bulletproof" directive during F-049 v0.28.0 dogfooding (TelegramFeed downstream-project trial). Empirical motivation: Squad Coordinator on Copilot in fresh greenfield project asked "What do you want to build?" with ZERO orientation despite `.specrew/start-context.json` having full FR-038-compliant `user_profile` section. Proposal scope = 3 pillars (Welcome Orientation + Reset Surface + Discoverability), 15-25 SP across 3 iterations, priority-tier 1. Replaces what would have been a minimal pre-merge spec-steward charter fix (Option A) with bulletproof systemic answer (Option B). F-049 closeout PR carry-forward checklist updated to reference this proposal as the FR-038-in-situ follow-up.
+- **2026-06-05** — Amended with named runtime profile selection. Maintainer requested `specrew start --profile <name>` (for example `--profile alon_theUX_expert`) so one user can test Specrew under different capability/verbosity modes and teams can use different local interaction profiles without changing shared project files. Added Pillar 2, FR-017 through FR-024, SC-010 through SC-012, profile-management minimum surface, effort update 15-25 → 18-30 SP, and explicit multi-developer/no-leakage safeguards.
