@@ -158,4 +158,4 @@ is unnecessary (the single skill re-invokes per stage). The collaboration/surfac
   re-confirm). Future (post-141): the maintainer's sub-agent-per-skill + coordinator model.
 - **Decision date**: 2026-06-05
 - **Design-analysis draft commit**: `deaa1b25`
-- **Decision recorded in commit**: `__DECISION_COMMIT__`
+- **Decision recorded in commit**: `65a5a534`
