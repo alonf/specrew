@@ -41,16 +41,17 @@ Assert-Match -Text $skill -Pattern '(?i)self-contained' 'skill body: self-contai
 Write-Pass 'design-workshop skill: frontmatter trigger description + relocated conduct (ASCII-inline, named components, ui-ux capture, per-lens load, self-reinvocation)'
 
 # --- Same-session skill refinements (locked present so a later edit cannot silently drop them) ---
-# a38daa33 (question FORM): the agent used structured MCQs where the choice was discrete in the testLenses6
-# run - runtime-confirmed. c80e7d58 (SC-021 record shape) + 49a9ff39 (diagram persistence) are
-# runtime-UNCONFIRMED (the dogfood ran on the pre-fix deployed skill); these assertions lock PRESENCE only -
-# the behavioral confirmation is the next dogfood (carried in the i10 review). Reviews on this feature have a
-# track record of missing the said-it/didn't-do-it gap; presence-locking is the cheap structural half.
+# All three POSTDATE the skill that testLenses6 actually ran: the dogfood hit the OLD SC-021 record shape and
+# wrote PROSE diagram fields - proof the deployed skill predated c80e7d58 + 49a9ff39 (and, by the same build
+# boundary, a38daa33). So this run confirms the RELOCATION (the skill auto-loads + carries the conduct), NOT
+# these refinements. These assertions lock PRESENCE only; behavioral confirmation awaits a fresh-deploy dogfood
+# (carried in the i10 review). Reviews on this feature have a track record of missing the said-it/didn't-do-it
+# gap; presence-locking is the cheap structural half.
 Assert-Match -Text $skill -Pattern '(?i)match the question FORM to the question' 'skill body: match question FORM to the question (MCQ for discrete choices) - a38daa33'
 Assert-Match -Text $skill -Pattern '(?i)workshop.{0,12}<lens-id>' 'skill body: pins the workshop -> <lens-id> SC-021 record nesting - c80e7d58'
 Assert-Match -Text $skill -Pattern 'NOT a .decisions. array' 'skill body: warns decision is singular, not a decisions array (SC-021) - c80e7d58'
 Assert-Match -Text $skill -Pattern 'specs/<feature>/workshop/<lens-id>\.md' 'skill body: persists keeper diagrams to the workshop folder (file ref, not prose) - 49a9ff39'
-Write-Pass 'same-session skill refinements present + locked: question-FORM (a38daa33, runtime-confirmed) + SC-021 record shape (c80e7d58) + diagram persistence (49a9ff39) - the latter two presence-asserted, runtime-unconfirmed (next dogfood)'
+Write-Pass 'same-session skill refinements present + locked (a38daa33 question-FORM, c80e7d58 SC-021 record shape, 49a9ff39 diagram persistence) - presence-asserted; all three postdate the deployed skill testLenses6 ran, so runtime-unconfirmed pending a fresh-deploy dogfood'
 
 # --- Per-lens conduct co-located in every lens md ---
 $lensIds = @('architecture-core','component-design','requirements-nfr','ui-ux','data-storage','security-compliance','integration-api','devops-operations','observability-resilience')
