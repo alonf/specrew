@@ -13,7 +13,8 @@ co-located in each `design-lenses/<id>.md` + a trimmed prompt-pointer. Same inte
 FR change (Option B, decision `65a5a534`). The headline is the **inverse of i9's falsification**: where
 testLenses5 *falsified* the in-band-surfacing claim (the Claude agent wrote the diagram to an HTML file and
 never showed it, gave a terse "4 Managers, 3 Engines" count), **testLenses6 CONFIRMED it** — the relocated
-skill auto-loaded, re-invoked per lens, surfaced console-ASCII diagrams in-band the maintainer saw, named
+skill auto-loaded, re-invoked across lenses (loads visible in the transcript at lens 8 and again at the
+design-analysis stop), surfaced console-ASCII diagrams in-band the maintainer saw, named
 every component with its responsibility, co-designed the map and walked the discover→use→rate flow WITH the
 human, and **held the trade-off options until the map was agreed**. The SC-025 co-design floor validated
 `Valid=True`; the agent additionally caught the Option-C-async vs FR-010 conflict and surfaced it as a
@@ -131,7 +132,7 @@ the nine `knowledge/design-lenses/*.md` + `lens-template.md` (each +`## Workshop
 
 | Claim | Evidence |
 | --- | --- |
-| Relocation delivers SC-024 (in-band surfacing + co-design) | testLenses6: skill auto-loaded + re-invoked per lens; console-ASCII diagrams surfaced in-band; design-analysis named every component with responsibility, walked the flow, **held options until the map was agreed**; SC-025 floor `Valid=True` |
+| Relocation delivers SC-024 (in-band surfacing + co-design) | testLenses6: skill auto-loaded + re-invoked across lenses (loads visible at lens 8 and the design-analysis stop; the full 8-lens run is the maintainer's pasted transcript); console-ASCII diagrams surfaced in-band; design-analysis named every component with responsibility, walked the flow, **held options until the map was agreed**; SC-025 floor `Valid=True` |
 | The agent reasoned at design depth | caught the Option-C-async vs FR-010 conflict and surfaced it as a structured verdict question before recording the decision |
 | The i9 failure mode did NOT recur | no terse manager count, no diagram-written-to-file-never-shown, no missing co-design record |
 | Relocation structure is locked | `lens-conduct-delivery` suite: skill + 9 lens md + trimmed prompt assertions green |
