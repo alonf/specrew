@@ -157,5 +157,5 @@ is unnecessary (the single skill re-invokes per stage). The collaboration/surfac
   is the Crew recommendation and matches every directive. The behavioral acceptance is the i10 dogfood (SC-024
   re-confirm). Future (post-141): the maintainer's sub-agent-per-skill + coordinator model.
 - **Decision date**: 2026-06-05
-- **Design-analysis draft commit**: `__DRAFT_COMMIT__`
+- **Design-analysis draft commit**: `deaa1b25`
 - **Decision recorded in commit**: `__DECISION_COMMIT__`
