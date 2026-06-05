@@ -352,6 +352,28 @@ Assert-True (Test-SpecrewLensWorkshopRecordPlaceholder -Value '<TBD>') 'SC-021 p
 Assert-True (-not (Test-SpecrewLensWorkshopRecordPlaceholder -Value 'use X')) 'SC-021 placeholder: a real value is not a placeholder'
 Write-Pass 'SC-021: per-lens workshop-record floor (presence-only, marker-gated, grandfather-safe)'
 
+# --- Iteration 11 (SC-026, Amendment A7): per-lens confirmation provenance floor ---
+# Marker-gated by `confirmation_required`; grandfather-safe (pre-A7 workshop_intake artifacts no-op). Requires
+# each selected lens to DECLARE a provenance (human-confirmed|human-delegated|human-skipped); it cannot verify
+# the human was asked (that is SC-027's runtime dogfood). The delegate/skip values are the FR-038 exception.
+# (f) confirmation_required + valid human-confirmed -> PASS
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"confirmation_required":true,"selected":["a"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"full","moved_on":true,"confirmation":"human-confirmed"}}}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 0) 'SC-026: valid human-confirmed provenance -> PASS'
+# (g) confirmation_required + missing confirmation -> FAIL naming SC-026
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"confirmation_required":true,"selected":["a"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"full","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
+$scE1 = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath)
+Assert-True ($scE1.Count -eq 1 -and (($scE1 -join '|') -match 'SC-026') -and (($scE1 -join '|') -match "'a'")) 'SC-026: missing confirmation provenance FAILS (names SC-026 + the lens)'
+# (h) confirmation_required + invalid enum value -> FAIL
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"confirmation_required":true,"selected":["a"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"full","moved_on":true,"confirmation":"agreed"}}}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 1) 'SC-026: invalid confirmation value (not in the enum) FAILS'
+# (i) human-delegated + human-skipped are honest provenance -> PASS (the FR-038 delegate/skip exception)
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"confirmation_required":true,"selected":["a","b"],"workshop":{"a":{"agenda":["q1"],"decision":"agent decided X (human delegated)","depth":"light","moved_on":true,"confirmation":"human-delegated"},"b":{"agenda":["q2"],"decision":"skipped by human","depth":"light","moved_on":true,"confirmation":"human-skipped"}}}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 0) 'SC-026: human-delegated + human-skipped are honest provenance -> PASS (the delegate/skip exception)'
+# (j) GRANDFATHER: workshop_intake but NO confirmation_required (pre-A7) -> the SC-026 check no-ops
+[System.IO.File]::WriteAllText($wsPath, '{"workshop_intake":true,"selected":["a"],"workshop":{"a":{"agenda":["q1"],"decision":"use X","depth":"full","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
+Assert-True (@(Test-SpecrewLensWorkshopRecords -ArtifactPath $wsPath).Count -eq 0) 'SC-026: pre-A7 artifact (no confirmation_required marker) -> SC-026 no-op (grandfather-safe; the testLenses4-7 + i1-i10 precedent)'
+Write-Pass 'SC-026: per-lens confirmation provenance floor (declared provenance required, marker-gated, grandfather-safe; truthfulness is SC-027 dogfood)'
+
 # --- Iteration 9 T004/T005 (SC-025, Amendment A6): co-design-record floor ---
 # Marker-gated by `co_design` in lens-applicability.json + grandfather-safe; presence-only (the
 # collaboration QUALITY is SC-024's runtime dogfood, not this gate). Mirrors the SC-021 floor shape.
