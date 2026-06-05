@@ -71,9 +71,20 @@ both in view.
    - Where the human's architecture expertise is low you MAY drive the decomposition and explain more, but you
      MUST still confirm the responsibilities and flows with them, not author them silently.
 6. **Capture the agreements (A4/A6/SC-021/SC-025).**
-   - Per-lens workshop record in the feature-level `lens-applicability.json` (`workshop_intake: true`, the
-     `selected` lenses, and a per-lens `workshop` record: agenda + decision/agreement + depth + a `moved_on`
-     marker). **Persist each keeper diagram you render for a lens** (the trust-boundary diagram, the ERD, the
+   - Per-lens workshop record in the feature-level `lens-applicability.json` — set `workshop_intake: true`, the
+     `selected` lens-id list, and a SINGLE top-level `workshop` object **keyed by lens id**, each value carrying
+     the EXACT fields the SC-021 gate checks: `agenda` (array of questions raised), `decision` (a SINGLE STRING
+     summarizing the decision + agreement), `depth`, and `moved_on: true`. Exact shape — get it right the first
+     time:
+
+     ```json
+     { "workshop_intake": true, "selected": ["architecture-core"],
+       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true } } }
+     ```
+
+     It is `workshop` -> `<lens-id>` -> fields (NOT `<lens-id>` -> `workshop`), and the field is `decision`
+     (a singular string), NOT a `decisions` array — the inverted nesting or a `decisions` array FAILS the SC-021
+     specify-boundary gate. Extra fields (such as the `diagram` reference below) are fine. **Persist each keeper diagram you render for a lens** (the trust-boundary diagram, the ERD, the
      component map, the sequence, etc.) — write the ASCII (or mermaid) to a workshop folder,
      `specs/<feature>/workshop/<lens-id>.md`, and set that lens's `diagram` field to a **reference to that
      file** (the path + a one-line caption), NOT a prose description. A diagram that lives only in the chat
