@@ -4,7 +4,7 @@
 **Branch**: 168-post-ship-proposal-amendment-discipline
 **Total Tasks**: 17
 **Iterations**: 1
-**Total Effort**: ~6 SP
+**Total Effort**: ~6.5 SP
 **Status**: Ready for before-implement approval with capacity risk visible
 
 ## Overview
@@ -120,13 +120,13 @@ T003,T004,T005,T012,T013,T014 -> T015 -> T016 -> T017
 | Phase | Tasks | Planned SP |
 | --- | --- | --- |
 | Hygiene and discovery | T001-T002 | 0.5 |
-| Docs/template/reviewer guidance | T003-T005 | 1.5 |
-| Validator/parser | T006-T008 | 1.75 |
+| Docs/template/reviewer guidance | T003-T005 | 1.25 |
+| Validator/parser | T006-T008 | 1.5 |
 | Status surfacing | T009-T010 | 0.5 |
 | Fixtures and tests | T011-T013 | 1.75 |
 | Mirror, validation, review evidence | T014-T017 | 1.0 |
 
-The summed task estimate is ~6 SP, slightly above the original 3-5 SP proposal target. The target pressure is managed by keeping status surfacing to file:///C:/Dev/Specrew-post-ship-amendment-discipline/proposals/INDEX.md or an existing renderer, avoiding a generated amendment index, and using focused synthetic fixtures. If implementation discovery shows the validator/status work exceeds this bounded slice, stop and propose a scoped deferral before coding beyond the approved work.
+The summed task estimate is ~6.5 SP, above the original 3-5 SP proposal target. The target pressure is managed by keeping status surfacing to file:///C:/Dev/Specrew-post-ship-amendment-discipline/proposals/INDEX.md or an existing renderer, avoiding a generated amendment index, and using focused synthetic fixtures. If implementation discovery shows the validator/status work exceeds this bounded slice, stop and propose a scoped deferral before coding beyond the approved work.
 
 ## Next Steps
 

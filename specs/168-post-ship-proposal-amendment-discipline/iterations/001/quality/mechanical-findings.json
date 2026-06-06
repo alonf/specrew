@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "168-post-ship-proposal-amendment-discipline",
+  "iterationRef": "001",
+  "generatedAt": "2026-06-06T12:30:00Z",
+  "generator": {
+    "name": "before-implement-readiness",
+    "version": "manual-planning-placeholder"
+  },
+  "findings": []
+}
