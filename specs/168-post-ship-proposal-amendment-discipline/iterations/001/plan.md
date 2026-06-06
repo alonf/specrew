@@ -4,11 +4,11 @@
 **Spec**: ../../spec.md
 **Feature Plan**: file:///C:/Dev/Specrew-post-ship-amendment-discipline/specs/168-post-ship-proposal-amendment-discipline/plan.md
 **Tasks**: file:///C:/Dev/Specrew-post-ship-amendment-discipline/specs/168-post-ship-proposal-amendment-discipline/tasks.md
-**Status**: retro
+**Status**: complete
 **Overall Verdict**: ready
 **Capacity**: 6.5/20 story_points
 **Started**: 2026-06-06
-**Completed**:
+**Completed**: 2026-06-06
 
 ## Scope Summary
 
