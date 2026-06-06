@@ -114,5 +114,4 @@ third variant of this cleanup.
   plain-prose render.
 - **Decision date**: 2026-06-06
 - **Design-analysis draft commit**: `1ccdcf80`
-- **Decision recorded in commit**: recorded in the commit following the draft;
-  hash finalized below after commit.
+- **Decision recorded in commit**: `cd9528e7`
