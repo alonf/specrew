@@ -102,10 +102,17 @@ third variant of this cleanup.
 
 ## Human Decision
 
-- **Decision verdict**: pending — to be recorded from the structured gate
-  packet verdict.
-- **Chosen Option**: pending.
-- **Reason / modifications**: pending.
-- **Decision date**: pending.
-- **Design-analysis draft commit**: pending.
-- **Decision recorded in commit**: pending.
+- **Decision verdict**: approved for plan with Option B
+- **Chosen Option**: Option B
+- **Reason / modifications**: Maintainer confirmed Option B ("Option B it is")
+  after the three options were rendered in full in-band prose. The choice
+  matches the intake-workshop confirmation (clean break, scorer to
+  `tests/support/`, untracked report output, frozen CI entry points) and the
+  shape of the adopted implementation. No modifications. Render note: two
+  structured-menu attempts failed to surface the option descriptions on the
+  Claude host (the A8 menu-before-render gravity); the verdict was taken on the
+  plain-prose render.
+- **Decision date**: 2026-06-06
+- **Design-analysis draft commit**: `1ccdcf80`
+- **Decision recorded in commit**: recorded in the commit following the draft;
+  hash finalized below after commit.
