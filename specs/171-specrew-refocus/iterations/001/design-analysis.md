@@ -103,4 +103,4 @@ The full workshop-bound scope: trigger contract + channels + digest family + dis
 - **Modifications**: None. Defaults accepted as rendered (options A/B/C, Crew recommendation C, co-design record re-confirmed).
 - **Authorizing human**: Alon Fliess (structured verdict menu, 2026-06-06)
 - **Design-analysis draft commit**: `5eee3e91`
-- **Decision recorded in commit**: `PENDING-PIN` (pinned in the follow-up commit immediately after this one)
+- **Decision recorded in commit**: `e1b55cf1` (pinned in the follow-up commit immediately after this one)
