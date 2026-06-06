@@ -40,10 +40,10 @@
 | T003 | Deploy-level repro harness S1–S6 (`managed-skill-stuck-preserving.tests.ps1`) | FR-001, FR-002 | US1 | 2 | Implementer | `tests/integration/managed-skill-stuck-preserving.tests.ps1` | done | claude | — | — |
 | T004 | Reachability analysis from template + deploy-script git history | FR-003 | US1 | 1 | Implementer | — | done | claude | — | — |
 | T005 | Verdict record (probe outcome × reachability) — gates T006/T007 | FR-003 | US1 | 1 | Reviewer | — | done | claude | — | — |
-| T006 | Conditional narrow classification fix + `.specify` mirror parity | FR-004 | US2 | 2 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`, `.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | blocked | claude | — | — |
-| T007 | Conditional pre/post fix evidence; S4 probe → regression assertion | FR-004, FR-005 | US2 | 0.5 | Implementer | `tests/integration/managed-skill-stuck-preserving.tests.ps1` | blocked | claude | — | — |
-| T008 | Regression set: harness ×2, F-160 fixture, mechanical checks, validator | FR-005, FR-006 | US3 | 1 | Implementer | — | planned | claude | — | — |
-| T009 | Review evidence assembly + scope-guard proof + briefing | FR-003, FR-007 | US3 | 0.5 | Reviewer | — | planned | claude | — | — |
+| T006 | Conditional narrow classification fix + `.specify` mirror parity | FR-004 | US2 | 2 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`, `.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | done | claude | — | — |
+| T007 | Conditional pre/post fix evidence; S4 probe → regression assertion | FR-004, FR-005 | US2 | 0.5 | Implementer | `tests/integration/managed-skill-stuck-preserving.tests.ps1` | done | claude | — | — |
+| T008 | Regression set: harness ×2, F-160 fixture, mechanical checks, validator | FR-005, FR-006 | US3 | 1 | Implementer | — | done | claude | — | — |
+| T009 | Review evidence assembly + scope-guard proof + briefing | FR-003, FR-007 | US3 | 0.5 | Reviewer | — | done | claude | — | — |
 
 ## Effort Model
 

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/161-managed-skill-preserving-guard/spec.md",
+  "iterationRef": "specs/161-managed-skill-preserving-guard/iterations/001",
+  "generatedAt": "2026-06-06T12:25:38Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.31.1"
+  },
+  "findings": []
+}

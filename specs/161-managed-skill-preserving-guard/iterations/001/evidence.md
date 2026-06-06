@@ -79,10 +79,50 @@ v0.26.0+ → the four generic legacy dirs are frozen permanently as
 | Reachability | Real released-version path confirmed (facts 1–3 above); affected artifact set = the four generic skill dirs in `.copilot/skills` |
 | Fix applied | pending T006 release (human gate) |
 
-## Conditional Fix Evidence — T006/T007
+## Conditional Fix Evidence (T006/T007, 2026-06-06)
 
-Unlock condition met (CONFIRMED); awaiting human release at the verdict boundary stop.
+- **Human release**: at the verdict boundary stop the human chose the
+  **stricter shape** — fix only the generic-kind equality branch; leave the
+  front-matter heuristic untouched.
+- **T006 change** (`Test-IsManagedLegacySkillDirectory`, generic-kind branch):
+  after the exact-equality check fails, recognize the pre-marker generic
+  legacy signature — content (already past the front-matter check) whose first
+  heading is `# <directory-name>` and which carries the structural
+  `**Type**:` and `**Schema**: v1` lines. All four real v0.21-era artifacts
+  match (verified against git history heads); anything else still falls
+  through to preserve. Applied identically to the `.specify` mirror
+  (ordinal-equality parity verified).
+- **T007 pre/post evidence**: S7 (genuine v0.21-era content) observed
+  `preserved-legacy-unmanaged-skill` pre-fix (recorded at commit `d5e53b89`)
+  and `removed-legacy-managed-skill` post-fix; S7 promoted from neutral probe
+  to regression assertion. New S8 guard: plain user content under a catalog
+  generic name (no signature, no front matter) stays preserved. S2 user-
+  authored content remained byte-identical in every post-fix run (no-loss
+  invariant).
+- **Accepted residual** (human decision, stricter shape): S4/S4g —
+  stale-canonical content WITH front matter and no marker — remains frozen by
+  the untouched front-matter heuristic. No released version ever produced that
+  artifact in `.copilot/skills`; recorded here so the question stays closed
+  rather than silently open.
 
-## Regression Record — filled by T008
+## Regression Record (T008, 2026-06-06)
 
-Pending.
+| Check | Result |
+| --- | --- |
+| `managed-skill-stuck-preserving.tests.ps1` ×2 (post-fix) | all assertions pass; identical OUTCOME-SUMMARY both runs: `S1=removed; S2=preserved-byte-identical; S2b=preserved; S3=removed; S3g=removed; S4=preserved-legacy-unmanaged-skill; S4g=preserved-legacy-unmanaged-skill; S5=idempotent; S6=active-roots-deployed; S7=removed-legacy-managed-skill; S8=preserved` |
+| `managed-runtime-sidecar.tests.ps1` (F-160 fixture) | all assertions pass unchanged (Cases A–D + source/mirror parity) |
+| `run-mechanical-checks.ps1` | zero findings (`quality/mechanical-findings.json`) |
+| `validate-governance.ps1` | PASS for iteration 001; remaining WARNs are pre-existing repo-wide soft findings (F-048 dashboard note, legacy handoff-block format) |
+
+## Scope-Guard Proof (T009)
+
+- Files changed by this feature (vs `main`): `specs/161-managed-skill-preserving-guard/**`,
+  `tests/integration/managed-skill-stuck-preserving.tests.ps1`,
+  `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` + its
+  `.specify` mirror (T006 only), `.specify/feature.json`, and
+  boundary-sync/bootstrap runtime state (`.squad/**`, two managed agent
+  surfaces refreshed by `specrew start`).
+- No Feature 141, Feature 159, or Feature/Proposal 160 surface was edited
+  (F-160 files were read and exercised as regression guards only).
+- No release, no tag, no merge, no PR, no push to main — work pushed only to
+  the feature branch `161-managed-skill-preserving-guard`.

@@ -19,12 +19,19 @@ param()
 #   S4g STALE older-canonical, NO marker (generic) -> PROBE: outcome captured, not pre-asserted
 #   S5  second consecutive deploy run           -> idempotent: active surfaces preserved, stable end-state
 #   S6  active roots after deploy               -> SKILL.md + .specrew-managed in all four roots
-#   S7  REAL-HISTORICAL generic content, NO marker -> PROBE: the reachable upgrade-path artifact.
+#   S7  REAL-HISTORICAL generic content, NO marker -> removed (REGRESSION ASSERTION).
 #       Provenance: commits 29a130b2 (F-021, 2026-05-18) through 534b7430 (F-024, 2026-05-20)
 #       deployed generic skills into .copilot/skills with NO sidecar marker and NO front matter;
 #       generic template content later drifted (e.g. 7f6536b2). The fixture embeds the genuine
-#       3816929c-era specrew-capacity-planning head, so it exercises the generic-kind
-#       exact-equality fallback (content -eq LegacyContent) on real upgrade-path content.
+#       3816929c-era specrew-capacity-planning head. PRE-FIX this froze as
+#       preserved-legacy-unmanaged-skill (recorded at commit d5e53b89, T005 verdict CONFIRMED);
+#       the Feature 161 generic legacy-signature fix classifies it managed -> removed.
+#   S8  user-authored generic-shaped content under a catalog name, NO marker, NO front matter,
+#       NOT matching the generic legacy signature -> preserved (guards the fix's preserve side).
+#
+# Residual (ACCEPTED at the Feature 161 verdict stop, stricter fix shape): S4/S4g
+# (stale-canonical WITH front matter, no marker) remain frozen — the front-matter heuristic
+# was deliberately left untouched; no released version produced that artifact.
 #
 # S4/S4g are NEUTRAL PROBES (test-integrity lens): they record the observed outcome for
 # the T005 verdict instead of asserting an expectation. If a CONFIRMED fix lands they are
@@ -165,6 +172,11 @@ try {
     $s4gDir = New-LegacySkillDir -Name $genericStaleName -SkillContent $genericStale                    # S4g
     $s7Dir = New-LegacySkillDir -Name 'specrew-capacity-planning' -SkillContent $historicalGeneric      # S7
 
+    # S8: no front matter, catalog generic name, but NOT the generic legacy signature
+    # (no '# specrew-traceability-check' heading, no **Type**/**Schema** lines).
+    $userPlainGeneric = "# My Traceability Notes`n`nHand-written checklist the user keeps here; do not delete.`n"
+    $s8Dir = New-LegacySkillDir -Name 'specrew-traceability-check' -SkillContent $userPlainGeneric      # S8
+
     $s2ContentBefore = Get-Content -LiteralPath (Join-Path $s2Dir 'SKILL.md') -Raw
 
     # --- Run 1: the real deploy ----------------------------------------------
@@ -216,11 +228,21 @@ try {
     Write-Probe "S4g (generic): stale older-canonical, no marker -> observed outcome '$s4gOutcome' (same rule chain, generic kind)"
     $summary.Add("S4g=$s4gOutcome") | Out-Null
 
-    # S7 REAL-HISTORICAL generic content -> NEUTRAL PROBE (the reachable artifact)
+    # S7 REAL-HISTORICAL generic content -> REGRESSION ASSERTION (Feature 161 fix).
+    # Pre-fix observed outcome: preserved-legacy-unmanaged-skill (frozen) — recorded
+    # in the T005 verdict evidence at commit d5e53b89.
     $s7Action = Get-LegacyAction -Actions $actions1 -DirName 'specrew-capacity-planning'
+    Assert-True ($null -ne $s7Action -and $s7Action.Action -eq 'removed-legacy-managed-skill') `
+        "S7 (real-historical generic): v0.21-era content without marker is classified MANAGED and removed (Feature 161 fix; failed pre-fix)"
     $s7Outcome = if ($null -ne $s7Action) { $s7Action.Action } else { 'no-action-recorded' }
-    Write-Probe "S7 (real-historical generic): F-021-era content, no marker, no front matter -> observed outcome '$s7Outcome' (classification rule: marker absent; exact-match vs current canonical fails; no leading '---'; generic-kind equality vs CURRENT LegacyContent fails -> fallthrough)"
     $summary.Add("S7=$s7Outcome") | Out-Null
+
+    # S8 user-authored plain (non-signature) generic content -> preserved (fix's preserve side)
+    $s8Action = Get-LegacyAction -Actions $actions1 -DirName 'specrew-traceability-check'
+    Assert-True ($null -ne $s8Action -and $s8Action.Action -eq 'preserved-legacy-unmanaged-skill') `
+        "S8: plain user content under a catalog generic name (no signature) stays preserved"
+    Assert-True (Test-Path -LiteralPath (Join-Path $s8Dir 'SKILL.md')) "S8: directory still on disk"
+    $summary.Add("S8=preserved") | Out-Null
 
     # S6 active roots: SKILL.md + marker present for a representative slash + generic skill
     $activeRoots = @(

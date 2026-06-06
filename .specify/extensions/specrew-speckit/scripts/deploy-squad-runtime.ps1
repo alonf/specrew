@@ -547,7 +547,25 @@ function Test-IsManagedLegacySkillDirectory {
     }
 
     if ($Definition.Kind -eq 'generic') {
-        return $content -eq $Definition.LegacyContent
+        if ($content -eq $Definition.LegacyContent) {
+            return $true
+        }
+
+        # Feature 161 (CONFIRMED, harness scenario S7): Specrew v0.21.0–v0.23.0
+        # deployed generic skills into .copilot/skills with NO sidecar marker and
+        # NO front matter, and generic template content drifted from v0.26.0 —
+        # so the equality check above compares stale legacy content against the
+        # CURRENT template, fails, and froze Specrew's own dirs as "user-edited"
+        # forever. Recognize the pre-marker generic legacy signature instead:
+        # content that has already failed the front-matter check (above) and
+        # carries this skill's own directory-name heading plus the structural
+        # **Type**/**Schema** lines is Specrew's drifted legacy content, not
+        # user-authored work. Anything else still falls through to preserve.
+        return (
+            $content.StartsWith('# {0}' -f $Definition.Directory, [System.StringComparison]::Ordinal) -and
+            $content.Contains('**Type**: ') -and
+            $content.Contains('**Schema**: v1')
+        )
     }
 
     $legacyNamespaceLine = '**Namespace**: ' + [char]96 + '/specrew' + [char]96
