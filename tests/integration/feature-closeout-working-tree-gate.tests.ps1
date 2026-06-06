@@ -32,7 +32,7 @@ if ($syncBoundaryContent -notmatch "if \(\`$BoundaryType -ne 'feature-closeout'\
 Write-Pass 'Gate fires only at feature-closeout boundary (not earlier boundaries)'
 
 # Test 4: Excludes session-state paths
-foreach ($pattern in @('last-validator-summary', 'start-context', 'now\\.md', 'feature\\.json')) {
+foreach ($pattern in @('last-validator-summary', 'start-context', 'now\\.md', 'feature\\.json', 'closeout-dashboard')) {
     if ($syncBoundaryContent -notmatch $pattern) {
         Write-Fail "Gate exclusion pattern '$pattern' not found"
     }
@@ -172,6 +172,152 @@ if ($sessionResult -notmatch 'SESSION_STATE_GATE_PASSED') {
 }
 Remove-Item -Recurse -Force -LiteralPath $scratchDir -ErrorAction SilentlyContinue
 Write-Pass 'Gate ignores session-state file churn (.specrew/, .squad/) at feature-closeout'
+
+# Test 10: Gate excludes the scaffold-generated specs/<feature>/closeout-dashboard.md (#1761 red 2).
+# The dashboard is produced AT the feature-closeout boundary by scaffold-feature-closeout-dashboard.ps1,
+# which then calls this sync, so it cannot be committed before the gate runs.
+$scratchDir = Join-Path -Path $repoRoot -ChildPath '.scratch\working-tree-gate-closeout-dashboard'
+if (Test-Path -LiteralPath $scratchDir) { Remove-Item -Recurse -Force -LiteralPath $scratchDir }
+$null = New-Item -ItemType Directory -Path (Join-Path $scratchDir 'specs\900-fixture') -Force
+$dashboardTest = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+Set-Location -LiteralPath '$scratchDir'
+git init 2>&1 | Out-Null
+git config user.email 'test@specrew.local' 2>&1 | Out-Null
+git config user.name 'Test' 2>&1 | Out-Null
+git commit --allow-empty -m 'initial' 2>&1 | Out-Null
+Set-Content -LiteralPath 'specs/900-fixture/README.md' -Value '# Fixture' -Encoding UTF8
+git add . 2>&1 | Out-Null
+git commit -m 'baseline specs tree' 2>&1 | Out-Null
+Set-Content -LiteralPath 'specs/900-fixture/closeout-dashboard.md' -Value '# Closeout Dashboard' -Encoding UTF8
+. '$syncBoundaryScript'
+try {
+    Invoke-PreFeatureCloseoutWorkingTreeGate -ProjectPath '$scratchDir' -BoundaryType 'feature-closeout'
+    Write-Host 'DASHBOARD_GATE_PASSED'
+}
+catch {
+    Write-Host "DASHBOARD_GATE_THREW: `$(`$_.Exception.Message)"
+}
+"@
+$dashboardResult = pwsh -NoProfile -Command $dashboardTest 2>&1 | Out-String
+if ($dashboardResult -notmatch 'DASHBOARD_GATE_PASSED') {
+    Write-Fail "Gate fired on the scaffold-generated closeout-dashboard.md. Result:`n$dashboardResult"
+}
+Remove-Item -Recurse -Force -LiteralPath $scratchDir -ErrorAction SilentlyContinue
+Write-Pass 'Gate excludes the boundary-generated specs/<feature>/closeout-dashboard.md at feature-closeout'
+
+# Test 11: Gate STILL fires on a non-dashboard specs/ file (narrow-exclusion guard) -- the
+# closeout-dashboard exclusion must not silently exempt other uncommitted specs/ surfaces.
+$scratchDir = Join-Path -Path $repoRoot -ChildPath '.scratch\working-tree-gate-specs-fires'
+if (Test-Path -LiteralPath $scratchDir) { Remove-Item -Recurse -Force -LiteralPath $scratchDir }
+$null = New-Item -ItemType Directory -Path (Join-Path $scratchDir 'specs\900-fixture') -Force
+$specsTest = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+Set-Location -LiteralPath '$scratchDir'
+git init 2>&1 | Out-Null
+git config user.email 'test@specrew.local' 2>&1 | Out-Null
+git config user.name 'Test' 2>&1 | Out-Null
+git commit --allow-empty -m 'initial' 2>&1 | Out-Null
+Set-Content -LiteralPath 'specs/900-fixture/README.md' -Value '# Fixture' -Encoding UTF8
+git add . 2>&1 | Out-Null
+git commit -m 'baseline specs tree' 2>&1 | Out-Null
+Set-Content -LiteralPath 'specs/900-fixture/spec.md' -Value '# Spec' -Encoding UTF8
+. '$syncBoundaryScript'
+try {
+    Invoke-PreFeatureCloseoutWorkingTreeGate -ProjectPath '$scratchDir' -BoundaryType 'feature-closeout'
+    Write-Host 'SPECS_GATE_DID_NOT_THROW'
+}
+catch {
+    if (`$_.Exception.Message -match 'feature-closeout-working-tree-gate' -and `$_.Exception.Message -match 'spec\.md') {
+        Write-Host 'SPECS_GATE_THREW_AS_EXPECTED'
+    } else {
+        Write-Host "SPECS_GATE_THREW_UNEXPECTED: `$(`$_.Exception.Message)"
+    }
+}
+"@
+$specsResult = pwsh -NoProfile -Command $specsTest 2>&1 | Out-String
+if ($specsResult -notmatch 'SPECS_GATE_THREW_AS_EXPECTED') {
+    Write-Fail "Gate did not fire on an uncommitted non-dashboard specs/ file (exclusion too broad). Result:`n$specsResult"
+}
+Remove-Item -Recurse -Force -LiteralPath $scratchDir -ErrorAction SilentlyContinue
+Write-Pass 'Gate still fires on a non-dashboard uncommitted specs/ file (closeout-dashboard exclusion is narrow)'
+
+# Test 12: end-anchor guard (Codex C1 / Copilot P2, #1761). The exclusion is anchored to '\.md$',
+# so a closeout-dashboard.md.bak / .tmp sibling is NOT exempt and still fires.
+$scratchDir = Join-Path -Path $repoRoot -ChildPath '.scratch\working-tree-gate-dashboard-bak'
+if (Test-Path -LiteralPath $scratchDir) { Remove-Item -Recurse -Force -LiteralPath $scratchDir }
+$null = New-Item -ItemType Directory -Path (Join-Path $scratchDir 'specs\900-fixture') -Force
+$bakTest = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+Set-Location -LiteralPath '$scratchDir'
+git init 2>&1 | Out-Null
+git config user.email 'test@specrew.local' 2>&1 | Out-Null
+git config user.name 'Test' 2>&1 | Out-Null
+git commit --allow-empty -m 'initial' 2>&1 | Out-Null
+Set-Content -LiteralPath 'specs/900-fixture/README.md' -Value '# Fixture' -Encoding UTF8
+git add . 2>&1 | Out-Null
+git commit -m 'baseline specs tree' 2>&1 | Out-Null
+Set-Content -LiteralPath 'specs/900-fixture/closeout-dashboard.md.bak' -Value '# Backup' -Encoding UTF8
+. '$syncBoundaryScript'
+try {
+    Invoke-PreFeatureCloseoutWorkingTreeGate -ProjectPath '$scratchDir' -BoundaryType 'feature-closeout'
+    Write-Host 'BAK_GATE_DID_NOT_THROW'
+}
+catch {
+    if (`$_.Exception.Message -match 'closeout-dashboard\.md\.bak') {
+        Write-Host 'BAK_GATE_THREW_AS_EXPECTED'
+    } else {
+        Write-Host "BAK_GATE_THREW_UNEXPECTED: `$(`$_.Exception.Message)"
+    }
+}
+"@
+$bakResult = pwsh -NoProfile -Command $bakTest 2>&1 | Out-String
+if ($bakResult -notmatch 'BAK_GATE_THREW_AS_EXPECTED') {
+    Write-Fail "Gate did not fire on closeout-dashboard.md.bak (exclusion not end-anchored). Result:`n$bakResult"
+}
+Remove-Item -Recurse -Force -LiteralPath $scratchDir -ErrorAction SilentlyContinue
+Write-Pass 'Gate still fires on closeout-dashboard.md.bak (exclusion is end-anchored)'
+
+# Test 13: start-anchor guard (Codex C1, #1761). The exclusion is anchored to '^specs/', so a
+# docs/specs/.../closeout-dashboard.md (which only CONTAINS the specs/.../dashboard substring) is
+# NOT exempt and still fires under the ^docs/ relevance pattern.
+$scratchDir = Join-Path -Path $repoRoot -ChildPath '.scratch\working-tree-gate-docs-specs'
+if (Test-Path -LiteralPath $scratchDir) { Remove-Item -Recurse -Force -LiteralPath $scratchDir }
+$null = New-Item -ItemType Directory -Path (Join-Path $scratchDir 'docs\specs\900-fixture') -Force
+$docsTest = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+Set-Location -LiteralPath '$scratchDir'
+git init 2>&1 | Out-Null
+git config user.email 'test@specrew.local' 2>&1 | Out-Null
+git config user.name 'Test' 2>&1 | Out-Null
+git commit --allow-empty -m 'initial' 2>&1 | Out-Null
+Set-Content -LiteralPath 'docs/specs/900-fixture/README.md' -Value '# Fixture' -Encoding UTF8
+git add . 2>&1 | Out-Null
+git commit -m 'baseline docs tree' 2>&1 | Out-Null
+Set-Content -LiteralPath 'docs/specs/900-fixture/closeout-dashboard.md' -Value '# Not the boundary dashboard' -Encoding UTF8
+. '$syncBoundaryScript'
+try {
+    Invoke-PreFeatureCloseoutWorkingTreeGate -ProjectPath '$scratchDir' -BoundaryType 'feature-closeout'
+    Write-Host 'DOCS_GATE_DID_NOT_THROW'
+}
+catch {
+    if (`$_.Exception.Message -match 'docs/specs/900-fixture/closeout-dashboard\.md') {
+        Write-Host 'DOCS_GATE_THREW_AS_EXPECTED'
+    } else {
+        Write-Host "DOCS_GATE_THREW_UNEXPECTED: `$(`$_.Exception.Message)"
+    }
+}
+"@
+$docsResult = pwsh -NoProfile -Command $docsTest 2>&1 | Out-String
+if ($docsResult -notmatch 'DOCS_GATE_THREW_AS_EXPECTED') {
+    Write-Fail "Gate did not fire on docs/specs/.../closeout-dashboard.md (exclusion not start-anchored). Result:`n$docsResult"
+}
+Remove-Item -Recurse -Force -LiteralPath $scratchDir -ErrorAction SilentlyContinue
+Write-Pass 'Gate still fires on docs/specs/.../closeout-dashboard.md (exclusion is start-anchored)'
 
 Write-Host ''
 Write-Host 'Feature-closeout working-tree gate: all assertions pass'
