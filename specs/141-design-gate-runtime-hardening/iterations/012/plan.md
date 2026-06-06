@@ -2,9 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: complete
 **Capacity**: 8/20 story_points
 **Started**: 2026-06-06
+**Completed**: 2026-06-06 (review-signoff ACCEPTED; SC-028 + SC-027 met by the cross-host dogfood; catalog-at-open reverted; the agenda skim is the maintainer-accepted minor)
 
 <!--
   Validator schema: Iteration Status one of planning|executing|reviewing|retro|complete|abandoned.
@@ -32,10 +33,10 @@ skim-proof), but behavioral. Acceptance is the consolidated cross-host re-dogfoo
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Catalog-at-open: skill step 1 presents the full 9-lens catalog (ids from index.yml; each one-line decision from design-lenses/<id>.md — reuse, no parallel catalog) BEFORE inferring applicability, so the later menu is informed by on-screen content (FR-041a, structural) | FR-041 | US-A8 | 3 | Implementer | extensions/specrew-speckit/squad-templates/skills/** | planned | claude | — | — |
-| T002 | Open-question-first: skill step 3 opens each lens with a presentation + an OPEN free-text question, NEVER an AskUserQuestion menu as the first move; the menu only after the lens's content is on screen; + the Big-Picture A8 note (FR-041b, the binary conduct lever) | FR-041 | US-A8 | 2 | Spec Steward | extensions/specrew-speckit/squad-templates/skills/** | planned | claude | — | — |
-| T003 | Tests: presence-lock catalog-at-open + open-question-first in lens-conduct-delivery; touched suites + the full scoped validator green | SC-028 | US-A8 | 2 | Reviewer | tests/unit/** | planned | claude | — | — |
-| T004 | Consolidated cross-host re-dogfood (SC-028 + carried SC-027): on Claude the catalog front-loads + the agenda holds + the component map renders before its menu; on Squad no synthetic "Human agreed". Behavioral acceptance (maintainer-run). Pre-committed escalation if the map still stuffs into the menu on Claude = a PreToolUse hook or documented host-variance, NOT another instruction | SC-028 | US-A8 | 1 | Planner | specs/141-design-gate-runtime-hardening/** | planned | claude | — | — |
+| T001 | Catalog-at-open: skill step 1 presents the full 9-lens catalog (ids from index.yml; each one-line decision from design-lenses/<id>.md — reuse, no parallel catalog) BEFORE inferring applicability, so the later menu is informed by on-screen content (FR-041a, structural) | FR-041 | US-A8 | 3 | Implementer | extensions/specrew-speckit/squad-templates/skills/** | done | claude | — | pass |
+| T002 | Open-question-first: skill step 3 opens each lens with a presentation + an OPEN free-text question, NEVER an AskUserQuestion menu as the first move; the menu only after the lens's content is on screen; + the Big-Picture A8 note (FR-041b, the binary conduct lever) | FR-041 | US-A8 | 2 | Spec Steward | extensions/specrew-speckit/squad-templates/skills/** | done | claude | — | pass |
+| T003 | Tests: presence-lock catalog-at-open + open-question-first in lens-conduct-delivery; touched suites + the full scoped validator green | SC-028 | US-A8 | 2 | Reviewer | tests/unit/** | done | claude | — | pass |
+| T004 | Consolidated cross-host re-dogfood (SC-028 + carried SC-027): on Claude the catalog front-loads + the agenda holds + the component map renders before its menu; on Squad no synthetic "Human agreed". Behavioral acceptance (maintainer-run). Pre-committed escalation if the map still stuffs into the menu on Claude = a PreToolUse hook or documented host-variance, NOT another instruction | SC-028 | US-A8 | 1 | Planner | specs/141-design-gate-runtime-hardening/** | done | claude | — | pass |
 
 ## Effort Model
 

@@ -1,13 +1,13 @@
 # Iteration State: 012
 
 **Schema**: v1
-**Last Completed Task**: T003 (the A8 presence-locks; T001–T003 built + green)
-**Tasks Remaining**: T004 (the maintainer consolidated cross-host re-dogfood)
-**In Progress**: T004 (consolidated cross-host re-dogfood — open-question-first CONFIRMED on Claude; catalog-at-open REVERTED [redundant on prose, skims on Claude]; pacing now MANDATORY cross-host. PENDING: a run that REACHES the design-analysis stop for the component-map render [expected to skim — the governing model] + Squad)
+**Last Completed Task**: T004 (the cross-host dogfood — ACCEPTED on both hosts: "the best workshop")
+**Tasks Remaining**: none — T001–T004 done
+**In Progress**: none — iteration complete (review-signoff ACCEPTED; SC-028 + SC-027 met cross-host; retro done)
 **Baseline Ref**: 26ef631e
-**Updated**: 2026-06-06T01:10:00Z
-**Current Phase**: review-signoff (T001–T003 built + green via lens-conduct-delivery + skill-templates; T004 the consolidated cross-host re-dogfood is the behavioral acceptance)
-**Iteration Status**: executing
+**Updated**: 2026-06-06T02:10:00Z
+**Current Phase**: complete (A8/FR-041 — open-question-first + cross-host pacing CONFIRMED; catalog-at-open reverted; the Claude agenda skim is the maintainer-accepted minor)
+**Iteration Status**: complete
 
 ## Execution Summary
 
