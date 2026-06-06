@@ -24484,3 +24484,20 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: f97b5e405cac1fec6d4acfbbfd379f8555e426c6
 - **Recorded At**: 2026-06-06T11:47:48Z
+
+## 2026-06-06T20:41:18Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 570e38d4
+- **Recorded At**: 2026-06-06T20:41:17Z
+
+## 2026-06-06T20:55:00Z — Human verdict: specify approved (171-specrew-refocus)
+
+- **Boundary Type**: specify -> clarify
+- **Verdict**: approve as-is (structured verdict menu)
+- **Authorizing Human**: Alon Fliess
+- **Commit Reference**: 570e38d4
+- **Clarify Disposition**: skip with recorded rationale — the 7-lens intake workshop resolved every open design question interactively (lens-applicability.json: 7/7 human-confirmed; zero NEEDS CLARIFICATION markers in spec.md). Defaults accepted: US priority order P1-P5 as specified; clarify-skip per packet prompt #1.

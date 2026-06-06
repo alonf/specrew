@@ -7,7 +7,11 @@
 
 **Workshop provenance**: all 7 selected design lenses human-confirmed — see `lens-applicability.json` + `workshop/*.md`.
 
-## User Scenarios & Testing *(mandatory)*
+## Clarifications
+
+### Session 2026-06-06
+
+- **Clarify skipped with recorded rationale (human-approved at the specify verdict, commit `570e38d4`)**: the 7-lens intake workshop was the clarification — every materially open design question was surfaced and resolved interactively with the human (engine placement, trigger contract + host bindings, scope-mapping form, payload structure, binding constraints, scope line, dispatcher/registry, state placement, NFR bars, contracts + hook-config placement, trust boundaries, kill-switch/breaker semantics + reset matrix, journal + reason codes). The spec carries zero `[NEEDS CLARIFICATION]` markers; the single conditional (TG-004 latency fallback) is an explicit human-return path, not an ambiguity.
 
 ### User Story 1 - Manual refocus recovery (Priority: P1)
 
