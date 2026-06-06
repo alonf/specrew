@@ -275,7 +275,7 @@ try {
         Assert-Match -Text $reviewInstructions -Pattern ([regex]::Escape($pattern)) -Message "Review instructions are missing '$pattern'."
     }
 
-    foreach ($pattern in @('Post-Ship Amendment Backlog', 'accepted-unimplemented', 'active', 'implemented`, `rejected`, and `superseded`')) {
+    foreach ($pattern in @('Post-Ship Amendment Backlog', 'accepted-unimplemented', 'active', '`implemented`, `rejected`, and `superseded`')) {
         Assert-Match -Text $proposalIndex -Pattern ([regex]::Escape($pattern)) -Message "Proposal index is missing '$pattern'."
     }
 

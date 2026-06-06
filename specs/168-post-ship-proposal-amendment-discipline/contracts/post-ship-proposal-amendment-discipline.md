@@ -34,8 +34,8 @@ Governance validation emits warning-first findings for unsafe shipped or superse
 
 | Symbol | Severity | Purpose | Errors |
 | --- | --- | --- | --- |
-| `post-ship-normative-edit-outside-amendments` | warning | Warns that a shipped/superseded proposal appears to have normative body edits outside `Post-Ship Amendments`. | Does not hard-fail in this slice. |
-| `post-ship-amendment-malformed` | warning or existing validator warning class | Identifies missing required fields or invalid amendment statuses. | Kept separate from unsafe body edits. |
+| `WARN [post-ship-proposal] normative-body-edit` | warning | Warns that a shipped/superseded proposal appears to have normative body edits outside `Post-Ship Amendments`. | Does not hard-fail in this slice. |
+| `WARN [post-ship-proposal] malformed-amendment` | warning | Identifies missing required fields or invalid amendment statuses. | Kept separate from unsafe body edits. |
 | `post-ship-amendment-backlog-visible` | evidence/status assertion | Confirms unimplemented amendments are visible in status output. | Missing visibility fails focused tests if implemented as an assertion. |
 
 ### Invariants

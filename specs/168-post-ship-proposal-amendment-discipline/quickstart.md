@@ -9,7 +9,7 @@ After implementation, run the focused checks from the repository root:
 
 ```powershell
 npx markdownlint-cli docs/methodology/proposal-discipline.md docs/methodology/review-instructions.md
-pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\unit\post-ship-proposal-amendment-discipline.tests.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\tests\unit\validate-governance.post-ship-proposal-amendment.tests.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\.specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
 
