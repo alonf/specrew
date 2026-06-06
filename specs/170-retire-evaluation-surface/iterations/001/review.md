@@ -4,12 +4,21 @@
 **Reviewed**: 2026-06-06
 **Overall Verdict**: accepted
 
-## Structured Multi-Phase Review (Proposal 145 contract)
+## Structured Multi-Phase Review (manual 145-style review)
+
+> **Conformance note (per maintainer send-back, 2026-06-06):** this is a
+> **manual review following Proposal 145's seven-phase checklist**, NOT the
+> full Proposal 145 contract — the structured outputs that contract requires
+> (`review-workplan.yml`, `review-findings/*`, `review-report.yml`,
+> `review-claim-ledger.yml`, `design-code-trace.yml`) are not generated,
+> because the 145 tooling has not shipped (the proposal is still a candidate).
+> The checklist below and the prose claim-to-evidence ledger are the actual
+> deliverables.
 
 | Phase | Scope | Verdict | Evidence |
 | --- | --- | --- | --- |
 | 1. Context load | spec/plan/tasks/design-analysis/gate-preflight evidence loaded; adoption provenance (snapshot `3b6a3e0d`) understood | pass | design-analysis provenance note; quality-evidence ledger |
-| 2. Branch hygiene | delta-only diff audit over all 170 commits: file inventory is 170-scope + lifecycle/governance state only; no session drift (no deploy dirs, no agent-def churn, no `.cursor/`); branch pushed, linear over main | pass | commit file inventory (review run 2026-06-06); `origin/170-retire-evaluation-surface` parity |
+| 2. Branch hygiene | delta-only diff audit over all 170 commits: COMMIT inventory is 170-scope + lifecycle/governance state only. Stated precisely (per send-back): the WORKING TREE additionally carries pre-existing untracked session files (host-skill deploy dirs, `.cursor/`, session caches, an F-159 leftover) deliberately EXCLUDED from every 170 commit via path-limited staging, and `.specrew/last-validator-summary.json` churns on each validator run and is committed at boundary commits; branch parity with origin restored at each re-present | pass | commit file inventory (review run 2026-06-06); push at review-signoff re-present |
 | 3. Functional correctness | FR-001..FR-008 each proven by an executed check; FR-001/FR-003 re-executed independently at review (not re-trusted) | pass | quality-evidence per-FR ledger; review re-runs: 0 tracked `evaluation/` files, scorer test exit 0 |
 | 4. NFR | maintainability (scorer co-located with only consumers); Linux portability (forward-slash literal + parse check); security N/A per gate row | pass | smoke Tests 9/10 direct runs; hardening-gate rows |
 | 5. Code quality | the scorer rename's functional delta is exactly one line (default report path `evaluation/report.md` -> `test-results/process-quality-report.md`, forward-slash, untracked target); docs/validator edits are reference updates | pass | `git diff b31345f4:evaluation/scorers/process-scorer.ps1 HEAD:tests/support/process-quality-scorer.ps1` |
@@ -44,7 +53,7 @@
 ## Gap Ledger
 
 - No requirement (FR/SC) gaps: all in-scope requirements verified: fixed-now.
-- DRIFT-002 full-suite smoke red is a pre-existing main defect owned by sibling slice 169-found-bug-fixes; not a 170 gap; recorded with approval trail in the drift log: deferred.
+- DRIFT-002 full-suite smoke red is a pre-existing main defect owned by sibling slice 169-found-bug-fixes; not a 170 gap; canonical defer entry `170-i001-drift-002-smoke-suite-defer` recorded with approving human in `.squad\decisions.md`: deferred.
 
 ## Notes
 

@@ -24777,3 +24777,14 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: bbae04ca
 - **Recorded At**: 2026-06-06T19:38:29Z
+
+## 2026-06-06T20:10:00Z — Defer: full smoke-suite green to sibling slice (DRIFT-002)
+
+- **Decision ID**: 170-i001-drift-002-smoke-suite-defer
+- **Type**: defer
+- **Affected Requirement**: (none)
+- **Affected Iteration**: specs\170-retire-evaluation-surface\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-06T20:10:00Z
+- **Next Action**: full multi-host-lifecycle-smoke green re-check lands when 169-found-bug-fixes merges its obsolete-assertion fixes
+- **Rationale**: The full smoke suite halts at its Test 4, which asserts the F-160-obsolete backslash literal `.specrew\config.yml` against the POSIX-safe sync shim. Proven pre-existing: the identical assertion fails against main's shim with zero Feature 170 involvement. Feature 170's scoped assertions (smoke Tests 9/10 on the moved scorer + path-resolution regression) pass directly. The maintainer approved this disposition at the review-signoff send-back of 2026-06-06 ("I agree with the DRIFT-002 disposition in principle: if the full smoke failure is proven pre-existing and 170's scoped assertions pass, defer it to 169-found-bug-fixes") conditional on canonical recording, which this entry satisfies.
