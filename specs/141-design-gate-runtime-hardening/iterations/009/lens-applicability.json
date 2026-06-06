@@ -1,0 +1,12 @@
+{
+  "schema": "lens-applicability/v1",
+  "feature": "141-design-gate-runtime-hardening",
+  "iteration": "009",
+  "intake_mode": "Iteration design-analysis scoping for the Amendment A6 build (collaborative architecture & design conduct + co-design-record floor). 'selected' = the lenses genuinely applicable to a lifecycle-conduct + gate change. This is NOT a fresh per-lens workshop and NOT a co-design run: A6 was settled at the requirements layer by the maintainer's disposition (AskUserQuestion: 'Inside 141 (Amendment A6)') plus the 'Continue, fix all, as much time as it take' build authorization. No co_design marker is set here, so the new SC-025 co-design-record floor correctly no-ops on iteration 9's own design-analysis (grandfather-safe).",
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "ui-ux"
+  ]
+}

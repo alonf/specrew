@@ -43,6 +43,20 @@ This directory contains Squad skill templates for Specrew runtime deployment. Th
 
 **Status**: Active governance and recovery skills for planning, drift detection, traceability, and iteration resume
 
+## Slash-Command Runtime Skills
+
+These subdirectory skills are deployed directly to the three active project skill roots and back the Feature 024 `/specrew-*` surface:
+
+| Skill directory | Slash command | Purpose |
+| --- | --- | --- |
+| `specrew-where` | `/specrew-where` | Current Specrew project dashboard |
+| `specrew-status` | `/specrew-status` | Alias for `/specrew-where` |
+| `specrew-update` | `/specrew-update` | Refresh Specrew-managed assets |
+| `specrew-team` | `/specrew-team` | Manage Squad team members |
+| `specrew-review` | `/specrew-review` | Replay review state without approving a boundary |
+| `specrew-help` | `/specrew-help` | Canonical catalog fallback |
+| `specrew-version` | `/specrew-version` | Version and compatibility inspection |
+
 ## References
 
 - Contract: [squad-extension.md](../../../../specs/001-specrew-product/contracts/squad-extension.md)

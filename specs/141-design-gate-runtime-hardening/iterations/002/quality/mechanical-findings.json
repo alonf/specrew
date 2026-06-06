@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/141-design-gate-runtime-hardening/spec.md",
+  "iterationRef": "specs/141-design-gate-runtime-hardening/iterations/002",
+  "generatedAt": "2026-06-03T00:24:03Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.30.0"
+  },
+  "findings": []
+}

@@ -204,6 +204,12 @@ if ($codexOrientation -match 'Claude Code|GitHub Copilot|Squad runtime|plays eac
 if ($codexOrientation -match [regex]::Escape('<<SPECREW_HOST_ORIENTATION_BLOCK>>')) {
     Write-Fail 'Codex orientation marker was not replaced.'
 }
+# FR-011 (reproduce-first): a greenfield/intake orientation (no feature yet) MUST NOT emit a
+# feature-path-shaped browse URL. The coordinator substitutes <feature> per Rule 48, and with no
+# feature that collapses to `specs//`. Greenfield browse guidance must omit/placeholder the path.
+if ($codexOrientation -match 'specs/<feature>/spec') {
+    Write-Fail "FR-011: greenfield orientation emits a feature-path browse reference that collapses to specs// when no feature exists:`n$codexOrientation"
+}
 
 $claudeOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'claude' -CrewRuntimeStatus 'bootstrap_only' -SpecrewVersion '0.30.0-beta5' -LifecycleMode 'resume-feature' -FeatureRef '001-token-tray' -BoundaryType 'plan'
 if ($claudeOrientation -notmatch 'Claude Code CLI') {
@@ -217,12 +223,42 @@ foreach ($required in @('Specrew: 0.30.0-beta5', 'Host: claude \(Claude Code CLI
 if ($claudeOrientation -match 'GitHub Copilot|Squad runtime|plays each role|I run all of them inside this session') {
     Write-Fail "Claude orientation contains a false hard-coded runtime claim:`n$claudeOrientation"
 }
+# FR-011: a resolved-feature resume DOES surface the concrete browse paths (the coordinator fills
+# <feature> with the real ref, yielding a non-empty segment) — the guard must not strip them here.
+if ($claudeOrientation -notmatch 'specs/<feature>/spec\.md') {
+    Write-Fail "Resume orientation should surface the feature browse paths for substitution:`n$claudeOrientation"
+}
 
 $copilotOrientation = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'copilot' -CrewRuntimeStatus 'squad-runtime' -SpecrewVersion '0.30.0-beta5' -LifecycleMode 'resume-feature' -FeatureRef '001-token-tray' -BoundaryType 'plan'
 if ($copilotOrientation -notmatch 'GitHub Copilot CLI' -or $copilotOrientation -notmatch 'Squad runtime coordinates' -or $copilotOrientation -notmatch 'Specrew: 0.30.0-beta5' -or $copilotOrientation -notmatch 'Host: copilot \(GitHub Copilot CLI\); runtime: Squad') {
     Write-Fail "Copilot/Squad orientation did not describe the active host/runtime accurately:`n$copilotOrientation"
 }
 Write-Pass 'Host orientation rendering is accurate for Codex, Claude, and Copilot/Squad initial/resume cases'
+
+# Test 9b-FR025 (transparency half): when an expertise line is provided, the orientation surfaces the
+# assumed expertise, positions it after "How this works" and before "What I'll ask", and invites
+# correction. Reproduce-first: the regression was the orientation never surfacing the recorded profile
+# ("I do not see what the system knows about me"); a provided line must now appear in the visible block.
+$expertiseLine = "What I know about you: I'll treat you as expert on Software Architecture, mid-level on UX/UI Design - correct me if that's off."
+$withExpertise = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'claude' -CrewRuntimeStatus 'bootstrap_only' -SpecrewVersion '0.31.1' -LifecycleMode 'resume-feature' -FeatureRef '141-design-gate-runtime-hardening' -BoundaryType 'plan' -ExpertiseLine $expertiseLine
+if ($withExpertise -notmatch 'What I know about you: I''ll treat you as expert on Software Architecture') {
+    Write-Fail "FR-025: orientation did not surface the provided expertise line:`n$withExpertise"
+}
+if ($withExpertise -notmatch 'correct me if that''s off') {
+    Write-Fail 'FR-025: orientation expertise line did not invite correction.'
+}
+$howIdx = $withExpertise.IndexOf('How this works:')
+$knowIdx = $withExpertise.IndexOf('What I know about you:')
+$askIdx = $withExpertise.IndexOf("What I'll ask from you:")
+if (-not ($howIdx -ge 0 -and $knowIdx -gt $howIdx -and $askIdx -gt $knowIdx)) {
+    Write-Fail "FR-025: expertise line is not positioned after 'How this works' and before 'What I'll ask':`n$withExpertise"
+}
+# Graceful (back-compat): with no expertise line the section is omitted entirely.
+$noExpertise = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $orientationPrompt -HostKind 'claude' -CrewRuntimeStatus 'bootstrap_only' -SpecrewVersion '0.31.1' -LifecycleMode 'new-feature'
+if ($noExpertise -match 'What I know about you:') {
+    Write-Fail "FR-025: orientation surfaced an expertise section with no expertise line provided (should be omitted):`n$noExpertise"
+}
+Write-Pass 'FR-025: orientation surfaces the assumed expertise (positioned, invites correction) and omits it gracefully when absent'
 
 # Test 9c: host interaction guidance is rendered by the selected host package
 $interactionPrompt = @'
@@ -464,6 +500,23 @@ foreach ($hk in 'copilot', 'claude', 'codex') {
     }
 }
 Write-Pass 'Universal Crew-coordinator header literal is identical across all hosts (FR-011 invariant)'
+
+# Test 18b: FR-014 (reproduce-first) — launch guidance must not leak another host's terminology
+# (SC-010). The approval-mode launch line printed by `specrew start` must be host-neutral, not
+# "Copilot approval mode" on every host (it prints on a claude launch too).
+$startApprovalText = Get-Content -LiteralPath $startScript -Raw -Encoding UTF8
+if ($startApprovalText -match 'Copilot approval mode') {
+    Write-Fail 'FR-014/SC-010: specrew-start.ps1 emits "Copilot approval mode" launch guidance, leaking Copilot terminology on non-Copilot hosts.'
+}
+if ($startApprovalText -notmatch 'Approval mode:') {
+    Write-Fail 'FR-014: specrew-start.ps1 should emit host-neutral "Approval mode:" launch guidance.'
+}
+# FR-014 class: the new-window launch success line must use the host-aware label, not a hardcoded
+# "Delegated to Copilot" (the host-aware $hostLabel switch already exists just above it).
+if ($startApprovalText -match 'Delegated to Copilot') {
+    Write-Fail 'FR-014/SC-010: specrew-start.ps1 hardcodes "Delegated to Copilot" in the new-window launch success line, leaking Copilot terminology on non-Copilot hosts.'
+}
+Write-Pass 'FR-014 launch guidance uses host-neutral approval-mode + delegation wording (no Copilot terminology leak)'
 
 # Test 19a: --no-launch + missing host generates artifacts (back-compat with pre-F-040)
 # Pre-F-040 behavior: Start-CopilotSession returned $false on missing copilot,

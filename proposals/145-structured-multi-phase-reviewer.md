@@ -118,8 +118,25 @@ Important sources and findings:
 
 The better model is two-tier:
 
-1. **Gate-local checks after every boundary.** Each gate runs a small checklist for only the responsibilities of that gate, records evidence, then commits the boundary. These checks are cheap, deterministic where possible, and designed to catch drift near the source.
+1. **Gate-local preflight before every human approval packet.** Each human-judgment boundary runs a small checklist for only the responsibilities of that gate, records evidence, then presents the packet only if the preflight passes. These checks are cheap, deterministic where possible, and designed to catch drift near the source.
 2. **Full Proposal 145 review at `review-signoff`.** The structured reviewer loads the earlier gate-local evidence, then runs the seven-phase implementation review.
+
+Gate-local checks are not merely retrospective notes. Before the Crew asks the
+human to approve a boundary, it must reconstruct state from artifacts and run the
+boundary's preflight: scoped validator, branch/upstream parity, dirty-state
+classification, required artifact existence, stale-state/stale-phrase scan,
+packet-vs-artifact consistency, and any boundary-specific evidence checks. If
+preflight fails, the Crew self-sends-back: it records the failure, fixes or
+classifies the issue, reruns the preflight, and only then re-presents the human
+approval packet. The human should not be the first detector for mechanical or
+artifact-consistency defects.
+
+Hooks are an execution accelerator for this preflight, not the authority. Claude
+Code and any host with lifecycle hooks can trigger the same preflight before a
+menu or final stop; hosts without a comparable hook must run it through the
+Specrew lifecycle command path and CI/validator checks. In every topology, the
+source of truth remains the Specrew artifacts plus validator output, not the
+agent's report.
 
 Gate-local examples:
 
@@ -430,7 +447,7 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - Natural slot: F-053 or replaces F-052 (Design Alternatives Gate per the post-F-049 sequencing); user decides at sequencing review whether to substitute
 - Prerequisite: F-051 multi-agent subagent orchestration (Proposal 139) for multi-agent dispatch; without it, sequential single-agent phase invocation is functional but lower fidelity
 - Host migration strategy: implement the artifact contract once, then add host adapters incrementally. Do not block the first implementation on perfect host parity.
-- Boundary strategy: add cheap gate-local checks as a companion path, but keep the full seven-phase review scoped to `review-signoff`.
+- Boundary strategy: define the host-neutral gate-preflight contract here: run cheap gate-local checks before the human approval packet, self-send-back on failures, and keep the full seven-phase review scoped to `review-signoff`.
 
 ## Open questions for proposal-to-spec conversion
 
@@ -441,7 +458,7 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - Integration with existing `review.md` format: does the structured report SUPERSEDE or AUGMENT? Recommendation: augment for migration safety, propose supersede as a follow-up after empirical adoption.
 - Backward compatibility for reviewers/Crews that don't have the skill installed: fall back to current narrative review with a soft warning?
 - Should the static coverage validator hard-block boundary advancement, or warn? Recommendation: warn during adoption period, hard-block after 3+ features ship through it.
-- Should gate-local checks live in this proposal or a sibling refocus/gate-hardening proposal? Recommendation: define the interface here, implement broad gate-local checks in the refocus/gate-hardening work so 145 stays focused on full review.
+- Should gate-local checks live in this proposal or a sibling refocus/gate-hardening proposal? Recommendation: define the pre-human-packet interface here, implement the broad reusable preflight runner in refocus/gate-hardening work so 145 stays focused on full review.
 - Should host hooks be installed automatically by Specrew update/init, or only generated as opt-in examples? Recommendation: opt-in at first, because hook support and trust prompts differ by host.
 - How should a human reviewer fill phase files when an AI host cannot execute a phase reliably? Recommendation: allow manual phase files if they satisfy the schema and include `reviewer: human`.
 - How should phase outputs cite web/current external evidence? Recommendation: require links in evidence arrays and an explicit "external evidence used" flag when a phase relies on current docs/laws/prices/security advisories.
@@ -454,6 +471,7 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - Decide on the host-deployment shape for the invocable skill (Proposal 058 SDK alignment)
 - Backfill strategy: do we re-run structured review on closed iterations as a one-shot quality audit?
 - Define the gate-local checklist interface consumed by 145 at review-signoff (boundary verdicts, commit evidence, validator results, drift-log references).
+- Define the gate-preflight result artifact/schema consumed before each human approval packet: boundary name, command list, validator status, stale-phrase scan, branch/upstream parity, dirty-state classification, artifact consistency findings, and self-send-back actions when failures are found.
 - Define the host adapter mapping for the first four supported surfaces: Copilot/Squad, Claude Code, Codex, and Cursor.
 - Define the "instruction visibility" invariant that must be deployed to always-loaded host files: before a Specrew gate, reconstruct state from artifacts and validators, not from chat memory.
 

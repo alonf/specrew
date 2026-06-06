@@ -1,0 +1,44 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "006"
+updated_at: "2026-06-04T08:00:00Z"
+tasks:
+  T001:
+    title: "Dial->depth mapping helper (user-profile dials + question area -> interaction depth); pure, deterministic"
+    status: "done"
+    started_at: "2026-06-04T08:05:00Z"
+    completed_at: "2026-06-04T08:10:00Z"
+    blocked_reason: ""
+  T002:
+    title: "Lifecycle wiring: interactive lens intake INSIDE specify, before sync-specify (placement rule a/b/c); coordinator/governance + specify ordering. DONE: FR-026 feature/iteration resolution (instruction #1); the ENFORCED specify-boundary lens gate (Invoke-SpecrewSpecifyBoundaryLensGate, wired into sync-boundary-state) refusing sync-specify before the feature-level artifact + the committed scripted-proof test (maintainer mandate: prompt-only is not enough). REMAINING: coordinator-prompt/governance wiring that tells the Crew to run the interactive dial-adapted intake + amend spec/checklist before sync-specify."
+    status: "done"
+    started_at: "2026-06-04T08:12:00Z"
+    completed_at: "2026-06-04T08:35:00Z"
+    blocked_reason: ""
+  # T003 (FR-009 decision-point flow) carried to Iteration 7 — subsumed by the A4 per-lens workshop;
+  # only the high-level Rule 9a flow sentence shipped in i006. Recorded as deferred in review.md Gap
+  # Ledger + the canonical defer entry in .squad/decisions.md (f141-i006-defer-fr009-flow).
+  T004:
+    title: "FR-028 file-reference render helper (Format-SpecrewFileReference: console file:/// vs persisted markdown) + handoff bare-path fix (RRT/Bug1 + FR/SC no longer flagged; real paths still are). Verified; 3 passing handoff/interaction suites still pass."
+    status: "done"
+    started_at: "2026-06-04T08:40:00Z"
+    completed_at: "2026-06-04T09:05:00Z"
+    blocked_reason: ""
+  T005:
+    title: "FR-029: guard Specrew.psd1 FileList-sort in boundary sync (skip when no manifest, downstream). Verified."
+    status: "done"
+    started_at: "2026-06-04T08:38:00Z"
+    completed_at: "2026-06-04T08:40:00Z"
+    blocked_reason: ""
+  T006:
+    title: "Tests (reproduce-first): dial->depth (6 cases, selector suite); FR-026 feature/iteration resolution regression set - instruction #1 (gate suite); FR-028 render helper (3 cases) + handoff bare-path RRT/Bug1+FR/SC-not-flagged (feature suite); specify-gate proof committed in T002a. FR-029 guard verified via the T007 downstream run (no-warning) + its triviality."
+    status: "done"
+    started_at: "2026-06-04T09:05:00Z"
+    completed_at: "2026-06-04T09:20:00Z"
+    blocked_reason: ""
+  T007:
+    title: "Docs + human-experience dogfood (real interactive dial-adapted intake run) + gap ledger (TG-006). DONE: docs shipped (54caa4bb); the maintainer's downstream `specrew start --host claude` run (005's required human-experience dogfood) surfaced that the intake is a questionnaire not a workshop -> Amendment A4 / Iteration 7 (engine retained), plus two parked side findings (Rule 46 packet collapse = handoff track; expertise line runtime-unverified). Findings recorded in review.md / retro.md / TG-006 gap ledger."
+    status: "done"
+    started_at: "2026-06-04T09:20:00Z"
+    completed_at: "2026-06-04T10:00:00Z"
+    blocked_reason: ""

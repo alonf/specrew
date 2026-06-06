@@ -19,6 +19,12 @@ if (-not (Test-Path -LiteralPath $featureClaimsHelperPath -PathType Leaf)) {
 }
 . $featureClaimsHelperPath
 
+$designAnalysisGateHelperPath = Join-Path $PSScriptRoot 'design-analysis-gate.ps1'
+if (-not (Test-Path -LiteralPath $designAnalysisGateHelperPath -PathType Leaf)) {
+    throw "Missing design-analysis gate helper '$designAnalysisGateHelperPath'."
+}
+. $designAnalysisGateHelperPath
+
 $sessionConfigHelperPath = Join-Path $PSScriptRoot 'session-config.ps1'
 if (-not (Test-Path -LiteralPath $sessionConfigHelperPath -PathType Leaf)) {
     throw "Missing session-config helper '$sessionConfigHelperPath'."
@@ -228,12 +234,16 @@ function Test-SpecrewFeatureMergedToMain {
         [AllowNull()][string]$FeatureRef
     )
 
+    # Strict merge detection (Feature 141 FR-024) — see the matching helper in
+    # session-recovery.ps1. Match the FULL feature ref slug as an exact substring,
+    # never the bare numeric id, so unrelated merge bodies that merely mention a
+    # proposal number ("Proposal 120 + 141") cannot false-positive a feature.
     $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
     if ([string]::IsNullOrWhiteSpace($featureNumber)) {
         return [pscustomobject]@{ IsMerged = $false; Detail = $null }
     }
 
-    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --grep="$featureNumber" 2>&1)
+    $logOutput = @(& git -C $ProjectRoot log main --since='90 days ago' --merges --oneline --fixed-strings --grep="$FeatureRef" 2>&1)
     if ($LASTEXITCODE -ne 0) {
         return [pscustomobject]@{ IsMerged = $false; Detail = $null }
     }
@@ -241,7 +251,7 @@ function Test-SpecrewFeatureMergedToMain {
     if ($logOutput.Count -gt 0) {
         return [pscustomobject]@{
             IsMerged = $true
-            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $featureNumber, ($logOutput[0].ToString().Trim()))
+            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $FeatureRef, ($logOutput[0].ToString().Trim()))
         }
     }
 
@@ -1131,6 +1141,23 @@ function Invoke-SpecrewBoundaryStateSync {
         }
     }
 
+    if ($BoundaryType -eq 'specify') {
+        # FR-027 (A3): the lens-applicability intake must complete before the specify boundary is
+        # synced, so the accepted spec is lens-informed. Enforced here (not prompt-only): refuses
+        # sync-specify for a substantive feature in a lens-catalog project until the feature-level
+        # lens-applicability.json exists.
+        Invoke-SpecrewSpecifyBoundaryLensGate `
+            -ProjectRoot $paths.ProjectRoot `
+            -FeatureRef $effectiveFeatureRef | Out-Null
+    }
+
+    if ($BoundaryType -eq 'plan') {
+        Invoke-SpecrewDesignAnalysisPlanBoundaryGate `
+            -ProjectRoot $paths.ProjectRoot `
+            -FeatureRef $effectiveFeatureRef `
+            -IterationNumber $effectiveIterationNumber | Out-Null
+    }
+
     $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
     $expectedBoundaryType = if ($null -eq $latestBoundary) {
@@ -1292,11 +1319,16 @@ function Invoke-SpecrewBoundaryStateSync {
         Write-Warning ("Boundary sync '{0}' could not split decisions by iteration: {1}" -f $BoundaryType, $_.Exception.Message)
     }
 
-    try {
-        Sort-SpecrewManifestFileList -ManifestPath (Join-Path $paths.ProjectRoot 'Specrew.psd1') | Out-Null
-    }
-    catch {
-        Write-Warning ("Boundary sync '{0}' could not sort Specrew.psd1 FileList: {1}" -f $BoundaryType, $_.Exception.Message)
+    # FR-029: the Specrew.psd1 FileList-sort is a Specrew-repo-only operation. Downstream projects have
+    # no module manifest, so guard on its presence — never emit the "Manifest not found" warning there.
+    $manifestPath = Join-Path $paths.ProjectRoot 'Specrew.psd1'
+    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+        try {
+            Sort-SpecrewManifestFileList -ManifestPath $manifestPath | Out-Null
+        }
+        catch {
+            Write-Warning ("Boundary sync '{0}' could not sort Specrew.psd1 FileList: {1}" -f $BoundaryType, $_.Exception.Message)
+        }
     }
 
     try {

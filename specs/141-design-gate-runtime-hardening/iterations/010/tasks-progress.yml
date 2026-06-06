@@ -1,0 +1,41 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "010"
+updated_at: "2026-06-05T22:00:00Z"
+tasks:
+  T001:
+    title: "Author the specrew-design-workshop skill (frontmatter auto-load description + self-contained, self-reinvoking body: big-picture lens map + general method [ASCII-inline-default, co-design-not-unilateral, capture-agreements] + per-lens load loop). DONE: squad-templates/skills/design-workshop.md; skill-templates test green."
+    status: "done"
+    started_at: "2026-06-05T16:30:00Z"
+    completed_at: "2026-06-05T16:50:00Z"
+    blocked_reason: ""
+  T002:
+    title: "Co-locate a ## Workshop Conduct section into each of the 9 design-lenses/<id>.md (diagram type + facilitation nuance + re-invoke). DONE: all 9 + lens-template; verified (apostrophe + MD032 blank-line fixed)."
+    status: "done"
+    started_at: "2026-06-05T16:50:00Z"
+    completed_at: "2026-06-05T17:05:00Z"
+    blocked_reason: ""
+  T003:
+    title: "Trim the launch prompt: Rules 9a/9b/9c -> a compact 9a skill pointer (keeps SC-021/SC-025 gate refs) + 9b/9c folded-into-skill stubs. DONE: specrew-start.ps1 (line-anchored regex replace); parse-clean; no test asserts the old conduct text."
+    status: "done"
+    started_at: "2026-06-05T17:05:00Z"
+    completed_at: "2026-06-05T17:15:00Z"
+    blocked_reason: ""
+  T004:
+    title: "Deploy: the skill auto-deploys (flat design-workshop.md -> specrew-design-workshop/SKILL.md to .claude/skills + .agents/skills + the other host roots) via the existing Get-LegacySpecrewSkillDefinitions path; no deploy-script change. DONE: verified by the dynamic skill-templates test (frontmatter valid)."
+    status: "done"
+    started_at: "2026-06-05T17:15:00Z"
+    completed_at: "2026-06-05T17:18:00Z"
+    blocked_reason: ""
+  T005:
+    title: "Tests (lens-conduct-delivery.tests.ps1): skill content + 9 lens md Workshop Conduct + the prompt pointer/trim. DONE: new suite green; skill-templates + design-gate-runtime-hardening + design-analysis-gate + selector all still green."
+    status: "done"
+    started_at: "2026-06-05T17:18:00Z"
+    completed_at: "2026-06-05T17:30:00Z"
+    blocked_reason: ""
+  T006:
+    title: "SC-024 re-confirm runtime dogfood: a downstream run where the relocated delivery drives the workshop (the skill auto-loads; ASCII diagrams surface in-band; co-design WITH the human; agreements captured). Behavioral acceptance gate. DONE (testLenses6 / 001-skill-mcp-catalog): the relocated skill auto-loaded AND re-invoked per lens; all 8 lenses ran with in-band console-ASCII diagrams the maintainer SAW; the design-analysis co-design stop named every component WITH its responsibility (Discovery/Feedback/Publishing/Identity managers, Matching/ManifestValidation engines, CatalogStore/Index/Embedding accessors), invited rename/split/merge, walked the discover->use->rate flow, and HELD the trade-off options until the map was agreed; co_design record written + SC-025 floor validated (Valid=True); the agent additionally caught the Option-C-async vs FR-010 conflict and surfaced it as a structured verdict question. The testLenses5 failures (terse manager count, diagram-written-to-file-never-shown, no ui-ux capture) did NOT recur. Two delivery nits observed + already fixed FORWARD in the skill (not exercised this run, which used the pre-fix deployed skill): the SC-021 workshop-record shape dance (c80e7d58) and the per-lens diagram field as prose vs a persisted file reference (49a9ff39); the host API-latency hangs are not an i10 defect."
+    status: "done"
+    started_at: "2026-06-05T19:00:00Z"
+    completed_at: "2026-06-05T20:30:00Z"
+    blocked_reason: ""

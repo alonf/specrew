@@ -1,0 +1,59 @@
+{
+  "schema": "v1",
+  "note": "Iteration 4 design-analysis applicability answers (dogfood: new JSON artifact + sibling map = data/state). This iteration predates the FR-026 lens-coverage gate (Iteration 5 / Amendment A2); fr026_grandfathered marks it explicitly exempt from coverage enforcement.",
+  "fr026_grandfathered": true,
+  "answers": {
+    "ui": false,
+    "security": false,
+    "data": true,
+    "integration": false,
+    "ops": false,
+    "perf": false
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "data-storage"
+  ],
+  "included": [
+    {
+      "id": "architecture-core",
+      "reason": "always-on (foundational)"
+    },
+    {
+      "id": "component-design",
+      "reason": "always-on (foundational)"
+    },
+    {
+      "id": "requirements-nfr",
+      "reason": "always-on (foundational)"
+    },
+    {
+      "id": "data-storage",
+      "reason": "gated by 'data' = yes"
+    }
+  ],
+  "excluded": [
+    {
+      "id": "ui-ux",
+      "reason": "gated by 'ui' = no"
+    },
+    {
+      "id": "security-compliance",
+      "reason": "gated by 'security' = no"
+    },
+    {
+      "id": "integration-api",
+      "reason": "gated by 'integration' = no"
+    },
+    {
+      "id": "devops-operations",
+      "reason": "gated by 'ops' = no"
+    },
+    {
+      "id": "observability-resilience",
+      "reason": "gated by 'perf' = no"
+    }
+  ]
+}

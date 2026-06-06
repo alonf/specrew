@@ -1,0 +1,32 @@
+{
+  "schema": "v1",
+  "note": "Iteration 7 design-analysis applicability (lens intake becomes a per-lens facilitated workshop — Amendment A4). ui=yes (the workshop IS the human-interaction surface); data=yes (lens-applicability.json gains an additive per-lens decision field). NOT fr026_grandfathered: FR-026-era; the gate enforces coverage.",
+  "answers": {
+    "ui": true,
+    "security": false,
+    "data": true,
+    "integration": false,
+    "ops": false,
+    "perf": false
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "ui-ux",
+    "data-storage"
+  ],
+  "included": [
+    { "id": "architecture-core", "reason": "always-on (foundational)" },
+    { "id": "component-design", "reason": "always-on (foundational)" },
+    { "id": "requirements-nfr", "reason": "always-on (foundational)" },
+    { "id": "ui-ux", "reason": "gated by 'ui' = yes" },
+    { "id": "data-storage", "reason": "gated by 'data' = yes" }
+  ],
+  "excluded": [
+    { "id": "security-compliance", "reason": "gated by 'security' = no" },
+    { "id": "integration-api", "reason": "gated by 'integration' = no" },
+    { "id": "devops-operations", "reason": "gated by 'ops' = no" },
+    { "id": "observability-resilience", "reason": "gated by 'perf' = no" }
+  ]
+}

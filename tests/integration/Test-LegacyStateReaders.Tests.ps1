@@ -169,7 +169,7 @@ $fixtureRoot = Join-Path $repoRoot 'tests\fixtures\legacy-versions'
 $scratchRoot = Join-Path $repoRoot '.scratch\legacy-state-readers'
 $sharedGovernancePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 $syncBoundaryStatePath = Join-Path $repoRoot 'scripts\internal\sync-boundary-state.ps1'
-$specrewStartPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+$sessionRecoveryPath = Join-Path $repoRoot 'scripts\internal\session-recovery.ps1'
 $worktreeAwarenessPath = Join-Path $repoRoot 'scripts\internal\worktree-awareness.ps1'
 $coordinatorResumePath = Join-Path $repoRoot 'scripts\internal\coordinator-resume.ps1'
 
@@ -183,7 +183,10 @@ Import-FunctionsFromFile -Path $syncBoundaryStatePath -Names @(
     'ConvertFrom-SpecrewFrontmatter',
     'Get-SpecrewSessionStateFromFrontmatter'
 )
-Import-FunctionsFromFile -Path $specrewStartPath -Names @(
+# Feature 141 / FR-024 extracted these session-state readers from specrew-start.ps1
+# into the session-recovery helper (specrew-start.ps1 now dot-sources it); the readers
+# themselves are unchanged, so this test follows them to their new file.
+Import-FunctionsFromFile -Path $sessionRecoveryPath -Names @(
     'Get-SpecrewIdentitySessionState',
     'Get-SpecrewStartContextSessionState',
     'Get-SpecrewConfigValue'
