@@ -24550,3 +24550,11 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Ownership rule recorded**: any future Specrew hook mechanism routes through this dispatcher via a registry row; never a second registration on the host settings surface.
 - **Ripple**: spec FR-008 + Key Entities; data-model ProviderRegistryRow.kind; contract provider-kinds table; tasks T003/T006 (+0.5 SP -> iteration 001 = 18.5/20).
 - **Authorizing Human**: Alon Fliess (directive message, 2026-06-07)
+
+## 2026-06-07T07:58:00Z — Human verdict: tasks approved + implementation go-ahead (171-specrew-refocus)
+
+- **Boundary Type**: tasks -> before-implement
+- **Verdict**: Approve - start implementation (structured verdict menu)
+- **Authorizing Human**: Alon Fliess
+- **Commit Reference**: 679a814e (tasks.md), 651d384f (F-165 gate-seat amendment carried as instruction)
+- **Readiness**: hardening gate ready (5/5 concerns addressed, feature-specific controls); iteration plan 18.5/20 SP; baseline roster, no supplemental specialists.
