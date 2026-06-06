@@ -24723,3 +24723,21 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
 
 - **Routing Evidence**: Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-06T18:53:17Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 170-retire-evaluation-surface
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: c7d32a7f
+- **Recorded At**: 2026-06-06T18:53:16Z
+
+## 2026-06-06T18:53:44Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 170-retire-evaluation-surface
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: cffeccff
+- **Recorded At**: 2026-06-06T18:53:44Z
