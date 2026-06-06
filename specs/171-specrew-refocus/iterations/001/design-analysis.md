@@ -23,21 +23,21 @@ Methodology drift is empirically born at three moments: compaction destroys the 
 
 ## Alternatives
 
-### Option A — Simplest: manual surface + host-neutral channels only
+### Option A - Simplest: manual surface + host-neutral channels only
 
 Pillar A slash command, wrapper-stdout boundary emission, primer pointer, digests + catalog. NO hook layer, no breaker (no automation to guard). ~8-10 SP, 1 iteration.
 
 - **Design-principle rationale**: smallest thing that delivers value everywhere; zero new host coupling.
 - **Explicit future cost**: the two empirically worst drift events — compaction and bypass launches — stay uncovered; the feature's central thesis (non-discretionary triggers) is unrealized; hooks arrive later as a second feature paying re-integration cost.
 
-### Option B — Reasonable: A + Claude hook binding only
+### Option B - Reasonable: A + Claude hook binding only
 
 Everything in A, plus the dispatcher/provider/registry machinery bound on Claude (B1/B2/B3), breaker, journal, compaction points. Antigravity/Cursor/Codex bindings deferred to research-gated fast-follow slices. ~15-18 SP, 2 iterations.
 
 - **Design-principle rationale**: ship the non-discretionary layer where the surface is documented today; defer unverified surfaces.
 - **Explicit future cost**: multi-host parity (the product's load-bearing promise) ships asymmetric; per-host follow-ups re-open the same code three times; the maintainer explicitly rejected Claude-first framing during the workshop.
 
-### Option C — By the book: B + research-verified bindings for ALL hook-capable hosts (workshop-bound scope)
+### Option C - By the book: B + research-verified bindings for ALL hook-capable hosts (workshop-bound scope)
 
 The full workshop-bound scope: trigger contract + channels + digest family + dispatcher/registry + per-session state + breaker/kill-switches/journal + compaction points + a research-matrix artifact per host, with verified bindings for Claude, Antigravity, Cursor, and Codex-where-expressible inside this feature; Copilot documented-variance on channels 1+2. ~18-25 SP, 2 iterations (research tasks lead iteration 002).
 
@@ -48,13 +48,20 @@ The full workshop-bound scope: trigger contract + channels + digest family + dis
 
 *(FR-026 anti-omission coverage — each selected lens from `lens-applicability.json`, pointing into the option comparison; full per-lens records in `../../workshop/`.)*
 
-- **architecture-core** — Addressed: the option axis IS this lens's central decision (trigger delivery + host bindings); Option C realizes the bound host-neutral contract + volatility cut; Options A/B price the cuts (no hooks / Claude-only) against the recorded multi-host correction.
-- **component-design** — Addressed: all three options consume the same human-agreed 12-component map (Co-Design Record below); they differ only in which trigger adapters materialize — A drops Dispatcher/Provider/HostHookBindings, B materializes them for one host, C for all hook-capable hosts.
-- **requirements-nfr** — Addressed: P1 fail-open and P2 exactly-once bind identically across options; P4's latency bar only exists in B/C (hook paths); Option A trivially satisfies P4 by having no hook path — weighed in each option's cost line.
-- **integration-api** — Addressed: contracts C1/C4/C5 (engine CLI, catalog, digests) are option-invariant; C2 (host hook protocol) and C6 (merge-aware hook deploy) exist only in B/C — C multiplies C2 verification across hosts via the research-matrix gate.
-- **security-compliance** — Addressed: the auto-execution trust surface (hook registration, event-JSON parsing, session-id sanitization) is introduced by B/C only; Option A has no new execution surface; C's surface equals B's per host (same dispatcher), replicated under the same controls.
-- **devops-operations** — Addressed: kill-switch levels + circuit breaker + opt-out memory are required exactly where automation exists (B/C); deployment classes (managed mirrors, managed-with-overlay catalog) and FileList obligations are option-invariant; C adds per-host binding declarations to the deploy loop.
-- **observability-resilience** — Addressed: journal + reason codes + `--status` failure trace apply to any option with automatic injections (B/C); Option A retains the banner-only audit trail; C's per-host bindings each cite journal evidence in SC-008 beta validation.
+- **architecture-core**
+  Addressed: the option axis IS this lens's central decision (trigger delivery + host bindings); Option C realizes the bound host-neutral contract + volatility cut; Options A/B price the cuts (no hooks / Claude-only) against the recorded multi-host correction.
+- **component-design**
+  Addressed: all three options consume the same human-agreed 12-component map (Co-Design Record below); they differ only in which trigger adapters materialize — A drops Dispatcher/Provider/HostHookBindings, B materializes them for one host, C for all hook-capable hosts.
+- **requirements-nfr**
+  Addressed: P1 fail-open and P2 exactly-once bind identically across options; P4's latency bar only exists in B/C (hook paths); Option A trivially satisfies P4 by having no hook path — weighed in each option's cost line.
+- **integration-api**
+  Addressed: contracts C1/C4/C5 (engine CLI, catalog, digests) are option-invariant; C2 (host hook protocol) and C6 (merge-aware hook deploy) exist only in B/C — C multiplies C2 verification across hosts via the research-matrix gate.
+- **security-compliance**
+  Addressed: the auto-execution trust surface (hook registration, event-JSON parsing, session-id sanitization) is introduced by B/C only; Option A has no new execution surface; C's surface equals B's per host (same dispatcher), replicated under the same controls.
+- **devops-operations**
+  Addressed: kill-switch levels + circuit breaker + opt-out memory are required exactly where automation exists (B/C); deployment classes (managed mirrors, managed-with-overlay catalog) and FileList obligations are option-invariant; C adds per-host binding declarations to the deploy loop.
+- **observability-resilience**
+  Addressed: journal + reason codes + `--status` failure trace apply to any option with automatic injections (B/C); Option A retains the banner-only audit trail; C's per-host bindings each cite journal evidence in SC-008 beta validation.
 
 ## Crew Recommendation
 
