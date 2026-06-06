@@ -899,6 +899,13 @@ function Invoke-PreFeatureCloseoutWorkingTreeGate {
         '\.squad/identity/now\.md'
         '\.squad/decisions\.md'
         '\.specify/feature\.json'
+        # The feature closeout-dashboard is generated AT this boundary by
+        # scaffold-feature-closeout-dashboard.ps1 (which then calls this sync), so it cannot be
+        # committed before the gate runs -- like the session-state churn above, it is a
+        # boundary-produced artifact, not pre-boundary implementation work. The exclusion is
+        # narrow: other specs/ surfaces (spec.md, plan.md, ...) stay gated by the ^specs/
+        # relevance pattern below.
+        'specs/.*/closeout-dashboard\.md'
     )
 
     # Feature-implementation surfaces that MUST be committed before closeout.
