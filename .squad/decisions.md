@@ -23980,3 +23980,19 @@ Recorded in: spec.md Amendment A8 (commit `2926cdc0`); iteration-011 review.md /
 - **Rationale**: Iteration 12 delivered Amendment A8 / FR-041 — the corrected implementation of FR-037/FR-040. The cross-host dogfood (testLenses11 on Copilot/Squad AND Claude) is the behavioral gate and CONFIRMED the convergence — maintainer verdict: "on both copilot and claude this is the best workshop." (1) open-question-first per lens HOLDS cross-host (every lens opened with a rendered presentation + an open question, never a menu first; the component map rendered in-band on Claude at lens 2 — the advisor's "real test"). (2) The dense-lens pacing offer (all-at-once or one-at-a-time) works cross-host (the testLenses11 Copilot wall is fixed). (3) SC-027 met — Copilot worked all 9 lenses against real answers + wrote the per-lens records; the testLenses7codex synthetic-agreement failure did NOT recur. (4) catalog-at-open (FR-041a) was built (`0ed7cde7`), cross-host dogfood-tested, and REVERTED (`f5b01714`) — redundant on prose hosts + a before-a-menu render that skims on Claude (advisor: drop > host-conditional). The GOVERNING MODEL is the durable lesson (baked into FR-041 + the skill): open-discussion renders hold on Claude; before-a-menu renders skim (the `AskUserQuestion` tool-gravity) → a `PreToolUse` hook or accept-as-minor, never another instruction. (5) The Claude agenda-confirm menu still references "above" with the list inside the question (a before-a-menu render); the maintainer dispositioned it ACCEPT-AS-MINOR ("we can ignore it") — a recorded design limit, NOT a defect to re-instruction. i12 closes ACCEPTED; per-phase and task verdicts all pass.
 
 Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 review.md / retro.md / drift-log.md / state.md (status complete) / dashboard.md; commits `0ed7cde7` / `a16daadd` / `f5b01714`.
+
+## 2026-06-06T11:47:47Z — Boundary sync warning: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Latest Recorded Boundary**: before-implement
+- **Recorded At**: 2026-06-06T11:47:47Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'feature-closeout'.
+
+## 2026-06-06T11:47:48Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 141-design-gate-runtime-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: f97b5e405cac1fec6d4acfbbfd379f8555e426c6
+- **Recorded At**: 2026-06-06T11:47:48Z
