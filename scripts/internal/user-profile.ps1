@@ -511,6 +511,70 @@ function Show-UserProfileSummary {
     return $summary
 }
 
+function Get-SpecrewProfileOrientationLine {
+    <#
+    .SYNOPSIS
+    Renders a concise one-line statement of the assumed expertise for the visible orientation
+    block, so the human SEES — and can correct — the level Specrew adapts its questions to
+    (FR-025 transparency half). Returns $null when no profile is set (nothing to surface).
+
+    .DESCRIPTION
+    Mirrors the runtime adaptation bands used by Get-SpecrewLensQuestionDepth (>=8 expert,
+    <=3 learning, otherwise mid-level) so the surfaced level matches how Specrew actually adapts
+    its questioning — that match is the whole point of surfacing it. 'auto' / unparseable dials
+    render as 'auto' (Specrew recommends defaults and explains them). Decision-area labels and the
+    expertise / expertise_dials resolution mirror Show-UserProfileSummary, so the orientation line
+    and the start-summary stay consistent.
+    #>
+    param(
+        [Parameter(Mandatory = $false)]
+        [hashtable]$Profile
+    )
+
+    if (-not $Profile) {
+        $Profile = Get-UserProfile
+    }
+    if (-not $Profile) {
+        return $null
+    }
+
+    $parts = @()
+    foreach ($area in Get-CrewInteractionProfileAreas) {
+        # Resolve from the named expertise layer first, then the persona-id dials (mirrors
+        # Show-UserProfileSummary). Track key PRESENCE separately from the value: an 'auto' dial is
+        # stored as a null in the named layer, so a present-but-null key must render 'auto' rather than
+        # be skipped. Only an area absent from BOTH layers is omitted from the summary.
+        $hasKey = $false
+        $value = $null
+        if ((Test-UserProfileKey -InputObject $Profile -Key 'expertise') -and (Test-UserProfileKey -InputObject $Profile.expertise -Key $area.ExpertiseKey)) {
+            $value = $Profile.expertise[$area.ExpertiseKey]
+            $hasKey = $true
+        }
+        elseif ((Test-UserProfileKey -InputObject $Profile -Key 'expertise_dials') -and (Test-UserProfileKey -InputObject $Profile.expertise_dials -Key $area.PersonaId)) {
+            $value = $Profile.expertise_dials[$area.PersonaId]
+            $hasKey = $true
+        }
+        if (-not $hasKey) {
+            continue
+        }
+
+        $n = 0
+        $label = if (($null -ne $value) -and [int]::TryParse([string]$value, [ref]$n)) {
+            if ($n -ge 8) { 'expert' } elseif ($n -le 3) { 'learning' } else { 'mid-level' }
+        }
+        else {
+            'auto'
+        }
+        $parts += "$label on $($area.DisplayLabel)"
+    }
+
+    if ($parts.Count -eq 0) {
+        return $null
+    }
+
+    return "What I know about you: I'll treat you as " + ($parts -join ', ') + " — correct me if that's off (``/specrew-user-profile edit``), and I'll match how much I ask and explain to it."
+}
+
 function Invoke-FirstRunExpertisePrompt {
     <#
     .SYNOPSIS
@@ -732,6 +796,7 @@ if ($null -ne $ExecutionContext.SessionState.Module) {
         'Get-UserProfile',
         'Save-UserProfile',
         'Show-UserProfileSummary',
+        'Get-SpecrewProfileOrientationLine',
         'Invoke-FirstRunExpertisePrompt',
         'Reset-UserProfile',
         'Edit-UserProfile',

@@ -1,0 +1,58 @@
+{
+  "schema": "v1",
+  "note": "Iteration 5 design-analysis applicability answers (dogfood: lens-informed analysis + FR-026 coverage gate; persisted json answers + md coverage entries = data/state, so data=yes).",
+  "answers": {
+    "ui": false,
+    "security": false,
+    "data": true,
+    "integration": false,
+    "ops": false,
+    "perf": false
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "data-storage"
+  ],
+  "included": [
+    {
+      "id": "architecture-core",
+      "reason": "always-on (foundational)"
+    },
+    {
+      "id": "component-design",
+      "reason": "always-on (foundational)"
+    },
+    {
+      "id": "requirements-nfr",
+      "reason": "always-on (foundational)"
+    },
+    {
+      "id": "data-storage",
+      "reason": "gated by 'data' = yes"
+    }
+  ],
+  "excluded": [
+    {
+      "id": "ui-ux",
+      "reason": "gated by 'ui' = no"
+    },
+    {
+      "id": "security-compliance",
+      "reason": "gated by 'security' = no"
+    },
+    {
+      "id": "integration-api",
+      "reason": "gated by 'integration' = no"
+    },
+    {
+      "id": "devops-operations",
+      "reason": "gated by 'ops' = no"
+    },
+    {
+      "id": "observability-resilience",
+      "reason": "gated by 'perf' = no"
+    }
+  ]
+}

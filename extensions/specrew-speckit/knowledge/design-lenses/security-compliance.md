@@ -30,6 +30,12 @@ after implementation.
 - What threat surfaces are introduced by scripts, plugins, APIs, file writes,
   shell commands, generated code, or third-party dependencies?
 
+## Workshop Conduct
+
+- **Diagram for this lens**: trust boundaries + attack surface — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
+- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, walk the trust boundaries and attack surface and agree the controls at each boundary, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
+- **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.
+
 ## Question Bank
 
 - Who is allowed to do this, and who must be prevented?

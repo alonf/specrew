@@ -6,6 +6,21 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.32.0-beta1] - 2026-06-06
+
+### Added
+
+- **Feature 141 — Design-Gate Runtime Hardening.** Hardened the design-analysis gate into a host-neutral, runtime-trustworthy per-lens **design workshop** — the first-impression "plan mode" experience. Building on Feature 140, it adds: a per-iteration design-analysis artifact with pre-plan validation and plan-block-until-resolved (FR-001–008) plus a typed/rendered human gate packet under `gates/`; stale cross-worktree session recovery so `specrew start` no longer re-anchors to a merged/closed feature or one with a missing `feature_path` (FR-024); repo-local design-lens knowledge surfacing each selected lens's Design Decision Points (FR-009/010); and a present-then-discuss per-lens workshop with ASCII-inline visuals and collaborative co-design (Amendments A2–A6), delivered as the re-invokable `design-workshop` skill across all five hosts. A confirmation-integrity deterministic floor (A7/FR-038) and cross-host UX convergence — open-question-first (never a menu first) plus mandatory dense-lens pacing (A8/FR-040/FR-041) — produced the converged workshop validated on Claude, Copilot/Squad, Codex, and Antigravity. 12 iterations (~169.5 SP), all verdicts accepted. Authorized by Alon Fliess.
+
+### Fixed
+
+- **Release hygiene — FileList completeness gate under-scan.** The PR-time FileList completeness guard (the Shape-8 fix from PR #1225) scanned only `scripts/*.ps1`, leaving deployable source under `extensions/` and `templates/` unguarded — it would have dropped the 141 `design-workshop` skill plus design-lens knowledge from the PSGallery package (a broken workshop on install). The guard now derives its scan roots from the manifest's own top-level prefixes (self-correcting; the non-shipping `.specify/` mirror auto-excludes), and 11 previously-undeclared deployable files were added (the F-049 intake engine, `user-profile-awareness.md`, `closeout-template.md`).
+- **Release hygiene — `.specify/` self-host mirror parity.** Three gated mirror files (`handoff-governance-validator.ps1`, `coordinator/specrew-governance.md`, `deploy-speckit-extension.ps1`) had drifted from source via 141 iterations and PR #1626 without the iteration-closeout parity tests running to catch them; resynced byte-identical, restoring the Feature-139 and boundary-commit-discipline gates to green.
+
+### Internal
+
+- Self-host `.specify/` mirror refreshed to source via the canonical deploy (11 deploy-managed files including the design-workshop skill); 5-surface version pins bumped 0.31.1 → 0.32.0-beta1. 0.31.1 (Feature 160) remains a separate pending-stable beta on its own track.
+
 ## [0.31.1-beta1] - 2026-06-03
 
 ### Fixed

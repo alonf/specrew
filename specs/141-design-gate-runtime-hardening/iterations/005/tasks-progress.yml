@@ -1,0 +1,41 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "005"
+updated_at: "2026-06-03T19:25:00Z"
+tasks:
+  T001:
+    title: "Get-SpecrewLensDecisionPoints: pure extractor of a lens file's ## Design Decision Points (graceful @() when absent); no network/LLM"
+    status: "done"
+    started_at: "2026-06-03T19:02:00Z"
+    completed_at: "2026-06-03T19:06:00Z"
+    blocked_reason: ""
+  T002:
+    title: "Enrich Format-SpecrewApplicableLensesSection: per selected lens render decision points + non-placeholder Addressed: pointer; graceful degradation + MD049"
+    status: "done"
+    started_at: "2026-06-03T19:06:00Z"
+    completed_at: "2026-06-03T19:10:00Z"
+    blocked_reason: ""
+  T003:
+    title: "FR-026 gate: Test-SpecrewDesignAnalysisLensCoverage (selected in JSON each need a non-placeholder Addressed: entry, else block naming it); wire into Test-SpecrewDesignAnalysisArtifact; grandfather-safe; deterministic/LLM-free"
+    status: "done"
+    started_at: "2026-06-03T19:10:00Z"
+    completed_at: "2026-06-03T19:15:00Z"
+    blocked_reason: ""
+  T004:
+    title: "Coordinator nudge in design-analysis.template.md: decision points must shape option Trade-offs; Addressed: entry points into the option comparison"
+    status: "done"
+    started_at: "2026-06-03T19:15:00Z"
+    completed_at: "2026-06-03T19:17:00Z"
+    blocked_reason: ""
+  T005:
+    title: "Tests (reproduce-first): extraction present/absent/malformed; enriched render + degradation + MD049; FR-026 SC-016 (unaddressed FAILS naming it, all-addressed PASSES, placeholder FAILS, no-json/no-lenses no-ops, grandfather skip, determinism)"
+    status: "done"
+    started_at: "2026-06-03T19:17:00Z"
+    completed_at: "2026-06-03T19:21:00Z"
+    blocked_reason: ""
+  T006:
+    title: "Docs + dogfood + gap ledger (TG-006): quickstart Iteration-5; enriched render reproduces iter-5's own Applicable Lenses; blocking delete-the-Addressed-lines discriminator; implemented/enforced/observable/documented ledger"
+    status: "done"
+    started_at: "2026-06-03T19:21:00Z"
+    completed_at: "2026-06-03T19:25:00Z"
+    blocked_reason: ""

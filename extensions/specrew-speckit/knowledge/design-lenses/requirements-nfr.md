@@ -28,6 +28,12 @@ availability, maintainability, or compliance should shape the architecture.
 - Which requirements are unknown enough to require clarification?
 - Which acceptance criteria prove the quality, not only the happy path?
 
+## Workshop Conduct
+
+- **Diagram for this lens**: quality-attribute priorities / comparison table — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
+- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, agree the priority order of the quality attributes and their measurable thresholds, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
+- **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.
+
 ## Question Bank
 
 - Who is the user, customer, operator, and disfavored user?

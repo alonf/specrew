@@ -1,0 +1,12 @@
+{
+  "schema": "lens-applicability/v1",
+  "feature": "141-design-gate-runtime-hardening",
+  "iteration": "010",
+  "intake_mode": "Iteration design-analysis scoping for the lens-conduct delivery relocation (the i9 dogfood redo: move the A4/A5/A6 conduct out of the one-shot launch prompt into a re-invokable design-workshop skill + on-demand per-lens md). 'selected' = the lenses applicable to a multi-host delivery/tooling change. NOT a fresh workshop and NOT a co-design run: the relocation design was maintainer-directed and grounded by per-host skill-mechanism research. No co_design marker, so the SC-025 floor no-ops on iteration 10's own design-analysis (grandfather-safe).",
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "devops-operations"
+  ]
+}

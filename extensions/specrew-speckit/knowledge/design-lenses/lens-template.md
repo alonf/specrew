@@ -16,6 +16,12 @@
 
 - <Decision that should be compared in design-analysis.>
 
+## Workshop Conduct
+
+- **Diagram for this lens**: this lens's native diagram (see diagram-vocabulary.json) — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
+- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, facilitate this lens's decision points with the human, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
+- **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.
+
 ## Question Bank
 
 - <Question that changes requirements, alternatives, plan shape, tests, or

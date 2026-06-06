@@ -22,12 +22,22 @@ before planning locks one path.
 
 ## Design Decision Points
 
+- Which **design method / decomposition style** governs the structure (for example DDD bounded-contexts,
+  IDesign volatility-based, modular monolith, microservices, or layered)? Decide it explicitly with the
+  human — discuss the candidates and trade-offs, recommend a default where the architecture dial is low, and
+  record the choice as a binding constraint for the analysis and plan. Do not silently assume it.
 - What are the major building blocks and their responsibilities?
 - Which areas are volatile and should be isolated behind data, interfaces, or
   extension points?
 - Which constraints are binding, and which are preferences?
 - What is deliberately out of scope for this iteration?
 - Which option best balances simplicity, reversibility, and future cost?
+
+## Workshop Conduct
+
+- **Diagram for this lens**: component / service / flow — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
+- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, co-design the component map and at least one flow WITH the human before presenting options, and co-decide the design method / decomposition style, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
+- **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.
 
 ## Question Bank
 

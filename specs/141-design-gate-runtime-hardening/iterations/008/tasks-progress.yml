@@ -1,0 +1,35 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "008"
+updated_at: "2026-06-05T08:00:00Z"
+tasks:
+  T001:
+    title: "Per-lens diagram catalog (diagram-vocabulary.json, sibling; index.yml pure) + reader Get-SpecrewLensDiagramType (graceful). FR-030. DONE: catalog (9 lenses + cross-cutting flows/comparison) + reader; verified (security/data/flows resolve; missing -> null)."
+    status: "done"
+    started_at: "2026-06-04T14:10:00Z"
+    completed_at: "2026-06-04T14:18:00Z"
+    blocked_reason: ""
+  T002:
+    title: "Emit helper Format-SpecrewWorkshopVisual: tiered inline/temp(.specrew/workshop-visuals/ + file:/// ref, FR-028 form)/persisted(mermaid-inline; svg/html referenced); gitignore the temp dir. FR-031/FR-033. DONE: helper + the workshop-visuals/ per-session gitignore pattern; verified (inline fenced; temp writes+file:///; persisted svg->mdlink, mermaid->inline; temp-no-dest throws)."
+    status: "done"
+    started_at: "2026-06-04T14:18:00Z"
+    completed_at: "2026-06-04T14:30:00Z"
+    blocked_reason: ""
+  T003:
+    title: "Intake-reference helper + conduct-rule addition (per applicable lens, offer the catalog diagram + ask for an existing artifact; render via the tier policy). FR-032/FR-030. DONE: Format-SpecrewVisualIntakeReference + Rule 9b (specrew-start.ps1, double-backticks for the here-string); parse-clean; verified."
+    status: "done"
+    started_at: "2026-06-04T14:30:00Z"
+    completed_at: "2026-06-04T14:36:00Z"
+    blocked_reason: ""
+  T004:
+    title: "Tests (reproduce-first, SC-023 floor): catalog resolve (graceful); emit tiers (inline/temp/persisted); intake-reference. NOT diagram-quality. SC-023/FR-030/FR-031. DONE: 15 assertions in the selector suite (catalog 5 + emit 6 + intake 2 + table) green; file-classification suite still green after the gitignore pattern."
+    status: "done"
+    started_at: "2026-06-04T14:36:00Z"
+    completed_at: "2026-06-04T14:40:00Z"
+    blocked_reason: ""
+  T005:
+    title: "SC-022 runtime visual dogfood (testLenses4, 001-doc-translation): RAN — capability fired (per-lens architecture component diagram + ERD authored from the catalog); SC-022 surfacing clause unmet (written to disk only, no in-band file:/// link / inline render); ui-ux produced no visual. Maintainer-dispositioned to i9/A6 (Rule 9b strengthening). Deterministic floor (T004) green."
+    status: "done"
+    started_at: "2026-06-04T23:50:00Z"
+    completed_at: "2026-06-05T07:30:00Z"
+    blocked_reason: ""
