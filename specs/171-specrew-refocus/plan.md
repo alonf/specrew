@@ -65,6 +65,7 @@ Volatility-cut layering per the Co-Design Record: N thin per-host trigger adapte
 2. Cursor: hooks.json events (beforeShellExecution/afterFileEdit/stop/...) → which of B1/B2/B3 are expressible; rules-variant fallback.
 3. Codex: notify mechanism → expressible subset; else documented variance.
 4. Claude trust-prompt behavior for settings.local.json hooks (C6 verification).
+5. **Copilot surface re-verification** (maintainer-raised at the plan boundary): the "no hook surface" finding is 2026-05 research — re-verify against current Copilot CLI; if ANY event surface exists or has shipped since, Copilot is hook-capable and gets a binding declaration under the Option C "all hook-capable hosts" decision, exactly like the others. Until then: channels 1+2 + slash + advisory (B1 is the only uncovered trigger — documented variance).
 
 ## Effort Model
 
