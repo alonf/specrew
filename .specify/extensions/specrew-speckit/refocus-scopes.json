@@ -1,0 +1,50 @@
+{
+  "schema_version": "1",
+  "scopes": {
+    "general": ["refocus/general.md"],
+    "boundary.specify": ["refocus/specify.md"],
+    "boundary.clarify": ["refocus/clarify.md"],
+    "boundary.plan": ["refocus/plan.md"],
+    "boundary.tasks": ["refocus/tasks.md"],
+    "boundary.before-implement": ["refocus/before-implement.md"],
+    "boundary.implement": ["refocus/implement.md"],
+    "boundary.review-signoff": ["refocus/review-signoff.md"],
+    "boundary.retro": ["refocus/retro.md"],
+    "boundary.iteration-closeout": ["refocus/iteration-closeout.md"],
+    "boundary.feature-closeout": ["refocus/feature-closeout.md"],
+    "shape-catalog": ["docs/methodology/lifecycle-discipline.md"]
+  },
+  "triggers": {
+    "b1": {
+      "enabled": true,
+      "scopes": ["general", "boundary.current"],
+      "description": "post-compaction re-injection (SessionStart source: compact)"
+    },
+    "b2": {
+      "enabled": true,
+      "scopes": ["general"],
+      "description": "launch/resume grounding (SessionStart source: startup|resume|clear)"
+    },
+    "b3": {
+      "enabled": true,
+      "scopes": ["general", "boundary.next"],
+      "description": "boundary-cross discipline injection (state-diff on the boundary cursor)"
+    }
+  },
+  "budgets": {
+    "manual": 3000,
+    "b1": 2500,
+    "b2": 1200,
+    "b3": 2500
+  },
+  "providers": [
+    {
+      "id": "refocus",
+      "kind": "inject",
+      "events": ["SessionStart", "PostToolUse"],
+      "order": 10,
+      "budget_share": 1.0,
+      "command": "refocus.ps1"
+    }
+  ]
+}

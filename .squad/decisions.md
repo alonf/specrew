@@ -24558,3 +24558,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Authorizing Human**: Alon Fliess
 - **Commit Reference**: 679a814e (tasks.md), 651d384f (F-165 gate-seat amendment carried as instruction)
 - **Readiness**: hardening gate ready (5/5 concerns addressed, feature-specific controls); iteration plan 18.5/20 SP; baseline roster, no supplemental specialists.
+
+## 2026-06-06T21:37:37Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 85076b3e
+- **Recorded At**: 2026-06-06T21:37:36Z
+
+## 2026-06-07T09:10:00Z — Maintainer-directed refocus + 145-grounded digest revision (171)
+
+- **Directive**: "Refocus according to the refocus rules and read proposal 145 and ask again." The Crew ran its own engine (general + boundary.implement, tokens~1022), read Proposal 145 in source (not memory), and found rule 8 had dropped 145''s concrete gate-local preflight checklist, the reconstruct-from-artifacts opening, the record->fix->RERUN loop, and the review-signoff falsification step.
+- **Verdict**: Apply the 145-grounded revisions (structured menu) — rule-8 v2 (7-item preflight checklist + two-tier model), review-signoff rule 9 (disprove-the-report), Proposal 145 added to both digests'' declared sources so the drift check fires when 145 evolves.
+- **Authorizing Human**: Alon Fliess
+- **Lesson recorded**: answering a methodology question from memory instead of the source is itself the drift class this feature remediates — the digest content now carries the read-the-source discipline it preaches.
