@@ -2,15 +2,15 @@
 focus_area: "F-051 Multi-Session Foundation — Iteration 003 closed; feature-closeout release SDLC active."
 active_issues: "[]"
 schema: v1
-updated_at: 2026-06-03T13:47:48Z
-session_state_active: false
-session_state_boundary: feature-closeout
-session_state_feature: 140-unix-native-install
-session_state_feature_path: "C:\Dev\Specrew-unix-install\specs\140-unix-native-install"
-session_state_iteration: 003
+updated_at: 2026-06-06T11:31:35Z
+session_state_active: true
+session_state_boundary: specify
+session_state_feature: 168-post-ship-proposal-amendment-discipline
+session_state_feature_path: "C:\Dev\Specrew-post-ship-amendment-discipline\specs\168-post-ship-proposal-amendment-discipline"
+session_state_iteration: "(none)"
 session_state_task: "(none)"
-session_state_auth_commit: 66226da20b2c0cf3b62ab5a7aeb3c65782472cd0
-session_state_recorded_at: 2026-06-03T13:47:48Z
+session_state_auth_commit: 100bfc83
+session_state_recorded_at: 2026-06-06T11:31:35Z
 ---
 
 # What We're Focused On
