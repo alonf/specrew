@@ -217,6 +217,57 @@ Assert-True ($result.ExitCode -eq 0) 'corrupt state exits 0'
 Assert-True ($result.StdErr.Contains('WARN STATE_UNAVAILABLE')) 'corrupt state warns STATE_UNAVAILABLE'
 Assert-True ([string]::IsNullOrWhiteSpace($result.StdOut)) 'corrupt state: no automatic injection (manual + channel 1 unaffected)'
 
+# --- 13. T008: journal + outcomes + ring bound + pruning -------------------------------
+$dispatcher = New-ScratchProject
+$eventJ = '{"session_id":"journal-1","source":"compact"}'
+$jStatePath = Join-Path $projectRoot '.specrew\runtime\refocus-state-journal-1.json'
+
+# 13a. B1 injection journals injected + tokens.
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson $eventJ
+$state = Get-Content -LiteralPath $jStatePath -Raw | ConvertFrom-Json
+$entry = @($state.journal) | Select-Object -Last 1
+Assert-True ($null -ne $entry -and [string]$entry.trigger -eq 'b1' -and [string]$entry.outcome -eq 'injected' -and [int]$entry.tokens -gt 0) 'B1 injection journaled with tokens'
+Assert-True ([string]$entry.channel -eq 'hook') 'journal records the channel'
+
+# 13b. B3 dedupe journals deduped.
+$eventJ3 = '{"session_id":"journal-1","tool_name":"Bash"}'
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventJ3   # anchor
+$ctx = @{ session_state = @{ boundary_type = 'review-signoff'; feature_ref = 'dispatcher-fixture' } } | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $ctx, [System.Text.UTF8Encoding]::new($false))
+$fingerprint = @{ boundary = 'review-signoff'; at = '2026-06-07T00:00:00Z' } | ConvertTo-Json -Compress
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\runtime\refocus-channel1.json'), $fingerprint, [System.Text.UTF8Encoding]::new($false))
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventJ3
+$state = Get-Content -LiteralPath $jStatePath -Raw | ConvertFrom-Json
+$entry = @($state.journal) | Select-Object -Last 1
+Assert-True ($null -ne $entry -and [string]$entry.outcome -eq 'deduped' -and [string]$entry.trigger -eq 'b3') 'B3 dedupe journaled'
+
+# 13c. Provider crash journals failed.
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\refocus.ps1'), 'exit 1', [System.Text.UTF8Encoding]::new($false))
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson $eventJ
+$state = Get-Content -LiteralPath $jStatePath -Raw | ConvertFrom-Json
+$entry = @($state.journal) | Select-Object -Last 1
+Assert-True ($null -ne $entry -and [string]$entry.outcome -eq 'failed') 'provider crash journaled as failed'
+
+# 13d. Ring bound: journal never exceeds 20.
+$dispatcher = New-ScratchProject
+$entries = @(1..25 | ForEach-Object { [pscustomobject]@{ at = '2026-06-07T00:00:00Z'; trigger = 'b2'; scope = 'general'; channel = 'hook'; tokens = 1; outcome = 'injected' } })
+$seed = [pscustomobject]@{ session_id = 'journal-2'; last_seen_boundary = $null; context_mtime = $null; breaker = $null; journal = $entries[0..19] }
+$jStatePath2 = Join-Path $projectRoot '.specrew\runtime\refocus-state-journal-2.json'
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.specrew\runtime') -Force | Out-Null
+[System.IO.File]::WriteAllText($jStatePath2, ($seed | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson '{"session_id":"journal-2","source":"startup"}'
+$state = Get-Content -LiteralPath $jStatePath2 -Raw | ConvertFrom-Json
+Assert-True (@($state.journal).Count -eq 20) 'journal ring stays bounded at 20'
+$entry = @($state.journal) | Select-Object -Last 1
+Assert-True ([string]$entry.trigger -eq 'b2' -and [string]$entry.outcome -eq 'injected') 'newest entry survives the ring'
+
+# 13e. Pruning: stale state files swept at dispatcher start.
+$stalePath = Join-Path $projectRoot '.specrew\runtime\refocus-state-old-one.json'
+[System.IO.File]::WriteAllText($stalePath, '{}', [System.Text.UTF8Encoding]::new($false))
+(Get-Item -LiteralPath $stalePath).LastWriteTime = (Get-Date).AddDays(-30)
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson '{"session_id":"journal-2","source":"startup"}'
+Assert-True (-not (Test-Path -LiteralPath $stalePath)) 'stale session state pruned (~7 days)'
+
 # --- summary --------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {

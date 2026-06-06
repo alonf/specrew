@@ -236,6 +236,53 @@ function Test-B3ShouldInject {
     return @{ Action = 'inject'; State = $SessionState }
 }
 
+function Add-JournalEntry {
+    # Bounded injection journal (FR-010): the post-hoc evidence that survives
+    # compaction. Ring of 20; --status prints the tail; beta validation cites it.
+    param($State, [string]$Trigger, [string]$Scope, [string]$Channel, [int]$Tokens, [string]$Outcome)
+    $entry = [pscustomobject]@{
+        at      = (Get-Date).ToUniversalTime().ToString('o')
+        trigger = $Trigger
+        scope   = $Scope
+        channel = $Channel
+        tokens  = $Tokens
+        outcome = $Outcome
+    }
+    $journal = @(if ($State.PSObject.Properties['journal'] -and $null -ne $State.journal) { @($State.journal) } else { @() })
+    $journal += $entry
+    if ($journal.Count -gt 20) { $journal = @($journal | Select-Object -Last 20) }
+    $State.journal = $journal
+    return $State
+}
+
+function Get-BannerFacts {
+    # Parse scope + token estimate from the engine's banner (line 1 of payload).
+    param([AllowEmptyString()][string]$Payload)
+    $firstLine = ($Payload -split "`r?`n")[0]
+    $match = [regex]::Match($firstLine, '\[specrew-refocus\] trigger=\S+ scope=(?<scope>\S+) sources=\d+ tokens~(?<tokens>\d+)')
+    if ($match.Success) {
+        return @{ Scope = $match.Groups['scope'].Value; Tokens = [int]$match.Groups['tokens'].Value }
+    }
+    return @{ Scope = 'unknown'; Tokens = [int][math]::Ceiling($Payload.Length / 4.0) }
+}
+
+function Remove-StaleSessionState {
+    # Opportunistic pruning (FR-010): per-session files older than ~7 days swept
+    # at dispatcher start. Cheap (one dir listing); failures never matter.
+    param([string]$ProjectRoot)
+    try {
+        $runtimeDir = Join-Path $ProjectRoot '.specrew/runtime'
+        if (-not (Test-Path -LiteralPath $runtimeDir -PathType Container)) { return }
+        $cutoff = (Get-Date).AddDays(-7)
+        foreach ($file in @(Get-ChildItem -LiteralPath $runtimeDir -Filter 'refocus-state-*.json' -File -ErrorAction SilentlyContinue)) {
+            if ($file.LastWriteTime -lt $cutoff) {
+                Remove-Item -LiteralPath $file.FullName -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
+    catch { }
+}
+
 function Get-RefocusProviderArgs {
     param([string]$EventName, [AllowNull()][string]$Source)
     # RefocusProvider routing (FR-009 surface; B3 state-diff lands in T007):
@@ -295,6 +342,8 @@ try {
     $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
     if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) { exit 0 }
 
+    Remove-StaleSessionState -ProjectRoot $projectRoot
+
     # Per-session runtime state (T007/T008): absent = fresh; corrupt = no safe dedupe.
     $sessionStatePath = Get-SessionStatePath -ProjectRoot $projectRoot -SessionId $sessionId
     $stateRead = Read-SessionState -Path $sessionStatePath
@@ -312,6 +361,9 @@ try {
     elseif (-not $stateRead.Exists) {
         $sessionState = New-SessionState -SessionId $sessionId
     }
+    $stateDirty = $false
+    # The refocus trigger this event maps to (journal attribution).
+    $eventTrigger = if ($Event -eq 'PostToolUse') { 'b3' } elseif ($source -eq 'compact') { 'b1' } else { 'b2' }
 
     # Providers for THIS event, deterministic order (the host runs parallel hooks
     # unordered; Specrew owns ordering internally — the lens-2 dispatcher decision).
@@ -358,7 +410,10 @@ try {
                 }
                 $b3 = Test-B3ShouldInject -ProjectRoot $projectRoot -SessionState $sessionState
                 $sessionState = $b3.State
-                Save-SessionState -Path $sessionStatePath -State $sessionState
+                $stateDirty = $true
+                if ($b3.Action -eq 'dedupe') {
+                    $sessionState = Add-JournalEntry -State $sessionState -Trigger 'b3' -Scope 'general+boundary.next' -Channel 'hook' -Tokens 0 -Outcome 'deduped'
+                }
                 if ($b3.Action -ne 'inject') { continue }
             }
             $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source
@@ -369,21 +424,32 @@ try {
         if ($null -eq $commandArgs) { continue }
 
         $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs $commandArgs -WorkingDirectory $projectRoot -TimeoutSeconds $ProviderTimeoutSeconds
-        if ($result.TimedOut) {
-            Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' timed out; skipped" -f $providerId)
-            continue
-        }
-        if ($result.ExitCode -ne 0) {
-            Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' exited {1}; skipped" -f $providerId, $result.ExitCode)
+        if ($result.TimedOut -or $result.ExitCode -ne 0) {
+            $why = if ($result.TimedOut) { 'timed out' } else { "exited $($result.ExitCode)" }
+            Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' {1}; skipped" -f $providerId, $why)
+            if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
+                $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope 'unknown' -Channel 'hook' -Tokens 0 -Outcome 'failed'
+                $stateDirty = $true
+            }
             continue
         }
         if (-not [string]::IsNullOrWhiteSpace($result.StdOut)) {
             $fragments.Add($result.StdOut.Trim()) | Out-Null
+            if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
+                $facts = Get-BannerFacts -Payload $result.StdOut
+                $outcome = if ($result.StdErr -match 'WARN BUDGET_EXCEEDED') { 'budget-clipped' } else { 'injected' }
+                $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope $facts.Scope -Channel 'hook' -Tokens $facts.Tokens -Outcome $outcome
+                $stateDirty = $true
+            }
         }
         if (-not [string]::IsNullOrWhiteSpace($result.StdErr)) {
             # Provider WARNs pass through once (visible, attributable).
             [Console]::Error.Write($result.StdErr)
         }
+    }
+
+    if ($null -ne $sessionState -and -not $stateCorrupt -and $stateDirty) {
+        Save-SessionState -Path $sessionStatePath -State $sessionState
     }
 
     if ($fragments.Count -gt 0) {

@@ -55,7 +55,7 @@
 | T005 | Primer pointer lines (channel 2) | FR-007 | US2 | 0.5 | Implementer | extensions/specrew-speckit/squad-templates/**, hosts/** | done | claude | 0.5 | pass |
 | T006 | SpecrewHookDispatcher + dormant gate path + stdin test suite | FR-008, FR-012, FR-020 | US3 | 2.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, tests/integration/refocus-dispatcher.tests.ps1 | done | claude | 2.5 | pass |
 | T007 | RefocusProvider routing + B3 state-diff | FR-009 | US3 | 1.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1 | done | claude | 1.5 | pass |
-| T008 | RuntimeSessionState + journal + pruning | FR-010 | US3 | 1.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1 | planned | claude | | |
+| T008 | RuntimeSessionState + journal + pruning | FR-010 | US3 | 1.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1 | done | claude | 1.5 | pass |
 | T009 | Circuit breaker + --status + --reset-breaker | FR-011 | US4 | 1.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, scripts/internal/refocus.ps1 | planned | claude | | |
 | T010 | Claude binding + merge-aware hook deploy + opt-out memory | FR-013, FR-014, FR-020 | US3 | 2.0 | Implementer | hosts/claude/**, tests/integration/refocus-deploy.tests.ps1 | planned | claude | | |
 | T011 | Skill manifest + per-host deploy + FileList | FR-015, FR-018 | US1 | 1.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/specrew-refocus/**, Specrew.psd1 | planned | claude | | |
