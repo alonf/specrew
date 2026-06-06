@@ -23156,3 +23156,12 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Launch Mode**: same-window
 - **Agent Response Snippet**: (none)
 - **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-06T10:18:29Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 159-update-ux-small-fixes
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 82d23b5129fcc3bc763e0ccf2782a15d832d4334
+- **Recorded At**: 2026-06-06T10:18:28Z
