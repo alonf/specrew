@@ -163,3 +163,45 @@ $result = Invoke-SpecrewBoundaryStateSync `
 if ($null -ne $result) {
     $result | ConvertTo-Json -Depth 6 | Write-Output
 }
+
+# ----- Feature 171 (FR-006): channel-1 refocus emission ------------------------
+# After a successful boundary advance, append the INCOMING stage's discipline
+# digest to stdout. This works on EVERY host: the agent itself invoked this
+# script, so its stdout lands in the agent's context — no hook surface needed.
+# The engine runs as a child process (its CLI contract uses `exit`, which would
+# terminate an in-process caller). Fail-open: emission failures never fail the
+# sync — the sync above already succeeded.
+try {
+    $refocusEngine = Join-Path $PSScriptRoot 'refocus.ps1'
+    if (Test-Path -LiteralPath $refocusEngine -PathType Leaf) {
+        Push-Location $ProjectPath
+        try {
+            # --trigger b3 resolves boundary.next from the cursor this sync just
+            # advanced — i.e., the successor stage's digest — and honors the
+            # catalog's b3 budget + enabled flag (durable per-trigger disable).
+            $refocusPayload = & pwsh -NoProfile -ExecutionPolicy Bypass -File $refocusEngine --trigger b3
+        }
+        finally { Pop-Location }
+        if (-not [string]::IsNullOrWhiteSpace(($refocusPayload -join ''))) {
+            Write-Output ''
+            $refocusPayload | Write-Output
+            # Fingerprint the emission so hook-side B3 (state-diff) dedupes instead
+            # of double-injecting. State unavailable -> emit anyway (FR-006): the
+            # emission above already happened; only the dedupe note is lost.
+            try {
+                $runtimeDir = Join-Path $ProjectPath '.specrew' 'runtime'
+                if (-not (Test-Path -LiteralPath $runtimeDir -PathType Container)) {
+                    New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+                }
+                $fingerprint = @{ boundary = $BoundaryType; at = (Get-Date).ToUniversalTime().ToString('o') } | ConvertTo-Json -Compress
+                [System.IO.File]::WriteAllText((Join-Path $runtimeDir 'refocus-channel1.json'), $fingerprint, [System.Text.UTF8Encoding]::new($false))
+            }
+            catch {
+                [Console]::Error.WriteLine("[specrew-refocus] WARN STATE_UNAVAILABLE channel-1 fingerprint not recorded: $($_.Exception.Message)")
+            }
+        }
+    }
+}
+catch {
+    [Console]::Error.WriteLine("[specrew-refocus] WARN PROVIDER_FAILED channel-1 emission skipped: $($_.Exception.Message)")
+}
