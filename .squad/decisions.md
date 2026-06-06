@@ -23230,3 +23230,12 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 9d861e9c
 - **Recorded At**: 2026-06-06T12:13:07Z
+
+## 2026-06-06T12:21:59Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 168-post-ship-proposal-amendment-discipline
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: cf853c92
+- **Recorded At**: 2026-06-06T12:21:58Z
