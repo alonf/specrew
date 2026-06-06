@@ -547,7 +547,19 @@ function Test-IsManagedLegacySkillDirectory {
     }
 
     if ($Definition.Kind -eq 'generic') {
-        return $content -eq $Definition.LegacyContent
+        # Feature 161 (PR-review data-loss fix): a marker-less generic legacy skill is
+        # Specrew-managed ONLY when its DECODED text exactly matches a known canonical
+        # version (CurrentContent/LegacyContent, ordinal, checked above). A structural
+        # signature (directory-name heading plus **Type**/**Schema** lines) cannot
+        # distinguish Specrew's own drifted-legacy content from a user-edited copy that
+        # kept the same shape, so using it to authorize deletion would destroy user work
+        # — the exact outcome this feature exists to prevent (spec: "genuinely
+        # user-authored skills must remain preserved"). Anything that does not exactly
+        # match a known canonical version is preserved (favor preserve over delete): a
+        # heavily-drifted marker-less legacy generic skill stays stale-but-safe in the
+        # legacy root while active surfaces redeploy fresh; re-deploy or manual cleanup
+        # recovers it without data-loss risk.
+        return $false
     }
 
     $legacyNamespaceLine = '**Namespace**: ' + [char]96 + '/specrew' + [char]96

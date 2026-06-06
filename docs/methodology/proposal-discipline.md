@@ -23,7 +23,7 @@ Every proposal MUST have:
 ---
 proposal: <NNN>                            # zero-padded 3-digit number matching filename
 title: <Descriptive Title>
-status: candidate | draft | promoted | shipped | withdrawn
+status: candidate | draft | active | shipped | superseded | withdrawn
 phase: phase-1 | phase-2 | phase-3 | phase-4 | phase-5 | phase-6 | phase-7
 estimated-sp: <number or range like "5-7" or "10-15">
 priority-tier: 1 | 2 | 3                    # optional but recommended for Tier 1
@@ -71,6 +71,66 @@ discussion: <one-line context note + date>  # what triggered this proposal
 
 Reviewers verify the format is present + populated, not stub-form.
 
+## Proposal Mutability Classes
+
+Proposal status controls whether body text can evolve freely or must preserve a
+historical shipped baseline.
+
+| Status | Mutability class | Edit rule |
+|---|---|---|
+| `candidate` | exploratory | Body text can evolve normally. Keep Status history useful when the direction changes materially. |
+| `draft` | source-spec candidate | Body text can evolve normally until the proposal becomes active. Major identity changes should become a new proposal. |
+| `active` | in-flight feature input | Use the active feature's normal spec/plan/tasks amendment flow. Do not use `Post-Ship Amendments` for active-proposal scope changes. |
+| `shipped` | historical shipped baseline | Do not weave new normative behavior into the original body. Use `Post-Ship Amendments` or a new/superseding proposal. |
+| `superseded` | historical baseline replaced by later work | Preserve the historical body. Record supersession pointers, errata, or post-ship deltas without rewriting shipped scope. |
+| `withdrawn` | audit record | Preserve the withdrawal rationale and history. Only edit for typos, links, errata, or cross-reference hygiene. |
+
+Legacy `promoted` status is treated as an older synonym for `active` during
+review. Legacy `partially-shipped` status is treated as shipped for the shipped
+slice and must not be used to hide new requirements inside historical body text.
+
+For `shipped` and `superseded` proposals, allowed direct edits outside
+`Post-Ship Amendments` are limited to typo fixes, broken link fixes, historical
+errata, Status history, Cross-references, and metadata such as `superseded-by`.
+Behavior-changing work defaults to a new proposal or clearly linked follow-up
+feature rather than silent body edits.
+
+## Post-Ship Amendments
+
+Use this section only for proposals with `status: shipped` or
+`status: superseded`. Keep implemented amendments in the original proposal for
+audit continuity; do not copy them into a generated amendment index.
+
+```markdown
+## Post-Ship Amendments
+
+### A1 - <short amendment title>
+
+- amendment-id: A1
+- date: YYYY-MM-DD
+- status: proposed | accepted-unimplemented | active | implemented | rejected | superseded
+- delta-summary: <what changes relative to shipped behavior>
+- implementation-owner: <feature, proposal, owner, or TBD>
+- preserve: <shipped behavior that must remain intact>
+- tests-required: <characterization, regression, or acceptance tests required>
+```
+
+Amendment status meanings:
+
+| Status | Meaning |
+|---|---|
+| `proposed` | Captured for discussion; not yet accepted into backlog. |
+| `accepted-unimplemented` | Accepted as follow-up scope and visible in proposal status/index surfaces. |
+| `active` | Being implemented by an active feature or clearly linked work item. |
+| `implemented` | Delivered; closeout evidence names the amendment id and final disposition. |
+| `rejected` | Considered and rejected; keep the rationale in the amendment body or Status history. |
+| `superseded` | Replaced by another amendment or proposal; link the replacement. |
+
+Every implementation plan that uses a post-ship amendment must include a
+`Delta from shipped behavior` section naming the amendment id or superseding
+proposal, the shipped behavior to preserve, and required characterization or
+regression tests.
+
 ## Creating a New Proposal
 
 Step-by-step (this sequence is enforced; deviations are reject-worthy):
@@ -96,6 +156,7 @@ When to update vs draft a new proposal:
 | Refinement of scope, adding pillars, clarifying composition, fixing typos | **Amend existing proposal** — edit + commit with `chore(proposals): refine NNN-<slug>` |
 | Promoting candidate → draft (full source-spec exists) | **Amend in place** — change `status: candidate` → `status: draft`; move INDEX entry from Candidate to Draft section; update counts |
 | Promoting draft → shipped (feature merged) | **Amend in place** — change `status: shipped`; move INDEX entry; add "Shipped as feature-NNN" |
+| Adding behavior after a proposal shipped | **Use `Post-Ship Amendments` or draft a new proposal** — do not rewrite shipped body text |
 | Significant scope expansion that changes the proposal's identity | **Draft new proposal** + reference old one as ancestor; old proposal stays as audit trail |
 | Pivot to fundamentally different approach | **Withdraw old + draft new** — old status → `withdrawn`; document the pivot in old proposal's Status history |
 | Splitting one proposal into multiple | **Draft new proposals + amend original** to scope only to one piece + reference the split-offs |
@@ -129,6 +190,7 @@ Reviewer (and validator) checks for any proposal-touching commit:
 | **Number uniqueness** | No duplicate proposal numbers across `proposals/*.md` files |
 | **Frontmatter completeness** | Required fields (`proposal`, `title`, `status`, `phase`, `estimated-sp`) present; values are valid enums |
 | **Status-INDEX consistency** | Proposal's `status: candidate` lands in INDEX Candidate section; `status: draft` in Draft; `status: shipped` in Shipped |
+| **Post-ship amendment shape** | Shipped/superseded amendments use required fields and allowed statuses; unsafe body edits warn before merge |
 | **Count accuracy** | `## Candidate (N)` in INDEX matches actual row count under that section; same for Draft + Shipped |
 | **Cross-reference validity** | Every `file:///` URL points to a real file; every `[[memory-name]]` link points to a real memory entry |
 | **Composition link bidirectionality** | If Proposal A says "composes with B", Proposal B should also reference A (best-effort; manual maintenance) |
@@ -149,6 +211,7 @@ When a commit touches `proposals/*.md`, the reviewer must:
 6. **Confirm lint discipline** — does `markdownlint` pass on the touched files?
 7. **For new proposals**: verify all required sections are populated (not stub-form)
 8. **For status transitions**: verify the transition is documented in Status history with date + commit hash
+9. **For shipped/superseded proposals**: verify behavior-changing deltas live in `Post-Ship Amendments` or a superseding proposal, not in rewritten shipped body text
 
 ## Strategic Composition Patterns
 
