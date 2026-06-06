@@ -266,6 +266,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/managed-runtime-sidecar.tests.ps1
 
+      - name: Integration - managed-skill stuck-preserving deploy-level guard (F-161)
+        shell: pwsh
+        run: ./tests/integration/managed-skill-stuck-preserving.tests.ps1
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest

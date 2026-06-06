@@ -185,6 +185,9 @@ closed:
   - feature: 140-unix-native-install
     iteration: 003
     closed_at: 2026-06-03T13:42:55Z
+  - feature: 161-managed-skill-preserving-guard
+    iteration: 001
+    closed_at: 2026-06-06T13:39:55Z
   - feature: 159-update-ux-small-fixes
     iteration: 001
     closed_at: 2026-06-06T10:18:30Z

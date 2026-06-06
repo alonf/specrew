@@ -23122,6 +23122,135 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Auth Commit Hash**: 66226da20b2c0cf3b62ab5a7aeb3c65782472cd0
 - **Recorded At**: 2026-06-03T13:47:48Z
 
+## 2026-06-06T10:41:12Z — Delegated routing plan
+
+- **Enabled Agents**: claude
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+  - Spec Steward | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+  - Reviewer | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+  - Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-06T10:41:12Z — Routing evidence: Implementer
+
+- **Decision ID**: routing-evidence-67701a51bf8a
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-06T10:41:12Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Implementer'.
+
+- **Routing Evidence**: Implementer | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-06T10:41:13Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-c0b9de6afb0f
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-06T10:41:13Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-06-06T10:41:14Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-232b2ffb208a
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-06T10:41:14Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+
+## 2026-06-06T10:41:14Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-f4bdcbbe24c3
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-06T10:41:14Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+
+## 2026-06-06T10:41:15Z — Routing evidence: Retro Facilitator
+
+- **Decision ID**: routing-evidence-8ca806c05e19
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-06T10:41:15Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
+
+- **Routing Evidence**: Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-06T10:41:17Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 140-unix-native-install
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: feature-closeout
+- **Requested Boundary**: (none)
+- **Enforcement Action**: migration
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Migrated start-context.json to schema v2 boundary_enforcement state.
+
+## 2026-06-06T10:49:11Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5e44c01e
+- **Recorded At**: 2026-06-06T10:49:10Z
+
+## 2026-06-06T10:50:26Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d00a45cf
+- **Recorded At**: 2026-06-06T10:50:25Z
+
+## 2026-06-06T11:17:30Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: a921e1fc
+- **Recorded At**: 2026-06-06T11:17:29Z
+
+## 2026-06-06T11:26:43Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: ea9e2347
+- **Recorded At**: 2026-06-06T11:26:43Z
+
+## 2026-06-06T12:02:02Z — Boundary enforcement: before-implement
+
+- **Feature**: 161-managed-skill-preserving-guard
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
 ## 2026-06-06T00:06:59Z — Boundary sync: review-signoff
 
 - **Boundary Type**: review-signoff
@@ -23162,6 +23291,71 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Agent Response Snippet**: (none)
 - **Reason**: Persisted authorization matched the requested boundary.
 
+## 2026-06-06T12:03:52Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 202944e5
+- **Recorded At**: 2026-06-06T12:03:52Z
+
+## 2026-06-06T12:20:00Z — Human decision: F-161 verdict-stop fix release (stricter shape)
+
+- **Feature**: 161-managed-skill-preserving-guard
+- **Decision**: Release conditional fix tasks T006/T007 with the STRICTER shape — fix only the generic-kind equality branch of Test-IsManagedLegacySkillDirectory; leave the front-matter heuristic untouched.
+- **Authorizing Human**: Alon Fliess
+- **Context**: T005 verdict CONFIRMED (misclassified AND reachable; harness scenario S7 with genuine v0.21-era generic content; reachability via v0.21.0-0.23.0 bootstrap then v0.26.0+ upgrade).
+- **Approved Deferral**: stale-canonical front-matter artifacts (harness scenarios S4/S4g) remain preserved by the untouched heuristic — accepted residual; no released version ever produced that artifact in .copilot/skills. Recorded in iteration 001 evidence.md (Accepted Residual) and review.md Gap Ledger (deferred).
+
+## 2026-06-06T12:50:00Z — Defer: F-161 S4/S4g front-matter stale-canonical residual
+
+- **Decision ID**: F161-DEFER-001
+- **Type**: defer
+- **Boundary**: review-signoff
+- **Affected Requirement**: (none — accepted residual, not an FR violation; FR-004 satisfied by the released stricter scope)
+- **Affected Iteration**: specs\161-managed-skill-preserving-guard\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-06T12:50:00Z
+- **Commit Reference**: 2a72d6bc
+- **Authorization Text**: Release the conditional fix with the STRICTER shape — fix only the generic-kind equality branch; leave the front-matter heuristic untouched. Stale-canonical front-matter artifacts (harness scenarios S4/S4g) therefore remain preserved by design.
+- **Next Action**: None scheduled; revisit only if a future Specrew version ever produces marker-less front-matter skill dirs in a legacy root (no released version has).
+
+## 2026-06-06T13:13:30Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1df8cbd4
+- **Recorded At**: 2026-06-06T13:13:30Z
+
+## 2026-06-06T13:25:28Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9e768e0c
+- **Recorded At**: 2026-06-06T13:25:27Z
+
+## 2026-06-06T13:39:52Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0941b67c
+- **Recorded At**: 2026-06-06T13:39:51Z
+
+## 2026-06-06T13:50:42Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1223e7db
+- **Recorded At**: 2026-06-06T13:50:41Z
 ## 2026-06-06T10:18:29Z — Boundary sync: iteration-closeout
 
 - **Boundary Type**: iteration-closeout
