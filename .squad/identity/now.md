@@ -2,15 +2,15 @@
 focus_area: "F-051 Multi-Session Foundation — Iteration 003 closed; feature-closeout release SDLC active."
 active_issues: "[]"
 schema: v1
-updated_at: 2026-06-03T13:47:48Z
-session_state_active: false
-session_state_boundary: feature-closeout
-session_state_feature: 140-unix-native-install
-session_state_feature_path: "C:\Dev\Specrew-unix-install\specs\140-unix-native-install"
-session_state_iteration: 003
+updated_at: 2026-06-06T11:17:29Z
+session_state_active: true
+session_state_boundary: plan
+session_state_feature: 161-managed-skill-preserving-guard
+session_state_feature_path: "C:\Dev\Specrew-managed-skill-guard\specs\161-managed-skill-preserving-guard"
+session_state_iteration: "(none)"
 session_state_task: "(none)"
-session_state_auth_commit: 66226da20b2c0cf3b62ab5a7aeb3c65782472cd0
-session_state_recorded_at: 2026-06-03T13:47:48Z
+session_state_auth_commit: a921e1fc
+session_state_recorded_at: 2026-06-06T11:17:29Z
 ---
 
 # What We're Focused On
