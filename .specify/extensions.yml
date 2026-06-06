@@ -1,6 +1,6 @@
 installed:
   - name: specrew-speckit
-    version: 0.18.0
+    version: 0.31.1
     enabled: true
     source: local
     path: .specify/extensions/specrew-speckit
