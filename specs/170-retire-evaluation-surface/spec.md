@@ -5,6 +5,19 @@
 **Status**: Draft
 **Input**: Proposal 169 (`proposals/169-retire-top-level-evaluation-surface.md`) — retire `evaluation/` as a top-level public surface while preserving the process-quality scorer as test support. The implementation was produced ahead of governance by a Codex session on 2026-06-06 and adopted onto this branch as commit `3b6a3e0d` ("adoption snapshot"); this feature verifies, finishes, and governs that work rather than re-implementing it.
 
+## Clarifications
+
+### Session 2026-06-06
+
+Clarify was **skipped with recorded rationale**, human-approved at the specify
+verdict (boundary commit `c7d32a7f`): the spec is sourced from decision-complete
+Proposal 169 (AC1-AC6 enumerated and maintainer-approved), the intake lens
+workshop resolved the only open design question (scorer classification,
+human-confirmed), and the requirements checklist records zero unresolved QC
+items with no `[NEEDS CLARIFICATION]` markers in this spec. The same verdict
+explicitly authorized proceeding to plan with the workshop record standing as
+the design decision for this non-substantive 1-2 SP hygiene slice.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Repository reads truthfully (Priority: P1)
