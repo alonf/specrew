@@ -1,0 +1,36 @@
+{
+  "schema": "lens-applicability/v2",
+  "feature": "170-retire-evaluation-surface",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "workshop_date": "2026-06-06",
+  "note": "Right-sized intake workshop for a 1-2 SP repo-hygiene slice (Proposal 169) whose implementation was adopted ahead of governance. One light lens carries the only load-bearing design decision (the scorer classification); the eight skips were rendered with rationale in the agenda and confirmed by the maintainer.",
+  "selected": [
+    "architecture-core"
+  ],
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "ratify the classification: process-quality scorer is test infrastructure (tests/support/), not product runtime or a public evaluation harness",
+        "where does the generated report output land now that evaluation/report.md is deleted",
+        "is tests/support/ the right long-term home for shared test infrastructure",
+        "should any stub/pointer remain for a future public evaluation surface, or is the clean break correct"
+      ],
+      "decision": "Human confirmed: the scorer is test infrastructure with its supported surface being the two CI integration-test entry points; tests/support/ is the long-term home; generated report output moves to untracked scratch/test-result space; clean break (no stub) with only retirement-explanation wording in docs; integration-test entry points and CI job names stay frozen; any future public evaluation surface is a fresh governed slice.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/architecture-core.md — before/after structure diagram (evaluation/ public surface -> tests/support/ test infrastructure), rendered in-band and confirmed"
+    }
+  },
+  "skipped": {
+    "component-design": "no new components; one script moves location ~unchanged (99% rename)",
+    "requirements-nfr": "AC1-AC6 already enumerated in Proposal 169; the only NFR is that the tests still pass",
+    "ui-ux": "no user interface; doc wording only",
+    "data-storage": "no persisted data; report-output location covered by the architecture-core decision",
+    "security-compliance": "no auth/secrets/privacy surface; deletions, a move, and doc edits",
+    "integration-api": "the scorer's public surface is the two integration tests, explicitly preserved (AC2/AC3)",
+    "devops-operations": "CI job names + test semantics explicitly out of scope; AC4 pins the Linux-safe path assertion",
+    "observability-resilience": "no runtime behavior to observe or recover"
+  }
+}
