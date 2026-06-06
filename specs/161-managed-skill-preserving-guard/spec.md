@@ -226,6 +226,32 @@ code-path citation are recorded in the feature's iteration artifacts (review/ret
   needed; synthetic near-canonical content is acceptable for reachability probes when history
   is impractical.
 
+## Clarifications
+
+### Session 2026-06-06 (self-answered from repo evidence; confirm at clarify→plan boundary)
+
+- Q: Does Proposal 161's original Tier 0 hypothesis still need confirming from scratch?
+  → A: No — it was already CONFIRMED and fixed at the **classifier level** during Feature 160:
+  `tests/integration/managed-runtime-sidecar.tests.ps1` Case A ("canonical content + NO
+  marker") explicitly failed pre-fix and passes post-fix, and the provenance-by-content
+  recovery in `deploy-squad-runtime.ps1` carries a "Feature 160 (Proposal 161)" comment.
+  F-161's open questions are therefore: (a) deploy-level end-to-end confirmation, and
+  (b) the residual stale-older-canonical scenario the exact-match recovery cannot catch.
+- Q: Which surface can actually freeze a managed skill? → A: Only the legacy
+  `.copilot/skills/specrew-*` cleanup path — `Test-IsManagedLegacySkillDirectory` has exactly
+  one call site (the legacy-root loop). Active skill roots are deployed unconditionally:
+  `Set-ManagedFile` overwrites `SKILL.md` on any content difference and always (re)writes the
+  `.specrew-managed` marker. If the investigation finds an additional freeze surface, that is
+  itself a CONFIRMED finding.
+- Q: What does "refresh" mean for a legacy directory? → A: Removal. Current deploys never
+  write content into `.copilot/skills`; "stuck preserving" there means the stale directory is
+  never cleaned up and remains visible to the Copilot host alongside the current skills in
+  active roots.
+- Q: What determinism bar must the repro meet? → A: Isolated temp sandbox (zero writes
+  outside it), identical outcomes across consecutive runs, no dependence on wall-clock or
+  environment state; synthesized stale-canonical fixtures are acceptable where extracting a
+  real historical template version is impractical (recorded in evidence either way).
+
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: accountable for spec integrity and the FR-007 scope guard.
