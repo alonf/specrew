@@ -1,21 +1,24 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro-ready
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T006
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 09c5c8ec160d44a3052fc9538b8a22493ca7887b
-**Updated**: 2026-06-06T00:15:00Z
+**Updated**: 2026-06-06T10:15:00Z
 
 ## Execution Summary
 
 - T001-T006 are implemented and reviewed.
 - Review-signoff evidence is present in `review.md`, `review-report.yml`, `review-claim-ledger.yml`, `design-code-trace.yml`, `coverage-evidence.md`, `code-map.md`, `dependency-report.md`, `review-diagrams.md`, and `reviewer-index.md`.
 - Retrospective evidence is present in `retro.md`.
+- Iteration closeout is complete; retro was accepted by human approval on 2026-06-06.
 - Governance validation passes with known repository-level warnings outside Feature 159.
 - Existing stashes remain unapplied and outside Feature 159.
+- Feature 141 has adjacent active-governance wording overlap that must be reconciled before either branch lands on main.
+- No release, tag, merge, or push to main is part of this iteration closeout.
 
 ## Notes
 

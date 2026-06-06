@@ -23134,3 +23134,25 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 664a8f2702b9211f0a11e70bb714e1baf11771ab
 - **Recorded At**: 2026-06-06T00:17:20Z
+
+## 2026-06-06T10:10:32Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 159-update-ux-small-fixes
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched retro -> iteration-closeout.
+
+## 2026-06-06T10:12:27Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 159-update-ux-small-fixes
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
