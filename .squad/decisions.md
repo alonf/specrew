@@ -24501,3 +24501,20 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Authorizing Human**: Alon Fliess
 - **Commit Reference**: 570e38d4
 - **Clarify Disposition**: skip with recorded rationale — the 7-lens intake workshop resolved every open design question interactively (lens-applicability.json: 7/7 human-confirmed; zero NEEDS CLARIFICATION markers in spec.md). Defaults accepted: US priority order P1-P5 as specified; clarify-skip per packet prompt #1.
+
+## 2026-06-06T20:45:21Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: f8c5334f
+- **Recorded At**: 2026-06-06T20:45:21Z
+
+## 2026-06-06T21:20:00Z — Human verdict: design-analysis decided (171-specrew-refocus)
+
+- **Boundary Type**: design-analysis -> plan
+- **Verdict**: approved for plan with Option C (structured verdict menu)
+- **Authorizing Human**: Alon Fliess
+- **Commit Reference**: e1b55cf1 (decision record; hash pinned in 2ca0c7fa)
+- **Rationale**: Option C = the workshop-bound scope (hook bindings for ALL hook-capable hosts, research-gated per host; channels 1+2 host-neutral; breaker + kill switches + journal; managed compaction points). Consistent with the maintainer's explicit multi-host correction during intake.
