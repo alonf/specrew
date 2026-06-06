@@ -4,23 +4,25 @@
 **Diagram Format**: mermaid
 
 > **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
-> 
+>
 > This iteration's task tracking declares **9 completed task(s)**, but the git diff against baseline `6185acb2827f8061db8a10e66a2aa234738c4020` contains **19 file(s)**.
-> 
+>
 > **Severity**: WARNING  
 > **Implication**: Review evidence may be incomplete or misleading.
-> 
+>
 > **Possible causes**:
+>
 > - Implementation work was not committed before scaffolding review artifacts
 > - Task status markers in plan.md or review.md do not match actual progress
 > - Baseline reference in state.md is stale or incorrect
-> 
-> **Remediation**: 
+>
+> **Remediation**:
+>
 > 1. Verify implementation is committed: `git diff 6185acb2827f8061db8a10e66a2aa234738c4020...HEAD --stat`
 > 2. If uncommitted work exists: `git add . && git commit -m "Implementation complete"`
 > 3. Re-run scaffolder with `-Force` flag to regenerate review artifacts after commit
 > 4. Re-run `validate-governance.ps1` to clear pre-review commit gate error
-> 
+>
 > _See Proposal 073 (Review Evidence Integrity) for background on this validation._
 
 ---
@@ -29,7 +31,16 @@
 
 ```mermaid
 graph TD
-  omitted["_omitted_"]
+  Templates["Canonical templates<br/>squad-templates/skills"] --> Defs["SkillDefinitions"]
+  Defs --> Classifier{"Test-IsManagedLegacySkillDirectory"}
+  Legacy[".copilot/skills/specrew-*<br/>(legacy root)"] --> Classifier
+  Classifier -- "marker present (I1)" --> Managed["managed -> removed"]
+  Classifier -- "exact canonical match (F-160)" --> Managed
+  Classifier -- "front matter -> user-edited<br/>(untouched; S4/S4g accepted residual)" --> Preserved["preserved"]
+  Classifier -- "slash legacy signature" --> Managed
+  Classifier -- "generic: equality OR<br/>NEW F-161 legacy signature<br/>(heading + Type + Schema)" --> Managed
+  Classifier -- "fallthrough" --> Preserved
+  Harness["managed-skill-stuck-preserving.tests.ps1<br/>S1-S8 deploy-level scenarios"] -.->|exercises| Classifier
 ```
 
 ## Flow Diagram

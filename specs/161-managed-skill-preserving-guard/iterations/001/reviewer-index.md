@@ -2,18 +2,18 @@
 
 **Schema**: v1
 **Reviewed**: 2026-06-06
-**Overall Verdict**: needs-rework
+**Overall Verdict**: accepted
 
 ## Summary
 
-- Header: feature=161-managed-skill-preserving-guard | iteration=001 | branch=161-managed-skill-preserving-guard | commit_range=6185acb2827f8061db8a10e66a2aa234738c4020..2a72d6bc4d89d2832fbd4945ac063a3e50e11e82
-- Verdict: needs-rework
+- Header: feature=161-managed-skill-preserving-guard | iteration=001 | branch=161-managed-skill-preserving-guard | commit_range=6185acb2827f8061db8a10e66a2aa234738c4020..57cb193e
+- Verdict: accepted (all nine task verdicts pass; Gap Ledger: 1 fixed-now, 1 deferred with approval in .squad/decisions.md)
 - Requirements: covered=FR-007, FR-003, FR-001, FR-002, FR-004, FR-005, FR-006 | not_covered=(none)
 - Code Surface: files=19 | hotspots=1 | test_to_code=2:2
 - Dependencies: changed=0 | new_to_project=0 | vulnerability=unscanned
 - Coverage: kind=qualitative | signal=focused_regression
 - Operational Signals: escalations=0 | routing_fallbacks=0
-- Drift: 0/0 resolved
+- Drift: 2/2 resolved
 - Reviewer Index: specs\161-managed-skill-preserving-guard\iterations\001\reviewer-index.md
 - Implementation Briefing: (unavailable)
 - Local Open Hints: specs\161-managed-skill-preserving-guard\iterations\001\reviewer-index.md; specs\161-managed-skill-preserving-guard\iterations\001\review-diagrams.md; specs\161-managed-skill-preserving-guard\current-architecture.md
@@ -51,4 +51,4 @@
 
 ## Replay Digest
 
-SPECREW_REVIEW schema=v1 iter=001 feature=161-managed-skill-preserving-guard verdict=needs-rework tasks=0/9 reqs=9 files=19 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=0/0 index=specs\161-managed-skill-preserving-guard\iterations\001\reviewer-index.md
+SPECREW_REVIEW schema=v1 iter=001 feature=161-managed-skill-preserving-guard verdict=accepted tasks=9/9 reqs=9 files=19 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=2/2 index=specs\161-managed-skill-preserving-guard\iterations\001\reviewer-index.md
