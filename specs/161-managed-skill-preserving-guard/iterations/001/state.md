@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: before-implement
-**Iteration Status**: reviewing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T009
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 6185acb2827f8061db8a10e66a2aa234738c4020
-**Updated**: 2026-06-06T12:30:00Z
+**Updated**: 2026-06-06T13:30:00Z
 
 ## Execution Summary
 
@@ -22,6 +22,9 @@
 - T008 done: regression set green (harness ×2 identical summaries, F-160
   fixture unchanged, mechanical checks zero findings, validator PASS).
 - T009 done: review evidence + scope-guard proof assembled in evidence.md.
+- Review accepted at review-signoff (one send-back round: quality-evidence
+  reconciled to post-fix truth; approved 2026-06-06, synced).
+- Retro phase: retro.md written; retro boundary pending human approval.
 
 ## Notes
 
