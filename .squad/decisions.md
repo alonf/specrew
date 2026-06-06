@@ -24750,3 +24750,21 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: cd9528e7
 - **Recorded At**: 2026-06-06T19:20:03Z
+
+## 2026-06-06T19:31:54Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 170-retire-evaluation-surface
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 52602ede
+- **Recorded At**: 2026-06-06T19:31:53Z
+
+## 2026-06-06T19:32:10Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 170-retire-evaluation-surface
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 70e3c0c9
+- **Recorded At**: 2026-06-06T19:32:09Z

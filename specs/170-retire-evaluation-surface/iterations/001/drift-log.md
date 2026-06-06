@@ -22,13 +22,23 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 2
+**Resolution rate**: 100% (2/2 resolved)
+**Specification drift**: 1 spec-wording gap (resolved spec-updated); 1 pre-existing external blocker (resolved deferred to owning sibling slice)
 
 ## Events
 
-No specification drift detected during Iteration 001 execution to date.
+### DRIFT-001 — SC-004 allowed-classes wording incomplete (resolved: spec-updated)
+
+- **Detected**: 2026-06-06, T005 reference scan.
+- **What**: the scan surfaced 5 `evaluation/` hits in `.squad/decisions-archive.md` (and its frozen fixture copies), an archived historical ledger that SC-004's allowed classes (retirement wording; frozen fixtures) did not enumerate, even though the proposal's history-preservation intent (item 6) plainly covers it.
+- **Resolution**: spec-updated — SC-004 gained class (c) "archived historical ledgers preserved unmodified" with an inline provenance note. No implementation change; the archive stays byte-identical (FR-008 diff confirms).
+
+### DRIFT-002 — full smoke-suite run blocked by pre-existing main red (resolved: deferred to owning slice)
+
+- **Detected**: 2026-06-06, T004 smoke-suite run.
+- **What**: `tests/integration/multi-host-lifecycle-smoke.tests.ps1` halts at its Test 4 (`sync-boundary-state.ps1 must read specrew_version from project's .specrew\config.yml`) because the test asserts F-160's obsolete backslash literal while the shim now uses POSIX-safe forms. Confirmed pre-existing: the same assertion fails against `main`'s shim with no 170 changes involved. The 170-relevant assertions (Test 9 forward-slash literal, Test 10 parse check) were executed directly and PASS.
+- **Resolution**: deferred — the obsolete-mechanism assertion class is owned by the active sibling slice `169-found-bug-fixes` (its red-3 commit fixes the same class in another file). FR-005 evidence for this feature is the direct Test 9/10 runs plus `t004a-smoke.log`; the full-suite green re-check lands when the sibling slice merges.
 
 ### Resolution Strategies (Unused)
 

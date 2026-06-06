@@ -102,7 +102,7 @@ A maintainer can reconstruct why the scorer was moved rather than deleted from t
 - **SC-001**: `git ls-files evaluation/` returns zero entries on the feature branch.
 - **SC-002**: Both process-quality integration tests exit 0 on the feature branch, with the report written to untracked space.
 - **SC-003**: The multi-host lifecycle smoke test passes, including the scorer-parse and forward-slash path assertions.
-- **SC-004**: A scan of active surfaces (`docs/`, `extensions/`, `.specify/`, `.github/`, `.squad/`, `scripts/`, `tests/`, `templates/`) finds no `evaluation/` reference other than (a) intentional retirement-explanation wording and (b) frozen historical fixtures under `tests/unit/fixtures/`.
+- **SC-004**: A scan of active surfaces (`docs/`, `extensions/`, `.specify/`, `.github/`, `.squad/`, `scripts/`, `tests/`, `templates/`) finds no `evaluation/` reference other than (a) intentional retirement-explanation wording, (b) frozen historical fixtures under `tests/unit/fixtures/`, and (c) archived historical ledgers (e.g., `.squad/decisions-archive.md`) preserved unmodified under the same history-preservation rule as FR-008. *(Class (c) added at implement: the T005 scan surfaced archive-ledger hits the original wording did not enumerate; recorded in the drift log.)*
 - **SC-005**: Proposal 169 is recorded in `proposals/INDEX.md` with the classification rationale, and its status is flipped at feature closeout.
 
 ## Assumptions

@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 2/20 story_points
 **Started**: 2026-06-06
 **Completed**:
@@ -36,13 +36,13 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Structural verification: no tracked `evaluation/`; scorer at `tests/support/` | FR-001, FR-002 | US1, US2 | 0.25 | Implementer | (read-only verification) | planned | claude | | |
-| T002 | Run process-quality-scorer integration test (exit 0, run log) | FR-003 | US2 | 0.25 | Implementer | (read-only verification) | planned | claude | | |
-| T003 | Run process-quality-report integration test; assert untracked report placement | FR-004 | US2 | 0.25 | Implementer | (read-only verification) | planned | claude | | |
-| T004 | Run multi-host smoke suite + path-resolution regression | FR-005 | US2 | 0.25 | Implementer | (read-only verification) | planned | claude | | |
-| T005 | Active-surface `evaluation/` reference scan; classify every hit | FR-006 | US1 | 0.25 | Implementer | (read-only verification) | planned | claude | | |
-| T006 | Audit trail (proposal/index) + history immutability diff | FR-007, FR-008 | US3 | 0.25 | Spec Steward | (read-only verification) | planned | claude | | |
-| T007 | Mechanical checks + consolidate quality-evidence.md; fix and re-verify any gap | FR-001..FR-008 | US1, US2, US3 | 0.5 | Implementer | `specs/170-retire-evaluation-surface/iterations/001/quality/**` | planned | claude | | |
+| T001 | Structural verification: no tracked `evaluation/`; scorer at `tests/support/` | FR-001, FR-002 | US1, US2 | 0.25 | Implementer | (read-only verification) | done | claude | 0.25 | accepted |
+| T002 | Run process-quality-scorer integration test (exit 0, run log) | FR-003 | US2 | 0.25 | Implementer | (read-only verification) | done | claude | 0.25 | accepted |
+| T003 | Run process-quality-report integration test; assert untracked report placement | FR-004 | US2 | 0.25 | Implementer | (read-only verification) | done | claude | 0.25 | accepted |
+| T004 | Run multi-host smoke suite + path-resolution regression | FR-005 | US2 | 0.25 | Implementer | (read-only verification) | done | claude | 0.25 | accepted |
+| T005 | Active-surface `evaluation/` reference scan; classify every hit | FR-006 | US1 | 0.25 | Implementer | (read-only verification) | done | claude | 0.25 | accepted |
+| T006 | Audit trail (proposal/index) + history immutability diff | FR-007, FR-008 | US3 | 0.25 | Spec Steward | (read-only verification) | done | claude | 0.25 | accepted |
+| T007 | Mechanical checks + consolidate quality-evidence.md; fix and re-verify any gap | FR-001..FR-008 | US1, US2, US3 | 0.5 | Implementer | `specs/170-retire-evaluation-surface/iterations/001/quality/**` | done | claude | 0.5 | accepted |
 
 ## Effort Model
 
