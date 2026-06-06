@@ -715,10 +715,10 @@ than deferring to another feature.
 | FR-039 | Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; per-lens provenance value + specify-boundary structural floor) |
 | FR-040 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; intake responsiveness — prep announcement + agenda assignment + per-lens progress) |
 | FR-041 | Spec Steward, Implementer, Reviewer | Iteration 12 (added 2026-06-05 — Amendment A8; open-question-first + cross-host dense-lens pacing [the working conduct]; catalog front-load reverted — a before-a-menu render skims on Claude → hook/host-variance) |
-| FR-011 | Implementer, Reviewer | Later iteration |
-| FR-012 | Implementer, Reviewer | Later iteration |
-| FR-013 | Implementer, Reviewer | Later iteration |
-| FR-014 | Implementer, Reviewer | Later iteration |
+| FR-011 | Implementer, Reviewer | Iteration 2 (delivered 2026-06-03 — empty `specs//` start-packet path fix, T002) |
+| FR-012 | Implementer, Reviewer | Iteration 3 (delivered 2026-06-03 — spurious greenfield/downstream warning fix, T002) |
+| FR-013 | Implementer, Reviewer | Iteration 3 (delivered 2026-06-03 — greenfield baseline-commit handling, T003) |
+| FR-014 | Implementer, Reviewer | Iteration 2 (delivered 2026-06-03 — host-wording leak fix, T003) |
 | FR-015 | Spec Steward, Planner, Reviewer | All iterations |
 | FR-016 | Planner, Spec Steward | Planning |
 | FR-017 | Spec Steward, Reviewer | All iterations |
@@ -726,8 +726,8 @@ than deferring to another feature.
 | FR-019 | Spec Steward, Implementer, Reviewer | All iterations |
 | FR-020 | Implementer, Reviewer | Iteration 1 |
 | FR-021 | Implementer, Reviewer | Iteration 1 |
-| FR-022 | Implementer, Reviewer | Iteration 1 (if within cap) |
-| FR-023 | Implementer, Reviewer | Iteration 1 (if within cap) |
+| FR-022 | Implementer, Reviewer | Iteration 1 (delivered — validator By-the-book tolerance, T003) |
+| FR-023 | Implementer, Reviewer | Iteration 1 (delivered — validator single-recommendation parser, T004) |
 | FR-024 | Implementer, Reviewer | Iteration 2 |
 | TG-001 | Planner, Reviewer | All iterations |
 | TG-002 | Planner, Reviewer | All iterations |
