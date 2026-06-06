@@ -1,21 +1,27 @@
 # Lens: security-baseline@v1.0.0 — Iteration 001
 
-**Status**: planned (executed during review phase)
+**Status**: executed — pass (2026-06-06)
 
 ## Focus
 
 The managed/preserve classification is a trust boundary protecting
 user-authored skill content from deletion during legacy cleanup.
 
-## Planned checks
+## Checks executed
 
-- S2 user-authored legacy dir reported preserved AND byte-identical after
-  every deploy run — pre-fix, post-fix, refuted-no-fix (no-loss invariant).
+- S2 (front-matter user content) and S8 (plain non-signature user content)
+  reported preserved AND byte-identical after every deploy run — pre-fix,
+  post-fix, and across idempotency re-runs (no-loss invariant; harness
+  assertions, both runs).
 - Harness writes confined to its temp sandbox; working-repo runtime dirs
-  untouched.
-- Any conditional fix cannot widen what is classified managed beyond
-  Specrew-owned provenance (contract invariants I1/I2/I6).
+  untouched (sandbox path asserted; cleanup in `finally`).
+- The fix cannot widen what is classified managed beyond Specrew-owned
+  provenance: the new generic branch requires the directory-name heading plus
+  the structural `**Type**:` and `**Schema**: v1` lines, only after the
+  front-matter check has already excluded front-matter content (contract
+  invariants I1/I2/I6 verified in review).
 
-## Execution record
+## Outcome
 
-Pending implementation.
+Pass. No user-data-loss path identified; the accepted S4/S4g residual is a
+preserve-side (safe) outcome by construction.

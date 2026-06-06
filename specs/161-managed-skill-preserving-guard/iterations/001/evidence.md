@@ -13,10 +13,13 @@
 - Scope guard: no Feature 141, Feature 159, or Feature/Proposal 160 surfaces
   modified at baseline; re-verified at T009.
 
-## Scenario Outcomes (T003, 2026-06-06) — harness `tests/integration/managed-skill-stuck-preserving.tests.ps1`
+## Scenario Outcomes (T003, 2026-06-06) — PRE-FIX probe state, historical record
 
-Two consecutive full harness runs produced the identical OUTCOME-SUMMARY (SC-001
-determinism satisfied):
+This table records the T003 investigation state BEFORE the fix (the repro that
+drove the verdict). The FINAL post-fix state lives in the Conditional Fix
+Evidence section below and in `quality/quality-evidence.md`. Two consecutive
+full harness runs produced the identical OUTCOME-SUMMARY (SC-001 determinism
+satisfied):
 
 `S1=removed; S2=preserved-byte-identical; S2b=preserved; S3=removed; S3g=removed; S4=preserved-legacy-unmanaged-skill; S4g=preserved-legacy-unmanaged-skill; S5=idempotent; S6=active-roots-deployed; S7=preserved-legacy-unmanaged-skill`
 
@@ -77,7 +80,7 @@ v0.26.0+ → the four generic legacy dirs are frozen permanently as
 | Outcome | **CONFIRMED** (misclassified AND reachable) |
 | Code path | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1::Test-IsManagedLegacySkillDirectory` — two freezing branches: (a) **generic-kind equality fallback** (`$content -eq $Definition.LegacyContent`, compares stale content against the CURRENT template → false → fallthrough → preserved) — REACHABLE via the real v0.21–0.23 → v0.26+ upgrade path (S7); (b) **leading-`---` front-matter heuristic** — freezes any stale-canonical front-matter content (S4/S4g); no in-repo released version produced that artifact in `.copilot/skills`, but it is one canonical-content revision away for any future marker-less dir. |
 | Reachability | Real released-version path confirmed (facts 1–3 above); affected artifact set = the four generic skill dirs in `.copilot/skills` |
-| Fix applied | pending T006 release (human gate) |
+| Fix applied | **yes** — human released the stricter shape at the verdict stop; landed at `2a72d6bc` (+ `.specify` mirror parity); S4/S4g residual deferred per `F161-DEFER-001` |
 
 ## Conditional Fix Evidence (T006/T007, 2026-06-06)
 
