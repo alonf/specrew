@@ -48,10 +48,13 @@ Canonical in `extensions/specrew-speckit/`; deployed **managed-with-overlay** (c
 | Attribute | Type | Required | Validation Rules | Description |
 | --- | --- | --- | --- | --- |
 | id | string | yes | unique | provider id |
+| kind | enum | yes | `inject` (default) \| `gate` | inject returns a markdown fragment; gate runs on PreToolUse, receives tool_input, returns allow/deny `permissionDecision`; gates FAIL OPEN to allow + WARN |
 | events | string[] | yes | known host-neutral event names | which dispatcher events invoke it |
 | order | int | yes | unique within event | deterministic execution order |
-| budget_share | number | yes | 0..1; shares ≤ 1 per event | token arbitration |
+| budget_share | number | inject only | 0..1; shares ≤ 1 per event | token arbitration (n/a for gates) |
 | command | string | yes | resolves under the deployed tree (deploy-time validation) | what the dispatcher runs |
+
+**Forward-compat note (2026-06-07)**: no `gate` provider ships in F-171; the PreToolUse registration stays dormant (deploy-loop data) until the first gate row exists — reserving F-165's seat without paying a per-tool-call spawn for an empty seat.
 
 ## Entity: RuntimeSessionState (refocus-state-<session-id>.json)
 

@@ -47,6 +47,15 @@ The single payload engine for every surface (slash command, hook providers, wrap
 - One dedupe layer; per-session state; breaker semantics per FR-011
 - Every outcome journaled
 
+### Provider kinds (forward-compat seat, 2026-06-07)
+
+| kind | event surface | input | output | failure direction |
+| --- | --- | --- | --- | --- |
+| `inject` (default; all F-171 providers) | SessionStart / PostToolUse | normalized event | markdown fragment | skip + WARN (no injection) |
+| `gate` (RESERVED — no provider ships in F-171; F-165 candidate) | PreToolUse (registration dormant until first gate row) | normalized event + `tool_input` | allow/deny `permissionDecision` | **fail OPEN to allow** + WARN — a broken gate never blocks a session |
+
+Ownership rule: any future Specrew hook mechanism (inject or gate) routes through this dispatcher via a registry row — never a second registration on the host settings surface.
+
 ## File contracts
 
 - `refocus-scopes.yml`: `schema_version` required; additive-only; deployed managed-with-overlay (user keys preserved)

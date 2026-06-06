@@ -11,10 +11,10 @@
 |---|---|---|---|---|
 | T001 | RefocusEngine core: scope/flag resolution, catalog read + schema check, digest composition, banner line, budget clipping, path confinement, WARN envelope + reason codes; engine test suite (golden payloads, caps, confinement refusals) | FR-001, FR-003, FR-004, FR-005, FR-012, FR-020 / SC-003, SC-007 | 2.5 | Implementer |
 | T002 | Digest family: author `refocus/general.md` + 10 per-stage digests with frontmatter `{scope, sources[], reviewed_at}` + file:/// pointers; size-cap tests; DigestDriftCheck test-lane (source-changed-after-review fixtures) | FR-002, FR-019 / SC-003 | 2.0 | Implementer |
-| T003 | Scope catalog: `refocus-scopes.yml` (scopes, triggers, budgets, provider registry, enabled flags, schema_version) + deploy-time schema validation + version-mismatch fail-open fixture | FR-003 / SC-001 | 1.0 | Implementer |
+| T003 | Scope catalog: `refocus-scopes.yml` (scopes, triggers, budgets, provider registry incl. `kind: inject\|gate` field, enabled flags, schema_version) + deploy-time schema validation + version-mismatch fail-open fixture | FR-003 / SC-001 | 1.0 | Implementer |
 | T004 | WrapperEmission (channel 1): deployed boundary-sync WRAPPER appends `--boundary <next>` payload post-sync + fingerprints injection; emits without dedupe when state unavailable; scratch-project integration test | FR-006, FR-020 / SC-002 | 1.0 | Implementer |
 | T005 | Primer pointer (channel 2): one-line `/specrew-refocus` recovery pointer in host instruction templates; template content asserts | FR-007 / SC-010 | 0.5 | Implementer |
-| T006 | SpecrewHookDispatcher: `-Event` entry, strict event-JSON parse, session-id sanitization, `.specrew/` self-gate, `SPECREW_REFOCUS_DISABLE` first-line check, sequential provider execution by registry order under budget arbitration with per-provider timeout, fail-open wrapper; simulated-stdin test suite | FR-008, FR-012, FR-020 / SC-001, SC-007 | 2.0 | Implementer |
+| T006 | SpecrewHookDispatcher: `-Event` entry, strict event-JSON parse, session-id sanitization, `.specrew/` self-gate, `SPECREW_REFOCUS_DISABLE` first-line check, sequential provider execution by registry order under budget arbitration with per-provider timeout, fail-open wrapper; **dormant gate-kind code path** (PreToolUse semantics, tool_input passthrough, permissionDecision output, fail-open-to-allow) fixture-tested but UNREGISTERED (F-165 seat); simulated-stdin test suite | FR-008, FR-012, FR-020 / SC-001, SC-007 | 2.5 | Implementer |
 | T007 | RefocusProvider: event/source → engine-scope routing (B1/B2/B3); B3 state-diff detection with LastWriteTime cheap-guard; routing-table + state-diff fixtures (dedupe both channel orders) | FR-009 / SC-002 | 1.5 | Implementer |
 | T008 | RuntimeSessionState: per-session files (sanitized id), fingerprints, bounded injection journal with outcomes, opportunistic pruning; journal + pruning tests | FR-010 / SC-002, SC-010 | 1.5 | Implementer |
 | T009 | Circuit breaker: per-trigger/global trip conditions (runaway, token cap, state unavailability), single trip WARN naming reason + re-enable paths, session-scoped reset, `--reset-breaker` + `--status`; trip fixtures per condition + exemption asserts (slash + channel 1 unaffected) | FR-011 / SC-005 | 1.5 | Implementer |
@@ -22,7 +22,7 @@
 | T011 | Skill + deploy integration: `specrew-refocus` SKILL.md + per-host catalog deploy (.claude/.github/.agents + Cursor rules variant); deploy-loop classes (managed mirrors; managed-with-overlay catalog); FileList declarations for all shipped files | FR-015, FR-018 / SC-009 | 1.5 | Implementer |
 | T012 | Managed compaction points + advisory: `--compact-instructions` preserve-list generation from lifecycle state; coordinator advisory fallback rule; boundary-packet context-hygiene line | FR-016, FR-017 / SC-010 | 1.0 | Implementer |
 
-**Iteration 001 capacity: 18.0/20 SP**
+**Iteration 001 capacity: 18.5/20 SP**
 
 ## Iteration 002 — research-gated host bindings, docs, beta evidence (8.0 SP)
 
@@ -33,7 +33,7 @@
 | T015 | Docs + beta evidence prep: user-guide section, troubleshooting failure-trace walk, README touch; SC-008 beta validation script (real compaction + real boundary cross on ≥2 hook-bound hosts; kill-switch walk; journal citations) | FR-007 (docs), SC-008, SC-010 | 1.5 | Implementer |
 | T016 | Compaction-steering research record (B4, research-gated OUT): PreCompact augmentation + persistent-instruction efficacy findings recorded as follow-up input — no shipping in this feature | scope-line disposition 1 | 0.5 | Implementer |
 
-**Iteration 002 capacity: 8.0/20 SP · Feature total: 26.0 SP (within the 18-26 Option C envelope)**
+**Iteration 002 capacity: 8.0/20 SP · Feature total: 26.5 SP (Option C envelope +0.5 SP for the maintainer-directed F-165 gate-seat reservation, 2026-06-07)**
 
 ## Traceability check (after-tasks)
 

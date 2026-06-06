@@ -24518,3 +24518,35 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Authorizing Human**: Alon Fliess
 - **Commit Reference**: e1b55cf1 (decision record; hash pinned in 2ca0c7fa)
 - **Rationale**: Option C = the workshop-bound scope (hook bindings for ALL hook-capable hosts, research-gated per host; channels 1+2 host-neutral; breaker + kill switches + journal; managed compaction points). Consistent with the maintainer's explicit multi-host correction during intake.
+
+## 2026-06-06T21:02:01Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 247fa0ba
+- **Recorded At**: 2026-06-06T21:02:00Z
+
+## 2026-06-07T07:05:00Z — Human verdict: plan approved (171-specrew-refocus)
+
+- **Boundary Type**: plan -> tasks
+- **Verdict**: approve as-is (structured verdict menu) after one maintainer-raised reconciliation: Copilot absence from hook diagrams confirmed as documented-variance (no hook surface per 105 research), with a Copilot surface re-verification task added to the iteration-002 research matrix (aa107f9e)
+- **Authorizing Human**: Alon Fliess
+- **Commit Reference**: 247fa0ba (plan + Wave B), aa107f9e (research task 5)
+
+## 2026-06-06T21:08:04Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 679a814e
+- **Recorded At**: 2026-06-06T21:08:03Z
+
+## 2026-06-07T07:40:00Z — Maintainer-directed forward-compat amendment (171 <- F-165 coordination)
+
+- **Directive**: widen the SpecrewHookDispatcher provider contract to kind: inject | gate; reserve the F-165 file-link-gate seat. Maintainer offered take-now-or-defer; Crew took CONTRACT-NOW / REGISTRATION-DORMANT: gate semantics (PreToolUse, tool_input -> permissionDecision, fail-open-to-allow) specified + fixture-tested, but PreToolUse registration stays deploy-loop-dormant until the first gate row exists (an empty gate seat would cost a pwsh spawn per tool call for nothing - P4).
+- **Ownership rule recorded**: any future Specrew hook mechanism routes through this dispatcher via a registry row; never a second registration on the host settings surface.
+- **Ripple**: spec FR-008 + Key Entities; data-model ProviderRegistryRow.kind; contract provider-kinds table; tasks T003/T006 (+0.5 SP -> iteration 001 = 18.5/20).
+- **Authorizing Human**: Alon Fliess (directive message, 2026-06-07)
