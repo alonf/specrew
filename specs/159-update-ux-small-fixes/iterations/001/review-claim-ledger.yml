@@ -1,0 +1,66 @@
+schema: v1
+feature: 159-update-ux-small-fixes
+iteration: "001"
+claims:
+  - id: CL-001
+    claim: Stale mutating specrew update refuses before protected-surface mutation.
+    status: supported
+    evidence:
+      - type: code
+        path: scripts/specrew-update.ps1
+        symbols: [Get-SpecrewUpdateDowngradeGuardResult, Write-SpecrewUpdateDowngradeRefusal]
+      - type: test
+        command: pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\update-command.ps1
+        exit_code: 0
+        note: Test 0 covers bare, --specrew, --all, --spec-kit, and --squad stale refusal.
+  - id: CL-002
+    claim: Refusal message is actionable and names Update-Module Specrew plus SPECREW_MODULE_PATH.
+    status: supported
+    evidence:
+      - type: code
+        path: scripts/specrew-update.ps1
+        symbol: Write-SpecrewUpdateDowngradeRefusal
+      - type: test
+        path: tests/integration/update-command.ps1
+        note: Test 0 asserts both remediation strings in refusal output.
+  - id: CL-003
+    claim: Equal/newer update behavior remains unchanged.
+    status: supported
+    evidence:
+      - type: test
+        command: pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\update-command.ps1
+        exit_code: 0
+        note: Tests 3, 5, and 6 cover older-project upgrade-forward and equal-baseline platform scopes.
+  - id: CL-004
+    claim: Active generated/routine UX no longer presents 0.24.0 as the current slash-command compatibility baseline.
+    status: supported
+    evidence:
+      - type: code
+        paths:
+          - scripts/specrew-version.ps1
+          - scripts/internal/version-check.ps1
+          - extensions/specrew-speckit/squad-templates/skills/specrew-version/SKILL.md
+          - extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md
+          - .agents/skills/specrew-version/SKILL.md
+          - .claude/skills/specrew-version/SKILL.md
+          - .github/skills/specrew-version/SKILL.md
+          - .github/agents/squad.agent.md
+      - type: test
+        command: pwsh -NoProfile -ExecutionPolicy Bypass -File tests\integration\slash-command-compatibility.tests.ps1
+        exit_code: 0
+        note: Active-message scan passes through rg and explicit Select-String fallback.
+  - id: CL-005
+    claim: Proposal 160 and Feature 141 collision controls were honored.
+    status: supported
+    evidence:
+      - type: review
+        path: specs/159-update-ux-small-fixes/iterations/001/review.md
+        section: Collision Review
+      - type: command
+        note: Review-signoff collision check found no Proposal 160 overlap and only the approved Feature 141 governance-template wording overlap.
+  - id: CL-006
+    claim: No new dependencies were introduced.
+    status: supported
+    evidence:
+      - type: review
+        path: specs/159-update-ux-small-fixes/iterations/001/dependency-report.md

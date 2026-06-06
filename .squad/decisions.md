@@ -23086,6 +23086,112 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Auth Commit Hash**: de5adcaa731a92a723dabe05f7d67b034dddc85d
 - **Recorded At**: 2026-05-31T11:06:53Z
 
+## 2026-06-03T13:42:17Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 140-unix-native-install
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: a43eea3d8660cd92b981c558692876f0943d646a
+- **Recorded At**: 2026-06-03T13:42:16Z
+
+## 2026-06-03T13:42:38Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 140-unix-native-install
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: a43eea3d8660cd92b981c558692876f0943d646a
+- **Recorded At**: 2026-06-03T13:42:37Z
+
+## 2026-06-03T13:42:54Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 140-unix-native-install
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: a43eea3d8660cd92b981c558692876f0943d646a
+- **Recorded At**: 2026-06-03T13:42:53Z
+
+## 2026-06-03T13:47:49Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 140-unix-native-install
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 66226da20b2c0cf3b62ab5a7aeb3c65782472cd0
+- **Recorded At**: 2026-06-03T13:47:48Z
+
+## 2026-06-06T00:06:59Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 159-update-ux-small-fixes
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0b49f02ab80679e351df7de81c30d50369abf501
+- **Recorded At**: 2026-06-06T00:06:58Z
+
+## 2026-06-06T00:17:21Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 159-update-ux-small-fixes
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 664a8f2702b9211f0a11e70bb714e1baf11771ab
+- **Recorded At**: 2026-06-06T00:17:20Z
+
+## 2026-06-06T10:10:32Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 159-update-ux-small-fixes
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: blocked
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched retro -> iteration-closeout.
+
+## 2026-06-06T10:12:27Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 159-update-ux-small-fixes
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-06T10:18:29Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 159-update-ux-small-fixes
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 82d23b5129fcc3bc763e0ccf2782a15d832d4334
+- **Recorded At**: 2026-06-06T10:18:28Z
+
+## 2026-06-06T10:26:22Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 159-update-ux-small-fixes
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: iteration-closeout
+- **Requested Boundary**: feature-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-06T10:30:41Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 159-update-ux-small-fixes
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 395994b29a3b14e8dc0b52eb9822f3d2d045f3ad
+- **Recorded At**: 2026-06-06T10:30:40Z
+- **Recorded At**: 2026-05-31T11:06:53Z
+
 ## 2026-06-01T23:21:49Z — Delegated routing plan
 
 - **Enabled Agents**: codex
