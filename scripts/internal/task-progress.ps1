@@ -236,31 +236,49 @@ function Get-TaskProgressDerivedStatusHints {
 
     $statuses = [ordered]@{}
     $divergences = New-Object System.Collections.Generic.List[string]
-    $tasksPath = Get-FeatureTasksPath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -ResolvedFeaturePath $ResolvedFeaturePath
-    if (Test-Path -LiteralPath $tasksPath -PathType Leaf) {
-        foreach ($line in Get-Content -LiteralPath $tasksPath -Encoding UTF8) {
-            if ($line -match '^\s*-\s+\[(?<mark>[ xX])\]\s+(?<task>T\d+)\b') {
-                $taskId = $Matches['task']
-                $statuses[$taskId] = if ($Matches['mark'] -match '[xX]') { 'done' } else { 'pending' }
+
+    # The feature-root tasks.md is the ITERATION 1 task list (authored by /speckit.tasks at feature
+    # start; later iterations track their own work in iterations/<N>/plan.md plus the live
+    # tasks-progress.yml ledger). When iterations reuse bare task IDs (T0NN) — as Feature 141 does
+    # across iterations 1 and 2 — applying the Iteration 1 tasks.md to Iteration N>=2 lets
+    # iteration-1 checkbox state (in the hand-driven flow tasks.md is typically left all-unchecked
+    # even after the iteration completes) DOWNGRADE iteration-N's live ledger status, corrupting the
+    # start/resume summary. So derive status hints from the feature-root tasks.md ONLY for the first
+    # iteration; for N>=2 the ledger + iterations/<N>/plan.md are the source of truth. Iteration-001
+    # derivation semantics below are intentionally unchanged.
+    # NOTE (follow-up, not fixed here): a re-sync of iteration 001 itself is still subject to the
+    # tasks.md downgrade if its boxes are unchecked; iteration 001 is not the active summary target
+    # in the observed symptom, so it is out of scope for this slice.
+    $parsedIteration = 0
+    $isFirstIteration = [int]::TryParse($IterationNumber, [ref]$parsedIteration) -and $parsedIteration -le 1
+
+    if ($isFirstIteration) {
+        $tasksPath = Get-FeatureTasksPath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -ResolvedFeaturePath $ResolvedFeaturePath
+        if (Test-Path -LiteralPath $tasksPath -PathType Leaf) {
+            foreach ($line in Get-Content -LiteralPath $tasksPath -Encoding UTF8) {
+                if ($line -match '^\s*-\s+\[(?<mark>[ xX])\]\s+(?<task>T\d+)\b') {
+                    $taskId = $Matches['task']
+                    $statuses[$taskId] = if ($Matches['mark'] -match '[xX]') { 'done' } else { 'pending' }
+                }
             }
         }
-    }
 
-    $statePath = Get-IterationStatePath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
-    if (Test-Path -LiteralPath $statePath -PathType Leaf) {
-        $lastCompletedTask = ''
-        foreach ($line in Get-Content -LiteralPath $statePath -Encoding UTF8) {
-            if ($line -match '^\*\*Last Completed Task\*\*:\s*(?<value>.+?)\s*$') {
-                $lastCompletedTask = $Matches['value'].Trim()
-                break
+        $statePath = Get-IterationStatePath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
+        if (Test-Path -LiteralPath $statePath -PathType Leaf) {
+            $lastCompletedTask = ''
+            foreach ($line in Get-Content -LiteralPath $statePath -Encoding UTF8) {
+                if ($line -match '^\*\*Last Completed Task\*\*:\s*(?<value>.+?)\s*$') {
+                    $lastCompletedTask = $Matches['value'].Trim()
+                    break
+                }
             }
-        }
 
-        if (-not [string]::IsNullOrWhiteSpace($lastCompletedTask) -and $lastCompletedTask -notmatch '^\(?none') {
-            foreach ($taskId in @($lastCompletedTask -split '\s*,\s*')) {
-                $trimmedTaskId = $taskId.Trim()
-                if ($statuses.Contains($trimmedTaskId) -and $statuses[$trimmedTaskId] -ne 'done') {
-                    $divergences.Add(("state.md reports Last Completed Task '{0}', but tasks.md does not mark it complete; tasks.md remains authoritative." -f $trimmedTaskId)) | Out-Null
+            if (-not [string]::IsNullOrWhiteSpace($lastCompletedTask) -and $lastCompletedTask -notmatch '^\(?none') {
+                foreach ($taskId in @($lastCompletedTask -split '\s*,\s*')) {
+                    $trimmedTaskId = $taskId.Trim()
+                    if ($statuses.Contains($trimmedTaskId) -and $statuses[$trimmedTaskId] -ne 'done') {
+                        $divergences.Add(("state.md reports Last Completed Task '{0}', but tasks.md does not mark it complete; tasks.md remains authoritative." -f $trimmedTaskId)) | Out-Null
+                    }
                 }
             }
         }

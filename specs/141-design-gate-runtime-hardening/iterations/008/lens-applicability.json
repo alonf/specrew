@@ -1,0 +1,65 @@
+{
+  "schema": "lens-applicability/v2",
+  "feature": "141-design-gate-runtime-hardening",
+  "iteration": "008",
+  "workshop_intake": true,
+  "workshop_date": "2026-06-04",
+  "note": "Iteration 8 (Amendment A5) — the workshop-visuals capability, designed via the per-lens workshop i7 shipped (dogfooded on 141 itself). Applicability broadened by the maintainer: the feature is a PER-LENS visual vocabulary, so the diagram-consuming lenses (security/data/architecture/devops/ui-ux) are in, each with its native diagram type; the foundational lenses shaped the build. Records the per-lens workshop decisions (SC-021 shape).",
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "ui-ux",
+    "security-compliance",
+    "data-storage",
+    "devops-operations"
+  ],
+  "workshop": {
+    "architecture-core": {
+      "agenda": ["building blocks of the visuals capability", "volatility isolation (render forms / hosts)", "reversibility"],
+      "decision": "Catalog data file (lens->diagram-type->render-form) + a deterministic emit helper + an intake-reference helper + a conduct-rule addition. Behavioral content (agent authors the mermaid/ASCII), deterministic emit (helper writes file + clickable link) — the i7 split.",
+      "depth": "expert-terse",
+      "moved_on": true
+    },
+    "component-design": {
+      "agenda": ["decoupled units", "dependency direction", "reuse vs reinvent"],
+      "decision": "render/emit, intake-reference, and the catalog are separate units; emit reuses Format-SpecrewFileReference (FR-028 console-vs-persisted); index.yml stays pure (catalog is a sibling).",
+      "depth": "expert-terse",
+      "moved_on": true
+    },
+    "requirements-nfr": {
+      "agenda": ["temp-file lifecycle", "diagram accessibility", "deterministic emit", "console-vs-persisted"],
+      "decision": "Ephemeral temp under .specrew/workshop-visuals/ (gitignored, cleaned at iteration close); keepers are inline mermaid in design docs (versioned text); svg/html persisted as referenced files only when richer-than-mermaid; mermaid/ASCII are text (accessible); the emit helper is pure/LLM-free.",
+      "depth": "expert-terse",
+      "moved_on": true
+    },
+    "ui-ux": {
+      "agenda": ["which visual forms", "how surfaced (inline/temp/persisted)", "plot-from-description + intake UX", "which diagram per lens"],
+      "decision": "Tiered render+surface (inline -> temp-file+file:/// link -> persisted; mermaid default, ASCII console, svg/html wireframes). Bidirectional per-lens intake: the Crew offers to plot the lens's diagram AND asks for an existing diagram/doc/Figma-export/whiteboard-photo (file:/// reference, transcribable to mermaid). The per-lens diagram vocabulary is the feature's core.",
+      "depth": "moderate",
+      "moved_on": true
+    },
+    "security-compliance": {
+      "agenda": ["security diagram type for the vocabulary"],
+      "decision": "Trust boundaries + attack surface (mermaid flowchart with trust zones as subgraphs; entry points + data crossings).",
+      "depth": "expert-terse",
+      "moved_on": true
+    },
+    "data-storage": {
+      "agenda": ["data diagram type for the vocabulary"],
+      "decision": "ERD for relational; for NoSQL, document relations as references by JSON-path of identities (mermaid erDiagram / a doc->doc graph).",
+      "depth": "expert-terse",
+      "moved_on": true
+    },
+    "devops-operations": {
+      "agenda": ["devops diagram type for the vocabulary"],
+      "decision": "Deployment topology (environments, nodes, pipelines) as a mermaid flowchart/deployment diagram.",
+      "depth": "expert-terse",
+      "moved_on": true
+    }
+  },
+  "cross_cutting_diagram_types": {
+    "flows": "user actions + system actions as a mermaid sequenceDiagram",
+    "comparison": "options/trade-offs as a markdown table"
+  }
+}

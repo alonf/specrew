@@ -122,7 +122,7 @@ Write-Host '--- Test 7: specrew-version.ps1 exists with expected content ---'
 $versionScript = Join-Path $repoRoot 'scripts\specrew-version.ps1'
 Assert-True -Condition (Test-Path -LiteralPath $versionScript) -Message 'specrew-version.ps1 exists'
 $versionScriptContent = Get-Content -LiteralPath $versionScript -Raw
-Assert-Contains -Text $versionScriptContent -Substring 'slashCommandMinVersion' -Message 'specrew-version.ps1 references min slash-command version'
+Assert-Contains -Text $versionScriptContent -Substring 'SPECREW_MODULE_PATH' -Message 'specrew-version.ps1 references matching dev-tree remediation'
 Assert-Contains -Text $versionScriptContent -Substring 'compatible' -Message 'specrew-version.ps1 emits compatibility verdict'
 Assert-Contains -Text $versionScriptContent -Substring 'Write-Output "WARNING:' -Message 'specrew-version.ps1 emits Write-Output warning on incompatibility'
 

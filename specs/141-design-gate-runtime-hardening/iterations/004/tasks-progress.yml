@@ -1,0 +1,41 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "004"
+updated_at: "2026-06-03T16:01:52Z"
+tasks:
+  T001:
+    title: "Sibling question->lens map file (index.yml untouched) + fixed 6-question set + always-on foundational lenses"
+    status: "done"
+    started_at: "2026-06-03T15:52:42Z"
+    completed_at: "2026-06-03T15:52:42Z"
+    blocked_reason: ""
+  T002:
+    title: "Questionnaire intake (lens-applicability.json emit) + JSON artifact"
+    status: "done"
+    started_at: "2026-06-03T15:52:42Z"
+    completed_at: "2026-06-03T16:01:52Z"
+    blocked_reason: ""
+  T003:
+    title: "Pure deterministic selector: answers + sibling map -> selected lenses (always-on + gated); no network/LLM"
+    status: "done"
+    started_at: "2026-06-03T15:52:42Z"
+    completed_at: "2026-06-03T15:52:42Z"
+    blocked_reason: ""
+  T004:
+    title: "Render Applicable Lenses section from selected + graceful degradation; design-analysis template wired"
+    status: "done"
+    started_at: "2026-06-03T15:52:42Z"
+    completed_at: "2026-06-03T16:01:52Z"
+    blocked_reason: ""
+  T005:
+    title: "Tests (reproduce-first): SC-015 determinism + JSON audit; SC-006 scope + degradation; never hide an always-on lens"
+    status: "done"
+    started_at: "2026-06-03T15:52:42Z"
+    completed_at: "2026-06-03T16:01:52Z"
+    blocked_reason: ""
+  T006:
+    title: "Docs + review evidence (TG-006): quickstart Iteration-4 + implemented/enforced/observable/documented gap ledger"
+    status: "done"
+    started_at: "2026-06-03T16:01:52Z"
+    completed_at: "2026-06-03T16:01:52Z"
+    blocked_reason: ""

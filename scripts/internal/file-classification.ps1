@@ -30,6 +30,7 @@ $script:SpecrewPerSessionPatterns = @(
     '.squad/decisions/inbox/'
     '.specrew/last-validator-summary.json'
     '.specrew/active-sessions.yml'
+    '.specrew/workshop-visuals/'
 )
 
 $script:SpecrewGitignoreSectionHeader = '# Specrew per-session files (F-051 multi-session foundation) - do not commit'

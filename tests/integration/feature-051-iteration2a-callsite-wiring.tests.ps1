@@ -140,7 +140,7 @@ Write-Pass 'specrew start clears stale locks, warns on collisions, and registers
 $null = & git -C $projectRoot add -A 2>&1
 $null = & git -C $projectRoot commit -m 'Record active feature claim and session lock' --quiet 2>&1
 $null = & git -C $projectRoot checkout main 2>&1
-$null = & git -C $projectRoot merge --no-ff 051-multi-session-foundation -m 'Merge feature 051' 2>&1
+$null = & git -C $projectRoot merge --no-ff 051-multi-session-foundation -m 'Merge pull request #999 from alonf/051-multi-session-foundation' 2>&1
 
 $closeoutResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
     '-ProjectPath', $projectRoot,

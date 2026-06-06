@@ -1,0 +1,995 @@
+# Feature Specification: Design Gate Runtime Hardening + Smoke-Test Bundle
+
+**Feature Branch**: `141-design-gate-runtime-hardening`  
+**Created**: 2026-06-02  
+**Status**: Draft  
+**Input**: User description: "Specify a new feature `design-gate-runtime-hardening` covering the full smoke-test hardening bundle, split into iterations. Iteration 1 stays focused on the design-gate runtime path; later iterations carry the four smoke-test bugs. Include Proposal 156 lens catalog only as lightweight read-only input. Typed/rendered packets only for the design-analysis gate, not full Proposal 155."  
+**Source Proposals**: file:///C:/Dev/Specrew-design-analysis/proposals/137-design-alternatives-analysis-gate.md (parent gate), file:///C:/Dev/Specrew-design-analysis/proposals/155-typed-boundary-gate-packets.md (typed packet — scoped to design-analysis only), Proposal 156 Design Analysis Lens Knowledge Catalog (lightweight read-only slice; lives on main)  
+**Builds on**: Feature 140 (file:///C:/Dev/Specrew-design-analysis/specs/140-design-analysis-gate/) — the design-analysis gate helper and plan-boundary enforcement this feature hardens.
+
+## Context
+
+Feature 140 shipped the minimal design-analysis gate: a validator helper
+(`scripts/internal/design-analysis-gate.ps1`) plus enforcement wired into the
+`plan` boundary-sync path. That enforcement fires at boundary sync — after plan
+artifacts already exist. The gate is real but not yet *felt* end to end: nothing
+scaffolds the `design-analysis.md` artifact for the Crew to fill, the human
+approval object is still free-form coordinator prose, and `plan.md` can be
+authored before the design decision is validated. Separately, a manual smoke of
+the Feature 140 runtime surfaced four concrete defects in the launch/runtime
+path that must be fixed without losing them to backlog.
+
+This feature hardens the design-gate runtime into an enforced, human-felt
+experience and folds in the smoke-test defect bundle, split across iterations.
+
+## User Scenarios & Testing *(mandatory)*
+
+### User Story 1 - Enforced Design Analysis Before Plan (Priority: P1)
+
+As a human developer approving Specrew lifecycle work, I need the design-analysis
+gate to be enforced *before* `plan.md` is authored — not just acknowledged at
+boundary sync afterward — so a substantive plan can never be produced before the
+design decision exists and is valid.
+
+**Why this priority**: This closes the core gap left by Feature 140. Boundary-sync
+enforcement runs after plan artifacts are already written; the value of the gate
+is preventing plan content from being shaped before the design is chosen.
+
+**Independent Test**: Run a substantive iteration through clarify/before-plan and
+confirm (a) a conformant `design-analysis.md` is scaffolded for the iteration,
+(b) attempting to produce `plan.md` while the artifact is missing/invalid or the
+Human Decision is absent is blocked with an actionable message, and (c) once the
+artifact and a recorded human decision are valid, plan authoring proceeds.
+
+**Acceptance Scenarios**:
+
+1. **Given** a substantive iteration at the design-analysis stop, **When** the
+   gate is reached, **Then** a `design-analysis.md` artifact is scaffolded whose
+   structure matches the Feature 140 validator contract (problem framing,
+   decision points, alternatives with required per-option fields, Crew
+   recommendation, Human Decision).
+2. **Given** a missing or structurally invalid `design-analysis.md`, **When**
+   `plan.md` generation is attempted, **Then** the attempt is blocked before any
+   substantive `plan.md` content is written, with a message naming the missing
+   artifact or section.
+3. **Given** a valid `design-analysis.md` whose Human Decision section has no
+   chosen option or commit hash, **When** `plan.md` generation is attempted,
+   **Then** the attempt is blocked until a human decision is recorded.
+4. **Given** a valid artifact and a recorded human decision, **When** plan
+   authoring proceeds, **Then** the human-selected option and modifications are
+   preserved as authoritative plan input.
+
+---
+
+### User Story 2 - Typed, Rendered Design-Analysis Gate Packet (Priority: P1)
+
+As a human approving the design-analysis stop, I need the approval object to be a
+Specrew-rendered, validated packet built from typed fields — not just free-form
+coordinator prose — so the gate packet I approve is consistent, complete, and
+trustworthy for the design-analysis boundary specifically.
+
+**Why this priority**: Free-form prose packets drift from the underlying decision
+record (the D-004/D-005 class behind Proposal 155). Rendering the design-analysis
+packet from typed fields makes the human-visible approval object reliable. Scoping
+it to this one gate keeps the slice small.
+
+**Independent Test**: Provide typed design-analysis packet fields and confirm
+Specrew renders a packet containing the required human re-entry sections and the
+`approved for plan with Option <X>` verdict shape, validates it, and refuses to
+advance the design-analysis boundary when required fields or `file:///` references
+are missing.
+
+**Acceptance Scenarios**:
+
+1. **Given** typed design-analysis packet fields, **When** the packet is rendered,
+   **Then** it contains the required human re-entry sections and pins review
+   targets as `file:///` references.
+2. **Given** a rendered packet missing a required section or containing bare
+   (non-`file:///`) artifact references in its prose, **When** packet validation
+   runs, **Then** validation fails with an actionable message naming the section
+   and offending reference.
+3. **Given** a validated design-analysis packet, **When** the human approves with
+   a chosen option, **Then** the chosen option propagates into the Human Decision
+   section and plan input.
+
+---
+
+### User Story 3 - Applicable Design Lenses Surfaced in Design Analysis (Priority: P2)
+
+As a developer doing design analysis, I want the Crew to reference the repo-local
+design-lens files and render an "Applicable Lenses" section in `design-analysis.md`
+that lists only the lenses that actually apply to my feature — chosen by a short
+applicability questionnaire (recorded as JSON) — so the option comparison is informed
+by the relevant lens knowledge without noise and without a heavy new subsystem.
+
+**Why this priority**: This raises design-analysis quality by reusing existing lens
+files and tailoring them per feature. Per Amendment A1 (2026-06-03), the
+questionnaire-driven selection (FR-025) is now in scope for Iteration 4; only the
+truly-deep Proposal 156 automation (overrides, schema-validation enforcement, broad
+cross-phase automation) remains deferred.
+
+**Independent Test**: Run design analysis for a feature with a clear quality profile,
+answer the applicability questionnaire, and confirm `design-analysis.md`'s "Applicable
+Lenses" section names exactly the selected lenses, that re-running with the same answers
+yields the same set (deterministic), that a recorded JSON artifact explains each
+include/exclude, that it degrades gracefully when no lenses/answers exist, and that no
+project-local override, lens-schema validator, or broad lens automation was introduced.
+
+**Acceptance Scenarios**:
+
+1. **Given** existing repo-local lens files and recorded questionnaire answers, **When**
+   design analysis runs for a substantive feature, **Then** `design-analysis.md` includes
+   an "Applicable Lenses" section listing exactly the lenses the answers select
+   (foundational always-on + specialized lenses gated by a "yes"), read-only.
+2. **Given** the same recorded answers, **When** selection runs again, **Then** the
+   selected lens set is identical (deterministic), and the JSON artifact records why each
+   lens was or was not selected.
+3. **Given** the scope boundary, **When** review inspects the change, **Then** no
+   project-local lens override, lens-schema validator, or broad cross-phase lens-loading
+   automation was added by this feature (the questionnaire selection is in scope; the
+   deeper 156 automation is not).
+4. **Given** a downstream project with no lens catalog or no answers, **When** design
+   analysis runs, **Then** the "Applicable Lenses" section degrades gracefully (states
+   none available) rather than erroring.
+
+---
+
+### User Story 4 - Correct Start-Packet Artifact Paths (Priority: P2)
+
+As a developer reading a generated start packet, I need every artifact path to be
+complete so I never see broken `specs//...` references with an empty feature
+segment.
+
+**Why this priority**: Empty path segments in the human-visible start packet break
+clickable references and erode trust in the handoff. Smoke-test defect.
+
+**Independent Test**: Generate a start packet in a scenario that previously
+produced an empty `specs//...` segment and confirm every emitted artifact path
+contains a non-empty feature segment.
+
+**Acceptance Scenarios**:
+
+1. **Given** a launch/resume scenario, **When** the start packet is generated,
+   **Then** no emitted artifact path contains an empty segment such as `specs//`.
+2. **Given** a feature reference is unavailable, **When** the start packet is
+   generated, **Then** the packet either omits the path or emits an explicit
+   placeholder rather than a malformed empty-segment path.
+
+---
+
+### User Story 5 - Quiet, Trustworthy Greenfield/Downstream Runs (Priority: P2)
+
+As a developer in a greenfield or downstream project, I need Specrew to suppress
+warnings that do not apply so genuine signals are not buried in noise.
+
+**Why this priority**: Noisy spurious warnings in fresh/downstream projects train
+users to ignore warnings, defeating the governance signal. Smoke-test defect.
+
+**Independent Test**: Run lifecycle commands in a freshly bootstrapped greenfield
+project and in a downstream project and confirm warnings that do not apply to that
+project class are not emitted.
+
+**Acceptance Scenarios**:
+
+1. **Given** a freshly bootstrapped greenfield project, **When** a lifecycle
+   command runs, **Then** warnings that only apply to the Specrew self-host or to
+   in-flight history are not emitted.
+2. **Given** a downstream project, **When** a lifecycle command runs, **Then** the
+   emitted warnings are limited to ones genuinely actionable in that project.
+
+---
+
+### User Story 6 - Correct Fresh-Greenfield Baseline Commit Handling (Priority: P2)
+
+As a developer starting a brand-new greenfield project, I need the lifecycle
+baseline commit to be established and resolved correctly so boundary state and
+baseline references do not point at a missing or wrong commit.
+
+**Why this priority**: A wrong or missing baseline commit corrupts boundary-state
+provenance from the very first boundary. Smoke-test defect.
+
+**Independent Test**: Bootstrap a fresh greenfield project, run the first
+lifecycle boundary, and confirm the baseline commit reference resolves to a real
+commit and is recorded consistently in start context and boundary state.
+
+**Acceptance Scenarios**:
+
+1. **Given** a fresh greenfield project with no prior history, **When** the first
+   boundary is recorded, **Then** the baseline commit reference resolves to a real
+   commit hash.
+2. **Given** the baseline commit is recorded, **When** subsequent boundaries read
+   it, **Then** the recorded baseline is consistent across start context and
+   boundary state.
+
+---
+
+### User Story 7 - Host-Accurate Launch Wording (Priority: P3)
+
+As a developer launching on a specific host, I need runtime/launch wording to match
+that host so I never see another host's terminology, such as "Copilot approval
+mode" during a Claude launch.
+
+**Why this priority**: Wrong-host wording is a correctness and trust defect in the
+generated guidance, even though it is cosmetic. Smoke-test defect.
+
+**Independent Test**: Launch on the Claude host and confirm no Copilot-specific (or
+other non-selected-host) wording appears in the generated guidance; repeat per host.
+
+**Acceptance Scenarios**:
+
+1. **Given** a Claude-host launch, **When** the start guidance is generated,
+   **Then** it contains no Copilot-specific approval-mode wording or other
+   non-selected-host terminology.
+2. **Given** any selected host, **When** the start guidance is generated, **Then**
+   host-conditional wording reflects the selected host only.
+
+---
+
+### Edge Cases
+
+- A trivial, doc-only, or small-fix iteration reaches the pre-plan path; the
+  enforced-before-plan behavior must respect Feature 140's narrow applicability
+  rule and not hard-block non-substantive work.
+- The design-analysis artifact exists but the scaffold and the validator contract
+  disagree on a required section; the scaffold MUST match the validator contract
+  so a freshly scaffolded artifact is not immediately invalid.
+- `plan.md` already exists from a prior run; re-entering the design-analysis stop
+  must not treat the stale plan as approval, and must still require a valid current
+  decision before regenerating plan content.
+- A smoke-bug fix would require touching a Unix-install/shell-wrapper/bootstrap file
+  owned by the parallel Unix feature; the fix must stay minimal and explicitly
+  scoped, or be deferred with a recorded reason.
+- Lens files are absent or empty in a downstream project; the "Applicable Lenses"
+  section must degrade gracefully (state none applicable) rather than error.
+
+## Requirements *(mandatory)*
+
+### Functional Requirements
+
+#### Design-gate runtime path (Iteration 1 focus)
+
+- **FR-001**: Specrew MUST scaffold a per-iteration `design-analysis.md` whose
+  structure conforms to the Feature 140 validator contract (problem framing,
+  decision points, alternatives with required per-option fields, Crew
+  recommendation, Human Decision), so a freshly scaffolded artifact is shaped to
+  pass validation once filled.
+- **FR-002**: Specrew MUST validate the design-analysis artifact before `plan.md`
+  is generated for a substantive iteration, in addition to the existing Feature
+  140 plan-boundary-sync enforcement.
+- **FR-003**: Specrew MUST prevent substantive `plan.md` content from being
+  authored until the design-analysis artifact is structurally valid AND the Human
+  Decision section records a chosen option and commit hash.
+- **FR-004**: Specrew MUST render the design-analysis human gate packet from typed
+  fields rather than relying solely on free-form coordinator prose.
+- **FR-005**: Specrew MUST validate the rendered design-analysis gate packet for
+  the required human re-entry sections, the `approved for plan with Option <X>`
+  verdict shape, and `file:///` artifact references before the design-analysis
+  boundary advances toward plan.
+- **FR-006**: The typed/rendered packet capability in this feature MUST be scoped
+  to the design-analysis gate only. It MUST NOT implement the full Proposal 155
+  multi-boundary typed-packet architecture (per-boundary `gates/` layout across
+  all boundaries, packet hashing/replay command, all gate-type templates) within
+  this feature.
+- **FR-007**: Specrew MUST preserve the human-selected option and modifications as
+  authoritative plan input, continuing Feature 140 FR-012 behavior through the
+  hardened pre-plan path.
+- **FR-008**: Specrew MUST build on the existing Feature 140 design-analysis-gate
+  helper and plan-boundary enforcement rather than rewriting them.
+
+#### Lens catalog + applicability selection (Iterations 4-11; amended 2026-06-04 — Amendments A1, A2, A3, A4, A5; 2026-06-05 — Amendments A6, A7)
+
+- **FR-009**: The repo-local design-lens knowledge (`extensions/specrew-speckit/knowledge/design-lenses/`)
+  MUST inform the lifecycle, not merely a single design-analysis section: for each selected lens, its
+  **Design Decision Points** surface into the work so the requirements (specify), the design's option
+  comparison, and the plan are genuinely informed by the lens knowledge (not a list of names). The
+  design analysis MUST address each selected lens (enforced by FR-026). *(Amended — A3: broadened from
+  "render an Applicable Lenses section in design-analysis.md" to "inform requirements + design + plan.")*
+- **FR-025**: Specrew MUST conduct lens intake as an **interactive, expertise-adapted, per-lens design
+  workshop** the Crew runs with the human **early — before clarify (FR-027)** — **not** a binary
+  applicability questionnaire. (a) **Applicability is AI-inferred, human-confirmed:** the Crew proposes
+  which lenses apply (with its reasoning) and the human confirms or adjusts; the Crew MUST NOT make the
+  human answer *obvious* applicability (a screen-capture app plainly has UI) and MUST NOT silently
+  auto-resolve a material lens area. (b) **Per-lens facilitated discussion:** for each applicable lens
+  the Crew acts as workshop coordinator — raising that lens's substantive design questions (drawn from
+  the lens's decision points, FR-009; e.g. UI → theme, controls, layout, contrast, DPI, smoothness,
+  technology), offering options where useful, capturing the human's needs, decisions, and explicit
+  agreement, and **iterating until the human says "move on"** before proceeding to the next lens. (c)
+  **Depth adapts to expertise:** explain more and recommend defaults where the relevant dial is low; ask
+  concise expert-level questions where it is high (F-016 interaction model). (d) **Right-sized:** the
+  workshop scales to the feature, the inferred applicability, and expertise — not a fixed nine-lens
+  marathon. MCQ MAY be used *within* the discussion, but the intake MUST NOT collapse into a one-shot
+  multiple-choice prompt; it is a guided conversation until the human is done. Specrew MUST also
+  **surface the assumed expertise** it adapts to — the recorded profile rendered in the visible session
+  orientation as a concise, correctable one-liner (e.g. "I'll treat you as expert on Software
+  Architecture, mid-level on UX/UI Design — correct me if that's off"), whose level bands match the
+  runtime adaptation cutoffs — so the human sees and can correct the assumed level before adaptation
+  (the transparency half of expertise-adaptation). The confirmed applicability and the per-lens design
+  decisions/agreement are recorded as a JSON artifact; lens **selection** from the confirmed
+  applicability remains a **deterministic, LLM/network-free function** of that applicability + a
+  question→lens map (foundational always-on; specialized gated by their mapped applicability), so
+  identical inputs yield the same set and the JSON is the audit trail. The workshop conduct itself is
+  behavioral (prompt-driven); the deterministic gate (FR-026) enforces only that a per-lens decision was
+  *recorded*, not its quality — runtime dogfooding is the quality check. *(Amended — A3: was a fixed
+  questionnaire the Crew MAY answer → interactive, early, expertise-adapted; A4: the questionnaire form
+  is replaced by a per-lens facilitated workshop with AI-inferred applicability, built Iteration 7; the
+  Iteration 4-6 selector, sibling map, decision-point extractor, and coverage gate are retained as the
+  engine beneath the workshop.)*
+- **FR-026**: The pre-plan design-analysis gate MUST enforce **lens coverage** — for each lens the
+  FR-025 questionnaire selected, the design analysis MUST record that the lens's decision points were
+  addressed (a deterministic per-lens "Addressed:" coverage entry, with explicit grandfathering — not
+  inferred from missing entries). The gate MUST block `plan.md` when a selected lens is unaddressed,
+  naming it. The check is deterministic and LLM/network-free (it verifies a non-placeholder coverage
+  entry per selected lens; it does not judge semantics — an anti-omission backstop, not a quality
+  guarantee).
+- **FR-027**: The lens-applicability intake (FR-025) MUST run as an **early lifecycle step, before
+  clarify**, so its recorded answers are an input that shapes the requirements (specify), the clarify
+  questions, the design analysis, and the plan — not only the `design-analysis.md` "Applicable Lenses"
+  section. The selected lenses' decision points MUST be available to those earlier phases. *(New — A3.)*
+- **FR-028**: File references MUST obey their rendering context. Human-facing **console/terminal** prose
+  (orientation, boundary packets, narration) uses bare `file:///` URLs (terminal-clickable); **persisted
+  `.md` artifacts** (design-gate packets, review, design-analysis, retro, etc.) use markdown links
+  `[text](relative-path)` so they navigate in an editor — a reference MAY carry both. The boundary-handoff
+  bare-path rule MUST honor this context and MUST NOT flag non-path `token/token` prose (e.g. `RRT/Bug1`,
+  `FR/SC`) as a bare path. *(New — A3; supersedes the blanket "bare `file:///` everywhere" reading of the
+  packet rule.)*
+- **FR-010**: The lens integration MUST stay scoped. The A3 re-scope changes **when** the questionnaire
+  runs (early — FR-027), **who** answers (the human, interactively — FR-025), and **how** the answers
+  flow (into requirements/design/plan — FR-009); it **retains** the Iteration 4-5 engine (deterministic
+  selector, sibling map, decision-point extractor, FR-026 coverage gate). **Truly-deep Proposal 156
+  automation — project-local lens overrides, validation of the lens FILES against a schema, and broad
+  cross-phase lens automation — remains deferred** and MUST NOT be implemented here. The questionnaire +
+  "Applicable Lenses" surface MUST degrade gracefully (state "none available") when the catalog or the
+  answers are absent (e.g. a downstream project without lenses).
+
+> **Amendment A1 (2026-06-03, maintainer-directed):** FR-009/FR-010 were originally pre-deferred
+> (2026-06-02) as a *lightweight read-only* surface-the-catalog slice, with all selection
+> automation deferred to Proposal 156's deeper scope. They are now **un-deferred into Iteration 4**
+> and expanded to include questionnaire-driven applicability selection (FR-025). **Rationale:** the
+> selection work is ~12-15 SP (one iteration, under the 20 SP cap) and the release-overhead of a
+> separate feature (branch + universal beta-publish + manual install validation + PR + closeout)
+> is not justified for that size when Feature 141 is already open and will ship one release cycle.
+> Only the *truly-deep* 156 items (overrides, schema-validation enforcement, broad automation) stay
+> deferred. Because FR-025 introduces a new mechanism + artifact, Iteration 4 is **substantive** and
+> runs the design-analysis gate (FR-001..FR-008) it built — the first such use within this feature.
+>
+> **Amendment A2 (2026-06-03, maintainer-directed):** Iteration 4 shipped the selection plumbing +
+> a lens-name list, which under-delivered FR-009's stated intent ("the option comparison *informed
+> by* the lens knowledge"). **Iteration 5** completes it as the complete, state-of-the-art package:
+> FR-009 now surfaces each selected lens's **Design Decision Points** into the analysis, and **FR-026
+> (new)** makes the pre-plan gate **enforce lens coverage** (block `plan.md` if a selected lens is
+> unaddressed). This **un-defers the enforcement** that A1/FR-010 had parked; only validation of the
+> lens FILES against a schema + project-local overrides + broad cross-phase automation stay deferred.
+> Maintainer directive: "implement all, the complete package, state of the art."
+>
+> **Amendment A3 (2026-06-04, maintainer-directed after an empirical manual end-to-end test):** A fresh
+> greenfield run of the Iteration 4-5 lens feature surfaced that it **missed its core intent** — the
+> questionnaire was *auto-answered by the agent* at the *design-analysis stop* (post-clarify). The
+> maintainer's intent is that lens selection is an **interactive, expertise-adapted human intake**
+> (FR-025) run **early, before clarify** (FR-027), so its answers shape the requirements, clarify,
+> design, and plan (FR-009), and that file references obey a **console-vs-persisted context model**
+> (FR-028). The Iteration 4-5 *mechanics* (selector, sibling map, decision-point extractor, FR-026
+> coverage gate) are sound and **retained as the engine**; what changes is the placement, the
+> interactivity, and the flow. **Iteration 5 is closed (mechanics delivered); the re-scope is built in
+> Iteration 6.** Two cross-feature flow bugs the test exposed (downstream `Specrew.psd1` FileList-sort
+> warning; handoff-validator `token/token` bare-path false-positive) are bundled — see the Smoke-test
+> bug bundle. Maintainer directive: "extend the effort to do things right — replan, fix all."
+>
+> **Amendment A4 (2026-06-04, maintainer-directed after a second empirical manual end-to-end test):**
+> A fresh greenfield run confirmed the Iteration 6 intake is now interactive, early, and
+> expertise-adapted — but still a **binary applicability questionnaire** ("which of these apply: UI?
+> security? data?…"), which the maintainer rejects on two counts: (1) it asks the human to confirm
+> *obvious* applicability the AI already infers correctly (a capture-plus-gallery app plainly has UI),
+> and (2) it never *discusses* any lens. The intended model is a **per-lens facilitated design
+> workshop**: the AI **infers** which lenses apply (human confirms or adjusts — no obvious yes/no),
+> then for each applicable lens acts as **workshop coordinator** — raising the substantive design
+> questions for that lens (e.g. UI → theme, controls, layout, contrast, DPI, smoothness, technology),
+> offering options, capturing the human's needs, decisions, and explicit agreement, adapting how much
+> it explains to the recorded expertise dial, and iterating **until the human says "move on"** before
+> proceeding to the next lens. This is the architecture **requirements-workshop** method (the architect
+> is obligated to ask the quality-attribute questions the customer will not; questionnaires fail for
+> lack of an interactive, guided conversation). The workshop is **right-sized** to the feature, the
+> inferred applicability, and expertise — not a fixed nine-lens marathon. **Honest scope:** this is
+> primarily a **behavioral/prompt** capability. The second test proved the deterministic FR-026
+> coverage gate **cannot** enforce interaction quality — the agent emitted a structurally valid
+> `lens-applicability.json` the gate would PASS while the behavior was exactly what the maintainer
+> rejected. The enforceable surface is therefore thin (a per-lens decision/agreement record exists and
+> is non-placeholder); the real validation is a **runtime dogfood**. The workshop builds on the
+> **existing** per-lens decision points (FR-009 / `Get-SpecrewLensDecisionPoints`), enriched into
+> discussable prompts using the maintainer's architecture references for phrasing and depth — not a new
+> parallel question bank — and retains the Iteration 4-6 selector, sibling map, and coverage gate as
+> the engine. **Iteration 6 closes** (deterministic intake plus the expertise-transparency surfacing
+> delivered; the second dogfood surfaced this workshop gap, which was its purpose); the workshop is
+> built in **Iteration 7**. Two side observations from the same test are NOT folded into this feature:
+> the six-section human re-entry packet (Rule 46) collapsed into the verdict menu on the Claude host — a
+> known, persistent prompt-adherence weakness (handoff-quality track, not 141); and the
+> expertise-transparency line (FR-025) was absent from the test transcript — committed but
+> runtime-unverified, to be confirmed on a fresh `specrew start`. Maintainer directive: "the intake has
+> to be a long discussion until done… the AI is the workshop coordinator, but the human opinion and
+> agreement are important… according to the human level the agent can explain more or less about each
+> lens."
+
+#### Workshop visuals — per-lens diagram vocabulary (Iteration 8 — Amendment A5)
+
+> **Amendment A5 (2026-06-04, maintainer-directed via a per-lens workshop — the Iteration 7 capability
+> dogfooded on Feature 141 itself):** the lens workshop and design discussions gain a **visual
+> whiteboard**. The decisive reframe from the workshop: visuals are a **per-lens diagram vocabulary** —
+> each design lens gets its native diagram, making that lens's discussion concrete — NOT "UI mockups".
+> Decisions are recorded in
+> file:///C:/Dev/Specrew-design-analysis/specs/141-design-gate-runtime-hardening/iterations/008/lens-applicability.json
+> (the workshop record, SC-021 shape). The capability is the same **behavioral-content / deterministic-emit**
+> split as the workshop conduct (FR-025): the agent authors the diagram content; a deterministic helper
+> emits the file + clickable link. Validated by a runtime dogfood (behavioral), with the catalog + emit
+> helper as a unit-tested deterministic floor.
+
+- **FR-030**: The lens workshop and design-analysis MAY render a **per-lens diagram** to make a lens's
+  discussion concrete, from a `lens → diagram-type → render-form` catalog: security-compliance →
+  trust-boundary + attack-surface; data-storage → ERD (relational) and NoSQL document relations
+  (references by JSON-path of identities); architecture-core → component/service/flow;
+  devops-operations → deployment topology; ui-ux → layout/wireframe, screen-navigation flow, state; plus
+  cross-cutting **flows** (user + system actions, sequence) and **comparison tables** (options/trade-offs).
+  The catalog is a sibling data file; `index.yml` stays pure.
+- **FR-031**: Visuals MUST be surfaced in **tiers** — inline (console ASCII or a fenced mermaid block)
+  for quick/ephemeral; a **temp file + clickable `file:///` link** for richer or kept-while-discussing;
+  **persisted** (inline mermaid in the design doc) for keepers. Mermaid is the default form; ASCII for
+  console; svg/html for richer wireframes. The agent authors the diagram content; a **deterministic,
+  LLM/network-free helper** writes the file + emits the link, reusing the FR-028 console-vs-persisted
+  reference model.
+- **FR-032**: Intake MUST be **bidirectional, offered per lens** — the Crew offers to plot the lens's
+  diagram from the discussion AND asks whether the human has an existing diagram, document, Figma export,
+  or whiteboard photo. A provided artifact is referenced via a `file:///` link, used as design context,
+  and MAY be transcribed to mermaid so it persists. Accept-a-file/image only — no live external API
+  (Figma intake is an export, not an OAuth integration).
+- **FR-033**: Temp visuals MUST be **ephemeral** — under `.specrew/workshop-visuals/`, gitignored,
+  cleaned at iteration close. **Keepers** are inline mermaid in the design document (version-controlled
+  text); svg/html is persisted as a referenced file ONLY when richer-than-mermaid is required.
+
+#### Collaborative architecture & design (Iteration 9 — Amendment A6)
+
+> **Amendment A6 (2026-06-05, maintainer-directed after the third empirical manual end-to-end test):**
+> The iteration-8 visual dogfood (testLenses4, feature 001-doc-translation) was a strong run — the
+> per-lens workshop (A4) and the visuals (A5) both fired — but it exposed that the design work is still
+> **a questionnaire followed by a unilateral deliverable, not a collaboration**: (1) the Crew never
+> offered the **design method / decomposition style** (DDD / IDesign / modular monolith / microservices /
+> layered) as a discussion — the human had to drag it out; (2) at design-analysis the Crew authored three
+> finished architectures (service lists, responsibilities, transports, stores) for the human to pick from
+> — the human never **co-designed** the components, their responsibilities, or the flows; (3) the workshop
+> never framed the phases (that intake gathers inputs and the system structure is decided *with the human*
+> at design-analysis); and (4) — folding in the A5 surfacing gap — the per-lens diagrams were written to
+> disk but never **surfaced in-band**, so the human saw none (and the ui-ux lens produced none). The
+> maintainer dispositioned the fix **inside Feature 141** (not a new feature): make the design-analysis a
+> genuine **co-design session**. Like A4/A5 this is primarily a **behavioral/prompt** capability with a
+> thin deterministic floor — the gate cannot judge whether a real collaboration happened (a structurally
+> valid co-design record would PASS while the behavior was unilateral), so the acceptance evidence is a
+> **runtime dogfood** (SC-024); the enforceable floor (SC-025) is only that a co-design record
+> (component-to-responsibility map + at least one agreed flow + a human-agreed marker) was *recorded*. The
+> two-tier model the same test suggested — an app/product-level workshop once, then a short per-feature
+> workshop — is **genuinely new structure and is NOT in A6**; it is filed as a separate proposal.
+> Maintainer directive: "we need to collaborate about the components, their responsibility, the flows."
+
+- **FR-034**: The lens workshop MUST **frame the phases** for the human at the outset — that the workshop
+  gathers inputs and constraints, and that the system **structure** (components, responsibilities, flows)
+  is co-designed *with the human* at the design-analysis step, not decided during intake — so the human
+  knows the collaboration is coming and what each phase decides.
+- **FR-035**: For a feature with an architecture-core lens, the workshop MUST raise the **design method /
+  decomposition style** (e.g. DDD bounded-contexts, IDesign volatility-based, modular monolith,
+  microservices, layered) as an explicit, **expertise-adapted discussion** — explaining the candidates and
+  trade-offs at a depth matched to the dial, recommending where the dial is low, and capturing the human's
+  choice as a binding constraint for the design analysis and plan. It MUST NOT be a bare multiple-choice
+  prompt and MUST NOT be silently assumed by the Crew.
+- **FR-036**: The design-analysis MUST be conducted as a **co-design session**, not a unilateral
+  deliverable. Before presenting the consequential options/recommendation, the Crew MUST co-build, **with
+  the human**: (a) the **component/service breakdown with each component's responsibility**, inviting the
+  human to rename, split, merge, or reassign; and (b) at least one key **flow** (user actions + system
+  actions) walked through those components — iterating until the human agrees the decomposition,
+  responsibilities, and flows are right. ONLY THEN does the Crew present the remaining trade-off **options**
+  (e.g. transport, store technology, granularity) for the human's verdict. Depth adapts to expertise: where
+  the architecture dial is low the Crew MAY drive the decomposition and explain more, but MUST still
+  **confirm** the responsibilities and flows with the human rather than authoring them silently. The
+  visuals (A5 / FR-030, FR-031) are the medium — the co-design is conducted on a shared diagram. The
+  conduct is behavioral (validated by the dogfood, SC-024); the deterministic floor (SC-025) enforces only
+  that the co-design record was recorded.
+- **FR-037**: When the workshop or design-analysis produces a visual, it MUST be **surfaced in-band** in
+  the human-facing conversation — an inline render that actually DISPLAYS on the host (**console ASCII on a
+  terminal host, where a fenced mermaid block is source text, not a rendered picture**) and/or a **clickable
+  `file:///` link** to a written mermaid/svg/html file — **never written to disk only, and never only as
+  mermaid source the human cannot see**. A per-lens diagram is
+  **expected** (not merely permitted) for structural lenses (architecture-core, data-storage,
+  security-compliance, integration-api, devops-operations) and for any UI-bearing feature (ui-ux: a
+  layout/flow sketch). This tightens FR-031's tier policy from *may-surface* to **must-surface-in-band**
+  and supersedes the permissive reading that allowed a disk-only artifact. *(Folds the Iteration-8
+  visual-dogfood findings #3 and #5.)*
+
+#### Confirmation integrity & intake responsiveness (Iteration 11 — Amendment A7)
+
+> **Amendment A7 (2026-06-05, maintainer-directed after the testLenses7codex Copilot/Squad dogfood):**
+> The iteration-10 relocation succeeded — the `specrew-design-workshop` skill auto-loads and surfaces in-band
+> on Claude (testLenses6), and the testLenses7codex run confirmed the iteration-10 refinements (the SC-021
+> record shape, diagram persistence, and MCQ form). But on the **Squad/Copilot host** that same run exposed
+> that the workshop recorded **seven "Human agreed" per-lens decisions after only ~three human questions** —
+> five lenses were never surfaced; the coordinator judged intake "specific enough" and the specify dispatch
+> **backfilled synthetic, attributed agreements**. Root cause (empirically traced, advisor-corrected): not
+> delegation — the coordinator asked the first three interactively — but its **stopping judgment**, driven by
+> the Squad "launch aggressively / background-default" persona; the per-lens loop for the remaining lenses was
+> never entered. This makes FR-036 co-design **host-dependent**: it holds on Claude's single-agent loop and
+> collapses under Squad's coordinator-dispatch. The maintainer dispositioned the fix **inside Feature 141**
+> ("the feature is not done if we find such a huge problem"): an integrity invariant the agent cannot satisfy
+> by manufacturing agreement, plus an intake UX that turns the unavoidable prep latency into productive human
+> preparation. As with A4/A5/A6 the collaboration quality is **behavioral** — the deterministic floor (SC-026)
+> can enforce that a per-lens **provenance value** is present but cannot verify the human was actually asked —
+> so the acceptance is a **Squad re-dogfood** (SC-027). The "never synthesize agreement" rule has **one
+> explicit exception**: the human may ask to skip a lens or to have the agent decide it.
+
+- **FR-038**: The workshop MUST record a per-lens decision as **human-agreed only when the human was surfaced
+  that lens and confirmed it**. It MUST NOT manufacture an agreement and attribute it to the human for a lens
+  the human never saw. The human MAY explicitly **delegate** ("you decide") or **skip** a lens or the
+  remainder; when they do, the agent MAY proceed, but MUST record the lens **honestly by its provenance**
+  (delegated/skipped, with the human's actual instruction) — **never** as a fabricated "Human agreed:
+  \<position>". Intake MUST NOT be declared "specific enough" while selected lenses remain neither confirmed
+  nor explicitly delegated/skipped. The agent MUST self-check the **count**: if N lens agreements are recorded,
+  the human was asked — or explicitly delegated/skipped — N times.
+- **FR-039**: Each selected lens's workshop record MUST carry a **provenance** value —
+  `human-confirmed | human-delegated | human-skipped` — and the specify boundary MUST NOT finalize until every
+  selected lens carries one. This is the deterministic, structural half of FR-038: the gate cannot verify the
+  human was asked, but it can require the agent to **declare** how each lens resolved, making a synthetic
+  agreement an explicit, auditable claim rather than buried prose.
+- **FR-040**: The workshop MUST keep the human oriented through the intake preparation latency. Before the
+  heavy prep it MUST (a) **announce** that it is preparing the workshop and that this takes a moment (so a
+  pause does not read as a hang), and (b) present the **agenda as an assignment** — the lenses to be worked and
+  the decision each one asks of the human — so the human can prepare or research while waiting. When lenses are
+  loaded lazily, each lens transition MUST surface a **progress cue** ("preparing lens X of N: \<lens>") and
+  tell the human what that lens will decide so they can get ready. Part of the prep latency is host/model, not
+  Specrew's to remove; this requirement governs the **experience** — turning dead air into preparation, which
+  also reinforces FR-038 since a prepared, per-lens-cued human cannot be silently skipped.
+
+#### Confirm-point presentation: front-loaded catalog + open-question-first (Iteration 11 — Amendment A8)
+
+> **Amendment A8 (2026-06-05, maintainer-directed after the testLenses8 + testLenses11 Claude dogfoods):**
+> FR-037 (visual in-band) and FR-040 (agenda assignment) were first implemented as **conduct** — a skill rule to
+> "render the content in your message before the confirm menu," reinforced by fill-in templates. On the Claude
+> host this was proven insufficient **twice** (testLenses8: a component map "approve 13 named components" never
+> rendered; testLenses11: a lens agenda "8 lenses at the depths shown" never rendered) — even after the skill
+> named the exact anti-pattern and shipped a template the agent was to fill. Empirical root cause
+> (advisor-confirmed): `AskUserQuestion` is a tool call whose `question` + option `description` fields are
+> themselves a place to put content, so the host's gravity is to put the thing-being-confirmed **into the tool
+> call** instead of rendering it first. Every conduct rule shares the shape "render somewhere other than the tool
+> call" — exactly what that gravity defeats — so prose and template fail for the same reason and a further
+> instruction does not fix it. The behavior holds on Copilot + Antigravity (they render in prose first) and fails
+> on Claude, making in-band surfacing **host-dependent**. The maintainer **keeps the structured menu** (it is
+> good UX; Copilot uses it correctly) and dispositions the fix **inside Feature 141** as the **corrected
+> implementation** of FR-037 + FR-040 (folded into Iterations 11-12, as T007 was). The cross-host dogfood
+> (testLenses11) settled which measure holds: **open-question-first per lens** (open with a presentation + an open
+> question, never a menu — plus a pacing offer for a dense lens, on every host) RENDERS the lens content on Claude
+> and is the win; a **front-load-the-catalog** measure was REVERTED (a before-a-menu render, it skimmed on Claude
+> and was redundant on prose hosts that render the agenda inline). The **governing model**: open-discussion
+> renders hold on Claude; before-a-menu renders (catalog, component-map) skim → a `PreToolUse` hook or documented
+> host-variance, **never another instruction**. A deterministic floor can only presence-lock the conduct; the
+> cross-host dogfood (SC-028) is the acceptance.
+
+- **FR-041**: After i11 proved render-before-the-menu *conduct* unreliable on Claude (the `AskUserQuestion`
+  tool-gravity, A8), the workshop MUST open each lens with a **presentation followed by an open (free-text)
+  question — never a structured menu as the lens's first move** (a structured menu MAY appear only AFTER the
+  lens's content is on screen). This is the strongest available *conduct* lever — binary (the lens did or did not
+  open with a menu) and not satisfiable by stuffing the menu's question field — and it is the move that actually
+  rendered the lens content on Claude in the dogfood. For a **dense lens (three or more decision points)** the
+  closing move MUST offer a **pacing choice** — answer all at once, or step through the decisions one at a time —
+  so a dense lens does not land as a wall (a single open question bundling five subjects is as hard on
+  Copilot/Codex/Antigravity as on Claude); this applies on **every host**. **Governing model (the load-bearing A8
+  lesson, dogfood-proven cross-host):** content whose next move is **open discussion** (the per-lens open) renders
+  reliably on Claude; content that must render **right before a structured menu** (a lens catalog before the
+  agenda-confirm; a component map before its approve menu) is defeated by the tool-gravity and **skims on
+  Claude** — its reliable fix is a host-specific `PreToolUse` hook or accepting documented host-variance, **never
+  another instruction**. (An earlier front-load-the-catalog measure was reverted: a before-a-menu render, it
+  skimmed on Claude and was redundant on prose hosts that already render the agenda inline.)
+
+#### Smoke-test bug bundle (later iterations, kept in this feature)
+
+- **FR-011**: Generated start/handoff packets MUST NOT emit empty or malformed
+  artifact path segments (e.g., `specs//...`); every emitted artifact path MUST
+  contain a non-empty feature segment or omit/placeholder the path explicitly.
+- **FR-012**: Greenfield and downstream projects MUST NOT surface spurious
+  governance/runtime warnings that do not apply to a freshly bootstrapped or
+  downstream project.
+- **FR-013**: A fresh greenfield project's baseline commit MUST be established and
+  resolved to a real commit hash, recorded consistently across start context and
+  boundary state.
+- **FR-014**: Generated launch/runtime guidance MUST present host-accurate wording
+  and MUST NOT leak another host's terminology (e.g., "Copilot approval mode")
+  during a launch on a different host.
+- **FR-015**: The four smoke-test defects (FR-011 through FR-014) MUST remain
+  within this feature and MUST NOT be pushed to a separate feature.
+- **FR-029**: Boundary-state sync MUST NOT emit a spurious `Specrew.psd1` FileList-sort
+  warning in a downstream project that has no module manifest; the FileList-sort step is a
+  Specrew-repo-only operation and MUST be guarded (skipped when no `Specrew.psd1` is present).
+  (Added 2026-06-04 — Amendment A3; manual-test flow bug. The companion handoff `token/token`
+  bare-path false-positive is covered by FR-028.) Lower-priority manual-test observations —
+  `.specify/feature.json` being gitignored while the agent attempts to stage it, and the
+  version-display inconsistency (`0.31.1-beta1` banner vs `0.31.1` config vs `0.31.0` installed)
+  — are noted for triage but are not blocking FRs.
+
+#### Sequencing, scope, and governance
+
+- **FR-016**: This feature MUST be delivered across multiple iterations: Iteration
+  1 delivers the design-gate runtime path (FR-001 through FR-008) plus FR-022/FR-023
+  validator robustness (firm), at 18 SP. FR-009/FR-010/FR-025 (Applicable Lenses +
+  questionnaire-driven selection) were pre-deferred (2026-06-02) but are now scheduled as
+  **Iteration 4** (un-deferred 2026-06-03 — Amendment A1); Iterations 2-3 delivered the
+  smoke-test bug fixes (FR-011..FR-014 + FR-024). The plan MUST propose the concrete
+  iteration split and a capacity model.
+- **FR-017**: This feature MUST NOT force Feature 140 feature-closeout; Feature 140
+  remains open behind its dirty working-tree gate, and this feature stacks on the
+  Feature 140 branch tip.
+- **FR-018**: This feature MUST NOT publish beta or stable release artifacts.
+- **FR-019**: This feature MUST avoid touching Unix install, shell wrapper, and
+  bootstrap files owned by the parallel Unix-install feature unless a smoke-bug fix
+  genuinely requires it, in which case the change MUST be minimal and explicitly
+  scoped.
+- **FR-020**: Specrew MUST render, validate, AND persist the design-analysis gate
+  packet as part of the enforced pre-plan flow: the packet is stored under
+  `specs/<feature>/gates/` (design-analysis gate only, scoped per FR-006, not
+  generalized to other boundaries), and the pre-plan validator MUST fail when the
+  durable packet is missing or invalid. (Smoke-amended 2026-06-02 from "preferred"
+  to required after the external smoke showed packet persistence was an unused
+  helper that never produced a `gates/` artifact in the real flow.)
+- **FR-021**: Specrew MUST enforce "no substantive `plan.md` before the
+  design-analysis artifact and human design-gate decision are valid" via
+  coordinator-prompt enforcement plus a callable pre-plan validator in Iteration 1.
+  The binding requirement is the outcome (substantive `plan.md` is not authored
+  before a valid artifact and a recorded human decision), not a specific host-hook
+  mechanism. Host-native write-blocking hook enforcement (Proposal 105) MUST NOT be
+  pulled into Iteration 1.
+
+#### Validator robustness (folded into Iteration 1 per 2026-06-02 directive)
+
+These two requirements were discovered while dogfooding the design gate for this
+very feature; they directly affect the design-gate runtime path and stay in
+Feature 141. They are folded into Iteration 1 when within the cap; if both do not
+fit, they become a named later-iteration obligation **within this feature** rather
+than deferring to another feature.
+
+- **FR-022**: The design-analysis validator's By-the-book detection MUST tolerate
+  normal authored prose (for example, "By the book" with or without a hyphen)
+  while still enforcing the required option shape (Simplest and Reasonable
+  mandatory; By-the-book conditional and not forced).
+- **FR-023**: The Crew Recommendation parsing MUST identify exactly one selected
+  recommended option and MUST NOT fail solely because rejected or alternative
+  options are mentioned contextually in the recommendation rationale.
+
+#### Stale cross-worktree session recovery (folded into Iteration 2, 2026-06-02)
+
+- **FR-024**: `specrew start` session recovery MUST classify saved session state as
+  stale runtime state when the saved session's feature path no longer exists, or it
+  points to a completed/merged feature outside the current worktree. In that case it
+  MUST NOT re-anchor to a deleted external worktree path; it MUST offer a safe
+  cleanup that clears the stale `active-sessions`/`start-context` references WITHOUT
+  touching feature artifacts or making lifecycle commits; it MUST report the current
+  branch, the stale feature refs, and the selected active-feature candidate; and it
+  MUST require explicit human confirmation before performing cleanup. Regression
+  coverage MUST cover this scenario. (Discovered 2026-06-02 in the Linux/native-install
+  smoke: a stale Feature 051 `active-sessions.yml` entry + obsolete 051 paths in
+  start-context/last-start-prompt re-anchored recovery to a deleted worktree
+  `C:\Dev\Specrew-051`, blocking continuation of the active feature.)
+
+### Traceability & Governance Requirements *(mandatory)*
+
+- **TG-001**: Each user story MUST map to one or more functional requirements.
+- **TG-002**: Each requirement MUST identify expected owner role(s).
+- **TG-003**: Each requirement MUST identify intended iteration or delivery window.
+- **TG-004**: Any known spec/implementation conflict MUST include an explicit
+  reconciliation path.
+- **TG-005**: Planning MUST preserve the hard scope limits in this spec (scoped
+  typed packet, lightweight lenses, no release publishing, no Feature 140 closeout
+  force, Unix-surface exclusion).
+- **TG-006**: Review MUST classify each delivered behavior as implemented,
+  enforced, observable, and documented, and record gaps before closeout.
+- **TG-007**: The scaffolded `design-analysis.md` and the Feature 140 validator
+  contract MUST stay reconciled; a contract change MUST update the scaffold and
+  vice versa.
+
+### Requirement Ownership
+
+| Requirement | Owner Role(s) | Delivery Window |
+| --- | --- | --- |
+| FR-001 | Implementer, Reviewer | Iteration 1 |
+| FR-002 | Implementer, Reviewer | Iteration 1 |
+| FR-003 | Implementer, Reviewer | Iteration 1 |
+| FR-004 | Implementer, Reviewer | Iteration 1 |
+| FR-005 | Implementer, Reviewer | Iteration 1 |
+| FR-006 | Spec Steward, Planner, Reviewer | Iteration 1 |
+| FR-007 | Planner, Implementer, Reviewer | Iteration 1 |
+| FR-008 | Implementer, Reviewer | Iteration 1 |
+| FR-009 | Implementer, Reviewer | Iteration 4 (A1); Iteration 6 (informs requirements/design/plan — A3); decision points drive the per-lens workshop discussion — Iteration 7 (A4) |
+| FR-010 | Spec Steward, Planner, Reviewer | Iteration 4 (A1); re-scoped Iteration 6 (engine retained — A3) |
+| FR-025 | Implementer, Reviewer | Iteration 4 (A1); Iteration 6 (interactive, early — A3); re-scoped to Iteration 7 (per-lens facilitated workshop, AI-inferred applicability — A4) |
+| FR-026 | Implementer, Reviewer | Iteration 5 (added 2026-06-03 — Amendment A2; lens-coverage enforcement) |
+| FR-027 | Implementer, Reviewer | Iteration 6 (added 2026-06-04 — Amendment A3; lens intake before clarify) |
+| FR-028 | Implementer, Reviewer | Iteration 6 (added 2026-06-04 — Amendment A3; console-vs-persisted file references) |
+| FR-030 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; per-lens diagram vocabulary) |
+| FR-031 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; tiered render+surface) |
+| FR-032 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; bidirectional per-lens visual intake) |
+| FR-033 | Implementer, Reviewer | Iteration 8 (added 2026-06-04 — Amendment A5; ephemeral temp + mermaid-inline keepers) |
+| FR-034 | Spec Steward, Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; phase-framing) |
+| FR-035 | Spec Steward, Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; design-method co-decision) |
+| FR-036 | Spec Steward, Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; collaborative co-design at design-analysis) |
+| FR-037 | Implementer, Reviewer | Iteration 9 (added 2026-06-05 — Amendment A6; in-band visual surfacing — folds i8 dogfood #3/#5) |
+| FR-038 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; confirmation-integrity invariant + delegate/skip exception) |
+| FR-039 | Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; per-lens provenance value + specify-boundary structural floor) |
+| FR-040 | Spec Steward, Implementer, Reviewer | Iteration 11 (added 2026-06-05 — Amendment A7; intake responsiveness — prep announcement + agenda assignment + per-lens progress) |
+| FR-041 | Spec Steward, Implementer, Reviewer | Iteration 12 (added 2026-06-05 — Amendment A8; open-question-first + cross-host dense-lens pacing [the working conduct]; catalog front-load reverted — a before-a-menu render skims on Claude → hook/host-variance) |
+| FR-011 | Implementer, Reviewer | Iteration 2 (delivered 2026-06-03 — empty `specs//` start-packet path fix, T002) |
+| FR-012 | Implementer, Reviewer | Iteration 3 (delivered 2026-06-03 — spurious greenfield/downstream warning fix, T002) |
+| FR-013 | Implementer, Reviewer | Iteration 3 (delivered 2026-06-03 — greenfield baseline-commit handling, T003) |
+| FR-014 | Implementer, Reviewer | Iteration 2 (delivered 2026-06-03 — host-wording leak fix, T003) |
+| FR-015 | Spec Steward, Planner, Reviewer | All iterations |
+| FR-016 | Planner, Spec Steward | Planning |
+| FR-017 | Spec Steward, Reviewer | All iterations |
+| FR-018 | Spec Steward, Reviewer | All iterations |
+| FR-019 | Spec Steward, Implementer, Reviewer | All iterations |
+| FR-020 | Implementer, Reviewer | Iteration 1 |
+| FR-021 | Implementer, Reviewer | Iteration 1 |
+| FR-022 | Implementer, Reviewer | Iteration 1 (delivered — validator By-the-book tolerance, T003) |
+| FR-023 | Implementer, Reviewer | Iteration 1 (delivered — validator single-recommendation parser, T004) |
+| FR-024 | Implementer, Reviewer | Iteration 2 |
+| TG-001 | Planner, Reviewer | All iterations |
+| TG-002 | Planner, Reviewer | All iterations |
+| TG-003 | Planner, Reviewer | All iterations |
+| TG-004 | Spec Steward, Reviewer | All iterations |
+| TG-005 | Spec Steward, Planner, Reviewer | All iterations |
+| TG-006 | Reviewer | All iterations |
+| TG-007 | Spec Steward, Implementer, Reviewer | Iteration 1 |
+
+### Key Entities
+
+- **Design Analysis Artifact**: The per-iteration `design-analysis.md`; this
+  feature scaffolds it conformant to the Feature 140 validator contract.
+- **Design-Analysis Gate Packet**: The human approval object for the
+  design-analysis boundary, rendered from typed fields and validated (scoped to
+  this one gate, not the full Proposal 155 packet system).
+- **Pre-Plan Enforcement Point**: The runtime point at which design-analysis
+  validity is checked before `plan.md` is authored, in addition to the existing
+  plan-boundary-sync check.
+- **Applicable Lenses Section**: A read-only section in `design-analysis.md`
+  naming relevant existing repo-local lens files.
+- **Smoke-Test Defect**: One of the four runtime defects (start-packet path,
+  downstream warning noise, greenfield baseline commit, host wording leak) carried
+  in later iterations of this feature.
+- **Start/Handoff Packet**: The generated launch/resume guidance whose path
+  correctness and host-accurate wording are hardened here.
+
+## Success Criteria *(mandatory)*
+
+### Measurable Outcomes
+
+- **SC-001**: For a substantive iteration, a conformant `design-analysis.md` is
+  scaffolded whose freshly scaffolded shape passes the Feature 140 validator's
+  structural checks once filled.
+- **SC-002**: Attempting to author substantive `plan.md` with a missing or invalid
+  design-analysis artifact, or without a recorded human decision, is blocked before
+  plan content is written, with an actionable message.
+- **SC-003**: After a valid artifact and recorded human decision, plan authoring
+  proceeds and the selected option/modifications appear as plan input.
+- **SC-004**: The design-analysis gate packet is rendered from typed fields and
+  validated for required sections, verdict shape, and `file:///` references; an
+  invalid packet blocks the boundary.
+- **SC-005**: The typed-packet capability is demonstrably scoped to the
+  design-analysis gate; no full Proposal 155 multi-boundary packet system is
+  introduced.
+- **SC-006**: `design-analysis.md` includes an "Applicable Lenses" section listing the
+  lenses selected by the FR-025 questionnaire (foundational always-on + specialized lenses
+  gated by their answer), and degrades gracefully when the catalog or answers are absent; no
+  lens override / schema-validation / broad-automation subsystem is added.
+- **SC-015**: Lens selection is a deterministic function of the recorded questionnaire JSON —
+  identical answers yield an identical "Applicable Lenses" set across runs — and the JSON records
+  the per-lens include/exclude rationale. (Added 2026-06-03 — Amendment A1.)
+- **SC-016**: A design analysis that leaves a selected lens unaddressed FAILS the pre-plan gate, and
+  the failure names the unaddressed lens; once every selected lens carries a non-placeholder
+  "Addressed:" coverage entry, the gate passes. The check is deterministic and LLM/network-free.
+  (Added 2026-06-03 — Amendment A2; FR-026.)
+- **SC-017**: The lens-applicability intake runs before clarify, and its recorded answers are
+  demonstrably available as input to the requirements, clarify questions, design analysis, and plan
+  (not only the design-analysis "Applicable Lenses" section). (Added 2026-06-04 — Amendment A3; FR-027.)
+- **SC-018**: The lens questionnaire is posed to the human interactively — no material lens area is
+  silently auto-resolved — and the question depth adapts to the recorded user-profile expertise dials
+  (concise where high; explain + recommend where low). (Added 2026-06-04 — Amendment A3; FR-025.)
+- **SC-019**: Console/terminal prose renders file references as `file:///` URLs while persisted `.md`
+  artifacts render them as navigable markdown links, and the boundary-handoff bare-path rule does not
+  flag non-path `token/token` prose (e.g. `RRT/Bug1`, `FR/SC`). (Added 2026-06-04 — Amendment A3; FR-028.)
+- **SC-020**: Lens intake is conducted as a per-lens facilitated discussion, not a one-shot
+  applicability questionnaire: the Crew infers applicability and asks the human only to confirm or
+  adjust it (no obvious yes/no), then for each applicable lens raises that lens's design questions,
+  captures the human's decisions and explicit agreement, and proceeds to the next lens only on the
+  human's "move on". The conduct is behavioral; it is validated by a runtime dogfood, not a unit test.
+  (Added 2026-06-04 — Amendment A4; FR-025.)
+- **SC-021**: For each applicable lens, the recorded intake artifact carries a non-placeholder per-lens
+  entry capturing: (a) the **generated discussion agenda** (the questions raised, from the lens decision
+  points), (b) a **human decision/agreement summary**, (c) the **question depth used**, and (d) an
+  explicit **"move on"/agreement marker**. This is the deterministic, gate-checkable floor under the
+  behavioral workshop: the gate enforces the non-placeholder **presence** of these fields per selected
+  lens — it does NOT, and cannot, assess their quality (that is SC-020's runtime dogfood). A missing or
+  placeholder entry for a selected lens fails the coverage gate (FR-026). (Added 2026-06-04 — Amendment
+  A4; FR-025/FR-026.)
+- **SC-022**: In a runtime dogfood, the workshop renders at least one per-lens diagram from the catalog
+  for a discussed lens, surfaced per the tier policy (inline and/or a clickable `file:///` temp-file
+  link), and a keeper is persisted as inline mermaid in the design doc. (Behavioral — validated by the
+  dogfood, not a unit test.) (Added 2026-06-04 — Amendment A5; FR-030/FR-031/FR-032.)
+- **SC-023**: The deterministic emit helper + the `lens → diagram-type` catalog are unit-tested (the
+  floor): the helper writes the agent-authored content to the correct tier destination and returns the
+  correct surface reference (inline block / `file:///` temp link / persisted embed) reusing FR-028; the
+  catalog resolves a diagram type + render form per selected lens, degrading gracefully when a lens has
+  no mapping. Presence/shape only — the diagram's quality is SC-022's dogfood. (Added 2026-06-04 —
+  Amendment A5; FR-030/FR-031/FR-033.)
+- **SC-024**: In a runtime dogfood, the design-analysis is conducted as a **co-design**: the human shapes
+  the component/responsibility breakdown and at least one flow (renaming, splitting, or reassigning — not
+  merely approving) **before** the Crew presents the consequential options, the **design method** is
+  discussed (not assumed), and per-lens diagrams **surface in-band** (inline render and/or a clickable
+  `file:///` link, confirming FR-037 and re-confirming SC-022's surfacing clause). Behavioral — validated
+  by the dogfood, not a unit test. (Added 2026-06-05 — Amendment A6; FR-034/FR-035/FR-036/FR-037.)
+- **SC-025**: The design-analysis artifact carries a non-placeholder **co-design record** — a
+  component-to-responsibility map, at least one agreed flow, and — when ui-ux is a selected lens — the agreed
+  UI/screen layout, with an explicit human-agreed marker — recorded before the options/recommendation. The gate enforces the non-placeholder **presence** of this
+  record when the artifact marks co-design (marker-gated; pre-A6 artifacts no-op, grandfather-safe); it
+  does NOT assess collaboration quality (that is SC-024's dogfood). The check is deterministic and
+  LLM/network-free. (Added 2026-06-05 — Amendment A6; FR-036.)
+- **SC-026**: The specify-boundary lens-workshop floor (SC-021) FAILS when any selected lens lacks a valid
+  **provenance** value (`human-confirmed | human-delegated | human-skipped`) — extending SC-021 from "a record
+  exists" to "a record declares how it was resolved". Marker-gated + grandfather-safe (pre-A7 artifacts no-op);
+  deterministic and LLM/network-free. It cannot verify the human was asked (that is SC-027's dogfood).
+  (Added 2026-06-05 — Amendment A7; FR-038/FR-039.)
+- **SC-027**: In a runtime dogfood on a **multi-agent / coordinator host** (Squad/Copilot), the workshop does
+  NOT record agreements for un-surfaced lenses — every "human-confirmed" lens was actually surfaced and
+  confirmed; delegated/skipped lenses are honestly attributed; and the intake announces prep, presents the
+  agenda assignment, and cues each lazily-loaded lens. The testLenses7codex failure (synthetic agreements for
+  five un-asked lenses) does NOT recur. Behavioral — validated by the re-dogfood, not a unit test.
+  (Added 2026-06-05 — Amendment A7; FR-038/FR-039/FR-040.)
+- **SC-028**: In the consolidated cross-host re-dogfood, each lens **opens with a presentation + an open
+  question** (not a menu first), and a **dense lens offers the pacing choice** (all-at-once or one-at-a-time) —
+  confirmed WORKING on Claude (testLenses11: the per-lens render held and the step-through was used) and required
+  on every host (Copilot's per-lens bundled five subjects into one open question — the same wall). The
+  **before-a-menu renders** (the component map at the design-analysis stop) are the **governing-model edge
+  case**: expected to skim on Claude (the tool-gravity), and where they do, the resolution is a host-specific
+  `PreToolUse` hook or **documented host-variance — never another instruction edit**. Behavioral — validated by
+  the dogfood. (Added 2026-06-05 — Amendment A8; FR-041.)
+- **SC-007**: No generated packet emits an empty path segment such as `specs//`.
+- **SC-008**: A freshly bootstrapped greenfield project and a downstream project
+  emit no spurious warnings outside their genuinely-actionable set.
+- **SC-009**: A fresh greenfield baseline commit resolves to a real commit hash and
+  is recorded consistently in start context and boundary state.
+- **SC-010**: Launch guidance on a given host contains no other host's terminology.
+- **SC-011**: The implementation avoids Unix install, shell wrapper, bootstrap,
+  beta-publish, and stable-publish surfaces except for minimal, explicitly-scoped
+  smoke-bug fixes where unavoidable.
+- **SC-012**: Focused tests cover the pre-plan block/pass behavior, packet
+  render/validate behavior, and each of the four smoke-test defects.
+- **SC-013**: The plan records the concrete iteration split and capacity model and
+  keeps each iteration within the intentional per-iteration story-point cap.
+- **SC-014**: The validator accepts a well-authored design-analysis artifact whose
+  By-the-book option uses normal prose and whose recommendation names one option
+  while mentioning rejected options contextually, and still rejects a genuinely
+  multi-recommendation or malformed-option artifact (FR-022, FR-023).
+
+## Assumptions
+
+- The current non-Squad coordinator-prose runtime is the primary execution mode;
+  per the clarify decision, "block before plan.md" is realized as a generated
+  coordinator instruction plus a callable pre-plan validator in Iteration 1, with
+  no host-native hooks (Proposal 105 deferred).
+- The Feature 140 validator contract
+  (file:///C:/Dev/Specrew-design-analysis/specs/140-design-analysis-gate/contracts/design-analysis-gate.md)
+  is the authoritative shape the scaffold must match.
+- Existing repo-local lens files under the extension templates directory are the
+  read-only lens source for the "Applicable Lenses" section.
+- The four smoke-test defects are reproducible; precise root-cause confirmation and
+  fixtures are gathered when each defect's iteration is planned.
+- This feature stacks on the Feature 140 branch tip because it depends on Feature
+  140 runtime code that is not yet merged to main.
+- Each iteration stays within the intentional per-iteration story-point cap; the
+  plan splits work accordingly rather than raising the cap.
+
+## Scope Limits *(mandatory)*
+
+- Typed/rendered packets are scoped to the design-analysis gate only; do not
+  implement full Proposal 155.
+- Durable packet storage, if included, is scoped to the design-analysis gate only
+  (under `specs/<feature>/gates/` or equivalent); do not generalize to other
+  boundaries.
+- Do not pull host-native hook enforcement (Proposal 105) into Iteration 1.
+- Lens integration: Iteration 4 adds questionnaire-driven applicability selection (FR-025,
+  un-deferred per Amendment A1); still defer the truly-deep Proposal 156 scope — project-local
+  overrides, lens-schema validation enforcement, and broad cross-phase automation.
+- Keep all four smoke-test bugs inside this feature; do not push them to another
+  feature.
+- Do not force Feature 140 feature-closeout past its dirty working-tree gate.
+- Do not publish beta or stable release artifacts.
+- Avoid Unix install, shell wrapper, and bootstrap surfaces except minimal,
+  explicitly-scoped, unavoidable smoke-bug fixes.
+- Do not rewrite the Feature 140 helper or its plan-boundary enforcement; extend
+  them.
+
+## Clarifications
+
+### Session 2026-06-02
+
+- Q: How should "block before `plan.md` is authored" (FR-021) be enforced in
+  Iteration 1? A: Coordinator-prompt enforcement plus a callable pre-plan
+  validator. The binding requirement is the outcome — the Crew MUST NOT author
+  substantive `plan.md` before the design-analysis artifact and the human
+  design-gate decision are valid. Host-native hook enforcement (Proposal 105) is
+  explicitly NOT pulled into Iteration 1.
+- Q: Must the typed design-analysis gate packet be persisted (FR-020)? A: The
+  minimum acceptable behavior is render-and-validate from typed fields. A durable
+  "155-lite" packet for the design-analysis gate is preferred when it stays narrow
+  and cheap; if included, it is scoped to the design-analysis gate only (e.g., under
+  `specs/<feature>/gates/` or an equivalent design-analysis-scoped path) and is not
+  generalized to all boundaries.
+- Q: What is the iteration split (FR-016)? A: Multi-iteration feature in a single
+  feature. Iteration 1 hardens the design-gate runtime path only: exact
+  `design-analysis.md` scaffold/template, pre-plan validation before `plan.md`,
+  typed/rendered design-gate packet. (Lens inclusion was pre-deferred from Iteration 1 and is
+  now Iteration 4 — questionnaire-driven selection, Amendment A1.) Later iterations stay in this
+  feature: Iterations 2-3 cover the four smoke-test defects: empty `specs//...` start-packet
+  paths, noisy downstream
+  warnings, fresh greenfield baseline commit handling, and host wording leaks. The
+  plan proposes the concrete split and capacity model.
+- Q: How should feature 141 relate to the unmerged Feature 140 branch (FR-017)? A:
+  Stacking 141 on the Feature 140 tip is acceptable because Iteration 1 depends on
+  Feature 140 runtime code that is not yet on main. The dependency is kept explicit
+  in the artifacts, and the branch is ready to rebase/refresh after Feature 140
+  merges.
+
+### Scope addition 2026-06-02 (post design-analysis)
+
+- The two Feature 140 validator-brittleness behaviors found while dogfooding the
+  design gate (token-exact By-the-book detection; recommendation parser failing on
+  more than one option token) are folded into this feature as FR-022 and FR-023.
+  They are NOT separate future-feature work. Fold both into Iteration 1 when within
+  the 20 SP cap; if both do not fit, keep them in Feature 141 as a named
+  later-iteration obligation rather than deferring to another feature.
+- Lens pre-deferral: to keep Iteration 1 at 18 SP with implementation headroom
+  (the runtime gate path already touches scaffold, validator, packet, boundary
+  wiring, and parser behavior), FR-009/FR-010 (Applicable Lenses) were pre-deferred
+  from Iteration 1. They are now scheduled as **Iteration 4** and expanded with
+  questionnaire-driven selection (FR-025) per Amendment A1 — deferred-within-feature,
+  not dropped; FR-022/FR-023 stayed firm in Iteration 1.
+
+### Smoke amendment 2026-06-02 (post external manual smoke)
+
+An external manual smoke (`C:\Temp\SpecrewTrials\test1234`, feature
+`001-azure-bicep-upgrade-scanner`) sent the iteration back from review. The smoke
+proved the helpers were not wired into the enforced flow. The following are
+in-scope Iteration 1 corrections (see `iterations/001/manual-smoke.md`):
+
+- FR-020 elevated from "preferred" to **required-in-flow**: the pre-plan validator
+  fails when the durable `gates/` packet is missing/invalid, so packet persistence
+  is enforced, not optional.
+- FR-002/FR-003/FR-021: the generated handoff mandates the explicit sequence
+  (record decision → render packet → validate → persist → call the pre-plan
+  validator) before `plan.md`; the pre-plan validator is the enforcement point, the
+  at-sync plan-boundary gate is the artifact/decision backstop.
+- FR-008 refinement (decision-commit integrity): the Human Decision records the
+  commit that contains the populated decision (distinct from the design-analysis
+  draft commit); the validator rejects recording the draft commit as the decision
+  commit.
+- FR-004 refinement (handoff depth): the template/handoff presents a per-option
+  "design principle / why this matters" rationale.
+- FR-009/FR-010 (lens activation): confirmed **not** activated in the smoke; this was
+  expected for Iteration 1 because lenses were pre-deferred — now scheduled as Iteration 4
+  with questionnaire-driven selection (FR-025, Amendment A1), not an Iteration 1 in-scope failure.
+
+## Governance Alignment *(mandatory)*
+
+- **Spec Steward**: Owns scope boundaries (scoped packet, lightweight lenses,
+  smoke-bug containment, Unix-surface exclusion, no release publishing) and keeps
+  the scaffold reconciled with the Feature 140 validator contract.
+- **Iteration Facilitator**: Planner proposes the multi-iteration split and
+  capacity model; Iteration 1 is the design-gate runtime path, later iterations are
+  the smoke-test bugs.
+- **Capacity Model**: Multi-iteration feature; each iteration stays within the
+  intentional per-iteration story-point cap. The plan proposes the exact split and
+  per-iteration capacity; the total is expected to span roughly three to four
+  iterations.
+- **Drift Signals**: Drift is indicated by any mismatch among the scaffolded
+  `design-analysis.md`, the Feature 140 validator contract, plan input, boundary
+  state, packet evidence, and review evidence.
+- **Human Oversight Points**: Human review is required after specify before
+  clarify, after clarify (and this feature's own design-analysis stop) before plan,
+  after plan before tasks, before implementation, at review signoff, at iteration
+  closeout, and at feature closeout.

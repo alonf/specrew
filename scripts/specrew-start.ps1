@@ -53,6 +53,12 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
 }
 . $boundaryStateHelperPath
 
+$sessionRecoveryHelperPath = Join-Path $PSScriptRoot 'internal\session-recovery.ps1'
+if (-not (Test-Path -LiteralPath $sessionRecoveryHelperPath -PathType Leaf)) {
+    throw "Missing session-recovery helper '$sessionRecoveryHelperPath'."
+}
+. $sessionRecoveryHelperPath
+
 $taskProgressHelperPath = Join-Path $PSScriptRoot 'internal\task-progress.ps1'
 if (-not (Test-Path -LiteralPath $taskProgressHelperPath -PathType Leaf)) {
     throw "Missing task-progress helper '$taskProgressHelperPath'."
@@ -438,28 +444,6 @@ function Invoke-SpecrewStartMultiSessionGuard {
     }
 }
 
-function Get-SpecrewConfigValue {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ProjectRoot,
-
-        [Parameter(Mandatory = $true)]
-        [string]$Key
-    )
-
-    $configPath = Join-Path $ProjectRoot '.specrew\config.yml'
-    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
-        return $null
-    }
-
-    foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
-        if ($line -match ('^\s*{0}:\s*"?(?<value>[^"#]+?)"?\s*$' -f [regex]::Escape($Key))) {
-            return $Matches['value'].Trim()
-        }
-    }
-
-    return $null
-}
 
 function Get-InstalledSpecrewVersion {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
@@ -583,456 +567,6 @@ function Get-SpecrewVersionMismatchWarning {
     return "Module version mismatch detected: installed $installedVersion, project expects $projectVersion. To update: specrew update"
 }
 
-function Get-SpecrewPromptSessionState {
-    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
-
-    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
-    if (-not (Test-Path -LiteralPath $paths.PromptPath -PathType Leaf)) {
-        return $null
-    }
-
-    $parsed = ConvertFrom-SpecrewFrontmatter -Content (Get-Content -LiteralPath $paths.PromptPath -Raw -Encoding UTF8)
-    return Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
-}
-
-function Get-SpecrewIdentitySessionState {
-    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
-
-    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
-    if (-not (Test-Path -LiteralPath $paths.IdentityPath -PathType Leaf)) {
-        return $null
-    }
-
-    $parsed = ConvertFrom-SpecrewFrontmatter -Content (Get-Content -LiteralPath $paths.IdentityPath -Raw -Encoding UTF8)
-    return Get-SpecrewSessionStateFromFrontmatter -Frontmatter $parsed.Frontmatter
-}
-
-function Get-SpecrewStartContextSessionState {
-    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
-
-    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
-    if (-not (Test-Path -LiteralPath $paths.ContextPath -PathType Leaf)) {
-        return $null
-    }
-
-    # -AsHashtable is critical here: legacy start-context.json files from
-    # pre-F-020 projects (initialized at 0.19.0 or earlier) do NOT have the
-    # session_state field. With ConvertFrom-Json producing PSCustomObject,
-    # Set-StrictMode -Version Latest throws on the missing-property access.
-    # Hashtable indexer returns $null for missing keys without throwing,
-    # which is the migration-tolerant semantics we want here.
-    try {
-        $context = Get-Content -LiteralPath $paths.ContextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12 -AsHashtable
-    }
-    catch {
-        if (Test-IsUnsupportedSpecrewSchemaError -ErrorRecord $_) {
-            throw
-        }
-        return $null
-    }
-
-    $schema = Get-SpecrewStateSchemaVersion -State $context -Path $paths.ContextPath
-    # v0/v1 behavior: session_state payload remains optional for legacy workspaces
-
-    if ($null -eq $context -or $null -eq $context['session_state']) {
-        return $null
-    }
-
-    $sessionState = $context['session_state']
-    return [pscustomobject]@{
-        active           = if ($sessionState['active']) { 'true' } else { 'false' }
-        boundary_type    = [string]$sessionState['boundary_type']
-        feature_ref      = [string]$sessionState['feature_ref']
-        feature_path     = [string]$sessionState['feature_path']
-        iteration_number = [string]$sessionState['iteration_number']
-        task_id          = [string]$sessionState['task_id']
-        auth_commit_hash = [string]$sessionState['auth_commit_hash']
-        recorded_at      = [string]$sessionState['recorded_at']
-    }
-}
-
-function Get-SpecrewSessionStateSnapshot {
-    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
-
-    $promptState = Get-SpecrewPromptSessionState -ProjectRoot $ProjectRoot
-    $contextState = Get-SpecrewStartContextSessionState -ProjectRoot $ProjectRoot
-    $identityState = Get-SpecrewIdentitySessionState -ProjectRoot $ProjectRoot
-    $decisionsState = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot
-    $states = @(
-        foreach ($candidate in @($promptState, $contextState, $identityState, $decisionsState)) {
-            if ($null -ne $candidate) {
-                $candidate
-            }
-        }
-    )
-
-    # File paths surfaced so Test-SpecrewSessionStateConsistency can distinguish
-    # "file absent on disk" from "file present but stale/unparseable" — fixes the
-    # misleading "missing or unreadable" message from tip-calc-v2 dogfooding 2026-05-23.
-    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
-
-    return [pscustomobject]@{
-        prompt         = $promptState
-        prompt_path    = Join-Path $resolvedProjectRoot '.specrew\last-start-prompt.md'
-        context        = $contextState
-        context_path   = Join-Path $resolvedProjectRoot '.specrew\start-context.json'
-        identity       = $identityState
-        identity_path  = Join-Path $resolvedProjectRoot '.squad\identity\now.md'
-        decisions      = $decisionsState
-        session_state  = if ($states.Count -gt 0) { $states[0] } else { $null }
-    }
-}
-
-function Test-SpecrewFeatureMergedToMain {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [AllowNull()][string]$FeatureRef
-    )
-
-    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $FeatureRef
-    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
-        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-    }
-
-    $bootstrapDate = Get-SpecrewConfigValue -ProjectRoot $ProjectRoot -Key 'bootstrap_date'
-    if ([string]::IsNullOrWhiteSpace($bootstrapDate)) {
-        $bootstrapDate = '90 days ago'
-    }
-
-    $logOutput = @(& git -C $ProjectRoot log main --since="$bootstrapDate" --merges --oneline --grep="$featureNumber" 2>&1)
-    if ($LASTEXITCODE -ne 0) {
-        return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-    }
-
-    if ($logOutput.Count -gt 0) {
-        return [pscustomobject]@{
-            IsMerged = $true
-            Detail   = ('Feature {0} appears in merge history on main: {1}' -f $featureNumber, ($logOutput[0].ToString().Trim()))
-        }
-    }
-
-    return [pscustomobject]@{ IsMerged = $false; Detail = $null }
-}
-
-function Test-SpecrewFeatureBranchExists {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [AllowNull()][string]$FeatureRef
-    )
-
-    if ([string]::IsNullOrWhiteSpace($FeatureRef)) {
-        return $true
-    }
-
-    & git -C $ProjectRoot show-ref --verify --quiet ("refs/heads/{0}" -f $FeatureRef)
-    if ($LASTEXITCODE -eq 0) {
-        return $true
-    }
-
-    & git -C $ProjectRoot show-ref --verify --quiet ("refs/remotes/origin/{0}" -f $FeatureRef)
-    return ($LASTEXITCODE -eq 0)
-}
-
-function Test-SpecrewAuthorizationRecord {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [pscustomobject]$SessionState
-    )
-
-    if ($null -eq $SessionState -or [string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) {
-        return $true
-    }
-
-    $paths = Get-SpecrewSessionStatePaths -ProjectRoot $ProjectRoot
-    if (-not (Test-Path -LiteralPath $paths.DecisionsPath -PathType Leaf)) {
-        return $false
-    }
-
-    $content = Get-Content -LiteralPath $paths.DecisionsPath -Raw -Encoding UTF8
-    if (-not [string]::IsNullOrWhiteSpace([string]$SessionState.auth_commit_hash) -and $content -match [regex]::Escape([string]$SessionState.auth_commit_hash)) {
-        return $true
-    }
-
-    $featureNumber = Get-SpecrewFeatureNumber -FeatureRef $SessionState.feature_ref
-    if ([string]::IsNullOrWhiteSpace($featureNumber)) {
-        return $false
-    }
-
-    return ($content -match ('Feature\s+{0}' -f [regex]::Escape($featureNumber)) -and $content -match 'authorization')
-}
-
-function Test-SpecrewSessionStateConsistency {
-    param([Parameter(Mandatory = $true)][pscustomobject]$Snapshot)
-
-    $issues = New-Object System.Collections.Generic.List[string]
-    # Each entry now optionally carries a Path so we can distinguish "file absent on disk"
-    # from "file present but unparseable / stale frontmatter". Wording fix following
-    # tip-calc-v2 dogfooding 2026-05-23/24: the prior "missing or unreadable" message
-    # fired even when the file was present and readable, just stale relative to the git
-    # log — that misled the human into thinking the file had been deleted.
-    $namedStates = @(
-        @{ Name = 'last-start-prompt.md'; State = $Snapshot.prompt;   Path = $Snapshot.prompt_path }
-        @{ Name = 'start-context.json';   State = $Snapshot.context;  Path = $Snapshot.context_path }
-        @{ Name = 'identity/now.md';      State = $Snapshot.identity; Path = $Snapshot.identity_path }
-    )
-
-    $existingCount = @($namedStates | Where-Object { $null -ne $_.State }).Count
-    if ($existingCount -gt 0) {
-        foreach ($entry in $namedStates) {
-            if ($null -eq $entry.State) {
-                $fileOnDisk = $false
-                if (-not [string]::IsNullOrWhiteSpace([string]$entry.Path)) {
-                    $fileOnDisk = Test-Path -LiteralPath ([string]$entry.Path) -PathType Leaf
-                }
-                if ($fileOnDisk) {
-                    $issues.Add(("Session-state file is present but stale or unparseable: {0} (file is on disk but its frontmatter / JSON could not be loaded; re-anchor or recreate to refresh)" -f $entry.Name)) | Out-Null
-                }
-                else {
-                    $issues.Add(("Session-state file missing on disk: {0} (re-anchor will recreate it from the current spec)" -f $entry.Name)) | Out-Null
-                }
-            }
-        }
-    }
-
-    $activeStates = @(
-        foreach ($entry in $namedStates) {
-            if ($null -ne $entry.State) {
-                $entry.State
-            }
-        }
-        if ($null -ne $Snapshot.decisions) {
-            $Snapshot.decisions
-        }
-    )
-    $featureRefs = @($activeStates | ForEach-Object { [string]$_.feature_ref } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
-    if ($featureRefs.Count -gt 1) {
-        $issues.Add(("Session-state feature mismatch detected: {0}" -f ($featureRefs -join ', '))) | Out-Null
-    }
-
-    $boundaries = @($activeStates | ForEach-Object { [string]$_.boundary_type } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique)
-    if ($boundaries.Count -gt 1) {
-        $issues.Add(("Session-state boundary mismatch detected: {0}" -f ($boundaries -join ', '))) | Out-Null
-    }
-
-    return $issues.ToArray()
-}
-
-function Get-SpecrewLatestIterationDirectory {
-    param(
-        [Parameter(Mandatory = $true)][string]$FeaturePath
-    )
-
-    $iterationsRoot = Join-Path $FeaturePath 'iterations'
-    if (-not (Test-Path -LiteralPath $iterationsRoot -PathType Container)) {
-        return $null
-    }
-
-    return @(
-        Get-ChildItem -LiteralPath $iterationsRoot -Directory |
-            Sort-Object Name -Descending |
-            Select-Object -First 1
-    )[0]
-}
-
-function Get-SpecrewMetadataValueFromFile {
-    param(
-        [Parameter(Mandatory = $true)][string]$Path,
-        [Parameter(Mandatory = $true)][string]$Label
-    )
-
-    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        return $null
-    }
-
-    $pattern = '(?m)^\*\*' + [regex]::Escape($Label) + '\*\*:\s*(?<value>.+?)\s*$'
-    $match = [regex]::Match((Get-Content -LiteralPath $Path -Raw -Encoding UTF8), $pattern)
-    if ($match.Success) {
-        return $match.Groups['value'].Value.Trim()
-    }
-
-    return $null
-}
-
-function Get-SpecrewLateBoundaryIssues {
-    param(
-        [Parameter(Mandatory = $true)][string]$ProjectRoot,
-        [AllowNull()][pscustomobject]$SessionState
-    )
-
-    if ($null -eq $SessionState) {
-        return @()
-    }
-
-    $issues = New-Object System.Collections.Generic.List[string]
-    $featurePath = if (-not [string]::IsNullOrWhiteSpace([string]$SessionState.feature_path)) {
-        [string]$SessionState.feature_path
-    }
-    elseif (-not [string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) {
-        Join-Path $ProjectRoot ('specs\' + [string]$SessionState.feature_ref)
-    }
-    else {
-        $null
-    }
-
-    if ([string]::IsNullOrWhiteSpace($featurePath) -or -not (Test-Path -LiteralPath $featurePath -PathType Container)) {
-        return @()
-    }
-
-    $latestIterationDirectory = Get-SpecrewLatestIterationDirectory -FeaturePath $featurePath
-    if ($null -ne $latestIterationDirectory) {
-        $reviewPath = Join-Path $latestIterationDirectory.FullName 'review.md'
-        $reviewVerdict = Get-SpecrewMetadataValueFromFile -Path $reviewPath -Label 'Overall Verdict'
-        if ($reviewVerdict -match '^(?i)accepted$' -and [string]$SessionState.boundary_type -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
-            $issues.Add(("Late boundary sync mismatch: review.md is accepted in iteration {0}, but the recorded boundary is '{1}' instead of review-signoff or later." -f $latestIterationDirectory.Name, $SessionState.boundary_type)) | Out-Null
-        }
-    }
-
-    $closeoutDashboardPath = Join-Path $featurePath 'closeout-dashboard.md'
-    if ((Test-Path -LiteralPath $closeoutDashboardPath -PathType Leaf) -and [string]$SessionState.boundary_type -ne 'feature-closeout') {
-        $issues.Add(("Late boundary sync mismatch: closeout-dashboard.md exists for '{0}', but the recorded boundary is '{1}' instead of feature-closeout." -f (Split-Path -Leaf $featurePath), $SessionState.boundary_type)) | Out-Null
-    }
-
-    return $issues.ToArray()
-}
-
-function Test-SpecrewStaleSessionState {
-    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
-
-    $snapshot = Get-SpecrewSessionStateSnapshot -ProjectRoot $ProjectRoot
-    $sessionState = $snapshot.session_state
-    if ($null -eq $sessionState) {
-        return [pscustomobject]@{
-            IsStale = $false
-            Issues = @()
-            SessionState = $null
-        }
-    }
-
-    $issues = New-Object System.Collections.Generic.List[string]
-    foreach ($issue in (Test-SpecrewSessionStateConsistency -Snapshot $snapshot)) {
-        $issues.Add($issue) | Out-Null
-    }
-
-    foreach ($issue in (Get-SpecrewLateBoundaryIssues -ProjectRoot $ProjectRoot -SessionState $sessionState)) {
-        $issues.Add($issue) | Out-Null
-    }
-
-    if ([string]$sessionState.active -eq 'false') {
-        return [pscustomobject]@{
-            IsStale      = ($issues.Count -gt 0)
-            Issues       = $issues.ToArray()
-            SessionState = $sessionState
-        }
-    }
-
-    $mergeCheck = Test-SpecrewFeatureMergedToMain -ProjectRoot $ProjectRoot -FeatureRef $sessionState.feature_ref
-    if ($mergeCheck.IsMerged) {
-        $issues.Add($mergeCheck.Detail) | Out-Null
-    }
-
-    if (-not (Test-SpecrewFeatureBranchExists -ProjectRoot $ProjectRoot -FeatureRef $sessionState.feature_ref)) {
-        $issues.Add(("Feature branch is missing: {0}" -f $sessionState.feature_ref)) | Out-Null
-    }
-
-    if (-not (Test-SpecrewAuthorizationRecord -ProjectRoot $ProjectRoot -SessionState $sessionState)) {
-        $issues.Add(("Authorization record missing for {0}." -f $sessionState.feature_ref)) | Out-Null
-    }
-
-    return [pscustomobject]@{
-        IsStale = ($issues.Count -gt 0)
-        Issues = $issues.ToArray()
-        SessionState = $sessionState
-    }
-}
-
-function Read-SpecrewRecoveryChoice {
-    param([AllowNull()][string]$PreferredChoice)
-
-    if (-not [string]::IsNullOrWhiteSpace($PreferredChoice)) {
-        return $PreferredChoice.Trim().ToUpperInvariant()
-    }
-
-    while ($true) {
-        $selection = Read-Host 'Choose recovery path [A/B/C]'
-        if (-not [string]::IsNullOrWhiteSpace($selection)) {
-            $normalizedSelection = $selection.Trim().ToUpperInvariant()
-            if ($normalizedSelection -in @('A', 'B', 'C')) {
-                return $normalizedSelection
-            }
-        }
-
-        Write-Output "WARN: Invalid recovery choice. Enter A, B, or C." | Out-Host
-    }
-}
-
-function New-SpecrewRecoverySession {
-    param(
-        [Parameter(Mandatory = $true)][string]$EntryMode,
-        [Parameter(Mandatory = $true)][string[]]$StaleReasons,
-        [Parameter(Mandatory = $true)][bool]$BypassGate,
-        [AllowNull()][string]$SelectedChoice,
-        [Parameter(Mandatory = $true)][string]$NextActionMessage
-    )
-
-    return [pscustomobject]@{
-        entry_mode              = $EntryMode
-        stale_reasons           = @($StaleReasons)
-        choice_set              = if ($EntryMode -eq 'detected-stale-state') { @('A', 'B', 'C') } else { @('recover') }
-        selected_choice         = $SelectedChoice
-        bypass_gate             = $BypassGate
-        approval_mode_changed   = $false
-        next_action_message     = $NextActionMessage
-    }
-}
-
-function Resolve-SpecrewRecoverySelection {
-    param(
-        [Parameter(Mandatory = $true)][string]$Choice,
-        [AllowNull()][pscustomobject]$SessionState
-    )
-
-    $recoveryFeaturePath = if ($null -ne $SessionState -and -not [string]::IsNullOrWhiteSpace([string]$SessionState.feature_path)) {
-        [string]$SessionState.feature_path
-    }
-    else {
-        $null
-    }
-
-    switch ($Choice) {
-        'A' {
-            return [pscustomobject]@{
-                ResumeFeatureOverride = if (-not [string]::IsNullOrWhiteSpace($recoveryFeaturePath)) { $recoveryFeaturePath } else { 'auto' }
-                SkipAutoResume        = $false
-                ForceNoLaunch         = $false
-                NextActionMessage     = if (-not [string]::IsNullOrWhiteSpace($recoveryFeaturePath)) {
-                    "Recovery will re-anchor to '$recoveryFeaturePath' so you can repair or continue the last known feature state."
-                }
-                else {
-                    'Recovery will try to re-anchor to the last known feature automatically so you can repair or continue.'
-                }
-                Directive             = 'Recovery choice A selected: re-anchor to the last known feature, inspect the stale-state evidence, and continue with an explicit repair or resume plan.'
-            }
-        }
-        'B' {
-            return [pscustomobject]@{
-                ResumeFeatureOverride = $null
-                SkipAutoResume        = $true
-                ForceNoLaunch         = $false
-                NextActionMessage     = 'Recovery will bypass the stale feature state and return you to fresh feature intake.'
-                Directive             = 'Recovery choice B selected: do not resume the stale feature automatically. Start fresh intake for a new feature after acknowledging the stale-state evidence.'
-            }
-        }
-        default {
-            return [pscustomobject]@{
-                ResumeFeatureOverride = $null
-                SkipAutoResume        = $true
-                ForceNoLaunch         = $true
-                NextActionMessage     = 'Recovery will stop after writing diagnostics so you can manually fix or document the stale state before restarting.'
-                Directive             = 'Recovery choice C selected: do not launch the host CLI automatically. Review the recorded stale-state evidence, repair the session-state artifacts manually, then rerun specrew start.'
-            }
-        }
-    }
-}
 
 function Get-UnresolvedTemplateRefreshArtifacts {
     param(
@@ -2919,6 +2453,7 @@ This is the authoritative map of Specrew's lifecycle and governance machinery as
 | ``/speckit.specify`` | Generates ``spec.md`` + ``checklists/requirements.md`` for the feature | ``specs/<feature>/spec.md`` + ``specs/<feature>/checklists/requirements.md`` + ``.specify/feature.json`` | none (readiness only) |
 | ``/speckit.clarify`` | Asks 2-3 ambiguity questions; appends ``## Clarifications`` section to spec.md | ``spec.md`` Clarifications section | none |
 | ``/speckit.specrew-speckit.before-plan`` | Runs ``resolve-quality-profile.ps1``; resolved profile becomes the Phase 1 + Phase 2 quality-bar planning input embedded in plan.md | output consumed by plan.md | readiness only — does NOT hard-block |
+| design-analysis stop | For substantive features, compares 2-3 design alternatives (each with a short design-principle rationale), records the Crew recommendation, and requires the human verdict shape ``approved for plan with Option <X>``. After the human chooses an option and BEFORE authoring ``plan.md``, the Crew MUST: (1) record the Human Decision with the verdict and the commit that contains it — not the design-analysis draft commit; (2) render the typed design-gate packet; (3) validate it; (4) persist it under ``specs/<feature>/gates/``; then (5) call ``Invoke-SpecrewDesignAnalysisPrePlanGate``. Author ``plan.md`` only after that call passes. | ``specs/<feature>/iterations/<NNN>/design-analysis.md`` + ``specs/<feature>/gates/`` | pre-plan validator blocks ``plan.md`` when the artifact, Human Decision, or durable packet is missing/invalid; the at-sync ``plan`` gate is the artifact/decision backstop if the pre-plan call is bypassed |
 | ``/speckit.plan`` | Writes plan.md with architecture, FR-to-test mapping, embedded quality-planning sections | ``specs/<feature>/plan.md`` | none |
 | ``/speckit.tasks`` | Writes ``tasks.md`` decomposing plan.md into per-task delivery work, each traced to >=1 FR/SC | ``specs/<feature>/tasks.md`` | none |
 | ``/speckit.specrew-speckit.after-tasks`` | Runs the traceability check (every task maps to >=1 FR/SC; every FR/SC has >=1 task) | output only; nothing on disk | readiness only — does NOT hard-block |
@@ -2982,7 +2517,10 @@ Follow this conversational sequence before implementation work:
 8. Continue negotiating brownfield scope until the requested change is concrete enough for `speckit.specify`; discovery alone is never sufficient scope, and unresolved intake still requires a human answer before lifecycle execution begins.
 
 Then follow the formal Specrew + Spec Kit lifecycle end to end:
-9. Use the Spec Kit flow in order by invoking the dedicated Speckit agents or commands (not generic skills): speckit.specify -> speckit.clarify -> speckit.specrew-speckit.before-plan -> speckit.plan -> speckit.tasks -> speckit.specrew-speckit.after-tasks -> speckit.specrew-speckit.before-implement -> speckit.implement.
+9. Use the Spec Kit flow in order by invoking the dedicated Speckit agents or commands (not generic skills): speckit.specify -> speckit.clarify -> speckit.specrew-speckit.before-plan -> design-analysis stop for substantive features -> speckit.plan -> speckit.tasks -> speckit.specrew-speckit.after-tasks -> speckit.specrew-speckit.before-implement -> speckit.implement.
+9a. **The per-lens design workshop, visual surfacing, collaborative co-design, confirmation integrity, and intake responsiveness (Amendments A4/A5/A6/A7) are delivered by the ``specrew-design-workshop`` skill** — INVOKE / follow it at intake (the per-lens workshop, before the specify boundary syncs) AND at the start of each lens. It deploys under the host's skills directory (e.g. ``.claude/skills/specrew-design-workshop`` or ``.agents/skills/specrew-design-workshop``); its description keeps it discoverable, and you should re-invoke it as you move between lenses. The skill carries the full method — infer-then-confirm applicability; per-lens facilitated discussion, loading each lens's ``extensions/specrew-speckit/knowledge/design-lenses/<id>.md`` for its decision points + conduct; in-band ASCII-first diagrams (a fenced ``mermaid`` block is source text, not a rendered picture, on a terminal — render console ASCII inline, and when you write a mermaid/svg/html file surface its clickable ``file:///`` link in the same message); co-design the component/responsibility map + flows WITH the human before options (every component named with its responsibility, never a bare count); and capture every agreement. The gates are UNCHANGED and still enforced: the specify-boundary gate requires the feature-level ``lens-applicability.json`` per-lens workshop records (SC-021); the pre-plan design-analysis gate requires the ``## Co-Design Record`` — component-to-responsibility map + at least one agreed flow + a human-agreed marker, plus the agreed UI layout when ui-ux is selected — whenever ``co_design: true`` is set (SC-025); and (Amendment A7) the specify gate also requires each selected lens to declare a ``confirmation`` provenance (``human-confirmed | human-delegated | human-skipped``) when ``confirmation_required: true`` is set (SC-026). **Confirmation integrity (A7/FR-038):** record a lens as human-agreed ONLY for a lens the human was surfaced and confirmed; the human MAY explicitly delegate or skip (record that honestly, never a fabricated agreement for an un-surfaced lens); intake is NOT 'specific enough' until every selected lens is confirmed/delegated/skipped — do not stop early and backfill, and count-check that N recorded agreements means you asked N times. **Intake UX (A7/FR-040):** announce that you are preparing the workshop (it takes a moment), hand the human the agenda as an assignment (the lenses + each lens's decision so they can prepare), and cue each lazily-loaded lens ('preparing lens X of N'). The workshop's QUALITY is validated by the human experience (the runtime dogfood), not the gate.
+9b. (Folded into the ``specrew-design-workshop`` skill, Rule 9a — it carries the per-lens diagram vocabulary and the in-band ASCII-first / file-with-clickable-link surfacing; Amendment A5 / FR-037.)
+9c. (Folded into the ``specrew-design-workshop`` skill, Rule 9a — it carries the collaborative co-design conduct and the SC-025 Co-Design Record obligations; Amendment A6 / FR-035 / FR-036.)
 10. After speckit.specify, run speckit.clarify for every newly generated spec before speckit.plan so Spec Kit can surface unresolved questions and validate the spec shape.
 11. Only skip speckit.clarify when resuming an existing feature whose current spec has already been clarified or is demonstrably unchanged and already materially complete for planning.
 12. If you skip speckit.clarify, record a concrete dated skip rationale in .squad\decisions.md before speckit.plan, naming why the current spec is already clear enough to plan safely.
@@ -2991,7 +2529,7 @@ Then follow the formal Specrew + Spec Kit lifecycle end to end:
 15. If the human provides a URL, pasted draft, or other source document during intake, extract the relevant scope from it, confirm any remaining behavior questions at intake, and then pass the grounded request into `speckit.specify`.
 16. Answer clarification questions yourself whenever repo context, existing artifacts, or reasonable defaults make the answer clear enough, and write those clarification outcomes back into the active spec before planning.
 17. Only ask the human developer questions that are still unresolved and materially affect scope, behavior, governance, or UX.
-18. Once speckit.clarify completes, or you explicitly skip it with the recorded rationale above, check ``boundary_enforcement.policy_classes`` before the next transition. If ``plan`` is ``human-judgment-required``, stop at ``clarify -> plan`` before running ``speckit.specrew-speckit.before-plan`` or generating a substantive ``plan.md``; explain that planning will turn the spec into architecture and task direction. Apply the same one-boundary-at-a-time rule to ``plan -> tasks`` and every other configured human-judgment boundary.
+18. Once speckit.clarify completes, or you explicitly skip it with the recorded rationale above, check ``boundary_enforcement.policy_classes`` before the next transition. If ``plan`` is ``human-judgment-required``, stop at ``clarify -> plan`` before running ``speckit.specrew-speckit.before-plan`` or generating a substantive ``plan.md``; explain that planning will turn the spec into architecture and task direction. For substantive features, the next pre-plan work is the design-analysis stop: write ``specs/<feature>/iterations/<NNN>/design-analysis.md`` with problem framing, decision points, Simplest and Reasonable options, any meaningfully distinct By-the-book option, Crew recommendation, and Human Decision evidence. The Human Decision must record the chosen option, reason or modifications, commit hash, and a verdict equivalent to ``approved for plan with Option <X>`` before ``speckit.plan`` starts. Apply the same one-boundary-at-a-time rule to ``plan -> tasks`` and every other configured human-judgment boundary.
 19. After speckit.specify and the clarify outcome are grounded, analyze the planned feature, inferred technology constraints, the roster snapshot, and the readiness hints above. Propose only the missing specialists, and only propose Junior/Senior same-specialty pairs when the clarified work can be partitioned safely enough for meaningful parallel execution.
 20. Preserve any user-added Specrew members, present the resulting team composition clearly before implementation, and describe Junior/Senior pairs as distinct named members with different task profiles rather than cloned copies of one role.
 21. If the human approves new specialists or Junior/Senior same-specialty pairs, materialize them with `specrew team add <member-name> --role <role> --charter "<charter>"` before invoking `speckit.specrew-speckit.before-implement` or `speckit.implement`.
@@ -3376,6 +2914,13 @@ function Save-StartArtifacts {
     $frontmatterLines = @('---')
     if ($null -ne $currentHead -and $currentHead -match '^[0-9a-f]{40}$') {
         $frontmatterLines += "baseline_commit_hash: $currentHead"
+    }
+    else {
+        # FR-013 greenfield guidance: a repo with no resolvable git HEAD (no commit yet) has
+        # no commit to anchor a baseline. Preserve the Feature-029 zero-commit fail-safe -- do
+        # NOT stamp a baseline and do NOT create a commit on the user's behalf -- and instead
+        # nudge the user to establish history so governance can anchor a baseline themselves.
+        Write-Warning 'No baseline commit yet: this project has no resolvable git HEAD. Make an initial commit (for example: `git add -A; git commit -m "chore: initial commit"`) so Specrew can anchor a baseline commit for change detection.'
     }
     if ($null -ne $SessionState) {
         $frontmatterLines += ('session_state_active: {0}' -f $SessionState.active)
@@ -4152,6 +3697,30 @@ elseif ($staleSessionStateCheck.IsStale) {
         $recoveryDirective += [Environment]::NewLine + [Environment]::NewLine
     }
     $recoveryDirective += $recoveryPlan.Directive
+
+    # FR-024: when the plan asked to clear a stale (deleted/external) feature anchor,
+    # require explicit human confirmation, then clear ONLY the runtime session refs.
+    if (($recoveryPlan.PSObject.Properties.Name -contains 'RequiresStaleCleanupConfirmation') -and $recoveryPlan.RequiresStaleCleanupConfirmation) {
+        $staleAnchor = if ($recoveryPlan.PSObject.Properties.Name -contains 'StaleFeaturePath') { [string]$recoveryPlan.StaleFeaturePath } else { '<unknown>' }
+        Write-Output ''
+        Write-Output ("Stale feature anchor '{0}' no longer exists on disk." -f $staleAnchor)
+        Write-Output 'Clearing it removes only the active-session/start-context references (no feature artifacts, no commits).'
+        $confirmStaleCleanup = Read-SpecrewYesNo -Prompt 'Clear the stale session references now? [y/N]' -Default $false
+        $cleanupOutcome = Invoke-SpecrewStaleSessionCleanupDecision -RecoveryPlan $recoveryPlan -ProjectRoot $resolvedProjectPath -SessionState $validatedSessionState -Confirmed $confirmStaleCleanup
+        if ($cleanupOutcome.Confirmed -and $null -ne $cleanupOutcome.Result -and $cleanupOutcome.Result.Cleared) {
+            Write-Output ("Cleared stale references: {0}" -f ($cleanupOutcome.Result.ClearedRefs -join ', '))
+            # FR-024: the stale session_state was just cleared on disk, but the end-of-run
+            # start-context regeneration would otherwise re-serialize this in-memory copy and
+            # silently re-anchor the deleted feature — defeating the cleanup and re-detecting the
+            # same stale session on the next start. Drop the in-memory session so the regenerated
+            # context records no active session (mode falls to intake-or-resume). Every downstream
+            # use of $validatedSessionState already guards on $null.
+            $validatedSessionState = $null
+        }
+        elseif ($cleanupOutcome.Attempted -and -not $cleanupOutcome.Confirmed) {
+            Write-Output 'Skipped stale-reference cleanup (not confirmed). The stale anchor remains; rerun specrew start to decide again.'
+        }
+    }
 }
 
 $versionMismatchWarning = Get-SpecrewVersionMismatchWarning -ProjectRoot $resolvedProjectPath
@@ -4271,7 +3840,8 @@ $promptContent = Invoke-SpecrewCoordinatorPromptSurgery `
     -SpecrewVersion $specrewRuntimeVersion `
     -LifecycleMode $mode `
     -FeatureRef $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.feature_ref)) { [string]$validatedSessionState.feature_ref } elseif ($resolvedFeaturePath) { Split-Path -Leaf $resolvedFeaturePath } else { $null }) `
-    -BoundaryType $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.boundary_type)) { [string]$validatedSessionState.boundary_type } else { $null })
+    -BoundaryType $(if ($null -ne $validatedSessionState -and -not [string]::IsNullOrWhiteSpace([string]$validatedSessionState.boundary_type)) { [string]$validatedSessionState.boundary_type } else { $null }) `
+    -ExpertiseLine (Get-SpecrewProfileOrientationLine)
 
 $artifactPaths = Save-StartArtifacts `
     -ResolvedProjectPath $resolvedProjectPath `
@@ -4354,7 +3924,7 @@ $summaryDisplayPath = Get-DisplayPathFromProjectRoot -ResolvedProjectPath $resol
 Write-Info ("Prompt:  {0}" -f $promptDisplayPath)
 Write-Info ("Context: {0}" -f $contextDisplayPath)
 Write-Info ("Summary: {0}" -f $summaryDisplayPath)
-Write-Info ("Copilot approval mode: {0}" -f $allowAllRuntimePlan.DisplayMode)
+Write-Info ("Approval mode: {0}" -f $allowAllRuntimePlan.DisplayMode)
 if ($artifactPaths.TemplateRefreshArtifacts.Count -gt 0) {
     Write-Info ("Unresolved template-refresh artifacts detected: {0}" -f $artifactPaths.TemplateRefreshArtifacts.Count)
     foreach ($artifact in $artifactPaths.TemplateRefreshArtifacts) {
@@ -4423,6 +3993,6 @@ if (-not $hostStarted) {
 }
 
 if ($launchMode -eq 'new-window') {
-    Write-Success ("Delegated to Copilot + {0} in a new PowerShell window." -f $Agent)
+    Write-Success ("Delegated to {0} in a new PowerShell window." -f $hostLabel)
     Write-Info "Continue the lifecycle in the new window. This terminal can stay open for reference."
 }
