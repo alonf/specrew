@@ -5,7 +5,7 @@
 **Input**: `plan.md` (Option C, approved `247fa0ba` + `aa107f9e`)
 **Effort unit**: story points (SP); iteration cap 20 SP
 
-## Iteration 001 — engine, channels, dispatcher, breaker, Claude binding (18.0 SP)
+## Iteration 001 — engine, channels, dispatcher, breaker, Claude binding (18.5 SP)
 
 | Task | Description | Traces to | SP | Owner |
 |---|---|---|---|---|
