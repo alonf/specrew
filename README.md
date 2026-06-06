@@ -145,7 +145,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Active development line**: 0.32.0-beta1 (F-141 — Design-Gate Runtime Hardening: the per-lens design workshop + design-analysis gate, hardened across all hosts (Claude/Copilot/Codex/Antigravity); 0.31.1 (F-160 — Unix Resolver Sidecar Hardening) pending stable promotion on its own track)
+- **Active development line**: 0.32.0-beta1 (F-141 — Design-Gate Runtime Hardening: the per-lens design workshop + design-analysis gate, hardened across all hosts (Claude/Copilot/Codex/Antigravity) — methodology in [docs/methodology/design-workshop-methodology.md](docs/methodology/design-workshop-methodology.md); 0.31.1 (F-160 — Unix Resolver Sidecar Hardening) pending stable promotion on its own track)
 - **Latest stable baseline**: promoted per the beta-before-stable release discipline — see [CHANGELOG.md](CHANGELOG.md) for the current released version
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
@@ -157,6 +157,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - `specrew start` launches the canonical lifecycle session with handoff artifacts refreshed
 - `specrew where` renders the velocity dashboard from canonical artifacts
 - The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped). The last two boundaries (iteration-closeout, feature-closeout) are not decoration: they produce the per-iteration `dashboard.md` + per-feature `closeout-dashboard.md` artifacts, mark the work durably "done", and gate the next iteration / next feature from starting. Skipping them leaves the project in an in-flight state — see [docs/user-guide.md "Closing iterations + features"](docs/user-guide.md#closing-iterations--features) for what these boundaries produce and the verdict shapes that advance them.
+- The **Design Workshop** — a facilitated, lens-driven design conversation at specify-intake and again at the design-analysis stop before planning: nine design lenses (architecture, components, NFRs, UI/UX, data, security, integration, DevOps, observability), co-designed component maps and flows, in-band diagrams, and durable workshop artifacts. The full methodology lives in [docs/methodology/design-workshop-methodology.md](docs/methodology/design-workshop-methodology.md)
 - Session-state durability across reboots, worktree switches, and boundary events
 - A per-user **Crew Interaction Profile** (`/specrew-user-profile`) — four decision-area settings (Product Strategy, UX/UI Design, Software Architecture, AI Delivery Planning) that tune how much Specrew asks, explains, recommends, and auto-decides. It resolves per current user from the loader/path rule (`$env:USERPROFILE\.specrew\user-profile.yml` on Windows, `~/.specrew/user-profile.yml` on Unix), is surfaced as soft session guidance everywhere and hard-applied only in `/speckit.specify`, and lets teammates run different local profiles in the same repo with no shared-repository changes. See [docs/user-guide.md "Crew Interaction Profile"](docs/user-guide.md#crew-interaction-profile).
 - Slash-command catalog deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` ([Feature 024](specs/024-slash-command-multi-host-correctness/spec.md))
@@ -205,6 +206,7 @@ See [proposals/INDEX.md](proposals/INDEX.md) for the full proposal catalog (Ship
 
 - [docs/getting-started.md](docs/getting-started.md) — bootstrap + minimal flow
 - [docs/user-guide.md](docs/user-guide.md) — day-to-day lifecycle usage
+- [docs/methodology/design-workshop-methodology.md](docs/methodology/design-workshop-methodology.md) — the Design Workshop: the lens-driven design conversation at intake + the design-analysis stop
 - [docs/troubleshooting.md](docs/troubleshooting.md) — recovery paths for install drift, update failures, stale session state, and Shape-5 evidence mistakes
 - [docs/dashboard-guide.md](docs/dashboard-guide.md) — dashboard sections, flags, closeout snapshots
 - [docs/versioning.md](docs/versioning.md) — release-numbering policy and tag/changelog rules

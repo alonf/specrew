@@ -147,6 +147,8 @@ That single command:
 
 When the Crew surfaces a clarify question, answer it. When it surfaces a planning artifact, review it. When it asks for an implementation verdict, type one of the recognized verdict shapes (e.g. `approved for implementation-boundary entry`). The lifecycle then continues to the next boundary.
 
+**The Design Workshop.** For substantive features, the Crew also facilitates a **Design Workshop** — first at intake (to pick the design lenses that matter and make the spec lens-informed) and again at the design-analysis stop before planning (to co-design the architecture with you: component map, responsibilities, flows, and trade-off options). It is a conversation, not a questionnaire — you see every diagram and agenda in-band, and every decision is recorded as a durable artifact. The full methodology is in [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md).
+
 > **Switching hosts on the same project** is supported: end the session and restart `specrew start --host <other>`. Mid-session switching requires you to end and restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
 
 ### 5. Close the iteration (and the feature)
@@ -190,6 +192,7 @@ As Squad runs the lifecycle, it adds `specs/001-web-calculator/spec.md`, `plan.m
 ## Where to go next
 
 - **Day-to-day usage**: [docs/user-guide.md](user-guide.md)
+- **Design Workshop**: how the lens-driven design conversation works at intake and before planning — [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md)
 - **Recovery paths**: [docs/troubleshooting.md](troubleshooting.md)
 - **Dashboard**: `specrew where` shows the velocity dashboard; full reference in [docs/dashboard-guide.md](dashboard-guide.md)
 - **Versioning**: [docs/versioning.md](versioning.md)

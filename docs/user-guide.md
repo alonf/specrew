@@ -424,6 +424,8 @@ explanatory text changed.
 
 Goal: produce a requirement-traceable plan before execution starts.
 
+> **Before the plan: the Design Workshop.** For substantive features, planning does not start from a blank page. The Crew facilitates a [Design Workshop](methodology/design-workshop-methodology.md) at intake (selecting the design lenses that matter) and again at the design-analysis stop (co-designing the component map, responsibilities, and flows with you before alternatives are compared). The human-selected design option recorded in `design-analysis.md` is authoritative plan input — `plan.md` must consume it, not re-decide it.
+
 Minimum artifact: `plan.md`
 
 Helpful scaffold:
