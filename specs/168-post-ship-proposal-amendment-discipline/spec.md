@@ -79,7 +79,7 @@ As a maintainer managing proposal backlog, I need proposal index and status view
 ### Edge Cases
 
 - Proposal status is missing, malformed, or outside the known mutability classes; validation should report the status problem before making a shipped/superseded mutability judgment.
-- A proposal is currently `active`; whether an active proposal may use `Post-Ship Amendments` or must use the normal active-feature amendment mechanism remains a clarification candidate before planning.
+- A proposal is currently `active`; active proposals use the normal active-feature amendment mechanism rather than `Post-Ship Amendments`.
 - A shipped proposal has an amendment section with malformed fields; validation should distinguish malformed amendment records from unsafe body rewrites.
 - A proposal file is renamed, reformatted, or line-wrapped without normative content changes; validation should avoid claiming full semantic certainty and should keep findings lightweight and explainable.
 - A post-ship amendment changes validator rules or reviewer obligations; planning must include the delta-from-shipped-behavior section and preservation requirements before implementation.
@@ -170,20 +170,22 @@ As a maintainer managing proposal backlog, I need proposal index and status view
 - Proposal front matter `status` remains the authoritative source for mutability classification.
 - The existing governance validator is the appropriate surface for a lightweight shipped/superseded proposal diff warning.
 - The existing proposal index or proposal status renderer is the appropriate surface for unimplemented amendment visibility.
-- Initial enforcement is a warning, matching Proposal 167's `SHOULD warn` requirement, unless clarification changes this before planning.
+- Initial enforcement is a warning, matching Proposal 167's `SHOULD warn` requirement.
 - The implementation will add fixtures and tests rather than editing real shipped proposal bodies to demonstrate unsafe normative edits.
-- Active proposal amendment handling remains a clarification candidate before planning because Proposal 167 raises it as an open question.
+- Active proposals use the normal active-feature amendment flow, not the post-ship amendment section.
 
-## Clarification Candidates
+## Clarifications
 
-- **QC-001**: Should shipped/superseded normative edits outside `Post-Ship Amendments` remain a soft warning for this iteration, or should any case become a hard validation failure immediately?
-- **QC-002**: Should `Post-Ship Amendments` be allowed on `active` proposals, or should active proposals use the normal active-feature amendment mechanism only?
-- **QC-003**: Should implemented amendments remain in the original proposal and be indexed in place, or should implemented amendment records also be copied into a generated amendment index?
+### Session 2026-06-06
+
+- Q: Should shipped/superseded normative edits outside `Post-Ship Amendments` remain a soft warning for this iteration, or should any case become a hard validation failure immediately? A: Warning first, not hard failure yet.
+- Q: Should `Post-Ship Amendments` be allowed on `active` proposals, or should active proposals use the normal active-feature amendment mechanism only? A: Active proposals use the active-feature amendment flow, not `Post-Ship Amendments`.
+- Q: Should implemented amendments remain in the original proposal and be indexed in place, or should implemented amendment records also be copied into a generated amendment index? A: Implemented amendments remain in the original proposal and are surfaced by index/status; no generated amendment index in this slice.
 
 ## Governance Alignment *(mandatory)*
 
 - **Spec Steward**: Owns proposal mutability vocabulary, amendment schema, delta-only scope, and clarification of Proposal 167 open questions.
 - **Iteration Facilitator**: Planner coordinates a single small hardening iteration and stops for human authorization before planning, tasking, implementation, review signoff, retro, and closeout.
-- **Capacity Model**: 3-5 SP, planned as one iteration unless clarification expands enforcement beyond warning-level validation.
+- **Capacity Model**: 3-5 SP, planned as one iteration with warning-level validation.
 - **Drift Signals**: Drift is indicated by any mismatch between Proposal 167, this spec, proposal discipline docs, validator warnings, reviewer guidance, index/status output, tests, and final review evidence.
 - **Human Oversight Points**: Human review is required after specify before clarification or planning, after clarify before plan, after plan before tasks, before implementation, at review signoff, at retro, iteration closeout, and feature closeout.
