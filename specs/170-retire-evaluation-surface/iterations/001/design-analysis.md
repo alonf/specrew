@@ -33,13 +33,16 @@ truth?
 
 ## Applicable Lenses
 
-- architecture-core — Addressed: the classification, home, report destination,
-  and clean-break decisions were ratified with the maintainer at the intake
-  workshop (recorded human-confirmed in `lens-applicability.json`); the
-  before/after structure diagram is persisted at
-  `specs/170-retire-evaluation-surface/workshop/architecture-core.md` and the
-  binding constraints (frozen CI entry points, untracked report output) carry
-  into `plan.md`.
+- **architecture-core**
+  - Addressed: the lens's four decisions (classification, home, report
+    destination, clean break) ARE the option fork — Option A leaves the
+    classification unresolved and the misleading directory standing, Option B
+    implements all four as confirmed by the maintainer at the intake workshop
+    (recorded human-confirmed in `lens-applicability.json`); the before/after
+    structure diagram is persisted at
+    `specs/170-retire-evaluation-surface/workshop/architecture-core.md`, and
+    the binding constraints (frozen CI entry points, untracked report output)
+    carry into `plan.md` and the Option B trade-off rows.
 
 ## Alternatives
 
