@@ -24822,3 +24822,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 7e78c83a
 - **Recorded At**: 2026-06-06T20:23:11Z
+
+## 2026-06-06T20:36:41Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 170-retire-evaluation-surface
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 391cbb8a
+- **Recorded At**: 2026-06-06T20:36:40Z
