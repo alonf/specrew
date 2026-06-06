@@ -169,6 +169,10 @@ $allowedTaskStatuses = @('planned', 'in-progress', 'done', 'needs-rework', 'defe
 $terminalTaskStatuses = @('done', 'needs-rework', 'deferred', 'blocked')
 $allowedReviewTaskVerdicts = @('pass', 'needs-work', 'blocked')
 $allowedQualityGateStatuses = @('planned', 'passed', 'failed', 'excepted', 'not-applicable')
+$allowedProposalStatuses = @('candidate', 'draft', 'active', 'promoted', 'shipped', 'partially-shipped', 'superseded', 'withdrawn')
+$postShipProposalStatuses = @('shipped', 'partially-shipped', 'superseded')
+$postShipAmendmentRequiredFields = @('amendment-id', 'date', 'status', 'delta-summary', 'implementation-owner', 'preserve', 'tests-required')
+$postShipAmendmentAllowedStatuses = @('proposed', 'accepted-unimplemented', 'active', 'implemented', 'rejected', 'superseded')
 
 function Resolve-IterationTarget {
     param(
@@ -358,6 +362,401 @@ function Test-HeadingPresent {
 
     $pattern = '^##\s+' + [regex]::Escape($Heading) + '\b'
     return [bool]($Lines | Where-Object { $_ -match $pattern } | Select-Object -First 1)
+}
+
+function Get-ProposalFrontMatterBounds {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines
+    )
+
+    if ($Lines.Count -lt 2 -or $Lines[0].Trim() -ne '---') {
+        return $null
+    }
+
+    for ($index = 1; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index].Trim() -eq '---') {
+            return [pscustomobject]@{
+                StartLine = 1
+                EndLine   = $index + 1
+            }
+        }
+    }
+
+    return $null
+}
+
+function Get-ProposalFrontMatterValue {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    $bounds = Get-ProposalFrontMatterBounds -Lines $Lines
+    if ($null -eq $bounds) {
+        return $null
+    }
+
+    $pattern = '^\s*' + [regex]::Escape($Name) + '\s*:\s*(?<value>.+?)\s*$'
+    for ($index = 1; $index -lt ($bounds.EndLine - 1); $index++) {
+        if ($Lines[$index] -match $pattern) {
+            $value = [string]$Matches['value']
+            $value = ($value -replace '\s+#.*$', '').Trim().Trim('"').Trim("'")
+            return $value
+        }
+    }
+
+    return $null
+}
+
+function ConvertTo-NormalizedProposalSectionName {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return '(preamble)'
+    }
+
+    return (($Value -replace '\s+', ' ').Trim()).ToLowerInvariant()
+}
+
+function Get-ProposalTopLevelSectionName {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines,
+
+        [Parameter(Mandatory = $true)]
+        [int]$LineNumber
+    )
+
+    if ($LineNumber -le 0 -or $Lines.Count -eq 0) {
+        return '(unknown)'
+    }
+
+    $bounds = Get-ProposalFrontMatterBounds -Lines $Lines
+    if ($null -ne $bounds -and $LineNumber -ge $bounds.StartLine -and $LineNumber -le $bounds.EndLine) {
+        return 'frontmatter'
+    }
+
+    $maxIndex = [Math]::Min($Lines.Count - 1, $LineNumber - 1)
+    $current = '(preamble)'
+    for ($index = 0; $index -le $maxIndex; $index++) {
+        if ($Lines[$index] -match '^(?<marks>#{1,6})\s+(?<heading>.+?)\s*$') {
+            $level = ([string]$Matches['marks']).Length
+            if ($level -le 2) {
+                $current = ConvertTo-NormalizedProposalSectionName -Value $Matches['heading']
+            }
+        }
+    }
+
+    return $current
+}
+
+function Test-AllowedPostShipProposalDirectEdit {
+    param(
+        [AllowNull()][string]$Section,
+        [AllowNull()][string]$LineText
+    )
+
+    if ([string]::IsNullOrWhiteSpace($LineText)) {
+        return $true
+    }
+
+    $normalizedSection = ConvertTo-NormalizedProposalSectionName -Value $Section
+    if ($normalizedSection -in @('post-ship amendments', 'status history', 'cross-references', 'errata', 'historical errata', 'typo and link corrections', 'corrections')) {
+        return $true
+    }
+
+    if ($normalizedSection -eq 'frontmatter') {
+        return [bool]($LineText -match '^\s*(?:status|superseded-by|supersedes|replaced-by|replacement-proposal|replacement|discussion)\s*:')
+    }
+
+    return $false
+}
+
+function Get-ProposalDiffChangedLines {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$BaseRef,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+
+    $diffArgs = @('diff', '--unified=0', '--diff-filter=ACMRT', "$BaseRef...HEAD", '--', $RelativePath)
+    $diffLines = @(& git -C $ProjectRoot @diffArgs 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return @()
+    }
+
+    $changes = New-Object System.Collections.Generic.List[object]
+    $oldCursor = 0
+    $newCursor = 0
+    foreach ($lineObject in $diffLines) {
+        $line = [string]$lineObject
+        $hunkMatch = [regex]::Match($line, '^@@\s+-(?<oldStart>\d+)(?:,(?<oldCount>\d+))?\s+\+(?<newStart>\d+)(?:,(?<newCount>\d+))?\s+@@')
+        if ($hunkMatch.Success) {
+            $oldCursor = [int]$hunkMatch.Groups['oldStart'].Value
+            $newCursor = [int]$hunkMatch.Groups['newStart'].Value
+            continue
+        }
+
+        if ($line.StartsWith('+++') -or $line.StartsWith('---')) {
+            continue
+        }
+
+        if ($line.StartsWith('+')) {
+            $null = $changes.Add([pscustomobject]@{
+                    Side       = 'current'
+                    LineNumber = $newCursor
+                    Text       = $line.Substring(1)
+                })
+            $newCursor++
+            continue
+        }
+
+        if ($line.StartsWith('-')) {
+            $null = $changes.Add([pscustomobject]@{
+                    Side       = 'baseline'
+                    LineNumber = $oldCursor
+                    Text       = $line.Substring(1)
+                })
+            $oldCursor++
+            continue
+        }
+
+        if ($line.StartsWith(' ')) {
+            $oldCursor++
+            $newCursor++
+        }
+    }
+
+    return $changes.ToArray()
+}
+
+function Get-GitBlobLines {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$Ref,
+        [Parameter(Mandatory = $true)][string]$RelativePath
+    )
+
+    $blobText = @(& git -C $ProjectRoot show "$Ref`:$RelativePath" 2>$null)
+    if ($LASTEXITCODE -ne 0) {
+        return @()
+    }
+
+    return @($blobText | ForEach-Object { [string]$_ })
+}
+
+function Get-PostShipAmendmentSection {
+    param(
+        [AllowEmptyCollection()]
+        [AllowEmptyString()]
+        [string[]]$Lines
+    )
+
+    $startIndex = -1
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match '^##\s+Post-Ship Amendments\b') {
+            $startIndex = $index
+            break
+        }
+    }
+
+    if ($startIndex -lt 0) {
+        return $null
+    }
+
+    $sectionLines = New-Object System.Collections.Generic.List[string]
+    for ($index = $startIndex + 1; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match '^##\s+') {
+            break
+        }
+
+        $null = $sectionLines.Add($Lines[$index])
+    }
+
+    return [pscustomobject]@{
+        StartLine = $startIndex + 2
+        Lines     = $sectionLines.ToArray()
+    }
+}
+
+function Get-PostShipAmendmentField {
+    param([AllowNull()][string]$Line)
+
+    if ([string]::IsNullOrWhiteSpace($Line)) {
+        return $null
+    }
+
+    $fieldPattern = '(?<key>amendment-id|date|status|delta-summary|implementation-owner|preserve|tests-required)'
+    $bulletMatch = [regex]::Match($Line, '^\s*(?:[-*]\s*)?(?:\*\*)?' + $fieldPattern + '(?:\*\*)?\s*:\s*(?<value>.*?)\s*$', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if ($bulletMatch.Success) {
+        return [pscustomobject]@{
+            Key   = $bulletMatch.Groups['key'].Value.ToLowerInvariant()
+            Value = $bulletMatch.Groups['value'].Value.Trim()
+        }
+    }
+
+    $tableMatch = [regex]::Match($Line, '^\s*\|\s*' + $fieldPattern + '\s*\|\s*(?<value>[^|]+)\|', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    if ($tableMatch.Success) {
+        return [pscustomobject]@{
+            Key   = $tableMatch.Groups['key'].Value.ToLowerInvariant()
+            Value = $tableMatch.Groups['value'].Value.Trim()
+        }
+    }
+
+    return $null
+}
+
+function Get-PostShipAmendmentRecords {
+    param(
+        [AllowNull()]
+        [object]$Section
+    )
+
+    if ($null -eq $Section) {
+        return @()
+    }
+
+    $records = New-Object System.Collections.Generic.List[object]
+    $current = [ordered]@{}
+    $currentStartLine = [int]$Section.StartLine
+
+    for ($index = 0; $index -lt $Section.Lines.Count; $index++) {
+        $field = Get-PostShipAmendmentField -Line $Section.Lines[$index]
+        if ($null -eq $field) {
+            continue
+        }
+
+        if ($field.Key -eq 'amendment-id' -and $current.Count -gt 0 -and $current.Contains('amendment-id')) {
+            $null = $records.Add([pscustomobject]@{
+                    StartLine = $currentStartLine
+                    Fields    = $current
+                })
+            $current = [ordered]@{}
+            $currentStartLine = [int]$Section.StartLine + $index
+        }
+
+        if ($current.Count -eq 0) {
+            $currentStartLine = [int]$Section.StartLine + $index
+        }
+
+        $current[$field.Key] = $field.Value
+    }
+
+    if ($current.Count -gt 0) {
+        $null = $records.Add([pscustomobject]@{
+                StartLine = $currentStartLine
+                Fields    = $current
+            })
+    }
+
+    return $records.ToArray()
+}
+
+function Test-PostShipAmendmentRecords {
+    param(
+        [Parameter(Mandatory = $true)][string]$RelativePath,
+        [AllowNull()][object]$Section
+    )
+
+    $records = @(Get-PostShipAmendmentRecords -Section $Section)
+    foreach ($record in $records) {
+        $fields = $record.Fields
+        $amendmentId = if ($fields.Contains('amendment-id') -and -not [string]::IsNullOrWhiteSpace([string]$fields['amendment-id'])) {
+            [string]$fields['amendment-id']
+        }
+        else {
+            '(missing amendment-id)'
+        }
+
+        $missingFields = @(
+            $postShipAmendmentRequiredFields |
+                Where-Object {
+                    -not $fields.Contains($_) -or [string]::IsNullOrWhiteSpace([string]$fields[$_])
+                }
+        )
+        if ($missingFields.Count -gt 0) {
+            Write-PostShipProposalWarning -Category 'malformed-amendment' -Detail ("{0} amendment {1} is missing required fields: {2}" -f $RelativePath, $amendmentId, ($missingFields -join ', '))
+        }
+
+        if ($fields.Contains('status') -and -not [string]::IsNullOrWhiteSpace([string]$fields['status'])) {
+            $status = ([string]$fields['status']).Trim().ToLowerInvariant()
+            if ($status -notin $postShipAmendmentAllowedStatuses) {
+                Write-PostShipProposalWarning -Category 'malformed-amendment' -Detail ("{0} amendment {1} has invalid status '{2}' (expected one of: {3})" -f $RelativePath, $amendmentId, $status, ($postShipAmendmentAllowedStatuses -join ', '))
+            }
+        }
+    }
+}
+
+function Test-PostShipProposalAmendmentGovernance {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $baseRef = Get-SpecrewLocalScopeBaseRef -ProjectRoot $ProjectRoot
+    if ([string]::IsNullOrWhiteSpace($baseRef)) {
+        return
+    }
+
+    $diffArgs = @('diff', '--name-only', '--diff-filter=ACMRT', "$baseRef...HEAD", '--', 'proposals/*.md')
+    $changedProposalFiles = @(
+        & git -C $ProjectRoot @diffArgs 2>$null |
+            ForEach-Object { ([string]$_).Trim() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and $_ -ne 'proposals/INDEX.md' }
+    )
+    if ($LASTEXITCODE -ne 0 -or $changedProposalFiles.Count -eq 0) {
+        return
+    }
+
+    foreach ($relativePath in @($changedProposalFiles | Sort-Object -Unique)) {
+        $proposalPath = Join-Path -Path $ProjectRoot -ChildPath $relativePath
+        if (-not (Test-Path -LiteralPath $proposalPath -PathType Leaf)) {
+            continue
+        }
+
+        $currentLines = Get-MarkdownContent -Path $proposalPath
+        $status = Get-ProposalFrontMatterValue -Lines $currentLines -Name 'status'
+        $normalizedStatus = if ([string]::IsNullOrWhiteSpace($status)) { '' } else { $status.Trim().ToLowerInvariant() }
+        if ($normalizedStatus -notin $allowedProposalStatuses) {
+            Write-PostShipProposalWarning -Category 'proposal-status' -Detail ("{0} has missing or unknown status '{1}'; skipped shipped/superseded mutability checks." -f $relativePath, $(if ([string]::IsNullOrWhiteSpace($status)) { '(missing)' } else { $status }))
+            continue
+        }
+
+        if ($normalizedStatus -notin $postShipProposalStatuses) {
+            continue
+        }
+
+        $amendmentSection = Get-PostShipAmendmentSection -Lines $currentLines
+        Test-PostShipAmendmentRecords -RelativePath $relativePath -Section $amendmentSection
+
+        $baselineLines = Get-GitBlobLines -ProjectRoot $ProjectRoot -Ref $baseRef -RelativePath $relativePath
+        $changedLines = @(Get-ProposalDiffChangedLines -ProjectRoot $ProjectRoot -BaseRef $baseRef -RelativePath $relativePath)
+        $unsafeSections = New-Object System.Collections.Generic.List[string]
+
+        foreach ($change in $changedLines) {
+            $linesForSection = if ($change.Side -eq 'baseline') { $baselineLines } else { $currentLines }
+            $section = Get-ProposalTopLevelSectionName -Lines $linesForSection -LineNumber ([int]$change.LineNumber)
+            if (Test-AllowedPostShipProposalDirectEdit -Section $section -LineText ([string]$change.Text)) {
+                continue
+            }
+
+            $sectionLabel = if ([string]::IsNullOrWhiteSpace($section)) { '(unknown)' } else { $section }
+            if (-not $unsafeSections.Contains($sectionLabel)) {
+                $null = $unsafeSections.Add($sectionLabel)
+            }
+        }
+
+        if ($unsafeSections.Count -gt 0) {
+            Write-PostShipProposalWarning -Category 'normative-body-edit' -Detail ("{0} changed {1} proposal sections outside Post-Ship Amendments: {2}. Use a Post-Ship Amendments entry or a new/superseding proposal; direct edits are limited to typo/link/errata/status-history/cross-reference/supersession metadata." -f $relativePath, $normalizedStatus, (($unsafeSections.ToArray() | Sort-Object) -join ', '))
+        }
+    }
 }
 
 function Get-ActiveGapLedgerLines {
@@ -685,6 +1084,16 @@ function Write-TrustHardeningWarning {
 
     $script:ValidatorSoftWarnings++
     Write-Host ("WARN [trust-hardening] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
+}
+
+function Write-PostShipProposalWarning {
+    param(
+        [Parameter(Mandatory = $true)][string]$Category,
+        [Parameter(Mandatory = $true)][string]$Detail
+    )
+
+    $script:ValidatorSoftWarnings++
+    Write-Host ("WARN [post-ship-proposal] {0}: {1}" -f $Category.Trim(), $Detail.Trim()) -ForegroundColor Yellow
 }
 
 function Get-ObjectPropertyString {
@@ -4780,6 +5189,7 @@ try {
 
     Test-PublicReadinessSurfaces -ProjectRoot $resolvedProjectPath
     Test-DashboardGovernanceSurfaces -ProjectRoot $resolvedProjectPath
+    Test-PostShipProposalAmendmentGovernance -ProjectRoot $resolvedProjectPath
     $handoffEvidenceFailureCount = Test-HandoffEvidenceGovernance -ProjectRoot $resolvedProjectPath
     if ($handoffEvidenceFailureCount -gt 0) {
         Write-ValidatorSummaryAndExit -ProjectRoot $resolvedProjectPath -ExitCode 1 -HardWarnings $handoffEvidenceFailureCount

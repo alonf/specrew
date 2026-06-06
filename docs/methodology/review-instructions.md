@@ -133,6 +133,27 @@ Then inspect the feature package:
 8. Separate blockers from retro lessons.
    Blockers prevent approval. Retro lessons are useful process findings that should be captured, but they do not block unless they caused an actual delivery or governance gap.
 
+## Post-Ship Proposal Amendment Reviews
+
+When implementation or review evidence references a shipped or superseded
+proposal, review the work as a delta from shipped behavior, not as a fresh
+implementation of the whole historical proposal.
+
+Required checks:
+
+- Identify the `amendment-id` or superseding proposal reference.
+- Compare delivered behavior against the amendment delta, not the full shipped proposal body.
+- Verify the preserve list: shipped behavior that must remain intact is characterized by tests, protected by regression coverage, or explicitly changed by the approved delta.
+- Verify `tests-required` was satisfied or explicitly deferred by the human.
+- Check the diff for unrelated shipped-scope reimplementation.
+- Confirm closeout evidence names the final amendment disposition, such as `implemented` or `superseded`.
+
+Evidence that merely says "matches Proposal NNN" is over-strong for post-ship
+work unless it also names the active delta and the shipped behavior preserved.
+For these reviews, FR-006 and FR-015 are release-blocking: missing delta evidence
+or any rewrite of real shipped proposal bodies blocks signoff unless the human
+records a narrower deferral or explicit exception.
+
 ## Common Specrew Review Failure Modes
 
 Use these as prompts during review:
