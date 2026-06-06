@@ -49,4 +49,4 @@ Reusable defect patterns that must be rechecked before feature closure.
 
 ## Exemptions
 
-- `evaluation/scorers/process-scorer.ps1`: `$ProjectPath` is resolved with `Resolve-Path`, and `GetFullPath` is only applied to computed report paths. This does not match the user-supplied relative-path defect model, so no migration is required for feature 009.
+- `tests/support/process-quality-scorer.ps1` (moved from the retired top-level scorer): `$ProjectPath` is resolved with `Resolve-Path`, and `GetFullPath` is only applied to computed report paths. This does not match the user-supplied relative-path defect model, so no migration is required for feature 009.

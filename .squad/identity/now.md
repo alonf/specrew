@@ -2,15 +2,15 @@
 focus_area: "F-051 Multi-Session Foundation — Iteration 003 closed; feature-closeout release SDLC active."
 active_issues: "[]"
 schema: v1
-updated_at: 2026-06-06T15:27:11Z
+updated_at: 2026-06-06T20:36:40Z
 session_state_active: false
 session_state_boundary: feature-closeout
-session_state_feature: 168-post-ship-proposal-amendment-discipline
-session_state_feature_path: "C:\Dev\Specrew-post-ship-amendment-discipline\specs\168-post-ship-proposal-amendment-discipline"
+session_state_feature: 170-retire-evaluation-surface
+session_state_feature_path: "C:\Dev\Specrew\specs\170-retire-evaluation-surface"
 session_state_iteration: 001
 session_state_task: "(none)"
-session_state_auth_commit: 869e1537
-session_state_recorded_at: 2026-06-06T15:27:11Z
+session_state_auth_commit: 391cbb8a
+session_state_recorded_at: 2026-06-06T20:36:40Z
 ---
 
 # What We're Focused On
