@@ -81,7 +81,7 @@ Write-Pass "scaffold-reviewer-artifacts.ps1 is Linux-portable (iter-007 T001 —
 # Test 9: tests/support/process-quality-scorer.ps1 uses forward-slash literal for cross-platform Join-Path (iter-007 T002 — sibling-bug audit fix)
 $processScorerContent = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\support\process-quality-scorer.ps1') -Raw -Encoding UTF8
 if ($processScorerContent -match "ChildPath 'test-results\\\\process-quality-report\.md'") {
-    Write-Fail "tests/support/process-quality-scorer.ps1 still uses a backslash report-path literal — Linux Join-Path treats '\\' as part of filename."
+    Write-Fail "tests/support/process-quality-scorer.ps1 still uses a backslash report-path literal — provider cmdlets normalize on POSIX, but raw .NET IO / native-command / string-level contexts do not (unix path semantics probe), so keep the literal forward-slash."
 }
 Write-Pass "tests/support/process-quality-scorer.ps1 uses forward-slash path literal (iter-007 T002 — sibling-bug audit)"
 

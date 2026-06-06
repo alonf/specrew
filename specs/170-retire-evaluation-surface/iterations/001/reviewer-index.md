@@ -50,4 +50,4 @@
 
 ## Replay Digest
 
-SPECREW_REVIEW schema=v1 iter=001 feature=170-retire-evaluation-surface verdict=needs-rework tasks=0/7 reqs=7 files=13 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=2/2 index=specs\170-retire-evaluation-surface\iterations\001\reviewer-index.md
+SPECREW_REVIEW schema=v1 iter=001 feature=170-retire-evaluation-surface verdict=accepted tasks=7/7 reqs=8 files=21 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=2/2 index=specs\170-retire-evaluation-surface\iterations\001\reviewer-index.md
