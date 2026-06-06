@@ -46,3 +46,15 @@ Thumbs.db
 
 # Specrew atomic-write staging residue (transient)
 *.pending
+
+# Specrew per-session files (F-051 multi-session foundation) - do not commit
+.specrew/last-*
+.specify/feature.json
+.specrew/start-context.json
+.specrew/host-history.json
+.specrew/.cache/
+.squad/sessions/
+.squad/decisions/inbox/
+.specrew/last-validator-summary.json
+.specrew/active-sessions.yml
+.specrew/workshop-visuals/
