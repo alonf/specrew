@@ -10,7 +10,7 @@
 - [x] Requirements are testable and independently reviewable.
 - [x] Success criteria are measurable and tied to documentation, validator, reviewer, index/status, and test evidence.
 - [x] Scope exclusions are explicit, including no bulk rewrite of historical shipped proposals and no reimplementation of unrelated shipped behavior.
-- [x] The spec preserves Proposal 167's warning-level default while marking enforcement severity as a clarification candidate.
+- [x] The spec preserves Proposal 167's warning-level default, confirmed during clarification.
 
 ## Requirement Completeness
 
@@ -27,8 +27,8 @@
 - [x] Drift signals identify mismatches across Proposal 167, spec, docs, validator, reviewer guidance, index/status output, tests, and review evidence.
 - [x] Delta-only implementation discipline is explicit and release-blocking for planning and review.
 
-## Clarification Candidates
+## Clarification Resolution
 
-- [ ] QC-001: Confirm whether shipped/superseded normative edits outside `Post-Ship Amendments` stay as soft warnings for this iteration or become hard validation failures.
-- [ ] QC-002: Confirm whether `Post-Ship Amendments` may appear on `active` proposals or whether active proposals should use the normal active-feature amendment mechanism.
-- [ ] QC-003: Confirm whether implemented amendments remain only in the original proposal and status/index output, or are also copied into a generated amendment index.
+- [x] QC-001: Shipped/superseded normative edits outside `Post-Ship Amendments` stay as soft warnings for this iteration.
+- [x] QC-002: Active proposals use the normal active-feature amendment mechanism rather than `Post-Ship Amendments`.
+- [x] QC-003: Implemented amendments remain in the original proposal and are surfaced by status/index output; no generated amendment index is in scope.
