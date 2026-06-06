@@ -279,6 +279,12 @@ $claudeInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interaction
 if ($claudeInteraction -notmatch 'AskUserQuestion' -or $claudeInteraction -notmatch 'approve as-is, approve with instructions, send back, and discuss prompt #N') {
     Write-Fail "Claude interaction guidance did not render the Claude-specific structured question primitive with the shared response contract:`n$claudeInteraction"
 }
+# 165 boundary-packet collapse fix: the verdict guidance must require rendering the Rule 46 six-section
+# packet as PROSE before the menu (the menu fields are short labels that cannot carry it; a bare verdict
+# menu that skipped the packet is the Claude collapse the maintainer's Copilot A/B isolated). Keeps the menu.
+if ($claudeInteraction -notmatch 'six-section re-entry packet as PROSE' -or $claudeInteraction -notmatch 'is a Rule 46 violation') {
+    Write-Fail "Claude interaction guidance does not require rendering the packet as prose before the verdict menu (165 boundary-packet fix):`n$claudeInteraction"
+}
 
 $copilotInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'copilot'
 if ($copilotInteraction -notmatch 'No structured question/menu primitive is declared' -or $copilotInteraction -notmatch 'textual "What''s your verdict\?" options exactly as shown') {

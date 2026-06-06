@@ -201,7 +201,7 @@ function Get-SpecrewHostInteractionGuidanceBlock {
 Host-rendered interaction guidance for ${displayName}:
 $guidance
 Structured primitive: $primitive.
-Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. If the structured primitive is unavailable in the running host session, emit the textual "What's your verdict?" options exactly as shown above. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known; otherwise ask a concise free-form question.
+Render the Rule 46 six-section re-entry packet as PROSE in your message FIRST, then call the structured primitive only for the verdict selection. The primitive's fields are short labels by design (a ~12-character header, 1-to-5-word option labels) and CANNOT carry the packet -- the What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts content, with its file:/// links, lives in your prose ABOVE the call. A verdict menu raised without the full packet rendered above it (a bare "What's your verdict?" that skipped the packet) is a Rule 46 violation, not a valid stop -- the menu is only the short picker that follows the rendered packet. Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. If the structured primitive is unavailable in the running host session, emit the textual "What's your verdict?" options exactly as shown above. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known; otherwise ask a concise free-form question.
 "@
     }
 
