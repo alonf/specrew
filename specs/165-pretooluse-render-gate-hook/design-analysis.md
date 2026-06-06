@@ -84,3 +84,43 @@ The mechanism is viable and marker-anchored detection is the design. The decisio
 spec conversion is the **worth-it bar**, which the proposal assigns to the maintainer. Proceed
 to `speckit.specify` with a marker-anchored, workshop-scoped, Claude-only v1 — or hold
 (accept-as-minor stands) if the host-specific cost outweighs the minor UX gain.
+
+## Disposition — retargeted (2026-06-07)
+
+**Worth-it evidence (a concurrent real workshop on the current Claude model — the maintainer's F-171
+design-analysis):** 165's *specific* targets — the lens agenda and the component map — **rendered fine**
+before their confirm menus (the 141-era skim did not reproduce). The friction that remained was (a) dense
+design-decision menus raised before the goal/reasoning was surfaced, and (b) **Claude dropping the
+`file:///` artifact links before the menu**, so the human could not open the files to inform a decision.
+Neither is what 165's render-gate targets, and the agenda/map skim it *does* target appears to be closing
+on the current model. → **Hold the broad PreToolUse render-gate; accept-as-minor stands for the
+agenda/map case.**
+
+**Retargeted fix (host-neutral, shipped on this branch):**
+
+- **A — chat-path orientation:** the design-workshop skill now tells the human up front they can type a
+  question / ask for a file / "explain more" instead of picking a menu option.
+- **B-conduct — file-link discipline at confirm menus:** the skill now requires the artifacts' bare
+  `file:///` links to be rendered in prose before any confirm menu (spec, lens record, design-analysis,
+  diagram file), naming the Claude-specific drop. This is rule 14A applied at the workshop confirm menu.
+- Both land in `extensions/specrew-speckit/squad-templates/skills/design-workshop.md` (+ `.specify`
+  mirror, parity verified). Per-lens md untouched (the rule is global workshop method).
+
+**Deferred — the narrow file-link *gate*** (only if the next dogfood shows Claude still dropping the links
+despite the conduct): build it as a **gating provider in F-171's `SpecrewHookDispatcher`**, NOT a standalone
+hook — composing through that seam avoids the `.claude/settings.local.json` collision entirely.
+
+**Concurrent-crew (F-171) conflict mitigation:**
+
+- F-171 binds **SessionStart + PostToolUse** (injection-only providers); it never uses PreToolUse, never
+  touches `AskUserQuestion`, and never touches the design-workshop skill. So the conduct fix above has
+  **zero hard conflict** (disjoint surfaces; merges in any order). A broad rule-14A reinforcement in
+  coordinator-governance, if added later, merges serially after F-171's governance edit (both append-only).
+- **Forward-compat ask to F-171 (cheap, while its spec is fresh):** widen the provider contract from
+  injection-only to `kind: inject | gate` and register the dispatcher for PreToolUse too, so a future
+  file-link gate plugs in as a `gate` provider — the same "reserve the seat" move F-171 already made for
+  130-P4, but for a gating provider type.
+
+**Net:** the broad render-gate (165 as written) is superseded by this conduct fix + the F-171 dispatcher
+seat. The worktree closes once the conduct fix lands and the dogfood confirms (or escalates to the gating
+provider).
