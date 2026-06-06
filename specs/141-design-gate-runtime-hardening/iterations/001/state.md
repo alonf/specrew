@@ -2,12 +2,12 @@
 
 **Schema**: v1
 **Last Completed Task**: T011
-**Tasks Remaining**: T008 (deferred-within-feature — Applicable Lenses, later iteration)
+**Tasks Remaining**: none — T008 (Applicable Lenses, FR-009/FR-010) was deferred-within-feature and is RESOLVED: delivered in the workshop iterations (4–7, Amendments A1/A3/A4)
 **In Progress**: (none)
 **Baseline Ref**: 936f1c3789d3da6bfd7563f67c9b3de402b94dc2
-**Updated**: 2026-06-02T11:10:00Z
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Updated**: 2026-06-06T02:40:00Z
+**Current Phase**: complete
+**Iteration Status**: complete
 
 ## Execution Summary
 
