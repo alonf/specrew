@@ -120,6 +120,122 @@ function Invoke-ProviderProcess {
     }
 }
 
+# ---------------------------------------------------------------------------
+# Per-session runtime state (FR-009/FR-010 surface; T007 state-diff + dedupe).
+# State files live under .specrew/runtime/ (gitignored), keyed by the SANITIZED
+# host session id. Absent state = fresh session (anchor, don't inject); corrupt
+# state = STATE_UNAVAILABLE (no safe dedupe -> no automatic injection).
+# ---------------------------------------------------------------------------
+
+function Get-SessionStatePath {
+    param([string]$ProjectRoot, [string]$SessionId)
+    return (Join-Path $ProjectRoot ('.specrew/runtime/refocus-state-{0}.json' -f $SessionId))
+}
+
+function Read-SessionState {
+    param([string]$Path)
+    # Returns @{ Exists; Corrupt; State }
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return @{ Exists = $false; Corrupt = $false; State = $null }
+    }
+    try {
+        $state = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+        return @{ Exists = $true; Corrupt = $false; State = $state }
+    }
+    catch {
+        return @{ Exists = $true; Corrupt = $true; State = $null }
+    }
+}
+
+function Save-SessionState {
+    param([string]$Path, $State)
+    $dir = Split-Path -Parent $Path
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
+    [System.IO.File]::WriteAllText($Path, ($State | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+}
+
+function New-SessionState {
+    param([string]$SessionId)
+    return [pscustomobject]@{
+        session_id         = $SessionId
+        last_seen_boundary = $null
+        context_mtime      = $null
+        breaker            = $null
+        journal            = @()
+    }
+}
+
+function Get-BoundaryCursor {
+    param([string]$ProjectRoot)
+    # Returns @{ Cursor; MTime } from start-context.json (the state truth B3 watches).
+    $path = Join-Path $ProjectRoot '.specrew/start-context.json'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    $mtime = (Get-Item -LiteralPath $path).LastWriteTimeUtc.ToString('o')
+    try {
+        $ctx = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+        $cursor = $null
+        if ($ctx.PSObject.Properties['session_state'] -and $null -ne $ctx.session_state -and $ctx.session_state.PSObject.Properties['boundary_type']) {
+            $cursor = [string]$ctx.session_state.boundary_type
+        }
+        return @{ Cursor = $cursor; MTime = $mtime }
+    }
+    catch { return $null }
+}
+
+function Get-ChannelOneFingerprint {
+    param([string]$ProjectRoot)
+    $path = Join-Path $ProjectRoot '.specrew/runtime/refocus-channel1.json'
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    try { return (Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json) }
+    catch { return $null }
+}
+
+function Test-B3ShouldInject {
+    # The B3 decision (FR-009): watch the STATE (boundary cursor), never the actor.
+    # Returns @{ Action = 'inject' | 'silent' | 'dedupe'; State } with State already
+    # updated (caller saves). Cheap-guard: when start-context.json's mtime matches
+    # the last recorded check, exit without even parsing it.
+    param([string]$ProjectRoot, $SessionState)
+
+    $cursorInfo = Get-BoundaryCursor -ProjectRoot $ProjectRoot
+    if ($null -eq $cursorInfo -or [string]::IsNullOrWhiteSpace($cursorInfo.Cursor)) {
+        return @{ Action = 'silent'; State = $SessionState }
+    }
+
+    $lastMtime = if ($SessionState.PSObject.Properties['context_mtime']) { [string]$SessionState.context_mtime } else { $null }
+    $lastSeen = if ($SessionState.PSObject.Properties['last_seen_boundary']) { [string]$SessionState.last_seen_boundary } else { $null }
+
+    # First sight in this session: ANCHOR, never inject — otherwise the first
+    # PostToolUse after deploy/install would fire a spurious "crossing".
+    if ([string]::IsNullOrWhiteSpace($lastSeen)) {
+        $SessionState.last_seen_boundary = $cursorInfo.Cursor
+        $SessionState.context_mtime = $cursorInfo.MTime
+        return @{ Action = 'anchor'; State = $SessionState }
+    }
+
+    # Cheap guard: nothing changed on disk since the last check.
+    if ($lastMtime -eq $cursorInfo.MTime) {
+        return @{ Action = 'silent'; State = $SessionState }
+    }
+
+    if ($lastSeen -eq $cursorInfo.Cursor) {
+        # File touched but cursor unchanged (other start-context churn).
+        $SessionState.context_mtime = $cursorInfo.MTime
+        return @{ Action = 'silent'; State = $SessionState }
+    }
+
+    # Real crossing. Was it already delivered in-band by the wrapper (channel 1)?
+    $SessionState.last_seen_boundary = $cursorInfo.Cursor
+    $SessionState.context_mtime = $cursorInfo.MTime
+    $fingerprint = Get-ChannelOneFingerprint -ProjectRoot $ProjectRoot
+    if ($null -ne $fingerprint -and $fingerprint.PSObject.Properties['boundary'] -and ([string]$fingerprint.boundary -eq $cursorInfo.Cursor)) {
+        return @{ Action = 'dedupe'; State = $SessionState }
+    }
+    return @{ Action = 'inject'; State = $SessionState }
+}
+
 function Get-RefocusProviderArgs {
     param([string]$EventName, [AllowNull()][string]$Source)
     # RefocusProvider routing (FR-009 surface; B3 state-diff lands in T007):
@@ -179,6 +295,24 @@ try {
     $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
     if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) { exit 0 }
 
+    # Per-session runtime state (T007/T008): absent = fresh; corrupt = no safe dedupe.
+    $sessionStatePath = Get-SessionStatePath -ProjectRoot $projectRoot -SessionId $sessionId
+    $stateRead = Read-SessionState -Path $sessionStatePath
+    $stateCorrupt = [bool]$stateRead.Corrupt
+    $sessionState = $null
+    if ($stateRead.Exists -and -not $stateRead.Corrupt) {
+        $sessionState = $stateRead.State
+        # Schema tolerance: older/foreign state files gain missing properties.
+        foreach ($prop in @('last_seen_boundary', 'context_mtime', 'breaker', 'journal')) {
+            if (-not $sessionState.PSObject.Properties[$prop]) {
+                $sessionState | Add-Member -NotePropertyName $prop -NotePropertyValue $(if ($prop -eq 'journal') { @() } else { $null })
+            }
+        }
+    }
+    elseif (-not $stateRead.Exists) {
+        $sessionState = New-SessionState -SessionId $sessionId
+    }
+
     # Providers for THIS event, deterministic order (the host runs parallel hooks
     # unordered; Specrew owns ordering internally — the lens-2 dispatcher decision).
     $providers = @($catalog.providers | Where-Object { @($_.events) -contains $Event } | Sort-Object { [int]$_.order })
@@ -214,6 +348,19 @@ try {
         # handover — ride the same path with event JSON on their own contract).
         $commandArgs = $null
         if ($providerId -eq 'refocus') {
+            # B3 gating (T007, FR-009): watch the boundary cursor, dedupe against
+            # the channel-1 fingerprint, anchor on first sight. Corrupt state means
+            # no safe dedupe -> no automatic injection (quiet + loud once).
+            if ($Event -eq 'PostToolUse') {
+                if ($stateCorrupt) {
+                    Write-DispatcherWarn -Code 'STATE_UNAVAILABLE' -Message 'session state unreadable; B3 automation quiet (manual /specrew-refocus and channel 1 unaffected)'
+                    continue
+                }
+                $b3 = Test-B3ShouldInject -ProjectRoot $projectRoot -SessionState $sessionState
+                $sessionState = $b3.State
+                Save-SessionState -Path $sessionStatePath -State $sessionState
+                if ($b3.Action -ne 'inject') { continue }
+            }
             $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source
         }
         else {

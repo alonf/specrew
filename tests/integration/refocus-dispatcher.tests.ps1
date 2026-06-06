@@ -79,9 +79,15 @@ $result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 
 Assert-True ($result.ExitCode -eq 0) 'B2 exits 0'
 Assert-True ($result.StdOut -match '\[specrew-refocus\] trigger=b2 scope=general ') 'B2 routes startup -> trigger b2 (general grounding)'
 
-# --- 3. B3: PostToolUse -> hookSpecificOutput JSON shape --------------------------
+# --- 3. B3: PostToolUse -> hookSpecificOutput JSON shape (after a real crossing) ---
+# First call ANCHORS (T007 semantics: never inject on first sight); the crossing
+# then triggers the JSON-shaped injection.
 $result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventTool
-Assert-True ($result.ExitCode -eq 0) 'B3 exits 0'
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'B3 first sight anchors (no injection)'
+$ctx = @{ session_state = @{ boundary_type = 'review-signoff'; feature_ref = 'dispatcher-fixture' } } | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $ctx, [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventTool
+Assert-True ($result.ExitCode -eq 0) 'B3 crossing exits 0'
 $json = $null
 try { $json = $result.StdOut | ConvertFrom-Json } catch { }
 Assert-True ($null -ne $json -and $null -ne $json.hookSpecificOutput) 'PostToolUse output is hookSpecificOutput JSON'
@@ -163,6 +169,53 @@ $json = $null
 try { $json = $result.StdOut | ConvertFrom-Json } catch { }
 Assert-True ($null -ne $json -and [string]$json.hookSpecificOutput.permissionDecision -eq 'allow') 'crashed gate fails OPEN to allow'
 Assert-True ($result.StdErr.Contains('failing OPEN')) 'crashed gate warns it failed open'
+
+# --- 12. T007: B3 state-diff + dedupe (watch the state, never the actor) --------------
+$dispatcher = New-ScratchProject
+$eventB3 = '{"session_id":"b3-session-1","tool_name":"Bash"}'
+$statePath = Join-Path $projectRoot '.specrew\runtime\refocus-state-b3-session-1.json'
+function Set-Cursor {
+    param([string]$Boundary)
+    $ctx = @{ session_state = @{ boundary_type = $Boundary; feature_ref = 'dispatcher-fixture' } } | ConvertTo-Json -Depth 4
+    [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $ctx, [System.Text.UTF8Encoding]::new($false))
+}
+
+# 12a. First sight: ANCHOR — no injection, state created.
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventB3
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'B3 first sight anchors silently (no spurious injection)'
+Assert-True (Test-Path -LiteralPath $statePath -PathType Leaf) 'B3 anchor creates the per-session state file'
+$state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+Assert-True ([string]$state.last_seen_boundary -eq 'implement') 'anchor records the live cursor'
+
+# 12b. Same cursor: silent.
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventB3
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'unchanged cursor stays silent'
+
+# 12c. Crossing WITHOUT channel-1 fingerprint (bypass path): inject.
+Set-Cursor -Boundary 'review-signoff'
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventB3
+$json = $null
+try { $json = $result.StdOut | ConvertFrom-Json } catch { }
+Assert-True ($null -ne $json -and $json.hookSpecificOutput.additionalContext -match 'trigger=b3 scope=general\+boundary\.retro ') 'un-fingerprinted crossing injects the INCOMING stage (review-signoff -> retro)'
+$state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+Assert-True ([string]$state.last_seen_boundary -eq 'review-signoff') 'injection updates last_seen'
+
+# 12d. Crossing WITH channel-1 fingerprint: dedupe (silent).
+Set-Cursor -Boundary 'retro'
+$fingerprint = @{ boundary = 'retro'; at = '2026-06-07T00:00:00Z' } | ConvertTo-Json -Compress
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\runtime\refocus-channel1.json'), $fingerprint, [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventB3
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'wrapper-fingerprinted crossing dedupes (no double payload)'
+$state = Get-Content -LiteralPath $statePath -Raw | ConvertFrom-Json
+Assert-True ([string]$state.last_seen_boundary -eq 'retro') 'dedupe still advances last_seen'
+
+# 12e. Corrupt state: STATE_UNAVAILABLE, quiet, session unaffected.
+[System.IO.File]::WriteAllText($statePath, '{corrupt', [System.Text.UTF8Encoding]::new($false))
+Set-Cursor -Boundary 'iteration-closeout'
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson $eventB3
+Assert-True ($result.ExitCode -eq 0) 'corrupt state exits 0'
+Assert-True ($result.StdErr.Contains('WARN STATE_UNAVAILABLE')) 'corrupt state warns STATE_UNAVAILABLE'
+Assert-True ([string]::IsNullOrWhiteSpace($result.StdOut)) 'corrupt state: no automatic injection (manual + channel 1 unaffected)'
 
 # --- summary --------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
