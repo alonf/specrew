@@ -61,3 +61,4 @@
 {"recorded_at":"2026-06-06T19:20:03Z","event_type":"boundary-sync","schema":"v1","payload":{"task_id":null,"feature_ref":"170-retire-evaluation-surface","auth_commit_hash":"cd9528e7","iteration_number":"","boundary_type":"plan"}}
 {"schema":"v1","recorded_at":"2026-06-06T19:31:53Z","payload":{"auth_commit_hash":"52602ede","feature_ref":"170-retire-evaluation-surface","iteration_number":"001","boundary_type":"tasks","task_id":null},"event_type":"boundary-sync"}
 {"schema":"v1","payload":{"feature_ref":"170-retire-evaluation-surface","auth_commit_hash":"70e3c0c9","task_id":null,"iteration_number":"001","boundary_type":"before-implement"},"recorded_at":"2026-06-06T19:32:09Z","event_type":"boundary-sync"}
+{"payload":{"auth_commit_hash":"bbae04ca","task_id":null,"iteration_number":"001","boundary_type":"review-signoff","feature_ref":"170-retire-evaluation-surface"},"schema":"v1","event_type":"boundary-sync","recorded_at":"2026-06-06T19:38:29Z"}

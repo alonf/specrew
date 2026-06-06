@@ -24768,3 +24768,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 70e3c0c9
 - **Recorded At**: 2026-06-06T19:32:09Z
+
+## 2026-06-06T19:38:29Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 170-retire-evaluation-surface
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: bbae04ca
+- **Recorded At**: 2026-06-06T19:38:29Z
