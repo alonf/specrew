@@ -18,8 +18,8 @@ The **collaborative architecture & design** capability (Amendment A6, Option B �
 behavioral-conduct + thin-deterministic-floor shape): make the design-analysis a **co-design session**, not a
 questionnaire-then-unilateral-deliverable. The agent frames the phases (FR-034), co-decides the design
 method/style (FR-035), co-builds the component/responsibility map + key flows WITH the human before
-presenting options (FR-036), and surfaces visuals in-band (FR-037 — folding the iteration-8 surfacing gap
-#3/#5). SC-024 (behavioral, the co-design dogfood) is the acceptance gate; SC-025 (the marker-gated
+presenting options (FR-036), and surfaces visuals in-band (FR-037 — folding the iteration-8 surfacing gap #3/#5).
+SC-024 (behavioral, the co-design dogfood) is the acceptance gate; SC-025 (the marker-gated
 co-design-record floor) is the deterministic, unit-tested floor.
 
 ## Scope Summary

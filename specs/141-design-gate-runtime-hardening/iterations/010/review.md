@@ -93,7 +93,7 @@ the nine `knowledge/design-lenses/*.md` + `lens-template.md` (each +`## Workshop
   test** (stated in the suite header).
 - **Evidence replay (run at THIS review, not inherited):** all eight relevant suites re-run with real exit
   codes this review — `skill-templates` (0), `design-analysis-gate` (0), `design-gate-runtime-hardening` unit
-  + integration (0 / 0), `...-session-recovery` (0), `...-greenfield-baseline` (0),
+  - integration (0 / 0), `...-session-recovery` (0), `...-greenfield-baseline` (0),
   `lens-applicability-selector` (0), `lens-conduct-delivery` (0). The first-pass review asserted four of these
   green from inherited state — the **F-050 coverage-evidence-drift Shape**; this replay grounds the claim.
 - **Gate-completeness (Shape 8) — review-driven fix this iteration:** the suite guarded the relocation but

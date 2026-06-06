@@ -160,6 +160,7 @@ Claude and was redundant on prose hosts that render the agenda inline.)
 
      Key flow: <actor action> -> <Component> -> <Component> -> <outcome>
      ```
+
    - **Only then present the remaining trade-off options** (transport, store technology, granularity) for the
      human's verdict — the leftover consequential choices, not the whole design handed down.
    - Where the human's architecture expertise is low you MAY drive the decomposition and explain more, but you

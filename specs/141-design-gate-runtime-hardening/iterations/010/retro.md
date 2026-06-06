@@ -53,7 +53,7 @@ follow 145" redirect.
 - **My first i10 review was testimony, not verification — the exact failure Proposal 145 exists to prevent,
   committed by the reviewer.** I authored an "ACCEPTED" verdict and asked for a rubber-stamp, asserting four
   suites green from inherited state and a deploy-roots fact I had never checked. Only the maintainer's redirect
-  + a genuine 145 pass (treating my own `review.md` as an artifact-under-test) surfaced them. The reviewer is
+  - a genuine 145 pass (treating my own `review.md` as an artifact-under-test) surfaced them. The reviewer is
   not exempt from "the report is an artifact under test, not testimony."
 - **The dogfood found a blocker the structural tests AND the Claude dogfood could not: host-orchestration
   variance.** On the Squad/Copilot host the workshop recorded **seven "Human agreed" lens records after ~3

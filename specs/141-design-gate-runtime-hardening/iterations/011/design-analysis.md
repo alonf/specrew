@@ -60,7 +60,7 @@ down and leaves the human unprepared.
     `squad.agent.md`'s stopping rule ("intake is NOT specific-enough until every selected lens is
     confirmed / delegated / skipped; never backfill an agreement").
   - **FR-040 UX** (conduct) — prep announcement + agenda assignment + per-lens lazy-load progress, in the skill
-    + Rule 9a.
+    - Rule 9a.
   - **`squad.agent.md`** — the stopping-completeness rule, modeled on the greenfield-intake rule (line ~1474)
     that demonstrably holds *interactively* on Squad.
 - **Architectural pattern**: deterministic floor (presence + enum) under behavioral conduct — the A4/A6
