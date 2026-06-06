@@ -1,16 +1,17 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T001
-**Tasks Remaining**: T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012, T013, T014, T015, T016, T017
+**Last Completed Task**: T002
+**Tasks Remaining**: T003, T004, T005, T006, T007, T008, T009, T010, T011, T012, T013, T014, T015, T016, T017
 **In Progress**: (none)
 **Baseline Ref**: 90c42993c3ff00dc3d18e64e32de065077d854a3
-**Updated**: 2026-06-06T12:37:05Z
+**Updated**: 2026-06-06T12:41:39Z
 
 ## Execution Summary
 
 - T001 completed: branch `168-post-ship-proposal-amendment-discipline` is at `14b214f92545708fa5bb2e869d1701b88f922005`, matching upstream.
 - Dirty drift remains unchanged and out of scope before implementation edits.
+- T002 completed: the direct path is small enough for the approved 6.5 SP slice. Implementation surfaces are methodology docs, reviewer guidance, the validator plus mirrored `.specify` copy, focused synthetic fixtures/tests, and docs/index-only amendment status surfacing through file:///C:/Dev/Specrew-post-ship-amendment-discipline/proposals/INDEX.md.
 
 ## Notes
 
