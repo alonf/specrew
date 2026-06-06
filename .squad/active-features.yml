@@ -1,1 +1,6 @@
-claims: []
+claims:
+  - feature_id: "159-update-ux-small-fixes"
+    claimed_by: "alon@HOMEALON11"
+    claim_start_time: "2026-06-06T00:06:58Z"
+    last_refresh_time: "2026-06-06T00:06:58Z"
+    branch_name: "159-update-ux-small-fixes"

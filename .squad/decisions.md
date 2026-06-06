@@ -23116,3 +23116,12 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 66226da20b2c0cf3b62ab5a7aeb3c65782472cd0
 - **Recorded At**: 2026-06-03T13:47:48Z
+
+## 2026-06-06T00:06:59Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 159-update-ux-small-fixes
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0b49f02ab80679e351df7de81c30d50369abf501
+- **Recorded At**: 2026-06-06T00:06:58Z
