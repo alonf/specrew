@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 8/20 story_points
 **Started**: 2026-06-06
 **Completed**:
@@ -35,11 +35,11 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Boundary hygiene verification + scope-guard record | FR-007 | US3 | 0.5 | Spec Steward | — | planned | claude | — | — |
-| T002 | Iteration evidence note (scenarios, reachability, verdict headings) | FR-003 | US3 | 0.5 | Spec Steward | — | planned | claude | — | — |
-| T003 | Deploy-level repro harness S1–S6 (`managed-skill-stuck-preserving.tests.ps1`) | FR-001, FR-002 | US1 | 2 | Implementer | `tests/integration/managed-skill-stuck-preserving.tests.ps1` | planned | claude | — | — |
-| T004 | Reachability analysis from template + deploy-script git history | FR-003 | US1 | 1 | Implementer | — | planned | claude | — | — |
-| T005 | Verdict record (probe outcome × reachability) — gates T006/T007 | FR-003 | US1 | 1 | Reviewer | — | planned | claude | — | — |
+| T001 | Boundary hygiene verification + scope-guard record | FR-007 | US3 | 0.5 | Spec Steward | — | done | claude | — | — |
+| T002 | Iteration evidence note (scenarios, reachability, verdict headings) | FR-003 | US3 | 0.5 | Spec Steward | — | done | claude | — | — |
+| T003 | Deploy-level repro harness S1–S6 (`managed-skill-stuck-preserving.tests.ps1`) | FR-001, FR-002 | US1 | 2 | Implementer | `tests/integration/managed-skill-stuck-preserving.tests.ps1` | done | claude | — | — |
+| T004 | Reachability analysis from template + deploy-script git history | FR-003 | US1 | 1 | Implementer | — | done | claude | — | — |
+| T005 | Verdict record (probe outcome × reachability) — gates T006/T007 | FR-003 | US1 | 1 | Reviewer | — | done | claude | — | — |
 | T006 | Conditional narrow classification fix + `.specify` mirror parity | FR-004 | US2 | 2 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1`, `.specify/extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | blocked | claude | — | — |
 | T007 | Conditional pre/post fix evidence; S4 probe → regression assertion | FR-004, FR-005 | US2 | 0.5 | Implementer | `tests/integration/managed-skill-stuck-preserving.tests.ps1` | blocked | claude | — | — |
 | T008 | Regression set: harness ×2, F-160 fixture, mechanical checks, validator | FR-005, FR-006 | US3 | 1 | Implementer | — | planned | claude | — | — |
