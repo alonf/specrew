@@ -169,6 +169,17 @@ function Get-RefocusCurrentBoundary {
     return $null
 }
 
+function Get-RefocusBoundarySuccessor {
+    param([AllowNull()][string]$Boundary)
+    # Canonical stage order: after syncing boundary X, the work that follows is
+    # the successor stage — B3 injects the INCOMING stage's discipline.
+    $order = @('specify', 'clarify', 'plan', 'tasks', 'before-implement', 'implement', 'review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')
+    if ([string]::IsNullOrWhiteSpace($Boundary)) { return $null }
+    $index = $order.IndexOf($Boundary.ToLowerInvariant())
+    if ($index -lt 0 -or $index -ge ($order.Count - 1)) { return $null }
+    return $order[$index + 1]
+}
+
 function Get-RefocusTokenEstimate {
     param([AllowEmptyString()][string]$Text)
     if ([string]::IsNullOrEmpty($Text)) { return 0 }
@@ -442,9 +453,11 @@ switch ($mode) {
         }
         # Resolve dynamic placeholders the trigger map may carry.
         $boundaryNow = Get-RefocusCurrentBoundary -StartContext (Get-RefocusStartContext -ProjectRoot $projectRoot)
+        $boundaryNext = Get-RefocusBoundarySuccessor -Boundary $boundaryNow
         $scopes = @($scopes | ForEach-Object {
             if ($_ -eq 'boundary.current' -and -not [string]::IsNullOrWhiteSpace($boundaryNow)) { "boundary.{0}" -f $boundaryNow }
-            elseif ($_ -eq 'boundary.current') { 'general' }
+            elseif ($_ -eq 'boundary.next' -and -not [string]::IsNullOrWhiteSpace($boundaryNext)) { "boundary.{0}" -f $boundaryNext }
+            elseif ($_ -in @('boundary.current', 'boundary.next')) { 'general' }
             else { $_ }
         } | Select-Object -Unique)
         Invoke-RefocusScopePayload -ProjectRoot $projectRoot -Trigger $modeValue -ScopeIds $scopes

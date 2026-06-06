@@ -50,7 +50,7 @@
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T001 | RefocusEngine core + engine test suite | FR-001, FR-003, FR-004, FR-005, FR-012, FR-020 | US1 | 2.5 | Implementer | scripts/internal/refocus.ps1, tests/integration/refocus-engine.tests.ps1 | done | claude | 2.5 | pass |
 | T002 | Digest family (general + 10 stages) + drift check | FR-002, FR-019 | US1 | 2.0 | Implementer | extensions/specrew-speckit/refocus/*.md, tests/integration/refocus-digests.tests.ps1 | done | claude | 2.0 | pass |
-| T003 | Scope catalog + schema validation (incl. provider kind field) | FR-003 | US1 | 1.0 | Implementer | extensions/specrew-speckit/refocus-scopes.json | planned | claude | | |
+| T003 | Scope catalog + schema validation (incl. provider kind field) | FR-003 | US1 | 1.0 | Implementer | extensions/specrew-speckit/refocus-scopes.json | done | claude | 1.0 | pass |
 | T004 | WrapperEmission (channel 1) + integration test | FR-006, FR-020 | US2 | 1.0 | Implementer | extensions/specrew-speckit/scripts/sync-boundary-state.ps1, tests/integration/refocus-channels.tests.ps1 | planned | claude | | |
 | T005 | Primer pointer lines (channel 2) | FR-007 | US2 | 0.5 | Implementer | extensions/specrew-speckit/squad-templates/**, hosts/** | planned | claude | | |
 | T006 | SpecrewHookDispatcher + dormant gate path + stdin test suite | FR-008, FR-012, FR-020 | US3 | 2.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, tests/integration/refocus-dispatcher.tests.ps1 | planned | claude | | |
