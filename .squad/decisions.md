@@ -23259,3 +23259,11 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 202944e5
 - **Recorded At**: 2026-06-06T12:03:52Z
+
+## 2026-06-06T12:20:00Z — Human decision: F-161 verdict-stop fix release (stricter shape)
+
+- **Feature**: 161-managed-skill-preserving-guard
+- **Decision**: Release conditional fix tasks T006/T007 with the STRICTER shape — fix only the generic-kind equality branch of Test-IsManagedLegacySkillDirectory; leave the front-matter heuristic untouched.
+- **Authorizing Human**: Alon Fliess
+- **Context**: T005 verdict CONFIRMED (misclassified AND reachable; harness scenario S7 with genuine v0.21-era generic content; reachability via v0.21.0-0.23.0 bootstrap then v0.26.0+ upgrade).
+- **Approved Deferral**: stale-canonical front-matter artifacts (harness scenarios S4/S4g) remain preserved by the untouched heuristic — accepted residual; no released version ever produced that artifact in .copilot/skills. Recorded in iteration 001 evidence.md (Accepted Residual) and review.md Gap Ledger (deferred).
