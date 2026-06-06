@@ -97,7 +97,7 @@ contracts, and release records.
 | --- | --- |
 | Update command regression | `pwsh -File tests/integration/update-command.ps1` |
 | Slash/version compatibility messaging | `pwsh -File tests/integration/slash-command-compatibility.tests.ps1` |
-| Targeted grep/static check | `rg -n "0\\.24\\.0|pre-v0\\.24\\.0|minimum compatibility is Specrew" scripts extensions tests` with expected active allowlist |
+| Targeted grep/static check | `rg -n "0\\.24\\.0\|pre-v0\\.24\\.0\|minimum compatibility is Specrew" scripts extensions tests` with expected active allowlist |
 | Governance validation | `pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .` |
 
 If implementation changes a helper that can be unit-tested without full bootstrap cost, add a
