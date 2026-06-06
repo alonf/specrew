@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 18.5/20 story_points
 **Started**: 2026-06-07
 **Completed**:
@@ -48,7 +48,7 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | RefocusEngine core + engine test suite | FR-001, FR-003, FR-004, FR-005, FR-012, FR-020 | US1 | 2.5 | Implementer | scripts/internal/refocus.ps1, tests/integration/refocus-engine.tests.ps1 | planned | claude | | |
+| T001 | RefocusEngine core + engine test suite | FR-001, FR-003, FR-004, FR-005, FR-012, FR-020 | US1 | 2.5 | Implementer | scripts/internal/refocus.ps1, tests/integration/refocus-engine.tests.ps1 | done | claude | 2.5 | pass |
 | T002 | Digest family (general + 10 stages) + drift check | FR-002, FR-019 | US1 | 2.0 | Implementer | extensions/specrew-speckit/refocus/*.md, tests/integration/refocus-digests.tests.ps1 | planned | claude | | |
 | T003 | Scope catalog + schema validation (incl. provider kind field) | FR-003 | US1 | 1.0 | Implementer | extensions/specrew-speckit/refocus-scopes.yml | planned | claude | | |
 | T004 | WrapperEmission (channel 1) + integration test | FR-006, FR-020 | US2 | 1.0 | Implementer | extensions/specrew-speckit/scripts/sync-boundary-state.ps1, tests/integration/refocus-channels.tests.ps1 | planned | claude | | |
