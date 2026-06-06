@@ -23239,3 +23239,23 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: ea9e2347
 - **Recorded At**: 2026-06-06T11:26:43Z
+
+## 2026-06-06T12:02:02Z — Boundary enforcement: before-implement
+
+- **Feature**: 161-managed-skill-preserving-guard
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: authorized
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-06T12:03:52Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 202944e5
+- **Recorded At**: 2026-06-06T12:03:52Z
