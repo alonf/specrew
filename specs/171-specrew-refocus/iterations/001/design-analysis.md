@@ -9,7 +9,7 @@
 
 Methodology drift is empirically born at three moments: compaction destroys the corpus in context; cold/bypass launches never load it; long sessions cross lifecycle gates with stale discipline. The shipped answer (coordinator advisory + human awareness) is discretionary — it asks a possibly-drifted agent or a busy human to notice drift. Proposal 146 (amended `2199a8dd`) demands a reactive manual surface AND mechanical re-injection from triggers that live outside the model's context, multi-host honest.
 
-## Decision Points (resolved in the intake workshop, human-confirmed per lens)
+## Key Design Decision Points
 
 1. Engine placement → deployed extension script (downstream-capable, no module import per fire)
 2. Trigger delivery → host-neutral contract + 3 channels (lifecycle stdout / primer floor / host hooks)
@@ -21,7 +21,7 @@ Methodology drift is empirically born at three moments: compaction destroys the 
 8. Safety → automatic circuit breaker + 3 manual kill-switch levels + journal + reason codes
 9. Compaction → managed compaction points (`--compact-instructions`); auto-compact steering research-gated
 
-## Options
+## Alternatives
 
 ### Option A — Simplest: manual surface + host-neutral channels only
 
@@ -43,6 +43,18 @@ The full workshop-bound scope: trigger contract + channels + digest family + dis
 
 - **Design-principle rationale**: matches the architecture's volatility cut (per-host adapters over one engine) and the product's host-neutrality guarantee; research gates keep unverified surfaces honest rather than excluded.
 - **Cost**: largest scope; schedule risk concentrated in per-host research (bounded by the research-matrix gate: a host that fails verification ships channels-only with documented variance, not a slipped feature).
+
+## Applicable Lenses
+
+*(FR-026 anti-omission coverage — each selected lens from `lens-applicability.json`, pointing into the option comparison; full per-lens records in `../../workshop/`.)*
+
+- **architecture-core** — Addressed: the option axis IS this lens's central decision (trigger delivery + host bindings); Option C realizes the bound host-neutral contract + volatility cut; Options A/B price the cuts (no hooks / Claude-only) against the recorded multi-host correction.
+- **component-design** — Addressed: all three options consume the same human-agreed 12-component map (Co-Design Record below); they differ only in which trigger adapters materialize — A drops Dispatcher/Provider/HostHookBindings, B materializes them for one host, C for all hook-capable hosts.
+- **requirements-nfr** — Addressed: P1 fail-open and P2 exactly-once bind identically across options; P4's latency bar only exists in B/C (hook paths); Option A trivially satisfies P4 by having no hook path — weighed in each option's cost line.
+- **integration-api** — Addressed: contracts C1/C4/C5 (engine CLI, catalog, digests) are option-invariant; C2 (host hook protocol) and C6 (merge-aware hook deploy) exist only in B/C — C multiplies C2 verification across hosts via the research-matrix gate.
+- **security-compliance** — Addressed: the auto-execution trust surface (hook registration, event-JSON parsing, session-id sanitization) is introduced by B/C only; Option A has no new execution surface; C's surface equals B's per host (same dispatcher), replicated under the same controls.
+- **devops-operations** — Addressed: kill-switch levels + circuit breaker + opt-out memory are required exactly where automation exists (B/C); deployment classes (managed mirrors, managed-with-overlay catalog) and FileList obligations are option-invariant; C adds per-host binding declarations to the deploy loop.
+- **observability-resilience** — Addressed: journal + reason codes + `--status` failure trace apply to any option with automatic injections (B/C); Option A retains the banner-only audit trail; C's per-host bindings each cite journal evidence in SC-008 beta validation.
 
 ## Crew Recommendation
 
