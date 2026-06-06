@@ -19,15 +19,19 @@ param()
 #   S4g STALE older-canonical, NO marker (generic) -> PROBE: outcome captured, not pre-asserted
 #   S5  second consecutive deploy run           -> idempotent: active surfaces preserved, stable end-state
 #   S6  active roots after deploy               -> SKILL.md + .specrew-managed in all four roots
-#   S7  REAL-HISTORICAL generic content, NO marker -> removed (REGRESSION ASSERTION).
+#   S7  REAL-HISTORICAL generic content, NO marker -> preserved (PR-review safe-fix).
 #       Provenance: commits 29a130b2 (F-021, 2026-05-18) through 534b7430 (F-024, 2026-05-20)
 #       deployed generic skills into .copilot/skills with NO sidecar marker and NO front matter;
 #       generic template content later drifted (e.g. 7f6536b2). The fixture embeds the genuine
-#       3816929c-era specrew-capacity-planning head. PRE-FIX this froze as
-#       preserved-legacy-unmanaged-skill (recorded at commit d5e53b89, T005 verdict CONFIRMED);
-#       the Feature 161 generic legacy-signature fix classifies it managed -> removed.
+#       3816929c-era specrew-capacity-planning head. The generic legacy-signature (which briefly
+#       classified this managed -> removed) was REMOVED at PR review: it could not tell Specrew's
+#       drifted-legacy content from a user-edited copy of the same shape (Copilot/Codex data-loss
+#       P1). Only an EXACT current-canonical match is removed now; this drifted content is preserved.
 #   S8  user-authored generic-shaped content under a catalog name, NO marker, NO front matter,
-#       NOT matching the generic legacy signature -> preserved (guards the fix's preserve side).
+#       NOT matching any canonical template -> preserved (guards the fix's preserve side).
+#   S9  signature-shaped generic content (heading + **Type**/**Schema**) WITH a user edit, NO
+#       marker, NO front matter -> preserved (data-loss regression: the removed signature would
+#       have deleted this and lost the user's edits; exact-match-only now preserves it).
 #
 # Residual (ACCEPTED at the Feature 161 verdict stop, stricter fix shape): S4/S4g
 # (stale-canonical WITH front matter, no marker) remain frozen — the front-matter heuristic
@@ -177,6 +181,27 @@ try {
     $userPlainGeneric = "# My Traceability Notes`n`nHand-written checklist the user keeps here; do not delete.`n"
     $s8Dir = New-LegacySkillDir -Name 'specrew-traceability-check' -SkillContent $userPlainGeneric      # S8
 
+    # S9: the data-loss case the REMOVED generic signature would have deleted — a marker-less,
+    # no-front-matter generic skill that MATCHES the old structural signature (heading +
+    # **Type**/**Schema** lines) but carries a user-authored edit. It does not exactly match the
+    # current canonical template, so the safe-fix preserves it. Catalog generic name
+    # 'specrew-design-workshop' has a generic definition but is not otherwise seeded.
+    $userEditedSignature = @(
+        '# specrew-design-workshop'
+        ''
+        '**Type**: Planning Skill  '
+        '**Schema**: v1  '
+        ''
+        '## Purpose'
+        ''
+        'Original Specrew content shape, but the user customized the body below.'
+        ''
+        '## My team customization (user-authored - do not delete)'
+        ''
+        'We rely on these notes; deleting this directory would lose our work.'
+    ) -join "`n"
+    $s9Dir = New-LegacySkillDir -Name 'specrew-design-workshop' -SkillContent $userEditedSignature      # S9
+
     $s2ContentBefore = Get-Content -LiteralPath (Join-Path $s2Dir 'SKILL.md') -Raw
 
     # --- Run 1: the real deploy ----------------------------------------------
@@ -228,12 +253,17 @@ try {
     Write-Probe "S4g (generic): stale older-canonical, no marker -> observed outcome '$s4gOutcome' (same rule chain, generic kind)"
     $summary.Add("S4g=$s4gOutcome") | Out-Null
 
-    # S7 REAL-HISTORICAL generic content -> REGRESSION ASSERTION (Feature 161 fix).
-    # Pre-fix observed outcome: preserved-legacy-unmanaged-skill (frozen) — recorded
-    # in the T005 verdict evidence at commit d5e53b89.
+    # S7 REAL-HISTORICAL generic content -> PRESERVED (Feature 161 PR-review safe-fix).
+    # The generic legacy-signature was REMOVED: it could not distinguish Specrew's own
+    # drifted-legacy content from a user-edited copy of the same shape, so it risked
+    # deleting user work (Copilot/Codex P1). Marker-less, no-front-matter generic content
+    # that does not EXACTLY match the current canonical template is now PRESERVED (favor
+    # preserve over delete); the stale skill stays safe in the legacy root while active
+    # surfaces redeploy fresh. (This was removed under the brief signature fix; pre-Feature-161
+    # it was also preserved, but as a silent freeze — now it is an explicit safe choice.)
     $s7Action = Get-LegacyAction -Actions $actions1 -DirName 'specrew-capacity-planning'
-    Assert-True ($null -ne $s7Action -and $s7Action.Action -eq 'removed-legacy-managed-skill') `
-        "S7 (real-historical generic): v0.21-era content without marker is classified MANAGED and removed (Feature 161 fix; failed pre-fix)"
+    Assert-True ($null -ne $s7Action -and $s7Action.Action -eq 'preserved-legacy-unmanaged-skill') `
+        "S7 (real-historical generic): v0.21-era content without marker is PRESERVED (PR-review safe-fix; no data-loss)"
     $s7Outcome = if ($null -ne $s7Action) { $s7Action.Action } else { 'no-action-recorded' }
     $summary.Add("S7=$s7Outcome") | Out-Null
 
@@ -243,6 +273,17 @@ try {
         "S8: plain user content under a catalog generic name (no signature) stays preserved"
     Assert-True (Test-Path -LiteralPath (Join-Path $s8Dir 'SKILL.md')) "S8: directory still on disk"
     $summary.Add("S8=preserved") | Out-Null
+
+    # S9 signature-shaped BUT user-edited generic content -> preserved (data-loss regression;
+    # the removed signature would have classified this managed and deleted the user's edits)
+    $s9Action = Get-LegacyAction -Actions $actions1 -DirName 'specrew-design-workshop'
+    Assert-True ($null -ne $s9Action -and $s9Action.Action -eq 'preserved-legacy-unmanaged-skill') `
+        "S9: signature-shaped generic content WITH a user edit is PRESERVED (data-loss guard; would have failed pre-safe-fix)"
+    $s9ContentAfter = Get-Content -LiteralPath (Join-Path $s9Dir 'SKILL.md') -Raw
+    Assert-True ([System.String]::Equals($userEditedSignature, $s9ContentAfter, [System.StringComparison]::Ordinal)) `
+        "S9: user-edited SKILL.md is byte-identical after deploy (no-loss invariant)"
+    Assert-True (Test-Path -LiteralPath (Join-Path $s9Dir 'SKILL.md')) "S9: directory still on disk"
+    $summary.Add("S9=preserved-byte-identical") | Out-Null
 
     # S6 active roots: SKILL.md + marker present for a representative slash + generic skill
     $activeRoots = @(

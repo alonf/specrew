@@ -2,7 +2,7 @@
 
 **Feature**: 161-managed-skill-preserving-guard
 **Created**: 2026-06-06 (T002)
-**Status**: in progress
+**Status**: complete (iteration closed; PR-review safe-fix applied 2026-06-06 — see PR-Review Correction below)
 
 ## T001 — Boundary hygiene record
 
@@ -107,6 +107,45 @@ v0.26.0+ → the four generic legacy dirs are frozen permanently as
   the untouched front-matter heuristic. No released version ever produced that
   artifact in `.copilot/skills`; recorded here so the question stays closed
   rather than silently open.
+
+## PR-Review Correction (post-closeout, 2026-06-06) — supersedes the generic legacy-signature fix above
+
+At the Feature 161 PR, GitHub Copilot and Codex both raised a P1 data-loss finding
+against the generic legacy-signature fix (T006/T007 above): the structural signature
+(directory-name heading plus `**Type**`/`**Schema**` lines) cannot distinguish
+Specrew's own drifted-legacy content from a user-edited copy of the same shape, so it
+could classify a user-edited generic skill as managed and delete it — the exact data
+loss this feature exists to prevent (spec: "genuinely user-authored skills must remain
+preserved"). A case-insensitive `-eq` in the same branch also contradicted the ordinal
+contract.
+
+Maintainer decision (favor preserve over delete): the generic legacy-signature was
+**removed**. A marker-less generic legacy skill is classified managed ONLY when its
+decoded text exactly matches the current canonical template (the ordinal
+`CurrentContent`/`LegacyContent` check); everything else is preserved. The redundant
+case-insensitive `-eq` was dropped (the ordinal exact-match already covers it). Applied
+identically to source and the `.specify` mirror (parity re-verified).
+
+Consequences:
+
+- **S7** (genuine v0.21-era generic content, drifted, marker-less) now resolves
+  **preserved** (was removed under the brief signature fix) — the accepted
+  "slightly reduced auto-recovery" tradeoff: heavily-drifted marker-less generic legacy
+  skills stay stale-but-safe in `.copilot/skills` while active surfaces redeploy fresh
+  (S6); re-deploy or manual cleanup recovers them without data-loss risk.
+- **S3/S3g** (current-canonical, marker-less) still **removed** via exact-match (F-160
+  recovery intact; `managed-runtime-sidecar.tests.ps1` Cases A–D still pass).
+- New **S9** locks the data-loss case closed: signature-shaped generic content WITH a
+  user edit resolves preserved and byte-identical.
+
+Post-correction OUTCOME-SUMMARY (identical across two runs):
+
+`S1=removed; S2=preserved-byte-identical; S2b=preserved; S3=removed; S3g=removed; S4=preserved-legacy-unmanaged-skill; S4g=preserved-legacy-unmanaged-skill; S5=idempotent; S6=active-roots-deployed; S7=preserved-legacy-unmanaged-skill; S8=preserved; S9=preserved-byte-identical`
+
+Out of scope (logged to issue #1761): the slash legacy-signature (Namespace plus
+Canonical-command lines) has the same theoretical flaw, but is effectively unreachable
+(released slash skills carry front matter, preserved by the leading-`---` heuristic) and
+is pre-existing F-160 code; not changed here.
 
 ## Regression Record (T008, 2026-06-06)
 
