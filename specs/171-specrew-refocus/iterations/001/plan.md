@@ -107,4 +107,3 @@
 - Add task rows only for work that is traceable to the scoped requirements above.
 - Keep Status: planning until the plan is fully decomposed and approved.
 - If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
-
