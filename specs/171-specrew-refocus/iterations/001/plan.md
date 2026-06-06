@@ -53,7 +53,7 @@
 | T003 | Scope catalog + schema validation (incl. provider kind field) | FR-003 | US1 | 1.0 | Implementer | extensions/specrew-speckit/refocus-scopes.json | done | claude | 1.0 | pass |
 | T004 | WrapperEmission (channel 1) + integration test | FR-006, FR-020 | US2 | 1.0 | Implementer | extensions/specrew-speckit/scripts/sync-boundary-state.ps1, tests/integration/refocus-channels.tests.ps1 | done | claude | 1.0 | pass |
 | T005 | Primer pointer lines (channel 2) | FR-007 | US2 | 0.5 | Implementer | extensions/specrew-speckit/squad-templates/**, hosts/** | done | claude | 0.5 | pass |
-| T006 | SpecrewHookDispatcher + dormant gate path + stdin test suite | FR-008, FR-012, FR-020 | US3 | 2.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, tests/integration/refocus-dispatcher.tests.ps1 | planned | claude | | |
+| T006 | SpecrewHookDispatcher + dormant gate path + stdin test suite | FR-008, FR-012, FR-020 | US3 | 2.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, tests/integration/refocus-dispatcher.tests.ps1 | done | claude | 2.5 | pass |
 | T007 | RefocusProvider routing + B3 state-diff | FR-009 | US3 | 1.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1 | planned | claude | | |
 | T008 | RuntimeSessionState + journal + pruning | FR-010 | US3 | 1.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1 | planned | claude | | |
 | T009 | Circuit breaker + --status + --reset-breaker | FR-011 | US4 | 1.5 | Implementer | scripts/internal/specrew-hook-dispatcher.ps1, scripts/internal/refocus.ps1 | planned | claude | | |
