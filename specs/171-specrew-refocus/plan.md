@@ -15,7 +15,7 @@ Volatility-cut layering per the Co-Design Record: N thin per-host trigger adapte
 |---|---|---|---|
 | RefocusEngine | `scripts/internal/refocus.ps1` (canonical) + deployed mirror | FR-001, 003, 004, 005, 017 | pure invocation, fixture digests/catalog, golden payloads |
 | RefocusDigests | `extensions/specrew-speckit/refocus/general.md` + 10 stage digests | FR-002 | size caps; frontmatter schema; drift fixtures |
-| RefocusScopeCatalog | `extensions/specrew-speckit/refocus-scopes.yml` | FR-003, 005 | schema validation; version-mismatch fail-open |
+| RefocusScopeCatalog | `extensions/specrew-speckit/refocus-scopes.json` | FR-003, 005 | schema validation; version-mismatch fail-open |
 | WrapperEmission | augmentation in deployed `sync-boundary-state.ps1` WRAPPER (not crew-169's module-internal file) | FR-006 | scratch-project integration test |
 | Primer pointer | one-line addition per host instruction template | FR-007 | template content assert |
 | SpecrewHookDispatcher | `scripts/internal/specrew-hook-dispatcher.ps1` + deployed mirror | FR-008, 011, 012 | simulated event JSON stdin per host shape |

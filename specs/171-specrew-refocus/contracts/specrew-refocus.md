@@ -58,6 +58,6 @@ Ownership rule: any future Specrew hook mechanism (inject or gate) routes throug
 
 ## File contracts
 
-- `refocus-scopes.yml`: `schema_version` required; additive-only; deployed managed-with-overlay (user keys preserved)
+- `refocus-scopes.json`: `schema_version` required; additive-only; deployed managed-with-overlay (user keys preserved)
 - Digest frontmatter: `{scope, sources[], reviewed_at}` — consumed by drift check + banner
 - Hook registration: per-user project-local settings file; Specrew entries identified by command path; user entries byte-untouched across deploys; opt-out recorded and respected

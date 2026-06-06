@@ -21,7 +21,7 @@
 
 Authored in `extensions/specrew-speckit/refocus/`; deployed as managed mirror; read at event time by RefocusEngine via ScopeCatalog mapping; currency watched by DigestDriftCheck (warn when any `sources[]` member changed after `reviewed_at`).
 
-## Entity: ScopeCatalog (refocus-scopes.yml)
+## Entity: ScopeCatalog (refocus-scopes.json)
 
 **Purpose**: the single data-driven map from scopes/triggers to digests/budgets, and home of the provider registry.
 

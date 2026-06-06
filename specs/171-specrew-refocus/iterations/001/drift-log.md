@@ -22,13 +22,19 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 1
+**Resolution rate**: 100% (1/1 resolved)
+**Specification drift**: 1 reconciled (artifact-format detail)
 
 ## Events
 
-No specification drift detected during Iteration 001 execution to date.
+### D-001 — Catalog format: refocus-scopes.yml → refocus-scopes.json (resolved: spec-updated)
+
+- **Requirement**: FR-003 (data-driven scope catalog with required `schema_version`)
+- **Detected**: 2026-06-07, T001 implementation (engine catalog reader)
+- **What drifted**: the spec/plan/contract named the catalog `refocus-scopes.yml`; the implementation ships `refocus-scopes.json`.
+- **Why**: the repository deliberately avoids a powershell-yaml / `ConvertFrom-Yaml` dependency (documented in `scripts/internal/yaml-list.ps1`; precedent in `scripts/internal/host-history.ps1` which chose JSON for exactly this reason). A hand-rolled nested-YAML parser would be new risk surface for zero requirement value — FR-003's substance (data-driven, schema-versioned, additive evolution, fail-open on mismatch) is format-agnostic and fully preserved.
+- **Resolution**: spec-updated — living artifacts (spec.md FR-003, plan.md, tasks.md T003, contracts, data-model.md) say `refocus-scopes.json` as of the T002/T003 commits; workshop records stay as historical agreements. Engine comment + this entry carry the rationale.
 
 ### Resolution Strategies (Unused)
 

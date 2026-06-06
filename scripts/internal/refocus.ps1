@@ -131,6 +131,10 @@ function Read-RefocusDigest {
     }
 
     $raw = Get-Content -LiteralPath $resolved -Raw -Encoding UTF8
+    # Digests cannot bake absolute URLs (they deploy to arbitrary projects); the
+    # {{project_root}} placeholder resolves to the live root as a file:/// URL.
+    $rootUrl = 'file:///' + ($ProjectRoot -replace '\\', '/')
+    $raw = $raw.Replace('{{project_root}}', $rootUrl)
     $body = $raw
     $sourceCount = 0
     # Frontmatter contract (C5): { scope, sources[], reviewed_at }. Strip it from the
