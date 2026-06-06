@@ -8,6 +8,17 @@ This index is the navigation surface for all proposals in this directory. Sorted
 
 ---
 
+## Post-Ship Amendment Backlog
+
+Human-maintained until proposal-index generation ships. List only
+`accepted-unimplemented` and `active` post-ship amendments from shipped or
+superseded proposals; keep `implemented`, `rejected`, and `superseded`
+amendments in the source proposal without showing them as unimplemented backlog.
+
+| Proposal | Amendment | Status | Routing |
+|---|---|---|---|
+| _None currently recorded_ | — | — | — |
+
 ## Shipped (30)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
