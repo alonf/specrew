@@ -58,3 +58,4 @@
 {"schema":"v1","recorded_at":"2026-06-06T11:47:48Z","event_type":"boundary-sync","payload":{"auth_commit_hash":"f97b5e405cac1fec6d4acfbbfd379f8555e426c6","task_id":null,"feature_ref":"141-design-gate-runtime-hardening","boundary_type":"feature-closeout","iteration_number":""}}
 {"schema":"v1","recorded_at":"2026-06-06T18:53:16Z","payload":{"auth_commit_hash":"c7d32a7f","boundary_type":"specify","iteration_number":"","feature_ref":"170-retire-evaluation-surface","task_id":null},"event_type":"boundary-sync"}
 {"recorded_at":"2026-06-06T18:53:44Z","payload":{"iteration_number":"","feature_ref":"170-retire-evaluation-surface","auth_commit_hash":"cffeccff","task_id":null,"boundary_type":"clarify"},"schema":"v1","event_type":"boundary-sync"}
+{"recorded_at":"2026-06-06T19:20:03Z","event_type":"boundary-sync","schema":"v1","payload":{"task_id":null,"feature_ref":"170-retire-evaluation-surface","auth_commit_hash":"cd9528e7","iteration_number":"","boundary_type":"plan"}}
