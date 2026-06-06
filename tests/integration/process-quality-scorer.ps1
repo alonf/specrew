@@ -15,7 +15,7 @@ function Write-Fail {
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
-$scorerScript = Join-Path -Path $repoRoot -ChildPath 'evaluation\scorers\process-scorer.ps1'
+$scorerScript = Join-Path -Path $repoRoot -ChildPath 'tests\support\process-quality-scorer.ps1'
 $scratchRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\process-quality-scorer'
 $projectRoot = Join-Path -Path $scratchRoot -ChildPath 'project'
 $iterationOneRoot = Join-Path -Path $projectRoot -ChildPath 'specs\001-eval-feature\iterations\001'

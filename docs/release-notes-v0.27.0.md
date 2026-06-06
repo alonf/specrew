@@ -46,7 +46,7 @@ Shipped from [Proposal 108](../proposals/108-specrew-init-refactor-and-crew-runt
 - **Antigravity graduated to supported** — `agy -i <prompt> --add-dir <path> [--dangerously-skip-permissions]` launch shape verified
 - **`scripts/specrew-init.ps1` refactored** — 2,428-line monolith split into 8 focused `scripts/init/*.ps1` files; testability + maintainability improved
 - **Boundary-sync hardening** — `$env:SPECREW_MODULE_PATH` for child-process inheritance + 3-priority resolution chain + stale-install detection
-- **Linux portability** — `scaffold-reviewer-artifacts.ps1` + `evaluation/scorers/process-scorer.ps1` cross-platform-safe (verified via Antigravity WSL dogfood)
+- **Linux portability** — `scaffold-reviewer-artifacts.ps1` + the process-quality scorer, now under `tests/support/process-quality-scorer.ps1`, cross-platform-safe (verified via Antigravity WSL dogfood)
 - **Methodology UX prominence** — three-section handoff format (`What I just did` / `Why I stopped` / `What I need from you`) restored to canonical-template prominence in coordinator-governance + all 5 agent charters; bare `file:///` URI requirement made explicit (markdown-link wrapping breaks PowerShell terminal Ctrl+Click)
 - **Documentation depth** — closeout-of-iteration + feature-closeout explained in README + getting-started + user-guide; new "Walkthrough: a two-iteration calculator" narrative
 

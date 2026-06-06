@@ -78,15 +78,15 @@ if ($reviewerScaffoldContent -notmatch '\[System\.IO\.Path\]::DirectorySeparator
 }
 Write-Pass "scaffold-reviewer-artifacts.ps1 is Linux-portable (iter-007 T001 — canonicalized from Antigravity's WSL empirical patch)"
 
-# Test 9: evaluation/process-scorer.ps1 uses forward-slash literal for cross-platform Join-Path (iter-007 T002 — sibling-bug audit fix)
-$processScorerContent = Get-Content -LiteralPath (Join-Path $repoRoot 'evaluation\scorers\process-scorer.ps1') -Raw -Encoding UTF8
-if ($processScorerContent -match "ChildPath 'evaluation\\\\report\.md'") {
-    Write-Fail "evaluation/scorers/process-scorer.ps1 still uses 'evaluation\\report.md' backslash literal — Linux Join-Path treats '\\' as part of filename (iter-007 T002)."
+# Test 9: tests/support/process-quality-scorer.ps1 uses forward-slash literal for cross-platform Join-Path (iter-007 T002 — sibling-bug audit fix)
+$processScorerContent = Get-Content -LiteralPath (Join-Path $repoRoot 'tests\support\process-quality-scorer.ps1') -Raw -Encoding UTF8
+if ($processScorerContent -match "ChildPath 'test-results\\\\process-quality-report\.md'") {
+    Write-Fail "tests/support/process-quality-scorer.ps1 still uses a backslash report-path literal — Linux Join-Path treats '\\' as part of filename."
 }
-Write-Pass "evaluation/scorers/process-scorer.ps1 uses forward-slash path literal (iter-007 T002 — sibling-bug audit)"
+Write-Pass "tests/support/process-quality-scorer.ps1 uses forward-slash path literal (iter-007 T002 — sibling-bug audit)"
 
 # Test 10: Linux-portability parse-check on iter-007-touched files
-foreach ($file in @('extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1', 'evaluation\scorers\process-scorer.ps1')) {
+foreach ($file in @('extensions\specrew-speckit\scripts\scaffold-reviewer-artifacts.ps1', 'tests\support\process-quality-scorer.ps1')) {
     $errs = $null
     [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $repoRoot $file), [ref]$null, [ref]$errs) | Out-Null
     if ($null -ne $errs -and $errs.Count -gt 0) {
