@@ -1,7 +1,7 @@
 # Robustness Baseline Lens: Iteration 001
 
 **Feature**: 168-post-ship-proposal-amendment-discipline
-**Status**: planned
+**Status**: recorded
 
 ## Focus
 
@@ -9,8 +9,8 @@
 - Malformed amendment records produce a separate finding from unsafe body edits.
 - Status surfacing remains bounded to docs/index or an existing renderer.
 
-## Planned Evidence
+## Evidence
 
-- Synthetic fixture tests for malformed and no-false-positive paths.
-- Governance validation run.
-- Review gap ledger.
+- Synthetic fixture tests cover malformed and no-false-positive paths.
+- Scoped governance validation passed with warning-first semantics intact.
+- Review gap ledger records documented, implemented, enforced, observable, tested, and delta-only dimensions as fixed now.

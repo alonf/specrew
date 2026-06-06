@@ -1,10 +1,10 @@
 # Iteration Plan: 001
 
 **Schema**: v1
-**Spec**: file:///C:/Dev/Specrew-post-ship-amendment-discipline/specs/168-post-ship-proposal-amendment-discipline/spec.md
+**Spec**: ../../spec.md
 **Feature Plan**: file:///C:/Dev/Specrew-post-ship-amendment-discipline/specs/168-post-ship-proposal-amendment-discipline/plan.md
 **Tasks**: file:///C:/Dev/Specrew-post-ship-amendment-discipline/specs/168-post-ship-proposal-amendment-discipline/tasks.md
-**Status**: planning
+**Status**: reviewing
 **Overall Verdict**: ready
 **Capacity**: 6.5/20 story_points
 **Started**: 2026-06-06
@@ -64,9 +64,9 @@ Review readiness must include:
 | T012 | Add validator behavior tests | FR-010, FR-011, FR-012, FR-014 | US2 | 0.75 | Implementer | `tests/unit/**`; `tests/integration/**` | done | codex | Focused replay covers unsafe shipped/superseded edits, valid amendments, allowed corrections, mutable statuses, and malformed amendments. | pass |
 | T013 | Add docs/reviewer/status behavior tests | FR-001, FR-002, FR-003, FR-007, FR-013, FR-014 | US1, US3, US4 | 0.50 | Implementer, Reviewer | `tests/unit/**`; `tests/integration/**` | done | codex | Focused replay asserts docs fields/statuses, reviewer delta checks, and `A1 accepted-unimplemented` status fixture. | pass |
 | T014 | Preserve validator mirror parity | FR-010, FR-012, FR-014 | US2 | 0.25 | Implementer | `extensions/specrew-speckit/scripts/validate-governance.ps1`; `.specify/extensions/specrew-speckit/scripts/validate-governance.ps1` | done | codex | `.specify` validator copy matches extension source exactly. | pass |
-| T015 | Run focused checks and record quality evidence | FR-014, TG-006 | US1, US2, US3, US4 | 0.25 | Implementer | `specs/168-post-ship-proposal-amendment-discipline/iterations/001/quality/**` | planned | codex | — | — |
-| T016 | Produce review gap ledger | FR-006, FR-007, FR-008, FR-009, FR-015, TG-006, TG-007 | US3 | 0.25 | Reviewer | `specs/168-post-ship-proposal-amendment-discipline/iterations/001/review.md`; reviewer artifacts | planned | codex | — | — |
-| T017 | Perform final delta-only diff audit | FR-015, TG-005, TG-007 | US3 | 0.25 | Reviewer | `specs/168-post-ship-proposal-amendment-discipline/iterations/001/review.md`; reviewer artifacts | planned | codex | — | — |
+| T015 | Run focused checks and record quality evidence | FR-014, TG-006 | US1, US2, US3, US4 | 0.25 | Implementer | `specs/168-post-ship-proposal-amendment-discipline/iterations/001/quality/**` | done | codex | Focused replay, markdownlint, parser/mirror check, and scoped governance validation passed; known soft warnings recorded as out-of-scope. | pass |
+| T016 | Produce review gap ledger | FR-006, FR-007, FR-008, FR-009, FR-015, TG-006, TG-007 | US3 | 0.25 | Reviewer | `specs/168-post-ship-proposal-amendment-discipline/iterations/001/review.md`; reviewer artifacts | done | codex | Review evidence classifies post-ship amendment discipline as documented, implemented, enforced, observable, tested, and delta-only. | pass |
+| T017 | Perform final delta-only diff audit | FR-015, TG-005, TG-007 | US3 | 0.25 | Reviewer | `specs/168-post-ship-proposal-amendment-discipline/iterations/001/review.md`; reviewer artifacts | done | codex | `proposals/INDEX.md` is the only changed `proposals/*.md` path; no real shipped proposal body rewrite or bulk migration occurred. | pass |
 
 ## Effort Model
 
@@ -76,8 +76,10 @@ Review readiness must include:
 | Planned Effort | 6.5 | Bounded task estimate, visible as above the original 3-5 SP proposal estimate. |
 | Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
 | Iteration Bounding | scope | Scope stays fixed; discovery may trigger explicit deferral request if needed. |
+| Time Limit (hours) | n/a | Scope-bounded iteration. |
 | Overcommit Threshold | 1.0 | Planned effort is below capacity but above proposal estimate. |
 | Defer Strategy | manual | Lowest-risk deferral is status surfacing beyond docs/index-only if renderer work grows. |
+| Calibration Enabled | true | Actual effort variance is recorded during retro. |
 
 ## Phase Baseline
 

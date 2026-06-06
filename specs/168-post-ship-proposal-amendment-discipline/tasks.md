@@ -57,9 +57,9 @@ Tasks may touch real methodology docs, validator code, tests, templates, and sta
 ### Phase 5: Mirror Parity, Validation, and Review Evidence
 
 - [x] T014 Preserve validator mirror parity between file:///C:/Dev/Specrew-post-ship-amendment-discipline/extensions/specrew-speckit/scripts/validate-governance.ps1 and file:///C:/Dev/Specrew-post-ship-amendment-discipline/.specify/extensions/specrew-speckit/scripts/validate-governance.ps1 if either validator script changes. [effort: 0.25 SP] [FR-010, FR-012, FR-014] [SC-003, SC-008]
-- [ ] T015 Run focused markdownlint, focused unit/integration tests, and governance validation. Record the exact commands and outcomes in iteration quality evidence before review. [effort: 0.25 SP] [FR-014, TG-006] [SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-008, SC-009]
-- [ ] T016 Produce review evidence with a gap ledger classifying post-ship amendment discipline as documented, implemented, enforced, observable, and tested. Any gap must be fixed or explicitly deferred by the human before review signoff. [effort: 0.25 SP] [FR-006, FR-007, FR-008, FR-009, FR-015, TG-006, TG-007] [SC-005, SC-007, SC-009]
-- [ ] T017 Perform final delta-only diff audit before review: confirm no real shipped proposal bodies were rewritten, no bulk migration occurred, no prior shipped behavior was reimplemented, and any touched shipped proposal file has an allowed reason recorded in review evidence. [effort: 0.25 SP] [FR-015, TG-005, TG-007] [SC-007, SC-009]
+- [x] T015 Run focused markdownlint, focused unit/integration tests, and governance validation. Record the exact commands and outcomes in iteration quality evidence before review. [effort: 0.25 SP] [FR-014, TG-006] [SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-008, SC-009]
+- [x] T016 Produce review evidence with a gap ledger classifying post-ship amendment discipline as documented, implemented, enforced, observable, and tested. Any gap must be fixed or explicitly deferred by the human before review signoff. [effort: 0.25 SP] [FR-006, FR-007, FR-008, FR-009, FR-015, TG-006, TG-007] [SC-005, SC-007, SC-009]
+- [x] T017 Perform final delta-only diff audit before review: confirm no real shipped proposal bodies were rewritten, no bulk migration occurred, no prior shipped behavior was reimplemented, and any touched shipped proposal file has an allowed reason recorded in review evidence. [effort: 0.25 SP] [FR-015, TG-005, TG-007] [SC-007, SC-009]
 
 ## Dependency Graph
 
