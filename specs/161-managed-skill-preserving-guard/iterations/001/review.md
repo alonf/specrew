@@ -34,7 +34,7 @@
 ## Gap Ledger
 
 - CI wiring gap: new harness was not executed by any CI lane (explicit-step lanes, F-140 lesson); added the F-161 step to `specrew-ci.yml`: fixed-now.
-- Residual front-matter freeze (S4/S4g): stale-canonical front-matter artifacts remain preserved by design — human selected the stricter fix shape at the verdict stop; recorded in `evidence.md` Accepted Residual and in `.squad/decisions.md`: deferred.
+- Residual front-matter freeze (S4/S4g): stale-canonical front-matter artifacts remain preserved by design — human selected the stricter fix shape at the verdict stop; recorded in `evidence.md` Accepted Residual and in `.squad\decisions.md` (F161-DEFER-001): deferred.
 
 ## Notes
 

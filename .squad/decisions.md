@@ -23267,3 +23267,16 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Authorizing Human**: Alon Fliess
 - **Context**: T005 verdict CONFIRMED (misclassified AND reachable; harness scenario S7 with genuine v0.21-era generic content; reachability via v0.21.0-0.23.0 bootstrap then v0.26.0+ upgrade).
 - **Approved Deferral**: stale-canonical front-matter artifacts (harness scenarios S4/S4g) remain preserved by the untouched heuristic — accepted residual; no released version ever produced that artifact in .copilot/skills. Recorded in iteration 001 evidence.md (Accepted Residual) and review.md Gap Ledger (deferred).
+
+## 2026-06-06T12:50:00Z — Defer: F-161 S4/S4g front-matter stale-canonical residual
+
+- **Decision ID**: F161-DEFER-001
+- **Type**: defer
+- **Boundary**: review-signoff
+- **Affected Requirement**: (none — accepted residual, not an FR violation; FR-004 satisfied by the released stricter scope)
+- **Affected Iteration**: specs\161-managed-skill-preserving-guard\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-06T12:50:00Z
+- **Commit Reference**: 2a72d6bc
+- **Authorization Text**: Release the conditional fix with the STRICTER shape — fix only the generic-kind equality branch; leave the front-matter heuristic untouched. Stale-canonical front-matter artifacts (harness scenarios S4/S4g) therefore remain preserved by design.
+- **Next Action**: None scheduled; revisit only if a future Specrew version ever produces marker-less front-matter skill dirs in a legacy root (no released version has).
