@@ -25,24 +25,61 @@ Methodology drift is empirically born at three moments: compaction destroys the 
 
 ### Option A - Simplest: manual surface + host-neutral channels only
 
-Pillar A slash command, wrapper-stdout boundary emission, primer pointer, digests + catalog. NO hook layer, no breaker (no automation to guard). ~8-10 SP, 1 iteration.
+- **Approach**: ship Pillar A (slash command on all 5 hosts) + channel 1 (boundary-sync wrapper stdout emission) + channel 2 (primer pointer) + the digest family and catalog. NO hook layer, no breaker (no automation to guard).
+- **Architectural pattern**: stable host-neutral engine over versioned data; in-band lifecycle delivery only — no per-host trigger adapters.
+- **Quality features considered**: P1 fail-open + P3 token economy on the engine/wrapper paths; P2 exactly-once trivial (one channel); P4 latency moot (no hook path); P5 digest drift guardrail unchanged.
+- **Effort estimate**: ~8-10 SP, 1 iteration.
+- **Reversibility cost**: low — hooks can be added later additively, but arrive as a second feature paying re-integration + re-review cost over the same components.
+- **Trade-offs**: smallest thing that delivers value everywhere with zero new host coupling; but the two empirically worst drift events (compaction, bypass launches) stay uncovered and the feature's central thesis (non-discretionary triggers outside the model's context) is unrealized.
 
-- **Design-principle rationale**: smallest thing that delivers value everywhere; zero new host coupling.
-- **Explicit future cost**: the two empirically worst drift events — compaction and bypass launches — stay uncovered; the feature's central thesis (non-discretionary triggers) is unrealized; hooks arrive later as a second feature paying re-integration cost.
+```mermaid
+flowchart LR
+  Skill["/specrew-refocus (5 hosts)"] --> Engine[RefocusEngine]
+  Wrapper["boundary-sync wrapper stdout"] --> Engine
+  Engine --> Catalog["refocus-scopes.yml"]
+  Engine --> Digests["general + 10 stage digests"]
+```
 
 ### Option B - Reasonable: A + Claude hook binding only
 
-Everything in A, plus the dispatcher/provider/registry machinery bound on Claude (B1/B2/B3), breaker, journal, compaction points. Antigravity/Cursor/Codex bindings deferred to research-gated fast-follow slices. ~15-18 SP, 2 iterations.
+- **Approach**: everything in A, plus the dispatcher/provider/registry machinery bound on Claude only (B1 post-compaction, B2 launch/resume, B3 boundary-cross), the circuit breaker, journal, and managed compaction points. Antigravity/Cursor/Codex bindings deferred to research-gated fast-follow slices.
+- **Architectural pattern**: volatility cut realized for one host — host-neutral engine + ONE per-host trigger adapter (Claude) + per-session runtime state.
+- **Quality features considered**: full P1-P5 register incl. the P4 latency bar on Claude's hook paths; breaker + kill-switch + journal observability for the one bound host.
+- **Effort estimate**: ~15-18 SP, 2 iterations.
+- **Reversibility cost**: medium — per-host follow-ups re-open the dispatcher, deploy loop, and tests three more times; the contract shape is set by the first binding without multi-host pressure to keep it honest.
+- **Trade-offs**: ships the non-discretionary layer where the surface is documented today and defers unverified surfaces; but multi-host parity (the product's load-bearing promise) ships asymmetric — and the maintainer explicitly rejected Claude-first framing during the workshop.
 
-- **Design-principle rationale**: ship the non-discretionary layer where the surface is documented today; defer unverified surfaces.
-- **Explicit future cost**: multi-host parity (the product's load-bearing promise) ships asymmetric; per-host follow-ups re-open the same code three times; the maintainer explicitly rejected Claude-first framing during the workshop.
+```mermaid
+flowchart LR
+  Claude["Claude hooks (B1/B2/B3)"] --> Dispatcher[SpecrewHookDispatcher]
+  Dispatcher --> Provider[RefocusProvider] --> Engine[RefocusEngine]
+  Skill["/specrew-refocus"] --> Engine
+  Wrapper["wrapper stdout (all hosts)"] --> Engine
+  Dispatcher --- State["per-session state + breaker + journal"]
+```
 
 ### Option C - By the book: B + research-verified bindings for ALL hook-capable hosts (workshop-bound scope)
 
-The full workshop-bound scope: trigger contract + channels + digest family + dispatcher/registry + per-session state + breaker/kill-switches/journal + compaction points + a research-matrix artifact per host, with verified bindings for Claude, Antigravity, Cursor, and Codex-where-expressible inside this feature; Copilot documented-variance on channels 1+2. ~18-25 SP, 2 iterations (research tasks lead iteration 002).
+- **Approach**: the full workshop-bound scope — trigger contract + both host-neutral channels + digest family + dispatcher/registry + per-session state + breaker/kill-switches/journal + managed compaction points + a research-matrix artifact per host, with verified hook bindings for Claude, Antigravity, Cursor, and Codex-where-expressible inside this feature; Copilot ships channels 1+2 with documented variance.
+- **Architectural pattern**: the volatility cut realized fully — N thin per-host trigger adapters over one stable engine, bindings declared as data in each host package (F-044 pattern).
+- **Quality features considered**: full P1-P5 register on every bound host; SC-008 runtime beta validation on >=2 hook-bound hosts; research-matrix verification gates each binding's C2 contract.
+- **Effort estimate**: ~18-25 SP, 2 iterations (research tasks lead iteration 002).
+- **Reversibility cost**: lowest long-term — the contract is shaped under real multi-host pressure once; each binding is an isolated adapter that can be disabled per host (catalog flag) without touching the others.
+- **Trade-offs**: largest scope with schedule risk concentrated in per-host research; bounded structurally — a host that fails verification degrades to channels 1+2 with documented variance (never a slipped feature); matches the product's host-neutrality guarantee and the recorded workshop decision.
 
-- **Design-principle rationale**: matches the architecture's volatility cut (per-host adapters over one engine) and the product's host-neutrality guarantee; research gates keep unverified surfaces honest rather than excluded.
-- **Cost**: largest scope; schedule risk concentrated in per-host research (bounded by the research-matrix gate: a host that fails verification ships channels-only with documented variance, not a slipped feature).
+```mermaid
+flowchart LR
+  Claude["Claude hooks"] --> Dispatcher[SpecrewHookDispatcher]
+  AG["Antigravity hooks*"] --> Dispatcher
+  Cursor["Cursor hooks*"] --> Dispatcher
+  Codex["Codex notify*"] --> Dispatcher
+  Dispatcher --> Provider[RefocusProvider] --> Engine[RefocusEngine]
+  Skill["/specrew-refocus (5 hosts)"] --> Engine
+  Wrapper["wrapper stdout (5 hosts)"] --> Engine
+  Dispatcher --- State["per-session state + breaker + journal"]
+```
+
+*\* research-matrix verified before binding; failure → channels 1+2 with documented variance.*
 
 ## Applicable Lenses
 
