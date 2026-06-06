@@ -2,7 +2,7 @@
 
 **Feature Branch**: `159-update-ux-small-fixes`  
 **Created**: 2026-06-05  
-**Status**: Draft  
+**Status**: Complete  
 **Input**: User description: "Implement Proposal 159 Tier 1 only, clean stale 0.24.0 slash-command compatibility messaging, avoid Feature 141 and Proposal 160 worktrees, and validate according to Proposal 145."
 
 ## Scope Source
