@@ -166,6 +166,10 @@ function New-TestWorkspace {
         [switch]$DeleteInsteadOfChange
     )
 
+    if (-not $DeleteInsteadOfChange -and [string]::IsNullOrWhiteSpace($ChangedFixture)) {
+        throw "New-TestWorkspace: -ChangedFixture is required unless -DeleteInsteadOfChange is set (the non-delete path always consumes it)."
+    }
+
     $destination = Join-Path $script:scratchRoot $WorkspaceName
     if (Test-Path -LiteralPath $destination) {
         Remove-Item -LiteralPath $destination -Recurse -Force
@@ -279,6 +283,17 @@ try {
         Assert-True -Condition ($result.ExitCode -eq 0) -Message "Deletion-bypass fixture unexpectedly failed for $($case.Name): $($result.Text)"
         Assert-Match -Text $result.Text -Pattern 'WARN \[post-ship-proposal\] normative-body-edit' -Message "Deletion-bypass (deleted shipped proposal) was not caught for $($case.Name)."
         Assert-Match -Text $result.Text -Pattern 'was deleted' -Message "Deletion-bypass warning did not explain the deletion for $($case.Name)."
+
+        # Find 5 / Codex C2 (#1761) invalid-status-downgrade bypass: a shipped/superseded baseline
+        # downgraded to a missing/unknown current status (e.g. 'parked') in the SAME change must NOT
+        # slip a body edit past the gate -- the invalid-status guard previously `continue`d before the
+        # baseline-governance check. The baseline status still governs.
+        $workspace = New-TestWorkspace -WorkspaceName ("invalid-status-bypass-{0}" -f $case.Name) -BaseFixture 'base-proposal.md' -ChangedFixture 'unsafe-body-edit.md' -Status 'shipped' -ChangedStatus 'parked'
+        $result = Invoke-ValidatorScript -ScriptPath $case.ScriptPath -ProjectPath $workspace
+        Assert-True -Condition ($result.ExitCode -eq 0) -Message "Invalid-status-bypass fixture unexpectedly failed for $($case.Name): $($result.Text)"
+        Assert-Match -Text $result.Text -Pattern 'WARN \[post-ship-proposal\] normative-body-edit' -Message "Invalid-status-bypass (shipped->parked + body edit) was not caught for $($case.Name)."
+        Assert-Match -Text $result.Text -Pattern 'proposals/900-synthetic-post-ship\.md' -Message "Invalid-status-bypass warning did not name the proposal for $($case.Name)."
+        Assert-Match -Text $result.Text -Pattern 'baseline status' -Message "Invalid-status-bypass did not surface that the baseline status governs for $($case.Name)."
     }
 
     $proposalDiscipline = Get-Content -LiteralPath (Join-Path $script:repoRoot 'docs\methodology\proposal-discipline.md') -Raw -Encoding UTF8

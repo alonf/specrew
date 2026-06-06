@@ -739,8 +739,16 @@ function Test-PostShipProposalAmendmentGovernance {
         $status = Get-ProposalFrontMatterValue -Lines $currentLines -Name 'status'
         $normalizedStatus = if ([string]::IsNullOrWhiteSpace($status)) { '' } else { $status.Trim().ToLowerInvariant() }
         if ($normalizedStatus -notin $allowedProposalStatuses) {
-            Write-PostShipProposalWarning -Category 'proposal-status' -Detail ("{0} has missing or unknown status '{1}'; skipped shipped/superseded mutability checks." -f $relativePath, $(if ([string]::IsNullOrWhiteSpace($status)) { '(missing)' } else { $status }))
-            continue
+            if (-not $baselineIsPostShip) {
+                Write-PostShipProposalWarning -Category 'proposal-status' -Detail ("{0} has missing or unknown status '{1}'; skipped shipped/superseded mutability checks." -f $relativePath, $(if ([string]::IsNullOrWhiteSpace($status)) { '(missing)' } else { $status }))
+                continue
+            }
+            # Invalid-status downgrade bypass (Codex C2, #1761): when the baseline was
+            # shipped/superseded, a same-change downgrade to a missing/unknown current status
+            # (e.g. 'parked') must NOT skip the body-edit check -- the baseline status still
+            # governs. Warn about the invalid status, then fall through so the baseline-governed
+            # mutability check below still runs.
+            Write-PostShipProposalWarning -Category 'proposal-status' -Detail ("{0} has missing or unknown status '{1}'; baseline status '{2}' still governs post-ship mutability checks." -f $relativePath, $(if ([string]::IsNullOrWhiteSpace($status)) { '(missing)' } else { $status }), $normalizedBaselineStatus)
         }
 
         # Downgrade bypass: governance applies when EITHER the current or the baseline status is
