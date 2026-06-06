@@ -50,7 +50,7 @@ Review readiness must include:
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| T001 | Confirm implementation hygiene and path-limited staging plan | FR-015, TG-005, TG-007 | US1, US2, US3, US4 | 0.25 | Implementer, Reviewer | `specs/168-post-ship-proposal-amendment-discipline/iterations/001/**` | planned | codex | — | — |
+| T001 | Confirm implementation hygiene and path-limited staging plan | FR-015, TG-005, TG-007 | US1, US2, US3, US4 | 0.25 | Implementer, Reviewer | `specs/168-post-ship-proposal-amendment-discipline/iterations/001/**` | done | codex | `14b214f9` parity confirmed; dirty drift unchanged and out of scope | pass |
 | T002 | Discover exact docs, validator, status, and fixture surfaces | FR-001, FR-007, FR-010, FR-013, FR-014 | US1, US2, US3, US4 | 0.25 | Implementer, Planner | `docs/methodology/**`; `extensions/**`; `.specify/extensions/**`; `tests/**`; `proposals/INDEX.md` | planned | codex | — | — |
 | T003 | Document mutability classes and active-proposal rule | FR-001, FR-004, FR-005 | US1 | 0.50 | Spec Steward | `docs/methodology/proposal-discipline.md` | planned | codex | — | — |
 | T004 | Add structured post-ship amendment template and statuses | FR-002, FR-003 | US1 | 0.50 | Spec Steward | `docs/methodology/proposal-discipline.md` | planned | codex | — | — |

@@ -1,22 +1,23 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012, T013, T014, T015, T016, T017
+**Last Completed Task**: T001
+**Tasks Remaining**: T002, T003, T004, T005, T006, T007, T008, T009, T010, T011, T012, T013, T014, T015, T016, T017
 **In Progress**: (none)
 **Baseline Ref**: 90c42993c3ff00dc3d18e64e32de065077d854a3
-**Updated**: 2026-06-06T12:25:34Z
+**Updated**: 2026-06-06T12:37:05Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- T001 completed: branch `168-post-ship-proposal-amendment-discipline` is at `14b214f92545708fa5bb2e869d1701b88f922005`, matching upstream.
+- Dirty drift remains unchanged and out of scope before implementation edits.
 
 ## Notes
 
 - Update this file after each task completes.
 - Keep task identifiers aligned to plan.md.
 - Pre-implementation branch parity was confirmed at `90c42993` before readiness work.
+- Implementation-start branch parity was confirmed at `14b214f92545708fa5bb2e869d1701b88f922005`.
 - Current dirty drift remains out of scope and must not be staged unless a later explicit human decision makes a path in scope:
   - file:///C:/Dev/Specrew-post-ship-amendment-discipline/.codex/
   - file:///C:/Dev/Specrew-post-ship-amendment-discipline/.github/agents/squad.agent.md
