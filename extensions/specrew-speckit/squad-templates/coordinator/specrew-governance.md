@@ -219,3 +219,7 @@ These rules override generic Squad coordination whenever the repository is boots
     - **Coexistence with `/speckit.*`**: both namespaces are additive. Neither shadows the other. `/specrew-help` shows the Specrew catalog; `/speckit.*` discovery comes from Spec Kit. Use both freely in the same session.
     - **Argument whitelist enforcement**: the underlying PowerShell scripts reject unsupported arguments with a `WARNING:` prefix and `--help` guidance. Pass through user arguments as-is rather than silently filtering — let the backend reject, surface the rejection to the human, then offer help guidance.
     - **Compatibility gate**: command compatibility is evaluated against the running Specrew module and the project's recorded `.specrew/config.yml` `specrew_version`. If the running module is older than the project baseline, emit upgrade guidance; do not silently no-op.
+
+4. **Refocus recovery surface (Feature 171)**
+    - `/specrew-refocus` re-loads scoped methodology discipline on demand (no-args = always-true core + current stage; `--boundary <stage>`, `--role <name>`, `--status` for diagnosis). When context feels degraded — after compaction, a host restart, or a long session — run it BEFORE proceeding; do not reconstruct methodology from memory.
+    - Boundary syncs automatically append the incoming stage's discipline digest to their output. Treat any `[specrew-refocus]` block you see in tool output as binding stage discipline, not informational noise.

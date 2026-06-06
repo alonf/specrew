@@ -104,6 +104,17 @@ New-ScratchProject
 $result = Invoke-Wrapper -WrapperArgs @('-ProjectPath', '.', '-BoundaryType', 'specify', '-FeatureRef', 'test-feature', '-AuthCommitHash', 'abc1234')
 Assert-True ($result.ExitCode -eq 0) 'broken engine: sync still exits 0 (fail-open)'
 
+# --- 5. Channel 2: primer pointer in the coordinator governance template (FR-007) ---
+foreach ($templatePath in @(
+        (Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md'),
+        (Join-Path $repoRoot '.specify\extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md')
+    )) {
+    $shortName = $templatePath.Substring($repoRoot.Length + 1)
+    $content = Get-Content -LiteralPath $templatePath -Raw -Encoding UTF8
+    Assert-True ($content.Contains('/specrew-refocus')) "primer pointer present in $shortName"
+    Assert-True ($content.Contains('[specrew-refocus]') -and $content -match 'binding stage discipline') "emission-block treatment rule present in $shortName"
+}
+
 # --- summary ------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {
