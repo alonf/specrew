@@ -1,7 +1,7 @@
 ---
 proposal: 169
 title: Retire Top-Level Evaluation Surface
-status: candidate
+status: implemented
 phase: phase-2
 estimated-sp: 1-2
 priority-tier: 3
