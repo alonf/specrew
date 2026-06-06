@@ -3,7 +3,7 @@
 **Feature**: 171-specrew-refocus
 **Iteration**: 001
 **Date**: 2026-06-06
-**Status**: awaiting human option verdict
+**Status**: decided — approved for plan with Option C
 
 ## Problem Framing
 
@@ -97,6 +97,10 @@ The full workshop-bound scope: trigger contract + channels + digest family + dis
 
 ## Human Decision
 
-- **Chosen option**: PENDING — awaiting verdict in the shape `approved for plan with Option <X>`
-- **Reason / modifications**: PENDING
-- **Commit**: PENDING (the commit carrying this verdict record)
+- **Decision verdict**: approved for plan with Option C
+- **Chosen option**: Option C
+- **Reason**: Option C is the scope the maintainer bound during the intake workshop (architecture-core decision 2: hook bindings for ALL hook-capable hosts in this feature) and the only option consistent with the explicit multi-host correction ("this feature is not just for Claude"). The schedule risk of unverified host surfaces is structurally contained by the research-matrix gate: a host that fails verification ships channels 1+2 with documented variance instead of blocking the feature.
+- **Modifications**: None. Defaults accepted as rendered (options A/B/C, Crew recommendation C, co-design record re-confirmed).
+- **Authorizing human**: Alon Fliess (structured verdict menu, 2026-06-06)
+- **Design-analysis draft commit**: `5eee3e91`
+- **Decision recorded in commit**: `PENDING-PIN` (pinned in the follow-up commit immediately after this one)
