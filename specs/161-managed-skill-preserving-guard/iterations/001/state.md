@@ -1,8 +1,8 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T009
 **Tasks Remaining**: (none)
 **In Progress**: (none)
@@ -24,7 +24,11 @@
 - T009 done: review evidence + scope-guard proof assembled in evidence.md.
 - Review accepted at review-signoff (one send-back round: quality-evidence
   reconciled to post-fix truth; approved 2026-06-06, synced).
-- Retro phase: retro.md written; retro boundary pending human approval.
+- Retro approved (one send-back round: boundary-state sync tightened) and
+  synced; iteration-closeout authorized 2026-06-06 with the instruction to
+  absorb the retro .squad sync state cleanly.
+- Iteration closed: hardening gate runtime-evidence closure recorded; 8/8 SP
+  consumed; dashboard rendered at closeout sync.
 
 ## Notes
 
