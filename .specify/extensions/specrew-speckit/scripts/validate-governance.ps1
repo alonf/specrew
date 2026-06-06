@@ -705,7 +705,7 @@ function Test-PostShipProposalAmendmentGovernance {
         return
     }
 
-    $diffArgs = @('diff', '--name-only', '--diff-filter=ACMRT', "$baseRef...HEAD", '--', 'proposals/*.md')
+    $diffArgs = @('diff', '--name-only', '--diff-filter=ACMRTD', "$baseRef...HEAD", '--', 'proposals/*.md')
     $changedProposalFiles = @(
         & git -C $ProjectRoot @diffArgs 2>$null |
             ForEach-Object { ([string]$_).Trim() } |
@@ -717,7 +717,21 @@ function Test-PostShipProposalAmendmentGovernance {
 
     foreach ($relativePath in @($changedProposalFiles | Sort-Object -Unique)) {
         $proposalPath = Join-Path -Path $ProjectRoot -ChildPath $relativePath
+
+        # Baseline (pre-change) status from the base ref. A shipped/superseded baseline keeps the
+        # proposal post-ship-governed even if this change downgraded its status to a mutable one,
+        # or deleted the file, in an attempt to slip the body-edit / removal past the check.
+        $baselineLines = @(Get-GitBlobLines -ProjectRoot $ProjectRoot -Ref $baseRef -RelativePath $relativePath)
+        $baselineStatus = Get-ProposalFrontMatterValue -Lines $baselineLines -Name 'status'
+        $normalizedBaselineStatus = if ([string]::IsNullOrWhiteSpace($baselineStatus)) { '' } else { $baselineStatus.Trim().ToLowerInvariant() }
+        $baselineIsPostShip = $normalizedBaselineStatus -in $postShipProposalStatuses
+
+        # Deletion bypass: removing a shipped/superseded proposal entirely. Supersede via a new
+        # proposal, do not delete.
         if (-not (Test-Path -LiteralPath $proposalPath -PathType Leaf)) {
+            if ($baselineIsPostShip) {
+                Write-PostShipProposalWarning -Category 'normative-body-edit' -Detail ("{0} ({1} proposal) was deleted; shipped/superseded proposals must be superseded via a new/superseding proposal, not removed." -f $relativePath, $normalizedBaselineStatus)
+            }
             continue
         }
 
@@ -729,14 +743,17 @@ function Test-PostShipProposalAmendmentGovernance {
             continue
         }
 
-        if ($normalizedStatus -notin $postShipProposalStatuses) {
+        # Downgrade bypass: governance applies when EITHER the current or the baseline status is
+        # shipped/superseded (the baseline arm catches a same-change shipped->mutable downgrade).
+        $currentIsPostShip = $normalizedStatus -in $postShipProposalStatuses
+        if (-not $currentIsPostShip -and -not $baselineIsPostShip) {
             continue
         }
+        $governedStatus = if ($currentIsPostShip) { $normalizedStatus } else { $normalizedBaselineStatus }
 
         $amendmentSection = Get-PostShipAmendmentSection -Lines $currentLines
         Test-PostShipAmendmentRecords -RelativePath $relativePath -Section $amendmentSection
 
-        $baselineLines = Get-GitBlobLines -ProjectRoot $ProjectRoot -Ref $baseRef -RelativePath $relativePath
         $changedLines = @(Get-ProposalDiffChangedLines -ProjectRoot $ProjectRoot -BaseRef $baseRef -RelativePath $relativePath)
         $unsafeSections = New-Object System.Collections.Generic.List[string]
 
@@ -754,7 +771,7 @@ function Test-PostShipProposalAmendmentGovernance {
         }
 
         if ($unsafeSections.Count -gt 0) {
-            Write-PostShipProposalWarning -Category 'normative-body-edit' -Detail ("{0} changed {1} proposal sections outside Post-Ship Amendments: {2}. Use a Post-Ship Amendments entry or a new/superseding proposal; direct edits are limited to typo/link/errata/status-history/cross-reference/supersession metadata." -f $relativePath, $normalizedStatus, (($unsafeSections.ToArray() | Sort-Object) -join ', '))
+            Write-PostShipProposalWarning -Category 'normative-body-edit' -Detail ("{0} changed {1} proposal sections outside Post-Ship Amendments: {2}. Use a Post-Ship Amendments entry or a new/superseding proposal; direct edits are limited to typo/link/errata/status-history/cross-reference/supersession metadata." -f $relativePath, $governedStatus, (($unsafeSections.ToArray() | Sort-Object) -join ', '))
         }
     }
 }
