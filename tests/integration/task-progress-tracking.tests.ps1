@@ -124,4 +124,133 @@ foreach ($pattern in @('## Welcome Back Snapshot', 'I2-T003', 'Task progress: 1 
 }
 Write-Pass 'Welcome-back prompt includes task progress and validator summary'
 
+# Regression (Feature 141 class): when bare task IDs (T0NN) are reused across iterations, the
+# feature-root tasks.md (which is the Iteration 1 task list) must NOT downgrade Iteration 2's
+# live ledger status. Reproduces the start/resume summary corruption where iteration-002 done
+# tasks were reported pending because iteration-1 tasks.md carried the same bare IDs unchecked.
+$bareProject = Join-Path $scratchRoot 'bare-id-cross-iteration'
+$bareFeature = '141-bare-id-sample'
+$bareFeaturePath = Join-Path $bareProject "specs\$bareFeature"
+$bareIterationPath = Join-Path $bareFeaturePath 'iterations\002'
+$null = New-Item -ItemType Directory -Path $bareIterationPath -Force
+
+# Feature-root tasks.md = Iteration 1's list (bare IDs, all unchecked — as in the real 141 repo).
+@'
+# Tasks
+
+- [ ] T001 Iteration 1: confirm scope. (Trace: FR-1)
+- [ ] T002 Iteration 1: scaffold. (Trace: FR-1)
+- [ ] T003 Iteration 1: detection. (Trace: FR-1)
+- [ ] T004 Iteration 1: parsing. (Trace: FR-1)
+- [ ] T005 Iteration 1: validator. (Trace: FR-1)
+- [ ] T006 Iteration 1: packet. (Trace: FR-1)
+- [ ] T007 Iteration 1: persist packet. (Trace: FR-1)
+- [ ] T008 Iteration 1: docs. (Trace: FR-1)
+- [ ] T009 Iteration 1: unit tests. (Trace: FR-1)
+'@ | Set-Content -LiteralPath (Join-Path $bareFeaturePath 'tasks.md') -Encoding UTF8
+
+# Iteration 2 plan.md catalog: same bare IDs, DIFFERENT meaning (FR-024 slice T007-T009 done).
+@'
+# Iteration Plan: 002
+
+**Schema**: v1
+**Status**: executing
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Status |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ------ |
+| T001 | Iter2 path repro | FR-011 | US0 | 1 | Spec Steward | planned |
+| T002 | Iter2 path fix | FR-011 | US4 | 2 | Implementer | planned |
+| T003 | Iter2 host wording | FR-014 | US7 | 2 | Implementer | planned |
+| T004 | Iter2 harness cleanup | FR-015 | US0 | 1 | Implementer | planned |
+| T005 | Iter2 tests | SC-007 | US4 | 2 | Implementer | planned |
+| T006 | Iter2 docs | TG-006 | US0 | 1 | Planner | planned |
+| T007 | Iter2 stale detect | FR-024 | US0 | 3 | Implementer | done |
+| T008 | Iter2 safe cleanup | FR-024 | US0 | 2 | Implementer | done |
+| T009 | Iter2 regression | FR-024 | US0 | 2 | Reviewer | done |
+'@ | Set-Content -LiteralPath (Join-Path $bareIterationPath 'plan.md') -Encoding UTF8
+
+# Live ledger: iteration-2 FR-024 slice done (T007/T008/T009); everything else pending.
+@'
+schema: "v1"
+feature: "141-bare-id-sample"
+iteration: "002"
+updated_at: "2026-06-02T21:00:00Z"
+tasks:
+  T001:
+    title: "Iter2 path repro"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T002:
+    title: "Iter2 path fix"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T003:
+    title: "Iter2 host wording"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T004:
+    title: "Iter2 harness cleanup"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T005:
+    title: "Iter2 tests"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T006:
+    title: "Iter2 docs"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T007:
+    title: "Iter2 stale detect"
+    status: "done"
+    started_at: "2026-06-02T19:00:00Z"
+    completed_at: "2026-06-02T20:35:00Z"
+    blocked_reason: ""
+  T008:
+    title: "Iter2 safe cleanup"
+    status: "done"
+    started_at: "2026-06-02T19:00:00Z"
+    completed_at: "2026-06-02T20:35:00Z"
+    blocked_reason: ""
+  T009:
+    title: "Iter2 regression"
+    status: "done"
+    started_at: "2026-06-02T20:35:00Z"
+    completed_at: "2026-06-02T21:44:00Z"
+    blocked_reason: ""
+'@ | Set-Content -LiteralPath (Join-Path $bareIterationPath 'tasks-progress.yml') -Encoding UTF8
+
+[System.IO.File]::WriteAllText((Join-Path $bareFeaturePath 'spec.md'), "# Feature 141 sample`n", [System.Text.UTF8Encoding]::new($false))
+
+$bareSummary = Get-TaskProgressSummary -ProjectRoot $bareProject -FeatureRef $bareFeature -IterationNumber '002' -ResolvedFeaturePath $bareFeaturePath
+$bareComplete = @($bareSummary.Complete | ForEach-Object { [string]$_.id })
+$barePending = @($bareSummary.Pending | ForEach-Object { [string]$_.id })
+foreach ($doneId in @('T007', 'T008', 'T009')) {
+    if ($bareComplete -notcontains $doneId) {
+        Write-Fail ("Iteration-2 '{0}' should be complete but was not (downgraded by the iteration-1 feature-root tasks.md). Complete=[{1}] Pending=[{2}]" -f $doneId, ($bareComplete -join ','), ($barePending -join ','))
+        exit 1
+    }
+}
+foreach ($pendingId in @('T001', 'T002', 'T003', 'T004', 'T005', 'T006')) {
+    if ($barePending -notcontains $pendingId) {
+        Write-Fail ("Iteration-2 '{0}' should be pending/remaining. Complete=[{1}] Pending=[{2}]" -f $pendingId, ($bareComplete -join ','), ($barePending -join ','))
+        exit 1
+    }
+}
+Write-Pass 'Iteration-2 bare-ID task progress is not downgraded by the Iteration-1 feature-root tasks.md'
+
 exit 0

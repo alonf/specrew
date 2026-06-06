@@ -1,0 +1,29 @@
+schema: "v1"
+feature: "141-design-gate-runtime-hardening"
+iteration: "012"
+updated_at: "2026-06-06T02:10:00Z"
+tasks:
+  T001:
+    title: "Catalog-at-open: skill step 1 presents the full 9-lens catalog (ids from index.yml; each one-line decision from design-lenses/<id>.md — reuse, no parallel catalog) BEFORE inferring applicability (FR-041a, structural). DONE: skill step 1 rewritten — the 'Design lens catalog' render template (9 lens ids + <decision> placeholders filled from each lens md) + 'agenda as an assignment' framing preserved (FR-040). REVERTED (testLenses11 cross-host dogfood): the catalog-at-open SKIMMED on Claude (a before-a-menu render — the agent jumped to the agenda confirm menu) AND was REDUNDANT on prose hosts (Copilot rendered the catalog + the agenda = the nine lenses twice). Step 1 reverted to framing + agenda-assignment. Governing model: open-discussion renders hold on Claude; before-a-menu renders skim -> hook/host-variance, not another instruction."
+    status: "done"
+    started_at: "2026-06-06T00:10:00Z"
+    completed_at: "2026-06-06T00:25:00Z"
+    blocked_reason: ""
+  T002:
+    title: "Open-question-first: skill step 3 opens each lens with a presentation + an OPEN free-text question, never an AskUserQuestion menu as the first move; menu only after content on screen; + Big-Picture A8 note (FR-041b, conduct). DONE: skill step 3 opening rewritten ('never a menu first' + the binary test) + the Big-Picture A8 two-reinforcements note. REFINED (testLenses11claude dogfood): added the dense-lens PACING offer (all-at-once or one-at-a-time) — open-question-first WORKED but a 5-decision lens lands as an overwhelming wall, so the closing move offers to chunk it. STRENGTHENED (testLenses11 cross-host): the pacing is now MANDATORY for a dense lens on EVERY host — Copilot's per-lens bundled 5 subjects into one open question (the same wall as Claude), so it is not Claude-only. Open-question-first CONFIRMED WORKING on Claude (the per-lens render held, cross-host)."
+    status: "done"
+    started_at: "2026-06-06T00:25:00Z"
+    completed_at: "2026-06-06T00:33:00Z"
+    blocked_reason: ""
+  T003:
+    title: "Tests: presence-lock catalog-at-open + open-question-first in lens-conduct-delivery; touched suites + the scoped validator green (SC-028 deterministic half). DONE: 6 A8 assertions (complete-lens-catalog, Design-lens-catalog header, index.yml reuse, no-parallel-catalog, never-a-menu-first, binary-test); lens-conduct-delivery + skill-templates exit 0."
+    status: "done"
+    started_at: "2026-06-06T00:33:00Z"
+    completed_at: "2026-06-06T00:40:00Z"
+    blocked_reason: ""
+  T004:
+    title: "Consolidated cross-host re-dogfood (SC-028 + carried SC-027): Claude catalog front-loads + agenda holds + component map renders before its menu; Squad no synthetic 'Human agreed'. Behavioral acceptance, maintainer-run. Pre-committed escalation if the map still stuffs into the menu = PreToolUse hook or documented host-variance, NOT another instruction. DONE (testLenses11 Copilot + Claude): ACCEPTED — 'the best workshop' on both hosts. open-question-first + mandatory pacing CONFIRMED cross-host; the component map rendered in-band on Claude (lens 2); no synthetic agreement on Squad (SC-027 met). The Claude agenda skim = maintainer accept-as-minor; catalog-at-open reverted."
+    status: "done"
+    started_at: "2026-06-06T01:00:00Z"
+    completed_at: "2026-06-06T02:00:00Z"
+    blocked_reason: ""

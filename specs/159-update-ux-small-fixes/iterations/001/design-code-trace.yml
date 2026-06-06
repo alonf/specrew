@@ -1,0 +1,40 @@
+schema: v1
+feature: 159-update-ux-small-fixes
+iteration: "001"
+traces:
+  - design_ref: specs/159-update-ux-small-fixes/contracts/update-downgrade-guard.md
+    component: Stale-module update preflight
+    implementation:
+      - path: scripts/specrew-update.ps1
+        symbols:
+          - Get-SpecrewUpdateDowngradeGuardResult
+          - Write-SpecrewUpdateDowngradeRefusal
+    evidence:
+      - tests/integration/update-command.ps1
+    status: matched
+  - design_ref: specs/159-update-ux-small-fixes/spec.md#user-story-3---remove-active-old-baseline-noise-priority-p3
+    component: Active compatibility message cleanup
+    implementation:
+      - path: scripts/specrew-version.ps1
+      - path: scripts/internal/version-check.ps1
+      - path: scripts/specrew.ps1
+      - path: extensions/specrew-speckit/squad-templates/skills/specrew-version/SKILL.md
+      - path: extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md
+      - path: .agents/skills/specrew-version/SKILL.md
+      - path: .claude/skills/specrew-version/SKILL.md
+      - path: .github/skills/specrew-version/SKILL.md
+      - path: .github/agents/squad.agent.md
+    evidence:
+      - tests/integration/slash-command-compatibility.tests.ps1
+      - tests/integration/slash-command-routing.tests.ps1
+    status: matched
+  - design_ref: specs/159-update-ux-small-fixes/iterations/001/quality/hardening-gate.md
+    component: Feature 141 and Proposal 160 collision control
+    implementation:
+      - path: extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md
+        note: one-line approved stale wording cleanup
+      - path: .github/agents/squad.agent.md
+        note: generated active parity for the same stale wording only
+    evidence:
+      - specs/159-update-ux-small-fixes/iterations/001/review.md
+    status: matched

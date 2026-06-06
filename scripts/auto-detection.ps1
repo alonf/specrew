@@ -72,13 +72,21 @@ function Get-SpecrewMultiDeveloperSignals {
     $branchFanout = Get-SpecrewBranchFanoutCount -ProjectRoot $ProjectRoot
     $sessionMode = Get-SessionMode -ProjectRoot $ProjectRoot
 
-    $hasSignals = ($authors.Count -ge 2) -or ($machineCount -ge 2) -or ($writeSignals -ge 1) -or ($branchFanout -ge 3)
+    # Genuine multi-developer signals attribute activity to DISTINCT actors: multiple unique
+    # git authors, multiple active-session machine fingerprints, or a fan-out of numbered
+    # feature branches. Close-together shared-state writes ($writeSignals) CANNOT attribute
+    # writes to distinct actors -- a single session's bootstrap writes start-context.json +
+    # last-start-prompt.md (+ decisions.md) within ~1s, which always trips a write signal on a
+    # brand-new single-developer project (FR-012). So $writeSignals only CORROBORATES a genuine
+    # distinct-actor signal; it must never trigger the recommendation on its own.
+    $distinctActorSignal = ($authors.Count -ge 2) -or ($machineCount -ge 2) -or ($branchFanout -ge 3)
+    $hasSignals = $distinctActorSignal
     $suppressed = $sessionMode -eq 'multi'
     $reasonParts = New-Object System.Collections.Generic.List[string]
     if ($authors.Count -ge 2) { $reasonParts.Add(('{0} unique git authors' -f $authors.Count)) | Out-Null }
     if ($machineCount -ge 2) { $reasonParts.Add(('{0} active machines' -f $machineCount)) | Out-Null }
-    if ($writeSignals -ge 1) { $reasonParts.Add(('{0} close-together shared-state writes' -f $writeSignals)) | Out-Null }
     if ($branchFanout -ge 3) { $reasonParts.Add(('{0} feature branches' -f $branchFanout)) | Out-Null }
+    if ($distinctActorSignal -and $writeSignals -ge 1) { $reasonParts.Add(('{0} close-together shared-state writes' -f $writeSignals)) | Out-Null }
 
     $recommendation = $null
     if ($hasSignals -and -not $suppressed) {

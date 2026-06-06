@@ -636,8 +636,18 @@ function Get-BarePathMatches {
         [AllowEmptyCollection()][object[]]$ExemptionExtensions
     )
 
+    # FR-028: a bare-path candidate must carry a real path signal — a drive/dot root, a known repo
+    # top-level directory, or a file extension. This stops false positives on non-path `token/token`
+    # prose such as `RRT/Bug1` or `FR/SC` (the manual-test finding) while still flagging genuine bare
+    # paths like `specs/141/...` or `contracts/foo.md` that should be a file:/// URL (console) or a
+    # markdown link (persisted artifact).
     $patterns = @(
-        '(?i)(?<path>(?:[A-Z]:[\\/]|\.{1,2}[\\/]|(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+)(?:[\\/][A-Za-z0-9_.-]+)*)',
+        # Drive-rooted or dot-rooted filesystem paths (C:\..., ./..., ../...).
+        '(?i)(?<path>(?:[A-Za-z]:[\\/]|\.{1,2}[\\/])[A-Za-z0-9_.\\/-]+)',
+        # A known repo top-level directory followed by at least one path segment.
+        '(?i)(?<![\w./\\-])(?<path>(?:specs|\.specrew|\.squad|\.specify|\.github|\.claude|\.codex|\.cursor|\.agents|tests|scripts|extensions|hosts|docs|templates|bin|evaluation)[\\/][A-Za-z0-9_.\\/-]+)',
+        # Any multi-segment slash path that ends in a file extension (e.g. contracts/robot-path-viz.md).
+        '(?i)(?<![\w./\\-])(?<path>(?:[A-Za-z0-9_.-]+[\\/])+[A-Za-z0-9_.-]+\.[A-Za-z0-9]+)',
         '(?i)(?<![\w./\\-])(?<path>README\.md)(?![\w./\\-])'
     )
     $matches = New-Object System.Collections.Generic.List[string]

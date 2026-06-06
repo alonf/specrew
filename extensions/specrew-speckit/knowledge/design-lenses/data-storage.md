@@ -30,6 +30,12 @@ before the plan assumes a database or silently avoids one.
 - How does the design avoid services talking directly to another service's
   private database?
 
+## Workshop Conduct
+
+- **Diagram for this lens**: ERD (relational) or NoSQL document relations (references by JSON-path of identities) — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
+- **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, draw the ERD or document relations as ASCII and agree entities, keys, and per-service ownership, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
+- **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.
+
 ## Question Bank
 
 - What data must survive process restart, update, rollback, or uninstall?

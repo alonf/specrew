@@ -1,0 +1,1022 @@
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$script:SpecrewDesignAnalysisGateMinimumVersion = [version]'0.30.0'
+$script:SpecrewDesignAnalysisDefaultIterationNumber = '001'
+
+function Normalize-SpecrewDesignAnalysisFeatureRef {
+    param([AllowNull()][string]$FeatureRef)
+
+    if ([string]::IsNullOrWhiteSpace($FeatureRef)) { return $null }
+    $trimmed = $FeatureRef.Trim()
+    if ($trimmed -match '^[A-Za-z]:\\' -or $trimmed.StartsWith('\\') -or $trimmed -match '^specs[\\/]') {
+        return Split-Path -Leaf $trimmed
+    }
+    return $trimmed
+}
+
+function Normalize-SpecrewDesignAnalysisIterationNumber {
+    param([AllowNull()][string]$IterationNumber)
+
+    if ([string]::IsNullOrWhiteSpace($IterationNumber) -or $IterationNumber -eq '(none)') {
+        return $script:SpecrewDesignAnalysisDefaultIterationNumber
+    }
+
+    if ($IterationNumber -match '^\d+$') {
+        return ([int]$IterationNumber).ToString('000')
+    }
+
+    return $IterationNumber.Trim()
+}
+
+function Get-SpecrewDesignAnalysisArtifactPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    $iteration = Normalize-SpecrewDesignAnalysisIterationNumber -IterationNumber $IterationNumber
+    return Join-Path $ProjectRoot ("specs\{0}\iterations\{1}\design-analysis.md" -f $feature, $iteration)
+}
+
+function Get-SpecrewDesignAnalysisConfigVersion {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $configPath = Join-Path $ProjectRoot '.specrew\config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) { return $null }
+
+    $content = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8
+    if ($content -notmatch '(?m)^\s*specrew_version:\s*["'']?(?<version>\d+\.\d+\.\d+)') { return $null }
+
+    try { return [version]$Matches['version'] }
+    catch { return $null }
+}
+
+function Get-SpecrewDesignAnalysisStartContext {
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $contextPath = Join-Path $ProjectRoot '.specrew\start-context.json'
+    if (-not (Test-Path -LiteralPath $contextPath -PathType Leaf)) { return $null }
+
+    try {
+        return Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 20
+    }
+    catch {
+        return $null
+    }
+}
+
+function Test-SpecrewDesignAnalysisSubstantiveFeature {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    $specPath = Join-Path $ProjectRoot ("specs\{0}\spec.md" -f $feature)
+    if (-not (Test-Path -LiteralPath $specPath -PathType Leaf)) { return $false }
+
+    $specText = Get-Content -LiteralPath $specPath -Raw -Encoding UTF8
+    $trivialSignal = $specText -match '(?i)\b(trivial|doc-only|documentation-only|small bug[- ]?fix|small chore|minor copy|typo-only)\b'
+    $substantiveSignal = $specText -match '(?i)\b(lifecycle|governance|architecture|architectural|enforcement|boundary|state|helper|validator|validation|security|compatibility|integration)\b'
+    if ($trivialSignal -and -not $substantiveSignal) { return $false }
+
+    return $true
+}
+
+function Get-SpecrewDesignAnalysisSection {
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][string[]]$HeadingPatterns
+    )
+
+    foreach ($headingPattern in $HeadingPatterns) {
+        $regex = "(?ims)^#{1,2}\s*(?:$headingPattern)\s*$\r?\n(?<body>.*?)(?=^#{1,2}\s+|\z)"
+        $match = [regex]::Match($Content, $regex)
+        if ($match.Success) {
+            return [pscustomobject]@{
+                Found = $true
+                Body  = $match.Groups['body'].Value.Trim()
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Found = $false
+        Body  = ''
+    }
+}
+
+function Test-SpecrewDesignAnalysisPlaceholderText {
+    param([AllowNull()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $true }
+    $trimmed = $Text.Trim()
+    return ($trimmed -match '^(?:tbd|todo|placeholder|n/a|none|pending|to be decided|to be filled)(?:\s|\.)*$')
+}
+
+function Get-SpecrewDesignAnalysisOptionBlock {
+    param(
+        [Parameter(Mandatory = $true)][string]$AlternativesText,
+        [Parameter(Mandatory = $true)][string]$OptionName
+    )
+
+    # FR-022: tolerate normal authored prose for By-the-book ("By the book" with or
+    # without a hyphen) while still enforcing the required option shape.
+    $namePattern = if ($OptionName -match '(?i)^by[-\s]?the[-\s]?book$') { 'By[-\s]+the[-\s]+book' } else { [regex]::Escape($OptionName) }
+    $terminator = '(?:Simplest|Reasonable|By[-\s]+the[-\s]+book)'
+    $regex = "(?ims)^#{2,6}\s*(?:Option\s+[A-Z]\s*[:\-]\s*)?$namePattern\b.*?\r?\n(?<body>.*?)(?=^#{2,6}\s+(?:Option\s+[A-Z]\s*[:\-]\s*)?$terminator\b|\z)"
+    $match = [regex]::Match($AlternativesText, $regex)
+    if (-not $match.Success) {
+        return $null
+    }
+
+    return $match.Groups['body'].Value.Trim()
+}
+
+function Test-SpecrewDesignAnalysisOptionField {
+    param(
+        [Parameter(Mandatory = $true)][string]$Block,
+        [Parameter(Mandatory = $true)][string]$FieldName
+    )
+
+    $escaped = [regex]::Escape($FieldName)
+    return ($Block -match "(?im)^\s*(?:[-*]\s*)?(?:\*\*)?$escaped(?:\*\*)?\s*[:\-]\s*\S")
+}
+
+function Get-SpecrewDesignAnalysisNamedOption {
+    param([AllowNull()][string]$Text)
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+
+    $matches = [regex]::Matches($Text, '(?i)\b(Option\s+[A-Z]|Simplest|Reasonable|By[-\s]?the[-\s]?book)\b')
+    $unique = New-Object System.Collections.Generic.List[string]
+    foreach ($match in $matches) {
+        $value = $match.Groups[1].Value.Trim()
+        $normalized = if ($value -match '(?i)^option\s+([A-Z])$') {
+            'Option ' + $Matches[1].ToUpperInvariant()
+        } elseif ($value -match '(?i)^by[-\s]?the[-\s]?book$') {
+            'By-the-book'
+        } elseif ($value -match '(?i)^simplest$') {
+            'Simplest'
+        } elseif ($value -match '(?i)^reasonable$') {
+            'Reasonable'
+        } else {
+            $value
+        }
+        if (-not $unique.Contains($normalized)) {
+            $unique.Add($normalized) | Out-Null
+        }
+    }
+
+    if ($unique.Count -eq 1) { return $unique[0] }
+    if ($unique.Count -gt 1) { return ($unique -join ', ') }
+    return $null
+}
+
+function Get-SpecrewDesignAnalysisMarkedOption {
+    # FR-023: resolve exactly one option from a section that carries an explicit
+    # marker line (e.g., "Recommended: Option B" or "Chosen option: Option B"),
+    # tolerating bold/list markup, so contextual mentions of rejected options in the
+    # surrounding rationale do not make the section look multi-valued. Falls back to
+    # the legacy whole-text single-token detection when no marker line is present.
+    param(
+        [AllowNull()][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Marker
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
+
+    $pattern = '(?im)^\s*[-*>\s]*\**\s*' + $Marker + '\**\s*[:\-]?\s*\**\s*(?<opt>Option\s+[A-Z]|Simplest|Reasonable|By[-\s]?the[-\s]?book)\b'
+    $markerMatch = [regex]::Match($Text, $pattern)
+    if ($markerMatch.Success) {
+        return (Get-SpecrewDesignAnalysisNamedOption -Text $markerMatch.Groups['opt'].Value)
+    }
+
+    return (Get-SpecrewDesignAnalysisNamedOption -Text $Text)
+}
+
+function Test-SpecrewDesignAnalysisGateRequired {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $false }
+
+    $artifactPath = Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (Test-Path -LiteralPath $artifactPath -PathType Leaf) { return $true }
+
+    $version = Get-SpecrewDesignAnalysisConfigVersion -ProjectRoot $ProjectRoot
+    if ($null -eq $version -or $version -lt $script:SpecrewDesignAnalysisGateMinimumVersion) { return $false }
+
+    $context = Get-SpecrewDesignAnalysisStartContext -ProjectRoot $ProjectRoot
+    if ($null -eq $context -or $null -eq $context.session_state) { return $false }
+    if (-not [bool]$context.session_state.active) { return $false }
+
+    $contextFeature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef ([string]$context.session_state.feature_ref)
+    if ($contextFeature -ne $feature) { return $false }
+
+    $currentBoundary = [string]$context.session_state.boundary_type
+    $lastAuthorized = if ($null -ne $context.boundary_enforcement) { [string]$context.boundary_enforcement.last_authorized_boundary } else { '' }
+    $isPrePlanActiveBoundary = @('specify', 'clarify', 'before-plan') -contains $currentBoundary -or @('specify', 'clarify', 'before-plan') -contains $lastAuthorized
+    if (-not $isPrePlanActiveBoundary) { return $false }
+
+    return (Test-SpecrewDesignAnalysisSubstantiveFeature -ProjectRoot $ProjectRoot -FeatureRef $feature)
+}
+
+function Test-SpecrewDesignAnalysisLensAddressedPlaceholder {
+    # FR-026: an "Addressed:" coverage value does NOT count as addressing a lens when it is empty, a
+    # TBD-class token, or the unfilled angle-bracket template default emitted by the enriched render.
+    param([AllowNull()][string]$Value)
+
+    if (Test-SpecrewDesignAnalysisPlaceholderText -Text $Value) { return $true }
+    return ([string]$Value).Trim() -match '^<.*>$'
+}
+
+function Test-SpecrewDesignAnalysisLensCoverage {
+    # FR-026 (Amendment A2): deterministic, LLM/network-free lens-coverage enforcement. For each lens
+    # the FR-025 questionnaire selected (lens-applicability.json `selected`), the design analysis MUST
+    # carry a non-placeholder "Addressed:" coverage entry in its "## Applicable Lenses" section; else
+    # the gate blocks plan, naming the unaddressed lens.
+    #
+    # This is an ANTI-OMISSION backstop, NOT a quality guarantee: it proves no selected lens was
+    # silently dropped from the analysis. It deliberately does NOT judge whether the engagement is
+    # genuine — a deterministic check cannot. Genuine engagement is enforced by the human design-
+    # analysis gate plus the blocking delete-the-`Addressed:`-lines discriminator at review-signoff.
+    #
+    # Enforcement is the DEFAULT whenever a questionnaire recorded selected lenses: absence of the
+    # "Addressed:" entries FAILS (every selected lens is reported unaddressed). Grandfathering is
+    # EXPLICIT, never inferred from missing "Addressed:" lines — a pre-FR-026 artifact must carry an
+    # explicit `fr026_grandfathered: true` marker in its lens-applicability.json to be exempt. This
+    # closes the deleting-all-`Addressed:`-lines bypass that would otherwise silently no-op the gate
+    # (the gate-completeness hole found by the Proposal 145 Phase 5 review). Returns a string[] of
+    # error messages (empty = OK / not applicable).
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][string]$IterationDirectory
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    # Selected lenses + the explicit grandfather marker both come from the recorded questionnaire
+    # artifact (decoupled; the JSON is the audit record). Resolution order (A3 — the lens intake is
+    # now feature/specify-phase truth, recorded once at the feature level, not copied per iteration):
+    #   1. iterations/<NNN>/lens-applicability.json   (override / Iteration 4-5 back-compat)
+    #   2. feature-level lens-applicability.json       (the specify-phase truth)
+    #   3. neither present -> graceful no-op (SC-006)
+    # Resolving (not copying) keeps a single source of truth and avoids drift between duplicates.
+    $iterationArtifact = Join-Path $IterationDirectory 'lens-applicability.json'
+    $featureDirectory = Split-Path -Parent (Split-Path -Parent $IterationDirectory)
+    $featureArtifact = if (-not [string]::IsNullOrWhiteSpace($featureDirectory)) { Join-Path $featureDirectory 'lens-applicability.json' } else { $null }
+
+    $answersPath = if (Test-Path -LiteralPath $iterationArtifact -PathType Leaf) {
+        $iterationArtifact
+    }
+    elseif ($null -ne $featureArtifact -and (Test-Path -LiteralPath $featureArtifact -PathType Leaf)) {
+        $featureArtifact
+    }
+    else {
+        $null
+    }
+    if ($null -eq $answersPath) { return @() }
+
+    $doc = $null
+    try { $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return @() }
+    if ($null -eq $doc) { return @() }
+
+    $selected = @()
+    if ($doc.PSObject.Properties['selected']) {
+        $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+    if ($selected.Count -eq 0) { return @() }
+
+    # EXPLICIT grandfather (not inferred): a recorded `fr026_grandfathered: true` marker exempts a
+    # pre-FR-026 artifact. Enforcement is otherwise the default, so deleting every "Addressed:" line
+    # from an FR-026-era artifact does NOT no-op the gate — every selected lens is reported below.
+    if ($doc.PSObject.Properties['fr026_grandfathered'] -and [bool]$doc.fr026_grandfathered) { return @() }
+
+    $section = Get-SpecrewDesignAnalysisSection -Content $Content -HeadingPatterns @('Applicable\s+Lenses')
+    $body = if ($section.Found) { $section.Body } else { '' }
+
+    foreach ($id in $selected) {
+        $blockRegex = '(?ims)^[-*]\s*\*\*' + [regex]::Escape($id) + '\*\*.*?(?=^[-*]\s*\*\*|\z)'
+        $blockMatch = [regex]::Match($body, $blockRegex)
+        $addressed = $null
+        if ($blockMatch.Success) {
+            $addressedMatch = [regex]::Match($blockMatch.Value, '(?im)^\s*[-*]?\s*Addressed\s*:\s*(?<v>.*)$')
+            if ($addressedMatch.Success) { $addressed = $addressedMatch.Groups['v'].Value }
+        }
+        if ($null -eq $addressed -or (Test-SpecrewDesignAnalysisLensAddressedPlaceholder -Value $addressed)) {
+            $errors.Add(("design-analysis.md does not address selected lens '{0}' (FR-026 anti-omission): add a non-placeholder 'Addressed:' coverage entry for it in the Applicable Lenses section, pointing into the option comparison." -f $id)) | Out-Null
+        }
+    }
+
+    return $errors.ToArray()
+}
+
+function Test-SpecrewLensWorkshopRecordPlaceholder {
+    # SC-021 (Amendment A4): a per-lens workshop field does NOT count as recorded when it is null/empty,
+    # a TBD-class placeholder, or the angle-bracket template default. An array field (agenda) is a
+    # placeholder when empty.
+    param([AllowNull()]$Value)
+
+    if ($null -eq $Value) { return $true }
+    if (($Value -is [System.Collections.IEnumerable]) -and ($Value -isnot [string])) {
+        return (@($Value).Count -eq 0)
+    }
+    $s = [string]$Value
+    if (Test-SpecrewDesignAnalysisPlaceholderText -Text $s) { return $true }
+    return $s.Trim() -match '^<.*>$'
+}
+
+function Test-SpecrewLensWorkshopRecords {
+    # Iteration 7 (SC-021, Amendment A4): the deterministic per-lens-decision FLOOR under the behavioral
+    # workshop. For each selected lens, the given intake artifact MUST carry a non-placeholder `workshop`
+    # record with agenda (non-empty), decision/agreement (non-placeholder), depth (set), and an explicit
+    # moved_on marker (truthy). Enforces PRESENCE only — it does NOT, and cannot, assess quality (that is
+    # SC-020's runtime dogfood). Enforcement is gated by an explicit `workshop_intake: true` marker, so it
+    # applies to A4 workshop runs and NEVER retroactively fails the pre-A4 questionnaire artifacts;
+    # `fr026_grandfathered` also exempts. Takes the EXACT artifact path so the caller controls resolution:
+    # the workshop records live in the FEATURE-level lens-applicability.json (the specify-phase truth,
+    # FR-027) — NOT the iteration-level design-analysis questionnaire — so the specify-boundary gate passes
+    # the feature-level path here. (i007 dogfood fix: the earlier iteration-first resolution no-opped on
+    # the feature-level workshop artifact, so the floor never fired.) Returns a string[] of errors
+    # (empty = OK / not applicable).
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][AllowEmptyString()][string]$ArtifactPath
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+    if ([string]::IsNullOrWhiteSpace($ArtifactPath) -or -not (Test-Path -LiteralPath $ArtifactPath -PathType Leaf)) { return @() }
+
+    $doc = $null
+    try { $doc = Get-Content -LiteralPath $ArtifactPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return @() }
+    if ($null -eq $doc) { return @() }
+
+    if ($doc.PSObject.Properties['fr026_grandfathered'] -and [bool]$doc.fr026_grandfathered) { return @() }
+    # SC-021 enforces ONLY for A4 workshop-era artifacts (explicit marker). A pre-A4 questionnaire
+    # artifact (no marker) no-ops, so it is never retroactively failed. An A4 artifact that sets the
+    # marker but omits the records CANNOT bypass the gate (the records are required below).
+    $isWorkshop = $doc.PSObject.Properties['workshop_intake'] -and [bool]$doc.workshop_intake
+    if (-not $isWorkshop) { return @() }
+
+    $selected = @()
+    if ($doc.PSObject.Properties['selected']) {
+        $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+    if ($selected.Count -eq 0) { return @() }
+
+    $workshop = if ($doc.PSObject.Properties['workshop']) { $doc.workshop } else { $null }
+    # SC-026 (Amendment A7): when the artifact opts in via `confirmation_required: true`, each selected lens
+    # MUST also declare a provenance value (human-confirmed | human-delegated | human-skipped). Grandfather-safe
+    # — pre-A7 artifacts lack the marker and no-op (the `workshop_intake` precedent). The floor enforces that a
+    # provenance is DECLARED; it CANNOT verify the human was actually asked (that is SC-027's runtime dogfood).
+    $confirmationRequired = $doc.PSObject.Properties['confirmation_required'] -and [bool]$doc.confirmation_required
+    $validProvenance = @('human-confirmed', 'human-delegated', 'human-skipped')
+
+    foreach ($id in $selected) {
+        $rec = $null
+        if ($null -ne $workshop -and $workshop.PSObject.Properties[$id]) { $rec = $workshop.$id }
+        if ($null -eq $rec) {
+            $errors.Add(("lens-applicability.json has no workshop record for selected lens '{0}' (SC-021): record agenda + decision/agreement + depth + a moved_on marker." -f $id)) | Out-Null
+            continue
+        }
+
+        $missing = New-Object System.Collections.Generic.List[string]
+        $agenda = if ($rec.PSObject.Properties['agenda']) { $rec.agenda } else { $null }
+        if (Test-SpecrewLensWorkshopRecordPlaceholder -Value $agenda) { $missing.Add('agenda') | Out-Null }
+        $decision = if ($rec.PSObject.Properties['decision']) { $rec.decision } else { $null }
+        if (Test-SpecrewLensWorkshopRecordPlaceholder -Value $decision) { $missing.Add('decision') | Out-Null }
+        $depth = if ($rec.PSObject.Properties['depth']) { $rec.depth } else { $null }
+        if (Test-SpecrewLensWorkshopRecordPlaceholder -Value $depth) { $missing.Add('depth') | Out-Null }
+        $movedOn = if ($rec.PSObject.Properties['moved_on']) { $rec.moved_on } else { $null }
+        if ($null -eq $movedOn -or -not [bool]$movedOn) { $missing.Add('moved_on') | Out-Null }
+
+        if ($missing.Count -gt 0) {
+            $errors.Add(("workshop record for selected lens '{0}' is incomplete (SC-021): missing or placeholder {1}." -f $id, ($missing -join ', '))) | Out-Null
+        }
+
+        if ($confirmationRequired) {
+            $confirmation = if ($rec.PSObject.Properties['confirmation']) { [string]$rec.confirmation } else { '' }
+            if ($confirmation -notin $validProvenance) {
+                $errors.Add(("workshop record for selected lens '{0}' is missing a valid confirmation provenance (SC-026): set 'confirmation' to one of human-confirmed | human-delegated | human-skipped (got '{1}'). Record human-confirmed ONLY for a lens the human was surfaced and confirmed; an explicit delegate/skip records human-delegated/human-skipped; an agreement MUST NOT be synthesized for an un-surfaced lens." -f $id, $confirmation)) | Out-Null
+            }
+        }
+    }
+
+    return $errors.ToArray()
+}
+
+function Test-SpecrewDesignCoDesignRecord {
+    # SC-025 (Amendment A6): the deterministic, marker-gated FLOOR under the behavioral co-design session.
+    # When the iteration's recorded lens-applicability.json opts in via an explicit `co_design: true` marker,
+    # the design-analysis.md MUST carry a non-placeholder `## Co-Design Record` section with (a) a
+    # component-to-responsibility map, (b) at least one agreed flow, and (c) a truthy human-agreed marker.
+    # Enforces PRESENCE only — it does NOT, and cannot, assess whether the collaboration was genuine (that is
+    # SC-024's runtime dogfood). Marker-gated + grandfather-safe (the SC-021/FR-026 precedent): a pre-A6
+    # artifact carries no `co_design` marker and no-ops, so it is NEVER retroactively failed; an A6 artifact
+    # that sets the marker but omits the record CANNOT bypass the gate. `fr026_grandfathered` also exempts.
+    # Resolution mirrors FR-026 (iteration-level lens-applicability.json first, else feature-level). Returns a
+    # string[] of error messages (empty = OK / not applicable).
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][string]$IterationDirectory
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    $iterationArtifact = Join-Path $IterationDirectory 'lens-applicability.json'
+    $featureDirectory = Split-Path -Parent (Split-Path -Parent $IterationDirectory)
+    $featureArtifact = if (-not [string]::IsNullOrWhiteSpace($featureDirectory)) { Join-Path $featureDirectory 'lens-applicability.json' } else { $null }
+    $answersPath = if (Test-Path -LiteralPath $iterationArtifact -PathType Leaf) {
+        $iterationArtifact
+    }
+    elseif ($null -ne $featureArtifact -and (Test-Path -LiteralPath $featureArtifact -PathType Leaf)) {
+        $featureArtifact
+    }
+    else {
+        $null
+    }
+    if ($null -eq $answersPath) { return @() }
+
+    $doc = $null
+    try { $doc = Get-Content -LiteralPath $answersPath -Raw -Encoding UTF8 | ConvertFrom-Json }
+    catch { return @() }
+    if ($null -eq $doc) { return @() }
+
+    if ($doc.PSObject.Properties['fr026_grandfathered'] -and [bool]$doc.fr026_grandfathered) { return @() }
+    # SC-025 enforces ONLY for A6 co-design-era artifacts (explicit marker). A pre-A6 artifact (no marker)
+    # no-ops, so it is never retroactively failed. An A6 artifact that sets the marker but omits the record
+    # CANNOT bypass the gate (the record is required below).
+    $isCoDesign = $doc.PSObject.Properties['co_design'] -and [bool]$doc.co_design
+    if (-not $isCoDesign) { return @() }
+
+    $selected = @()
+    if ($doc.PSObject.Properties['selected']) {
+        $selected = @($doc.selected | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+
+    $section = Get-SpecrewDesignAnalysisSection -Content $Content -HeadingPatterns @('Co-?Design\s+Record')
+    if (-not $section.Found -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $section.Body)) {
+        $errors.Add("design-analysis.md is missing a populated '## Co-Design Record' section (SC-025): record the co-designed component-to-responsibility map, at least one agreed flow, and a human-agreed marker.") | Out-Null
+        return $errors.ToArray()
+    }
+
+    $body = $section.Body
+    $missing = New-Object System.Collections.Generic.List[string]
+
+    if ($body -notmatch '(?i)responsib') {
+        $missing.Add('a component-to-responsibility map') | Out-Null
+    }
+    if ($body -notmatch '(?is)```mermaid' -and $body -notmatch '(?im)\bflow\b') {
+        $missing.Add('at least one agreed flow (a mermaid flow/sequence or a labeled flow)') | Out-Null
+    }
+    $agreed = [regex]::Match($body, '(?im)^\s*[-*]?\s*\**\s*(?:human[- ]?agreed|human\s+agreement|agreed\s+by\s+(?:the\s+)?human)\**\s*[:\-]\s*(?<v>.+)$')
+    if (-not $agreed.Success -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $agreed.Groups['v'].Value) -or ($agreed.Groups['v'].Value -notmatch '(?i)\b(yes|true|confirmed|agreed|approved)\b')) {
+        $missing.Add('a truthy human-agreed marker (for example "Human-agreed: yes")') | Out-Null
+    }
+    # A6 finding D (iteration-9 dogfood): when ui-ux is a selected lens, the agreed UI/screen layout MUST be
+    # captured in the record too — an agreed layout that lives only in the chat scrollback is lost.
+    if (($selected -contains 'ui-ux') -and ($body -notmatch '(?im)(?:ui|screen)[ -]?layout')) {
+        $missing.Add('a captured UI/screen-layout agreement (ui-ux is a selected lens)') | Out-Null
+    }
+
+    if ($missing.Count -gt 0) {
+        $errors.Add(("'## Co-Design Record' is incomplete (SC-025): missing {0}." -f ($missing -join ', '))) | Out-Null
+    }
+
+    return $errors.ToArray()
+}
+
+function Test-SpecrewDesignAnalysisArtifact {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    $iteration = Normalize-SpecrewDesignAnalysisIterationNumber -IterationNumber $IterationNumber
+    $artifactPath = Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $iteration
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) {
+        $errors.Add("Missing design-analysis artifact: $artifactPath") | Out-Null
+        return [pscustomobject]@{
+            Valid          = $false
+            ArtifactPath   = $artifactPath
+            Errors         = @($errors)
+            SelectedOption = $null
+        }
+    }
+
+    $content = Get-Content -LiteralPath $artifactPath -Raw -Encoding UTF8
+    $problem = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Problem\s+Framing', 'Problem')
+    $decisionPoints = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Key\s+Design\s+Decision\s+Points', 'Decision\s+Points')
+    $alternatives = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Alternatives', 'Design\s+Alternatives')
+    $recommendation = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Crew\s+Recommendation', 'Recommendation')
+    $humanDecision = Get-SpecrewDesignAnalysisSection -Content $content -HeadingPatterns @('Human\s+Decision')
+
+    foreach ($section in @(
+            @{ Name = 'Problem Framing'; Value = $problem },
+            @{ Name = 'Key Design Decision Points'; Value = $decisionPoints },
+            @{ Name = 'Alternatives'; Value = $alternatives },
+            @{ Name = 'Crew Recommendation'; Value = $recommendation },
+            @{ Name = 'Human Decision'; Value = $humanDecision }
+        )) {
+        if (-not $section.Value.Found -or (Test-SpecrewDesignAnalysisPlaceholderText -Text $section.Value.Body)) {
+            $errors.Add("design-analysis.md is missing a populated $($section.Name) section.") | Out-Null
+        }
+    }
+
+    if ($alternatives.Found) {
+        $simplest = Get-SpecrewDesignAnalysisOptionBlock -AlternativesText $alternatives.Body -OptionName 'Simplest'
+        $reasonable = Get-SpecrewDesignAnalysisOptionBlock -AlternativesText $alternatives.Body -OptionName 'Reasonable'
+        $byTheBook = Get-SpecrewDesignAnalysisOptionBlock -AlternativesText $alternatives.Body -OptionName 'By-the-book'
+
+        if ([string]::IsNullOrWhiteSpace($simplest)) {
+            $errors.Add('Alternatives must include a populated Simplest option.') | Out-Null
+        }
+        if ([string]::IsNullOrWhiteSpace($reasonable)) {
+            $errors.Add('Alternatives must include a populated Reasonable option.') | Out-Null
+        }
+
+        foreach ($option in @(
+                @{ Name = 'Simplest'; Block = $simplest },
+                @{ Name = 'Reasonable'; Block = $reasonable },
+                @{ Name = 'By-the-book'; Block = $byTheBook }
+            )) {
+            if ([string]::IsNullOrWhiteSpace($option.Block)) { continue }
+
+            foreach ($field in @('Approach', 'Architectural pattern', 'Quality features considered', 'Effort estimate', 'Reversibility cost', 'Trade-offs')) {
+                if (-not (Test-SpecrewDesignAnalysisOptionField -Block $option.Block -FieldName $field)) {
+                    $errors.Add("$($option.Name) option is missing required field: $field.") | Out-Null
+                }
+            }
+
+            if ($option.Block -notmatch '(?is)```mermaid|diagram\s+(?:link|url)\s*[:\-]\s*\S|diagram\s*[:\-]\s*\S') {
+                $errors.Add("$($option.Name) option is missing a Mermaid diagram or diagram link.") | Out-Null
+            }
+        }
+
+        if ([string]::IsNullOrWhiteSpace($byTheBook) -and $alternatives.Body -notmatch '(?is)by[-\s]?the[-\s]?book.*(?:not\s+meaningfully\s+distinct|not\s+distinct|not-applicable|not\s+applicable|deferred)') {
+            $errors.Add('Alternatives must include By-the-book when distinct, or state why By-the-book is not meaningfully distinct.') | Out-Null
+        }
+    }
+
+    $recommendedOption = Get-SpecrewDesignAnalysisMarkedOption -Text $recommendation.Body -Marker 'Recommended'
+    if ($recommendation.Found) {
+        if (Test-SpecrewDesignAnalysisPlaceholderText -Text $recommendation.Body) {
+            $errors.Add('Crew Recommendation must be populated and cannot be placeholder text.') | Out-Null
+        }
+        elseif ([string]::IsNullOrWhiteSpace($recommendedOption)) {
+            $errors.Add('Crew Recommendation must name exactly one recommended option.') | Out-Null
+        }
+        elseif ($recommendedOption -like '*,*') {
+            $errors.Add("Crew Recommendation names multiple options ($recommendedOption); name exactly one.") | Out-Null
+        }
+    }
+
+    $selectedOption = Get-SpecrewDesignAnalysisMarkedOption -Text $humanDecision.Body -Marker 'Chosen\s+Option'
+    if ($humanDecision.Found) {
+        if (Test-SpecrewDesignAnalysisPlaceholderText -Text $humanDecision.Body) {
+            $errors.Add('Human Decision must be populated and cannot be placeholder text.') | Out-Null
+        }
+        if ($humanDecision.Body -notmatch '(?i)approved\s+for\s+plan\s+with\s+Option\s+[A-Z]' -and $humanDecision.Body -notmatch '(?im)^\s*(?:[-*]\s*)?(?:\*\*)?Chosen\s+Option(?:\*\*)?\s*[:\-]\s*\S') {
+            $errors.Add('Human Decision must record a verdict equivalent to "approved for plan with Option <X>" or a Chosen Option field.') | Out-Null
+        }
+        if ([string]::IsNullOrWhiteSpace($selectedOption)) {
+            $errors.Add('Human Decision must name the chosen option.') | Out-Null
+        }
+        if ($humanDecision.Body -notmatch '(?i)\b(reason|rationale|modification|modifications|instruction|instructions)\b') {
+            $errors.Add('Human Decision must record the human reason, modifications, or instructions.') | Out-Null
+        }
+        if ($humanDecision.Body -notmatch '(?i)\b[0-9a-f]{7,40}\b') {
+            $errors.Add('Human Decision must record a commit hash.') | Out-Null
+        }
+        # FR-003 metadata integrity (Fix 3, 2026-06-02 smoke): the decision commit must be
+        # the commit that contains the populated Human Decision, NOT the design-analysis
+        # draft commit. Reject recording the draft commit as the decision commit.
+        $draftCommit = [regex]::Match($humanDecision.Body, '(?im)^\s*[-*]?\s*\**\s*Design-analysis draft commit\**\s*[:\-]\s*`?([0-9a-f]{7,40})`?')
+        $decisionCommit = [regex]::Match($humanDecision.Body, '(?im)^\s*[-*]?\s*\**\s*Decision recorded in commit\**\s*[:\-]\s*`?([0-9a-f]{7,40})`?')
+        if ($draftCommit.Success -and $decisionCommit.Success -and $draftCommit.Groups[1].Value -eq $decisionCommit.Groups[1].Value) {
+            $errors.Add('Human Decision "Decision recorded in commit" must differ from the "Design-analysis draft commit"; record the commit that contains the populated decision, not the draft.') | Out-Null
+        }
+    }
+
+    # FR-026 (Amendment A2): lens-coverage enforcement. Each questionnaire-selected lens must carry a
+    # non-placeholder "Addressed:" entry (anti-omission); grandfather-safe + LLM/network-free.
+    $iterationDirectory = Split-Path -Parent $artifactPath
+    foreach ($coverageError in @(Test-SpecrewDesignAnalysisLensCoverage -Content $content -IterationDirectory $iterationDirectory)) {
+        $errors.Add($coverageError) | Out-Null
+    }
+    # SC-025 (Amendment A6): co-design-record floor under the behavioral co-design session. Marker-gated by
+    # `co_design` in the iteration's lens-applicability.json + grandfather-safe, so pre-A6 artifacts no-op;
+    # presence-only (collaboration quality is SC-024's runtime dogfood).
+    foreach ($coDesignError in @(Test-SpecrewDesignCoDesignRecord -Content $content -IterationDirectory $iterationDirectory)) {
+        $errors.Add($coDesignError) | Out-Null
+    }
+    # NOTE: the SC-021 per-lens workshop-record floor is enforced at the SPECIFY boundary
+    # (Invoke-SpecrewSpecifyBoundaryLensGate) against the FEATURE-level workshop artifact, NOT here — the
+    # design-analysis gate resolves the iteration-level questionnaire (FR-026), which is the wrong artifact
+    # for the workshop floor (i007 dogfood fix).
+
+    return [pscustomobject]@{
+        Valid             = ($errors.Count -eq 0)
+        ArtifactPath      = $artifactPath
+        Errors            = @($errors)
+        SelectedOption    = $selectedOption
+        RecommendedOption = $recommendedOption
+    }
+}
+
+function Invoke-SpecrewDesignAnalysisPlanBoundaryGate {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+
+    $required = Test-SpecrewDesignAnalysisGateRequired -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (-not $required) { return $null }
+
+    $result = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (-not $result.Valid) {
+        $messageLines = New-Object System.Collections.Generic.List[string]
+        $messageLines.Add(("[design-analysis-gate] Plan boundary cannot advance for active substantive feature '{0}'." -f $feature)) | Out-Null
+        $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
+        foreach ($error in $result.Errors) {
+            $messageLines.Add(("  - {0}" -f $error)) | Out-Null
+        }
+        throw ($messageLines -join [Environment]::NewLine)
+    }
+
+    return $result
+}
+
+$script:SpecrewDesignAnalysisPacketSections = @(
+    'What I Just Did',
+    'Why I Stopped',
+    'What Needs Your Review',
+    'What Happens Next',
+    'Discussion Prompts',
+    'What I Need From You'
+)
+
+function New-SpecrewDesignAnalysisGatePacket {
+    # FR-004: render the design-analysis human gate packet from typed fields, so the
+    # authoritative approval object is Specrew-rendered rather than free-form prose.
+    # Scoped to the design-analysis gate only (FR-006) — not a general packet system.
+    param(
+        [Parameter(Mandatory = $true)][hashtable]$Fields
+    )
+
+    $feature = if ($Fields.ContainsKey('Feature')) { [string]$Fields['Feature'] } else { '<feature>' }
+    $iteration = if ($Fields.ContainsKey('Iteration')) { [string]$Fields['Iteration'] } else { '001' }
+    $verdict = if ($Fields.ContainsKey('Verdict')) { [string]$Fields['Verdict'] } else { 'approved for plan with Option <X>' }
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('---') | Out-Null
+    $lines.Add('gate: design-analysis') | Out-Null
+    $lines.Add(('feature: {0}' -f $feature)) | Out-Null
+    $lines.Add(('iteration: "{0}"' -f $iteration)) | Out-Null
+    $lines.Add('from_boundary: design-analysis') | Out-Null
+    $lines.Add('to_boundary: plan') | Out-Null
+    $lines.Add(('verdict_shape: "{0}"' -f $verdict)) | Out-Null
+    $lines.Add('---') | Out-Null
+    $lines.Add('') | Out-Null
+
+    foreach ($section in $script:SpecrewDesignAnalysisPacketSections) {
+        $key = $section -replace '[^A-Za-z]', ''
+        $body = if ($Fields.ContainsKey($key)) { [string]$Fields[$key] } else { '<to be filled>' }
+        $lines.Add(('## {0}' -f $section)) | Out-Null
+        $lines.Add('') | Out-Null
+        $lines.Add($body.Trim()) | Out-Null
+        $lines.Add('') | Out-Null
+    }
+
+    return (($lines -join [Environment]::NewLine).TrimEnd() + [Environment]::NewLine)
+}
+
+function Test-SpecrewDesignAnalysisGatePacket {
+    # FR-005: validate the rendered design-analysis gate packet — six human re-entry
+    # sections present, the `approved for plan with Option <X>` verdict shape present,
+    # and no bare artifact paths in prose (file:/// URLs and code spans are exempt).
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()][string]$PacketText
+    )
+
+    $errors = New-Object System.Collections.Generic.List[string]
+
+    if ([string]::IsNullOrWhiteSpace($PacketText)) {
+        $errors.Add('Packet text is empty.') | Out-Null
+        return [pscustomobject]@{ Valid = $false; Errors = @($errors) }
+    }
+
+    foreach ($section in $script:SpecrewDesignAnalysisPacketSections) {
+        $pattern = '(?im)^#{1,3}\s*' + [regex]::Escape($section) + '\s*$'
+        if ($PacketText -notmatch $pattern) {
+            $errors.Add(("Packet is missing required section: {0}." -f $section)) | Out-Null
+        }
+    }
+
+    if ($PacketText -notmatch '(?i)approved for plan with option\b') {
+        $errors.Add('Packet must reference the verdict shape `approved for plan with Option <X>`.') | Out-Null
+    }
+
+    # Strip code blocks, inline code, and file:/// URLs, then flag any remaining bare
+    # artifact-path reference in prose.
+    $stripped = $PacketText
+    $stripped = [regex]::Replace($stripped, '(?s)```.*?```', '')
+    $stripped = [regex]::Replace($stripped, '`[^`]*`', '')
+    $stripped = [regex]::Replace($stripped, '(?i)file:///\S+', '')
+    $barePaths = [regex]::Matches($stripped, '(?<![\w./])(?:specs|\.specrew|\.squad|tests)[\\/]\S')
+    if ($barePaths.Count -gt 0) {
+        $errors.Add('Packet prose contains a bare artifact path; use a file:/// URL or a code span.') | Out-Null
+    }
+
+    return [pscustomobject]@{ Valid = ($errors.Count -eq 0); Errors = @($errors) }
+}
+
+function Get-SpecrewDesignAnalysisGatePacketPath {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    $iteration = Normalize-SpecrewDesignAnalysisIterationNumber -IterationNumber $IterationNumber
+    # FR-020 / FR-006: durable packet scoped to the design-analysis gate only.
+    return Join-Path $ProjectRoot ("specs\{0}\gates\design-analysis-{1}.md" -f $feature, $iteration)
+}
+
+function Save-SpecrewDesignAnalysisGatePacket {
+    # FR-020: persist the validated packet as a narrow durable 155-lite record under
+    # specs/<feature>/gates/ for the design-analysis gate only. Validates before save.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber,
+        [Parameter(Mandatory = $true)][string]$PacketText
+    )
+
+    $validation = Test-SpecrewDesignAnalysisGatePacket -PacketText $PacketText
+    if (-not $validation.Valid) {
+        $messageLines = New-Object System.Collections.Generic.List[string]
+        $messageLines.Add('[design-analysis-gate-packet] Refusing to persist an invalid design-analysis gate packet.') | Out-Null
+        foreach ($err in $validation.Errors) {
+            $messageLines.Add(("  - {0}" -f $err)) | Out-Null
+        }
+        throw ($messageLines -join [Environment]::NewLine)
+    }
+
+    $packetPath = Get-SpecrewDesignAnalysisGatePacketPath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+    $directory = Split-Path -Parent $packetPath
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $directory -Force
+    }
+
+    [System.IO.File]::WriteAllText($packetPath, ($PacketText.TrimEnd() + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+    return [pscustomobject]@{ Path = $packetPath; Valid = $true }
+}
+
+function Get-SpecrewDesignAnalysisSelectedOption {
+    # FR-007: expose the human-selected option as authoritative plan input. Returns
+    # the single selected option string, or $null when the artifact is missing/invalid.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $result = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber
+    if (-not $result.Valid) { return $null }
+    return $result.SelectedOption
+}
+
+function Get-SpecrewDesignAnalysisTemplatePath {
+    # Resolve the versioned design-analysis template that the scaffold emits.
+    # Reconciled with the validator contract (FR-001 / TG-007). Prefers the
+    # repo/module source path; falls back to the deployed .specify mirror.
+    $moduleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    $candidates = @(
+        (Join-Path $moduleRoot 'extensions\specrew-speckit\templates\design-analysis.template.md'),
+        (Join-Path $moduleRoot '.specify\extensions\specrew-speckit\templates\design-analysis.template.md')
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return $null
+}
+
+function New-SpecrewDesignAnalysisArtifact {
+    # FR-001: scaffold a per-iteration design-analysis.md from the template if it
+    # does not already exist. Never overwrites an existing decision record.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) {
+        throw 'New-SpecrewDesignAnalysisArtifact requires a non-empty feature ref.'
+    }
+
+    $artifactPath = Get-SpecrewDesignAnalysisArtifactPath -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+        return [pscustomobject]@{ Path = $artifactPath; Created = $false; Reason = 'exists' }
+    }
+
+    $templatePath = Get-SpecrewDesignAnalysisTemplatePath
+    if ($null -eq $templatePath) {
+        throw 'design-analysis.template.md not found under extensions/specrew-speckit/templates; cannot scaffold the design-analysis artifact.'
+    }
+
+    $directory = Split-Path -Parent $artifactPath
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+        $null = New-Item -ItemType Directory -Path $directory -Force
+    }
+
+    $template = Get-Content -LiteralPath $templatePath -Raw -Encoding UTF8
+    [System.IO.File]::WriteAllText($artifactPath, $template, [System.Text.UTF8Encoding]::new($false))
+    return [pscustomobject]@{ Path = $artifactPath; Created = $true; Reason = 'scaffolded-from-template' }
+}
+
+function Invoke-SpecrewDesignAnalysisPrePlanGate {
+    # FR-002 / FR-003 / FR-021: callable pre-plan validator invoked BEFORE plan.md
+    # is authored (in addition to the at-sync plan-boundary gate). Coordinator-prompt
+    # enforcement (no host-native hooks) calls this; it fails closed when the active
+    # substantive iteration's design-analysis artifact or human decision is invalid.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef,
+        [AllowNull()][string]$IterationNumber
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+
+    $required = Test-SpecrewDesignAnalysisGateRequired -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (-not $required) { return $null }
+
+    $result = Test-SpecrewDesignAnalysisArtifact -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (-not $result.Valid) {
+        $messageLines = New-Object System.Collections.Generic.List[string]
+        $messageLines.Add(("[design-analysis-pre-plan-gate] Do not author plan.md for active substantive feature '{0}' until design analysis is valid." -f $feature)) | Out-Null
+        $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
+        foreach ($err in $result.Errors) {
+            $messageLines.Add(("  - {0}" -f $err)) | Out-Null
+        }
+        throw ($messageLines -join [Environment]::NewLine)
+    }
+
+    # FR-004/FR-005/FR-020 enforced flow (Fix 1/2, 2026-06-02 smoke): the durable
+    # design-gate packet MUST exist and validate before plan.md is authored, so packet
+    # persistence is a required step in the real flow, not an unused helper. The at-sync
+    # plan-boundary gate stays the artifact/decision backstop if this call is bypassed.
+    $packetPath = Get-SpecrewDesignAnalysisGatePacketPath -ProjectRoot $ProjectRoot -FeatureRef $feature -IterationNumber $IterationNumber
+    if (-not (Test-Path -LiteralPath $packetPath -PathType Leaf)) {
+        throw ("[design-analysis-pre-plan-gate] Do not author plan.md for active substantive feature '{0}': the durable design-gate packet is missing at {1}. Render, validate, and persist it (Save-SpecrewDesignAnalysisGatePacket) before plan.md." -f $feature, $packetPath)
+    }
+    $packetText = Get-Content -LiteralPath $packetPath -Raw -Encoding UTF8
+    $packetCheck = Test-SpecrewDesignAnalysisGatePacket -PacketText $packetText
+    if (-not $packetCheck.Valid) {
+        $packetLines = New-Object System.Collections.Generic.List[string]
+        $packetLines.Add(("[design-analysis-pre-plan-gate] Durable design-gate packet at {0} is invalid:" -f $packetPath)) | Out-Null
+        foreach ($perr in $packetCheck.Errors) {
+            $packetLines.Add(("  - {0}" -f $perr)) | Out-Null
+        }
+        throw ($packetLines -join [Environment]::NewLine)
+    }
+
+    return [pscustomobject]@{
+        Valid          = $true
+        ArtifactPath   = $result.ArtifactPath
+        Errors         = @()
+        SelectedOption = $result.SelectedOption
+        PacketPath     = $packetPath
+    }
+}
+
+function Get-SpecrewLensApplicabilityMapPath {
+    # The decoupled question->lens applicability map (Iteration 4). Its presence means the lens intake
+    # applies to this project; absent (e.g. a downstream project without lenses) => graceful skip.
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    foreach ($rel in @(
+            'extensions\specrew-speckit\knowledge\design-lenses\applicability-map.json',
+            '.specify\extensions\specrew-speckit\knowledge\design-lenses\applicability-map.json')) {
+        $candidate = Join-Path $ProjectRoot $rel
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return $null
+}
+
+function Get-SpecrewFeatureLensApplicabilityPath {
+    # FR-027 (A3): the lens intake records its answers ONCE at the feature level (the specify-phase
+    # truth); the FR-026 coverage gate resolves this when no iteration-level artifact is present.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef
+    )
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+    return Join-Path $ProjectRoot ("specs\{0}\lens-applicability.json" -f $feature)
+}
+
+function Test-SpecrewSpecifyLensIntakeRequired {
+    # The lens intake is required at the specify boundary when (a) the applicability map is present
+    # (graceful skip for downstream projects without lenses) AND (b) the feature is substantive
+    # (trivial doc/bugfix features are exempt — the same substantive test the design-analysis gate uses).
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $false }
+    if ($null -eq (Get-SpecrewLensApplicabilityMapPath -ProjectRoot $ProjectRoot)) { return $false }
+    return (Test-SpecrewDesignAnalysisSubstantiveFeature -ProjectRoot $ProjectRoot -FeatureRef $feature)
+}
+
+function Invoke-SpecrewSpecifyBoundaryLensGate {
+    # FR-027 (Amendment A3): the lens-applicability intake MUST complete before the specify boundary
+    # is finalized/synced, so the ACCEPTED spec is lens-informed. This is ENFORCED, not prompt-only:
+    # sync-specify is refused for a substantive feature (in a lens-catalog project) until the
+    # feature-level lens-applicability.json exists (i.e. the interactive intake ran and the spec was
+    # amended before sync). Deterministic + LLM/network-free. Returns $null when the intake does not
+    # apply (graceful skip — no map, or trivial feature).
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+    if (-not (Test-SpecrewSpecifyLensIntakeRequired -ProjectRoot $ProjectRoot -FeatureRef $feature)) { return $null }
+
+    $artifact = Get-SpecrewFeatureLensApplicabilityPath -ProjectRoot $ProjectRoot -FeatureRef $feature
+    if ($null -eq $artifact -or -not (Test-Path -LiteralPath $artifact -PathType Leaf)) {
+        throw ("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the lens-applicability intake has not run. Run the interactive, expertise-adapted lens intake, record the feature-level lens-applicability.json, and amend spec.md + the requirements checklist with the lens-informed requirements BEFORE sync-specify (FR-027 / Amendment A3). Expected artifact: {1}" -f $feature, $artifact)
+    }
+
+    # SC-021 (Amendment A4): the per-lens workshop-record FLOOR, enforced HERE against the feature-level
+    # workshop artifact (the specify-phase truth). For an A4 workshop intake (explicit `workshop_intake:
+    # true`), each selected lens MUST carry a non-placeholder workshop record (agenda + decision/agreement
+    # + depth + moved_on). Presence-only, marker-gated so a pre-A4 questionnaire artifact no-ops; the
+    # workshop's QUALITY is SC-020's runtime dogfood, not this gate.
+    $workshopErrors = @(Test-SpecrewLensWorkshopRecords -ArtifactPath $artifact)
+    if ($workshopErrors.Count -gt 0) {
+        $lines = New-Object System.Collections.Generic.List[string]
+        $lines.Add(("[specify-lens-gate] Cannot finalize the specify boundary for substantive feature '{0}': the per-lens workshop records are incomplete (SC-021). Record agenda + decision/agreement + depth + a moved_on marker for each selected lens in {1} before sync-specify." -f $feature, $artifact)) | Out-Null
+        foreach ($wsErr in $workshopErrors) { $lines.Add(("  - {0}" -f $wsErr)) | Out-Null }
+        throw ($lines -join [Environment]::NewLine)
+    }
+
+    return [pscustomobject]@{ Valid = $true; ArtifactPath = $artifact }
+}
+
+function Format-SpecrewFileReference {
+    # FR-028 (Amendment A3): render a file reference for its context. Human-facing console/terminal
+    # prose uses a bare file:/// URL (terminal-clickable); a persisted .md artifact uses a markdown
+    # link [text](relative) so it navigates in an editor; 'both' emits a markdown link whose target is
+    # the file:/// URL. Forward slashes throughout. -RelativeTo (e.g. the artifact's own directory)
+    # produces accurate relative links for the persisted form; otherwise relative to -ProjectRoot.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][ValidateSet('console', 'persisted', 'both')][string]$Context,
+        [string]$ProjectRoot,
+        [string]$RelativeTo,
+        [string]$LinkText
+    )
+
+    $isRooted = [System.IO.Path]::IsPathRooted($Path)
+    $absolute = if (-not $isRooted -and -not [string]::IsNullOrWhiteSpace($ProjectRoot)) { Join-Path $ProjectRoot $Path } else { $Path }
+    $fileUrl = 'file:///' + ($absolute -replace '\\', '/')
+    $text = if ([string]::IsNullOrWhiteSpace($LinkText)) { Split-Path -Leaf $Path } else { $LinkText }
+
+    switch ($Context) {
+        'console' { return $fileUrl }
+        'both' { return ('[{0}]({1})' -f $text, $fileUrl) }
+        'persisted' {
+            $rel = $Path
+            $relRoot = if (-not [string]::IsNullOrWhiteSpace($RelativeTo)) { $RelativeTo }
+            elseif (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) { $ProjectRoot }
+            else { $null }
+            if ($isRooted -and $null -ne $relRoot) {
+                try { $rel = [System.IO.Path]::GetRelativePath($relRoot, $Path) } catch { $rel = $Path }
+            }
+            return ('[{0}]({1})' -f $text, ($rel -replace '\\', '/'))
+        }
+    }
+}

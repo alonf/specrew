@@ -1,0 +1,13 @@
+{
+  "schema": "v1",
+  "feature": "141-design-gate-runtime-hardening",
+  "iteration": "011",
+  "co_design": false,
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "ui-ux"
+  ],
+  "reason": "i11 is a methodology-conduct + deterministic-gate + intake-UX fix (the testLenses7codex Squad confirmation-integrity blocker). No feature-architecture component co-design, so co_design is false (the SC-025 co-design-record floor does not apply). ui-ux is selected because FR-040 (intake responsiveness: prep announcement + agenda assignment + per-lens progress) is a genuine UX design point."
+}

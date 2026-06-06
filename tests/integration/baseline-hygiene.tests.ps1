@@ -375,6 +375,62 @@ if ((Get-PromptContent -PromptPath $warningProject.PromptPath) -match 'baseline_
 }
 Write-Pass 'Boundary sync warns clearly and leaves the prompt uncorrupted when HEAD cannot be resolved'
 
+# SC-009 (Feature 141 FR-013): fresh-greenfield baseline-commit handling.
+# Prove-first outcome (maintainer C+nudge decision 2026-06-03): preserve the Feature-029
+# zero-commit fail-safe (no stamp, NO auto-commit) AND nudge the user to establish history;
+# once a commit exists the baseline resolves to a real HEAD and stays consistent across the
+# start packet (last-start-prompt.md) and the boundary-state HEAD anchor.
+$sc009Zero = New-TestProject -ProjectRoot (Join-Path $scratchRoot 'sc009-greenfield') -FeatureRef '141-fr013-greenfield' -SkipInitialCommit
+
+# (1) zero-commit greenfield: `specrew start` must not stamp a baseline, must emit guidance, must not corrupt.
+$sc009StartResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $sc009Zero.ProjectRoot, '-NoLaunch')
+if ($sc009StartResult.ExitCode -ne 0) {
+    Write-Fail ("SC-009: specrew start should succeed (fail-safe) in a zero-commit greenfield:`n{0}" -f ($sc009StartResult.Output -join [Environment]::NewLine))
+    exit 1
+}
+$sc009StartOutput = $sc009StartResult.Output -join [Environment]::NewLine
+if ($sc009StartOutput -notmatch 'No baseline commit yet' -or $sc009StartOutput -notmatch 'initial commit') {
+    Write-Fail ("SC-009: zero-commit greenfield start did not emit the baseline guidance nudge:`n{0}" -f $sc009StartOutput)
+    exit 1
+}
+if (-not (Test-Path -LiteralPath $sc009Zero.PromptPath)) {
+    Write-Fail 'SC-009: specrew start did not write a prompt in the zero-commit greenfield.'
+    exit 1
+}
+$sc009ZeroPrompt = Get-PromptContent -PromptPath $sc009Zero.PromptPath
+if ($sc009ZeroPrompt -match 'baseline_commit_hash:') {
+    Write-Fail 'SC-009: zero-commit greenfield must NOT stamp baseline_commit_hash (Feature-029 fail-safe).'
+    exit 1
+}
+if ($null -ne (Get-BaselineCommitHash -ResolvedProjectPath $sc009Zero.ProjectRoot)) {
+    Write-Fail 'SC-009: Get-BaselineCommitHash must return null when no baseline is stamped.'
+    exit 1
+}
+Write-Pass 'SC-009: zero-commit greenfield start emits baseline guidance, does not stamp a baseline, and leaves the prompt uncorrupted'
+
+# (2) after the first real commit: the boundary baseline-refresh path (Get-SpecrewCurrentHeadCommitHash
+#     + Update-BaselineCommitHashInFrontmatter -- exactly what sync-boundary-state.ps1:1209-1210 runs)
+#     resolves the baseline to a real HEAD and keeps it consistent with what the reader resolves.
+$null = & git -C $sc009Zero.ProjectRoot add -A 2>&1
+$null = & git -C $sc009Zero.ProjectRoot commit -m 'Initial commit (establishes baseline)' --quiet 2>&1
+$sc009Head = Get-GitHead -ProjectRoot $sc009Zero.ProjectRoot
+$sc009Resolved = Get-SpecrewCurrentHeadCommitHash -ProjectRoot $sc009Zero.ProjectRoot
+if ($sc009Resolved -ne $sc009Head) {
+    Write-Fail 'SC-009: Get-SpecrewCurrentHeadCommitHash must resolve to the real HEAD once a commit exists.'
+    exit 1
+}
+Update-BaselineCommitHashInFrontmatter -PromptPath $sc009Zero.PromptPath -NewBaselineHash $sc009Resolved
+$sc009CommitPrompt = Get-PromptContent -PromptPath $sc009Zero.PromptPath
+if ($sc009CommitPrompt -notmatch ("baseline_commit_hash:\s*{0}" -f [regex]::Escape($sc009Head))) {
+    Write-Fail 'SC-009: after the first commit, baseline_commit_hash must resolve to the real HEAD.'
+    exit 1
+}
+if ((Get-BaselineCommitHash -ResolvedProjectPath $sc009Zero.ProjectRoot) -ne $sc009Head) {
+    Write-Fail 'SC-009: the stamped baseline must stay consistent with what the baseline reader resolves (start packet vs boundary-state HEAD).'
+    exit 1
+}
+Write-Pass 'SC-009: once a commit exists, the baseline resolves to a real HEAD and stays consistent across the start packet and boundary state'
+
 Write-Host ''
 Write-Host 'All baseline hygiene tests passed' -ForegroundColor Green
 exit 0

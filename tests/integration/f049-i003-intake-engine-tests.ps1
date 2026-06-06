@@ -321,6 +321,32 @@ questions:
     Assert-True -Condition (-not ($p141Summary -match 'Expertise Profile:')) -Message 'FR-032: summary drops the job-title-style Expertise Profile heading'
     Assert-True -Condition ($p141Summary -match 'persona lens') -Message 'FR-035: summary distinguishes the profile from Specrew internal persona lenses'
 
+    # Feature 141 Iteration 006 (FR-025 transparency half): Get-SpecrewProfileOrientationLine renders the
+    # assumed expertise as a concise, correctable one-liner for the visible orientation. Bands MUST match
+    # the runtime adaptation in Get-SpecrewLensQuestionDepth (>=8 expert, <=3 learning, else mid-level) so
+    # the surfaced level matches how Specrew actually adapts. $p141Profile spans all four bands at once.
+    $p141Orientation = Get-SpecrewProfileOrientationLine -Profile $p141Profile
+    Assert-True -Condition ($p141Orientation -match 'What I know about you:') -Message 'FR-025: orientation line opens with the transparency framing'
+    Assert-True -Condition ($p141Orientation -match 'expert on Software Architecture') -Message 'FR-025: architect dial 9 -> expert (>=8 band, matches Get-SpecrewLensQuestionDepth)'
+    Assert-True -Condition ($p141Orientation -match 'mid-level on Product Strategy') -Message 'FR-025: product dial 7 -> mid-level (4-7 band)'
+    Assert-True -Condition ($p141Orientation -match 'learning on AI Delivery Planning') -Message 'FR-025: ai-pm dial 2 -> learning (<=3 band)'
+    Assert-True -Condition ($p141Orientation -match 'auto on UX/UI Design') -Message 'FR-025: auto dial renders as auto (Specrew recommends + explains)'
+    Assert-True -Condition ($p141Orientation -match "correct me if that's off") -Message 'FR-025: orientation line invites correction'
+    Assert-True -Condition ($p141Orientation -match '/specrew-user-profile edit') -Message 'FR-025: orientation line surfaces the correction path'
+
+    # Band boundaries pinned to the same cutoffs Get-SpecrewLensQuestionDepth uses (>=8 / <=3).
+    $bandsPath = Join-Path $scratchRoot 'fr025-bands.yml'
+    Save-UserProfile -ExpertiseDials @{ 'architect' = 8; 'ux-ui-specialist' = 7; 'product-manager' = 4; 'ai-researcher-project-manager' = 3 } -ProfilePath $bandsPath
+    $bandsLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile -ProfilePath $bandsPath)
+    Assert-True -Condition ($bandsLine -match 'expert on Software Architecture') -Message 'FR-025 boundary: dial 8 -> expert (not mid-level)'
+    Assert-True -Condition ($bandsLine -match 'mid-level on UX/UI Design') -Message 'FR-025 boundary: dial 7 -> mid-level (not expert)'
+    Assert-True -Condition ($bandsLine -match 'mid-level on Product Strategy') -Message 'FR-025 boundary: dial 4 -> mid-level (not learning)'
+    Assert-True -Condition ($bandsLine -match 'learning on AI Delivery Planning') -Message 'FR-025 boundary: dial 3 -> learning (not mid-level)'
+
+    # Graceful: no recognizable profile -> $null (orientation omits the section, no throw).
+    Assert-True -Condition ($null -eq (Get-SpecrewProfileOrientationLine -Profile @{})) -Message 'FR-025: empty profile -> null (orientation section omitted)'
+    Write-Pass 'FR-025 transparency: Get-SpecrewProfileOrientationLine renders correctable, band-accurate expertise (Iteration 006)'
+
     # FR-033: persisted YAML keeps the stable schema keys (no rename/migration)
     $p141Yaml = Get-Content -LiteralPath $p141Path -Raw -Encoding UTF8
     Assert-True -Condition ($p141Yaml -match '(?m)^  ai_research_project_management:') -Message 'FR-033: persisted YAML retains stable ai_research_project_management key'

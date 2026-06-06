@@ -26,6 +26,23 @@ dependency injection, builder, and other design patterns; using the latest versi
 package a utility class (NuGet package vs. a referenced project); and the fact that **each language and
 platform has different dilemmas**.
 
+2026-06-06 refinement: this is also the right home for **refactor-prevention by design**. Specrew
+should not wait until a project needs a large refactor to ask maintainability questions. The lens
+should surface implementation-architecture choices early enough to bind the plan and review:
+
+- **OCP / extension posture**: should this change be added through a plugin, rule file, adapter,
+  configuration row, or helper module instead of editing a central dispatcher?
+- **Cohesion and coupling norms**: what module boundaries, dependency direction, and public API
+  shape are expected for this stack and project size?
+- **Size and complexity discipline**: file, class, function, method, line-length, and cognitive
+  complexity thresholds, preferably mapped to ecosystem tools rather than invented checks.
+- **Pattern posture**: when DI, builder, strategy, factory, middleware, command, or pipeline
+  patterns are expected, optional, or discouraged.
+- **Analyzer/tool binding**: which existing tools (`.editorconfig`, Roslyn analyzers, ESLint,
+  ruff, mypy, gofmt/golangci-lint, etc.) should enforce the chosen conventions.
+- **Review evidence**: how the reviewer proves the code followed the recorded conventions instead
+  of accepting an agent's report at face value.
+
 ## What (provisional — pending research)
 
 A 10th design lens, `code-implementation` (working name), that the workshop surfaces alongside the others and
@@ -41,6 +58,9 @@ architecture-core captures the decomposition style. Provisional decision points:
 - **Packaging** of shared/util code: NuGet package vs. project reference vs. internal shared assembly — and the
   equivalent decision in other ecosystems.
 - **Per-stack / per-platform dilemmas**: the right defaults differ by C#/.NET, TS/JS, Python, Go, Java, etc.
+- **Refactor-prevention posture**: central-hub edit vs helper-module extraction, OCP/default
+  extension seam, explicit cohesion/coupling expectations, and when a local change must become a
+  reusable module.
 
 ## The central open question: record-only vs. enforced
 
@@ -77,6 +97,13 @@ This decides the scope, the effort, and the composition, and it is **not yet set
   scope deferred; 163 is one concrete lens, not the catalog mechanism).
 - [[145-structured-multi-phase-reviewer]] — Phase-4 code-quality is the review-time counterpart; an enforced 163
   must not duplicate it.
+- [[008-nfr-governance]] — 008 owns the category-level cohesion/coupling baseline; 163 turns it
+  into stack/project-specific implementation decisions.
+- [[091-tech-debt-control]] — debt findings discovered later flow into the ledger; 163 tries to
+  prevent avoidable debt before implementation.
+- [[166-concurrent-development-hygiene]] — 166 owns volatile-file and central-hub collision
+  detection; 163 owns the implementation-design question of whether a central hub should be
+  modified at all.
 - Stack-aware tool selection — the per-stack dilemmas reuse the stack-aware catalog + the human-approval rule.
 - The lens system (Amendments A1–A3 of Feature 141) — 163 is a catalog addition built on that machinery.
 
@@ -97,6 +124,10 @@ This decides the scope, the effort, and the composition, and it is **not yet set
 - How does it interact with stack-aware tool selection (which already gates per-project tech choices)?
 - Is "latest language version" a default-on recommendation or a neutral decision point (LTS vs. latest is itself
   a per-stack dilemma)?
+- Which thresholds should be universal defaults, project-profile defaults, or stack-specific
+  analyzer settings?
+- Should central-hub edits require an explicit OCP/decomposition waiver at plan time, or only at
+  review time?
 
 ## Risks
 
@@ -106,3 +137,11 @@ This decides the scope, the effort, and the composition, and it is **not yet set
   project stack + a small default set.
 - **Overlap with the reviewer / mechanical checks** in an enforced mode — needs an explicit boundary so 163
   decides conventions and 145 / the mechanical checks verify them, without duplication.
+
+## Status history
+
+- 2026-06-05: Candidate drafted after maintainer observation that implementation-craft decisions
+  are missing from the design-lens set and require research before spec conversion.
+- 2026-06-06: Refined to include refactor-prevention by design: OCP/extension posture,
+  cohesion/coupling expectations, size/complexity thresholds, analyzer binding, and review
+  evidence.

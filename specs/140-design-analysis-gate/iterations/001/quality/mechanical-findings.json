@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/140-design-analysis-gate/spec.md",
+  "iterationRef": "specs/140-design-analysis-gate/iterations/001",
+  "generatedAt": "2026-06-02T06:36:19Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.30.0"
+  },
+  "findings": []
+}

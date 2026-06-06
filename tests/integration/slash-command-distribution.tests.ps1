@@ -117,7 +117,7 @@ Assert-True -Condition ($updateContent -like '*.claude/skills*' -or $updateConte
 Write-Host ''
 Write-Host '--- Test 6: specrew-init post-bootstrap guidance reports the three-root slash surface ---'
 $initContent = Get-Content -LiteralPath $initScript -Raw
-Assert-True -Condition ($initContent -like '*Slash-command surface provisioned:*') -Message 'specrew-init.ps1 confirms slash-command surface provisioned'
+Assert-True -Condition (($initContent -like "*-Step 'slash-surface'*") -and ($initContent -like '*provisioned /specrew-where*')) -Message 'specrew-init.ps1 records slash-command surface provisioning'
 Assert-True -Condition ($initContent -like '*/specrew-help*') -Message 'specrew-init.ps1 references /specrew-help fallback'
 Assert-True -Condition ($initContent -like '*.agents/skills*' -or $initContent -like '*.agents\skills*') -Message 'specrew-init.ps1 mentions .agents/skills deployment'
 

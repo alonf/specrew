@@ -138,7 +138,7 @@ function Get-SpecrewInstalledVersionInfo {
     Resolve the installed Specrew version AND its prerelease label, for the version report.
     .DESCRIPTION
     Get-SpecrewInstalledVersion returns the BASE version only and stays that way, so every
-    semver comparison (compatibility gate, slash-command minimum) is unaffected. This reads
+    semver comparison (module/project baseline compatibility) is unaffected. This reads
     the SAME resolved manifest to also surface the prerelease label, so `specrew version` can
     report e.g. 0.31.0-beta3 instead of a bare 0.31.0 that cannot be told apart from a stable
     0.31.0. Resolution mirrors Get-SpecrewInstalledVersion: highest installed module first,
@@ -209,10 +209,6 @@ function ConvertTo-SpecrewSemanticVersion {
     catch {
         return $null
     }
-}
-
-function Get-SpecrewSlashCommandMinVersion {
-    return '0.24.0'
 }
 
 function Get-SpecrewSupportedVersionsPath {

@@ -160,6 +160,85 @@ function Get-ParsedVersion {
     return [version]$match.Groups['version'].Value
 }
 
+function Get-SpecrewUpdateDowngradeGuardResult {
+    param(
+        [AllowNull()]
+        [string]$RunningVersion,
+
+        [AllowNull()]
+        [string]$ProjectBaselineVersion
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ProjectBaselineVersion)) {
+        return [pscustomobject]@{
+            ShouldRefuse = $false
+            Reason       = 'project-baseline-absent'
+        }
+    }
+
+    try {
+        $runningSemanticVersion = Get-ParsedVersion -Value $RunningVersion -Name 'running Specrew module'
+    }
+    catch {
+        return [pscustomobject]@{
+            ShouldRefuse = $true
+            Reason       = 'running-version-unparsable'
+            Detail       = $_.Exception.Message
+        }
+    }
+
+    try {
+        $projectSemanticVersion = Get-ParsedVersion -Value $ProjectBaselineVersion -Name 'project Specrew baseline'
+    }
+    catch {
+        return [pscustomobject]@{
+            ShouldRefuse = $true
+            Reason       = 'project-baseline-unparsable'
+            Detail       = $_.Exception.Message
+        }
+    }
+
+    if ($runningSemanticVersion -lt $projectSemanticVersion) {
+        return [pscustomobject]@{
+            ShouldRefuse = $true
+            Reason       = 'running-module-older-than-project'
+        }
+    }
+
+    return [pscustomobject]@{
+        ShouldRefuse = $false
+        Reason       = 'running-module-current-or-newer'
+    }
+}
+
+function Write-SpecrewUpdateDowngradeRefusal {
+    param(
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$GuardResult,
+
+        [AllowNull()]
+        [string]$RunningVersion,
+
+        [AllowNull()]
+        [string]$ProjectBaselineVersion
+    )
+
+    $runningDisplay = if ([string]::IsNullOrWhiteSpace($RunningVersion)) { 'unknown' } else { $RunningVersion }
+    $baselineDisplay = if ([string]::IsNullOrWhiteSpace($ProjectBaselineVersion)) { 'unknown' } else { $ProjectBaselineVersion }
+
+    Write-Output 'ERROR: Refusing to run specrew update because this Specrew module cannot safely update the target project baseline.'
+    Write-Output ("Running Specrew module version: {0}" -f $runningDisplay)
+    Write-Output ("Project baseline (.specrew/config.yml specrew_version): {0}" -f $baselineDisplay)
+    if ($GuardResult.Reason -eq 'project-baseline-unparsable' -or $GuardResult.Reason -eq 'running-version-unparsable') {
+        Write-Output ("Reason: {0}" -f $GuardResult.Reason)
+    }
+    else {
+        Write-Output 'Reason: running Specrew module is older than the project baseline.'
+    }
+    Write-Output 'No project files were changed.'
+    Write-Output 'To proceed, update the module with Update-Module Specrew, or set SPECREW_MODULE_PATH to a matching Specrew development tree before retrying.'
+}
+
 function Get-ExtensionVersion {
     param(
         [Parameter(Mandatory = $true)]
@@ -1087,15 +1166,35 @@ catch {
 
 $projectConfig = Get-ConfigMap -ConfigPath $configPath
 $sourceSpecrewVersion = Get-ExtensionVersion -ManifestPath $specrewManifestPath
-$deployedSpecrewManifestPath = Join-Path $resolvedProjectPath '.specify\extensions\specrew-speckit\extension.yml'
-$currentSpecrewVersion = if (Test-Path -LiteralPath $deployedSpecrewManifestPath -PathType Leaf) {
-    Get-ExtensionVersion -ManifestPath $deployedSpecrewManifestPath
-}
-elseif ($projectConfig.ContainsKey('specrew_version')) {
+$projectSpecrewBaselineVersion = if ($projectConfig.ContainsKey('specrew_version')) {
     [string]$projectConfig['specrew_version']
 }
 else {
     $null
+}
+$deployedSpecrewManifestPath = Join-Path $resolvedProjectPath '.specify\extensions\specrew-speckit\extension.yml'
+$currentSpecrewVersion = if (Test-Path -LiteralPath $deployedSpecrewManifestPath -PathType Leaf) {
+    Get-ExtensionVersion -ManifestPath $deployedSpecrewManifestPath
+}
+elseif ($projectSpecrewBaselineVersion) {
+    $projectSpecrewBaselineVersion
+}
+else {
+    $null
+}
+
+if (-not $InfoMode) {
+    $downgradeGuard = Get-SpecrewUpdateDowngradeGuardResult `
+        -RunningVersion $sourceSpecrewVersion `
+        -ProjectBaselineVersion $projectSpecrewBaselineVersion
+
+    if ($downgradeGuard.ShouldRefuse) {
+        Write-SpecrewUpdateDowngradeRefusal `
+            -GuardResult $downgradeGuard `
+            -RunningVersion $sourceSpecrewVersion `
+            -ProjectBaselineVersion $projectSpecrewBaselineVersion
+        exit 1
+    }
 }
 
 $validationResults = @()
