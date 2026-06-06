@@ -23280,3 +23280,12 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Commit Reference**: 2a72d6bc
 - **Authorization Text**: Release the conditional fix with the STRICTER shape — fix only the generic-kind equality branch; leave the front-matter heuristic untouched. Stale-canonical front-matter artifacts (harness scenarios S4/S4g) therefore remain preserved by design.
 - **Next Action**: None scheduled; revisit only if a future Specrew version ever produces marker-less front-matter skill dirs in a legacy root (no released version has).
+
+## 2026-06-06T13:13:30Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 161-managed-skill-preserving-guard
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1df8cbd4
+- **Recorded At**: 2026-06-06T13:13:30Z

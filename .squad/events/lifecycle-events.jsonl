@@ -10,3 +10,4 @@
 {"payload":{"auth_commit_hash":"a921e1fc","iteration_number":"","task_id":null,"boundary_type":"plan","feature_ref":"161-managed-skill-preserving-guard"},"event_type":"boundary-sync","recorded_at":"2026-06-06T11:17:29Z","schema":"v1"}
 {"schema":"v1","payload":{"task_id":null,"feature_ref":"161-managed-skill-preserving-guard","iteration_number":"","boundary_type":"tasks","auth_commit_hash":"ea9e2347"},"event_type":"boundary-sync","recorded_at":"2026-06-06T11:26:43Z"}
 {"recorded_at":"2026-06-06T12:03:52Z","payload":{"auth_commit_hash":"202944e5","feature_ref":"161-managed-skill-preserving-guard","boundary_type":"before-implement","task_id":null,"iteration_number":"001"},"event_type":"boundary-sync","schema":"v1"}
+{"event_type":"boundary-sync","recorded_at":"2026-06-06T13:13:30Z","payload":{"auth_commit_hash":"1df8cbd4","task_id":null,"boundary_type":"review-signoff","feature_ref":"161-managed-skill-preserving-guard","iteration_number":"001"},"schema":"v1"}
