@@ -22,13 +22,18 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 1
+**Resolution rate**: 100% (1/1 resolved)
+**Specification drift**: 1 reconciled (external-fact change)
 
 ## Events
 
-No specification drift detected during Iteration 002 execution to date.
+### D-002 — FR-013 Copilot clause obsoleted by live research (resolved: spec-updated)
+
+- **Requirement**: FR-013 (per-host binding declarations; Copilot documented-variance clause)
+- **Detected**: 2026-06-07, T013 (live-doc research)
+- **What drifted**: the spec stated "Copilot binds none until a surface exists"; Copilot CLI hooks went GA 2026-02-25 with sessionStart/postToolUse additionalContext + a per-user project-local settings analog — the premise is factually obsolete.
+- **Resolution**: spec-updated — FR-013 reworded to bind the verified subset per the research matrix; Copilot enters T014 binding scope under the approved Option C "all hook-capable hosts" decision. Citations + access dates in research-matrix.md.
 
 ### Resolution Strategies (Unused)
 
