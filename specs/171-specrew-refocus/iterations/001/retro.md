@@ -12,7 +12,7 @@
 - **The gate preflight (rule 8, maintainer-added mid-feature) paid for itself immediately**: it caught the non-canonical phase enum and the missing `verdict_history` BEFORE the human saw a packet — exactly the discipline's promise.
 - **TG-004 worked as designed**: the latency bar was missed, measured honestly, and returned to the human with data and options instead of a silent fallback.
 
-## What Was Hard
+## What Didn't Go Well
 
 - **Gate-schema conformance at design-analysis took 3 fix rounds** — the validator's canonical section names, typed option fields, and own-line `Addressed:` format were discovered by failing, not by reading (a template existed at `extensions/specrew-speckit/templates/design-analysis.template.md` and was not used).
 - **Four PowerShell traps each cost a debug cycle**: `Start-Process` mangles quoted JSON arguments (fix: stdin redirection — also the production-faithful path); dynamic member-assignment (`$obj.($name) =`) trips the binder on deserialized JSON (fix: `PSPropertyInfo.Value` setters); .NET file APIs resolve relative paths against the process CWD, not the PowerShell location; empty-array pipeline unrolling under StrictMode.
@@ -24,6 +24,17 @@
 2. **Scaffold/template first, author second.** The design-analysis template would have prevented all 3 gate-conformance rounds. Owner: me (process); applies to every canonical artifact. Next action: recorded in the plan-stage digest candidate list (iteration-002 docs task).
 3. **The PowerShell trap catalog grew 4 entries** (above). Next action: fold into the implement-stage digest's known-traps line (iteration-002 docs task — digest `reviewed_at` bump rides the same commit).
 4. **Answering methodology questions from memory is the drift class this feature remediates** — the maintainer's mid-feature refocus instruction (read Proposal 145 in source) materially improved the shipped digest content. Already promoted: digest rule 8 + the 145 source declaration with drift-watch.
+
+## Drift Summary
+
+- **Total drift events**: 1 (D-001, catalog `.yml` → `.json`) — resolved `spec-updated` with repo-convention rationale; full record in drift-log.md. No unresolved drift at closeout.
+
+## Improvement Actions
+
+1. Iteration-002 research runs **measurement-first** for every candidate host event (owner: Implementer, T013 — binding per the retro lesson).
+2. **Scaffold/template-first authoring** for every canonical artifact (owner: Implementer process; candidate line for the plan-stage digest, iteration-002 docs task T015).
+3. Fold the 4-entry **PowerShell trap catalog** into the implement-stage digest known-traps (owner: Implementer, T015).
+4. File the **iteration-scaffolder quality-tree regression** as a tooling-defect candidate for the maintainer's list (owner: maintainer triage; recorded in Signals).
 
 ## Calibration
 
