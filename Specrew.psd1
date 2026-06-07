@@ -223,6 +223,7 @@
         'scripts/internal/host-runtime-inventory.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/lens-applicability.ps1',
+        'scripts/internal/refocus-deploy-integration.ps1',
         'scripts/internal/refocus.ps1',
         'scripts/internal/session-config.ps1',
         'scripts/internal/session-management.ps1',

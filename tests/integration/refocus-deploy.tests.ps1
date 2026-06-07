@@ -153,6 +153,87 @@ $before = Get-Content -LiteralPath $cursorPath -Raw
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'cursor', '-UserHomeOverride', $fakeHome)
 Assert-True ((Get-Content -LiteralPath $cursorPath -Raw) -eq $before) 'cursor: re-deploy byte-idempotent'
 
+# --- 11. T017: catalog managed-with-overlay merge (FR-014/FR-018) ----------------------------
+. (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
+$canonicalCatalog = Join-Path $repoRoot 'extensions\specrew-speckit\refocus-scopes.json'
+$projectCatalogDir = Join-Path $projectRoot '.specify\extensions\specrew-speckit'
+$projectCatalog = Join-Path $projectCatalogDir 'refocus-scopes.json'
+
+New-ScratchProject
+New-Item -ItemType Directory -Path $projectCatalogDir -Force | Out-Null
+$userCatalog = Get-Content -LiteralPath $canonicalCatalog -Raw | ConvertFrom-Json
+$userCatalog.triggers.b1.enabled = $false
+$userCatalog.PSObject.Properties['providers'].Value = @($userCatalog.providers) + @([pscustomobject]@{ id = 'user-audit'; kind = 'inject'; events = @('SessionStart'); order = 20; budget_share = 0.2; command = 'user-audit.ps1' })
+[System.IO.File]::WriteAllText($projectCatalog, ($userCatalog | ConvertTo-Json -Depth 16), [System.Text.UTF8Encoding]::new($false))
+
+$overlay = Get-RefocusCatalogOverlay -ProjectPath $projectRoot
+Assert-True ($overlay.Present -and -not $overlay.Aborted) 'overlay: captured from a parsable user catalog'
+Assert-True ($overlay.TriggerEnabled['b1'] -eq $false -and $overlay.TriggerEnabled['b2'] -eq $true) 'overlay: per-trigger enabled flags captured'
+Assert-True (@($overlay.UserProviders).Count -eq 1 -and [string]$overlay.UserProviders[0].id -eq 'user-audit') 'overlay: user provider row captured (canonical refocus row excluded)'
+
+Copy-Item -LiteralPath $canonicalCatalog -Destination $projectCatalog -Force   # simulate the wholesale canonical refresh
+$applied = Set-RefocusCatalogOverlay -ProjectPath $projectRoot -Overlay $overlay
+Assert-True ($applied -eq $true) 'overlay: re-apply reports a change after canonical refresh'
+$merged = Get-Content -LiteralPath $projectCatalog -Raw | ConvertFrom-Json
+Assert-True ([bool]$merged.triggers.b1.enabled -eq $false) 'overlay: user b1 disable survives the update (never silently flips a disable)'
+Assert-True ([bool]$merged.triggers.b2.enabled -eq $true -and [bool]$merged.triggers.b3.enabled -eq $true) 'overlay: untouched triggers stay canonical'
+$mergedIds = @($merged.providers | ForEach-Object { [string]$_.id })
+Assert-True (($mergedIds -contains 'refocus') -and ($mergedIds -contains 'user-audit')) 'overlay: canonical provider kept + user provider row restored'
+
+# --- 12. T017: pristine catalog -> overlay is a no-op (byte-untouched) ------------------------
+Copy-Item -LiteralPath $canonicalCatalog -Destination $projectCatalog -Force
+$pristineOverlay = Get-RefocusCatalogOverlay -ProjectPath $projectRoot
+$bytesBefore = Get-Content -LiteralPath $projectCatalog -Raw
+$applied = Set-RefocusCatalogOverlay -ProjectPath $projectRoot -Overlay $pristineOverlay
+Assert-True ($applied -eq $false) 'overlay: pristine catalog -> no change reported'
+Assert-True ((Get-Content -LiteralPath $projectCatalog -Raw) -eq $bytesBefore) 'overlay: pristine catalog left byte-untouched'
+
+# --- 13. T017: unparsable catalog fails SAFE in both directions --------------------------------
+[System.IO.File]::WriteAllText($projectCatalog, '{corrupt catalog, not json', [System.Text.UTF8Encoding]::new($false))
+$corruptOverlay = Get-RefocusCatalogOverlay -ProjectPath $projectRoot
+Assert-True ($corruptOverlay.Aborted -eq $true) 'overlay: unparsable catalog -> capture aborts'
+Copy-Item -LiteralPath $canonicalCatalog -Destination $projectCatalog -Force
+$bytesBefore = Get-Content -LiteralPath $projectCatalog -Raw
+Assert-True ((Set-RefocusCatalogOverlay -ProjectPath $projectRoot -Overlay $corruptOverlay) -eq $false) 'overlay: aborted capture is never merged'
+Assert-True ((Get-Content -LiteralPath $projectCatalog -Raw) -eq $bytesBefore) 'overlay: freshly-deployed canonical file untouched after aborted capture'
+[System.IO.File]::WriteAllText($projectCatalog, '{corrupt catalog, not json', [System.Text.UTF8Encoding]::new($false))
+Assert-True ((Set-RefocusCatalogOverlay -ProjectPath $projectRoot -Overlay $overlay) -eq $false) 'overlay: never merges INTO an unparsable target'
+Assert-True ((Get-Content -LiteralPath $projectCatalog -Raw) -eq '{corrupt catalog, not json') 'overlay: unparsable target untouched'
+
+# --- 14. T017: Invoke-RefocusHookDeployment wiring (host detection, fail-open) ------------------
+New-ScratchProject
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.claude') -Force | Out-Null
+$stubDeploy = Join-Path $scratchRoot 'stub-deploy.ps1'
+[System.IO.File]::WriteAllText($stubDeploy, "param([string]`$ProjectPath, [string]`$HostKind = 'claude')`n""stub-deploy `$HostKind""`n", [System.Text.UTF8Encoding]::new($false))
+$hookActions = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $stubDeploy)
+$claudeAction = @($hookActions | Where-Object { $_.HostKind -eq 'claude' })
+Assert-True ($claudeAction.Count -eq 1 -and $claudeAction[0].Action -eq 'refocus-hooks' -and ([string]$claudeAction[0].Detail).Contains('stub-deploy claude')) 'hook deployment: .claude dir detected -> claude deploy invoked + action recorded'
+Assert-True (@($hookActions | Where-Object { $_.Action -notin @('refocus-hooks', 'refocus-hooks-failed') }).Count -eq 0) 'hook deployment: every action carries a known action kind'
+
+$throwingDeploy = Join-Path $scratchRoot 'stub-deploy-throws.ps1'
+[System.IO.File]::WriteAllText($throwingDeploy, "param([string]`$ProjectPath, [string]`$HostKind = 'claude')`nthrow 'boom'`n", [System.Text.UTF8Encoding]::new($false))
+$failActions = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $throwingDeploy)
+$claudeFail = @($failActions | Where-Object { $_.HostKind -eq 'claude' })
+Assert-True ($claudeFail.Count -eq 1 -and $claudeFail[0].Action -eq 'refocus-hooks-failed' -and ([string]$claudeFail[0].Detail).Contains('boom')) 'hook deployment: deploy failure recorded, never thrown (fail open)'
+Assert-True (@(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath (Join-Path $scratchRoot 'missing.ps1')).Count -eq 0) 'hook deployment: missing deploy script -> no actions, no error'
+
+# --- 15. T017: init/update wiring content + parse integrity --------------------------------------
+$updateScript = Join-Path $repoRoot 'scripts\specrew-update.ps1'
+$initScript = Join-Path $repoRoot 'scripts\specrew-init.ps1'
+$updateRaw = Get-Content -LiteralPath $updateScript -Raw
+$initRaw = Get-Content -LiteralPath $initScript -Raw
+Assert-True ($updateRaw.Contains('refocus-deploy-integration.ps1') -and $updateRaw.Contains('Invoke-RefocusHookDeployment')) 'update: dot-sources the integration + deploys hooks'
+$idxGet = $updateRaw.IndexOf('Get-RefocusCatalogOverlay')
+$idxRefresh = $updateRaw.IndexOf('-RefreshExisting')
+$idxSet = $updateRaw.IndexOf('Set-RefocusCatalogOverlay')
+Assert-True ($idxGet -ge 0 -and $idxSet -ge 0 -and $idxGet -lt $idxRefresh -and $idxRefresh -lt $idxSet) 'update: overlay captured BEFORE the canonical refresh and re-applied AFTER'
+Assert-True ($initRaw.Contains('refocus-deploy-integration.ps1') -and $initRaw.Contains('Invoke-RefocusHookDeployment')) 'init: dot-sources the integration + deploys hooks'
+foreach ($wired in @($updateScript, $initScript, (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1'))) {
+    $parseErrors = $null
+    $null = [System.Management.Automation.Language.Parser]::ParseFile($wired, [ref]$null, [ref]$parseErrors)
+    Assert-True (@($parseErrors).Count -eq 0) ("parses clean: {0}" -f (Split-Path -Leaf $wired))
+}
+
 # --- summary ------------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {

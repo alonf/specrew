@@ -1345,12 +1345,25 @@ if ($scopes -contains 'Specrew') {
 
 if ($scopes -contains 'Specrew') {
     if (Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specify') -PathType Container) {
+        # Feature 171 (T017): capture refocus-catalog user keys BEFORE the wholesale
+        # mirror so per-trigger disables + user provider rows survive the update
+        # (managed-with-overlay; update never silently flips a disable decision).
+        . (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
+        $refocusOverlay = Get-RefocusCatalogOverlay -ProjectPath $resolvedProjectPath
+
         $specKitDeploymentActions = @(
             & $deploySpeckitExtensionScript `
                 -ProjectPath $resolvedProjectPath `
                 -RefreshExisting `
                 -PassThru
         )
+
+        if (Set-RefocusCatalogOverlay -ProjectPath $resolvedProjectPath -Overlay $refocusOverlay) {
+            $null = $summary.Add([pscustomobject]@{ Platform = 'Specrew'; Action = 'refocus-catalog-overlay'; Detail = 'user trigger flags/provider rows re-applied after canonical refresh' })
+        }
+        foreach ($hookAction in @(Invoke-RefocusHookDeployment -ProjectPath $resolvedProjectPath -DeployScriptPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'))) {
+            $null = $summary.Add([pscustomobject]@{ Platform = 'Specrew'; Action = [string]$hookAction.Action; Detail = ('{0}: {1}' -f $hookAction.HostKind, $hookAction.Detail) })
+        }
 
         foreach ($action in $specKitDeploymentActions) {
             $null = $summary.Add([pscustomobject]@{

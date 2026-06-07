@@ -730,6 +730,30 @@ Invoke-BundledTemplateDeployment `
     -Actions $actions `
     -PreviewOnly:$DryRun
 
+# Feature 171 (T017): deploy refocus hooks for detected hosts once the speckit
+# extension (dispatcher + catalog) and the host asset folders are on disk. The
+# deploy script respects recorded opt-outs and fails open: hook problems never
+# fail init.
+Write-Step 'Deploying refocus hooks'
+if ($specifySurfaceReady) {
+    if ($DryRun) {
+        Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'would deploy refocus hooks for detected hosts'
+    }
+    else {
+        . (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
+        $refocusHookActions = @(Invoke-RefocusHookDeployment -ProjectPath $resolvedProjectPath -DeployScriptPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'))
+        if ($refocusHookActions.Count -eq 0) {
+            Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'no hook-capable hosts detected'
+        }
+        foreach ($hookAction in $refocusHookActions) {
+            Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome ('{0}: {1}' -f $hookAction.HostKind, $hookAction.Detail)
+        }
+    }
+}
+else {
+    Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'skipped: .specify is absent in brownfield workspace'
+}
+
 if (-not $SpecKitExtensionOnly) {
     $resolvedSpecKitVersion = (($versionResults | Where-Object { $_.Platform -eq 'Spec Kit' } | Select-Object -First 1).Version)
     if ([string]::IsNullOrWhiteSpace($resolvedSpecKitVersion)) {
