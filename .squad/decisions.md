@@ -24635,3 +24635,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Verdict**: approved for iteration-closeout (structured verdict menu)
 - **Authorizing Human**: Alon Fliess
 - **Notes**: lesson #1 (measure runtime process-model cost at design time) stays a workshop-conduct candidate pending iteration-002 measurement confirmation.
+
+## 2026-06-07T01:50:48Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: fa5b33f8
+- **Recorded At**: 2026-06-07T01:50:47Z
