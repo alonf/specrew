@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.32.0--beta1-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.32.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
@@ -145,8 +145,8 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Active development line**: 0.32.0-beta1 (F-141 — Design-Gate Runtime Hardening: the per-lens design workshop + design-analysis gate, hardened across all hosts (Claude/Copilot/Codex/Antigravity) — methodology in [docs/methodology/design-workshop-methodology.md](docs/methodology/design-workshop-methodology.md); 0.31.1 (F-160 — Unix Resolver Sidecar Hardening) pending stable promotion on its own track)
-- **Latest stable baseline**: promoted per the beta-before-stable release discipline — see [CHANGELOG.md](CHANGELOG.md) for the current released version
+- **Latest stable baseline**: 0.32.0 — stable promotion of the F-141/F-170/F-165/F-172 line after beta-before-stable validation; see [CHANGELOG.md](CHANGELOG.md) for release details
+- **Active development line**: next feature branch after 0.32.0; prerelease labels appear here only when a new beta line is actually active
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
