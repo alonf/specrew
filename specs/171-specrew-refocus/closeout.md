@@ -33,7 +33,7 @@ This branch is integrated with `origin/main` (0.32.0 stable) but is NOT released
 | Merge-aware deploy + opt-out memory + init/update wiring (FR-014, FR-018) | complete | `deploy-refocus-hooks.ps1`, `refocus-deploy-integration.ps1`; `specrew-init.ps1`/`specrew-update.ps1`; `refocus-deploy.tests.ps1` 59/59; `filelist-completeness.tests.ps1` |
 | `/specrew-refocus` skill across host catalogs (FR-015) | complete | `squad-templates/skills/refocus.md` + per-host skill dirs |
 | Coordinator advisory fallback + compaction-points hygiene (FR-016, FR-017) | complete | coordinator governance rule 4; `--compact-instructions`; channels suite |
-| Test coverage per FR-020 | complete | six refocus suites = 377 asserts, 0 fail |
+| Test coverage per FR-020 | complete | six refocus suites = 378 asserts, 0 fail |
 
 ## Tests and Validation (run at closeout on the integrated tree)
 
@@ -42,13 +42,13 @@ Local CI/parity mirror — **28/28 suites PASS** (the F-141 lesson: run the sets
 - All three CI lanes' integration tests: legacy-state-readers, filelist-completeness, deploy-extension-missing-source-tolerance, drift-scenario, iteration-resume, planning effort/overcommit, process-quality report/scorer, version-info-states, boundary-sync-markdownlint-gate, version-checks, unix-resolver-path-semantics, managed-runtime-sidecar, managed-skill-stuck-preserving, validation-contract-lane, start-command-non-interactive-first-run, brownfield-conflict-handling.
 - **F-165 `gate-stop-skill.tests.ps1` PASS** — F-165's shipped contract is intact post-merge (the regression guard for this integration).
 - **Wrapper parity** (docs / filelist / registry) all PASS.
-- **Six refocus suites** PASS (377 asserts): engine 40, digests 119, catalog 74, channels 21, dispatcher 65, deploy 59.
+- **Six refocus suites** PASS (378 asserts): engine 40, digests 119, catalog 74, channels 21, dispatcher 65, deploy 59.
 - Governance validator: PASS for both iterations (full + changed-only).
 
 ## Accepted Review and Retro Evidence
 
 - Iteration 001: review accepted (12/12 tasks pass; 330 asserts); retro approved; TG-004 latency returned-with-data and the defer ledgered. `iterations/001/review.md`, `iterations/001/retro.md`.
-- Iteration 002: review accepted (5/5 tasks pass; 377 asserts); a review-caught greenfield-init anchor defect fixed-now; retro approved. `iterations/002/review.md`, `iterations/002/retro.md`.
+- Iteration 002: review accepted (5/5 tasks pass; 377 asserts at review time — digests 118; the post-merge gate-stop digest edit later took the suite to 378); a review-caught greenfield-init anchor defect fixed-now; retro approved. `iterations/002/review.md`, `iterations/002/retro.md`.
 
 ## Main-Integration Reconciliation (this closeout)
 
