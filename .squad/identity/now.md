@@ -1,22 +1,18 @@
 ---
-focus_area: "F-051 Multi-Session Foundation — Iteration 003 closed; feature-closeout release SDLC active."
+focus_area: "No active feature"
 active_issues: "[]"
 schema: v1
-updated_at: 2026-06-06T20:36:40Z
+updated_at: 2026-06-07T16:45:46Z
 session_state_active: false
 session_state_boundary: feature-closeout
-session_state_feature: 170-retire-evaluation-surface
-session_state_feature_path: "C:\Dev\Specrew\specs\170-retire-evaluation-surface"
-session_state_iteration: 001
+session_state_feature: 172-profile-setup-ux-copy
+session_state_feature_path: "C:\Dev\Specrew-profile-setup-ux-copy\specs\172-profile-setup-ux-copy"
+session_state_iteration: "(none)"
 session_state_task: "(none)"
-session_state_auth_commit: 391cbb8a
-session_state_recorded_at: 2026-06-06T20:36:40Z
+session_state_auth_commit: 8c5e457621a58869c71cdac4a5fd04a9abc71fec
+session_state_recorded_at: 2026-06-07T16:45:46Z
 ---
 
 # What We're Focused On
 
-F-051 Multi-Session Foundation completed Iteration 003 and is in feature-closeout release SDLC.
-
-- Iteration: 003
-- Task: (none)
-- Recorded at: 2026-05-31T23:41:30Z
+No active feature. Last completed: Feature 172 at 2026-06-07T16:45:35Z. Next roadmap item: Phase 3: Runtime Abstraction & Spec Fidelity (not yet authorized).

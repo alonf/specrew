@@ -1,7 +1,7 @@
 ---
 proposal: 170
 title: New-User Crew Interaction Profile Setup Copy
-status: candidate
+status: shipped
 phase: phase-2
 estimated-sp: 2-3
 priority-tier: 2
@@ -92,3 +92,6 @@ Estimated 2-3 SP:
 
 - 2026-06-07: Created from maintainer dogfooding feedback during new-machine
   Specrew setup.
+- 2026-06-07: Implemented and closed as Feature 172 on branch
+  `172-profile-setup-ux-copy`; beta/release train remains a separate
+  post-feature-closeout authorization path.
