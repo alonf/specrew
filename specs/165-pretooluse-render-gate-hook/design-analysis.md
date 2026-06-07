@@ -179,4 +179,4 @@ learnings are recorded above.
 **Shipped artifacts:** `extensions/specrew-speckit/squad-templates/skills/gate-stop.md` (+ `.specify`
 mirror + FileList entry); the Claude routing in `scripts/internal/coordinator-prompt-surgery.ps1`;
 regression tests `tests/integration/gate-stop-skill.tests.ps1` and the updated Claude assertions in
-`tests/integration/multi-host-launch-path.tests.ps1`. Targets 0.32.0-beta2.
+`tests/integration/multi-host-launch-path.tests.ps1` (both wired into the `specrew-ci.yml` test lane). Targets 0.32.0-beta3 (beta2 was already cut for F-170).
