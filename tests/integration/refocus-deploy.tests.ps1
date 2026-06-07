@@ -228,6 +228,9 @@ $idxRefresh = $updateRaw.IndexOf('-RefreshExisting')
 $idxSet = $updateRaw.IndexOf('Set-RefocusCatalogOverlay')
 Assert-True ($idxGet -ge 0 -and $idxSet -ge 0 -and $idxGet -lt $idxRefresh -and $idxRefresh -lt $idxSet) 'update: overlay captured BEFORE the canonical refresh and re-applied AFTER'
 Assert-True ($initRaw.Contains('refocus-deploy-integration.ps1') -and $initRaw.Contains('Invoke-RefocusHookDeployment')) 'init: dot-sources the integration + deploys hooks'
+$idxSquadRuntime = $initRaw.IndexOf("Write-Step 'Deploying Squad runtime'")
+$idxRefocusHooks = $initRaw.IndexOf("Write-Step 'Deploying refocus hooks'")
+Assert-True ($idxSquadRuntime -ge 0 -and $idxRefocusHooks -gt $idxSquadRuntime) 'init: refocus hooks deploy AFTER the Squad-runtime/skill-surface step (greenfield .claude detection; review-caught anchor defect)'
 foreach ($wired in @($updateScript, $initScript, (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1'))) {
     $parseErrors = $null
     $null = [System.Management.Automation.Language.Parser]::ParseFile($wired, [ref]$null, [ref]$parseErrors)

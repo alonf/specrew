@@ -730,30 +730,6 @@ Invoke-BundledTemplateDeployment `
     -Actions $actions `
     -PreviewOnly:$DryRun
 
-# Feature 171 (T017): deploy refocus hooks for detected hosts once the speckit
-# extension (dispatcher + catalog) and the host asset folders are on disk. The
-# deploy script respects recorded opt-outs and fails open: hook problems never
-# fail init.
-Write-Step 'Deploying refocus hooks'
-if ($specifySurfaceReady) {
-    if ($DryRun) {
-        Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'would deploy refocus hooks for detected hosts'
-    }
-    else {
-        . (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
-        $refocusHookActions = @(Invoke-RefocusHookDeployment -ProjectPath $resolvedProjectPath -DeployScriptPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'))
-        if ($refocusHookActions.Count -eq 0) {
-            Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'no hook-capable hosts detected'
-        }
-        foreach ($hookAction in $refocusHookActions) {
-            Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome ('{0}: {1}' -f $hookAction.HostKind, $hookAction.Detail)
-        }
-    }
-}
-else {
-    Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'skipped: .specify is absent in brownfield workspace'
-}
-
 if (-not $SpecKitExtensionOnly) {
     $resolvedSpecKitVersion = (($versionResults | Where-Object { $_.Platform -eq 'Spec Kit' } | Select-Object -First 1).Version)
     if ([string]::IsNullOrWhiteSpace($resolvedSpecKitVersion)) {
@@ -842,6 +818,32 @@ if (Get-Command Initialize-SpecrewTeam -ErrorAction SilentlyContinue) {
         $stepName = if ($action.Action -eq 'preserved') { 'team-canonical-preserved' } else { 'team-canonical' }
         Add-Action -Actions $actions -Step $stepName -Outcome ("{0}: {1}" -f $action.Action, $action.Path)
     }
+}
+
+# Feature 171 (T017): deploy refocus hooks for detected hosts. This step MUST run
+# after the Squad-runtime/skill-surface deployment above — that is what provisions
+# the project's .claude/ folder in a greenfield init, and claude detection is
+# directory-based (review-caught defect: an earlier anchor ran before .claude
+# existed, silently skipping claude on greenfield). The deploy script respects
+# recorded opt-outs and fails open: hook problems never fail init.
+Write-Step 'Deploying refocus hooks'
+if ($specifySurfaceReady) {
+    if ($DryRun) {
+        Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'would deploy refocus hooks for detected hosts'
+    }
+    else {
+        . (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
+        $refocusHookActions = @(Invoke-RefocusHookDeployment -ProjectPath $resolvedProjectPath -DeployScriptPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'))
+        if ($refocusHookActions.Count -eq 0) {
+            Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'no hook-capable hosts detected'
+        }
+        foreach ($hookAction in $refocusHookActions) {
+            Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome ('{0}: {1}' -f $hookAction.HostKind, $hookAction.Detail)
+        }
+    }
+}
+else {
+    Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'skipped: .specify is absent in brownfield workspace'
 }
 
 Write-Step 'Configuring git for boundary-commit hygiene'
