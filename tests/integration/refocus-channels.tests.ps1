@@ -113,6 +113,8 @@ foreach ($templatePath in @(
     $content = Get-Content -LiteralPath $templatePath -Raw -Encoding UTF8
     Assert-True ($content.Contains('/specrew-refocus')) "primer pointer present in $shortName"
     Assert-True ($content.Contains('[specrew-refocus]') -and $content -match 'binding stage discipline') "emission-block treatment rule present in $shortName"
+    Assert-True ($content.Contains('Advisory fallback') -and $content -match 'hosts without hook bindings') "T012 advisory fallback rule present in $shortName"
+    Assert-True ($content.Contains('--compact-instructions') -and $content.Contains('Managed compaction points')) "T012 compaction-hygiene rule present in $shortName"
 }
 
 # --- summary ------------------------------------------------------------------------
