@@ -22,10 +22,42 @@ $script:UserProfileExpertiseMap = [ordered]@{
 # decides); lower or auto settings get more explanation, recommended defaults, and transparent
 # auto-decisions (FR-035). Order below is the canonical first-run + display order.
 $script:CrewInteractionProfileAreas = @(
-    [ordered]@{ ExpertiseKey = 'product_management';             PersonaId = 'product-manager';                DisplayLabel = 'Product Strategy';      PersonaName = 'Product Manager';                 DecisionFocus = 'Business rules, prioritization, MVP boundaries' }
-    [ordered]@{ ExpertiseKey = 'ui_ux';                          PersonaId = 'ux-ui-specialist';               DisplayLabel = 'UX/UI Design';          PersonaName = 'UX/UI Specialist';                DecisionFocus = 'Interface state, accessibility, workflows' }
-    [ordered]@{ ExpertiseKey = 'software_architecture';          PersonaId = 'architect';                      DisplayLabel = 'Software Architecture'; PersonaName = 'Architect';                       DecisionFocus = 'Schemas, integration boundaries, deployment' }
-    [ordered]@{ ExpertiseKey = 'ai_research_project_management'; PersonaId = 'ai-researcher-project-manager';  DisplayLabel = 'AI Delivery Planning';  PersonaName = 'AI Researcher / Project Manager'; DecisionFocus = 'Capacity planning, safe parallelism, agent charters' }
+    [ordered]@{
+        ExpertiseKey   = 'product_management'
+        PersonaId      = 'product-manager'
+        DisplayLabel   = 'Product Strategy'
+        PersonaName    = 'Product Manager'
+        DecisionFocus  = 'Business rules, prioritization, MVP boundaries'
+        SetupLabel     = 'Product Scope & Priorities'
+        SetupQuestion  = 'When deciding MVP boundaries, business rules, and priority tradeoffs, how much guidance do you want?'
+    }
+    [ordered]@{
+        ExpertiseKey   = 'ui_ux'
+        PersonaId      = 'ux-ui-specialist'
+        DisplayLabel   = 'UX/UI Design'
+        PersonaName    = 'UX/UI Specialist'
+        DecisionFocus  = 'Interface state, accessibility, workflows'
+        SetupLabel     = 'UX & Workflows'
+        SetupQuestion  = 'When shaping interface states, accessibility, and user workflows, how much guidance do you want?'
+    }
+    [ordered]@{
+        ExpertiseKey   = 'software_architecture'
+        PersonaId      = 'architect'
+        DisplayLabel   = 'Software Architecture'
+        PersonaName    = 'Architect'
+        DecisionFocus  = 'Schemas, integration boundaries, deployment'
+        SetupLabel     = 'Architecture & Integration'
+        SetupQuestion  = 'When choosing schemas, integration boundaries, and deployment shape, how much guidance do you want?'
+    }
+    [ordered]@{
+        ExpertiseKey   = 'ai_research_project_management'
+        PersonaId      = 'ai-researcher-project-manager'
+        DisplayLabel   = 'AI Delivery Planning'
+        PersonaName    = 'AI Researcher / Project Manager'
+        DecisionFocus  = 'Capacity planning, safe parallelism, agent charters'
+        SetupLabel     = 'Planning & Agent Coordination'
+        SetupQuestion  = 'When planning capacity, safe parallel work, and agent coordination, how much guidance do you want?'
+    }
 )
 
 function Get-CrewInteractionProfileAreas {
@@ -39,6 +71,41 @@ function Get-CrewInteractionProfileAreas {
     internal contracts (FR-032..FR-034).
     #>
     return $script:CrewInteractionProfileAreas
+}
+
+function Normalize-CrewInteractionProfileSetupInput {
+    <#
+    .SYNOPSIS
+    Normalizes first-run Crew Interaction Profile setup input.
+    .DESCRIPTION
+    First-run setup treats blank input as the recommended default (`auto`) so new users can press
+    Enter through the setup without needing to understand every area immediately. Invalid values
+    return $null so the interactive prompt can retry.
+    #>
+    param(
+        [AllowNull()]
+        [object]$InputValue
+    )
+
+    if ($null -eq $InputValue) {
+        return 'auto'
+    }
+
+    $text = ([string]$InputValue).Trim()
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return 'auto'
+    }
+
+    if ($text.Equals('auto', [System.StringComparison]::OrdinalIgnoreCase)) {
+        return 'auto'
+    }
+
+    $numeric = 0
+    if ([int]::TryParse($text, [ref]$numeric) -and $numeric -ge 1 -and $numeric -le 10) {
+        return [string]$numeric
+    }
+
+    return $null
 }
 
 function Get-CrewInteractionProfileLabel {
@@ -606,37 +673,36 @@ function Invoke-FirstRunExpertisePrompt {
     Write-Host " Welcome to Specrew - Crew Interaction Profile Setup" -ForegroundColor Cyan
     Write-Host "==================================================================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "Your Crew Interaction Profile tells Specrew how much to ask, explain," -ForegroundColor White
-    Write-Host "recommend, and auto-decide for you across four decision areas. It is a" -ForegroundColor White
-    Write-Host "collaboration setting, not a job title — Specrew keeps its own internal" -ForegroundColor White
-    Write-Host "persona lenses regardless of what you choose. Set each area 1-10:" -ForegroundColor White
+    Write-Host "Your Crew Interaction Profile tells Specrew how much guidance to give" -ForegroundColor White
+    Write-Host "when product, UX, architecture, and delivery-planning decisions come up." -ForegroundColor White
+    Write-Host "It is a collaboration setting, not a job title or skill test. Specrew" -ForegroundColor White
+    Write-Host "keeps its own internal persona lenses regardless of what you choose." -ForegroundColor White
+    Write-Host "New to Specrew? Press Enter at any prompt for recommended defaults." -ForegroundColor White
     Write-Host ""
-    Write-Host "  1-3  : Learning (Specrew explains more and auto-decides with transparency)" -ForegroundColor Gray
-    Write-Host "  4-6  : Standard (targeted clarifications)" -ForegroundColor Gray
-    Write-Host "  7-10 : Senior (concise expert-level questions; you make the call)" -ForegroundColor Gray
-    Write-Host "  auto : Let Specrew recommend defaults and explain them" -ForegroundColor Gray
+    Write-Host "  1-3  : Guide me (explain tradeoffs, recommend defaults, make low-risk decisions)" -ForegroundColor Gray
+    Write-Host "  4-6  : Collaborate (ask targeted questions and explain important choices)" -ForegroundColor Gray
+    Write-Host "  7-10 : Be concise (assume I know the domain; ask only when my decision is required)" -ForegroundColor Gray
+    Write-Host "  auto : Recommended defaults (same as pressing Enter)" -ForegroundColor Gray
     Write-Host ""
 
     $dials = @{}
 
     foreach ($area in Get-CrewInteractionProfileAreas) {
-        Write-Host "[$($area.DisplayLabel)]" -ForegroundColor Yellow
-        Write-Host "  $($area.DecisionFocus)" -ForegroundColor Gray
+        Write-Host "[$($area.SetupLabel)]" -ForegroundColor Yellow
+        Write-Host "  $($area.SetupQuestion)" -ForegroundColor White
+        Write-Host "  Profile area: $($area.DisplayLabel)" -ForegroundColor Gray
 
         $validInput = $false
         while (-not $validInput) {
-            $input = Read-Host "  Your setting (1-10 or 'auto')"
+            $input = Read-Host "  Your preference (1-10, auto, or Enter for auto)"
+            $normalizedInput = Normalize-CrewInteractionProfileSetupInput -InputValue $input
 
-            if ($input -eq 'auto') {
-                $dials[$area.PersonaId] = 'auto'
-                $validInput = $true
-            }
-            elseif ($input -match '^\d+$' -and [int]$input -ge 1 -and [int]$input -le 10) {
-                $dials[$area.PersonaId] = [string][int]$input
+            if ($null -ne $normalizedInput) {
+                $dials[$area.PersonaId] = $normalizedInput
                 $validInput = $true
             }
             else {
-                Write-Host "  Please enter a number between 1 and 10, or 'auto'" -ForegroundColor Red
+                Write-Host "  Please enter a number between 1 and 10, 'auto', or press Enter for auto" -ForegroundColor Red
             }
         }
         Write-Host ""
@@ -803,6 +869,7 @@ if ($null -ne $ExecutionContext.SessionState.Module) {
         'Get-CrewInteractionProfileAreas',
         'Get-CrewInteractionProfileLabel',
         'Get-CrewInteractionLevelDescriptor',
+        'Normalize-CrewInteractionProfileSetupInput',
         'New-CrewInteractionProfileSessionContext'
     )
 }

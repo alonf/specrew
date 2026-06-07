@@ -305,6 +305,34 @@ questions:
     Assert-Equal -Actual $labelByKey['software_architecture'] -Expected 'Software Architecture' -Message 'FR-034: software_architecture displays as Software Architecture'
     Assert-Equal -Actual $labelByKey['ai_research_project_management'] -Expected 'AI Delivery Planning' -Message 'FR-034: ai_research_project_management displays as AI Delivery Planning'
 
+    # Proposal 170: first-run setup uses behavior-centered labels/questions while preserving the
+    # canonical profile display labels above.
+    $setupLabelByKey = @{}
+    foreach ($a in $areas) {
+        $setupLabelByKey[$a.ExpertiseKey] = $a.SetupLabel
+        Assert-True -Condition (-not [string]::IsNullOrWhiteSpace($a.SetupQuestion)) -Message "P170: setup question exists for $($a.DisplayLabel)"
+        Assert-True -Condition ($a.SetupQuestion -match 'how much guidance do you want') -Message "P170: setup question asks for guidance preference for $($a.DisplayLabel)"
+    }
+    Assert-Equal -Actual $setupLabelByKey['product_management'] -Expected 'Product Scope & Priorities' -Message 'P170: product first-run label is behavior-centered'
+    Assert-Equal -Actual $setupLabelByKey['ui_ux'] -Expected 'UX & Workflows' -Message 'P170: UX first-run label is behavior-centered'
+    Assert-Equal -Actual $setupLabelByKey['software_architecture'] -Expected 'Architecture & Integration' -Message 'P170: architecture first-run label is behavior-centered'
+    Assert-Equal -Actual $setupLabelByKey['ai_research_project_management'] -Expected 'Planning & Agent Coordination' -Message 'P170: AI delivery first-run label is behavior-centered'
+    foreach ($a in $areas) {
+        Assert-True -Condition ($a.SetupLabel -ne $a.DisplayLabel) -Message "P170: setup label is distinct from canonical display label for $($a.DisplayLabel)"
+    }
+    Write-Pass 'P170 first-run setup metadata is guidance-oriented while canonical labels remain stable'
+
+    Assert-Equal -Actual (Normalize-CrewInteractionProfileSetupInput -InputValue $null) -Expected 'auto' -Message 'P170: null first-run input normalizes to auto'
+    Assert-Equal -Actual (Normalize-CrewInteractionProfileSetupInput -InputValue '') -Expected 'auto' -Message 'P170: blank first-run input normalizes to auto'
+    Assert-Equal -Actual (Normalize-CrewInteractionProfileSetupInput -InputValue '   ') -Expected 'auto' -Message 'P170: whitespace first-run input normalizes to auto'
+    Assert-Equal -Actual (Normalize-CrewInteractionProfileSetupInput -InputValue 'AUTO') -Expected 'auto' -Message 'P170: auto is case-insensitive'
+    Assert-Equal -Actual (Normalize-CrewInteractionProfileSetupInput -InputValue '07') -Expected '7' -Message 'P170: numeric input normalizes to canonical string'
+    Assert-Equal -Actual (Normalize-CrewInteractionProfileSetupInput -InputValue '10') -Expected '10' -Message 'P170: upper numeric bound accepted'
+    Assert-True -Condition ($null -eq (Normalize-CrewInteractionProfileSetupInput -InputValue '0')) -Message 'P170: lower out-of-range input rejects'
+    Assert-True -Condition ($null -eq (Normalize-CrewInteractionProfileSetupInput -InputValue '11')) -Message 'P170: upper out-of-range input rejects'
+    Assert-True -Condition ($null -eq (Normalize-CrewInteractionProfileSetupInput -InputValue 'expert')) -Message 'P170: non-supported token rejects'
+    Write-Pass 'P170 first-run setup input normalization verified'
+
     # FR-033: stable persona IDs preserved (including ai-researcher-project-manager)
     Assert-Equal -Actual (Get-CrewInteractionProfileLabel -PersonaId 'ai-researcher-project-manager') -Expected 'AI Delivery Planning' -Message 'FR-033: ai-researcher-project-manager persona ID resolves to AI Delivery Planning'
     Assert-Equal -Actual (Get-CrewInteractionProfileLabel -ExpertiseKey 'ai_research_project_management') -Expected 'AI Delivery Planning' -Message 'FR-033: ai_research_project_management key resolves to AI Delivery Planning'
