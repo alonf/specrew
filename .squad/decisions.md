@@ -24574,3 +24574,28 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Verdict**: Apply the 145-grounded revisions (structured menu) — rule-8 v2 (7-item preflight checklist + two-tier model), review-signoff rule 9 (disprove-the-report), Proposal 145 added to both digests'' declared sources so the drift check fires when 145 evolves.
 - **Authorizing Human**: Alon Fliess
 - **Lesson recorded**: answering a methodology question from memory instead of the source is itself the drift class this feature remediates — the digest content now carries the read-the-source discipline it preaches.
+
+## 2026-06-07T00:28:48Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5f3d8ea5
+- **Recorded At**: 2026-06-07T00:28:47Z
+
+## 2026-06-07T12:05:00Z — Human verdict: review-signoff approved (171-specrew-refocus iteration 001)
+
+- **Boundary Type**: review-signoff -> retro
+- **Verdict**: approved for retro (approve as-is; structured verdict menu)
+- **Authorizing Human**: Alon Fliess
+- **Commit Reference**: review evidence at the boundary-sync auth commit; review.md verdict accepted with 330-assert re-run ledger
+- **TG-004 decision (approved with the verdict)**: option (a) — drop PostToolUse from the Claude hook binding for v1 (measured ~920ms median per Bash call vs <=150ms bar; pwsh spawn structural); channel-1 wrapper emission remains the mechanical B3 on every host; SessionStart B1/B2 retained with the once-per-event bar relaxed to <=3s; iteration 002 re-evaluates (UserPromptSubmit event + engine inlining candidates).
+
+### Defer: SC-004 latency bar (approved)
+
+- **Defer**: SC-004 hook-path latency bar missed; resolution = TG-004 option (a) above. **Approving human**: Alon Fliess. Next action: iteration-002 research re-evaluation.
+
+### Defer: iteration-002 planned carries (approved)
+
+- **Defer**: init/update call-site wiring for deploy-refocus-hooks; catalog managed-with-overlay merge on update; host research matrix incl. Copilot re-verification. **Approving human**: Alon Fliess. Next action: iteration 002 (T013-T015).

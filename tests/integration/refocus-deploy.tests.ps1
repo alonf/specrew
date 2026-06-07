@@ -35,7 +35,7 @@ $out = Invoke-Deploy
 Assert-True (Test-Path -LiteralPath $settingsPath -PathType Leaf) 'settings.local.json created when absent'
 $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
 Assert-True ($null -ne $settings.hooks.SessionStart) 'SessionStart registered'
-Assert-True ($null -ne $settings.hooks.PostToolUse -and [string]$settings.hooks.PostToolUse[0].matcher -eq 'Bash') 'PostToolUse registered with the Bash matcher (P4 narrowing)'
+Assert-True (-not $settings.hooks.PSObject.Properties['PostToolUse']) 'PostToolUse NOT registered (TG-004 option (a): channel 1 carries B3; latency bar)'
 Assert-True (-not $settings.hooks.PSObject.Properties['PreToolUse']) 'PreToolUse NOT registered (dormant F-165 seat)'
 Assert-True (([string]$settings.hooks.SessionStart[0].hooks[0].command).Contains('specrew-hook-dispatcher.ps1')) 'command points at the dispatcher'
 

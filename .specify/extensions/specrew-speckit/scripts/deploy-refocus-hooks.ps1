@@ -101,17 +101,16 @@ if (-not $settings.PSObject.Properties['hooks'] -or $null -eq $settings.hooks) {
     $settings | Add-Member -NotePropertyName 'hooks' -NotePropertyValue ([pscustomobject]@{}) -Force
 }
 
+# TG-004 option (a), approved at iteration-001 review-signoff: PostToolUse is NOT
+# registered (measured ~920ms/call vs the 150ms bar; pwsh spawn structural).
+# Channel-1 wrapper emission delivers B3 mechanically on every host; iteration 002
+# re-evaluates (UserPromptSubmit + engine inlining).
 # SessionStart: all sources (startup|resume|clear|compact) — the dispatcher routes.
 $sessionStartGroup = [pscustomobject]@{
     hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionStart') })
 }
-# PostToolUse: narrowed to shell tools (P4 latency bar).
-$postToolGroup = [pscustomobject]@{
-    matcher = 'Bash'
-    hooks   = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'PostToolUse') })
-}
 
-$eventGroups = [ordered]@{ SessionStart = $sessionStartGroup; PostToolUse = $postToolGroup }
+$eventGroups = [ordered]@{ SessionStart = $sessionStartGroup }
 foreach ($eventName in $eventGroups.Keys) {
     $group = $eventGroups[$eventName]
     $existing = $settings.hooks.PSObject.Properties[$eventName]
@@ -126,5 +125,5 @@ foreach ($eventName in $eventGroups.Keys) {
 $json = $settings | ConvertTo-Json -Depth 16
 New-Item -ItemType Directory -Path (Split-Path -Parent $settingsPath) -Force | Out-Null
 [System.IO.File]::WriteAllText($settingsPath, $json, [System.Text.UTF8Encoding]::new($false))
-Write-Output ('[specrew-refocus] hooks deployed to {0} (SessionStart + PostToolUse[Bash]; PreToolUse dormant)' -f $settingsPath)
+Write-Output ('[specrew-refocus] hooks deployed to {0} (SessionStart only per TG-004 option (a); PostToolUse unregistered - channel 1 carries B3; PreToolUse dormant)' -f $settingsPath)
 exit 0

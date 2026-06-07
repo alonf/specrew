@@ -35,10 +35,13 @@
     # so cloning a repo can never import auto-executing hooks).
     # NOTE: PreToolUse is deliberately ABSENT — the gate seat is dormant until
     # the first gate-kind provider row exists (F-165 coordination).
+    # NOTE: PostToolUse is UNREGISTERED per TG-004 option (a), approved at the
+    # iteration-001 review-signoff (measured ~920ms/call vs the 150ms bar; pwsh
+    # spawn structural). B3 rides channel 1 (boundary-sync wrapper stdout) on
+    # every host; iteration 002 re-evaluates (UserPromptSubmit / engine inlining).
     RefocusHookBindings = @{
-        BoundTriggers       = @('b1', 'b2', 'b3')
-        Events              = @('SessionStart', 'PostToolUse')
-        PostToolUseMatcher  = 'Bash'   # P4 narrowing: shell tools only
+        BoundTriggers       = @('b1', 'b2')   # b3 via channel 1 (TG-004 option a)
+        Events              = @('SessionStart')
         SettingsFile        = '.claude/settings.local.json'
         DispatcherPath      = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
     }

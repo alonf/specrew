@@ -1,1 +1,6 @@
-claims: []
+claims:
+  - feature_id: "171-specrew-refocus"
+    claimed_by: "alon@HOMEALON11"
+    claim_start_time: "2026-06-06T20:41:17Z"
+    last_refresh_time: "2026-06-07T00:28:47Z"
+    branch_name: "171-specrew-refocus"
