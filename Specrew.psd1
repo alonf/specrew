@@ -134,6 +134,7 @@
         'extensions/specrew-speckit/squad-templates/skills/capacity-planning.md',
         'extensions/specrew-speckit/squad-templates/skills/design-workshop.md',
         'extensions/specrew-speckit/squad-templates/skills/drift-check.md',
+        'extensions/specrew-speckit/squad-templates/skills/gate-stop.md',
         'extensions/specrew-speckit/squad-templates/skills/iteration-resume.md',
         'extensions/specrew-speckit/squad-templates/skills/README.md',
         'extensions/specrew-speckit/squad-templates/skills/specrew-help/SKILL.md',

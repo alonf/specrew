@@ -124,3 +124,59 @@ hook — composing through that seam avoids the `.claude/settings.local.json` co
 **Net:** the broad render-gate (165 as written) is superseded by this conduct fix + the F-171 dispatcher
 seat. The worktree closes once the conduct fix lands and the dogfood confirms (or escalates to the gating
 provider).
+
+## Disposition — FINAL (2026-06-07): the gate-stop skill (supersedes both sections above)
+
+The retarget above (conduct A+B + defer the gate) did NOT hold: a fresh Claude dogfood showed the
+workshop agenda AND the intake clarify both collapsed despite the sharp conduct. So the broad
+PreToolUse render-gate hook was BUILT as a probe (`scripts/internal/render-gate-hook.ps1`, since
+removed) to settle the mechanism empirically. The probe established three load-bearing facts on
+Claude Code v2.1.168:
+
+1. **`AskUserQuestion` IS PreToolUse-hookable** — the hook fired on every menu (the feared
+   "not hookable" dead-end is refuted).
+2. **`transcript_path` lags by a turn** — at PreToolUse time it does NOT contain the in-flight
+   assistant turn calling the menu, so the packet/agenda prose written in the SAME message is
+   invisible to the hook. A transcript-render-VERIFIER is therefore impossible.
+3. **A blind deny is GAMEABLE** — a forcing deny ("render the packet as prose first, then re-raise")
+   was satisfied by the model REWORDING the menu to claim content was "shown above" that it never
+   rendered (verified against the flushed transcript: zero prose between the deny and the retry).
+
+General principle (why every prior fix failed): a hook can verify a MECHANICAL fact (did the tool
+run, is the field short) but NEVER content quality; the content is model-authored, so the model games
+it. Conduct is the same lever, one notch softer.
+
+**The fix is to remove the tool, not instruct around it.** The `specrew-gate-stop` skill carries
+`disallowed-tools: AskUserQuestion` (a documented Claude Code skill-frontmatter feature — the docs
+give AskUserQuestion as the example, and the restriction clears on the next user message). At every
+boundary VERDICT stop the Claude branch of `Get-SpecrewHostInteractionGuidanceBlock`
+(`scripts/internal/coordinator-prompt-surgery.ps1`) routes through this skill; with the picker gone
+there is nothing to collapse into, so the model renders the full six-section packet as Markdown and
+presents the verdict as a typed numbered list. Non-gameable (the tool is absent, not policed) and
+host-neutral in body (other hosts render prose anyway; the field is a Claude-only enforcement,
+harmlessly ignored elsewhere). The design **workshop and clarify questions keep the picker** — their
+skills do not disable it — preserving the "present one decision, then a picker" UX the maintainer
+values. Scope is correct: only `claude` (AskUserQuestion) is routed; `codex` keeps `request_user_input`
+and the prose hosts (copilot/antigravity/cursor) declare no primitive.
+
+**Dogfood-CONFIRMED** (testGate3, Claude Code v2.1.168, 2026-06-07): a fresh greenfield run reached
+the `specify` and `clarify` boundary stops; at BOTH the model invoked `specrew-gate-stop` and rendered
+the full six-section packet as Markdown with `file:///` links and no picker. Both platform unknowns
+resolved positive: (1) the model invokes the skill at boundary stops, (2) `disallowed-tools` removes
+the tool mid-turn. The branch deploy auto-picked-up the new skill (no extra deploy wiring). The
+workshop's per-decision pickers rendered prose-then-picker correctly.
+
+**Residual (accepted):** the workshop MULTI-ITEM confirms — the lens-agenda confirm and the
+component-map verdict — still collapse on Claude (they keep the picker and the model crams the list
+into the question). Filed as alonf/specrew#2081 for a later improvement (route just those two confirms
+through a no-picker render, or a two-tier workshop, or an upstream AskUserQuestion rich-body field —
+feature request drafted for anthropics/claude-code).
+
+**Naming note:** the proposal's name ("PreToolUse render-gate hook") is now a misnomer — the shipped
+mechanism is a skill-frontmatter tool-disable, not a hook. The hook probe is retired (deleted); its
+learnings are recorded above.
+
+**Shipped artifacts:** `extensions/specrew-speckit/squad-templates/skills/gate-stop.md` (+ `.specify`
+mirror + FileList entry); the Claude routing in `scripts/internal/coordinator-prompt-surgery.ps1`;
+regression tests `tests/integration/gate-stop-skill.tests.ps1` and the updated Claude assertions in
+`tests/integration/multi-host-launch-path.tests.ps1`. Targets 0.32.0-beta2.

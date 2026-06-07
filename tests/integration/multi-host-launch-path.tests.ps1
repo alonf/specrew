@@ -276,14 +276,18 @@ if ($codexInteraction -match 'AskUserQuestion|Squad handles the rest') {
 }
 
 $claudeInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'claude'
-if ($claudeInteraction -notmatch 'AskUserQuestion' -or $claudeInteraction -notmatch 'approve as-is, approve with instructions, send back, and discuss prompt #N') {
-    Write-Fail "Claude interaction guidance did not render the Claude-specific structured question primitive with the shared response contract:`n$claudeInteraction"
+# 165 (re-scoped): on Claude the AskUserQuestion picker COLLAPSES the Rule 46 six-section packet into its
+# short header/option fields, so the human is asked to approve what they cannot read. This is not closable
+# by conduct -- six amendments and even a runtime PreToolUse hook-deny were gamed (the model reworded the
+# menu to claim content was "shown above" that it never rendered). The deterministic fix: boundary VERDICT
+# stops route through the specrew-gate-stop skill, whose frontmatter disallows AskUserQuestion, so the
+# picker is removed for the stop and the packet MUST render as Markdown. The verdict response contract is
+# unchanged, and the design workshop + clarify questions keep the picker.
+if ($claudeInteraction -notmatch 'specrew-gate-stop' -or $claudeInteraction -notmatch 'approve as-is, approve with instructions, send back, and discuss prompt #N') {
+    Write-Fail "Claude interaction guidance did not route boundary verdict stops through the specrew-gate-stop skill with the shared response contract:`n$claudeInteraction"
 }
-# 165 boundary-packet collapse fix: the verdict guidance must require rendering the Rule 46 six-section
-# packet as PROSE before the menu (the menu fields are short labels that cannot carry it; a bare verdict
-# menu that skipped the packet is the Claude collapse the maintainer's Copilot A/B isolated). Keeps the menu.
-if ($claudeInteraction -notmatch 'six-section re-entry packet as PROSE' -or $claudeInteraction -notmatch 'is a Rule 46 violation') {
-    Write-Fail "Claude interaction guidance does not require rendering the packet as prose before the verdict menu (165 boundary-packet fix):`n$claudeInteraction"
+if ($claudeInteraction -notmatch 'disallows the AskUserQuestion tool' -or $claudeInteraction -notmatch 'is a Rule 46 violation') {
+    Write-Fail "Claude interaction guidance does not remove the picker at the boundary verdict stop (165 collapse fix):`n$claudeInteraction"
 }
 
 $copilotInteraction = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $interactionPrompt -HostKind 'copilot'

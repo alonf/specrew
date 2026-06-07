@@ -189,6 +189,23 @@ function Get-SpecrewHostInteractionGuidanceBlock {
         $HostKind
     }
 
+    # Feature 165: on the Claude host the AskUserQuestion picker COLLAPSES the Rule 46 six-section
+    # packet into its short header/option fields, so the human is asked to approve what they cannot
+    # read. This is not a conduct gap that another instruction can close -- six conduct amendments
+    # and even a runtime PreToolUse hook-deny were gamed (the model reworded the menu to claim
+    # content was "shown above" that it never rendered). The deterministic fix is to remove the
+    # picker at the stop: boundary VERDICT stops route through the specrew-gate-stop skill, whose
+    # frontmatter `disallowed-tools: AskUserQuestion` deletes the tool for the stop, so there is
+    # nothing to collapse into and the packet MUST render as Markdown. The design workshop and
+    # clarify questions are UNAFFECTED -- they keep the AskUserQuestion picker because their skills
+    # do not disable it; only boundary verdict stops route through specrew-gate-stop.
+    if ($HostKind -eq 'claude') {
+        return @"
+Host-rendered interaction guidance for ${displayName}:
+At every human-verdict boundary stop, invoke the specrew-gate-stop skill to PERFORM the stop. That skill's frontmatter disallows the AskUserQuestion tool, so for the stop you have no picker to collapse into: render the FULL Rule 46 six-section re-entry packet -- What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You, with every artifact reference a visible bare file:/// URL -- followed by the four verdict options as a numbered Markdown list, then stop for the human's typed choice. Do NOT call AskUserQuestion directly for a boundary verdict on this host: it collapses the packet into the picker's short fields, so the human is asked to approve content they cannot read -- that is a Rule 46 violation, not a valid stop. The design workshop and clarify questions are UNAFFECTED -- they keep the AskUserQuestion picker (their skills do not disable it); ONLY boundary verdict stops route through specrew-gate-stop. Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. Initial feature intake may remain free-form.
+"@
+    }
+
     $primitive = if ($manifest.ContainsKey('StructuredQuestionPrimitive')) { [string]$manifest.StructuredQuestionPrimitive } else { '' }
     $guidance = if ($manifest.ContainsKey('StructuredQuestionGuidance')) { [string]$manifest.StructuredQuestionGuidance } else { '' }
 
