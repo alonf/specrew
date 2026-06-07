@@ -101,6 +101,16 @@ Assert-Match -Text $skill -Pattern '(?i)Be verbose' 'skill FR-037 general: be ve
 Assert-Match -Text $skill -Pattern '(?i)menu is good UX' 'skill FR-037 general: the menu stays (good UX); the fix is the missing render, never the menu'
 Assert-Match -Text $skill -Pattern '(?i)agenda \+ depths' 'skill FR-037 general: the lens agenda + depths is an explicit confirm-point (the testLenses11 gap the diagram-scoped rule missed)'
 Write-Pass 'skill FR-037: render+explain before the confirm menu at EVERY confirm point (agenda/diagram/map/options/verdict), verbose, menu kept — the testLenses8/11 Claude under-surfacing fix'
+# 165-retarget (2026-06-07 dogfood — the F-171 workshop on the current Claude model). Two host-neutral
+# conduct additions: (A) the human-facing chat-path orientation (humans hit dense menus they could not
+# follow + had to discover the free-text path themselves); (B) the file:///-links-before-the-menu rule
+# (Claude drops the artifact links before an AskUserQuestion, so the human cannot open the spec/record to
+# decide; other hosts render them in prose). Presence-locked here; the behavioral payoff is the next dogfood.
+Assert-Match -Text $skill -Pattern '(?i)Tell the human they can just talk' 'skill 165-A: the chat-path orientation (human can type a question / ask for a file instead of picking a menu option)'
+Assert-Match -Text $skill -Pattern '(?i)instead of picking a menu option' 'skill 165-A: the free-text-instead-of-menu phrasing'
+Assert-Match -Text $skill -Pattern '(?i)links go in your prose before the menu' 'skill 165-B: the file:///-links-before-the-confirm-menu rule (the Claude artifact-link drop)'
+Assert-Match -Text $skill -Pattern '(?i)does not linkify' 'skill 165-B: names why the menu fields cannot carry the links (the AskUserQuestion UI does not linkify file:///)'
+Write-Pass 'skill 165-retarget: chat-path orientation (A) + file:///-links-before-the-menu (B) — the F-171-dogfood host-neutral conduct fix'
 # Component-map FORM (testLenses11: the agent referenced "11-component map above" + counted "6 resource accessors"
 # instead of rendering the full diagram + a vocabulary-grouped named list). Fix = a prescriptive fill-in TEMPLATE
 # the agent completes (form > prose; harder to under-deliver; also helps weaker hosts), rendered before the ask.
