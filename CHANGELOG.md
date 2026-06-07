@@ -6,6 +6,12 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.33.0-beta1] - 2026-06-08
+
+### Added
+
+- **Feature 171 — Specrew Refocus: `/specrew-refocus` slash command + event-driven auto-refocus (Proposal 146 + Pillar B amendment).** Re-loads scoped Specrew methodology discipline into context — manually via `/specrew-refocus`, and automatically at the moments drift sets in. A host-neutral engine (`refocus.ps1`) resolves a general "always-true" core plus a per-stage discipline digest from a data catalog (`refocus-scopes.json`); a single `SpecrewHookDispatcher` is the only Specrew-registered handler per host event, running ordered, budgeted providers with a kill-switch-first check, `.specrew/` self-gating, a per-session circuit breaker, and a bounded injection journal. Verified host hook bindings (research-gated): Claude binds B1 (post-compaction) + B2 (launch/resume) via SessionStart with B3 (boundary-cross) delivered via channel 1 (the boundary-sync wrapper stdout); Codex binds the full triad; Copilot and Cursor bind B2; Antigravity ships channels 1+2 with documented variance. Deploy is merge-aware and wired into `specrew init`/`update` (catalog managed-with-overlay; per-trigger disables and user provider rows survive an update; recorded opt-out respected and `update` never silently flips a disable). Three kill-switch levels (`SPECREW_REFOCUS_DISABLE` env, per-trigger `enabled: false`, hook de-registration). The refocus digests teach F-165's gate-stop discipline (no `AskUserQuestion` at boundary verdict stops). A dormant `kind: gate` / `PreToolUse` provider seat is reserved as generic forward-compat (no behavior, no registration). Authorized by Alon Fliess.
+
 ## [0.32.0] - 2026-06-07
 
 Stable promotion of the 0.32.0 line, validated by fresh-install on the Claude host (workshop intake reframe + gate-stop boundary packets) per the beta-before-stable mandate. Bundles the four prereleases:
