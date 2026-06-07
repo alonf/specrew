@@ -41,8 +41,8 @@
 ## Gap Ledger
 
 - No requirement (FR/SC) gaps: all in-scope requirements verified: fixed-now.
-- SC-004 latency bar missed; TG-004 contracted human-return executed at this gate (options in the boundary packet), not a silent fallback: deferred.
-- Iteration-002 planned carries (not new gaps): init/update call-site wiring for deploy-refocus-hooks; catalog managed-with-overlay merge on update; host research matrix incl. Copilot re-verification: deferred.
+- SC-004 latency bar missed; TG-004 human-return executed at this gate; approved defer recorded in .squad\decisions.md (2026-06-07T12:20:00Z): deferred.
+- Iteration-002 planned carries (not new gaps): init/update wiring, catalog overlay-merge, host research matrix; approved defer recorded in .squad\decisions.md (2026-06-07T12:21:00Z): deferred.
 
 ## Notes
 

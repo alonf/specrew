@@ -24599,3 +24599,23 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 ### Defer: iteration-002 planned carries (approved)
 
 - **Defer**: init/update call-site wiring for deploy-refocus-hooks; catalog managed-with-overlay merge on update; host research matrix incl. Copilot re-verification. **Approving human**: Alon Fliess. Next action: iteration 002 (T013-T015).
+
+## 2026-06-07T12:20:00Z — Defer: SC-004 hook-path latency bar (171 iteration 001)
+
+- **Type**: defer
+- **Boundary**: review-signoff
+- **Affected Iteration**: specs\171-specrew-refocus\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-07T12:20:00Z
+- **Commit Reference**: review-signoff verdict (approved for retro, approve as-is)
+- **Next Action**: TG-004 option (a) applied (PostToolUse unregistered; channel 1 carries B3); iteration-002 research re-evaluates (UserPromptSubmit event + engine inlining).
+
+## 2026-06-07T12:21:00Z — Defer: iteration-002 planned carries (171 iteration 001)
+
+- **Type**: defer
+- **Boundary**: review-signoff
+- **Affected Iteration**: specs\171-specrew-refocus\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-07T12:21:00Z
+- **Commit Reference**: review-signoff verdict (approved for retro, approve as-is)
+- **Next Action**: iteration 002 T013-T015 — init/update call-site wiring for deploy-refocus-hooks; catalog managed-with-overlay merge on update; host research matrix incl. Copilot re-verification.
