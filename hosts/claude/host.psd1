@@ -29,7 +29,9 @@
     CoordinatorRulesFile = 'coordinator-rules.psd1'
 
     # Feature 171 (FR-013): refocus hook-binding declaration. Claude has the full
-    # documented hook surface and binds all three triggers. Consumed by
+    # documented hook surface; it binds B1 + B2 via SessionStart (see BoundTriggers
+    # below), and B3 is delivered via channel 1 (the boundary-sync wrapper stdout),
+    # not a hook — so BoundTriggers is @('b1','b2') by design (TG-004a). Consumed by
     # scripts/internal/deploy-refocus-hooks.ps1; deploys to the PER-USER
     # project-local settings file (C6 decision: never the shared settings.json,
     # so cloning a repo can never import auto-executing hooks).

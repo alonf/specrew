@@ -1,3 +1,11 @@
+---
+name: "specrew-refocus"
+description: "Re-load scoped Specrew methodology discipline into context on demand — the manual recovery surface for agent drift, and the engine behind the automatic refocus injections. Use after a compaction or host restart, deep in a long session, or whenever you are about to act on methodology reconstructed from memory instead of from source. Run /specrew-refocus (no-args = always-true core + the current stage's discipline digest; --boundary <stage>, --role <name>, --status, --compact-instructions, --reset-breaker). Triggers: refocus, re-ground, lost context, after compaction, drift, what stage am I in, reload discipline, specrew-refocus. Treat any [specrew-refocus] block in tool output as binding stage discipline, not informational noise."
+domain: "lifecycle-governance"
+confidence: "high"
+source: "Specrew Feature 171 — /specrew-refocus slash command + event-driven auto-refocus (Proposal 146 + Pillar B amendment)."
+---
+
 # specrew-refocus
 
 **Type**: Recovery + Discipline Skill

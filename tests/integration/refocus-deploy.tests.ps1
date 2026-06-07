@@ -180,6 +180,18 @@ Assert-True ([bool]$merged.triggers.b2.enabled -eq $true -and [bool]$merged.trig
 $mergedIds = @($merged.providers | ForEach-Object { [string]$_.id })
 Assert-True (($mergedIds -contains 'refocus') -and ($mergedIds -contains 'user-audit')) 'overlay: canonical provider kept + user provider row restored'
 
+# --- 11b. T017 (PR #2152): overlay does NOT duplicate a user provider that became canonical ----
+# Simulate a freshly-deployed catalog that now ships a provider id which an older user catalog
+# had added by hand. Re-applying the captured overlay must NOT append a second copy.
+$dupCatalog = Get-Content -LiteralPath $canonicalCatalog -Raw | ConvertFrom-Json
+$dupCatalog.PSObject.Properties['providers'].Value = @($dupCatalog.providers) + @([pscustomobject]@{ id = 'now-canonical'; kind = 'inject'; events = @('SessionStart'); order = 30; budget_share = 0.1; command = 'now-canonical.ps1' })
+[System.IO.File]::WriteAllText($projectCatalog, ($dupCatalog | ConvertTo-Json -Depth 16), [System.Text.UTF8Encoding]::new($false))
+$dupOverlay = [pscustomobject]@{ Present = $true; Aborted = $false; TriggerEnabled = @{}; UserProviders = @([pscustomobject]@{ id = 'now-canonical'; kind = 'inject'; events = @('SessionStart'); order = 30; budget_share = 0.1; command = 'now-canonical.ps1' }) }
+$dupApplied = Set-RefocusCatalogOverlay -ProjectPath $projectRoot -Overlay $dupOverlay
+$dupMerged = Get-Content -LiteralPath $projectCatalog -Raw | ConvertFrom-Json
+$dupCount = @($dupMerged.providers | Where-Object { [string]$_.id -eq 'now-canonical' }).Count
+Assert-True ($dupApplied -eq $false -and $dupCount -eq 1) 'overlay: a user provider whose id is now canonical is NOT duplicated (dup-ID guard)'
+
 # --- 12. T017: pristine catalog -> overlay is a no-op (byte-untouched) ------------------------
 Copy-Item -LiteralPath $canonicalCatalog -Destination $projectCatalog -Force
 $pristineOverlay = Get-RefocusCatalogOverlay -ProjectPath $projectRoot
@@ -217,6 +229,16 @@ $claudeFail = @($failActions | Where-Object { $_.HostKind -eq 'claude' })
 Assert-True ($claudeFail.Count -eq 1 -and $claudeFail[0].Action -eq 'refocus-hooks-failed' -and ([string]$claudeFail[0].Detail).Contains('boom')) 'hook deployment: deploy failure recorded, never thrown (fail open)'
 Assert-True (@(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath (Join-Path $scratchRoot 'missing.ps1')).Count -eq 0) 'hook deployment: missing deploy script -> no actions, no error'
 
+# --- 14b. T017 (PR #2152): -UserHomeOverride passthrough (hermetic-test seam) -------------------
+$homeStub = Join-Path $scratchRoot 'stub-deploy-home.ps1'
+[System.IO.File]::WriteAllText($homeStub, "param([string]`$ProjectPath, [string]`$HostKind = 'claude', [string]`$UserHomeOverride)`n""home=[`$UserHomeOverride]""`n", [System.Text.UTF8Encoding]::new($false))
+$noOverride = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $homeStub)
+$claudeNoOverride = @($noOverride | Where-Object { $_.HostKind -eq 'claude' })
+Assert-True ($claudeNoOverride.Count -eq 1 -and ([string]$claudeNoOverride[0].Detail).Contains('home=[]')) 'hook deployment: no -UserHomeOverride -> deploy script gets none (production default)'
+$withOverride = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $homeStub -UserHomeOverride 'C:\fake\home')
+$claudeWithOverride = @($withOverride | Where-Object { $_.HostKind -eq 'claude' })
+Assert-True ($claudeWithOverride.Count -eq 1 -and ([string]$claudeWithOverride[0].Detail).Contains('home=[C:\fake\home]')) 'hook deployment: -UserHomeOverride passed through to the deploy script (hermetic seam)'
+
 # --- 15. T017: init/update wiring content + parse integrity --------------------------------------
 $updateScript = Join-Path $repoRoot 'scripts\specrew-update.ps1'
 $initScript = Join-Path $repoRoot 'scripts\specrew-init.ps1'
@@ -231,6 +253,11 @@ Assert-True ($initRaw.Contains('refocus-deploy-integration.ps1') -and $initRaw.C
 $idxSquadRuntime = $initRaw.IndexOf("Write-Step 'Deploying Squad runtime'")
 $idxRefocusHooks = $initRaw.IndexOf("Write-Step 'Deploying refocus hooks'")
 Assert-True ($idxSquadRuntime -ge 0 -and $idxRefocusHooks -gt $idxSquadRuntime) 'init: refocus hooks deploy AFTER the Squad-runtime/skill-surface step (greenfield .claude detection; review-caught anchor defect)'
+# PR #2152: the SAME ordering fix in the update path — hook deploy must follow the squad-runtime
+# refresh that provisions .claude (else a workspace gaining .claude this update skips Claude).
+$idxUpdSquad = $updateRaw.IndexOf('& $deploySquadRuntimeScript')
+$idxUpdHook = $updateRaw.IndexOf('Invoke-RefocusHookDeployment')
+Assert-True ($idxUpdSquad -ge 0 -and $idxUpdHook -gt $idxUpdSquad) 'update: refocus hooks deploy AFTER the Squad-runtime refresh (.claude provisioned first; PR #2152 ordering fix)'
 foreach ($wired in @($updateScript, $initScript, (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1'))) {
     $parseErrors = $null
     $null = [System.Management.Automation.Language.Parser]::ParseFile($wired, [ref]$null, [ref]$parseErrors)

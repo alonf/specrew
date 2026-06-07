@@ -68,9 +68,17 @@ function Set-RefocusCatalogOverlay {
         }
     }
     if (@($Overlay.UserProviders).Count -gt 0 -and $catalog.PSObject.Properties['providers']) {
+        # Dup-ID guard (PR #2152 review): if a newer canonical catalog now ships a
+        # provider whose id matches a captured user row, do NOT re-append it — that would
+        # duplicate the id and run the provider twice. Only restore user rows whose id is
+        # absent from the freshly-deployed canonical set.
         $canonical = @($catalog.providers)
-        $catalog.PSObject.Properties['providers'].Value = @($canonical + @($Overlay.UserProviders))
-        $changed = $true
+        $canonicalIds = @($canonical | ForEach-Object { [string]$_.id })
+        $newUserProviders = @($Overlay.UserProviders | Where-Object { $canonicalIds -notcontains [string]$_.id })
+        if (@($newUserProviders).Count -gt 0) {
+            $catalog.PSObject.Properties['providers'].Value = @($canonical + $newUserProviders)
+            $changed = $true
+        }
     }
     if ($changed) {
         [System.IO.File]::WriteAllText($catalogPath, ($catalog | ConvertTo-Json -Depth 16), [System.Text.UTF8Encoding]::new($false))
@@ -81,7 +89,12 @@ function Set-RefocusCatalogOverlay {
 function Invoke-RefocusHookDeployment {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectPath,
-        [Parameter(Mandatory = $true)][string]$DeployScriptPath
+        [Parameter(Mandatory = $true)][string]$DeployScriptPath,
+        # Hermetic-test seam (PR #2152 review): deploy-refocus-hooks.ps1 already supports
+        # -UserHomeOverride; expose it here so e2e/consumer test runners can keep codex/
+        # copilot/cursor writes out of the REAL user home. Unset in production (no behavior
+        # change — the deploy script defaults to the real home).
+        [string]$UserHomeOverride
     )
     $actions = New-Object System.Collections.Generic.List[object]
     if (-not (Test-Path -LiteralPath $DeployScriptPath -PathType Leaf)) { return $actions.ToArray() }
@@ -94,7 +107,9 @@ function Invoke-RefocusHookDeployment {
 
     foreach ($hostKind in $hostTargets) {
         try {
-            $output = @(& $DeployScriptPath -ProjectPath $ProjectPath -HostKind $hostKind 2>&1 | ForEach-Object { [string]$_ })
+            $deployArgs = @{ ProjectPath = $ProjectPath; HostKind = $hostKind }
+            if (-not [string]::IsNullOrWhiteSpace($UserHomeOverride)) { $deployArgs['UserHomeOverride'] = $UserHomeOverride }
+            $output = @(& $DeployScriptPath @deployArgs 2>&1 | ForEach-Object { [string]$_ })
             $actions.Add([pscustomobject]@{ HostKind = $hostKind; Action = 'refocus-hooks'; Detail = ($output -join ' ') }) | Out-Null
         }
         catch {

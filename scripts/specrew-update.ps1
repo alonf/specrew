@@ -1361,9 +1361,6 @@ if ($scopes -contains 'Specrew') {
         if (Set-RefocusCatalogOverlay -ProjectPath $resolvedProjectPath -Overlay $refocusOverlay) {
             $null = $summary.Add([pscustomobject]@{ Platform = 'Specrew'; Action = 'refocus-catalog-overlay'; Detail = 'user trigger flags/provider rows re-applied after canonical refresh' })
         }
-        foreach ($hookAction in @(Invoke-RefocusHookDeployment -ProjectPath $resolvedProjectPath -DeployScriptPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'))) {
-            $null = $summary.Add([pscustomobject]@{ Platform = 'Specrew'; Action = [string]$hookAction.Action; Detail = ('{0}: {1}' -f $hookAction.HostKind, $hookAction.Detail) })
-        }
 
         foreach ($action in $specKitDeploymentActions) {
             $null = $summary.Add([pscustomobject]@{
@@ -1408,6 +1405,18 @@ if ($scopes -contains 'Specrew') {
                 Action   = 'skipped'
                 Detail   = '.squad is absent in this project'
             })
+    }
+
+    # Feature 171 (T017): deploy refocus hooks AFTER the Squad-runtime refresh that
+    # provisions .claude/skills (and therefore .claude). claude detection is
+    # directory-based, so deploying earlier would skip Claude on a workspace that only
+    # gains .claude during THIS update (PR #2152 codex review — same ordering the init
+    # path already uses). Fail-open; respects recorded opt-outs.
+    if (Test-Path -LiteralPath (Join-Path $resolvedProjectPath '.specify') -PathType Container) {
+        . (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
+        foreach ($hookAction in @(Invoke-RefocusHookDeployment -ProjectPath $resolvedProjectPath -DeployScriptPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'))) {
+            $null = $summary.Add([pscustomobject]@{ Platform = 'Specrew'; Action = [string]$hookAction.Action; Detail = ('{0}: {1}' -f $hookAction.HostKind, $hookAction.Detail) })
+        }
     }
 
     $templateRefreshActions = @(

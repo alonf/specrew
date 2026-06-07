@@ -168,7 +168,7 @@ Run the status probe first — every branch ends in one named action:
 2. **Breaker tripped?** The journal shows `BREAKER_TRIPPED` + the reason. Re-enable: `--reset-breaker`, or start a new session. Recurring? Disable that trigger durably in `refocus-scopes.json` and file the journal evidence.
 3. **Env kill switch set?** `SPECREW_REFOCUS_DISABLE` silences all hook triggers — unset it.
 4. **Trigger disabled in the catalog?** `--status` lists per-trigger `enabled` flags with no guesswork.
-5. **All green but silent?** Check the journal tail: `deduped` means channel 1 already delivered (working as designed); `budget-clipped` means the payload hit its token cap; nothing at all means the hook isn''t registered — re-run `deploy-refocus-hooks.ps1` (it respects a recorded opt-out; use `-Force` to re-enable explicitly).
+5. **All green but silent?** Check the journal tail: `deduped` means channel 1 already delivered (working as designed); `budget-clipped` means the payload hit its token cap; nothing at all means the hook isn't registered — re-run `deploy-refocus-hooks.ps1` (it respects a recorded opt-out; use `-Force` to re-enable explicitly).
 
 Every warning carries a reason code (`EVENT_PARSE`, `CATALOG_SCHEMA`, `SOURCE_MISSING`, `SOURCE_CONFINED`, `STATE_UNAVAILABLE`, `BUDGET_EXCEEDED`, `BREAKER_TRIPPED`, `PROVIDER_FAILED`) — `EVENT_PARSE` after a host update usually means the host changed its event schema; see the research matrix in the Specrew repo.
 
