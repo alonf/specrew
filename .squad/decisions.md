@@ -24666,3 +24666,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: fb5360a4
 - **Recorded At**: 2026-06-07T02:07:47Z
+
+## 2026-06-07T03:04:53Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 87561104094d3dc3b2018520244fca6b7314249b
+- **Recorded At**: 2026-06-07T03:04:51Z
