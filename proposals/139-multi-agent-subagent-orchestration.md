@@ -1,14 +1,54 @@
 ---
 proposal: 139
-title: Multi-Agent Subagent Orchestration (Claude First, Multi-Host Extensible)
+title: Multi-Agent Subagent Orchestration (Host-Neutral Layer-2 Contract; Claude Adapter First)
 status: candidate
 phase: phase-2
 estimated-sp: 17-28
 priority-tier: 1
-discussion: surfaced 2026-05-27 during F-049 close + sequencing conversation; user direction explicit ("Support multi-agent at least for Claude — speed up and reduce cost"); empirically motivated by F-049's lifecycle re-runs burning Opus tokens on grep/explore/validator-run work that Haiku subagents could handle 10-15x cheaper + post-compaction discipline drop (Shape 3c) when single-Claude-instance context overflows; this current session itself used Explore + general-purpose subagents repeatedly during F-049 — empirical demonstration of the model Specrew should formalize. **Amended 2026-05-31** to add Claude dynamic workflows (v2.1.154+ / Opus 4.8 era, May 2026) as additional Pillar 1 substrate alongside the Task/Agent tool API — script-orchestrated parallel dispatch (up to 16 concurrent subagents per phase, capped at 1000 per run) with stricter context isolation than conversational subagents.
+discussion: surfaced 2026-05-27 during F-049 close + sequencing conversation; user direction explicit ("Support multi-agent at least for Claude — speed up and reduce cost"); empirically motivated by F-049's lifecycle re-runs burning Opus tokens on grep/explore/validator-run work that Haiku subagents could handle 10-15x cheaper + post-compaction discipline drop (Shape 3c) when single-Claude-instance context overflows; this current session itself used Explore + general-purpose subagents repeatedly during F-049 — empirical demonstration of the model Specrew should formalize. **Amended 2026-05-31** to add Claude dynamic workflows (v2.1.154+ / Opus 4.8 era, May 2026) as additional Pillar 1 substrate alongside the Task/Agent tool API — script-orchestrated parallel dispatch (up to 16 concurrent subagents per phase, capped at 1000 per run) with stricter context isolation than conversational subagents. **Amended 2026-06-08** to DEPRECATE the "Claude-first" framing (title + Strategic context) and reframe to a host-neutral Layer-2 process-orchestration contract with a Claude adapter implemented first, plus the control/safety + operational rules — see the "Amendment — 2026-06-08" section.
 ---
 
 # Multi-Agent Subagent Orchestration
+
+## Amendment — 2026-06-08: deprecate "Claude-first"; host-neutral Layer-2 contract; control + safety rules
+
+A four-stream capability survey (Claude Code / Codex + Copilot / Cursor + Antigravity / Squad + the multi-agent frameworks), web-grounded against current docs and cross-checked, **deprecates the "Claude-first" framing in the title and the Strategic-context section** and settles the design direction. This amendment is authoritative where it conflicts with the original body below.
+
+### The abstraction layer is the crux (Claude-first was the trap)
+
+There are two distinct ways to do multi-agent, and choosing the wrong layer is the dead end:
+
+- **Layer 1 — in-session subagent tool** (the host's own tool spawns sub-agents in its context). Every host now has one, but the APIs DIVERGE: Claude (Agent/Task tool + dynamic Workflows + experimental agent-teams), Codex (`multi_agent` on by default; steer via `/agent`), Copilot (`/fleet`, GA 2026-02-25), Cursor (markdown-file-defined subagents), Antigravity (orchestrator-spawned dynamic/async subagents, 2.0 GA 2026-05-19). **This corrects the now-stale "Copilot/Antigravity have no subagent surface" claim in Strategic context.** Building the CORE orchestration on Layer 1 couples Specrew to one host's tool — the dead end.
+- **Layer 2 — headless process orchestration** (the core spawns each agent as a host-CLI sub-process and coordinates via files/state). **All five hosts expose a headless single-shot mode** (`claude -p`, `codex exec`, `copilot -p`, `cursor-agent -p`, Antigravity `-p`), most with per-invocation `--model` plus structured (JSON) output. This is the **portable seam** — the only layer that can mix hosts in one run and give true per-agent host + model control.
+
+**Squad itself is Layer-1, single-host by construction** (a Copilot agent-definition spawning subagents via Copilot's `task` tool; it degrades `task` → `runSubagent` → inline and never calls a model API). Replicating an in-model pattern can never *remove* Squad — so **Layer-2 process orchestration is precisely what enables the Squad-independence goal (composes with Proposal 024).**
+
+### The reframe (supersedes "build the contract Claude-first")
+
+- The `SubagentInvoker` contract (Pillar 1) stays, but it is **host-neutral and Layer-2-shaped**: `spawn(role, host, model, prompt) -> structured result`. The **Claude adapter is implemented FIRST** (richest, most reliable surface). "Claude-first" is fine as *adapter #1*; it is a dead end only as *design the abstraction to Claude's tools*.
+- **Contract vs implementation — do not blur them.** Each adapter chooses its own INTERNAL mechanism behind the neutral contract. Add a **`headless-process` dispatch kind** (spawn the host CLI `-p`/`exec`) as the portable default. The existing `task-tool` / `dynamic-workflow` kinds are reframed as the **Claude adapter's Layer-1 internal optimization** (context-cache locality + cheap Haiku-under-Opus), not the contract. Codex/Cursor/Copilot/Antigravity adapters may likewise use their native Layer-1 surfaces internally OR shell out headless — all satisfying the same contract. `powershell-parallel` remains the no-subagent-surface fallback.
+- **Cost (the headline motivator) is an OPEN QUESTION, not a finding.** Layer 2 gives per-invocation model *selection*; but token-cost *efficiency* was not measured and likely cuts the other way on Claude — headless pays process cold-start, a fresh UNCACHED context per agent, and the separate `-p`/Agent-SDK billing pool (from 2026-06-15), whereas Layer-1 Haiku-under-Opus is natively cheaper-per-task. **Measure per-task cost (Layer-1-internal vs headless), per host, at design-analysis** before committing the default.
+
+### Control + safety rules (reuse Feature 171's machinery — do not reinvent)
+
+Feature 171 (refocus) already shipped the safety substrate: a circuit breaker (runaway / token-cap / state-loss), three-level kill switches, an injection journal, fail-open, budget caps, per-session state. This control layer re-aims that machinery from "hook injection" to `spawn()`, plus host primitives.
+
+1. **Headless / never-block.** Sub-agents run non-interactive; **stdin is closed/redirected** so a `Read-Host`-equivalent gets EOF and fails fast (never hangs). A would-be prompt (missing permission, real ambiguity) returns a structured `blocked: <reason>` and exits — human interaction stays at the coordinator/main level. A **mandatory per-spawn timeout** is the backstop (Cursor `-p` can hang).
+2. **Progress, layered:** (a) hard timeout (mandatory); (b) **token/cost** from the headless JSON (`--output-format json` -> cost + tokens; `stream-json` for live) -> per-spawn budget + journal, reusing 171's token-cap breaker; (c) liveness heartbeat (still emitting stream events?); (d) artifact / structured-result check at completion. CPU/memory monitoring is **deferred** (agents are I/O-bound; a + c cover hangs).
+3. **Stop control (coordinator + user):** `stop(agentId | all)` — Layer-2 kills the process tree; Layer-1 is best-effort turn-interrupt (granularity differs by adapter). User surface: a `specrew agents stop` CLI + a kill-flag + a Ctrl+C trap; the breaker auto-stops runaways.
+4. **No nesting — depth = 1.** Claude enforces it natively (subagents cannot nest); on Layer-2, withhold the spawn capability from sub-agents (restrict allowed-tools / a `SPECREW_NO_SPAWN` flag). A host's own internal autonomy is the documented residual; runaway spawns trip the breaker.
+5. **Isolation by sub-agent kind** (so cleanup is deterministic — never surgically delete a failed agent's files): read-only (research/review) -> no worktree, writes nothing; file-mutating + parallel -> **worktree per agent** (merge on success, discard on failure; Claude's `isolation: worktree` natively, `git worktree add` for Layer-2); file-mutating + sequential -> main tree + pre-spawn commit checkpoint (`git reset --hard` + `clean` on failure). Worktrees only when parallel-mutating (~200-500ms + disk each).
+6. **Retry / escalation — bounded, journaled, fail-open:** fail -> retry once on a fresh sub-agent (optionally a stronger tier); still fail -> escalate to the main agent (full context) or surface to the human (by task type + breaker state); the breaker caps total attempts; a failed sub-agent NEVER blocks the session.
+7. **Permissions — least-privilege, inherit-and-narrow:** grant a role-scoped permission set at spawn (read-only for research/review; workspace-write scoped to the worktree for implementers); the parent's grant is the CEILING (sub-agent perms subset of parent perms), never inherit-wholesale. The adapter maps an abstract profile -> host flags (Claude `--allowedTools`/`--permission-mode`, Codex `--sandbox`/`--ask-for-approval`, Copilot `--allow-tool`/`--deny-tool`, Cursor rules). OS caveat: the child runs as the same OS user, so agent-tool permissions are cooperative — the worktree is a convention, not a wall.
+8. **Elevation — never silent.** A sub-agent needing more than granted fails-with-reason; the coordinator decides (re-spawn elevated / escalate to main / **human-gate sensitive elevations** — network, install, danger-full-access). Journaled (a Proposal 103 hook).
+9. **Lifetime — tree-kill, staged.** A host CLI spawns a tree (pwsh, node, model client, MCP servers), so killing one PID leaves orphans. **V1 (mandatory): process-group tree-kill** (Linux `setsid` -> `kill -- -<pgid>`; Windows `taskkill /T`). **V1.5 (hardening): Job Object (`KILL_ON_JOB_CLOSE`) on Windows + cgroups v2 on Linux** for guaranteed no-orphan even on coordinator crash (+ optional CPU/mem caps, deferred). Per-OS P/Invoke in the spawn helper.
+
+### Research-needed (resolve at design-analysis)
+
+- Per-task **cost** measurement (Layer-1-internal vs headless), per host.
+- The exact per-host **permission-flag** mapping.
+- The cross-platform **lifetime mechanism** (process-group -> Job Object / cgroup).
+- Re-verify host surfaces at build time (they move fast): Cursor `-p` hang bug; Copilot removed `--headless --stdio` (target `-p`); Antigravity CLI per-`--model` + literal `-p` flag unconfirmed (client-side-rendered docs).
 
 ## Why
 
@@ -54,7 +94,7 @@ That pattern wasn't formalized; it was ad-hoc. Specrew should formalize the disc
 - **Codex CLI** has limited subagent surface today; may improve
 - **Copilot CLI / Antigravity** have no subagent surface today
 
-This is multi-host adapter territory: build the contract Claude-first; extend to other hosts as their subagent surfaces mature.
+This is multi-host adapter territory: build the contract Claude-first; extend to other hosts as their subagent surfaces mature. **[Superseded 2026-06-08 — see "Amendment — 2026-06-08": the contract is host-neutral / Layer-2; "Claude-first" means Claude is *adapter #1*, not the design target; and all five hosts now have BOTH a headless mode and a native subagent surface, so the "subagent surfaces mature" premise is obsolete.]**
 
 ## What — Six Pillars
 
