@@ -100,7 +100,7 @@ Proposals with full source-spec content, ready for `/speckit.specify` ingestion 
 | [154](154-boundary-authorization-prompt-truth.md) | **RELEASE BLOCKER (Tier 1)** — Boundary Authorization Prompt Truth + Human Re-entry Packet — immediate 5-8 SP small-fix correcting `specrew start` generated lifecycle instructions so they derive human-judgment boundary stops from `boundary_enforcement.policy_classes` instead of hard-coding the beta2-bad four-gate list. Removes the instruction to auto-run from clarify through plan/tasks, forbids agent-only `Status: Approved` readiness repairs without human verdict evidence, and requires every approval stop to summarize what happened, identify review targets, preview what happens next, and ask proactive discussion questions before continuation. | phase-2 | 5-8 | Drafted 2026-06-01 after v0.30.0-beta2 Copilot/Squad smoke repeated the beta1 boundary-bypass class: `spec.md` was marked Approved and planning began without a human approval record, because generated `last-start-prompt.md` contradicted `.specrew/config.yml` and sync-plan authorization. Amended 2026-06-01 so beta3 smoke must stop after clarify with a human re-entry packet, not a thin approve/decline prompt. |
 | [155](155-typed-boundary-gate-packets.md) | **HIGH PRIORITY (Tier 1)** — Typed Boundary Gate Packets — make the human approval object a Specrew-rendered, validated, stored packet under `specs/<feature>/gates/` instead of free-form AI console prose; each gate type has a schema/template, packet ID, hash, boundary metadata, six-section human re-entry body, `file:///` review targets pinned to an as-of commit with `git show <commit>:<path>` retrieval commands, release-blocker/test/dirty-state fields, and exact packet evidence validation. | phase-2 | 10-16 | Drafted 2026-06-01 during Feature 139 release-recovery dogfooding after repeated D-004/D-005 escapes showed that prompt guidance and stored legacy handoff evidence cannot reliably control the primary human-visible gate packet. Composes with 007 / 056 / 120 / 151 / 154. |
 
-## Candidate (98)
+## Candidate (99)
 
 Idea-form proposals not yet developed into full source specs. Open for discussion; may mature to draft or be withdrawn.
 
@@ -211,6 +211,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [167](167-post-ship-proposal-amendment-discipline.md) | Post-Ship Proposal Amendment Discipline — shipped and superseded proposals are historical records; behavior-changing updates must be explicit post-ship amendments or new/superseding proposals, with delta summary, implementation owner, preserve list, tests-required list, index/status visibility, and review checks so new work is not silently hidden and old shipped behavior is not reimplemented by accident. | phase-2 | 3-5 |
 | [168](168-claude-boundary-packet-stop-hook.md) | **HIGH PRIORITY (Tier 1)** — Claude Boundary Packet Stop Hook — Claude-only Stop hook that inspects `last_assistant_message`, reads Specrew artifacts and git state as truth, and blocks once when a lifecycle boundary turn ends with only an MCQ/verdict menu or otherwise incomplete human re-entry packet. Uses `stop_hook_active` to avoid loops, keeps MessageDisplay display-only, treats PreToolUse as a narrow optional guard for boundary verdict menus, and records the official Claude hook URLs plus local Specrew instruction surfaces used for the design. | phase-2 | 6-10 |
 | [170](170-new-user-profile-setup-copy.md) | New-User Crew Interaction Profile Setup Copy — reframe first-run profile setup around how much guidance the user wants from Specrew, allow Enter for recommended defaults, and preserve the stable Proposal-141 profile schema/persona IDs. | phase-2 | 2-3 |
+| [171](171-ci-wire-user-profile-intake-tests.md) | CI Wire User-Profile Intake Integration Tests — follow-up for the pre-existing inert-test pattern where `f049-i003-intake-engine-tests.ps1` carries local-only profile/intake coverage; add CI wiring only after Linux-safety audit to avoid blind multi-host breakage. | phase-2 | 2-4 |
 
 ---
 
@@ -242,7 +243,7 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 074 (Code Commentary Standards — draft, queue after 073)
 - 151 (Boundary Handoff Contract Unification — draft, immediate small-fix)
 - 155 (Typed Boundary Gate Packets — draft, high-priority authoritative gate packet hardening)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106, 141, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106, 141, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170, 171 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 

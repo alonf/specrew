@@ -55,12 +55,15 @@
 1. Owner: Crew | Phase: implement | Type: process | Expected effect: for small-fix slices, create the minimum canonical artifact set before the first final answer: spec, plan, tasks, state, coverage-evidence, review, reviewer artifacts, retro, dashboard, hardening gate, and quality evidence.
 2. Owner: Crew | Phase: every gate | Type: process | Expected effect: run the scoped validator before claiming Specrew artifact shape is complete; do not rely on hand-authored tables.
 3. Owner: Crew | Phase: review | Type: process | Expected effect: explicitly separate iteration closeout claims from beta/release claims.
+4. Owner: CI follow-up | Phase: backlog | Type: test-integrity | Expected effect: Proposal 171 wires `f049-i003-intake-engine-tests.ps1` into the appropriate CI lane only after Linux-safety audit; prevents local-only profile/intake assertions from being mistaken for CI-reached proof.
 
 ## Process Notes
 
 - Workshop artifacts intentionally omitted per maintainer instruction.
 - Beta was not run; that is correct for iteration closeout and remains part of
   the later release train.
+- The local-only status of `f049-i003-intake-engine-tests.ps1` is a
+  pre-existing inert-test pattern, not a 172 regression; filed as Proposal 171.
 
 ## Calibration Suggestion
 

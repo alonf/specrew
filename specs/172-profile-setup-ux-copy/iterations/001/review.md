@@ -46,6 +46,15 @@
 
 - No requirement (FR/SC) gaps: all in-scope requirements verified: fixed-now.
 
+## Non-Blocking Follow-Up
+
+- `tests/integration/f049-i003-intake-engine-tests.ps1` is a pre-existing
+  local-only integration test file and is not wired into CI. Feature 172 added
+  P170 assertions there, so the assertions are local review evidence, not
+  CI-reached evidence. This does not block 172 because the inert-test pattern
+  predates the feature and the feature does not worsen it. Follow-up filed:
+  Proposal 171, CI Wire User-Profile Intake Integration Tests.
+
 ## Notes
 
 - The first scoped validator run failed on artifact shape, not product behavior:

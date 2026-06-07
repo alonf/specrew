@@ -12,6 +12,14 @@
 | `npx --yes markdownlint-cli --config .markdownlint.json proposals/170-new-user-profile-setup-copy.md specs/172-profile-setup-ux-copy/spec.md specs/172-profile-setup-ux-copy/plan.md specs/172-profile-setup-ux-copy/tasks.md specs/172-profile-setup-ux-copy/iterations/001/plan.md specs/172-profile-setup-ux-copy/iterations/001/state.md specs/172-profile-setup-ux-copy/iterations/001/drift-log.md` | pass | No markdownlint findings. |
 | `git diff --check` | pass | No whitespace errors. |
 
+## Evidence Scope
+
+- `tests/integration/f049-i003-intake-engine-tests.ps1` is local-only in the
+  current repository state; this review therefore claims local runtime evidence,
+  not CI-reached evidence.
+- The local-only status predates Feature 172 and does not block this slice.
+  Proposal 171 records the follow-up to CI-wire it after a Linux-safety audit.
+
 ## Claim-To-Evidence Ledger
 
 | Claim | Evidence |
