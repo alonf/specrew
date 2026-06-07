@@ -270,13 +270,9 @@ jobs:
         shell: pwsh
         run: ./tests/integration/managed-skill-stuck-preserving.tests.ps1
 
-      - name: Integration - gate-stop skill contract (F-165; disallowed-tools + six-section packet + .specify mirror parity)
+      - name: Integration - gate-stop skill contract (F-165; disallowed-tools + six-section packet + Claude routing + .specify mirror parity)
         shell: pwsh
         run: ./tests/integration/gate-stop-skill.tests.ps1
-
-      - name: Integration - multi-host launch path (per-host interaction guidance incl. F-165 Claude gate-stop routing)
-        shell: pwsh
-        run: ./tests/integration/multi-host-launch-path.tests.ps1
 
   contract-lane:
     name: Contract lane

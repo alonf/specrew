@@ -58,5 +58,18 @@ if ($mirror -ne $content) {
     Write-Fail "gate-stop skill source and .specify mirror have drifted — they must be identical (Proposal 132 mirror parity)."
 }
 
-Write-Pass "specrew-gate-stop: disallowed-tools enforcement, six-section packet, no-picker verdict, and .specify mirror parity all present"
+# 5. Routing (static, cross-platform): the Claude host interaction guidance must route boundary verdict
+#    stops through this skill. The runtime assertion lives in multi-host-launch-path.tests.ps1, which is
+#    Windows-coupled (hardcoded C:\ launch paths) and runs locally; this static source check keeps the
+#    routing covered on the Linux CI lane.
+$surgeryPath = Join-Path $repoRoot (Join-Path 'scripts' (Join-Path 'internal' 'coordinator-prompt-surgery.ps1'))
+if (-not (Test-Path -LiteralPath $surgeryPath -PathType Leaf)) {
+    Write-Fail "coordinator-prompt-surgery.ps1 not found at $surgeryPath"
+}
+$surgery = Get-Content -LiteralPath $surgeryPath -Raw -Encoding UTF8
+if ($surgery -notmatch 'specrew-gate-stop' -or $surgery -notmatch 'disallows the AskUserQuestion tool') {
+    Write-Fail "coordinator-prompt-surgery.ps1 no longer routes Claude boundary verdict stops through specrew-gate-stop (the Claude interaction-guidance branch is missing the gate-stop routing)."
+}
+
+Write-Pass "specrew-gate-stop: disallowed-tools enforcement, six-section packet, no-picker verdict, Claude routing, and .specify mirror parity all present"
 Write-Host "`ngate-stop skill: all assertions pass" -ForegroundColor Green

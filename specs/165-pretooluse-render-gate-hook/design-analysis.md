@@ -179,4 +179,4 @@ learnings are recorded above.
 **Shipped artifacts:** `extensions/specrew-speckit/squad-templates/skills/gate-stop.md` (+ `.specify`
 mirror + FileList entry); the Claude routing in `scripts/internal/coordinator-prompt-surgery.ps1`;
 regression tests `tests/integration/gate-stop-skill.tests.ps1` and the updated Claude assertions in
-`tests/integration/multi-host-launch-path.tests.ps1` (both wired into the `specrew-ci.yml` test lane). Targets 0.32.0-beta3 (beta2 was already cut for F-170).
+`tests/integration/multi-host-launch-path.tests.ps1`. `gate-stop-skill.tests.ps1` is wired into the `specrew-ci.yml` test lane (it also statically asserts the Claude gate-stop routing); `multi-host-launch-path.tests.ps1` is Windows-coupled (hardcoded `C:\` launch paths) and runs locally, so wiring it into the Linux CI lane is a follow-up. Targets 0.32.0-beta3 (beta2 was already cut for F-170).
