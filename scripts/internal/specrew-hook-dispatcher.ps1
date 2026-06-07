@@ -283,6 +283,65 @@ function Remove-StaleSessionState {
     catch { }
 }
 
+# ---------------------------------------------------------------------------
+# Circuit breaker (FR-011; T009). Per-session, dispatcher path ONLY — the slash
+# command and channel-1 wrapper emission are constitutionally exempt. Trips are
+# loud ONCE (the trip WARN teaches the manual switches), then silent for the
+# rest of the session; new sessions start clean; --reset-breaker clears.
+# ---------------------------------------------------------------------------
+
+$script:BreakerRunawayCount = 3      # same trigger injected >= N times ...
+$script:BreakerRunawayWindow = 10    # ... within the last N journal entries
+$script:BreakerTokenCap = 15000     # total injected tokens per session
+
+function Test-BreakerSuppressed {
+    param($State, [string]$Trigger)
+    if ($null -eq $State -or -not $State.PSObject.Properties['breaker'] -or $null -eq $State.breaker) { return $false }
+    $breaker = $State.breaker
+    if (-not ($breaker.PSObject.Properties['tripped'] -and [bool]$breaker.tripped)) { return $false }
+    $scopes = @(if ($breaker.PSObject.Properties['scopes'] -and $null -ne $breaker.scopes) { @($breaker.scopes) } else { @('all') })
+    return (($scopes -contains 'all') -or ($scopes -contains $Trigger))
+}
+
+function Test-BreakerShouldTrip {
+    # Returns $null (healthy) or @{ Scopes; Reason }.
+    param($State, [string]$Trigger)
+    $journal = @(if ($null -ne $State -and $State.PSObject.Properties['journal'] -and $null -ne $State.journal) { @($State.journal) } else { @() })
+    if ($journal.Count -eq 0) { return $null }
+
+    # Session token runaway -> trip ALL hook triggers (budget is global).
+    $totalTokens = 0
+    foreach ($entry in $journal) {
+        if ($entry.PSObject.Properties['tokens']) { $totalTokens += [int]$entry.tokens }
+    }
+    if ($totalTokens -ge $script:BreakerTokenCap) {
+        return @{ Scopes = @('all'); Reason = ("session injected ~{0} tokens (cap {1})" -f $totalTokens, $script:BreakerTokenCap) }
+    }
+
+    # Repeat-injection runaway -> trip ONLY this trigger (healthy B3 fires once
+    # per crossing; repeats inside a short window mean dedupe is broken).
+    $recent = @($journal | Select-Object -Last $script:BreakerRunawayWindow)
+    $fires = @($recent | Where-Object { [string]$_.trigger -eq $Trigger -and ([string]$_.outcome -in @('injected', 'budget-clipped')) }).Count
+    if ($fires -ge $script:BreakerRunawayCount) {
+        return @{ Scopes = @($Trigger); Reason = ("trigger '{0}' fired {1} times within the last {2} events (repeat-injection runaway)" -f $Trigger, $fires, $script:BreakerRunawayWindow) }
+    }
+    return $null
+}
+
+function Set-BreakerTripped {
+    # Trips LOUDLY ONCE: the WARN names the reason + every re-enable path — the
+    # incident is the documentation delivery (lens-6 decision).
+    param($State, [string[]]$Scopes, [string]$Reason)
+    $State.breaker = [pscustomobject]@{
+        tripped = $true
+        scopes  = $Scopes
+        reason  = $Reason
+        at      = (Get-Date).ToUniversalTime().ToString('o')
+    }
+    Write-DispatcherWarn -Code 'BREAKER_TRIPPED' -Message ("auto-disabled {0} for this session ({1}). Manual /specrew-refocus still works. Re-enable: refocus.ps1 --reset-breaker, or start a new session. Persistent problem? Disable durably: refocus-scopes.json triggers.<id>.enabled=false" -f ($Scopes -join '+'), $Reason)
+    return $State
+}
+
 function Get-RefocusProviderArgs {
     param([string]$EventName, [AllowNull()][string]$Source)
     # RefocusProvider routing (FR-009 surface; B3 state-diff lands in T007):
@@ -400,14 +459,16 @@ try {
         # handover — ride the same path with event JSON on their own contract).
         $commandArgs = $null
         if ($providerId -eq 'refocus') {
+            # Corrupt state = no safe dedupe = no safe AUTOMATION at all (FR-011
+            # state-unavailability condition applies to every hook trigger; the
+            # manual surface and channel 1 are constitutionally unaffected).
+            if ($stateCorrupt) {
+                Write-DispatcherWarn -Code 'STATE_UNAVAILABLE' -Message 'session state unreadable; hook automation quiet (manual /specrew-refocus and channel 1 unaffected); repair: refocus.ps1 --reset-breaker or delete the session state file'
+                continue
+            }
             # B3 gating (T007, FR-009): watch the boundary cursor, dedupe against
-            # the channel-1 fingerprint, anchor on first sight. Corrupt state means
-            # no safe dedupe -> no automatic injection (quiet + loud once).
+            # the channel-1 fingerprint, anchor on first sight.
             if ($Event -eq 'PostToolUse') {
-                if ($stateCorrupt) {
-                    Write-DispatcherWarn -Code 'STATE_UNAVAILABLE' -Message 'session state unreadable; B3 automation quiet (manual /specrew-refocus and channel 1 unaffected)'
-                    continue
-                }
                 $b3 = Test-B3ShouldInject -ProjectRoot $projectRoot -SessionState $sessionState
                 $sessionState = $b3.State
                 $stateDirty = $true
@@ -415,6 +476,20 @@ try {
                     $sessionState = Add-JournalEntry -State $sessionState -Trigger 'b3' -Scope 'general+boundary.next' -Channel 'hook' -Tokens 0 -Outcome 'deduped'
                 }
                 if ($b3.Action -ne 'inject') { continue }
+            }
+            # Circuit breaker (T009): suppression is SILENT (the trip already
+            # warned once); a fresh violation trips loudly here.
+            if (Test-BreakerSuppressed -State $sessionState -Trigger $eventTrigger) {
+                $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope 'suppressed' -Channel 'hook' -Tokens 0 -Outcome 'breaker-suppressed'
+                $stateDirty = $true
+                continue
+            }
+            $trip = Test-BreakerShouldTrip -State $sessionState -Trigger $eventTrigger
+            if ($null -ne $trip) {
+                $sessionState = Set-BreakerTripped -State $sessionState -Scopes $trip.Scopes -Reason $trip.Reason
+                $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope 'suppressed' -Channel 'hook' -Tokens 0 -Outcome 'breaker-suppressed'
+                $stateDirty = $true
+                continue
             }
             $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source
         }

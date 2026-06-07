@@ -250,7 +250,9 @@ Assert-True ($null -ne $entry -and [string]$entry.outcome -eq 'failed') 'provide
 
 # 13d. Ring bound: journal never exceeds 20.
 $dispatcher = New-ScratchProject
-$entries = @(1..25 | ForEach-Object { [pscustomobject]@{ at = '2026-06-07T00:00:00Z'; trigger = 'b2'; scope = 'general'; channel = 'hook'; tokens = 1; outcome = 'injected' } })
+# Seed with b1 entries (tokens=1) so the b2 event neither runaway-trips (different
+# trigger) nor token-trips (sum 20) — the ring bound is what's under test here.
+$entries = @(1..25 | ForEach-Object { [pscustomobject]@{ at = '2026-06-07T00:00:00Z'; trigger = 'b1'; scope = 'general'; channel = 'hook'; tokens = 1; outcome = 'injected' } })
 $seed = [pscustomobject]@{ session_id = 'journal-2'; last_seen_boundary = $null; context_mtime = $null; breaker = $null; journal = $entries[0..19] }
 $jStatePath2 = Join-Path $projectRoot '.specrew\runtime\refocus-state-journal-2.json'
 New-Item -ItemType Directory -Path (Join-Path $projectRoot '.specrew\runtime') -Force | Out-Null
@@ -267,6 +269,64 @@ $stalePath = Join-Path $projectRoot '.specrew\runtime\refocus-state-old-one.json
 (Get-Item -LiteralPath $stalePath).LastWriteTime = (Get-Date).AddDays(-30)
 $null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson '{"session_id":"journal-2","source":"startup"}'
 Assert-True (-not (Test-Path -LiteralPath $stalePath)) 'stale session state pruned (~7 days)'
+
+# --- 14. T009: circuit breaker (runaway / token cap / reset / exemptions) -------------
+$dispatcher = New-ScratchProject
+$runtimeDir = Join-Path $projectRoot '.specrew\runtime'
+New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+function New-SeedState {
+    param([string]$SessionId, [object[]]$Journal)
+    $seed = [pscustomobject]@{ session_id = $SessionId; last_seen_boundary = $null; context_mtime = $null; breaker = $null; journal = $Journal }
+    $path = Join-Path $runtimeDir ("refocus-state-{0}.json" -f $SessionId)
+    [System.IO.File]::WriteAllText($path, ($seed | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
+    return $path
+}
+function New-JournalSeed { param([string]$Trigger, [int]$Count, [int]$Tokens = 100) @(1..$Count | ForEach-Object { [pscustomobject]@{ at = '2026-06-07T01:00:00Z'; trigger = $Trigger; scope = 'general'; channel = 'hook'; tokens = $Tokens; outcome = 'injected' } }) }
+
+# 14a. Repeat-injection runaway trips ONLY that trigger, loudly once.
+$b2State = New-SeedState -SessionId 'breaker-1' -Journal (New-JournalSeed -Trigger 'b2' -Count 3)
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson '{"session_id":"breaker-1","source":"startup"}'
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'runaway b2: no injection'
+Assert-True ($result.StdErr.Contains('WARN BREAKER_TRIPPED') -and $result.StdErr.Contains('--reset-breaker')) 'runaway trip warns ONCE naming reason + re-enable paths'
+$state = Get-Content -LiteralPath $b2State -Raw | ConvertFrom-Json
+Assert-True ([bool]$state.breaker.tripped -and (@($state.breaker.scopes) -contains 'b2') -and -not (@($state.breaker.scopes) -contains 'all')) 'trip scope is the malfunctioning trigger only'
+Assert-True ([string](@($state.journal) | Select-Object -Last 1).outcome -eq 'breaker-suppressed') 'suppression journaled'
+
+# 14b. Subsequent suppression is SILENT (loud once).
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson '{"session_id":"breaker-1","source":"startup"}'
+Assert-True ([string]::IsNullOrWhiteSpace($result.StdOut) -and -not $result.StdErr.Contains('BREAKER_TRIPPED')) 'tripped suppression stays silent (no warn spam)'
+
+# 14c. Per-trigger scope: b3 still works while b2 is tripped.
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson '{"session_id":"breaker-1","tool_name":"Bash"}'   # anchor
+$ctx = @{ session_state = @{ boundary_type = 'review-signoff'; feature_ref = 'dispatcher-fixture' } } | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $ctx, [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse') -StdinJson '{"session_id":"breaker-1","tool_name":"Bash"}'
+Assert-True ($result.StdOut.Contains('trigger=b3')) 'b3 keeps working while b2 is tripped (malfunction-focused scope)'
+
+# 14d. Session token cap trips ALL hook triggers.
+$dispatcher = New-ScratchProject
+New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+$null = New-SeedState -SessionId 'breaker-2' -Journal (New-JournalSeed -Trigger 'b1' -Count 2 -Tokens 8000)
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson '{"session_id":"breaker-2","source":"startup"}'
+Assert-True ($result.StdErr.Contains('WARN BREAKER_TRIPPED') -and $result.StdErr.Contains('token')) 'token cap trips with the token reason'
+$state = Get-Content -LiteralPath (Join-Path $runtimeDir 'refocus-state-breaker-2.json') -Raw | ConvertFrom-Json
+Assert-True (@($state.breaker.scopes) -contains 'all') 'token cap trips ALL hook triggers'
+
+# 14e. --reset-breaker clears the trip flag.
+Push-Location $projectRoot
+$resetOut = & pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\refocus.ps1') --reset-breaker 2>$null
+Pop-Location
+Assert-True (($resetOut -join '') -match '1 trip flag\(s\) cleared') '--reset-breaker reports the cleared trip'
+$state = Get-Content -LiteralPath (Join-Path $runtimeDir 'refocus-state-breaker-2.json') -Raw | ConvertFrom-Json
+Assert-True ($null -eq $state.breaker) 'trip flag cleared in state'
+
+# 14f. Slash-command exemption: the engine emits even when the session is tripped.
+$null = New-SeedState -SessionId 'breaker-3' -Journal (New-JournalSeed -Trigger 'b2' -Count 3)
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson '{"session_id":"breaker-3","source":"startup"}'   # trips
+Push-Location $projectRoot
+$slashOut = & pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\refocus.ps1') --boundary implement 2>$null
+Pop-Location
+Assert-True (($slashOut -join "`n").Contains('trigger=manual')) 'human slash invocation is never breaker-suppressed'
 
 # --- summary --------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
