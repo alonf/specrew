@@ -1,0 +1,103 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "integration-api",
+    "security-compliance",
+    "devops-operations",
+    "observability-resilience"
+  ],
+  "skipped": {
+    "ui-ux": "No screens or GUI; agent-facing output banner + discoverability covered under observability (banner) and devops (help/docs surfaces).",
+    "data-storage": "No durable domain data; per-session dedupe/journal state is ephemeral runtime state owned per component-design."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Which decomposition style + where does the payload engine live (deployed extension script vs module function vs repo-only)?",
+        "How is the B3 boundary-crossing detected and delivered (the maintainer reframed Claude-first hooks into a host-neutral trigger contract + channels)?",
+        "Is the scope/trigger mapping data-driven or code-internal?",
+        "Is the payload one aggregate or a general + per-stage digest family (human-proposed model)?",
+        "Which constraints are binding vs preferences?",
+        "Where is the out-of-scope line (6 OUT items with named dispositions)?",
+        "Human-raised: should boundaries be managed compaction points (/compact with engine-generated preserve-instructions)?"
+      ],
+      "decision": "Host-neutral trigger contract (B1 post-compaction, B2 launch/resume, B3 boundary-cross) with per-host hook bindings for ALL hook-capable hosts in this feature (Claude full; Antigravity/Cursor/Codex research-verified), plus two host-neutral channels: boundary-sync wrapper stdout (B3 everywhere) and instruction-file primer floor. Engine ships as a deployed extension script (downstream-capable, no module import per fire). B3 detection principle: watch the state (diff start-context.json boundary cursor vs runtime-local last-seen), never the actor. Scope/trigger mapping is a data-driven catalog (refocus-scopes.yml). Payload is the human-proposed general + per-stage digest family with frontmatter-declared sources + drift guardrail. 7 binding constraints recorded (one engine for all surfaces; read-at-event; fail-open; token budget; merge-aware hook deploy; loop safety; digest drift check). Scope adds managed compaction points part (i): --compact-instructions engine scope + boundary-stop hygiene guidance; B4 widened to compaction-steering research, research-gated OUT. Copilot binding OUT (no surface; channels 1+2 + advisory). Sizing moved to ~15-25 SP.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/architecture-core.md — trigger-contract/channel architecture + engine/digest stack ASCII diagrams"
+    },
+    "component-design": {
+      "agenda": [
+        "What are the components, responsibilities, and dependency directions (full map render)?",
+        "Human-raised: can multiple mechanisms register the same host hooks, and how is order controlled?",
+        "Where does the per-session dedupe/runtime state live (multi-session correctness)?"
+      ],
+      "decision": "12-component map approved: RefocusSkill, SpecrewHookDispatcher (ONE registered handler per host event; ordered+budgeted data-driven provider registry; single dedupe + fail-open layer), RefocusProvider (registry row #1), CoordinatorAdvisory, RefocusEngine (pure, never dedupes humans), RefocusScopeCatalog, RefocusDigests, RefocusRuntimeState (per-session files keyed by sanitized host session id), WrapperEmission (channel 1), HostHookBindings, DeployIntegration (merge-aware), DigestDriftCheck (test-lane). Dispatcher generalization human-raised: host-level multi-registration is parallel/unordered, so Specrew owns ordering internally; future mechanisms (130-P4 handover) are registry data rows that never touch host config. Per-session state chosen over shared file to avoid write races and cross-session suppression.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/component-design.md — full component map ASCII + dedupe-correct B3 key flow"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Which qualities are design drivers, in what priority order, with what measurable bars?",
+        "What must the system refuse to do?"
+      ],
+      "decision": "Priority order + bars agreed in one pass: P1 fail-open reliability (fault-injection suite; zero session blocks), P2 exactly-once injection (injections == crossings; dedupe fixtures both channel orders), P3 token economy (general <=~600, stage digest <=~1500, B2 <=~1200, composed <=~2500 tokens; banner reports estimate), P4 trigger latency (B2 <=1s; B3 check <=150ms p95 with pwsh-spawn cost MEASURED, fallback = channel-1-only on that host returned to the human with data), P5 maintainability currency (drift parity warn, schema check, mirror parity). Refuse-to-do register: never block sessions, never exceed budgets, never clobber user hooks, never dedupe human invocations, never inject secrets/env values.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/requirements-nfr.md — quality-attribute priority table"
+    },
+    "integration-api": {
+      "agenda": [
+        "What are the contracts, owners, versioning, and error envelopes (C1-C6)?",
+        "Which settings file gets the hook registration (project-shared vs per-user vs user-global)?"
+      ],
+      "decision": "Six contracts agreed: C1 engine CLI (flags incl. --trigger/--compact-instructions; banner line 1; WARN-to-stderr envelope; fail-open partial payloads), C2 host hook protocol (host-owned; dispatcher normalizes; per-host shapes research-verified before binding), C3 provider registry row (normalized event in, markdown out, timeout, crash->skip+WARN), C4 catalog schema (schema_version required; additive evolution; mismatch->fail-open WARN), C5 digest frontmatter (scope, sources[], reviewed_at), C6 merge-aware hook deployment (identify ours by command path; user entries byte-untouched). Hook registration placement: per-user project-local settings (.claude/settings.local.json analog per host), deployed by init/update per machine — no auto-executing hooks arriving via clone.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/integration-api.md — B1 contract sequence (Claude/dispatcher/engine/files)"
+    },
+    "security-compliance": {
+      "agenda": [
+        "What new threat surface does auto-executing hooks introduce, and what is the control at each trust boundary?"
+      ],
+      "decision": "Trust-boundary walk agreed: no new privilege, no secrets, no network. Two real injection vectors with concrete confinement controls: (1) session_id sanitized to [a-zA-Z0-9-] before filename use (path traversal); (2) catalog/digest sources repo-relative only, absolute/.. refused with WARN; provider commands must resolve under the deployed tree (deploy-time validation). Hook registration cannot arrive via clone (C6 per-user placement). Event JSON strictly parsed, never evaluated. The in-band banner is the audit trail. Denial-path tests obligated: malformed event JSON, hostile session_id, escaping catalog paths, out-of-tree provider commands.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/security-compliance.md — trust-boundary walk ASCII"
+    },
+    "devops-operations": {
+      "agenda": [
+        "What ships where (module -> deploy loop -> downstream project)?",
+        "What can CI actually prove vs the beta runtime validation?",
+        "Human-probed: how is the kill switch set — automatically or manually, and does the user have to know about it?",
+        "Human-probed: when tripped, is it per-trigger or global, and how does each switch reset (incl. on specrew update)?"
+      ],
+      "decision": "Topology + CI honesty split + release path agreed; kill-switch design human-probed twice and bound: automatic per-session circuit breaker on the dispatcher path only (repeat-injection runaway trips ONLY that trigger; session token cap ~15k and state-unavailability trip ALL hook triggers; slash command + channel 1 constitutionally exempt), trips loudly ONCE naming reason + re-enable paths, session-scoped auto-reset; manual levels = env SPECREW_REFOCUS_DISABLE (first-line check), per-trigger catalog enabled flags (user keys preserved across deploys), hook de-registration with REMEMBERED opt-out. Binding principle: specrew update never silently flips a human disable decision in either direction — it prunes runtime debris and prints re-enable hints only. Fail-open refined: never block the session; when in doubt do not inject; failures are quiet for automation, loud once for the human. Discoverability: trip message teaches the switches; --status shows the whole truth. Catalog deploy class = managed-with-overlay (canonical keys refresh, user keys preserved). Real trigger firing is beta-validation territory (>=2 hook-bound hosts, real compaction + real boundary cross), never CI-fixture territory.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/devops-operations.md — deployment topology + reset matrix"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "How does anyone know a trigger fired (or why it did not) after the fact, given compaction destroys scrollback?",
+        "How do WARN messages distinguish failure classes?"
+      ],
+      "decision": "Injection journal agreed: bounded ring (~20 entries: at, trigger, scope, channel, tokens, outcome in injected|deduped|budget-clipped|breaker-suppressed|failed) in the per-session state file; survives compaction; --status prints the tail; beta validation cites journal entries as evidence. Eight enumerated WARN reason codes agreed (EVENT_PARSE, CATALOG_SCHEMA, SOURCE_MISSING, SOURCE_CONFINED, STATE_UNAVAILABLE, BUDGET_EXCEEDED, BREAKER_TRIPPED, PROVIDER_FAILED) — each maps a symptom to one named action. Failure trace agreed: --status walk where every branch ends in one action. Binding review rule: runtime claims cite journal or live-host evidence, never file presence.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/observability-resilience.md — failure-trace flow + reason-code table"
+    }
+  }
+}

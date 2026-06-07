@@ -1,0 +1,14 @@
+{
+  "co_design": true,
+  "inherits": "../../lens-applicability.json",
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "integration-api",
+    "security-compliance",
+    "devops-operations",
+    "observability-resilience"
+  ],
+  "note": "Feature-level workshop records (7/7 human-confirmed) at specs/171-specrew-refocus/lens-applicability.json; co_design true activates the SC-025 Co-Design Record floor for iterations/001/design-analysis.md."
+}

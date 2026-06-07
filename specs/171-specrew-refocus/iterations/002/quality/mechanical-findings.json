@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/171-specrew-refocus/spec.md",
+  "iterationRef": "specs/171-specrew-refocus/iterations/002",
+  "generatedAt": "2026-06-07T02:52:26Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.32.0"
+  },
+  "findings": []
+}

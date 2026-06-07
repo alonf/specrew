@@ -820,6 +820,32 @@ if (Get-Command Initialize-SpecrewTeam -ErrorAction SilentlyContinue) {
     }
 }
 
+# Feature 171 (T017): deploy refocus hooks for detected hosts. This step MUST run
+# after the Squad-runtime/skill-surface deployment above — that is what provisions
+# the project's .claude/ folder in a greenfield init, and claude detection is
+# directory-based (review-caught defect: an earlier anchor ran before .claude
+# existed, silently skipping claude on greenfield). The deploy script respects
+# recorded opt-outs and fails open: hook problems never fail init.
+Write-Step 'Deploying refocus hooks'
+if ($specifySurfaceReady) {
+    if ($DryRun) {
+        Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'would deploy refocus hooks for detected hosts'
+    }
+    else {
+        . (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
+        $refocusHookActions = @(Invoke-RefocusHookDeployment -ProjectPath $resolvedProjectPath -DeployScriptPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'))
+        if ($refocusHookActions.Count -eq 0) {
+            Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'no hook-capable hosts detected'
+        }
+        foreach ($hookAction in $refocusHookActions) {
+            Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome ('{0}: {1}' -f $hookAction.HostKind, $hookAction.Detail)
+        }
+    }
+}
+else {
+    Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'skipped: .specify is absent in brownfield workspace'
+}
+
 Write-Step 'Configuring git for boundary-commit hygiene'
 # F-040 dogfooding fix (calc-v2 + tip-calc 2026-05-23): when the project is in a git repo,
 # silence the LF/CRLF warning wall that otherwise dumps 150+ lines on the user during

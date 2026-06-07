@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.32.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.33.0--beta1-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
@@ -146,7 +146,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 ## Status
 
 - **Latest stable baseline**: 0.32.0 — stable promotion of the F-141/F-170/F-165/F-172 line after beta-before-stable validation; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: next feature branch after 0.32.0; prerelease labels appear here only when a new beta line is actually active
+- **Active development line**: 0.33.0-beta1 (F-171 — Specrew Refocus: the `/specrew-refocus` slash command + event-driven auto-refocus via host hooks that re-load scoped methodology discipline after compaction, on launch, and at boundary crossings)
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
@@ -164,6 +164,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - Validator memoization, parallelization, closed-iteration index, repetition detector — the v0.24.3 process-optimization bundle keeps the discipline cheap to enforce
 - Reviewer-regression routing, session-loaded file change detection, drift-log integrity
 - Pre-boundary markdown-lint auto-fix gate prevents lint round-trips at every boundary commit
+- **Refocus drift recovery** (`/specrew-refocus`) + automatic discipline injection: boundary syncs deliver the incoming stage's rules on every host; post-compaction and session-start hooks re-ground context on hook-capable hosts (Claude/Codex/Copilot/Cursor, per the verified matrix) — with a per-session circuit breaker and three kill-switch levels
 - PR-review-integration soft warning surfaces missing `pr-review-resolution.md` when host has automated review available
 
 ## Lifecycle-adjacent Spec Kit commands

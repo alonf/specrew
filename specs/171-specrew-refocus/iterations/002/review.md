@@ -1,0 +1,46 @@
+# Review: Iteration 002 — research-gated host bindings, carries, docs, beta evidence
+
+**Schema**: v1
+**Reviewed**: 2026-06-07
+**Overall Verdict**: accepted
+
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T013 | FR-013 | pass | Research matrix with ALL sources fetched live 2026-06-07 (none from memory, per the gate's test-integrity control): Claude re-verified (C6 trust-prompt CLOSED — no prompt for project hooks), Codex full-triad capable, Copilot hooks GA (the obsolete "no surface" premise OVERTURNED → spec reconciled as D-002, commit `7a27b48c`), Cursor B2+B3-capable with B1 documented variance, Antigravity deferred-with-path (JS-rendered docs; SDK corroboration only). Latency analysis re-confirmed TG-004: pwsh ~900ms cold spawn rejects per-tool-call events on EVERY host; UserPromptSubmit-class is the cheap B3 home. T014 estimate honestly revised 3.0→6.0 SP in-plan at matrix completion. Commit `287090c6`. |
+| T014 | FR-013, FR-014 | pass | Verified bindings shipped from the matrix, never from memory: Codex B1+B2+B3 (`~/.codex/hooks.json`, top-level event keys, SessionStart source matchers + UserPromptSubmit additionalContext), Copilot B2 (`~/.copilot/hooks/specrew-refocus.json`, wholly-owned file, bash+powershell pair), Cursor B2 (`~/.cursor/hooks.json`, snake_case `additional_context` shaping). hosts/{codex,copilot,cursor}/host.psd1 carry RefocusHookBindings declarations; the dispatcher gained per-host event-shape normalization (camelCase/snake_case session keys, per-host injection output). Catalog provider row gained UserPromptSubmit (the codex-silent bug caught by fixture, fixed at root). Per-host opt-out markers (`refocus-hooks-optout-<kind>`). Deploy suite codex/copilot/cursor sections + dispatcher per-host fixtures all green at review re-run. Commit `287d05b6`. |
+| T015 | FR-007, FR-016 | pass | User-guide refocus section (operator surface: kill-switch matrix, breaker, `--status`/`--reset-breaker`), troubleshooting failure-trace, README bullet; SC-008 beta-validation script authored as a 10-step runtime-evidence-only release gate (file presence explicitly non-satisfying, v0.30.0 lesson) including the Copilot B1 source-check as step 9. Commit `30fc5e24`. |
+| T016 | FR-016 | pass | B4 compaction-steering research record: hook-driven summary steering is UNDOCUMENTED on all four hosts (Claude PostCompact side-effect-only; Copilot preCompact notification-only; Codex systemMessage is surfacing not steering; Cursor observational) → B4 stays research-gated OUT with re-open condition recorded; shipped managed-compaction-points + B1 disk-truth re-injection make summary-survival a nice-to-have, not a dependency. Recorded in research-matrix.md. Commit `30fc5e24`. |
+| T017 | FR-014, FR-018 | pass | Defer-approved carries landed: `refocus-deploy-integration.ps1` (FileListed) with catalog managed-with-overlay merge — per-trigger `enabled` flags + user provider rows captured BEFORE the wholesale canonical refresh and re-applied AFTER; unparsable catalog aborts fail-SAFE in BOTH directions (never merges an aborted capture; never merges INTO an unparsable target). Hook deployment wired into `specrew update` (summary actions) and `specrew init` (DryRun-aware; fail-open). Update never silently flips a disable: proven by the overlay round-trip test (user b1 disable survives canonical refresh). +24 asserts. Commit `64a908e7`. **Review-phase rework (gap caught + fixed at this gate)**: the original init anchor ran BEFORE the Squad-runtime step that provisions `.claude/` in greenfield init, so claude hook deployment was silently skipped on greenfield — caught by disproving the consumer-lane claim against the REAL e2e output, fixed by moving the block below the skill-surface deployment, guarded by a new ordering assert, and re-proven by a full greenfield e2e re-run whose action log shows all four hosts deploying (claude into the project's `.claude/settings.local.json`; codex/copilot/cursor into the user-home configs). |
+
+## Claim-to-Evidence Ledger
+
+| Claim | Evidence |
+| --- | --- |
+| All six refocus suites green at review time | Re-run 2026-06-07 post-T017 + post-rework: engine 40/40, digests 118/118, catalog 74/74, channels 21/21, dispatcher 65/65, deploy 59/59 — 377 asserts, 0 failures (an earlier draft of this ledger summed these to "336" — arithmetic error caught and corrected at this gate, Shape 9 discipline) |
+| T017 wiring does not regress the real update path (producer/consumer rule) | `tests/integration/update-command.ps1` full lane green (exit 0) AFTER the wiring commit; the lane's fixture carries `.specify`, and the wiring empirically EXECUTED inside the consumer window — the real user-home hook configs (`~/.codex/hooks.json`, `~/.copilot/hooks/specrew-refocus.json`, `~/.cursor/hooks.json`) were created/rewritten during the lane runs (file timestamps 05:57–05:58) |
+| T017 wiring EXECUTES (not just parses) in the real greenfield init | `tests/integration/bootstrap-to-iteration.ps1` e2e re-run green (exit 0) post-rework; its action log records `refocus-hooks` lines for all FOUR hosts, and the scratch project's `.claude/settings.local.json` carries our SessionStart entry — the first run of this lane is what EXPOSED the anchor defect (no claude deploy), so this claim is now backed by the discriminating evidence, not lane exit codes |
+| FileList complete incl. the new integration script | `tests/integration/filelist-completeness.tests.ps1` PASS (262 entries; bidirectional guard) |
+| No binding shipped from memory (FR-013 research gate) | research-matrix.md cites primary URL + fetch date per host; Antigravity honestly classified deferred-with-path because its primary contract was NOT fetchable — exactly the contracted no-verification-no-binding outcome |
+| Update never silently flips a human disable (FR-014) | Deploy suite sections 5–6 (opt-out memory) + section 11 (user `b1 enabled:false` survives simulated canonical refresh) |
+| Overlay merge fails SAFE (hardening-gate error-handling concern) | Deploy suite section 13: corrupt catalog → capture aborts, aborted capture never merged, corrupt target never written |
+| Mechanical lenses clean | `run-mechanical-checks.ps1` → `quality/mechanical-findings.json`: `findings: []` (generated 2026-06-07T02:52Z) |
+| Drift D-002 (Copilot hooks GA overturns FR-013 premise) reconciled | drift-log.md D-002; spec.md FR-013 clause updated same-day with the matrix as citation; commit `7a27b48c` |
+
+## Release-Blocking Reminder (not an iteration gap)
+
+SC-008 runtime beta validation (≥2 hook-bound hosts, 10-step script in `specs/171-specrew-refocus/beta-validation.md`) gates stable promotion at feature-closeout/beta time, per the universal beta-before-stable mandate; the Copilot B1 `source`-value check rides as its step 9. This is the contracted release gate, recorded here so review-signoff acceptance is not misread as release readiness; approvals at closeout land in `.squad\decisions.md`.
+
+## Gap Ledger
+
+- T017 greenfield-init anchor defect (hook deployment ran before the step that provisions `.claude/`, silently skipping claude on greenfield init; FR-014): caught by review-phase claim verification, anchor moved below the skill-surface deployment, ordering assert added to the deploy suite, full greenfield e2e re-run proves 4-host deployment: fixed-now.
+- Review.md draft arithmetic error (suite totals mis-summed as 336; actual 377): corrected in this artifact before human presentation: fixed-now.
+- All other in-scope requirements (FR-007, FR-013, FR-014, FR-016, FR-018) verified with no gaps: fixed-now.
+
+## Notes
+
+- Disprove-the-report discipline applied: every suite count above was re-derived by re-running at review time after the final commit (`64a908e7`), not quoted from implementation-time runs; the consumer-side lanes (update-command, bootstrap-to-iteration) were run because T017 modified the producer scripts (`specrew-update.ps1`, `specrew-init.ps1`) — the iter-5 producer/consumer meta-rule.
+- Host-binding asymmetry (Codex triad vs Copilot/Cursor B2-only vs Antigravity none) is CONTRACTED behavior under FR-013 as amended by D-002 — hosts bind exactly the subset their verified surfaces express; B3 reaches every host via channel 1 regardless.
+- Dispatcher suite grew 58→65 and deploy 19→59 versus iteration 001 — the growth is the T014 per-host fixtures and T017 wiring asserts (incl. the rework's ordering guard), matching the revised 6.0 SP scope.
+- **Verification side-finding (disclosed, follow-up filed)**: the consumer e2e lanes (`update-command.ps1`, `bootstrap-to-iteration.ps1`) are NON-HERMETIC for the new hook step — host detection is PATH-based without a home override, so test runs deploy codex/copilot/cursor entries into the REAL user home. Benign by design (entries point at a project-relative dispatcher that self-gates on `.specrew/`, so they no-op outside Specrew projects) and identical to what a real `specrew init/update` would write on this machine — but tests writing the real home is a hermeticity defect. Follow-up candidate for the retro ledger: thread a `-UserHomeOverride` from the e2e lanes through `Invoke-RefocusHookDeployment` to `deploy-refocus-hooks.ps1`. The maintainer is told at the gate and may keep or remove the three user-home files.

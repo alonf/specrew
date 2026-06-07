@@ -27,4 +27,24 @@
     # Phase B handler file (not yet present)
     HandlersFile         = 'handlers.ps1'
     CoordinatorRulesFile = 'coordinator-rules.psd1'
+
+    # Feature 171 (FR-013): refocus hook-binding declaration. Claude has the full
+    # documented hook surface; it binds B1 + B2 via SessionStart (see BoundTriggers
+    # below), and B3 is delivered via channel 1 (the boundary-sync wrapper stdout),
+    # not a hook — so BoundTriggers is @('b1','b2') by design (TG-004a). Consumed by
+    # scripts/internal/deploy-refocus-hooks.ps1; deploys to the PER-USER
+    # project-local settings file (C6 decision: never the shared settings.json,
+    # so cloning a repo can never import auto-executing hooks).
+    # NOTE: PreToolUse is deliberately ABSENT — the gate seat is dormant until
+    # the first gate-kind provider row exists (F-165 coordination).
+    # NOTE: PostToolUse is UNREGISTERED per TG-004 option (a), approved at the
+    # iteration-001 review-signoff (measured ~920ms/call vs the 150ms bar; pwsh
+    # spawn structural). B3 rides channel 1 (boundary-sync wrapper stdout) on
+    # every host; iteration 002 re-evaluates (UserPromptSubmit / engine inlining).
+    RefocusHookBindings = @{
+        BoundTriggers       = @('b1', 'b2')   # b3 via channel 1 (TG-004 option a)
+        Events              = @('SessionStart')
+        SettingsFile        = '.claude/settings.local.json'
+        DispatcherPath      = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+    }
 }

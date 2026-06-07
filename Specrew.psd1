@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.32.0'
+    ModuleVersion = '0.33.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -82,8 +82,21 @@
         'extensions/specrew-speckit/prompts/coordinator-decision-guidance.md',
         'extensions/specrew-speckit/prompts/coordinator-response.md',
         'extensions/specrew-speckit/README.md',
+        'extensions/specrew-speckit/refocus-scopes.json',
+        'extensions/specrew-speckit/refocus/before-implement.md',
+        'extensions/specrew-speckit/refocus/clarify.md',
+        'extensions/specrew-speckit/refocus/feature-closeout.md',
+        'extensions/specrew-speckit/refocus/general.md',
+        'extensions/specrew-speckit/refocus/implement.md',
+        'extensions/specrew-speckit/refocus/iteration-closeout.md',
+        'extensions/specrew-speckit/refocus/plan.md',
+        'extensions/specrew-speckit/refocus/retro.md',
+        'extensions/specrew-speckit/refocus/review-signoff.md',
+        'extensions/specrew-speckit/refocus/specify.md',
+        'extensions/specrew-speckit/refocus/tasks.md',
         'extensions/specrew-speckit/scripts/brownfield-merge.ps1',
         'extensions/specrew-speckit/scripts/collision-detect.ps1',
+        'extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1',
         'extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1',
         'extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1',
         'extensions/specrew-speckit/scripts/drift-diff.ps1',
@@ -98,6 +111,7 @@
         'extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1',
         'extensions/specrew-speckit/scripts/manage-escalation-state.ps1',
         'extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1',
+        'extensions/specrew-speckit/scripts/refocus.ps1',
         'extensions/specrew-speckit/scripts/resolve-quality-profile.ps1',
         'extensions/specrew-speckit/scripts/resume-iteration.ps1',
         'extensions/specrew-speckit/scripts/run-hardening-gate.ps1',
@@ -110,6 +124,7 @@
         'extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1',
         'extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1',
         'extensions/specrew-speckit/scripts/shared-governance.ps1',
+        'extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1',
         'extensions/specrew-speckit/scripts/sync-boundary-state.ps1',
         'extensions/specrew-speckit/scripts/sync-squad-model-overrides.ps1',
         'extensions/specrew-speckit/scripts/Test-CopilotInstructionsChangeType.ps1',
@@ -137,6 +152,7 @@
         'extensions/specrew-speckit/squad-templates/skills/gate-stop.md',
         'extensions/specrew-speckit/squad-templates/skills/iteration-resume.md',
         'extensions/specrew-speckit/squad-templates/skills/README.md',
+        'extensions/specrew-speckit/squad-templates/skills/refocus.md',
         'extensions/specrew-speckit/squad-templates/skills/specrew-help/SKILL.md',
         'extensions/specrew-speckit/squad-templates/skills/specrew-review/SKILL.md',
         'extensions/specrew-speckit/squad-templates/skills/specrew-status/SKILL.md',
@@ -197,6 +213,7 @@
         'scripts/internal/coordinator-prompt-surgery.ps1',
         'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',
+        'scripts/internal/deploy-refocus-hooks.ps1',
         'scripts/internal/design-analysis-gate.ps1',
         'scripts/internal/detect-hosts.ps1',
         'scripts/internal/feature-claims.ps1',
@@ -207,10 +224,13 @@
         'scripts/internal/host-runtime-inventory.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/lens-applicability.ps1',
+        'scripts/internal/refocus-deploy-integration.ps1',
+        'scripts/internal/refocus.ps1',
         'scripts/internal/session-config.ps1',
         'scripts/internal/session-management.ps1',
         'scripts/internal/session-recovery.ps1',
         'scripts/internal/skill-catalog-state.ps1',
+        'scripts/internal/specrew-hook-dispatcher.ps1',
         'scripts/internal/specrew-time.ps1',
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
@@ -283,7 +303,7 @@
             # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
             # leading hyphen. Use dotless forms (beta1, rc1); a dotted 'beta.1' normalizes to 'beta1'.
-            Prerelease = ''
+            Prerelease = 'beta1'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'
