@@ -275,16 +275,16 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state. 0.32.0-beta3 = F-165 Claude verdict-packet collapse fix
-            # (specrew-gate-stop skill with disallowed-tools: AskUserQuestion removes the picker at
-            # boundary verdict stops so the Rule 46 packet renders; rides the 0.32.0 line behind
-            # F-170's beta2 and F-141's beta1). Beta-before-stable mandate: stable promotion only
-            # after manual fresh-install validation passes (promote-prerelease workflow_dispatch).
+            # Source prerelease state. 0.32.0-beta4 = F-172 new-user profile setup copy (Proposal
+            # 170: behavior-centered first-run guidance wording; stable expertise/persona schema
+            # preserved; rides the 0.32.0 line behind F-165's beta3, F-170's beta2, F-141's beta1).
+            # Beta-before-stable mandate: stable promotion only after manual fresh-install validation
+            # passes (promote-prerelease workflow_dispatch).
             # The publish-module.yml workflow stamps the actual published version from the git tag at release
             # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
             # leading hyphen. Use dotless forms (beta1, rc1); a dotted 'beta.1' normalizes to 'beta1'.
-            Prerelease = 'beta3'
+            Prerelease = 'beta4'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'

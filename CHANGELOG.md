@@ -6,6 +6,12 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.32.0-beta4] - 2026-06-07
+
+### Fixed
+
+- **Feature 172 — New-user Crew Interaction Profile setup copy (Proposal 170).** The first-run profile setup read like a self-rated seniority assessment (Learning / Standard / Senior), which confused new users about what the dials control. Reframed it as behavior-centered guidance — Guide me / Collaborate / Be concise (and `auto` / press Enter for recommended defaults) — with per-area "how much guidance do you want?" questions, while preserving the stable Proposal-141 profile schema (`expertise.*` keys, persona IDs, display labels). Blank/whitespace input normalizes to `auto`; `1`–`10` normalize to canonical strings; out-of-range/invalid input is rejected. Additive only — no persisted-profile schema migration. Authorized by Alon Fliess.
+
 ## [0.32.0-beta3] - 2026-06-07
 
 ### Fixed
