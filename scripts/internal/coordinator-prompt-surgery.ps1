@@ -189,6 +189,23 @@ function Get-SpecrewHostInteractionGuidanceBlock {
         $HostKind
     }
 
+    # Feature 165: on the Claude host the AskUserQuestion picker COLLAPSES the Rule 46 six-section
+    # packet into its short header/option fields, so the human is asked to approve what they cannot
+    # read. This is not a conduct gap that another instruction can close -- six conduct amendments
+    # and even a runtime PreToolUse hook-deny were gamed (the model reworded the menu to claim
+    # content was "shown above" that it never rendered). The deterministic fix is to remove the
+    # picker at the stop: boundary VERDICT stops route through the specrew-gate-stop skill, whose
+    # frontmatter `disallowed-tools: AskUserQuestion` deletes the tool for the stop, so there is
+    # nothing to collapse into and the packet MUST render as Markdown. The design workshop and
+    # clarify questions are UNAFFECTED -- they keep the AskUserQuestion picker because their skills
+    # do not disable it; only boundary verdict stops route through specrew-gate-stop.
+    if ($HostKind -eq 'claude') {
+        return @"
+Host-rendered interaction guidance for ${displayName}:
+At every human-verdict boundary stop, invoke the specrew-gate-stop skill to PERFORM the stop. That skill's frontmatter disallows the AskUserQuestion tool, so for the stop you have no picker to collapse into: render the FULL Rule 46 six-section re-entry packet -- What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You, with every artifact reference a visible bare file:/// URL -- followed by the four verdict options as a numbered Markdown list, then stop for the human's typed choice. Do NOT call AskUserQuestion directly for a boundary verdict on this host: it collapses the packet into the picker's short fields, so the human is asked to approve content they cannot read -- that is a Rule 46 violation, not a valid stop. The design workshop and clarify questions are UNAFFECTED -- they keep the AskUserQuestion picker (their skills do not disable it); ONLY boundary verdict stops route through specrew-gate-stop. Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. Initial feature intake may remain free-form.
+"@
+    }
+
     $primitive = if ($manifest.ContainsKey('StructuredQuestionPrimitive')) { [string]$manifest.StructuredQuestionPrimitive } else { '' }
     $guidance = if ($manifest.ContainsKey('StructuredQuestionGuidance')) { [string]$manifest.StructuredQuestionGuidance } else { '' }
 
@@ -201,7 +218,7 @@ function Get-SpecrewHostInteractionGuidanceBlock {
 Host-rendered interaction guidance for ${displayName}:
 $guidance
 Structured primitive: $primitive.
-Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. If the structured primitive is unavailable in the running host session, emit the textual "What's your verdict?" options exactly as shown above. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known; otherwise ask a concise free-form question.
+Render the Rule 46 six-section re-entry packet as PROSE in your message FIRST, then call the structured primitive only for the verdict selection. The primitive's fields are short labels by design (a ~12-character header, 1-to-5-word option labels) and CANNOT carry the packet -- the What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts content, with its file:/// links, lives in your prose ABOVE the call. A verdict menu raised without the full packet rendered above it (a bare "What's your verdict?" that skipped the packet) is a Rule 46 violation, not a valid stop -- the menu is only the short picker that follows the rendered packet. Render the four choices from the response contract exactly: approve as-is, approve with instructions, send back, and discuss prompt #N. If the structured primitive is unavailable in the running host session, emit the textual "What's your verdict?" options exactly as shown above. Initial feature intake may remain free-form. Clarify questions should use structured choices when the expected answer set is known; otherwise ask a concise free-form question.
 "@
     }
 

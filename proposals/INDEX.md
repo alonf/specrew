@@ -19,7 +19,7 @@ amendments in the source proposal without showing them as unimplemented backlog.
 |---|---|---|---|
 | _None currently recorded_ | — | — | — |
 
-## Shipped (30)
+## Shipped (32)
 
 Proposals whose features have shipped to main and are part of Specrew's current capability.
 
@@ -55,6 +55,8 @@ Proposals whose features have shipped to main and are part of Specrew's current 
 | [046](046-auto-render-dashboard-at-closeout.md) | Auto-Render Dashboard at Iteration & Feature Closeout — auto-render slice ONLY (boundary-sync writes `iterations/<NNN>/dashboard.md` + `closeout-dashboard.md`); roadmap-aware drill-down + trap-reapplication summary + cross-iteration diff remain candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-2 | 2 (shipped slice) |
 | [057](057-roadmap-spine-input-adapter-pattern.md) | Roadmap Spine + Input Adapter Pattern — stub-bootstrap slice ONLY (`specrew init` writes minimal `.specrew/roadmap.yml`); full input-adapter system (manual / GitHub Issues / Linear / etc.) remains candidate | fix-bundle `162bcdb9` (v0.26.0 — partially-shipped) | phase-3 | 1 (shipped slice) |
 | [152](152-small-fix-hardening-carveouts.md) | Small-Fix Hardening Carveouts (Iteration Padding, Allow-All Safety, Windows Shell Rule) | chore `d5e61b36` (2026-06-01) | phase-2 | 2-3 |
+| [169](169-retire-top-level-evaluation-surface.md) | Retire Top-Level Evaluation Surface (scorer preserved as test support under `tests/support/`; stale public surface deleted) | feature-170 | phase-2 | 2 |
+| [170](170-new-user-profile-setup-copy.md) | New-User Crew Interaction Profile Setup Copy (guidance-centered first-run profile setup, Enter-for-auto, stable Proposal-141 schema preserved) | feature-172 | phase-2 | 3 |
 
 ## Draft (34)
 
@@ -209,7 +211,7 @@ Idea-form proposals not yet developed into full source specs. Open for discussio
 | [166](166-concurrent-development-hygiene.md) | Concurrent Development Hygiene (Tracked-State Separation + Collision Floors) — practical foundation for safer parallel Specrew worktrees before the full Proposal 148/010/115 multi-developer stack: starts with an Iteration 0 coverage foundation for file-surface classification, changed-file policy, collision reporting, ledger compatibility, generated-mirror discipline, and runtime-local state policy; then classifies surfaces as source/generated/runtime/global-ledger/worktree-pointer/release-only/central-hub; warns on generated mirrors and release-only churn; splits global ledgers such as `.squad/decisions.md`; adds a collision-report MVP over active worktrees/branches; and requires central-hub decomposition checks. Empirically motivated by the 2026-06-06 audit of active Feature 141 / 159 / 160 / 161 worktrees, where most overlap came from repo-global state, generated mirrors, proposal indexes, and governance surfaces rather than feature-owned source code. | phase-2 | 14-24 |
 | [167](167-post-ship-proposal-amendment-discipline.md) | Post-Ship Proposal Amendment Discipline — shipped and superseded proposals are historical records; behavior-changing updates must be explicit post-ship amendments or new/superseding proposals, with delta summary, implementation owner, preserve list, tests-required list, index/status visibility, and review checks so new work is not silently hidden and old shipped behavior is not reimplemented by accident. | phase-2 | 3-5 |
 | [168](168-claude-boundary-packet-stop-hook.md) | **HIGH PRIORITY (Tier 1)** — Claude Boundary Packet Stop Hook — Claude-only Stop hook that inspects `last_assistant_message`, reads Specrew artifacts and git state as truth, and blocks once when a lifecycle boundary turn ends with only an MCQ/verdict menu or otherwise incomplete human re-entry packet. Uses `stop_hook_active` to avoid loops, keeps MessageDisplay display-only, treats PreToolUse as a narrow optional guard for boundary verdict menus, and records the official Claude hook URLs plus local Specrew instruction surfaces used for the design. | phase-2 | 6-10 |
-| [169](169-retire-top-level-evaluation-surface.md) | Retire Top-Level Evaluation Surface — remove the stale `evaluation/` public-looking directory while preserving the live process-quality scorer under `tests/support/`; keep CI regression coverage through the existing process-quality integration tests and stop advertising `evaluation/report.md` as a current user workflow. | phase-2 | 1-2 |
+| [171](171-ci-wire-user-profile-intake-tests.md) | CI Wire User-Profile Intake Integration Tests — follow-up for the pre-existing inert-test pattern where `f049-i003-intake-engine-tests.ps1` carries local-only profile/intake coverage; add CI wiring only after Linux-safety audit to avoid blind multi-host breakage. | phase-2 | 2-4 |
 
 ---
 
@@ -238,10 +240,11 @@ For roadmap-style viewing, proposals grouped by phase placement:
 - 036 (Branch Reconciliation — draft, SDLC pillar)
 - 073 (Review Evidence Integrity — shipped as feature-028)
 - 079 (Version Information Supported-vs-Latest — shipped as small-fix slice in v0.24.2 bundle)
+- 170 (New-User Profile Setup Copy — shipped as feature-172)
 - 074 (Code Commentary Standards — draft, queue after 073)
 - 151 (Boundary Handoff Contract Unification — draft, immediate small-fix)
 - 155 (Typed Boundary Gate Packets — draft, high-priority authoritative gate packet hardening)
-- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106, 141, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169 (candidates)
+- 013, 014, 015, 017, 018, 019, 020, 021, 022, 023, 027, 028, 029, 037, 038, 042, 044, 045, 046, 047, 048, 049, 050, 051, 053, 054, 056, 059, 060, 061, 062, 071, 077, 078, 080, 081, 082, 091, 093, 094, 095, 097, 098, 101, 104, 106, 141, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 171 (candidates)
 
 **Phase 3** (refactor + maintainability + upstream reconciliation + extensibility):
 

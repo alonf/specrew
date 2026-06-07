@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/172-profile-setup-ux-copy/spec.md",
+  "iterationRef": "specs/172-profile-setup-ux-copy/iterations/001",
+  "generatedAt": "2026-06-07T08:42:52Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.32.0"
+  },
+  "findings": []
+}

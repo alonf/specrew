@@ -160,9 +160,15 @@ function New-TestWorkspace {
     param(
         [Parameter(Mandatory = $true)][string]$WorkspaceName,
         [Parameter(Mandatory = $true)][string]$BaseFixture,
-        [Parameter(Mandatory = $true)][string]$ChangedFixture,
-        [Parameter(Mandatory = $true)][string]$Status
+        [string]$ChangedFixture,
+        [Parameter(Mandatory = $true)][string]$Status,
+        [string]$ChangedStatus,
+        [switch]$DeleteInsteadOfChange
     )
+
+    if (-not $DeleteInsteadOfChange -and [string]::IsNullOrWhiteSpace($ChangedFixture)) {
+        throw "New-TestWorkspace: -ChangedFixture is required unless -DeleteInsteadOfChange is set (the non-delete path always consumes it)."
+    }
 
     $destination = Join-Path $script:scratchRoot $WorkspaceName
     if (Test-Path -LiteralPath $destination) {
@@ -183,8 +189,17 @@ function New-TestWorkspace {
     Invoke-TestGit -Workspace $destination -Arguments @('update-ref', 'refs/remotes/origin/main', 'HEAD') | Out-Null
     Invoke-TestGit -Workspace $destination -Arguments @('checkout', '-B', 'feature/post-ship-amendment') | Out-Null
 
-    Set-SyntheticProposal -Workspace $destination -Text (Get-ProposalFixtureText -Name $ChangedFixture -Status $Status)
-    Invoke-TestGit -Workspace $destination -Arguments @('add', 'proposals/900-synthetic-post-ship.md') | Out-Null
+    if ($DeleteInsteadOfChange) {
+        # Find 5 (#1761): exercise the deletion-bypass path (proposal removed entirely).
+        Invoke-TestGit -Workspace $destination -Arguments @('rm', 'proposals/900-synthetic-post-ship.md') | Out-Null
+    }
+    else {
+        # Find 5 (#1761): an explicit ChangedStatus exercises the downgrade-bypass path
+        # (baseline status differs from the current status).
+        $effectiveChangedStatus = if ([string]::IsNullOrWhiteSpace($ChangedStatus)) { $Status } else { $ChangedStatus }
+        Set-SyntheticProposal -Workspace $destination -Text (Get-ProposalFixtureText -Name $ChangedFixture -Status $effectiveChangedStatus)
+        Invoke-TestGit -Workspace $destination -Arguments @('add', 'proposals/900-synthetic-post-ship.md') | Out-Null
+    }
     Invoke-TestGit -Workspace $destination -Arguments @('commit', '-m', 'changed fixture') | Out-Null
 
     return $destination
@@ -252,6 +267,33 @@ try {
         Assert-Match -Text $result.Text -Pattern 'missing required fields' -Message "Malformed fixture did not name missing fields for $($case.Name)."
         Assert-Match -Text $result.Text -Pattern "invalid status 'parked'" -Message "Malformed fixture did not name invalid status for $($case.Name)."
         Assert-NotMatch -Text $result.Text -Pattern 'WARN \[post-ship-proposal\] normative-body-edit' -Message "Malformed fixture emitted body-edit warning for $($case.Name)."
+
+        # Find 5 (#1761) downgrade-bypass: a shipped/superseded proposal downgraded to a mutable
+        # status in the SAME change must not slip a body edit past the gate (baseline status governs).
+        $workspace = New-TestWorkspace -WorkspaceName ("downgrade-bypass-{0}" -f $case.Name) -BaseFixture 'base-proposal.md' -ChangedFixture 'unsafe-body-edit.md' -Status 'shipped' -ChangedStatus 'draft'
+        $result = Invoke-ValidatorScript -ScriptPath $case.ScriptPath -ProjectPath $workspace
+        Assert-True -Condition ($result.ExitCode -eq 0) -Message "Downgrade-bypass fixture unexpectedly failed for $($case.Name): $($result.Text)"
+        Assert-Match -Text $result.Text -Pattern 'WARN \[post-ship-proposal\] normative-body-edit' -Message "Downgrade-bypass (shipped->draft + body edit) was not caught for $($case.Name)."
+        Assert-Match -Text $result.Text -Pattern 'proposals/900-synthetic-post-ship\.md' -Message "Downgrade-bypass warning did not name the proposal for $($case.Name)."
+
+        # Find 5 (#1761) deletion-bypass: deleting a shipped/superseded proposal must warn (the
+        # diff-filter previously excluded deletions). Supersede via a new proposal, do not remove.
+        $workspace = New-TestWorkspace -WorkspaceName ("deletion-bypass-{0}" -f $case.Name) -BaseFixture 'base-proposal.md' -Status 'shipped' -DeleteInsteadOfChange
+        $result = Invoke-ValidatorScript -ScriptPath $case.ScriptPath -ProjectPath $workspace
+        Assert-True -Condition ($result.ExitCode -eq 0) -Message "Deletion-bypass fixture unexpectedly failed for $($case.Name): $($result.Text)"
+        Assert-Match -Text $result.Text -Pattern 'WARN \[post-ship-proposal\] normative-body-edit' -Message "Deletion-bypass (deleted shipped proposal) was not caught for $($case.Name)."
+        Assert-Match -Text $result.Text -Pattern 'was deleted' -Message "Deletion-bypass warning did not explain the deletion for $($case.Name)."
+
+        # Find 5 / Codex C2 (#1761) invalid-status-downgrade bypass: a shipped/superseded baseline
+        # downgraded to a missing/unknown current status (e.g. 'parked') in the SAME change must NOT
+        # slip a body edit past the gate -- the invalid-status guard previously `continue`d before the
+        # baseline-governance check. The baseline status still governs.
+        $workspace = New-TestWorkspace -WorkspaceName ("invalid-status-bypass-{0}" -f $case.Name) -BaseFixture 'base-proposal.md' -ChangedFixture 'unsafe-body-edit.md' -Status 'shipped' -ChangedStatus 'parked'
+        $result = Invoke-ValidatorScript -ScriptPath $case.ScriptPath -ProjectPath $workspace
+        Assert-True -Condition ($result.ExitCode -eq 0) -Message "Invalid-status-bypass fixture unexpectedly failed for $($case.Name): $($result.Text)"
+        Assert-Match -Text $result.Text -Pattern 'WARN \[post-ship-proposal\] normative-body-edit' -Message "Invalid-status-bypass (shipped->parked + body edit) was not caught for $($case.Name)."
+        Assert-Match -Text $result.Text -Pattern 'proposals/900-synthetic-post-ship\.md' -Message "Invalid-status-bypass warning did not name the proposal for $($case.Name)."
+        Assert-Match -Text $result.Text -Pattern 'baseline status' -Message "Invalid-status-bypass did not surface that the baseline status governs for $($case.Name)."
     }
 
     $proposalDiscipline = Get-Content -LiteralPath (Join-Path $script:repoRoot 'docs\methodology\proposal-discipline.md') -Raw -Encoding UTF8

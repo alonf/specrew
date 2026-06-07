@@ -1,5 +1,5 @@
 ---
-focus_area: "F-051 Multi-Session Foundation — Iteration 003 closed; feature-closeout release SDLC active."
+focus_area: "171-specrew-refocus (iteration 002 closed; integrating origin/main before feature-closeout)"
 active_issues: "[]"
 schema: v1
 updated_at: 2026-06-07T20:05:47Z
@@ -15,8 +15,4 @@ session_state_recorded_at: 2026-06-07T20:05:47Z
 
 # What We're Focused On
 
-F-051 Multi-Session Foundation completed Iteration 003 and is in feature-closeout release SDLC.
-
-- Iteration: 003
-- Task: (none)
-- Recorded at: 2026-05-31T23:41:30Z
+Active: Feature 171 (specrew-refocus), iteration 002 closed; integrating origin/main (0.32.0 stable, incl. F-165 gate-stop) before feature-closeout. Last completed on main: Feature 172 at 2026-06-07T16:45:35Z.

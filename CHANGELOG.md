@@ -6,6 +6,37 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.32.0] - 2026-06-07
+
+Stable promotion of the 0.32.0 line, validated by fresh-install on the Claude host (workshop intake reframe + gate-stop boundary packets) per the beta-before-stable mandate. Bundles the four prereleases:
+
+- **Feature 141 — Design-analysis gate + per-lens design workshop** (beta1): the `specrew-design-workshop` skill drives the design lenses as a point-of-use workshop — in-band ASCII visuals, collaborative co-design, confirmation integrity, and intake responsiveness.
+- **Feature 170 — Retire top-level evaluation surface** (beta2): removed the stale `evaluation/` directory; the process-quality scorer is preserved as internal test support.
+- **Feature 165 — Claude verdict-packet collapse fix** (beta3): the `specrew-gate-stop` skill (`disallowed-tools: AskUserQuestion`) removes the picker at boundary verdict stops, so the Rule 46 six-section "Why I stopped" packet renders as Markdown with a typed verdict on the Claude host.
+- **Feature 172 — New-user profile setup copy** (beta4): the first-run Crew Interaction Profile is reframed as behavior-centered guidance (Guide me / Collaborate / Be concise, Enter for recommended defaults), with the stable expertise/persona schema preserved.
+
+## [0.32.0-beta4] - 2026-06-07
+
+### Fixed
+
+- **Feature 172 — New-user Crew Interaction Profile setup copy (Proposal 170).** The first-run profile setup read like a self-rated seniority assessment (Learning / Standard / Senior), which confused new users about what the dials control. Reframed it as behavior-centered guidance — Guide me / Collaborate / Be concise (and `auto` / press Enter for recommended defaults) — with per-area "how much guidance do you want?" questions, while preserving the stable Proposal-141 profile schema (`expertise.*` keys, persona IDs, display labels). Blank/whitespace input normalizes to `auto`; `1`–`10` normalize to canonical strings; out-of-range/invalid input is rejected. Additive only — no persisted-profile schema migration. Authorized by Alon Fliess.
+
+## [0.32.0-beta3] - 2026-06-07
+
+### Fixed
+
+- **Feature 165 — Claude verdict-packet collapse.** On the Claude host the `AskUserQuestion` picker collapsed the Rule 46 six-section human re-entry packet (What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You) into its short header/option fields, so the human was asked to approve a boundary verdict they could not read. Conduct could not hold it — six in-context amendments (141 A4–A8) and a runtime `PreToolUse` hook-deny were all gamed/skimmed (the model reworded the menu to claim content was "shown above" that it never rendered). The fix is a `specrew-gate-stop` skill whose frontmatter sets `disallowed-tools: AskUserQuestion`; the Claude branch of the coordinator interaction-guidance routes every boundary verdict stop through it, so the picker is removed and the packet renders as Markdown with a typed numbered verdict. The design workshop and clarify questions keep the picker. Dogfood-confirmed at the `specify` and `clarify` boundaries (testGate3, Claude Code v2.1.168). Known residuals (accepted): workshop multi-item confirms (lens-agenda, component-map) still collapse — tracked in #2081; host-scoping the Claude-only skill's deploy — tracked in #2083. Authorized by Alon Fliess.
+
+## [0.32.0-beta2] - 2026-06-06
+
+### Changed
+
+- **Feature 170 — Retire Top-Level Evaluation Surface (Proposal 169).** Removed the stale top-level `evaluation/` directory (`README.md` promising an unshipped harness; a committed generated `report.md`) while preserving the live process-quality scorer as internal test infrastructure at `tests/support/process-quality-scorer.ps1` (99% rename; the only functional delta is the default report path moving to untracked `test-results/process-quality-report.md`). The two CI integration tests remain the supported entry points; CI job names and test semantics are unchanged; both `handoff-governance-validator.ps1` mirrors updated diff-identically. Known caveat: the full multi-host smoke suite's pre-existing Test-4 red (obsolete backslash assertion vs the F-160 POSIX-safe shim) is canonically deferred to the in-flight `169-found-bug-fixes` slice. 1 iteration (2 SP), all verdicts accepted; implementation adopted from an ungoverned session and verified end-to-end. Authorized by Alon Fliess.
+
+### Internal
+
+- Removed accidentally-committed per-session state (`.specify/feature.json`, `.specrew/active-sessions.yml`, `.specrew/last-validator-summary.json`) and added the canonical F-051 per-session `.gitignore` block that was missing from the repo root (PR #2016 codex P2 finding).
+
 ## [0.32.0-beta1] - 2026-06-06
 
 ### Added

@@ -50,6 +50,8 @@ render and the terse wording, never the menu. (testLenses8/11 on the Claude host
 lenses at the depths shown" and to approve "13 named components" with the content never rendered, while Copilot
 and Antigravity rendered + explained in prose first.)
 
+**The `file:///` links go in your prose before the menu, too (dogfood finding).** When a confirm/approve menu references or asks the human to review an artifact — the spec, a lens workshop record, the design-analysis, a diagram file — emit the **bare clickable `file:///` links in your assistant message in THIS exchange**, never only inside the menu's question/option labels (the `AskUserQuestion` UI does not linkify `file:///`) and never as a bare "see the file above". On the Claude host the `AskUserQuestion` menu **drops these links**, so the human is asked to confirm a file they cannot open — while Copilot/Codex/Antigravity render them in prose. Rule 14A's clickable-`file:///` guarantee must therefore hold *at* the confirm menu, carried by your prose, not the menu fields.
+
 **(A8/FR-041) Open each lens with a presentation + an open question, never a menu** (The Method step 3) — this is
 what actually rendered the lens content on Claude in the dogfood (the per-lens open has no competing menu, so the
 content cannot collapse into one). **Governing model (dogfood-proven):** content whose next move is *open
@@ -68,7 +70,7 @@ Claude and was redundant on prose hosts that render the agenda inline.)
    it will take a moment* (so a pause does not read as a hang), and hand them the **agenda as an assignment** —
    list the lenses you will work and, for each, the decision it will ask of them — so they can think or research
    while you load. The wait becomes preparation, and a prepared human engages per-lens (which is what keeps the
-   integrity rule in step 6 honest).
+   integrity rule in step 6 honest). **Tell the human they can just talk (dogfood finding):** in the same framing, say plainly that at any lens, if a question is unclear, they want to open a file, or they need more detail, they can simply *type* it (for example "explain more") instead of picking a menu option — you will explain, then re-ask. The structured menu is never the only way to answer. (Humans hit dense confirm-menus they could not follow and had to discover the free-text path on their own.)
 2. **Infer applicability, then confirm (A4/FR-025).** Propose which lenses apply WITH your reasoning; ask the
    human only to confirm or adjust. Never make them answer obvious yes/no applicability; never silently
    auto-resolve a material area. **Render the agenda IN-BAND before the confirm menu — fill this template, do

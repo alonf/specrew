@@ -15,14 +15,14 @@ function Write-Fail {
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
-$scorerScript = Join-Path -Path $repoRoot -ChildPath 'evaluation\scorers\process-scorer.ps1'
+$scorerScript = Join-Path -Path $repoRoot -ChildPath 'tests\support\process-quality-scorer.ps1'
 $scratchRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\process-quality-report'
 $projectRoot = Join-Path -Path $scratchRoot -ChildPath 'project'
 $iterationOneRoot = Join-Path -Path $projectRoot -ChildPath 'specs\001-eval-feature\iterations\001'
 $iterationTwoRoot = Join-Path -Path $projectRoot -ChildPath 'specs\001-eval-feature\iterations\002'
 $iterationOneQualityRoot = Join-Path -Path $iterationOneRoot -ChildPath 'quality'
 $iterationTwoQualityRoot = Join-Path -Path $iterationTwoRoot -ChildPath 'quality'
-$reportPath = Join-Path -Path $projectRoot -ChildPath 'evaluation\report.md'
+$reportPath = Join-Path -Path $projectRoot -ChildPath 'test-results\process-quality-report.md'
 
 if (Test-Path -LiteralPath $scratchRoot) {
     Remove-Item -LiteralPath $scratchRoot -Recurse -Force
@@ -168,7 +168,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if (-not (Test-Path -LiteralPath $reportPath -PathType Leaf)) {
-    Write-Fail 'Process scorer did not create evaluation\report.md.'
+    Write-Fail 'Process scorer did not create test-results\process-quality-report.md.'
     exit 1
 }
 
