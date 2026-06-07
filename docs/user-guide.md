@@ -781,6 +781,15 @@ This discipline ships in three tiers:
 
 Each tier is its own slice; Tier 1 ships first as a methodology-text addition, Tier 2/Tier 3 follow as later releases when empirical data justifies the additional enforcement weight.
 
+## Refocus — Drift Recovery + Automatic Discipline Injection (Feature 171)
+
+Long sessions drift: compaction destroys methodology context, cold launches never load it, and stage discipline goes stale across lifecycle gates. The refocus surface fixes all three:
+
+- **Manual recovery (every host)**: run `/specrew-refocus` any time — no-args loads the always-true core + the current stage''s discipline digest; `--boundary <stage>` and `--role <name>` scope it; `--status` shows the operational truth (kill switches, breaker state, injection journal); `--compact-instructions` emits a paste-ready `/compact` preserve-list built from live lifecycle state.
+- **Boundary-cross injection (every host, mechanical)**: every boundary sync appends the INCOMING stage''s digest to its own output — treat any `[specrew-refocus]` block in tool output as binding stage discipline.
+- **Hook triggers (per host, per the verified matrix)**: Claude re-injects after compaction and on session start; Codex binds the full triad (post-compaction, launch, and per-prompt boundary checks); Copilot and Cursor re-ground on session start. Hooks deploy to PER-USER config only (never shared settings — a cloned repo can never import auto-executing hooks) and respect a recorded opt-out.
+- **Safety**: a per-session circuit breaker trips on runaway injection (loudly once, with re-enable guidance); kill switches at three levels (`SPECREW_REFOCUS_DISABLE=1` env, per-trigger `enabled: false` in `refocus-scopes.json`, hook de-registration via `deploy-refocus-hooks.ps1 -Remove`); `specrew update` never silently flips a disable decision in either direction.
+
 ## What's Coming
 
 The next release queue focuses on intake quality, expert-developer ergonomics, and multi-host expansion. Active proposals worth tracking:

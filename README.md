@@ -164,6 +164,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - Validator memoization, parallelization, closed-iteration index, repetition detector — the v0.24.3 process-optimization bundle keeps the discipline cheap to enforce
 - Reviewer-regression routing, session-loaded file change detection, drift-log integrity
 - Pre-boundary markdown-lint auto-fix gate prevents lint round-trips at every boundary commit
+- **Refocus drift recovery** (`/specrew-refocus`) + automatic discipline injection: boundary syncs deliver the incoming stage's rules on every host; post-compaction and session-start hooks re-ground context on hook-capable hosts (Claude/Codex/Copilot/Cursor, per the verified matrix) — with a per-session circuit breaker and three kill-switch levels
 - PR-review-integration soft warning surfaces missing `pr-review-resolution.md` when host has automated review available
 
 ## Lifecycle-adjacent Spec Kit commands

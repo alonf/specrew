@@ -50,8 +50,8 @@
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T013 | Research matrix: Antigravity/Cursor/Codex/Copilot hook surfaces + Claude trust-prompt (C6) + per-event latency measurement | FR-013 | US3 | 3.0 | Implementer | specs/171-specrew-refocus/research-matrix.md | done | claude | 3.0 | pass |
 | T014 | Verified host bindings per matrix + simulated-event fixtures; documented-variance entries for failures | FR-013, FR-014 | US3 | 6.0 | Implementer | hosts/**, tests/integration/refocus-dispatcher.tests.ps1 | done | claude | 6.0 | pass |
-| T015 | Docs (user-guide, troubleshooting failure trace, README touch) + SC-008 beta validation script/evidence prep | FR-007, FR-016 | US4 | 1.5 | Implementer | docs/**, README.md | planned | claude | | |
-| T016 | B4 compaction-steering research record (research-gated OUT; findings only) | FR-016 | US5 | 0.5 | Implementer | specs/171-specrew-refocus/research-matrix.md | planned | claude | | |
+| T015 | Docs (user-guide, troubleshooting failure trace, README touch) + SC-008 beta validation script/evidence prep | FR-007, FR-016 | US4 | 1.5 | Implementer | docs/**, README.md | done | claude | 1.5 | pass |
+| T016 | B4 compaction-steering research record (research-gated OUT; findings only) | FR-016 | US5 | 0.5 | Implementer | specs/171-specrew-refocus/research-matrix.md | done | claude | 0.5 | pass |
 | T017 | Defer-approved carries: init/update wiring for deploy-refocus-hooks + catalog managed-with-overlay merge on update + wiring tests | FR-014, FR-018 | US4 | 1.5 | Implementer | scripts/specrew-init.ps1, scripts/specrew-update.ps1, extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1, tests/integration/refocus-deploy.tests.ps1 | planned | claude | | |
 
 ## Effort Model

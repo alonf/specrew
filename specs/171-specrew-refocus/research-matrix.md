@@ -61,6 +61,17 @@
 | B3 boundary-cross | channel 1 (TG-004a); candidate move: UserPromptSubmit | UserPromptSubmit `additionalContext` | userPromptSubmitted / postToolUse (verify payloads) | postToolUse `additional_context` | deferred |
 | Settings placement (C6) | `.claude/settings.local.json` (SHIPPED) | repo `.codex/hooks.json` if gitignored, else `~/.codex/hooks.json` + self-gate | `.github/copilot/settings.local.json` or `~/.copilot/hooks/` + self-gate | `~/.cursor/hooks.json` + self-gate (project hooks.json is shareable) | deferred |
 
+## B4 compaction-steering research record (T016 — research-gated OUT; findings only)
+
+The question B4 asked: can preserve-instructions injected at compaction time steer WHAT survives the summary?
+
+- **Claude**: `PreCompact` receives `custom_instructions` (populated from `/compact <args>` on manual compaction) but the docs do not state that hook OUTPUT can add or modify those instructions; `PostCompact` is explicitly "side-effect only — cannot modify behavior". **Mechanism for hook-driven steering: NOT documented.** Manual steering EXISTS via `/compact <instructions>` — which is exactly what shipped as managed compaction points (`--compact-instructions`, T012).
+- **Copilot**: `preCompact` stdin carries `customInstructions` (read-only observation per the reference; output marked "notification only"). **No documented steering.**
+- **Codex**: `PreCompact`/`PostCompact` support `systemMessage` (user-facing surfacing) — no documented summary-steering field.
+- **Cursor**: `preCompact` is observational (usage stats; `user_message` display output). **No steering.**
+
+**Conclusion (B4 disposition unchanged)**: hook-driven auto-compact steering is undocumented on all four hosts — B4 stays research-gated OUT. The shipped approach is structurally sufficient: (1) managed compaction points steer MANUAL compaction via the human (`/compact` preserve-list generated from live state); (2) B1 re-injection restores discipline from DISK after any compaction, making summary-survival a nice-to-have rather than a dependency. Re-open B4 only if a host documents a steering output field.
+
 ## T014 estimate revision (recorded for the plan)
 
 The matrix confirms **three** immediately bindable hosts (Codex, Copilot, Cursor) with **three different config formats and two field-casing conventions** — T014's 3.0 SP planning estimate was set against an assumed smaller surface. Revised: **6.0 SP** (per-host deploy writer + dispatcher event-shape normalization + fixtures per host), iteration total **12.5/20 SP** — within cap, no deferral required; revision recorded in plan.md notes per estimation-honesty discipline.
