@@ -221,3 +221,6 @@ closed:
   - feature: 171-specrew-refocus
     iteration: 001
     closed_at: 2026-06-07T01:50:49Z
+  - feature: 171-specrew-refocus
+    iteration: 002
+    closed_at: 2026-06-07T20:05:49Z

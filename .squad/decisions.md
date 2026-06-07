@@ -24700,3 +24700,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: e92fd13247789c44be87a3ff1b5801f27390022e
 - **Recorded At**: 2026-06-07T19:51:09Z
+
+## 2026-06-07T20:05:48Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9bed41a2e6dbdb91fcade1bf6008e92c223748e1
+- **Recorded At**: 2026-06-07T20:05:47Z
