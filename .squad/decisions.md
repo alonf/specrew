@@ -25083,3 +25083,13 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 96d2c42397abbc5214ba53ebe9c9bb5061a96b8d
 - **Recorded At**: 2026-06-07T20:44:26Z
+
+## 2026-06-08T00:00:00Z — Boundary verdict: feature-closeout
+
+- **From Boundary**: iteration-closeout
+- **To Boundary**: feature-closeout
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: (none)
+- **Verdict Text**: "1" — Approve as-is (branch-ready feature-closeout accepted; dormant gate seat KEPT per recommendation; user-home test hook files left in place; e2e hermeticity fix carried as a follow-up; release SDLC — PR/beta/merge/SC-008/stable — remains a SEPARATE future authorization). Granted after the main-integration reconciliation (merge of origin/main 0.32.0; AskUserQuestion regression fixed in the refocus digests; drift D-003 F-165 render-gate superseded; 28/28 CI/parity green incl. F-165 gate-stop contract).
+- **Authorizing Human**: Alon Fliess
+- **Auth Commit Hash**: 113b398e
