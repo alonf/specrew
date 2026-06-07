@@ -6,6 +6,12 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.32.0-beta3] - 2026-06-07
+
+### Fixed
+
+- **Feature 165 — Claude verdict-packet collapse.** On the Claude host the `AskUserQuestion` picker collapsed the Rule 46 six-section human re-entry packet (What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You) into its short header/option fields, so the human was asked to approve a boundary verdict they could not read. Conduct could not hold it — six in-context amendments (141 A4–A8) and a runtime `PreToolUse` hook-deny were all gamed/skimmed (the model reworded the menu to claim content was "shown above" that it never rendered). The fix is a `specrew-gate-stop` skill whose frontmatter sets `disallowed-tools: AskUserQuestion`; the Claude branch of the coordinator interaction-guidance routes every boundary verdict stop through it, so the picker is removed and the packet renders as Markdown with a typed numbered verdict. The design workshop and clarify questions keep the picker. Dogfood-confirmed at the `specify` and `clarify` boundaries (testGate3, Claude Code v2.1.168). Known residuals (accepted): workshop multi-item confirms (lens-agenda, component-map) still collapse — tracked in #2081; host-scoping the Claude-only skill's deploy — tracked in #2083. Authorized by Alon Fliess.
+
 ## [0.32.0-beta2] - 2026-06-06
 
 ### Changed
