@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 9.5/20 story_points
+**Capacity**: 12.5/20 story_points
 **Started**: 2026-06-07
 **Completed**:
 
@@ -48,8 +48,8 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T013 | Research matrix: Antigravity/Cursor/Codex/Copilot hook surfaces + Claude trust-prompt (C6) + per-event latency measurement | FR-013 | US3 | 3.0 | Implementer | specs/171-specrew-refocus/research-matrix.md | planned | claude | | |
-| T014 | Verified host bindings per matrix + simulated-event fixtures; documented-variance entries for failures | FR-013, FR-014 | US3 | 3.0 | Implementer | hosts/**, tests/integration/refocus-dispatcher.tests.ps1 | planned | claude | | |
+| T013 | Research matrix: Antigravity/Cursor/Codex/Copilot hook surfaces + Claude trust-prompt (C6) + per-event latency measurement | FR-013 | US3 | 3.0 | Implementer | specs/171-specrew-refocus/research-matrix.md | done | claude | 3.0 | pass |
+| T014 | Verified host bindings per matrix + simulated-event fixtures; documented-variance entries for failures | FR-013, FR-014 | US3 | 6.0 | Implementer | hosts/**, tests/integration/refocus-dispatcher.tests.ps1 | planned | claude | | |
 | T015 | Docs (user-guide, troubleshooting failure trace, README touch) + SC-008 beta validation script/evidence prep | FR-007, FR-016 | US4 | 1.5 | Implementer | docs/**, README.md | planned | claude | | |
 | T016 | B4 compaction-steering research record (research-gated OUT; findings only) | FR-016 | US5 | 0.5 | Implementer | specs/171-specrew-refocus/research-matrix.md | planned | claude | | |
 | T017 | Defer-approved carries: init/update wiring for deploy-refocus-hooks + catalog managed-with-overlay merge on update + wiring tests | FR-014, FR-018 | US4 | 1.5 | Implementer | scripts/specrew-init.ps1, scripts/specrew-update.ps1, extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1, tests/integration/refocus-deploy.tests.ps1 | planned | claude | | |
@@ -82,7 +82,7 @@
 | ----- | ---------------- | ----- |
 | Planning | 0 | Completed in this ceremony (task table above; capacity check 9.5/20) |
 | Discovery/Spikes | 3.0 | T013 research matrix IS the risk-reduction work; it gates T014 per host |
-| Implementation | 6.5 | T014 + T015 + T016 + T017 per the task table |
+| Implementation | 9.5 | T014 (revised 6.0) + T015 + T016 + T017 per the task table |
 | Review | 0 | Review effort tracked at the boundary, not as task SP |
 | Rework | 0 | 10.5 SP headroom under the cap is the buffer |
 
@@ -90,7 +90,7 @@
 
 - Requirement scope for this stub: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020
 - User stories represented in current scope: US3 (hook triggers — research-verified bindings), US4 (operator safety — wiring + docs), US5 (compaction — B4 findings record)
-- Capacity check: 9.5/20 story_points — research-first sequencing binding (T013 gates T014 per host).
+- Capacity check: 12.5/20 story_points — T014 revised 3.0->6.0 at T013 completion (matrix confirmed THREE bindable hosts with three config formats; estimation-honesty revision, within cap, no deferral). Research-first sequencing binding (T013 gates T014 per host).
 - Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
 
 ## Notes
