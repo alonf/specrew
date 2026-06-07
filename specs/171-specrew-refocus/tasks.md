@@ -32,13 +32,14 @@
 | T014 | Verified host bindings: binding declarations + dispatcher registration + simulated-event fixtures for every host the matrix confirms hook-capable; documented-variance entries for hosts that fail verification | FR-013, FR-014 / SC-008 | 3.0 | Implementer |
 | T015 | Docs + beta evidence prep: user-guide section, troubleshooting failure-trace walk, README touch; SC-008 beta validation script (real compaction + real boundary cross on ≥2 hook-bound hosts; kill-switch walk; journal citations) | FR-007 (docs), SC-008, SC-010 | 1.5 | Implementer |
 | T016 | Compaction-steering research record (B4, research-gated OUT): PreCompact augmentation + persistent-instruction efficacy findings recorded as follow-up input — no shipping in this feature | scope-line disposition 1 | 0.5 | Implementer |
+| T017 | Defer-approved carries (review-signoff 2026-06-07): init/update call-site wiring for deploy-refocus-hooks (opt-out respected); catalog managed-with-overlay merge on update (user keys preserved); wiring tests | FR-014, FR-018 / SC-006, SC-009 | 1.5 | Implementer |
 
-**Iteration 002 capacity: 8.0/20 SP · Feature total: 26.5 SP (Option C envelope +0.5 SP for the maintainer-directed F-165 gate-seat reservation, 2026-06-07)**
+**Iteration 002 capacity: 9.5/20 SP · Feature total: 28.0 SP (Option C envelope +0.5 F-165 gate-seat +1.5 defer-approved carries made explicit, 2026-06-07)**
 
 ## Traceability check (after-tasks)
 
 - **Every task → ≥1 FR/SC**: T001..T016 all carry explicit traces (table column 3). ✓
-- **Every FR → ≥1 task**: FR-001 (T001) · FR-002 (T002) · FR-003 (T001, T003) · FR-004 (T001) · FR-005 (T001) · FR-006 (T004) · FR-007 (T005, T015) · FR-008 (T006) · FR-009 (T007) · FR-010 (T008) · FR-011 (T009) · FR-012 (T001, T006) · FR-013 (T010, T013, T014) · FR-014 (T010, T014) · FR-015 (T011) · FR-016 (T012) · FR-017 (T012) · FR-018 (T011) · FR-019 (T002) · FR-020 (T001, T004, T006, T010). ✓
+- **Every FR → ≥1 task** (T017 added 2026-06-07 per approved defers; FR-014 also T017, FR-018 also T017): FR-001 (T001) · FR-002 (T002) · FR-003 (T001, T003) · FR-004 (T001) · FR-005 (T001) · FR-006 (T004) · FR-007 (T005, T015) · FR-008 (T006) · FR-009 (T007) · FR-010 (T008) · FR-011 (T009) · FR-012 (T001, T006) · FR-013 (T010, T013, T014) · FR-014 (T010, T014) · FR-015 (T011) · FR-016 (T012) · FR-017 (T012) · FR-018 (T011) · FR-019 (T002) · FR-020 (T001, T004, T006, T010). ✓
 - **Every SC → covering tasks**: SC-001 (T003, T006) · SC-002 (T004, T007, T008) · SC-003 (T001, T002) · SC-004 (measured during T006/T007; TG-004 return path) · SC-005 (T009) · SC-006 (T010) · SC-007 (T001, T006) · SC-008 (T013, T014, T015) · SC-009 (T010, T011) · SC-010 (T005, T008, T012, T015). ✓
 
 ## Sequencing notes
