@@ -6,6 +6,15 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.32.0] - 2026-06-07
+
+Stable promotion of the 0.32.0 line, validated by fresh-install on the Claude host (workshop intake reframe + gate-stop boundary packets) per the beta-before-stable mandate. Bundles the four prereleases:
+
+- **Feature 141 — Design-analysis gate + per-lens design workshop** (beta1): the `specrew-design-workshop` skill drives the design lenses as a point-of-use workshop — in-band ASCII visuals, collaborative co-design, confirmation integrity, and intake responsiveness.
+- **Feature 170 — Retire top-level evaluation surface** (beta2): removed the stale `evaluation/` directory; the process-quality scorer is preserved as internal test support.
+- **Feature 165 — Claude verdict-packet collapse fix** (beta3): the `specrew-gate-stop` skill (`disallowed-tools: AskUserQuestion`) removes the picker at boundary verdict stops, so the Rule 46 six-section "Why I stopped" packet renders as Markdown with a typed verdict on the Claude host.
+- **Feature 172 — New-user profile setup copy** (beta4): the first-run Crew Interaction Profile is reframed as behavior-centered guidance (Guide me / Collaborate / Be concise, Enter for recommended defaults), with the stable expertise/persona schema preserved.
+
 ## [0.32.0-beta4] - 2026-06-07
 
 ### Fixed
