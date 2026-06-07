@@ -25,4 +25,15 @@
     # Phase B handler file
     HandlersFile         = 'handlers.ps1'
     CoordinatorRulesFile = 'coordinator-rules.psd1'
+
+    # Feature 171 (FR-013, T014): refocus hook bindings. B2 via sessionStart
+    # (additional_context verified, snake_case contract). B1 = documented
+    # variance (no post-compaction injection event exists); B3 rides channel 1
+    # (postToolUse latency-rejected; beforeSubmitPrompt injection unverified).
+    RefocusHookBindings = @{
+        BoundTriggers  = @('b2')
+        Events         = @('sessionStart')
+        SettingsFile   = '~/.cursor/hooks.json'   # user-level; dispatcher self-gates per project
+        DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+    }
 }

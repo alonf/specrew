@@ -27,4 +27,15 @@
     # Phase B handler file (not yet present)
     HandlersFile         = 'handlers.ps1'
     CoordinatorRulesFile = 'coordinator-rules.psd1'
+
+    # Feature 171 (FR-013, T014): refocus hook bindings — FULL TRIAD. Verified
+    # live 2026-06-07 (research-matrix.md): SessionStart matchers identical to
+    # Claude (startup|resume|clear|compact) route B1/B2; UserPromptSubmit
+    # (additionalContext) is the per-human-prompt B3 carrier. PreToolUse dormant.
+    RefocusHookBindings = @{
+        BoundTriggers  = @('b1', 'b2', 'b3')
+        Events         = @('SessionStart', 'UserPromptSubmit')
+        SettingsFile   = '~/.codex/hooks.json'   # user-level; dispatcher self-gates per project
+        DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+    }
 }

@@ -19,7 +19,11 @@
 param(
     [Parameter(Mandatory = $true)][string]$Event,
     [string]$EventJson,
-    [int]$ProviderTimeoutSeconds = 20
+    [int]$ProviderTimeoutSeconds = 20,
+    # T014: per-host event/output shaping. The neutral -Event vocabulary stays
+    # host-blind (SessionStart | PostToolUse | UserPromptSubmit | PreToolUse);
+    # the BINDING (per-host hook config) names both when it registers.
+    [ValidateSet('claude', 'codex', 'copilot', 'cursor')][string]$HostKind = 'claude'
 )
 
 # KILL SWITCH FIRST (FR-008): this check must precede ANY logic that could itself
@@ -355,21 +359,38 @@ function Get-RefocusProviderArgs {
             return @('--trigger', 'b2')
         }
         'PostToolUse' { return @('--trigger', 'b3') }
+        'UserPromptSubmit' { return @('--trigger', 'b3') }   # the per-human-prompt B3 carrier (T013 latency analysis)
         default { return $null }
     }
 }
 
 function Write-InjectionOutput {
-    param([string]$EventName, [string]$Payload)
-    # Per-host event output shaping (C2, Claude shapes; other hosts normalize in
-    # their bindings via the research matrix):
-    #   SessionStart -> plain stdout is added to context
-    #   PostToolUse  -> hookSpecificOutput.additionalContext JSON
-    if ($EventName -eq 'PostToolUse') {
-        @{ hookSpecificOutput = @{ hookEventName = 'PostToolUse'; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
-    }
-    else {
-        Write-Output $Payload
+    param([string]$EventName, [string]$Payload, [string]$TargetHost = 'claude')
+    # Per-host event output shaping (C2; contracts per the T013 research matrix,
+    # all fetched live 2026-06-07):
+    #   claude  : SessionStart -> plain stdout (added to context);
+    #             PostToolUse / UserPromptSubmit -> hookSpecificOutput.additionalContext
+    #   codex   : additionalContext JSON ("added as extra developer context")
+    #   copilot : additionalContext JSON (camelCase reference contract)
+    #   cursor  : additional_context JSON (snake_case official contract)
+    switch ($TargetHost) {
+        'codex' {
+            @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+        }
+        'copilot' {
+            @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+        }
+        'cursor' {
+            @{ additional_context = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+        }
+        default {
+            if ($EventName -in @('PostToolUse', 'UserPromptSubmit')) {
+                @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
+            }
+            else {
+                Write-Output $Payload
+            }
+        }
     }
 }
 
@@ -395,7 +416,18 @@ try {
         }
     }
 
-    $sessionId = Get-SanitizedSessionId -RawSessionId $(if ($null -ne $hostEvent -and $hostEvent.PSObject.Properties['session_id']) { [string]$hostEvent.session_id } else { $null })
+    # Session-id field varies per host contract: session_id (Claude/Codex),
+    # sessionId (Copilot camelCase), conversation_id (Cursor).
+    $rawSessionId = $null
+    if ($null -ne $hostEvent) {
+        foreach ($idKey in @('session_id', 'sessionId', 'conversation_id')) {
+            if ($hostEvent.PSObject.Properties[$idKey] -and -not [string]::IsNullOrWhiteSpace([string]$hostEvent.$idKey)) {
+                $rawSessionId = [string]$hostEvent.$idKey
+                break
+            }
+        }
+    }
+    $sessionId = Get-SanitizedSessionId -RawSessionId $rawSessionId
     $source = if ($null -ne $hostEvent -and $hostEvent.PSObject.Properties['source']) { [string]$hostEvent.source } else { $null }
 
     $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
@@ -422,7 +454,7 @@ try {
     }
     $stateDirty = $false
     # The refocus trigger this event maps to (journal attribution).
-    $eventTrigger = if ($Event -eq 'PostToolUse') { 'b3' } elseif ($source -eq 'compact') { 'b1' } else { 'b2' }
+    $eventTrigger = if ($Event -in @('PostToolUse', 'UserPromptSubmit')) { 'b3' } elseif ($source -eq 'compact') { 'b1' } else { 'b2' }
 
     # Providers for THIS event, deterministic order (the host runs parallel hooks
     # unordered; Specrew owns ordering internally — the lens-2 dispatcher decision).
@@ -468,7 +500,7 @@ try {
             }
             # B3 gating (T007, FR-009): watch the boundary cursor, dedupe against
             # the channel-1 fingerprint, anchor on first sight.
-            if ($Event -eq 'PostToolUse') {
+            if ($Event -in @('PostToolUse', 'UserPromptSubmit')) {
                 $b3 = Test-B3ShouldInject -ProjectRoot $projectRoot -SessionState $sessionState
                 $sessionState = $b3.State
                 $stateDirty = $true
@@ -528,7 +560,7 @@ try {
     }
 
     if ($fragments.Count -gt 0) {
-        Write-InjectionOutput -EventName $Event -Payload (($fragments -join "`n`n"))
+        Write-InjectionOutput -EventName $Event -Payload (($fragments -join "`n`n")) -TargetHost $HostKind
     }
     exit 0
 }

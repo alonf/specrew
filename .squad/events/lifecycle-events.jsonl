@@ -64,3 +64,4 @@
 {"payload":{"auth_commit_hash":"5f3d8ea5","task_id":null,"iteration_number":"001","boundary_type":"review-signoff","feature_ref":"171-specrew-refocus"},"event_type":"boundary-sync","schema":"v1","recorded_at":"2026-06-07T00:28:47Z"}
 {"event_type":"boundary-sync","recorded_at":"2026-06-07T00:56:09Z","payload":{"feature_ref":"171-specrew-refocus","boundary_type":"retro","auth_commit_hash":"3c3edf8e","task_id":null,"iteration_number":"001"},"schema":"v1"}
 {"event_type":"boundary-sync","recorded_at":"2026-06-07T01:50:47Z","payload":{"task_id":null,"feature_ref":"171-specrew-refocus","auth_commit_hash":"fa5b33f8","boundary_type":"iteration-closeout","iteration_number":"001"},"schema":"v1"}
+{"schema":"v1","event_type":"boundary-sync","recorded_at":"2026-06-07T02:07:47Z","payload":{"auth_commit_hash":"fb5360a4","iteration_number":"002","feature_ref":"171-specrew-refocus","boundary_type":"before-implement","task_id":null}}

@@ -107,6 +107,52 @@ $out = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $deployScript -ProjectP
 Assert-True ($LASTEXITCODE -ne 0) 'unparsable settings: deploy refuses'
 Assert-True ((Get-Content -LiteralPath $settingsPath -Raw) -eq '{user content, not json') 'unparsable settings: file untouched'
 
+# --- 8. T014: codex binding (~/.codex/hooks.json; top-level event keys; full triad) --------
+New-ScratchProject
+$fakeHome = Join-Path $scratchRoot 'home'
+New-Item -ItemType Directory -Path (Join-Path $fakeHome '.codex') -Force | Out-Null
+$codexPath = Join-Path $fakeHome '.codex\hooks.json'
+$userCodex = '{"PreToolUse":[{"matcher":"^(Write)$","hooks":[{"type":"command","command":"python3 user_scanner.py"}]}]}'
+[System.IO.File]::WriteAllText($codexPath, $userCodex, [System.Text.UTF8Encoding]::new($false))
+$out = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome)
+$codex = Get-Content -LiteralPath $codexPath -Raw | ConvertFrom-Json
+Assert-True ($null -ne $codex.PSObject.Properties['SessionStart'] -and $null -ne $codex.PSObject.Properties['UserPromptSubmit']) 'codex: SessionStart + UserPromptSubmit registered (full triad)'
+Assert-True (([string]$codex.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'codex: command carries -HostKind codex'
+Assert-True (([string]$codex.PreToolUse[0].hooks[0].command) -eq 'python3 user_scanner.py') 'codex: user PreToolUse entry untouched'
+$before = Get-Content -LiteralPath $codexPath -Raw
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome)
+Assert-True ((Get-Content -LiteralPath $codexPath -Raw) -eq $before) 'codex: re-deploy byte-idempotent'
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome, '-Remove')
+$codex = Get-Content -LiteralPath $codexPath -Raw | ConvertFrom-Json
+Assert-True ((-not $codex.PSObject.Properties['SessionStart']) -and $null -ne $codex.PSObject.Properties['PreToolUse']) 'codex: -Remove strips only ours'
+Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-codex')) 'codex: per-host opt-out recorded'
+
+# --- 9. T014: copilot binding (hooks-dir model; wholly-owned file; B2 only) ------------------
+$out = Invoke-Deploy -DeployArgs @('-HostKind', 'copilot', '-UserHomeOverride', $fakeHome)
+$copilotPath = Join-Path $fakeHome '.copilot\hooks\specrew-refocus.json'
+Assert-True (Test-Path -LiteralPath $copilotPath -PathType Leaf) 'copilot: owned hooks-dir file created'
+$copilot = Get-Content -LiteralPath $copilotPath -Raw | ConvertFrom-Json
+Assert-True ([int]$copilot.version -eq 1) 'copilot: version 1 declared'
+Assert-True ($null -ne $copilot.hooks.sessionStart -and -not $copilot.hooks.PSObject.Properties['userPromptSubmitted']) 'copilot: sessionStart only (B2; B3 via channel 1)'
+$entry = $copilot.hooks.sessionStart[0]
+Assert-True (([string]$entry.bash).Contains('-HostKind copilot') -and ([string]$entry.powershell).Contains('-HostKind copilot')) 'copilot: bash + powershell pair both present'
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'copilot', '-UserHomeOverride', $fakeHome, '-Remove')
+Assert-True (-not (Test-Path -LiteralPath $copilotPath)) 'copilot: -Remove deletes the owned file'
+
+# --- 10. T014: cursor binding (~/.cursor/hooks.json; bare command entries; B2 only) ----------
+New-Item -ItemType Directory -Path (Join-Path $fakeHome '.cursor') -Force | Out-Null
+$cursorPath = Join-Path $fakeHome '.cursor\hooks.json'
+$userCursor = '{"version":1,"hooks":{"afterFileEdit":[{"command":"hooks/audit.sh"}]}}'
+[System.IO.File]::WriteAllText($cursorPath, $userCursor, [System.Text.UTF8Encoding]::new($false))
+$out = Invoke-Deploy -DeployArgs @('-HostKind', 'cursor', '-UserHomeOverride', $fakeHome)
+$cursor = Get-Content -LiteralPath $cursorPath -Raw | ConvertFrom-Json
+Assert-True ($null -ne $cursor.hooks.sessionStart -and (([string]$cursor.hooks.sessionStart[0].command).Contains('-HostKind cursor'))) 'cursor: sessionStart command entry registered'
+Assert-True (([string]$cursor.hooks.afterFileEdit[0].command) -eq 'hooks/audit.sh') 'cursor: user afterFileEdit entry untouched'
+Assert-True (-not $cursor.hooks.PSObject.Properties['postToolUse']) 'cursor: no postToolUse (latency-rejected; B3 via channel 1)'
+$before = Get-Content -LiteralPath $cursorPath -Raw
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'cursor', '-UserHomeOverride', $fakeHome)
+Assert-True ((Get-Content -LiteralPath $cursorPath -Raw) -eq $before) 'cursor: re-deploy byte-idempotent'
+
 # --- summary ------------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {

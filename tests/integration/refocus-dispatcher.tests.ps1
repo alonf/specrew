@@ -328,6 +328,40 @@ $slashOut = & pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $projectR
 Pop-Location
 Assert-True (($slashOut -join "`n").Contains('trigger=manual')) 'human slash invocation is never breaker-suppressed'
 
+# --- 15. T014: per-host event/output shaping ------------------------------------------
+$dispatcher = New-ScratchProject
+
+# 15a. codex SessionStart -> {"additionalContext": ...}
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart', '-HostKind', 'codex') -StdinJson '{"session_id":"codex-1","source":"compact"}'
+$json = $null
+try { $json = $result.StdOut | ConvertFrom-Json } catch { }
+Assert-True ($null -ne $json -and $null -ne $json.PSObject.Properties['additionalContext']) 'codex output is additionalContext JSON'
+Assert-True ($null -ne $json -and ([string]$json.additionalContext) -match 'trigger=b1') 'codex compact routes to b1'
+
+# 15b. codex UserPromptSubmit -> B3 with state-diff gating (anchor, then crossing)
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'UserPromptSubmit', '-HostKind', 'codex') -StdinJson '{"session_id":"codex-1","prompt":"hello"}'
+Assert-True ([string]::IsNullOrWhiteSpace($result.StdOut)) 'codex UserPromptSubmit anchors on first sight (no injection)'
+$ctx = @{ session_state = @{ boundary_type = 'review-signoff'; feature_ref = 'dispatcher-fixture' } } | ConvertTo-Json -Depth 4
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $ctx, [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'UserPromptSubmit', '-HostKind', 'codex') -StdinJson '{"session_id":"codex-1","prompt":"hello again"}'
+$json = $null
+try { $json = $result.StdOut | ConvertFrom-Json } catch { }
+Assert-True ($null -ne $json -and ([string]$json.additionalContext) -match 'trigger=b3 scope=general\+boundary\.retro') 'codex UserPromptSubmit crossing injects b3 (incoming stage)'
+
+# 15c. cursor: conversation_id session key + snake_case output
+$dispatcher = New-ScratchProject
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart', '-HostKind', 'cursor') -StdinJson '{"conversation_id":"curs-1"}'
+$json = $null
+try { $json = $result.StdOut | ConvertFrom-Json } catch { }
+Assert-True ($null -ne $json -and $null -ne $json.PSObject.Properties['additional_context']) 'cursor output is additional_context (snake_case)'
+Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-state-curs-1.json')) 'cursor conversation_id keys the session state'
+
+# 15d. copilot sessionStart -> additionalContext JSON
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart', '-HostKind', 'copilot') -StdinJson '{"sessionId":"copi-1","source":"startup"}'
+$json = $null
+try { $json = $result.StdOut | ConvertFrom-Json } catch { }
+Assert-True ($null -ne $json -and ([string]$json.additionalContext) -match 'trigger=b2') 'copilot camelCase sessionId parsed; additionalContext b2 payload'
+
 # --- summary --------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {

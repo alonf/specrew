@@ -24644,3 +24644,25 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: fa5b33f8
 - **Recorded At**: 2026-06-07T01:50:47Z
+
+## 2026-06-07T13:20:00Z — Human verdict: iteration-002 before-implement approved (171-specrew-refocus)
+
+- **Boundary Type**: tasks -> before-implement (iteration 002)
+- **Verdict**: Approve - start iteration 002 (structured verdict menu); research-depth default accepted (live-doc verification + local latency measurement in T013; live-host smoke lands in SC-008 beta validation)
+- **Authorizing Human**: Alon Fliess
+
+## 2026-06-07T02:07:46Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-07T02:07:46Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'before-implement'.
+
+## 2026-06-07T02:07:48Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fb5360a4
+- **Recorded At**: 2026-06-07T02:07:47Z

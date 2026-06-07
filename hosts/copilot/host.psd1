@@ -26,4 +26,16 @@
     # Phase B handler file (not yet present)
     HandlersFile         = 'handlers.ps1'
     CoordinatorRulesFile = 'coordinator-rules.psd1'
+
+    # Feature 171 (FR-013, T014): refocus hook bindings. Copilot hooks went GA
+    # 2026-02-25 (research-matrix.md — the earlier no-surface finding is
+    # obsolete). B2 via sessionStart (additionalContext verified); B1 pending
+    # local source-value verification; B3 rides channel 1 (per-prompt injection
+    # unverified on userPromptSubmitted; per-tool-call latency-rejected).
+    RefocusHookBindings = @{
+        BoundTriggers  = @('b2')
+        Events         = @('sessionStart')
+        SettingsFile   = '~/.copilot/hooks/specrew-refocus.json'   # hooks-dir model: wholly Specrew-owned file
+        DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+    }
 }
