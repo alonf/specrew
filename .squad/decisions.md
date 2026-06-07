@@ -24831,3 +24831,22 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 391cbb8a
 - **Recorded At**: 2026-06-06T20:36:40Z
+
+## 2026-06-07T16:45:35Z — Boundary verdict: feature-closeout
+
+- **From Boundary**: iteration-closeout
+- **To Boundary**: feature-closeout
+- **Feature Ref**: 172-profile-setup-ux-copy
+- **Iteration Number**: 001
+- **Verdict Text**: approved for feature-closeout
+- **Authorizing Human**: Alon Fliess
+- **Auth Commit Hash**: 8c5e457621a58869c71cdac4a5fd04a9abc71fec
+
+## 2026-06-07T16:45:47Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 172-profile-setup-ux-copy
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8c5e457621a58869c71cdac4a5fd04a9abc71fec
+- **Recorded At**: 2026-06-07T16:45:46Z
