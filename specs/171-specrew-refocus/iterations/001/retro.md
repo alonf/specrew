@@ -36,7 +36,7 @@
 3. Fold the 4-entry **PowerShell trap catalog** into the implement-stage digest known-traps (owner: Implementer, T015).
 4. File the **iteration-scaffolder quality-tree regression** as a tooling-defect candidate for the maintainer's list (owner: maintainer triage; recorded in Signals).
 
-## Calibration
+## Estimation Accuracy
 
 | Metric | Value |
 | --- | --- |
