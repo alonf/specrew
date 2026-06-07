@@ -24619,3 +24619,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Recorded At**: 2026-06-07T12:21:00Z
 - **Commit Reference**: review-signoff verdict (approved for retro, approve as-is)
 - **Next Action**: iteration 002 T013-T015 — init/update call-site wiring for deploy-refocus-hooks; catalog managed-with-overlay merge on update; host research matrix incl. Copilot re-verification.
+
+## 2026-06-07T00:56:10Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3c3edf8e
+- **Recorded At**: 2026-06-07T00:56:09Z
+
+## 2026-06-07T12:40:00Z — Human verdict: retro approved (171-specrew-refocus iteration 001)
+
+- **Boundary Type**: retro -> iteration-closeout
+- **Verdict**: approved for iteration-closeout (structured verdict menu)
+- **Authorizing Human**: Alon Fliess
+- **Notes**: lesson #1 (measure runtime process-model cost at design time) stays a workshop-conduct candidate pending iteration-002 measurement confirmation.
