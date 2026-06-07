@@ -2,7 +2,7 @@
 
 **Feature**: `172-profile-setup-ux-copy`
 **Iteration**: `001`
-**Status**: reviewing
+**Status**: complete
 
 | Task | Requirement | Description | Status |
 | --- | --- | --- | --- |
@@ -22,3 +22,10 @@
 | FR-005 | T002, T003 |
 | FR-006 | T002, T003 |
 | FR-007 | T001, T002, T003, T004 |
+
+## Closeout Notes
+
+- No workshop artifacts were backfilled; the maintainer explicitly excluded
+  workshop work for this repair.
+- Iteration 001 is closed with review, retro, dashboard, reviewer artifacts,
+  and quality evidence in `iterations/001/`.

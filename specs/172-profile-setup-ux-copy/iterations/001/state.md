@@ -2,14 +2,15 @@
 
 **Schema**: v1
 **Feature**: 172-profile-setup-ux-copy
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T004
 **Tasks Remaining**: (none)
 **In Progress**: (none)
+**Baseline Ref**: f58362bc6e951b821dad81260eee141d2c843521
 **Branch**: 172-profile-setup-ux-copy
 **Worktree**: C:\Dev\Specrew-profile-setup-ux-copy
-**Updated**: 2026-06-07
+**Updated**: 2026-06-07T11:31:45+03:00
 
 ## Evidence To Capture
 
@@ -28,3 +29,12 @@
   Proposal 141 compatibility.
 - T004 done: targeted integration test, markdownlint, and `git diff --check`
   passed.
+
+## Closeout Summary
+
+- Review-signoff completed with a manual Proposal-145-style review and
+  claim-to-evidence ledger in `review.md`.
+- Retro completed with estimation accuracy, drift summary, process notes, and
+  improvement actions in `retro.md`.
+- Iteration-closeout dashboard snapshot written to `dashboard.md`.
+- Workshop backfill intentionally omitted per maintainer instruction.
