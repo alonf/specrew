@@ -24675,3 +24675,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 87561104094d3dc3b2018520244fca6b7314249b
 - **Recorded At**: 2026-06-07T03:04:51Z
+
+## 2026-06-07T03:15:57Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-06-07T03:15:57Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-06-07T03:15:58Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 171-specrew-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 948f33c7afabd47ed29659a7fd006705d042c68b
+- **Recorded At**: 2026-06-07T03:15:57Z
