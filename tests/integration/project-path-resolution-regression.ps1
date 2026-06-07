@@ -176,7 +176,7 @@ $scanTargets = @(
     (Join-Path $repoRoot 'scripts\specrew-review.ps1'),
     (Join-Path $repoRoot 'tests\manual\copilot-squad-smoke.ps1'),
     (Join-Path $repoRoot 'tests\manual\copilot-squad-confidence-lane.ps1'),
-    (Join-Path $repoRoot 'evaluation\scorers\process-scorer.ps1'),
+    (Join-Path $repoRoot 'tests\support\process-quality-scorer.ps1'),
     (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\brownfield-merge.ps1'),
     (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-speckit-extension.ps1'),
     (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1'),

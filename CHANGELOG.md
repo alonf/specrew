@@ -6,6 +6,16 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.32.0-beta2] - 2026-06-06
+
+### Changed
+
+- **Feature 170 — Retire Top-Level Evaluation Surface (Proposal 169).** Removed the stale top-level `evaluation/` directory (`README.md` promising an unshipped harness; a committed generated `report.md`) while preserving the live process-quality scorer as internal test infrastructure at `tests/support/process-quality-scorer.ps1` (99% rename; the only functional delta is the default report path moving to untracked `test-results/process-quality-report.md`). The two CI integration tests remain the supported entry points; CI job names and test semantics are unchanged; both `handoff-governance-validator.ps1` mirrors updated diff-identically. Known caveat: the full multi-host smoke suite's pre-existing Test-4 red (obsolete backslash assertion vs the F-160 POSIX-safe shim) is canonically deferred to the in-flight `169-found-bug-fixes` slice. 1 iteration (2 SP), all verdicts accepted; implementation adopted from an ungoverned session and verified end-to-end. Authorized by Alon Fliess.
+
+### Internal
+
+- Removed accidentally-committed per-session state (`.specify/feature.json`, `.specrew/active-sessions.yml`, `.specrew/last-validator-summary.json`) and added the canonical F-051 per-session `.gitignore` block that was missing from the repo root (PR #2016 codex P2 finding).
+
 ## [0.32.0-beta1] - 2026-06-06
 
 ### Added

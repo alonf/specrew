@@ -218,3 +218,6 @@ closed:
   - feature: 141-design-gate-runtime-hardening
     iteration: 012
     closed_at: 2026-06-06T02:10:00Z
+  - feature: 170-retire-evaluation-surface
+    iteration: 001
+    closed_at: 2026-06-06T20:23:13Z

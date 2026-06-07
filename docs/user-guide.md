@@ -806,14 +806,8 @@ Full proposal catalog with status (Shipped / Draft / Candidate) lives at [propos
 pwsh -File .\.specify\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath .
 ```
 
-For process-quality scoring (FR-015 Iteration 2 slice), run:
-
-```powershell
-pwsh -File .\evaluation\scorers\process-scorer.ps1 -ProjectPath . -AsJson
-pwsh -File .\evaluation\scorers\process-scorer.ps1 -ProjectPath . -WriteReport
-```
-
-`-WriteReport` produces `evaluation\report.md` with the current process-quality summary plus an explicit Outcome Quality placeholder until the Iteration 3 scorer lands.
+The process-quality scorer is an internal regression helper and is exercised
+through the CI integration tests rather than a public `evaluation/` surface.
 
 ## Troubleshooting
 

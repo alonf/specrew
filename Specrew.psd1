@@ -275,15 +275,16 @@
     )
     PrivateData = @{
         PSData = @{
-            # Source prerelease state. 0.31.1-beta1 = F-160 Unix Resolver Sidecar Hardening (resolver
-            # path-portability hardening + managed-skill marker provenance fix; Proposals 160/161,
-            # both repro-first). Beta-before-stable mandate: stable promotion only after manual
-            # fresh-install validation passes (promote-prerelease workflow_dispatch).
+            # Source prerelease state. 0.32.0-beta2 = F-170 Retire Top-Level Evaluation Surface
+            # (Proposal 169: evaluation/ deleted, process-quality scorer preserved as test support;
+            # rides the 0.32.0 line behind F-141's beta1). Beta-before-stable mandate: stable
+            # promotion only after manual fresh-install validation passes (promote-prerelease
+            # workflow_dispatch).
             # The publish-module.yml workflow stamps the actual published version from the git tag at release
             # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
             # leading hyphen. Use dotless forms (beta1, rc1); a dotted 'beta.1' normalizes to 'beta1'.
-            Prerelease = 'beta1'
+            Prerelease = 'beta2'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'

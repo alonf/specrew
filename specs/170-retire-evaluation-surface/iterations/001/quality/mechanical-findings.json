@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/170-retire-evaluation-surface/spec.md",
+  "iterationRef": "specs/170-retire-evaluation-surface/iterations/001",
+  "generatedAt": "2026-06-06T19:36:13Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.32.0"
+  },
+  "findings": []
+}

@@ -1,1 +1,6 @@
-claims: []
+claims:
+  - feature_id: "170-retire-evaluation-surface"
+    claimed_by: "alon@HOMEALON11"
+    claim_start_time: "2026-06-06T18:53:16Z"
+    last_refresh_time: "2026-06-06T20:23:11Z"
+    branch_name: "170-retire-evaluation-surface"
