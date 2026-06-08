@@ -10,7 +10,7 @@ reviewed_at: 2026-06-08
 ---
 ## Specrew refocus — always-true core
 
-Inside Specrew, these rules hold at every stage and host:
+Inside Specrew, these rules hold at every stage and on every host:
 
 1. **Boundary discipline.** Every boundary requires explicit HUMAN authorization. One approval advances at most ONE boundary. Discussion is not approval.
 2. **The spec is authoritative.** Drift between spec, plan, tasks, and implementation is first-class: record it in drift-log.md with a requirement citation. Never silently reconcile.

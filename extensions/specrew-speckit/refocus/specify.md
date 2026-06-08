@@ -3,7 +3,7 @@ scope: boundary.specify
 sources:
   - docs/methodology/lifecycle-discipline.md
   - extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md
-reviewed_at: 2026-06-09
+reviewed_at: 2026-06-08
 ---
 ## Specify-stage discipline
 
