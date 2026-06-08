@@ -45,11 +45,11 @@
         "Resolve structured-picker versus prose-only fallback per host.",
         "Preserve render-before-menu discipline from F-165."
       ],
-      "decision": "Human delegated intake decision: ui-ux applies at medium depth because the user-visible bootstrap menu and orientation sequence are central, but the detailed menu semantics are composed from Proposal 077, Proposal 078, and Proposal 143.",
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) render sequence = strict render-first (orientation, validated handover summary, state line, text menu) BEFORE any picker, enforced mechanically via a disallowed-tools:AskUserQuestion skill (gate-stop-style) because hook directive text is advisory-only and collapses on Claude - makes FR-004/SC-001 enforced not hoped-for; (2) prose-first floor on every host + per-host structured-picker opt-in gated on FR-005 empirical evidence; (3) self-explaining states - always show the mode line, plus a one-line reason from validation_findings only when something non-default happened (cleared anchor, historical handover, unclean exit, mismatch). See workshop/ui-ux.md.",
       "depth": "medium",
       "moved_on": true,
-      "confirmation": "human-delegated",
-      "diagram": "workshop/ui-ux.md - bootstrap menu flow notes"
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/ui-ux.md - confirmed render-first sequence + mechanical enforcement, prose floor + gated per-host picker, self-explaining states"
     },
     "data-storage": {
       "agenda": [
@@ -57,11 +57,11 @@
         "Define validity and freshness checks before resume candidates are surfaced.",
         "Treat absolute worktree path anchors as non-portable."
       ],
-      "decision": "Human delegated intake decision: data-storage applies at medium depth because bootstrap correctness depends on durable session-state and handover files, but Proposal 130 remains the owner of handover format.",
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) exit hook is write-only - writes the Proposal 130 handover on clean exit, no git ops by default (no -A, no commit, no push); live anchor/marker/active-session signals are local-only and advisory; residual committed state is non-authoritative; interactive commit-on-exit is unsupported (FR-003) so the commit/push-to-continue-elsewhere choice is surfaced at the next bootstrap, with an off-by-default opt-in scoped-commit flag; (2) staleness is event/state-first (handover validity via commit reachability + open/closed + portability + artifact match, Proposal 130 wall-clock only a hint), single configurable time window only for the active-session marker; (3) feature resolution re-resolves the ref to the current project root (never the absolute path, FR-015), judges resumability from project-local presence + active-features registry + artifact status with git merged-status corroboration, clears the anchor on failure (FR-013). See workshop/data-storage.md.",
       "depth": "medium",
       "moved_on": true,
-      "confirmation": "human-delegated",
-      "diagram": "workshop/data-storage.md - state and handover relation notes"
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/data-storage.md - write-only exit hook, event/state-first staleness, project-local resolution with git corroboration"
     },
     "security-compliance": {
       "agenda": [
