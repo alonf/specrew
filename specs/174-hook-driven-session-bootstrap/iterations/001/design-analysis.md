@@ -103,12 +103,14 @@ ClassificationEngine and DirectiveEngine stay pure (Manager passes small objects
 ```
 
 Managers (orchestrate, stable):
+
 - **SessionBootstrapManager** — orchestrate SessionStart B2: gather → classify →
   build directive → dedupe → emit. Non-interactive.
 - **SessionEndHandoverManager** — orchestrate SessionEnd: write handover
   (write-only); optional scoped local commit only if the off-by-default flag is set.
 
 Engines (volatile logic behind stable contracts):
+
 - **ClassificationEngine** (pure) — handover-first two-stage mode decision
   (full / welcome-back / cleared-anchor) + resolution chain.
 - **ValidationEngine** — validate handover and anchor vs current project state
@@ -118,6 +120,7 @@ Engines (volatile logic behind stable contracts):
   required_reads, render_first, menu_intent, validation_findings, dedupe metadata).
 
 ResourceAccessors (volatile I/O):
+
 - **HandoverStore** — read/write the Proposal 130 handover (.md + index).
 - **SessionStateAccessor** — read/write the session anchor + local-only SessionStart
   marker + active-session signals.
@@ -126,6 +129,7 @@ ResourceAccessors (volatile I/O):
 - **HookJournalAccessor** — write the classification record through F-171's journal.
 
 Adapters (most volatile, host-specific):
+
 - **HostEventAdapter** — normalize per-host SessionStart/SessionEnd payloads.
 - **LauncherIntegration** — `specrew start` preface + launcher↔hook dedupe handshake.
 
