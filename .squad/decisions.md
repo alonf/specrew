@@ -1,3 +1,45 @@
+## 2026-06-09 — F-174 Iteration 004: Stop-event rolling handover (supersedes SessionEnd-only)
+
+### 2026-06-09 — Decision: pivot the handover trigger to the universal Stop event (iteration 004)
+
+- **Decision ID**: f174-i004-stop-event-rolling-handover
+- **Type**: design-pivot
+- **Affected Requirement**: FR-009 (handover trigger + file model)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\004 (to be created)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T01:00:00Z
+- **Decision**: Iteration 004 REPLACES the iteration-003 SessionEnd-only handover with a Stop-event
+  rolling handover. Trigger = the per-host END-OF-TURN event (Claude `Stop`, Codex `Stop`, Copilot
+  `agentStop`, Cursor `stop`) - **Stop-only, no SessionEnd** (the human's chosen trigger model);
+  the rolling file is already current at the last Stop. File model = ONE in-place handover file
+  ("the same file with updates"), refreshed on each Stop only when the changed set is material
+  (boundary cursor moved / tracked artifacts changed) - "decide if it requires updating." Rationale:
+  the Stop event is UNIVERSAL (only Claude has SessionEnd), making the handover (a) PORTABLE across
+  all 4 hosts and (b) CRASH-SAFE - the handover always reflects the last completed turn, so a
+  hard-kill with no clean exit still leaves a current handover (closes Proposal 130's own "no crash
+  guarantee" gap). Carries over from iteration 003: the SessionEnd provider logic, dispatcher
+  dispatch, and round-trip; only the trigger + file model change. This is a Proposal 130 amendment;
+  the iteration-004 design pass settles the material-change policy + file/archive model.
+- **Sequencing**: land iteration 003 honest first (SessionEnd Claude-first, evidence accurate), close
+  it, THEN open iteration 004 for this pivot with a proper design pass (human directive).
+
+### 2026-06-09 — Dogfood finding: dev-tree host-hook validation trap
+
+- **Decision ID**: f174-dogfood-dev-tree-hook-validation
+- **Type**: dogfood-finding
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T01:00:00Z
+- **Finding**: The iteration-003 review claimed the SessionEnd handover was "proven LIVE" while the
+  worktree `.claude/settings.local.json` carried NO SessionEnd - both proofs bypassed the host-hook
+  link (scratch-project deploy + dispatcher-direct smoke). Root traps: (1) host-hook changes validated
+  via the installed beta ship the STALE deployer; they MUST be validated by deploying from the DEV
+  TREE and reading the on-disk config - never via `specrew update`. (2) Evidence standard: a host-hook
+  claim is only true when a test reads the DEPLOYED config on disk (now enforced by
+  `DeployedHostConfig.Tests`), not the deployer's return object or a dispatcher-direct smoke. Meta:
+  this is the build != live class the feature itself targets - fix applied to the evidence standard,
+  not just this one entry.
+
 ## 2026-06-09 — F-174 Iteration 003: scoped limitations (feature-closeout follow-ups)
 
 ### 2026-06-09 — Follow-up: other-host SessionEnd + authoritative per-host event schemas

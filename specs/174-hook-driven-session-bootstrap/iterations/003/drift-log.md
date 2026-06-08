@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 100% (2/2 resolved in-iteration)
-**Specification drift**: 2 implementation gaps caught by the live-wiring completeness checks, both fixed in-iteration
+**Total drift events**: 3
+**Resolution rate**: 2 fixed in-iteration; 1 (D-005 design pivot) sequenced to iteration 004 by human decision
+**Specification drift**: 2 implementation gaps fixed in-iteration; 1 design pivot (handover trigger) to iteration 004
 
 ## Events
 
@@ -51,7 +51,26 @@ Additionally a latent iteration-001 gap: the catalog-overlay canonical-id set ex
 "build+test != live" completeness check (the iteration-002 retro action).
 
 **Resolution (in-iteration)**: registered the Claude SessionEnd host hook; fixed the overlay
-canonical-id set to all three Specrew providers. Fixed in commit `1de2a45a`.
+canonical-id set to all three Specrew providers. Fixed in commit `1de2a45a`. **At review-signoff the
+human caught that the review still overstated this as "proven LIVE" while the worktree config carried
+no SessionEnd** (both proofs bypassed the host-hook link); resolved by deploying from the dev tree to
+the worktree, an on-disk closure test (`DeployedHostConfig.Tests`), and qualifying the claim to the
+SC-008 manual bar. Dogfood `f174-dogfood-dev-tree-hook-validation`.
+
+### D-005 — handover trigger pivots from SessionEnd (Claude-only) to the universal Stop event
+
+**Requirement**: FR-009 (handover trigger + file model).
+
+**Finding**: Research confirmed only Claude exposes a true `SessionEnd` hook; codex/copilot/cursor
+expose only end-of-turn `Stop`/`agentStop`/`stop`. The SessionEnd-only handover is therefore
+Claude-only AND crash-fragile (a hard-kill with no clean exit writes no handover). The human directed
+a better design: refresh ONE rolling handover file on each per-host Stop event (Stop-only trigger),
+updating only on material change - portable across all 4 hosts and crash-safe (always reflects the
+last completed turn).
+
+**Resolution (sequenced to iteration 004 by human decision)**: land iteration 003 honest
+(SessionEnd Claude-first, evidence accurate) and implement the Stop-event rolling handover in
+iteration 004 with a proper design pass. Decision `f174-i004-stop-event-rolling-handover`.
 
 ### Resolution Strategies (Unused)
 

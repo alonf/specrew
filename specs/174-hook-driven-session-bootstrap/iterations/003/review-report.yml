@@ -19,7 +19,7 @@ matrix:
       phase_2: { applicable: yes, finding: clean, evidence_ref: "docs/getting-started.md hook-primary note" }
   - requirement: FR-009
     phases:
-      phase_2: { applicable: yes, finding: clean, evidence_ref: "D-002 provider + Claude SessionEnd host-hook; live round-trip + dispatch + deploy smokes" }
+      phase_2: { applicable: yes, finding: clean-qualified, evidence_ref: "D-002 provider + Claude SessionEnd host-hook; deployed config ON DISK (DeployedHostConfig.Tests) + dispatcher round-trip; real session-end firing = SC-008 manual; trigger pivots to Stop-event in iter-004 (drift D-005)" }
   - requirement: FR-011
     phases:
       phase_6: { applicable: yes, finding: clean, evidence_ref: "Regression.Tests: refocus B1/B2/B3 unchanged (additive)" }
@@ -40,10 +40,12 @@ claim_ledger:
   - claim: "D-001 live: bootstrap fires across all 4 hosts via the real dispatcher"
     evidence:
       - { type: smoke, command: "specrew-hook-dispatcher.ps1 -Event SessionStart -HostKind {claude,codex,copilot,cursor}", result: "PASS x4 (bootstrap fired)" }
-  - claim: "D-002 live end-to-end: host hook -> dispatcher -> handover -> SessionStart welcome-back"
+  - claim: "D-002 wired + auto-proven to the dispatcher boundary + deployed config on disk (real session-end firing = SC-008 manual; 'proven LIVE' corrected at send-back)"
     evidence:
-      - { type: smoke, detail: "deploy registers Claude SessionEnd -> -Event SessionEnd; dispatcher dispatches SessionEnd -> handover provider; round-trip read -> welcome-back", result: "PASS" }
-      - { type: test, command: "pwsh -File tests/integration/refocus-deploy.tests.ps1", exit_code: 0, result: "SessionEnd registered + dispatches" }
+      - { type: test, command: "pwsh -File tests/bootstrap/DeployedHostConfig.Tests.ps1", exit_code: 0, result: "committed .claude/settings.local.json ON DISK carries SessionEnd dispatching -Event SessionEnd" }
+      - { type: test, command: "pwsh -File tests/integration/refocus-deploy.tests.ps1", exit_code: 0, result: "scratch deployer registers SessionEnd + dispatches" }
+      - { type: smoke, detail: "dispatcher -Event SessionEnd -> handover provider; round-trip read -> welcome-back", result: "PASS (dispatcher boundary)" }
+      - { type: manual-pending, detail: "host actually invoking the hook on a real session-end", result: "SC-008 manual beta confirmation" }
   - claim: "dedupe bug found + fixed via the live smoke (last-start-prompt rewritten by syncs)"
     evidence:
       - { type: test, command: "pwsh -File tests/bootstrap/LauncherIntegration.Tests.ps1", exit_code: 0, result: "dedicated launcher marker" }
@@ -69,10 +71,12 @@ design_trace:
 
 verdict:
   per_phase: { phase_0: pass, phase_1: pass, phase_2: pass, phase_3: pass, phase_4: pass, phase_5: pass, phase_6: pass, phase_7: pass }
-  overall: APPROVE for review-signoff
+  overall: APPROVE for review-signoff (D-002 qualified)
   notes: >
-    Final iteration. Both carried deferrals (D-001 + D-002) closed LIVE and proven with real
-    dispatcher smokes - not test-only. Two gaps surfaced by completeness checks and fixed in-iteration
-    (dedupe-vs-sync bug; SessionEnd-not-live + latent overlay gap). Two scoped limitations recorded as
-    feature-closeout follow-ups (other-host SessionEnd; authoritative per-host input schemas), neither
-    blocking. No new dependencies.
+    Final iteration. D-001 closed LIVE on all 4 hosts. D-002 (SessionEnd handover) closed on Claude:
+    deployed config on disk carries SessionEnd (closure test) + dispatcher round-trip; the real
+    session-end FIRING is the SC-008 manual bar (the original "proven LIVE" was corrected at the
+    send-back). Host-capability finding: only Claude has SessionEnd; the handover trigger pivots to the
+    universal Stop event in iteration 004 (drift D-005; portable + crash-safe). Three gaps handled:
+    dedupe-vs-sync (fixed), SessionEnd-not-live + latent overlay (fixed), trigger pivot (sequenced to
+    iter-004). Dogfood: dev-tree host-hook validation trap. No new dependencies.
