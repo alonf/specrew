@@ -1,0 +1,112 @@
+schema: review-report/v1
+feature: 174-hook-driven-session-bootstrap
+iteration: "001"
+reviewer: claude
+reviewed_at: "2026-06-08"
+protocol: proposal-145-seven-phase
+
+# FR x phase coverage matrix (iteration-001 scope). Phases: 0 context, 1 branch,
+# 2 functional, 3 nfr, 4 code-quality, 5 test, 6 ops. n/a requires a reason.
+matrix:
+  - requirement: FR-001
+    phases:
+      phase_0: { applicable: yes, evidence: ["spec.md", "tasks.md"] }
+      phase_1: { applicable: yes, finding: clean }
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "tests/bootstrap/SessionBootstrapManager.Tests.ps1" }
+      phase_3: { applicable: no, reason: "no distinct NFR aspect beyond shared fail-open" }
+      phase_4: { applicable: yes, finding: clean-after-fix }
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "tests/bootstrap/BootstrapProvider.Tests.ps1" }
+      phase_6: { applicable: yes, finding: clean, evidence_ref: "compact-silent + dispatcher smoke" }
+  - requirement: FR-002
+    phases:
+      phase_0: { applicable: yes }
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "tests/bootstrap/DirectiveEngine.Tests.ps1" }
+      phase_4: { applicable: yes, finding: clean }
+      phase_5: { applicable: yes, finding: clean }
+      phase_3: { applicable: no, reason: "directive shape only" }
+  - requirement: FR-003
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "manager returns directive; no input/branch" }
+      phase_6: { applicable: yes, finding: clean }
+      phase_3: { applicable: no, reason: "non-interactivity is functional" }
+  - requirement: FR-004
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "render_first always true (DirectiveEngine.Tests.ps1)" }
+      phase_5: { applicable: yes, finding: clean }
+  - requirement: FR-013
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "tests/bootstrap/ValidationEngine.Tests.ps1" }
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "SC-004 merged/missing/non-portable" }
+  - requirement: FR-015
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "Test-SpecrewAnchorPortable (SessionStateAccessor.Tests.ps1)" }
+      phase_3: { applicable: yes, finding: clean, evidence_ref: "absolute foreign path refused" }
+  - requirement: FR-017
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "ClassificationEngine + ValidationEngine tests" }
+  - requirement: FR-020
+    phases:
+      phase_2: { applicable: yes, finding: clean }
+      phase_4: { applicable: yes, finding: clean }
+      phase_6:
+        applicable: yes
+        finding: live
+        evidence_ref: "dispatcher smoke: provider fires on SessionStart B2, silent on compact (FR-011)"
+
+claim_ledger:
+  - claim: "All 7 components implemented per the Option B IDesign decomposition"
+    evidence:
+      - { type: code, path: "scripts/internal/bootstrap/", symbol: "7 component files" }
+      - { type: commit, ref: "89640012 399b2439 c257e31a" }
+  - claim: "B2 bootstrap is live-wired and fires via the F-171 dispatcher"
+    evidence:
+      - { type: code, path: "scripts/internal/specrew-bootstrap-provider.ps1" }
+      - { type: code, path: "extensions/specrew-speckit/refocus-scopes.json", symbol: "bootstrap provider row" }
+      - { type: test, command: "dispatcher smoke -Event SessionStart", result: "SMOKE PASS", exit_code: 0 }
+      - { type: commit, ref: "29a30874" }
+  - claim: "62 assertions pass across 8 suites"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/*.Tests.ps1", exit_code: 0, result: "8 suites, 0 failed" }
+  - claim: "No new dependencies"
+    evidence:
+      - { type: proof, detail: "pure PowerShell + git CLI only; scaffolder reported new_deps=0" }
+  - claim: "PSScriptAnalyzer clean"
+    evidence:
+      - { type: test, command: "Invoke-ScriptAnalyzer -Path scripts/internal/bootstrap -Recurse", result: "CLEAN after 3 fixes", exit_code: 0 }
+      - { type: commit, ref: "6638c2db" }
+
+design_trace:
+  - design_ref: "design-analysis.md#co-design-record (IDesign roles)"
+    implementation:
+      - "scripts/internal/bootstrap/SessionBootstrapManager.ps1 (Manager)"
+      - "scripts/internal/bootstrap/ClassificationEngine.ps1 (pure Engine)"
+      - "scripts/internal/bootstrap/ValidationEngine.ps1 (Engine, owns reads)"
+      - "scripts/internal/bootstrap/DirectiveEngine.ps1 (pure Engine)"
+      - "scripts/internal/bootstrap/*Accessor.ps1 + HostEventAdapter.ps1"
+    evidence: ["tests/bootstrap/*.Tests.ps1"]
+    status: matched
+  - design_ref: "design-analysis.md engine call-rule"
+    implementation: ["ValidationEngine calls accessors; Classification/Directive stay pure"]
+    evidence: ["pure-engine in-memory tests; ValidationEngine mocked-via-fixture tests"]
+    status: matched
+  - design_ref: "ui-ux d1 render-first sequence"
+    implementation: ["DirectiveEngine render_first=true", "specrew-bootstrap-provider prose"]
+    evidence: ["DirectiveEngine.Tests.ps1", "BootstrapProvider.Tests.ps1"]
+    status: matched
+
+verdict:
+  per_phase:
+    phase_0: pass
+    phase_1: pass
+    phase_2: pass
+    phase_3: pass
+    phase_4: pass
+    phase_5: pass
+    phase_6: pass
+    phase_7: pass
+  overall: APPROVE for review-signoff
+  notes: >
+    All applicable phases pass (Phase 4 after repairing 3 PSScriptAnalyzer findings).
+    Deferred items (D-001 downstream deploy, merged-branch-deleted edge case, FR-005
+    per-host, FR-014 sync-side) are out-of-slice scope carried to iteration 003 under
+    the approved 3-iteration split; recorded in review.md gap ledger + .squad/decisions.md.
