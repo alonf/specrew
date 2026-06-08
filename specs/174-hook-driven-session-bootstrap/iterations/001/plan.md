@@ -45,9 +45,9 @@ Claude-first. Other requirements are iterations 002/003 (see ../../tasks.md).
 | T002 | Anchor read/write; non-portable absolute path | FR-013, FR-015 | US-4 | 2 | Implementer | scripts/internal/bootstrap/SessionStateAccessor.ps1 | done | claude | 2 | — |
 | T003 | Feature metadata + git merged/closed/portability reads | FR-014, FR-015 | US-4 | 2 | Implementer | scripts/internal/bootstrap/ProjectMetadataAccessor.ps1 | done | claude | 2 | — |
 | T004 | Pure mode decision (full / cleared-anchor; anchor stage) | FR-001, FR-017 | US-1, US-4 | 2 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | done | claude | 2 | — |
-| T005 | Validate anchor vs project state; clear stale anchors | FR-013, FR-015, FR-017 | US-4 | 2 | Implementer | scripts/internal/bootstrap/ValidationEngine.ps1 | planned | claude | — | — |
+| T005 | Validate anchor vs project state; clear stale anchors | FR-013, FR-015, FR-017 | US-4 | 2 | Implementer | scripts/internal/bootstrap/ValidationEngine.ps1 | done | claude | 2 | — |
 | T006 | Build the data-oriented directive (render_first) | FR-002, FR-004 | US-1 | 1 | Implementer | scripts/internal/bootstrap/DirectiveEngine.ps1 | done | claude | 1 | — |
-| T007 | Orchestrate B2 + render-first skill + B2 register/FileList + basic journal record | FR-001, FR-002, FR-003, FR-016, FR-020 | US-1 | 2 | Implementer | scripts/internal/bootstrap/SessionBootstrapManager.ps1 | planned | claude | — | — |
+| T007 | Orchestrate B2 + render-first skill + B2 register/FileList + basic journal record | FR-001, FR-002, FR-003, FR-016, FR-020 | US-1 | 2 | Implementer | scripts/internal/bootstrap/SessionBootstrapManager.ps1 | done | claude | 2 | — |
 
 ## Effort Model
 
@@ -96,3 +96,9 @@ Claude-first. Other requirements are iterations 002/003 (see ../../tasks.md).
   here via T003; its full sync-side guarantee is revisited at iteration 003 / closeout.
 - Hardening gate `Overall Verdict: ready` (planning-time) at `quality/hardening-gate.md`;
   runtime evidence recorded at iteration close.
+- **Carried wiring (drift D-001):** all 7 components are built + unit-tested (57 assertions,
+  green), but the LIVE wiring — module dot-sourcing of `scripts/internal/bootstrap/*`, the
+  `Specrew.psd1` FileList entries, and the F-171 SessionStart B2 dispatcher registration that
+  makes the provider actually fire on launch — is deferred to pair with the iteration-003
+  per-host empirical verification (T017 / SC-001). Iteration 001 delivers tested component
+  logic, not yet live-on-host bootstrap. Recorded in `drift-log.md`.
