@@ -124,6 +124,7 @@
         'extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1',
         'extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1',
         'extensions/specrew-speckit/scripts/shared-governance.ps1',
+        'extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1',
         'extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1',
         'extensions/specrew-speckit/scripts/sync-boundary-state.ps1',
         'extensions/specrew-speckit/scripts/sync-squad-model-overrides.ps1',

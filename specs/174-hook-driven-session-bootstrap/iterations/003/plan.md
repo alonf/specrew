@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 18/20 story_points
 **Started**: 2026-06-08
 **Completed**:
@@ -39,7 +39,7 @@ Build order: **live-wiring first** (T021, T022), then per-host, concurrency, jou
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T021 | D-001 downstream extension-tree deploy + LIVE SessionStart cross-host dispatcher smoke | FR-001, FR-005 | US-1 | 3 | Implementer | extensions/specrew-speckit/scripts/bootstrap | planned | claude | — | — |
+| T021 | D-001 downstream extension-tree deploy + LIVE SessionStart cross-host dispatcher smoke | FR-001, FR-005 | US-1 | 3 | Implementer | extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1 | done | claude | 3 | — |
 | T022 | D-002 SessionEnd hook registration + LIVE SessionEnd->SessionStart round-trip smoke | FR-009 | US-3 | 3 | Implementer | extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1 | planned | claude | — | — |
 | T016 | Per-host SessionStart/SessionEnd normalization (Codex/Copilot/Cursor) | FR-005 | US-1 | 2 | Implementer | scripts/internal/bootstrap/HostEventAdapter.ps1 | planned | claude | — | — |
 | T017 | Per-host empirical verification (render-before-picker, all 4 hosts) | FR-005, SC-001, SC-005 | US-1 | 2 | Implementer | tests/bootstrap | planned | claude | — | — |
