@@ -274,16 +274,17 @@ try {
 
         # (2c) SC-026 (Amendment A7) — the per-lens confirmation PROVENANCE floor rides the SAME specify-gate
         # throw (the gate throws on ANY Test-SpecrewLensWorkshopRecords error). When the artifact opts in via
-        # confirmation_required, each selected lens MUST declare a provenance (human-confirmed|delegated|skipped);
-        # grandfather-safe (no marker -> no-op). Proven through the REAL gate entry, not only the unit floor.
+        # confirmation_required, each selected lens MUST declare a provenance (human-confirmed|delegated|skipped)
+        # plus matching confirmation_scope; grandfather-safe (no marker -> no-op). Proven through the REAL gate
+        # entry, not only the unit floor.
         [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"confirmation_required":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
         $sc026Blocked = $false
         try { Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature' | Out-Null }
         catch { $sc026Blocked = ($_.Exception.Message -match 'SC-026' -and $_.Exception.Message -match 'architecture-core') }
         Assert-True $sc026Blocked 'SC-026: sync-specify is BLOCKED when a confirmation_required artifact omits a lens provenance (fires through the real gate entry, names the lens)'
-        [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"confirmation_required":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true,"confirmation":"human-confirmed"}}}', [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"confirmation_required":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true,"confirmation":"human-confirmed","confirmation_scope":"lens-question"}}}', [System.Text.UTF8Encoding]::new($false))
         $sc026Ok = Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature'
-        Assert-True ($null -ne $sc026Ok -and $sc026Ok.Valid -eq $true) 'SC-026: sync-specify passes once each lens declares a valid confirmation provenance'
+        Assert-True ($null -ne $sc026Ok -and $sc026Ok.Valid -eq $true) 'SC-026: sync-specify passes once each lens declares valid confirmation provenance + scope'
         [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
         $sc026Grandfather = Invoke-SpecrewSpecifyBoundaryLensGate -ProjectRoot $specifyRoot -FeatureRef '001-test-feature'
         Assert-True ($null -ne $sc026Grandfather -and $sc026Grandfather.Valid -eq $true) 'SC-026: pre-A7 artifact (no confirmation_required) -> SC-026 no-op through the real gate (grandfather-safe)'

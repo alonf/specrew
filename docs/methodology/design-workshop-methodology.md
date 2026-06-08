@@ -347,6 +347,7 @@ At minimum, the per-lens record should include:
 - per-lens `depth`
 - per-lens `moved_on: true`
 - per-lens `confirmation`
+- per-lens `confirmation_scope`
 
 Allowed confirmation values:
 
@@ -355,6 +356,17 @@ human-confirmed
 human-delegated
 human-skipped
 ```
+
+Required `confirmation_scope` values:
+
+```text
+human-confirmed  -> lens-question
+human-delegated  -> explicit-delegation
+human-skipped    -> explicit-skip
+```
+
+`human-confirmed` means the substantive questions for that lens were surfaced
+and confirmed. Lens approval is not workshop-question approval.
 
 Example shape:
 
@@ -374,7 +386,8 @@ Example shape:
       "decision": "Use a modular monolith with explicit component boundaries for this slice; defer service extraction.",
       "depth": "full",
       "moved_on": true,
-      "confirmation": "human-confirmed"
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
     }
   }
 }
@@ -485,7 +498,16 @@ Correct behavior: show ASCII inline and optionally persist Mermaid/SVG/HTML.
 The agent records "human agreed" for lenses that were never surfaced.
 
 Correct behavior: record `human-confirmed`, `human-delegated`, or
-`human-skipped` honestly.
+`human-skipped` honestly with a matching `confirmation_scope`.
+
+### Lens approval used as workshop-question approval
+
+The agent treats a human's approval of the workshop agenda or selected lens set
+as approval for all substantive questions inside those lenses.
+
+Correct behavior: agenda/lens-set approval only authorizes running the
+workshop. Every selected lens still needs a scoped per-lens answer, explicit
+delegation, or explicit skip. Lens approval is not workshop-question approval.
 
 ### Finished architecture handoff
 
@@ -518,6 +540,8 @@ A reviewer assessing workshop compliance should ask:
 - Were all components named with one-line responsibilities?
 - Was at least one key flow walked through the design?
 - Were decisions captured with honest provenance?
+- Does each selected lens have a matching `confirmation_scope`, and is agenda
+  approval never reused as workshop-question approval?
 - Did `design-analysis.md` preserve the human-selected option?
 - Did `plan.md` consume the selected design as authoritative input?
 - Are diagrams and workshop records persisted, not chat-only?

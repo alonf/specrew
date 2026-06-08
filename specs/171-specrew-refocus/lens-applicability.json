@@ -29,6 +29,7 @@
       "depth": "full",
       "moved_on": true,
       "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
       "diagram": "workshop/architecture-core.md — trigger-contract/channel architecture + engine/digest stack ASCII diagrams"
     },
     "component-design": {
@@ -41,6 +42,7 @@
       "depth": "full",
       "moved_on": true,
       "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
       "diagram": "workshop/component-design.md — full component map ASCII + dedupe-correct B3 key flow"
     },
     "requirements-nfr": {
@@ -52,6 +54,7 @@
       "depth": "medium",
       "moved_on": true,
       "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
       "diagram": "workshop/requirements-nfr.md — quality-attribute priority table"
     },
     "integration-api": {
@@ -63,6 +66,7 @@
       "depth": "medium",
       "moved_on": true,
       "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
       "diagram": "workshop/integration-api.md — B1 contract sequence (Claude/dispatcher/engine/files)"
     },
     "security-compliance": {
@@ -73,6 +77,7 @@
       "depth": "light",
       "moved_on": true,
       "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
       "diagram": "workshop/security-compliance.md — trust-boundary walk ASCII"
     },
     "devops-operations": {
@@ -86,6 +91,7 @@
       "depth": "light",
       "moved_on": true,
       "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
       "diagram": "workshop/devops-operations.md — deployment topology + reset matrix"
     },
     "observability-resilience": {
@@ -97,6 +103,7 @@
       "depth": "medium",
       "moved_on": true,
       "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
       "diagram": "workshop/observability-resilience.md — failure-trace flow + reason-code table"
     }
   }

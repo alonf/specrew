@@ -173,11 +173,12 @@ Claude and was redundant on prose hosts that render the agenda inline.)
      **keyed by lens id**, each value carrying the EXACT fields the gate checks: `agenda` (array of questions
      raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true`, and
      **`confirmation`** — the provenance, one of `human-confirmed | human-delegated | human-skipped` (A7/FR-039,
-     SC-026). Exact shape — get it right the first time:
+     SC-026), plus **`confirmation_scope`** — `lens-question` for `human-confirmed`, `explicit-delegation` for
+     `human-delegated`, or `explicit-skip` for `human-skipped`. Exact shape — get it right the first time:
 
      ```json
      { "workshop_intake": true, "confirmation_required": true, "selected": ["architecture-core"],
-       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed" } } }
+       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question" } } }
      ```
 
      It is `workshop` -> `<lens-id>` -> fields (NOT `<lens-id>` -> `workshop`), and `decision` is a singular
@@ -187,14 +188,16 @@ Claude and was redundant on prose hosts that render the agenda inline.)
      `specs/<feature>/workshop/<lens-id>.md`, and set that lens's `diagram` field to a **reference to that
      file** (the path + a one-line caption), NOT a prose description. A diagram that lives only in the chat
      scrollback is lost; the workshop folder makes the design reviewable from the artifacts.
-   - **Integrity — never manufacture agreement (A7/FR-038, SC-026).** Set `confirmation: human-confirmed` ONLY
-     for a lens you actually surfaced and the human confirmed. If the human explicitly said "you decide" or
-     "skip", set `human-delegated` / `human-skipped` and say so honestly in `decision` — do NOT write a
-     fabricated "the human agreed to X" for a lens they never saw. **Count self-check before you record:** you
-     are about to write N lens records — you must have asked, or been explicitly told to decide/skip, N times.
-     If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill
-     in the remaining lenses yourself. The SC-026 gate blocks the specify boundary until every selected lens
-     carries a `confirmation` — but it cannot see whether you really asked; that integrity is on you, and the
+   - **Integrity — never manufacture agreement (A7/FR-038, SC-026).** Set `confirmation: human-confirmed` and
+     `confirmation_scope: lens-question` ONLY for a lens whose substantive workshop questions you actually
+     surfaced and the human confirmed. Lens approval is not workshop-question approval. If the human explicitly
+     said "you decide" or "skip" for that lens's questions, set `human-delegated` + `explicit-delegation` or
+     `human-skipped` + `explicit-skip` and say so honestly in `decision` — do NOT write a fabricated "the human
+     agreed to X" for a lens they never saw. **Count self-check before you record:** you are about to write N
+     lens records — you must have asked, or been explicitly told to decide/skip, N times. If you stopped early,
+     go back and surface the rest; you may not declare intake "specific enough" and fill in the remaining lenses
+     yourself. The SC-026 gate blocks the specify boundary until every selected lens carries a `confirmation` and
+     matching `confirmation_scope` — but it cannot see transcript truthfulness; that integrity is on you, and the
      Squad re-dogfood checks it.
    - At design-analysis, a `## Co-Design Record` in `design-analysis.md` with the agreed
      component-to-responsibility map + at least one agreed flow + a human-agreed marker, and — when ui-ux is in
