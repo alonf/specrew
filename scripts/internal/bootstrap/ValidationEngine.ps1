@@ -56,3 +56,34 @@ function Test-SpecrewAnchorValidity {
 
     return [pscustomobject]@{ valid = $true; cleared_reason = $null; findings = @(); anchor = $anchor }
 }
+
+function Test-SpecrewHandoverValidity {
+    # Handover recency is necessary but NOT sufficient (architecture-core d2): a fresh handover
+    # must still validate against current project state before it is treated as resume truth.
+    # Composes ProjectMetadataAccessor (Get-SpecrewFeatureResumable). Feature 174 (FR-010, FR-017).
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()]$Handover,            # from Get-SpecrewHandover, or $null
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter()][string] $BaseBranch = 'main'
+    )
+    if ($null -eq $Handover) {
+        return [pscustomobject]@{ valid = $false; reason = $null; findings = @('no handover present') }
+    }
+    if (-not [bool]$Handover.fresh) {
+        return [pscustomobject]@{ valid = $false; reason = 'stale'; findings = @("handover older than the freshness window: $($Handover.recorded_at)") }
+    }
+    $feature = $Handover.active_feature
+    if ([string]::IsNullOrWhiteSpace($feature)) {
+        return [pscustomobject]@{ valid = $false; reason = 'no-feature'; findings = @('handover names no active feature') }
+    }
+    $res = Get-SpecrewFeatureResumable -ProjectRoot $ProjectRoot -FeatureRef $feature -BaseBranch $BaseBranch
+    if (-not $res.present) {
+        return [pscustomobject]@{ valid = $false; reason = 'missing'; findings = @("handover feature not present: $feature") }
+    }
+    if ($res.merged) {
+        return [pscustomobject]@{ valid = $false; reason = 'merged'; findings = @("handover feature already merged: $feature") }
+    }
+    return [pscustomobject]@{ valid = $true; reason = $null; findings = @() }
+}

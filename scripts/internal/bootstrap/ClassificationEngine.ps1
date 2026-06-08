@@ -23,7 +23,12 @@ function Resolve-SpecrewBootstrapMode {
         [Parameter()][bool] $HandoverValid = $false
     )
 
-    if ($HandoverValid -or $AnchorValid) {
+    # Handover-first stage (architecture-core d2): a validated handover is the primary resume
+    # signal and is surfaced before the anchor.
+    if ($HandoverValid) {
+        return [pscustomobject]@{ mode = 'welcome-back'; reason = 'resuming from a validated handover' }
+    }
+    if ($AnchorValid) {
         return [pscustomobject]@{ mode = 'welcome-back'; reason = $null }
     }
     if (-not [string]::IsNullOrWhiteSpace($AnchorClearedReason)) {
