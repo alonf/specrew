@@ -1,3 +1,30 @@
+## 2026-06-08 — F-174 Iteration 003 planning carries + feature-closeout follow-up
+
+### 2026-06-08 — Directive: iteration-003 live-wiring sequencing + real-smoke proof bar
+
+- **Decision ID**: f174-i003-livewiring-first
+- **Type**: planning-constraint
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T20:30:00Z
+- **Directive**: Iteration 003's TOP priority is closing D-001 (downstream extension-tree deploy)
+  and D-002 (SessionEnd hook registration) LIVE. Carries: (1) SEQUENCE the live-wiring tasks FIRST,
+  before per-host/concurrency/docs, so any SessionEnd-dispatch difficulty surfaces early, not at the
+  end; (2) PROVE both with REAL dispatcher smokes (live SessionStart-across-hosts + live
+  SessionEnd->SessionStart round-trip), not test-only - the D-001 self-host bar applied to D-001+D-002.
+
+### 2026-06-08 — Follow-up: "build+test != live" review-signoff check (feature-closeout batch)
+
+- **Decision ID**: f174-followup-build-test-not-live-check
+- **Type**: methodology-followup
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T20:30:00Z
+- **Follow-up**: Add an explicit review-signoff line item: a component is NOT done until it is
+  hook-registered and proven on a real (or dispatcher-smoke) event, not merely unit-tested. Batch
+  with the feature-closeout follow-ups alongside the Proposal-142 closeout-finalization hardening
+  (f174-i001-closeout-finalization-gap).
+
 ## 2026-06-08 — F-174 Iteration 002: Review-Signoff Deferral (SessionEnd hook wiring)
 
 ### 2026-06-08 — Defer: F-174 SessionEnd handover hook registration
@@ -25461,3 +25488,21 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 177186f3
 - **Recorded At**: 2026-06-08T19:37:54Z
+
+## 2026-06-08T20:07:48Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: b3b4b9c7
+- **Recorded At**: 2026-06-08T20:07:47Z
+
+## 2026-06-08T20:17:18Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: b3b4b9c7
+- **Recorded At**: 2026-06-08T20:17:17Z
