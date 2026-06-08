@@ -1,0 +1,35 @@
+schema: "v1"
+feature: "171-specrew-refocus"
+iteration: "002"
+updated_at: "2026-06-08T06:50:05.1730443Z"
+tasks:
+  T013:
+    title: "Research matrix: Antigravity/Cursor/Codex/Copilot hook surfaces + Claude trust-prompt (C6) + per-event latency measurement"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T014:
+    title: "Verified host bindings per matrix + simulated-event fixtures; documented-variance entries for failures"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T015:
+    title: "Docs (user-guide, troubleshooting failure trace, README touch) + SC-008 beta validation script/evidence prep"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T016:
+    title: "B4 compaction-steering research record (research-gated OUT; findings only)"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T017:
+    title: "Defer-approved carries: init/update wiring for deploy-refocus-hooks + catalog managed-with-overlay merge on update + wiring tests"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
