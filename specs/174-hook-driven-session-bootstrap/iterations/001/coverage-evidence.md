@@ -4,12 +4,12 @@
 **Reviewed**: 2026-06-08
 **Overall Verdict**: accepted
 
-> **Reviewer note on the form-vs-meaning warning below:** the 31-file diff is legitimate
-> — the scaffolder's baseline is the **clarify** commit `550e3c02`, so the diff spans all of
-> plan + design-analysis + tasks + implementation + review artifacts since clarify, not just
-> the 7 implementation tasks. The iteration baseline in `state.md` is stale (should be the
-> before-implement commit `822ca7d3`); refreshing it is the carried `state.md` item. Every
-> implementation file IS committed (no Shape-5 working-tree-only evidence).
+**Reviewer note on the form-vs-meaning warning below:** the 31-file diff is legitimate -
+the scaffolder's baseline is the **clarify** commit `550e3c02`, so the diff spans all of plan +
+design-analysis + tasks + implementation + review artifacts since clarify, not just the 7
+implementation tasks. The iteration baseline in `state.md` is stale (should be the
+before-implement commit `822ca7d3`); refreshing it is the carried `state.md` item. Every
+implementation file IS committed (no Shape-5 working-tree-only evidence).
 
 > **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
 >
