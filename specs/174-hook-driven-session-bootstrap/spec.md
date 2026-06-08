@@ -210,6 +210,36 @@ offered.
   enforced, observable, and documented, with a gap ledger for any missing
   dimension.
 
+### Lens-Informed Requirements
+
+- **LIR-001 (Architecture)**: Planning MUST compare at least two explicit
+  structure options for the bootstrap provider and state why the selected
+  decomposition keeps F-171 dispatcher behavior stable while adding B2
+  bootstrap behavior.
+- **LIR-002 (Integration)**: Planning MUST define producer/consumer contracts
+  for SessionStart input, bootstrap directive output, SessionEnd handover
+  writing, and agent-rendered menu handling across Claude, Codex, Copilot, and
+  Cursor.
+- **LIR-003 (UI/UX)**: Planning MUST define the visible menu sequence and
+  fallback behavior for hosts where a structured picker risks hiding the
+  rendered orientation.
+- **LIR-004 (Data)**: Planning MUST define validity checks for session anchors,
+  handover freshness, project-local feature resolution, and absolute-path
+  portability before any resume candidate is surfaced.
+- **LIR-005 (Security)**: Planning MUST identify trust boundaries for hook
+  event input, handover/session-state file reads, absolute paths, and generated
+  agent directives, including failure-safe behavior for untrusted or stale
+  state.
+- **LIR-006 (Observability)**: Planning MUST specify journal, breaker, dedupe,
+  and test evidence that proves full bootstrap, light welcome-back, and
+  cleared-anchor paths are distinguishable after execution.
+- **LIR-007 (NFR)**: Planning MUST preserve backward compatibility,
+  idempotency, B1/B3 regression safety, and deferred B4/Antigravity scope as
+  measurable review criteria.
+- **LIR-008 (DevOps)**: Planning MUST describe deployment-loop and
+  kill-switch impact for registering the SessionEnd handover writer and B2
+  bootstrap provider without requiring a new install path.
+
 ### Key Entities
 
 - **Bootstrap Directive**: Structured hook-injected instruction consumed by the

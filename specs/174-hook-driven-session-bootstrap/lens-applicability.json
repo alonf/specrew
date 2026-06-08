@@ -1,0 +1,115 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "integration-api",
+    "ui-ux",
+    "data-storage",
+    "security-compliance",
+    "observability-resilience",
+    "requirements-nfr",
+    "devops-operations"
+  ],
+  "skipped": {
+    "component-design": "Deferred to the design-analysis co-design stop, where the component map and flow must be built with the human before plan.md."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Decide the exact specrew start versus SessionStart hook division of labor.",
+        "Decide the B2 full-bootstrap versus lightweight welcome-back trigger.",
+        "Keep F-171 dispatcher behavior stable while adding a bootstrap provider."
+      ],
+      "decision": "Human delegated intake decision: architecture-core applies at full depth because Proposal 172 changes the primary bootstrap posture and must preserve F-171 dispatcher boundaries while resolving open design questions before planning.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-delegated",
+      "diagram": "workshop/architecture-core.md - bootstrap posture and B2 decision boundary notes"
+    },
+    "integration-api": {
+      "agenda": [
+        "Define SessionStart event input to bootstrap directive output contract.",
+        "Define SessionEnd handover-write integration with Proposal 130.",
+        "Empirically verify host-specific menu rendering across Claude, Codex, Copilot, and Cursor."
+      ],
+      "decision": "Human delegated intake decision: integration-api applies at full depth because the feature composes hook events, generated directives, handover files, launcher behavior, and multiple host-specific interaction surfaces.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-delegated",
+      "diagram": "workshop/integration-api.md - hook and agent contract sequence notes"
+    },
+    "ui-ux": {
+      "agenda": [
+        "Define visible orientation plus Resume/New/Pick menu sequence.",
+        "Resolve structured-picker versus prose-only fallback per host.",
+        "Preserve render-before-menu discipline from F-165."
+      ],
+      "decision": "Human delegated intake decision: ui-ux applies at medium depth because the user-visible bootstrap menu and orientation sequence are central, but the detailed menu semantics are composed from Proposal 077, Proposal 078, and Proposal 143.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-delegated",
+      "diagram": "workshop/ui-ux.md - bootstrap menu flow notes"
+    },
+    "data-storage": {
+      "agenda": [
+        "Classify session anchors, handover records, and index metadata.",
+        "Define validity and freshness checks before resume candidates are surfaced.",
+        "Treat absolute worktree path anchors as non-portable."
+      ],
+      "decision": "Human delegated intake decision: data-storage applies at medium depth because bootstrap correctness depends on durable session-state and handover files, but Proposal 130 remains the owner of handover format.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-delegated",
+      "diagram": "workshop/data-storage.md - state and handover relation notes"
+    },
+    "security-compliance": {
+      "agenda": [
+        "Identify trust boundaries for hook event JSON, filesystem state, absolute paths, and generated directives.",
+        "Define failure-safe behavior for stale, untrusted, or defunct-worktree anchors.",
+        "Prevent hook interactivity or external state from steering unauthorized lifecycle continuation."
+      ],
+      "decision": "Human delegated intake decision: security-compliance applies at medium depth because stale anchors and absolute paths can misdirect session recovery and the hook must stay non-interactive and failure-safe.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-delegated",
+      "diagram": "workshop/security-compliance.md - trust boundary notes"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "Define journal, breaker, dedupe, and state-classification evidence for B2 bootstrap paths.",
+        "Ensure full bootstrap, light welcome-back, and cleared-anchor behavior are diagnosable.",
+        "Define failure evidence for missing or invalid handover/session-state files."
+      ],
+      "decision": "Human delegated intake decision: observability-resilience applies at medium depth because the feature changes startup behavior and must be reviewable through logs, tests, and hook journal evidence.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-delegated",
+      "diagram": "workshop/observability-resilience.md - B2 evidence flow notes"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Set compatibility and idempotency as design-driving NFRs.",
+        "Preserve unchanged B1 and B3 behavior as regression criteria.",
+        "Keep B4 pre-compaction capture and Antigravity binding out of scope."
+      ],
+      "decision": "Human delegated intake decision: requirements-nfr applies at medium depth because the feature is mostly behavioral posture and compatibility, with measurable outcomes needed for per-host reliability and unchanged-scope claims.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-delegated",
+      "diagram": "workshop/requirements-nfr.md - quality priority notes"
+    },
+    "devops-operations": {
+      "agenda": [
+        "Define deployment-loop impact for B2 bootstrap provider and SessionEnd handover registration.",
+        "Preserve kill-switch and managed-marker behavior from F-171.",
+        "Avoid introducing a new install path."
+      ],
+      "decision": "Human delegated intake decision: devops-operations applies at light depth because the feature changes host hook registration and rollout controls, but it should reuse the shipped F-171 deployment loop.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-delegated",
+      "diagram": "workshop/devops-operations.md - deployment-loop impact notes"
+    }
+  }
+}

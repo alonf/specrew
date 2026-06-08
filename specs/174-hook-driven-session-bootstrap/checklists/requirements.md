@@ -32,6 +32,10 @@ to clarification and planning.
 - [x] Feature meets measurable outcomes defined in Success Criteria.
 - [x] Required design-analysis questions are preserved for the workshop and not
   pre-decided in the spec.
+- [x] Lens-applicability intake has run, with human-delegated provenance
+  recorded in `lens-applicability.json`.
+- [x] Spec includes lens-informed requirements for architecture, integration,
+  UI/UX, data, security, observability, NFRs, and DevOps.
 
 ## Notes
 
@@ -41,3 +45,5 @@ to clarification and planning.
 - The design-analysis workshop must still resolve the exact `specrew start`
   division of labor, per-host menu-rendering shape, and B2 escalation trigger
   before `plan.md` is authored.
+- Lens intake was approved and delegated by the human in this Codex session on
+  2026-06-08 after the agenda was rendered in-band.
