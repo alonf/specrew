@@ -274,6 +274,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/gate-stop-skill.tests.ps1
 
+      - name: Integration - GitHub Actions Node runtime pins
+        shell: pwsh
+        run: ./tests/integration/github-actions-node-runtime-pins.tests.ps1
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest

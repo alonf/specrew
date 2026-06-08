@@ -19,6 +19,7 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $workflowRoots = @(
     Join-Path $repoRoot '.github\workflows'
     Join-Path $repoRoot '.squad\templates\workflows'
+    Join-Path $repoRoot 'templates\github\workflows'
 )
 
 $workflowFiles = @(
