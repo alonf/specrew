@@ -25,9 +25,9 @@ function Format-BootstrapDirective {
     param($Result)
     $d = $Result.directive
     $lines = New-Object System.Collections.Generic.List[string]
-    $lines.Add('[specrew-bootstrap] SessionStart B2 — render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
+    $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
-    $lines.Add('Render, in order: (1) orientation — Specrew version, host, project, lifecycle position; (2) any validated handover summary; (3) a one-line state reason when non-default; (4) the Resume / New / Pick-feature menu as TEXT. Offer Resume only when a valid active session exists.')
+    $lines.Add('Render, in order: (1) orientation - Specrew version, host, project, lifecycle position; (2) any validated handover summary; (3) a one-line state reason when non-default; (4) the Resume / New / Pick-feature menu as TEXT. Offer Resume only when a valid active session exists.')
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
     }
@@ -43,7 +43,7 @@ try {
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
     }
 
-    # B1 (compact) is unchanged — the bootstrap is B2 only (FR-011).
+    # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011).
     $source = $null
     if (-not [string]::IsNullOrWhiteSpace($eventJson)) {
         try { $source = ($eventJson | ConvertFrom-Json).source } catch { $source = $null }

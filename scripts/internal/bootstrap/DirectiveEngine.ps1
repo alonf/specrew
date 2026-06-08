@@ -12,6 +12,7 @@
                                validation_findings, dedupe_key }
 #>
 function New-SpecrewBootstrapDirective {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Pure factory: builds and returns a PSCustomObject; performs no external state change.')]
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
