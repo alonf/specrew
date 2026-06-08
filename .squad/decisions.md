@@ -1,3 +1,45 @@
+## 2026-06-08 — F-174 Iteration 002: HandoverStore composes Proposal 130 (locked)
+
+### 2026-06-08 — Decision: HandoverStore uses Proposal 130's already-specified schema
+
+- **Decision ID**: f174-i002-handover-composes-130
+- **Type**: design-constraint
+- **Affected Requirement**: FR-009, FR-010
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T19:00:00Z
+- **Decision**: T008 HandoverStore MUST read/write the handover exactly per Proposal 130 (in
+  this worktree at `proposals/130-specrew-switch-to-host-handover.md`): `schema: v1`
+  frontmatter + the Pillar-2 5-section body (no template stubs); the SessionEnd path is
+  `.specrew/handover/<timestamp>-session-end-<source>-from-<host>.md`; maintain
+  `.specrew/handover/index.yml` (timestamp + from-host + active-feature + active-boundary +
+  exit-source); discriminate detail by source (`compact` best-effort, `clear`/`exit` full,
+  `startup`/`resume` minimal); freshness window default 24h, configurable. Do NOT invent a
+  "minimal contract." F-174 is Proposal 130's FIRST implementation; cross-reference 130 in the
+  HandoverStore code header AND in spec FR-009/FR-010 so nothing diverges when 130 ships.
+
+## 2026-06-08 — F-174 Iteration 001: Closeout finalization + state-truth gap (Proposal 142 class)
+
+### 2026-06-08 — Finding: iteration-closeout left stale state + dangling artifacts
+
+- **Decision ID**: f174-i001-closeout-finalization-gap
+- **Type**: state-truth-gap
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T19:00:00Z
+- **Finding**: The iteration-closeout sync advanced the ledger cursor and registered
+  feature-174/001 in `.specrew/closed-iterations.yml`, but did NOT (a) advance
+  `iterations/001/state.md` from `review-signoff`/`reviewing` to `iteration-closeout`/`complete`,
+  nor (b) clean the dangling `.md.pending` reviewer-artifact duplicates
+  (dashboard/code-map/coverage-evidence/dependency-report/review-diagrams/reviewer-index). A
+  Proposal-142-class state-truth gap: the ledger said crossed while the iteration artifacts said
+  in-progress.
+- **Resolution (now)**: state.md advanced to complete; the six `.md.pending` duplicates removed
+  (the committed `.md` versions are authoritative); closed-index entry confirmed present.
+- **Follow-up (feature-closeout batch)**: harden `sync-boundary-state.ps1` iteration-closeout to
+  flip state.md to complete and resolve/clean `.pending` artifacts atomically, so manual
+  finalization is not required.
+
 ## 2026-06-08 — F-174 Iteration 001: Review-Signoff Deferral Approvals
 
 Reviewer deferrals to iteration 003, approved by the human via the 3-iteration tasks split
@@ -25359,3 +25401,37 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 822ca7d3
 - **Recorded At**: 2026-06-08T14:29:04Z
+
+## 2026-06-08T17:20:59Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 57208e81
+- **Recorded At**: 2026-06-08T17:20:58Z
+
+## 2026-06-08T18:40:26Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1af69d13
+- **Recorded At**: 2026-06-08T18:40:25Z
+
+## 2026-06-08T18:56:22Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-08T18:56:22Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'before-implement'.
+
+## 2026-06-08T18:56:23Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 593d4817
+- **Recorded At**: 2026-06-08T18:56:22Z

@@ -179,8 +179,14 @@ offered.
   **Owner**: Implementer, Spec Steward. **Iteration**: 001.
 - **FR-009**: SessionEnd handover writing MUST be wired through the shipped
   hook deployment path while preserving Proposal 130's handover format and
-  source discrimination.
-  **Owner**: Implementer. **Iteration**: 001.
+  source discrimination. Compose Proposal 130's ALREADY-SPECIFIED schema, do not
+  re-author it: `schema: v1` frontmatter + the Pillar-2 5-section body; path
+  `.specrew/handover/<timestamp>-session-end-<source>-from-<host>.md`;
+  `.specrew/handover/index.yml`; source discrimination
+  (`compact` best-effort / `clear`,`exit` full / `startup`,`resume` minimal);
+  24h default freshness. F-174 is Proposal 130's first implementation
+  (`proposals/130-specrew-switch-to-host-handover.md`); cross-reference 130 in code.
+  **Owner**: Implementer. **Iteration**: 002.
 - **FR-010**: SessionStart bootstrap MUST read a valid Proposal 130-compatible
   handover when present and surface its timestamp and recommended next step to
   the agent directive.
