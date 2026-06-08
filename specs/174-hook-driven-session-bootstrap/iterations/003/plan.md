@@ -43,8 +43,8 @@ Build order: **live-wiring first** (T021, T022), then per-host, concurrency, jou
 | T022 | D-002 SessionEnd hook registration (handover provider, events:SessionEnd) + LIVE SessionEnd->SessionStart round-trip smoke | FR-009 | US-3 | 3 | Implementer | scripts/internal/specrew-handover-provider.ps1 | done | claude | 3 | — |
 | T016 | Per-host SessionStart/SessionEnd normalization (Codex/Copilot/Cursor) | FR-005 | US-1 | 2 | Implementer | scripts/internal/bootstrap/HostEventAdapter.ps1 | planned | claude | — | — |
 | T017 | Per-host empirical verification (render-before-picker, all 4 hosts) | FR-005, SC-001, SC-005 | US-1 | 2 | Implementer | tests/bootstrap | planned | claude | — | — |
-| T014 | SessionStart marker write + 1h-window freshness state | FR-018 | US-4 | 2 | Implementer | scripts/internal/bootstrap/SessionStateAccessor.ps1 | planned | claude | — | — |
-| T015 | Advisory local same-worktree concurrency + unclean-exit detection | FR-018, FR-019 | US-4 | 2 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | planned | claude | — | — |
+| T014 | SessionStart marker write + 1h-window freshness state | FR-018 | US-4 | 2 | Implementer | scripts/internal/bootstrap/SessionStateAccessor.ps1 | done | claude | 2 | — |
+| T015 | Advisory local same-worktree concurrency + unclean-exit detection | FR-018, FR-019 | US-4 | 2 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | done | claude | 2 | — |
 | T018 | HookJournalAccessor + per-path journal-assertion tests (every mode + unclean-exit) | SC-007 | — | 2 | Implementer | scripts/internal/bootstrap/HookJournalAccessor.ps1 | planned | claude | — | — |
 | T019 | B1/B3 regression + FR-012 negative test (no B4/Antigravity path executes) | FR-011, FR-012, SC-005 | US-1 | 1 | Implementer | tests/bootstrap | planned | claude | — | — |
 | T020 | Update docs/prompts: hook = primary bootstrap, specrew start = compat | FR-008, SC-006 | US-2 | 1 | Implementer | docs | planned | claude | — | — |

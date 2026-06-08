@@ -49,18 +49,40 @@ function Invoke-SpecrewSessionBootstrap {
 
     $mode = Resolve-SpecrewBootstrapMode -AnchorValid $validity.valid -AnchorClearedReason $validity.cleared_reason -HandoverValid $handoverValid
 
+    # Advisory SessionStart marker + same-worktree concurrency (US-4, FR-018/019). Never blocks; the
+    # marker is local-only. We read the prior marker, classify concurrency, then stamp our own.
+    $concurrent = $false
+    $concurrencyReason = 'none'
+    try {
+        $markerPath = Join-Path $ProjectRoot '.specrew/runtime/session-marker.json'
+        $cc = Test-SpecrewConcurrentSession -Marker (Get-SpecrewSessionMarker -MarkerPath $markerPath) -ProjectRoot $ProjectRoot -NowUtc $NowUtc
+        $concurrent = [bool]$cc.concurrent
+        $concurrencyReason = $cc.reason
+        $branch = ''; $head = ''
+        try { $branch = (& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null) } catch { $null = $_ }
+        try { $head = (& git -C $ProjectRoot rev-parse --short HEAD 2>$null) } catch { $null = $_ }
+        Write-SpecrewSessionMarker -MarkerPath $markerPath -HostName $HostName -ProjectRoot $ProjectRoot -Branch $branch -HeadCommit $head -StartedAt $NowUtc | Out-Null
+    }
+    catch { $null = $_ }
+
+    $allFindings = @($validity.findings)
+    if ($concurrent) { $allFindings += 'advisory: another session may be active in this worktree (marker within 1h)' }
+
     $directive = New-SpecrewBootstrapDirective `
         -Mode $mode.mode `
         -DedupeKey $dedupeKey `
-        -ValidationFindings $validity.findings `
-        -Sources ([pscustomobject]@{ anchor_present = ($null -ne $validity.anchor); handover_valid = $handoverValid })
+        -ValidationFindings $allFindings `
+        -Sources ([pscustomobject]@{ anchor_present = ($null -ne $validity.anchor); handover_valid = $handoverValid; concurrent_session = $concurrent })
 
     $record = [pscustomobject]@{
-        host           = $HostName
-        mode           = $mode.mode
-        anchor_cleared = $validity.cleared_reason
-        dedupe_key     = $dedupeKey
-        findings       = $validity.findings
+        host               = $HostName
+        mode               = $mode.mode
+        anchor_cleared     = $validity.cleared_reason
+        handover_valid     = $handoverValid
+        concurrent_session = $concurrent
+        concurrency_reason = $concurrencyReason
+        dedupe_key         = $dedupeKey
+        findings           = $allFindings
     }
 
     if ($JournalPath) {

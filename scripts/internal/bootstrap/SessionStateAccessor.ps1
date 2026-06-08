@@ -71,6 +71,25 @@ function Write-SpecrewSessionMarker {
     $marker
 }
 
+function Get-SpecrewSessionMarker {
+    # Read the advisory SessionStart marker (fail open). FR-018.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $MarkerPath)
+    if (-not (Test-Path -LiteralPath $MarkerPath)) { return $null }
+    try {
+        $m = (Get-Content -LiteralPath $MarkerPath -Raw -ErrorAction Stop) | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch { return $null }
+    [pscustomobject]@{
+        started_at   = Get-SpecrewProp $m 'started_at'
+        host         = Get-SpecrewProp $m 'host'
+        project_root = Get-SpecrewProp $m 'project_root'
+        branch       = Get-SpecrewProp $m 'branch'
+        head_commit  = Get-SpecrewProp $m 'head_commit'
+    }
+}
+
 function Test-SpecrewAnchorPortable {
     # An absolute feature_path that does not resolve under the current project root is
     # non-portable (the merged-Feature-171 cross-worktree incident). FR-015.

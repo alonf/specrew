@@ -36,3 +36,41 @@ function Resolve-SpecrewBootstrapMode {
     }
     return [pscustomobject]@{ mode = 'full'; reason = 'no valid active session' }
 }
+
+function Test-SpecrewConcurrentSession {
+    # Advisory local same-worktree concurrency (FR-018, FR-019). PURE: the caller passes the existing
+    # marker in. This is NOT a lock (the user explicitly rejected locks: a session closed without an
+    # exit hook would leave a stuck lock). A marker within the freshness window for THIS worktree
+    # signals a possibly-active concurrent session (advisory only); a STALE marker signals a prior
+    # UNCLEAN exit (informational); a marker for a different worktree is ignored. Never blocks.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()]$Marker,            # from Get-SpecrewSessionMarker, or $null
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $NowUtc,
+        [Parameter()][int] $WindowSeconds = 3600       # 1h (clarify answer)
+    )
+    if ($null -eq $Marker) { return [pscustomobject]@{ concurrent = $false; reason = 'none'; age_seconds = $null } }
+    $startedAt = $Marker.started_at
+    if ([string]::IsNullOrWhiteSpace($startedAt)) { return [pscustomobject]@{ concurrent = $false; reason = 'none'; age_seconds = $null } }
+
+    $mr = $Marker.project_root
+    if (-not [string]::IsNullOrWhiteSpace($mr)) {
+        $same = (([string]$mr).Replace('\', '/').TrimEnd('/') -ieq $ProjectRoot.Replace('\', '/').TrimEnd('/'))
+        if (-not $same) { return [pscustomobject]@{ concurrent = $false; reason = 'different-worktree'; age_seconds = $null } }
+    }
+
+    try {
+        # ConvertFrom-Json may have auto-deserialized started_at to [datetime]; handle both.
+        $s = if ($startedAt -is [datetime]) { $startedAt.ToUniversalTime() } else { [datetime]::Parse([string]$startedAt).ToUniversalTime() }
+        $n = [datetime]::Parse($NowUtc).ToUniversalTime()
+        $age = [int]($n - $s).TotalSeconds
+    }
+    catch { return [pscustomobject]@{ concurrent = $false; reason = 'none'; age_seconds = $null } }
+
+    if ($age -ge 0 -and $age -le $WindowSeconds) {
+        return [pscustomobject]@{ concurrent = $true; reason = 'fresh-marker'; age_seconds = $age }
+    }
+    return [pscustomobject]@{ concurrent = $false; reason = 'stale-marker-unclean-exit'; age_seconds = $age }
+}
