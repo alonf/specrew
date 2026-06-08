@@ -272,4 +272,3 @@ offered.
 - **Human Oversight Points**: Human approval is required at specify, clarify,
   design-analysis, plan, tasks, before-implement, review, retro, and feature
   closeout boundaries.
-
