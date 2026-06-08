@@ -215,6 +215,7 @@
         'scripts/internal/bootstrap/ClassificationEngine.ps1',
         'scripts/internal/bootstrap/DirectiveEngine.ps1',
         'scripts/internal/bootstrap/HandoverStore.ps1',
+        'scripts/internal/bootstrap/HookJournalAccessor.ps1',
         'scripts/internal/bootstrap/HostEventAdapter.ps1',
         'scripts/internal/bootstrap/LauncherIntegration.ps1',
         'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1',
