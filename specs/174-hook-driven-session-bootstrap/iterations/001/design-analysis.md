@@ -29,7 +29,7 @@ decomposition and physical structure before `plan.md`.
 
 ## Alternatives
 
-### Option A — Simplest (minimal patch)
+### Option A - Simplest: minimal patch
 
 Add conditional bootstrap logic directly to the existing F-171 B2 path and the
 `specrew start` launcher; no separate components. **Principle**: minimize moving
@@ -37,7 +37,7 @@ parts. **Cost**: classification, validation, stale-anchor clearing, and directiv
 construction all entangle with host/event handling — untestable in isolation,
 exactly the silent-wrong-resume blind spot we are trying to remove.
 
-### Option B — Reasonable (IDesign volatility-based) — RECOMMENDED
+### Option B - Reasonable: IDesign volatility-based (recommended)
 
 Isolate volatile host/event/picker/file behavior behind stable
 classification/validation/directive engines, orchestrated by two managers, over
@@ -46,7 +46,7 @@ volatility; keep the stable core pure and testable. **Cost**: more named
 components, but each is small and independently testable, and the mode decision
 stays pure (serves observability d2).
 
-### Option C — By-the-book (layered + distributed coordination)
+### Option C - By the book: layered + distributed coordination
 
 Option B plus a remote lease/coordination layer for cross-machine same-feature
 work. **Principle**: full correctness including distributed mutual exclusion.
