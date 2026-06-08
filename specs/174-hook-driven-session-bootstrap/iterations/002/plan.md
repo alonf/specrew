@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 11/20 story_points
 **Started**: 2026-06-08
 **Completed**:
@@ -34,7 +34,7 @@ round-trip informs the next launch). Builds on the iteration-001 IDesign seams.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T008 | Read/write Proposal 130 handover (.md + index) | FR-009, FR-010 | US-3 | 2 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1 | planned | claude | — | — |
+| T008 | Read/write Proposal 130 handover (.md + index) | FR-009, FR-010 | US-3 | 2 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1 | done | claude | 2 | — |
 | T009 | Extend validation: handover vs project state | FR-010, FR-017 | US-3 | 2 | Implementer | scripts/internal/bootstrap/ValidationEngine.ps1 | planned | claude | — | — |
 | T010 | Extend classification: handover-first stage + welcome-back | FR-010, FR-017 | US-3 | 1 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | planned | claude | — | — |
 | T011 | Write-only SessionEnd handover + opt-in scoped commit | FR-009, FR-021, SC-003 | US-3 | 2 | Implementer | scripts/internal/bootstrap/SessionEndHandoverManager.ps1 | planned | claude | — | — |
