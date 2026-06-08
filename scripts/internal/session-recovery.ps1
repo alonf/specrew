@@ -346,7 +346,8 @@ function Get-SpecrewLateBoundaryIssues {
             $issues.Add(("Late boundary sync mismatch: review.md is accepted in iteration {0}, but the recorded boundary is '{1}' instead of review-signoff or later." -f $latestIterationDirectory.Name, $SessionState.boundary_type)) | Out-Null
         }
 
-        foreach ($stateTruthIssue in @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $ProjectRoot -FeaturePath $featurePath -IterationNumber $latestIterationDirectory.Name)) {
+        $requireStateFile = [string]$SessionState.boundary_type -notin @('retro', 'iteration-closeout', 'feature-closeout')
+        foreach ($stateTruthIssue in @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $ProjectRoot -FeaturePath $featurePath -IterationNumber $latestIterationDirectory.Name -RequireStateFile:$requireStateFile)) {
             $issues.Add($stateTruthIssue) | Out-Null
         }
     }

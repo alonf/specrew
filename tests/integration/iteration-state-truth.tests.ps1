@@ -109,6 +109,24 @@ function Write-PartialReviewState {
 '@
 }
 
+function Write-LegacyProgressState {
+    param([Parameter(Mandatory = $true)][string]$IterationPath)
+
+    Write-TextFile -Path (Join-Path $IterationPath 'state.md') -Content @'
+# Iteration State: 001
+
+**Schema**: v1
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
+**Baseline Ref**: HEAD
+**Updated**: 2026-06-08T00:00:00Z
+
+## Execution Summary
+
+- Review artifacts are present and the iteration has reached review-signoff.
+'@
+}
+
 function Write-ReviewEvidence {
     param([Parameter(Mandatory = $true)][string]$IterationPath)
 
@@ -164,6 +182,17 @@ Write-ReviewEvidence -IterationPath $partial.IterationPath
 $partialIssues = @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $partial.ProjectRoot -FeatureRef $partial.FeatureRef -IterationNumber '001')
 Assert-Match -Text ($partialIssues -join [Environment]::NewLine) -Pattern 'Execution has not started yet' -Message 'Partially updated review-signoff state should still reject stale execution summary.'
 Write-Pass 'Partial review-signoff state with stale summary is rejected'
+
+$legacy = New-StateTruthFixture -Root $scratchRoot -Name 'legacy-without-task-fields'
+Write-LegacyProgressState -IterationPath $legacy.IterationPath
+Write-ReviewEvidence -IterationPath $legacy.IterationPath
+$legacyIssues = @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $legacy.ProjectRoot -FeatureRef $legacy.FeatureRef -IterationNumber '001')
+if ($legacyIssues.Count -ne 0) {
+    Write-Fail 'Legacy progressed state without task metadata labels should not be treated as scaffold task fields.'
+    Write-Host ($legacyIssues -join [Environment]::NewLine)
+    exit 1
+}
+Write-Pass 'Legacy progressed state without task fields is not marked scaffolded'
 
 $gateBlocked = $false
 try {

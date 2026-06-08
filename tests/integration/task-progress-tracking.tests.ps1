@@ -94,6 +94,15 @@ if ($stateAfterComplete -notmatch '\*\*Last Completed Task\*\*:\s*I2-T001' -or $
 }
 Write-Pass 'Complete transition refreshes iteration state.md'
 
+Set-TaskStatus -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' -TaskId 'I2-T001' -Status 'pending' | Out-Null
+$stateAfterPending = Get-Content -LiteralPath (Join-Path $iterationRoot 'state.md') -Raw -Encoding UTF8
+if ($stateAfterPending -notmatch '\*\*Current Phase\*\*:\s*before-implement' -or $stateAfterPending -notmatch '\*\*Iteration Status\*\*:\s*not-started') {
+    Write-Fail 'Pending-only task state should not be labeled as implement.'
+    exit 1
+}
+Write-Pass 'Pending-only task state remains before-implement/not-started'
+Set-TaskComplete -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' -TaskId 'I2-T001' | Out-Null
+
 $blockedWithoutReasonFailed = $false
 try {
     Set-TaskStatus -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' -TaskId 'I2-T002' -Status 'blocked' | Out-Null

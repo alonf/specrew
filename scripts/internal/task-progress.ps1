@@ -520,9 +520,10 @@ function Update-IterationStateFromTaskProgress {
     else {
         'not-started'
     }
+    $currentPhaseValue = if ($iterationStatus -eq 'not-started') { 'before-implement' } else { 'implement' }
 
     $lines = @(Get-Content -LiteralPath $statePath -Encoding UTF8)
-    $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Current Phase' -Value 'implement' -AfterLabel 'Schema'
+    $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Current Phase' -Value $currentPhaseValue -AfterLabel 'Schema'
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Iteration Status' -Value $iterationStatus -AfterLabel 'Current Phase'
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Last Completed Task' -Value $lastCompletedValue -AfterLabel 'Iteration Status'
     $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Tasks Remaining' -Value $remainingValue -AfterLabel 'Last Completed Task'

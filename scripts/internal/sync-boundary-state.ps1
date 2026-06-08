@@ -658,12 +658,19 @@ function Get-SpecrewIterationStateTruthIssues {
     $lastCompletedTask = Get-SpecrewMarkdownMetadataValue -Content $stateContent -Label 'Last Completed Task'
     $tasksRemaining = Get-SpecrewMarkdownMetadataValue -Content $stateContent -Label 'Tasks Remaining'
     $inProgress = Get-SpecrewMarkdownMetadataValue -Content $stateContent -Label 'In Progress'
+    $hasLastCompletedTask = $null -ne $lastCompletedTask
+    $hasTasksRemaining = $null -ne $tasksRemaining
+    $hasInProgress = $null -ne $inProgress
     $summarySaysNotStarted = ($stateContent -match '(?im)^\s*-\s*Execution has not started yet\.?\s*$')
     $hasEvidence = ($evidenceFiles.Count -gt 0)
     $phaseImpliesProgress = (-not [string]::IsNullOrWhiteSpace($currentPhase) -and $currentPhase -notin @('tasks', 'before-implement', 'planning', 'not-started'))
     $statusImpliesProgress = (-not [string]::IsNullOrWhiteSpace($iterationStatus) -and $iterationStatus -notin @('planning', 'planned', 'not-started', 'scaffolded'))
-    $taskFieldsImplyProgress = (-not (Test-SpecrewNullishMarkdownValue -Value $lastCompletedTask)) -or (-not (Test-SpecrewNullishMarkdownValue -Value $inProgress))
-    $scaffoldTaskFields = (Test-SpecrewNullishMarkdownValue -Value $lastCompletedTask) -and (Test-SpecrewNullishMarkdownValue -Value $inProgress) -and (Test-SpecrewNullishMarkdownValue -Value $tasksRemaining)
+    $taskFieldsImplyProgress = ($hasLastCompletedTask -and -not (Test-SpecrewNullishMarkdownValue -Value $lastCompletedTask)) -or
+        ($hasInProgress -and -not (Test-SpecrewNullishMarkdownValue -Value $inProgress))
+    $scaffoldTaskFields = $hasLastCompletedTask -and $hasTasksRemaining -and $hasInProgress -and
+        (Test-SpecrewNullishMarkdownValue -Value $lastCompletedTask) -and
+        (Test-SpecrewNullishMarkdownValue -Value $inProgress) -and
+        (Test-SpecrewNullishMarkdownValue -Value $tasksRemaining)
 
     if ($summarySaysNotStarted -and ($hasEvidence -or $phaseImpliesProgress -or $statusImpliesProgress -or $taskFieldsImplyProgress)) {
         $reason = if ($hasEvidence) {
