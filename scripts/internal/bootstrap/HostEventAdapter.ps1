@@ -9,6 +9,21 @@
 .OUTPUTS
   [pscustomobject] { host, event_name, source, session_id, safe_session_id, project_root, parsed }
 #>
+
+function Get-SpecrewEventField {
+    # Defensive multi-key read: hosts vary in casing/naming (snake_case vs camelCase), so try each
+    # candidate key in priority order and return the first non-empty. This normalizes the common
+    # variants WITHOUT hardcoding unverified per-host schemas - an unknown field simply yields $null
+    # and the bootstrap degrades to full mode (fail-open). FR-005.
+    param([AllowNull()]$Payload, [Parameter(Mandatory)][string[]] $Names)
+    if ($null -eq $Payload) { return $null }
+    foreach ($n in $Names) {
+        $p = $Payload.PSObject.Properties[$n]
+        if ($p -and -not [string]::IsNullOrWhiteSpace([string]$p.Value)) { return $p.Value }
+    }
+    return $null
+}
+
 function ConvertFrom-SpecrewHostHookEvent {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -26,13 +41,11 @@ function ConvertFrom-SpecrewHostHookEvent {
         try { $payload = $RawEvent | ConvertFrom-Json -ErrorAction Stop } catch { $payload = $null }
     }
 
-    $sessionId = $null; $source = $null; $eventName = $null; $cwd = $null
-    if ($null -ne $payload) {
-        $sessionId = $payload.session_id
-        $source    = $payload.source
-        $eventName = $payload.hook_event_name
-        $cwd       = $payload.cwd
-    }
+    # Per-host field normalization (FR-005): try snake_case + camelCase variants across hosts.
+    $sessionId = Get-SpecrewEventField $payload @('session_id', 'sessionId', 'id')
+    $source    = Get-SpecrewEventField $payload @('source', 'trigger', 'reason')
+    $eventName = Get-SpecrewEventField $payload @('hook_event_name', 'hookEventName', 'event_name')
+    $cwd       = Get-SpecrewEventField $payload @('cwd', 'workspace_root', 'workspaceRoot', 'project_root', 'projectRoot', 'workingDirectory')
 
     # Sanitize the session id to a filename-safe token before it is ever used in a path.
     $safeSessionId = if ($sessionId) { ([string]$sessionId) -replace '[^a-zA-Z0-9-]', '-' } else { $null }
