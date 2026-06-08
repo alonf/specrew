@@ -43,12 +43,37 @@ Feature 171 (refocus) already shipped the safety substrate: a circuit breaker (r
 8. **Elevation — never silent.** A sub-agent needing more than granted fails-with-reason; the coordinator decides (re-spawn elevated / escalate to main / **human-gate sensitive elevations** — network, install, danger-full-access). Journaled (a Proposal 103 hook).
 9. **Lifetime — tree-kill, staged.** A host CLI spawns a tree (pwsh, node, model client, MCP servers), so killing one PID leaves orphans. **V1 (mandatory): process-group tree-kill** (Linux `setsid` -> `kill -- -<pgid>`; Windows `taskkill /T`). **V1.5 (hardening): Job Object (`KILL_ON_JOB_CLOSE`) on Windows + cgroups v2 on Linux** for guaranteed no-orphan even on coordinator crash (+ optional CPU/mem caps, deferred). Per-OS P/Invoke in the spawn helper.
 
+### Observability surface (host- and surface-neutral; no terminal-only TUI as the primary surface)
+
+Specrew is multi-SURFACE, not just multi-host: orchestration must be observable in a bare terminal, the VS Code chat panel, the hosts' desktop apps (Claude Desktop, etc.), and web. The latter three are chat/webview surfaces, not PTYs — a TUI (raw-mode / alternate-screen) cannot render there, and even inside VS Code it lives in a separate pane from the conversation. A TUI-primary design bifurcates the experience and reproduces the terminal-coupling that ties Squad to the CLI.
+
+Primary observability (renders on every surface):
+
+- **Coordinator narrates in-conversation** — running set, progress, token/cost, results/failures — because that is just the conversation.
+- **A host-neutral `/specrew-agents` skill** (list / log / stop) — deployed as skills across all five hosts (the "just folders" pattern), so one surface works in CLI, VS Code chat, desktop, and web.
+- **Backed by the file journal** — reuse Feature 171's injection-journal + per-session state; `file:///` paths to sub-agent transcripts.
+
+This matters MOST for Layer-2 headless sub-agents: a `codex exec` sub-process is invisible to the host's own UI (a Layer-1 in-session subagent shows natively), so Specrew must own that observability in the surface-portable way. An optional `specrew agents watch` live TUI is acceptable as a power-user add-on for the terminal / VS Code integrated terminal, but it must NEVER be the only way to see or stop agents — the experience has to be complete in a desktop chat with no terminal at all (same lesson as the Rule 46 / gate-stop work: render natively per host surface; do not assume a terminal).
+
+### Cross-host orchestration (host is a contract parameter) + the cross-provider token economy
+
+A coordinator on one host MAY spawn a sub-agent on a DIFFERENT host — e.g., a Claude coordinator running a `codex exec` reviewer. This is possible ONLY via Layer-2 (on Layer-1 a subagent is always the coordinator's own host), so it is itself a proof that the Layer-2 reframe is correct. Architecturally it is nearly free: the contract is already `spawn(role, host, model, prompt)` — host is a parameter; cross-host simply targets a different adapter, with the same control/safety rules applied through that host's adapter.
+
+- **Default = same-host** (guaranteed installed + authed; most users provision one host).
+- **Cross-host = explicit opt-in**, gated on (a) detecting the target host is installed + authed (extend the existing host-detection), (b) transparent cross-vendor billing (the run now bills two providers), (c) graceful fallback to same-host / fail-with-reason when the target is unavailable.
+- **Killer use-case = the cross-model independent reviewer (Proposals 102 / 145):** a Claude coordinator dispatching a Codex/Gemini reviewer at review-signoff is genuine independent-model review — a different model's blind spots differ from the author-model's. Exercise cross-host FIRST through the reviewer role.
+- **Staging:** V1 = same-host (prove the orchestration); V1.5/V2 = cross-host opt-in, reviewer-first.
+
+**Token-economy implication (forward-looking).** Once the cost-aware routing pillar (Pillar 3, absorbing Proposal 068) sits on the Layer-2 cross-host contract, model selection is no longer "pick a cheaper TIER within one host." It becomes "pick the cheapest CAPABLE model across ALL hosts/providers," AND it can weigh each provider's CURRENT usage state at dispatch time — remaining quota, rate-limit headroom, plan-pool / credit balance, live pricing. For example, route a haiku-class task to whichever provider currently has the most headroom or lowest marginal cost, rather than a statically chosen tier on a single vendor. This provider-usage-aware, cross-provider routing is impossible on Layer-1 (single-host) and is a direct dividend of the Layer-2 reframe; the live provider-usage/quota data source is a research-needed item (below).
+
 ### Research-needed (resolve at design-analysis)
 
 - Per-task **cost** measurement (Layer-1-internal vs headless), per host.
 - The exact per-host **permission-flag** mapping.
 - The cross-platform **lifetime mechanism** (process-group -> Job Object / cgroup).
 - Re-verify host surfaces at build time (they move fast): Cursor `-p` hang bug; Copilot removed `--headless --stdio` (target `-p`); Antigravity CLI per-`--model` + literal `-p` flag unconfirmed (client-side-rendered docs).
+- The **cross-vendor cost / billing transparency** surface (per-provider spend visible to the user within a single cross-host run).
+- The **live provider-usage / quota / rate-limit data source** for usage-aware cross-provider routing (host CLIs likely do not expose remaining quota directly — may need provider APIs or heuristics).
 
 ## Why
 
