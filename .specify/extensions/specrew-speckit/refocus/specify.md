@@ -3,7 +3,7 @@ scope: boundary.specify
 sources:
   - docs/methodology/lifecycle-discipline.md
   - extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md
-reviewed_at: 2026-06-07
+reviewed_at: 2026-06-09
 ---
 ## Specify-stage discipline
 
@@ -12,9 +12,9 @@ reviewed_at: 2026-06-07
 3. **Honest confirmation provenance.** Record `human-confirmed` ONLY for lenses the human actually saw and answered; `human-delegated` / `human-skipped` when they said so. Intake is not "specific enough" until every selected lens has a real answer — never stop early and backfill.
 4. **Spec quality bar.** FRs are testable and unambiguous; SCs are measurable with named evidence forms; scope line is explicit with named dispositions for every OUT item; edge cases enumerated; no implementation details the workshop did not bind.
 5. **Capture the workshop.** `lens-applicability.json` (exact gate shape: `workshop` → lens-id → {agenda, decision, depth, moved_on, confirmation}) + per-lens keeper records under `workshop/`. An agreement that lives only in chat scrollback is lost.
-6. **Stop at the boundary.** Commit `boundary(specify): write spec.md`, sync state, and at the verdict stop invoke the `specrew-gate-stop` skill (picker disabled, packet rendered as prose) — wait for the human verdict before clarify work.
+6. **Stop at the boundary.** Commit `boundary(specify): write spec.md`, sync state, and render the verdict packet. On Claude, invoke `specrew-gate-stop`; on non-Claude hosts, render directly through that host's approved path. Wait for the human verdict before clarify work.
 
-Known traps: menu-before-render (the AskUserQuestion tool-gravity — at the specify **verdict** stop the `specrew-gate-stop` skill disables the picker; workshop lens questions keep it); fabricated lens agreement; a spec that transcribes the request instead of the decisions; missing checklists/requirements.md.
+Known traps: menu-before-render (AskUserQuestion tool-gravity — at the Claude specify **verdict** stop, `specrew-gate-stop` disables the picker; other hosts render directly; workshop lens questions keep their normal path); fabricated lens agreement; a spec that transcribes the request instead of the decisions; missing checklists/requirements.md.
 
 Deep sources:
 

@@ -71,6 +71,9 @@ Assert-True ($generalTokens -le 600) "general.md body is <= 600 tokens (got ~$ge
 Assert-True ($generalParts.Body -match 'verdict\*\* stop on the Claude host, invoke the `specrew-gate-stop` skill') 'general.md scopes specrew-gate-stop verdict routing to Claude'
 Assert-True ($generalParts.Body -match 'On non-Claude hosts, render the full packet directly') 'general.md gives non-Claude hosts a direct-render fallback'
 Assert-True (-not ($generalParts.Body -match 'At a \*\*verdict\*\* stop invoke the `specrew-gate-stop` skill')) 'general.md does not tell every host to invoke specrew-gate-stop'
+$specifyParts = Read-DigestParts -Path (Join-Path $digestDir 'specify.md')
+Assert-True ($specifyParts.Body -match 'On Claude, invoke `specrew-gate-stop`; on non-Claude hosts, render directly') 'specify.md scopes specrew-gate-stop verdict routing by host'
+Assert-True (-not ($specifyParts.Body -match 'at the verdict stop invoke the `specrew-gate-stop` skill')) 'specify.md does not tell every host to invoke specrew-gate-stop'
 foreach ($stage in $expectedStages) {
     $parts = Read-DigestParts -Path (Join-Path $digestDir "$stage.md")
     $tokens = Get-TokenEstimate -Text $parts.Body
