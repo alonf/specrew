@@ -1,3 +1,31 @@
+## 2026-06-09 — F-174 Iteration 004 design pass: Stop-event rolling handover (settled)
+
+### 2026-06-09 — Design: rolling-handover file model + material-change policy (human co-designed)
+
+- **Decision ID**: f174-i004-design-settled
+- **Type**: design
+- **Affected Requirement**: FR-009 (handover trigger + file model)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\004
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T02:00:00Z
+- **Settled (extends `f174-i004-stop-event-rolling-handover`)**:
+  - **Trigger**: per-host end-of-turn Stop (Claude `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor
+    `stop`); **Stop-only — REMOVE the Claude SessionEnd hook** (provider row + deployer registration +
+    DeployedHostConfig assertion all switch from SessionEnd to the stop variants). The
+    SessionEndHandoverManager write-logic is REUSED by the Stop provider.
+  - **File model**: ONE `.specrew/handover/session-handover.md`, **overwritten in place, always-latest,
+    NO archive**. The handover is **LOCAL + gitignored, never pushed** (per-machine session-bridge
+    context like last-start-prompt.md; iter-4 adds `.specrew/handover/` to `.gitignore`). No unique
+    long-term history lives in the handover - durable history is in decisions/drift/retros/git, so
+    "always the latest" is sufficient.
+  - **Material-change policy**: refresh on a Stop only when the **boundary cursor moved OR a
+    tracked-file change occurred since the last handover write**; otherwise skip cheaply.
+  - **Crash-safety**: because every material Stop refreshes the rolling file, a hard-kill with no clean
+    exit still leaves the last-turn handover (closes Proposal 130's "no crash guarantee").
+  - **Sub-agents = OUT OF SCOPE** (single-agent only). Per-worktree handover + merge-on-finish +
+    find-worktrees-cleanup-on-kill are deferred to the multi-agent work; captured in maintainer memory
+    `f174-subagent-handover-merge-consideration`.
+
 ## 2026-06-09 — F-174 dogfood ledger: hand-driven lifecycle emits no SPECREW HANDOFF blocks
 
 ### 2026-06-09 — Dogfood finding: handoff-block-missing on every hand-driven boundary commit
@@ -25606,3 +25634,30 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 568d8668
 - **Recorded At**: 2026-06-08T20:39:47Z
+
+## 2026-06-08T22:38:18Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5fdd1cb0
+- **Recorded At**: 2026-06-08T22:38:17Z
+
+## 2026-06-08T22:56:19Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7928d509
+- **Recorded At**: 2026-06-08T22:56:18Z
+
+## 2026-06-08T23:12:23Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: b397ec04
+- **Recorded At**: 2026-06-08T23:12:22Z
