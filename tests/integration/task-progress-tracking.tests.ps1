@@ -66,6 +66,14 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'specs\020-session-state-durability\
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
 '@, [System.Text.UTF8Encoding]::new($false))
 
+Sync-IterationTaskProgress -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' | Out-Null
+$stateAfterInitialSync = Get-Content -LiteralPath (Join-Path $iterationRoot 'state.md') -Raw -Encoding UTF8
+if ($stateAfterInitialSync -notmatch '\*\*Current Phase\*\*:\s*before-implement' -or $stateAfterInitialSync -notmatch 'Execution has not started yet') {
+    Write-Fail 'Not-started task reconciliation should keep state.md in a planning/not-started shape.'
+    exit 1
+}
+Write-Pass 'Not-started task reconciliation keeps state.md consistent'
+
 $progressResult = Set-TaskStatus -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' -TaskId 'I2-T001' -Status 'in-progress'
 if ([string]::IsNullOrWhiteSpace([string]$progressResult.StartedAt)) {
     Write-Fail 'In-progress transition did not record started_at.'

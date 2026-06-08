@@ -176,6 +176,18 @@ $staleIssues = @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $stale.Projec
 Assert-Match -Text ($staleIssues -join [Environment]::NewLine) -Pattern 'Execution has not started yet.*evidence artifacts exist' -Message 'Scaffold state with implementation/review evidence should be rejected.'
 Write-Pass 'Scaffold state with evidence is rejected'
 
+$missingState = New-StateTruthFixture -Root $scratchRoot -Name 'missing-state-with-evidence'
+Write-ReviewEvidence -IterationPath $missingState.IterationPath
+$missingReviewOutput = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'scripts\specrew-review.ps1') -ProjectPath $missingState.ProjectRoot -FeatureId $missingState.FeatureRef -IterationNumber '001' -Json 2>&1)
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail ("specrew review failed unexpectedly for missing-state scenario:`n{0}" -f ($missingReviewOutput -join [Environment]::NewLine))
+    exit 1
+}
+
+$missingReviewJson = $missingReviewOutput -join [Environment]::NewLine
+Assert-Match -Text $missingReviewJson -Pattern 'state\.md.*is missing while implementation/review evidence exists' -Message 'specrew review should surface missing state.md truth warnings when review evidence exists.'
+Write-Pass 'specrew review surfaces missing state.md truth warnings'
+
 $partial = New-StateTruthFixture -Root $scratchRoot -Name 'partial-review'
 Write-PartialReviewState -IterationPath $partial.IterationPath
 Write-ReviewEvidence -IterationPath $partial.IterationPath
