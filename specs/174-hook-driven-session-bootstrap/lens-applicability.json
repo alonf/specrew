@@ -69,11 +69,11 @@
         "Define failure-safe behavior for stale, untrusted, or defunct-worktree anchors.",
         "Prevent hook interactivity or external state from steering unauthorized lifecycle continuation."
       ],
-      "decision": "Human delegated intake decision: security-compliance applies at medium depth because stale anchors and absolute paths can misdirect session recovery and the hook must stay non-interactive and failure-safe.",
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) trust boundary = the local project tree - inputs trusted to the same degree as the hooks/code that already execute; validate for correctness and fail-safety (schema, path-portability, freshness), NOT anti-injection (theater locally); adversarial/untrusted-artifact hardening for cross-machine/CI/hosted/multi-tenant contexts deferred to a separate proposal candidate; (2) lifecycle-authority boundary - external state (handover next-step, anchor) is advisory only and never auto-authorizes a gate, the directive labels it non-authorizing and re-anchors to the real human verdict (Rule 1); (3) failure-safe posture - fail-open on availability (broken/stale state never blocks starting work), fail-closed on authority (never auto-advance / silent-resume on failure or ambiguity). See workshop/security-compliance.md.",
       "depth": "medium",
       "moved_on": true,
-      "confirmation": "human-delegated",
-      "diagram": "workshop/security-compliance.md - trust boundary notes"
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/security-compliance.md - local-tree trust boundary, advisory-not-authorizing external state, fail-open availability / fail-closed authority"
     },
     "observability-resilience": {
       "agenda": [
@@ -81,11 +81,11 @@
         "Ensure full bootstrap, light welcome-back, and cleared-anchor behavior are diagnosable.",
         "Define failure evidence for missing or invalid handover/session-state files."
       ],
-      "decision": "Human delegated intake decision: observability-resilience applies at medium depth because the feature changes startup behavior and must be reviewable through logs, tests, and hook journal evidence.",
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) emit one structured classification record per B2 run into the EXISTING F-171 hook journal (mode, sources evaluated, validation_findings, anchor_cleared+reason, unclean_exit, dedupe key) - no new log surface; (2) diagnosability via behavior + journal-assertion tests - every path (full / welcome-back / cleared-anchor / unclean-exit / invalid-or-missing input) asserts both the rendered mode and its distinguishable journal record, plus explicit failure-evidence tests, making LIR-006 distinguishability a tested property. See workshop/observability-resilience.md.",
       "depth": "medium",
       "moved_on": true,
-      "confirmation": "human-delegated",
-      "diagram": "workshop/observability-resilience.md - B2 evidence flow notes"
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/observability-resilience.md - structured journal record reusing F-171 envelope, behavior + journal-assertion test evidence"
     },
     "requirements-nfr": {
       "agenda": [
@@ -93,11 +93,11 @@
         "Preserve unchanged B1 and B3 behavior as regression criteria.",
         "Keep B4 pre-compaction capture and Antigravity binding out of scope."
       ],
-      "decision": "Human delegated intake decision: requirements-nfr applies at medium depth because the feature is mostly behavioral posture and compatibility, with measurable outcomes needed for per-host reliability and unchanged-scope claims.",
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) each NFR becomes a measurable SC/FR-mapped pass/fail test - backward compatibility (SC-006/FR-006: specrew start smoke + docs reframed), idempotency (SC-002/FR-007: launcher+hook = exactly one bootstrap via dedupe test), B1/B3 regression safety (SC-005/FR-011: digest unchanged vs F-171), deferred scope held (FR-012: negative test that no B4/Antigravity code path executes). Priority: compatibility + regression-safety are non-negotiable/mandated and outrank simplification; no live NFR conflict exists. See workshop/requirements-nfr.md.",
       "depth": "medium",
       "moved_on": true,
-      "confirmation": "human-delegated",
-      "diagram": "workshop/requirements-nfr.md - quality priority notes"
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/requirements-nfr.md - measurable SC-mapped NFR criteria incl. FR-012 negative test, non-negotiable compatibility priority"
     },
     "devops-operations": {
       "agenda": [
@@ -105,11 +105,11 @@
         "Preserve kill-switch and managed-marker behavior from F-171.",
         "Avoid introducing a new install path."
       ],
-      "decision": "Human delegated intake decision: devops-operations applies at light depth because the feature changes host hook registration and rollout controls, but it should reuse the shipped F-171 deployment loop.",
+      "decision": "Human-confirmed (2026-06-08): reuse F-171's existing hook deployment loop to register the B2 bootstrap provider and the SessionEnd handover writer - no new install path (LIR-008); preserve the F-171 kill switch (can disable bootstrap), managed markers (protect user edits), breaker, dedupe, and uninstall behavior; rollout/rollback ride F-171's existing controls. See workshop/devops-operations.md.",
       "depth": "light",
       "moved_on": true,
-      "confirmation": "human-delegated",
-      "diagram": "workshop/devops-operations.md - deployment-loop impact notes"
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/devops-operations.md - reuse F-171 deployment loop + kill switch + managed markers, no new install path"
     }
   }
 }

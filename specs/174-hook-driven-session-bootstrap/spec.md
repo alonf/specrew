@@ -192,8 +192,39 @@ offered.
   **Owner**: Implementer. **Iteration**: 001.
 - **FR-016**: The design-analysis workshop MUST resolve, before planning, the
   exact `specrew start` versus hook division of labor, the per-host menu
-  rendering shape, and the B2 full-bootstrap versus lightweight trigger.
+  rendering shape, and the B2 full-bootstrap versus lightweight trigger. The
+  2026-06-08 lens intake workshop resolved these design questions
+  (see `lens-applicability.json` and `workshop/`); the design-analysis stop
+  builds the component map and flows on those confirmed decisions.
   **Owner**: Planner, Spec Steward. **Iteration**: 001.
+- **FR-017**: B2 bootstrap MUST validate a present handover against current
+  project state (recorded-commit reachability, feature not merged or closed,
+  branch/worktree portability, artifact consistency) before anchor
+  classification, and MUST NOT treat a recent-but-invalid handover as
+  authoritative resume state.
+  **Owner**: Implementer. **Iteration**: 001.
+- **FR-018**: Bootstrap MAY write an advisory, local-only SessionStart marker
+  (started_at, host, project_root, branch, head_commit) through the F-171
+  journal, never committed and never rewriting the handover on startup, so a
+  later launch can detect an unclean prior exit when the marker is newer than
+  the latest handover.
+  **Owner**: Implementer. **Iteration**: 001.
+- **FR-019**: Bootstrap MUST detect and surface a local same-worktree
+  concurrent-session signal as advisory, non-blocking state using
+  freshness-based metadata, with no lock or lease semantics.
+  **Owner**: Implementer. **Iteration**: 001.
+- **FR-020**: The render-first contract in FR-004 MUST be enforced mechanically
+  on hosts where a structured picker collapses prose (a `disallowed-tools`
+  AskUserQuestion skill on Claude), not by directive instruction alone; a prose
+  menu floor applies on every host, and a structured picker is layered on only
+  where FR-005 host evidence proves it does not hide the rendered text.
+  **Owner**: Implementer, Reviewer. **Iteration**: 001.
+- **FR-021**: SessionEnd handover writing MUST be write-only by default (no git
+  add, commit, or push); an opt-in configuration flag MAY enable a scoped local
+  commit of the handover and index only (off by default), and the
+  commit-or-push to continue on another machine MUST be offered at the next
+  bootstrap rather than at non-interactive exit.
+  **Owner**: Implementer. **Iteration**: 001.
 
 ### Traceability & Governance Requirements
 
@@ -272,6 +303,10 @@ offered.
 - **SC-006**: Documentation and generated prompts identify the SessionStart
   hook as the primary bootstrap and `specrew start` as a retained compatibility
   and host-selection path.
+- **SC-007**: The bootstrap emits a distinguishable journal record for each mode
+  (full bootstrap, welcome-back, cleared-anchor) and for the unclean-exit
+  warning, asserted by tests so the executed path is reconstructable after the
+  fact.
 
 ## Assumptions
 
@@ -288,6 +323,15 @@ offered.
   menu-rendering blocker that requires explicit human defer or scope split.
 - No Antigravity hook binding or B4 pre-compaction capture behavior will be
   added in this feature.
+- Cross-machine concurrent work on the same feature cannot be prevented by hook
+  bootstrap alone; this feature provides best-effort advisory warning only, and a
+  distributed lease or coordination mechanism is deferred to a future proposal.
+- The trust boundary for this feature is the local project tree; bootstrap inputs
+  are validated for correctness and fail-safety, not as anti-adversarial
+  hardening. Adversarial or untrusted-artifact hardening for cross-machine, CI,
+  hosted, or multi-tenant contexts is deferred to a separate proposal.
+- Session recovery uses advisory freshness-based detection only; no lock or lease
+  semantics are introduced.
 
 ## Governance Alignment
 
