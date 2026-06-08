@@ -275,17 +275,27 @@ function Get-ReviewBoundarySyncWarning {
         [Parameter(Mandatory = $true)][string]$ReviewPath
     )
 
+    $warnings = [System.Collections.Generic.List[string]]::new()
     $reviewVerdict = Get-MetadataValue -Path $ReviewPath -Label 'Overall Verdict'
-    if ($reviewVerdict -notmatch '^(?i)accepted$') {
+    if ($reviewVerdict -match '^(?i)accepted$') {
+        $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot
+        if ($null -eq $latestBoundary -or [string]$latestBoundary.boundary_type -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
+            $warnings.Add('WARN: Accepted review artifacts exist, but lifecycle state is not synced to review-signoff or a later boundary.') | Out-Null
+        }
+    }
+
+    $iterationDirectory = Split-Path -Parent $ReviewPath
+    $iterationNumber = Split-Path -Leaf $iterationDirectory
+    $featurePath = Split-Path -Parent (Split-Path -Parent $iterationDirectory)
+    foreach ($issue in @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $ProjectRoot -FeaturePath $featurePath -IterationNumber $iterationNumber)) {
+        $warnings.Add(("WARN: {0}" -f $issue)) | Out-Null
+    }
+
+    if ($warnings.Count -eq 0) {
         return $null
     }
 
-    $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $ProjectRoot
-    if ($null -eq $latestBoundary -or [string]$latestBoundary.boundary_type -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
-        return 'WARN: Accepted review artifacts exist, but lifecycle state is not synced to review-signoff or a later boundary.'
-    }
-
-    return $null
+    return ($warnings.ToArray() -join [Environment]::NewLine)
 }
 
 $parsedArgs = Convert-UnixStyleArguments `

@@ -50,6 +50,21 @@ Copy-Item -LiteralPath (Join-Path $repoRoot 'specs\020-session-state-durability\
 Copy-Item -LiteralPath (Join-Path $repoRoot 'specs\020-session-state-durability\tasks.md') -Destination (Join-Path $featureRoot 'tasks.md') -Force
 [System.IO.File]::WriteAllText((Join-Path $featureRoot 'spec.md'), "# Feature 020`n", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specify\feature.json'), "{`n  `"feature_directory`": `"specs/020-session-state-durability`"`n}", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText((Join-Path $iterationRoot 'state.md'), @'
+# Iteration State: 002
+
+**Schema**: v1
+**Last Completed Task**: (none)
+**Tasks Remaining**: I2-T001, I2-T002, I2-T003
+**In Progress**: (none)
+**Baseline Ref**: HEAD
+**Updated**: 2026-05-18T00:00:00Z
+
+## Execution Summary
+
+- Execution has not started yet.
+- This artifact was scaffolded before task execution so resume state can be updated after each task.
+'@, [System.Text.UTF8Encoding]::new($false))
 
 $progressResult = Set-TaskStatus -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' -TaskId 'I2-T001' -Status 'in-progress'
 if ([string]::IsNullOrWhiteSpace([string]$progressResult.StartedAt)) {
@@ -58,12 +73,26 @@ if ([string]::IsNullOrWhiteSpace([string]$progressResult.StartedAt)) {
 }
 Write-Pass 'In-progress transition records started_at'
 
+$stateAfterProgress = Get-Content -LiteralPath (Join-Path $iterationRoot 'state.md') -Raw -Encoding UTF8
+if ($stateAfterProgress -notmatch '\*\*In Progress\*\*:\s*I2-T001' -or $stateAfterProgress -match 'Execution has not started yet') {
+    Write-Fail 'In-progress transition should update state.md and remove scaffold execution text.'
+    exit 1
+}
+Write-Pass 'In-progress transition updates iteration state.md'
+
 $completeResult = Set-TaskComplete -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' -TaskId 'I2-T001'
 if ([string]::IsNullOrWhiteSpace([string]$completeResult.CompletedAt)) {
     Write-Fail 'Complete transition did not record completed_at.'
     exit 1
 }
 Write-Pass 'Complete transition records completed_at'
+
+$stateAfterComplete = Get-Content -LiteralPath (Join-Path $iterationRoot 'state.md') -Raw -Encoding UTF8
+if ($stateAfterComplete -notmatch '\*\*Last Completed Task\*\*:\s*I2-T001' -or $stateAfterComplete -notmatch '\*\*Tasks Remaining\*\*:\s*I2-T002,\s*I2-T003') {
+    Write-Fail 'Complete transition should refresh Last Completed Task and Tasks Remaining in state.md.'
+    exit 1
+}
+Write-Pass 'Complete transition refreshes iteration state.md'
 
 $blockedWithoutReasonFailed = $false
 try {
