@@ -5,6 +5,19 @@
 **Status**: Draft
 **Input**: Proposal 172: `proposals/172-hook-driven-session-bootstrap.md`
 
+## Clarifications
+
+### Session 2026-06-08
+
+- Q: Default freshness window for the FR-019 local same-worktree concurrency
+  warning (how long a SessionStart marker keeps a session "possibly active")?
+  → A: 1 hour, configurable and overridable. A marker older than one hour is
+  treated as stale and does not raise an active-session warning.
+- Q: Shape of the FR-021 "commit/push to continue on another machine"
+  affordance at the next bootstrap? → A: An advisory state line only — surface
+  "uncommitted handover/work from last session" and let the user commit/push
+  manually; no new persistent menu item beyond Resume / New / Pick-feature.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Direct host launch bootstraps the session (Priority: P1)
@@ -211,7 +224,9 @@ offered.
   **Owner**: Implementer. **Iteration**: 001.
 - **FR-019**: Bootstrap MUST detect and surface a local same-worktree
   concurrent-session signal as advisory, non-blocking state using
-  freshness-based metadata, with no lock or lease semantics.
+  freshness-based metadata, with no lock or lease semantics. The default
+  freshness window is 1 hour and MUST be configurable; a marker older than the
+  window is treated as stale and raises no active-session warning.
   **Owner**: Implementer. **Iteration**: 001.
 - **FR-020**: The render-first contract in FR-004 MUST be enforced mechanically
   on hosts where a structured picker collapses prose (a `disallowed-tools`
@@ -223,7 +238,8 @@ offered.
   add, commit, or push); an opt-in configuration flag MAY enable a scoped local
   commit of the handover and index only (off by default), and the
   commit-or-push to continue on another machine MUST be offered at the next
-  bootstrap rather than at non-interactive exit.
+  bootstrap as an advisory state line (no new persistent menu item) rather than
+  at non-interactive exit.
   **Owner**: Implementer. **Iteration**: 001.
 
 ### Traceability & Governance Requirements
