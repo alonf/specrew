@@ -104,9 +104,11 @@ function Get-HostEventGroups {
     # The per-host registrations (verified formats; matrix-gated trigger set).
     switch ($HostKind) {
         'claude' {
-            # TG-004 option (a): SessionStart only; PostToolUse unregistered.
+            # TG-004 option (a): SessionStart (B1/B2 + F-174 bootstrap) + SessionEnd (F-174 handover,
+            # Proposal 130 Pillar 4a - Claude's SessionEnd surface is documented). PostToolUse unregistered.
             return [ordered]@{
                 'SessionStart' = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionStart') }) }
+                'SessionEnd'   = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionEnd') }) }
             }
         }
         'codex' {

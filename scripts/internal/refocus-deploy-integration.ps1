@@ -36,9 +36,12 @@ function Get-RefocusCatalogOverlay {
             }
         }
     }
+    # Canonical Specrew provider ids (module-shipped): refocus (F-171) + bootstrap + handover
+    # (F-174). Everything else in the project catalog is a user overlay row to capture + re-apply.
+    $canonicalProviderIds = @('refocus', 'bootstrap', 'handover')
     $userProviders = @()
     if ($catalog.PSObject.Properties['providers'] -and $null -ne $catalog.providers) {
-        $userProviders = @($catalog.providers | Where-Object { [string]$_.id -ne 'refocus' })
+        $userProviders = @($catalog.providers | Where-Object { $canonicalProviderIds -notcontains [string]$_.id })
     }
     return [pscustomobject]@{ Present = $true; Aborted = $false; TriggerEnabled = $triggerEnabled; UserProviders = $userProviders }
 }
