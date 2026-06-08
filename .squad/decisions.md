@@ -1,3 +1,17 @@
+## 2026-06-09 — F-174 dogfood ledger: hand-driven lifecycle emits no SPECREW HANDOFF blocks
+
+### 2026-06-09 — Dogfood finding: handoff-block-missing on every hand-driven boundary commit
+
+- **Decision ID**: f174-dogfood-handoff-block-missing
+- **Type**: dogfood-finding
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T01:30:00Z
+- **Finding**: The validator reports `handoff-block-missing` on every F-174 boundary commit because the
+  hand-driven (non-Squad) lifecycle never emits the SPECREW HANDOFF blocks the Squad coordinator would.
+  Non-blocking for this feature; capture for the feature-closeout dogfood ledger (the hand-driven
+  lifecycle should either emit handoff blocks or the validator should not expect them outside Squad).
+
 ## 2026-06-09 — F-174 Iteration 004: Stop-event rolling handover (supersedes SessionEnd-only)
 
 ### 2026-06-09 — Decision: pivot the handover trigger to the universal Stop event (iteration 004)
