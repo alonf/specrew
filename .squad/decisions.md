@@ -1,3 +1,22 @@
+## 2026-06-09 — F-174 Iteration 003: scoped limitations (feature-closeout follow-ups)
+
+### 2026-06-09 — Follow-up: other-host SessionEnd + authoritative per-host event schemas
+
+- **Decision ID**: f174-followup-other-host-sessionend
+- **Type**: methodology-followup
+- **Affected Requirement**: FR-005, FR-009
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T00:30:00Z
+- **Follow-up**: (1) The SessionEnd handover host-hook is registered for Claude only (Proposal 130
+  Pillar 4 is Claude-first); register + verify SessionEnd for codex/copilot/cursor when their
+  SessionEnd hook surfaces are confirmed live. (2) Per-host SessionStart INPUT schemas are handled by
+  defensive multi-key extraction + the live render was proven with a representative event shape;
+  verify against each host's authoritative payload schema when documented. Neither blocks F-174:
+  the SessionStart bootstrap is live on all four hosts and unknown fields fail open. Batch with the
+  feature-closeout follow-ups (the "build+test != live" review check + the Proposal-142 closeout
+  finalization hardening).
+
 ## 2026-06-08 — F-174 Iteration 003 planning carries + feature-closeout follow-up
 
 ### 2026-06-08 — Directive: iteration-003 live-wiring sequencing + real-smoke proof bar
@@ -25506,3 +25525,28 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: b3b4b9c7
 - **Recorded At**: 2026-06-08T20:17:17Z
+
+## 2026-06-08T20:22:07Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-08T20:22:07Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'before-implement'.
+
+## 2026-06-08T20:22:09Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 568d8668
+- **Recorded At**: 2026-06-08T20:22:08Z
+
+## 2026-06-08T20:39:48Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 568d8668
+- **Recorded At**: 2026-06-08T20:39:47Z

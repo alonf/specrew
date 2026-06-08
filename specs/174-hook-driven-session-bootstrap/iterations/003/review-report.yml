@@ -1,0 +1,78 @@
+schema: review-report/v1
+feature: 174-hook-driven-session-bootstrap
+iteration: "003"
+reviewer: claude
+reviewed_at: "2026-06-09"
+protocol: proposal-145-seven-phase
+
+matrix:
+  - requirement: FR-001
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "D-001 deploy; live cross-host SessionStart smoke (4 hosts)" }
+  - requirement: FR-005
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "HostEventAdapter multi-key; PerHost.Tests" }
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "live cross-host render smoke" }
+      phase_7: { applicable: yes, finding: scoped, note: "per-host INPUT schemas defensive-not-authoritative; SessionEnd Claude-first (follow-up f174-followup-other-host-sessionend)" }
+  - requirement: FR-008
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "docs/getting-started.md hook-primary note" }
+  - requirement: FR-009
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "D-002 provider + Claude SessionEnd host-hook; live round-trip + dispatch + deploy smokes" }
+  - requirement: FR-011
+    phases:
+      phase_6: { applicable: yes, finding: clean, evidence_ref: "Regression.Tests: refocus B1/B2/B3 unchanged (additive)" }
+  - requirement: FR-012
+    phases:
+      phase_6: { applicable: yes, finding: clean, evidence_ref: "Regression.Tests: no b4 trigger, no Antigravity path" }
+  - requirement: FR-018
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "Concurrency.Tests marker + freshness" }
+  - requirement: FR-019
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "Concurrency.Tests: fresh=advisory, stale=unclean-exit, no lock" }
+  - requirement: SC-007
+    phases:
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "JournalAssertion.Tests: 3 modes distinguishable" }
+
+claim_ledger:
+  - claim: "D-001 live: bootstrap fires across all 4 hosts via the real dispatcher"
+    evidence:
+      - { type: smoke, command: "specrew-hook-dispatcher.ps1 -Event SessionStart -HostKind {claude,codex,copilot,cursor}", result: "PASS x4 (bootstrap fired)" }
+  - claim: "D-002 live end-to-end: host hook -> dispatcher -> handover -> SessionStart welcome-back"
+    evidence:
+      - { type: smoke, detail: "deploy registers Claude SessionEnd -> -Event SessionEnd; dispatcher dispatches SessionEnd -> handover provider; round-trip read -> welcome-back", result: "PASS" }
+      - { type: test, command: "pwsh -File tests/integration/refocus-deploy.tests.ps1", exit_code: 0, result: "SessionEnd registered + dispatches" }
+  - claim: "dedupe bug found + fixed via the live smoke (last-start-prompt rewritten by syncs)"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/LauncherIntegration.Tests.ps1", exit_code: 0, result: "dedicated launcher marker" }
+  - claim: "B1/B3 unchanged; no B4/Antigravity"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/Regression.Tests.ps1", exit_code: 0 }
+  - claim: "SC-007 modes distinguishable"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/JournalAssertion.Tests.ps1", exit_code: 0 }
+  - claim: "No new dependencies"
+    evidence:
+      - { type: proof, detail: "scaffolder new_deps=0; pure PowerShell + git" }
+
+design_trace:
+  - design_ref: "decisions f174-i003-livewiring-first (sequence live-wiring first; real-smoke bar)"
+    implementation: ["specrew-bootstrap-provider.ps1 (module-resolved components)", "specrew-handover-provider.ps1", "deploy-refocus-hooks.ps1 (Claude SessionEnd)"]
+    evidence: ["cross-host SessionStart smoke", "SessionEnd round-trip smoke", "refocus-deploy.tests.ps1"]
+    status: matched
+  - design_ref: "FR-018/019 advisory concurrency, no lock (user directive)"
+    implementation: ["SessionStateAccessor Get-SpecrewSessionMarker", "ClassificationEngine Test-SpecrewConcurrentSession"]
+    evidence: ["Concurrency.Tests.ps1"]
+    status: matched
+
+verdict:
+  per_phase: { phase_0: pass, phase_1: pass, phase_2: pass, phase_3: pass, phase_4: pass, phase_5: pass, phase_6: pass, phase_7: pass }
+  overall: APPROVE for review-signoff
+  notes: >
+    Final iteration. Both carried deferrals (D-001 + D-002) closed LIVE and proven with real
+    dispatcher smokes - not test-only. Two gaps surfaced by completeness checks and fixed in-iteration
+    (dedupe-vs-sync bug; SessionEnd-not-live + latent overlay gap). Two scoped limitations recorded as
+    feature-closeout follow-ups (other-host SessionEnd; authoritative per-host input schemas), neither
+    blocking. No new dependencies.
