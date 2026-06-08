@@ -23,8 +23,8 @@
 ## Summary
 
 **Total drift events**: 1
-**Resolution rate**: deferred (0/1 resolved; 1 deferred to iteration 003)
-**Specification drift**: 1 deferred (D-001 live wiring)
+**Resolution rate**: resolved on self-host (1/1; downstream deploy carried to iteration 003)
+**Specification drift**: 1 resolved (D-001 live wiring — provider registered + dispatcher-proven)
 
 ## Events
 
@@ -42,9 +42,15 @@ green), but the live wiring is not yet in place:
 So FR-001's "primary bootstrap path" is not yet observable on a live host — the spec intent
 exceeds the shipped wiring.
 
-**Resolution**: deferred. The live wiring is paired with the iteration-003 per-host empirical
-verification (T017 / SC-001), which is the step that actually proves render-before-picker on
-each host. Recorded here so the gap stays visible; the reviewer assesses it at review-signoff.
+**Resolution**: resolved on self-host (2026-06-08). The B2 bootstrap is now LIVE: a `bootstrap`
+provider row was added to `refocus-scopes.json` (source + deployed mirror), the entry script
+`scripts/internal/specrew-bootstrap-provider.ps1` was added, and a dispatcher smoke proved the
+F-171 SpecrewHookDispatcher fires the provider on SessionStart B2 (silent on `compact`, so B1 is
+unchanged — FR-011). The 8 new files are in the `Specrew.psd1` FileList (install guard); the
+provider self-dot-sources the components, so module-level loading is unnecessary for the hook
+path. REMAINING: the downstream extension-tree deploy (placing the provider + components under
+`extensions/specrew-speckit/scripts/` so downstream dispatchers resolve them) — folded into the
+iteration-003 per-host/deploy work (T016/T017). The reviewer assesses at review-signoff.
 
 ### Resolution Strategies (Unused)
 

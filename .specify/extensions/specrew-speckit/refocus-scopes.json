@@ -45,6 +45,14 @@
       "order": 10,
       "budget_share": 1.0,
       "command": "refocus.ps1"
+    },
+    {
+      "id": "bootstrap",
+      "kind": "inject",
+      "events": ["SessionStart"],
+      "order": 20,
+      "budget_share": 1.0,
+      "command": "specrew-bootstrap-provider.ps1"
     }
   ]
 }

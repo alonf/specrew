@@ -96,9 +96,9 @@ Claude-first. Other requirements are iterations 002/003 (see ../../tasks.md).
   here via T003; its full sync-side guarantee is revisited at iteration 003 / closeout.
 - Hardening gate `Overall Verdict: ready` (planning-time) at `quality/hardening-gate.md`;
   runtime evidence recorded at iteration close.
-- **Carried wiring (drift D-001):** all 7 components are built + unit-tested (57 assertions,
-  green), but the LIVE wiring — module dot-sourcing of `scripts/internal/bootstrap/*`, the
-  `Specrew.psd1` FileList entries, and the F-171 SessionStart B2 dispatcher registration that
-  makes the provider actually fire on launch — is deferred to pair with the iteration-003
-  per-host empirical verification (T017 / SC-001). Iteration 001 delivers tested component
-  logic, not yet live-on-host bootstrap. Recorded in `drift-log.md`.
+- **Live wiring (drift D-001 — resolved on self-host):** all 7 components are built +
+  unit-tested, and the B2 bootstrap is now LIVE — a `bootstrap` provider row in
+  `refocus-scopes.json` + `scripts/internal/specrew-bootstrap-provider.ps1` + FileList entries,
+  proven by a dispatcher smoke that fires the provider on SessionStart B2 (silent on compact, so
+  B1 is unchanged). 62 assertions green across 8 suites. The downstream extension-tree deploy is
+  carried to iteration 003 (T016/T017). See `drift-log.md`.
