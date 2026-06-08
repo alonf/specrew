@@ -12,9 +12,12 @@ composes-with:
   - 021  # Bypass Detector
   - 142  # State-truth integrity validator
   - 145  # Structured reviewer evidence discipline
+  - 156  # Workshop decision producer manifest
+  - 163  # Code implementation lens rules
   - 154  # Boundary authorization prompt truth
   - 155  # Typed boundary gate packets
   - 167  # Post-ship proposal amendment discipline
+  - 175  # Supplemental domain/platform analysis packs
 audience: maintainers, Crew agents, reviewers
 ---
 
@@ -106,6 +109,8 @@ of the following:
 - plan capacity, iteration split, or delivery sequencing;
 - task traceability, task count, or evidence obligations;
 - implementation approach compared with design-analysis or plan;
+- selected workshop decision records, including the Proposal 156
+  `workshop-decisions.yml` manifest;
 - test strategy, reviewer evidence, or acceptance proof;
 - gate authority, human approval scope, or artifact source of truth.
 
@@ -156,8 +161,12 @@ Examples:
 - capacity variance found during tasks updates `tasks.md` and, when needed,
   `plan.md` capacity notes;
 - implementation design variance updates `design-analysis.md`, a design-delta
-  artifact, or the review `design-code-trace.yml`;
+  artifact, `workshop-decisions.yml`, or the review `design-code-trace.yml`;
 - scope variance updates `spec.md`, task traceability, or a follow-up proposal;
+- workshop-decision variance updates the source workshop/design artifact and the
+  corresponding `workshop-decisions.yml` decision record, or records an
+  accepted exception that Proposal 145 can verify in
+  `workshop-decision-conformance.yml`;
 - deferred variance creates an explicit proposal, issue, or backlog item and
   records why deferral is safe.
 
@@ -171,7 +180,8 @@ This proposal is related to Proposal 145 but not a replacement for it.
 
 Proposal 145 asks whether review and gate evidence is structurally trustworthy:
 claims map to evidence, phases are covered, design/code traces exist, and
-unsupported claims fail validation.
+unsupported claims fail validation. It also verifies selected workshop decisions
+from `workshop-decisions.yml` through `workshop-decision-conformance.yml`.
 
 This proposal asks a different lifecycle question: did later evidence invalidate
 a previously approved assumption, and was that variance disclosed and accepted
@@ -193,6 +203,9 @@ is accepted and reconciled.
   when a material variance is present but no human variance verdict is recorded.
 - **AC4**: Accepted material variance updates the relevant authoritative
   artifacts before the next stage treats the changed shape as normal.
+  When the variance changes a selected workshop decision, this includes both the
+  human-readable source artifact and the corresponding `workshop-decisions.yml`
+  decision record.
 - **AC5**: Rejected or send-back variance leaves the prior artifact authoritative
   and records what must be revised before retrying the gate.
 - **AC6**: Deferred variance creates a tracked follow-up and records why deferral
@@ -222,9 +235,11 @@ First slice:
    variance explicitly.
 3. Add a lightweight validator that detects missing variance sections and
    material variance records without a human decision.
-4. Add methodology text explaining the difference between agent drift and
+4. Add reconciliation checks for changed workshop decisions so accepted
+   variance updates both source artifacts and `workshop-decisions.yml`.
+5. Add methodology text explaining the difference between agent drift and
    legitimate assumption variance.
-5. Add regression fixtures for the plan-capacity and design-code variance
+6. Add regression fixtures for the plan-capacity and design-code variance
    patterns.
 
 Adoption can warn first and hard-block after several features exercise the

@@ -112,6 +112,40 @@ Important sources and findings:
 - Preserve the existing boundary: semantic judgment still belongs to reviewer/human, but the
   validator must reject unsupported or over-strong claims.
 
+## Research update — workshop-decision conformance (2026-06-08)
+
+Proposal 163 adds a `code-implementation` workshop lens that records
+implementation-craft rules, but Proposal 145's obligation is broader than code
+quality. Every workshop-bound decision is a review input: components by exact
+name and responsibility, data structures and invariants, integration contracts,
+UI layout decisions, security boundaries, devops/operations choices,
+observability requirements, NFR decisions, and code-implementation rules.
+Generic phase checks such as "clean code" or "design matches code" are no
+longer enough when the human already approved concrete workshop decisions.
+
+Design conclusion:
+
+- Review must load all workshop decision records: `lens-applicability.json`,
+  the Proposal 156 `workshop-decisions.yml` producer manifest, `workshop/*.md`,
+  design-analysis Co-Design Record, `plan.md`, `data-model.md`, contracts,
+  review diagrams, and the Proposal 163 implementation-rule manifest or
+  manifest section when present.
+- Every selected workshop decision gets a disposition: `satisfied`, `violated`,
+  `n/a-with-reason`, or `accepted-exception`.
+- Structural decisions require exact matching: component names,
+  responsibilities, layer/ownership, dependency direction, data entities,
+  fields, validation rules, contract fields, and diagram edges must map to
+  implementation files/functions and behavioral evidence.
+- Decision-prompt rules and lens decisions require the human's recorded decision
+  or an accepted exception; applicability-filtered rules require a reason when
+  marked `n/a`.
+- Enforcement modes are evidence obligations. If a decision says analyzer,
+  linter, compiler, test, approval test, runtime policy, diagram trace, or
+  review must enforce it, the corresponding evidence must be present.
+- Accepted exceptions must update the relevant design/plan/task artifact or
+  flow through Proposal 174's boundary-variance path, so implementation reality
+  can change the plan without silently erasing the prior decision.
+
 ## Gate review model — cheap gate checks plus full review-signoff
 
 145 is the deep implementation review for the `review-signoff` boundary. Running all seven phases after every gate would be too heavy and would turn normal governance into review fatigue.
@@ -191,9 +225,11 @@ Checks:
 - Concurrency + race conditions
 - Data integrity (transactional boundaries, atomicity)
 - Idempotency (for distributed / retry paths)
-- **Design/code/diagram conformance:** every material design component, diagram node/edge, and
-  data-flow claim maps to implementation files/functions and behavioral evidence; mismatches are
-  recorded as drift, rework, or accepted design change with rationale
+- **Workshop/design/code/diagram conformance:** every selected lens decision,
+  material design component, named responsibility, data structure, contract
+  field, diagram node/edge, and data-flow claim maps to implementation
+  files/functions and behavioral evidence; mismatches are recorded as drift,
+  rework, or accepted design change with rationale
 - **Claim-to-code trace:** any report claim that "X was implemented" cites the changed files,
   functions, commits, or generated artifacts that implement X
 
@@ -216,6 +252,11 @@ Checks:
 Checks:
 
 - Style + linter clean (markdownlint, PSScriptAnalyzer, language-specific)
+- Workshop-chosen implementation-rule conformance: as the code-quality subset of
+  `workshop-decision-conformance.yml`, load the `code-implementation` section
+  from `workshop-decisions.yml` and/or the linked Proposal 163 rule manifest,
+  then check every selected rule, including baseline defaults, decision-prompt
+  rules, applicability-filtered rules, and enforcement modes
 - SOLID (single responsibility, open/closed, dependency inversion, etc.)
 - DRY violations
 - DTOs / type discipline at boundaries (no leaking internals)
@@ -230,6 +271,10 @@ Checks:
   environment assumptions, and fake/synthetic fixtures where real evidence is required
 - No dead code / commented-out blocks
 - Comment-vs-comment-rot discipline per `[[proposal-074-code-commentary-standards]]`
+- Rule-level disposition ledger: each chosen implementation rule is marked
+  `satisfied`, `violated`, `n/a-with-reason`, or `accepted-exception` inside
+  the broader workshop-decision conformance ledger; accepted exceptions include
+  rationale and point to the artifact update or variance path
 
 ### Phase 5 — Test coverage + integrity
 
@@ -291,6 +336,23 @@ design_trace:
     implementation: [src/example.ps1]
     evidence: [tests/example.tests.ps1]
     status: matched
+workshop_decision_conformance:
+  - decision_id: component.session-bootstrap-manager
+    source: workshop/component-design.md
+    expected: "SessionBootstrapManager orchestrates bootstrap only"
+    implementation: [src/SessionBootstrapManager.ps1]
+    evidence: [tests/SessionBootstrapManager.Tests.ps1]
+    disposition: satisfied
+  - decision_id: data.bootstrap-directive.required-reads
+    source: data-model.md
+    expected: "required_reads carries mandatory artifacts for the directive"
+    implementation: [src/DirectiveEngine.ps1]
+    evidence: [tests/DirectiveEngine.Tests.ps1]
+    disposition: satisfied
+  - decision_id: code-rule.object-invariants
+    source: implementation-rules.yml
+    disposition: satisfied
+    evidence: [src/example.ps1, tests/example.tests.ps1]
 verdict:
   per_phase: { phase_0: pass, phase_1: pass, phase_2: pass, phase_3: n/a, phase_4: pass, phase_5: pass, phase_6: n/a }
   overall: APPROVE for review-signoff
@@ -320,7 +382,7 @@ Report-falsification rule:
 - Agent-mediated phase fan-out: each semantic review phase is executed by the coordinator/reviewer agent, using focused sub-agents where available (per `[[proposal-139-multi-agent-subagent-orchestration]]` / F-051)
 - Without F-051: sequential single-agent phase execution (lower fidelity but functional)
 - Deterministic scripts own workplan generation, schema validation, completeness checks, and aggregation; they do not directly invoke LLM reviewers as hidden side effects
-- Output artifacts: `review-workplan.yml` (required phases, prompt files, input artifacts, expected outputs, schemas, ordering constraints), per-phase structured findings under `review-findings/`, `review-report.yml` machine-readable + traceable, `review-claim-ledger.yml` for claim-to-evidence validation, `design-code-trace.yml` for design/diagram/code conformance, and `review.md` human prose synthesizing the matrix
+- Output artifacts: `review-workplan.yml` (required phases, prompt files, input artifacts, expected outputs, schemas, ordering constraints), per-phase structured findings under `review-findings/`, `review-report.yml` machine-readable + traceable, `review-claim-ledger.yml` for claim-to-evidence validation, `design-code-trace.yml` for design/diagram/code conformance, `workshop-decision-conformance.yml` for all workshop-bound decisions, and `review.md` human prose synthesizing the matrix
 - Static coverage validator: rule in `validate-governance.ps1` that fails the review-signoff boundary if structured outputs are missing, schema-invalid, incomplete, have FR phase coverage gaps without explicit `n/a + reason`, or contain unsupported/over-strong report claims; it validates evidence shape, reachability, claim strength, and aggregation rules, not semantic correctness by itself
 - Per-phase memoization (Proposal 086 Pillar 1) — context-load is the most expensive phase; cache per-iteration
 
@@ -336,6 +398,11 @@ Required inputs:
 - Changed files and branch status.
 - Test commands + results, with explicit distinction between local-only, CI-reached, skipped, and not-run evidence.
 - Design diagrams, data-flow descriptions, option decisions, and accepted design deltas.
+- Workshop/lens decision records (`lens-applicability.json`,
+  `workshop-decisions.yml`, `workshop/*.md`, design-analysis Co-Design Record,
+  `plan.md`, `data-model.md`, contracts, review diagrams, and accepted deltas),
+  including the Proposal 163 code-implementation rule manifest or manifest
+  section when present.
 - Agent-authored completion/review/coverage reports whose material claims must be verified.
 - Prior review/retro findings and unresolved deferrals.
 - `/specrew.refocus` output once that command exists; until then, the equivalent context pack produced by the existing start/resume surfaces.
@@ -349,6 +416,12 @@ Required outputs:
   `review.md` or generated packets mapped to supporting evidence, or marked `unsupported`.
 - `design-code-trace.yml`: design components, diagrams, data flows, and option decisions mapped to
   implementation files/functions and tests/evidence, or marked drift/deferral with rationale.
+- `workshop-decision-conformance.yml`: every selected decision from
+  `workshop-decisions.yml` mapped to disposition, evidence, and exception or
+  applicability rationale. This includes component names/responsibilities, data
+  structures, contracts, diagrams, security/integration/devops/observability/NFR
+  decisions, supplemental pack decisions from Proposal 175, and Proposal 163
+  implementation rules when applicable.
 - `review.md`: human-readable synthesis, with links to the structured report and any blocking findings.
 
 Validator obligations:
@@ -362,6 +435,15 @@ Validator obligations:
 - Fail if a material `review.md` / completion-packet claim lacks a `review-claim-ledger.yml`
   entry, or the entry has no evidence.
 - Fail if a code/design/diagram conformance claim lacks a `design-code-trace.yml` entry.
+- Fail if a selected `workshop-decisions.yml` decision lacks a
+  `workshop-decision-conformance.yml` entry.
+- Fail if a named component/responsibility, data structure, contract field,
+  diagram edge, or selected code rule has no implementation/evidence mapping and
+  no accepted exception or variance reference.
+- Fail if a decision-prompt rule or lens decision lacks a recorded human
+  decision, accepted exception, or variance reference.
+- Fail if a decision's declared enforcement mode has no corresponding evidence.
+- Fail if a decision is marked `n/a` without a non-empty applicability reason.
 - Fail if a dependency/import/package claim is not backed by manifest, lockfile, local file, or
   registry/source evidence.
 - Fail if a command/test claim lacks command text, exit code, and result/log evidence.
@@ -429,6 +511,16 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - `[[proposal-086-validation-pipeline-performance-bundle]]` — Pillar 1 memoization applies per-phase
 - `[[proposal-021-bypass-detector]]` — Phase 5 gate-completeness check is structural realization of the bypass-detector concept
 - `[[proposal-074-code-commentary-standards]]` — Phase 4 code-quality references the commentary standards
+- `[[156-design-analysis-lens-knowledge-catalog]]` — produces the canonical
+  `workshop-decisions.yml` manifest that 145 consumes and validates against
+- `[[163-code-implementation-lens]]` — Phase 4 consumes the
+  workshop-selected implementation rules and enforcement modes as one section of
+  the broader `workshop-decisions.yml` input and workshop-decision conformance
+  ledger
+- `[[174-boundary-variance-disclosure]]` — if implementation reality violates or
+  changes any chosen workshop decision (component map, data model, contract, UI,
+  security/integration/ops decision, or code rule), review requires either
+  rework or an accepted variance with artifact reconciliation
 - `[[proposal-070-token-economy-mvp]]` — Phase 3 cost check references the per-iteration cost.yml
 - `[[proposal-142-state-truth-integrity-validator]]` — Phase 1 state-truth check composes with 142's validator rule
 - `/specrew.refocus` (proposal/spec TBD) — prerequisite or companion for host-neutral re-entry after compaction/session drift; 145 consumes its output but should not own the whole refocus feature
@@ -467,6 +559,11 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 
 - Define the canonical phase-checklist content for each of the 7 phases (this proposal sketches dimensions; the spec defines the exact checks)
 - Define the `review-report.yml` JSON Schema for validator-side enforcement
+- Define the `workshop-decision-conformance.yml` schema and how it references
+  the Proposal 156 `workshop-decisions.yml` producer manifest, lens records,
+  co-design records, component maps, data models, contracts, Proposal 163 rule
+  manifests, Proposal 175 supplemental pack decisions, evidence, accepted
+  exceptions, and boundary variance records.
 - Define the per-phase agent charter (charter snippet for each phase agent, similar to existing role charters)
 - Decide on the host-deployment shape for the invocable skill (Proposal 058 SDK alignment)
 - Backfill strategy: do we re-run structured review on closed iterations as a one-shot quality audit?
