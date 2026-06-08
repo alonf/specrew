@@ -16,7 +16,7 @@ session anchors (the merged-Feature-171 stale-recovery incident). The workshop
 resolved the substantive design questions; this stop fixes the component
 decomposition and physical structure before `plan.md`.
 
-## Decision Points (resolved in the workshop; confirmed here)
+## Key Design Decision Points
 
 - `specrew start` vs hook division of labor → launcher preface + hook bootstrap
   (architecture-core d1).
@@ -27,7 +27,7 @@ decomposition and physical structure before `plan.md`.
 - Decomposition method → **IDesign volatility-based** (architecture-core d4).
 - Deployment → reuse the F-171 loop, no new install path (devops d1).
 
-## Design Options
+## Alternatives
 
 ### Option A — Simplest (minimal patch)
 
@@ -54,12 +54,52 @@ work. **Principle**: full correctness including distributed mutual exclusion.
 thin-synthesis scope; explicitly deferred to a future proposal (security +
 architecture-core d3).
 
+## Applicable Lenses
+
+*(FR-026 anti-omission coverage — each selected lens from
+`../../lens-applicability.json`, pointing into the option comparison; full per-lens
+records in `../../workshop/`.)*
+
+- **architecture-core**
+  Addressed: the option axis IS this lens's decision (launcher/hook division +
+  decomposition); Option B realizes the volatility cut (stable classify/validate/
+  directive engines), Option A entangles them in the F-171 path, Option C adds
+  distributed coordination. Binding: IDesign volatility-based (architecture-core d4).
+- **integration-api**
+  Addressed: the data-oriented directive contract + SessionStart marker + fail-open
+  error envelope are option-invariant; Option B isolates them in DirectiveEngine +
+  accessors, Option A inlines them, Option C adds a remote contract (out of scope).
+- **ui-ux**
+  Addressed: render-first enforcement via the disallowed-tools skill + prose floor is
+  identical across options; Option B gives it a clean seam (DirectiveEngine
+  `render_first` + agent render), Option A buries it in the patch.
+- **data-storage**
+  Addressed: write-only exit hook, event/state-first staleness, and project-local
+  resolution live in SessionStateAccessor/HandoverStore/ProjectMetadataAccessor under
+  all options; Option B keeps them as testable accessors, Option A scatters the I/O.
+- **security-compliance**
+  Addressed: local-tree trust boundary + advisory-not-authorizing external state +
+  fail-open/fail-closed posture are option-invariant; only Option C introduces a new
+  remote trust surface (deferred to a separate proposal).
+- **observability-resilience**
+  Addressed: the structured journal record + per-path tests require the pure
+  ClassificationEngine/DirectiveEngine that Option B provides; Option A's entangled
+  logic makes per-path journal assertions hard — the deciding factor here.
+- **requirements-nfr**
+  Addressed: backward compatibility + idempotency + B1/B3 regression safety are met
+  only by options that keep the F-171 dispatcher untouched; Option B/C preserve it
+  cleanly, Option A patches into it and raises regression risk.
+- **devops-operations**
+  Addressed: reuse of the F-171 deploy loop + kill switch + no-new-install-path is
+  option-invariant; Option B/C register components through it, and the file=component
+  FileList obligation applies.
+
 ## Crew Recommendation
 
 **Option B (IDesign volatility-based).** It delivers the testability the
 observability and NFR lenses require, keeps the F-171 dispatcher untouched
 (B1/B3 regression safety), and holds the thin-synthesis scope by deferring
-distributed coordination (Option C) to a separate proposal.
+distributed coordination to a separate proposal.
 
 ## Co-Design Record
 
@@ -176,5 +216,6 @@ direct launch
   keeps the F-171 dispatcher untouched (B1/B3 regression safety), and holds the
   thin-synthesis scope by deferring distributed coordination (Option C) to a
   separate proposal.
-- **Authorizing commit**: the git commit that carries this Human Decision edit
-  (the design-analysis decision commit, recorded in this file's history).
+- **Authorizing human**: Alon Fliess (structured verdict menu, 2026-06-08).
+- **Design-analysis draft commit**: `b4be99ae`
+- **Decision recorded in commit**: `fa33aff8`
