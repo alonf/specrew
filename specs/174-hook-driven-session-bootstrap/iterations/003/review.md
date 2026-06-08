@@ -49,8 +49,8 @@ as a claim to disprove. This is the FINAL iteration: it closes both carried live
 - **Phase 4 - Code quality**: pass. PSScriptAnalyzer clean on all F-174 bootstrap components + both
   providers. The two touched F-171 files (deployer, overlay) carry only PRE-EXISTING style findings
   (BOM, ShouldProcess) not introduced by these additive edits - out of scope to refactor here.
-- **Phase 5 - Test coverage + integrity**: pass. 19 bootstrap suites + the F-171 deploy integration
-  green; fixtures are real (a real git repo for the no-`-A` proof; the real dispatcher for the
+- **Phase 5 - Test coverage + integrity**: pass. 17 bootstrap suites (`tests/bootstrap/*.Tests.ps1`,
+  all green) + the F-171 deploy integration green; fixtures are real (a real git repo for the no-`-A` proof; the real dispatcher for the
   cross-host + round-trip + dispatch smokes; the SCRATCH deployer for register-correctness). **The
   send-back evidence-standard fix:** `DeployedHostConfig.Tests` now reads the ACTUAL committed
   `.claude/settings.local.json` ON DISK and asserts the SessionEnd hook is really deployed (not the
