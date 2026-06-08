@@ -216,6 +216,7 @@
         'scripts/internal/bootstrap/HostEventAdapter.ps1',
         'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1',
         'scripts/internal/bootstrap/SessionBootstrapManager.ps1',
+        'scripts/internal/bootstrap/SessionEndHandoverManager.ps1',
         'scripts/internal/bootstrap/SessionStateAccessor.ps1',
         'scripts/internal/bootstrap/ValidationEngine.ps1',
         'scripts/internal/coordinator-prompt-surgery.ps1',
