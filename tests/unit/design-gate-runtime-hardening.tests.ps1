@@ -274,7 +274,7 @@ try {
 
         # (2c) SC-026 (Amendment A7) — the per-lens confirmation PROVENANCE floor rides the SAME specify-gate
         # throw (the gate throws on ANY Test-SpecrewLensWorkshopRecords error). When the artifact opts in via
-        # confirmation_required, each selected lens MUST declare a provenance (human-confirmed|delegated|skipped)
+        # confirmation_required, each selected lens MUST declare a provenance (human-confirmed|human-delegated|human-skipped)
         # plus matching confirmation_scope; grandfather-safe (no marker -> no-op). Proven through the REAL gate
         # entry, not only the unit floor.
         [System.IO.File]::WriteAllText((Join-Path $featDir 'lens-applicability.json'), '{"schema":"v2","workshop_intake":true,"confirmation_required":true,"selected":["architecture-core"],"workshop":{"architecture-core":{"agenda":["q1"],"decision":"modular monolith","depth":"expert-terse","moved_on":true}}}', [System.Text.UTF8Encoding]::new($false))
