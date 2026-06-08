@@ -40,7 +40,7 @@ Build order: **live-wiring first** (T021, T022), then per-host, concurrency, jou
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T021 | D-001 downstream extension-tree deploy + LIVE SessionStart cross-host dispatcher smoke | FR-001, FR-005 | US-1 | 3 | Implementer | extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1 | done | claude | 3 | — |
-| T022 | D-002 SessionEnd hook registration + LIVE SessionEnd->SessionStart round-trip smoke | FR-009 | US-3 | 3 | Implementer | extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1 | planned | claude | — | — |
+| T022 | D-002 SessionEnd hook registration (handover provider, events:SessionEnd) + LIVE SessionEnd->SessionStart round-trip smoke | FR-009 | US-3 | 3 | Implementer | scripts/internal/specrew-handover-provider.ps1 | done | claude | 3 | — |
 | T016 | Per-host SessionStart/SessionEnd normalization (Codex/Copilot/Cursor) | FR-005 | US-1 | 2 | Implementer | scripts/internal/bootstrap/HostEventAdapter.ps1 | planned | claude | — | — |
 | T017 | Per-host empirical verification (render-before-picker, all 4 hosts) | FR-005, SC-001, SC-005 | US-1 | 2 | Implementer | tests/bootstrap | planned | claude | — | — |
 | T014 | SessionStart marker write + 1h-window freshness state | FR-018 | US-4 | 2 | Implementer | scripts/internal/bootstrap/SessionStateAccessor.ps1 | planned | claude | — | — |
@@ -66,8 +66,8 @@ Build order: **live-wiring first** (T021, T022), then per-host, concurrency, jou
 - Roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator.
 - T021/T022 (live-wiring) are sequenced first and serial; per-host (T016/T017) and concurrency
   (T014/T015) are largely independent afterward but small.
-- Shared-surface risk: T022 touches the F-171 dispatcher (adds SessionEnd handling additively;
-  must NOT change B1/B3 - FR-011); reviewed carefully.
+- Shared-surface risk: low - T022 adds a SessionEnd provider ROW + SCRIPT, no F-171 dispatcher-logic
+  edit (the dispatcher already dispatches by event), so B1/B3 are unchanged by construction (FR-011).
 - Recommendation: serial single-Implementer execution; no Junior/Senior split.
 
 ## Phase Baseline
@@ -95,5 +95,7 @@ Build order: **live-wiring first** (T021, T022), then per-host, concurrency, jou
 - Live-wiring proof bar (decisions `f174-i003-livewiring-first`): T021 proven by a real
   cross-host SessionStart dispatcher smoke; T022 by a real SessionEnd->SessionStart round-trip
   dispatcher smoke. Test-only is NOT sufficient for these two.
-- T022 adds SessionEnd handling to the F-171 dispatcher additively; B1/B3 must stay byte-unchanged
-  (FR-011), verified by T019.
+- T022 needed NO F-171 dispatcher-logic edit: the dispatcher already dispatches any event to
+  providers whose `events` array contains it, so SessionEnd was added purely as a provider ROW +
+  a provider SCRIPT. B1/B3 are therefore byte-unchanged by construction (no dispatcher edit);
+  T019 still regression-verifies them.

@@ -61,7 +61,7 @@ try {
         $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending | Select-Object -First 1
         if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
     }
-    foreach ($f in 'HostEventAdapter', 'SessionStateAccessor', 'ProjectMetadataAccessor', 'ClassificationEngine', 'ValidationEngine', 'DirectiveEngine', 'SessionBootstrapManager', 'LauncherIntegration') {
+    foreach ($f in 'HostEventAdapter', 'SessionStateAccessor', 'ProjectMetadataAccessor', 'HandoverStore', 'ClassificationEngine', 'ValidationEngine', 'DirectiveEngine', 'SessionBootstrapManager', 'LauncherIntegration') {
         . (Join-Path $bdir "$f.ps1")
     }
 

@@ -24,6 +24,8 @@ function Invoke-SpecrewSessionBootstrap {
         # Defaults to the project-local session-state file.
         [Parameter()][string] $StatePath,
         [Parameter()][string] $BaseBranch = 'main',
+        # ISO-8601 'now' for handover-freshness (deterministic for tests; live default below).
+        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o')),
         # When supplied, a one-line classification record is appended (advisory journal).
         [Parameter()][string] $JournalPath
     )
@@ -33,13 +35,25 @@ function Invoke-SpecrewSessionBootstrap {
     $resolvedStatePath = if ($StatePath) { $StatePath } else { Join-Path $ProjectRoot '.specrew/start-context.json' }
 
     $validity = Test-SpecrewAnchorValidity -StatePath $resolvedStatePath -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch
-    $mode = Resolve-SpecrewBootstrapMode -AnchorValid $validity.valid -AnchorClearedReason $validity.cleared_reason
+
+    # Handover-first (architecture-core d2): a validated handover from a prior SessionEnd is the
+    # primary resume signal, read + validated before the anchor decides the mode.
+    $handoverValid = $false
+    try {
+        $handover = Get-SpecrewHandover -HandoverDir (Join-Path $ProjectRoot '.specrew/handover') -NowUtc $NowUtc
+        if ($null -ne $handover) {
+            $handoverValid = [bool](Test-SpecrewHandoverValidity -Handover $handover -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch).valid
+        }
+    }
+    catch { $handoverValid = $false }
+
+    $mode = Resolve-SpecrewBootstrapMode -AnchorValid $validity.valid -AnchorClearedReason $validity.cleared_reason -HandoverValid $handoverValid
 
     $directive = New-SpecrewBootstrapDirective `
         -Mode $mode.mode `
         -DedupeKey $dedupeKey `
         -ValidationFindings $validity.findings `
-        -Sources ([pscustomobject]@{ anchor_present = ($null -ne $validity.anchor) })
+        -Sources ([pscustomobject]@{ anchor_present = ($null -ne $validity.anchor); handover_valid = $handoverValid })
 
     $record = [pscustomobject]@{
         host           = $HostName
