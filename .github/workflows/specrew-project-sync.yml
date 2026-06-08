@@ -27,7 +27,7 @@ jobs:
       SPECREW_PROJECT_TOKEN: ${{ secrets.SPECREW_PROJECT_TOKEN }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Sync GitHub Issues and Project board
         shell: pwsh
