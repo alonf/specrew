@@ -464,6 +464,63 @@ function Get-ManagedSkillMarkerContent {
     ) -join [Environment]::NewLine
 }
 
+function Get-SpecrewSkillHostScopes {
+    param(
+        [AllowEmptyString()]
+        [Parameter(Mandatory = $true)]
+        [string]$Content
+    )
+
+    $defaultScopes = @('all')
+    if ([string]::IsNullOrWhiteSpace($Content)) {
+        return $defaultScopes
+    }
+
+    $frontmatterMatch = [regex]::Match($Content, '(?s)^---\r?\n(?<frontmatter>.*?)\r?\n---')
+    if (-not $frontmatterMatch.Success) {
+        return $defaultScopes
+    }
+
+    $scopeMatch = [regex]::Match($frontmatterMatch.Groups['frontmatter'].Value, '(?m)^\s*host-scope\s*:\s*(?<value>.+?)\s*$')
+    if (-not $scopeMatch.Success) {
+        return $defaultScopes
+    }
+
+    $rawValue = $scopeMatch.Groups['value'].Value.Trim().Trim('[', ']')
+    $scopes = @(
+        $rawValue -split ',' |
+            ForEach-Object { $_.Trim().Trim('"', "'").ToLowerInvariant() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+
+    if ($scopes.Count -eq 0 -or $scopes -contains 'all') {
+        return $defaultScopes
+    }
+
+    return $scopes
+}
+
+function Test-SpecrewSkillAppliesToHost {
+    param(
+        [Parameter(Mandatory = $true)]
+        [psobject]$Definition,
+
+        [Parameter(Mandatory = $true)]
+        [string]$HostName
+    )
+
+    if ($Definition.PSObject.Properties.Name -notcontains 'HostScopes') {
+        return $true
+    }
+
+    $hostScopes = @($Definition.HostScopes | ForEach-Object { ([string]$_).ToLowerInvariant() })
+    if ($hostScopes.Count -eq 0 -or $hostScopes -contains 'all') {
+        return $true
+    }
+
+    return ($hostScopes -contains $HostName.ToLowerInvariant())
+}
+
 function Get-LegacySpecrewSkillDefinitions {
     param(
         [Parameter(Mandatory = $true)]
@@ -474,11 +531,13 @@ function Get-LegacySpecrewSkillDefinitions {
 
     $genericSkillFiles = @(Get-ChildItem -LiteralPath $SkillsTemplateRoot -Filter '*.md' | Where-Object { $_.Name -ne 'README.md' } | Sort-Object Name)
     foreach ($skillFile in $genericSkillFiles) {
+        $content = Get-Content -LiteralPath $skillFile.FullName -Raw
         $definitions.Add([pscustomobject]@{
                 Directory      = 'specrew-{0}' -f $skillFile.BaseName
-                CurrentContent = Get-Content -LiteralPath $skillFile.FullName -Raw
+                CurrentContent = $content
                 Kind           = 'generic'
-                LegacyContent  = Get-Content -LiteralPath $skillFile.FullName -Raw
+                LegacyContent  = $content
+                HostScopes     = @(Get-SpecrewSkillHostScopes -Content $content)
             })
     }
 
@@ -488,11 +547,13 @@ function Get-LegacySpecrewSkillDefinitions {
             continue
         }
 
+        $content = Get-Content -LiteralPath $skillSourcePath -Raw
         $definitions.Add([pscustomobject]@{
                 Directory          = $slashSkill.Directory
-                CurrentContent     = Get-Content -LiteralPath $skillSourcePath -Raw
+                CurrentContent     = $content
                 Kind               = 'slash-command'
                 LegacySlashCommand = $slashSkill.LegacySlashCommand
+                HostScopes         = @(Get-SpecrewSkillHostScopes -Content $content)
             })
     }
 
@@ -624,6 +685,24 @@ foreach ($activeSkillRoot in $activeSkillRoots) {
 
     foreach ($definition in $managedSkillDefinitions) {
         $skillDirectoryPath = Join-Path $activeSkillRoot.Path $definition.Directory
+        if (-not (Test-SpecrewSkillAppliesToHost -Definition $definition -HostName $activeSkillRoot.Name)) {
+            if (Test-Path -LiteralPath $skillDirectoryPath -PathType Container) {
+                if (Test-IsManagedLegacySkillDirectory -SkillDirectoryPath $skillDirectoryPath -Definition $definition) {
+                    Add-DeploymentAction -Actions $actions -Action $(if ($DryRun) { 'would-remove-host-scoped-managed-skill' } else { 'removed-host-scoped-managed-skill' }) -Path $skillDirectoryPath
+                    if (-not $DryRun) {
+                        Remove-Item -LiteralPath $skillDirectoryPath -Recurse -Force
+                    }
+                    continue
+                }
+
+                Add-DeploymentAction -Actions $actions -Action 'preserved-host-scoped-unmanaged-skill' -Path $skillDirectoryPath
+                continue
+            }
+
+            Add-DeploymentAction -Actions $actions -Action 'skipped-host-scope' -Path $skillDirectoryPath
+            continue
+        }
+
         Ensure-Directory -Path $skillDirectoryPath -Actions $actions
         Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath 'SKILL.md') -Content $definition.CurrentContent -Actions $actions
         Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath '.specrew-managed') -Content (Get-ManagedSkillMarkerContent -SkillDirectory $definition.Directory) -Actions $actions
