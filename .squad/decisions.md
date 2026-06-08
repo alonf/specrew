@@ -1,3 +1,20 @@
+## 2026-06-08 — F-174 Iteration 002: Review-Signoff Deferral (SessionEnd hook wiring)
+
+### 2026-06-08 — Defer: F-174 SessionEnd handover hook registration
+
+- **Decision ID**: defer-f174-i002-sessionend-wiring
+- **Type**: defer
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T20:00:00Z
+- **Next Action**: Register SessionEndHandoverManager to fire on the SessionEnd hook event
+  (the F-171 dispatcher does not dispatch SessionEnd today) in iteration 003, alongside the
+  iteration-001 D-001 downstream deploy.
+- **Rationale**: The handover WRITE manager and READ store are both built + tested and round-trip
+  correctly (SC-003); only the live SessionEnd hook registration remains, which is deploy/wiring
+  scope grouped with the iteration-003 per-host/deploy work. Drift D-002.
+
 ## 2026-06-08 — F-174 Iteration 002: HandoverStore composes Proposal 130 (locked)
 
 ### 2026-06-08 — Decision: HandoverStore uses Proposal 130's already-specified schema
@@ -25435,3 +25452,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 593d4817
 - **Recorded At**: 2026-06-08T18:56:22Z
+
+## 2026-06-08T19:37:56Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 177186f3
+- **Recorded At**: 2026-06-08T19:37:54Z

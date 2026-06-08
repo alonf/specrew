@@ -22,13 +22,25 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 1
+**Resolution rate**: deferred (0/1 resolved; 1 deferred to iteration 003)
+**Specification drift**: 1 deferred (D-002 SessionEnd hook wiring)
 
 ## Events
 
-No specification drift detected during Iteration 002 execution to date.
+### D-002 — SessionEndHandoverManager built + tested but not yet hook-registered
+
+**Requirement**: FR-009 (SessionEnd handover writing wired through the shipped hook path).
+
+**Drift**: SessionEndHandoverManager (write-only handover) and HandoverStore (read) are built,
+tested, and round-trip correctly (SC-003), but the manager is **not yet registered** to fire on a
+SessionEnd hook event - the F-171 dispatcher does not dispatch SessionEnd today. So on a live
+session-end the handover would not auto-write; FR-009's "wired through the hook path" exceeds the
+shipped wiring.
+
+**Resolution**: deferred to iteration 003 (the deploy/wiring slice, grouped with the iteration-001
+D-001 downstream deploy). Approved canonical defer entry `defer-f174-i002-sessionend-wiring` in
+`.squad\decisions.md`.
 
 ### Resolution Strategies (Unused)
 
