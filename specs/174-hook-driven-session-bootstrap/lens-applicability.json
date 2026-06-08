@@ -1,6 +1,7 @@
 {
   "workshop_intake": true,
   "confirmation_required": true,
+  "co_design": true,
   "selected": [
     "architecture-core",
     "integration-api",
