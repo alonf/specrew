@@ -168,6 +168,13 @@ direct launch
 
 ## Human Decision
 
-_Pending the design-analysis verdict (`approved for plan with Option <X>`). To be
-recorded here with the chosen option, rationale, verdict text, and the commit that
-contains it before `plan.md` is authored._
+- **Chosen option**: Option B — IDesign volatility-based decomposition (the
+  co-designed component map, engine call-rule, and file=component layout above).
+- **Verdict**: "approved for plan with Option B" — Alon Fliess, 2026-06-08.
+- **Rationale**: delivers the testability the observability and NFR lenses require
+  (the pure ClassificationEngine/DirectiveEngine keep every mode path unit-testable),
+  keeps the F-171 dispatcher untouched (B1/B3 regression safety), and holds the
+  thin-synthesis scope by deferring distributed coordination (Option C) to a
+  separate proposal.
+- **Authorizing commit**: the git commit that carries this Human Decision edit
+  (the design-analysis decision commit, recorded in this file's history).
