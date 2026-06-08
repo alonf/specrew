@@ -21,11 +21,11 @@
         "Decide the B2 full-bootstrap versus lightweight welcome-back trigger.",
         "Keep F-171 dispatcher behavior stable while adding a bootstrap provider."
       ],
-      "decision": "Human delegated intake decision: architecture-core applies at full depth because Proposal 172 changes the primary bootstrap posture and must preserve F-171 dispatcher boundaries while resolving open design questions before planning.",
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) division of labor = launcher preface + hook bootstrap, hook is the only full orientation/menu source; (2) B2 classification is handover-first and two-stage - read+validate handover against current project state before anchor classification, recency necessary but not sufficient; (3) concurrency posture is advisory-only, no locks/lease, cross-machine prevention out of scope; (4) IDesign volatility-based decomposition (volatile host adapters over stable classification/validation/clearing/directive engines). Out of scope: B1/B3 unchanged, B4 + Antigravity deferred, distributed same-feature prevention deferred. See workshop/architecture-core.md.",
       "depth": "full",
       "moved_on": true,
-      "confirmation": "human-delegated",
-      "diagram": "workshop/architecture-core.md - bootstrap posture and B2 decision boundary notes"
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/architecture-core.md - confirmed posture, two-stage handover-first classification, advisory concurrency, volatility decomposition"
     },
     "integration-api": {
       "agenda": [
@@ -33,11 +33,11 @@
         "Define SessionEnd handover-write integration with Proposal 130.",
         "Empirically verify host-specific menu rendering across Claude, Codex, Copilot, and Cursor."
       ],
-      "decision": "Human delegated intake decision: integration-api applies at full depth because the feature composes hook events, generated directives, handover files, launcher behavior, and multiple host-specific interaction surfaces.",
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) contract ownership - F-171 owns event ingestion/breaker/dedupe/journal, Proposal 130 owns handover format, Feature 174 owns the data-oriented bootstrap directive (fields: mode, sources, required_reads, render_first, menu_intent, validation_findings, dedupe/session metadata) and classification rules; (1b/2) add an advisory SessionStart marker via the hook journal - no git commit, no handover rewrite on startup - to detect unclean prior exits; (3) error handling is fail-open to safe bootstrap, never hard-block, invalid state never authoritative resume; (4) verification = unit/contract + handover round-trip fixtures + B1/B3 regression + per-host empirical evidence (render-before-picker) for Claude/Codex/Copilot/Cursor. See workshop/integration-api.md.",
       "depth": "full",
       "moved_on": true,
-      "confirmation": "human-delegated",
-      "diagram": "workshop/integration-api.md - hook and agent contract sequence notes"
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/integration-api.md - confirmed contract ownership, data-oriented directive, SessionStart marker, fail-open error envelope, host verification baseline"
     },
     "ui-ux": {
       "agenda": [
