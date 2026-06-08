@@ -47,7 +47,7 @@ Build order: **live-wiring first** (T021, T022), then per-host, concurrency, jou
 | T015 | Advisory local same-worktree concurrency + unclean-exit detection | FR-018, FR-019 | US-4 | 2 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | done | claude | 2 | — |
 | T018 | HookJournalAccessor + per-path journal-assertion tests (every mode + unclean-exit) | SC-007 | — | 2 | Implementer | scripts/internal/bootstrap/HookJournalAccessor.ps1 | done | claude | 2 | — |
 | T019 | B1/B3 regression + FR-012 negative test (no B4/Antigravity path executes) | FR-011, FR-012, SC-005 | US-1 | 1 | Implementer | tests/bootstrap/Regression.Tests.ps1 | done | claude | 1 | — |
-| T020 | Update docs/prompts: hook = primary bootstrap, specrew start = compat | FR-008, SC-006 | US-2 | 1 | Implementer | docs | planned | claude | — | — |
+| T020 | Update docs/prompts: hook = primary bootstrap, specrew start = compat | FR-008, SC-006 | US-2 | 1 | Implementer | docs/getting-started.md | done | claude | 1 | — |
 
 ## Effort Model
 
