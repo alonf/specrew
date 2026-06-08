@@ -31,28 +31,82 @@ decomposition and physical structure before `plan.md`.
 
 ### Option A - Simplest: minimal patch
 
-Add conditional bootstrap logic directly to the existing F-171 B2 path and the
-`specrew start` launcher; no separate components. **Principle**: minimize moving
-parts. **Cost**: classification, validation, stale-anchor clearing, and directive
-construction all entangle with host/event handling — untestable in isolation,
-exactly the silent-wrong-resume blind spot we are trying to remove.
+- **Approach**: add conditional bootstrap logic directly to the existing F-171 B2
+  path and the `specrew start` launcher; no separate components.
+- **Architectural pattern**: no volatility cut — host/event handling,
+  classification, validation, and directive construction all inline in the existing
+  dispatcher path.
+- **Quality features considered**: render-first (FR-004) and fail-open
+  (integration-api d3) bolted onto the patch; the observability journal record is
+  hard to assert because the logic is entangled; B1/B3 regression risk from editing
+  the dispatcher path.
+- **Effort estimate**: ~6-8 SP, 1 iteration.
+- **Reversibility cost**: low up front, high later — extracting testable components
+  after the fact re-opens the same code under review a second time.
+- **Trade-offs**: smallest immediate change, but classification, validation,
+  clearing, and directive construction entangle with host handling — untestable in
+  isolation, reproducing the silent-wrong-resume blind spot we are removing.
+
+```mermaid
+flowchart LR
+  Launch["direct launch / specrew start"] --> Patch["F-171 B2 path + inline bootstrap logic"]
+  Patch --> Agent["agent renders menu"]
+```
 
 ### Option B - Reasonable: IDesign volatility-based (recommended)
 
-Isolate volatile host/event/picker/file behavior behind stable
-classification/validation/directive engines, orchestrated by two managers, over
-resource accessors, reusing the F-171 dispatcher. **Principle**: encapsulate
-volatility; keep the stable core pure and testable. **Cost**: more named
-components, but each is small and independently testable, and the mode decision
-stays pure (serves observability d2).
+- **Approach**: isolate volatile host/event/picker/file behavior behind stable
+  classification/validation/directive engines, orchestrated by two managers over
+  resource accessors, reusing the F-171 dispatcher unchanged.
+- **Architectural pattern**: IDesign volatility cut — volatile adapters
+  (HostEventAdapter, LauncherIntegration) over stable engines
+  (Classification/Validation/Directive) over resource accessors; F-171 dispatcher
+  reused.
+- **Quality features considered**: pure ClassificationEngine/DirectiveEngine make
+  every mode path unit-testable (observability d2); render-first via DirectiveEngine
+  `render_first` + the disallowed-tools skill (FR-004/FR-020); fail-open/fail-closed
+  posture (security d3); B1/B3 untouched (dispatcher reused).
+- **Effort estimate**: ~10-14 SP, 1 iteration.
+- **Reversibility cost**: low — each component is an isolated file behind a function
+  contract; behavior can be tuned or a host adapter disabled without touching the
+  stable core.
+- **Trade-offs**: more named components than Option A, but each is small and
+  independently testable, and the testable seam is exactly what the observability and
+  NFR lenses require.
+
+```mermaid
+flowchart LR
+  Dispatcher["F-171 HookDispatcher (reused)"] --> BM[SessionBootstrapManager]
+  Dispatcher --> HM[SessionEndHandoverManager]
+  BM --> CE[ClassificationEngine]
+  BM --> VE[ValidationEngine]
+  BM --> DE[DirectiveEngine]
+  VE --> Acc["HandoverStore / SessionStateAccessor / ProjectMetadataAccessor"]
+  BM --> J[HookJournalAccessor]
+  DE --> Agent["agent renders prose + menu"]
+```
 
 ### Option C - By the book: layered + distributed coordination
 
-Option B plus a remote lease/coordination layer for cross-machine same-feature
-work. **Principle**: full correctness including distributed mutual exclusion.
-**Cost**: remote state, identity, leases, expiry, conflict policy — violates the
-thin-synthesis scope; explicitly deferred to a future proposal (security +
-architecture-core d3).
+- **Approach**: Option B plus a remote lease/coordination layer for cross-machine
+  same-feature work (identity, leases, expiry, conflict policy).
+- **Architectural pattern**: Option B's volatility cut plus a distributed
+  coordination service — remote state authority above the local accessors.
+- **Quality features considered**: the full local register as Option B, plus
+  distributed mutual-exclusion correctness, remote-state resiliency, and a new remote
+  trust/authn surface.
+- **Effort estimate**: ~25-35 SP, 2+ iterations (remote service + identity).
+- **Reversibility cost**: high — a remote coordination contract is expensive to
+  retract once clients depend on it.
+- **Trade-offs**: the only option that truly prevents cross-machine conflicts, but it
+  violates the thin-synthesis scope, adds a remote trust surface, and was explicitly
+  deferred to a separate proposal (architecture-core d3, security d1).
+
+```mermaid
+flowchart LR
+  B["Option B components"] --> Lease["Remote LeaseService (identity, expiry, conflict policy)"]
+  Lease --> Remote["remote state authority"]
+```
 
 ## Applicable Lenses
 
