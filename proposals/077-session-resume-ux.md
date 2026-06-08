@@ -167,5 +167,6 @@ Estimated: 10-15 SP. Plus 1-2 SP if Pillar 5 needs new CLI dispatcher infrastruc
 - Proposal 035 (Session-State Durability, draft): file:///C:/Dev/Specrew/proposals/035-session-state-durability.md
 - Proposal 033 (Governance CLI, draft): file:///C:/Dev/Specrew/proposals/033-specrew-governance-cli.md
 - Proposal 053 (Autopilot Decision Transparency, candidate): file:///C:/Dev/Specrew/proposals/053-autopilot-decision-transparency.md
+- Proposal 172 (Hook-Driven Session Bootstrap, draft): file:///C:/Dev/Specrew/proposals/172-hook-driven-session-bootstrap.md — wires this proposal's resume/new/pick menu into the SessionStart hook bootstrap (agent-rendered) on the now-shipped Feature 171 dispatcher
 - Pillar E of v0.24.2 chore (queued as small follow-up): see `[[project-post-f028-sequencing-locked-2026-05-21]]`
 - INDEX: file:///C:/Dev/Specrew/proposals/INDEX.md

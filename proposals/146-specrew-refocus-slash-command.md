@@ -1,11 +1,11 @@
 ---
 proposal: 146
 title: /specrew.refocus Slash Command + Event-Driven Auto-Refocus (Reactive and Automatic Methodology-Corpus Re-Load for Agent Drift Remediation)
-status: draft
+status: shipped
 phase: phase-2
 estimated-sp: 10-15
 priority-tier: 1
-discussion: surfaced 2026-05-30 as the reactive sibling to Proposal 133 passive primer; addresses empirical agent drift after compaction or in long sessions; ship-first as small-fix slice ahead of F-053 (Proposal 145 structured reviewer) for immediate cross-feature drift-remediation ROI. AMENDED 2026-06-06 (maintainer-directed, pre-implementation) to add Pillar B event-driven auto-refocus — the same scoped re-load fired automatically from host hook events (post-compaction, session start/resume, boundary transitions) instead of waiting for a human or coordinator to remember to invoke it; promoted candidate -> draft for immediate implementation.
+discussion: surfaced 2026-05-30 as the reactive sibling to Proposal 133 passive primer; addresses empirical agent drift after compaction or in long sessions; ship-first as small-fix slice ahead of F-053 (Proposal 145 structured reviewer) for immediate cross-feature drift-remediation ROI. AMENDED 2026-06-06 (maintainer-directed, pre-implementation) to add Pillar B event-driven auto-refocus — the same scoped re-load fired automatically from host hook events (post-compaction, session start/resume, boundary transitions) instead of waiting for a human or coordinator to remember to invoke it; promoted candidate -> draft for immediate implementation. SHIPPED 2026-06-08 as Feature 171 in v0.33.0-beta1 (merge `2583ea70`, PR #2152) — PARTIAL: Pillar A (all 5 invocation modes) + Pillar B triggers B1/B2/B3 across Claude + Codex (full triad) and Copilot + Cursor (B2). DEFERRED-WITH-PATH: B4 pre-compaction capture (`PreCompact`, research-gated) and the Antigravity hook binding (primary docs not fetchable; ships channels 1+2 + advisory). The SessionStart B2 trigger currently injects the lightweight general refocus digest only; elevating it to a full session bootstrap (orientation + handover-read + Resume/New/Pick menu) is [[172]] (Hook-Driven Session Bootstrap).
 ---
 
 # `/specrew.refocus` Slash Command + Event-Driven Auto-Refocus (Reactive and Automatic Methodology-Corpus Re-Load for Agent Drift Remediation)
