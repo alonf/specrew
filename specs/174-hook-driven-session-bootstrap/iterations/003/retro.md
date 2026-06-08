@@ -71,6 +71,12 @@
 3. Owner: Planner | Phase: iteration 004 | Type: design | Open iteration 004 with a design pass for the
    Stop-event rolling handover (Stop-only trigger, in-place file, material-change update policy) -
    decision `f174-i004-stop-event-rolling-handover`.
+4. Owner: all roles | Phase: EVERY boundary | Type: process (Proposal-142 state-truth) | Run
+   `validate-governance.ps1` and confirm EXIT 0 BEFORE presenting ANY boundary verdict - not only at
+   closeout. F-174 hit "artifacts-advanced-but-status-left-stale" TWICE (iter-001 closeout; this
+   iter-003 retro: retro.md written but plan.md left `reviewing`), and both times a human running the
+   validator caught it, not the agent's preflight. The boundary preflight MUST include the scoped
+   validator as a hard gate.
 
 ## Calibration Suggestion
 
