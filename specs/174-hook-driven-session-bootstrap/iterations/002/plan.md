@@ -39,7 +39,7 @@ round-trip informs the next launch). Builds on the iteration-001 IDesign seams.
 | T010 | Extend classification: handover-first stage + welcome-back | FR-010, FR-017 | US-3 | 1 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | done | claude | 1 | — |
 | T011 | Write-only SessionEnd handover + opt-in scoped commit | FR-009, FR-021, SC-003 | US-3 | 2 | Implementer | scripts/internal/bootstrap/SessionEndHandoverManager.ps1 | done | claude | 2 | — |
 | T012 | Full SessionEnd->SessionStart round-trip (read-validate-surface) | FR-010, FR-017, SC-003 | US-3 | 2 | Implementer | tests/bootstrap/SessionEndHandover.Tests.ps1 | done | claude | 2 | — |
-| T013 | `specrew start` preface + launcher<->hook dedupe handshake | FR-006, FR-007, SC-002 | US-2 | 2 | Implementer | scripts/internal/bootstrap/LauncherIntegration.ps1 | planned | claude | — | — |
+| T013 | `specrew start` preface + launcher<->hook dedupe handshake | FR-006, FR-007, SC-002 | US-2 | 2 | Implementer | scripts/internal/bootstrap/LauncherIntegration.ps1 | done | claude | 2 | — |
 
 ## Effort Model
 

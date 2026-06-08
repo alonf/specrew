@@ -53,9 +53,14 @@ try {
     $root = if ($rootOverride) { $rootOverride } else { Get-BootstrapProjectRoot }
 
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
-    foreach ($f in 'HostEventAdapter', 'SessionStateAccessor', 'ProjectMetadataAccessor', 'ClassificationEngine', 'ValidationEngine', 'DirectiveEngine', 'SessionBootstrapManager') {
+    foreach ($f in 'HostEventAdapter', 'SessionStateAccessor', 'ProjectMetadataAccessor', 'ClassificationEngine', 'ValidationEngine', 'DirectiveEngine', 'SessionBootstrapManager', 'LauncherIntegration') {
         . (Join-Path $bdir "$f.ps1")
     }
+
+    # Launcher<->hook dedupe (FR-007, SC-002): if `specrew start` just bootstrapped this session,
+    # stay silent so the startup yields exactly one bootstrap surface.
+    $nowUtc = (Get-Date).ToUniversalTime().ToString('o')
+    if (Test-SpecrewLauncherBootstrapRecent -ProjectRoot $root -NowUtc $nowUtc) { exit 0 }
 
     $journalPath = Join-Path $root '.specrew/runtime/bootstrap-journal.jsonl'
     $result = Invoke-SpecrewSessionBootstrap -RawEvent $eventJson -HostName claude -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath

@@ -214,6 +214,7 @@
         'scripts/internal/bootstrap/DirectiveEngine.ps1',
         'scripts/internal/bootstrap/HandoverStore.ps1',
         'scripts/internal/bootstrap/HostEventAdapter.ps1',
+        'scripts/internal/bootstrap/LauncherIntegration.ps1',
         'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1',
         'scripts/internal/bootstrap/SessionBootstrapManager.ps1',
         'scripts/internal/bootstrap/SessionEndHandoverManager.ps1',
