@@ -300,15 +300,23 @@ offered.
   rewrite.
   **Owner**: Implementer. **Iteration**: 006.
 - **FR-024**: Per-host INJECTION of the bootstrap contract (whether the SessionStart
-  hook output actually reaches the model's context) MUST be EMPIRICALLY established,
-  not assumed. Hosts whose injection is proven by the deployed live-wiring floor form
-  the PARITY SET (the hook DRIVES the lifecycle there); `specrew start` remains the
-  driver for the no-hook fallback host (Antigravity) and any hooked-but-non-injecting
-  host. Hook DEPLOYMENT coverage is already resolved (claude / codex / copilot / cursor
-  are hooked; Antigravity is the no-hook fallback) and MUST NOT be re-derived - the open
-  question is injection. The on-disk contract + state writes are host-agnostic and MUST
-  happen regardless of injection, so a non-injecting host still has the files for a
-  subsequent `specrew start`.
+  hook output actually reaches the model's context) MUST be EMPIRICALLY established, not
+  assumed - in TWO parts, mirroring the SC-009-vs-SC-008 auto-vs-manual split. (a) The
+  deployed live-wiring floor (SC-011) AUTO-proves the PLUMBING: the contract + state are
+  written and read back on disk in a deployed layout AND the provider EMITS the per-host
+  injection. (b) Whether that injection actually REACHES the model's context is a
+  host-runtime behavior provable ONLY by a clean per-host dogfood OBSERVATION - it CANNOT
+  be asserted by an on-disk test (a green plumbing floor on a host says nothing about
+  whether its runtime delivered the additionalContext to the model). A host enters the
+  PARITY SET (the hook DRIVES there) only when BOTH hold: the plumbing floor is green AND
+  injection is observed to reach the model. Claude is satisfied by direct observation
+  this iteration; codex / copilot / cursor are the enumerated clean re-tests (FR-005).
+  `specrew start` remains the driver for the no-hook fallback host (Antigravity) and any
+  hooked-but-non-injecting host. Hook DEPLOYMENT coverage is already resolved (claude /
+  codex / copilot / cursor are hooked; Antigravity is the no-hook fallback) and MUST NOT
+  be re-derived. The on-disk contract + state writes are host-agnostic and MUST happen
+  regardless of injection, so a non-injecting host still has the files for a subsequent
+  `specrew start`.
   **Owner**: Implementer, Reviewer. **Iteration**: 006.
 
 ### Traceability & Governance Requirements
@@ -408,16 +416,17 @@ offered.
   detector flags a placeholder body at the Stop and at the next SessionStart, but
   cannot force authoring (transcript-blindness) - the human is the backstop. Tests
   MUST encode this split so the detector is never mistaken for a guarantee.
-- **SC-011**: The deployed live-wiring floor PROVES, in a real installed-module scratch
-  project on an injecting host (Claude), that the hook DRIVES end-to-end (iteration
-  006): a SessionStart writes `boundary_enforcement` to `start-context.json` on disk AND
-  the full launch contract to `last-start-prompt.md`; a working turn + Stop captures the
-  iteration intent (when no start prompt) plus the agent-authored handover on disk; a
-  fresh resume reads them back. The floor runs against the DEPLOYED layout
-  (`evidence_locus: deployed`), NOT the dev tree - the assertion that catches a
-  dev-tree-only "works" claim (drift D-009). Per-host injection beyond Claude is
-  established host-by-host (FR-024); the parity set is the floor's OUTPUT, not an assumed
-  list.
+- **SC-011**: The deployed live-wiring floor is the AUTO-PROVABLE PLUMBING property: in a
+  real installed-module scratch project (NOT the dev tree; `evidence_locus: deployed`), a
+  SessionStart writes `boundary_enforcement` to `start-context.json` on disk AND the full
+  launch contract to `last-start-prompt.md`; a working turn + Stop captures the iteration
+  intent (when no start prompt) plus the agent-authored handover on disk; a fresh resume
+  reads them back; AND the provider EMITS the per-host injection. This is the assertion
+  that catches a dev-tree-only "works" claim (drift D-009). It does NOT assert that the
+  injection REACHES the model on a given host - that is the manual per-host confirmation
+  (FR-024, the SC-008-style observation). A host joins the PARITY SET only when the
+  plumbing floor is green AND injection-reaches-model is observed; Claude is satisfied by
+  observation this iteration, codex / copilot / cursor are enumerated follow-on.
 
 ## Assumptions
 

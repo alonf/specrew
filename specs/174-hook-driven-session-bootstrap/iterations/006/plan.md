@@ -93,21 +93,25 @@ codex / copilot / cursor injection as explicit clean follow-on re-tests; Antigra
   iter-5 thin orient/menu) + the resume handover surface.
 - **BoundaryEnforcement funcs** (existing): preserve-merge the anchor; the hook never clobbers it.
 
-### Per-host injection model (parity-set = the floor's OUTPUT, not an assumed list)
+### Per-host injection model (parity-set = plumbing-green AND injection-observed)
 
 The on-disk writes (contract + `boundary_enforcement`) are **host-agnostic — they ALWAYS happen**, so even
-a non-injecting host has the files for a subsequent `specrew start`. INJECTION (does the contract reach the
-model) is verified PER HOST by the deployed live-wiring floor (build != live applied forward — the parity
-set is an output of the floor, never an input we assume):
+a non-injecting host has the files for a subsequent `specrew start`. INJECTION is verified in TWO parts —
+the spec's SC-009-vs-SC-008 auto-vs-manual split, applied forward so a plumbing-green host is never
+mistaken for an injecting one (the build != live trap one level up that this iteration exists to kill):
 
-- **Claude** — PROVEN; this iteration's load-bearing floor establishes it end-to-end.
-- **codex / copilot / cursor** — injection shape exists; delivery UNPROVEN (Codex's no-orientation run was
-  CONFOUNDED). ENUMERATED as explicit clean follow-on re-tests (T039 records them; the full re-tests are
-  the next slice — they would push past the 20 SP cap; surfaced at before-implement for the maintainer to
-  cut).
+- **Plumbing (AUTO — T038 / SC-011)** — the contract + state are written and read back on disk in a
+  DEPLOYED layout AND the provider EMITS the per-host injection. CI-able. The D-009 fix.
+- **Injection-reaches-model (MANUAL per-host OBSERVATION — T039 / FR-024)** — whether the host runtime
+  actually delivers the injected `additionalContext` to the model. NOT assertable on disk; a clean dogfood
+  observation only (Codex's confounded run is exactly why this can't be a file assertion).
+- **Claude** — plumbing via T038; injection-reaches-model satisfied by DIRECT OBSERVATION this iteration.
+- **codex / copilot / cursor** — injection shape exists; delivery UNPROVEN (Codex's run was CONFOUNDED).
+  ENUMERATED as explicit clean follow-on re-tests (T039; the full re-tests are the next slice — past the
+  20 SP cap; surfaced at before-implement for the maintainer to cut).
 - **Antigravity** — no hook → `specrew start` fallback.
-- **Parity set = hosts the floor proves inject. `specrew start` fallback = Antigravity + any
-  hooked-but-non-injecting host.**
+- **Parity set = plumbing floor green AND injection observed-to-reach-model. `specrew start` fallback =
+  Antigravity + any hooked-but-non-injecting host.**
 
 ### The load-bearing live-wiring floor (T038 — Claude, DEPLOYED scratch project)
 
@@ -139,7 +143,7 @@ This is the assertion that would have caught every dev-tree-only "works" claim (
 | T036 | SessionBootstrapManager calls the shared generator on SessionStart (gather project/session inputs; null launcher-only roster/routing) → write `last-start-prompt.md` (narrow atomic write) → ensure `boundary_enforcement` via Get-/Initialize-SpecrewBoundaryEnforcementState (preserve-merge the anchor) | FR-023, FR-001 | US-1 | 3 | Implementer | scripts/internal/bootstrap/SessionBootstrapManager.ps1 | planned | — | — | — |
 | T037 | Bootstrap provider injects the read-and-follow contract (replace the iter-5 thin orient/menu directive) + the resume handover surface; dedupe-safe (never clobber a fresh launcher contract via Test-SpecrewLauncherBootstrapRecent) | FR-002, FR-007 | US-1 | 2 | Implementer | scripts/internal/specrew-bootstrap-provider.ps1, scripts/internal/bootstrap/DirectiveEngine.ps1 | planned | — | — | — |
 | T038 | The DEPLOYED live-wiring floor on Claude (load-bearing; `evidence_locus: deployed`): a real installed-module scratch project asserts the 3-part round-trip — SessionStart writes boundary_enforcement + contract on disk; a working turn + Stop captures intent into last-start-prompt.md + the handover on disk; a fresh resume reads them back | FR-022, FR-024, SC-011 | US-1 | 4 | Implementer | tests/integration | planned | — | — | — |
-| T039 | Per-host injection contract enumerated (read deploy + Write-InjectionOutput); Claude proven via T038; record codex/copilot/cursor injection clean re-tests as EXPLICIT follow-on tasks (not silently dropped); Antigravity → specrew start fallback | FR-024, FR-005 | US-1 | 1 | Implementer | specs/174-hook-driven-session-bootstrap | planned | — | — | — |
+| T039 | Per-host injection: the deployed floor (T038) auto-proves PLUMBING; injection-REACHES-model is a manual per-host OBSERVATION (Claude satisfied by direct observation this iteration); enumerate codex/copilot/cursor injection-reaches-model clean re-tests as EXPLICIT follow-on (not silently dropped); Antigravity → specrew start fallback | FR-024, FR-005 | US-1 | 1 | Implementer | specs/174-hook-driven-session-bootstrap | planned | — | — | — |
 | T040 | evidence_locus carry: add an `evidence_locus` field (values dev-tree or deployed) to the 145 claim-ledger + the hardening-gate concern schema; review REFUSES "delivered-live" on dev-tree-only evidence; file as a Proposal-145 reviewer-family candidate (reconcile on the #2216 rebase) | FR-024 | US-1 | 2 | Implementer | extensions/specrew-speckit | planned | — | — | — |
 | T041 | dormant-SessionEnd cleanup carry: delete SessionEndHandoverManager.ps1 + FileList entry + SessionEndHandover.Tests + the timestamped Write-/Get-SpecrewHandover funcs + the inaccurate "REUSED" design-record phrase | FR-009 | US-3 | 2 | Implementer | scripts/internal/bootstrap | planned | — | — | — |
 | T042 | Docs / F-174 claims repositioned: the hook DRIVES on injecting hosts (parity) + orientation/resume; specrew start = cross-host driver + host-selection + fallback (Antigravity / non-injecting) | FR-008 | US-2 | 1 | Implementer | docs | planned | — | — | — |
@@ -197,6 +201,11 @@ This is the assertion that would have caught every dev-tree-only "works" claim (
 - Capacity 19/20: per-task SP (4+3+2+4+1+2+2+1) = 19. No overcommit.
 - T035 reuses, does not rewrite, `Get-StartPrompt` — minimizing the LIR-001 risk; the only specrew-start
   change is moving functions to a dot-sourced lib + dot-sourcing it.
+- **T035 SP RISK (surfaced at before-implement):** "behavior-preserving, guarded by the specrew-start
+  integration suite" is only as strong as what that suite CHARACTERIZES. The suite EXISTS, but T035 must
+  FIRST verify it actually pins the contract (`Get-StartPrompt` output + the `boundary_enforcement` init)
+  and ADD a characterization assertion if it does not — otherwise the extraction could silently alter the
+  contract and stay green. If the characterization is missing, T035 may exceed its 4 SP estimate.
 - Sub-agents OUT OF SCOPE (single-agent only); per-worktree handover merge stays deferred (memory
   `f174-subagent-handover-merge-consideration`).
 - The before-implement gate is the single human stop for this iteration (maintainer directive: design pass
