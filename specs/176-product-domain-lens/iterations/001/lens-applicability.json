@@ -1,0 +1,32 @@
+{
+  "schema": "v1",
+  "note": "Iteration 001 design-analysis applicability answers + co-design marker. Selected = always-on foundational lenses + devops-operations (ops=yes: the conduct deploys to host skill surfaces). co_design: true engages the SC-025 co-design-record floor against design-analysis.md.",
+  "co_design": true,
+  "answers": {
+    "ui": false,
+    "security": false,
+    "data": false,
+    "integration": false,
+    "ops": true,
+    "perf": false
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "devops-operations"
+  ],
+  "included": [
+    { "id": "architecture-core", "reason": "always-on (foundational)" },
+    { "id": "component-design", "reason": "always-on (foundational)" },
+    { "id": "requirements-nfr", "reason": "always-on (foundational)" },
+    { "id": "devops-operations", "reason": "gated by 'ops' = yes" }
+  ],
+  "excluded": [
+    { "id": "ui-ux", "reason": "gated by 'ui' = no" },
+    { "id": "security-compliance", "reason": "gated by 'security' = no" },
+    { "id": "data-storage", "reason": "gated by 'data' = no" },
+    { "id": "integration-api", "reason": "gated by 'integration' = no" },
+    { "id": "observability-resilience", "reason": "gated by 'perf' = no" }
+  ]
+}

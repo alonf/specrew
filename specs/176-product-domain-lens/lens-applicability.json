@@ -1,0 +1,64 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "requirements-nfr",
+    "component-design",
+    "devops-operations"
+  ],
+  "skipped": {
+    "ui-ux": "Agent-facing workshop conduct + artifact files; no GUI or screens.",
+    "data-storage": "No runtime/domain persistence; product-domain.{md,yml} are design-time artifact records whose schema is owned under component-design.",
+    "security-compliance": "No auth/secrets/PII/network surface; evidence-integrity is enforced by the specify-gate floor, not the security lens (the start-context security hint was a generic false-positive).",
+    "integration-api": "No external API; the Proposal 156 consumer-shape forward-compatibility is an internal contract folded into requirements-nfr + component-design.",
+    "observability-resilience": "No runtime telemetry; failure modes are validator/test concerns, not runtime observability."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Where does product-domain slot into the lens model (always_on / question-gated / a new first-stage phase)?",
+        "How is the lens enforced at the specify boundary?"
+      ],
+      "decision": "product-domain is always-applicable and runs ahead of the yes/no applicability questionnaire, so it does NOT fit the existing always_on / question-gated dichotomy in applicability-map.json -- it reads as a new first-stage workshop phase. The exact mechanical slot-in (first-stage phase vs an applicability-map row) is deferred to the design-analysis stop; the spec stays behavioral. Enforcement (human-confirmed via Q1): extend the existing specify-boundary gate to require the product-domain record with SC-026 confirmation/confirmation_scope provenance, reusing the proven floor that already rejects batch approval -- no parallel validator subsystem.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md -- build-decomposition ASCII (lens md -> skill conduct -> artifacts -> gate -> tests)"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "What is the FR set and what is deferred?",
+        "When does a research-needed evidence tag block the plan boundary?"
+      ],
+      "decision": "FR-001..FR-006 + FR-009..FR-013 are in scope this iteration; FR-007 (Proposal 156 workshop-decisions.yml emission) and FR-008 (Proposal 162 product-level inheritance) are DEFERRED to forward-compatible shape only -- both deps are unshipped on disk (recorded in drift-log). research-needed blocking (human-confirmed via Q2): a research-needed tag blocks the plan boundary ONLY when load-bearing (feasibility / MVP scope / major cost or risk); otherwise it is recorded and carried. Quality drivers: enforced-not-prose grounding, evidence honesty (no confident product fiction), multi-host parity.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "component-design": {
+      "agenda": [
+        "What are the components and their dependency directions for the build?"
+      ],
+      "decision": "Approved build map (human-confirmed): (catalog) product-domain.md lens file + index.yml / diagram-vocabulary.json registration as the always-applicable first-stage lens; (per-feature artifacts) product-domain.yml structured + 156-forward-compatible and product-domain.md human-readable under workshop/, plus record writer/validator PowerShell functions; (workshop conduct) the specrew-design-workshop skill runs product-domain first + enforces no-batch-confirmation, re-deployed to the 4 host copies; (enforcement) specify-gate floor reusing SC-026 provenance; (tests) depth selection, dual-artifact persistence, evidence-tagging, FR-009 non-equivalence, the gate floor, host-skill parity. Dependency direction: lens md -> skill conduct -> writes artifacts -> gate validates artifacts -> tests cover all.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md -- build-decomposition ASCII + named component list"
+    },
+    "devops-operations": {
+      "agenda": [
+        "What ships where, and how does the conduct change stay in sync across the host skill copies?"
+      ],
+      "decision": "The lens md is one shared catalog file; the skill-conduct change must propagate to the host-managed skill surfaces of all five supported hosts (Claude, Copilot/GitHub, Codex/Agents, Cursor, Antigravity, as applicable) through the managed-skill deploy path -- not hand-edits that drift. On disk today those surfaces are four physical locations (.claude/skills, .cursor/rules, .github/skills, .agents/skills, each with a .specrew-managed marker) that the hosts map onto; the requirement is per supported host, not per physical directory -- Antigravity is supported, not excluded (maintainer clarification carried as the specify approve-with-instructions verdict). A host-parity test guards against drift. The exact host->surface mapping and deploy-source wiring are a plan-time detail.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md -- shared build-decomposition ASCII (deploy topology folded in)"
+    }
+  }
+}
