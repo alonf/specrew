@@ -35,7 +35,8 @@ $boot = $cfg.providers | Where-Object { $_.id -eq 'bootstrap' }
 Assert-Equal (@($boot.events).Count) 1 'bootstrap registered for exactly one event'
 Assert-True ($boot.events -contains 'SessionStart') 'bootstrap = SessionStart only (B2; never touches B3/PostToolUse)'
 $ho = $cfg.providers | Where-Object { $_.id -eq 'handover' }
-Assert-True ($ho.events -contains 'SessionEnd') 'handover = SessionEnd only'
+Assert-True ($ho.events -contains 'Stop') 'handover registered for the universal Stop event (iter-4 rolling handover)'
+Assert-True (-not ($ho.events -contains 'SessionEnd')) 'handover NOT registered for SessionEnd (iter-4 replaced SessionEnd with Stop)'
 
 # --- FR-012 negative: no Antigravity path anywhere in the scopes ---
 Assert-True (-not ($raw -match 'antigravity')) 'no Antigravity provider/path (FR-012 deferred)'

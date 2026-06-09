@@ -115,12 +115,12 @@
         ]
       }
     ],
-    "SessionEnd": [
+    "Stop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \".specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event SessionEnd -HostKind claude"
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \".specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event Stop -HostKind claude"
           }
         ]
       }

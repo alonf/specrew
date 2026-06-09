@@ -35,8 +35,9 @@ $out = Invoke-Deploy
 Assert-True (Test-Path -LiteralPath $settingsPath -PathType Leaf) 'settings.local.json created when absent'
 $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
 Assert-True ($null -ne $settings.hooks.SessionStart) 'SessionStart registered'
-Assert-True ($null -ne $settings.hooks.SessionEnd) 'SessionEnd registered (F-174 D-002: handover-on-exit)'
-Assert-True (([string]$settings.hooks.SessionEnd[0].hooks[0].command).Contains('-Event SessionEnd')) 'SessionEnd command dispatches -Event SessionEnd'
+Assert-True ($null -ne $settings.hooks.Stop) 'Stop registered (F-174 iter-4: rolling handover)'
+Assert-True (([string]$settings.hooks.Stop[0].hooks[0].command).Contains('-Event Stop')) 'Stop command dispatches -Event Stop'
+Assert-True (-not $settings.hooks.PSObject.Properties['SessionEnd']) 'SessionEnd NOT registered (iter-4 replaced it with the universal Stop)'
 Assert-True (-not $settings.hooks.PSObject.Properties['PostToolUse']) 'PostToolUse NOT registered (TG-004 option (a): channel 1 carries B3; latency bar)'
 Assert-True (-not $settings.hooks.PSObject.Properties['PreToolUse']) 'PreToolUse NOT registered (dormant F-165 seat)'
 Assert-True (([string]$settings.hooks.SessionStart[0].hooks[0].command).Contains('specrew-hook-dispatcher.ps1')) 'command points at the dispatcher'
@@ -56,10 +57,10 @@ $userSettings = [pscustomobject]@{
         SessionStart = @(
             [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = 'echo user-session-hook' }) }
         )
-        Stop         = @(
+        PostToolUse  = @(
             [pscustomobject]@{ hooks = @(
-                    [pscustomobject]@{ type = 'command'; command = 'echo user-stop-hook' },
-                    [pscustomobject]@{ type = 'command'; command = 'pwsh -File old/specrew-hook-dispatcher.ps1 -Event Stop' }
+                    [pscustomobject]@{ type = 'command'; command = 'echo user-ptu-hook' },
+                    [pscustomobject]@{ type = 'command'; command = 'pwsh -File old/specrew-hook-dispatcher.ps1 -Event PostToolUse' }
                 )
             }
         )
@@ -72,8 +73,8 @@ Assert-True ([string]$settings.permissions.allow[0] -eq 'Bash(npm test:*)') 'non
 $ssCommands = @($settings.hooks.SessionStart | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
 Assert-True ($ssCommands -contains 'echo user-session-hook') 'user SessionStart hook preserved'
 Assert-True (@($ssCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1) 'our SessionStart entry added exactly once'
-$stopCommands = @($settings.hooks.Stop | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
-Assert-True (($stopCommands -contains 'echo user-stop-hook') -and -not ($stopCommands -like '*specrew-hook-dispatcher*')) 'mixed group: user hook kept, stale Specrew hook removed from an event we do not register'
+$ptuCommands = @($settings.hooks.PostToolUse | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
+Assert-True (($ptuCommands -contains 'echo user-ptu-hook') -and -not ($ptuCommands -like '*specrew-hook-dispatcher*')) 'mixed group: user hook kept, stale Specrew hook removed from an event we do not register (PostToolUse)'
 
 # --- 4. Stale-entry refresh: our old command replaced, not duplicated ----------------
 $null = Invoke-Deploy

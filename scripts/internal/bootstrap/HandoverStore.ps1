@@ -122,3 +122,73 @@ function Get-SpecrewHandover {
     $parsed | Add-Member -NotePropertyName path -NotePropertyValue $files[0].FullName -Force
     return $parsed
 }
+
+# --- F-174 iteration 4: Stop-event ROLLING handover (supersedes the timestamped SessionEnd model) ---
+
+function Get-SpecrewRollingHandoverPath {
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $HandoverDir)
+    return (Join-Path $HandoverDir 'session-handover.md')
+}
+
+function Write-SpecrewRollingHandover {
+    # ONE local, always-latest handover, OVERWRITTEN in place on each material Stop (no timestamped
+    # files, no index, no archive). Reuses the Proposal-130 schema:v1 + 6-section body. The file is
+    # LOCAL + gitignored (never pushed). Returns the path. (f174-i004-design-settled)
+    [CmdletBinding()]
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string] $HandoverDir,
+        [Parameter(Mandatory)][string] $Source,          # the host stop event: stop | agentStop | Stop
+        [Parameter(Mandatory)][string] $FromHost,
+        [Parameter(Mandatory)][string] $RecordedAt,       # ISO-8601 (caller-supplied; deterministic)
+        [Parameter()][string] $FromCommit,
+        [Parameter()][string] $ActiveFeature,
+        [Parameter()][string] $ActiveBoundary,
+        [Parameter()][hashtable] $Sections = @{}
+    )
+    if (-not (Test-Path -LiteralPath $HandoverDir)) { New-Item -ItemType Directory -Path $HandoverDir -Force | Out-Null }
+    $path = Get-SpecrewRollingHandoverPath -HandoverDir $HandoverDir
+
+    $out = New-Object System.Collections.Generic.List[string]
+    foreach ($l in @(
+            '---', 'schema: v1', "source: $Source", "from_host: $FromHost", "recorded_at: $RecordedAt",
+            "from_commit: $FromCommit", "active_feature: $ActiveFeature", "active_boundary: $ActiveBoundary",
+            '---', '', '# Session Handover (rolling)', '')) { $out.Add($l) | Out-Null }
+    foreach ($title in (Get-SpecrewHandoverSectionOrder)) {
+        $content = if ($Sections.ContainsKey($title) -and -not [string]::IsNullOrWhiteSpace([string]$Sections[$title])) {
+            [string]$Sections[$title]
+        }
+        else { '(no relevant content)' }
+        $out.Add("## $title") | Out-Null; $out.Add('') | Out-Null
+        $out.Add($content) | Out-Null; $out.Add('') | Out-Null
+    }
+    Set-Content -LiteralPath $path -Value ($out -join "`n") -Encoding UTF8
+    return $path
+}
+
+function Get-SpecrewRollingHandover {
+    # Read the single rolling handover (session-handover.md) with a `fresh` flag. Fail open.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $HandoverDir,
+        [Parameter(Mandatory)][string] $NowUtc,
+        [Parameter()][int] $FreshnessHours = 24
+    )
+    $path = Get-SpecrewRollingHandoverPath -HandoverDir $HandoverDir
+    if (-not (Test-Path -LiteralPath $path)) { return $null }
+    $parsed = ConvertFrom-SpecrewHandoverFile -Path $path
+    if ($null -eq $parsed) { return $null }
+    $fresh = $false
+    try {
+        $rec = [datetime]::Parse($parsed.recorded_at).ToUniversalTime()
+        $now = [datetime]::Parse($NowUtc).ToUniversalTime()
+        $age = ($now - $rec).TotalHours
+        $fresh = ($age -ge 0 -and $age -le $FreshnessHours)
+    }
+    catch { $fresh = $false }
+    $parsed | Add-Member -NotePropertyName fresh -NotePropertyValue $fresh -Force
+    $parsed | Add-Member -NotePropertyName path -NotePropertyValue $path -Force
+    return $parsed
+}

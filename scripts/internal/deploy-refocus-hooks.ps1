@@ -104,34 +104,35 @@ function Get-HostEventGroups {
     # The per-host registrations (verified formats; matrix-gated trigger set).
     switch ($HostKind) {
         'claude' {
-            # TG-004 option (a): SessionStart (B1/B2 + F-174 bootstrap) + SessionEnd (F-174 handover,
-            # Proposal 130 Pillar 4a - Claude's SessionEnd surface is documented). PostToolUse unregistered.
+            # SessionStart (B1/B2 + F-174 bootstrap) + Stop (F-174 iter-4 rolling handover - portable +
+            # crash-safe; REPLACES the iter-3 SessionEnd-only handover). PostToolUse unregistered.
             return [ordered]@{
                 'SessionStart' = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionStart') }) }
-                'SessionEnd'   = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionEnd') }) }
+                'Stop'         = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'Stop') }) }
             }
         }
         'codex' {
-            # Full triad: SessionStart (source matchers route B1/B2 in-dispatcher)
-            # + UserPromptSubmit as the per-human-prompt B3 carrier.
+            # SessionStart (B1/B2) + UserPromptSubmit (B3) + Stop (F-174 iter-4 rolling handover).
             return [ordered]@{
                 'SessionStart'     = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionStart'); timeout = 30 }) }
                 'UserPromptSubmit' = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'UserPromptSubmit'); timeout = 30 }) }
+                'Stop'             = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'Stop'); timeout = 30 }) }
             }
         }
         'copilot' {
-            # B2 only (B1 pending local source-value verification; per-prompt
-            # injection unverified on userPromptSubmitted -> channel 1 carries B3).
+            # B2 (sessionStart) + agentStop (F-174 iter-4 rolling handover; Copilot's end-of-turn event).
             $cmd = Get-SpecrewHookCommand -EventName 'SessionStart'
+            $stopCmd = Get-SpecrewHookCommand -EventName 'agentStop'
             return [ordered]@{
                 'sessionStart' = [pscustomobject]@{ type = 'command'; bash = $cmd; powershell = $cmd; timeoutSec = 30 }
+                'agentStop'    = [pscustomobject]@{ type = 'command'; bash = $stopCmd; powershell = $stopCmd; timeoutSec = 30 }
             }
         }
         'cursor' {
-            # B2 only (B1 = documented variance: no post-compaction injection event;
-            # B3 per-tool-call latency-rejected, per-prompt injection unverified).
+            # B2 (sessionStart) + stop (F-174 iter-4 rolling handover; Cursor's end-of-turn event).
             return [ordered]@{
                 'sessionStart' = [pscustomobject]@{ command = (Get-SpecrewHookCommand -EventName 'SessionStart') }
+                'stop'         = [pscustomobject]@{ command = (Get-SpecrewHookCommand -EventName 'stop') }
             }
         }
     }

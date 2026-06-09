@@ -1,10 +1,11 @@
-# Specrew SessionEnd handover provider (Feature 174, T022 / D-002; Proposal 130 Pillar 4a).
-# Registered as a provider row in refocus-scopes.json (events: SessionEnd). The
-# SpecrewHookDispatcher invokes this on SessionEnd with `--event-json <json>`; it writes a
-# best-effort Proposal-130 handover via SessionEndHandoverManager and emits nothing (the session
-# is ending - no injection). Fail-open doctrine (P1): any error -> no output, exit 0.
+# Specrew Stop-event ROLLING-handover provider (Feature 174 iter-4; supersedes the SessionEnd provider).
+# Registered for the per-host END-OF-TURN Stop event (Claude `Stop`, Codex `Stop`, Copilot `agentStop`,
+# Cursor `stop`). The SpecrewHookDispatcher invokes it with `--event-json <json>` on each Stop; it
+# refreshes the ONE rolling handover (.specrew/handover/session-handover.md) ONLY on a material change
+# (boundary moved OR tracked-file change since the last write). Portable across hosts + crash-safe (the
+# file always reflects the last completed turn). Write-only, emits nothing. Fail-open: any error -> exit 0.
 #
-#   --event-json <json>     the host SessionEnd event (source: clear|exit|compact|...)
+#   --event-json <json>     the host Stop event payload
 #   --project-root <path>   optional override (testability); else resolve up to .specrew
 
 $ErrorActionPreference = 'Stop'
@@ -38,18 +39,27 @@ try {
 
     $root = if ($rootOverride) { $rootOverride } else { Get-HandoverProjectRoot }
 
-    # Same component resolution as the bootstrap provider (D-001).
+    # Component resolution (same as the bootstrap provider, D-001): beside the provider in the self-host
+    # tree, else the installed module's scripts/internal/bootstrap.
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
     if (-not (Test-Path -LiteralPath $bdir)) {
         $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending | Select-Object -First 1
         if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
     }
-    foreach ($f in 'HostEventAdapter', 'HandoverStore', 'SessionEndHandoverManager') {
-        . (Join-Path $bdir "$f.ps1")
+    foreach ($f in 'HandoverStore', 'ClassificationEngine') { . (Join-Path $bdir "$f.ps1") }
+
+    # The stop event type (host-agnostic: parse the payload directly, no per-host adapter needed).
+    $source = 'stop'
+    $payload = $null
+    if (-not [string]::IsNullOrWhiteSpace($eventJson)) { try { $payload = $eventJson | ConvertFrom-Json } catch { $payload = $null } }
+    if ($null -ne $payload) {
+        $s = Get-HandoverProp $payload 'hook_event_name'
+        if ([string]::IsNullOrWhiteSpace($s)) { $s = Get-HandoverProp $payload 'source' }
+        if (-not [string]::IsNullOrWhiteSpace($s)) { $source = [string]$s }
     }
 
-    # Gather context from the committed session state (the hook has no transcript access).
-    $feature = $null; $boundary = $null
+    # Current context (the hook has no transcript; read the committed session state).
+    $feature = $null; $boundary = $null; $fromHost = 'host'
     $ctxPath = Join-Path $root '.specrew/start-context.json'
     if (Test-Path -LiteralPath $ctxPath) {
         try {
@@ -57,22 +67,33 @@ try {
             $ss = Get-HandoverProp $ctx 'session_state'
             $feature = Get-HandoverProp $ss 'feature_ref'
             $boundary = Get-HandoverProp $ss 'boundary_type'
+            $h = Get-HandoverProp $ss 'host'; if ([string]::IsNullOrWhiteSpace($h)) { $h = Get-HandoverProp $ctx 'host' }
+            if (-not [string]::IsNullOrWhiteSpace($h)) { $fromHost = [string]$h }
         }
-        catch { $null = $_ }  # fail-open: missing/partial context degrades, never blocks
+        catch { $null = $_ }
     }
-    $head = ''
-    try { $head = (& git -C $root rev-parse --short HEAD 2>$null) } catch { $null = $_ }
+
+    $handoverDir = Join-Path $root '.specrew/handover'
     $now = (Get-Date).ToUniversalTime().ToString('o')
 
-    # Best-effort sections (Proposal 130 Pillar 4a): the hook cannot read the transcript.
+    # Material-change gate: only refresh when the boundary moved OR there is a tracked-file change.
+    $existing = Get-SpecrewRollingHandover -HandoverDir $handoverDir -NowUtc $now
+    $lastBoundary = if ($null -ne $existing) { $existing.active_boundary } else { $null }
+    $hasChange = $false
+    try { $st = (& git -C $root status --porcelain 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
+    $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
+    if (-not $mc.material) { exit 0 }   # quiet turn: skip cheaply
+
+    $head = ''
+    try { $head = (& git -C $root rev-parse --short HEAD 2>$null) } catch { $null = $_ }
     $sections = @{
         'What I just did (last 3-5 turns or last boundary work)' =
-        '(SessionEnd hook handover; turn-by-turn summary not available from the hook - reconstruct from artifacts + git status + start-context.json)'
+        '(Stop-event rolling handover; turn-by-turn summary not available from the hook - reconstruct from artifacts + git status + start-context.json)'
         'Recommended next-immediate-step' =
         ("Resume {0} at {1}." -f ($(if ($feature) { $feature } else { '(no active feature)' }), $(if ($boundary) { $boundary } else { '(no boundary)' })))
     }
 
-    Invoke-SpecrewSessionEndHandover -RawEvent $eventJson -HostName claude -ProjectRoot $root `
+    Write-SpecrewRollingHandover -HandoverDir $handoverDir -Source $source -FromHost $fromHost `
         -RecordedAt $now -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary -Sections $sections | Out-Null
 
     exit 0

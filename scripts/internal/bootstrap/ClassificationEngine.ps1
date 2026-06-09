@@ -74,3 +74,24 @@ function Test-SpecrewConcurrentSession {
     }
     return [pscustomobject]@{ concurrent = $false; reason = 'stale-marker-unclean-exit'; age_seconds = $age }
 }
+
+function Test-SpecrewHandoverMaterialChange {
+    # F-174 iter-4: decide whether a Stop event should refresh the rolling handover. Material change =
+    # the boundary cursor moved since the last write, OR a tracked-file change occurred since the last
+    # write; otherwise skip cheaply (the Stop fires every turn). PURE: the caller computes the signals
+    # (current vs last boundary, git-tracked-change bool) and passes them in. FR-009.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()][string] $CurrentBoundary,   # current boundary cursor
+        [Parameter()][AllowNull()][string] $LastBoundary,      # boundary recorded in the existing handover (or $null)
+        [Parameter()][bool] $HasTrackedChange,                 # caller-computed: tracked change since last write
+        [Parameter()][bool] $HandoverExists                    # is there an existing rolling handover?
+    )
+    if (-not $HandoverExists) { return [pscustomobject]@{ material = $true; reason = 'no-existing-handover' } }
+    if ((-not [string]::IsNullOrWhiteSpace($CurrentBoundary)) -and ($CurrentBoundary -ne $LastBoundary)) {
+        return [pscustomobject]@{ material = $true; reason = 'boundary-moved' }
+    }
+    if ($HasTrackedChange) { return [pscustomobject]@{ material = $true; reason = 'tracked-change' } }
+    return [pscustomobject]@{ material = $false; reason = 'no-material-change' }
+}

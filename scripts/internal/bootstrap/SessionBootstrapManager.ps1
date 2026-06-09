@@ -40,7 +40,7 @@ function Invoke-SpecrewSessionBootstrap {
     # primary resume signal, read + validated before the anchor decides the mode.
     $handoverValid = $false
     try {
-        $handover = Get-SpecrewHandover -HandoverDir (Join-Path $ProjectRoot '.specrew/handover') -NowUtc $NowUtc
+        $handover = Get-SpecrewRollingHandover -HandoverDir (Join-Path $ProjectRoot '.specrew/handover') -NowUtc $NowUtc
         if ($null -ne $handover) {
             $handoverValid = [bool](Test-SpecrewHandoverValidity -Handover $handover -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch).valid
         }

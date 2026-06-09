@@ -27,7 +27,7 @@ try {
     # welcome-back - fresh handover + the feature present locally.
     $tmpW = Join-Path $root 'wb'; New-Item -ItemType Directory -Path (Join-Path $tmpW 'specs/myfeat') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $tmpW '.specrew') -Force | Out-Null
-    Write-SpecrewHandover -HandoverDir (Join-Path $tmpW '.specrew/handover') -Source clear -FromHost claude -RecordedAt '2026-06-08T12:00:00Z' -ActiveFeature myfeat -ActiveBoundary review-signoff | Out-Null
+    Write-SpecrewRollingHandover -HandoverDir (Join-Path $tmpW '.specrew/handover') -Source stop -FromHost claude -RecordedAt '2026-06-08T12:00:00Z' -ActiveFeature myfeat -ActiveBoundary review-signoff | Out-Null
     Invoke-SpecrewSessionBootstrap -RawEvent '{"source":"startup","session_id":"w"}' -HostName claude -ProjectRoot $tmpW -JournalPath $j -NowUtc $now | Out-Null
 
     # cleared-anchor - a non-portable (absolute, out-of-tree) anchor, no handover.

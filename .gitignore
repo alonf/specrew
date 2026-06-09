@@ -24,6 +24,8 @@
 .specrew/host-history.json
 # F-049 i004 (Pillar 1 / FR-018): per-session handoff-evidence produced at boundary syncs (runtime state)
 .specrew/handoff-evidence.json
+# F-174 iter-4 (FR-009): the Stop-event rolling handover is local session-bridge context, never pushed
+.specrew/handover/
 
 # Local scratch/test leftovers
 .scratch/

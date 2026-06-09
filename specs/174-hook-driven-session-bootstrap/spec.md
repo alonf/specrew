@@ -80,22 +80,25 @@ bootstrap content in the same session.
 
 ### User Story 3 - Handover round-trip informs the next launch (Priority: P2)
 
-A Specrew user ending a session gets a durable handover written by the
-SessionEnd path, and the next SessionStart bootstrap reads that handover so the
-agent can summarize where to resume.
+A Specrew user gets a durable, always-latest handover refreshed by the per-host
+Stop (end-of-turn) path, and the next SessionStart bootstrap reads that handover
+so the agent can summarize where to resume. Because every material turn refreshes
+it in place, the handover survives a hard-kill with no clean exit (crash-safe,
+SC-009).
 
 **Why this priority**: Proposal 172 composes with Proposal 130 Pillar 4 rather
 than re-authoring handover semantics. The integration still needs to prove that
 the shipped hooks round-trip the handover through the primary bootstrap.
 
-**Independent Test**: End a session through the Proposal 130 SessionEnd source
-set, then launch again and verify the SessionStart bootstrap surfaces the
-handover timestamp and recommended next step.
+**Independent Test**: Trigger a per-host Stop (end-of-turn) after material work so
+the rolling handover is refreshed, then launch again and verify the SessionStart
+bootstrap surfaces the handover timestamp and recommended next step.
 
 **Acceptance Scenarios**:
 
-1. **Given** a supported SessionEnd source, **When** the session exits cleanly,
-   **Then** the handover writer records a Proposal 130-compatible handover.
+1. **Given** a per-host Stop event after a material change, **When** the turn
+   completes, **Then** the rolling handover writer records/refreshes a Proposal
+   130-compatible, always-latest handover.
 2. **Given** a readable handover exists, **When** the next SessionStart
    bootstrap runs, **Then** the bootstrap directive references the handover and
    asks the agent to read and summarize it.
@@ -142,8 +145,8 @@ offered.
   launcher prompt for the same session.
 - A structured picker tool is available but would hide or collapse the visible
   menu content unless the agent renders prose first.
-- Multiple hosts differ in SessionStart / SessionEnd payload shape or in their
-  support for structured user-choice primitives.
+- Multiple hosts differ in SessionStart / Stop (end-of-turn) payload shape or in
+  their support for structured user-choice primitives.
 
 ## Requirements
 
@@ -177,16 +180,18 @@ offered.
 - **FR-008**: `specrew start` prompts and documentation MUST be updated so they
   no longer claim sole ownership of session orientation.
   **Owner**: Implementer, Spec Steward. **Iteration**: 001.
-- **FR-009**: SessionEnd handover writing MUST be wired through the shipped
-  hook deployment path while preserving Proposal 130's handover format and
-  source discrimination. Compose Proposal 130's ALREADY-SPECIFIED schema, do not
-  re-author it: `schema: v1` frontmatter + the Pillar-2 5-section body; path
-  `.specrew/handover/<timestamp>-session-end-<source>-from-<host>.md`;
-  `.specrew/handover/index.yml`; source discrimination
-  (`compact` best-effort / `clear`,`exit` full / `startup`,`resume` minimal);
-  24h default freshness. F-174 is Proposal 130's first implementation
-  (`proposals/130-specrew-switch-to-host-handover.md`); cross-reference 130 in code.
-  **Owner**: Implementer. **Iteration**: 002.
+- **FR-009**: Handover writing MUST be wired through the shipped hook deployment
+  path on the per-host **Stop (end-of-turn)** event (Claude `Stop`, Codex `Stop`,
+  Copilot `agentStop`, Cursor `stop`) - PORTABLE across hosts, no SessionEnd
+  dependency. It refreshes ONE local, always-latest rolling handover
+  `.specrew/handover/session-handover.md` (overwrite-in-place; gitignored, never
+  pushed; no timestamped files or index) ONLY on a material change (boundary moved
+  OR tracked-file change since the last write). Preserve Proposal 130's schema -
+  `schema: v1` frontmatter + the Pillar-2 6-section body
+  (`proposals/130-specrew-switch-to-host-handover.md`, cross-referenced in code);
+  24h default read freshness. The iteration-003 SessionEnd-only handover is
+  SUPERSEDED (the Claude SessionEnd hook is removed).
+  **Owner**: Implementer. **Iteration**: 004.
 - **FR-010**: SessionStart bootstrap MUST read a valid Proposal 130-compatible
   handover when present and surface its timestamp and recommended next step to
   the agent directive.
@@ -240,12 +245,12 @@ offered.
   menu floor applies on every host, and a structured picker is layered on only
   where FR-005 host evidence proves it does not hide the rendered text.
   **Owner**: Implementer, Reviewer. **Iteration**: 001.
-- **FR-021**: SessionEnd handover writing MUST be write-only by default (no git
-  add, commit, or push); an opt-in configuration flag MAY enable a scoped local
-  commit of the handover and index only (off by default), and the
-  commit-or-push to continue on another machine MUST be offered at the next
-  bootstrap as an advisory state line (no new persistent menu item) rather than
-  at non-interactive exit.
+- **FR-021**: Stop-event rolling-handover writing MUST be write-only by default (no
+  git add, commit, or push) - and since the handover is gitignored, it is local by
+  construction; an opt-in configuration flag MAY enable a scoped local commit of the
+  handover only (off by default), and the commit-or-push to continue on another
+  machine MUST be offered at the next bootstrap as an advisory state line (no new
+  persistent menu item) rather than at the per-turn Stop.
   **Owner**: Implementer. **Iteration**: 001.
 
 ### Traceability & Governance Requirements
@@ -270,7 +275,7 @@ offered.
   decomposition keeps F-171 dispatcher behavior stable while adding B2
   bootstrap behavior.
 - **LIR-002 (Integration)**: Planning MUST define producer/consumer contracts
-  for SessionStart input, bootstrap directive output, SessionEnd handover
+  for SessionStart input, bootstrap directive output, Stop-event handover
   writing, and agent-rendered menu handling across Claude, Codex, Copilot, and
   Cursor.
 - **LIR-003 (UI/UX)**: Planning MUST define the visible menu sequence and
@@ -290,7 +295,7 @@ offered.
   idempotency, B1/B3 regression safety, and deferred B4/Antigravity scope as
   measurable review criteria.
 - **LIR-008 (DevOps)**: Planning MUST describe deployment-loop and
-  kill-switch impact for registering the SessionEnd handover writer and B2
+  kill-switch impact for registering the per-host Stop handover writer and B2
   bootstrap provider without requiring a new install path.
 
 ### Key Entities
@@ -301,8 +306,9 @@ offered.
 - **Session Anchor**: Saved lifecycle state pointing at a feature, boundary,
   iteration, task, timestamp, and source path. It is resumable only when the
   referenced feature is project-local, active, and not merged or closed.
-- **Handover Record**: Proposal 130-compatible markdown handover plus index
-  metadata written by SessionEnd and read by SessionStart.
+- **Handover Record**: Proposal 130-compatible markdown rolling handover - one
+  local, always-latest file (no index) refreshed on the per-host Stop event and
+  read by SessionStart.
 - **Bootstrap Mode**: Classification for B2 behavior: full bootstrap for fresh
   or cleared state, lighter welcome-back for valid active recent state, or
   cleared-state intake when anchors are invalid.
@@ -316,8 +322,8 @@ offered.
   before any structured picker.
 - **SC-002**: A launcher-then-hook startup emits no duplicate bootstrap content
   in the same session.
-- **SC-003**: A SessionEnd-to-SessionStart test writes a Proposal
-  130-compatible handover and surfaces it on the next launch.
+- **SC-003**: A Stop-to-SessionStart round-trip test refreshes the rolling
+  Proposal 130-compatible handover and surfaces it on the next launch.
 - **SC-004**: Tests prove merged, closed, and non-portable absolute-path
   session anchors are cleared before resume or recovery is offered.
 - **SC-005**: Regression tests prove B1 post-compaction and B3 boundary-cross
@@ -329,6 +335,9 @@ offered.
   (full bootstrap, welcome-back, cleared-anchor) and for the unclean-exit
   warning, asserted by tests so the executed path is reconstructable after the
   fact.
+- **SC-009**: The rolling handover is current after each material Stop (the file
+  reflects the last completed turn), proven by tests (the auto-provable property);
+  a true hard-kill mid-turn is the SC-008 manual-beta confirmation.
 
 ## Assumptions
 

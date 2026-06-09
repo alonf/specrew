@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 10/20 story_points
 **Started**: 2026-06-09
 **Completed**:
@@ -31,12 +31,12 @@ per-worktree merge is deferred (maintainer memory `f174-subagent-handover-merge-
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T023 | Rolling-handover write (overwrite-in-place always-latest session-handover.md) + gitignore the local path | FR-009 | US-3 | 2 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1 | planned | claude | — | — |
-| T024 | Material-change engine: refresh only when boundary moved OR tracked-file change since last write | FR-009 | US-3 | 1 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | planned | claude | — | — |
-| T025 | Stop-event handover provider: fire on Stop, material-change gate, reuse SessionEnd write-logic | FR-009 | US-3 | 2 | Implementer | scripts/internal/specrew-handover-provider.ps1 | planned | claude | — | — |
-| T026 | Per-host Stop registration + REMOVE Claude SessionEnd (deployer + provider-row events -> stop variants) | FR-005, FR-009 | US-1 | 2 | Implementer | scripts/internal/deploy-refocus-hooks.ps1 | planned | claude | — | — |
-| T027 | Tests: rolling round-trip + material-change + crash-safety + per-host Stop deploy + on-disk DeployedHostConfig floor (Stop) + live cross-host Stop smoke | FR-009, SC-009 | US-3 | 2 | Implementer | tests/bootstrap | planned | claude | — | — |
-| T028 | Spec FR-009 reconcile (trigger -> Stop + crash-safety SC-009) + docs update (getting-started) | FR-008, FR-009 | US-2 | 1 | Implementer | specs/174-hook-driven-session-bootstrap/spec.md | planned | claude | — | — |
+| T023 | Rolling-handover write (overwrite-in-place always-latest session-handover.md) + gitignore the local path | FR-009 | US-3 | 2 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1 | done | claude | 2 | — |
+| T024 | Material-change engine: refresh only when boundary moved OR tracked-file change since last write | FR-009 | US-3 | 1 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | done | claude | 1 | — |
+| T025 | Stop-event handover provider: fire on Stop, material-change gate, reuse SessionEnd write-logic | FR-009 | US-3 | 2 | Implementer | scripts/internal/specrew-handover-provider.ps1 | done | claude | 2 | — |
+| T026 | Per-host Stop registration + REMOVE Claude SessionEnd (deployer + provider-row events -> stop variants) | FR-005, FR-009 | US-1 | 2 | Implementer | scripts/internal/deploy-refocus-hooks.ps1 | done | claude | 2 | — |
+| T027 | Tests: rolling round-trip + material-change + crash-safety + per-host Stop deploy + on-disk DeployedHostConfig floor (Stop) + live cross-host Stop smoke | FR-009, SC-009 | US-3 | 2 | Implementer | tests/bootstrap | done | claude | 2 | — |
+| T028 | Spec FR-009 reconcile (trigger -> Stop + crash-safety SC-009) + docs update (getting-started) | FR-008, FR-009 | US-2 | 1 | Implementer | specs/174-hook-driven-session-bootstrap/spec.md | done | claude | 1 | — |
 
 ## Effort Model
 
