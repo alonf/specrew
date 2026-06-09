@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 19/20 story_points
+**Capacity**: 20/20 story_points
 **Started**: 2026-06-09
 **Completed**:
 
@@ -139,7 +139,8 @@ This is the assertion that would have caught every dev-tree-only "works" claim (
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T035 | LEAD by confirming the specrew-start integration suite CHARACTERIZES `Get-StartPrompt`'s output + the `boundary_enforcement` init (add a characterization assertion if it does NOT — split as T035a + re-baseline SP if meaningful); THEN extract `scripts/internal/launch-contract.ps1` (move `Get-StartPrompt` + inline prompt-block helpers out of specrew-start.ps1; specrew-start dot-sources it; behavior-preserving — the characterized suite is the regression floor) | FR-023 | US-1 | 4 | Implementer | scripts/internal/launch-contract.ps1, scripts/specrew-start.ps1 | in-progress | claude | — | — |
+| T035a | Characterization FIRST (the suite did NOT pin the contract — confirmed): add a test asserting `Get-StartPrompt`'s invariant contract markers (Lifecycle Quick Reference, the governance-scripts table, the boundary-authorization block, the boundary-policy line) survive in `last-start-prompt.md` AND `boundary_enforcement` is initialized in `start-context.json` after a `specrew start` run — the genuine regression net the extraction needs | FR-023 | US-1 | 1 | Implementer | tests/integration | done | claude | 1 | — |
+| T035 | Extract `scripts/internal/launch-contract.ps1` (move `Get-StartPrompt` + inline prompt-block helpers out of specrew-start.ps1; specrew-start dot-sources it; behavior-preserving — GUARDED by the T035a characterization) | FR-023 | US-1 | 4 | Implementer | scripts/internal/launch-contract.ps1, scripts/specrew-start.ps1 | in-progress | claude | — | — |
 | T036 | SessionBootstrapManager calls the shared generator on SessionStart (gather project/session inputs; null launcher-only roster/routing) → write `last-start-prompt.md` (narrow atomic write) → ensure `boundary_enforcement` via Get-/Initialize-SpecrewBoundaryEnforcementState (preserve-merge the anchor) | FR-023, FR-001 | US-1 | 3 | Implementer | scripts/internal/bootstrap/SessionBootstrapManager.ps1 | planned | — | — | — |
 | T037 | Bootstrap provider injects the read-and-follow contract (replace the iter-5 thin orient/menu directive) + the resume handover surface; dedupe-safe (never clobber a fresh launcher contract via Test-SpecrewLauncherBootstrapRecent) | FR-002, FR-007 | US-1 | 2 | Implementer | scripts/internal/specrew-bootstrap-provider.ps1, scripts/internal/bootstrap/DirectiveEngine.ps1 | planned | — | — | — |
 | T038 | The DEPLOYED live-wiring floor on Claude (load-bearing; `evidence_locus: deployed`): a real installed-module scratch project asserts the 3-part round-trip — SessionStart writes boundary_enforcement + contract on disk; a working turn + Stop captures intent into last-start-prompt.md + the handover on disk; a fresh resume reads them back | FR-022, FR-024, SC-011 | US-1 | 4 | Implementer | tests/integration | planned | — | — | — |
@@ -178,9 +179,9 @@ This is the assertion that would have caught every dev-tree-only "works" claim (
 | ----- | ---------------- | ----- |
 | Planning | done | Design pass (this plan) co-settled from the maintainer charter `f174-i006-charter` + the 2026-06-09 host/injection correction. |
 | Discovery/Spikes | 0 | Seam confirmed by orientation (no new research). |
-| Implementation | 19 | T035-T042. |
+| Implementation | 20 | T035a + T035-T042 (T035a added after the characterization finding; see Notes). |
 | Review | 2 | 145 review + the evidence_locus mechanism + the deployed-floor gate. |
-| Rework | 1 | needs-work buffer. |
+| Rework | 0 | at cap; no buffer (honest re-baseline). |
 
 ## Traceability Summary
 
@@ -198,7 +199,12 @@ This is the assertion that would have caught every dev-tree-only "works" claim (
 
 ## Notes
 
-- Capacity 19/20: per-task SP (4+3+2+4+1+2+2+1) = 19. No overcommit.
+- Capacity 20/20: per-task SP (T035a 1 + T035 4 + 3+2+4+1+2+2+1) = 20. At cap (honest re-baseline).
+- **T035a re-baseline (before-implement instruction #2):** the characterization check FOUND the
+  specrew-start suite does NOT pin the contract (it tests the directive-block wrapping + pause-and-confirm,
+  not `Get-StartPrompt`'s contract content or the `boundary_enforcement` init). T035a (build the genuine
+  characterization net) was split out + SP re-baselined 19→20 BEFORE the extraction — not silently
+  absorbed into T035's 4. Drift D-010.
 - T035 reuses, does not rewrite, `Get-StartPrompt` — minimizing the LIR-001 risk; the only specrew-start
   change is moving functions to a dot-sourced lib + dot-sourcing it.
 - **T035 SP RISK (surfaced at before-implement):** "behavior-preserving, guarded by the specrew-start

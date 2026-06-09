@@ -22,13 +22,32 @@
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected
+**Total drift events**: 1
+**Resolution rate**: 100% (1/1 resolved in-iteration)
+**Specification drift**: 1 plan refinement (the regression net did not characterize the contract -> T035a split + SP re-baseline; human pre-authorized at before-implement)
 
 ## Events
 
-No specification drift detected during Iteration 006 execution to date.
+### D-010 - the specrew-start regression suite does NOT characterize the contract -> T035a split + re-baseline 19->20
+
+**Requirement**: FR-023 (the T035 extraction's regression net) + before-implement instruction #2.
+
+**Finding (surfaced LEADING T035, as instruction #2 required)**: the design pass called the specrew-start
+integration suite "the behavior-preserving regression floor" for moving `Get-StartPrompt` out to a shared
+lib. Confirming that BEFORE extracting (instruction #2) revealed it is FALSE as a contract guard:
+`specrew-start-end-to-end.ps1` pins the directive-block wrapping (PostRestartDirective present, ordering)
+and the pause-and-confirm behavior, but it does NOT assert `Get-StartPrompt`'s actual CONTRACT content (the
+Lifecycle Quick Reference, the governance-scripts table, the boundary-authorization block) NOR the
+`boundary_enforcement` init in start-context.json. So "behavior-preserving, guarded by the suite" was a
+PLEDGE - a green suite would not catch an extraction that silently altered the contract. (The exact
+build != live class iter-6 exists to kill, caught here at the right time because instruction #2 forced the
+lead-with-characterization check.)
+
+**Resolution (in-iteration, human pre-authorized at before-implement instruction #2)**: split **T035a** -
+build the genuine characterization (assert the contract's invariant markers survive in last-start-prompt.md
++ boundary_enforcement is initialized, after a real `specrew start` run) BEFORE the extraction; re-baseline
+capacity 19 -> 20 honestly (T035a = 1 SP) rather than silently absorbing it into T035's 4. The extraction
+(T035) is gated on T035a being green.
 
 ### Resolution Strategies (Unused)
 

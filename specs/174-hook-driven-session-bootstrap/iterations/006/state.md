@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: (none — starting T035)
-**Tasks Remaining**: T035-T042 (serial)
-**In Progress**: T035 (characterize the specrew-start suite, then extract launch-contract.ps1)
+**Last Completed Task**: T035a (launch-contract characterization floor — 9/9 assertions green)
+**Tasks Remaining**: T035, T036-T042 (serial)
+**In Progress**: T035 (extract launch-contract.ps1, guarded by T035a)
 **Baseline Ref**: ff52974c64770423a69a4a5d6ac9509bb6aa29ce
-**Updated**: 2026-06-09T17:12:00Z
+**Updated**: 2026-06-09T17:25:00Z
 
 ## Execution Summary
 
