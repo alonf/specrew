@@ -76,8 +76,9 @@ Quality bar: Pester + PSScriptAnalyzer + Specrew mechanical-checks + governance 
 - [ ] T012 [US3] [Owner: Implementer] [Capacity: 1 SP] Deploy the first-stage-phase conduct to the host-managed skill surfaces of all five supported hosts (Claude, Copilot/GitHub, Codex/Agents, Cursor, Antigravity) via the managed-skill deploy path — the four on-disk surfaces `.claude/skills`, `.cursor/rules`, `.github/skills`, `.agents/skills`; carry the "5 supported hosts vs 4 on-disk surfaces" wording so no host reads as unsupported (Trace: FR-013, SC-007).
 - [ ] T013 [P] [US3] [Owner: Implementer] [Capacity: 0.5 SP] **Test — schema hooks**: assert `product-domain.yml` validates against `contracts/product-domain.schema.json` with `product_id` / `product_context_ref` / `context_scope` present, `context_scope = feature_standalone` in V1, and the enum constrained (Trace: FR-007, FR-008, FR-014, SC-008, SC-009).
 - [ ] T014 [P] [US3] [Owner: Implementer] [Capacity: 0.75 SP] **Test — host-skill parity**: assert the product-domain conduct is identical across the four managed skill surfaces; injected drift fails (`tests/integration/product-domain-multihost.tests.ps1`) (Trace: FR-013, SC-007).
+- [ ] T015 [P] [US3] [Owner: Reviewer] [Capacity: 0.5 SP] **Test — graceful degradation (no silent skip)**: assert that when a required surface is absent — the lens catalog, a host skill copy, or a deploy surface — Specrew surfaces a WARN and does NOT silently skip product-domain enforcement; the gate fails-CLOSED on a substantive feature rather than passing silently (`tests/unit/product-domain-lens.tests.ps1`) (Trace: FR-010, FR-013). *(Promoted from T004's implicit fail-open scope to an explicit traced test at the tasks verdict.)*
 
-**Checkpoint**: US3 protects portability + forward-compatibility.
+**Checkpoint**: US3 protects portability, forward-compatibility, and degraded-mode safety.
 
 ---
 
@@ -100,7 +101,9 @@ pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -
 
 ## Capacity
 
-Total planned effort: **13.5 SP** (9.5 build + 4.0 tests) against a 20 SP iteration cap — within
-capacity, single iteration. Traceability: every task carries a `Trace:` to one or more FR/SC; every
-FR (FR-001..FR-014) and SC (SC-001..SC-009) is covered by at least one task (FR-007/FR-008 by their
-forward-compatible-shape tasks T003/T013 with runtime wiring deferred).
+Total planned effort: **14.0 SP** (9.5 build + 4.5 tests) against a 20 SP iteration cap — within
+capacity, single iteration. The +0.5 SP over the original 13.5 is the graceful-degradation test
+(T015) promoted to an explicit traced test at the tasks verdict (behavior already in T004's fail-open
+scope; maintainer-accepted, not scope creep). Traceability: every task carries a `Trace:` to one or
+more FR/SC; every FR (FR-001..FR-014) and SC (SC-001..SC-009) is covered by at least one task
+(FR-007/FR-008 by their forward-compatible-shape tasks T003/T013 with runtime wiring deferred).

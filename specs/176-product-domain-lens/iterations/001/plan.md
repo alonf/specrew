@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 13.5/20 story_points
+**Capacity**: 14.0/20 story_points
 **Started**: 2026-06-09
 **Completed**:
 
@@ -56,6 +56,7 @@
 | T012 | Multi-host conduct deploy | FR-013, SC-007 | US3 | 1 | Implementer | .agents/skills/specrew-design-workshop/SKILL.md | planned | claude | — | — |
 | T013 | Test: schema hooks | FR-007, FR-008, FR-014, SC-008, SC-009 | US3 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
 | T014 | Test: host-skill parity | FR-013, SC-007 | US3 | 0.75 | Implementer | tests/integration/product-domain-multihost.tests.ps1 | planned | claude | — | — |
+| T015 | Test: graceful degradation (no silent skip) | FR-010, FR-013 | US3 | 0.5 | Reviewer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
 
 ## Effort Model
 
@@ -86,15 +87,15 @@
 | Planning | 0 | Spec/plan/tasks completed pre-execution via the lifecycle boundaries |
 | Discovery/Spikes | 0 | No risk-reduction spikes required; the design is settled (Option B) |
 | Implementation | 9.5 | Build tasks T001, T002, T003, T004, T005, T010, T012 |
-| Review | 4.0 | Test tasks T006, T007, T008, T009, T011, T013, T014 (behavior-proving) |
+| Review | 4.5 | Test tasks T006, T007, T008, T009, T011, T013, T014, T015 (behavior-proving) |
 | Rework | TBD | Needs-work buffer if review finds gaps (not in the 13.5 SP task budget) |
 
 ## Traceability Summary
 
 - Requirement scope: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014 (all covered; FR-007/FR-008 forward-compatible shape only via T003/T013, runtime wiring deferred to Proposals 156/162)
-- User stories represented in current scope: US1 (T001-T009), US2 (T010-T011), US3 (T003, T012-T014)
-- Capacity: 13.5/20 story_points planned (9.5 build + 4.0 tests); within the 20 SP cap, single iteration, no overcommit
-- Overcommit guardrail: total planned effort 13.5 SP is under the 20 SP capacity x 1.0 threshold; no deferrals required this iteration
+- User stories represented in current scope: US1 (T001-T009), US2 (T010-T011), US3 (T003, T012-T015)
+- Capacity: 14.0/20 story_points planned (9.5 build + 4.5 tests); within the 20 SP cap, single iteration, no overcommit
+- Overcommit guardrail: total planned effort 14.0 SP is under the 20 SP capacity x 1.0 threshold; no deferrals required this iteration (the +0.5 over 13.5 is T015, the maintainer-accepted graceful-degradation test)
 
 ## Notes
 
