@@ -1,0 +1,203 @@
+# Iteration Plan: 006
+
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
+**Status**: planning
+**Capacity**: 19/20 story_points
+**Started**: 2026-06-09
+**Completed**:
+
+<!--
+  Validator schema: Iteration Status one of planning|executing|reviewing|retro|complete|abandoned.
+  Capacity `<consumed>/<cap> <unit>`. Task Status one of
+  planned|in-progress|done|needs-rework|deferred|blocked.
+-->
+
+## Scope Summary
+
+Iteration 006 closes the greenfield dogfood's deepest finding: **the SessionStart hook ORIENTS but does
+not DRIVE.** `specrew start` does three things the hook path does not: (1) writes the full ~48-rule launch
+contract to `.specrew/last-start-prompt.md` via `Get-StartPrompt`; (2) initializes `boundary_enforcement`
+in `.specrew/start-context.json`; (3) instructs the host to READ those files and follow the governed
+lifecycle. The iter-1-5 bootstrap injects only a thin orient+menu directive — so on Claude the agent could
+skip the workshop and drive from Spec Kit's `create-new-feature.ps1`, and on Codex no orientation reached
+the model at all.
+
+**Goal:** make the hook hand the agent the SAME launch contract + state `specrew start` does, by **REUSING
+`specrew start`'s generator — not hand-rolling a second thin directive (no drift)** (maintainer charter
+`f174-i006-charter`). Prove the foundation END-TO-END on the one PROVEN injecting host (Claude); ENUMERATE
+codex / copilot / cursor injection as explicit clean follow-on re-tests; Antigravity (no hook) stays
+`specrew start`-driven.
+
+**The load-bearing assertion (the live-wiring floor) is what catches every dev-tree-only "works" claim**
+(the iter-5 D-009 lesson): it runs in a real DEPLOYED scratch project, not the dev tree.
+
+## Design / Architecture (the design pass)
+
+### The seam (confirmed by orientation, 2026-06-09)
+
+- **Contract generator** = `Get-StartPrompt` (in `scripts/specrew-start.ps1`) → the full handoff. Its
+  helper tree is PART in sourceable libs already (`Invoke-SpecrewCoordinatorPromptSurgery` in
+  `coordinator-prompt-surgery.ps1`; `Get-CoordinatorResumePromptBlock` in `coordinator-resume.ps1`) and
+  PART still inline in specrew-start.ps1 (`Get-TeamRosterPromptBlock`, `Get-ProjectStatePromptBlock`,
+  routing/brownfield/delivery-guidance blocks).
+- **State init** = ALREADY reusable standalone functions: `Get-SpecrewBoundaryEnforcementState`
+  (`.NeedsMigration`) + `Initialize-SpecrewBoundaryEnforcementState -CurrentBoundary`. They PRESERVE the
+  existing session anchor and write ONLY the `boundary_enforcement` block. The hook calls them directly —
+  no `Save-StartArtifacts` (which is a LAUNCHER monolith: git baseline, session frontmatter, host
+  selection, approval/launch mode — none of which the hook, a non-launcher, may set).
+- **Injection** = `Write-InjectionOutput` (`specrew-hook-dispatcher.ps1`) already defines per-host shapes
+  (claude/codex/copilot `additionalContext`; cursor `hookSpecificOutput.additionalContext`). SessionStart
+  IS an injection event. Whether each shape REACHES the model is the empirical open question.
+- **Deployment is RESOLVED** (`deploy-refocus-hooks.ps1`): claude/codex/copilot/cursor each get a
+  SessionStart-class hook; Antigravity has no branch = the no-hook fallback host. Do NOT re-derive.
+- **Dedupe** = `Test-SpecrewLauncherBootstrapRecent` (launcher-then-hook → one bootstrap).
+
+### Options considered
+
+- **Option A — extract a shared launch-contract generator lib (CHOSEN).** Move `Get-StartPrompt` + its
+  remaining inline prompt-block helpers into a new sourceable internal lib
+  (`scripts/internal/launch-contract.ps1`). `specrew-start.ps1` dot-sources it (behavior-preserving —
+  guarded by the existing specrew-start integration tests). The bootstrap provider dot-sources the SAME
+  lib and calls `Get-StartPrompt` with hook-available inputs (project state, session state) and NULL
+  launcher-only inputs (roster/routing — the hook makes no casting decisions, so those blocks degrade
+  gracefully). ONE generator → no drift (the maintainer's hard requirement).
+- **Option B — hook shells out to `specrew start --no-launch` (REJECTED).** Reuses the generator but
+  couples the hook to the launcher's top-level flow (host selection, window launch, casting) it has no
+  business invoking; heavier, slower, and it fabricates/clobbers launcher state. The hook is not a
+  launcher (advisor blocker).
+- **Option C — hand-roll a second contract in the hook (REJECTED).** Exactly the "thin directive / drift"
+  the maintainer forbade.
+
+### Component map (IDesign seams; what changes)
+
+```text
+   specrew-start.ps1 ─────────┐         specrew-bootstrap-provider.ps1 (Adapter)
+   (launcher; unchanged       │              │  renders injection (additionalContext):
+    behavior)                 │              │  "READ last-start-prompt.md + start-context.json,
+        │ dot-sources         │              │   FOLLOW the governed lifecycle, do not bypass gates"
+        ▼                     │              ▼
+   ┌─────────────────────────────────┐   SessionBootstrapManager.ps1 (Manager)
+   │ launch-contract.ps1 (NEW lib)   │◀──── gather hook inputs → Get-StartPrompt → surgery
+   │  Get-StartPrompt + prompt-block │      → write last-start-prompt.md (narrow atomic write)
+   │  helpers (moved, behavior-kept) │      → ensure boundary_enforcement (preserve-merge anchor)
+   └─────────────────────────────────┘              │
+        ▲ dot-sources (hook path)                    ▼
+        └──────────────────────────  Get-/Initialize-SpecrewBoundaryEnforcementState (existing)
+```
+
+- **`launch-contract.ps1`** (NEW shared lib): the one generator, dot-sourced by BOTH callers.
+- **`SessionBootstrapManager`** (existing Manager): orchestrates gather → generate → write contract →
+  ensure state.
+- **`specrew-bootstrap-provider`** (existing Adapter): injects the read-and-follow contract (replaces the
+  iter-5 thin orient/menu) + the resume handover surface.
+- **BoundaryEnforcement funcs** (existing): preserve-merge the anchor; the hook never clobbers it.
+
+### Per-host injection model (parity-set = the floor's OUTPUT, not an assumed list)
+
+The on-disk writes (contract + `boundary_enforcement`) are **host-agnostic — they ALWAYS happen**, so even
+a non-injecting host has the files for a subsequent `specrew start`. INJECTION (does the contract reach the
+model) is verified PER HOST by the deployed live-wiring floor (build != live applied forward — the parity
+set is an output of the floor, never an input we assume):
+
+- **Claude** — PROVEN; this iteration's load-bearing floor establishes it end-to-end.
+- **codex / copilot / cursor** — injection shape exists; delivery UNPROVEN (Codex's no-orientation run was
+  CONFOUNDED). ENUMERATED as explicit clean follow-on re-tests (T039 records them; the full re-tests are
+  the next slice — they would push past the 20 SP cap; surfaced at before-implement for the maintainer to
+  cut).
+- **Antigravity** — no hook → `specrew start` fallback.
+- **Parity set = hosts the floor proves inject. `specrew start` fallback = Antigravity + any
+  hooked-but-non-injecting host.**
+
+### The load-bearing live-wiring floor (T038 — Claude, DEPLOYED scratch project)
+
+Asserts the round-trip in a real installed-module layout (NOT the dev tree; `evidence_locus: deployed`):
+
+1. SessionStart writes `boundary_enforcement` ON DISK (start-context.json) + the full contract to
+   last-start-prompt.md.
+2. A working turn + Stop captures the iteration intent into `last-start-prompt.md` (when there is no start
+   prompt) + the agent-authored handover ON DISK.
+3. A FRESH resume READS them back (contract + handover surface).
+
+This is the assertion that would have caught every dev-tree-only "works" claim (D-009).
+
+| Requirement | Summary | Stories |
+| ----------- | ------- | ------- |
+| FR-023 (new) | B2 emits the SAME launch contract + initializes `boundary_enforcement` as `specrew start`, by REUSING its generator (no re-authored directive) — the hook DRIVES, not merely orients | US-1 |
+| FR-024 (new) | Per-host injection is EMPIRICALLY established; parity set = injecting hosts (hook drives); `specrew start` fallback = Antigravity (no hook) + any hooked-but-non-injecting host | US-1 |
+| FR-022 | The deferred LIVE wiring (iter-5 D-009) is delivered: the agent-authored handover fires end-to-end in a DEPLOYED session | US-3 |
+| FR-002 | The injected directive carries the full contract (read-and-follow), not the thin orient+menu | US-1 |
+| FR-001 | B2 becomes the primary DRIVING bootstrap path on injecting hosts | US-1 |
+| FR-006 / FR-008 | `specrew start` = cross-host driver + host-selection + fallback; docs/claims repositioned (hook = orientation/resume + drive-on-injecting-hosts) | US-2 |
+| SC-011 (new) | The deployed live-wiring floor passes on Claude (the round-trip on disk) | US-1 |
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T035 | Extract `scripts/internal/launch-contract.ps1` (move `Get-StartPrompt` + inline prompt-block helpers out of specrew-start.ps1; specrew-start dot-sources it; behavior-preserving — specrew-start integration tests are the regression floor) | FR-023 | US-1 | 4 | Implementer | scripts/internal/launch-contract.ps1, scripts/specrew-start.ps1 | planned | — | — | — |
+| T036 | SessionBootstrapManager calls the shared generator on SessionStart (gather project/session inputs; null launcher-only roster/routing) → write `last-start-prompt.md` (narrow atomic write) → ensure `boundary_enforcement` via Get-/Initialize-SpecrewBoundaryEnforcementState (preserve-merge the anchor) | FR-023, FR-001 | US-1 | 3 | Implementer | scripts/internal/bootstrap/SessionBootstrapManager.ps1 | planned | — | — | — |
+| T037 | Bootstrap provider injects the read-and-follow contract (replace the iter-5 thin orient/menu directive) + the resume handover surface; dedupe-safe (never clobber a fresh launcher contract via Test-SpecrewLauncherBootstrapRecent) | FR-002, FR-007 | US-1 | 2 | Implementer | scripts/internal/specrew-bootstrap-provider.ps1, scripts/internal/bootstrap/DirectiveEngine.ps1 | planned | — | — | — |
+| T038 | The DEPLOYED live-wiring floor on Claude (load-bearing; `evidence_locus: deployed`): a real installed-module scratch project asserts the 3-part round-trip — SessionStart writes boundary_enforcement + contract on disk; a working turn + Stop captures intent into last-start-prompt.md + the handover on disk; a fresh resume reads them back | FR-022, FR-024, SC-011 | US-1 | 4 | Implementer | tests/integration | planned | — | — | — |
+| T039 | Per-host injection contract enumerated (read deploy + Write-InjectionOutput); Claude proven via T038; record codex/copilot/cursor injection clean re-tests as EXPLICIT follow-on tasks (not silently dropped); Antigravity → specrew start fallback | FR-024, FR-005 | US-1 | 1 | Implementer | specs/174-hook-driven-session-bootstrap | planned | — | — | — |
+| T040 | evidence_locus carry: add an `evidence_locus` field (values dev-tree or deployed) to the 145 claim-ledger + the hardening-gate concern schema; review REFUSES "delivered-live" on dev-tree-only evidence; file as a Proposal-145 reviewer-family candidate (reconcile on the #2216 rebase) | FR-024 | US-1 | 2 | Implementer | extensions/specrew-speckit | planned | — | — | — |
+| T041 | dormant-SessionEnd cleanup carry: delete SessionEndHandoverManager.ps1 + FileList entry + SessionEndHandover.Tests + the timestamped Write-/Get-SpecrewHandover funcs + the inaccurate "REUSED" design-record phrase | FR-009 | US-3 | 2 | Implementer | scripts/internal/bootstrap | planned | — | — | — |
+| T042 | Docs / F-174 claims repositioned: the hook DRIVES on injecting hosts (parity) + orientation/resume; specrew start = cross-host driver + host-selection + fallback (Antigravity / non-injecting) | FR-008 | US-2 | 1 | Implementer | docs | planned | — | — | — |
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points. |
+| Defer Strategy | manual | How planning chooses deferrals when over capacity. |
+| Calibration Enabled | true | Retrospectives should suggest future capacity adjustments. |
+
+## Concurrency Rationale
+
+- Roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator.
+- Serial single-Implementer: the extract (T035) -> manager-calls-generator (T036) -> provider-injects
+  (T037) -> deployed floor (T038) chain is sequential (each depends on the prior); the carries (T040 evidence_locus,
+  T041 cleanup, T042 docs) and the enumeration (T039) follow.
+- T035 is the LIR-001 risk task (touching specrew-start.ps1, the cross-host driver) — behavior-preserving
+  extraction, the specrew-start integration suite is the regression floor; run it before T036.
+- T038 is the LOAD-BEARING deployed floor — it gates the iteration's "works" claim and must run on the
+  installed-module layout, not the dev tree.
+- Recommendation: serial; no Junior/Senior split.
+
+## Phase Baseline
+
+| Phase | Estimated Effort | Notes |
+| ----- | ---------------- | ----- |
+| Planning | done | Design pass (this plan) co-settled from the maintainer charter `f174-i006-charter` + the 2026-06-09 host/injection correction. |
+| Discovery/Spikes | 0 | Seam confirmed by orientation (no new research). |
+| Implementation | 19 | T035-T042. |
+| Review | 2 | 145 review + the evidence_locus mechanism + the deployed-floor gate. |
+| Rework | 1 | needs-work buffer. |
+
+## Traceability Summary
+
+- Requirement scope: FR-023 (new — contract+state parity via generator reuse), FR-024 (new — per-host
+  injection parity model), FR-022 (deferred live wiring delivered), FR-002/FR-001 (driving directive),
+  FR-006/FR-008 (fallback + docs), FR-009 (dormant cleanup), SC-011 (new — deployed live-wiring floor).
+- User stories: US-1 (the hook drives), US-2 (docs), US-3 (handover live + cleanup).
+- Honors charter `f174-i006-charter`: reuse the generator (T035/T036, not a thin directive); per-host
+  injection first-class (T038/T039); carries folded in (T040 evidence_locus, T041 cleanup); the deployed
+  live-wiring floor is load-bearing (T038).
+- **Scope honesty (20 SP cap, intentional — split don't raise):** iter-6 = FOUNDATION + Claude-proven (19
+  SP). codex/copilot/cursor injection re-tests are ENUMERATED (T039) as explicit follow-on, NOT done this
+  iteration — pulling them in would exceed 20 SP (split into a follow slice). Surfaced at before-implement
+  for the maintainer to cut.
+
+## Notes
+
+- Capacity 19/20: per-task SP (4+3+2+4+1+2+2+1) = 19. No overcommit.
+- T035 reuses, does not rewrite, `Get-StartPrompt` — minimizing the LIR-001 risk; the only specrew-start
+  change is moving functions to a dot-sourced lib + dot-sourcing it.
+- Sub-agents OUT OF SCOPE (single-agent only); per-worktree handover merge stays deferred (memory
+  `f174-subagent-handover-merge-consideration`).
+- The before-implement gate is the single human stop for this iteration (maintainer directive: design pass
+  first, then stop at before-implement).

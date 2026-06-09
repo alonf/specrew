@@ -1,3 +1,32 @@
+## 2026-06-09 — F-174 iteration-006 design pass: settled (Crew recommendation; ratified at before-implement)
+
+### 2026-06-09 — Design: hook-to-specrew-start parity via a shared generator (Option A)
+
+- **Decision ID**: f174-i006-design-settled
+- **Type**: design
+- **Affected Requirement**: FR-023, FR-024
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\006
+- **Approving Human**: Alon Fliess (charter `f174-i006-charter`; the design CHOICE is the Crew
+  recommendation, ratified at the before-implement verdict - pending)
+- **Recorded At**: 2026-06-09T16:55:00Z
+- **Chosen architecture (Option A)**: extract a shared launch-contract generator lib
+  (`scripts/internal/launch-contract.ps1`) holding `Get-StartPrompt` + its remaining inline prompt-block
+  helpers; `specrew-start.ps1` dot-sources it (behavior-preserving, guarded by the specrew-start
+  integration suite); the bootstrap provider dot-sources the SAME lib and calls the SAME generator with
+  hook-available inputs (project/session state; null launcher-only roster/routing). ONE generator -> no
+  drift. The hook writes `last-start-prompt.md` (narrow atomic write, NOT `Save-StartArtifacts`) + ensures
+  `boundary_enforcement` via the existing `Get-/Initialize-SpecrewBoundaryEnforcementState` (preserve-merge
+  the anchor).
+- **Rejected**: Option B (hook shells out to `specrew start --no-launch` - couples the hook to the
+  launcher flow it must not invoke; the hook is not a launcher); Option C (hand-roll a second contract -
+  the thin-directive drift the charter forbids).
+- **Per-host injection**: parity set = the deployed live-wiring floor's OUTPUT (empirical, host-by-host),
+  never an assumed list. iter-6 proves Claude end-to-end (T038, the load-bearing DEPLOYED floor);
+  codex/copilot/cursor enumerated as follow-on (T039); Antigravity (no hook) = specrew start fallback.
+- **Seam confirmed by orientation**: the state-init functions already exist + preserve the anchor; only
+  the contract generator needs extraction (move-not-rewrite). The advisor blocker (the hook is not a
+  launcher, so NOT `Save-StartArtifacts`) is honored.
+
 ## 2026-06-09 — F-174 iteration-005 iteration-closeout: charter for iteration 006
 
 ### 2026-06-09 — Verdict: retro -> iteration-closeout APPROVE WITH INSTRUCTIONS (iter-5 complete; iter-6 chartered)

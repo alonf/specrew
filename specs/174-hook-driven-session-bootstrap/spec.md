@@ -288,6 +288,28 @@ offered.
   defer `f174-i005-defer-live-wiring`). Iteration 006 must carry a live-wiring floor that asserts
   a real deployed session writes the handover (and the launch contract) to disk.
   **Owner**: Implementer. **Iteration**: 005-006.
+- **FR-023**: The B2 SessionStart bootstrap MUST hand the agent the SAME launch
+  contract and session state as `specrew start` - the full launch prompt persisted to
+  `.specrew/last-start-prompt.md` AND an initialized `boundary_enforcement` block in
+  `.specrew/start-context.json` - by REUSING `specrew start`'s contract generator
+  (`Get-StartPrompt`) and the existing boundary-enforcement state functions, NOT a
+  separately authored directive (no drift). The injected directive MUST instruct the
+  agent to READ those files and follow the governed lifecycle (do not bypass gates).
+  The state write MUST be a preserve-merge of `boundary_enforcement` that keeps the
+  existing session anchor intact - never the launcher-only fields, never a wholesale
+  rewrite.
+  **Owner**: Implementer. **Iteration**: 006.
+- **FR-024**: Per-host INJECTION of the bootstrap contract (whether the SessionStart
+  hook output actually reaches the model's context) MUST be EMPIRICALLY established,
+  not assumed. Hosts whose injection is proven by the deployed live-wiring floor form
+  the PARITY SET (the hook DRIVES the lifecycle there); `specrew start` remains the
+  driver for the no-hook fallback host (Antigravity) and any hooked-but-non-injecting
+  host. Hook DEPLOYMENT coverage is already resolved (claude / codex / copilot / cursor
+  are hooked; Antigravity is the no-hook fallback) and MUST NOT be re-derived - the open
+  question is injection. The on-disk contract + state writes are host-agnostic and MUST
+  happen regardless of injection, so a non-injecting host still has the files for a
+  subsequent `specrew start`.
+  **Owner**: Implementer, Reviewer. **Iteration**: 006.
 
 ### Traceability & Governance Requirements
 
@@ -386,6 +408,16 @@ offered.
   detector flags a placeholder body at the Stop and at the next SessionStart, but
   cannot force authoring (transcript-blindness) - the human is the backstop. Tests
   MUST encode this split so the detector is never mistaken for a guarantee.
+- **SC-011**: The deployed live-wiring floor PROVES, in a real installed-module scratch
+  project on an injecting host (Claude), that the hook DRIVES end-to-end (iteration
+  006): a SessionStart writes `boundary_enforcement` to `start-context.json` on disk AND
+  the full launch contract to `last-start-prompt.md`; a working turn + Stop captures the
+  iteration intent (when no start prompt) plus the agent-authored handover on disk; a
+  fresh resume reads them back. The floor runs against the DEPLOYED layout
+  (`evidence_locus: deployed`), NOT the dev tree - the assertion that catches a
+  dev-tree-only "works" claim (drift D-009). Per-host injection beyond Claude is
+  established host-by-host (FR-024); the parity set is the floor's OUTPUT, not an assumed
+  list.
 
 ## Assumptions
 
