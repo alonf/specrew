@@ -1,3 +1,25 @@
+## 2026-06-09 — F-174 feature-closeout directives (no beta-publish; local-install validation)
+
+### 2026-06-09 — Directive: ship 1-4 via push/PR/merge but DO NOT beta-publish
+
+- **Decision ID**: f174-closeout-no-beta-local-install
+- **Type**: closeout-directive
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap (feature-closeout)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T03:30:00Z
+- **Directive**: Feature-closeout runs the full path EXCEPT the PSGallery beta-publish: bump
+  ModuleVersion 0.33.0 -> 0.34.0, push the branch, open the PR, address the Copilot + codex bot
+  reviews, merge to main (merge-commit) - but **DO NOT create/publish a beta version**. The maintainer
+  validates by **installing the module from this local dev folder** (e.g.,
+  `Import-Module ./Specrew.psd1 -Force` or `SPECREW_MODULE_PATH` to the dev tree). The
+  beta/stable PSGallery publish is DEFERRED until after that local validation passes (overrides the
+  beta-before-stable mandate's "beta first" only in ORDER - local install replaces the beta-install
+  validation step for now).
+- **Cleanup note (from the iter-4 review-signoff)**: when doing the dormant-code cleanup
+  (`f174-followup-remove-dormant-sessionend-code`), also CORRECT the inaccurate design-record phrase
+  "SessionEndHandoverManager write-logic is REUSED by the Stop provider" - the Stop provider sources
+  HandoverStore + ClassificationEngine directly and does NOT source SessionEndHandoverManager.
+
 ## 2026-06-09 — F-174 Iteration 004 review-signoff: dormant SessionEnd-code cleanup follow-up
 
 ### 2026-06-09 — Follow-up: remove dormant SessionEnd code superseded by the rolling model
