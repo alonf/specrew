@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/20 story_points
+**Capacity**: 13.5/20 story_points
 **Started**: 2026-06-09
 **Completed**:
 
@@ -42,6 +42,20 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T001 | Lens file product-domain.md | FR-002, FR-003, FR-004, FR-012, FR-014 | US1 | 2 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/product-domain.md | planned | claude | — | — |
+| T002 | First-stage catalog registration | FR-001 | US1 | 0.5 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/index.yml | planned | claude | — | — |
+| T003 | Structured-record schema | FR-004, FR-007, FR-008, FR-014, SC-008, SC-009 | US3 | 1 | Implementer | specs/176-product-domain-lens/contracts/product-domain.schema.json | planned | claude | — | — |
+| T004 | Record writer/validator | FR-002, FR-005, FR-006, FR-011, SC-002, SC-004, SC-006 | US1 | 2 | Implementer | scripts/internal/product-domain-lens.ps1 | planned | claude | — | — |
+| T005 | First-stage phase conduct | FR-001, FR-006, FR-012, SC-001 | US1 | 1.5 | Implementer | .claude/skills/specrew-design-workshop/SKILL.md | planned | claude | — | — |
+| T006 | Test: runs before questionnaire | FR-001, SC-001 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
+| T007 | Test: adaptive depth L/S/D | FR-002, SC-002 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
+| T008 | Test: evidence tags + research-block | FR-004, FR-011, SC-003, SC-006 | US1 | 0.75 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
+| T009 | Test: dual-artifact persistence | FR-005, SC-004 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
+| T010 | Specify-gate floor | FR-009, FR-010, SC-004, SC-005 | US2 | 1.5 | Reviewer | scripts/internal/design-analysis-gate.ps1 | planned | claude | — | — |
+| T011 | Test: batch approval rejected | FR-009, SC-005 | US2 | 0.5 | Reviewer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
+| T012 | Multi-host conduct deploy | FR-013, SC-007 | US3 | 1 | Implementer | .agents/skills/specrew-design-workshop/SKILL.md | planned | claude | — | — |
+| T013 | Test: schema hooks | FR-007, FR-008, FR-014, SC-008, SC-009 | US3 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
+| T014 | Test: host-skill parity | FR-013, SC-007 | US3 | 0.75 | Implementer | tests/integration/product-domain-multihost.tests.ps1 | planned | claude | — | — |
 
 ## Effort Model
 
@@ -69,18 +83,18 @@
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+| Planning | 0 | Spec/plan/tasks completed pre-execution via the lifecycle boundaries |
+| Discovery/Spikes | 0 | No risk-reduction spikes required; the design is settled (Option B) |
+| Implementation | 9.5 | Build tasks T001, T002, T003, T004, T005, T010, T012 |
+| Review | 4.0 | Test tasks T006, T007, T008, T009, T011, T013, T014 (behavior-proving) |
+| Rework | TBD | Needs-work buffer if review finds gaps (not in the 13.5 SP task budget) |
 
 ## Traceability Summary
 
-- Requirement scope for this stub: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014
-- User stories represented in current scope:
-- Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
-- Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
+- Requirement scope: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014 (all covered; FR-007/FR-008 forward-compatible shape only via T003/T013, runtime wiring deferred to Proposals 156/162)
+- User stories represented in current scope: US1 (T001-T009), US2 (T010-T011), US3 (T003, T012-T014)
+- Capacity: 13.5/20 story_points planned (9.5 build + 4.0 tests); within the 20 SP cap, single iteration, no overcommit
+- Overcommit guardrail: total planned effort 13.5 SP is under the 20 SP capacity x 1.0 threshold; no deferrals required this iteration
 
 ## Notes
 
