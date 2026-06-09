@@ -30,7 +30,10 @@
      (action 1) and its REVIEW RULE (claim ledger gets `evidence_locus: dev-tree | deployed`; the review
      REFUSES "delivered-live" on dev-tree-only evidence) are the SAME work - build them together. ALSO
      file the generalized rule as a Proposal-145 reviewer-family candidate, reconciled on the F-174
-     rebase + the #2216 work (like action 4) - do NOT spin a standalone proposal that languishes.
+     rebase + the #2216 work (like action 4) - do NOT spin a standalone proposal that languishes. NOTE:
+     the hardening-gate concern schema has the SAME blind spot (no "dev-tree-recorded / deployed-deferred"
+     enum - iter-5's closeout gate had to carry it in prose), so apply `evidence_locus` to the
+     hardening-gate schema too, not only the 145 claim ledger.
   2. **iter-6 scope SUPERSEDES the earlier "Claude-only parity" caveat.** Target ALL AI hosts using the
      foundation already built: the hook emits the FULL launch contract + initializes
      `boundary_enforcement`, REUSING `specrew start`'s generator (not a thin directive). Keep `specrew
