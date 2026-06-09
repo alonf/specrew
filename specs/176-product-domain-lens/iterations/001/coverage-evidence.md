@@ -26,7 +26,7 @@ NOT claimed as unit-proven — they are the on-host beta dogfood (the approved r
 
 | Command | Result | Notes |
 | ------- | ------ | ----- |
-| `pwsh -File tests/unit/product-domain-lens.tests.ps1` | pass | 26 assertions: depth L/S/D + default, dual-artifact + idempotent persistence, evidence tags (valid/untagged/invalid), conditional research-block, FR-011 plan-block wiring, batch-approval rejection, schema hooks + enum, gate fail-closed / graceful-skip / pass. |
+| `pwsh -File tests/unit/product-domain-lens.tests.ps1` | pass | 28 assertions: depth L/S/D + default, dual-artifact + idempotent persistence, evidence tags (valid/untagged/invalid), conditional research-block, FR-011 plan-block wiring, batch-approval rejection, schema hooks + enum, gate fail-closed / graceful-skip / pass. |
 | `pwsh -File tests/integration/product-domain-multihost.tests.ps1` | pass | 4 surfaces present + managed-marker + conduct present + byte-identical parity + drift detection. |
 | `pwsh -File tests/unit/lens-applicability-selector.tests.ps1` | pass | regression: index.yml stays pure; selector unchanged. |
 | `pwsh -File tests/unit/lens-conduct-delivery.tests.ps1` | pass | regression: design-workshop conduct delivery. |
