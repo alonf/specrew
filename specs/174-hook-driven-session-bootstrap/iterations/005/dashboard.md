@@ -1,0 +1,38 @@
+# Velocity Dashboard Snapshot
+
+**Schema**: v1
+**Capture Kind**: iteration-closeout
+**Captured At**: 2026-06-09T16:30:59Z
+**Render Mode**: compact
+**Rendering Mode**: rich
+**Color Mode**: monochrome
+**Historical Notice**: Historical snapshot captured during iteration closeout. Re-running the dashboard later produces a new live view and must not overwrite this file.
+
+## Dashboard
+
+```text
+SPECREW VELOCITY DASHBOARD
+Summary: → F-174 Hook-Driven Session Bootstrap | Implementation Complete · retro | 9.41 SP/day (10 closed iterations, high)
+Today 2026-06-09 | Repo Specrew-session-bootstrap
+Rendering rich
+ACTIVE
+→ F-174 | Hook-Driven Session Bootstrap
+Multi-dev 3 authors | 1 machines | single
+VELOCITY
+9.41 SP/day | high
+▄▄█▅▅▅▁█▁▃
+RECENT SHIPPED
+✓ F-174 · iter-005 | 10 SP
+✓ F-174 · iter-004 | 10 SP
+✓ F-174 · iter-003 | 18 SP
+ROADMAP
+✓ phase-1-foundations 62.5/65 SP
+○ phase-2-experience 159.5/254 SP
+PROJECTION
+F:0SP implementation complete | P:n/a TBD
+R:566SP 61 calendar day(s)
+WARNINGS
+Multi-developer activity detected: 3 unique git authors; 33 feature branches; 3 c...
+FOOTER
+Use --ASCII any time you need the monochrome-safe fallback; stored closeout snaps...
+```

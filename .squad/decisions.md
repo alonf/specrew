@@ -1,3 +1,55 @@
+## 2026-06-09 — F-174 iteration-005 iteration-closeout: charter for iteration 006
+
+### 2026-06-09 — Verdict: retro -> iteration-closeout APPROVE WITH INSTRUCTIONS (iter-5 complete; iter-6 chartered)
+
+- **Decision ID**: f174-i005-iteration-closeout-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T16:31:00Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS - carry the closeout. Independently verified by the human:
+  fresh no-cache validator PASS; the review is honestly qualified (not-LIVE, dev-tree-only smokes named);
+  FR-022 deferred to iter-6 with `f174-i005-defer-live-wiring` + drift D-009; the retro names the
+  build != live third-layer + the evidence_locus review mechanism. "Good, honest close." Iteration 005
+  marked complete; closed-index appended; dashboard rendered. F-174 stays OPEN; iteration 6 required.
+
+### 2026-06-09 — Charter: iteration 006 (the live-wiring iteration) — scope + carried instructions
+
+- **Decision ID**: f174-i006-charter
+- **Type**: planning-constraint
+- **Affected Requirement**: FR-022 (live wiring) + the iter-6 parity scope
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\006 (to be created)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T16:31:00Z
+- **Headline**: iteration 6 IS the live-wiring iteration. Make the hook hand the agent the SAME launch
+  contract + state `specrew start` does, by REUSING `specrew start`'s handoff/state generator (NOT a
+  second thin directive - no drift), and make it fire END-TO-END in a real DEPLOYED session.
+- **Carried instructions (prompt answers at the iter-5 retro verdict)**:
+  1. **evidence_locus / refuse-delivered-live (retro action 2) -> CARRY INTO iteration 6**, alongside
+     action 1's live-wiring floor. Iter-6 is the live-wiring iteration, so its deployed-tree TEST FLOOR
+     (action 1) and its REVIEW RULE (claim ledger gets `evidence_locus: dev-tree | deployed`; the review
+     REFUSES "delivered-live" on dev-tree-only evidence) are the SAME work - build them together. ALSO
+     file the generalized rule as a Proposal-145 reviewer-family candidate, reconciled on the F-174
+     rebase + the #2216 work (like action 4) - do NOT spin a standalone proposal that languishes.
+  2. **iter-6 scope SUPERSEDES the earlier "Claude-only parity" caveat.** Target ALL AI hosts using the
+     foundation already built: the hook emits the FULL launch contract + initializes
+     `boundary_enforcement`, REUSING `specrew start`'s generator (not a thin directive). Keep `specrew
+     start` for (a) selecting the host and (b) AI hosts that have NO start hook. **OPEN (iter-6 design,
+     "check that"):** verify which hosts lack a SessionStart-equivalent hook - candidates Cursor and/or
+     Antigravity. Also: fix the docs / F-174 claims so the hook is positioned as orientation/resume.
+  3. **Fold the dormant-SessionEnd cleanup + the inaccurate "REUSED" phrase INTO iteration 6** (NOT
+     feature-closeout): iter-6 reworks the hook/provider path anyway, so do the cleanup where the code is
+     already open (supersedes the iter-4 carry `f174-followup-remove-dormant-sessionend-code` location).
+- **Load-bearing design note (the assertion that would have caught every dev-tree-only "works" claim)**:
+  since the user may start with NO start prompt, iter-6 must CAPTURE THE INTENT (what is being built in
+  the current iteration) DURING the session, so `last-start-prompt.md` is populated/different per
+  iteration. The live-wiring floor MUST assert that a real deployed session writes `boundary_enforcement`
+  (in start-context.json) AND the agent-authored handover ON DISK - that deployed-tree on-disk assertion
+  is the load-bearing floor for the whole iteration.
+- **Process**: iteration 6 = a SUBSTANTIAL design pass first -> the before-implement gate. Apply the
+  standing floors (validator EXIT 0 before every boundary); make the deployed live-wiring floor the
+  load-bearing one. STOP was taken before the design pass per the human.
+
 ## 2026-06-09 — F-174 iteration-005 review-signoff: honest close (live-wiring qualified)
 
 ### 2026-06-09 — Verdict: APPROVE WITH QUALIFICATION — close iteration 5 honestly, defer live wiring to iter-6

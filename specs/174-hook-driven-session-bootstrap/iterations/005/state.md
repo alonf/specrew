@@ -1,13 +1,13 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T034 (all of T029-T034 done — code, tests, spec FR-022/SC-010, docs)
 **Tasks Remaining**: (none)
-**In Progress**: retro (review-signoff closed with the honest live-wiring qualification; retro.md written; presenting the retro verdict)
+**In Progress**: (none)
 **Baseline Ref**: 4125e5fabc2e32cad8db17e65a1759bb5dc20bfe
-**Updated**: 2026-06-09T15:40:00Z
+**Updated**: 2026-06-09T16:31:00Z
 
 ## Execution Summary
 
@@ -20,8 +20,10 @@
   D-008 logged (the P1 ceiling on instruction #2 -> option-1 detection).
 - review-signoff CLOSED with an honest live-wiring qualification (commit 28b79388): the dev-tree
   machinery ships; FR-022 LIVE behavior is deferred to iter-6 (D-009; defer f174-i005-defer-live-wiring).
-- NEXT: retro presented (retro.md), awaiting the human retro->iteration-closeout verdict. The retro
-  verdict carries the closeout (per iter-4). F-174 stays OPEN; iteration 6 is required.
+- retro CLOSED (commit 266bf214): build != live third-layer headline; superseded the iter-4 "ship 1-4"
+  signal. Human verdict APPROVE WITH INSTRUCTIONS carried the closeout.
+- ITERATION 005 COMPLETE. closed-iterations.yml appended; dashboard.md rendered. F-174 stays OPEN;
+  iteration 6 (live-wiring parity) is required and chartered in .squad/decisions.md (f174-i006-charter).
 
 ## Notes
 
