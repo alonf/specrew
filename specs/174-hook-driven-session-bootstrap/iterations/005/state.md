@@ -1,18 +1,25 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Current Phase**: before-implement
-**Iteration Status**: planning
-**Last Completed Task**: (none)
-**Tasks Remaining**: T029-T034
-**In Progress**: (none)
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
+**Last Completed Task**: T034 (all of T029-T034 done — code, tests, spec FR-022/SC-010, docs)
+**Tasks Remaining**: (none)
+**In Progress**: review-signoff (review.md + review-report.yml written; presenting the verdict)
 **Baseline Ref**: 4125e5fabc2e32cad8db17e65a1759bb5dc20bfe
-**Updated**: 2026-06-09T12:30:00Z
+**Updated**: 2026-06-09T13:50:00Z
 
 ## Execution Summary
 
-- Execution has not started yet (at the before-implement gate, awaiting the human verdict to implement).
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- ALL tasks T029-T034 DONE: code (HandoverStore floor/body split + Write-SpecrewHandoverContext;
+  ClassificationEngine detector; Stop provider option-1 detection; DirectiveEngine handover field;
+  SessionBootstrapManager surface; provider rendering), tests (19/19 bootstrap suites green incl. the new
+  AgentAuthoredHandover floor), spec (FR-022 + SC-010 + FR-009/FR-010 reconcile + SC-003/SC-007/US-3
+  extends), docs (getting-started agent-authored body).
+- Verified: T029-T031 smokes green; T030 provider smoke green; 6/6 files parse clean; 19/19 suites green.
+  D-008 logged (the P1 ceiling on instruction #2 -> option-1 detection).
+- NEXT: review-signoff (Proposal-145 review + the carry-#1 zero-stale-ref grep + validator), then present
+  the verdict.
 
 ## Notes
 

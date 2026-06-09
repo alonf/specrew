@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 10/20 story_points
 **Started**: 2026-06-09
 **Completed**:
@@ -50,12 +50,12 @@ manual dogfood (maintainer carry `f174-i005-mechanical-detector-in-scope`).
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T029 | HandoverStore floor/body split + `Write-SpecrewHandoverContext` (author body -> render by reading back; integrity: human-sees == successor-inherits) | FR-022, FR-009 | US-3 | 2 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1 | planned | — | — | — |
-| T030 | Stop provider: PRESERVE the agent body, refresh floor/freshness; Stop-time placeholder WARN when the boundary moved but the body is still placeholder (same-session, timely) | FR-022, FR-009 | US-3 | 2 | Implementer | scripts/internal/specrew-handover-provider.ps1 | planned | — | — | — |
-| T031 | `Test-SpecrewHandoverBodyPlaceholder` (pure detector) + bootstrap resume WARN on a fresh-but-placeholder body | FR-022 | US-3 | 2 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | planned | — | — | — |
-| T032 | Bootstrap SURFACES the rich body on resume + directive: the author-via-helper-then-render-from-it protocol | FR-022, FR-010 | US-3 | 1 | Implementer | scripts/internal/bootstrap/SessionBootstrapManager.ps1, scripts/internal/specrew-bootstrap-provider.ps1 | planned | — | — | — |
-| T033 | Tests: failure-mode-A floor (body preserved across Stop [CI-blocking], detector correctness, bootstrap surfaces, human-sees == successor-inherits) + B detection (placeholder flagged at Stop + resume, non-blocking) | FR-022, SC-010 | US-3 | 2 | Implementer | tests/bootstrap | planned | — | — | — |
-| T034 | Spec: add FR-022 + SC-010 (explicit A/B split) + reconcile FR-009/FR-010 to the floor/body split; docs (getting-started: the agent authors the handover body, resume surfaces it) | FR-022, FR-008 | US-2 | 1 | Implementer | specs/174-hook-driven-session-bootstrap/spec.md | planned | — | — | — |
+| T029 | HandoverStore floor/body split + `Write-SpecrewHandoverContext` (author body -> render by reading back; integrity: human-sees == successor-inherits) | FR-022, FR-009 | US-3 | 2 | Implementer | scripts/internal/bootstrap/HandoverStore.ps1 | done | claude | 2 | — |
+| T030 | Stop provider: PRESERVE the agent body, refresh floor/freshness; Stop-time placeholder WARN when the boundary moved but the body is still placeholder (same-session, timely) | FR-022, FR-009 | US-3 | 2 | Implementer | scripts/internal/specrew-handover-provider.ps1 | done | claude | 2 | — |
+| T031 | `Test-SpecrewHandoverBodyPlaceholder` (pure detector) + bootstrap resume WARN on a fresh-but-placeholder body | FR-022 | US-3 | 2 | Implementer | scripts/internal/bootstrap/ClassificationEngine.ps1 | done | claude | 2 | — |
+| T032 | Bootstrap SURFACES the rich body on resume + directive: the author-via-helper-then-render-from-it protocol | FR-022, FR-010 | US-3 | 1 | Implementer | scripts/internal/bootstrap/SessionBootstrapManager.ps1, scripts/internal/specrew-bootstrap-provider.ps1 | done | claude | 1 | — |
+| T033 | Tests: failure-mode-A floor (body preserved across Stop [CI-blocking], detector correctness, bootstrap surfaces, human-sees == successor-inherits) + B detection (placeholder flagged at Stop + resume, non-blocking) | FR-022, SC-010 | US-3 | 2 | Implementer | tests/bootstrap | done | claude | 2 | — |
+| T034 | Spec: add FR-022 + SC-010 (explicit A/B split) + reconcile FR-009/FR-010 to the floor/body split; docs (getting-started: the agent authors the handover body, resume surfaces it) | FR-022, FR-008 | US-2 | 1 | Implementer | specs/174-hook-driven-session-bootstrap/spec.md | done | claude | 1 | — |
 
 ## Effort Model
 

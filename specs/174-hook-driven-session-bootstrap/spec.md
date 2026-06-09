@@ -92,19 +92,26 @@ the shipped hooks round-trip the handover through the primary bootstrap.
 
 **Independent Test**: Trigger a per-host Stop (end-of-turn) after material work so
 the rolling handover is refreshed, then launch again and verify the SessionStart
-bootstrap surfaces the handover timestamp and recommended next step.
+bootstrap surfaces the agent-authored handover body (or a hollow-handover warning
+when the body is a placeholder), not merely the timestamp (iteration 005).
 
 **Acceptance Scenarios**:
 
 1. **Given** a per-host Stop event after a material change, **When** the turn
-   completes, **Then** the rolling handover writer records/refreshes a Proposal
-   130-compatible, always-latest handover.
-2. **Given** a readable handover exists, **When** the next SessionStart
-   bootstrap runs, **Then** the bootstrap directive references the handover and
-   asks the agent to read and summarize it.
+   completes, **Then** the Stop hook refreshes the always-latest Proposal
+   130-compatible handover FLOOR and preserves the agent-authored body, writing a
+   placeholder body only when none exists (iteration 005).
+2. **Given** a readable handover with an agent-authored body exists, **When** the
+   next SessionStart bootstrap runs, **Then** the bootstrap directive carries the
+   authored body content (not just the timestamp) for the agent to surface
+   (iteration 005).
 3. **Given** no handover is present or the handover is stale, **When** the
    bootstrap runs, **Then** the user still receives orientation and menu guidance
    without treating stale handover data as current state.
+4. **Given** a readable handover whose body is a placeholder (the previous session
+   did not author it), **When** the next SessionStart bootstrap runs, **Then** the
+   directive surfaces a PROMINENT hollow-handover warning and the user is the
+   backstop - never a rich resume that does not exist (iteration 005, FR-022).
 
 ---
 
@@ -190,12 +197,20 @@ offered.
   `schema: v1` frontmatter + the Pillar-2 6-section body
   (`proposals/130-specrew-switch-to-host-handover.md`, cross-referenced in code);
   24h default read freshness. The iteration-003 SessionEnd-only handover is
-  SUPERSEDED (the Claude SessionEnd hook is removed).
-  **Owner**: Implementer. **Iteration**: 004.
+  SUPERSEDED (the Claude SessionEnd hook is removed). Iteration 005 splits the file
+  into a hook-owned FLOOR (the `schema: v1` frontmatter, freshness, and the six
+  section headers) and an AGENT-owned BODY (the section content): the Stop hook is
+  transcript-blind, so it refreshes the floor and PRESERVES the agent body for the
+  current boundary, writing a placeholder body only when none exists (FR-022); the
+  agent authors the body via `Write-SpecrewHandoverContext`.
+  **Owner**: Implementer. **Iteration**: 004, 005.
 - **FR-010**: SessionStart bootstrap MUST read a valid Proposal 130-compatible
-  handover when present and surface its timestamp and recommended next step to
-  the agent directive.
-  **Owner**: Implementer. **Iteration**: 001.
+  handover when present and surface its recommended next step and the agent-authored
+  body content (iteration 005) - not merely its timestamp - to the agent directive.
+  When the body is a placeholder (the previous session did not author it), the
+  bootstrap MUST surface a PROMINENT hollow-handover warning instead of a rich resume
+  it does not have (FR-022).
+  **Owner**: Implementer. **Iteration**: 001, 005.
 - **FR-011**: B2 MUST keep F-171 B1 post-compaction and B3 boundary-cross
   behavior unchanged.
   **Owner**: Implementer, Reviewer. **Iteration**: 001.
@@ -252,6 +267,20 @@ offered.
   machine MUST be offered at the next bootstrap as an advisory state line (no new
   persistent menu item) rather than at the per-turn Stop.
   **Owner**: Implementer. **Iteration**: 001.
+- **FR-022**: The rolling-handover BODY MUST be agent-authored (the Stop hook is
+  transcript-blind and cannot author rich content). The agent persists its
+  re-entry/boundary packet AS the body via `Write-SpecrewHandoverContext` and renders
+  the packet FROM that file, so what the human sees at a boundary equals what the next
+  session inherits. The Stop hook MUST preserve an authored body for the current
+  boundary and write a placeholder ONLY when none exists. A NON-BLOCKING mechanical
+  detector MUST flag a hollow (placeholder) body - a same-session detection at the
+  Stop (a self-documenting placeholder + a `.specrew/runtime/handover-journal.jsonl`
+  record) AND a prominent warning at the next SessionStart. Authoring MUST NOT be
+  forced, only DETECTED (the transcript-blindness ceiling; the human is the backstop).
+  A Stop-event hook cannot warn the agent in-session (Stop is not an injection event
+  and the P1 doctrine forbids blocking), so the proactive author-before-stop nudge is
+  carried by the SessionStart directive (drift D-008).
+  **Owner**: Implementer. **Iteration**: 005.
 
 ### Traceability & Governance Requirements
 
@@ -323,7 +352,9 @@ offered.
 - **SC-002**: A launcher-then-hook startup emits no duplicate bootstrap content
   in the same session.
 - **SC-003**: A Stop-to-SessionStart round-trip test refreshes the rolling
-  Proposal 130-compatible handover and surfaces it on the next launch.
+  Proposal 130-compatible handover and surfaces it on the next launch - the
+  agent-authored body when present, or the hollow-handover warning when the body is a
+  placeholder (iteration 005).
 - **SC-004**: Tests prove merged, closed, and non-portable absolute-path
   session anchors are cleared before resume or recovery is offered.
 - **SC-005**: Regression tests prove B1 post-compaction and B3 boundary-cross
@@ -332,12 +363,22 @@ offered.
   hook as the primary bootstrap and `specrew start` as a retained compatibility
   and host-selection path.
 - **SC-007**: The bootstrap emits a distinguishable journal record for each mode
-  (full bootstrap, welcome-back, cleared-anchor) and for the unclean-exit
-  warning, asserted by tests so the executed path is reconstructable after the
-  fact.
+  (full bootstrap, welcome-back, cleared-anchor), for the unclean-exit warning, and
+  for a hollow-handover detection (iteration 005: `handover_placeholder` on the
+  bootstrap record + the `hollow-handover-at-stop` Stop-event record), asserted by
+  tests so the executed path is reconstructable after the fact.
 - **SC-009**: The rolling handover is current after each material Stop (the file
   reflects the last completed turn), proven by tests (the auto-provable property);
   a true hard-kill mid-turn is the SC-008 manual-beta confirmation.
+- **SC-010**: The agent-authored handover splits into two honestly-scoped halves
+  (iteration 005). Failure-mode A (plumbing) is test-GUARANTEED and CI-blocking: an
+  authored body survives a material Stop (the hook preserves it), the bootstrap
+  carries the persisted body in the directive, and the persisted bytes equal the
+  surfaced bytes (render==persist; NOT an agent-display claim). Failure-mode B (the
+  agent never authors a rich body) is DETECTED, not prevented: the non-blocking
+  detector flags a placeholder body at the Stop and at the next SessionStart, but
+  cannot force authoring (transcript-blindness) - the human is the backstop. Tests
+  MUST encode this split so the detector is never mistaken for a guarantee.
 
 ## Assumptions
 

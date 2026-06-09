@@ -9,7 +9,7 @@
   Feature 174 (FR-002, FR-004).
 .OUTPUTS
   [pscustomobject] directive { mode, render_first, menu_intent, sources, required_reads,
-                               validation_findings, dedupe_key }
+                               validation_findings, dedupe_key, handover }
 #>
 function New-SpecrewBootstrapDirective {
     [Diagnostics.CodeAnalysis.SuppressMessageAttribute('PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Pure factory: builds and returns a PSCustomObject; performs no external state change.')]
@@ -24,7 +24,10 @@ function New-SpecrewBootstrapDirective {
         # Files the agent must read (e.g. the validated handover path).
         [Parameter()][string[]] $RequiredReads = @(),
         # One bootstrap per session.
-        [Parameter(Mandatory)][string] $DedupeKey
+        [Parameter(Mandatory)][string] $DedupeKey,
+        # F-174 iter-5: the rolling-handover body surfaced on resume - a {present, placeholder,
+        # recorded_at, active_boundary, sections} object, or null when there is no valid handover.
+        [Parameter()][AllowNull()][object] $Handover = $null
     )
 
     # The menu is the same set regardless of mode; the mode + findings drive what the agent says.
@@ -38,5 +41,6 @@ function New-SpecrewBootstrapDirective {
         required_reads      = @($RequiredReads)
         validation_findings = @($ValidationFindings)
         dedupe_key          = $DedupeKey
+        handover            = $Handover
     }
 }

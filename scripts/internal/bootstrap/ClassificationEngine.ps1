@@ -95,3 +95,24 @@ function Test-SpecrewHandoverMaterialChange {
     if ($HasTrackedChange) { return [pscustomobject]@{ material = $true; reason = 'tracked-change' } }
     return [pscustomobject]@{ material = $false; reason = 'no-material-change' }
 }
+
+function Test-SpecrewHandoverBodyPlaceholder {
+    # F-174 iter-5 (failure-mode B detector): is the rolling-handover BODY still a hook placeholder
+    # (hollow) - i.e. did the agent never author rich content for the current boundary? PURE: the caller
+    # passes the parsed body sections in (from Get-SpecrewRollingHandover .sections). Each section's
+    # authored-vs-placeholder call is Test-SpecrewHandoverSectionAuthored (HandoverStore, the format
+    # owner). The body is placeholder when NO section is authored; an absent/empty body is placeholder.
+    # NON-BLOCKING by contract - this only DETECTS the hollow case (the human/agent is the backstop),
+    # it never prevents authoring (transcript-blindness ceiling). Returns { placeholder; authored_count; total }.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()] $Sections)        # hashtable / ordered dict: section-title -> content
+    $total = 0; $authored = 0
+    if ($null -ne $Sections -and ($Sections -is [System.Collections.IDictionary])) {
+        foreach ($k in $Sections.Keys) {
+            $total++
+            if (Test-SpecrewHandoverSectionAuthored -Content ([string]$Sections[$k])) { $authored++ }
+        }
+    }
+    return [pscustomobject]@{ placeholder = ($authored -eq 0); authored_count = $authored; total = $total }
+}

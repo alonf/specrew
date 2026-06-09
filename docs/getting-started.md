@@ -157,7 +157,12 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 > guarantees exactly one bootstrap. A companion **Stop hook** (the per-host end-of-turn event)
 > refreshes one always-latest, local Proposal-130 rolling handover on every material turn — portable
 > across all four hosts and crash-safe (it reflects the last completed turn even on a hard-kill), so
-> the next launch resumes with validated context (welcome-back).
+> the next launch resumes with validated context (welcome-back). The **agent authors the handover
+> body** (the hook is transcript-blind and only keeps the floor fresh); when the agent renders a
+> re-entry / boundary packet it persists that packet as the handover, so the next session inherits
+> exactly what you last saw. If a session ends without authoring one, the next launch shows a
+> **hollow-handover warning** instead of a rich resume it does not actually have — you are the
+> backstop, not a fabricated summary.
 >
 > **Two ways to start — pick by how guided you want to be:**
 >

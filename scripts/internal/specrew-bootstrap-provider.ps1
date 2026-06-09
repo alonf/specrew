@@ -27,11 +27,24 @@ function Format-BootstrapDirective {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
+    if ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
+        if ($d.handover.placeholder) {
+            $lines.Add('[!] HOLLOW HANDOVER - the previous session did NOT author a handover body (the rolling handover is a placeholder). Your resume context is REDUCED to the lifecycle artifacts + git state. Re-derive the situation from the artifacts; do NOT present rich resume context you do not actually have. You are the backstop - surface this gap to the human.')
+        }
+        else {
+            $lines.Add(("Validated handover authored by the previous session (as of {0}; boundary: {1}). Surface this as your resume context (render item 2) - do not merely cite that it exists:" -f $d.handover.recorded_at, $d.handover.active_boundary))
+            foreach ($k in $d.handover.sections.Keys) {
+                $c = [string]$d.handover.sections[$k]
+                if (Test-SpecrewHandoverSectionAuthored -Content $c) { $lines.Add(("  - {0}: {1}" -f $k, $c)) }
+            }
+        }
+    }
     $lines.Add('On your FIRST response - REGARDLESS of the user''s first message (even a task such as "create a feature ...") - LEAD with this orientation, THEN act on their request. Never skip it.')
     $lines.Add('Render, in order: (1) orientation - Specrew version, host, project, branch, lifecycle position; (2) any validated handover summary; (3) a one-line state reason when non-default; (4) a brief recommended next step for THIS state; (5) the Resume / New / Pick-feature menu as TEXT. Offer Resume only when a valid active session exists.')
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
     }
+    $lines.Add('Handover protocol (FR-022): whenever you render a re-entry / boundary packet, FIRST persist it as the handover body via Write-SpecrewHandoverContext, THEN render the packet FROM that file - so what the human sees == what the next session inherits. Refresh before you expect to stop. The Stop hook preserves your body but is transcript-blind and cannot author it; only you can.')
     $lines.Add('This directive is advisory and non-authorizing: it never advances a lifecycle boundary on its own.')
     return ($lines -join "`n")
 }

@@ -20,8 +20,10 @@ $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t027-" + [guid]::Ne
 $hd = Join-Path $tmp 'handover'
 try {
     # --- Rolling write -> read round-trip + overwrite-in-place (no archive) ---
+    # iter-5: the hook no longer authors a body (the AGENT does, via Write-SpecrewHandoverContext); the
+    # hook writes the FLOOR and preserves-or-placeholders the body. This block exercises floor/crash-safety.
     $p1 = Write-SpecrewRollingHandover -HandoverDir $hd -Source stop -FromHost claude -RecordedAt '2026-06-09T10:00:00Z' `
-        -ActiveFeature myfeat -ActiveBoundary plan -Sections @{ 'Recommended next-immediate-step' = 'do X' }
+        -ActiveFeature myfeat -ActiveBoundary plan
     Assert-True ($p1 -match 'session-handover\.md$') 'rolling file is the single session-handover.md'
     $h1 = Get-SpecrewRollingHandover -HandoverDir $hd -NowUtc '2026-06-09T10:05:00Z'
     Assert-Equal $h1.active_boundary 'plan' 'round-trip reads boundary'

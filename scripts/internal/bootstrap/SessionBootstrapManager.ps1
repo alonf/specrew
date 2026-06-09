@@ -39,6 +39,7 @@ function Invoke-SpecrewSessionBootstrap {
     # Handover-first (architecture-core d2): a validated handover from a prior SessionEnd is the
     # primary resume signal, read + validated before the anchor decides the mode.
     $handoverValid = $false
+    $handover = $null
     try {
         $handover = Get-SpecrewRollingHandover -HandoverDir (Join-Path $ProjectRoot '.specrew/handover') -NowUtc $NowUtc
         if ($null -ne $handover) {
@@ -46,6 +47,20 @@ function Invoke-SpecrewSessionBootstrap {
         }
     }
     catch { $handoverValid = $false }
+
+    # F-174 iter-5: surface the agent-authored body on resume; flag a placeholder (hollow) body so the
+    # bootstrap renders the prominent backstop warn (carry #3). Only a VALID handover is surfaced.
+    $handoverDirective = $null
+    if ($null -ne $handover -and $handoverValid) {
+        $bp = Test-SpecrewHandoverBodyPlaceholder -Sections $handover.sections
+        $handoverDirective = [pscustomobject]@{
+            present         = $true
+            placeholder     = [bool]$bp.placeholder
+            recorded_at     = $handover.recorded_at
+            active_boundary = $handover.active_boundary
+            sections        = $handover.sections
+        }
+    }
 
     $mode = Resolve-SpecrewBootstrapMode -AnchorValid $validity.valid -AnchorClearedReason $validity.cleared_reason -HandoverValid $handoverValid
 
@@ -72,6 +87,7 @@ function Invoke-SpecrewSessionBootstrap {
         -Mode $mode.mode `
         -DedupeKey $dedupeKey `
         -ValidationFindings $allFindings `
+        -Handover $handoverDirective `
         -Sources ([pscustomobject]@{ anchor_present = ($null -ne $validity.anchor); handover_valid = $handoverValid; concurrent_session = $concurrent })
 
     $record = [pscustomobject]@{
@@ -79,6 +95,7 @@ function Invoke-SpecrewSessionBootstrap {
         mode               = $mode.mode
         anchor_cleared     = $validity.cleared_reason
         handover_valid     = $handoverValid
+        handover_placeholder = ($null -ne $handoverDirective -and $handoverDirective.placeholder)
         concurrent_session = $concurrent
         concurrency_reason = $concurrencyReason
         dedupe_key         = $dedupeKey
