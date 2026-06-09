@@ -40,11 +40,15 @@ try {
     $root = if ($rootOverride) { $rootOverride } else { Get-HandoverProjectRoot }
 
     # Component resolution (same as the bootstrap provider, D-001): beside the provider in the self-host
-    # tree, else the installed module's scripts/internal/bootstrap.
+    # tree, else SPECREW_MODULE_PATH (dev-tree override) , else the installed module's scripts/internal/bootstrap.
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
     if (-not (Test-Path -LiteralPath $bdir)) {
-        $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending | Select-Object -First 1
-        if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
+        $devBdir = if ($env:SPECREW_MODULE_PATH) { Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap' } else { $null }
+        if ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
+        else {
+            $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending | Select-Object -First 1
+            if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
+        }
     }
     foreach ($f in 'HandoverStore', 'ClassificationEngine') { . (Join-Path $bdir "$f.ps1") }
 

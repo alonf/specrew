@@ -55,11 +55,16 @@ try {
     # Component resolution (D-001 downstream deploy): components sit beside the provider in the
     # self-host tree (scripts/internal/bootstrap); in a downstream project the provider deploys to
     # the extension tree while the components ship in the installed Specrew module (FileList), so
-    # fall back to the module's scripts/internal/bootstrap. No 11-file duplication.
+    # fall back to the module's scripts/internal/bootstrap. SPECREW_MODULE_PATH (the documented
+    # dev-tree override, honored by specrew.ps1) wins first so a dev/unpublished module is testable.
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
     if (-not (Test-Path -LiteralPath $bdir)) {
-        $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending | Select-Object -First 1
-        if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
+        $devBdir = if ($env:SPECREW_MODULE_PATH) { Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap' } else { $null }
+        if ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
+        else {
+            $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending | Select-Object -First 1
+            if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
+        }
     }
     foreach ($f in 'HostEventAdapter', 'SessionStateAccessor', 'ProjectMetadataAccessor', 'HandoverStore', 'ClassificationEngine', 'ValidationEngine', 'DirectiveEngine', 'SessionBootstrapManager', 'LauncherIntegration') {
         . (Join-Path $bdir "$f.ps1")
