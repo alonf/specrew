@@ -5,6 +5,18 @@ reviewer: claude
 reviewed_at: "2026-06-09"
 protocol: proposal-145-seven-phase
 
+qualification:
+  status: live-wiring-deferred
+  corrected_post_verdict: true
+  summary: >
+    Every matrix finding + claim_ledger item below is DEV-TREE-verified, NOT deployed-verified.
+    FR-022's LIVE behavior (the agent-authored handover firing in a DEPLOYED downstream project) is
+    NOT delivered in iteration 5 and is DEFERRED to iteration 6 - the Stop provider cannot resolve its
+    bootstrap components in a deployed tree (PROVIDER_FAILED, no file written). The failure-mode-A
+    floor asserted persisted-bytes == surfaced-bytes but never deployed-tree resolution (build != live;
+    drift D-009). Defer entry f174-i005-defer-live-wiring; verdict f174-i005-review-signoff-qualified.
+    See review.md "Live-Wiring Qualification (corrected post-verdict)".
+
 matrix:
   - requirement: FR-022
     phases:
@@ -53,7 +65,7 @@ design_trace:
 
 verdict:
   per_phase: { phase_0: pass, phase_1: pass, phase_2: pass, phase_3: pass, phase_4: pass, phase_5: pass, phase_6: pass, phase_7: pass }
-  overall: APPROVE for review-signoff
+  overall: APPROVE for review-signoff (WITH QUALIFICATION - live wiring deferred to iter-6; see qualification:)
   notes: >
     Iteration 5 fixes the hollow-handover finding with honest A/B scoping: A (plumbing) is CI-blocking
     and test-guaranteed (persisted==surfaced bytes, body preserved across Stop, the provider renders the

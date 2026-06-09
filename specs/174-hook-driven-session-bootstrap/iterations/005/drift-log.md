@@ -10,9 +10,9 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved in-iteration)
-**Specification drift**: 1 human-instruction-vs-architecture reconciliation (the Stop-time detector mechanism)
+**Total drift events**: 2
+**Resolution rate**: 50% (1/2 resolved in-iteration; D-009's live wiring is deferred to iteration 006)
+**Specification drift**: 1 human-instruction-vs-architecture reconciliation (D-008, the Stop-time detector mechanism) + 1 build != live honesty correction (D-009, the dev-tree-only floor)
 
 ## Events
 
@@ -44,9 +44,33 @@ block):
 SC-010 encodes this as detect-not-prevent honesty (the iter-5 mechanism-not-pledge lesson applied to
 its own deliverable). The two failure-mode-A plumbing smokes + the T030 provider smoke are green.
 
+### D-009 - the failure-mode-A "floor" asserted dev-tree round-trip, not deployed-tree resolution (build != live)
+
+**Requirement**: FR-022 (the agent-authored handover) + the standing build != live lesson (F-054; iter-3 D-002).
+
+**Finding (surfaced at the honest review-signoff close, confirmed by the greenfield dogfood)**: the
+originally-presented iteration-005 review claimed the surfacing/handover round-trip as delivered, but
+EVERY smoke ran in the DEV tree, where the provider resolves its components via `$PSScriptRoot/bootstrap`
+(co-located). In a DEPLOYED downstream project the Stop provider cannot resolve HandoverStore (the
+bootstrap components are not deployed there, and SPECREW_MODULE_PATH does not reach the Stop-hook child),
+so the agent-authored handover silently never fires (PROVIDER_FAILED, no file). The failure-mode-A floor
+asserted persisted-bytes == surfaced-bytes but NEVER that the provider can RESOLVE the persisting code in
+a deployed tree - a pledge dressed as the mechanism, the SAME build != live class as F-054 and the iter-3
+D-002 send-back. (Diagnostic asymmetry confirmed live: the SessionStart bootstrap DID resolve on `claude`
+and rendered orientation on a direct `claude` launch, but the Stop hook did NOT; that split is the iter-6
+key.)
+
+**Resolution (deferred, human-approved)**: close iteration 5 honestly-qualified - the dev-tree machinery
+is built + unit-tested and reviewable; FR-022's LIVE (deployed-tree) behavior is DEFERRED to iteration 6
+(`f174-i005-defer-live-wiring`), which must include a LIVE-WIRING FLOOR asserting a real deployed session
+writes the contract + handover to disk (not dev-tree-green). Recorded at the review-signoff close; the
+originally-presented review.md + review-report.yml are corrected by their Live-Wiring Qualification
+section (review.md) and read dev-tree-verified, not deployed-verified.
+
 ### Resolution Strategies (Unused)
 
-- **spec-updated**, **implementation-reverted**, **deferred**, **human-decision** remain available.
+- **spec-updated**, **implementation-reverted**, **human-decision** remain available (**deferred** is now
+  used by D-009).
 
 ### Notes
 

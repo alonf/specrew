@@ -1,3 +1,48 @@
+## 2026-06-09 — F-174 iteration-005 review-signoff: honest close (live-wiring qualified)
+
+### 2026-06-09 — Verdict: APPROVE WITH QUALIFICATION — close iteration 5 honestly, defer live wiring to iter-6
+
+- **Decision ID**: f174-i005-review-signoff-qualified
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T15:35:00Z
+- **Verdict**: APPROVE WITH QUALIFICATION - close iteration 5 with FR-022's LIVE behavior explicitly
+  deferred. The body-authoring machinery (floor/body split, `Write-SpecrewHandoverContext`, the
+  non-blocking detector, the bootstrap render) is BUILT and unit-tested in the dev tree; the
+  agent-authored handover does NOT yet fire in a DEPLOYED downstream project, and the close must say so.
+- **Correction of prior claims (the honest part)**: the originally-presented iteration-005 review.md +
+  review-report.yml OVERCLAIMED. They asserted the surfacing/handover round-trip as delivered without
+  qualifying that every smoke ran in the DEV tree (components co-located via `$PSScriptRoot/bootstrap`),
+  NOT in a deployed project. In a deployed downstream project the Stop provider cannot resolve
+  HandoverStore (the bootstrap components are not deployed there and SPECREW_MODULE_PATH does not reach
+  the Stop-hook child), so the handover silently never fires (PROVIDER_FAILED, no file). The
+  failure-mode-A "floor" asserted persisted-bytes == surfaced-bytes but NEVER that the provider can
+  RESOLVE the persisting code in a deployed tree - a pledge dressed as the mechanism (the same
+  build != live class as F-054 and the iter-3 D-002 send-back). Recorded as drift D-009.
+- **Disposition**: iteration 5 ships the reviewable dev-tree machinery; FR-022 LIVE behavior is deferred
+  (see f174-i005-defer-live-wiring) and is the charter of iteration 6 (bring the SessionStart hook to
+  parity with `specrew start` by REUSING its handoff/state generator, end-to-end on a deployed tree).
+
+### 2026-06-09 — Defer: FR-022 live (deployed-tree) wiring to iteration 6
+
+- **Decision ID**: f174-i005-defer-live-wiring
+- **Type**: defer
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T15:35:00Z
+- **Next Action**: Iteration 6 makes the hook path produce the launch contract + the agent-authored
+  handover ON DISK in a real DEPLOYED session (not just dev-tree-green), by REUSING `specrew start`'s
+  handoff/state generator rather than hand-rolling a second thin directive. A live-wiring floor MUST
+  assert a real deployed session writes the contract + handover to disk.
+- **Rationale**: The Stop provider resolves its components from `$PSScriptRoot/bootstrap` ->
+  `$env:SPECREW_MODULE_PATH/scripts/internal/bootstrap` -> the installed module. In a deployed downstream
+  project none of these reach the dev-tree code via the Stop-hook child, so the handover never fires
+  live. The dev-tree machinery is built + tested now (bounding iter-5 churn); the end-to-end live wiring
+  is iteration 6's explicit deliverable. F-174 stays OPEN.
+
 ## 2026-06-09 — F-174 iteration-005 before-implement: APPROVE WITH INSTRUCTIONS
 
 ### 2026-06-09 — Verdict + design rulings: iteration-005 hollow-handover fix approved to implement

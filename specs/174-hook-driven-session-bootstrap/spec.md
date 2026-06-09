@@ -280,7 +280,14 @@ offered.
   A Stop-event hook cannot warn the agent in-session (Stop is not an injection event
   and the P1 doctrine forbids blocking), so the proactive author-before-stop nudge is
   carried by the SessionStart directive (drift D-008).
-  **Owner**: Implementer. **Iteration**: 005.
+  **Acceptance (iteration 005, qualified)**: the body-authoring machinery (the floor/body
+  split, `Write-SpecrewHandoverContext`, the non-blocking detector, the bootstrap render) is
+  BUILT and unit-tested in the dev tree. The LIVE behavior - the agent-authored handover firing
+  in a DEPLOYED downstream project - is NOT MET in iteration 005 and is DEFERRED to iteration 006
+  (the Stop provider cannot resolve its bootstrap components in a deployed tree; drift D-009,
+  defer `f174-i005-defer-live-wiring`). Iteration 006 must carry a live-wiring floor that asserts
+  a real deployed session writes the handover (and the launch contract) to disk.
+  **Owner**: Implementer. **Iteration**: 005-006.
 
 ### Traceability & Governance Requirements
 

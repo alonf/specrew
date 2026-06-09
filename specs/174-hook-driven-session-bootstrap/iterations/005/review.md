@@ -10,6 +10,26 @@ disprove. This iteration fixes the hollow-handover finding: the rolling-handover
 AGENT-authored (the Stop hook is transcript-blind), with a NON-BLOCKING mechanical detector - scoped
 honestly as failure-mode A (plumbing, CI-blocking) vs failure-mode B (authoring, detected-not-prevented).
 
+## Live-Wiring Qualification (corrected post-verdict)
+
+**This section corrects the originally-presented verdict.** The phase narrative and claim ledger below
+were written as if the surfacing/handover round-trip were DELIVERED. They are not - not LIVE. Every smoke
+in this iteration ran in the DEV tree, where the provider resolves its components via
+`$PSScriptRoot/bootstrap` (co-located). In a DEPLOYED downstream project the Stop provider cannot resolve
+HandoverStore (the bootstrap components are not deployed there, and SPECREW_MODULE_PATH does not reach the
+Stop-hook child), so the agent-authored handover silently never fires (PROVIDER_FAILED, no file). The
+failure-mode-A "floor" asserted persisted-bytes == surfaced-bytes but NEVER that the provider can RESOLVE
+the persisting code in a deployed tree - a pledge dressed as the mechanism, the same build != live class
+as F-054 and the iter-3 D-002 send-back (drift D-009).
+
+What iteration 5 DOES deliver and the human approved: the dev-tree body-authoring machinery (floor/body
+split, `Write-SpecrewHandoverContext`, the non-blocking detector, the bootstrap render) is BUILT,
+unit-tested, and reviewable. FR-022's LIVE (deployed-tree) behavior is **deferred** to iteration 6
+(canonical defer entry `f174-i005-defer-live-wiring` in `.squad\decisions.md`), which must carry a
+live-wiring floor asserting a real deployed session writes the contract + handover to disk. Read every
+"delivered / surfaces / fires" claim below as **dev-tree-verified, not deployed-verified**. The human's
+verdict was APPROVE WITH QUALIFICATION on that basis (`f174-i005-review-signoff-qualified`).
+
 ## Task Verdicts
 
 | Task | Requirement | Verdict | Notes |
@@ -54,6 +74,7 @@ honestly as failure-mode A (plumbing, CI-blocking) vs failure-mode B (authoring,
 
 - Provider-render coverage gap (the HOLLOW warn + the protocol line were untested) is closed by tests A7/A8: fixed-now.
 - Stale spec ref (US-3 acceptance scenario 1 implied the hook authors the handover) corrected to the floor/body split: fixed-now.
+- FR-022 LIVE (deployed-tree) wiring is deferred to iteration 6: the agent-authored handover does not fire in a deployed downstream project (all iter-5 smokes ran in the dev tree where the provider resolves components via `$PSScriptRoot/bootstrap`); canonical defer entry `f174-i005-defer-live-wiring` in `.squad\decisions.md`. See the Live-Wiring Qualification section + drift D-009.
 
 ## Follow-ups (scoped out of iteration 5; not gaps in this delivery — tracked in `.squad/decisions.md`)
 
