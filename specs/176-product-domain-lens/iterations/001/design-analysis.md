@@ -242,8 +242,8 @@ maintainer's sign-off.
   mechanical-checks/validator), concurrency-correctness not-applicable; the react-spa
   auto-inference (drift D-003) is overridden.
 - **Design-analysis draft commit**: `985c8374`
-- **Decision recorded in commit**: `PENDING-STAMP` (the commit that records this populated
-  decision; differs from the draft `985c8374` — stamped immediately after this commit)
+- **Decision recorded in commit**: `df08fa9f` (the commit that records this populated
+  decision; differs from the draft `985c8374`)
 
 ## Product-domain run cadence (maintainer rule, carried to plan)
 
