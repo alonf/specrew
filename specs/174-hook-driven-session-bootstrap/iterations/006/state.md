@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T041 (deleted dormant SessionEnd code; 3 files removed, bootstrap tests 4/4 + rolling round-trip green post-deletion, PSSA 0)
-**Tasks Remaining**: T038, T039, T042 (T038 = the LOAD-BEARING deployed floor)
-**In Progress**: T038 (DEPLOYED live-wiring floor — installed-module scratch project, evidence_locus: deployed; dev-tree-only = send-back)
+**Last Completed Task**: T042 (docs repositioned with the honesty guard) — ALL iter-6 tasks T035a–T042 DONE
+**Tasks Remaining**: (none) — re-run the specrew-start integration suite as the final regression gate, then STOP at review-signoff
+**In Progress**: final regression gate (specrew-start integration suite) before the review-signoff stop
 **Baseline Ref**: ff52974c64770423a69a4a5d6ac9509bb6aa29ce
-**Updated**: 2026-06-09T22:00:00Z
+**Updated**: 2026-06-09T23:00:00Z
 
 ## Execution Summary
 
@@ -125,13 +125,55 @@
     deleted test files — LEFT UNCHANGED (immutable closed-iteration history; they accurately record what
     existed then). The `.squad/decisions.md` follow-on `f174-followup-remove-dormant-sessionend-code` is now
     resolved by this task.
-- **NEXT — T038, the LOAD-BEARING deployed floor (the entire iteration rides on it).** Pack the JUST-BUILT
-  dev tree as the module FROM the updated FileList (NEVER published 0.33.0-beta1 — it predates launch-contract.ps1
-  + the inline specrew-start), install it, create a REAL scratch project, and assert the 3-part round-trip via
-  `Get-Module -ListAvailable Specrew` tier-3 resolution (SPECREW_MODULE_PATH UNSET — the host-spawned-child path
-  that failed in iter-5). evidence_locus: deployed. A red T038 reported = the methodology working; a
-  green-via-dev-tree-fallback = the iter-5 D-009 failure repeating. Then T039 (per-host injection enumerate) →
-  T042 (docs honesty guard). Stop at review-signoff.
+- **T038 DONE - the LOAD-BEARING DEPLOYED floor is GREEN (evidence_locus: DEPLOYED).** `tests/integration/
+  deployed-bootstrap-floor.tests.ps1` packs the dev tree FROM THE FILELIST into a temp module, isolates the
+  child's PSModulePath to ONLY the packed module + `$PSHOME/Modules`, and asserts the full 3-part round-trip in
+  a REAL installed-module scratch project (git repo on a feature branch) under tier-3 resolution
+  (`Get-Module -ListAvailable`, SPECREW_MODULE_PATH UNSET, provider copied to a NON-co-located dir so
+  `$PSScriptRoot/bootstrap` misses):
+  - discovery-first probe: tier-3 resolves the PACKED module (not the published one);
+  - Part 1: deployed SessionStart wrote the full contract (4 invariant markers) + boundary_enforcement on disk;
+  - Part 2a: deployed Stop handover provider RESOLVED (tier-3, no PROVIDER_FAILED);
+  - Part 2b: the working turn authored a rich handover body via the module's Write-SpecrewHandoverContext;
+  - Part 3: a fresh deployed resume READ + SURFACED the authored handover. **The D-009 failure does NOT recur.**
+  - **Version-collision DEFUSE (advisor catch, the trap that would have inverted the methodology):** the
+    published 0.33.0-beta1 is installed at `...OneDrive/Documents/PowerShell/Modules/Specrew/0.33.0` - SAME
+    ModuleVersion as the dev pack - so the tier-3 `Sort -Desc | Select -First 1` could resolve the published
+    (launch-contract-less) module = a PROVIDER_FAILED that LOOKS like the finding but is the stale-install
+    trap. Defused by PSModulePath isolation + a discovery-first assertion. The first run's RED was exactly this
+    (isolation leaked via pwsh's startup re-add of the user scope) - fixed by setting PSModulePath IN the child
+    post-startup. A later RED was a TEST-ASSERTION bug (rejecting a partially-authored body that legitimately
+    keeps placeholders for unfilled sections) - Part 3 independently proved the body authored + surfaced, so
+    the fix corrected the wrong expectation, NOT papered a real failure.
+  - **SCOPE HONESTY (evidence_locus discipline applied to T038's OWN claim):** this floor is PROVIDER-DIRECT
+    under tier-3 (the D-009 crux: component resolution + on-disk writes). It does NOT drive the full host ->
+    SpecrewHookDispatcher -> refocus-scopes.json -> provider routing. The claim is "provider-direct deployed
+    tier-3 round-trip," never "the full deployed hook chain." (Advisor-blessed scoped-honest green.)
+- **T039 DONE** (per-host injection enumerate). Wrote `specs/174-hook-driven-session-bootstrap/iterations/006/
+  injection-matrix.md`: the two-part model (host-agnostic on-disk writes auto-proven by T038 vs per-host
+  injection-reaches-model manual). Matrix: **Claude = PARITY** (plumbing GREEN + injection-reaches-model
+  PROVEN by direct observation this session); **codex/copilot/cursor = plumbing-ready but injection
+  UNVERIFIED -> specrew start fallback** (the confounded Codex run is exactly why this can't be auto-claimed);
+  **Antigravity = no hook -> specrew start**. The codex/copilot/cursor re-tests are the EXPLICIT tracked
+  follow-on `f174-followup-multihost-injection-verification` (NOT silently dropped). Honors honesty guard (a):
+  never all-host parity on Claude-only evidence.
+- **T042 DONE** (docs repositioned with the honesty guard; getting-started.md markdownlint clean). Rewrote the
+  "Hook-driven bootstrap (Feature 174)" section in `docs/getting-started.md` which had OVERCLAIMED ("auto-
+  bootstraps on ANY host launch", "the hook is now the primary bootstrap", listing all four hosts as
+  hook-driven). Now: Claude driving is PROVEN end-to-end; codex/copilot/cursor are plumbing-ready but
+  injection-UNVERIFIED -> use `specrew start` until confirmed; Antigravity has NO hook -> `specrew start`;
+  and `specrew start` is repositioned as the cross-host driver + host-selection + the reliable fallback (NOT a
+  legacy compatibility shim). Swept docs/ for residual overclaim phrases - none remain (user-guide.md has no
+  F-174 section; release-notes are immutable history).
+- **ITERATION 006 IMPLEMENT COMPLETE — all tasks T035a, T035, T036, T037, T040, T041, T038, T039, T042 DONE
+  (20/20 SP).** REMAINING before the review-signoff stop: re-run the specrew-start integration suite as the
+  final behavior-preserving regression gate (no changes to specrew-start.ps1/launch-contract.ps1 since T035's
+  11/11, but it is the contract for the cross-host driver). Then STOP at review-signoff and render the Rule 46
+  packet for the maintainer's verdict. CARRIES for the review-signoff/closeout packet: (1) promote the
+  Proposal-145 candidate draft to `proposals/` on MAIN (separate governance commit, not the feature branch);
+  (2) the maintainer's on-Claude SC-008 validation of the iter-6 read-and-follow content (this repo's deployed
+  hook is the STALE published module until the dev tree is installed - the stale-install trap); (3) the
+  f174-followup-multihost-injection-verification slice delivers the real multi-host parity.
 - Scope 20/20; the multi-host injection re-tests are the tracked follow-on slice
   (f174-followup-multihost-injection-verification). specrew-start integration suite unaffected by T036 (no
   changes to specrew-start.ps1 / launch-contract.ps1) — re-run as the final regression gate before review-signoff.

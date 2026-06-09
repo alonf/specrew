@@ -147,33 +147,41 @@ That single command:
 
 When the Crew surfaces a clarify question, answer it. When it surfaces a planning artifact, review it. When it asks for an implementation verdict, type one of the recognized verdict shapes (e.g. `approved for implementation-boundary entry`). The lifecycle then continues to the next boundary.
 
-> **Hook-driven bootstrap (Feature 174).** Bootstrap orientation no longer depends on running
-> `specrew start`. A **SessionStart hook** auto-bootstraps the session on **any** host launch inside a
-> Specrew project — whether you ran `specrew start` or launched the host CLI directly (`claude`,
-> `codex`, `copilot`, `cursor`) — surfacing your Specrew position plus a Resume / New / Pick-feature
-> menu as prose before any picker. The **hook is now the primary bootstrap**; `specrew start` is
-> **retained for compatibility** and for what only it does (host selection + uniform
-> `--remote` / `--allow-all` flag translation). When both fire in one startup, a dedupe handshake
-> guarantees exactly one bootstrap. A companion **Stop hook** (the per-host end-of-turn event)
-> refreshes one always-latest, local Proposal-130 rolling handover on every material turn — portable
-> across all four hosts and crash-safe (it reflects the last completed turn even on a hard-kill), so
-> the next launch resumes with validated context (welcome-back). The **agent authors the handover
-> body** (the hook is transcript-blind and only keeps the floor fresh); when the agent renders a
-> re-entry / boundary packet it persists that packet as the handover, so the next session inherits
-> exactly what you last saw. If a session ends without authoring one, the next launch shows a
-> **hollow-handover warning** instead of a rich resume it does not actually have — you are the
-> backstop, not a fabricated summary.
+> **Hook-driven bootstrap (Feature 174).** A **SessionStart hook** can bootstrap the session on a host
+> launch inside a Specrew project — writing the governed launch contract and surfacing your Specrew
+> position plus a Resume / New / Pick-feature menu as prose before any picker — so orientation need not
+> depend on running `specrew start` first. **Where this is PROVEN end-to-end today: Claude.** On Claude the
+> hook **drives** — it writes the same launch contract `specrew start` does, and the agent reads and
+> follows it. On **Codex, Copilot, and Cursor** the hook deploys and the on-disk plumbing is proven, but
+> whether the host runtime actually delivers the injected orientation *into the model* is **not yet
+> verified** — so on those hosts use **`specrew start`** for reliable orientation until per-host injection
+> is confirmed. **Antigravity has no SessionStart hook**, so there `specrew start` is the orientation path.
+> Do not assume all-host hook-parity — only Claude is confirmed.
+>
+> **`specrew start` is the cross-host driver, not a legacy shim.** It does what only it can (host
+> selection, uniform `--remote` / `--allow-all` / `--autopilot` flag translation, a true pre-session
+> splash) **and** it is the reliable orientation path on every host the hook does not yet drive
+> (Antigravity, plus Codex / Copilot / Cursor until injection is confirmed). When both a launcher and a
+> hook fire in one startup, a dedupe handshake guarantees exactly one bootstrap.
+>
+> A companion **Stop hook** (the per-host end-of-turn event) refreshes one always-latest, local
+> Proposal-130 rolling handover on every material turn — deployed across the four hooked hosts and
+> crash-safe (it reflects the last completed turn even on a hard-kill). The **agent authors the handover
+> body** (the hook is transcript-blind and only keeps the floor fresh); when the agent renders a re-entry /
+> boundary packet it persists that packet as the handover, so the next session inherits exactly what you
+> last saw. If a session ends without authoring one, the next launch shows a **hollow-handover warning**
+> instead of a rich resume it does not actually have — you are the backstop, not a fabricated summary.
 >
 > **Two ways to start — pick by how guided you want to be:**
 >
-> - **`specrew start`** — guided from the first line: the launcher prints the splash and hands the
->   host full lifecycle context *before* the session opens. Best when you want orientation up front.
-> - **Direct launch** (`claude` / `codex` / `copilot` / `cursor` in the project) — the SessionStart
->   hook primes the agent silently, so the orientation arrives on the agent's **first reply**, not the
->   splash screen (a host hook cannot paint the host's UI). Just **ask** — "What should I do now?" —
->   or **state intent** — "Create a feature for …" — and the agent leads with your Specrew orientation,
->   then proceeds. (A true pre-session banner is the launcher's job; the hook gives you an
->   agent-rendered one on turn one.)
+> - **`specrew start`** — guided from the first line: the launcher prints the splash and hands the host
+>   full lifecycle context *before* the session opens. The reliable path on **every** host; the only path
+>   on Antigravity and (until injection is confirmed) Codex / Copilot / Cursor.
+> - **Direct launch on Claude** (`claude` in the project) — the SessionStart hook primes the agent, so the
+>   orientation arrives on the agent's **first reply**, not the splash screen (a host hook cannot paint the
+>   host's UI). Just **ask** — "What should I do now?" — or **state intent** — "Create a feature for …" —
+>   and the agent leads with your Specrew orientation, then proceeds. (Proven on Claude; on the other
+>   hooked hosts the hook deploys, but prefer `specrew start` until per-host injection is verified.)
 
 **The Design Workshop.** For substantive features, the Crew also facilitates a **Design Workshop** — first at intake (to pick the design lenses that matter and make the spec lens-informed) and again at the design-analysis stop before planning (to co-design the architecture with you: component map, responsibilities, flows, and trade-off options). It is a conversation, not a questionnaire — you see every diagram and agenda in-band, and every decision is recorded as a durable artifact. The full methodology is in [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md).
 
