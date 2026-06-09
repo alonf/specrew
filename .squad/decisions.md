@@ -1,3 +1,31 @@
+## 2026-06-09 — F-174 iteration-005 before-implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-09 — Verdict + design rulings: iteration-005 hollow-handover fix approved to implement
+
+- **Decision ID**: f174-i005-before-implement-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T12:40:00Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS - implement T029-T034 with the A/B-split design.
+- **Design rulings (prompt answers)**:
+  - **Detect-only, NOT refuse-resume** (prompt #1): a placeholder body must NOT block Resume.
+    Refuse-resume is wrong - it discards the artifact-floor orientation that already works, couples
+    resume to body-richness, and mis-fires on quiet sessions. Make the miss VISIBLE, do not block.
+  - **Keep BOTH detectors** (prompt #2): the Stop-time warn warns the AGENT while it can still author
+    (the failure-REDUCING half); the resume warn warns the HUMAN backstop (a different actor). Both ship.
+  - **Accept 10 SP** (prompt #3): trimming would drop the Stop-time warn; keep it.
+- **Implementation carries (apply during implement; VERIFY at review-signoff)**:
+  1. **T034 reconcile is SPEC-WIDE, not just the 4 named requirements.** Grep the WHOLE spec for the
+     floor/body ripple - check FR-017, SC-003, SC-007, and US-3 acceptance (FR-021 STAYS write-only by
+     design). Review-signoff MUST grep for ZERO stale handover-model references - the exact under-scope
+     that bit iter-4's T028.
+  2. **Keep render==persist HONEST.** The CI-blocking failure-mode-A floor tests the PLUMBING round-trip
+     (persisted bytes == surfaced bytes), NOT an agent-display claim - so A's floor does not secretly
+     depend on the agent authoring behavior that is kept in failure-mode B. T033 must assert it that way.
+  3. **Make the resume placeholder-warn PROMINENT in the orientation** (not a footnote). The human is the
+     named backstop; the warn is the only thing that engages them.
+
 ## 2026-06-09 — F-174 iteration-004 closeout: carried maintainer instructions
 
 ### 2026-06-09 — Constraint: iteration-005 must ship the mechanical handover-detector (mechanism, not pledge)
