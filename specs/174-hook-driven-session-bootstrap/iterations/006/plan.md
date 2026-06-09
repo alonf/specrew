@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 19/20 story_points
 **Started**: 2026-06-09
 **Completed**:
@@ -139,14 +139,14 @@ This is the assertion that would have caught every dev-tree-only "works" claim (
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T035 | Extract `scripts/internal/launch-contract.ps1` (move `Get-StartPrompt` + inline prompt-block helpers out of specrew-start.ps1; specrew-start dot-sources it; behavior-preserving — specrew-start integration tests are the regression floor) | FR-023 | US-1 | 4 | Implementer | scripts/internal/launch-contract.ps1, scripts/specrew-start.ps1 | planned | — | — | — |
+| T035 | LEAD by confirming the specrew-start integration suite CHARACTERIZES `Get-StartPrompt`'s output + the `boundary_enforcement` init (add a characterization assertion if it does NOT — split as T035a + re-baseline SP if meaningful); THEN extract `scripts/internal/launch-contract.ps1` (move `Get-StartPrompt` + inline prompt-block helpers out of specrew-start.ps1; specrew-start dot-sources it; behavior-preserving — the characterized suite is the regression floor) | FR-023 | US-1 | 4 | Implementer | scripts/internal/launch-contract.ps1, scripts/specrew-start.ps1 | in-progress | claude | — | — |
 | T036 | SessionBootstrapManager calls the shared generator on SessionStart (gather project/session inputs; null launcher-only roster/routing) → write `last-start-prompt.md` (narrow atomic write) → ensure `boundary_enforcement` via Get-/Initialize-SpecrewBoundaryEnforcementState (preserve-merge the anchor) | FR-023, FR-001 | US-1 | 3 | Implementer | scripts/internal/bootstrap/SessionBootstrapManager.ps1 | planned | — | — | — |
 | T037 | Bootstrap provider injects the read-and-follow contract (replace the iter-5 thin orient/menu directive) + the resume handover surface; dedupe-safe (never clobber a fresh launcher contract via Test-SpecrewLauncherBootstrapRecent) | FR-002, FR-007 | US-1 | 2 | Implementer | scripts/internal/specrew-bootstrap-provider.ps1, scripts/internal/bootstrap/DirectiveEngine.ps1 | planned | — | — | — |
 | T038 | The DEPLOYED live-wiring floor on Claude (load-bearing; `evidence_locus: deployed`): a real installed-module scratch project asserts the 3-part round-trip — SessionStart writes boundary_enforcement + contract on disk; a working turn + Stop captures intent into last-start-prompt.md + the handover on disk; a fresh resume reads them back | FR-022, FR-024, SC-011 | US-1 | 4 | Implementer | tests/integration | planned | — | — | — |
 | T039 | Per-host injection: the deployed floor (T038) auto-proves PLUMBING; injection-REACHES-model is a manual per-host OBSERVATION (Claude satisfied by direct observation this iteration); enumerate codex/copilot/cursor injection-reaches-model clean re-tests as EXPLICIT follow-on (not silently dropped); Antigravity → specrew start fallback | FR-024, FR-005 | US-1 | 1 | Implementer | specs/174-hook-driven-session-bootstrap | planned | — | — | — |
 | T040 | evidence_locus carry: add an `evidence_locus` field (values dev-tree or deployed) to the 145 claim-ledger + the hardening-gate concern schema; review REFUSES "delivered-live" on dev-tree-only evidence; file as a Proposal-145 reviewer-family candidate (reconcile on the #2216 rebase) | FR-024 | US-1 | 2 | Implementer | extensions/specrew-speckit | planned | — | — | — |
 | T041 | dormant-SessionEnd cleanup carry: delete SessionEndHandoverManager.ps1 + FileList entry + SessionEndHandover.Tests + the timestamped Write-/Get-SpecrewHandover funcs + the inaccurate "REUSED" design-record phrase | FR-009 | US-3 | 2 | Implementer | scripts/internal/bootstrap | planned | — | — | — |
-| T042 | Docs / F-174 claims repositioned: the hook DRIVES on injecting hosts (parity) + orientation/resume; specrew start = cross-host driver + host-selection + fallback (Antigravity / non-injecting) | FR-008 | US-2 | 1 | Implementer | docs | planned | — | — | — |
+| T042 | Docs / F-174 claims repositioned WITH the honesty guard: Claude driving is PROVEN; codex/copilot/cursor are plumbing-ready but injection-UNVERIFIED → `specrew start` fallback until per-host confirmed (NEVER "all-host parity" on Claude-only evidence); specrew start = cross-host driver + host-selection + fallback | FR-008 | US-2 | 1 | Implementer | docs | planned | — | — | — |
 
 ## Effort Model
 
@@ -209,4 +209,10 @@ This is the assertion that would have caught every dev-tree-only "works" claim (
 - Sub-agents OUT OF SCOPE (single-agent only); per-worktree handover merge stays deferred (memory
   `f174-subagent-handover-merge-consideration`).
 - The before-implement gate is the single human stop for this iteration (maintainer directive: design pass
-  first, then stop at before-implement).
+  first, then stop at before-implement). APPROVED WITH INSTRUCTIONS (`f174-i006-before-implement-approved`).
+- **Multi-host injection follow-on is a TRACKED slice now** (honesty guard 1b): the codex/copilot/cursor
+  injection-reaches-model re-tests are scheduled as `f174-followup-multihost-injection-verification`
+  (candidate iter-7 / proposal), NOT a vague enumeration — that slice delivers the "all hosts" intent;
+  iter-6 ships Claude-driving-in-practice + host-agnostic plumbing.
+- **T042 honesty guard (1a):** docs say Claude driving PROVEN; codex/copilot/cursor plumbing-ready but
+  injection-UNVERIFIED → specrew start fallback. Never "all-host parity" on Claude-only evidence.

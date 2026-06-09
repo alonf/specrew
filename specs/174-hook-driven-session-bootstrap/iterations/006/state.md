@@ -1,13 +1,13 @@
 # Iteration State: 006
 
 **Schema**: v1
-**Current Phase**: before-implement
-**Iteration Status**: planning
-**Last Completed Task**: (none — planning)
-**Tasks Remaining**: T035-T042 (all planned)
-**In Progress**: before-implement (design pass complete; presenting the before-implement packet)
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: (none — starting T035)
+**Tasks Remaining**: T035-T042 (serial)
+**In Progress**: T035 (characterize the specrew-start suite, then extract launch-contract.ps1)
 **Baseline Ref**: ff52974c64770423a69a4a5d6ac9509bb6aa29ce
-**Updated**: 2026-06-09T16:55:00Z
+**Updated**: 2026-06-09T17:12:00Z
 
 ## Execution Summary
 
@@ -20,8 +20,11 @@
   SC-011 (deployed live-wiring floor) added. Hardening gate ready (planning-time).
 - Scope: 19/20 SP, foundation + Claude-proven; codex/copilot/cursor injection re-tests ENUMERATED (T039)
   as explicit follow-on.
-- NEXT: present the before-implement packet (the single human stop for this iteration); on approve ->
-  implement T035-T042.
+- before-implement APPROVED WITH INSTRUCTIONS (f174-i006-before-implement-approved): 19 SP accepted; T035
+  characterize-first (+ T035a split if needed); T042 docs honesty guard; multi-host injection = tracked
+  follow-on slice (f174-followup-multihost-injection-verification); seam confirmed (non-launcher).
+- NEXT: implement T035-T042 serial. The load-bearing T038 deployed live-wiring floor MUST run in a real
+  installed-module scratch project (evidence_locus: deployed) — dev-tree-only = send-back at review-signoff.
 
 ## Notes
 

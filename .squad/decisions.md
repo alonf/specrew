@@ -1,3 +1,54 @@
+## 2026-06-09 — F-174 iteration-006 before-implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-09 — Verdict: implement T035-T042 (serial); two honesty guards + T035 characterize-first
+
+- **Decision ID**: f174-i006-before-implement-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\006
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T17:10:00Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS - implement T035-T042 serial. Independently verified: fresh
+  no-cache validator EXIT 0, spec FR-023/FR-024/SC-011 present, no premature code, SP=19 under cap, both
+  advisor corrections absorbed, the T035 trap self-surfaced. "Excellent design."
+- **Carried instructions (apply during implement; the human VERIFIES at review-signoff)**:
+  1. **Scope = 19 SP accepted.** Honesty guard (a): **T042 docs MUST say Claude driving is PROVEN while
+     codex / copilot / cursor are plumbing-ready but injection-UNVERIFIED -> `specrew start` fallback until
+     confirmed.** NEVER "all-host parity" on Claude-only evidence. Honesty guard (b): the codex/copilot/
+     cursor injection re-tests are the slice that actually delivers the "all hosts, not just Claude" intent
+     - SCHEDULE it as a REAL TRACKED FOLLOW-ON SLICE NOW (see f174-followup-multihost-injection-verification),
+     not a someday-enumeration. iter-6 ships Claude-driving-in-practice; the follow-on delivers multi-host.
+  2. **T035 - "guarded by the suite" must NOT be a pledge.** LEAD T035 by confirming the specrew-start
+     integration suite actually characterizes `Get-StartPrompt`'s output + the `boundary_enforcement` init.
+     If it does NOT, ADD that characterization assertion BEFORE the extraction. If that is a meaningful
+     chunk, SPLIT it as its own task (T035a) and RE-BASELINE SP honestly rather than silently exceeding 4.
+     The move-not-rewrite is safe only once the suite genuinely pins the contract.
+  3. **Seam CONFIRMED.** The hook stays a non-launcher: narrow `last-start-prompt.md` write +
+     `boundary_enforcement` preserve-merge via `Initialize-SpecrewBoundaryEnforcementState`; NO
+     `Save-StartArtifacts` (the launcher monolith).
+- **Review-signoff verification the human will run (send-back if it fails)**: T038 actually ran in a real
+  installed-module scratch project (`evidence_locus: deployed`, NOT the dev tree); each host's parity claim
+  is plumbing-green AND injection-observed, never assumed. The deployed floor is the entire point of iter-6;
+  a dev-tree-only floor is a SEND-BACK.
+
+### 2026-06-09 — Tracked follow-on slice: multi-host injection verification (codex/copilot/cursor)
+
+- **Decision ID**: f174-followup-multihost-injection-verification
+- **Type**: planning-constraint
+- **Affected Requirement**: FR-024, FR-005
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap (follow-on slice, post iter-6)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T17:10:00Z
+- **Scheduled slice (NOT a someday-enumeration)**: a real tracked follow-on slice that delivers the
+  "all hosts, not just Claude" intent - the manual per-host injection-reaches-model OBSERVATION re-tests
+  for codex, copilot, and cursor (launch each host, observe whether the hook-injected contract reaches the
+  model). Each host joins the PARITY SET only when plumbing-green (iter-6 T038) AND injection-observed.
+- **Next Action**: candidate iteration 7 of F-174 (or a proposal on main if it widens). Carry the iter-6
+  evidence_locus discipline. Until each host is injection-confirmed, docs say plumbing-ready/fallback, not
+  parity (guard 1a).
+- **Rationale**: injection-reaches-model is structurally MANUAL (launch each host, observe) - it cannot fit
+  one iteration regardless of the 20 SP cap. Scheduling it now (not enumerating it vaguely) is what makes
+  the multi-host intent real rather than Claude-only-in-practice.
+
 ## 2026-06-09 — F-174 iteration-006 design pass: settled (Crew recommendation; ratified at before-implement)
 
 ### 2026-06-09 — Design: hook-to-specrew-start parity via a shared generator (Option A)
