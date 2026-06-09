@@ -1,13 +1,13 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T034 (all of T029-T034 done — code, tests, spec FR-022/SC-010, docs)
 **Tasks Remaining**: (none)
-**In Progress**: review-signoff (review.md + review-report.yml written; presenting the verdict)
+**In Progress**: retro (review-signoff closed with the honest live-wiring qualification; retro.md written; presenting the retro verdict)
 **Baseline Ref**: 4125e5fabc2e32cad8db17e65a1759bb5dc20bfe
-**Updated**: 2026-06-09T13:50:00Z
+**Updated**: 2026-06-09T15:40:00Z
 
 ## Execution Summary
 
@@ -18,8 +18,10 @@
   extends), docs (getting-started agent-authored body).
 - Verified: T029-T031 smokes green; T030 provider smoke green; 6/6 files parse clean; 19/19 suites green.
   D-008 logged (the P1 ceiling on instruction #2 -> option-1 detection).
-- NEXT: review-signoff (Proposal-145 review + the carry-#1 zero-stale-ref grep + validator), then present
-  the verdict.
+- review-signoff CLOSED with an honest live-wiring qualification (commit 28b79388): the dev-tree
+  machinery ships; FR-022 LIVE behavior is deferred to iter-6 (D-009; defer f174-i005-defer-live-wiring).
+- NEXT: retro presented (retro.md), awaiting the human retro->iteration-closeout verdict. The retro
+  verdict carries the closeout (per iter-4). F-174 stays OPEN; iteration 6 is required.
 
 ## Notes
 
