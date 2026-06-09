@@ -36,19 +36,27 @@
      hardening-gate schema too, not only the 145 claim ledger.
   2. **iter-6 scope SUPERSEDES the earlier "Claude-only parity" caveat.** Target ALL AI hosts using the
      foundation already built: the hook emits the FULL launch contract + initializes
-     `boundary_enforcement`, REUSING `specrew start`'s generator (not a thin directive). Keep `specrew
-     start` for (a) selecting the host and (b) AI hosts that have NO start hook. **OPEN (iter-6 design,
-     "check that"):** verify which hosts lack a SessionStart-equivalent hook - candidates Cursor and/or
-     Antigravity. Also: fix the docs / F-174 claims so the hook is positioned as orientation/resume.
+     `boundary_enforcement`, REUSING `specrew start`'s generator (not a thin directive). **Host coverage
+     RESOLVED (deploy-refocus-hooks.ps1; human-confirmed 2026-06-09) - do NOT re-derive it:** the deployer
+     hooks claude / codex / copilot / cursor (each gets a SessionStart-class hook; Cursor IS hooked,
+     sessionStart+stop); Antigravity has NO branch = the no-hook FALLBACK host. **The genuinely-open
+     question is INJECTION, not deployment:** per hooked host, verify the start-hook output actually
+     REACHES the model's context (only Claude is PROVEN; Codex's no-orientation run was CONFOUNDED -
+     re-test cleanly). **Parity set = hosts that INJECT; `specrew start` fallback = Antigravity + any
+     hooked host that deploys but does NOT inject.** Make per-host INJECTION a FIRST-CLASS design-pass
+     deliverable. `specrew start` also keeps the host-selection role. Also: fix the docs / F-174 claims so
+     the hook is positioned as orientation/resume.
   3. **Fold the dormant-SessionEnd cleanup + the inaccurate "REUSED" phrase INTO iteration 6** (NOT
      feature-closeout): iter-6 reworks the hook/provider path anyway, so do the cleanup where the code is
      already open (supersedes the iter-4 carry `f174-followup-remove-dormant-sessionend-code` location).
 - **Load-bearing design note (the assertion that would have caught every dev-tree-only "works" claim)**:
   since the user may start with NO start prompt, iter-6 must CAPTURE THE INTENT (what is being built in
   the current iteration) DURING the session, so `last-start-prompt.md` is populated/different per
-  iteration. The live-wiring floor MUST assert that a real deployed session writes `boundary_enforcement`
-  (in start-context.json) AND the agent-authored handover ON DISK - that deployed-tree on-disk assertion
-  is the load-bearing floor for the whole iteration.
+  iteration. **The live-wiring floor is the LOAD-BEARING assertion (human-specified 2026-06-09), run in a
+  real scratch project, PER INJECTING HOST:** (1) SessionStart writes `boundary_enforcement` ON DISK (in
+  start-context.json); (2) a working turn + Stop captures the iteration intent into `last-start-prompt.md`
+  + the agent-authored handover ON DISK; (3) a FRESH resume READS them back. That deployed-tree on-disk
+  round-trip is what catches every dev-tree-only "works" claim, and it gates the whole iteration.
 - **Process**: iteration 6 = a SUBSTANTIAL design pass first -> the before-implement gate. Apply the
   standing floors (validator EXIT 0 before every boundary); make the deployed live-wiring floor the
   load-bearing one. STOP was taken before the design pass per the human.
