@@ -204,8 +204,10 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
 - **FR-008**: When Proposal 162 product-level context exists, the feature-level
   product-domain lens MUST inherit it and record only deltas, contradictions, or
   accepted updates. *DEFERRED because 162 is unshipped; the lens records feature-only
-  context now and is shaped to accept inherited context later.* Owner: Implementer.
-  Window: deferred (post-162).
+  context now and is shaped to accept inherited context later.* The structured record
+  MUST carry a stable optional `product_id` / `product_context_ref` field as the
+  forward-compatible inheritance hook (shape only, schema-validated; no inheritance
+  behavior built now). Owner: Implementer. Window: deferred (post-162), hook this iteration.
 - **FR-009**: Batch approval of the lens agenda MUST NOT count as product-domain
   confirmation. Owner: Reviewer/Implementer. Window: Iteration 001.
 - **FR-010**: The specify-boundary gate MUST require a valid product-domain record —
