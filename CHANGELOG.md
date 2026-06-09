@@ -6,6 +6,15 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.33.0-beta2] - 2026-06-09
+
+### Fixed
+
+- **Bug bash — GitHub Actions Node 24 readiness (#2214 / #2080).** Updated active workflows, Squad workflow templates, and bundled GitHub templates to current Node 24 JavaScript action majors, and added a deterministic stale-pin guard.
+- **Bug bash — Claude-only `specrew-gate-stop` deployment (#2215 / #2083).** Scoped the boundary verdict packet collapse fix to Claude so non-Claude hosts keep their normal rendering path.
+- **Bug bash — iteration `state.md` truth (#2216 / #2213).** Kept iteration state aligned with task-progress transitions and added stale-state checks around review/recovery flows.
+- **Bug bash — workshop confirmation integrity (#2217 / #2212).** Required scoped per-lens workshop confirmation evidence, blocked agenda/lens approval from masquerading as workshop-question approval, and tightened the dogfood gap that allowed a batch "Confirm all as proposed" shortcut to replace per-lens interaction.
+
 ## [0.33.0-beta1] - 2026-06-08
 
 ### Added

@@ -618,6 +618,13 @@ function Sync-IterationTaskProgress {
         Write-Utf8FileAtomic -Path $path -Content $content
     }
 
+    Update-IterationStateFromTaskProgress `
+        -ProjectRoot $ProjectRoot `
+        -FeatureRef $effectiveFeatureRef `
+        -IterationNumber $IterationNumber `
+        -Tasks $tasks `
+        -ResolvedFeaturePath $ResolvedFeaturePath | Out-Null
+
     return [pscustomobject]@{
         Path      = $path
         FeatureRef = $effectiveFeatureRef

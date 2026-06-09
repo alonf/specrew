@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.33.0--beta1-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.33.0--beta2-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
@@ -146,7 +146,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 ## Status
 
 - **Latest stable baseline**: 0.32.0 — stable promotion of the F-141/F-170/F-165/F-172 line after beta-before-stable validation; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: 0.33.0-beta1 (F-171 — Specrew Refocus: the `/specrew-refocus` slash command + event-driven auto-refocus via host hooks that re-load scoped methodology discipline after compaction, on launch, and at boundary crossings)
+- **Active development line**: 0.33.0-beta2 (bug-bash fixes for Node 24 GitHub Actions pins, Claude-only gate-stop deployment, iteration `state.md` truth, and per-lens workshop confirmation integrity)
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.

@@ -303,7 +303,7 @@
             # time. The NEXT feature bumps ModuleVersion + sets a new prerelease label here.
             # NOTE: PowerShell/PSGallery prerelease labels may NOT contain a dot — only [a-zA-Z0-9] and a
             # leading hyphen. Use dotless forms (beta1, rc1); a dotted 'beta.1' normalizes to 'beta1'.
-            Prerelease = 'beta1'
+            Prerelease = 'beta2'
             Tags = @('specrew', 'specification', 'squad', 'ai-workflow', 'governance')
             ProjectUri = 'https://github.com/alonf/specrew'
             LicenseUri = 'https://github.com/alonf/specrew/blob/main/LICENSE'

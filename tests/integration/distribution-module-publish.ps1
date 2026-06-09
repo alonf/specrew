@@ -156,6 +156,49 @@ foreach ($pattern in @(
 Write-Pass 'Dry-run release summary records the manual-gated WhatIf path.'
 
 Reset-ReleaseWorkspace -SourceRoot $repoRoot -DestinationRoot $workspaceRoot
+$prereleaseSummaryPath = Join-Path -Path $scratchRoot -ChildPath 'release-summary-prerelease.md'
+$workspaceManifestPath = Join-Path -Path $workspaceRoot -ChildPath 'Specrew.psd1'
+$workspaceManifestContent = Get-Content -LiteralPath $workspaceManifestPath -Raw -Encoding UTF8
+$workspaceManifestWithPrerelease = [regex]::Replace(
+    $workspaceManifestContent,
+    "(?m)^(\s*Prerelease\s*=\s*)'[^']*'\s*$",
+    '$1''beta2''',
+    1
+)
+if ($workspaceManifestWithPrerelease -eq $workspaceManifestContent -and $workspaceManifestContent -notmatch "Prerelease\s*=\s*'beta2'") {
+    Write-Fail 'Could not prepare an already-stamped prerelease manifest fixture.'
+    exit 1
+}
+[System.IO.File]::WriteAllText($workspaceManifestPath, $workspaceManifestWithPrerelease, [System.Text.UTF8Encoding]::new($false))
+
+$prereleaseDryRunOutput = @(
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File $releaseScript `
+        -RepositoryRoot $workspaceRoot `
+        -ReleaseMode dry-run `
+        -GitRefType tag `
+        -GitRefName ('{0}-beta2' -f $expectedTag) `
+        -SummaryPath $prereleaseSummaryPath 2>&1
+)
+$prereleaseDryRunExitCode = $LASTEXITCODE
+
+if ($prereleaseDryRunExitCode -ne 0) {
+    Write-Fail ("Dry-run prerelease flow failed with exit code {0}. Output:`n{1}" -f $prereleaseDryRunExitCode, ($prereleaseDryRunOutput -join [Environment]::NewLine))
+    exit 1
+}
+
+$prereleaseSummaryContent = Get-Content -LiteralPath $prereleaseSummaryPath -Raw -Encoding UTF8
+foreach ($pattern in @(
+        ('Published version: `{0}-beta2`' -f $expectedVersion),
+        'Manifest prerelease field: `beta2`'
+    )) {
+    if ($prereleaseSummaryContent -notmatch [regex]::Escape($pattern)) {
+        Write-Fail ("Dry-run prerelease summary missed expected text '{0}'." -f $pattern)
+        exit 1
+    }
+}
+Write-Pass 'Dry-run release flow accepts an already-stamped prerelease manifest.'
+
+Reset-ReleaseWorkspace -SourceRoot $repoRoot -DestinationRoot $workspaceRoot
 $publishModeOutput = @(
     & pwsh -NoProfile -ExecutionPolicy Bypass -File $releaseScript `
         -RepositoryRoot $workspaceRoot `
