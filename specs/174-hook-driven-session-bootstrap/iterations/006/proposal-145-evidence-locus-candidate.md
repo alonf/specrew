@@ -2,7 +2,7 @@
 
 > **STATUS: DRAFT candidate — file to `proposals/` on `main`, NOT this feature branch.**
 > This is the T040 deliverable: the GENERALIZED reviewer-family rule. It is to be reconciled INTO
-> Proposal 145 (the Structured Multi-Phase Reviewer) on the **#2216 rebase**, then committed to `main`
+> Proposal 145 (the Structured Multi-Phase Reviewer) on the **F-174 rebase to main**, then committed to `main`
 > as a proposals-dir change (per the proposals-go-to-main discipline). It is captured here in the
 > iteration workspace so it does not contaminate the feature branch's `proposals/` tree.
 
@@ -42,7 +42,7 @@ enforcement, deliberately deferred to the 145 family rather than hand-coded into
 
 ## Reconcile / sequencing
 
-- Reconcile into Proposal 145 (Structured Multi-Phase Reviewer) on the **#2216 rebase**; do not file as a
+- Reconcile into Proposal 145 (Structured Multi-Phase Reviewer) on the **F-174 rebase to main**; do not file as a
   standalone proposal (maintainer instruction: "file as a Proposal-145 reviewer-family candidate, not
   standalone").
 - Coded enforcement ships when the 145 reviewer family ships; until then the discipline is carried by the
