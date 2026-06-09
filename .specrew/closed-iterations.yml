@@ -236,3 +236,6 @@ closed:
   - feature: 174-hook-driven-session-bootstrap
     iteration: 003
     closed_at: 2026-06-08T22:56:21Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 004
+    closed_at: 2026-06-09T12:22:42Z

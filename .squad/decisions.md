@@ -1,3 +1,63 @@
+## 2026-06-09 — F-174 iteration-004 closeout: carried maintainer instructions
+
+### 2026-06-09 — Constraint: iteration-005 must ship the mechanical handover-detector (mechanism, not pledge)
+
+- **Decision ID**: f174-i005-mechanical-detector-in-scope
+- **Type**: planning-constraint
+- **Affected Requirement**: FR-009 / FR-021 (handover body authoring)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T12:22:42Z
+- **Constraint**: Apply improvement-action-4's "mechanism, not another behavioral pledge" lesson to
+  iteration 5's OWN design. The Stop hook is transcript-blind, so only the agent can author the rich
+  handover body; therefore the iter-5 mechanism is TWO coupled parts, BOTH required:
+  - **(a) couple persist-to-render**: the agent authors the body INTO session-handover.md and renders
+    the re-entry / boundary packet FROM that file, so the persisted body and the rendered packet cannot
+    diverge (one source of truth, not two hand-synced copies).
+  - **(b) a mechanical detector**: the validator and/or bootstrap WARNS or FAILS when a boundary's
+    handover body is still the placeholder. Without (b), iteration 5 can ship hollow and the only catch
+    is another manual dogfood - exactly the gap action 4 names.
+- Must be recorded in the iteration-005 plan BEFORE building (not just in this ledger).
+
+### 2026-06-09 — Gate: reconcile action-4 validator chore with beta-2 PR #2216 before filing
+
+- **Decision ID**: f174-action4-reconcile-with-2216
+- **Type**: validator-chore-gate
+- **Affected Requirement**: state-truth validator (stale-status check)
+- **Recorded At**: 2026-06-09T12:22:42Z
+- **Gate**: Before filing improvement-action-4's validator chore (extend validate-governance's
+  stale-status check to ALSO fail on state.md Current Phase / Iteration Status lag), reconcile with
+  beta-2 PR #2216, which already adds an iteration-state-truth check. Confirm whether #2216 covers
+  state.md and at which boundary; file ONLY the genuine residual gap (likely: extend it to the retro
+  boundary), NOT a duplicate. Gated until the F-174 rebase brings #2216 into the branch.
+
+### 2026-06-09 — Directive: feature-closeout rebase = "F-174 must pass beta-2's gates"
+
+- **Decision ID**: f174-rebase-revalidate-against-beta2-gates
+- **Type**: closeout-directive
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap (feature-closeout)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T12:22:42Z
+- **Directive**: Treat the F-174 feature-closeout rebase onto the new main as "F-174 must PASS beta-2's
+  gates," not merely conflict resolution. Beta-2 PR #2217 adds workshop confirmation_scope; F-174's own
+  specify-stage lens-applicability.json predates it and may now FAIL the new gate. Post-rebase,
+  re-validate F-174's OWN artifacts against the new gates (#2216 state-truth, #2217 workshop scope) and
+  fix any failures BEFORE opening the PR. Links f174-closeout-no-beta-local-install (no beta-publish).
+
+### 2026-06-09 — Proposal-candidate: workshop-hardening (non-skippable; advisor-not-consulted; right-size floor)
+
+- **Decision ID**: f174-workshop-hardening-proposal-scope
+- **Type**: proposal-candidate
+- **Affected Requirement**: design-workshop governance (separate proposal; NOT iteration 5)
+- **Recorded At**: 2026-06-09T12:22:42Z
+- **Root cause (greenfield dogfood)**: the agent routed a MANDATORY-governance decision (run the design
+  workshop) to the Specrew-ignorant host advisor, which advised skipping it; the hard gate then forced a
+  single thin lens. The hardening proposal must establish: (1) the design workshop is NON-SKIPPABLE;
+  (2) the host advisor must NOT be consulted on whether to skip a governance step (right-sizing depth is
+  fine, skipping the step is not); (3) right-sizing needs a FLOOR (lens-coverage floor + human-confirmed
+  skips). SEPARATE from iteration 5; sequence after beta-2 #2217 lands. Links the prior
+  workshop-delegate-all-collapse finding.
+
 ## 2026-06-09 — F-174 feature-closeout directives (no beta-publish; local-install validation)
 
 ### 2026-06-09 — Directive: ship 1-4 via push/PR/merge but DO NOT beta-publish
@@ -25719,3 +25779,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: b5f2c6df
 - **Recorded At**: 2026-06-08T23:41:15Z
+
+## 2026-06-09T07:28:48Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9bfcd9d0
+- **Recorded At**: 2026-06-09T07:28:47Z
