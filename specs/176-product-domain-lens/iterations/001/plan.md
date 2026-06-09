@@ -1,8 +1,8 @@
-# Iteration Plan: 001 (Stub)
+# Iteration Plan: 001
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: reviewing
 **Capacity**: 14.0/20 story_points
 **Started**: 2026-06-09
 **Completed**:
@@ -42,21 +42,21 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Lens file product-domain.md | FR-002, FR-003, FR-004, FR-012, FR-014 | US1 | 2 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/product-domain.md | planned | claude | — | — |
-| T002 | First-stage catalog registration | FR-001 | US1 | 0.5 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/index.yml | planned | claude | — | — |
-| T003 | Structured-record schema | FR-004, FR-007, FR-008, FR-014, SC-008, SC-009 | US3 | 1 | Implementer | specs/176-product-domain-lens/contracts/product-domain.schema.json | planned | claude | — | — |
-| T004 | Record writer/validator | FR-002, FR-005, FR-006, FR-011, SC-002, SC-004, SC-006 | US1 | 2 | Implementer | scripts/internal/product-domain-lens.ps1 | planned | claude | — | — |
-| T005 | First-stage phase conduct | FR-001, FR-006, FR-012, SC-001 | US1 | 1.5 | Implementer | .claude/skills/specrew-design-workshop/SKILL.md | planned | claude | — | — |
-| T006 | Test: runs before questionnaire | FR-001, SC-001 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
-| T007 | Test: adaptive depth L/S/D | FR-002, SC-002 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
-| T008 | Test: evidence tags + research-block | FR-004, FR-011, SC-003, SC-006 | US1 | 0.75 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
-| T009 | Test: dual-artifact persistence | FR-005, SC-004 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
-| T010 | Specify-gate floor | FR-009, FR-010, SC-004, SC-005 | US2 | 1.5 | Reviewer | scripts/internal/design-analysis-gate.ps1 | planned | claude | — | — |
-| T011 | Test: batch approval rejected | FR-009, SC-005 | US2 | 0.5 | Reviewer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
-| T012 | Multi-host conduct deploy | FR-013, SC-007 | US3 | 1 | Implementer | .agents/skills/specrew-design-workshop/SKILL.md | planned | claude | — | — |
-| T013 | Test: schema hooks | FR-007, FR-008, FR-014, SC-008, SC-009 | US3 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
-| T014 | Test: host-skill parity | FR-013, SC-007 | US3 | 0.75 | Implementer | tests/integration/product-domain-multihost.tests.ps1 | planned | claude | — | — |
-| T015 | Test: graceful degradation (no silent skip) | FR-010, FR-013 | US3 | 0.5 | Reviewer | tests/unit/product-domain-lens.tests.ps1 | planned | claude | — | — |
+| T001 | Lens file product-domain.md | FR-002, FR-003, FR-004, FR-012, FR-014 | US1 | 2 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/product-domain.md | done | claude | as-planned | — |
+| T002 | First-stage catalog registration | FR-001 | US1 | 0.5 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/index.yml | done | claude | as-planned | — |
+| T003 | Structured-record schema | FR-004, FR-007, FR-008, FR-014, SC-008, SC-009 | US3 | 1 | Implementer | specs/176-product-domain-lens/contracts/product-domain.schema.json | done | claude | as-planned | — |
+| T004 | Record writer/validator | FR-002, FR-005, FR-006, FR-011, SC-002, SC-004, SC-006 | US1 | 2 | Implementer | scripts/internal/product-domain-lens.ps1 | done | claude | as-planned | — |
+| T005 | First-stage phase conduct | FR-001, FR-006, FR-012, SC-001 | US1 | 1.5 | Implementer | .claude/skills/specrew-design-workshop/SKILL.md | done | claude | as-planned | — |
+| T006 | Test: runs before questionnaire | FR-001, SC-001 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | done | claude | as-planned | — |
+| T007 | Test: adaptive depth L/S/D | FR-002, SC-002 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | done | claude | as-planned | — |
+| T008 | Test: evidence tags + research-block | FR-004, FR-011, SC-003, SC-006 | US1 | 0.75 | Implementer | tests/unit/product-domain-lens.tests.ps1 | done | claude | as-planned | — |
+| T009 | Test: dual-artifact persistence | FR-005, SC-004 | US1 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | done | claude | as-planned | — |
+| T010 | Specify-gate floor | FR-009, FR-010, SC-004, SC-005 | US2 | 1.5 | Reviewer | scripts/internal/design-analysis-gate.ps1 | done | claude | as-planned | — |
+| T011 | Test: batch approval rejected | FR-009, SC-005 | US2 | 0.5 | Reviewer | tests/unit/product-domain-lens.tests.ps1 | done | claude | as-planned | — |
+| T012 | Multi-host conduct deploy | FR-013, SC-007 | US3 | 1 | Implementer | .agents/skills/specrew-design-workshop/SKILL.md | done | claude | as-planned | — |
+| T013 | Test: schema hooks | FR-007, FR-008, FR-014, SC-008, SC-009 | US3 | 0.5 | Implementer | tests/unit/product-domain-lens.tests.ps1 | done | claude | as-planned | — |
+| T014 | Test: host-skill parity | FR-013, SC-007 | US3 | 0.75 | Implementer | tests/integration/product-domain-multihost.tests.ps1 | done | claude | as-planned | — |
+| T015 | Test: graceful degradation (no silent skip) | FR-010, FR-013 | US3 | 0.5 | Reviewer | tests/unit/product-domain-lens.tests.ps1 | done | claude | as-planned | — |
 
 ## Effort Model
 
