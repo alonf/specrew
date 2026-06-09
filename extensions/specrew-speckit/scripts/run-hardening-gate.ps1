@@ -287,6 +287,16 @@ function Merge-HardeningConcernRows {
             }
         }
 
+        # evidence_locus convention (F-174 T040; D-009 lesson). At the iteration REVIEW, this cell records
+        # the captured runtime evidence AND its LOCUS: `evidence_locus: deployed` (a real installed-module
+        # run) vs `evidence_locus: dev-tree` (the source tree). The review REFUSES a "delivered-live" /
+        # runtime-recorded verdict on dev-tree-only evidence - a floor that runs only in the dev tree is not
+        # a live-wiring guarantee. The cell is FREE-TEXT and PRESERVED across re-runs (the existing value
+        # below wins when present), so the convention needs no enum or schema-column change here. The
+        # GENERALIZED, coded reviewer-family enforcement (a structured evidence_locus field on the Proposal-145
+        # claim ledger + a structured-reviewer refusal) is filed as the Proposal-145 reviewer-family candidate,
+        # reconciled on the #2216 rebase - NOT now-code, to avoid an unevidenced "delivered-live" change to
+        # this shared validator.
         $existingRuntimeEvidenceStatus = if ($null -ne $existingRow) { [string]$existingRow.RuntimeEvidenceStatus } else { $null }
         $runtimeEvidenceStatus = Normalize-MarkdownCell $existingRuntimeEvidenceStatus
         if (Test-IsNullish $runtimeEvidenceStatus) {

@@ -64,7 +64,7 @@ function Test-SpecrewHandoverValidity {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
     param(
-        [Parameter()][AllowNull()]$Handover,            # from Get-SpecrewHandover, or $null
+        [Parameter()][AllowNull()]$Handover,            # from Get-SpecrewRollingHandover, or $null
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter()][string] $BaseBranch = 'main'
     )

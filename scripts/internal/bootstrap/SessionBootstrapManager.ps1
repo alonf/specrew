@@ -87,6 +87,7 @@ function Invoke-SpecrewSessionBootstrap {
         -Mode $mode.mode `
         -DedupeKey $dedupeKey `
         -ValidationFindings $allFindings `
+        -RequiredReads @('.specrew/last-start-prompt.md', '.specrew/start-context.json') `
         -Handover $handoverDirective `
         -Sources ([pscustomobject]@{ anchor_present = ($null -ne $validity.anchor); handover_valid = $handoverValid; concurrent_session = $concurrent })
 
@@ -114,4 +115,84 @@ function Invoke-SpecrewSessionBootstrap {
         record    = $record
         validity  = $validity
     }
+}
+
+function Write-SpecrewLaunchContractArtifact {
+    <#
+    .SYNOPSIS
+      FR-023: hand the agent the SAME launch contract `specrew start` does, by REUSING its generator.
+    .DESCRIPTION
+      The hook DRIVES (not merely orients): it writes the full launch contract (Get-StartPrompt) to
+      `.specrew/last-start-prompt.md` and ensures `boundary_enforcement` in `.specrew/start-context.json`,
+      so a host launched WITHOUT `specrew start` inherits the same governed contract + state. NON-LAUNCHER:
+      it writes ONLY those two artifacts via narrow atomic writes - never the git baseline, session
+      frontmatter, host selection, or approval/launch mode that `Save-StartArtifacts` (a launcher monolith)
+      owns. Launcher-only context the hook has no scan for (roster/routing/project state) is passed as
+      EMPTY-SHAPED stubs - not null - so the SHARED generator stays byte-identical (no drift) on its
+      null-safe paths; the invariant ~48-rule contract is unaffected. Depends on Get-StartPrompt
+      (launch-contract.ps1), Get-/Initialize-SpecrewBoundaryEnforcementState + Write-Utf8FileAtomic
+      (shared-governance.ps1), and the coordinator-resume blocks - all dot-sourced into scope by the
+      provider alongside the bootstrap components. The provider's fail-open try/catch is the backstop: a
+      broken deployed resolution surfaces as no-write (caught by the T038 deployed floor), never a hang.
+    .OUTPUTS
+      [string] the last-start-prompt.md path written.
+    #>
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $Mode,
+        [AllowNull()][pscustomobject] $SessionState
+    )
+
+    # The hook's anchor (Get-SpecrewSessionAnchor) and the generator's resume block use DIFFERENT field
+    # names: the anchor carries `boundary`/`iteration` (and no `task_id`), while Get-StartPrompt's resume
+    # block reads `boundary_type`/`iteration_number`/`task_id` (+ feature_ref/feature_path). Map the anchor
+    # into the SHAPE the generator reads so it never throws under StrictMode-Latest on an absent property
+    # (a raw anchor would throw on three fields -> provider fail-open -> silent no-contract = the D-009
+    # trap). Get-SpecrewProp returns $null for any absent field; the SHARED generator stays untouched.
+    $generatorSessionState = $null
+    if ($null -ne $SessionState) {
+        $generatorSessionState = [pscustomobject]@{
+            feature_ref      = Get-SpecrewProp $SessionState 'feature_ref'
+            feature_path     = Get-SpecrewProp $SessionState 'feature_path'
+            boundary_type    = Get-SpecrewProp $SessionState 'boundary'
+            iteration_number = Get-SpecrewProp $SessionState 'iteration'
+            task_id          = Get-SpecrewProp $SessionState 'task_id'
+        }
+    }
+    $featurePath = [string](Get-SpecrewProp $generatorSessionState 'feature_path')
+    $currentBoundary = $null
+    $boundaryValue = Get-SpecrewProp $generatorSessionState 'boundary_type'
+    if (-not [string]::IsNullOrWhiteSpace([string]$boundaryValue)) { $currentBoundary = [string]$boundaryValue }
+
+    # Empty-shaped launcher-only context (the hook makes no casting/routing/project-scan decisions). NOT
+    # null: Get-RoutingPlanPromptBlock calls $RoutingPlan.roles.GetEnumerator() which throws on a null
+    # `.roles`, so a shaped-empty object keeps the SHARED generator on its self-contained path untouched.
+    $contract = Get-StartPrompt `
+        -ResolvedProjectPath $ProjectRoot `
+        -Mode $Mode `
+        -FeatureRequest '' `
+        -ResolvedFeaturePath $featurePath `
+        -TeamRoster ([pscustomobject]@{ mode = 'none' }) `
+        -RoutingPlan ([pscustomobject]@{ enabled_agents = @(); roles = @{}; fallback_events = @() }) `
+        -ProjectState ([pscustomobject]@{ state = 'active'; spec_directories = @(); detected_entries = @() }) `
+        -BrownfieldDiscovery $null `
+        -DeliveryGuidance $null `
+        -SessionState $generatorSessionState `
+        -RecoverySession $null
+
+    $promptPath = Join-Path $ProjectRoot '.specrew/last-start-prompt.md'
+    $specrewDir = Split-Path -Parent $promptPath
+    if ($specrewDir -and -not (Test-Path -LiteralPath $specrewDir)) {
+        New-Item -ItemType Directory -Path $specrewDir -Force | Out-Null
+    }
+    Write-Utf8FileAtomic -Path $promptPath -Content ($contract + [Environment]::NewLine)
+
+    # Preserve-merge: initialize boundary_enforcement ONLY when absent; never clobber an existing block (a
+    # prior `specrew start` / session). Get-/Initialize- own start-context.json I/O + key preservation.
+    $beState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($null -eq $beState.State) {
+        Initialize-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot -CurrentBoundary $currentBoundary | Out-Null
+    }
+
+    return $promptPath
 }

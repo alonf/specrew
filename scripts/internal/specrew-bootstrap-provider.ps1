@@ -24,9 +24,17 @@ function Get-BootstrapProjectRoot {
 function Format-BootstrapDirective {
     param($Result)
     $d = $Result.directive
+    $reads = @($d.required_reads)
+    $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
+    $stateRead = if ($reads.Count -ge 2 -and -not [string]::IsNullOrWhiteSpace([string]$reads[1])) { [string]$reads[1] } else { '.specrew/start-context.json' }
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
+    # FR-002/FR-023: DRIVE (not merely orient) - point the agent at the on-disk launch contract specrew start
+    # would have written and require it to FOLLOW the governed lifecycle. This is the iter-6 upgrade over the
+    # iter-5 thin orient/menu directive: the agent loads the full ~48-rule contract + governance, so it cannot
+    # skip the workshop or drive from raw Spec Kit scripts.
+    $lines.Add(("DRIVE this session from the governed contract (FR-023): READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, and policy classes) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts." -f $contractRead, $stateRead))
     if ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
         if ($d.handover.placeholder) {
             $lines.Add('[!] HOLLOW HANDOVER - the previous session did NOT author a handover body (the rolling handover is a placeholder). Your resume context is REDUCED to the lifecycle artifacts + git state. Re-derive the situation from the artifacts; do NOT present rich resume context you do not actually have. You are the backstop - surface this gap to the human.')
@@ -39,7 +47,7 @@ function Format-BootstrapDirective {
             }
         }
     }
-    $lines.Add('On your FIRST response - REGARDLESS of the user''s first message (even a task such as "create a feature ...") - LEAD with this orientation, THEN act on their request. Never skip it.')
+    $lines.Add('On your FIRST response - REGARDLESS of the user''s first message (even a task such as "create a feature ...") - LEAD with the orientation drawn from the contract you just read, THEN act on their request. Never skip it.')
     $lines.Add('Render, in order: (1) orientation - Specrew version, host, project, branch, lifecycle position; (2) any validated handover summary; (3) a one-line state reason when non-default; (4) a brief recommended next step for THIS state; (5) the Resume / New / Pick-feature menu as TEXT. Offer Resume only when a valid active session exists.')
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
@@ -84,6 +92,18 @@ try {
         . (Join-Path $bdir "$f.ps1")
     }
 
+    # FR-023: the hook hands the agent the SAME launch contract `specrew start` does, via the SAME
+    # generator (Get-StartPrompt) - no second hand-rolled directive (no drift). Resolve the generator +
+    # its transitive deps through the SAME 3-tier chain that found $bdir (co-located | SPECREW_MODULE_PATH |
+    # installed module): launch-contract.ps1 + coordinator-resume.ps1 live in scripts/internal;
+    # shared-governance.ps1 (boundary policy-class map + boundary_enforcement state) lives in the extension
+    # scripts tree. Deriving from $bdir inherits the bootstrap components' proven deployed resolution.
+    $internalDir = Split-Path $bdir -Parent
+    $moduleRoot = Split-Path (Split-Path $internalDir)
+    . (Join-Path $internalDir 'launch-contract.ps1')
+    . (Join-Path $internalDir 'coordinator-resume.ps1')
+    . (Join-Path (Join-Path $moduleRoot 'extensions/specrew-speckit/scripts') 'shared-governance.ps1')
+
     # Launcher<->hook dedupe (FR-007, SC-002): if `specrew start` just bootstrapped this session,
     # stay silent so the startup yields exactly one bootstrap surface.
     $nowUtc = (Get-Date).ToUniversalTime().ToString('o')
@@ -91,6 +111,13 @@ try {
 
     $journalPath = Join-Path $root '.specrew/runtime/bootstrap-journal.jsonl'
     $result = Invoke-SpecrewSessionBootstrap -RawEvent $eventJson -HostName claude -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
+
+    # FR-023: the hook DRIVES - write the SAME launch contract + ensure boundary_enforcement on disk. The
+    # manager component owns this logic (Write-SpecrewLaunchContractArtifact); the adapter invokes it here
+    # so the pure classification path (Invoke-SpecrewSessionBootstrap) stays test-isolated from the
+    # generator's StrictMode-Latest dependency tree. Inside the fail-open try: a broken deployed resolution
+    # surfaces as no-write + exit 0 (caught by the T038 deployed floor), never a blocked session.
+    Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor | Out-Null
 
     Write-Output (Format-BootstrapDirective -Result $result)
     exit 0
