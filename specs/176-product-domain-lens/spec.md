@@ -53,6 +53,31 @@ skipped or satisfied by a batch "confirm all" answer.
   workshop phase ahead of the selector or a row in `applicability-map.json` — is a
   design-analysis decision; this spec stays behavioral.
 
+## Clarifications
+
+### Session 2026-06-09
+
+- **Resolved in the intake design workshop (approved at the specify verdict):** the
+  enforcement model (extend the existing specify-gate with SC-026 provenance, not
+  conduct-only prose — FR-010); `research-needed` blocking (conditional, load-bearing
+  gaps only — FR-011); the lens id (`product-domain`); the per-feature artifact location
+  (`specs/<feature>/workshop/` — FR-005); and the build decomposition (the human-confirmed
+  component map in `lens-applicability.json` + `workshop/component-design.md`).
+- **Carried as the approve-with-instructions verdict:** the multi-host deploy wording
+  distinguishes the five supported hosts (Claude, Copilot/GitHub, Codex/Agents, Cursor,
+  Antigravity) from the four on-disk managed-skill surfaces; Antigravity is supported,
+  not excluded (FR-013, SC-007).
+- **Q — Does Light depth ask competitive/alternative questions?** **A (default):** No.
+  Light depth captures the current workaround and out-of-scope but does not require
+  competitive/alternative analysis — that lives in Standard/Deep. This matches the
+  proposal's depth model and the "no mandatory competitive analysis for small internal
+  tools" out-of-scope line (now reflected in FR-003).
+- **Sizing:** single iteration; proposal estimate 6-10 SP; capacity planning confirms at
+  plan time (maintainer-approved).
+- **No remaining material ambiguities** require a human clarify question — the interactive
+  workshop already resolved the open design questions, so this clarify pass records
+  resolutions rather than opening new ones (clarify discipline #3).
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Product-first grounding before any technical lens (Priority: P1)
@@ -157,8 +182,10 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
 - **FR-003**: The lens MUST capture, at the selected depth, the product/problem
   context: users and stakeholders (separating user / customer-buyer / operator /
   stakeholder when they differ), pain/job and current workaround or existing system,
-  constraints, MVP / non-goals / vision, intended outcomes, and alternatives /
-  competitors. Owner: Implementer. Window: Iteration 001.
+  constraints, MVP / non-goals / vision, intended outcomes, and — at Standard/Deep
+  depth — alternatives / competitors; Light depth records the current workaround and
+  out-of-scope without requiring competitive analysis. Owner: Implementer.
+  Window: Iteration 001.
 - **FR-004**: The lens MUST tag material product-domain statements with an evidence
   quality from {`known`, `assumed`, `unknown`, `research-needed`}. Owner: Implementer.
   Window: Iteration 001.
