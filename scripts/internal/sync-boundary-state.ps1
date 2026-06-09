@@ -529,6 +529,200 @@ function Write-FileAtomically {
     }
 }
 
+function Get-SpecrewMarkdownMetadataValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$Content,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Label
+    )
+
+    $pattern = '(?m)^\*\*' + [regex]::Escape($Label) + '\*\*:\s*(?<value>.+?)\s*$'
+    $match = [regex]::Match($Content, $pattern)
+    if ($match.Success) {
+        return $match.Groups['value'].Value.Trim()
+    }
+
+    return $null
+}
+
+function Test-SpecrewNullishMarkdownValue {
+    param([AllowNull()][string]$Value)
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return $true
+    }
+
+    return ($Value.Trim() -match '^(?:—|-|none|null|n/a|\(none\)|blank|\(populate from plan\.md\))$')
+}
+
+function Resolve-SpecrewIterationStateTruthDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$FeaturePath,
+
+        [AllowNull()]
+        [string]$IterationNumber
+    )
+
+    if (-not (Test-Path -LiteralPath $FeaturePath -PathType Container)) {
+        return $null
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($IterationNumber)) {
+        $candidate = Join-Path $FeaturePath ('iterations\{0}' -f (Normalize-SpecrewIterationNumber -IterationNumber $IterationNumber))
+        if (Test-Path -LiteralPath $candidate -PathType Container) {
+            return (Get-Item -LiteralPath $candidate)
+        }
+
+        return $null
+    }
+
+    $iterationsRoot = Join-Path $FeaturePath 'iterations'
+    if (-not (Test-Path -LiteralPath $iterationsRoot -PathType Container)) {
+        return $null
+    }
+
+    return @(
+        Get-ChildItem -LiteralPath $iterationsRoot -Directory |
+            Sort-Object Name -Descending |
+            Select-Object -First 1
+    )[0]
+}
+
+function Get-SpecrewIterationStateTruthIssues {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [AllowNull()]
+        [string]$FeatureRef,
+
+        [AllowNull()]
+        [string]$FeaturePath,
+
+        [AllowNull()]
+        [string]$IterationNumber,
+
+        [switch]$RequireStateFile
+    )
+
+    $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
+    $effectiveFeaturePath = $FeaturePath
+    if ([string]::IsNullOrWhiteSpace($effectiveFeaturePath) -and -not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+        $effectiveFeaturePath = Resolve-SpecrewFeatureDirectory -ProjectRoot $resolvedProjectRoot -FeatureRef $FeatureRef
+    }
+
+    if ([string]::IsNullOrWhiteSpace($effectiveFeaturePath)) {
+        return @()
+    }
+
+    $iterationDirectory = Resolve-SpecrewIterationStateTruthDirectory -FeaturePath $effectiveFeaturePath -IterationNumber $IterationNumber
+    if ($null -eq $iterationDirectory) {
+        return @()
+    }
+
+    $statePath = Join-Path $iterationDirectory.FullName 'state.md'
+    $evidenceRelativePaths = @(
+        'code-map.md'
+        'coverage-evidence.md'
+        'dashboard.md'
+        'dependency-report.md'
+        'review-diagrams.md'
+        'reviewer-index.md'
+        'review.md'
+    )
+    $evidenceFiles = @(
+        foreach ($relativePath in $evidenceRelativePaths) {
+            $candidate = Join-Path $iterationDirectory.FullName $relativePath
+            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                $relativePath
+            }
+        }
+    )
+
+    if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+        if ($RequireStateFile -and $evidenceFiles.Count -gt 0) {
+            return @("Iteration state truth mismatch: '$statePath' is missing while implementation/review evidence exists: $($evidenceFiles -join ', ').")
+        }
+
+        return @()
+    }
+
+    $issues = [System.Collections.Generic.List[string]]::new()
+    $stateContent = Get-Content -LiteralPath $statePath -Raw -Encoding UTF8
+    $currentPhase = Get-SpecrewMarkdownMetadataValue -Content $stateContent -Label 'Current Phase'
+    $iterationStatus = Get-SpecrewMarkdownMetadataValue -Content $stateContent -Label 'Iteration Status'
+    $lastCompletedTask = Get-SpecrewMarkdownMetadataValue -Content $stateContent -Label 'Last Completed Task'
+    $tasksRemaining = Get-SpecrewMarkdownMetadataValue -Content $stateContent -Label 'Tasks Remaining'
+    $inProgress = Get-SpecrewMarkdownMetadataValue -Content $stateContent -Label 'In Progress'
+    $hasLastCompletedTask = $null -ne $lastCompletedTask
+    $hasTasksRemaining = $null -ne $tasksRemaining
+    $hasInProgress = $null -ne $inProgress
+    $summarySaysNotStarted = ($stateContent -match '(?im)^\s*-\s*Execution has not started yet\.?\s*$')
+    $hasEvidence = ($evidenceFiles.Count -gt 0)
+    $phaseImpliesProgress = (-not [string]::IsNullOrWhiteSpace($currentPhase) -and $currentPhase -notin @('tasks', 'before-implement', 'planning', 'not-started'))
+    $statusImpliesProgress = (-not [string]::IsNullOrWhiteSpace($iterationStatus) -and $iterationStatus -notin @('planning', 'planned', 'not-started', 'scaffolded'))
+    $taskFieldsImplyProgress = ($hasLastCompletedTask -and -not (Test-SpecrewNullishMarkdownValue -Value $lastCompletedTask)) -or
+        ($hasInProgress -and -not (Test-SpecrewNullishMarkdownValue -Value $inProgress))
+    $scaffoldTaskFields = $hasLastCompletedTask -and $hasTasksRemaining -and $hasInProgress -and
+        (Test-SpecrewNullishMarkdownValue -Value $lastCompletedTask) -and
+        (Test-SpecrewNullishMarkdownValue -Value $inProgress) -and
+        (Test-SpecrewNullishMarkdownValue -Value $tasksRemaining)
+
+    if ($summarySaysNotStarted -and ($hasEvidence -or $phaseImpliesProgress -or $statusImpliesProgress -or $taskFieldsImplyProgress)) {
+        $reason = if ($hasEvidence) {
+            "evidence artifacts exist: $($evidenceFiles -join ', ')"
+        }
+        else {
+            "metadata says Current Phase='$currentPhase', Iteration Status='$iterationStatus', Last Completed Task='$lastCompletedTask', In Progress='$inProgress'"
+        }
+        $issues.Add(("Iteration state truth mismatch: '$statePath' still says 'Execution has not started yet.' even though {0}. Update Current Phase, Iteration Status, Last Completed Task, Tasks Remaining, In Progress, Updated, and Execution Summary through the normal task/gate path." -f $reason)) | Out-Null
+    }
+
+    if ($hasEvidence -and $scaffoldTaskFields) {
+        $issues.Add(("Iteration state truth mismatch: '$statePath' still has scaffold task fields while implementation/review evidence exists: {0}. State updates must happen during task execution/review, not only at closeout." -f ($evidenceFiles -join ', '))) | Out-Null
+    }
+
+    return $issues.ToArray()
+}
+
+function Invoke-SpecrewIterationStateTruthGate {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$BoundaryType,
+
+        [AllowNull()]
+        [string]$FeatureRef,
+
+        [AllowNull()]
+        [string]$IterationNumber
+    )
+
+    if ($BoundaryType -notin @('review-signoff', 'retro', 'iteration-closeout', 'feature-closeout')) {
+        return
+    }
+
+    $issues = @(Get-SpecrewIterationStateTruthIssues -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -RequireStateFile:($BoundaryType -eq 'review-signoff'))
+    if ($issues.Count -eq 0) {
+        return
+    }
+
+    $messageLines = [System.Collections.Generic.List[string]]::new()
+    $messageLines.Add(("[iteration-state-truth-gate] Boundary sync '{0}' refused because iteration state.md is stale or internally inconsistent." -f $BoundaryType)) | Out-Null
+    foreach ($issue in $issues) {
+        $messageLines.Add(("  - {0}" -f $issue)) | Out-Null
+    }
+    $messageLines.Add('') | Out-Null
+    $messageLines.Add('Repair state.md through the normal task-progress/resume/gate path or record an explicit send-back; do not let SessionEnd/on-exit silently rewrite lifecycle truth.') | Out-Null
+    throw ($messageLines -join "`n")
+}
+
 function Get-SpecrewCurrentHeadCommitHash {
     param(
         [Parameter(Mandatory = $true)]
@@ -1166,6 +1360,12 @@ function Invoke-SpecrewBoundaryStateSync {
             -FeatureRef $effectiveFeatureRef `
             -IterationNumber $effectiveIterationNumber | Out-Null
     }
+
+    Invoke-SpecrewIterationStateTruthGate `
+        -ProjectRoot $paths.ProjectRoot `
+        -BoundaryType $BoundaryType `
+        -FeatureRef $effectiveFeatureRef `
+        -IterationNumber $effectiveIterationNumber
 
     $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)

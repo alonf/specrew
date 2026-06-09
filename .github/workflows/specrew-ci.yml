@@ -230,6 +230,14 @@ jobs:
         shell: pwsh
         run: ./tests/integration/iteration-resume.ps1
 
+      - name: Integration - task progress tracking
+        shell: pwsh
+        run: ./tests/integration/task-progress-tracking.tests.ps1
+
+      - name: Integration - iteration state truth
+        shell: pwsh
+        run: ./tests/integration/iteration-state-truth.tests.ps1
+
       - name: Integration - planning effort model
         shell: pwsh
         run: ./tests/integration/planning-effort-model.ps1
