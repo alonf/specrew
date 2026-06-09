@@ -88,6 +88,11 @@ Claude and was redundant on prose hosts that render the agenda inline.)
 
    Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
    name); render the whole filled block in your message, THEN raise the confirm/adjust menu that references it.
+   **Agenda confirmation is not lens-question confirmation.** This confirm point approves only the selected
+   lens list and depths. It does NOT answer the lenses. Do NOT offer or accept a batch shortcut such as "Confirm
+   all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as
+   `human-confirmed` / `lens-question`. After the agenda is confirmed, every selected lens still needs its own
+   lens-specific turn and its own human answer, explicit delegation, or explicit skip.
 3. **Per-lens facilitated discussion — open with a presentation + an OPEN question, never a menu first (A4/FR-025, A8/FR-041b).**
    The **first turn of every lens** MUST be you *presenting* the lens — its decision points, and as it develops
    its diagram / component map — followed by an **open, free-text question** ("how should we approach this?",
@@ -96,6 +101,10 @@ Claude and was redundant on prose hosts that render the agenda inline.)
    `AskUserQuestion` tool-gravity failure). The structured menu is good UX and stays — but only **after** the
    lens's content is on screen, for a crisp discrete choice (e.g. the decomposition vocabulary in step 5). Binary
    test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
+   **One selected lens = one lens turn.** Do NOT bundle several selected lenses into one combined presentation
+   and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
+   already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
+   and wait for the human (or an explicit "you decide for this lens" / "skip this lens") before moving on.
    **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
    A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
    overwhelming **wall** if you present everything and end with one open question that secretly bundles five
@@ -193,12 +202,16 @@ Claude and was redundant on prose hosts that render the agenda inline.)
      surfaced and the human confirmed. Lens approval is not workshop-question approval. If the human explicitly
      said "you decide" or "skip" for that lens's questions, set `human-delegated` + `explicit-delegation` or
      `human-skipped` + `explicit-skip` and say so honestly in `decision` — do NOT write a fabricated "the human
-     agreed to X" for a lens they never saw. **Count self-check before you record:** you are about to write N
-     lens records — you must have asked, or been explicitly told to decide/skip, N times. If you stopped early,
-     go back and surface the rest; you may not declare intake "specific enough" and fill in the remaining lenses
-     yourself. The SC-026 gate blocks the specify boundary until every selected lens carries a `confirmation` and
-     matching `confirmation_scope` — but it cannot see transcript truthfulness; that integrity is on you, and the
-     Squad re-dogfood checks it.
+     agreed to X" for a lens they never saw. **A batch confirmation is not valid provenance:** if the human says
+     "confirm all as proposed" at the agenda or summary level, that confirms only the agenda/scope and cannot
+     produce `human-confirmed` / `lens-question` for any lens. If the human explicitly delegates a shortcut such
+     as "you decide the remaining lenses", record each affected lens as `human-delegated` +
+     `explicit-delegation`, not `human-confirmed`. **Count self-check before you record:** you are about to write
+     N lens records — you must have asked, or been explicitly told to decide/skip, N times, one lens at a time.
+     If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill in
+     the remaining lenses yourself. The SC-026 gate blocks the specify boundary until every selected lens carries
+     a `confirmation` and matching `confirmation_scope` — but it cannot see transcript truthfulness; that
+     integrity is on you, and the Squad re-dogfood checks it.
    - At design-analysis, a `## Co-Design Record` in `design-analysis.md` with the agreed
      component-to-responsibility map + at least one agreed flow + a human-agreed marker, and — when ui-ux is in
      scope — the **agreed UI/screen layout** (the ASCII sketch the human approved). Set `co_design: true` in the
