@@ -374,12 +374,18 @@ function Test-SpecrewLensWorkshopRecords {
     if ($selected.Count -eq 0) { return @() }
 
     $workshop = if ($doc.PSObject.Properties['workshop']) { $doc.workshop } else { $null }
-    # SC-026 (Amendment A7): when the artifact opts in via `confirmation_required: true`, each selected lens
-    # MUST also declare a provenance value (human-confirmed | human-delegated | human-skipped). Grandfather-safe
-    # — pre-A7 artifacts lack the marker and no-op (the `workshop_intake` precedent). The floor enforces that a
-    # provenance is DECLARED; it CANNOT verify the human was actually asked (that is SC-027's runtime dogfood).
+    # SC-026 (Amendment A7, #2212): when the artifact opts in via `confirmation_required: true`, each selected
+    # lens MUST declare both a provenance value (human-confirmed | human-delegated | human-skipped) and its scope.
+    # This prevents a generic lens-agenda approval from being reused as per-lens workshop-question confirmation.
+    # Grandfather-safe: pre-A7 artifacts lack the marker and no-op (the `workshop_intake` precedent). The floor
+    # enforces declared scoped evidence; it cannot verify transcript truthfulness (that is SC-027 dogfood/review).
     $confirmationRequired = $doc.PSObject.Properties['confirmation_required'] -and [bool]$doc.confirmation_required
     $validProvenance = @('human-confirmed', 'human-delegated', 'human-skipped')
+    $requiredConfirmationScopes = @{
+        'human-confirmed' = 'lens-question'
+        'human-delegated' = 'explicit-delegation'
+        'human-skipped' = 'explicit-skip'
+    }
 
     foreach ($id in $selected) {
         $rec = $null
@@ -407,6 +413,12 @@ function Test-SpecrewLensWorkshopRecords {
             $confirmation = if ($rec.PSObject.Properties['confirmation']) { [string]$rec.confirmation } else { '' }
             if ($confirmation -notin $validProvenance) {
                 $errors.Add(("workshop record for selected lens '{0}' is missing a valid confirmation provenance (SC-026): set 'confirmation' to one of human-confirmed | human-delegated | human-skipped (got '{1}'). Record human-confirmed ONLY for a lens the human was surfaced and confirmed; an explicit delegate/skip records human-delegated/human-skipped; an agreement MUST NOT be synthesized for an un-surfaced lens." -f $id, $confirmation)) | Out-Null
+            } else {
+                $confirmationScope = if ($rec.PSObject.Properties['confirmation_scope']) { [string]$rec.confirmation_scope } else { '' }
+                $requiredScope = $requiredConfirmationScopes[$confirmation]
+                if ($confirmationScope -ne $requiredScope) {
+                    $errors.Add(("workshop record for selected lens '{0}' has invalid confirmation scope (SC-026, #2212): set 'confirmation_scope' to '{1}' when confirmation is '{2}' (got '{3}'). Lens approval is not workshop-question approval." -f $id, $requiredScope, $confirmation, $confirmationScope)) | Out-Null
+                }
             }
         }
     }

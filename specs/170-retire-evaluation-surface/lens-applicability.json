@@ -20,6 +20,7 @@
       "depth": "light",
       "moved_on": true,
       "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
       "diagram": "workshop/architecture-core.md — before/after structure diagram (evaluation/ public surface -> tests/support/ test infrastructure), rendered in-band and confirmed"
     }
   },

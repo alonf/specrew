@@ -17,6 +17,10 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $skillPath = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\skills\design-workshop.md'
 $lensDir = Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\design-lenses'
 $startPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+$refocusPaths = @(
+    (Join-Path $repoRoot 'extensions\specrew-speckit\refocus\specify.md'),
+    (Join-Path $repoRoot '.specify\extensions\specrew-speckit\refocus\specify.md')
+)
 
 # --- The design-workshop skill ---
 Assert-True (Test-Path -LiteralPath $skillPath) "the design-workshop skill template exists ($skillPath)"
@@ -83,6 +87,16 @@ Write-Pass 'launch prompt: trimmed to a skill pointer; the verbose 9a/9b/9c cond
 Assert-Match -Text $skill -Pattern '(?i)never manufacture agreement|fabricated' 'skill A7: the never-manufacture-agreement integrity rule (FR-038)'
 Assert-Match -Text $skill -Pattern '(?i)confirmation_required' 'skill A7: the confirmation_required marker (FR-039)'
 Assert-Match -Text $skill -Pattern 'human-confirmed \| human-delegated \| human-skipped' 'skill A7: the provenance enum incl. the delegate/skip exception (FR-038/FR-039)'
+Assert-Match -Text $skill -Pattern '(?i)confirmation_scope' 'skill #2212: the scoped confirmation field is present'
+Assert-Match -Text $skill -Pattern '(?i)Lens approval is not workshop-question approval' 'skill #2212: agenda/lens approval cannot stand in for workshop-question approval'
+Assert-Match -Text $skill -Pattern '(?i)Agenda confirmation is not lens-question confirmation' 'skill #2212 dogfood: agenda confirmation selects lens/depth only, not lens answers'
+Assert-Match -Text $skill -Pattern '(?is)Do NOT offer or accept a batch shortcut such as "Confirm\s+all as proposed"' 'skill #2212 dogfood: batch "Confirm all as proposed" shortcut is forbidden for lens decisions'
+Assert-Match -Text $skill -Pattern '(?i)One selected lens = one lens turn' 'skill #2212 dogfood: every selected lens needs its own lens-specific turn'
+Assert-Match -Text $skill -Pattern '(?i)A batch confirmation is not valid provenance' 'skill #2212 dogfood: batch confirmation cannot become human-confirmed provenance'
+Assert-Match -Text $skill -Pattern '(?is)record each affected lens as `human-delegated` \+\s+`explicit-delegation`, not `human-confirmed`' 'skill #2212 dogfood: explicit batch shortcut is delegation, not confirmation'
+Assert-Match -Text $skill -Pattern 'lens-question' 'skill #2212: confirmation_scope value lens-question is documented'
+Assert-Match -Text $skill -Pattern 'explicit-delegation' 'skill #2212: confirmation_scope value explicit-delegation is documented'
+Assert-Match -Text $skill -Pattern 'explicit-skip' 'skill #2212: confirmation_scope value explicit-skip is documented'
 Assert-Match -Text $skill -Pattern '(?i)count self-check' 'skill A7: the count self-check (FR-038)'
 Assert-Match -Text $skill -Pattern '(?i)preparing the workshop' 'skill A7: the prep announcement (FR-040)'
 Assert-Match -Text $skill -Pattern '(?i)agenda as an assignment' 'skill A7: the agenda assignment (FR-040)'
@@ -141,6 +155,18 @@ Assert-Match -Text $skill -Pattern '(?i)one at a time' 'skill A8: the one-at-a-t
 Assert-Match -Text $skill -Pattern '(?i)not optional on a dense lens' 'skill A8: the pacing offer is mandatory on a dense lens, every host'
 Write-Pass 'skill A8: open-question-first + MANDATORY cross-host dense-lens pacing; catalog-at-open reverted (the before-a-menu governing model) — the i12 dogfood convergence'
 
+# #2212: every runtime guidance surface that tells an agent how to capture workshop records must include the
+# scoped confirmation contract, not the old "confirmation-only" shape that let agenda approval masquerade as
+# per-lens workshop-question approval.
+foreach ($refocusPath in $refocusPaths) {
+    Assert-True (Test-Path -LiteralPath $refocusPath) "refocus specify guidance exists ($refocusPath)"
+    $refocus = Get-Content -LiteralPath $refocusPath -Raw
+    Assert-Match -Text $refocus -Pattern '(?i)confirmation_scope' "refocus #2212: scoped confirmation field is documented ($refocusPath)"
+    Assert-Match -Text $refocus -Pattern '(?i)Lens approval is not workshop-question approval' "refocus #2212: lens/agenda approval cannot stand in for workshop-question approval ($refocusPath)"
+    Assert-Match -Text $refocus -Pattern 'confirmation,\s*confirmation_scope' "refocus #2212: exact gate shape includes confirmation_scope ($refocusPath)"
+}
+Write-Pass 'refocus #2212: specify-stage guidance documents scoped confirmation in both shipped and project-local surfaces'
+
 # The coordinator-governance template (injected into squad.agent.md at deploy) carries the stopping-completeness
 # rule — the Squad root-cause lever (the testLenses7 stopping-judgment fix must reach downstream coordinators).
 $govPath = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md'
@@ -149,12 +175,22 @@ $gov = Get-Content -LiteralPath $govPath -Raw
 Assert-Match -Text $gov -Pattern '(?i)every selected lens' 'governance A7: intake not complete until every selected lens is resolved (FR-038 stopping rule)'
 Assert-Match -Text $gov -Pattern '(?i)specific enough' 'governance A7: do not declare intake specific-enough early (the root-cause lever)'
 Assert-Match -Text $gov -Pattern '(?i)background sub-agent|backfill' 'governance A7: do not delegate to a background sub-agent / backfill'
-Write-Pass 'governance A7: the squad.agent.md stopping-completeness rule (the Squad root-cause lever) is in the coordinator-governance template'
+Assert-Match -Text $gov -Pattern '(?i)confirmation_scope' 'governance #2212: scoped confirmation field is documented'
+Assert-Match -Text $gov -Pattern '(?i)Lens approval is not workshop-question approval' 'governance #2212: lens/agenda approval cannot stand in for workshop-question approval'
+$govMirrorPath = Join-Path $repoRoot '.specify\extensions\specrew-speckit\squad-templates\coordinator\specrew-governance.md'
+Assert-True (Test-Path -LiteralPath $govMirrorPath) "project-local coordinator-governance mirror exists ($govMirrorPath)"
+$govMirror = Get-Content -LiteralPath $govMirrorPath -Raw
+Assert-Match -Text $govMirror -Pattern '(?i)confirmation_scope' 'governance mirror #2212: scoped confirmation field is documented'
+Assert-Match -Text $govMirror -Pattern '(?i)Lens approval is not workshop-question approval' 'governance mirror #2212: lens/agenda approval cannot stand in for workshop-question approval'
+Write-Pass 'governance A7/#2212: stopping-completeness rule plus scoped confirmation is in shipped and project-local coordinator guidance'
 
 # Rule 9a carries the A7 clause (the launch-prompt pointer names A7 + the provenance gate)
 Assert-Match -Text $start -Pattern 'A4/A5/A6/A7' 'launch prompt A7: Rule 9a names Amendment A7'
 Assert-Match -Text $start -Pattern '(?i)confirmation.{0,20}provenance|SC-026' 'launch prompt A7: Rule 9a carries the confirmation-provenance / SC-026 reference'
-Write-Pass 'launch prompt A7: Rule 9a names A7 + the confirmation provenance / SC-026'
+Assert-Match -Text $start -Pattern '(?i)confirmation_scope' 'launch prompt #2212: Rule 9a carries the scoped confirmation field'
+Assert-Match -Text $start -Pattern 'lens-question \| explicit-delegation \| explicit-skip' 'launch prompt #2212: Rule 9a carries the scoped confirmation values'
+Assert-Match -Text $start -Pattern '(?i)Lens approval is not workshop-question approval' 'launch prompt #2212: Rule 9a forbids lens/agenda approval as workshop-question approval'
+Write-Pass 'launch prompt A7/#2212: Rule 9a names A7 + the confirmation provenance/scope contract / SC-026'
 
 Write-Pass 'Lens-conduct delivery relocation (iteration 010) unit tests passed'
 exit 0
