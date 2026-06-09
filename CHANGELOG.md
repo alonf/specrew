@@ -6,6 +6,12 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.34.0-beta1] - 2026-06-10
+
+### Added
+
+- **Feature 176 — Product & Problem Domain lens (first workshop lens) (#2285).** A required first design-workshop phase, `product-domain`, that runs before technical-lens applicability selection and grounds product/problem context (users & stakeholders, pain/job, MVP, non-goals, constraints, outcomes, alternatives) at adaptive depth (Light/Standard/Deep by risk and novelty), tagging every material statement with an evidence quality (`known` / `assumed` / `unknown` / `research-needed`). It persists a human-readable and a structured record (`workshop/product-domain.{md,yml}`), is enforced at the specify boundary (a batch "confirm all" cannot satisfy it), conditionally blocks plan on a load-bearing `research-needed` gap, and runs before every feature at adaptive depth (`context_scope: feature_standalone`; `product_id` / `product_context_ref` forward-compat hooks for Proposal 162). Deferred to forward-compatible shape: Proposal 156 `workshop-decisions.yml` emission and Proposal 162 inheritance behavior.
+
 ## [0.33.0-beta2] - 2026-06-09
 
 ### Fixed
