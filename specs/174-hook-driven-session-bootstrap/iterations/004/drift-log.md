@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved in-iteration)
-**Specification drift**: 1 post-review-signoff amendment (provider dev-tree resolution)
+**Total drift events**: 2
+**Resolution rate**: 100% (2/2 resolved in-iteration)
+**Specification drift**: 2 post-review-signoff amendments (provider dev-tree resolution; bootstrap UX from manual validation)
 
 ## Events
 
@@ -44,6 +44,25 @@ project (the published 0.33.0 lacks the iter-4 components, and the dev tree is n
 the deployed case - self-host co-located resolution is unchanged). Verified: a deployed provider with
 no co-located components resolves via SPECREW_MODULE_PATH; 18 suites + PSSA green. Additive + low-risk;
 the approved review's core findings are unaffected. Production (published module) path unchanged.
+
+### D-007 — bootstrap UX polish from greenfield manual validation (post-review-signoff)
+
+**Requirement**: FR-004 / FR-020 (render-first orientation) + FR-008 (docs).
+
+**Finding**: The maintainer's greenfield manual test confirmed F-174 works live (the agent rendered the
+full orientation - incl. the concurrency advisory - on its first reply). It also surfaced two honest
+UX truths: (1) a Claude SessionStart hook injects context SILENTLY and the agent does not auto-respond,
+so there is NO zero-interaction splash via the hook - the orientation lands on the agent's FIRST reply,
+and a true pre-session banner is the `specrew start` launcher's job; (2) the orientation only landed
+because the first message was an open question - a task-first message ("create a feature ...") could
+skip it.
+
+**Resolution (in-iteration)**: (a) the bootstrap directive now instructs the agent to LEAD its FIRST
+response with the orientation REGARDLESS of the user's first message (even a task), then act - plus a
+branch + recommended-next-step in the render order; (b) getting-started + README document the two start
+paths honestly (`specrew start` = guided splash; direct launch = ask/state-intent, orientation on turn
+one). 18 suites + PSSA green; bootstrap provider re-mirrored. The zero-interaction-splash limit is a
+documented host constraint, not a defect.
 
 ### Resolution Strategies (Unused)
 

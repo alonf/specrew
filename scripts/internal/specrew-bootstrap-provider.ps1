@@ -27,7 +27,8 @@ function Format-BootstrapDirective {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
-    $lines.Add('Render, in order: (1) orientation - Specrew version, host, project, lifecycle position; (2) any validated handover summary; (3) a one-line state reason when non-default; (4) the Resume / New / Pick-feature menu as TEXT. Offer Resume only when a valid active session exists.')
+    $lines.Add('On your FIRST response - REGARDLESS of the user''s first message (even a task such as "create a feature ...") - LEAD with this orientation, THEN act on their request. Never skip it.')
+    $lines.Add('Render, in order: (1) orientation - Specrew version, host, project, branch, lifecycle position; (2) any validated handover summary; (3) a one-line state reason when non-default; (4) a brief recommended next step for THIS state; (5) the Resume / New / Pick-feature menu as TEXT. Offer Resume only when a valid active session exists.')
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
     }
