@@ -13,7 +13,7 @@ validating the product-domain record. Pure + deterministic; no network/LLM. Mirr
 
 | Symbol | Signature | Purpose | Errors |
 | --- | --- | --- | --- |
-| `New-SpecrewProductDomainRecord` | `(-FeatureDir <string> -Depth <light\|standard\|deep> -ContextScope <string> [-Force]) : string` | scaffold `workshop/product-domain.yml` + `.md` with the depth-appropriate area skeleton | returns existing path unless `-Force`; throws on bad depth/scope |
+| `New-SpecrewProductDomainRecord` | `(-FeatureDir <string> -Record <object> [-Force]) : string` | persist a built record object to `workshop/product-domain.yml` + `.md` (UTF-8 no-BOM) | returns the existing `.yml` path unless `-Force` (and regenerates a missing `.md`); throws when `-Record` is null |
 | `Get-SpecrewProductDomainDepth` | `(-Risk <string> -Novelty <string>) : string` | map risk/novelty signals to `light\|standard\|deep` (FR-002) | never throws; defaults to `standard` when ambiguous |
 | `Test-SpecrewProductDomainRecord` | `(-Path <string>) : string[]` | validate the record against the schema (required fields, evidence tags, confirmation provenance, context_scope enum) | returns error list (empty = OK); graceful `@()` when absent |
 | `Format-SpecrewProductDomainSummary` | `(-Path <string>) : string` | render the `spec.md` product-domain summary (FR-006) | graceful "none recorded" |

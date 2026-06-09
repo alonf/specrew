@@ -264,9 +264,16 @@ function New-SpecrewProductDomainRecord {
     $dir = Split-Path -Parent $ymlPath
     if (-not (Test-Path -LiteralPath $dir -PathType Container)) { $null = New-Item -ItemType Directory -Path $dir -Force }
 
-    if ((Test-Path -LiteralPath $ymlPath -PathType Leaf) -and -not $Force) { return $ymlPath }
-
     $utf8 = [System.Text.UTF8Encoding]::new($false)
+    if ((Test-Path -LiteralPath $ymlPath -PathType Leaf) -and -not $Force) {
+        # Idempotent: keep the existing .yml, but ensure the human-readable .md ALSO exists -- the gate
+        # requires BOTH files (FR-005), so a deleted .md must be regenerated on a no-Force re-run.
+        if (-not (Test-Path -LiteralPath $mdPath -PathType Leaf)) {
+            [System.IO.File]::WriteAllText($mdPath, (Format-SpecrewProductDomainMarkdown -Record $Record), $utf8)
+        }
+        return $ymlPath
+    }
+
     [System.IO.File]::WriteAllText($ymlPath, (ConvertTo-SpecrewProductDomainYaml -Record $Record), $utf8)
     [System.IO.File]::WriteAllText($mdPath, (Format-SpecrewProductDomainMarkdown -Record $Record), $utf8)
     return $ymlPath

@@ -1078,7 +1078,14 @@ function Test-SpecrewProductDomainGate {
     $featureDir = Join-Path $ProjectRoot ("specs\{0}" -f $feature)
     $ymlPath = Join-Path $featureDir 'workshop\product-domain.yml'
     $mdPath = Join-Path $featureDir 'workshop\product-domain.md'
+    # Resolve the schema: a per-feature contracts/ copy overrides; otherwise fall back to the canonical
+    # schema deployed beside the lens in the catalog, so a downstream feature WITHOUT its own copy still
+    # gets Test-Json validation (not just the in-code invariant backstops).
     $schemaPath = Join-Path $featureDir 'contracts\product-domain.schema.json'
+    if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
+        $canonicalSchema = Join-Path $catalogDir 'product-domain.schema.json'
+        if (Test-Path -LiteralPath $canonicalSchema -PathType Leaf) { $schemaPath = $canonicalSchema }
+    }
 
     $missing = New-Object System.Collections.Generic.List[string]
     if (-not (Test-Path -LiteralPath $ymlPath -PathType Leaf)) { $missing.Add('workshop/product-domain.yml') | Out-Null }

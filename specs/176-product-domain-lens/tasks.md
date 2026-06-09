@@ -92,8 +92,8 @@ Quality bar: Pester + PSScriptAnalyzer + Specrew mechanical-checks + governance 
 ## Verification commands
 
 ```pwsh
-Invoke-Pester tests/unit/product-domain-lens.tests.ps1
-Invoke-Pester tests/integration/product-domain-multihost.tests.ps1
+pwsh -NoProfile -File tests/unit/product-domain-lens.tests.ps1
+pwsh -NoProfile -File tests/integration/product-domain-multihost.tests.ps1
 Invoke-ScriptAnalyzer scripts/internal/product-domain-lens.ps1
 pwsh -File .specify/extensions/specrew-speckit/scripts/run-mechanical-checks.ps1
 pwsh -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath .

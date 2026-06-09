@@ -26,10 +26,11 @@ $surfaces = @(
 ) | ForEach-Object { Join-Path $repoRoot $_ }
 
 foreach ($s in $surfaces) {
-    Assert-True (Test-Path -LiteralPath $s -PathType Leaf) "surface present: $([System.IO.Path]::GetFileName((Split-Path -Parent (Split-Path -Parent $s))))/$([System.IO.Path]::GetFileName($s))"
+    $rel = ($s.Substring($repoRoot.Length).TrimStart('\', '/') -replace '\\', '/')
+    Assert-True (Test-Path -LiteralPath $s -PathType Leaf) "surface present: $rel"
     # Each surface should also carry the managed marker (deployed, not hand-edited).
     $marker = Join-Path (Split-Path -Parent $s) '.specrew-managed'
-    Assert-True (Test-Path -LiteralPath $marker -PathType Leaf) "surface carries the .specrew-managed marker"
+    Assert-True (Test-Path -LiteralPath $marker -PathType Leaf) "surface carries the .specrew-managed marker: $rel"
 }
 
 # Each surface carries the product-domain first-stage conduct.

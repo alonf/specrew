@@ -9,13 +9,19 @@ Once implemented, the lens runs automatically as the first workshop phase at fea
 exercise it directly:
 
 ```pwsh
-# Unit + integration tests for the lens
-Invoke-Pester tests/unit/product-domain-lens.tests.ps1
-Invoke-Pester tests/integration/product-domain-multihost.tests.ps1
+# Unit + integration tests are standalone PowerShell scripts (see tests/README.md), run directly:
+pwsh -NoProfile -File tests/unit/product-domain-lens.tests.ps1
+pwsh -NoProfile -File tests/integration/product-domain-multihost.tests.ps1
 
-# Scaffold + validate a record by hand
+# Build + persist + validate a record by hand
 . ./scripts/internal/product-domain-lens.ps1
-New-SpecrewProductDomainRecord -FeatureDir specs/999-demo -Depth light -ContextScope feature_standalone
+$record = [ordered]@{
+  schema_version = '1.0'; depth = 'light'; depth_reason = 'tiny utility'; context_scope = 'feature_standalone'
+  areas = [ordered]@{ users_stakeholders = '...'; pain_job = '...'; mvp = '...'; out_of_scope = '...'; constraints = '...' }
+  statements = @(); skipped = @(); follow_up_research = @()
+  confirmation = 'human-confirmed'; confirmation_scope = 'lens-question'
+}
+New-SpecrewProductDomainRecord -FeatureDir specs/999-demo -Record $record
 Test-SpecrewProductDomainRecord -Path specs/999-demo/workshop/product-domain.yml
 ```
 

@@ -30,6 +30,9 @@ function New-TempFeature {
     $catDest = Join-Path $root 'extensions\specrew-speckit\knowledge\design-lenses'
     $null = New-Item -ItemType Directory -Path $catDest -Force
     Copy-Item (Join-Path $catalogDir 'product-domain.md') (Join-Path $catDest 'product-domain.md') -Force
+    # The canonical schema deployed beside the lens (so the gate's canonical-fallback resolution works
+    # for a feature that has no per-feature contracts/ copy).
+    Copy-Item $schemaSrc (Join-Path $catDest 'product-domain.schema.json') -Force
     return [pscustomobject]@{ Root = $root; FeatureDir = $featDir }
 }
 
@@ -76,6 +79,10 @@ Assert-True (Test-Path -LiteralPath $mdPath -PathType Leaf) 'T009: product-domai
 $first = Get-Content -LiteralPath $ymlPath -Raw -Encoding UTF8
 $null = New-SpecrewProductDomainRecord -FeatureDir $t9.FeatureDir -Record (New-ValidRecord) -Force
 Assert-True ((Get-Content -LiteralPath $ymlPath -Raw -Encoding UTF8) -eq $first) 'T009: record write is idempotent (same inputs -> equivalent file)'
+# PR #2285 bot fix: a deleted .md is regenerated on a no-Force re-run (the gate requires BOTH files).
+Remove-Item -LiteralPath $mdPath -Force
+$null = New-SpecrewProductDomainRecord -FeatureDir $t9.FeatureDir -Record (New-ValidRecord)
+Assert-True (Test-Path -LiteralPath $mdPath -PathType Leaf) 'T009: a deleted product-domain.md is regenerated on a no-Force re-run'
 
 # --- T008 / SC-003 / SC-006: evidence tags + conditional research-needed blocking ---
 $schemaPath = Join-Path $t9.FeatureDir 'contracts\product-domain.schema.json'
@@ -128,6 +135,13 @@ $i18nYml = New-SpecrewProductDomainRecord -FeatureDir (New-TempFeature 't-i18n')
 $i18nRt = ConvertFrom-SpecrewProductDomainYaml -Text (Get-Content -LiteralPath $i18nYml -Raw -Encoding UTF8)
 Assert-True ((@($i18nRt['statements'])[0]['text']) -eq $i18nText) 'Phase-3/i18n: non-Latin/RTL/emoji statement text round-trips byte-intact (Hebrew-filename lesson)'
 
+# Phase-4 (PR #2285 bot regression): backslash + quote values round-trip intact (the encoder DOUBLES
+# backslashes via -replace replacement, the decoder un-doubles them — they are consistent, not a no-op).
+$bsText = 'C:\Users\dev\a\\b path with "quotes"'
+$bsYml = New-SpecrewProductDomainRecord -FeatureDir (New-TempFeature 't-bs').FeatureDir -Record (New-ValidRecord -Statements @([ordered]@{ text = $bsText; area = 'constraints'; evidence = 'known' })) -Force
+$bsRt = ConvertFrom-SpecrewProductDomainYaml -Text (Get-Content -LiteralPath $bsYml -Raw -Encoding UTF8)
+Assert-True ((@($bsRt['statements'])[0]['text']) -eq $bsText) 'Phase-4/escape: backslash + quote values round-trip intact (Windows paths)'
+
 # --- T015: graceful degradation — no silent skip ---
 # (a) Catalog present + substantive feature + record MISSING -> the gate FAILS CLOSED (loud), not silent.
 $t15 = New-TempFeature 't15'
@@ -145,5 +159,13 @@ Assert-True ($null -eq (Test-SpecrewProductDomainGate -ProjectRoot $noCatRoot -F
 $null = New-SpecrewProductDomainRecord -FeatureDir $t15.FeatureDir -Record (New-ValidRecord) -Force
 $gateOk = Test-SpecrewProductDomainGate -ProjectRoot $t15.Root -FeatureRef '999-demo'
 Assert-True ($null -ne $gateOk -and $gateOk.Valid) 'T015: a present + valid record passes the gate'
+
+# (d) PR #2285 bot fix: a feature with NO per-feature contracts/ schema still gets Test-Json validation
+# via the canonical schema deployed beside the lens in the catalog (the gate's schema fallback).
+$t15b = New-TempFeature 't15b'
+Remove-Item -LiteralPath (Join-Path $t15b.FeatureDir 'contracts\product-domain.schema.json') -Force
+$null = New-SpecrewProductDomainRecord -FeatureDir $t15b.FeatureDir -Record (New-ValidRecord) -Force
+$gateNoContracts = Test-SpecrewProductDomainGate -ProjectRoot $t15b.Root -FeatureRef '999-demo'
+Assert-True ($null -ne $gateNoContracts -and $gateNoContracts.Valid) 'T015: a feature without a per-feature schema still passes via the canonical catalog schema (PR #2285 fix)'
 
 Write-Host "`nAll product-domain lens unit tests passed." -ForegroundColor Green
