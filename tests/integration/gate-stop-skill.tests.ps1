@@ -30,6 +30,11 @@ if ($content -notmatch '(?m)^disallowed-tools:\s*AskUserQuestion\s*$') {
     Write-Fail "gate-stop frontmatter is missing 'disallowed-tools: AskUserQuestion' — without it the picker is not removed and the packet collapses again."
 }
 
+# 1b. Host scope — the skill is Claude-specific and must not deploy into non-Claude roots.
+if ($content -notmatch '(?m)^host-scope:\s*claude\s*$') {
+    Write-Fail "gate-stop frontmatter is missing 'host-scope: claude' — without it deploy-squad-runtime.ps1 publishes the Claude-only skill to non-Claude hosts."
+}
+
 # 2. The full Rule 46 six-section re-entry packet.
 $sections = @(
     '## What I Just Did',
@@ -71,5 +76,40 @@ if ($surgery -notmatch 'specrew-gate-stop' -or $surgery -notmatch 'disallows the
     Write-Fail "coordinator-prompt-surgery.ps1 no longer routes Claude boundary verdict stops through specrew-gate-stop (the Claude interaction-guidance branch is missing the gate-stop routing)."
 }
 
-Write-Pass "specrew-gate-stop: disallowed-tools enforcement, six-section packet, no-picker verdict, Claude routing, and .specify mirror parity all present"
+# 6. Runtime deployment: the Claude-only skill lands in .claude and managed stale copies are removed
+#    from the other active host roots. This is the Issue #2083 regression guard.
+$deployScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\deploy-squad-runtime.ps1'
+$scratchRoot = Join-Path $repoRoot '.scratch\gate-stop-host-scope-test'
+if (Test-Path -LiteralPath $scratchRoot) {
+    Remove-Item -LiteralPath $scratchRoot -Recurse -Force
+}
+New-Item -ItemType Directory -Path (Join-Path $scratchRoot '.squad') -Force | Out-Null
+
+$staleRoots = @(
+    '.github\skills',
+    '.agents\skills',
+    '.cursor\rules'
+)
+foreach ($root in $staleRoots) {
+    $staleSkillDir = Join-Path $scratchRoot (Join-Path $root 'specrew-gate-stop')
+    New-Item -ItemType Directory -Path $staleSkillDir -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $staleSkillDir 'SKILL.md') -Value $content -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $staleSkillDir '.specrew-managed') -Value "schema: v1`nowner: specrew`nkind: project-skill`ndirectory: specrew-gate-stop" -Encoding UTF8
+}
+
+& $deployScript -ProjectPath $scratchRoot | Out-Null
+
+$claudeSkill = Join-Path $scratchRoot '.claude\skills\specrew-gate-stop\SKILL.md'
+if (-not (Test-Path -LiteralPath $claudeSkill -PathType Leaf)) {
+    Write-Fail "gate-stop skill was not deployed to the Claude skill root at $claudeSkill."
+}
+
+foreach ($root in $staleRoots) {
+    $outOfScopeSkillDir = Join-Path $scratchRoot (Join-Path $root 'specrew-gate-stop')
+    if (Test-Path -LiteralPath $outOfScopeSkillDir) {
+        Write-Fail "gate-stop skill was left in non-Claude host root: $outOfScopeSkillDir"
+    }
+}
+
+Write-Pass "specrew-gate-stop: disallowed-tools enforcement, Claude host scope, six-section packet, no-picker verdict, Claude routing, .specify mirror parity, and scoped deployment all present"
 Write-Host "`ngate-stop skill: all assertions pass" -ForegroundColor Green
