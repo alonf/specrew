@@ -61,6 +61,42 @@ tool-gravity and skims on Claude — its reliable fix is a host-specific `PreToo
 host-variance, **never another instruction**. (An earlier catalog-at-open front-load was reverted — it skimmed on
 Claude and was redundant on prose hosts that render the agenda inline.)
 
+## First stage — the product-domain phase (run before everything, Feature 176)
+
+Before the lens applicability agenda (The Method below), run the **product-domain** first-stage
+phase — the pre-technical product/problem grounding. It is **always applicable** and runs FIRST,
+before any technical lens or the applicability questionnaire. It is NOT a row in
+`applicability-map.json`; it is the first-stage phase ahead of the deterministic selector.
+
+1. **Load the lens** `design-lenses/product-domain.md` for its decision areas, depth model,
+   evidence vocabulary, run cadence, and conduct.
+2. **Select the depth** (Light / Standard / Deep) by **risk and novelty**, and say why. A tiny
+   utility gets a Light pass that records why deeper discovery is not warranted.
+3. **Reframe a solution-first request into the problem.** When the human asks to "build X", surface
+   who it is for, the pain/job, the MVP, the non-goals, and the constraints BEFORE any design. If the
+   requested feature is not aligned to the pain / MVP / constraints / alternatives, surface that
+   before plan.
+4. **Capture the product context** at the selected depth (users and stakeholders; pain/job and
+   current workaround; existing system/context; constraints; outcomes; MVP/non-goals/vision;
+   alternatives at Standard/Deep), and **tag every material statement** with its evidence quality
+   (`known` / `assumed` / `unknown` / `research-needed`; a `research-needed` carries `load_bearing`).
+   Honest tags prevent confident product fiction.
+5. **No batch confirmation (FR-009).** The phase cannot be satisfied by approving an agenda or a batch
+   "confirm all". It needs scoped product-domain confirmation, or an explicit, honestly recorded
+   "you decide" / "skip". Record the provenance (`human-confirmed` / `human-delegated` /
+   `human-skipped`) and its matching scope.
+6. **Persist both records** under `specs/<feature>/workshop/`: `product-domain.yml` (structured,
+   schema-validated against `contracts/product-domain.schema.json`) and `product-domain.md`
+   (human-readable), and summarize the decisions into `spec.md` — not as the sole source. The
+   specify-gate floor REQUIRES this for a substantive feature before specify syncs; an absent record
+   is surfaced, never silently skipped.
+
+**Run cadence**: the product-domain phase runs before EVERY feature at adaptive depth — not once. In
+V1 every feature is `context_scope: feature_standalone`; once Proposal 162 ships, later features run
+in delta mode (`feature_delta`) against the inherited product baseline (`product_baseline`).
+
+Only after the product-domain phase is captured do you move to the lens applicability agenda below.
+
 ## The Method (the same for every lens)
 
 1. **Frame the phases + hand over the agenda (A6/FR-034, A7/FR-040).** Tell the human up front: the workshop

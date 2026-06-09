@@ -2,6 +2,7 @@
   "schema": "diagram-vocabulary/v1",
   "note": "Per-lens diagram vocabulary (Feature 141, Amendment A5 / FR-030): each design lens maps to its native diagram type(s) and a default render form, so a lens's workshop/design discussion can be made concrete with the right diagram. Sibling to applicability-map.json; the catalog index.yml stays PURE (no vocabulary fields leak into it). Render forms: mermaid | ascii | table | svg.",
   "lenses": {
+    "product-domain": { "diagram_type": "context map (users, stakeholders, surrounding systems, channels); stakeholder map", "render_form": "ascii" },
     "architecture-core": { "diagram_type": "component / service / flow", "render_form": "mermaid" },
     "component-design": { "diagram_type": "component + dependency direction", "render_form": "mermaid" },
     "requirements-nfr": { "diagram_type": "quality-attribute priorities / comparison", "render_form": "table" },

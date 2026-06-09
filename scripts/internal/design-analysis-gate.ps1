@@ -994,7 +994,79 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
         throw ($lines -join [Environment]::NewLine)
     }
 
+    # FR-010 (Feature 176): the product-domain record floor. When the product-domain lens is in the
+    # catalog (registered) and the feature is substantive, the first-stage product-domain record MUST
+    # exist + validate (genuine, non-batch confirmation provenance) before specify finalizes. Throws
+    # fail-closed; $null when product-domain does not apply (graceful — no lens in the catalog).
+    $null = Test-SpecrewProductDomainGate -ProjectRoot $ProjectRoot -FeatureRef $feature
+
     return [pscustomobject]@{ Valid = $true; ArtifactPath = $artifact }
+}
+
+function Get-SpecrewProductDomainCatalogDir {
+    # Resolve the design-lens catalog directory (repo source first, then the deployed .specify mirror).
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    foreach ($rel in @(
+            'extensions\specrew-speckit\knowledge\design-lenses',
+            '.specify\extensions\specrew-speckit\knowledge\design-lenses')) {
+        $candidate = Join-Path $ProjectRoot $rel
+        if (Test-Path -LiteralPath (Join-Path $candidate 'product-domain.md') -PathType Leaf) { return $candidate }
+    }
+    return $null
+}
+
+function Test-SpecrewProductDomainGate {
+    # FR-009 / FR-010 / FR-013 (Feature 176): the deterministic specify-boundary floor for the
+    # product-domain first-stage lens. REQUIRED when the product-domain lens is registered in the
+    # catalog (product-domain.md present) AND the feature is substantive. When required, the feature's
+    # workshop/product-domain.{yml,md} MUST both exist and the .yml MUST validate (depth + evidence
+    # tags + a genuine, non-batch confirmation provenance — a batch 'confirm all' can never satisfy
+    # it, FR-009). Graceful degradation (FR-013, no silent skip): an ABSENT catalog means the lens does
+    # not apply here -> $null (graceful skip for a downstream project without the lens); but once the
+    # lens IS registered, a MISSING or INVALID record on a substantive feature FAILS CLOSED with a loud
+    # reason rather than passing silently. Marker-gated by catalog presence + the substantive test, so
+    # pre-176 features (whose specify boundary already synced before the lens existed) are not
+    # retroactively failed. Deterministic; no network/LLM.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+
+    $catalogDir = Get-SpecrewProductDomainCatalogDir -ProjectRoot $ProjectRoot
+    if ($null -eq $catalogDir) { return $null }  # lens not in this project's catalog -> graceful skip
+    if (-not (Test-SpecrewDesignAnalysisSubstantiveFeature -ProjectRoot $ProjectRoot -FeatureRef $feature)) { return $null }
+
+    $featureDir = Join-Path $ProjectRoot ("specs\{0}" -f $feature)
+    $ymlPath = Join-Path $featureDir 'workshop\product-domain.yml'
+    $mdPath = Join-Path $featureDir 'workshop\product-domain.md'
+    $schemaPath = Join-Path $featureDir 'contracts\product-domain.schema.json'
+
+    $missing = New-Object System.Collections.Generic.List[string]
+    if (-not (Test-Path -LiteralPath $ymlPath -PathType Leaf)) { $missing.Add('workshop/product-domain.yml') | Out-Null }
+    if (-not (Test-Path -LiteralPath $mdPath -PathType Leaf)) { $missing.Add('workshop/product-domain.md') | Out-Null }
+    if ($missing.Count -gt 0) {
+        throw ("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the first-stage product-domain record is MISSING ({1}). The product-domain lens runs before the technical lenses (FR-001); run it, capture the evidence-tagged record at the chosen depth, and persist both files before sync-specify. Specrew surfaces this rather than silently skipping the grounding (FR-013). Expected: {2}" -f $feature, ($missing -join ', '), $ymlPath)
+    }
+
+    # Load the record validator (sibling helper). If it cannot be loaded, fail CLOSED (no silent skip).
+    $helper = Join-Path $PSScriptRoot 'product-domain-lens.ps1'
+    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
+        throw ("[product-domain-gate] Cannot validate the product-domain record for '{0}': the record validator helper is missing at {1}. Refusing to pass the specify boundary without validation (fail-closed, FR-013)." -f $feature, $helper)
+    }
+    . $helper
+    $schemaArg = if (Test-Path -LiteralPath $schemaPath -PathType Leaf) { $schemaPath } else { $null }
+    $errs = @(Test-SpecrewProductDomainRecord -Path $ymlPath -SchemaPath $schemaArg)
+    if ($errs.Count -gt 0) {
+        $lines = New-Object System.Collections.Generic.List[string]
+        $lines.Add(("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the product-domain record is INVALID. Fix these before sync-specify (a batch 'confirm all' is NOT valid product-domain confirmation, FR-009):" -f $feature)) | Out-Null
+        foreach ($e in $errs) { $lines.Add(("  - {0}" -f $e)) | Out-Null }
+        throw ($lines -join [Environment]::NewLine)
+    }
+
+    return [pscustomobject]@{ Valid = $true; RecordPath = $ymlPath }
 }
 
 function Format-SpecrewFileReference {
