@@ -177,8 +177,12 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
 
 - **FR-001**: The workshop MUST run the `product-domain` lens before technical-lens
   applicability selection. Owner: Planner/Implementer. Window: Iteration 001.
-- **FR-002**: The lens MUST choose a depth (Light / Standard / Deep) and record why.
-  Owner: Implementer. Window: Iteration 001.
+- **FR-002**: The lens MUST choose a depth (Light / Standard / Deep) based on risk and
+  novelty, and record why. Depth-selection rules: new product / unclear product context /
+  major pivot / new user segment / new workflow / migration or replacement / regulated or
+  high-risk area → Standard or Deep; later feature in a known product → Light (or Delta once
+  Proposal 162 ships); tiny bug fix or narrow internal utility → Light. Owner: Implementer.
+  Window: Iteration 001.
 - **FR-003**: The lens MUST capture, at the selected depth, the product/problem
   context: users and stakeholders (separating user / customer-buyer / operator /
   stakeholder when they differ), pain/job and current workaround or existing system,
@@ -232,11 +236,22 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
   `.github/skills`, and the shared `.agents/skills`) that the five supported hosts map
   onto as applicable; the requirement is per supported host, not per physical directory,
   and nothing here marks Antigravity unsupported. Owner: Implementer. Window: Iteration 001.
+- **FR-014**: The product-domain lens MUST run before EVERY feature at adaptive depth — it is
+  not a one-time pass. The structured record MUST carry a `context_scope` field
+  (`feature_standalone | product_baseline | feature_delta`); V1 always writes
+  `feature_standalone`. The lens MUST NOT re-run full competitive/business discovery for every
+  feature unless the feature changes the product context, and MUST NOT treat inherited product
+  context as silently valid when a feature contradicts it — it records the divergence and the
+  reason. The `product_baseline` / `feature_delta` delta-inheritance behavior is OWNED by
+  Proposal 162 and DEFERRED; V1 builds the feature-level pass and the forward-compatible
+  `context_scope` + `product_id` / `product_context_ref` hooks. Owner: Implementer/Spec
+  Steward. Window: Iteration 001 (feature_standalone + hooks); delta deferred (post-162).
 
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: Each user story maps to one or more functional requirements
-  (US1 → FR-001..FR-006, FR-012; US2 → FR-009..FR-011; US3 → FR-007, FR-008, FR-013).
+  (US1 → FR-001..FR-006, FR-012, FR-014; US2 → FR-009..FR-011; US3 → FR-007, FR-008, FR-013,
+  FR-014).
 - **TG-002**: Each requirement identifies expected owner role(s) (recorded inline above).
 - **TG-003**: Each requirement identifies its intended iteration/delivery window
   (recorded inline above; FR-008 explicitly deferred).
@@ -283,6 +298,10 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
 - **SC-008**: The structured `product-domain.yml` validates against the documented
   Proposal 156-forward-compatible shape (schema test), so 156 wiring is a later
   connection.
+- **SC-009**: The structured record carries a `context_scope` field constrained to
+  {`feature_standalone`, `product_baseline`, `feature_delta`}, writing `feature_standalone`
+  in V1; a schema test asserts the field is present and enum-constrained, and the depth
+  selector is covered by tests that map risk/novelty inputs to Light/Standard/Deep.
 
 ## Assumptions
 
