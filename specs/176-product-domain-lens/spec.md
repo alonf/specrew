@@ -116,8 +116,8 @@ approval and confirm the specify gate fails; present a genuine `human-confirmed`
 ### User Story 3 - Consistent across hosts and forward-compatible (Priority: P3)
 
 As an adopter on any supported host, the product-domain conduct behaves identically
-across the deployed skill copies, and the structured record is shaped so that the
-later Proposal 156 and Proposal 162 wiring connects without redesign.
+across the host-managed skill surfaces, and the structured record is shaped so that
+the later Proposal 156 and Proposal 162 wiring connects without redesign.
 
 **Why this priority**: Multi-host parity and forward-compatibility protect the
 investment and prevent drift, but they do not block the core grounding behavior.
@@ -127,8 +127,9 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
 
 **Acceptance Scenarios**:
 
-1. **Given** the four deployed skill copies, **When** the conduct is compared, **Then**
-   the product-domain conduct is identical (drift fails the parity check).
+1. **Given** the managed skill surfaces of the supported hosts (four physical locations
+   on disk today), **When** the conduct is compared, **Then** the product-domain conduct
+   is identical (drift fails the parity check).
 2. **Given** a completed `product-domain.yml`, **When** it is validated against the
    documented forward-compatible shape, **Then** it conforms (so 156 can consume it
    later).
@@ -194,9 +195,14 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
   product context before design proceeds, and MUST surface — before plan — any
   discovery that the requested feature is not aligned to the pain, MVP, constraints, or
   alternatives. Owner: Spec Steward/Reviewer. Window: Iteration 001.
-- **FR-013**: The product-domain conduct change MUST deploy to every host skill copy
-  through the managed-skill deploy path, and a host-parity check MUST guard the copies
-  against drift. Owner: Implementer. Window: Iteration 001.
+- **FR-013**: The product-domain conduct change MUST deploy to the host-managed skill
+  surfaces used by all supported hosts — Claude, Copilot/GitHub, Codex/Agents, Cursor,
+  and Antigravity, as applicable — through the managed-skill deploy path, and a
+  host-parity check MUST guard the surfaces against drift. The current on-disk
+  managed-skill surfaces are four physical locations (`.claude/skills`, `.cursor/rules`,
+  `.github/skills`, and the shared `.agents/skills`) that the five supported hosts map
+  onto as applicable; the requirement is per supported host, not per physical directory,
+  and nothing here marks Antigravity unsupported. Owner: Implementer. Window: Iteration 001.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -243,8 +249,8 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
   enforcing FR-009.
 - **SC-006**: A `research-needed` tag blocks the plan boundary only when flagged
   load-bearing; two tests cover the blocking and the non-blocking path.
-- **SC-007**: The product-domain conduct is identical across all deployed host skill
-  copies (a host-parity test passes; injected drift fails it).
+- **SC-007**: The product-domain conduct is identical across all managed skill surfaces
+  of the supported hosts (a host-parity test passes; injected drift fails it).
 - **SC-008**: The structured `product-domain.yml` validates against the documented
   Proposal 156-forward-compatible shape (schema test), so 156 wiring is a later
   connection.
@@ -259,9 +265,12 @@ validate `product-domain.yml` against the documented 156-forward-compatible shap
 - The existing specify-boundary gate and the SC-026 `confirmation` / `confirmation_scope`
   provenance machinery are the enforcement substrate; this feature extends them rather
   than adding a parallel validator.
-- "Multi-host" means the four deployed `specrew-design-workshop` skill copies
-  (`.claude/skills`, `.cursor/rules`, `.github/skills`, `.agents/skills`), each carrying
-  a `.specrew-managed` marker; the exact deploy-source wiring is resolved at plan time.
+- "Multi-host" means all five supported hosts (Claude, Copilot/GitHub, Codex/Agents,
+  Cursor, Antigravity); their `specrew-design-workshop` conduct currently lives in four
+  on-disk managed-skill surfaces (`.claude/skills`, `.cursor/rules`, `.github/skills`,
+  `.agents/skills`, each carrying a `.specrew-managed` marker) that the hosts map onto as
+  applicable. The exact host→surface mapping and deploy-source wiring are resolved at
+  plan time; no supported host is excluded.
 - The mechanical slot-in (first-stage phase vs `applicability-map.json` row) is decided
   at the design-analysis stop; this spec is behavioral.
 

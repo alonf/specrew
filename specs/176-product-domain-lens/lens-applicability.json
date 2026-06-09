@@ -53,7 +53,7 @@
       "agenda": [
         "What ships where, and how does the conduct change stay in sync across the host skill copies?"
       ],
-      "decision": "The lens md is one shared catalog file; the skill-conduct change must propagate to all 4 host skill copies (.claude/skills, .cursor/rules, .github/skills, .agents/skills, each carrying a .specrew-managed marker) through the managed-skill deploy path -- not 4 hand-edits that drift. A host-parity test guards against drift. The exact deploy-source wiring is a plan-time detail.",
+      "decision": "The lens md is one shared catalog file; the skill-conduct change must propagate to the host-managed skill surfaces of all five supported hosts (Claude, Copilot/GitHub, Codex/Agents, Cursor, Antigravity, as applicable) through the managed-skill deploy path -- not hand-edits that drift. On disk today those surfaces are four physical locations (.claude/skills, .cursor/rules, .github/skills, .agents/skills, each with a .specrew-managed marker) that the hosts map onto; the requirement is per supported host, not per physical directory -- Antigravity is supported, not excluded (maintainer clarification carried as the specify approve-with-instructions verdict). A host-parity test guards against drift. The exact host->surface mapping and deploy-source wiring are a plan-time detail.",
       "depth": "light",
       "moved_on": true,
       "confirmation": "human-confirmed",

@@ -63,13 +63,19 @@ Tests:
 
 ## Deploy topology (devops-operations)
 
+Five supported hosts (Claude, Copilot/GitHub, Codex/Agents, Cursor, Antigravity) map
+onto the host-managed skill surfaces. On disk today those surfaces are four physical
+locations; the requirement is per supported host, not per physical directory — no host
+is excluded (maintainer clarification carried at the specify verdict).
+
 ```text
-  one shared catalog file        four managed host skill copies
-  -----------------------        ------------------------------------
-  design-lenses/product-domain.md   .claude/skills/specrew-design-workshop/
-            |                        .cursor/rules/specrew-design-workshop/
-            | conduct change         .github/skills/specrew-design-workshop/
-            | propagates via         .agents/skills/specrew-design-workshop/
-            v  managed-skill deploy      (each carries a .specrew-managed marker)
-       [host-parity test]  <- fails on drift between the copies
+  one shared catalog file          host-managed skill surfaces (5 hosts -> 4 on-disk surfaces)
+  -----------------------          ---------------------------------------------------------
+  design-lenses/product-domain.md     Claude            -> .claude/skills/specrew-design-workshop/
+            |                          Cursor            -> .cursor/rules/specrew-design-workshop/
+            | conduct change           Copilot/GitHub    -> .github/skills/specrew-design-workshop/
+            | propagates via           Codex/Agents      -> .agents/skills/specrew-design-workshop/
+            v  managed-skill deploy     Antigravity       -> deploys as applicable (per-host mapping
+       [host-parity test]                                    confirmed at plan time)
+            <- fails on drift             (each surface carries a .specrew-managed marker)
 ```
