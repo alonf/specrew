@@ -667,8 +667,8 @@ function Invoke-SpecrewDesignAnalysisPlanBoundaryGate {
         $messageLines = New-Object System.Collections.Generic.List[string]
         $messageLines.Add(("[design-analysis-gate] Plan boundary cannot advance for active substantive feature '{0}'." -f $feature)) | Out-Null
         $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
-        foreach ($error in $result.Errors) {
-            $messageLines.Add(("  - {0}" -f $error)) | Out-Null
+        foreach ($err in $result.Errors) {
+            $messageLines.Add(("  - {0}" -f $err)) | Out-Null
         }
         throw ($messageLines -join [Environment]::NewLine)
     }
@@ -913,6 +913,13 @@ function Invoke-SpecrewDesignAnalysisPrePlanGate {
         throw ($packetLines -join [Environment]::NewLine)
     }
 
+    # FR-011 (Feature 176): a LOAD-BEARING research-needed product-domain statement BLOCKS plan.md
+    # until it is researched or explicitly accepted. A non-load-bearing research-needed gap does NOT
+    # block (it is recorded + carried). Fail-closed only on load-bearing gaps; graceful no-op when the
+    # product-domain record or helper is absent.
+    $planBlock = @(Test-SpecrewProductDomainPlanBlock -ProjectRoot $ProjectRoot -FeatureRef $feature)
+    if ($planBlock.Count -gt 0) { throw ($planBlock -join [Environment]::NewLine) }
+
     return [pscustomobject]@{
         Valid          = $true
         ArtifactPath   = $result.ArtifactPath
@@ -920,6 +927,35 @@ function Invoke-SpecrewDesignAnalysisPrePlanGate {
         SelectedOption = $result.SelectedOption
         PacketPath     = $packetPath
     }
+}
+
+function Test-SpecrewProductDomainPlanBlock {
+    # FR-011 (Feature 176): return human-readable block reasons when the feature's product-domain
+    # record carries one or more LOAD-BEARING research-needed statements (these must be researched or
+    # explicitly accepted before plan.md). Returns @() when there is no record, no helper, or only
+    # non-load-bearing research-needed gaps (recorded + carried, not blocking). Deterministic; no
+    # network/LLM. The pre-plan gate throws when this returns a non-empty list.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return @() }
+
+    $recordPath = Join-Path $ProjectRoot ("specs\{0}\workshop\product-domain.yml" -f $feature)
+    if (-not (Test-Path -LiteralPath $recordPath -PathType Leaf)) { return @() }
+    $helper = Join-Path $PSScriptRoot 'product-domain-lens.ps1'
+    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { return @() }
+    . $helper
+
+    $blocking = @(Test-SpecrewProductDomainResearchBlock -Path $recordPath)
+    if ($blocking.Count -eq 0) { return @() }
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add(("[product-domain-plan-block] Do not author plan.md for '{0}': {1} load-bearing research-needed product-domain gap(s) must be researched or explicitly accepted first (FR-011):" -f $feature, $blocking.Count)) | Out-Null
+    foreach ($b in $blocking) { $lines.Add(("  - {0}" -f $b)) | Out-Null }
+    return $lines.ToArray()
 }
 
 function Get-SpecrewLensApplicabilityMapPath {

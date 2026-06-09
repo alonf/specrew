@@ -97,6 +97,14 @@ Assert-True ((@(Test-SpecrewProductDomainResearchBlock -Path $lbYml)).Count -eq 
 $nlbYml = New-SpecrewProductDomainRecord -FeatureDir (New-TempFeature 't8d').FeatureDir -Record (New-ValidRecord -Statements @([ordered]@{ text = 'minor unknown'; area = 'constraints'; evidence = 'research-needed'; load_bearing = $false })) -Force
 Assert-True ((@(Test-SpecrewProductDomainResearchBlock -Path $nlbYml)).Count -eq 0) 'T008/SC-006: a non-load-bearing research-needed statement does NOT block (recorded + carried)'
 
+# FR-011 wiring: the pre-plan gate's plan-block helper returns block reasons for a load-bearing gap, none otherwise.
+$t8e = New-TempFeature 't8e'
+$null = New-SpecrewProductDomainRecord -FeatureDir $t8e.FeatureDir -Record (New-ValidRecord -Statements @([ordered]@{ text = 'feasibility unknown'; area = 'constraints'; evidence = 'research-needed'; load_bearing = $true })) -Force
+Assert-True ((@(Test-SpecrewProductDomainPlanBlock -ProjectRoot $t8e.Root -FeatureRef '999-demo')).Count -gt 0) 'T008/FR-011: the pre-plan gate is wired to BLOCK plan on a load-bearing research-needed gap'
+$t8f = New-TempFeature 't8f'
+$null = New-SpecrewProductDomainRecord -FeatureDir $t8f.FeatureDir -Record (New-ValidRecord -Statements @([ordered]@{ text = 'minor unknown'; area = 'constraints'; evidence = 'research-needed'; load_bearing = $false })) -Force
+Assert-True ((@(Test-SpecrewProductDomainPlanBlock -ProjectRoot $t8f.Root -FeatureRef '999-demo')).Count -eq 0) 'T008/FR-011: the pre-plan gate does NOT block on a non-load-bearing gap'
+
 # --- T011 / SC-005: batch "confirm all" cannot satisfy product-domain confirmation (FR-009) ---
 $batch = New-ValidRecord -Confirmation 'human-confirmed' -Scope 'batch-approval'
 $batchYml = New-SpecrewProductDomainRecord -FeatureDir (New-TempFeature 't11').FeatureDir -Record $batch -Force
