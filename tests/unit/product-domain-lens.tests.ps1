@@ -122,6 +122,12 @@ $badScope = New-ValidRecord -ContextScope 'made_up_scope'
 $badScopeYml = New-SpecrewProductDomainRecord -FeatureDir (New-TempFeature 't13').FeatureDir -Record $badScope -Force
 Assert-True ((@(Test-SpecrewProductDomainRecord -Path $badScopeYml -SchemaPath $schemaPath)).Count -gt 0) 'T013/SC-009: an invalid context_scope is rejected (enum-constrained)'
 
+# Phase-3 (Proposal 145 i18n): non-Latin / RTL / emoji record values round-trip intact (UTF-8 no-BOM).
+$i18nText = 'משתמשים בעברית — RTL users, naïve café, 日本語, 😀'
+$i18nYml = New-SpecrewProductDomainRecord -FeatureDir (New-TempFeature 't-i18n').FeatureDir -Record (New-ValidRecord -Statements @([ordered]@{ text = $i18nText; area = 'users_stakeholders'; evidence = 'known' })) -Force
+$i18nRt = ConvertFrom-SpecrewProductDomainYaml -Text (Get-Content -LiteralPath $i18nYml -Raw -Encoding UTF8)
+Assert-True ((@($i18nRt['statements'])[0]['text']) -eq $i18nText) 'Phase-3/i18n: non-Latin/RTL/emoji statement text round-trips byte-intact (Hebrew-filename lesson)'
+
 # --- T015: graceful degradation — no silent skip ---
 # (a) Catalog present + substantive feature + record MISSING -> the gate FAILS CLOSED (loud), not silent.
 $t15 = New-TempFeature 't15'
