@@ -1,3 +1,21 @@
+## 2026-06-09 — F-174 Iteration 004 review-signoff: dormant SessionEnd-code cleanup follow-up
+
+### 2026-06-09 — Follow-up: remove dormant SessionEnd code superseded by the rolling model
+
+- **Decision ID**: f174-followup-remove-dormant-sessionend-code
+- **Type**: defer
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\004
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T03:00:00Z
+- **Next Action**: Remove the dormant SessionEnd code in a cleanup slice - delete
+  `SessionEndHandoverManager.ps1` (+ its FileList entry) and `SessionEndHandover.Tests`, plus the
+  timestamped `Write-SpecrewHandover`/`Get-SpecrewHandover` funcs and the timestamped parts of
+  `HandoverStore.Tests`.
+- **Rationale**: The iteration-4 Stop-event rolling model supersedes the iter-2/3 SessionEnd model,
+  leaving that code DORMANT (unwired, inert, still green). Retained now to bound iter-4 churn; NOT
+  blocking - the active path is the rolling model and the spec is reconciled to Stop.
+
 ## 2026-06-09 — F-174 Iteration 004 design pass: Stop-event rolling handover (settled)
 
 ### 2026-06-09 — Design: rolling-handover file model + material-change policy (human co-designed)
@@ -25661,3 +25679,21 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: b397ec04
 - **Recorded At**: 2026-06-08T23:12:22Z
+
+## 2026-06-08T23:30:25Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: b5f2c6df
+- **Recorded At**: 2026-06-08T23:30:24Z
+
+## 2026-06-08T23:41:16Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: b5f2c6df
+- **Recorded At**: 2026-06-08T23:41:15Z
