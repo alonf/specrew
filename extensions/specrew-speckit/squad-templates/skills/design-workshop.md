@@ -253,7 +253,15 @@ Only after the product-domain phase is captured do you move to the lens applicab
      scope — the **agreed UI/screen layout** (the ASCII sketch the human approved). Set `co_design: true` in the
      iteration's `lens-applicability.json` so the deterministic co-design-record floor applies. An agreement
      that lives only in the chat scrollback is lost.
-7. **Re-invoke this skill for the next lens.** State which lens is next and reload this conduct + that lens's md.
+7. **Checkpoint this lens durable, THEN re-invoke for the next (F-174 — survive a mid-workshop exit/switch).**
+   The workshop is long, and an exit or host-switch mid-workshop is expected, not exceptional — so make each
+   lens durable the moment you finish it, never "all at the end". BEFORE you move to the next lens: **(a)** write
+   this lens's `lens-applicability.json` record (step 6) and persist its diagram to
+   `specs/<feature>/workshop/<lens-id>.md` **now**; **(b)** refresh the rolling handover body via
+   `Write-SpecrewHandoverContext` so a resuming session inherits which lenses are done and what each decided. A
+   session that resumes then reads the handover + the `workshop/` folder and **continues from the next
+   un-persisted lens instead of restarting the workshop**. A lens that lives only in the chat scrollback is lost
+   on exit; a persisted lens is not. Then state which lens is next and reload this conduct + that lens's md.
 
 ## When to Use
 

@@ -62,6 +62,28 @@ try {
     & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $proj 2>$null | Out-Null
     $after = Get-Content -LiteralPath $rf -Raw
     Assert-Equal $after $before 'a quiet Stop (same boundary, no tracked change) does NOT rewrite (material-change skip)'
+
+    # --- F-174 (T050): anchorless WORKSHOP window -> the floor stamps the BRANCH-resolved feature ---
+    # Before the fix the pre-specify anchor (no feature_ref) made the floor stamp an EMPTY active_feature, so
+    # Test-SpecrewHandoverValidity returned 'no-feature' and the handover was NEVER surfaced on resume (the
+    # agent re-derived from scratch - "resync takes minutes"). Now the floor resolves the feature from the
+    # branch (Spec Kit: branch == feature slug, specs/<branch>/ already scaffolded), so the handover is
+    # stampable mid-workshop and becomes surfaceable - the copilot resume-repair path, on every host.
+    $proj2 = Join-Path $tmp 'proj2'
+    New-Item -ItemType Directory -Path (Join-Path $proj2 'specs/001-pomodoro-cli') -Force | Out-Null
+    New-Item -ItemType Directory -Path (Join-Path $proj2 '.specrew') -Force | Out-Null
+    # The WORKSHOP anchor: a session_state with NO feature_ref and NO boundary (nothing has crossed yet).
+    (@{ session_state = @{ host = 'claude' } } | ConvertTo-Json -Depth 5) |
+        Set-Content -LiteralPath (Join-Path $proj2 '.specrew/start-context.json') -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $proj2 '.gitignore') -Value ".specrew/`n" -Encoding UTF8
+    git -C $proj2 init -q -b main 2>$null; git -C $proj2 config user.email 't@t'; git -C $proj2 config user.name 't'
+    git -C $proj2 add -A 2>$null; git -C $proj2 commit -q -m init 2>$null
+    # The agent is on the feature branch during the workshop (specs/<branch>/ already scaffolded by Spec Kit).
+    git -C $proj2 checkout -q -b '001-pomodoro-cli' 2>$null
+    & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $proj2 2>$null | Out-Null
+    $wf = Get-SpecrewRollingHandover -HandoverDir (Join-Path $proj2 '.specrew/handover') -NowUtc '2026-06-10T00:00:00Z'
+    Assert-True ($null -ne $wf) 'workshop Stop wrote a rolling handover (material: no existing handover)'
+    Assert-Equal $wf.active_feature '001-pomodoro-cli' 'anchorless workshop Stop stamps the BRANCH-resolved feature (empty before the fix -> handover now surfaceable on resume)'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

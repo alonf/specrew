@@ -58,7 +58,7 @@ try {
             if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
         }
     }
-    foreach ($f in 'HandoverStore', 'ClassificationEngine') { . (Join-Path $bdir "$f.ps1") }
+    foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor') { . (Join-Path $bdir "$f.ps1") }
 
     # The stop event type (host-agnostic: parse the payload directly, no per-host adapter needed).
     $source = 'stop'
@@ -83,6 +83,17 @@ try {
             if (-not [string]::IsNullOrWhiteSpace($h)) { $fromHost = [string]$h }
         }
         catch { $null = $_ }
+    }
+
+    # F-174 (T050): the pre-specify WORKSHOP window leaves the anchor's feature_ref blank (no boundary
+    # crossed yet), so without this the floor stamps an empty active_feature -> the handover validates as
+    # 'no-feature' and is NEVER surfaced on resume (the agent re-derives from scratch - the "resync takes
+    # minutes" symptom). Resolve the feature from the current branch (Spec Kit: branch == feature slug,
+    # specs/<branch>/ already scaffolded) so the floor carries it and the handover becomes surfaceable; the
+    # read-side Test-SpecrewHandoverValidity still re-checks present + not-merged + freshness. Fail-safe:
+    # on main / a non-feature branch / a deleted feature dir the resolver returns $null (today's behavior).
+    if ([string]::IsNullOrWhiteSpace([string]$feature)) {
+        $feature = Resolve-SpecrewBranchFeatureRef -ProjectRoot $root
     }
 
     $handoverDir = Join-Path $root '.specrew/handover'
