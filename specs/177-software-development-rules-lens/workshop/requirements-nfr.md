@@ -4,7 +4,7 @@
 
 ## Functional requirements (in scope)
 
-- **FR-001** — registered `code-implementation` lens md (index.yml, applicability-map.json, design-workshop lens map, `$lensIds`): decision spine + per-stack dilemmas + run-cadence + conduct.
+- **FR-001** — registered `code-implementation` lens md (index.yml, design-workshop lens map, `$lensIds`; conduct-driven, deliberately NOT in the deterministic applicability-map.json — drift D-001): decision spine + per-stack dilemmas + run-cadence + conduct.
 - **FR-002** — data-driven `code-rules.yml` catalog: 49 rules + per-stack defaults, each with stable `id` / `group` / applicability / default / stack.
 - **FR-003** — lens resolves the feature's stack and presents rules via the grouping model (baseline as defaults+exceptions; decision-prompts surfaced; applicability-filtered only when context applies); captures selections.
 - **FR-004** — workshop writes schema-valid reference-by-ID `implementation-rules.yml` + `workshop/code-implementation.md` + the `lens-applicability.json` record.

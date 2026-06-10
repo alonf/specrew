@@ -8,11 +8,14 @@
 ```text
 # 1. Run the design workshop on a feature; the code-implementation lens turn runs automatically
 #    for any code-writing feature (always-applicable-for-code, with explicit skip for doc-only).
-# 2. Inspect the catalog + the per-feature manifest:
-pwsh -File scripts/internal/code-implementation-lens.ps1 -Validate -ProjectPath . -Feature <feature>
-# 3. Run the lens tests:
-Invoke-Pester tests/unit/code-implementation-lens.tests.ps1
-Invoke-Pester tests/integration/code-rules-skill-multihost.tests.ps1
+# 2. The catalog is extensions/specrew-speckit/knowledge/design-lenses/code-rules.yml;
+#    the per-feature manifest is specs/<feature>/implementation-rules.yml.
+#    scripts/internal/code-implementation-lens.ps1 is a HELPER (function definitions:
+#    ConvertTo/From-SpecrewImplementationRulesYaml, Test-SpecrewImplementationRulesManifest,
+#    New-SpecrewImplementationRulesManifest) -- dot-sourced by the tests + gates, NOT a standalone CLI.
+# 3. Run the lens tests (standalone PASS/FAIL scripts, not Pester):
+pwsh -NoProfile -File tests/unit/code-implementation-lens.tests.ps1
+pwsh -NoProfile -File tests/integration/code-rules-skill-multihost.tests.ps1
 ```
 
 ## Try the canonical scenario

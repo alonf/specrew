@@ -56,6 +56,13 @@ Assert-Match -Text $ws -Pattern '`code-implementation`' 'T015: code-implementati
 # code-rules.md is an all-hosts deployable definition (frontmatter name + NO host-scope restriction),
 # so the existing deploy engine fans it to every host skill dir. (Deployed parity is dogfood-verified, T017.)
 Assert-True ($cr -notmatch '(?im)^\s*host[-_ ]?scope\s*:' -and $cr -notmatch '(?im)^\s*hosts?\s*:\s*\[') 'T016: code-rules.md has no host-scope restriction => deploys to all hosts'
+# T016 (Copilot review, PR #2447): explicitly assert the NEW specrew-code-rules skill reaches every host
+# root (not only design-workshop). It is a generic skill -- frontmatter `name: specrew-code-rules`, in the
+# enumerated skills-template root, no host-scope -- so the deploy engine's *.md fan-out lands it as
+# `specrew-code-rules/SKILL.md` in each of the four host roots (.claude/skills, .cursor/rules,
+# .github/skills, .agents/skills). The actual downstream deploy to all four is dogfood-verified (T017).
+Assert-True (Test-Path -LiteralPath $codeRulesTpl) 'T016: specrew-code-rules (code-rules.md) is in the enumerated skills-template root -- the deploy-engine *.md fan-out source for every host (claude/cursor/github/agents)'
+Assert-Match -Text $cr -Pattern '(?ms)^---\s.*\bname:\s*"?specrew-code-rules"?' 'T016: code-rules.md frontmatter name => deploys as specrew-code-rules/SKILL.md per host'
 
 # design-workshop is already deployed; its template must be byte-identical across every host copy (parity).
 $workshopCopies = @(

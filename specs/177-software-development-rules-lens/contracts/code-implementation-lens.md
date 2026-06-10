@@ -7,7 +7,7 @@
 
 | Symbol | Where | Purpose |
 | --- | --- | --- |
-| lens id `code-implementation` | `index.yml`, `applicability-map.json`, design-workshop lens map, `$lensIds` | makes the lens discoverable + selectable; always-applicable-for-code-features (explicit skip for doc-only) |
+| lens id `code-implementation` | `index.yml`, design-workshop lens map, `$lensIds` (conduct-driven; deliberately NOT in the deterministic `applicability-map.json` -- drift D-001, asserted by the unit test) | makes the lens discoverable + selectable; always-applicable-for-code-features (explicit skip for doc-only) |
 | `code-implementation.md` | design-lens catalog | the lens knowledge: decision spine + per-stack dilemmas + run-cadence + conduct |
 
 ## Catalog contract (`code-rules.yml`)

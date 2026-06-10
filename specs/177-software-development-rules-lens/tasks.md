@@ -55,7 +55,7 @@ forward-compatible / out of scope.
 
 ### Phase 4: Guidance skill (consumer)
 
-- [ ] T010 [i2] [US1] [Owner: Implementer] [Capacity: 3 SP] Author the NEW `specrew-code-rules` skill (`extensions/specrew-speckit/squad-templates/skills/specrew-code-rules/SKILL.md` + resolver) — resolve the active feature, read the manifest at the known location, compose baseline (catalog `baseline-default`) + per-feature overlay + `dependency_policy`, task-scoped surfacing (service/client/concurrency/API), baseline-only mode with no manifest, fail-open on unknown id / malformed (Trace: FR-005, FR-008, SC-004, SC-006).
+- [ ] T010 [i2] [US1] [Owner: Implementer] [Capacity: 3 SP] Author the NEW `specrew-code-rules` skill (`extensions/specrew-speckit/squad-templates/skills/code-rules.md`, frontmatter `name: specrew-code-rules`, + resolver) — resolve the active feature, read the manifest at the known location, compose baseline (catalog `baseline-default`) + per-feature overlay + `dependency_policy`, task-scoped surfacing (service/client/concurrency/API), baseline-only mode with no manifest, fail-open on unknown id / malformed (Trace: FR-005, FR-008, SC-004, SC-006).
 - [ ] T011 [P] [i2] [US4] [Owner: Implementer] [Capacity: 0.5 SP] Add `specrew-code-rules` to the canonical `skills/` template with host-scope frontmatter so the existing deploy engine fans it to every host skill dir (no per-feature deployment code) (Trace: FR-005, SC-003).
 
 ### Phase 5: Workshop conduct (producer) + ingestion

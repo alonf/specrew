@@ -41,8 +41,8 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T010 | specrew-code-rules guidance skill (resolver + baseline+overlay) | FR-005 | US1 | 3 | Implementer | extensions/specrew-speckit/squad-templates/skills/specrew-code-rules/SKILL.md | done | copilot | 3 | done |
-| T011 | Add specrew-code-rules to the canonical skills template (host-scope frontmatter) | FR-005 | US4 | 0.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/specrew-code-rules/ | done | copilot | 0.5 | done |
+| T010 | specrew-code-rules guidance skill (resolver + baseline+overlay) | FR-005 | US1 | 3 | Implementer | extensions/specrew-speckit/squad-templates/skills/code-rules.md | done | copilot | 3 | done |
+| T011 | Add specrew-code-rules to the canonical skills template (host-scope frontmatter) | FR-005 | US4 | 0.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/code-rules.md | done | copilot | 0.5 | done |
 | T012 | design-workshop code-lens turn (guideline-first, grouped checklist, custom rules) | FR-003 | US2 | 2.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/design-workshop.md | done | copilot | 2.5 | done -- hand-author variance (D-002) |
 | T013 | Assisted ingestion (guideline/example-project to catalog + customs + overlay) | FR-011 | US2 | 1.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/design-workshop.md | done | copilot | 1.5 | done -- hand-author variance (D-002) |
 | T014 | plan/implement wiring (Planner directive + Implementer charter pointer) | FR-006 | US1 | 1 | Implementer | extensions/specrew-speckit/squad-templates/coordinator | done | copilot | 1 | done |
