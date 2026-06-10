@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 13.5/20 story_points
 **Started**: 2026-06-10
 **Completed**:
@@ -41,15 +41,15 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T010 | specrew-code-rules guidance skill (resolver + baseline+overlay) | FR-005 | US1 | 3 | Implementer | extensions/specrew-speckit/squad-templates/skills/specrew-code-rules/SKILL.md | planned | copilot | | |
-| T011 | Add specrew-code-rules to the canonical skills template (host-scope frontmatter) | FR-005 | US4 | 0.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/specrew-code-rules/ | planned | copilot | | |
-| T012 | design-workshop code-lens turn (guideline-first, grouped checklist, custom rules) | FR-003 | US2 | 2.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/design-workshop.md | planned | copilot | | |
-| T013 | Assisted ingestion (guideline/example-project to catalog + customs + overlay) | FR-011 | US2 | 1.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/design-workshop.md | planned | copilot | | |
-| T014 | plan/implement wiring (Planner directive + Implementer charter pointer) | FR-006 | US1 | 1 | Implementer | extensions/specrew-speckit/squad-templates/coordinator | planned | copilot | | |
-| T015 | Test guidance skill (baseline+overlay, baseline-only, fail-open, dependency_policy) | FR-005 | US1 | 1 | Implementer | tests/integration/code-rules-skill-multihost.tests.ps1 | planned | copilot | | |
-| T016 | Test multi-host parity | FR-005 | US4 | 1 | Implementer | tests/integration/code-rules-skill-multihost.tests.ps1 | planned | copilot | | |
-| T017 | Dogfood (Claude first, deployed-module) SC-004/SC-007/SC-008 | SC-004 | US2 | 1.5 | Reviewer | specs/177-software-development-rules-lens/iterations/002/quality | planned | claude | | |
-| T018 | Release (FileList + extension.yml 0.34.0 to 0.35.0 + .specify mirror + CHANGELOG + beta) | SC-003 | US4 | 1.5 | Implementer | Specrew.psd1, extensions/specrew-speckit/extension.yml | planned | copilot | | |
+| T010 | specrew-code-rules guidance skill (resolver + baseline+overlay) | FR-005 | US1 | 3 | Implementer | extensions/specrew-speckit/squad-templates/skills/specrew-code-rules/SKILL.md | done | copilot | | |
+| T011 | Add specrew-code-rules to the canonical skills template (host-scope frontmatter) | FR-005 | US4 | 0.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/specrew-code-rules/ | done | copilot | | |
+| T012 | design-workshop code-lens turn (guideline-first, grouped checklist, custom rules) | FR-003 | US2 | 2.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/design-workshop.md | done | copilot | | |
+| T013 | Assisted ingestion (guideline/example-project to catalog + customs + overlay) | FR-011 | US2 | 1.5 | Implementer | extensions/specrew-speckit/squad-templates/skills/design-workshop.md | done | copilot | | |
+| T014 | plan/implement wiring (Planner directive + Implementer charter pointer) | FR-006 | US1 | 1 | Implementer | extensions/specrew-speckit/squad-templates/coordinator | done | copilot | | |
+| T015 | Test guidance skill (baseline+overlay, baseline-only, fail-open, dependency_policy) | FR-005 | US1 | 1 | Implementer | tests/integration/code-rules-skill-multihost.tests.ps1 | done | copilot | | |
+| T016 | Test multi-host parity | FR-005 | US4 | 1 | Implementer | tests/integration/code-rules-skill-multihost.tests.ps1 | done | copilot | | |
+| T017 | Dogfood (Claude first, deployed-module) SC-004/SC-007/SC-008 | SC-004 | US2 | 1.5 | Reviewer | specs/177-software-development-rules-lens/iterations/002/quality | done | claude | | |
+| T018 | Release (FileList + extension.yml 0.34.0 to 0.35.0 + .specify mirror + CHANGELOG + beta) | SC-003 | US4 | 1.5 | Implementer | Specrew.psd1, extensions/specrew-speckit/extension.yml | done | copilot | | |
 
 ## Effort Model
 

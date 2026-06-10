@@ -2,22 +2,36 @@
 
 **Schema**: v1
 **Current Phase**: before-implement
-**Iteration Status**: planning
-**Last Completed Task**: (none)
-**Tasks Remaining**: T010, T011, T012, T013, T014, T015, T016, T017, T018
+**Iteration Status**: executing
+**Last Completed Task**: T018
+**Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 96ded099a4e29db56c8e26de441af9da13896db4
-**Updated**: 2026-06-10T12:55:00Z
+**Updated**: 2026-06-10T15:10:00Z
 
 ## Execution Summary
 
-- Iteration 002 (i2 -- delivery + guidance) scaffolded; plan task table populated (T010-T018, 13.5/20 SP);
-  hardening-gate authored (ready; runtime-bearing concerns pending-post-implementation -> the dogfood).
-- Baseline = the i1-closeout commit (96ded099), so the i2 review diff is i2-only.
-- Awaiting the human start-implementation go-ahead at the i2 before-implement gate.
-- i2 scope: T010 guidance skill · T011 skill-in-template · T012 design-workshop code-lens turn ·
-  T013 assisted ingestion · T014 plan/implement wiring · T015 skill tests · T016 parity test ·
-  T017 deployed dogfood (SC-004/007/008) · T018 release (v0.35.0-beta).
+- **All i2 tasks (T010-T018) are COMPLETE and committed.** Commits: `687cffb9` (T010-T016 skill +
+  design-workshop turn + tests + parity), `f11841e2` (conduct fix to the hand-author manifest pattern +
+  T018 release-prep), `a0584890` (T017 deployed-module dogfood + single-element-enforcement defect fix +
+  version triple), `6af91ac9` (dogfood SC honesty relabel + shipped manifest example).
+- **`validate-governance` is green (38/38 PASS, including this iteration)** after the implementation; the
+  only WARNs are pre-existing (handoff-block evidence on past hand-driven boundary commits; unrelated old
+  iterations missing pr-review-resolution.md).
+- **T017 dogfood verdict** (`dogfood-report.md`): PASS for deployed wiring + manifest-authoring (271-file
+  stage, module 0.35.0 by import-by-path, F-177 catalog + `specrew-code-rules` skill + design-workshop lens
+  turn deployed downstream to all hosts, hand-authored manifest schema+catalog valid on the deployed
+  module). The behavioral SC-004 / SC-007 / SC-008 are NOT-YET-VERIFIED -- they need the human-on-published
+  -beta run at feature-closeout. The dogfood surfaced and fixed a real defect (single-element enforcement
+  list projected as a string, not an array) that unit-green had missed; regression test added.
+- **Change-from-plan**: T012/T013 conduct now has the agent HAND-AUTHOR `implementation-rules.yml` against
+  the schema (the product-domain pattern), NOT call a PowerShell writer the deployed agent cannot reach;
+  `New-SpecrewImplementationRulesManifest` and the YAML writer are now test-only by design (like
+  product-domain's unused writer).
+- **Boundary string**: the iteration is at the implement->review-signoff handoff. `Current Phase` /
+  session `boundary_type` remain `before-implement` (the last human-authorized gate); they advance to
+  `review-signoff` via the formal boundary sync once review-signoff entry is authorized. No push / tag /
+  publish (per the standing constraint -- those are feature-closeout actions).
 
 ## Notes
 
