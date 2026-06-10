@@ -1,11 +1,11 @@
 # Iteration State: 007
 
 **Schema**: v1
-**Current Phase**: implement
+**Current Phase**: implement (review-signoff HELD — pending the DEPLOYED manual dogfood)
 **Iteration Status**: executing
-**Last Completed Task**: T047 — manual dogfood protocol written + getting-started honesty sweep finished. ALL iter-7 tasks T043–T047 code-complete + automated-verified.
-**Tasks Remaining**: (none in code) — the MANUAL DOGFOOD (the gate's disqualifier, Ruling Prompt 3) is the maintainer's to run at review-signoff; parity is NOT re-claimed until it passes.
-**In Progress**: review-signoff stop — presenting the implementation for the verdict, with the manual dogfood as the outstanding gate item
+**Last Completed Task**: T047 + the #3 hardening — the T046 reconstruction was validated against a REAL `specrew start` contract (`specrew init` + `--no-launch`): a 38-line diff, ALL launcher-only/context (frontmatter, feature-request, casting roster/routing/projectstate) + one cosmetic (the hook's orientation reads `Specrew: unknown` — the manager omits `SpecrewVersion` from the surgery). All 5 parity markers present + matching in the real contract.
+**Tasks Remaining**: the DEPLOYED manual dogfood — the gate's disqualifier; the MAINTAINER runs it in a real installed-module layout (NOT the dev-tree `SPECREW_MODULE_PATH` fast-path), since the iter-6 failure was downstream.
+**In Progress**: deployed-dogfood handoff. review-signoff is HELD (maintainer verdict 2026-06-10): code/flow passed deep review, parity is UNPROVEN until the deployed dogfood passes. NOT advancing.
 **Baseline Ref**: (iter-6 HEAD)
 **Updated**: 2026-06-10T00:00:00Z
 
@@ -72,6 +72,26 @@
   lifecycle on its first reply, matching `specrew start`). Finished the getting-started honesty sweep (the
   "Direct launch on Claude" bullet now states content-parity is automated-verified but read-and-follow is
   under manual verification — prefer `specrew start` until the side-by-side passes).
+- **review-signoff HELD (maintainer verdict, 2026-06-10) — NOT approved as parity-confirmed.** Code/flow
+  passed a deep review (deploy gap closed: byte-identical + deps in FileList + deployed-floor + anti-stale-green;
+  surgery+inline correct) but parity is UNPROVEN; per Ruling Prompt 3 the manual dogfood is the disqualifier,
+  and T046 green is hook-vs-a-RECONSTRUCTION of specrew start, not hook-vs-LIVE.
+  - **#3 hardening DONE:** captured a REAL specrew start contract (`specrew init` + `specrew start --no-launch`)
+    and diffed it against the hook's — 326 vs 308 lines; a 38-line diff that is ALL launcher-only/context
+    (frontmatter `baseline_commit_hash`; the feature request; the casting roster/routing/projectstate stubs) +
+    one cosmetic (`Specrew: unknown` — the manager omits `SpecrewVersion` from the surgery; fixable, not
+    parity-critical). All 5 parity markers present + matching in the real contract → the reconstruction is FAITHFUL.
+  - **THE GATE (the maintainer runs it):** the DEPLOYED dogfood — install this branch (the dev module is 0.34.0,
+    so it WINS over the published 0.33.0 via tier-3) as the resolvable module, `specrew init` a fresh project,
+    run the anti-stale-green check (deployed provider greps `Write-SpecrewLaunchContractArtifact`; launch-contract.ps1
+    resolves), THEN launch `claude` and observe the first reply. NOT the dev-tree `SPECREW_MODULE_PATH` fast-path
+    (the iter-6 failure was downstream). PASS = the hook agent renders the coordinator contract + the
+    expert-on-Software-Architecture line + drives the lifecycle, matching specrew start.
+  - On GREEN → parity achieved, record honestly, advance to retro. On RED → the 47 KB inline is the first
+    suspect (additionalContext cap / skim) → trim to core per Ruling b; second suspect is a deployed dependency
+    not resolving. No parity claim until green.
+  - Carried prompt answers: #2 keep full-inline FOR the dogfood (trim only if it skims); #4 Proposal-145
+    promotion at FEATURE-CLOSEOUT (bundle the main commit), not mid-iteration.
 
 ## Notes
 
