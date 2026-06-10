@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T044 — inline the contract into the injected directive (read-and-follow fix); directive now carries the full contract in-context, skip-inducing "READ the file" framing removed; bootstrap suite green
-**Tasks Remaining**: T045 (deploy-sync + mirror guard), T046 (side-by-side acceptance test), T047 (manual dogfood protocol + docs)
-**In Progress**: T045 — deploy-source sync (port the iter-6/7 provider into the extension-source copy) + mirror-parity guard
+**Last Completed Task**: T045 — deploy-source sync (extension-source provider now byte-identical to the module copy) + mirror-parity guard; deployed ground-truth: the synced extension writes + inlines the contract (the iter-6 deploy gap CLOSED)
+**Tasks Remaining**: T046 (side-by-side acceptance test), T047 (manual dogfood protocol + docs)
+**In Progress**: T046 — the automatable side-by-side content-diff (hook vs specrew start, deployed layout)
 **Baseline Ref**: (iter-6 HEAD)
 **Updated**: 2026-06-10T00:00:00Z
 
@@ -50,6 +50,15 @@
   with the file as the re-consult reference. The side-by-side (T046) is the arbiter; a leaner core (trimming
   the artifact-template tail) is a safe follow-optimization if size warrants. HONEST: proves the directive
   CARRIES the contract in-context — NOT that the agent reads+follows it (that is the manual dogfood gate).
+- **T045 DONE** (deploy-source sync + mirror guard, deployed-verified): synced the EXTENSION-SOURCE provider
+  (`extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1`) to be BYTE-IDENTICAL to the MODULE
+  copy (both 148 lines) — so deploy-speckit-extension now ships iter-7 (T036/T037/T043/T044), not the iter-4
+  stub. Added `tests/bootstrap/ProviderMirrorParity.Tests.ps1` (asserts byte-identity + the iter-7 markers,
+  line-ending-normalized) so the divergence cannot recur silently. DEPLOYED GROUND-TRUTH (the proof T038
+  missed): deploy this branch into a fresh Spec-Kit project → deployed provider iter6=True →
+  last-start-prompt.md WRITTEN → the contract INLINED in the deployed directive (all False/absent before the
+  sync). HONEST: the deploy LAYER gap is closed (the deployed provider executes iter-7); full content PARITY
+  (T046) + read-and-follow (the manual dogfood) remain the gate.
 
 ## Notes
 
