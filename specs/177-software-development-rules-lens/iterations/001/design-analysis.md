@@ -276,9 +276,27 @@ flowchart LR
   Man --> Plan[plan.md constraints]
 ```
 
-- **Human-agreed**: yes — the component-to-responsibility map and both flows were co-designed and
-  human-confirmed at the intake workshop (component-design + architecture-core lenses, 2026-06-10,
-  `lens-applicability.json`); reaffirmed at the design-analysis verdict. The tooling/dependency-selection
+**Agreed UI layout (human-approved at the ui-ux lens, 2026-06-10)** — the two interaction surfaces. The
+design-time UI layout is the guideline-first grouped, pre-checked set/unset checklist (no flat wall); the
+implement-time UI is the agent-guidance surface (baseline + task-scoped + per-feature overlay). Full
+layout in file:///C:/Dev/Specrew-software-development-rules-lens/specs/177-software-development-rules-lens/workshop/ui-ux.md
+
+```text
+Design-time screen layout (human-facing) — grouped checklist, pre-checked at defaults
+Stack: <resolved>          [change]
+Source of truth: guideline doc / example project(s) / none      (asked FIRST)
+▾ Cross-language baseline   [x] names intent [x] short methods [x] DI [x] no magic numbers ... (summary)
+▾ <language> specific       [x] ...            ▾ Framework: <fw>   [x] ...
+▸ Decisions you must make   (paced)            ▸ Applicable only-if (context-gated)
+＋ Add your own rule         (free text / pasted doc / example-project)
+
+Implement-time layout (agent-facing) — specrew-code-rules
+  ALWAYS-ON baseline  +  TASK-SCOPED group (service/client/concurrency/API)  +  PER-FEATURE OVERLAY
+```
+
+- **Human-agreed**: yes — the component-to-responsibility map, both flows, AND the UI layout above were
+  co-designed and human-confirmed at the intake workshop (component-design + architecture-core + ui-ux
+  lenses, 2026-06-10, `lens-applicability.json`); reaffirmed at the design-analysis verdict. The tooling/dependency-selection
   decision area (DP8/FR-013) was added at the maintainer's explicit pre-plan direction (2026-06-10) and
   is part of this co-design.
 
