@@ -2,11 +2,11 @@
 
 **Schema**: v1
 **Reviewed**: 2026-06-10
-**Baseline Ref**: 98a494eb8fcbbb3055615c8199d0cbb7dcd1d735
+**Baseline Ref**: 7f4f2ae7482df0a8c0259c515c103c36c23d4e35
 
 > **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
 >
-> This iteration's task tracking declares **0 completed task(s)**, but the git diff against baseline `98a494eb8fcbbb3055615c8199d0cbb7dcd1d735` contains **28 file(s)**.
+> This iteration's task tracking declares **9 completed task(s)**, but the git diff against baseline `7f4f2ae7482df0a8c0259c515c103c36c23d4e35` contains **20 file(s)**.
 >
 > **Severity**: WARNING  
 > **Implication**: Review evidence may be incomplete or misleading.
@@ -19,7 +19,7 @@
 >
 > **Remediation**:
 >
-> 1. Verify implementation is committed: `git diff 98a494eb8fcbbb3055615c8199d0cbb7dcd1d735...HEAD --stat`
+> 1. Verify implementation is committed: `git diff 7f4f2ae7482df0a8c0259c515c103c36c23d4e35...HEAD --stat`
 > 2. If uncommitted work exists: `git add . && git commit -m "Implementation complete"`
 > 3. Re-run scaffolder with `-Force` flag to regenerate review artifacts after commit
 > 4. Re-run `validate-governance.ps1` to clear pre-review commit gate error

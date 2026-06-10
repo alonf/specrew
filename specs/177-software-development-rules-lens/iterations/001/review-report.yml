@@ -1,0 +1,94 @@
+schema_version: "1.0"
+feature: 177-software-development-rules-lens
+iteration: "001"
+baseline_ref: 7f4f2ae7482df0a8c0259c515c103c36c23d4e35
+reviewed: "2026-06-10"
+overall_verdict: accepted
+scope: >-
+  i1 capture substrate (T001-T009): catalog + manifest schema + lens md + registration +
+  writer/validator + unit tests. NO agent-facing runtime surface in i1 -- the workshop conduct turn,
+  the specrew-code-rules guidance skill, and the SC-004/SC-007/SC-008 dogfood are iteration 002.
+note: >-
+  Proposal 145 is unshipped, so this structured packet (Phase 0-7 + FR x phase matrix + falsification)
+  is authored manually, not produced by 145 machinery. Authored after a human send-back that caught
+  stale sibling reviewer artifacts (now reconciled: all verdict=accepted, baseline=before-implement).
+
+phases:
+  - id: 0
+    name: context-load
+    verdict: pass
+    evidence: "spec.md (FR-001..FR-013, SC-001..SC-008), plan.md (Option B), tasks.md (T001-T018), design-analysis.md (Co-Design + UI layout), data-model.md, contracts/ loaded; scope confirmed as i1."
+  - id: 1
+    name: branch-hygiene
+    verdict: pass-with-notes
+    evidence: "Branch ahead 19 (the F-177 lifecycle commits), behind 4 (origin/main advanced -- reconcile by MERGE at feature-closeout, not now). Dirty working tree classified below (branch_hygiene): NONE are F-177 source; all F-177 changes are committed under specs/177 + extensions/ + scripts/ + tests/."
+  - id: 2
+    name: functional-correctness
+    verdict: pass
+    evidence: "Writer produces a schema-valid reference-by-ID manifest; validator catches unknown ids, bad provenance pairing, invalid context_scope; overlay merge never drops a shipped rule; dependency_policy captured. Catalog: 60 unique ids incl. the 3 additions + per-stack. Registration present (conduct-driven, D-001)."
+  - id: 3
+    name: nfr
+    verdict: pass
+    evidence: "Maintainability: one source of truth (catalog, stable ids), no rule text duplicated, constrained-YAML mirrors the product-domain precedent (no powershell-yaml). Forward-compat: context_scope hooks + stable ids. Multi-host parity + rule-volume UX are i2 (not in i1 scope)."
+  - id: 4
+    name: code-quality
+    verdict: pass
+    evidence: "PSScriptAnalyzer Errors=0 (New-/plural-noun Warnings are the repo-tolerated class; CI is Error-only). ASCII-clean .ps1; markdownlint clean across the iteration."
+  - id: 5
+    name: test-coverage-integrity
+    verdict: pass
+    evidence: "tests/unit/code-implementation-lens.tests.ps1 (38 assertions: catalog integrity, manifest round-trip, positive+negative schema validation, provenance pairing, overlay-never-drops, from-example-project, registration) + lens-conduct-delivery + lens-applicability-selector all PASS. Behavior-proving, not file-presence."
+  - id: 6
+    name: system-safety-ops
+    verdict: pass
+    evidence: "No auth/secrets/PII/network in i1. Fail-open everywhere (missing/malformed manifest|catalog|overlay -> WARN + fallback). mechanical-checks: 0 findings. Deployment (FileList + extension.yml bump + .specify mirror) is i2/release (T018)."
+  - id: 7
+    name: falsification-and-synthesis
+    verdict: pass
+    evidence: "See falsification[]; the accepted verdict survives refutation for i1 scope; the runtime dogfood is explicitly carried to i2, not claimed here."
+
+fr_phase_matrix:
+  FR-001: { status: verified, phases: [2, 5], evidence: "lens md + index.yml + $lensIds registration; T009 + lens-conduct-delivery + selector tests" }
+  FR-002: { status: verified, phases: [2, 5], evidence: "code-rules.yml 60 rules; T007 catalog-integrity + YAML parse" }
+  FR-003: { status: partial-i1, phases: [2], evidence: "lens md presents the grouping model (content); the interactive workshop turn is i2 (T012)" }
+  FR-004: { status: verified, phases: [2, 5], evidence: "manifest schema + writer/validator; T008 round-trip + schema + invariants" }
+  FR-005: { status: deferred-i2, phases: [], evidence: "specrew-code-rules guidance skill is iteration 002 (T010/T011)" }
+  FR-006: { status: deferred-i2, phases: [], evidence: "plan/implement wiring is iteration 002 (T014)" }
+  FR-007: { status: verified, phases: [2, 5], evidence: "context_scope hook in schema + manifest; T008" }
+  FR-008: { status: deferred-i2, phases: [], evidence: "baseline-only skill mode is iteration 002 (T010/T015)" }
+  FR-009: { status: partial-i1, phases: [2, 5], evidence: "checked/unchecked recorded by the writer + T008; the interactive set/unset UI is i2 (T012)" }
+  FR-010: { status: partial-i1, phases: [2], evidence: "guideline-first content in the lens md; the conduct is i2 (T012)" }
+  FR-011: { status: deferred-i2, phases: [], evidence: "assisted ingestion is iteration 002 (T013)" }
+  FR-012: { status: verified, phases: [2, 5], evidence: "overlay merge additive+override-never-drop + custom-rule provenance; T008" }
+  FR-013: { status: verified, phases: [2, 5], evidence: "dependency_policy capture; T006 + T008" }
+
+sc_matrix:
+  SC-001: { status: verified, evidence: "registration tests (T009)" }
+  SC-002: { status: verified, evidence: "schema-valid manifest produced + validated (T008)" }
+  SC-003: { status: deferred-i2, evidence: "multi-host skill parity (T016)" }
+  SC-004: { status: deferred-i2, evidence: "deployed dogfood -- agent guided (T017)" }
+  SC-005: { status: verified, evidence: "catalog integrity (T007)" }
+  SC-006: { status: deferred-i2, evidence: "baseline-only skill mode (T015)" }
+  SC-007: { status: deferred-i2, evidence: "deployed dogfood -- no rule wall (T017)" }
+  SC-008: { status: deferred-i2, evidence: "deployed dogfood -- dependency stance honored (T017)" }
+
+branch_hygiene:
+  ahead: 19
+  behind: 4
+  reconcile: "MERGE origin/main at feature-closeout (not mid-iteration)"
+  dirty_classification:
+    - { paths: ".claude/agents/*.md (5)", class: pre-existing-session-churn, f177: false, action: "review separately; present before this session per session-start git status" }
+    - { paths: ".specrew/last-validator-summary.json, .specrew/runtime/refocus-channel1.json, .specrew/version-check-cache.json", class: runtime-state-cache, f177: false, action: "gitignore-class; not source" }
+    - { paths: ".squad/active-features.yml, config.json, decisions.md, events/lifecycle-events.jsonl, identity/now.md", class: squad-runtime-state, f177: false, action: "updated by sync-boundary-state during the lifecycle; runtime-local, not F-177 source" }
+    - { paths: "specs/171-specrew-refocus/iterations/002/tasks-progress.yml", class: stale-171-leftover, f177: false, action: "unrelated to F-177 (the recovery-B bypassed feature); cleanup-class" }
+  conclusion: "No F-177 source change is uncommitted; all F-177 deliverables are in the boundary commits. The dirty tree is runtime state + pre-existing churn + a 171 leftover."
+
+falsification:
+  attempts:
+    - { claim: "the catalog is valid", refutation_tried: "parse + id-uniqueness", outcome: "refutation FAILS -- 60 unique ids, YAML parses, additions+per-stack present (T007)" }
+    - { claim: "the writer validates correctly", refutation_tried: "feed an unknown id + a bad provenance pairing", outcome: "refutation FAILS -- both are caught (T008 negative cases)" }
+    - { claim: "no in-scope FR is unverified", refutation_tried: "walk FR-001..FR-013", outcome: "refutation FAILS -- every i1-scope FR has phase+test evidence; FR-005/006/008/011 are explicitly i2, not unverified-in-scope" }
+    - { claim: "the review artifacts are consistent", refutation_tried: "diff verdict + baseline across review/coverage/index/dependency", outcome: "refutation FAILS post-reconcile -- all accepted, all baseline=before-implement (was the human finding; now fixed)" }
+    - { claim: "no runtime behavior is over-claimed", refutation_tried: "look for a runtime claim without a dogfood", outcome: "refutation FAILS -- i1 has no runtime surface; SC-004/007/008 are carried to i2, not claimed" }
+    - { claim: "branch hygiene hides F-177 changes", refutation_tried: "classify every dirty path", outcome: "refutation FAILS -- all dirty paths are runtime/churn/171-leftover; no F-177 source uncommitted" }
+  result: "The accepted verdict survives falsification for iteration-001 scope. The single honest caveat -- the runtime dogfood (SC-004/007/008) -- is explicitly an iteration-002 gate, not an i1 claim."

@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: iteration-closeout
-**Captured At**: 2026-06-10T07:52:36Z
+**Captured At**: 2026-06-10T09:15:42Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
@@ -12,7 +12,7 @@
 
 ```text
 SPECREW VELOCITY DASHBOARD
-Summary: → F-177 Code & Implementation Lens (software-development-rules workshop lens) | Implementation Complete · implement-complete (heading to review-signoff) | 6.8 SP/day (10 closed iterations, high)
+Summary: → F-177 Code & Implementation Lens (software-development-rules workshop lens) | Implementation Complete · review-complete (awaiting review-signoff verdict) | 6.8 SP/day (10 closed iterations, high)
 Today 2026-06-10 | Repo Specrew-software-development-rules-lens
 Rendering rich
 ACTIVE
