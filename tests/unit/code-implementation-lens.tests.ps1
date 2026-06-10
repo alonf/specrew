@@ -81,6 +81,26 @@ Assert-True ((@($back.selections[1].enforcement) -join '+') -eq 'plan+review') '
 Assert-True (@($back.dependency_policy.selected).Count -eq 1 -and $back.dependency_policy.selected[0].name -eq 'Polly') 'T008: round-trip preserves dependency_policy.selected'
 Assert-True ($back.custom_rules[0].provenance -eq 'from-example-project') 'T008: round-trip preserves from-example-project provenance'
 
+# Regression (F-177 deployed-module dogfood): a SINGLE-element enforcement list must round-trip as an
+# array AND survive the JSON projection as an array, not a scalar string. The original round-trip above
+# only used a two-element list, so the single-element function-return unwrap slipped past unit-green and
+# surfaced only on the deployed-module dogfood. The leading-comma idiom in ConvertFrom-SpecrewCodeInlineList
+# guards it.
+$single = [ordered]@{
+    schema_version = '1.0'; context_scope = 'feature_standalone'; resolved_stack = 'csharp-dotnet'
+    selections     = @( [ordered]@{ id = 'code-rule.idiomatic-error-handling'; checked = $true; enforcement = @('review') } )
+    custom_rules   = @(); provenance = [ordered]@{ confirmation = 'human-confirmed'; confirmation_scope = 'lens-question' }
+}
+$sd = New-TempManifestDir
+try {
+    New-SpecrewImplementationRulesManifest -FeatureDir $sd -Manifest $single | Out-Null
+    $sback = ConvertFrom-SpecrewImplementationRulesYaml -Text (Get-Content -LiteralPath (Join-Path $sd 'implementation-rules.yml') -Raw)
+    Assert-True (@($sback.selections[0].enforcement).Count -eq 1 -and $sback.selections[0].enforcement[0] -eq 'review') 'T008 regression: single-element enforcement round-trips as a 1-item array'
+    $errs = @(Test-SpecrewImplementationRulesManifest -Path (Join-Path $sd 'implementation-rules.yml') -SchemaPath $schemaPath -CatalogPath $catalogPath)
+    Assert-True ($errs.Count -eq 0) "T008 regression: single-element enforcement passes schema validation (errors: $($errs -join '; '))"
+}
+finally { Remove-Item -LiteralPath $sd -Recurse -Force -ErrorAction SilentlyContinue }
+
 # Positive validation: a valid manifest against the schema + catalog -> 0 errors.
 $pd = New-TempManifestDir
 try {

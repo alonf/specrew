@@ -141,12 +141,17 @@ function ConvertFrom-SpecrewCodeScalar {
 }
 
 function ConvertFrom-SpecrewCodeInlineList {
+    # Always returns an array. The leading-comma idiom (return ,$items) prevents PowerShell from
+    # unwrapping a SINGLE-element array on function return -- otherwise enforcement: [review] is read
+    # back as the scalar "review" and fails the schema's array type at the JSON projection. (Found by
+    # the F-177 deployed-module dogfood; the unit round-trip only exercised a two-element list.)
     param([AllowNull()][string]$Raw)
-    if ([string]::IsNullOrWhiteSpace($Raw)) { return @() }
+    if ([string]::IsNullOrWhiteSpace($Raw)) { return ,@() }
     $t = $Raw.Trim()
     if ($t.StartsWith('[') -and $t.EndsWith(']')) { $t = $t.Substring(1, $t.Length - 2) }
-    if ([string]::IsNullOrWhiteSpace($t)) { return @() }
-    return @($t -split ',' | ForEach-Object { ConvertFrom-SpecrewCodeScalar -Raw $_ } | Where-Object { $null -ne $_ })
+    if ([string]::IsNullOrWhiteSpace($t)) { return ,@() }
+    $items = @($t -split ',' | ForEach-Object { ConvertFrom-SpecrewCodeScalar -Raw $_ } | Where-Object { $null -ne $_ })
+    return ,$items
 }
 
 function ConvertFrom-SpecrewImplementationRulesYaml {

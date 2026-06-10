@@ -195,10 +195,10 @@ Three Unix-install bugs found by the 0.31.0-beta1 Linux beta-before-stable valid
 
 ### Known follow-ups (deferred carry-forward chores)
 
-- **Framework-fix slice** _(still deferred)_: B-001 (duplicate `Get-ObjectPropertyString` with `-Names` vs `-PropertyNames` — later shadows former) + A-001 (`Get-QualityEvidenceContent` StrictMode crash on the `| Gate | Target | Notes |` quality-gate convention, blocking scaffold/mechanical/reviewer-artifact generation).
+- **Framework-fix slice** *(still deferred)*: B-001 (duplicate `Get-ObjectPropertyString` with `-Names` vs `-PropertyNames` — later shadows former) + A-001 (`Get-QualityEvidenceContent` StrictMode crash on the `| Gate | Target | Notes |` quality-gate convention, blocking scaffold/mechanical/reviewer-artifact generation).
 - **Validator hygiene — RESOLVED via PR #1153 (Proposal 144)**: closed/historical iterations are no longer FAILed by a later capacity-baseline change. The validator now enforces `iteration-config` capacity only for in-flight iterations (`planning`/`executing`); everything past implementation is grandfathered against its own stated capacity (durable closed-iteration index as belt-and-suspenders). The 29-iteration / 58-line capacity-drift set cleared to 0.
-- **Capacity baseline revert (queued slice)**: revert self-host `capacity_per_iteration` 25 → 20. The 20 cap is intentional (AI scope/context-sized); F-049 Iteration 003's 23.45 SP load should have been _split_, not accommodated by raising the cap. Iteration 003 stays grandfathered by the Proposal-144 rule (protected in both baseline directions).
-- **Proposal 143 — no longer required for F-049**: FR-038 in-situ is closed by the Iteration 005 directive refactor + Coordinator Welcome Orientation (above). Proposal 143 still ships post-F-049/F-050 as the _richer_ surface (CLI reset path, audit trail, structured Welcome Orientation with Unicode rendering, cross-platform polish) — not blocking.
+- **Capacity baseline revert (queued slice)**: revert self-host `capacity_per_iteration` 25 → 20. The 20 cap is intentional (AI scope/context-sized); F-049 Iteration 003's 23.45 SP load should have been *split*, not accommodated by raising the cap. Iteration 003 stays grandfathered by the Proposal-144 rule (protected in both baseline directions).
+- **Proposal 143 — no longer required for F-049**: FR-038 in-situ is closed by the Iteration 005 directive refactor + Coordinator Welcome Orientation (above). Proposal 143 still ships post-F-049/F-050 as the *richer* surface (CLI reset path, audit trail, structured Welcome Orientation with Unicode rendering, cross-platform polish) — not blocking.
 
 ## [0.27.6] - 2026-05-26
 
