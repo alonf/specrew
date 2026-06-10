@@ -1,20 +1,40 @@
 $ErrorActionPreference = 'Stop'
 
-# F-174 iteration 007 (T045): the bootstrap provider exists in TWO tracked copies that MUST stay in sync.
-#   - MODULE copy  : scripts/internal/specrew-bootstrap-provider.ps1
-#                    (the self-host provider AND the tier-3 component source the deployed copy resolves).
-#   - EXTENSION copy: extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1
-#                    (what deploy-speckit-extension ships into a downstream .specify/, and which
-#                     Resolve-ProviderCommandPath resolves FIRST for a downstream project).
-# iter-6 updated ONLY the module copy, so downstream deployments shipped the stale iter-4 provider (no
-# contract write, no inline) - the exact gap the iter-6 review-signoff was sent back for. The provider's
-# resolution is $PSScriptRoot-relative (location-agnostic), so the two copies are meant to be BYTE-IDENTICAL.
-# This guard asserts that, so the divergence cannot recur silently. Line endings are normalized so a
-# CRLF/LF difference (git autocrlf on checkout) is not a false divergence.
+# F-174: hook PROVIDER files that the dispatcher invokes from a downstream .specify/ exist in TWO tracked
+# copies that MUST stay byte-identical:
+#   - SOURCE (module) copy      : scripts/internal/<provider>.ps1
+#   - DEPLOYABLE (extension) copy: extensions/specrew-speckit/scripts/<provider>.ps1
+#                                  (what deploy-speckit-extension ships into a downstream .specify/, and which
+#                                   Resolve-ProviderCommandPath resolves FIRST for a downstream project).
+# A full-copy provider resolves its heavy components $PSScriptRoot-relative / from the module, so the file
+# itself must be the CURRENT logic wherever it lands -> the two copies are meant to be BYTE-IDENTICAL.
+#
+# History (why this guard exists, and why it is now GENERIC):
+#   - iter-6 updated ONLY the module copy of the BOOTSTRAP provider -> downstream shipped the stale iter-4
+#     provider (no contract write); the iter-6 review-signoff was sent back for exactly this. The first guard
+#     covered ONLY the bootstrap provider.
+#   - iter-8 (T050) found the SAME class recur on the HANDOVER provider: the iter-5 floor/body-split rewrote
+#     scripts/internal but NOT the extension mirror, so every downstream deploy shipped a provider that calls a
+#     dropped `-Sections` param against the iter-5 HandoverStore -> the Stop handover failed OPEN silently
+#     (exit 0, stderr-only WARN) on every host, so no rolling handover was ever written. ProviderMirrorParity
+#     never caught it because it was hard-coded to the bootstrap provider alone.
+# So this guard now asserts byte-identity for EVERY full-copy provider pair (auto-discovered), so a NEW
+# provider cannot skew silently either. Line endings are normalized so a CRLF/LF difference (git autocrlf on
+# checkout) is not a false divergence.
+#
+# EXCLUDED - wrapper providers whose extension copy is a thin DISPATCHER to the module engine BY DESIGN (the
+# two copies are intentionally different, not a mirror). Each exclusion is documented with its reason; adding
+# a provider here is a deliberate act, which is the right friction.
 
 $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
-$moduleProvider = Join-Path $repoRoot 'scripts/internal/specrew-bootstrap-provider.ps1'
-$extProvider = Join-Path $repoRoot 'extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1'
+$srcDir = Join-Path $repoRoot 'scripts/internal'
+$extDir = Join-Path $repoRoot 'extensions/specrew-speckit/scripts'
+
+# Wrapper exclusions: the extension copy is a thin launcher that resolves + invokes the module engine, so it
+# is SUPPOSED to differ from the scripts/internal engine. Document each with its reason.
+$wrapperExclusions = @(
+    'sync-boundary-state.ps1'   # extension copy = param/resolve/dispatch wrapper (Invoke-SpecrewBoundaryStateSync); the engine is the 1600+-line scripts/internal copy.
+)
 
 function Assert-True {
     param([bool]$Condition, [string]$Message)
@@ -22,18 +42,41 @@ function Assert-True {
     Write-Host "PASS: $Message" -ForegroundColor Green
 }
 
-Assert-True (Test-Path -LiteralPath $moduleProvider) 'module bootstrap provider exists (scripts/internal)'
-Assert-True (Test-Path -LiteralPath $extProvider) 'extension-source bootstrap provider exists (extensions/specrew-speckit/scripts)'
+# Auto-discover the full-copy mirror pairs: every extension provider that has a scripts/internal counterpart
+# and is not a documented wrapper.
+$pairs = @()
+foreach ($ext in (Get-ChildItem -LiteralPath $extDir -Filter '*.ps1' -File | Sort-Object Name)) {
+    if ($wrapperExclusions -contains $ext.Name) { continue }
+    $src = Join-Path $srcDir $ext.Name
+    if (Test-Path -LiteralPath $src) {
+        $pairs += [pscustomobject]@{ Name = $ext.Name; Src = $src; Ext = $ext.FullName }
+    }
+}
 
-$modText = (Get-Content -LiteralPath $moduleProvider -Raw) -replace "`r`n", "`n"
-$extText = (Get-Content -LiteralPath $extProvider -Raw) -replace "`r`n", "`n"
+Write-Host ("Discovered {0} full-copy provider mirror pair(s): {1}" -f $pairs.Count, (($pairs.Name) -join ', '))
+Assert-True ($pairs.Count -ge 5) ('auto-discovery found the full-copy provider set (expect at least: ' +
+    'deploy-refocus-hooks, refocus, specrew-bootstrap-provider, specrew-handover-provider, specrew-hook-dispatcher). ' +
+    "Found $($pairs.Count) - if fewer, a provider lost its scripts/internal counterpart or was wrongly excluded.")
 
-Assert-True ($modText -eq $extText) ('the MODULE + EXTENSION-SOURCE bootstrap providers are byte-identical (mirror parity). If this FAILS, re-sync: ' +
-    'Copy-Item scripts/internal/specrew-bootstrap-provider.ps1 over extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1 - ' +
-    'a change to one copy that is not mirrored to the other ships a stale provider downstream (the iter-6 send-back).')
+# The core guard: every full-copy pair is byte-identical (line-ending normalized).
+foreach ($p in $pairs) {
+    $modText = (Get-Content -LiteralPath $p.Src -Raw) -replace "`r`n", "`n"
+    $extText = (Get-Content -LiteralPath $p.Ext -Raw) -replace "`r`n", "`n"
+    Assert-True ($modText -eq $extText) ("$($p.Name): MODULE + EXTENSION-SOURCE copies are byte-identical (mirror parity). " +
+        "If this FAILS, re-sync: Copy-Item scripts/internal/$($p.Name) over extensions/specrew-speckit/scripts/$($p.Name) - " +
+        'a change to one copy not mirrored to the other ships a stale provider downstream.')
+}
 
-# The deployed copy must carry the iter-7 behavior, not the iter-4 stub (a sanity check on top of identity).
-Assert-True ($extText -match 'Write-SpecrewLaunchContractArtifact') 'extension-source provider carries the contract-writer (FR-023, not the iter-4 stub)'
-Assert-True ($extText -match 'BEGIN SPECREW LAUNCH CONTRACT') 'extension-source provider inlines the contract (FR-002 read-and-follow, T044)'
+# Provider-specific sanity checks (on top of identity): the DEPLOYED copy carries the current behavior, not a
+# stale stub. These catch a same-content-but-wrong-version regression that identity alone cannot.
+$bootstrapExt = Join-Path $extDir 'specrew-bootstrap-provider.ps1'
+$btext = (Get-Content -LiteralPath $bootstrapExt -Raw)
+Assert-True ($btext -match 'Write-SpecrewLaunchContractArtifact') 'bootstrap provider carries the contract-writer (FR-023, not the iter-4 stub)'
+Assert-True ($btext -match 'BEGIN SPECREW LAUNCH CONTRACT') 'bootstrap provider inlines the contract (FR-002 read-and-follow, T044)'
 
-Write-Host "`n=== ProviderMirrorParity.Tests.ps1: module + extension-source providers in sync ===" -ForegroundColor Green
+$handoverExt = Join-Path $extDir 'specrew-handover-provider.ps1'
+$htext = (Get-Content -LiteralPath $handoverExt -Raw)
+Assert-True ($htext -match 'HOLLOW_HANDOVER') 'handover provider carries the iter-5 floor/body-split detection (not the stale pre-iter-5 copy, the T050 send-back)'
+Assert-True (-not ($htext.Contains('-Sections $sections'))) 'handover provider does NOT call the dropped -Sections param on the floor-writer (the exact T050 skew)'
+
+Write-Host "`n=== ProviderMirrorParity.Tests.ps1: all full-copy provider mirrors in sync ===" -ForegroundColor Green

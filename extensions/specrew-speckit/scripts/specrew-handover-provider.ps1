@@ -3,7 +3,15 @@
 # Cursor `stop`). The SpecrewHookDispatcher invokes it with `--event-json <json>` on each Stop; it
 # refreshes the ONE rolling handover (.specrew/handover/session-handover.md) ONLY on a material change
 # (boundary moved OR tracked-file change since the last write). Portable across hosts + crash-safe (the
-# file always reflects the last completed turn). Write-only, emits nothing. Fail-open: any error -> exit 0.
+# file always reflects the last completed turn). Fail-open: any error -> exit 0.
+#
+# F-174 iter-5 (floor/body split): the hook writes the FLOOR and PRESERVES the agent-authored body for
+# the current boundary, else writes a placeholder; it does NOT author rich content (transcript-blind).
+# It also emits a NON-BLOCKING same-session detection (stderr WARN + handover-journal record) when the
+# body is left a placeholder, so a hollow handover is caught - it never blocks (P1: exit 0). The agent
+# authors the rich body via Write-SpecrewHandoverContext; the resume bootstrap surfaces it, or warns the
+# human backstop when it is a placeholder. (Why detection, not an agent-facing Stop warn: a Stop hook
+# cannot reach the agent - Stop is not an injection event and P1 forbids the only alternative, a block.)
 #
 #   --event-json <json>     the host Stop event payload
 #   --project-root <path>   optional override (testability); else resolve up to .specrew
@@ -88,17 +96,34 @@ try {
     $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
     if (-not $mc.material) { exit 0 }   # quiet turn: skip cheaply
 
-    $head = ''
-    try { $head = (& git -C $root rev-parse --short HEAD 2>$null) } catch { $null = $_ }
-    $sections = @{
-        'What I just did (last 3-5 turns or last boundary work)' =
-        '(Stop-event rolling handover; turn-by-turn summary not available from the hook - reconstruct from artifacts + git status + start-context.json)'
-        'Recommended next-immediate-step' =
-        ("Resume {0} at {1}." -f ($(if ($feature) { $feature } else { '(no active feature)' }), $(if ($boundary) { $boundary } else { '(no boundary)' })))
+    # iter-5 detection (failure-mode B, NON-BLOCKING): was the EXISTING body authored FOR THE CURRENT
+    # boundary? If so, the hook below preserves it (not hollow). If not (boundary moved, or never
+    # authored), the hook writes a placeholder and we record a same-session hollow detection.
+    $authoredForCurrent = $false
+    if ($null -ne $existing -and $existing.PSObject.Properties['sections'] -and (([string]$existing.active_boundary) -eq ([string]$boundary))) {
+        $authoredForCurrent = -not (Test-SpecrewHandoverBodyPlaceholder -Sections $existing.sections).placeholder
     }
 
+    $head = ''
+    try { $head = (& git -C $root rev-parse --short HEAD 2>$null) } catch { $null = $_ }
+
+    # The HOOK floor-writer: refresh the floor; preserve the agent body for THIS boundary, else placeholder.
     Write-SpecrewRollingHandover -HandoverDir $handoverDir -Source $source -FromHost $fromHost `
-        -RecordedAt $now -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary -Sections $sections | Out-Null
+        -RecordedAt $now -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary | Out-Null
+
+    # Same-session hollow-handover detection (non-blocking; the resume bootstrap re-detects + warns the
+    # human backstop). Fires when this material Stop left the body a placeholder.
+    if (-not $authoredForCurrent) {
+        [Console]::Error.WriteLine(("[specrew-handover] WARN HOLLOW_HANDOVER boundary='{0}' reason='{1}' - the rolling handover body is a placeholder (the agent did not author it for this boundary); the next session inherits a hollow handover." -f $boundary, $mc.reason))
+        try {
+            $jpath = Join-Path $root '.specrew/runtime/handover-journal.jsonl'
+            $jdir = Split-Path -Parent $jpath
+            if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
+            $rec = [pscustomobject]@{ event = 'hollow-handover-at-stop'; recorded_at = $now; boundary = $boundary; feature = $feature; from_host = $fromHost; material_reason = $mc.reason }
+            ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $jpath -Encoding UTF8
+        }
+        catch { $null = $_ }
+    }
 
     exit 0
 }

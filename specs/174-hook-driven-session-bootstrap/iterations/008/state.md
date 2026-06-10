@@ -1,11 +1,11 @@
 # Iteration State: 008
 
 **Schema**: v1
-**Current Phase**: implement (T048 + T049 done; T050 next)
+**Current Phase**: implement (T048 + T049 done; T050 in progress — handover-provider mirror skew found + fixed; cross-host round-trip validation continues)
 **Iteration Status**: executing
 **Last Completed Task**: T049 — user-profile intake at `specrew init` (FR-025). `Invoke-SpecrewInitProfileCapture` (user-profile.ps1) captures the dials when ABSENT + INTERACTIVE; skips silently on -Force / non-interactive / piped (the load-bearing no-hang guard); preserves an existing profile. Wired into specrew-init.ps1 (fail-open); the bootstrap directive nudges `/specrew-user-profile` when no profile is set. Added `SPECREW_USER_PROFILE_PATH` test seam + `tests/integration/user-profile-init-capture.tests.ps1` (7/7 pass). E2E `specrew init --force` non-interactive confirmed no hang + the skip path. PENDING live dogfood: the INTERACTIVE capture path + the nudge rendering (reuses the proven Invoke-FirstRunExpertisePrompt).
-**Tasks Remaining**: T050 handover validation.
-**In Progress**: none (T050 next).
+**Tasks Remaining**: T050 handover validation (cross-host exit-mode round-trip + resume restore).
+**In Progress**: T050 — handover validation. The validation surfaced + FIXED a real deployment bug: the rolling handover never wrote at Stop on any host because the deployable mirror `extensions/specrew-speckit/scripts/specrew-handover-provider.ps1` was a STALE pre-iter-5 copy (calls the dropped `-Sections` param against the iter-5 HandoverStore → silent fail-open). Re-synced the mirror (dev tree + installed 0.34.0 module) and generalized `ProviderMirrorParity.Tests.ps1` to cover all full-copy providers. Verified via deploy path. Remaining T050: the cross-host (claude/codex/copilot) exit-mode round-trip (`/exit`, double Ctrl+C, window close, kill) + agent-authored-body persistence + resume-restore — to be run on freshly re-init'd trials.
 **Note (this session):** an accidental `specrew init --force` in the dev repo (a failed `Set-Location` to an 8.3 temp path left cwd in the repo) redeployed 6 managed-surface files + 2 untracked dirs — all reverted by mtime triage; pre-existing WIP + the T049 work were preserved.
 **Baseline Ref**: iter-7 HEAD + this session's multi-host completion (codex format fixes, banner, version)
 **Updated**: 2026-06-10T00:00:00Z
