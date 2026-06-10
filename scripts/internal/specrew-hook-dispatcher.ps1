@@ -370,12 +370,15 @@ function Write-InjectionOutput {
     # all fetched live 2026-06-07):
     #   claude  : SessionStart -> plain stdout (added to context);
     #             PostToolUse / UserPromptSubmit -> hookSpecificOutput.additionalContext
-    #   codex   : additionalContext JSON ("added as extra developer context")
+    #   codex   : hookSpecificOutput.additionalContext (WITH hookEventName). The flat { additionalContext }
+    #             form (which copilot accepts) is silently IGNORED by codex - the hook runs but its output
+    #             never reaches the agent (2026-06-10 dogfood: journal written, but no context injected).
+    #             Per developers.openai.com/codex/hooks the SessionStart output schema is hookSpecificOutput.
     #   copilot : additionalContext JSON (camelCase reference contract)
     #   cursor  : additional_context JSON (snake_case official contract)
     switch ($TargetHost) {
         'codex' {
-            @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+            @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
         }
         'copilot' {
             @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
@@ -526,7 +529,10 @@ try {
             $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source
         }
         else {
-            $commandArgs = @('--event-json', ($rawEvent ?? ''))
+            # Pass the resolved host so the provider can shape host-aware delivery (F-174 codex fix: codex
+            # drops the oversized SessionStart additionalContext, so the provider hands codex a lean pointer).
+            # Harmless to inject providers that do not read --host-kind.
+            $commandArgs = @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind)
         }
         if ($null -eq $commandArgs) { continue }
 

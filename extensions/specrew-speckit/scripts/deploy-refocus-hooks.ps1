@@ -4,8 +4,8 @@
 #
 #   claude  : .claude/settings.local.json  (per-user project-local; merge-aware
 #             groups under hooks.<Event>)  — SessionStart only (TG-004 option a)
-#   codex   : ~/.codex/hooks.json          (top-level event keys -> groups with
-#             matcher + hooks[]) — SessionStart (B1+B2) + UserPromptSubmit (B3)
+#   codex   : ~/.codex/hooks.json          ({ hooks: { <Event>: [ { hooks: [...] } ] } } — events
+#             NESTED under `hooks` per codex's schema) — SessionStart + UserPromptSubmit + Stop
 #   copilot : ~/.copilot/hooks/specrew-refocus.json (hooks-DIR model: this file
 #             is wholly Specrew-owned; {version,hooks.<event>[]} with type=command
 #             + bash/powershell pair) — sessionStart (B2)
@@ -104,32 +104,35 @@ function Get-HostEventGroups {
     # The per-host registrations (verified formats; matrix-gated trigger set).
     switch ($HostKind) {
         'claude' {
-            # TG-004 option (a): SessionStart only; PostToolUse unregistered.
+            # SessionStart (B1/B2 + F-174 bootstrap) + Stop (F-174 iter-4 rolling handover - portable +
+            # crash-safe; REPLACES the iter-3 SessionEnd-only handover). PostToolUse unregistered.
             return [ordered]@{
                 'SessionStart' = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionStart') }) }
+                'Stop'         = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'Stop') }) }
             }
         }
         'codex' {
-            # Full triad: SessionStart (source matchers route B1/B2 in-dispatcher)
-            # + UserPromptSubmit as the per-human-prompt B3 carrier.
+            # SessionStart (B1/B2) + UserPromptSubmit (B3) + Stop (F-174 iter-4 rolling handover).
             return [ordered]@{
                 'SessionStart'     = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionStart'); timeout = 30 }) }
                 'UserPromptSubmit' = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'UserPromptSubmit'); timeout = 30 }) }
+                'Stop'             = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'Stop'); timeout = 30 }) }
             }
         }
         'copilot' {
-            # B2 only (B1 pending local source-value verification; per-prompt
-            # injection unverified on userPromptSubmitted -> channel 1 carries B3).
+            # B2 (sessionStart) + agentStop (F-174 iter-4 rolling handover; Copilot's end-of-turn event).
             $cmd = Get-SpecrewHookCommand -EventName 'SessionStart'
+            $stopCmd = Get-SpecrewHookCommand -EventName 'agentStop'
             return [ordered]@{
                 'sessionStart' = [pscustomobject]@{ type = 'command'; bash = $cmd; powershell = $cmd; timeoutSec = 30 }
+                'agentStop'    = [pscustomobject]@{ type = 'command'; bash = $stopCmd; powershell = $stopCmd; timeoutSec = 30 }
             }
         }
         'cursor' {
-            # B2 only (B1 = documented variance: no post-compaction injection event;
-            # B3 per-tool-call latency-rejected, per-prompt injection unverified).
+            # B2 (sessionStart) + stop (F-174 iter-4 rolling handover; Cursor's end-of-turn event).
             return [ordered]@{
                 'sessionStart' = [pscustomobject]@{ command = (Get-SpecrewHookCommand -EventName 'SessionStart') }
+                'stop'         = [pscustomobject]@{ command = (Get-SpecrewHookCommand -EventName 'stop') }
             }
         }
     }
@@ -143,19 +146,20 @@ if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
 }
 if ($null -eq $settings) { $settings = [pscustomobject]@{} }
 
-# Locate the event map per host file shape.
-#   claude/cursor/copilot: { ..., hooks: { event: [...] } } (+ version for cursor/copilot)
-#   codex: top-level event keys ARE the map.
-$eventMap = $null
-if ($HostKind -eq 'codex') {
-    $eventMap = $settings
+# Locate the event map per host file shape. ALL hosts nest events under a top-level `hooks` object
+# ({ ..., hooks: { event: [...] } }; + version for cursor/copilot). codex was previously written with
+# top-level event keys (no `hooks` wrapper), but codex's documented schema is { hooks: { <Event>: [...] } }
+# (developers.openai.com/codex/hooks), so it never saw the top-level entries — the SessionStart bootstrap
+# silently never fired on codex. ONE-TIME MIGRATION: when a codex file is still the old top-level shape,
+# strip our old top-level entries (user keys preserved) BEFORE switching to the wrapped map, so we do not
+# leave orphaned/duplicate hooks.
+if ($HostKind -eq 'codex' -and -not ($settings.PSObject.Properties['hooks'] -and $null -ne $settings.hooks)) {
+    Remove-SpecrewEntriesFromEventMap -EventMap $settings
 }
-else {
-    if (-not $settings.PSObject.Properties['hooks'] -or $null -eq $settings.hooks) {
-        $settings | Add-Member -NotePropertyName 'hooks' -NotePropertyValue ([pscustomobject]@{}) -Force
-    }
-    $eventMap = $settings.hooks
+if (-not $settings.PSObject.Properties['hooks'] -or $null -eq $settings.hooks) {
+    $settings | Add-Member -NotePropertyName 'hooks' -NotePropertyValue ([pscustomobject]@{}) -Force
 }
+$eventMap = $settings.hooks
 
 function Save-Target {
     param($SettingsObject)

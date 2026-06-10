@@ -4,8 +4,8 @@
 #
 #   claude  : .claude/settings.local.json  (per-user project-local; merge-aware
 #             groups under hooks.<Event>)  — SessionStart only (TG-004 option a)
-#   codex   : ~/.codex/hooks.json          (top-level event keys -> groups with
-#             matcher + hooks[]) — SessionStart (B1+B2) + UserPromptSubmit (B3)
+#   codex   : ~/.codex/hooks.json          ({ hooks: { <Event>: [ { hooks: [...] } ] } } — events
+#             NESTED under `hooks` per codex's schema) — SessionStart + UserPromptSubmit + Stop
 #   copilot : ~/.copilot/hooks/specrew-refocus.json (hooks-DIR model: this file
 #             is wholly Specrew-owned; {version,hooks.<event>[]} with type=command
 #             + bash/powershell pair) — sessionStart (B2)
@@ -146,19 +146,20 @@ if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
 }
 if ($null -eq $settings) { $settings = [pscustomobject]@{} }
 
-# Locate the event map per host file shape.
-#   claude/cursor/copilot: { ..., hooks: { event: [...] } } (+ version for cursor/copilot)
-#   codex: top-level event keys ARE the map.
-$eventMap = $null
-if ($HostKind -eq 'codex') {
-    $eventMap = $settings
+# Locate the event map per host file shape. ALL hosts nest events under a top-level `hooks` object
+# ({ ..., hooks: { event: [...] } }; + version for cursor/copilot). codex was previously written with
+# top-level event keys (no `hooks` wrapper), but codex's documented schema is { hooks: { <Event>: [...] } }
+# (developers.openai.com/codex/hooks), so it never saw the top-level entries — the SessionStart bootstrap
+# silently never fired on codex. ONE-TIME MIGRATION: when a codex file is still the old top-level shape,
+# strip our old top-level entries (user keys preserved) BEFORE switching to the wrapped map, so we do not
+# leave orphaned/duplicate hooks.
+if ($HostKind -eq 'codex' -and -not ($settings.PSObject.Properties['hooks'] -and $null -ne $settings.hooks)) {
+    Remove-SpecrewEntriesFromEventMap -EventMap $settings
 }
-else {
-    if (-not $settings.PSObject.Properties['hooks'] -or $null -eq $settings.hooks) {
-        $settings | Add-Member -NotePropertyName 'hooks' -NotePropertyValue ([pscustomobject]@{}) -Force
-    }
-    $eventMap = $settings.hooks
+if (-not $settings.PSObject.Properties['hooks'] -or $null -eq $settings.hooks) {
+    $settings | Add-Member -NotePropertyName 'hooks' -NotePropertyValue ([pscustomobject]@{}) -Force
 }
+$eventMap = $settings.hooks
 
 function Save-Target {
     param($SettingsObject)
