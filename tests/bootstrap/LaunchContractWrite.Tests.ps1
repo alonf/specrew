@@ -12,6 +12,10 @@ $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
 . "$repoRoot/scripts/internal/bootstrap/SessionBootstrapManager.ps1"
 . "$repoRoot/scripts/internal/launch-contract.ps1"
 . "$repoRoot/scripts/internal/coordinator-resume.ps1"
+# iter-7 T043: the hook now applies the SAME coordinator-surgery step `specrew start` does (carrying the
+# user-profile/expertise adaptation + coordinator framing) - dot-source its deps so the floor exercises it.
+. "$repoRoot/scripts/internal/coordinator-prompt-surgery.ps1"
+. "$repoRoot/scripts/internal/user-profile.ps1"
 . "$repoRoot/extensions/specrew-speckit/scripts/shared-governance.ps1"
 
 function Assert-True {

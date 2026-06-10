@@ -140,7 +140,8 @@ function Write-SpecrewLaunchContractArtifact {
     param(
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $Mode,
-        [AllowNull()][pscustomobject] $SessionState
+        [AllowNull()][pscustomobject] $SessionState,
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')][string] $HostKind = 'claude'
     )
 
     # The hook's anchor (Get-SpecrewSessionAnchor) and the generator's resume block use DIFFERENT field
@@ -179,6 +180,26 @@ function Write-SpecrewLaunchContractArtifact {
         -DeliveryGuidance $null `
         -SessionState $generatorSessionState `
         -RecoverySession $null
+
+    # T043 (FR-023, iter-7 Ruling a): apply the SAME coordinator-prompt surgery `specrew start` does
+    # (specrew-start.ps1 ~L3348) so the hook's contract reaches CONTENT PARITY. The user-profile/expertise
+    # adaptation (the ExpertiseLine) + the per-host coordinator framing live in THIS step, NOT in
+    # Get-StartPrompt - iter-6 skipped it, producing the thin contract the side-by-side disproved.
+    # Get-SpecrewProfileOrientationLine reads the session-available user-profile (~/.specrew/user-profile.yml);
+    # $null when none is set. SpecrewVersion/CrewRuntimeStatus stay at AllowNull defaults - the load-bearing
+    # parity content is the ExpertiseLine + the coordinator header; the side-by-side (T046) is the arbiter for
+    # any residual gap (Ruling b).
+    $expertiseLine = $null
+    try { $expertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile) } catch { $expertiseLine = $null }
+    $featureRefValue = [string](Get-SpecrewProp $generatorSessionState 'feature_ref')
+    if ([string]::IsNullOrWhiteSpace($featureRefValue) -and $featurePath) { $featureRefValue = Split-Path -Leaf $featurePath }
+    $contract = Invoke-SpecrewCoordinatorPromptSurgery `
+        -Prompt $contract `
+        -HostKind $HostKind `
+        -LifecycleMode $Mode `
+        -FeatureRef $featureRefValue `
+        -BoundaryType $currentBoundary `
+        -ExpertiseLine $expertiseLine
 
     $promptPath = Join-Path $ProjectRoot '.specrew/last-start-prompt.md'
     $specrewDir = Split-Path -Parent $promptPath

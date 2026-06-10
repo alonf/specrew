@@ -1,11 +1,11 @@
 # Iteration State: 006
 
 **Schema**: v1
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: T042 (docs repositioned with the honesty guard) — ALL iter-6 tasks T035a–T042 DONE
-**Tasks Remaining**: (none) — re-run the specrew-start integration suite as the final regression gate, then STOP at review-signoff
-**In Progress**: final regression gate (specrew-start integration suite) before the review-signoff stop
+**Current Phase**: CLOSED (honestly-qualified) — parity deferred to iteration 007
+**Iteration Status**: complete
+**Last Completed Task**: T042 reached — but review-signoff SENT BACK (parity DISPROVEN); iter-6 closes honestly-qualified: the T035 generator extraction is KEPT (byte-identical), hook-parity is DEFERRED to iteration 007 (see "Review-Signoff SEND-BACK" below)
+**Tasks Remaining**: (none in iter-6) — the parity rework is iteration 007 (T043–T047)
+**In Progress**: (none) — iteration 007 opened
 **Baseline Ref**: ff52974c64770423a69a4a5d6ac9509bb6aa29ce
 **Updated**: 2026-06-09T23:00:00Z
 
@@ -177,6 +177,54 @@
 - Scope 20/20; the multi-host injection re-tests are the tracked follow-on slice
   (f174-followup-multihost-injection-verification). specrew-start integration suite unaffected by T036 (no
   changes to specrew-start.ps1 / launch-contract.ps1) — re-run as the final regression gate before review-signoff.
+
+## Review-Signoff SEND-BACK (2026-06-10) — parity DISPROVEN
+
+Iteration 006 was SENT BACK at review-signoff (maintainer verdict). A side-by-side (same prompt, hook vs
+`specrew start`) disproved parity: with `specrew start` the agent's FIRST act is to READ last-start-prompt.md
+and render the full Crew-coordinator contract (user-profile/expertise adaptation, clarify-budget,
+re-entry-packet promise) before the workshop; with the hook the agent NEVER reads last-start-prompt.md — it
+self-orients from git/config + the specify discipline and reaches the workshop on its own. "A workshop ran"
+was BASELINE discipline-reading, NOT iter-6's contract-drive; iter-6's value-add was ABSENT.
+
+Four gaps block re-claiming iter-6 (three maintainer requirements + one crew-self-review deployment gap):
+
+1. **Read-and-follow IN PRACTICE** (maintainer #1): the hook must make the agent actually READ + FOLLOW
+   last-start-prompt.md + start-context.json the way `specrew start` does. In the test the agent never
+   touched the file. File existence (T038) is NOT read-and-follow.
+2. **Content parity, not file existence** (maintainer #2): the hook's last-start-prompt.md must MATCH
+   `specrew start`'s — including the user-profile/expertise adaptation + coordinator framing. ROOT CAUSE: the
+   T036 "null launcher-only inputs" decision (empty roster/routing/projectstate stubs to Get-StartPrompt) was
+   WRONG — user-profile/coordinator content is SESSION-AVAILABLE, not launcher-only; nulling it starved the
+   generator → a thin contract. Get-StartPrompt has NO UserProfile param (confirmed) — trace where
+   `specrew start`'s user-profile/coordinator content actually enters the contract (Save-StartArtifacts
+   wrapping and/or a block I nulled) and thread the session-available inputs through the hook path.
+3. **Acceptance test = SIDE-BY-SIDE** (maintainer #3): replace T038's on-disk file check as the acceptance
+   GATE with a hook-vs-`specrew start` diff of the agent's LEAD-UP; they must be equivalent modulo genuinely
+   launcher-only bits (host selection). T038 passing while the experiences differ is build≠live one level up.
+4. **Deployment sync** (crew self-review, ground-truth confirmed): the deployed downstream provider is the
+   EXTENSION-SOURCE copy `extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1` (iter-4, 88
+   lines, no contract-writer), NOT the iter-6 module copy `scripts/internal/...` (128 lines).
+   Resolve-ProviderCommandPath resolves the `.specify/` copy FIRST downstream; the dev tree runs iter-6 only
+   because its `.specify/` lacks the provider → falls back to scripts/internal/. Deploying THIS branch to a
+   fresh project ships iter-4 and writes NO last-start-prompt.md (empirically confirmed). T038 copied the
+   module copy, so it never exercised the copy downstream actually runs. FIX: sync the iter-6 provider into
+   the extension source + extend the deployed floor to deploy-via-extension + resolve-via-dispatcher.
+
+CONSEQUENCE: `specrew start` CANNOT be repositioned to "host-selection + fallback" (T042) until the hook
+reaches content-parity AND read-and-follow — it still carries the contract the hook lacks. T042's docs
+repositioning is PREMATURE and reverts until parity holds. The review-signoff packet's "T038 deployed-proven"
+framing is RETRACTED — it proved the wrong provider copy + on-disk existence, not the live read-and-follow
+experience.
+
+Status: RESOLVED (maintainer direction, 2026-06-10) — iteration 006 CLOSED honestly-qualified (T035 generator
+extraction KEPT, byte-identical; hook-parity NOT achieved → deferred). The parity rework is **iteration 007**
+(design-pass-first → before-implement). The WIP checkpoints (02e843c4, 7657498f) + the citation-fix
+(596aea7e) stay; T036/T037's contract-write + DRIVE directive landed but did NOT achieve parity (the hook
+skips the coordinator-surgery step → thin contract; the agent does not read the file). iter-7's design pass
+(`../007/plan.md`) traces the root cause to the skipped `Invoke-SpecrewCoordinatorPromptSurgery` step and
+fixes both layers + the side-by-side acceptance gate. The T042 `specrew start` repositioning is reverted in
+docs until the side-by-side passes.
 
 ## Notes
 

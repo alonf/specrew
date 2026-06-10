@@ -102,6 +102,11 @@ try {
     $moduleRoot = Split-Path (Split-Path $internalDir)
     . (Join-Path $internalDir 'launch-contract.ps1')
     . (Join-Path $internalDir 'coordinator-resume.ps1')
+    # iter-7 T043: the coordinator-surgery step + the user-profile reader carry the user-profile/expertise
+    # adaptation + per-host coordinator framing into the contract (the content iter-6 omitted). Same 3-tier
+    # resolution (both live in scripts/internal beside launch-contract.ps1).
+    . (Join-Path $internalDir 'coordinator-prompt-surgery.ps1')
+    . (Join-Path $internalDir 'user-profile.ps1')
     . (Join-Path (Join-Path $moduleRoot 'extensions/specrew-speckit/scripts') 'shared-governance.ps1')
 
     # Launcher<->hook dedupe (FR-007, SC-002): if `specrew start` just bootstrapped this session,

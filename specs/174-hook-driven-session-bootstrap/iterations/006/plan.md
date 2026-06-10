@@ -2,10 +2,17 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: complete (honestly-qualified — see below)
 **Capacity**: 20/20 story_points
 **Started**: 2026-06-09
-**Completed**:
+**Completed**: 2026-06-10
+
+> **Closed honestly-qualified (NOT a parity success).** The shared launch-contract generator extraction
+> (T035, byte-identical, validator-green) is KEPT. T036/T037 landed the contract-write + DRIVE directive but
+> did NOT achieve hook ↔ `specrew start` PARITY — a maintainer side-by-side disproved it (the hook skips the
+> coordinator-surgery step → a thin contract; the agent does not read `last-start-prompt.md`). Parity is
+> DEFERRED to **iteration 007** (`../007/plan.md`). T038's on-disk green proved the wrong provider copy + file
+> existence, not the live read-and-follow experience.
 
 <!--
   Validator schema: Iteration Status one of planning|executing|reviewing|retro|complete|abandoned.

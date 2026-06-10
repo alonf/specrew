@@ -150,19 +150,21 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 > **Hook-driven bootstrap (Feature 174).** A **SessionStart hook** can bootstrap the session on a host
 > launch inside a Specrew project — writing the governed launch contract and surfacing your Specrew
 > position plus a Resume / New / Pick-feature menu as prose before any picker — so orientation need not
-> depend on running `specrew start` first. **Where this is PROVEN end-to-end today: Claude.** On Claude the
-> hook **drives** — it writes the same launch contract `specrew start` does, and the agent reads and
-> follows it. On **Codex, Copilot, and Cursor** the hook deploys and the on-disk plumbing is proven, but
+> depend on running `specrew start` first. **Status: the hook ORIENTS, but does NOT yet drive (Feature 174 iteration 007).** A side-by-side test
+> (same prompt, hook vs `specrew start`) showed the hook does not yet deliver the governed launch contract
+> the launcher does — the agent does not reliably read and follow it, and the hook-written contract omits
+> the user-profile/expertise adaptation and coordinator framing. On **Codex, Copilot, and Cursor** the hook deploys and the on-disk plumbing is proven, but
 > whether the host runtime actually delivers the injected orientation *into the model* is **not yet
 > verified** — so on those hosts use **`specrew start`** for reliable orientation until per-host injection
 > is confirmed. **Antigravity has no SessionStart hook**, so there `specrew start` is the orientation path.
 > Do not assume all-host hook-parity — only Claude is confirmed.
 >
-> **`specrew start` is the cross-host driver, not a legacy shim.** It does what only it can (host
-> selection, uniform `--remote` / `--allow-all` / `--autopilot` flag translation, a true pre-session
-> splash) **and** it is the reliable orientation path on every host the hook does not yet drive
-> (Antigravity, plus Codex / Copilot / Cursor until injection is confirmed). When both a launcher and a
-> hook fire in one startup, a dedupe handshake guarantees exactly one bootstrap.
+> **`specrew start` is THE driver — it carries the full launch contract.** It writes the governed
+> `last-start-prompt.md` (with the user-profile/expertise adaptation + the coordinator framing) so the agent
+> reads it first, before acting — and it does what only it can (host selection, uniform `--remote` /
+> `--allow-all` / `--autopilot` flag translation, a true pre-session splash). The hook does not yet reach
+> this contract-parity on any host, including Claude. When both a launcher and a hook fire in one startup, a
+> dedupe handshake guarantees exactly one bootstrap.
 >
 > A companion **Stop hook** (the per-host end-of-turn event) refreshes one always-latest, local
 > Proposal-130 rolling handover on every material turn — deployed across the four hooked hosts and
