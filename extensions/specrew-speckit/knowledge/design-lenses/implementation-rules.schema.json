@@ -25,8 +25,8 @@
         "properties": {
           "id": { "type": "string", "minLength": 1, "description": "References a code-rules.yml id (or a declared custom rule)." },
           "checked": { "type": "boolean", "description": "false on a baseline rule = a recorded exception." },
-          "decision": { "type": "string", "description": "The human's decision for a decision-prompt rule." },
-          "enforcement": { "type": "array", "items": { "type": "string" }, "description": "Informational enforcement mode(s); not gated." }
+          "decision": { "type": ["string", "null"], "description": "The human's decision for a decision-prompt rule." },
+          "enforcement": { "type": ["array", "null"], "items": { "type": ["string", "null"] }, "description": "Informational enforcement mode(s); not gated." }
         }
       }
     },
@@ -39,7 +39,7 @@
         "properties": {
           "id": { "type": "string", "minLength": 1 },
           "text": { "type": "string", "minLength": 1 },
-          "scope": { "type": "string" },
+          "scope": { "type": ["string", "null"] },
           "provenance": { "enum": ["free-text", "pasted-doc", "from-guideline", "from-example-project"] }
         }
       }
@@ -61,17 +61,17 @@
             "required": ["name"],
             "properties": {
               "name": { "type": "string", "minLength": 1 },
-              "version": { "type": "string" },
-              "license": { "type": "string" },
-              "source_org": { "type": "string" },
-              "canonical_url": { "type": "string" },
-              "maintenance_signal": { "type": "string" },
-              "security_advisory_status": { "type": "string" },
-              "compatibility": { "type": "string" },
-              "cost_or_quota": { "type": "string" },
-              "coupling_weight": { "type": "string" },
-              "replaceability": { "type": "string" },
-              "test_implications": { "type": "string" }
+              "version": { "type": ["string", "null"] },
+              "license": { "type": ["string", "null"] },
+              "source_org": { "type": ["string", "null"] },
+              "canonical_url": { "type": ["string", "null"] },
+              "maintenance_signal": { "type": ["string", "null"] },
+              "security_advisory_status": { "type": ["string", "null"] },
+              "compatibility": { "type": ["string", "null"] },
+              "cost_or_quota": { "type": ["string", "null"] },
+              "coupling_weight": { "type": ["string", "null"] },
+              "replaceability": { "type": ["string", "null"] },
+              "test_implications": { "type": ["string", "null"] }
             }
           }
         }
