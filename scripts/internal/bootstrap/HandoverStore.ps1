@@ -125,7 +125,29 @@ function Write-SpecrewRollingHandoverContent {
         $out.Add("## $title") | Out-Null; $out.Add('') | Out-Null
         $out.Add($content) | Out-Null; $out.Add('') | Out-Null
     }
-    Set-Content -LiteralPath $Path -Value ($out -join "`n") -Encoding UTF8
+    # Crash-safe replace (F-174 T050, maintainer finding): a kill landing mid-write (or between an agent's
+    # delete+recreate) must never lose the handover. Write the full content to a sidecar, then promote it
+    # ATOMICALLY, keeping the previous version as session-handover.md.old ([IO.File]::Replace = Win32
+    # ReplaceFile - swap + backup in one atomic call). A crash mid-write leaves the intact current file; a
+    # crash between write and promote leaves current + a complete .new; after promote, .old is the backup the
+    # reader falls back to. Fallback to plain Set-Content only if the atomic path fails (exotic FS).
+    $newPath = "$Path.new"
+    Set-Content -LiteralPath $newPath -Value ($out -join "`n") -Encoding UTF8
+    try {
+        if (Test-Path -LiteralPath $Path) {
+            [System.IO.File]::Replace($newPath, $Path, "$Path.old")
+        }
+        else {
+            Move-Item -LiteralPath $newPath -Destination $Path -Force
+        }
+    }
+    catch {
+        try {
+            Set-Content -LiteralPath $Path -Value ($out -join "`n") -Encoding UTF8
+            Remove-Item -LiteralPath $newPath -Force -ErrorAction SilentlyContinue
+        }
+        catch { $null = $_ }
+    }
     return $Path
 }
 
@@ -152,8 +174,10 @@ function Write-SpecrewRollingHandover {
     # Preserve the existing body ONLY when it was authored AND for the current boundary; else placeholder
     # (an empty $bodySections lets the shared writer fill every section with the placeholder marker).
     $bodySections = @{}
-    if (Test-Path -LiteralPath $path) {
-        $existing = ConvertFrom-SpecrewHandoverFile -Path $path
+    if ((Test-Path -LiteralPath $path) -or (Test-Path -LiteralPath "$path.old")) {
+        # Same .old crash-fallback as the reader: preserve an authored body even when the live file was lost.
+        $existing = if (Test-Path -LiteralPath $path) { ConvertFrom-SpecrewHandoverFile -Path $path } else { $null }
+        if ($null -eq $existing) { $existing = ConvertFrom-SpecrewHandoverFile -Path "$path.old" }
         if ($null -ne $existing -and $existing.sections -and $existing.sections.Count -gt 0) {
             $sameBoundary = (([string]$existing.active_boundary) -eq ([string]$ActiveBoundary))
             $authored = $false
@@ -203,8 +227,14 @@ function Get-SpecrewRollingHandover {
         [Parameter()][int] $FreshnessHours = 24
     )
     $path = Get-SpecrewRollingHandoverPath -HandoverDir $HandoverDir
-    if (-not (Test-Path -LiteralPath $path)) { return $null }
-    $parsed = ConvertFrom-SpecrewHandoverFile -Path $path
+    # Crash-recovery fallback (F-174 T050): if the live file is missing or unparseable (a kill landed inside
+    # an agent's delete+recreate window, or mid-write), fall back to the .old backup the atomic writer keeps.
+    # One version stale beats nothing - the resume rides it plus the in-flight disk scan.
+    $parsed = $null
+    if (Test-Path -LiteralPath $path) { $parsed = ConvertFrom-SpecrewHandoverFile -Path $path }
+    if ($null -eq $parsed -and (Test-Path -LiteralPath "$path.old")) {
+        $parsed = ConvertFrom-SpecrewHandoverFile -Path "$path.old"
+    }
     if ($null -eq $parsed) { return $null }
     $fresh = $false
     try {

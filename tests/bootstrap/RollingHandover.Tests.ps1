@@ -84,6 +84,39 @@ try {
     $wf = Get-SpecrewRollingHandover -HandoverDir (Join-Path $proj2 '.specrew/handover') -NowUtc '2026-06-10T00:00:00Z'
     Assert-True ($null -ne $wf) 'workshop Stop wrote a rolling handover (material: no existing handover)'
     Assert-Equal $wf.active_feature '001-pomodoro-cli' 'anchorless workshop Stop stamps the BRANCH-resolved feature (empty before the fix -> handover now surfaceable on resume)'
+
+    # --- F-174 T050 (maintainer finding): crash-safe replace + .old backup + reader fallback ---
+    $hd2 = Join-Path $tmp 'handover-crash'
+    $rp = Join-Path $hd2 'session-handover.md'
+    # First write -> file exists, no .old yet (nothing to back up).
+    Write-SpecrewRollingHandover -HandoverDir $hd2 -Source stop -FromHost claude -RecordedAt '2026-06-10T10:00:00Z' `
+        -ActiveFeature myfeat -ActiveBoundary plan | Out-Null
+    Assert-True (Test-Path -LiteralPath $rp) 'atomic writer: first write lands the live file'
+    Assert-True (-not (Test-Path -LiteralPath "$rp.new")) 'atomic writer: no .new residue after promote'
+    # Second write -> atomic swap keeps the PREVIOUS version as .old.
+    Write-SpecrewRollingHandover -HandoverDir $hd2 -Source stop -FromHost claude -RecordedAt '2026-06-10T10:10:00Z' `
+        -ActiveFeature myfeat -ActiveBoundary tasks | Out-Null
+    Assert-True (Test-Path -LiteralPath "$rp.old") 'atomic writer: previous version kept as .old (crash backup)'
+    Assert-Equal (Get-SpecrewRollingHandover -HandoverDir $hd2 -NowUtc '2026-06-10T10:11:00Z').active_boundary 'tasks' 'live file is the NEW version after the swap'
+    Assert-Equal (ConvertFrom-SpecrewHandoverFile -Path "$rp.old").active_boundary 'plan' '.old is the PREVIOUS version'
+    # THE KILL WINDOW: the live file vanishes (killed between an agent delete + create) -> reader falls back to .old.
+    Remove-Item -LiteralPath $rp -Force
+    $rec = Get-SpecrewRollingHandover -HandoverDir $hd2 -NowUtc '2026-06-10T10:12:00Z'
+    Assert-True ($null -ne $rec) 'reader falls back to .old when the live file is missing (the delete-create kill window)'
+    Assert-Equal $rec.active_boundary 'plan' 'fallback serves the .old content (one version stale beats nothing)'
+    # And the floor-writer PRESERVE path also recovers the body from .old: author a body, lose the live file, Stop.
+    $sections = @{}
+    foreach ($t in (Get-SpecrewHandoverSectionOrder)) { $sections[$t] = "authored: $t" }
+    Write-SpecrewHandoverContext -HandoverDir $hd2 -FromHost claude -RecordedAt '2026-06-10T10:20:00Z' `
+        -ActiveFeature myfeat -ActiveBoundary tasks -Sections $sections | Out-Null
+    # A floor refresh swaps the authored version into .old (preserve keeps it in the live file too).
+    Write-SpecrewRollingHandover -HandoverDir $hd2 -Source stop -FromHost claude -RecordedAt '2026-06-10T10:25:00Z' `
+        -ActiveFeature myfeat -ActiveBoundary tasks | Out-Null
+    Remove-Item -LiteralPath $rp -Force   # the kill window again - live file gone, .old has the authored body
+    Write-SpecrewRollingHandover -HandoverDir $hd2 -Source stop -FromHost claude -RecordedAt '2026-06-10T10:30:00Z' `
+        -ActiveFeature myfeat -ActiveBoundary tasks | Out-Null
+    $rec2 = Get-SpecrewRollingHandover -HandoverDir $hd2 -NowUtc '2026-06-10T10:31:00Z'
+    Assert-True (Test-SpecrewHandoverSectionAuthored -Content ([string]$rec2.sections[(Get-SpecrewHandoverSectionOrder)[0]])) 'floor-writer preserve path recovers the AUTHORED body from .old after the live file was lost'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

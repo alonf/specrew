@@ -98,7 +98,7 @@ function Format-BootstrapDirective {
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
     }
-    $lines.Add('Handover protocol (FR-022): whenever you render a re-entry / boundary packet, FIRST persist it as the handover body via Write-SpecrewHandoverContext, THEN render the packet FROM that file - so what the human sees == what the next session inherits. Refresh before you expect to stop. The Stop hook preserves your body but is transcript-blind and cannot author it; only you can.')
+    $lines.Add('Handover protocol (FR-022): whenever you render a re-entry / boundary packet, FIRST persist it as the handover body via Write-SpecrewHandoverContext, THEN render the packet FROM that file - so what the human sees == what the next session inherits. Refresh before you expect to stop. The Stop hook preserves your body but is transcript-blind and cannot author it; only you can. NEVER delete + recreate .specrew/handover/session-handover.md with generic file tools - a crash between the delete and the create loses the handover; the writer replaces the file ATOMICALLY and keeps session-handover.md.old as the crash backup (the bootstrap reader falls back to it automatically).')
     $lines.Add('This directive is advisory and non-authorizing: it never advances a lifecycle boundary on its own.')
     return ($lines -join "`n")
 }
