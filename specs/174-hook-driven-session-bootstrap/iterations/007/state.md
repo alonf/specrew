@@ -1,11 +1,11 @@
 # Iteration State: 007
 
 **Schema**: v1
-**Current Phase**: implement (review-signoff HELD — pending the DEPLOYED manual dogfood)
+**Current Phase**: implement (review-signoff — PARITY ACHIEVED via the deployed dogfood; pending merge test-triage before retro)
 **Iteration Status**: executing
-**Last Completed Task**: T047 + the #3 hardening — the T046 reconstruction was validated against a REAL `specrew start` contract (`specrew init` + `--no-launch`): a 38-line diff, ALL launcher-only/context (frontmatter, feature-request, casting roster/routing/projectstate) + one cosmetic (the hook's orientation reads `Specrew: unknown` — the manager omits `SpecrewVersion` from the surgery). All 5 parity markers present + matching in the real contract.
-**Tasks Remaining**: the DEPLOYED manual dogfood — the gate's disqualifier; the MAINTAINER runs it in a real installed-module layout (NOT the dev-tree `SPECREW_MODULE_PATH` fast-path), since the iter-6 failure was downstream.
-**In Progress**: deployed-dogfood handoff. review-signoff is HELD (maintainer verdict 2026-06-10): code/flow passed deep review, parity is UNPROVEN until the deployed dogfood passes. NOT advancing.
+**Last Completed Task**: the DEPLOYED manual dogfood PASSED (2026-06-10, live in `C:\Temp\SpecrewTrials\iter7-dogfood2`, real installed-module layout). The hook fired; the agent oriented (read the contract), rendered the coordinator contract + the "expert on Software Architecture" expertise line + clarify-budget + re-entry-packet promise + file:/// paths, and DROVE into the governed lifecycle — invoked the specrew-design-workshop skill and ran the 9-lens intake (with the FR-040 agenda-as-assignment), instead of going straight to the task. Matches specrew start. The 47 KB inline COMPELLED read-and-follow deployed. iter-6's failure is fixed; PARITY ACHIEVED.
+**Tasks Remaining**: triage the merge test-sweep failures (~10, all in UNRELATED areas — dashboards / host-registry / sync-boundary-state / distribution — while every iter-7 + launch-contract test PASSES); separate pre-existing branch drift from merge-introduced, fix only the latter. THEN advance review-signoff → retro.
+**In Progress**: merge test-sweep triage (background sweep). Captured follow-on (NOT iter-7): the design-workshop FR-040 prep-message should emit BEFORE the heavy per-lens prep — the dogfood showed a ~3-min silent wait before the agenda surfaced, so the human had nothing to do.
 **Baseline Ref**: (iter-6 HEAD)
 **Updated**: 2026-06-10T00:00:00Z
 

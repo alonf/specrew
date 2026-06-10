@@ -318,6 +318,16 @@ offered.
   regardless of injection, so a non-injecting host still has the files for a subsequent
   `specrew start`.
   **Owner**: Implementer, Reviewer. **Iteration**: 006.
+- **FR-025**: The user-profile expertise intake (the four interaction dials) MUST be
+  capturable at `specrew init`, not only at first `specrew start`, so a user who only
+  ever opens a hook-driven host still gets the user-profile adaptation in the bootstrap
+  banner. At init it MUST ask ONLY when the profile is ABSENT and the session is
+  INTERACTIVE; non-interactive / `-Force` / CI inits MUST skip silently and never block
+  automation. The profile remains user-level (`~/.specrew/user-profile.yml`, set once
+  across all projects). `specrew start`'s existing first-run prompt is RETAINED as a
+  fallback, and the SessionStart bootstrap directive MUST nudge the agent to surface
+  `/specrew-user-profile` when the profile is absent (the hook cannot ask).
+  **Owner**: Implementer. **Iteration**: 008.
 
 ### Traceability & Governance Requirements
 
