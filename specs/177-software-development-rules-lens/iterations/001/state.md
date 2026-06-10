@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Current Phase**: implement-complete (heading to review-signoff)
-**Iteration Status**: reviewing
+**Iteration Status**: executing
 **Last Completed Task**: T009
 **Tasks Remaining**: (none for iteration 001 / i1 — T010-T018 are iteration 002 / i2)
 **In Progress**: (none)
