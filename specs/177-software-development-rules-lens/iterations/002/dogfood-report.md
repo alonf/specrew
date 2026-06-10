@@ -86,15 +86,20 @@ check, DTOs-between-services, the C# net8 posture, `comments-wisely` as a record
   conduct presents "use existing project tools / no new dependency" FIRST and the skill instructs the agent
   not to silently add a package; "honored" still means the agent actually refrains, which is behavioral.
 
-## Residual (the feature-closeout gate)
+## Residual -- DEFERRED-WITH-GATE (recorded variance D-003, maintainer-approved 2026-06-10)
 
-The **definitive** SC-004 / SC-007 / SC-008 confirmation is an independent human running the **published**
-`v0.35.0-beta.1` on a real host (per the beta-before-stable mandate: the maintainer manually validates the
-installed prerelease). That cannot run before publish, which is gated to feature-closeout approval.
+The behavioral SC-004 / SC-007 / SC-008 are NOT left as a floating "not-yet-verified" claim: they are a
+**recorded, maintainer-approved variance** (`drift-log.md` **D-003**, accepted at the 2026-06-10
+review-signoff). Their **definitive** confirmation is **DEFERRED** to an independent human running the
+**published** `v0.35.0-beta.1` on a real host (the beta-before-stable mandate: the maintainer manually
+validates the installed prerelease). **Gate**: that beta install-dogfood MUST confirm SC-004 / SC-007 /
+SC-008 before the 0.35.0 line is promoted to stable. The defer is necessary because publish is gated to
+feature-closeout approval, and because autonomous artifact inspection cannot establish behavior.
 
 **Verdict: PASS** for the deployed-module **wiring + manifest-authoring** gate (everything in the
 deployment table above plus the hand-authored-manifest validation, all objectively checked). The
-**behavioral** SC-004 / SC-007 / SC-008 are NOT-YET-VERIFIED and remain the human-on-published-beta step at
-feature-closeout. This report's value is that the human beta validation now starts from a de-risked base:
-the deployed layout installs, wires up, and validates, and the manifest-authoring path the corrected
-conduct mandates works end-to-end on the deployed module.
+**behavioral** SC-004 / SC-007 / SC-008 are **DEFERRED-WITH-GATE** to the published-beta human validation
+at feature-closeout (variance D-003). This report's value is that the human beta validation starts from a
+de-risked base: the deployed layout installs, wires up, and validates, and the manifest-authoring path the
+corrected conduct mandates works end-to-end on the deployed module. The T012/T013 writer-call ->
+hand-authored manifest change is the accepted variance **D-002**.
