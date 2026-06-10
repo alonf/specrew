@@ -24,7 +24,7 @@ guarantee a fresh reload per turn, **re-invoke this skill (or re-read it) at the
 You are facilitating a design conversation with a human, **one lens at a time**. The lenses live in
 `extensions/specrew-speckit/knowledge/design-lenses/` (deployed under the project's design-lens catalog):
 `architecture-core`, `component-design`, `requirements-nfr`, `ui-ux`, `data-storage`, `security-compliance`,
-`integration-api`, `devops-operations`, `observability-resilience`. For each lens you work:
+`integration-api`, `devops-operations`, `observability-resilience`, `code-implementation`. For each lens you work:
 
 1. **Load that lens's md** (`design-lenses/<lens-id>.md`) for its `## Design Decision Points` and
    `## Workshop Conduct` — that is the lens's focused agenda. Do not improvise it from memory.
@@ -96,6 +96,44 @@ V1 every feature is `context_scope: feature_standalone`; once Proposal 162 ships
 in delta mode (`feature_delta`) against the inherited product baseline (`product_baseline`).
 
 Only after the product-domain phase is captured do you move to the lens applicability agenda below.
+
+## The code-implementation lens (auto-on for code features; Feature 177)
+
+The `code-implementation` lens captures *how the code is written* (implementation craft) as binding
+constraints for implement. It is **always-applicable for any feature that writes code** (auto-on; skip
+only doc-only / config-only slices, with a recorded reason). It is **conduct-driven** — NOT a row in
+`applicability-map.json` (drift D-001), exactly like `product-domain`: you include it for code features
+without a yes/no applicability question. Work it **after the technical lenses** (it depends on the
+resolved stack + the architecture decision). Load its md
+`design-lenses/code-implementation.md` for the decision spine, per-stack dilemmas, the grouping model, the
+run-cadence, and the full conduct. The conduct in brief:
+
+1. **Source of code-rules truth FIRST** (the Figma-equivalent question): ask whether the human has an
+   existing coding guideline OR one or more **example projects** to emulate (a GitHub repo, a local path,
+   or other) for code style, language constructs, and patterns — or none.
+2. **Assisted ingestion** (when a guideline / example project is provided; agent-reasoning, no parser):
+   map it onto the `code-rules.yml` catalog (auto-check matches, flag conflicts for the human), and extract
+   non-catalog conventions as custom rules with provenance (`from-guideline` / `from-example-project` +
+   the source ref). Company/org-level rules persist to the reusable project overlay `code-rules.local.yml`
+   (additive + per-rule override; never drops a shipped rule).
+3. **Resolve the stack**, then present the **grouped, pre-checked set/unset checklist** — baseline stated
+   as a summary (exceptions only), the consequential decision-prompts paced (offer all-at-once OR
+   one-at-a-time), applicability-filtered rules shown only when their context applies. **Never a flat wall.**
+4. **Dependency selection (FR-013)**: present **"use existing project tools / no new dependency" first**
+   plus options; for any chosen dependency capture version, license, source org, canonical URL, maintenance
+   signal, security/advisory status, compatibility, cost/quota, coupling weight, replaceability, and test
+   implications into the manifest `dependency_policy`.
+5. **Capture** the selections/decisions/custom-rules/dependency-policy into the per-feature
+   `implementation-rules.yml` manifest (reference-by-ID) + the human-readable
+   `workshop/code-implementation.md`, via the writer `scripts/internal/code-implementation-lens.ps1`
+   (`New-SpecrewImplementationRulesManifest`); record the lens in `lens-applicability.json`.
+6. **Run cadence**: the rules are mostly product-level — decide once at a product-level workshop, inherit
+   per feature, re-open only the parts a new technology or programming language changes
+   (`context_scope` hooks; V1 `feature_standalone`; forward-compatible with Proposal 162).
+
+The **implement-time half** is the separate `specrew-code-rules` skill, which reads this manifest while the
+coding agent writes code and surfaces the rules task-scoped. The acceptance gate is the deployed dogfood
+(SC-004/SC-007/SC-008), not unit-green.
 
 ## The Method (the same for every lens)
 
