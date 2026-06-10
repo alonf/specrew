@@ -22,7 +22,7 @@ function Get-BootstrapProjectRoot {
 }
 
 function Format-BootstrapDirective {
-    param($Result, [AllowNull()][string]$ContractBody = $null)
+    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
@@ -68,6 +68,22 @@ function Format-BootstrapDirective {
                 if (Test-SpecrewHandoverSectionAuthored -Content $c) { $lines.Add(("  - {0}: {1}" -f $k, $c)) }
             }
         }
+    }
+    # F-174 T050 round-2 (the last-mile resume gap): the intent + status ARE on disk, but neither a hollow
+    # handover ("re-derive from the artifacts" - skimmed as an abstract pointer) nor full mode (the contract's
+    # project-state stub is empty; the hook makes no scan) ever SURFACED them - so copilot asked "what do you
+    # want to build" with the answer in spec.md, and codex reported the hollow handover then stopped. Surface
+    # the deterministic disk scan HERE, with the concrete next action named (content gets followed; pointers
+    # get skimmed - the iter-7 inline-the-contract lesson).
+    if ($null -ne $InFlight -and [bool]$InFlight.in_flight) {
+        $lines.Add('')
+        $lines.Add(('=== IN-FLIGHT WORK ON DISK (deterministic scan - this project is NOT new) ===') )
+        $lines.Add(("Feature {0} is in flight on this branch. The intent and status live in FILES - read them FIRST, before asking the human anything:" -f $InFlight.feature_ref))
+        if ($InFlight.spec_exists) { $lines.Add(("  - the intent (what we are building): {0}" -f $InFlight.spec_path)) }
+        if (@($InFlight.done).Count -gt 0) { $lines.Add(("  - design-workshop lenses already DONE (records under specs/{0}/workshop/): {1}" -f $InFlight.feature_ref, (@($InFlight.done) -join ', '))) }
+        if (@($InFlight.remaining).Count -gt 0) { $lines.Add(("  - workshop lenses REMAINING (from lens-applicability.json): {0}" -f (@($InFlight.remaining) -join ', '))) }
+        $next = if (@($InFlight.remaining).Count -gt 0) { ("resume the design workshop at the next remaining lens: {0}" -f @($InFlight.remaining)[0]) } else { 'resume at the recorded lifecycle position (read the spec + workshop records to locate it)' }
+        $lines.Add(("When the human says 'continue' (or similar), {0}. Do NOT restart discovery, do NOT re-ask completed lenses, and do NOT ask 'what do you want to build' - spec.md answers that. Confirm your resume point to the human in one line, then proceed." -f $next))
     }
     $lines.Add('Reminder (do not skip): your FIRST response MUST open with the MANDATORY orientation banner described at the top - Specrew + how-we-work + version/host/project/branch/lifecycle position + the user-profile/expertise adaptation (what you know about the human) - and only THEN address the user''s request.')
     if (@($d.validation_findings).Count -gt 0) {
@@ -171,7 +187,21 @@ try {
     $inlineContract = ($hostKind -ne 'codex')
     $directiveBody = if ($inlineContract) { $contractBody } else { '' }
 
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody)
+    # F-174 T050 round-2: deterministic in-flight disk scan for the directive (the last-mile resume gap).
+    # Feature source: the validated anchor first, else the branch (the pre-boundary workshop window - same
+    # resolver the Stop floor-writer uses). Fail open: any error -> no block (never blocks the bootstrap).
+    $inFlight = $null
+    try {
+        $ifFeature = $null
+        if ($null -ne $result.validity.anchor -and -not [string]::IsNullOrWhiteSpace([string]$result.validity.anchor.feature_ref)) {
+            $ifFeature = [string]$result.validity.anchor.feature_ref
+        }
+        if ([string]::IsNullOrWhiteSpace($ifFeature)) { $ifFeature = Resolve-SpecrewBranchFeatureRef -ProjectRoot $root }
+        if (-not [string]::IsNullOrWhiteSpace($ifFeature)) { $inFlight = Get-SpecrewWorkshopProgress -ProjectRoot $root -FeatureRef $ifFeature }
+    }
+    catch { $inFlight = $null }
+
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight)
     exit 0
 }
 catch {

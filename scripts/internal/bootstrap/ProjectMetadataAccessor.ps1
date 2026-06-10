@@ -89,3 +89,74 @@ function Resolve-SpecrewBranchFeatureRef {
     if (-not (Test-SpecrewFeatureLocal -SpecsRoot (Join-Path $ProjectRoot 'specs') -FeatureRef $branch)) { return $null }
     return $branch
 }
+
+function Get-SpecrewWorkshopProgress {
+    # Deterministic DISK-TRUTH scan of a feature's in-flight intent + status, for the bootstrap directive
+    # (F-174 T050 round-2 finding): on resume, the intent (spec.md) and status (workshop records +
+    # lens-applicability.json moved_on flags) ARE on disk, but nothing SURFACED them - so copilot asked
+    # "what do you want to build" with the answer sitting in spec.md, and codex reported the hollow handover
+    # then stopped ("re-derive from the artifacts" as an abstract pointer gets skimmed; surfaced CONTENT gets
+    # followed - the iter-7 inline-the-contract lesson again). This accessor reads, the directive renders.
+    # Fail open: any read error -> the empty shape (never blocks the bootstrap).
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter(Mandatory)][string] $FeatureRef
+    )
+
+    $featureDir = Join-Path (Join-Path $ProjectRoot 'specs') $FeatureRef
+    $specPath = Join-Path $featureDir 'spec.md'
+    $specExists = Test-Path -LiteralPath $specPath -PathType Leaf
+
+    # Lens records persisted under the workshop folder (the per-lens durable checkpoints).
+    $lensRecords = @()
+    try {
+        $wdir = Join-Path $featureDir 'workshop'
+        if (Test-Path -LiteralPath $wdir -PathType Container) {
+            $lensRecords = @(Get-ChildItem -LiteralPath $wdir -Filter '*.md' -File |
+                    ForEach-Object { [System.IO.Path]::GetFileNameWithoutExtension($_.Name) } |
+                    Where-Object { $_ -ne 'lens-applicability' } | Sort-Object)
+        }
+    }
+    catch { $lensRecords = @() }
+
+    # lens-applicability.json: selected lenses + per-lens moved_on (done) flags. Hosts have written it both
+    # feature-level (the skill's contract) and under workshop/ - accept either.
+    $selected = @(); $done = @(); $applicabilityFound = $false
+    foreach ($cand in @((Join-Path $featureDir 'lens-applicability.json'), (Join-Path (Join-Path $featureDir 'workshop') 'lens-applicability.json'))) {
+        if (-not (Test-Path -LiteralPath $cand -PathType Leaf)) { continue }
+        try {
+            $la = Get-Content -LiteralPath $cand -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            $applicabilityFound = $true
+            # StrictMode-safe local reads (this accessor stays self-contained; no SessionStateAccessor dep).
+            $selProp = $la.PSObject.Properties['selected']
+            if ($selProp -and $null -ne $selProp.Value) { $selected = @($selProp.Value | ForEach-Object { [string]$_ }) }
+            $wProp = $la.PSObject.Properties['workshop']
+            if ($wProp -and $null -ne $wProp.Value) {
+                foreach ($p in $wProp.Value.PSObject.Properties) {
+                    $mo = $p.Value.PSObject.Properties['moved_on']
+                    if ($mo -and [bool]$mo.Value) { $done += [string]$p.Name }
+                }
+            }
+            break
+        }
+        catch { continue }
+    }
+
+    # done = the union of moved_on records and persisted lens files (a host that writes the file but not the
+    # json - codex - still counts as progressed); remaining = selected minus done, in selected order.
+    $doneAll = @(@($done) + @($lensRecords) | Select-Object -Unique)
+    $remaining = @($selected | Where-Object { $doneAll -notcontains $_ })
+
+    [pscustomobject]@{
+        feature_ref    = $FeatureRef
+        spec_exists    = $specExists
+        spec_path      = if ($specExists) { "specs/$FeatureRef/spec.md" } else { $null }
+        selected       = $selected
+        done           = $doneAll
+        remaining      = $remaining
+        has_applicability = $applicabilityFound
+        in_flight      = ($specExists -or ($doneAll.Count -gt 0))
+    }
+}
