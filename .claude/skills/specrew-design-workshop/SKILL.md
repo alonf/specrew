@@ -123,10 +123,12 @@ run-cadence, and the full conduct. The conduct in brief:
    plus options; for any chosen dependency capture version, license, source org, canonical URL, maintenance
    signal, security/advisory status, compatibility, cost/quota, coupling weight, replaceability, and test
    implications into the manifest `dependency_policy`.
-5. **Capture** the selections/decisions/custom-rules/dependency-policy into the per-feature
-   `implementation-rules.yml` manifest (reference-by-ID) + the human-readable
-   `workshop/code-implementation.md`, via the writer `scripts/internal/code-implementation-lens.ps1`
-   (`New-SpecrewImplementationRulesManifest`); record the lens in `lens-applicability.json`.
+5. **Capture** the selections/decisions/custom-rules/dependency-policy by authoring the per-feature
+   `implementation-rules.yml` manifest (reference-by-ID), schema-validated against the manifest schema
+   `implementation-rules.schema.json` (beside the lens in the design-lens catalog), plus the human-readable
+   `workshop/code-implementation.md`; record the lens in `lens-applicability.json`. (Like `product-domain`,
+   you author the record by hand following the schema -- you do NOT call a PowerShell writer; the lens
+   helper validates, it is not invoked mid-workshop.)
 6. **Run cadence**: the rules are mostly product-level — decide once at a product-level workshop, inherit
    per feature, re-open only the parts a new technology or programming language changes
    (`context_scope` hooks; V1 `feature_standalone`; forward-compatible with Proposal 162).
