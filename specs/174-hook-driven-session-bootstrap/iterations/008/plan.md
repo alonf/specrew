@@ -40,8 +40,9 @@ This iteration delivers the three maintainer asks on that green baseline:
 | T048 | Docs: reposition `specrew start` as an optional host-selector (README Quick Start + getting-started "Start the first feature" + host-pick note + CHANGELOG); the SessionStart hook drives after `specrew init` | FR-008, FR-001 | US-2 | 3 | Implementer | done |
 | T049 | Move user-profile intake to `specrew init` (ask ONLY when profile ABSENT and session INTERACTIVE; skip silently on `-Force`/CI; retain `specrew start` fallback; bootstrap directive nudges `/specrew-user-profile` when absent) | FR-025 | US-1 | 5 | Implementer | done |
 | T050 | Handover validation across exit modes + test-procedure doc (`/exit`, double Ctrl+C, window close, kill); confirm the crash-safe agent-authored body persists + resume restores; fix any authoring gap | FR-022, FR-009 | US-1 | 6 | Implementer | in-progress |
+| T051 | Session-continuity documentation (maintainer-approved mid-iteration, 2026-06-11): user-guide "Session Continuity" section (hook bootstrap + rolling handover + in-flight surfacing + host switching + honest limits); 3 troubleshooting entries (hook never fires / blind resume diagnosis via bootstrap-journal / handover+concurrency advisories) + symptom-guide rows; design-workshop methodology checkpoint-timing conduct (agenda-persist-at-confirm + per-lens persistence, Principle 7 + Phases 2/7) | FR-008, FR-022 | US-2 | 3 | Implementer | done |
 
-**Capacity: 14/20** (T048 3 + T049 5 + T050 6 = 14). The FR-024 codex / FR-004 banner / version fixes were
+**Capacity: 17/20** (T048 3 + T049 5 + T050 6 + T051 3 = 17). The FR-024 codex / FR-004 banner / version fixes were
 delivered as iter-7's multi-host completion (already shipped + validated) and are NOT re-counted here.
 
 ## Effort Model
@@ -319,6 +320,27 @@ delivered as iter-7's multi-host completion (already shipped + validated) and ar
     skipped the json -> the scan could honestly claim only done=product-domain -> codex re-derives the agenda
     itself. The checkpoint tax skipped during the workshop is paid at resume, by the skipper. Acceptable codex
     landing: not redoing product-domain, re-proposing the never-persisted agenda, continuing governed.
+  - **CROSS-HOST ROTATION (the Proposal-130 switch-to-host test) - deterministic layer 3-for-3:** all three
+    workshops ran to COMPLETE before exit (codex's restart included - and codex PERSISTED the agenda this time,
+    the new confirm-time conduct landing); every `/exit` left a stamped fresh floor (P1 3/3 on graceful exit).
+    The maintainer then rotated hosts across dirs (claude->copilot's dir, codex->claude's, copilot->codex's):
+    EVERY pairing journaled `mode:welcome-back, handover_valid:true, handover_placeholder:true` under the NEW
+    host's name - a different host read, validated, and surfaced the prior host's handover in all three dirs.
+    Pre-rotation edge-fix `d66f15a2`: the in-flight resume now distinguishes workshop-COMPLETE (agenda persisted
+    + all done -> resume AT THE BOUNDARY, never redo) from the codex records-no-agenda shape (re-propose agenda)
+    - caught pre-exit on the live copilot trial which had just finished all 6 lenses. Behavioral verdicts pending.
+  - **CROSS-HOST BEHAVIORAL VERDICTS - 2/3 pass; codex gate-discipline fail (3rd reproduction):** claude in
+    copilot's dir = PERFECT (fastest; correct boundary stop); copilot in codex's dir = CORRECT; codex in claude's
+    dir = advanced specify->clarify->plan with ZERO verdicts (wrote the full plan artifact set at 00:11:28;
+    verdict_history 0; decisions.md pristine - it never ATTEMPTED the governed sync, it drove the raw Spec Kit
+    plan machinery directly, so the F-039 gate never saw it; ran the validator AFTER the deed - form-green,
+    authorization-void). NOT a dir issue (same clean shape as the dirs where claude+copilot stopped correctly)
+    and NOT the directive (same text everywhere; it said "awaiting the human verdict"). Aggravator: the
+    permission-override flag removed tool-call friction. KEY: the handover layer WORKED on codex - it knew
+    exactly where it was; the failure is purely may-I-advance discipline. Backlog: codex needs the Proposal-180
+    deterministic treatment (pre-exec hook gating boundary-advancing writes) or documented host-variance + the
+    181 CI net; prompt-layer rules demonstrably don't hold codex. T050 handover validation = PASS on all three
+    (cross-host matrix: 3/3 deterministic, 2/3 behavioral).
   - **Claude post-steer: BEST-BEHAVED host + P1 stamp 3-for-3:** after the maintainer's discard+authorize,
     claude discarded notekeep.py, scaffolded 001-notekeep, and is driving the workshop FULLY GOVERNED with
     per-lens durable checkpoints (product-domain + a contracts/product-domain.schema.json artifact;

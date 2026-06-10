@@ -23,6 +23,9 @@ If you run `specrew update` when the installed module itself is stale, you only 
 | You want the cleanest recovery path after repeated drift | Mixed module versions or stale local assets | Go to [Clean reinstall flow](#clean-reinstall-flow). |
 | `specrew init` says Node is too old right after a `brew` upgrade (macOS) | `nvm` shadows the Homebrew Node on `PATH`; `pwsh` uses the same old Node | Go to [macOS: Node version shadowed by nvm](#macos-node-version-shadowed-by-nvm). |
 | `specrew init` says Spec Kit is missing or too old | `specify-cli` is absent or below the supported floor | Go to [Spec Kit missing or too old](#spec-kit-missing-or-too-old). |
+| Launching the host shows no Specrew banner; the agent acts ungoverned | The SessionStart hook never fired (per-host hook config missing or malformed) | Go to [SessionStart hook never fires](#sessionstart-hook-never-fires). |
+| On restart the agent asks "what do you want to build?" instead of resuming | No valid handover or anchor surfaced; or the deployed providers are stale | Go to [Resume starts blind instead of welcoming you back](#resume-starts-blind-instead-of-welcoming-you-back). |
+| A `HOLLOW HANDOVER` warning, or "another session may be active in this worktree" | Expected advisories: an unauthored handover body; a fresh session marker from the previous session | Go to [Handover and concurrency advisories](#handover-and-concurrency-advisories). |
 
 ## PSGallery side-by-side installs or stale cache
 
@@ -117,6 +120,42 @@ specrew start
 ```
 
 Do not re-add those files to git to make the state feel durable. They are host-session scratch state, not authoritative delivery artifacts.
+
+## SessionStart hook never fires
+
+If launching `claude` / `codex` / `copilot` inside an initialized project produces no Specrew orientation banner and the agent behaves as if the project were ungoverned, the SessionStart hook did not run or its output was dropped.
+
+First check the journal — every successful bootstrap appends one JSON line:
+
+```powershell
+Get-Content .\.specrew\runtime\bootstrap-journal.jsonl -Tail 3
+```
+
+- **No new line for your launch** — the hook never ran. Verify the per-host registration: Claude reads the project's `.claude/settings.json`; Codex reads the user-level `~/.codex/hooks.json` and requires its events wrapped as `{ "hooks": { "<Event>": [...] } }` — top-level event keys are silently ignored. Re-run `specrew init` (or `deploy-refocus-hooks.ps1`) to redeploy the registrations.
+- **A line exists but nothing surfaced in the session** — the hook ran and the host dropped its output. On Codex this happens when the injected context is malformed for its envelope (it accepts only `hookSpecificOutput.additionalContext`) — redeploy so the current dispatcher is in place, and prefer the current module version.
+- The hook is fail-open by design: any internal error exits silently rather than blocking your session, so a broken deployment looks like "no banner", never a hang. `[specrew-bootstrap] WARN PROVIDER_FAILED ...` on stderr names the reason when the host shows hook diagnostics.
+
+## Resume starts blind instead of welcoming you back
+
+If a restarted (or switched) host asks "what do you want to build?" while `specs/<feature>/` clearly holds work in flight, read the latest journal line first:
+
+```powershell
+Get-Content .\.specrew\runtime\bootstrap-journal.jsonl -Tail 1
+```
+
+- `"mode":"welcome-back","handover_valid":true` — the resume context WAS surfaced; the agent under-used it. Reply with a nudge ("we were in the middle of a workshop — continue from the artifacts") and it should re-derive from `specs/<feature>/` and `.specrew/handover/session-handover.md`.
+- `"mode":"full","handover_valid":false` — nothing validated. Check, in order:
+  1. The branch is the feature branch — the workshop-window feature resolution is branch-keyed: the branch name must exactly match the `specs/<branch>/` directory (`git branch --show-current`).
+  2. The handover floor exists and names the feature: `Get-Content .\.specrew\handover\session-handover.md -TotalCount 8` — `active_feature:` blank on a feature branch means the deployed providers predate the fix; run `specrew update` (and update the module) to redeploy current providers.
+  3. The handover is fresher than 24 hours — older floors are intentionally not trusted.
+- A hard-killed session (closed window, no `/exit`) writes no floor at death. The resume then relies on the previous floor plus the on-disk feature artifacts — position in conversation is lost, work on disk is not.
+
+## Handover and concurrency advisories
+
+Two messages around session start are advisories, not errors:
+
+- **`HOLLOW HANDOVER` / "the previous session did NOT author a handover body"** — the rolling handover's frontmatter floor is present (feature, boundary, commit), but the six rich body sections were never authored by the previous agent. The resuming agent is told to re-derive from the lifecycle artifacts instead — workshop records, spec, tasks. Work is not lost; the resume is simply artifact-derived rather than narrative.
+- **"another session may be active in this worktree (marker within 1h)"** — the previous session's `.specrew/runtime/session-marker.json` is less than an hour old. After a normal exit-and-relaunch (or a host switch) this is expected and safe to ignore. It matters only if you really do have two live agents in the same worktree — then coordinate or close one. Deleting the marker file silences it immediately; it is local scratch state.
 
 ## Clean reinstall flow
 
