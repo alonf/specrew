@@ -71,6 +71,24 @@ under `specs/177-software-development-rules-lens/workshop/` and `lens-applicabil
   *definition* (data) and the existing `deploy-squad-runtime.ps1` engine fans it to all hosts; a
   reusable `Deploy-SpecrewSkill` extraction is filed as a sibling, not built here.
 
+### Session 2026-06-10 (clarify pass — light)
+
+The intake workshop resolved every open fork with the maintainer (record-vs-full, skill granularity,
+deployment, ID-vs-embed, guideline-first, overlay-in-V1, cadence, gate posture, applicability), and the
+maintainer approved the spec at the specify verdict. No material question remains that requires the
+human. The following plan-adjacent defaults are resolved by the Crew and recorded here (no new scope):
+
+- **Stack resolution** — the lens resolves the feature's stack by asking the human at the lens turn,
+  using repo/plan inference as a pre-filled hint (mirrors the stack-aware-tool-selection human-approval
+  rule). The resolved stack drives which catalog slice + applicability-filtered rules are presented.
+- **Enforcement-mode metadata** — each catalog rule carries an `enforcement-mode` field as
+  *informational* metadata (how the rule would be verified: analyzer / test / review) that the guidance
+  skill surfaces so the agent can self-check. It is **not gated** in V1 (consistent with the no-145
+  ruling) and is forward-compatible with a future 145 verifier.
+- **Catalog authoring fidelity + location** — `code-rules.yml` encodes Proposal 163's 49 rules
+  one-entry-per-rule with stable IDs, grouped + scope-tagged; the exact on-disk path (design-lens
+  knowledge dir) is a plan-time detail.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Coding agent is guided by the feature's code rules at implement time (Priority: P1)
