@@ -1,0 +1,34 @@
+{
+  "schema": "v1",
+  "note": "Iteration 001 design-analysis applicability answers + co-design marker. Selected = the six intake-workshop lenses. co_design: true engages the SC-025 co-design-record floor against design-analysis.md.",
+  "co_design": true,
+  "answers": {
+    "ui": true,
+    "security": false,
+    "data": false,
+    "integration": true,
+    "ops": true,
+    "perf": false
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "ui-ux",
+    "integration-api",
+    "devops-operations"
+  ],
+  "included": [
+    { "id": "architecture-core", "reason": "always-on (foundational)" },
+    { "id": "component-design", "reason": "always-on (foundational)" },
+    { "id": "requirements-nfr", "reason": "always-on (foundational)" },
+    { "id": "ui-ux", "reason": "gated by 'ui' = yes (rule-volume presentation + agent-guidance surfaces)" },
+    { "id": "integration-api", "reason": "gated by 'integration' = yes (catalog/manifest contracts + registration seams)" },
+    { "id": "devops-operations", "reason": "gated by 'ops' = yes (multi-host skill deploy + release)" }
+  ],
+  "excluded": [
+    { "id": "security-compliance", "reason": "gated by 'security' = no (no auth/secrets/PII in the feature; secure-coding rules are lens content)" },
+    { "id": "data-storage", "reason": "gated by 'data' = no (manifest is a contract under integration-api)" },
+    { "id": "observability-resilience", "reason": "gated by 'perf' = no (no runtime telemetry)" }
+  ]
+}

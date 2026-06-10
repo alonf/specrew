@@ -1,0 +1,85 @@
+schema_version: "1.0"
+depth: standard
+depth_reason: >-
+  Specrew is a known product and Proposal 163 completed the 2026-06-08 research
+  baseline, so most product context is already known. But this is a substantive
+  methodology addition (a full new design lens + an implement-time guidance skill
+  + plan/implement wiring), not a tiny utility, so it earns current-workaround,
+  success-metrics, and alternatives — hence Standard rather than Light or Deep.
+context_scope: feature_standalone
+product_id: null
+product_context_ref: null
+
+areas:
+  users_customers_stakeholders:
+    primary_user: "The Crew/coding agent at implement time — direct consumer of the resulting guidance skill."
+    secondary_user: "The human developer who answers the lens at design time and reviews the captured rules."
+    buyer_maintainer: "Alon (maintainer) — sets the default 49-rule code posture."
+    operator: "The plan and implement phases (and Reviewer) that consume the captured implementation constraints."
+    harmed_if_bad: "Future maintainers inheriting inconsistent, refactor-prone code; reviewers who cannot trace why code was written a given way."
+  pain_jobs_workaround:
+    pain: "The design lenses cover WHAT the system is; none covers HOW the code is written. Implementation-craft decisions are made ad-hoc during implement instead of decided up front like every other design dimension."
+    current_workaround: "Rules are scattered — the maintainer pastes them into prompts ad-hoc; the Implementer charter has only generic guidance; no design-time capture and no implement-time surfacing of a feature's chosen code rules."
+    cost_of_nothing: "Inconsistent craft, avoidable refactors, the agent re-derives or ignores craft rules every feature."
+  existing_system_context:
+    relationship: "Extension of the existing design-lens system (F-141 lens machinery + F-176 first lens). Plugs into index.yml, applicability-map.json, the specrew-design-workshop skill, and the specify / design-analysis gates."
+    new_surface: "An implement-time guidance skill that surfaces the captured per-feature rules to the coding agent."
+  constraints:
+    - "No Proposal-145 mechanical conformance gate / no parallel code-quality engine (maintainer ruling)."
+    - "Self-contained: workshop-decisions.yml (156) and the 145 verifier do not exist on disk; ship forward-compatible, do not depend on them."
+    - "Multi-host: lens md + the new skill deploy across all 5 hosts, like the workshop skill + F-176."
+    - "Rule-volume UX: 49 default rules + per-stack dilemmas must use the grouping model (baseline-defaults / decision-prompts / applicability-filtered / enforcement-mode) so the human sees only material choices."
+    - "Release mechanics: PowerShell/Windows authoring, markdownlint, FileList + extension.yml version bump for new deployable files (F-176 lesson)."
+    - "No stale tech: rules must avoid stale-version claims in long-lived artifacts; check current LTS at workshop time."
+  outcomes_success_metrics:
+    design_time: "A feature's implementation-craft rules captured as a structured, human-chosen manifest."
+    implement_time: "The coding agent is actively guided by those rules via the skill — the load-bearing outcome."
+    leading_indicator: "In a dogfood, generated code visibly reflects the chosen rules (DI posture, naming, size discipline) without the maintainer re-pasting rules."
+  mvp_nongoals_vision:
+    mvp: "Full lens content (all decision points + per-stack dilemmas + 49 rules grouped) + structured manifest + implement-time guidance skill + plan->implement wiring."
+    non_goals:
+      - "The Proposal-145 review-time conformance gate."
+      - "Building the generic Proposal-156 producer or Proposal-145 verifier."
+      - "Auto-running stack analyzers as a hard CI gate."
+    vision: "When 156/145 ship, the manifest plugs into the generic spine; an analyzer-config enforced mode can follow."
+    v1_failure_even_if_it_works: "The agent ignores the captured rules at implement time (skill not consulted), or the 49 rules overwhelm the human at design time (grouping fails)."
+  alternatives_differentiation:
+    alternative_a: "Status quo — rules in the Implementer charter / coordinator prompt: not feature-scoped, not human-chosen, gets skimmed."
+    alternative_b: "Static .editorconfig / constitution only: no design intent, no per-feature choice, no agent guidance."
+    alternative_c: "The 145 mechanical gate: explicitly rejected by the maintainer (parallel engine / over-engineering)."
+    differentiation: "Design-time human-chosen PLUS implement-time agent-surfaced, self-contained. Must beat status-quo prompt-paste on consistency, traceability, and the agent actually following craft rules."
+  adoption_rollout_change_impact:
+    rollout: "Ships beta-first (universal mandate), dogfooded on Claude first. It is the 2nd lens; adoption = it joins the standard workshop run."
+    run_cadence_ruling: "MAINTAINER DECISION (2026-06-10): the code rules are mostly product-level and stable — decide once at a product-level workshop, then each feature INHERITS them and re-opens only the parts a new technology or programming language changes. Forward-compatible with Proposal 162 (product-then-feature tier) via context_scope / product_baseline / feature_delta hooks, like F-176. This both reduces per-feature burden and answers Proposal 163's open per-stack-depth question: stable craft posture once, per-stack re-ask only on new stack/language."
+
+statements:
+  - text: "Primary user is the coding agent at implement time; the feature's center of gravity is guiding the agent, with the human developer as the design-time chooser."
+    area: users_customers_stakeholders
+    evidence: known
+  - text: "Future maintainers and reviewers are the harmed party when craft is inconsistent or untraceable."
+    area: users_customers_stakeholders
+    evidence: assumed
+  - text: "No design lens covers how code is written; implementation-craft decisions are made ad-hoc during implement."
+    area: pain_jobs_workaround
+    evidence: known
+  - text: "Doing nothing costs inconsistent craft and avoidable refactors as the agent re-derives or ignores craft rules each feature."
+    area: pain_jobs_workaround
+    evidence: assumed
+  - text: "The load-bearing outcome is the agent following the captured rules at implement time, with design-time human-choice capture as the enabling input."
+    area: outcomes_success_metrics
+    evidence: known
+  - text: "Success is measurable via dogfood: generated code reflects chosen rules without the maintainer re-pasting them."
+    area: outcomes_success_metrics
+    evidence: assumed
+  - text: "The code rules are mostly product-level and stable: decide once at a product-level workshop, inherit per feature, re-open only on new technology or programming language (forward-compatible with Proposal 162)."
+    area: adoption_rollout_change_impact
+    evidence: known
+  - text: "Adding a lens turn to every feature's workshop is the main change impact, mitigated by applicability, the grouping model, depth, and the product-level-once + feature-delta cadence."
+    area: adoption_rollout_change_impact
+    evidence: assumed
+
+skipped: []
+follow_up_research: []
+
+confirmation: human-confirmed
+confirmation_scope: lens-question

@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.34.0'
+    ModuleVersion = '0.35.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -65,10 +65,13 @@
         'extensions/specrew-speckit/hooks/.gitkeep',
         'extensions/specrew-speckit/knowledge/design-lenses/applicability-map.json',
         'extensions/specrew-speckit/knowledge/design-lenses/architecture-core.md',
+        'extensions/specrew-speckit/knowledge/design-lenses/code-implementation.md',
+        'extensions/specrew-speckit/knowledge/design-lenses/code-rules.yml',
         'extensions/specrew-speckit/knowledge/design-lenses/component-design.md',
         'extensions/specrew-speckit/knowledge/design-lenses/data-storage.md',
         'extensions/specrew-speckit/knowledge/design-lenses/devops-operations.md',
         'extensions/specrew-speckit/knowledge/design-lenses/diagram-vocabulary.json',
+        'extensions/specrew-speckit/knowledge/design-lenses/implementation-rules.schema.json',
         'extensions/specrew-speckit/knowledge/design-lenses/index.yml',
         'extensions/specrew-speckit/knowledge/design-lenses/integration-api.md',
         'extensions/specrew-speckit/knowledge/design-lenses/lens-schema.md',
@@ -149,6 +152,7 @@
         'extensions/specrew-speckit/squad-templates/directives/user-profile-awareness.md',
         'extensions/specrew-speckit/squad-templates/README.md',
         'extensions/specrew-speckit/squad-templates/skills/capacity-planning.md',
+        'extensions/specrew-speckit/squad-templates/skills/code-rules.md',
         'extensions/specrew-speckit/squad-templates/skills/design-workshop.md',
         'extensions/specrew-speckit/squad-templates/skills/drift-check.md',
         'extensions/specrew-speckit/squad-templates/skills/gate-stop.md',
@@ -212,6 +216,7 @@
         'scripts/init/squad-deploy.ps1',
         'scripts/init/template-deploy.ps1',
         'scripts/internal/atomic-write.ps1',
+        'scripts/internal/code-implementation-lens.ps1',
         'scripts/internal/coordinator-prompt-surgery.ps1',
         'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',

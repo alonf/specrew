@@ -1,0 +1,104 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "ui-ux",
+    "integration-api",
+    "devops-operations"
+  ],
+  "skipped": {
+    "data-storage": "The only structured data is the implementation-rules manifest, handled as a contract under integration-api and its lifecycle under architecture-core; no domain data model or storage concern.",
+    "security-compliance": "The feature is methodology content + a guidance skill; no auth/secrets/PII/trust boundary in the feature itself. The secure-coding rules (rules 35/36 of the 49) are lens CONTENT it captures and surfaces, not the feature's own security surface (the start-context security hint is a generic false-positive).",
+    "observability-resilience": "No runtime service, telemetry, or resilience surface in the feature itself."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Macro architecture: design-time capture -> structured manifest -> implement-time guidance skill (producer/artifact/consumer spine)?",
+        "Where do the 49 rules + per-stack defaults live: data-driven canonical catalog vs prose-only in the lens md?",
+        "One guidance skill or multiple? And do Proposal-139 sub-agents consume the skill or get rules baked into their system prompt?",
+        "Inheritance/cadence: forward-compat context_scope hooks (product_baseline/feature_delta) for Proposal 162?",
+        "Gate posture: does anything gate at specify, or is the rules manifest advisory/guidance (no new hard gate)?"
+      ],
+      "decision": "(1) Producer->manifest->consumer spine: design-time capture writes a per-feature implementation-rules.yml manifest; an implement-time guidance skill reads it to guide the coding agent; plan.md consumes selected rules as implement constraints. (2) Data-driven canonical catalog: the 49 rules + per-stack defaults live in a structured code-rules.yml catalog shipped with Specrew (stable rule IDs), referenced by the lens md, the per-feature manifest, and the guidance skill -- NOT prose-only-in-md; volatile per-stack/version content isolated as data + a check-current-LTS-at-workshop rule. (3) ONE data-driven guidance skill (specrew-code-rules) consumed by the current single agent AND future Proposal-139 dev sub-agents; 'aspects the agent won't always need' is solved by manifest applicability filtering (design time) + contextual surfacing within the one skill (implement time), NOT by multiple skills; optionality for future per-domain dev agents stays in the catalog's group/applicability tags. Rule CONTENT stays in catalog+manifest; the system prompt / Implementer charter carries only a thin pointer + discipline ('consult the skill, follow the manifest'), never the rule content -- because a system prompt cannot be per-feature and baking 49 rules there is static/unportable/duplicated (lens rule 7). (4) Forward-compat context_scope (product_baseline/feature_delta/feature_standalone) hooks for Proposal 162 inheritance; hooks only, not 162 behavior. (5) Advisory/guidance posture: the lens participates in the existing specify lens-record gate, but the rules manifest is NOT a new hard gate and there is no parallel code-quality engine (no Proposal 145 verification) -- enforcement is the implement-time skill.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/architecture-core.md -- producer->catalog->manifest->guidance-skill macro ASCII + content/selection/delivery/discipline division-of-labor (now vs Proposal 139 sub-agents)"
+    },
+    "component-design": {
+      "agenda": [
+        "Component map + responsibilities + dependency direction + the two key flows (design-time capture, implement-time guidance)?",
+        "Manifest: reference catalog rule IDs (lean, skill resolves text) vs embed full rule text per feature?",
+        "Multi-host skill deployment: reuse the existing engine, extract a reusable Deploy-SpecrewSkill component, or reuse-now + file the extraction?",
+        "How does the per-feature payload reach the agent without rewriting the skill in N host locations?"
+      ],
+      "decision": "Component map approved (human-confirmed). CATALOG (ships with Specrew, static): code-rules.yml (49 rules + per-stack, stable IDs + groups), code-implementation.md lens md (references the catalog, not prose-duplicated), implementation-rules.schema.json, registration (index.yml / applicability-map.json / design-workshop lens map / $lensIds). PRODUCER: specrew-design-workshop skill updated with the code lens turn (writes the per-feature manifest). PER-FEATURE ARTIFACTS (written to ONE location): implementation-rules.yml manifest (selected rule IDs + per-rule decision/enforcement + resolved stack + context_scope) + workshop/code-implementation.md. CONSUMER: NEW specrew-code-rules skill = a STATIC generic reader installed once on init to every host skill dir (byte-identical, never rewritten per feature); it resolves the active feature at runtime, reads the known manifest location, and composes BASELINE (catalog baseline-default rules, always-on, work even with no manifest) + OVERLAY (the feature's selected decision-prompt/applicability-filtered rules + decisions). Manifest is REFERENCE-BY-ID (lean; skill resolves rule text from the catalog; one source of truth; stable IDs for future 156/145), NOT embed-full-text. WIRING: plan.md converts selected rules to implement constraints; Implementer charter/coordinator carries a thin pointer to the skill. DEPLOYMENT (decision #3): REUSE the existing data-driven deploy-squad-runtime.ps1 fan-out engine (skill added as a managed skill definition = data, not code; zero per-feature deployment) AND file a sibling chore/proposal to extract a named reusable Deploy-SpecrewSkill function (honors the separate-component instinct without widening F-177). TESTS: registration, catalog integrity (unique/stable IDs, schema-valid), manifest schema, guidance-skill multi-host parity, workshop-writes-manifest, baseline+overlay composition.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md -- component map ASCII + named list + two flows + static-vs-per-feature write split + baseline+overlay composition"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Which FRs are in scope and which are deferred/out-of-scope?",
+        "What are the success criteria and which are runtime/dogfood-validated vs file-presence?",
+        "What is the quality-attribute priority order and thresholds?"
+      ],
+      "decision": "Approved (human-confirmed). FR-001..FR-008 in scope: FR-001 registered code-implementation lens md; FR-002 data-driven code-rules.yml catalog (49 rules + per-stack, stable IDs/groups); FR-003 grouping-model presentation + stack resolution + capture; FR-004 schema-valid reference-by-ID implementation-rules.yml + workshop/code-implementation.md + lens-applicability record; FR-005 specrew-code-rules static reader skill deployed to all hosts (baseline+overlay); FR-006 plan->implement wiring (Planner directive + Implementer charter pointer); FR-007 forward-compat context_scope hooks (V1 feature_standalone, no 162 behavior) + cadence (re-open per-stack only on new tech/language); FR-008 baseline-only mode with no manifest. DEFERRED: 156 workshop-decisions.yml emission (forward-compat shape only, no 156 on disk). OUT OF SCOPE BY RULING: 145 conformance verification (no mechanical gate); analyzer-config enforced mode (future); 162 inheritance behavior (hooks only). SCs SC-001..SC-007; SC-004 (agent actually guided, code reflects rules) + SC-007 (no rule wall) validated by the DOGFOOD human/agent experience, NOT file-presence. NFR priority order (design drivers): 1 usability/rule-volume (dogfood-validated), 2 maintainability/forward-compat (one source of truth; add/change a rule = edit catalog only), 3 multi-host parity (parity test), 4 testability (behavior tests not file-presence); performance + security are NON-drivers for the feature itself. AMENDED 2026-06-10 (pre-plan, human-directed): + FR-013/SC-008 Tooling/Dependency Selection Research decision area (default-first 'use existing / no new dependency' + structured capture persisted to the manifest dependency_policy; full coupling-catalog + dependency-report automation out of scope, compose 097/122/178 later) -- see design-analysis DP8.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/requirements-nfr.md -- FR/SC set + quality-attribute priority table"
+    },
+    "ui-ux": {
+      "agenda": [
+        "What are the two interaction surfaces (human design-time + agent implement-time)?",
+        "How are 49 rules presented without a wall (grouping by scope + pre-checked checklist + set/unset)?",
+        "How do users add their own rules / a company coding guideline (source-of-truth-first + assisted ingestion)?",
+        "Agent guidance shape: baseline + task-scoped + per-feature overlay vs all-up-front?"
+      ],
+      "decision": "Approved (human-confirmed). TWO interaction surfaces. SURFACE 1 (human, design-time, GUIDELINE-FIRST): Step 0 = source-of-code-rules-truth question (the Figma-equivalent) -- 'do you have an existing coding guideline (yours/company)? paste, point, or no'; if provided -> ASSISTED INGESTION (agent maps it onto our catalog: auto-check matches, flag conflicts for the human, extract non-catalog rules as new custom items) with provenance, and company/org-level guidelines persist to a PROJECT OVERLAY code-rules.local.yml (product-baseline tier, inherited per feature per the cadence ruling); if none -> Specrew defaults pre-checked + free-text custom rules. Step 1 resolve stack (load only that slice). Step 2 GROUPED CHECKLIST pre-checked by defaults AND the ingested guideline, set/unset checkmarks (rendered via the multi-select picker per group; honest: picker not a persistent GUI), grouped by scope (cross-language baseline COMBINED + language-specific + framework) so common rules combine; baseline shown as summary/collapsed (review not author), expandable to toggle. Step 3 decision-prompts paced. Step 4 applicability-filtered context-gated. Step 5 capture. No-wall preserved: defaults pre-checked + guideline pre-marks + scope grouping + only material rules need attention. SURFACE 2 (agent, implement-time): specrew-code-rules surfaces a small ALWAYS-ON baseline checklist + ON-DEMAND TASK-SCOPED groups (service/client/concurrency/API keyed by manifest groups + stack) + the PER-FEATURE OVERLAY binding decisions -- not a 49-rule dump. Source of UX truth = text/console (no Figma); accessibility/locale/RTL n/a. NEW FRs: FR-009 set/unset + custom rules; FR-010 guideline-first source-of-truth question; FR-011 assisted ingestion/mapping onto the catalog with provenance (no deterministic parser); FR-012 custom rules via free-text OR pasted doc -> manifest + optional project overlay. Catalog gains a scope tag (cross-language / language:<x> / framework:<y>); project-level overlay IS in V1 (driven by the company-guideline use case).",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/ui-ux.md -- two surfaces (guideline-first grouped checklist + agent baseline/task-scoped/overlay) + checklist mockup"
+    },
+    "integration-api": {
+      "agenda": [
+        "What are the registration + contract + seam integration points?",
+        "Manifest contract shape + versioning?",
+        "Catalog/overlay merge semantics?",
+        "Forward-compat join key for Proposal 156?",
+        "Edge/compat behavior (fail-open)?",
+        "Applicability: always-on-for-code vs question-gated?"
+      ],
+      "decision": "Approved (human-confirmed). REGISTRATION seams (one-time, ships with Specrew): index.yml row, applicability-map.json entry, design-workshop lens map, $lensIds, lens-schema. CONTRACT 1 catalog (data): code-rules.yml (Specrew release) + code-rules.local.yml overlay (user/guideline) merged ADDITIVE + per-rule override, NEVER silently drop a shipped rule; consumed by the lens (presents) + specrew-code-rules skill (resolves rule text). CONTRACT 2 per-feature manifest implementation-rules.yml (schema_version, additive fail-open WARN): producer = design-workshop; shape = selected rule IDs + checked/unchecked + per-rule decision/enforcement + scope/stack + context_scope + custom rules + provenance (from guideline?); consumers = specrew-code-rules skill + plan.md (-> implement constraints) + future 156 workshop-decisions.yml (JOIN KEY = stable rule IDs). SEAMS: skill resolves the active feature -> reads the known manifest path; specify gate reads lens-applicability.json (existing SC-021/026) and the manifest is NOT gated (advisory). EDGE/COMPAT all FAIL-OPEN + surfaced: no manifest -> baseline only; unknown rule ID -> warn+skip; malformed overlay -> warn+use shipped; stable rule IDs never renumbered (deprecate-not-delete). APPLICABILITY: always-applicable-for-code-features (auto-on) with an explicit skip for doc-only/config-only slices -- people do not opt into code quality. AMENDED 2026-06-10 (pre-plan, human-directed): the manifest gains a dependency_policy block (FR-013) capturing the selected tooling/dependency fields (version, license, source org, canonical URL, maintenance, security/advisory, compatibility, cost/quota, coupling weight, replaceability, test implications); this is a design-time contract only -- registry/CVE/coupling automation is a separate future contract (097/122/178).",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/integration-api.md -- registration/contract/seam ASCII + fail-open edge matrix"
+    },
+    "devops-operations": {
+      "agenda": [
+        "What ships where (deployable surface) and how does it deploy to all hosts?",
+        "Version bump + release path?",
+        "What is real validation vs proxy checks?"
+      ],
+      "decision": "Approved (human-confirmed). Local PowerShell module + per-host skill folders (no servers/containers). SHIPPED WITH THE MODULE (FileList + .specify mirror): knowledge/design-lenses/code-implementation.md (NEW lens md), code-rules.yml (NEW catalog), implementation-rules.schema.json (NEW schema), index.yml (+ lens row), applicability-map.json (+ entry), skills/specrew-code-rules/ (NEW skill template), skills/specrew-design-workshop/ (+ code lens turn), charter/coordinator templates (+ skill pointer). DEPLOYED TO HOST DIRS BY THE ENGINE on init/update: .claude/skills + .github/skills + .agents/skills get specrew-code-rules + design-workshop (multi-host parity test guards drift). RELEASE CHECKLIST (the F-176 lesson, non-negotiable): extension.yml version bump 0.34.0->0.35.0 (prepublish Docker harness checks the config-version), FileList for every NEW deployable file in Specrew.psd1, .specify mirror parity (mirror-parity validator), markdownlint the new md, CHANGELOG entry, beta-before-stable v0.35.0-beta.1 -> dogfood on Claude -> promote stable. Rollback = module version rollback. CI = Lint + Deterministic + Contract + prepublish harness. Real validation = the dogfood (agent guided, no rule wall), NOT files-installed.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/devops-operations.md -- deploy topology + release checklist"
+    }
+  }
+}

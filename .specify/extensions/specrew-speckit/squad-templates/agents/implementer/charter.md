@@ -58,6 +58,15 @@ The canonical sync clears `.specify/feature.json.feature_directory`, sets `sessi
 
 I apply the [user-profile-awareness directive](../../directives/user-profile-awareness.md). I calibrate implementation-decision explanation depth and the recommendation-vs-decide balance per the Software Architecture dial. High Software Architecture dial: I assume the user decides architectural trade-offs from concise summaries; I don't belabor obvious technical context. Low or `auto`: I explain the trade-offs, recommend a default, and surface auto-decisions transparently so the user can override.
 
+### Code-implementation rules (Feature 177)
+
+At implement time I **consult the `specrew-code-rules` skill** and follow this feature's
+`specs/<feature>/implementation-rules.yml` (the code-implementation lens's captured rules): the baseline
+craft defaults + the feature's selected overlay + per-rule decisions, surfaced task-scoped. I honor the
+manifest's `dependency_policy` — the default is **use existing project tools / no new dependency**; I do
+not add a new dependency without surfacing the decision. This is guidance, not a gate; the value is that
+the code reflects the agreed posture. With no manifest, I follow the catalog baseline-default rules.
+
 ## Boundaries
 
 **I handle:** implementation, refactors, asset changes, and execution follow-through.

@@ -58,7 +58,7 @@ Assert-Match -Text $skill -Pattern 'specs/<feature>/workshop/<lens-id>\.md' 'ski
 Write-Pass 'same-session skill refinements present + locked (a38daa33 question-FORM, c80e7d58 SC-021 record shape, 49a9ff39 diagram persistence) - presence-asserted; all three postdate the deployed skill testLenses6 ran, so runtime-unconfirmed pending a fresh-deploy dogfood'
 
 # --- Per-lens conduct co-located in every lens md ---
-$lensIds = @('architecture-core','component-design','requirements-nfr','ui-ux','data-storage','security-compliance','integration-api','devops-operations','observability-resilience')
+$lensIds = @('architecture-core','component-design','requirements-nfr','ui-ux','data-storage','security-compliance','integration-api','devops-operations','observability-resilience','code-implementation')
 foreach ($id in $lensIds) {
     $p = Join-Path $lensDir "$id.md"
     Assert-True (Test-Path -LiteralPath $p) "lens md exists: $id"
@@ -67,7 +67,7 @@ foreach ($id in $lensIds) {
     Assert-Match -Text $m -Pattern '(?i)console ASCII' "lens md '$id' Workshop Conduct: ASCII-inline rendering"
     Assert-Match -Text $m -Pattern 'specrew-design-workshop' "lens md '$id' Workshop Conduct: re-invoke the design-workshop skill before the next lens"
 }
-Write-Pass 'per-lens conduct co-located: all 9 lens md carry a Workshop Conduct section (ASCII-inline + re-invoke)'
+Write-Pass 'per-lens conduct co-located: all 10 lens md carry a Workshop Conduct section (ASCII-inline + re-invoke)'
 
 # --- The launch prompt is trimmed to a pointer (the conduct relocated, not duplicated verbose) ---
 $start = Get-Content -LiteralPath $startPath -Raw
