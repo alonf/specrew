@@ -30,7 +30,7 @@ module (`dogfood-report.md`). The **behavioral** success criteria -- the agent i
 | --- | --- | --- | --- |
 | 0 | Context load | pass | spec/plan/tasks/i1-closeout loaded; scope = i2 (T010-T018); baseline 96ded099. |
 | 1 | Branch hygiene | pass-with-notes | ahead 35 (F-177 commits), behind 4 (merge at feature-closeout); dirty tree classified below -- none F-177 source. |
-| 2 | Functional correctness | pass (delivery) | guidance skill resolves feature -> manifest+catalog -> baseline+overlay, task-scoped, fail-open, dependency_policy honored; conduct turn shipped (hand-author manifest, D-002); deployed dogfood proved downstream catalog+skill+lens deployment + a hand-authored manifest validates on the deployed module. Behavioral surfacing = SC-004/007/008 gate (not this phase's claim). |
+| 2 | Functional correctness | pass-with-notes | guidance skill resolves feature -> manifest+catalog -> baseline+overlay, task-scoped, fail-open, dependency_policy honored; conduct turn shipped (hand-author manifest, D-002); deployed dogfood proved downstream catalog+skill+lens deployment + a hand-authored manifest validates on the deployed module. Behavioral surfacing = SC-004/007/008 gate (not this phase's claim). |
 | 3 | NFR | pass | multi-host parity (byte-identical design-workshop across 4 hosts + code-rules deploys to all hosts); constrained-YAML; fail-open; forward-compat hooks. |
 | 4 | Code quality | pass | PSScriptAnalyzer Errors=0 (pre-existing New-/plural Warnings repo-tolerated); ASCII .ps1; markdownlint clean. |
 | 5 | Test coverage + integrity | pass | code-rules-skill-multihost + code-implementation-lens (incl. the new single-element-enforcement regression) + lens-conduct-delivery PASS; behavior-proving at the unit/parity level (the runtime-behavioral level is the deferred dogfood gate). |
@@ -46,7 +46,7 @@ feature-closeout**, not mid-iteration). The dirty working tree is **not** F-177 
 | --- | --- | --- | --- |
 | `.claude/agents/*.md` (5) | pre-existing session churn | no | present before this session (session-start git status); review separately |
 | `.specrew/last-validator-summary.json`, `.specrew/runtime/refocus-channel1.json`, `.specrew/version-check-cache.json` | runtime state/cache | no | gitignore-class; not source |
-| `.squad/active-features.yml`, `config.json`, `decisions.md`, `events/lifecycle-events.jsonl`, `identity/now.md` | Squad runtime state | no | written during the lifecycle; runtime-local |
+| `.squad/active-features.yml`, `config.json`, `decisions.md`, `events/lifecycle-events.jsonl`, `identity/now.md` | Squad runtime state | no | written during the lifecycle; runtime-local. `decisions.md` carries the working-tree D-003 defer approval the deferred Gap Ledger entry requires (validator-read; durably mirrored in review.md / drift-log / dogfood-report) |
 | `specs/171-specrew-refocus/iterations/002/tasks-progress.yml` | stale 171 leftover | no | unrelated (recovery-B bypassed feature); cleanup-class |
 
 **Conclusion**: every F-177 i2 deliverable is committed (26 files in `git diff 96ded099..da7a0129`); no F-177 source change is uncommitted.
@@ -81,13 +81,13 @@ deferred-with-gate (D-003)**. Full matrix in `review-report.yml`.
 | ---- | ----------- | ------- | ----- |
 | T010 | FR-005 | pass | guidance skill (resolver + baseline+overlay + task-scoped + fail-open). |
 | T011 | FR-005 | pass | skill in the canonical template; auto-enumerated to all hosts (no host-scope). |
-| T012 | FR-003 | pass (variance D-002) | design-workshop code-lens turn; manifest capture changed to hand-authored (accepted variance). |
-| T013 | FR-011 | pass (variance D-002) | assisted ingestion conduct; same hand-author capture variance. |
+| T012 | FR-003 | pass | design-workshop code-lens turn; manifest capture hand-authored (accepted variance D-002). |
+| T013 | FR-011 | pass | assisted ingestion conduct; hand-author capture variance (D-002). |
 | T014 | FR-006 | pass | Planner directive + Implementer charter pointer. |
 | T015 | FR-005 | pass | guidance-skill conduct-content tests green. |
 | T016 | FR-005 | pass | multi-host parity (4 deployed copies byte-identical; code-rules all-hosts). |
-| T017 | SC-004 | pass for wiring+manifest-authoring; behavioral SC-004/007/008 deferred-with-gate (D-003) | deployed-module dogfood; surfaced+fixed the single-element-enforcement defect. |
-| T018 | SC-003 | pass (prepare-only) | FileList +5, version triple 0.35.0, CHANGELOG, .specify parity; nothing published. |
+| T017 | SC-004 | pass | deployed-module dogfood: wiring + manifest-authoring verified; behavioral SC-004/007/008 deferred-with-gate (D-003); surfaced+fixed the single-element-enforcement defect. |
+| T018 | SC-003 | pass | FileList +5, version triple 0.35.0, CHANGELOG, .specify parity; prepare-only, nothing published. |
 
 ## Drift / Conformance Review (D-002, D-003)
 
@@ -108,11 +108,8 @@ items:
 
 ## Gap Ledger
 
-- **D-003 behavioral SC-004/007/008**: OPEN -- deferred-with-gate to the published-beta human dogfood
-  (necessary: publish is gated to feature-closeout, and behavior cannot be established by autonomous
-  artifact inspection). Not a defect; a recorded, maintainer-approved, gated obligation.
-- No other FR/SC gap in i2 delivery scope: the guidance skill, conduct turn, ingestion, wiring, tests,
-  parity, dogfood wiring, and release-prep are delivered + (where non-behavioral) verified.
+- D-003 -- behavioral SC-004 / SC-007 / SC-008 OPEN; classification **deferred** (deferred-with-gate to the published-beta human dogfood, maintainer-approved 2026-06-10 and recorded in `.squad\decisions.md`; gates stable promotion of the 0.35.0 line). Not a defect.
+- No other FR/SC gap in i2 delivery scope (guidance skill, conduct turn, ingestion, wiring, tests, parity, dogfood wiring, release-prep all delivered, and where non-behavioral verified); classification **fixed-now**.
 
 ## Report Falsification (Phase 7)
 

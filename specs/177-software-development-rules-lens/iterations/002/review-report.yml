@@ -85,7 +85,7 @@ branch_hygiene:
   dirty_classification:
     - { paths: ".claude/agents/*.md (5)", class: pre-existing-session-churn, f177: false, action: "review separately; present before this session per session-start git status" }
     - { paths: ".specrew/last-validator-summary.json, .specrew/runtime/refocus-channel1.json, .specrew/version-check-cache.json", class: runtime-state-cache, f177: false, action: "gitignore-class; not source" }
-    - { paths: ".squad/active-features.yml, config.json, decisions.md, events/lifecycle-events.jsonl, identity/now.md", class: squad-runtime-state, f177: false, action: "written during the lifecycle; runtime-local, not F-177 source" }
+    - { paths: ".squad/active-features.yml, config.json, decisions.md, events/lifecycle-events.jsonl, identity/now.md", class: squad-runtime-state, f177: false, action: "runtime-local; decisions.md carries the working-tree D-003 defer approval (validator-read; durably mirrored in review.md/drift-log/dogfood-report)" }
     - { paths: "specs/171-specrew-refocus/iterations/002/tasks-progress.yml", class: stale-171-leftover, f177: false, action: "unrelated to F-177; cleanup-class" }
   conclusion: "No F-177 source change is uncommitted; all i2 deliverables are in the boundary commits."
 
