@@ -41,3 +41,12 @@ Integration seams (producers → contracts → consumers)
   warn+use shipped. No hard errors (matches the advisory/no-gate posture).
 - **Applicability** — the lens is **always-applicable-for-code-features** (auto-on) with an explicit skip
   for doc-only/config-only slices; people do not opt into code quality.
+
+## Amendment 2026-06-10 (pre-plan, human-directed)
+
+- **Manifest `dependency_policy` contract (FR-013)** — the per-feature manifest gains a `dependency_policy`
+  block capturing the selected tooling/dependency fields (version, license, source org, canonical URL,
+  maintenance signal, security/advisory status, compatibility, cost/quota, coupling weight, replaceability,
+  test implications). This is a **design-time** contract surfaced by the guidance skill; registry-query /
+  CVE / coupling-inventory automation is a separate future contract (Proposals 097 / 122 / planned 178),
+  out of scope here.

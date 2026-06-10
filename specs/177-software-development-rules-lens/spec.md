@@ -89,6 +89,18 @@ human. The following plan-adjacent defaults are resolved by the Crew and recorde
   one-entry-per-rule with stable IDs, grouped + scope-tagged; the exact on-disk path (design-lens
   knowledge dir) is a plan-time detail.
 
+### Session 2026-06-10 (scope addition — pre-plan, human-directed)
+
+The maintainer directed, before planning, that the lens include a **Tooling / Dependency Selection
+Research** decision area (now **FR-013** + **SC-008**). Rationale: dependency/tooling choices are
+high-leverage implementation-craft decisions that today are made ad-hoc; the lens should force a
+**default-first "use existing project tools / no new dependency"** decision and capture the selection's
+structured fields into the manifest so the guidance skill can hold the agent to it. Scope boundary
+(maintainer): **design-time selection capture only** — full coupling-surface catalog (Proposal 097) and
+dependency-report registry/CVE automation (Proposal 122) stay out of scope and compose later (with a
+planned Proposal 178). Recorded in the design-analysis (DP8 + Co-Design Record) at
+file:///C:/Dev/Specrew-software-development-rules-lens/specs/177-software-development-rules-lens/iterations/001/design-analysis.md
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Coding agent is guided by the feature's code rules at implement time (Priority: P1)
@@ -235,6 +247,16 @@ active host skill root (parity test); verify the manifest carries `context_scope
   per-feature manifest, with company/org-level rules persistable to a reusable project overlay
   (`code-rules.local.yml`) that merges additively + per-rule override and never silently drops a shipped
   rule.
+- **FR-013**: The lens MUST include a **Tooling / Dependency Selection Research** decision area that
+  triggers when implementation may add or choose a library, framework, SDK, CLI, test tool, build tool,
+  or runtime package. It MUST present **"use existing project tools / no new dependency" first** plus the
+  relevant candidate options, and for a chosen dependency MUST capture: version, license, source org,
+  canonical URL, maintenance signal, security/advisory status, compatibility, cost/quota (if relevant),
+  coupling weight, replaceability, and test implications. The selected policy MUST be persisted into the
+  `implementation-rules.yml` manifest (a `dependency_policy` block) and surfaced by the
+  `specrew-code-rules` skill so the implementing agent honors it (no silent dependency adds). This is
+  **design-time selection capture only** — full coupling-surface catalog and dependency-report
+  registry/CVE automation are out of scope (FR below).
 
 ### Deferred / Out of Scope
 
@@ -244,11 +266,18 @@ active host skill root (parity test); verify the manifest carries `context_scope
 - **Out of scope by ruling**: Proposal 145 review-time conformance verification / any parallel
   code-quality gate.
 - **Out of scope (future)**: an analyzer-config "enforced mode" that configures + requires stack tooling.
+- **Out of scope (compose later)**: the full coupling-surface catalog (Proposal 097), dependency-report
+  registry-query / CVE / latest-version automation (Proposal 122), and the dependency-selection
+  automation umbrella (a planned Proposal 178). FR-013 captures the **design-time human selection** of a
+  dependency and its fields; it does **not** auto-query registries, scan CVEs, or build a coupling
+  inventory — those compose later via 097 / 122 / 178.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
-- **TG-001**: Each user story maps to one or more functional requirements (US1→FR-005/FR-007/FR-008;
-  US2→FR-001/FR-003/FR-004/FR-009/FR-010/FR-011/FR-012; US3→FR-002/FR-012; US4→FR-005/FR-007).
+- **TG-001**: Each user story maps to one or more functional requirements (US1→FR-005/FR-007/FR-008/FR-013;
+  US2→FR-001/FR-003/FR-004/FR-009/FR-010/FR-011/FR-012/FR-013; US3→FR-002/FR-012; US4→FR-005/FR-007).
+  FR-013 spans US2 (the human selects the dependency policy at design time) and US1 (the agent honors it
+  at implement time).
 - **TG-002**: Owner roles — Spec Steward (lens md + catalog content), Implementer (skill, manifest
   writer, registration, wiring), Reviewer (tests + parity), with the maintainer owning the default rule
   posture.
@@ -263,8 +292,13 @@ active host skill root (parity test); verify the manifest carries `context_scope
 - **Project overlay (`code-rules.local.yml`)**: user/company rules layered additively over the catalog
   (the ingested-guideline home; product-baseline tier).
 - **Per-feature manifest (`implementation-rules.yml`)**: selected rule IDs + checked/unchecked +
-  decisions + resolved stack + custom rules + provenance + `context_scope`; validated against
-  `implementation-rules.schema.json`.
+  decisions + resolved stack + custom rules + provenance + `context_scope` + a `dependency_policy` block
+  (FR-013); validated against `implementation-rules.schema.json`.
+- **Dependency policy (`dependency_policy` in the manifest)**: the design-time tooling/dependency
+  selection — the "use existing / no new dependency" stance plus, per chosen dependency, the captured
+  fields (version, license, source org, canonical URL, maintenance signal, security/advisory status,
+  compatibility, cost/quota, coupling weight, replaceability, test implications). Surfaced by the
+  guidance skill; not auto-enriched (097/122/178 own that later).
 - **Guidance skill (`specrew-code-rules`)**: the static, multi-host reader composing baseline + overlay
   for the agent.
 
@@ -285,6 +319,11 @@ active host skill root (parity test); verify the manifest carries `context_scope
 - **SC-006**: With no manifest, the skill still surfaces baseline-default rules.
 - **SC-007**: The rule-volume UX holds — the human is never shown a flat wall; only material rules need a
   decision — **validated by the dogfood human experience**.
+- **SC-008**: When implementation may add/choose a dependency, the lens presents "use existing / no new
+  dependency" first plus options and persists the captured selection (version, license, source org,
+  canonical URL, maintenance, security/advisory, compatibility, cost/quota, coupling weight,
+  replaceability, test implications) into the manifest's `dependency_policy`; the guidance skill surfaces
+  it so the agent honors it — **validated by dogfood**, not file-presence.
 
 ## Assumptions
 

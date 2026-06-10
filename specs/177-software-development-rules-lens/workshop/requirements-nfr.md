@@ -47,3 +47,14 @@ Security                      —     no       feature itself has no auth/secret
 
 **Verification posture**: SC-004 + SC-007 are validated by the dogfood human/agent experience (the
 agent actually guided; the human not facing a wall), never by "the files exist."
+
+## Amendment 2026-06-10 (pre-plan, human-directed)
+
+- **FR-013 / SC-008 — Tooling / Dependency Selection Research** decision area added before planning:
+  triggers when implementation may add/choose a library/framework/SDK/CLI/test-tool/build-tool/runtime
+  package; presents "use existing project tools / no new dependency" first plus options; captures
+  version, license, source org, canonical URL, maintenance signal, security/advisory status,
+  compatibility, cost/quota, coupling weight, replaceability, test implications; persists the policy into
+  the manifest `dependency_policy` and surfaces it via the guidance skill. Out of scope: full
+  coupling-catalog + dependency-report automation (compose Proposals 097 / 122 / planned 178 later). See
+  design-analysis DP8.
