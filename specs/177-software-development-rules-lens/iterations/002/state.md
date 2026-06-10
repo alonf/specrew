@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: before-implement
-**Iteration Status**: executing
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
 **Last Completed Task**: T018
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 96ded099a4e29db56c8e26de441af9da13896db4
-**Updated**: 2026-06-10T15:10:00Z
+**Updated**: 2026-06-10T15:50:00Z
 
 ## Execution Summary
 
@@ -32,10 +32,11 @@
   `implementation-rules.yml` against the schema (the product-domain pattern), NOT call a PowerShell writer
   the deployed agent cannot reach; `New-SpecrewImplementationRulesManifest` and the YAML writer are now
   test-only by design (like product-domain's unused writer).
-- **Boundary string**: the iteration is at the implement->review-signoff handoff. `Current Phase` /
-  session `boundary_type` remain `before-implement` (the last human-authorized gate); they advance to
-  `review-signoff` via the formal boundary sync once review-signoff entry is authorized. No push / tag /
-  publish (per the standing constraint -- those are feature-closeout actions).
+- **Boundary**: review-signoff. Advanced via the formal `Invoke-SpecrewBoundaryStateSync` (2026-06-10,
+  auth_commit 473c57d4) after the maintainer authorized review-signoff entry; session `boundary_type`,
+  state.md `Current Phase`, and plan.md/state.md status are all consistent at review-signoff/reviewing. The
+  i2 review packet (`review.md` + siblings) is presented for the signoff verdict. No push / tag / publish /
+  beta until feature-closeout approval (those are feature-closeout actions).
 
 ## Notes
 
