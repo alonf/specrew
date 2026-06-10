@@ -84,8 +84,12 @@ function Format-BootstrapDirective {
         if (@($InFlight.remaining).Count -gt 0) { $lines.Add(("  - workshop lenses REMAINING (from lens-applicability.json): {0}" -f (@($InFlight.remaining) -join ', '))) }
         # Codex round-3 lesson: with lens records but NO persisted agenda, "resume at the recorded position"
         # was too open - the host re-ran specify (rewrote spec.md) instead of continuing the workshop. When
-        # records exist, the resume point is ALWAYS the workshop; name the only safe move explicitly.
+        # records exist, name the only safe move explicitly - and distinguish the three shapes:
+        #   remaining > 0                          -> resume at that exact lens
+        #   agenda persisted + all selected done   -> workshop COMPLETE; resume at the boundary, don't redo it
+        #   records but NO agenda (codex shape)    -> re-propose the remaining agenda, continue the workshop
         $next = if (@($InFlight.remaining).Count -gt 0) { ("resume the design workshop at the next remaining lens: {0}" -f @($InFlight.remaining)[0]) }
+        elseif ([bool]$InFlight.has_applicability -and @($InFlight.done).Count -gt 0) { 'the design workshop is COMPLETE (every selected lens is recorded done) - do NOT redo or re-propose it; resume at the lifecycle position AFTER the workshop (typically presenting the specify boundary packet / awaiting the human verdict, or the recorded boundary)' }
         elseif (@($InFlight.done).Count -gt 0) { 'CONTINUE the design workshop: the agenda was not persisted, so RE-PROPOSE the remaining lens agenda to the human (skipping the DONE lenses above) and proceed lens-by-lens. Do NOT re-run specify and do NOT rewrite spec.md - the spec already exists' }
         else { 'resume at the recorded lifecycle position (read the spec + workshop records to locate it)' }
         $lines.Add(("When the human says 'continue' (or similar), {0}. Do NOT restart discovery, do NOT re-ask completed lenses, and do NOT ask 'what do you want to build' - spec.md answers that. Confirm your resume point to the human in one line, then proceed." -f $next))
