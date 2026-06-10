@@ -1,16 +1,21 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: (populate from plan.md)
+**Current Phase**: implement-complete (heading to review-signoff)
+**Iteration Status**: reviewing
+**Last Completed Task**: T009
+**Tasks Remaining**: (none for iteration 001 / i1 — T010-T018 are iteration 002 / i2)
 **In Progress**: (none)
 **Baseline Ref**: 98a494eb8fcbbb3055615c8199d0cbb7dcd1d735
-**Updated**: 2026-06-10T01:30:17Z
+**Updated**: 2026-06-10T02:05:00Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- Iteration 001 (i1 -- capture substrate) implementation COMPLETE: T001-T009 done, each boundary-committed.
+- T001 code-rules.yml catalog (60 rules: baseline + 3 F-177 additions + per-stack); T002 manifest schema shipped; T003 code-implementation.md lens md; T004 registration (index.yml + $lensIds; conduct-driven, drift D-001); T005+T006 code-implementation-lens.ps1 writer/validator + dependency-selection; T007-T009 unit tests (all PASS).
+- Tests: tests/unit/code-implementation-lens.tests.ps1 (38 assertions) + lens-conduct-delivery + lens-applicability-selector all PASS; PSScriptAnalyzer Errors=0.
+- Drift: D-001 (registration mechanism -- conduct-driven, not applicability-map) recorded + resolved.
+- Next: iteration-001 review-signoff (human-judgment boundary), then retro + iteration-closeout, then iteration 002 (i2 -- guidance skill + ingestion + overlay + wiring + dogfood + release).
 
 ## Notes
 
