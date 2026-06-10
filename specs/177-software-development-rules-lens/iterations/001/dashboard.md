@@ -1,18 +1,18 @@
 # Velocity Dashboard Snapshot
 
 **Schema**: v1
-**Capture Kind**: live
-**Captured At**: 2026-06-10T11:36:11Z
+**Capture Kind**: iteration-closeout
+**Captured At**: 2026-06-10T12:20:00Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
-**Historical Notice**: Live interim snapshot captured during the review/retro phase — NOT the closeout dashboard. The real iteration-closeout dashboard is rendered at iteration-closeout by sync-boundary-state.
+**Historical Notice**: Historical snapshot captured at iteration-001 closeout. Re-running the dashboard later produces a new live view and must not overwrite this file.
 
 ## Dashboard
 
 ```text
 SPECREW VELOCITY DASHBOARD
-Summary: → F-177 Code & Implementation Lens (software-development-rules workshop lens) | Implementation Complete · Retro phase (awaiting retro verdict) | 6.8 SP/day (10 closed iterations, high)
+Summary: → F-177 Code & Implementation Lens (software-development-rules workshop lens) | Iteration 001 complete (closed) | 6.8 SP/day (10 closed iterations, high)
 Today 2026-06-10 | Repo Specrew-software-development-rules-lens
 Rendering rich
 ACTIVE

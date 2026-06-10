@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: retro (awaiting retro verdict)
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T009
 **Tasks Remaining**: (none for iteration 001 / i1 — T010-T018 are iteration 002 / i2)
 **In Progress**: (none)
 **Baseline Ref**: 7f4f2ae7482df0a8c0259c515c103c36c23d4e35
-**Updated**: 2026-06-10T12:10:00Z
+**Updated**: 2026-06-10T12:20:00Z
 
 ## Execution Summary
 
@@ -17,7 +17,9 @@
 - Drift: D-001 (registration mechanism -- conduct-driven, not applicability-map) recorded + resolved.
 - review-signoff: ACCEPTED (with instructions) + synced; required 2 human send-backs on review-artifact consistency (stale siblings; missing Phase 0-7 structure) -- both reconciled.
 - retro: authored (retro.md), awaiting the retro verdict; carried the review-artifact self-reference methodology learning (reviewed_implementation_head / artifact_commit / current_branch_status).
-- Next: retro verdict -> iteration-001 closeout (real dashboard rendered at closeout) -> iteration 002 (i2 -- guidance skill + ingestion + overlay + wiring + dogfood + release).
+- retro: ACCEPTED + synced (after 1 send-back on boundary-state truth: plan/state/dashboard reconciled to the retro phase).
+- iteration-001 CLOSED: retro + iteration-closeout boundaries synced; i1 (capture substrate) is complete on branch (NOT merged).
+- Next: iteration 002 (i2 -- guidance skill + workshop conduct + guideline/example-project ingestion + overlay + plan/implement wiring + deployed-module dogfood (SC-004/007/008) + release v0.35.0-beta), then feature-closeout.
 
 ## Notes
 
