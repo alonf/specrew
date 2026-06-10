@@ -846,6 +846,30 @@ else {
     Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'skipped: .specify is absent in brownfield workspace'
 }
 
+# FR-025 (iter-8 T049): capture the user-profile expertise dials at init when the profile is ABSENT and the
+# session is INTERACTIVE, so hook-driven users (who may never run `specrew start`) still get the expertise
+# adaptation in the bootstrap banner. NON-interactive / -Force / CI / piped inits skip silently so
+# automation never blocks on Read-Host. Fail-open: a profile-capture error never fails init.
+Write-Step 'Setting up the Crew Interaction Profile'
+if ($DryRun) {
+    Add-Action -Actions $actions -Step 'user-profile' -Outcome 'would capture the Crew Interaction Profile when absent + interactive'
+}
+else {
+    try {
+        . (Join-Path $repoRoot 'scripts\internal\user-profile.ps1')
+        $profileOutcome = Invoke-SpecrewInitProfileCapture -Force:$Force
+        $profileMsg = switch ($profileOutcome) {
+            'preserved' { 'existing Crew Interaction Profile preserved (user-level; set once across all projects)' }
+            'captured' { 'captured the Crew Interaction Profile (first run)' }
+            default { 'skipped: non-interactive or -Force init (set it later with `specrew start` or `/specrew-user-profile`)' }
+        }
+        Add-Action -Actions $actions -Step 'user-profile' -Outcome $profileMsg
+    }
+    catch {
+        Add-Action -Actions $actions -Step 'user-profile' -Outcome ("skipped: profile capture error ({0})" -f $_.Exception.Message)
+    }
+}
+
 Write-Step 'Configuring git for boundary-commit hygiene'
 # F-040 dogfooding fix (calc-v2 + tip-calc 2026-05-23): when the project is in a git repo,
 # silence the LF/CRLF warning wall that otherwise dumps 150+ lines on the user during

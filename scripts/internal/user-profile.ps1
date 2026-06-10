@@ -331,6 +331,11 @@ function Get-UserProfilePath {
     Windows: $env:USERPROFILE\.specrew\user-profile.yml
     Unix: ~/.specrew/user-profile.yml
     #>
+    # Test seam (FR-025, iter-8): redirect the user-level profile to a temp path so init/start intake
+    # tests never read or write the real ~/.specrew/user-profile.yml. Unset in production.
+    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_USER_PROFILE_PATH)) {
+        return $env:SPECREW_USER_PROFILE_PATH
+    }
     if ($IsWindows -or ($null -eq $IsWindows -and $env:OS -match 'Windows')) {
         $baseDir = $env:USERPROFILE
     }
@@ -714,6 +719,34 @@ function Invoke-FirstRunExpertisePrompt {
     return $dials
 }
 
+function Invoke-SpecrewInitProfileCapture {
+    <#
+    .SYNOPSIS
+    FR-025 (iter-8): capture the Crew Interaction Profile at `specrew init` when it is ABSENT and the
+    session is INTERACTIVE; skip silently otherwise so automation never blocks on Read-Host.
+    .DESCRIPTION
+    The hook-driven world lets a user open a host and be governed WITHOUT ever running `specrew start`,
+    where the profile was historically first captured - so the bootstrap banner could not render the
+    user-profile/expertise adaptation. Establishing it at init closes that gap. Returns an outcome
+    string: 'preserved' (already set), 'captured' (asked + saved), or 'skipped'
+    (-Force / non-interactive / no TTY / piped stdin). The interactivity guard is load-bearing: a wrong
+    guard would hang every scripted `specrew init` on Read-Host.
+    #>
+    [OutputType([string])]
+    param(
+        [switch]$Force,
+        # Test seam: take the non-interactive branch without depending on a real TTY.
+        [switch]$ForceNonInteractive
+    )
+    if (Test-UserProfileExists) { return 'preserved' }
+    $interactive = (-not $Force) -and (-not $ForceNonInteractive) -and `
+        [Environment]::UserInteractive -and (-not [Console]::IsInputRedirected)
+    if (-not $interactive) { return 'skipped' }
+    $dials = Invoke-FirstRunExpertisePrompt
+    Save-UserProfile -ExpertiseDials $dials
+    return 'captured'
+}
+
 function Reset-UserProfile {
     <#
     .SYNOPSIS
@@ -864,6 +897,7 @@ if ($null -ne $ExecutionContext.SessionState.Module) {
         'Show-UserProfileSummary',
         'Get-SpecrewProfileOrientationLine',
         'Invoke-FirstRunExpertisePrompt',
+        'Invoke-SpecrewInitProfileCapture',
         'Reset-UserProfile',
         'Edit-UserProfile',
         'Get-CrewInteractionProfileAreas',

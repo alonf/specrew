@@ -38,7 +38,7 @@ function Format-BootstrapDirective {
     $lines.Add('On your VERY FIRST response - BEFORE anything else and REGARDLESS of the user''s first message (even a task like "create a feature ...") - render the Specrew ORIENTATION BANNER as visible prose, THEN act on the request. The banner is mandatory on every host; never skip it. Render, in order:')
     $lines.Add('  (1) Specrew is governing this session, and HOW we work: a spec-driven lifecycle with human-authorized boundaries - you DRIVE the gates and do NOT free-run the SDLC.')
     $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
-    $lines.Add('  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them.')
+    $lines.Add('  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can (FR-025).')
     $lines.Add('  (4) Any validated handover summary; (5) a one-line state reason when non-default; (6) a brief recommended next step for THIS state; (7) the Resume / New / Pick-feature menu as TEXT (offer Resume only when a valid active session exists).')
     # FR-002/FR-023 (iter-7 T044, Ruling b): DRIVE by INLINING the contract, not pointing at a file. The
     # iter-6 directive told the agent to READ last-start-prompt.md BEFORE acting; the side-by-side disproof
