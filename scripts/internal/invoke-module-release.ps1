@@ -54,16 +54,20 @@ function Set-SpecrewManifestReleaseMetadata {
     }
 
     $content = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8
-    $updated = [regex]::Replace($content, "(?m)^(\s*ModuleVersion\s*=\s*)'[^']*'\s*$", ('$1''{0}''' -f $Version), 1)
-    if ($updated -eq $content) {
+    $moduleVersionPattern = "(?m)^(\s*ModuleVersion\s*=\s*)'[^']*'\s*$"
+    $moduleVersionMatch = [regex]::Match($content, $moduleVersionPattern)
+    if (-not $moduleVersionMatch.Success) {
         throw "Could not locate ModuleVersion in '$ManifestPath'."
     }
 
-    $withPrerelease = [regex]::Replace($updated, "(?m)^(\s*Prerelease\s*=\s*)'[^']*'\s*$", ('$1''{0}''' -f $Prerelease), 1)
-    if ($withPrerelease -eq $updated) {
+    $updated = [regex]::Replace($content, $moduleVersionPattern, ('$1''{0}''' -f $Version), 1)
+    $prereleasePattern = "(?m)^(\s*Prerelease\s*=\s*)'[^']*'\s*$"
+    $prereleaseMatch = [regex]::Match($updated, $prereleasePattern)
+    if (-not $prereleaseMatch.Success) {
         throw "Could not locate PrivateData.PSData.Prerelease in '$ManifestPath'."
     }
 
+    $withPrerelease = [regex]::Replace($updated, $prereleasePattern, ('$1''{0}''' -f $Prerelease), 1)
     if ($PSCmdlet.ShouldProcess($ManifestPath, ("Set ModuleVersion to {0} with Prerelease '{1}'" -f $Version, $Prerelease))) {
         [System.IO.File]::WriteAllText($ManifestPath, $withPrerelease, [System.Text.UTF8Encoding]::new($false))
     }

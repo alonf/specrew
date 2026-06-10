@@ -365,6 +365,197 @@ function ConvertTo-TaskProgressContent {
     return ($lines -join [Environment]::NewLine) + [Environment]::NewLine
 }
 
+function ConvertTo-TaskProgressIdList {
+    param([AllowNull()][object[]]$TaskIds)
+
+    $ids = @(
+        @($TaskIds) |
+            ForEach-Object { [string]$_ } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+    )
+
+    if ($ids.Count -eq 0) {
+        return '(none)'
+    }
+
+    return ($ids -join ', ')
+}
+
+function Set-TaskProgressStateMetadataValue {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string[]]$Lines,
+        [Parameter(Mandatory = $true)][string]$Label,
+        [Parameter(Mandatory = $true)][string]$Value,
+        [AllowNull()][string]$AfterLabel
+    )
+
+    $pattern = '^\*\*' + [regex]::Escape($Label) + '\*\*:\s*'
+    for ($index = 0; $index -lt $Lines.Count; $index++) {
+        if ($Lines[$index] -match $pattern) {
+            $Lines[$index] = ('**{0}**: {1}' -f $Label, $Value)
+            return $Lines
+        }
+    }
+
+    $insertIndex = -1
+    if (-not [string]::IsNullOrWhiteSpace($AfterLabel)) {
+        $afterPattern = '^\*\*' + [regex]::Escape($AfterLabel) + '\*\*:\s*'
+        for ($index = 0; $index -lt $Lines.Count; $index++) {
+            if ($Lines[$index] -match $afterPattern) {
+                $insertIndex = $index + 1
+                break
+            }
+        }
+    }
+
+    if ($insertIndex -lt 0) {
+        for ($index = 0; $index -lt $Lines.Count; $index++) {
+            if ($Lines[$index] -match '^\*\*[^*]+\*\*:\s*') {
+                $insertIndex = $index + 1
+            }
+            elseif ($insertIndex -ge 0 -and $Lines[$index] -match '^##\s+') {
+                break
+            }
+        }
+    }
+
+    if ($insertIndex -lt 0) {
+        $insertIndex = [Math]::Min(2, $Lines.Count)
+    }
+
+    $updated = [System.Collections.Generic.List[string]]::new()
+    foreach ($line in $Lines) {
+        $updated.Add($line) | Out-Null
+    }
+    $updated.Insert($insertIndex, ('**{0}**: {1}' -f $Label, $Value))
+    return $updated.ToArray()
+}
+
+function Set-TaskProgressMarkdownSection {
+    param(
+        [Parameter(Mandatory = $true)][string]$Content,
+        [Parameter(Mandatory = $true)][string]$Heading,
+        [Parameter(Mandatory = $true)][string]$SectionContent
+    )
+
+    $replacement = "## $Heading" + [Environment]::NewLine + [Environment]::NewLine + $SectionContent.Trim() + [Environment]::NewLine
+    $pattern = '(?ms)^##\s+' + [regex]::Escape($Heading) + '\s*\r?\n.*?(?=^##\s+|\z)'
+
+    if ($Content -match $pattern) {
+        return [regex]::Replace($Content, $pattern, $replacement)
+    }
+
+    return $Content.TrimEnd() + [Environment]::NewLine + [Environment]::NewLine + $replacement
+}
+
+function Update-IterationStateFromTaskProgress {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][string]$FeatureRef,
+        [Parameter(Mandatory = $true)][string]$IterationNumber,
+        [Parameter(Mandatory = $true)][System.Collections.IDictionary]$Tasks,
+        [AllowNull()][string]$ResolvedFeaturePath
+    )
+
+    $statePath = Get-IterationStatePath -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef -IterationNumber $IterationNumber -ResolvedFeaturePath $ResolvedFeaturePath
+    if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
+        return $null
+    }
+
+    $completeTasks = [System.Collections.Generic.List[object]]::new()
+    $inProgressTasks = [System.Collections.Generic.List[object]]::new()
+    $pendingTasks = [System.Collections.Generic.List[object]]::new()
+    $blockedTasks = [System.Collections.Generic.List[object]]::new()
+    $latestCompleted = $null
+
+    foreach ($taskId in $Tasks.Keys) {
+        $entry = $Tasks[$taskId]
+        $status = ([string]$entry.status).Trim().ToLowerInvariant()
+        $record = [pscustomobject]@{
+            id           = [string]$taskId
+            title        = [string]$entry.title
+            status       = $status
+            completed_at = [string]$entry.completed_at
+        }
+
+        switch ($status) {
+            { $_ -in @('done', 'complete') } {
+                $completeTasks.Add($record) | Out-Null
+                if (-not [string]::IsNullOrWhiteSpace($record.completed_at)) {
+                    try {
+                        $completedAt = [datetime]::Parse($record.completed_at, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AdjustToUniversal)
+                        if ($null -eq $latestCompleted -or $completedAt -gt $latestCompleted.timestamp) {
+                            $latestCompleted = [pscustomobject]@{ id = $record.id; timestamp = $completedAt }
+                        }
+                    }
+                    catch {
+                    }
+                }
+            }
+            'in-progress' { $inProgressTasks.Add($record) | Out-Null }
+            'blocked' { $blockedTasks.Add($record) | Out-Null }
+            default { $pendingTasks.Add($record) | Out-Null }
+        }
+    }
+
+    if ($null -eq $latestCompleted -and $completeTasks.Count -gt 0) {
+        $latestCompleted = [pscustomobject]@{ id = $completeTasks[$completeTasks.Count - 1].id; timestamp = $null }
+    }
+
+    $lastCompletedValue = if ($null -ne $latestCompleted) { [string]$latestCompleted.id } else { '(none)' }
+    $remainingValue = ConvertTo-TaskProgressIdList -TaskIds @(@($pendingTasks | ForEach-Object { $_.id }) + @($blockedTasks | ForEach-Object { $_.id }))
+    $inProgressValue = ConvertTo-TaskProgressIdList -TaskIds @($inProgressTasks | ForEach-Object { $_.id })
+    $iterationStatus = if ($blockedTasks.Count -gt 0) {
+        'blocked'
+    }
+    elseif ($inProgressTasks.Count -gt 0) {
+        'executing'
+    }
+    elseif ($pendingTasks.Count -eq 0 -and $completeTasks.Count -gt 0) {
+        'ready-for-review'
+    }
+    elseif ($completeTasks.Count -gt 0) {
+        'executing'
+    }
+    else {
+        'not-started'
+    }
+    $currentPhaseValue = if ($iterationStatus -eq 'not-started') { 'before-implement' } else { 'implement' }
+
+    $lines = @(Get-Content -LiteralPath $statePath -Encoding UTF8)
+    $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Current Phase' -Value $currentPhaseValue -AfterLabel 'Schema'
+    $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Iteration Status' -Value $iterationStatus -AfterLabel 'Current Phase'
+    $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Last Completed Task' -Value $lastCompletedValue -AfterLabel 'Iteration Status'
+    $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Tasks Remaining' -Value $remainingValue -AfterLabel 'Last Completed Task'
+    $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'In Progress' -Value $inProgressValue -AfterLabel 'Tasks Remaining'
+    $lines = Set-TaskProgressStateMetadataValue -Lines $lines -Label 'Updated' -Value ((Get-Date).ToUniversalTime().ToString('o')) -AfterLabel 'Baseline Ref'
+
+    $summaryLead = switch ($iterationStatus) {
+        'ready-for-review' { 'Implementation tasks are complete; review-signoff is next.' }
+        'blocked' { 'Execution is blocked on one or more tasks.' }
+        'not-started' { 'Execution has not started yet.' }
+        default { 'Execution is in progress.' }
+    }
+
+    $summaryBlock = @(
+        "- $summaryLead"
+        ("- Task progress: {0} complete, {1} in-progress, {2} pending, {3} blocked." -f $completeTasks.Count, $inProgressTasks.Count, $pendingTasks.Count, $blockedTasks.Count)
+        ("- Latest completed task: {0}" -f $lastCompletedValue)
+    ) -join [Environment]::NewLine
+
+    $content = $lines -join [Environment]::NewLine
+    $content = Set-TaskProgressMarkdownSection -Content $content -Heading 'Execution Summary' -SectionContent $summaryBlock
+    Write-Utf8FileAtomic -Path $statePath -Content ($content.TrimEnd() + [Environment]::NewLine)
+
+    return [pscustomobject]@{
+        Path            = $statePath
+        LastCompleted   = $lastCompletedValue
+        TasksRemaining  = $remainingValue
+        InProgress      = $inProgressValue
+        IterationStatus = $iterationStatus
+    }
+}
+
 function Sync-IterationTaskProgress {
     param(
         [Parameter(Mandatory = $true)][string]$ProjectRoot,
@@ -427,6 +618,13 @@ function Sync-IterationTaskProgress {
         Write-Utf8FileAtomic -Path $path -Content $content
     }
 
+    Update-IterationStateFromTaskProgress `
+        -ProjectRoot $ProjectRoot `
+        -FeatureRef $effectiveFeatureRef `
+        -IterationNumber $IterationNumber `
+        -Tasks $tasks `
+        -ResolvedFeaturePath $ResolvedFeaturePath | Out-Null
+
     return [pscustomobject]@{
         Path      = $path
         FeatureRef = $effectiveFeatureRef
@@ -488,6 +686,7 @@ function Set-TaskStatus {
 
     $content = ConvertTo-TaskProgressContent -FeatureRef $state.FeatureRef -IterationNumber $IterationNumber -Tasks $state.Tasks
     Write-Utf8FileAtomic -Path $state.Path -Content $content
+    Update-IterationStateFromTaskProgress -ProjectRoot $ProjectRoot -FeatureRef $state.FeatureRef -IterationNumber $IterationNumber -Tasks $state.Tasks -ResolvedFeaturePath $ResolvedFeaturePath | Out-Null
 
     return [pscustomobject]@{
         Path      = $state.Path

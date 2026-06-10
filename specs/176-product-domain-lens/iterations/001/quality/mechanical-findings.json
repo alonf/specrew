@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/176-product-domain-lens/spec.md",
+  "iterationRef": "specs/176-product-domain-lens/iterations/001",
+  "generatedAt": "2026-06-09T21:16:10Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.33.0"
+  },
+  "findings": []
+}

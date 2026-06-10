@@ -144,4 +144,25 @@ if ($mergedResult.ExitCode -ne 0 -or (($mergedResult.Output -join [Environment]:
 }
 Write-Pass 'Merged feature is reported through stale-state recovery guidance'
 
+# Scenario 6: state.md missing while review evidence exists
+$missingStateProject = Join-Path $scratchRoot 'missing-state'
+New-TestProject -ProjectRoot $missingStateProject | Out-Null
+Sync-PlanBoundary -ProjectRoot $missingStateProject -SyncScript $syncScript
+$missingStateIteration = Join-Path $missingStateProject 'specs\020-session-state-durability\iterations\001'
+[System.IO.File]::WriteAllText((Join-Path $missingStateIteration 'review.md'), @'
+# Review
+
+**Reviewed**: 2026-06-08
+**Overall Verdict**: accepted
+'@, [System.Text.UTF8Encoding]::new($false))
+if (Test-Path -LiteralPath (Join-Path $missingStateIteration 'state.md') -PathType Leaf) {
+    Remove-Item -LiteralPath (Join-Path $missingStateIteration 'state.md') -Force
+}
+$missingStateResult = Invoke-TestScript -ScriptPath $startScript -ArgumentList @('-ProjectPath', $missingStateProject, '-NoLaunch', '-RecoveryChoice', 'C')
+if ($missingStateResult.ExitCode -ne 0 -or (($missingStateResult.Output -join [Environment]::NewLine) -notmatch 'Stale state detected' -or ($missingStateResult.Output -join [Environment]::NewLine) -notmatch 'state\.md.*is missing while implementation/review evidence exists')) {
+    Write-Fail 'Missing-state scenario did not surface the expected stale-state recovery guidance.'
+    exit 1
+}
+Write-Pass 'Missing state.md with review evidence is reported through stale-state recovery guidance'
+
 exit 0

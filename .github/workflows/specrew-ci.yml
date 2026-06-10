@@ -17,12 +17,12 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
 
@@ -170,12 +170,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
 
@@ -230,6 +230,14 @@ jobs:
         shell: pwsh
         run: ./tests/integration/iteration-resume.ps1
 
+      - name: Integration - task progress tracking
+        shell: pwsh
+        run: ./tests/integration/task-progress-tracking.tests.ps1
+
+      - name: Integration - iteration state truth
+        shell: pwsh
+        run: ./tests/integration/iteration-state-truth.tests.ps1
+
       - name: Integration - planning effort model
         shell: pwsh
         run: ./tests/integration/planning-effort-model.ps1
@@ -274,6 +282,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/gate-stop-skill.tests.ps1
 
+      - name: Integration - GitHub Actions Node runtime pins
+        shell: pwsh
+        run: ./tests/integration/github-actions-node-runtime-pins.tests.ps1
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest
@@ -281,12 +293,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '24'
 

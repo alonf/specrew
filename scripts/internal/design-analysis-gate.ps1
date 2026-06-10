@@ -374,12 +374,18 @@ function Test-SpecrewLensWorkshopRecords {
     if ($selected.Count -eq 0) { return @() }
 
     $workshop = if ($doc.PSObject.Properties['workshop']) { $doc.workshop } else { $null }
-    # SC-026 (Amendment A7): when the artifact opts in via `confirmation_required: true`, each selected lens
-    # MUST also declare a provenance value (human-confirmed | human-delegated | human-skipped). Grandfather-safe
-    # — pre-A7 artifacts lack the marker and no-op (the `workshop_intake` precedent). The floor enforces that a
-    # provenance is DECLARED; it CANNOT verify the human was actually asked (that is SC-027's runtime dogfood).
+    # SC-026 (Amendment A7, #2212): when the artifact opts in via `confirmation_required: true`, each selected
+    # lens MUST declare both a provenance value (human-confirmed | human-delegated | human-skipped) and its scope.
+    # This prevents a generic lens-agenda approval from being reused as per-lens workshop-question confirmation.
+    # Grandfather-safe: pre-A7 artifacts lack the marker and no-op (the `workshop_intake` precedent). The floor
+    # enforces declared scoped evidence; it cannot verify transcript truthfulness (that is SC-027 dogfood/review).
     $confirmationRequired = $doc.PSObject.Properties['confirmation_required'] -and [bool]$doc.confirmation_required
     $validProvenance = @('human-confirmed', 'human-delegated', 'human-skipped')
+    $requiredConfirmationScopes = @{
+        'human-confirmed' = 'lens-question'
+        'human-delegated' = 'explicit-delegation'
+        'human-skipped' = 'explicit-skip'
+    }
 
     foreach ($id in $selected) {
         $rec = $null
@@ -407,6 +413,12 @@ function Test-SpecrewLensWorkshopRecords {
             $confirmation = if ($rec.PSObject.Properties['confirmation']) { [string]$rec.confirmation } else { '' }
             if ($confirmation -notin $validProvenance) {
                 $errors.Add(("workshop record for selected lens '{0}' is missing a valid confirmation provenance (SC-026): set 'confirmation' to one of human-confirmed | human-delegated | human-skipped (got '{1}'). Record human-confirmed ONLY for a lens the human was surfaced and confirmed; an explicit delegate/skip records human-delegated/human-skipped; an agreement MUST NOT be synthesized for an un-surfaced lens." -f $id, $confirmation)) | Out-Null
+            } else {
+                $confirmationScope = if ($rec.PSObject.Properties['confirmation_scope']) { [string]$rec.confirmation_scope } else { '' }
+                $requiredScope = $requiredConfirmationScopes[$confirmation]
+                if ($confirmationScope -ne $requiredScope) {
+                    $errors.Add(("workshop record for selected lens '{0}' has invalid confirmation scope (SC-026, #2212): set 'confirmation_scope' to '{1}' when confirmation is '{2}' (got '{3}'). Lens approval is not workshop-question approval." -f $id, $requiredScope, $confirmation, $confirmationScope)) | Out-Null
+                }
             }
         }
     }
@@ -655,8 +667,8 @@ function Invoke-SpecrewDesignAnalysisPlanBoundaryGate {
         $messageLines = New-Object System.Collections.Generic.List[string]
         $messageLines.Add(("[design-analysis-gate] Plan boundary cannot advance for active substantive feature '{0}'." -f $feature)) | Out-Null
         $messageLines.Add(("Required artifact: {0}" -f $result.ArtifactPath)) | Out-Null
-        foreach ($error in $result.Errors) {
-            $messageLines.Add(("  - {0}" -f $error)) | Out-Null
+        foreach ($err in $result.Errors) {
+            $messageLines.Add(("  - {0}" -f $err)) | Out-Null
         }
         throw ($messageLines -join [Environment]::NewLine)
     }
@@ -901,6 +913,13 @@ function Invoke-SpecrewDesignAnalysisPrePlanGate {
         throw ($packetLines -join [Environment]::NewLine)
     }
 
+    # FR-011 (Feature 176): a LOAD-BEARING research-needed product-domain statement BLOCKS plan.md
+    # until it is researched or explicitly accepted. A non-load-bearing research-needed gap does NOT
+    # block (it is recorded + carried). Fail-closed only on load-bearing gaps; graceful no-op when the
+    # product-domain record or helper is absent.
+    $planBlock = @(Test-SpecrewProductDomainPlanBlock -ProjectRoot $ProjectRoot -FeatureRef $feature)
+    if ($planBlock.Count -gt 0) { throw ($planBlock -join [Environment]::NewLine) }
+
     return [pscustomobject]@{
         Valid          = $true
         ArtifactPath   = $result.ArtifactPath
@@ -908,6 +927,35 @@ function Invoke-SpecrewDesignAnalysisPrePlanGate {
         SelectedOption = $result.SelectedOption
         PacketPath     = $packetPath
     }
+}
+
+function Test-SpecrewProductDomainPlanBlock {
+    # FR-011 (Feature 176): return human-readable block reasons when the feature's product-domain
+    # record carries one or more LOAD-BEARING research-needed statements (these must be researched or
+    # explicitly accepted before plan.md). Returns @() when there is no record, no helper, or only
+    # non-load-bearing research-needed gaps (recorded + carried, not blocking). Deterministic; no
+    # network/LLM. The pre-plan gate throws when this returns a non-empty list.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return @() }
+
+    $recordPath = Join-Path $ProjectRoot ("specs\{0}\workshop\product-domain.yml" -f $feature)
+    if (-not (Test-Path -LiteralPath $recordPath -PathType Leaf)) { return @() }
+    $helper = Join-Path $PSScriptRoot 'product-domain-lens.ps1'
+    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) { return @() }
+    . $helper
+
+    $blocking = @(Test-SpecrewProductDomainResearchBlock -Path $recordPath)
+    if ($blocking.Count -eq 0) { return @() }
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add(("[product-domain-plan-block] Do not author plan.md for '{0}': {1} load-bearing research-needed product-domain gap(s) must be researched or explicitly accepted first (FR-011):" -f $feature, $blocking.Count)) | Out-Null
+    foreach ($b in $blocking) { $lines.Add(("  - {0}" -f $b)) | Out-Null }
+    return $lines.ToArray()
 }
 
 function Get-SpecrewLensApplicabilityMapPath {
@@ -982,7 +1030,86 @@ function Invoke-SpecrewSpecifyBoundaryLensGate {
         throw ($lines -join [Environment]::NewLine)
     }
 
+    # FR-010 (Feature 176): the product-domain record floor. When the product-domain lens is in the
+    # catalog (registered) and the feature is substantive, the first-stage product-domain record MUST
+    # exist + validate (genuine, non-batch confirmation provenance) before specify finalizes. Throws
+    # fail-closed; $null when product-domain does not apply (graceful — no lens in the catalog).
+    $null = Test-SpecrewProductDomainGate -ProjectRoot $ProjectRoot -FeatureRef $feature
+
     return [pscustomobject]@{ Valid = $true; ArtifactPath = $artifact }
+}
+
+function Get-SpecrewProductDomainCatalogDir {
+    # Resolve the design-lens catalog directory (repo source first, then the deployed .specify mirror).
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    foreach ($rel in @(
+            'extensions\specrew-speckit\knowledge\design-lenses',
+            '.specify\extensions\specrew-speckit\knowledge\design-lenses')) {
+        $candidate = Join-Path $ProjectRoot $rel
+        if (Test-Path -LiteralPath (Join-Path $candidate 'product-domain.md') -PathType Leaf) { return $candidate }
+    }
+    return $null
+}
+
+function Test-SpecrewProductDomainGate {
+    # FR-009 / FR-010 / FR-013 (Feature 176): the deterministic specify-boundary floor for the
+    # product-domain first-stage lens. REQUIRED when the product-domain lens is registered in the
+    # catalog (product-domain.md present) AND the feature is substantive. When required, the feature's
+    # workshop/product-domain.{yml,md} MUST both exist and the .yml MUST validate (depth + evidence
+    # tags + a genuine, non-batch confirmation provenance — a batch 'confirm all' can never satisfy
+    # it, FR-009). Graceful degradation (FR-013, no silent skip): an ABSENT catalog means the lens does
+    # not apply here -> $null (graceful skip for a downstream project without the lens); but once the
+    # lens IS registered, a MISSING or INVALID record on a substantive feature FAILS CLOSED with a loud
+    # reason rather than passing silently. Marker-gated by catalog presence + the substantive test, so
+    # pre-176 features (whose specify boundary already synced before the lens existed) are not
+    # retroactively failed. Deterministic; no network/LLM.
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [AllowNull()][string]$FeatureRef
+    )
+
+    $feature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef $FeatureRef
+    if ([string]::IsNullOrWhiteSpace($feature)) { return $null }
+
+    $catalogDir = Get-SpecrewProductDomainCatalogDir -ProjectRoot $ProjectRoot
+    if ($null -eq $catalogDir) { return $null }  # lens not in this project's catalog -> graceful skip
+    if (-not (Test-SpecrewDesignAnalysisSubstantiveFeature -ProjectRoot $ProjectRoot -FeatureRef $feature)) { return $null }
+
+    $featureDir = Join-Path $ProjectRoot ("specs\{0}" -f $feature)
+    $ymlPath = Join-Path $featureDir 'workshop\product-domain.yml'
+    $mdPath = Join-Path $featureDir 'workshop\product-domain.md'
+    # Resolve the schema: a per-feature contracts/ copy overrides; otherwise fall back to the canonical
+    # schema deployed beside the lens in the catalog, so a downstream feature WITHOUT its own copy still
+    # gets Test-Json validation (not just the in-code invariant backstops).
+    $schemaPath = Join-Path $featureDir 'contracts\product-domain.schema.json'
+    if (-not (Test-Path -LiteralPath $schemaPath -PathType Leaf)) {
+        $canonicalSchema = Join-Path $catalogDir 'product-domain.schema.json'
+        if (Test-Path -LiteralPath $canonicalSchema -PathType Leaf) { $schemaPath = $canonicalSchema }
+    }
+
+    $missing = New-Object System.Collections.Generic.List[string]
+    if (-not (Test-Path -LiteralPath $ymlPath -PathType Leaf)) { $missing.Add('workshop/product-domain.yml') | Out-Null }
+    if (-not (Test-Path -LiteralPath $mdPath -PathType Leaf)) { $missing.Add('workshop/product-domain.md') | Out-Null }
+    if ($missing.Count -gt 0) {
+        throw ("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the first-stage product-domain record is MISSING ({1}). The product-domain lens runs before the technical lenses (FR-001); run it, capture the evidence-tagged record at the chosen depth, and persist both files before sync-specify. Specrew surfaces this rather than silently skipping the grounding (FR-013). Expected: {2}" -f $feature, ($missing -join ', '), $ymlPath)
+    }
+
+    # Load the record validator (sibling helper). If it cannot be loaded, fail CLOSED (no silent skip).
+    $helper = Join-Path $PSScriptRoot 'product-domain-lens.ps1'
+    if (-not (Test-Path -LiteralPath $helper -PathType Leaf)) {
+        throw ("[product-domain-gate] Cannot validate the product-domain record for '{0}': the record validator helper is missing at {1}. Refusing to pass the specify boundary without validation (fail-closed, FR-013)." -f $feature, $helper)
+    }
+    . $helper
+    $schemaArg = if (Test-Path -LiteralPath $schemaPath -PathType Leaf) { $schemaPath } else { $null }
+    $errs = @(Test-SpecrewProductDomainRecord -Path $ymlPath -SchemaPath $schemaArg)
+    if ($errs.Count -gt 0) {
+        $lines = New-Object System.Collections.Generic.List[string]
+        $lines.Add(("[product-domain-gate] Cannot finalize the specify boundary for substantive feature '{0}': the product-domain record is INVALID. Fix these before sync-specify (a batch 'confirm all' is NOT valid product-domain confirmation, FR-009):" -f $feature)) | Out-Null
+        foreach ($e in $errs) { $lines.Add(("  - {0}" -f $e)) | Out-Null }
+        throw ($lines -join [Environment]::NewLine)
+    }
+
+    return [pscustomobject]@{ Valid = $true; RecordPath = $ymlPath }
 }
 
 function Format-SpecrewFileReference {

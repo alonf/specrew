@@ -6,6 +6,21 @@ baseline that each release number represents.
 
 ## Unreleased
 
+## [0.34.0-beta1] - 2026-06-10
+
+### Added
+
+- **Feature 176 — Product & Problem Domain lens (first workshop lens) (#2285).** A required first design-workshop phase, `product-domain`, that runs before technical-lens applicability selection and grounds product/problem context (users & stakeholders, pain/job, MVP, non-goals, constraints, outcomes, alternatives) at adaptive depth (Light/Standard/Deep by risk and novelty), tagging every material statement with an evidence quality (`known` / `assumed` / `unknown` / `research-needed`). It persists a human-readable and a structured record (`workshop/product-domain.{md,yml}`), is enforced at the specify boundary (a batch "confirm all" cannot satisfy it), conditionally blocks plan on a load-bearing `research-needed` gap, and runs before every feature at adaptive depth (`context_scope: feature_standalone`; `product_id` / `product_context_ref` forward-compat hooks for Proposal 162). Deferred to forward-compatible shape: Proposal 156 `workshop-decisions.yml` emission and Proposal 162 inheritance behavior.
+
+## [0.33.0-beta2] - 2026-06-09
+
+### Fixed
+
+- **Bug bash — GitHub Actions Node 24 readiness (#2214 / #2080).** Updated active workflows, Squad workflow templates, and bundled GitHub templates to current Node 24 JavaScript action majors, and added a deterministic stale-pin guard.
+- **Bug bash — Claude-only `specrew-gate-stop` deployment (#2215 / #2083).** Scoped the boundary verdict packet collapse fix to Claude so non-Claude hosts keep their normal rendering path.
+- **Bug bash — iteration `state.md` truth (#2216 / #2213).** Kept iteration state aligned with task-progress transitions and added stale-state checks around review/recovery flows.
+- **Bug bash — workshop confirmation integrity (#2217 / #2212).** Required scoped per-lens workshop confirmation evidence, blocked agenda/lens approval from masquerading as workshop-question approval, and tightened the dogfood gap that allowed a batch "Confirm all as proposed" shortcut to replace per-lens interaction.
+
 ## [0.33.0-beta1] - 2026-06-08
 
 ### Added

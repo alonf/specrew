@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.33.0'
+    ModuleVersion = '0.34.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -74,6 +74,8 @@
         'extensions/specrew-speckit/knowledge/design-lenses/lens-schema.md',
         'extensions/specrew-speckit/knowledge/design-lenses/lens-template.md',
         'extensions/specrew-speckit/knowledge/design-lenses/observability-resilience.md',
+        'extensions/specrew-speckit/knowledge/design-lenses/product-domain.md',
+        'extensions/specrew-speckit/knowledge/design-lenses/product-domain.schema.json',
         'extensions/specrew-speckit/knowledge/design-lenses/README.md',
         'extensions/specrew-speckit/knowledge/design-lenses/requirements-nfr.md',
         'extensions/specrew-speckit/knowledge/design-lenses/security-compliance.md',
@@ -237,6 +239,7 @@
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/launch-contract.ps1',
         'scripts/internal/lens-applicability.ps1',
+        'scripts/internal/product-domain-lens.ps1',
         'scripts/internal/refocus-deploy-integration.ps1',
         'scripts/internal/refocus.ps1',
         'scripts/internal/session-config.ps1',

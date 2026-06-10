@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 
@@ -67,10 +67,10 @@ jobs:
     needs: lint
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 
@@ -107,6 +107,14 @@ jobs:
         shell: pwsh
         run: ./tests/integration/iteration-resume.ps1
 
+      - name: Integration - task progress tracking
+        shell: pwsh
+        run: ./tests/integration/task-progress-tracking.tests.ps1
+
+      - name: Integration - iteration state truth
+        shell: pwsh
+        run: ./tests/integration/iteration-state-truth.tests.ps1
+
       - name: Integration - planning effort model
         shell: pwsh
         run: ./tests/integration/planning-effort-model.ps1
@@ -123,16 +131,20 @@ jobs:
         shell: pwsh
         run: ./tests/integration/process-quality-scorer.ps1
 
+      - name: Integration - GitHub Actions Node runtime pins
+        shell: pwsh
+        run: ./tests/integration/github-actions-node-runtime-pins.tests.ps1
+
   contract-lane:
     name: Contract lane
     runs-on: ubuntu-latest
     needs: deterministic-gate
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
 

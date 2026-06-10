@@ -61,6 +61,42 @@ tool-gravity and skims on Claude — its reliable fix is a host-specific `PreToo
 host-variance, **never another instruction**. (An earlier catalog-at-open front-load was reverted — it skimmed on
 Claude and was redundant on prose hosts that render the agenda inline.)
 
+## First stage — the product-domain phase (run before everything, Feature 176)
+
+Before the lens applicability agenda (The Method below), run the **product-domain** first-stage
+phase — the pre-technical product/problem grounding. It is **always applicable** and runs FIRST,
+before any technical lens or the applicability questionnaire. It is NOT a row in
+`applicability-map.json`; it is the first-stage phase ahead of the deterministic selector.
+
+1. **Load the lens** `design-lenses/product-domain.md` for its decision areas, depth model,
+   evidence vocabulary, run cadence, and conduct.
+2. **Select the depth** (Light / Standard / Deep) by **risk and novelty**, and say why. A tiny
+   utility gets a Light pass that records why deeper discovery is not warranted.
+3. **Reframe a solution-first request into the problem.** When the human asks to "build X", surface
+   who it is for, the pain/job, the MVP, the non-goals, and the constraints BEFORE any design. If the
+   requested feature is not aligned to the pain / MVP / constraints / alternatives, surface that
+   before plan.
+4. **Capture the product context** at the selected depth (users and stakeholders; pain/job and
+   current workaround; existing system/context; constraints; outcomes; MVP/non-goals/vision;
+   alternatives at Standard/Deep), and **tag every material statement** with its evidence quality
+   (`known` / `assumed` / `unknown` / `research-needed`; a `research-needed` carries `load_bearing`).
+   Honest tags prevent confident product fiction.
+5. **No batch confirmation (FR-009).** The phase cannot be satisfied by approving an agenda or a batch
+   "confirm all". It needs scoped product-domain confirmation, or an explicit, honestly recorded
+   "you decide" / "skip". Record the provenance (`human-confirmed` / `human-delegated` /
+   `human-skipped`) and its matching scope.
+6. **Persist both records** under `specs/<feature>/workshop/`: `product-domain.yml` (structured,
+   schema-validated against `contracts/product-domain.schema.json`) and `product-domain.md`
+   (human-readable), and summarize the decisions into `spec.md` — not as the sole source. The
+   specify-gate floor REQUIRES this for a substantive feature before specify syncs; an absent record
+   is surfaced, never silently skipped.
+
+**Run cadence**: the product-domain phase runs before EVERY feature at adaptive depth — not once. In
+V1 every feature is `context_scope: feature_standalone`; once Proposal 162 ships, later features run
+in delta mode (`feature_delta`) against the inherited product baseline (`product_baseline`).
+
+Only after the product-domain phase is captured do you move to the lens applicability agenda below.
+
 ## The Method (the same for every lens)
 
 1. **Frame the phases + hand over the agenda (A6/FR-034, A7/FR-040).** Tell the human up front: the workshop
@@ -88,6 +124,11 @@ Claude and was redundant on prose hosts that render the agenda inline.)
 
    Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
    name); render the whole filled block in your message, THEN raise the confirm/adjust menu that references it.
+   **Agenda confirmation is not lens-question confirmation.** This confirm point approves only the selected
+   lens list and depths. It does NOT answer the lenses. Do NOT offer or accept a batch shortcut such as "Confirm
+   all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as
+   `human-confirmed` / `lens-question`. After the agenda is confirmed, every selected lens still needs its own
+   lens-specific turn and its own human answer, explicit delegation, or explicit skip.
 3. **Per-lens facilitated discussion — open with a presentation + an OPEN question, never a menu first (A4/FR-025, A8/FR-041b).**
    The **first turn of every lens** MUST be you *presenting* the lens — its decision points, and as it develops
    its diagram / component map — followed by an **open, free-text question** ("how should we approach this?",
@@ -96,6 +137,10 @@ Claude and was redundant on prose hosts that render the agenda inline.)
    `AskUserQuestion` tool-gravity failure). The structured menu is good UX and stays — but only **after** the
    lens's content is on screen, for a crisp discrete choice (e.g. the decomposition vocabulary in step 5). Binary
    test: did this lens open with a rendered presentation, or with a menu? Open with the presentation.
+   **One selected lens = one lens turn.** Do NOT bundle several selected lenses into one combined presentation
+   and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
+   already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
+   and wait for the human (or an explicit "you decide for this lens" / "skip this lens") before moving on.
    **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
    A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
    overwhelming **wall** if you present everything and end with one open question that secretly bundles five
@@ -173,11 +218,12 @@ Claude and was redundant on prose hosts that render the agenda inline.)
      **keyed by lens id**, each value carrying the EXACT fields the gate checks: `agenda` (array of questions
      raised), `decision` (a SINGLE STRING summarizing the decision + agreement), `depth`, `moved_on: true`, and
      **`confirmation`** — the provenance, one of `human-confirmed | human-delegated | human-skipped` (A7/FR-039,
-     SC-026). Exact shape — get it right the first time:
+     SC-026), plus **`confirmation_scope`** — `lens-question` for `human-confirmed`, `explicit-delegation` for
+     `human-delegated`, or `explicit-skip` for `human-skipped`. Exact shape — get it right the first time:
 
      ```json
      { "workshop_intake": true, "confirmation_required": true, "selected": ["architecture-core"],
-       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed" } } }
+       "workshop": { "architecture-core": { "agenda": ["q1","q2"], "decision": "what was decided + agreed", "depth": "full", "moved_on": true, "confirmation": "human-confirmed", "confirmation_scope": "lens-question" } } }
      ```
 
      It is `workshop` -> `<lens-id>` -> fields (NOT `<lens-id>` -> `workshop`), and `decision` is a singular
@@ -187,15 +233,21 @@ Claude and was redundant on prose hosts that render the agenda inline.)
      `specs/<feature>/workshop/<lens-id>.md`, and set that lens's `diagram` field to a **reference to that
      file** (the path + a one-line caption), NOT a prose description. A diagram that lives only in the chat
      scrollback is lost; the workshop folder makes the design reviewable from the artifacts.
-   - **Integrity — never manufacture agreement (A7/FR-038, SC-026).** Set `confirmation: human-confirmed` ONLY
-     for a lens you actually surfaced and the human confirmed. If the human explicitly said "you decide" or
-     "skip", set `human-delegated` / `human-skipped` and say so honestly in `decision` — do NOT write a
-     fabricated "the human agreed to X" for a lens they never saw. **Count self-check before you record:** you
-     are about to write N lens records — you must have asked, or been explicitly told to decide/skip, N times.
-     If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill
-     in the remaining lenses yourself. The SC-026 gate blocks the specify boundary until every selected lens
-     carries a `confirmation` — but it cannot see whether you really asked; that integrity is on you, and the
-     Squad re-dogfood checks it.
+   - **Integrity — never manufacture agreement (A7/FR-038, SC-026).** Set `confirmation: human-confirmed` and
+     `confirmation_scope: lens-question` ONLY for a lens whose substantive workshop questions you actually
+     surfaced and the human confirmed. Lens approval is not workshop-question approval. If the human explicitly
+     said "you decide" or "skip" for that lens's questions, set `human-delegated` + `explicit-delegation` or
+     `human-skipped` + `explicit-skip` and say so honestly in `decision` — do NOT write a fabricated "the human
+     agreed to X" for a lens they never saw. **A batch confirmation is not valid provenance:** if the human says
+     "confirm all as proposed" at the agenda or summary level, that confirms only the agenda/scope and cannot
+     produce `human-confirmed` / `lens-question` for any lens. If the human explicitly delegates a shortcut such
+     as "you decide the remaining lenses", record each affected lens as `human-delegated` +
+     `explicit-delegation`, not `human-confirmed`. **Count self-check before you record:** you are about to write
+     N lens records — you must have asked, or been explicitly told to decide/skip, N times, one lens at a time.
+     If you stopped early, go back and surface the rest; you may not declare intake "specific enough" and fill in
+     the remaining lenses yourself. The SC-026 gate blocks the specify boundary until every selected lens carries
+     a `confirmation` and matching `confirmation_scope` — but it cannot see transcript truthfulness; that
+     integrity is on you, and the Squad re-dogfood checks it.
    - At design-analysis, a `## Co-Design Record` in `design-analysis.md` with the agreed
      component-to-responsibility map + at least one agreed flow + a human-agreed marker, and — when ui-ux is in
      scope — the **agreed UI/screen layout** (the ASCII sketch the human approved). Set `co_design: true` in the

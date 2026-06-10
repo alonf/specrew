@@ -4,6 +4,7 @@ description: "Perform a Specrew human-verdict boundary stop on the Claude host. 
 domain: "lifecycle-governance"
 confidence: "high"
 source: "Specrew Feature 165 — on the Claude host the AskUserQuestion picker collapses the Rule 46 six-section packet into its short fields (the human is asked to approve what they cannot read; proven gameable even under a runtime hook-deny that the model satisfied by rewording the menu). disallowed-tools removes the picker for the stop, so the packet has nothing to collapse into and renders as prose. The design workshop is unaffected — its lens questions keep the picker because the workshop skill does NOT disable it."
+host-scope: claude
 disallowed-tools: AskUserQuestion
 ---
 

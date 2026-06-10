@@ -1,6 +1,12 @@
 schema_version: "1.0"
 description: "Specrew design-analysis lens catalog"
 lenses:
+  - id: product-domain
+    file: product-domain.md
+    default_phase: intake-product-domain
+    categories:
+      - product-and-problem-domain
+      - users-stakeholders-and-outcomes
   - id: architecture-core
     file: architecture-core.md
     default_phase: design-analysis
