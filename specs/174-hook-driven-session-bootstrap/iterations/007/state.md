@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T045 — deploy-source sync (extension-source provider now byte-identical to the module copy) + mirror-parity guard; deployed ground-truth: the synced extension writes + inlines the contract (the iter-6 deploy gap CLOSED)
-**Tasks Remaining**: T046 (side-by-side acceptance test), T047 (manual dogfood protocol + docs)
-**In Progress**: T046 — the automatable side-by-side content-diff (hook vs specrew start, deployed layout)
+**Last Completed Task**: T047 — manual dogfood protocol written + getting-started honesty sweep finished. ALL iter-7 tasks T043–T047 code-complete + automated-verified.
+**Tasks Remaining**: (none in code) — the MANUAL DOGFOOD (the gate's disqualifier, Ruling Prompt 3) is the maintainer's to run at review-signoff; parity is NOT re-claimed until it passes.
+**In Progress**: review-signoff stop — presenting the implementation for the verdict, with the manual dogfood as the outstanding gate item
 **Baseline Ref**: (iter-6 HEAD)
 **Updated**: 2026-06-10T00:00:00Z
 
@@ -59,6 +59,19 @@
   last-start-prompt.md WRITTEN → the contract INLINED in the deployed directive (all False/absent before the
   sync). HONEST: the deploy LAYER gap is closed (the deployed provider executes iter-7); full content PARITY
   (T046) + read-and-follow (the manual dogfood) remain the gate.
+- **T046 DONE** (side-by-side, automatable half — GREEN): `tests/integration/contract-parity-side-by-side.tests.ps1`
+  asserts the hook's written contract is BYTE-IDENTICAL to specrew start's generation path (`Get-StartPrompt`
+  and `Invoke-SpecrewCoordinatorPromptSurgery`, reconstructed from specrew-start.ps1 L3332-3356) plus the parity
+  content present (expertise line, coordinator framing, 7 invariant markers). `specrew start` needs
+  `specrew init` (a full launcher in a test is fragile), so the reference encodes the launcher's GENERATION
+  pattern independently of the hook — any divergence is a real parity gap. HONEST: proves the CONTRACT is
+  equivalent, NOT that the agent reads+follows it (the manual dogfood, T047).
+- **T047 DONE** (manual dogfood protocol + docs sweep): wrote `manual-dogfood-protocol.md` (the gate's
+  disqualifier per Ruling Prompt 3 — the maintainer runs the hook-vs-`specrew start` lead-up comparison; PASS
+  only if the hook session's agent renders the coordinator contract + expertise adaptation + drives the
+  lifecycle on its first reply, matching `specrew start`). Finished the getting-started honesty sweep (the
+  "Direct launch on Claude" bullet now states content-parity is automated-verified but read-and-follow is
+  under manual verification — prefer `specrew start` until the side-by-side passes).
 
 ## Notes
 

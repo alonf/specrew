@@ -179,11 +179,14 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 > - **`specrew start`** — guided from the first line: the launcher prints the splash and hands the host
 >   full lifecycle context *before* the session opens. The reliable path on **every** host; the only path
 >   on Antigravity and (until injection is confirmed) Codex / Copilot / Cursor.
-> - **Direct launch on Claude** (`claude` in the project) — the SessionStart hook primes the agent, so the
->   orientation arrives on the agent's **first reply**, not the splash screen (a host hook cannot paint the
->   host's UI). Just **ask** — "What should I do now?" — or **state intent** — "Create a feature for …" —
->   and the agent leads with your Specrew orientation, then proceeds. (Proven on Claude; on the other
->   hooked hosts the hook deploys, but prefer `specrew start` until per-host injection is verified.)
+> - **Direct launch on Claude** (`claude` in the project) — the SessionStart hook primes the agent with the
+>   governed contract inline, so orientation arrives on the agent's **first reply**, not the splash screen
+>   (a host hook cannot paint the host's UI). Just **ask** — "What should I do now?" — or **state intent** —
+>   "Create a feature for …". **Status (Feature 174 iteration 007):** the hook inlines the same contract
+>   `specrew start` writes — content-parity is automated-verified and the deployed provider is in sync — but
+>   whether the agent reliably **reads and follows** it in a live session is still under manual verification.
+>   Until that side-by-side passes, prefer **`specrew start`** for the fully contract-driven experience on
+>   every host, including Claude.
 
 **The Design Workshop.** For substantive features, the Crew also facilitates a **Design Workshop** — first at intake (to pick the design lenses that matter and make the spec lens-informed) and again at the design-analysis stop before planning (to co-design the architecture with you: component map, responsibilities, flows, and trade-off options). It is a conversation, not a questionnaire — you see every diagram and agenda in-band, and every decision is recorded as a durable artifact. The full methodology is in [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md).
 
