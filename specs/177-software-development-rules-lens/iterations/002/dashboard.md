@@ -1,12 +1,12 @@
 # Velocity Dashboard Snapshot
 
 **Schema**: v1
-**Capture Kind**: retro
+**Capture Kind**: iteration-closeout
 **Captured At**: 2026-06-10T15:35:57Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
-**Historical Notice**: Historical snapshot captured during retro. Re-running the dashboard later produces a new live view and must not overwrite this file.
+**Historical Notice**: Historical snapshot captured during iteration closeout. Re-running the dashboard later produces a new live view and must not overwrite this file.
 
 ## Dashboard
 

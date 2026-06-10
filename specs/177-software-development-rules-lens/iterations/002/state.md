@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T018
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 96ded099a4e29db56c8e26de441af9da13896db4
-**Updated**: 2026-06-10T16:05:00Z
+**Updated**: 2026-06-10T17:50:00Z
 
 ## Execution Summary
 
@@ -32,12 +32,13 @@
   `implementation-rules.yml` against the schema (the product-domain pattern), NOT call a PowerShell writer
   the deployed agent cannot reach; `New-SpecrewImplementationRulesManifest` and the YAML writer are now
   test-only by design (like product-domain's unused writer).
-- **Boundary**: retro. review-signoff was APPROVED by the maintainer after two real review-signoff catches
-  were reconciled (the T017 behavioral-SC variance -> D-003 deferred-with-gate; and a `.specify` extension.yml
-  version-parity gap synced to 0.35.0). Advanced to retro via the formal `Invoke-SpecrewBoundaryStateSync`
-  (2026-06-10); session `boundary_type`, state.md `Current Phase`, and plan.md/state.md status are all
-  consistent at retro. The retro (`retro.md`) is presented for the retro verdict. No push / tag / publish /
-  beta until feature-closeout approval.
+- **Boundary**: iteration-closeout -- **i2 CLOSED**. retro APPROVED. Advanced via the formal
+  `Invoke-SpecrewBoundaryStateSync` (2026-06-10, recorded_at 17:50:14Z); session `boundary_type`, state.md
+  `Current Phase`, plan.md/state.md status, and the closed-iterations index are consistent. **D-003
+  (SC-004 / SC-007 / SC-008) remains the OPEN beta-gate**, carried to feature-closeout: the published
+  `v0.35.0-beta.1` install-dogfood must confirm them before stable promotion. Both F-177 iterations (i1, i2)
+  are now closed; **feature-closeout (push / PR / merge / tag / publish) is next, pending approval**. No push
+  / tag / publish / beta until then.
 
 ## Notes
 

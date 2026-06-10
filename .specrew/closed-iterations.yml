@@ -227,3 +227,9 @@ closed:
   - feature: 171-specrew-refocus
     iteration: 002
     closed_at: 2026-06-07T20:05:49Z
+  - feature: 177-software-development-rules-lens
+    iteration: 001
+    closed_at: 2026-06-10T12:40:44Z
+  - feature: 177-software-development-rules-lens
+    iteration: 002
+    closed_at: 2026-06-10T17:50:16Z
