@@ -40,7 +40,7 @@ specrew start "Build a tip calculator with a web UI"
 
 That's it. Specrew now drives you through the spec-driven lifecycle: you'll co-author a spec with the AI, sign off on a plan, and end with working code traceable to every decision.
 
-> **Two ways to start.** `specrew start` is the **guided** path — it prints orientation and hands the host full lifecycle context before the session opens. You can also **launch the host CLI directly** (`claude` / `codex` / `copilot` / `cursor`) inside a Specrew project: a SessionStart hook primes the agent, so your **first message** — ask "What should I do now?" or state intent, "Create a feature for …" — gets a Specrew orientation as the agent's first reply. The orientation lands on turn one, not the splash screen (a host hook cannot paint the host's own UI); a companion Stop hook keeps a crash-safe rolling handover so the next launch resumes where you left off.
+> **Two ways to start — the hook is the primary one.** After `specrew init`, just **launch your host CLI** (`claude` / `codex` / `copilot` / `cursor`) inside the project: a **SessionStart hook bootstraps and drives** the governed lifecycle, so your **first message** — "What should I do now?" or "Create a feature for …" — gets a Specrew orientation banner as the agent's first reply (turn one, not the splash screen — a host hook cannot paint the host's own UI), and a companion Stop hook keeps a crash-safe rolling handover so the next launch resumes where you left off. **Confirmed governed on Claude, Codex, and Copilot.** `specrew start` is **optional** — use it to pick / switch hosts (`--host`), start from a script, or for **Antigravity** (which has no hook).
 
 ### Prerequisites
 

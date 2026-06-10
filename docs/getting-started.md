@@ -62,7 +62,7 @@ Required or commonly used dependencies:
 
 #### Pick at least one host CLI
 
-Specrew also needs one supported **agent host CLI** to run a lifecycle session. Install at least one. You select which one at launch time via `specrew start --host <kind>`. Two defaults matter:
+Specrew also needs one supported **agent host CLI** to run a lifecycle session. Install at least one. You select which one simply by **launching it** in the project (the SessionStart hook drives that host), or explicitly via `specrew start --host <kind>`. Two defaults matter for the `specrew start` path:
 
 - **`--host` flag default (non-interactive / CI / automation)**: `copilot` — most-tested host, predictable for headless runs
 - **Interactive menu default (TTY, multiple installed hosts)**: highest-priority installed host in the order **Claude → Cursor → Codex → Copilot → Antigravity**. The interactive menu shows installed hosts in priority order; `[default 1]` selects the highest-priority one
@@ -116,7 +116,10 @@ specrew init
 
 ### 4. Start the first feature
 
-Pick the host at launch time via `--host`. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Cursor → Codex → Copilot → Antigravity):
+After `specrew init`, there are two equivalent ways to begin — **the SessionStart hook is the primary path, and `specrew start` is optional**:
+
+- **Just open your host in the project** (`claude`, `codex`, `copilot`, `cursor`). A **SessionStart hook** bootstraps the session — it writes the governed launch contract, renders your orientation banner, and drives the `specify → plan → implement → review → retro` lifecycle. No `specrew start` needed. (Confirmed governed on Claude, Codex, and Copilot — see the hook note below.)
+- **Or run `specrew start`** (optional) to **pick / switch the host** (`--host <kind>`), to **start from a script** with the feature prompt in one command, or for **Antigravity**, which has no hook and is launcher-only. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Cursor → Codex → Copilot → Antigravity):
 
 ```powershell
 # Default: GitHub Copilot host
@@ -147,24 +150,18 @@ That single command:
 
 When the Crew surfaces a clarify question, answer it. When it surfaces a planning artifact, review it. When it asks for an implementation verdict, type one of the recognized verdict shapes (e.g. `approved for implementation-boundary entry`). The lifecycle then continues to the next boundary.
 
-> **Hook-driven bootstrap (Feature 174).** A **SessionStart hook** can bootstrap the session on a host
-> launch inside a Specrew project — writing the governed launch contract and surfacing your Specrew
-> position plus a Resume / New / Pick-feature menu as prose before any picker — so orientation need not
-> depend on running `specrew start` first. **Status: the hook ORIENTS, but does NOT yet drive (Feature 174 iteration 007).** A side-by-side test
-> (same prompt, hook vs `specrew start`) showed the hook does not yet deliver the governed launch contract
-> the launcher does — the agent does not reliably read and follow it, and the hook-written contract omits
-> the user-profile/expertise adaptation and coordinator framing. On **Codex, Copilot, and Cursor** the hook deploys and the on-disk plumbing is proven, but
-> whether the host runtime actually delivers the injected orientation *into the model* is **not yet
-> verified** — so on those hosts use **`specrew start`** for reliable orientation until per-host injection
-> is confirmed. **Antigravity has no SessionStart hook**, so there `specrew start` is the orientation path.
-> Do not assume all-host hook-parity — only Claude is confirmed.
+> **Hook-driven bootstrap (Feature 174).** A **SessionStart hook** bootstraps and **drives** the session on a
+> host launch inside a Specrew project — it writes the governed launch contract (`.specrew/last-start-prompt.md`,
+> with the user-profile/expertise adaptation + the coordinator framing), renders your orientation banner and a
+> Resume / New / Pick-feature menu as prose before any picker, and follows the governed lifecycle. So after
+> `specrew init` you do **not** need to run `specrew start` first. **Confirmed governed on Claude, Codex, and
+> Copilot.** **Antigravity has no SessionStart hook**, so there `specrew start` is the bootstrap path.
 >
-> **`specrew start` is THE driver — it carries the full launch contract.** It writes the governed
-> `last-start-prompt.md` (with the user-profile/expertise adaptation + the coordinator framing) so the agent
-> reads it first, before acting — and it does what only it can (host selection, uniform `--remote` /
-> `--allow-all` / `--autopilot` flag translation, a true pre-session splash). The hook does not yet reach
-> this contract-parity on any host, including Claude. When both a launcher and a hook fire in one startup, a
-> dedupe handshake guarantees exactly one bootstrap.
+> **`specrew start` remains available — and does what only it can:** host selection / switching (`--host`),
+> a one-command scripted start with a feature prompt, uniform `--remote` / `--allow-all` / `--autopilot` flag
+> translation, and the no-hook fallback (Antigravity). Both paths share the SAME contract generator
+> (`Get-StartPrompt`), so there is no drift between them; when a launcher and a hook both fire in one startup,
+> a dedupe handshake guarantees exactly one bootstrap.
 >
 > A companion **Stop hook** (the per-host end-of-turn event) refreshes one always-latest, local
 > Proposal-130 rolling handover on every material turn — deployed across the four hooked hosts and
@@ -174,19 +171,18 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 > last saw. If a session ends without authoring one, the next launch shows a **hollow-handover warning**
 > instead of a rich resume it does not actually have — you are the backstop, not a fabricated summary.
 >
-> **Two ways to start — pick by how guided you want to be:**
+> **Two ways to start — the hook is the primary path:**
 >
-> - **`specrew start`** — guided from the first line: the launcher prints the splash and hands the host
->   full lifecycle context *before* the session opens. The reliable path on **every** host; the only path
->   on Antigravity and (until injection is confirmed) Codex / Copilot / Cursor.
-> - **Direct launch on Claude** (`claude` in the project) — the SessionStart hook primes the agent with the
->   governed contract inline, so orientation arrives on the agent's **first reply**, not the splash screen
->   (a host hook cannot paint the host's UI). Just **ask** — "What should I do now?" — or **state intent** —
->   "Create a feature for …". **Status (Feature 174 iteration 007):** the hook inlines the same contract
->   `specrew start` writes — content-parity is automated-verified and the deployed provider is in sync — but
->   whether the agent reliably **reads and follows** it in a live session is still under manual verification.
->   Until that side-by-side passes, prefer **`specrew start`** for the fully contract-driven experience on
->   every host, including Claude.
+> - **Direct launch** (`claude` / `codex` / `copilot` / `cursor` in the project) — the SessionStart hook
+>   bootstraps and **drives**: it writes the governed contract and the agent renders its orientation on the
+>   **first reply**, not the splash screen (a host hook cannot paint the host's UI). Just **ask** — "What
+>   should I do now?" — or **state intent** — "Create a feature for …". **Confirmed governed on Claude,
+>   Codex, and Copilot** — the hook hands the agent the same contract `specrew start` writes, via the same
+>   generator (no drift).
+> - **`specrew start`** (optional) — host selection / switching (`--host`), a one-command scripted start,
+>   uniform `--remote` / `--allow-all` / `--autopilot` flag translation, and the **only** path on
+>   **Antigravity** (no hook). When both a launcher and a hook fire in one startup, a dedupe handshake yields
+>   exactly one bootstrap.
 
 **The Design Workshop.** For substantive features, the Crew also facilitates a **Design Workshop** — first at intake (to pick the design lenses that matter and make the spec lens-informed) and again at the design-analysis stop before planning (to co-design the architecture with you: component map, responsibilities, flows, and trade-off options). It is a conversation, not a questionnaire — you see every diagram and agenda in-band, and every decision is recorded as a durable artifact. The full methodology is in [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md).
 

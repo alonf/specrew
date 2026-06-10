@@ -6,6 +6,21 @@ baseline that each release number represents.
 
 ## Unreleased
 
+### Changed
+
+- **Feature 174 (hook-driven session bootstrap):** the SessionStart hook now bootstraps AND drives the
+  governed lifecycle on Claude, Codex, and Copilot. `specrew start` is repositioned as an OPTIONAL
+  host-selector / launcher (and the no-hook path for Antigravity), not the required entry. README +
+  getting-started updated accordingly.
+
+### Fixed
+
+- **Codex SessionStart hook — two format mismatches:** `~/.codex/hooks.json` now uses codex's
+  `{ hooks: { <Event> } }` wrapper (it previously had top-level event keys, so codex never ran the hook), and
+  the dispatcher emits `hookSpecificOutput.additionalContext` for codex (the flat `additionalContext` form was
+  silently ignored, so the hook ran but its output was dropped). The orientation banner is now hoisted to
+  render first on every host, and the bootstrap contract renders the real Specrew version instead of "unknown".
+
 ## [0.34.0-beta1] - 2026-06-10
 
 ### Added
