@@ -120,7 +120,7 @@ T038's on-disk existence check is **demoted** from the gate to a supporting plum
 | Task | Title | Requirement | Story | Effort | Owner | Status |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ |
 | T043 | Hook applies `Invoke-SpecrewCoordinatorPromptSurgery` + `-ExpertiseLine (Get-SpecrewProfileOrientationLine)` + host/runtime/lifecycle args; dot-source coordinator-prompt-surgery.ps1 + internal/user-profile.ps1 (3-tier); thread session-available inputs, default launcher-only; no Get-StartPrompt signature change | FR-023, FR-002 | US-1 | 5 | Implementer | done |
-| T044 | Inline the SELF-SUFFICIENT contract core in the injected directive (read-and-follow fix); no "see the file" deferral of parity-relevant content; keep writing last-start-prompt.md as the durable deeper reference | FR-002, FR-001 | US-1 | 4 | Implementer | planned |
+| T044 | Inline the SELF-SUFFICIENT contract core in the injected directive (read-and-follow fix); no "see the file" deferral of parity-relevant content; keep writing last-start-prompt.md as the durable deeper reference | FR-002, FR-001 | US-1 | 4 | Implementer | done |
 | T045 | Deploy-source sync: port the module provider into the extension-source copy + add a mirror-parity guard test | FR-009 | US-1 | 3 | Implementer | planned |
 | T046 | Side-by-side acceptance test — automatable content-diff (deployed layout): hook contract vs `specrew start` contract, equivalence modulo launcher-only; demote T038 to a supporting check | FR-024, SC-011 | US-1 | 4 | Implementer | planned |
 | T047 | Manual side-by-side dogfood protocol (the gate disqualifier) + honest read-and-follow record; finish the T042 getting-started honesty sweep | FR-024, FR-008 | US-2 | 2 | Implementer | planned |

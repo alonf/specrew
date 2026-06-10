@@ -22,7 +22,7 @@ function Get-BootstrapProjectRoot {
 }
 
 function Format-BootstrapDirective {
-    param($Result)
+    param($Result, [AllowNull()][string]$ContractBody = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
@@ -30,11 +30,23 @@ function Format-BootstrapDirective {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
-    # FR-002/FR-023: DRIVE (not merely orient) - point the agent at the on-disk launch contract specrew start
-    # would have written and require it to FOLLOW the governed lifecycle. This is the iter-6 upgrade over the
-    # iter-5 thin orient/menu directive: the agent loads the full ~48-rule contract + governance, so it cannot
-    # skip the workshop or drive from raw Spec Kit scripts.
-    $lines.Add(("DRIVE this session from the governed contract (FR-023): READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, and policy classes) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts." -f $contractRead, $stateRead))
+    # FR-002/FR-023 (iter-7 T044, Ruling b): DRIVE by INLINING the contract, not pointing at a file. The
+    # iter-6 directive told the agent to READ last-start-prompt.md BEFORE acting; the side-by-side disproof
+    # showed the agent never read it (a file is a skip the agent self-orients past). So when the contract
+    # body is available, inline it HERE - the agent acts on the in-context contract, with no file to skip;
+    # the file stays the durable reference re-consulted at later boundaries. Fallback to the read-the-file
+    # directive only when the body could not be captured (deployed resolution failure).
+    if (-not [string]::IsNullOrWhiteSpace($ContractBody)) {
+        $lines.Add(("Your governed launch contract for THIS session is BELOW - the SAME contract specrew start hands the agent (FR-023): the full lifecycle rules, governance, boundary authorization, the user-profile/expertise adaptation, and the coordinator framing. Follow it EXACTLY; do NOT bypass clarify or governance gates, and do NOT drive from raw Spec Kit scripts. The same contract is saved at {0} (and the current lifecycle state at {1}) for reference as you work each boundary." -f $contractRead, $stateRead))
+        $lines.Add('')
+        $lines.Add('===== BEGIN SPECREW LAUNCH CONTRACT (follow this) =====')
+        $lines.Add($ContractBody.TrimEnd())
+        $lines.Add('===== END SPECREW LAUNCH CONTRACT =====')
+        $lines.Add('')
+    }
+    else {
+        $lines.Add(("DRIVE this session from the governed contract (FR-023): READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, and policy classes) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts." -f $contractRead, $stateRead))
+    }
     if ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
         if ($d.handover.placeholder) {
             $lines.Add('[!] HOLLOW HANDOVER - the previous session did NOT author a handover body (the rolling handover is a placeholder). Your resume context is REDUCED to the lifecycle artifacts + git state. Re-derive the situation from the artifacts; do NOT present rich resume context you do not actually have. You are the backstop - surface this gap to the human.')
@@ -47,7 +59,7 @@ function Format-BootstrapDirective {
             }
         }
     }
-    $lines.Add('On your FIRST response - REGARDLESS of the user''s first message (even a task such as "create a feature ...") - LEAD with the orientation drawn from the contract you just read, THEN act on their request. Never skip it.')
+    $lines.Add('On your FIRST response - REGARDLESS of the user''s first message (even a task such as "create a feature ...") - LEAD with the orientation drawn from the contract ABOVE (rendered inline; you do not need to open a file), THEN act on their request. Never skip it.')
     $lines.Add('Render, in order: (1) orientation - Specrew version, host, project, branch, lifecycle position; (2) any validated handover summary; (3) a one-line state reason when non-default; (4) a brief recommended next step for THIS state; (5) the Resume / New / Pick-feature menu as TEXT. Offer Resume only when a valid active session exists.')
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
@@ -122,9 +134,12 @@ try {
     # so the pure classification path (Invoke-SpecrewSessionBootstrap) stays test-isolated from the
     # generator's StrictMode-Latest dependency tree. Inside the fail-open try: a broken deployed resolution
     # surfaces as no-write + exit 0 (caught by the T038 deployed floor), never a blocked session.
-    Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor | Out-Null
+    # iter-7 T044: capture the contract path, read its body, and INLINE it into the directive (Ruling b) -
+    # the agent acts on the in-context contract instead of being told to read a file it skips.
+    $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor
+    $contractBody = if ($contractPath -and (Test-Path -LiteralPath $contractPath)) { Get-Content -LiteralPath $contractPath -Raw } else { '' }
 
-    Write-Output (Format-BootstrapDirective -Result $result)
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $contractBody)
     exit 0
 }
 catch {
