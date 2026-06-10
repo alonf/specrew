@@ -7,7 +7,7 @@
 
 > **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
 >
-> This iteration's task tracking declares **9 completed task(s)**, but the git diff against baseline `7f4f2ae7482df0a8c0259c515c103c36c23d4e35` contains **20 file(s)**.
+> This iteration's task tracking declares **9 completed task(s)**, but the git diff against baseline `7f4f2ae7482df0a8c0259c515c103c36c23d4e35` contains **21 file(s)**.
 >
 > **Severity**: WARNING  
 > **Implication**: Review evidence may be incomplete or misleading.
@@ -40,7 +40,7 @@
 | scripts/internal/code-implementation-lens.ps1 | 396 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | specs/177-software-development-rules-lens/contracts/implementation-rules.schema.json | 14 | 14 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | specs/177-software-development-rules-lens/current-architecture.md | 15 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
-| specs/177-software-development-rules-lens/iterations/001/code-map.md | 80 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
+| specs/177-software-development-rules-lens/iterations/001/code-map.md | 89 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | specs/177-software-development-rules-lens/iterations/001/coverage-evidence.md | 59 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | specs/177-software-development-rules-lens/iterations/001/dashboard.md | 38 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | specs/177-software-development-rules-lens/iterations/001/dependency-report.md | 48 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
@@ -48,8 +48,9 @@
 | specs/177-software-development-rules-lens/iterations/001/plan.md | 10 | 10 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | specs/177-software-development-rules-lens/iterations/001/quality/mechanical-findings.json | 2 | 2 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | specs/177-software-development-rules-lens/iterations/001/review-diagrams.md | 54 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
-| specs/177-software-development-rules-lens/iterations/001/review.md | 64 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
-| specs/177-software-development-rules-lens/iterations/001/reviewer-index.md | 56 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
+| specs/177-software-development-rules-lens/iterations/001/review-report.yml | 94 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
+| specs/177-software-development-rules-lens/iterations/001/review.md | 103 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
+| specs/177-software-development-rules-lens/iterations/001/reviewer-index.md | 55 | 0 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | specs/177-software-development-rules-lens/iterations/001/state.md | 11 | 6 | T001, T002, T003, T004, T005, T006, T007, T008, T009 | Implementer |
 | tests/unit/code-implementation-lens.tests.ps1 | 152 | 0 | T007, T008, T009 | Implementer |
 | tests/unit/lens-conduct-delivery.tests.ps1 | 2 | 2 | T007, T008, T009 | Implementer |

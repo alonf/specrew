@@ -6,10 +6,10 @@
 
 ## Summary
 
-- Header: feature=177-software-development-rules-lens | iteration=001 | branch=177-software-development-rules-lens | commit_range=7f4f2ae7482df0a8c0259c515c103c36c23d4e35..df664aeb1505a4953e4a1c4206972d3b0a1e9139
+- Header: feature=177-software-development-rules-lens | iteration=001 | branch=177-software-development-rules-lens | commit_range=7f4f2ae7482df0a8c0259c515c103c36c23d4e35..4d47cda78ad659eff3dc42f63d11a8063b86c867
 - Verdict: accepted
 - Requirements: covered=FR-002, FR-004, FR-001, FR-013 | not_covered=(none)
-- Code Surface: files=20 | hotspots=2 | test_to_code=2:1
+- Code Surface: files=21 | hotspots=2 | test_to_code=2:1
 - Dependencies: changed=0 | new_to_project=0 | vulnerability=unscanned
 - Coverage: kind=qualitative | signal=focused_regression
 - Operational Signals: escalations=0 | routing_fallbacks=0
@@ -21,6 +21,7 @@
 ## Read Order
 
 1. [review.md](review.md)
+1. [review-report.yml](review-report.yml) — machine-readable Phase 0-7 verdicts + FR x phase matrix + falsification
 2. [code-map.md](code-map.md)
 3. [dependency-report.md](dependency-report.md)
 4. [coverage-evidence.md](coverage-evidence.md)
@@ -33,6 +34,7 @@
 ## Artifact Links
 
 - [review.md](review.md)
+- [review-report.yml](review-report.yml) — machine-readable Phase 0-7 verdicts + FR x phase matrix + falsification
 - [code-map.md](code-map.md)
 - [dependency-report.md](dependency-report.md)
 - [coverage-evidence.md](coverage-evidence.md)
@@ -52,4 +54,4 @@
 
 ## Replay Digest
 
-SPECREW_REVIEW schema=v1 iter=001 feature=177-software-development-rules-lens verdict=accepted tasks=9/9 reqs=9 files=20 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\177-software-development-rules-lens\iterations\001\reviewer-index.md
+SPECREW_REVIEW schema=v1 iter=001 feature=177-software-development-rules-lens verdict=accepted tasks=9/9 reqs=9 files=21 new_deps=0 vuln=unscanned cov=focused_regression escalations=0 drift=1/1 index=specs\177-software-development-rules-lens\iterations\001\reviewer-index.md

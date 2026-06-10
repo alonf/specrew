@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: iteration-closeout
-**Captured At**: 2026-06-10T09:15:42Z
+**Captured At**: 2026-06-10T11:36:11Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
@@ -32,7 +32,7 @@ PROJECTION
 F:0SP implementation complete | P:n/a TBD
 R:566SP 84 calendar day(s)
 WARNINGS
-Multi-developer activity detected: 4 unique git authors; 11 feature branches; 4 c...
+Multi-developer activity detected: 4 unique git authors; 12 feature branches; 4 c...
 FOOTER
 Use --ASCII any time you need the monochrome-safe fallback; stored closeout snaps...
 ```

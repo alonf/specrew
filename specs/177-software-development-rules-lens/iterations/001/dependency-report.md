@@ -6,7 +6,7 @@
 
 > **⚠️ Review Evidence Warning** _(Form-vs-Meaning Gap Detected)_
 >
-> This iteration's task tracking declares **9 completed task(s)**, but the git diff against baseline `7f4f2ae7482df0a8c0259c515c103c36c23d4e35` contains **20 file(s)**.
+> This iteration's task tracking declares **9 completed task(s)**, but the git diff against baseline `7f4f2ae7482df0a8c0259c515c103c36c23d4e35` contains **21 file(s)**.
 >
 > **Severity**: WARNING  
 > **Implication**: Review evidence may be incomplete or misleading.

@@ -2,7 +2,7 @@
   "schemaVersion": "v1",
   "featureRef": "specs/177-software-development-rules-lens/spec.md",
   "iterationRef": "specs/177-software-development-rules-lens/iterations/001",
-  "generatedAt": "2026-06-10T07:53:03Z",
+  "generatedAt": "2026-06-10T11:39:07Z",
   "generator": {
     "name": "specrew-mechanical-checks",
     "version": "0.34.0"
