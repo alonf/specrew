@@ -45,8 +45,8 @@ phases:
     evidence: "code-rules-skill-multihost + code-implementation-lens (incl. the NEW single-element-enforcement regression that fails before the fix) + lens-conduct-delivery all PASS. Unit/parity-level behavior-proving; the runtime-behavioral level is the deferred dogfood gate (D-003)."
   - id: 6
     name: system-safety-ops
-    verdict: pass
-    evidence: "No auth/secrets/PII/network. Fail-open everywhere. mechanical-checks: 0 findings. FileList bidirectional integrity green; version triple (ModuleVersion / config.yml / extension.yml) consistent at 0.35.0. Release is prepare-only -- nothing pushed/tagged/published."
+    verdict: pass-with-notes
+    evidence: "No auth/secrets/PII/network. Fail-open everywhere. mechanical-checks: 0 findings. FileList bidirectional integrity green; SOURCE version triple (ModuleVersion / config.yml / extension.yml) consistent at 0.35.0. The .specify/extensions/specrew-speckit/extension.yml MIRROR was stale at 0.34.0 at the reviewed head -- a release-prep parity gap caught at review-signoff and synced to 0.35.0 in a follow-up review-time fix; the .specify mirror is now consistent. Release is prepare-only -- nothing pushed/tagged/published."
   - id: 7
     name: falsification-and-synthesis
     verdict: pass

@@ -34,7 +34,7 @@ module (`dogfood-report.md`). The **behavioral** success criteria -- the agent i
 | 3 | NFR | pass | multi-host parity (byte-identical design-workshop across 4 hosts + code-rules deploys to all hosts); constrained-YAML; fail-open; forward-compat hooks. |
 | 4 | Code quality | pass | PSScriptAnalyzer Errors=0 (pre-existing New-/plural Warnings repo-tolerated); ASCII .ps1; markdownlint clean. |
 | 5 | Test coverage + integrity | pass | code-rules-skill-multihost + code-implementation-lens (incl. the new single-element-enforcement regression) + lens-conduct-delivery PASS; behavior-proving at the unit/parity level (the runtime-behavioral level is the deferred dogfood gate). |
-| 6 | System safety + ops | pass | no auth/secrets/PII/network; fail-open; mechanical-checks 0 findings; FileList bidirectional + version triple (0.35.0) consistent; release prepare-only, nothing published. |
+| 6 | System safety + ops | pass-with-notes | no auth/secrets/PII/network; fail-open; mechanical-checks 0 findings; FileList bidirectional + source version triple (ModuleVersion/config.yml/extension.yml) consistent at 0.35.0. The `.specify/.../extension.yml` MIRROR was stale at 0.34.0 at the reviewed head -- a release-prep parity gap caught at review-signoff + synced to 0.35.0 (Notes). Release prepare-only, nothing published. |
 | 7 | Falsification + synthesis | pass | see Report Falsification; the SCOPED accepted verdict survives refutation; the behavioral SCs are explicitly an open gate, not a claim. |
 
 ## Branch Hygiene Classification (Phase 1)
@@ -87,7 +87,7 @@ deferred-with-gate (D-003)**. Full matrix in `review-report.yml`.
 | T015 | FR-005 | pass | guidance-skill conduct-content tests green. |
 | T016 | FR-005 | pass | multi-host parity (4 deployed copies byte-identical; code-rules all-hosts). |
 | T017 | SC-004 | pass | deployed-module dogfood: wiring + manifest-authoring verified; behavioral SC-004/007/008 deferred-with-gate (D-003); surfaced+fixed the single-element-enforcement defect. |
-| T018 | SC-003 | pass | FileList +5, version triple 0.35.0, CHANGELOG, .specify parity; prepare-only, nothing published. |
+| T018 | SC-003 | pass | FileList +5, source version triple 0.35.0, CHANGELOG, .specify skills+charters parity. The `.specify/.../extension.yml` mirror was stale at 0.34.0 at the reviewed head -- caught at review-signoff + synced to 0.35.0 (see Notes). prepare-only, nothing published. |
 
 ## Drift / Conformance Review (D-002, D-003)
 
@@ -147,4 +147,10 @@ behavioral SCs are an open, recorded, maintainer-approved beta-gate (D-003), not
   96ded099..da7a0129`; the heuristic expects a 1:1 task-to-file mapping, which legitimately does not hold;
   no uncommitted or unexplained source change. (Do NOT re-run the scaffolder with -Force -- known
   ShouldProcess defect.)
+- **Review-signoff catch + fix (.specify extension.yml parity)**: T018 synced the `.specify` skill
+  templates + charters but the `.specify/extensions/specrew-speckit/extension.yml` mirror remained stale at
+  0.34.0 at the reviewed head (da7a0129). The reviewer caught it at review-signoff and synced it to 0.35.0
+  in a follow-up review-time fix; the `.specify` mirror + the source version triple are now consistent at
+  0.35.0. The 26-file code-map covers `baseline..da7a0129`, so this mirror fix is a post-reviewed-head
+  review-time correction (not part of the 26), recorded here for traceability.
 - Mechanical-checks: 0 findings. Validator: PASSES iterations/002 (38/38).
