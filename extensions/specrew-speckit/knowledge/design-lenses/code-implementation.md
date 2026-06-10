@@ -143,6 +143,38 @@ The code rules are mostly **product-level and stable**:
 - `specs/<feature>/workshop/code-implementation.md` — the human-readable lens record.
 - `code-rules.local.yml` (project root, optional) — the reusable overlay (ingested guideline + custom rules).
 
+## Manifest shape (hand-authored example)
+
+Author `implementation-rules.yml` **by hand** following this shape (like `product-domain`; you do NOT call
+a PowerShell writer). The manifest reader is a constrained YAML subset, so the indentation is exact: list
+items (`- id:`) at **2 spaces**, their properties at **4 spaces**, `dependency_policy.selected` items at
+**4 spaces** with fields at **6 spaces**; strings are double-quoted, booleans are bare (`true` / `false`),
+and `enforcement` is an inline list. `selections` reference `code-rules.yml` ids (an unchecked baseline id
+is a recorded exception); `provenance.confirmation` pairs with `confirmation_scope`
+(`human-confirmed`->`lens-question`, `human-delegated`->`explicit-delegation`,
+`human-skipped`->`explicit-skip`). Validate against `implementation-rules.schema.json`.
+
+```yaml
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "csharp-dotnet"
+selections:
+  - id: "code-rule.dependency-injection"
+    checked: true
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "Result type at the service boundary; ProblemDetails at the API edge."
+    enforcement: [review]
+  - id: "code-rule.comments-wisely"
+    checked: false
+custom_rules: []
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"
+```
+
 ## Source Notes
 
 - Proposal 163 (Code & Implementation Lens) — the 49-rule maintainer baseline + the research baseline.

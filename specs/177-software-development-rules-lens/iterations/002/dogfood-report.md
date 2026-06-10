@@ -59,34 +59,42 @@ deployed module: it projected to a JSON **string** instead of an **array**
   `tests/unit/code-implementation-lens.tests.ps1` (would have failed before the fix; passes after).
 - **Re-validated** on the deployed layout after the fix: **0 errors**.
 
-## Success-criteria assessment
+## Success-criteria assessment -- behavioral SCs are NOT YET VERIFIED here
 
-The deployed artifacts contain actionable, grouped, dependency-aware guidance, demonstrated against a
-sample C#/.NET "user-profile read endpoint" feature whose manifest selects DI, idiomatic-error-handling
-(Result-type + ProblemDetails), authz (imperative ownership check), DTOs-between-services, and the C# net8
-posture, with `comments-wisely` recorded as an exception and `dependency_policy.stance =
-use-existing-no-new-dependency`.
+SC-004 / SC-007 / SC-008 are **behavioral** criteria (the agent is *actually* guided; the human is *not*
+walled; a new dependency is *not* added without surfacing). Those cannot be established by inspecting the
+deployed artifacts, nor by the author of those artifacts reading them and judging them followable -- that
+is circular. This project has direct counter-evidence that correct conduct can still produce wrong
+behavior: the testLenses8/11 in-band under-surfacing on the Claude host and the workshop "Approve+Delegate"
+collapse both happened with the conduct authored correctly. So this report does **not** grade these PASS.
 
-- **SC-004 (the agent is actually guided at implement time)** -- PASS at the artifact + exercise level.
-  The deployed `specrew-code-rules` skill resolves the active feature, reads the manifest + catalog,
-  composes baseline + overlay, and surfaces it task-scoped; the sample manifest's decisions are concrete
-  enough to shape the code.
-- **SC-007 (the human faces a grouped checklist, not a wall)** -- PASS at the artifact level. The deployed
-  conduct surfaces the baseline as a **summary (exceptions only)**, paces the consequential decision
-  prompts, and shows applicability-filtered rules only in context -- so a code feature sees a handful of
-  grouped decisions, not the 60-rule catalog.
-- **SC-008 (a new dependency is never added without surfacing the decision)** -- PASS at the artifact
-  level. The conduct presents "use existing project tools / no new dependency" FIRST; the skill instructs
-  the agent not to silently add a package and to surface any new dependency as a decision.
+What this dogfood DID verify (artifact-level, against a sample C#/.NET "user-profile read endpoint" whose
+manifest selects DI, idiomatic-error-handling = Result-type + ProblemDetails, authz = imperative ownership
+check, DTOs-between-services, the C# net8 posture, `comments-wisely` as a recorded exception, and
+`dependency_policy.stance = use-existing-no-new-dependency`):
+
+- **SC-004 (agent actually guided)** -- NOT-YET-VERIFIED. Artifact-level: the deployed `specrew-code-rules`
+  skill resolves the active feature, reads the manifest + catalog, composes baseline + overlay, and is
+  worded to surface task-scoped; the sample manifest's decisions are concrete enough to shape code. Whether
+  the agent actually follows it without re-pasting is the human-on-beta confirmation.
+- **SC-007 (no rule wall)** -- NOT-YET-VERIFIED. Artifact-level: the deployed conduct is worded to surface
+  the baseline as a **summary (exceptions only)**, pace the consequential decision prompts, and show
+  applicability-filtered rules only in context -- structurally a handful of grouped decisions, not the
+  60-rule catalog. Whether the agent actually paces vs dumps a wall on a given host is the human-on-beta
+  confirmation (under-surfacing has regressed here before).
+- **SC-008 (dependency stance honored)** -- NOT-YET-VERIFIED (most content-checkable of the three). The
+  conduct presents "use existing project tools / no new dependency" FIRST and the skill instructs the agent
+  not to silently add a package; "honored" still means the agent actually refrains, which is behavioral.
 
 ## Residual (the feature-closeout gate)
 
 The **definitive** SC-004 / SC-007 / SC-008 confirmation is an independent human running the **published**
 `v0.35.0-beta.1` on a real host (per the beta-before-stable mandate: the maintainer manually validates the
-installed prerelease). That cannot run before publish, which is gated to feature-closeout approval. This
-report establishes that the deployed layout installs, wires up, and validates correctly, and that the
-manifest-authoring path the corrected conduct mandates works end-to-end on the deployed module -- so the
-human beta validation starts from a de-risked base.
+installed prerelease). That cannot run before publish, which is gated to feature-closeout approval.
 
-**Verdict: PASS** for the deployed-module wiring + manifest-authoring gate; the human-on-published-beta
-behavioral confirmation remains the feature-closeout step.
+**Verdict: PASS** for the deployed-module **wiring + manifest-authoring** gate (everything in the
+deployment table above plus the hand-authored-manifest validation, all objectively checked). The
+**behavioral** SC-004 / SC-007 / SC-008 are NOT-YET-VERIFIED and remain the human-on-published-beta step at
+feature-closeout. This report's value is that the human beta validation now starts from a de-risked base:
+the deployed layout installs, wires up, and validates, and the manifest-authoring path the corrected
+conduct mandates works end-to-end on the deployed module.
