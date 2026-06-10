@@ -1,0 +1,124 @@
+schema_version: "1.0"
+feature: 177-software-development-rules-lens
+iteration: "002"
+baseline_ref: 96ded099a4e29db56c8e26de441af9da13896db4
+reviewed_implementation_head: da7a0129
+reviewed: "2026-06-10"
+overall_verdict: accepted
+verdict_scope: >-
+  Accepted for i2 DELIVERY + DEPLOYMENT WIRING + manifest-authoring (objectively verified). The behavioral
+  SC-004 / SC-007 / SC-008 are NOT verified -- they are an OPEN beta-gate obligation (D-003) confirmed only
+  by the published-beta human dogfood, a hard precondition for stable promotion. No push/tag/publish/beta
+  until feature-closeout approval.
+scope: >-
+  i2 delivery (T010-T018): specrew-code-rules guidance skill, design-workshop code-lens conduct turn,
+  assisted ingestion, plan/implement wiring, skill + multi-host parity tests, the deployed-module dogfood
+  (T017), and release-prep (T018, prepare-only).
+note: >-
+  Proposal 145 is unshipped, so this packet is authored manually. reviewed_implementation_head is pinned so
+  committing the packet does not stale its own metadata (the i1 proposal candidate, applied here).
+
+phases:
+  - id: 0
+    name: context-load
+    verdict: pass
+    evidence: "spec.md, plan.md, tasks.md, i1-closeout (96ded099), dogfood-report.md loaded; scope = i2 (T010-T018)."
+  - id: 1
+    name: branch-hygiene
+    verdict: pass-with-notes
+    evidence: "Branch ahead 35 (F-177 commits), behind 4 (origin/main advanced -- reconcile by MERGE at feature-closeout). Dirty tree classified (branch_hygiene): NONE F-177 source; all i2 changes committed (26 files, 96ded099..da7a0129)."
+  - id: 2
+    name: functional-correctness
+    verdict: pass
+    evidence: "Guidance skill resolves the active feature -> manifest + catalog -> baseline+overlay, surfaced task-scoped, fail-open, dependency_policy honored. Conduct turn shipped (manifest hand-authored, D-002). Deployed dogfood proved downstream catalog + skill + lens-turn deployment to all hosts and that a hand-authored manifest validates on the deployed module. NOTE: behavioral surfacing is the SC-004/007/008 gate, not a Phase-2 claim."
+  - id: 3
+    name: nfr
+    verdict: pass
+    evidence: "Multi-host parity (4 design-workshop copies byte-identical; code-rules auto-deploys to every host). Constrained-YAML (no powershell-yaml). Fail-open. Forward-compat context_scope hooks."
+  - id: 4
+    name: code-quality
+    verdict: pass
+    evidence: "PSScriptAnalyzer Errors=0 (pre-existing New-/plural-noun Warnings are the repo-tolerated class). ASCII-clean .ps1; markdownlint clean across the iteration."
+  - id: 5
+    name: test-coverage-integrity
+    verdict: pass
+    evidence: "code-rules-skill-multihost + code-implementation-lens (incl. the NEW single-element-enforcement regression that fails before the fix) + lens-conduct-delivery all PASS. Unit/parity-level behavior-proving; the runtime-behavioral level is the deferred dogfood gate (D-003)."
+  - id: 6
+    name: system-safety-ops
+    verdict: pass
+    evidence: "No auth/secrets/PII/network. Fail-open everywhere. mechanical-checks: 0 findings. FileList bidirectional integrity green; version triple (ModuleVersion / config.yml / extension.yml) consistent at 0.35.0. Release is prepare-only -- nothing pushed/tagged/published."
+  - id: 7
+    name: falsification-and-synthesis
+    verdict: pass
+    evidence: "See falsification[]; the SCOPED accepted verdict survives; the behavioral SCs are explicitly the open D-003 beta-gate, not an i2 claim."
+
+fr_phase_matrix:
+  FR-001: { status: verified, phases: [2, 5], evidence: "registration (i1; reconfirmed green in i2)" }
+  FR-002: { status: verified, phases: [2, 5], evidence: "code-rules.yml 60 rules (i1; reconfirmed)" }
+  FR-003: { status: delivered-behavioral-deferred, gate: D-003, phases: [2, 5], evidence: "design-workshop code-lens turn shipped + deployed; the grouped-checklist BEHAVIOR is the SC-007 gate, not verified here" }
+  FR-004: { status: verified, phases: [2, 5], evidence: "manifest schema + a hand-authored manifest validates on the deployed module" }
+  FR-005: { status: verified, phases: [2, 3, 5], evidence: "specrew-code-rules deploys to all 4 hosts (dogfood downstream deployment + parity test)" }
+  FR-006: { status: verified, phases: [2], evidence: "Planner directive + Implementer charter pointer shipped (T014)" }
+  FR-007: { status: verified, phases: [2, 5], evidence: "context_scope hook (i1; reconfirmed)" }
+  FR-008: { status: verified, phases: [2, 5], evidence: "baseline-only skill mode (skill content + fail-open test; SC-006)" }
+  FR-009: { status: delivered-behavioral-deferred, gate: D-003, phases: [2], evidence: "set/unset + custom rules in conduct + schema; the INTERACTIVE behavior is the SC-007 gate" }
+  FR-010: { status: delivered-behavioral-deferred, gate: D-003, phases: [2], evidence: "source-of-truth-first in conduct; the AGENT-ASKS-FIRST behavior is the SC-004/007 gate" }
+  FR-011: { status: delivered-behavioral-deferred, gate: D-003, phases: [2], evidence: "assisted ingestion in conduct; the AGENT-INGESTS behavior is the SC-004 gate" }
+  FR-012: { status: verified, phases: [2, 5], evidence: "overlay never-drops + custom provenance (i1; reconfirmed)" }
+  FR-013: { status: verified, phases: [2, 5], evidence: "dependency_policy capture + the dogfood manifest exercised the stance" }
+
+sc_matrix:
+  SC-001: { status: verified, evidence: "registration tests" }
+  SC-002: { status: verified, evidence: "schema-valid manifest produced + validated (incl. on the deployed module)" }
+  SC-003: { status: verified, evidence: "multi-host skill parity (T016 byte-identical + code-rules all-hosts + dogfood downstream deployment)" }
+  SC-004: { status: deferred-with-gate, gate: D-003, evidence: "the agent is ACTUALLY guided -- behavioral; confirmed only at the published-beta human dogfood. NOT verified in i2." }
+  SC-005: { status: verified, evidence: "catalog integrity (T007; reconfirmed)" }
+  SC-006: { status: verified, evidence: "baseline-only skill mode (skill content + fail-open test)" }
+  SC-007: { status: deferred-with-gate, gate: D-003, evidence: "the human is NOT walled -- behavioral; under-surfacing precedent (testLenses8/11); confirmed only at the published-beta human dogfood. NOT verified in i2." }
+  SC-008: { status: deferred-with-gate, gate: D-003, evidence: "the dependency stance is ACTUALLY honored (agent refrains from silent adds) -- behavioral; confirmed only at the published-beta human dogfood. NOT verified in i2." }
+
+branch_hygiene:
+  ahead: 35
+  behind: 4
+  reconcile: "MERGE origin/main at feature-closeout (not mid-iteration)"
+  committed_changeset: "26 files in git diff 96ded099..da7a0129 (the i2 deliverables + governance artifacts)"
+  dirty_classification:
+    - { paths: ".claude/agents/*.md (5)", class: pre-existing-session-churn, f177: false, action: "review separately; present before this session per session-start git status" }
+    - { paths: ".specrew/last-validator-summary.json, .specrew/runtime/refocus-channel1.json, .specrew/version-check-cache.json", class: runtime-state-cache, f177: false, action: "gitignore-class; not source" }
+    - { paths: ".squad/active-features.yml, config.json, decisions.md, events/lifecycle-events.jsonl, identity/now.md", class: squad-runtime-state, f177: false, action: "written during the lifecycle; runtime-local, not F-177 source" }
+    - { paths: "specs/171-specrew-refocus/iterations/002/tasks-progress.yml", class: stale-171-leftover, f177: false, action: "unrelated to F-177; cleanup-class" }
+  conclusion: "No F-177 source change is uncommitted; all i2 deliverables are in the boundary commits."
+
+drift_conformance:
+  - id: D-002
+    title: "Manifest capture changed from a PowerShell writer-call to hand-authored (T012/T013)"
+    classification: conformant-accepted-variance
+    status: resolved
+    evidence: >-
+      Same requirement intent (a schema-valid reference-by-ID manifest is still captured); only the authoring
+      mechanism changed to the portable, deployed-safe product-domain pattern. The PS writer/validator are
+      now test-only by design (not dead code). A hand-authored manifest validates schema+catalog on the
+      deployed module. Maintainer-approved 2026-06-10.
+  - id: D-003
+    title: "T017 behavioral SC-004/SC-007/SC-008 deferred-with-gate to the published beta"
+    classification: open-beta-gate-obligation
+    status: open
+    gate: "the published v0.35.0-beta.1 human dogfood MUST confirm SC-004/SC-007/SC-008 before stable promotion"
+    evidence: >-
+      Conduct + skill + deployment are in place and wiring is verified, but behavioral satisfaction cannot be
+      established by autonomous artifact inspection (under-surfacing precedent: testLenses8/11, the workshop
+      Approve+Delegate collapse), and publish is gated to feature-closeout. NOT resolved in i2; MUST NOT be
+      treated as satisfied. Maintainer-approved defer 2026-06-10.
+
+falsification:
+  attempts:
+    - { claim: "behavioral SC-004/007/008 are verified in i2", refutation_tried: "look for any matrix/section grading them verified", outcome: "refutation CONFIRMS the claim is false by design -- every cell reads deferred-with-gate (D-003); they are NOT verified" }
+    - { claim: "D-003 is hidden or treated as resolved", refutation_tried: "scan drift-log + conformance + gap-ledger for its status", outcome: "refutation FAILS -- D-003 is recorded OPEN and gates stable promotion" }
+    - { claim: "the guidance skill mis-resolves or mis-composes", refutation_tried: "trace resolve -> manifest+catalog -> baseline+overlay + fail-open", outcome: "refutation FAILS -- dogfood + skill tests confirm the resolution path" }
+    - { claim: "manifest-authoring is broken on the deployed module", refutation_tried: "validate a hand-authored manifest on the staged 0.35.0 module", outcome: "refutation FAILS -- schema+catalog valid; the single-element-enforcement defect was caught + fixed + regression-tested" }
+    - { claim: "multi-host parity is over-claimed", refutation_tried: "byte-compare the 4 design-workshop copies + check code-rules host-scope", outcome: "refutation FAILS -- byte-identical; code-rules deploys to every host; dogfood confirmed downstream" }
+    - { claim: "the release over-reaches (published)", refutation_tried: "check for any push/tag/publish", outcome: "refutation FAILS -- prepare-only; nothing pushed/tagged/published" }
+    - { claim: "a conduct FR (003/009/010/011) is over-claimed as verified", refutation_tried: "read each conduct-FR cell", outcome: "refutation FAILS -- each reads delivered; behavioral deferred-with-gate (D-003)" }
+  result: >-
+    The accepted verdict survives falsification for i2 DELIVERY + DEPLOYMENT-WIRING scope. The behavioral
+    SC-004/007/008 are an open, recorded, maintainer-approved beta-gate (D-003), not an i2 claim.
