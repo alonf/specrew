@@ -209,12 +209,20 @@ Proposals 097 + 122 + a planned 178 later). This keeps the feature self-containe
 
 ## Human Decision
 
-- **Decision verdict**: PENDING — awaiting the design-analysis verdict ("approved for plan with Option <X>")
-- **Chosen option**: PENDING
-- **Reason**: PENDING
-- **Modifications**: PENDING
-- **Design-analysis draft commit**: (this commit)
-- **Decision recorded in commit**: PENDING
+- **Decision verdict**: approved for plan with Option B
+- **Chosen option**: Option B (data-driven catalog + per-feature manifest + one static guidance skill;
+  full feature, self-contained, no 145 gate)
+- **Reason**: the maintainer selected verdict 1 ("approve for plan with Option B"). Option B is the exact
+  ruled scope — the full feature with active implement-time guidance, built self-contained and
+  forward-compatible. Option A under-builds (violates the full-feature + guidance-skill rulings); Option C
+  over-builds (violates the no-145 / no-parallel-engine ruling and pulls in unshipped 156/145).
+- **Modifications**: carry **FR-013** (Tooling / Dependency Selection Research, added pre-plan) with the
+  capture-field set as listed, and the **~2-iteration split** into planning. i1 = catalog, manifest
+  schema, lens md, registration, dependency-selection area; i2 = guidance skill, guideline ingestion,
+  overlay, plan/implement wiring, tests.
+- **Design-analysis draft commit**: `4b67fb88`
+- **Decision recorded in commit**: the `boundary(design-analysis): record Human Decision Option B` commit
+  that contains this populated decision (created at this verdict).
 
 ## Co-Design Record
 
