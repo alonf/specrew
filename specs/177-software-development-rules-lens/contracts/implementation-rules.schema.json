@@ -40,7 +40,7 @@
           "id": { "type": "string", "minLength": 1 },
           "text": { "type": "string", "minLength": 1 },
           "scope": { "type": "string" },
-          "provenance": { "enum": ["free-text", "pasted-doc", "from-guideline"] }
+          "provenance": { "enum": ["free-text", "pasted-doc", "from-guideline", "from-example-project"] }
         }
       }
     },

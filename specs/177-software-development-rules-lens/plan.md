@@ -225,14 +225,16 @@ deployment code); the manifest writer/validator is a new PowerShell helper. No n
 
 ## Iteration Breakdown (~2 iterations; capacity finalized at tasks)
 
-- **Iteration 001 (i1) — capture substrate (~10-13 SP)**: `code-rules.yml` catalog (the 49 rules +
-  per-stack, grouped + scope-tagged, stable IDs) + `implementation-rules.schema.json` (incl.
+- **Iteration 001 (i1) — capture substrate (~10-13 SP)**: `code-rules.yml` catalog (the Proposal-163
+  baseline, the F-177 additions (Strategy/State, polymorphism-mechanism, SOLID), and per-stack defaults;
+  grouped + scope-tagged, stable IDs) + `implementation-rules.schema.json` (incl.
   `dependency_policy`) + `code-implementation.md` lens md + registration (index.yml, applicability-map,
   `$lensIds`) + the manifest writer/validator + the FR-013 dependency-selection decision area + catalog +
   manifest tests.
 - **Iteration 002 (i2) — delivery + guidance (~10-14 SP)**: the `specrew-code-rules` guidance skill
-  (resolver + baseline+overlay) + the design-workshop code-lens turn (guideline-first, grouped checklist,
-  ingestion, custom rules, overlay) + plan/implement wiring (Planner directive + Implementer pointer) +
+  (resolver + baseline+overlay) + the design-workshop code-lens turn (guideline-first incl.
+  example-project ingestion, grouped checklist, custom rules, overlay) + plan/implement wiring (Planner
+  directive + Implementer pointer) +
   multi-host parity + the dogfood (SC-004/007/008) + release (FileList + extension.yml 0.34.0→0.35.0 +
   beta).
 

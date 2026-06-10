@@ -11,8 +11,9 @@ English, terminal). Two interaction surfaces.
 code-implementation lens turn (human-facing)
 
   Step 0  SOURCE OF CODE-RULES TRUTH   (FIRST — the Figma-equivalent question)
-            "Do you have an existing coding guideline / standards doc — yours or your company's?
-             Paste it, point me at a file, or say 'no'."
+            "Do you have an existing coding guideline / standards doc — OR one or more example projects
+             to emulate (GitHub repo, local path, or other) for code style, language constructs, and
+             patterns? Paste / point me at a doc or project, or say 'no'."
               ├─ HAVE ONE → INGEST it (assisted mapping): map onto our catalog (auto-check matches,
               │             flag conflicts for the human) + extract rules NOT in our catalog as new
               │             custom items + (company/org-level) save to PROJECT OVERLAY

@@ -101,6 +101,21 @@ dependency-report registry/CVE automation (Proposal 122) stay out of scope and c
 planned Proposal 178). Recorded in the design-analysis (DP8 + Co-Design Record) at
 file:///C:/Dev/Specrew-software-development-rules-lens/specs/177-software-development-rules-lens/iterations/001/design-analysis.md
 
+### Session 2026-06-10 (plan-stage additions — human-directed, minor)
+
+At the plan→tasks stop the maintainer added four minor enrichments (no architecture change):
+
+- **Example projects as a source of truth** (FR-010/FR-011): besides a guideline document, the human may
+  point to one or more example projects (GitHub repo, local path, or other); the lens ingests code-style,
+  language-construct, and pattern conventions *by example* (assisted, agent-reasoning), recording
+  provenance `from-example-project`.
+- **Three new catalog rules** (FR-002): prefer Strategy/State over repeated identical conditionals;
+  choose the polymorphism mechanism deliberately (functional/lambda vs inheritance/interfaces); SOLID as a
+  baseline posture (composing with the existing OCP/DI rules, not duplicating them).
+
+These extend the catalog content + the ingestion source set; the 2-iteration split and Option B
+architecture are unchanged.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Coding agent is guided by the feature's code rules at implement time (Priority: P1)
@@ -212,10 +227,15 @@ active host skill root (parity test); verify the manifest carries `context_scope
 - **FR-001**: A `code-implementation` lens MUST exist and be registered in the catalog (`index.yml`,
   `applicability-map.json`, the `specrew-design-workshop` lens map, the `$lensIds` test list), with a
   lens md carrying the decision spine, per-stack dilemma sections, run-cadence, and workshop conduct.
-- **FR-002**: A data-driven `code-rules.yml` catalog MUST ship with Specrew encoding the 49 maintainer
-  default rules + per-stack defaults, each with a stable `id`, `group`
-  (baseline-default / decision-prompt / applicability-filtered / enforcement-mode), `scope`
-  (cross-language / language:&lt;x&gt; / framework:&lt;y&gt;), applicability, and default.
+- **FR-002**: A data-driven `code-rules.yml` catalog MUST ship with Specrew encoding the maintainer
+  default rule set (the Proposal 163 baseline) **plus the F-177 additions** — (a) prefer the **Strategy or
+  State** pattern over multiple repeated/identical conditionals (or a growing type/state switch);
+  (b) choose the **polymorphism mechanism** deliberately — functional (lambdas/closures/higher-order
+  functions) vs inheritance/interfaces — by variation shape, testability, and stack idiom; (c) **SOLID** as
+  a baseline design posture (SRP / OCP / LSP / ISP / DIP), adapted to the stack and composing with the
+  existing extension-point (OCP) and DI (DIP) rules rather than duplicating them — plus per-stack defaults.
+  Each rule carries a stable `id`, `group` (baseline-default / decision-prompt / applicability-filtered /
+  enforcement-mode), `scope` (cross-language / language:&lt;x&gt; / framework:&lt;y&gt;), applicability, and default.
 - **FR-003**: Run via the workshop, the lens MUST resolve the feature's stack and present rules via the
   grouping model (baseline stated as defaults+exceptions; decision-prompts surfaced; applicability-filtered
   shown only when the context applies), capturing the human's selections/decisions and checked/unchecked
@@ -239,10 +259,15 @@ active host skill root (parity test); verify the manifest carries `context_scope
   (baseline-only mode).
 - **FR-009**: The human MUST be able to set/unset individual rules and add custom rules.
 - **FR-010**: The lens MUST open with a "source of code-rules truth" question — whether the human has an
-  existing coding guideline (paste / point / none) — the way ui-ux asks about Figma.
-- **FR-011**: When a guideline is provided, the lens MUST perform assisted ingestion: map it onto the
-  catalog (auto-check matches, flag conflicts for the human), and extract rules not in the catalog as
-  custom items, recording provenance. No deterministic guideline parser is required.
+  existing coding guideline (paste / point) **or one or more example projects to emulate (a GitHub repo, a
+  local path, or other) for code style, language-construct usage, and patterns** — or none — the way ui-ux
+  asks about Figma.
+- **FR-011**: When a guideline **or example project(s)** are provided, the lens MUST perform assisted
+  ingestion: for a document, map it onto the catalog (auto-check matches, flag conflicts for the human) and
+  extract non-catalog rules as custom items; **for an example project, examine its code to infer
+  code-style, language-construct, and pattern conventions, map them onto the catalog the same way, and
+  extract notable conventions as custom rules** — recording provenance, including the source reference. No
+  deterministic parser is required (agent-reasoning + human confirmation).
 - **FR-012**: Custom rules MUST be accepted via free-text OR a pasted document, captured into the
   per-feature manifest, with company/org-level rules persistable to a reusable project overlay
   (`code-rules.local.yml`) that merges additively + per-rule override and never silently drops a shipped
@@ -314,8 +339,9 @@ active host skill root (parity test); verify the manifest carries `context_scope
   skill dir (multi-host parity test green).
 - **SC-004**: At implement time the skill surfaces the selected rules and generated code reflects them —
   **validated by dogfood, not file-presence**.
-- **SC-005**: The catalog has unique/stable rule IDs, validates against its schema, and contains the 49
-  maintainer rules + per-stack defaults, grouped and scope-tagged.
+- **SC-005**: The catalog has unique/stable rule IDs, validates against its schema, and contains the
+  maintainer rule set (the Proposal 163 baseline plus the F-177 additions — Strategy/State,
+  polymorphism-mechanism, SOLID) + per-stack defaults, grouped and scope-tagged.
 - **SC-006**: With no manifest, the skill still surfaces baseline-default rules.
 - **SC-007**: The rule-volume UX holds — the human is never shown a flat wall; only material rules need a
   decision — **validated by the dogfood human experience**.

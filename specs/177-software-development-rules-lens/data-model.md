@@ -74,7 +74,7 @@ with Proposal 162's product-baseline tier).
 | `context_scope` | enum | yes | `feature_standalone` (V1) / `product_baseline` / `feature_delta` (162) | inheritance hook; V1 writes feature_standalone |
 | `resolved_stack` | string | yes | the stack chosen at the lens turn | drives which slices apply |
 | `selections` | object[] | yes | each references a catalog `id`; `checked` bool; optional `decision` + `enforcement` | reference-by-ID selected rules + per-rule decisions; unchecked baseline = recorded exception |
-| `custom_rules` | Rule[] | no | unique ids; `provenance` (`free-text` / `pasted-doc` / `from-guideline`) | feature-scoped custom rules |
+| `custom_rules` | Rule[] | no | unique ids; `provenance` (`free-text` / `pasted-doc` / `from-guideline` / `from-example-project`) | feature-scoped custom rules (incl. conventions inferred from an example project) |
 | `dependency_policy` | DependencyPolicy | no | present when FR-013 triggered | the tooling/dependency selection |
 | `provenance` | object | yes | confirmation provenance (mirrors lens confirmation) | how the selections were confirmed |
 

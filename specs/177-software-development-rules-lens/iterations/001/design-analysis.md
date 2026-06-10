@@ -281,3 +281,10 @@ flowchart LR
   `lens-applicability.json`); reaffirmed at the design-analysis verdict. The tooling/dependency-selection
   decision area (DP8/FR-013) was added at the maintainer's explicit pre-plan direction (2026-06-10) and
   is part of this co-design.
+
+**Plan-stage additions (2026-06-10, human-directed, minor — no architecture change):** (1) the
+source-of-truth (DP5/FR-010/FR-011) extends to **example projects** (GitHub/local/other), ingested by
+example with provenance `from-example-project`; (2) three catalog rules added (FR-002): Strategy/State
+over repeated conditionals, polymorphism-mechanism choice (functional vs inheritance/interfaces), and
+SOLID as a baseline (composing with the existing OCP/DI rules). Catalog content + ingestion sources only;
+Option B and the 2-iteration split stand.
