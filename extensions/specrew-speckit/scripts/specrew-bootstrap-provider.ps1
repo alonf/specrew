@@ -30,6 +30,16 @@ function Format-BootstrapDirective {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
+    # FR-001 (banner fix, 2026-06-10): the orientation BANNER is mandatory on EVERY host and must render
+    # FIRST. It was skipped on claude (the render instruction sat AFTER the ~45KB inline contract, so claude
+    # skimmed past it to the task; copilot rendered it). Hoist the full, EXPANDED banner mandate to the TOP -
+    # before the contract - and name the "how we work" + user-profile/expertise content the human expects.
+    $lines.Add('=== MANDATORY FIRST ACTION - render before anything else, on EVERY host ===')
+    $lines.Add('On your VERY FIRST response - BEFORE anything else and REGARDLESS of the user''s first message (even a task like "create a feature ...") - render the Specrew ORIENTATION BANNER as visible prose, THEN act on the request. The banner is mandatory on every host; never skip it. Render, in order:')
+    $lines.Add('  (1) Specrew is governing this session, and HOW we work: a spec-driven lifecycle with human-authorized boundaries - you DRIVE the gates and do NOT free-run the SDLC.')
+    $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
+    $lines.Add('  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them.')
+    $lines.Add('  (4) Any validated handover summary; (5) a one-line state reason when non-default; (6) a brief recommended next step for THIS state; (7) the Resume / New / Pick-feature menu as TEXT (offer Resume only when a valid active session exists).')
     # FR-002/FR-023 (iter-7 T044, Ruling b): DRIVE by INLINING the contract, not pointing at a file. The
     # iter-6 directive told the agent to READ last-start-prompt.md BEFORE acting; the side-by-side disproof
     # showed the agent never read it (a file is a skip the agent self-orients past). So when the contract
@@ -59,8 +69,7 @@ function Format-BootstrapDirective {
             }
         }
     }
-    $lines.Add('On your FIRST response - REGARDLESS of the user''s first message (even a task such as "create a feature ...") - LEAD with the orientation drawn from the contract ABOVE (rendered inline; you do not need to open a file), THEN act on their request. Never skip it.')
-    $lines.Add('Render, in order: (1) orientation - Specrew version, host, project, branch, lifecycle position; (2) any validated handover summary; (3) a one-line state reason when non-default; (4) a brief recommended next step for THIS state; (5) the Resume / New / Pick-feature menu as TEXT. Offer Resume only when a valid active session exists.')
+    $lines.Add('Reminder (do not skip): your FIRST response MUST open with the MANDATORY orientation banner described at the top - Specrew + how-we-work + version/host/project/branch/lifecycle position + the user-profile/expertise adaptation (what you know about the human) - and only THEN address the user''s request.')
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
     }
@@ -72,10 +81,14 @@ function Format-BootstrapDirective {
 try {
     $eventJson = ''
     $rootOverride = $null
+    $hostKind = 'claude'
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKind = [string]$args[$i + 1] }
     }
+    # Hooks only deploy for these kinds; an unknown value fails safe to the claude default.
+    if ($hostKind -notin @('claude', 'codex', 'copilot', 'cursor')) { $hostKind = 'claude' }
 
     # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011).
     $source = $null
@@ -127,7 +140,7 @@ try {
     if (Test-SpecrewLauncherBootstrapRecent -ProjectRoot $root -NowUtc $nowUtc) { exit 0 }
 
     $journalPath = Join-Path $root '.specrew/runtime/bootstrap-journal.jsonl'
-    $result = Invoke-SpecrewSessionBootstrap -RawEvent $eventJson -HostName claude -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
+    $result = Invoke-SpecrewSessionBootstrap -RawEvent $eventJson -HostName $hostKind -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
 
     # FR-023: the hook DRIVES - write the SAME launch contract + ensure boundary_enforcement on disk. The
     # manager component owns this logic (Write-SpecrewLaunchContractArtifact); the adapter invokes it here
@@ -135,11 +148,30 @@ try {
     # generator's StrictMode-Latest dependency tree. Inside the fail-open try: a broken deployed resolution
     # surfaces as no-write + exit 0 (caught by the T038 deployed floor), never a blocked session.
     # iter-7 T044: capture the contract path, read its body, and INLINE it into the directive (Ruling b) -
-    # the agent acts on the in-context contract instead of being told to read a file it skips.
-    $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor
+    # the agent acts on the in-context contract instead of being told to read a file it skips. The contract
+    # file is ALWAYS written here (the codex pointer path below depends on it existing on disk).
+    # Resolve the Specrew version from the module manifest ($moduleRoot came from the same 3-tier chain) so the
+    # mandatory orientation banner renders the REAL version, not "Specrew: unknown" (the surgery defaults to
+    # "unknown" with no version). Fail-soft: an unreadable manifest leaves it null (banner falls back to unknown).
+    $specrewVersion = $null
+    try { $specrewVersion = [string]((Import-PowerShellDataFile -Path (Join-Path $moduleRoot 'Specrew.psd1')).ModuleVersion) } catch { $specrewVersion = $null }
+    $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor -SpecrewVersion $specrewVersion
     $contractBody = if ($contractPath -and (Test-Path -LiteralPath $contractPath)) { Get-Content -LiteralPath $contractPath -Raw } else { '' }
 
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $contractBody)
+    # Host delivery policy (F-174 codex fix, 2026-06-10 - DELIVERY only; contract FRAMING unchanged):
+    #   claude         -> INLINE the full contract. Claude SKIPS a "read this file" pointer and self-orients
+    #                     past it (the iter-6 disproof), so the contract must be in-context.
+    #   codex          -> POINTER to the file. Codex silently DROPS the oversized (~50KB) SessionStart
+    #                     additionalContext (rollout-proven 2026-06-10: nothing surfaced, codex vibe-coded
+    #                     past every gate) AND it reads files - so hand it the lean read-the-file directive
+    #                     (Format-BootstrapDirective's else branch, which also says don't bypass gates /
+    #                     don't drive from raw Spec Kit).
+    #   copilot/cursor -> INLINE for now. UNVERIFIED on those hosts (different injection envelopes); left
+    #                     native pending an empirical test. Flip to the pointer here if they drop too.
+    $inlineContract = ($hostKind -ne 'codex')
+    $directiveBody = if ($inlineContract) { $contractBody } else { '' }
+
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody)
     exit 0
 }
 catch {

@@ -141,7 +141,8 @@ function Write-SpecrewLaunchContractArtifact {
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $Mode,
         [AllowNull()][pscustomobject] $SessionState,
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')][string] $HostKind = 'claude'
+        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')][string] $HostKind = 'claude',
+        [AllowNull()][string] $SpecrewVersion = $null
     )
 
     # The hook's anchor (Get-SpecrewSessionAnchor) and the generator's resume block use DIFFERENT field
@@ -186,9 +187,9 @@ function Write-SpecrewLaunchContractArtifact {
     # adaptation (the ExpertiseLine) + the per-host coordinator framing live in THIS step, NOT in
     # Get-StartPrompt - iter-6 skipped it, producing the thin contract the side-by-side disproved.
     # Get-SpecrewProfileOrientationLine reads the session-available user-profile (~/.specrew/user-profile.yml);
-    # $null when none is set. SpecrewVersion/CrewRuntimeStatus stay at AllowNull defaults - the load-bearing
-    # parity content is the ExpertiseLine + the coordinator header; the side-by-side (T046) is the arbiter for
-    # any residual gap (Ruling b).
+    # $null when none is set. CrewRuntimeStatus stays at its AllowNull default (the hook makes no crew-runtime
+    # scan); SpecrewVersion is threaded from the provider (resolved from the module manifest) so the mandatory
+    # orientation banner renders the REAL version instead of "Specrew: unknown" (the banner-fix follow-on).
     $expertiseLine = $null
     try { $expertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile) } catch { $expertiseLine = $null }
     $featureRefValue = [string](Get-SpecrewProp $generatorSessionState 'feature_ref')
@@ -196,6 +197,7 @@ function Write-SpecrewLaunchContractArtifact {
     $contract = Invoke-SpecrewCoordinatorPromptSurgery `
         -Prompt $contract `
         -HostKind $HostKind `
+        -SpecrewVersion $SpecrewVersion `
         -LifecycleMode $Mode `
         -FeatureRef $featureRefValue `
         -BoundaryType $currentBoundary `
