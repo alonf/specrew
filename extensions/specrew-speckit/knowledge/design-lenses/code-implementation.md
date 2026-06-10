@@ -83,8 +83,10 @@ The code rules are mostly **product-level and stable**:
 
 ## Workshop Conduct
 
-- **Diagram for this lens**: a console-ASCII view of the grouped checklist (design-time) + the
-  agent-guidance surface (implement-time); surface it in-band so the human sees it.
+- **Diagram for this lens**: render it as **console ASCII inline** — a view of the grouped checklist
+  (design-time) + the agent-guidance surface (implement-time) — so the human sees it in the conversation
+  (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is
+  an additional artifact whose clickable `file:///` link you surface in the same message.
 - **Source-of-truth first**: ask for an existing guideline OR example project(s) before presenting the
   checklist (the Figma-equivalent question). On a provided guideline/project, perform **assisted
   ingestion** (agent-reasoning, no parser): map conventions onto the catalog (auto-check matches, flag

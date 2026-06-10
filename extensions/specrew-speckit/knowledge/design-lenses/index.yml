@@ -63,4 +63,10 @@ lenses:
     categories:
       - scope-and-boundaries
       - integration-and-dependencies
+  - id: code-implementation
+    file: code-implementation.md
+    default_phase: design-analysis-plan
+    categories:
+      - code-craft-and-implementation
+      - testing-and-quality
 
