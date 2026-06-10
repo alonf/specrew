@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://specrew.dev/schemas/implementation-rules.schema.json",
+  "title": "implementation-rules manifest",
+  "description": "Per-feature code-implementation manifest (specs/<feature>/implementation-rules.yml). Reference-by-ID selections from code-rules.yml + per-rule decisions + custom rules + dependency_policy (FR-013). Forward-compatible with Proposal 156 (stable rule ids as the join key) and Proposal 162 (context_scope). Draft authored at plan; refined at implement.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "context_scope", "resolved_stack", "selections", "provenance"],
+  "properties": {
+    "schema_version": { "type": "string", "description": "Additive evolution marker; mismatch is fail-open WARN." },
+    "context_scope": {
+      "enum": ["feature_standalone", "product_baseline", "feature_delta"],
+      "description": "V1 writes feature_standalone; product_baseline/feature_delta reserved for Proposal 162."
+    },
+    "product_id": { "type": ["string", "null"], "description": "Forward-compat hook for Proposal 162; no behavior in V1." },
+    "product_context_ref": { "type": ["string", "null"], "description": "Forward-compat hook for Proposal 162." },
+    "resolved_stack": { "type": "string", "minLength": 1, "description": "The stack resolved at the lens turn (drives the catalog slice)." },
+    "selections": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "checked"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1, "description": "References a code-rules.yml id (or a declared custom rule)." },
+          "checked": { "type": "boolean", "description": "false on a baseline rule = a recorded exception." },
+          "decision": { "type": "string", "description": "The human's decision for a decision-prompt rule." },
+          "enforcement": { "type": "array", "items": { "type": "string" }, "description": "Informational enforcement mode(s); not gated." }
+        }
+      }
+    },
+    "custom_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "text", "provenance"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "text": { "type": "string", "minLength": 1 },
+          "scope": { "type": "string" },
+          "provenance": { "enum": ["free-text", "pasted-doc", "from-guideline"] }
+        }
+      }
+    },
+    "dependency_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stance"],
+      "properties": {
+        "stance": {
+          "enum": ["use-existing-no-new-dependency", "approved-new-dependencies"],
+          "description": "Default-first 'use existing / no new dependency' (FR-013)."
+        },
+        "selected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1 },
+              "version": { "type": "string" },
+              "license": { "type": "string" },
+              "source_org": { "type": "string" },
+              "canonical_url": { "type": "string" },
+              "maintenance_signal": { "type": "string" },
+              "security_advisory_status": { "type": "string" },
+              "compatibility": { "type": "string" },
+              "cost_or_quota": { "type": "string" },
+              "coupling_weight": { "type": "string" },
+              "replaceability": { "type": "string" },
+              "test_implications": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["confirmation", "confirmation_scope"],
+      "properties": {
+        "confirmation": { "enum": ["human-confirmed", "human-delegated", "human-skipped"] },
+        "confirmation_scope": { "enum": ["lens-question", "explicit-delegation", "explicit-skip"] }
+      }
+    }
+  }
+}
