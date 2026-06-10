@@ -6,7 +6,7 @@
 **Last Completed Task**: T009
 **Tasks Remaining**: (none for iteration 001 / i1 — T010-T018 are iteration 002 / i2)
 **In Progress**: (none)
-**Baseline Ref**: 98a494eb8fcbbb3055615c8199d0cbb7dcd1d735
+**Baseline Ref**: 7f4f2ae7482df0a8c0259c515c103c36c23d4e35
 **Updated**: 2026-06-10T02:05:00Z
 
 ## Execution Summary

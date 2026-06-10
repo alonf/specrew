@@ -41,15 +41,15 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Author code-rules.yml catalog (baseline + 3 additions + per-stack) | FR-002 | US3 | 3 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/code-rules.yml | planned | copilot | | |
-| T002 | Finalize implementation-rules.schema.json | FR-004 | US3 | 1.5 | Implementer | specs/177-software-development-rules-lens/contracts/implementation-rules.schema.json | planned | copilot | | |
-| T003 | Author code-implementation.md lens md | FR-001 | US2 | 2.5 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/code-implementation.md | planned | copilot | | |
-| T004 | Register lens (index.yml, applicability-map, lens map, lensIds) | FR-001 | US1 | 0.5 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/index.yml | planned | copilot | | |
-| T005 | Manifest writer/validator + overlay merge | FR-004 | US2 | 2.5 | Implementer | scripts/internal/code-implementation-lens.ps1 | planned | copilot | | |
-| T006 | Dependency-selection decision area | FR-013 | US2 | 1 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/code-rules.yml | planned | copilot | | |
-| T007 | Test catalog integrity | FR-002 | US3 | 1 | Implementer | tests/unit/code-implementation-lens.tests.ps1 | planned | copilot | | |
-| T008 | Test manifest schema + overlay | FR-004 | US2 | 1 | Implementer | tests/unit/code-implementation-lens.tests.ps1 | planned | copilot | | |
-| T009 | Test registration | FR-001 | US1 | 0.5 | Implementer | tests/integration/code-rules-skill-multihost.tests.ps1 | planned | copilot | | |
+| T001 | Author code-rules.yml catalog (baseline + 3 additions + per-stack) | FR-002 | US3 | 3 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/code-rules.yml | done | copilot | | pass |
+| T002 | Finalize implementation-rules.schema.json | FR-004 | US3 | 1.5 | Implementer | specs/177-software-development-rules-lens/contracts/implementation-rules.schema.json | done | copilot | | pass |
+| T003 | Author code-implementation.md lens md | FR-001 | US2 | 2.5 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/code-implementation.md | done | copilot | | pass |
+| T004 | Register lens (index.yml, applicability-map, lens map, lensIds) | FR-001 | US1 | 0.5 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/index.yml | done | copilot | | pass |
+| T005 | Manifest writer/validator + overlay merge | FR-004 | US2 | 2.5 | Implementer | scripts/internal/code-implementation-lens.ps1 | done | copilot | | pass |
+| T006 | Dependency-selection decision area | FR-013 | US2 | 1 | Implementer | extensions/specrew-speckit/knowledge/design-lenses/code-rules.yml | done | copilot | | pass |
+| T007 | Test catalog integrity | FR-002 | US3 | 1 | Implementer | tests/unit/code-implementation-lens.tests.ps1 | done | copilot | | pass |
+| T008 | Test manifest schema + overlay | FR-004 | US2 | 1 | Implementer | tests/unit/code-implementation-lens.tests.ps1 | done | copilot | | pass |
+| T009 | Test registration | FR-001 | US1 | 0.5 | Implementer | tests/integration/code-rules-skill-multihost.tests.ps1 | done | copilot | | pass |
 
 ## Effort Model
 
