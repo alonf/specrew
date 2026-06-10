@@ -124,6 +124,12 @@ Only after the product-domain phase is captured do you move to the lens applicab
 
    Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
    name); render the whole filled block in your message, THEN raise the confirm/adjust menu that references it.
+   **The moment the human confirms the agenda, PERSIST it (F-174 - before opening lens 1):** write the
+   feature-level `lens-applicability.json` NOW with `workshop_intake: true`, `confirmation_required: true`, and
+   the confirmed `selected` lens-id list (the per-lens `workshop` records are added later, as each lens completes
+   per step 6). A resume can only compute the remaining agenda if the agenda itself is on disk; an agenda that
+   lives only in the scrollback is lost on exit (observed: an unpersisted agenda made a resuming host re-run
+   specify instead of continuing the workshop).
    **Agenda confirmation is not lens-question confirmation.** This confirm point approves only the selected
    lens list and depths. It does NOT answer the lenses. Do NOT offer or accept a batch shortcut such as "Confirm
    all as proposed", "approve all lens decisions", or "use the proposed decisions for every lens" as

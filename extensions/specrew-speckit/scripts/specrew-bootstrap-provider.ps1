@@ -82,7 +82,12 @@ function Format-BootstrapDirective {
         if ($InFlight.spec_exists) { $lines.Add(("  - the intent (what we are building): {0}" -f $InFlight.spec_path)) }
         if (@($InFlight.done).Count -gt 0) { $lines.Add(("  - design-workshop lenses already DONE (records under specs/{0}/workshop/): {1}" -f $InFlight.feature_ref, (@($InFlight.done) -join ', '))) }
         if (@($InFlight.remaining).Count -gt 0) { $lines.Add(("  - workshop lenses REMAINING (from lens-applicability.json): {0}" -f (@($InFlight.remaining) -join ', '))) }
-        $next = if (@($InFlight.remaining).Count -gt 0) { ("resume the design workshop at the next remaining lens: {0}" -f @($InFlight.remaining)[0]) } else { 'resume at the recorded lifecycle position (read the spec + workshop records to locate it)' }
+        # Codex round-3 lesson: with lens records but NO persisted agenda, "resume at the recorded position"
+        # was too open - the host re-ran specify (rewrote spec.md) instead of continuing the workshop. When
+        # records exist, the resume point is ALWAYS the workshop; name the only safe move explicitly.
+        $next = if (@($InFlight.remaining).Count -gt 0) { ("resume the design workshop at the next remaining lens: {0}" -f @($InFlight.remaining)[0]) }
+        elseif (@($InFlight.done).Count -gt 0) { 'CONTINUE the design workshop: the agenda was not persisted, so RE-PROPOSE the remaining lens agenda to the human (skipping the DONE lenses above) and proceed lens-by-lens. Do NOT re-run specify and do NOT rewrite spec.md - the spec already exists' }
+        else { 'resume at the recorded lifecycle position (read the spec + workshop records to locate it)' }
         $lines.Add(("When the human says 'continue' (or similar), {0}. Do NOT restart discovery, do NOT re-ask completed lenses, and do NOT ask 'what do you want to build' - spec.md answers that. Confirm your resume point to the human in one line, then proceed." -f $next))
     }
     $lines.Add('Reminder (do not skip): your FIRST response MUST open with the MANDATORY orientation banner described at the top - Specrew + how-we-work + version/host/project/branch/lifecycle position + the user-profile/expertise adaptation (what you know about the human) - and only THEN address the user''s request.')

@@ -231,3 +231,101 @@ delivered as iter-7's multi-host completion (already shipped + validated) and ar
     + >24h durability + hard-kill (no-Stop-fired) coverage. No dogfood evidence yet that the feature-blind contract
     slows a *surfaced-handover* resume, so not pre-paid. Candidate follow-up: a deterministic mid-workshop lens-
     persistence floor (vs the agent-dependent conduct above).
+- **T050 round 2 (fix re-test, fresh trials `notekeep-{claude,codex,copilot}`, 2026-06-10) — early findings:**
+  - Pre-flight: all three deployed providers carry `Resolve-SpecrewBranchFeatureRef` (deploy verified by grep, not
+    inferred); installed 0.34.0 component patched; a stale process-level `SPECREW_MODULE_PATH=0.33.0` caught + neutralized
+    in the launch shells before any host started.
+  - All three SessionStart hooks fired correctly on the fresh dirs (`mode: full`, "no active session anchor"). Note:
+    `specrew init` repos are born on `master`, so the merged-to-`main` check fails safe to not-merged — fine here;
+    follow-up candidate: respect the repo's real default branch.
+  - **Claude lifecycle-skip REPRODUCED (2nd time, identical conditions):** with the full inline contract injected,
+    claude wrote `notekeep.py` in the root — no specs/, no feature branch, zero boundaries crossed, no workshop.
+    Second clean data point for Proposal 180 (PreToolUse lifecycle-ENTRY gate); prompt-layer mandates demonstrably
+    do not gate entry on claude. Codex + copilot proceeded into the governed flow on the same contract.
+  - **Resolver fail-safe negative path verified LIVE:** claude's Stop on `master` (no feature branch) stamped
+    `active_feature:` blank — no bogus stamp invented (the designed no-op). The mirror fix also held live: the
+    floor wrote at claude's Stop. Claude steered back into the governed flow for its P1 positive data point.
+  - **Claude lifecycle-entry escalation ladder COMPLETE (the full Proposal-180 evidence shape):** (1) inline
+    contract -> ignored, vibe-coded notekeep.py; (2) human DOMAIN challenge (who is the user? retention? secure
+    notes?) -> coded the unknowns inline (12KB); (3) human EXPLICIT process-naming ("what about the workshop,
+    gates, specrew?") -> FULL self-correction: invoked the deployed `specrew-where` skill, diagnosed honestly (no
+    specs/, lifecycle never started, notekeep.py = unsanctioned drift), laid out the gated path, STOPPED at the
+    specify boundary asking authorization + disposition of the stray file. Refined 180 thesis: claude runs the
+    lifecycle correctly once IN it - the failure is ENTRY only, and recovery cost the human two escalating
+    challenges; a deterministic PreToolUse entry-gate replaces exactly that human labor. (`specrew-where`
+    re-grounding worked as designed.) Maintainer ruling: discard the stray file (parking it would anchor the
+    workshop toward the pre-built design), re-enter via specify + workshop.
+  - **CODEX P1 STAMP CONFIRMED LIVE (the fix working in production):** mid-workshop, pre-boundary (session_state
+    absent, active_boundary blank), the floor stamped `active_feature: 001-notekeep-cli` FROM THE BRANCH - the
+    line that was blank in every round-1 trial. 5 material Stops journaled (no-existing-handover -> tracked-change
+    x4), hollow detection firing each time (body = 6/6 placeholders mid-workshop, the predicted P3 residual).
+    Codex ALSO persisted per-lens workshop artifacts this round (workshop/product-domain.md + .yml - round 1 it
+    persisted NOTHING). `/exit` preserved the stamped floor. Resume prediction: welcome-back + handover_valid:true
+    + placeholder warn -> re-derive from rich disk. PENDING the re-entry verdict.
+  - **Copilot mid-question = no agentStop = no handover yet (EXPECTED, not a failure):** copilot's question loop
+    holds the agent turn open, so the Stop provider has nothing to fire on until the turn completes or `/exit`.
+    In the governed flow (branch `001-notekeep`, spec.md written, per-lens questions). Its SessionStart journaled
+    fine this round - the earlier copilot no-runtime-trail gap is NOT reproducing here.
+  - **CODEX RESUME VERDICT - P1 CONFIRMED END-TO-END IN PRODUCTION:** re-entry journaled
+    `mode:"welcome-back", handover_valid:true, handover_placeholder:true` (round 1: `full` + `handover_valid:false`
+    -> cold restart). The full designed chain fired live: blank anchor (untouched, by design) -> branch-resolved
+    stamp made the handover VALID -> handover-first classification -> welcome-back -> hollow body flagged ->
+    backstop warn directs re-derive from the rich disk (spec.md + workshop/product-domain.*). Behavioral half
+    (did codex name the feature + continue at the next lens) pending the maintainer's report.
+  - **COPILOT NEW FINDING - `/exit` mid-question fires NO agentStop -> NO floor at all -> resume classified
+    `full`:** combined with round 1 (handover existed after copilot stopped AT the specify boundary), the copilot
+    stop-model is now isolated: agentStop fires only at REAL turn-completions (boundary/verdict stops); the
+    workshop question-loop holds ONE turn open, so a mid-turn `/exit` is functionally identical to a HARD KILL
+    (the consciously-deferred case). P2 (per-lens durable checkpoints) is what saves exactly this scenario:
+    product-domain + architecture-core + lens-applicability.json (moved_on, human-confirmed) were already on
+    disk BEFORE the exit - the per-lens conduct fired live on copilot at the lens transition (batched write at
+    22:56:28, round 1 persisted only at the end). First real evidence FOR the deferred escalation: a
+    SessionStart-side floor write (or start-context write-back) would cover copilot mid-turn exits + hard kills
+    in one move. Copilot resume behavior (reads-disk -> continue at requirements-nfr vs restart) pending the
+    maintainer's report.
+  - **Round-2 BEHAVIORAL verdict + the LAST-MILE fix (`d6f54aac`):** both hosts failed the final step despite the
+    deterministic layer working - codex SAW the surfaced hollow handover, reported it, and stopped (obeyed the
+    warn's letter, skipped "re-derive from the artifacts" - an abstract pointer); copilot (full mode) asked "what
+    do you want to build" with the answer in spec.md (the hook's contract carries an EMPTY project-state stub -
+    no scan). Maintainer's diagnosis: "it has to have the initial intent of what we are building in a file and
+    the status" - both ARE in files; nothing SURFACED them. Fix (iter-7 ruling-b lesson - content gets followed,
+    pointers get skimmed): `Get-SpecrewWorkshopProgress` (ProjectMetadataAccessor) deterministically scans
+    spec.md + done lenses (moved_on UNION workshop/*.md records, so the codex no-json shape counts) + remaining
+    (selected order); the bootstrap provider renders an IN-FLIGHT WORK ON DISK block in the directive (BOTH
+    modes) naming the spec path, done lenses, remaining lenses, and the concrete resume action ("resume at
+    <next lens>; do NOT restart discovery; do NOT ask what to build"). Verified read-only against the REAL trial
+    dirs (codex: done=product-domain; copilot: next=component-design). Deployed: module + all 3 live trial dirs
+    (the dispatcher reads the deployed provider fresh per event - no re-init). Re-entry round 3 pending.
+  - **Copilot HUMAN-NUDGED catch-up = the full repair chain works when triggered (pre-patch session):** to
+    copilot's "what do you want to build?" the maintainer answered one line ("we were in the middle of a
+    workshop") - copilot then invoked specrew-refocus, scanned the repo, RE-INVOKED the design-workshop skill,
+    read all three persisted records, computed the exact resume point ("lens 2 of 6: component-design"), and
+    opened it with textbook conduct (presentation-first, in-band ASCII baseline, pacing choice, file:/// links).
+    Proves: (a) P2 per-lens checkpoints carry enough state for a precise catch-up; (b) the skill-re-invocation
+    machinery works on copilot; (c) the residual pre-patch human cost is exactly ONE nudge - which the in-flight
+    directive block automates. Round 3 tests that zero-nudge path.
+  - **ROUND 3, copilot: ZERO-NUDGE RESUME CONFIRMED (the last-mile fix works in the WORST case):** re-entry
+    journaled `mode:full` (no handover floor - the copilot agentStop gap, unchanged), so copilot's directive
+    carried NOTHING but the new IN-FLIGHT disk-scan block - and it resumed at component-design with zero
+    nudging (maintainer: "continues perfect"). Round progression: r2 full+empty-stub -> "what do you want to
+    build"; r2.5 one human nudge -> full catch-up; r3 full+in-flight-block -> correct zero-nudge resume. Codex
+    re-entered too (welcome-back + placeholder + in-flight block); behavioral report pending.
+  - **ROUND 3, codex: GOVERNED deep catch-up + THE GATES HELD:** codex (hollow handover + the less-precise
+    in-flight block) re-derived through the Specrew machinery - refocus, validate-governance (clean, 0 warnings),
+    and a specify boundary-sync attempt that the F-039 enforcement layer BLOCKED ("No persisted authorization
+    matched specify -> specify", decisions.md) - a resuming agent re-deriving aggressively could NOT push through
+    a gate. The codex/copilot resume-speed gap is now MEASURABLE and causal: copilot persisted the full per-lens
+    checkpoint (incl. lens-applicability.json) -> the scan computed remaining -> instant precise resume; codex
+    skipped the json -> the scan could honestly claim only done=product-domain -> codex re-derives the agenda
+    itself. The checkpoint tax skipped during the workshop is paid at resume, by the skipper. Acceptable codex
+    landing: not redoing product-domain, re-proposing the never-persisted agenda, continuing governed.
+  - **Claude post-steer: BEST-BEHAVED host + P1 stamp 3-for-3:** after the maintainer's discard+authorize,
+    claude discarded notekeep.py, scaffolded 001-notekeep, and is driving the workshop FULLY GOVERNED with
+    per-lens durable checkpoints (product-domain + a contracts/product-domain.schema.json artifact;
+    data-storage + security-compliance moved_on human-confirmed; remaining architecture-core, component-design,
+    requirements-nfr, ui-ux) and lens-applicability.json at the FEATURE level (the skill contract; copilot used
+    workshop/ - the scanner reads both). The floor carries `active_feature: 001-notekeep` -> the branch-stamp is
+    now verified on ALL THREE hosts. Nuance: the floor is STALE (22:59) vs the lens work (23:21+) because
+    claude's lens-menu loop holds one turn open (same mid-turn model as copilot) - harmless (stamp present,
+    handover fresh-window, in-flight scan supplies current status) but a THIRD data point for the deferred
+    SessionStart-side floor write. Claude exit/resume test pending at the next natural pause.
