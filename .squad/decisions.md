@@ -26050,3 +26050,26 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Retroactive note**: recorded 2026-06-11 alongside iteration 008's reconstructed review.md / retro.md /
   drift-log.md (008 closed at boundary commit 7fe04228 on 2026-06-11 without committed closure artifacts;
   this formalizes the documented cross-host-validation outcome + the hollow-handover carry).
+## 2026-06-11 — Defer (canonical, corrective): Feature 177 Iteration 002 D-003 behavioral SC-004 / SC-007 / SC-008 — gate met, line promoted to stable
+
+- **Decision ID**: defer-177-i002-d003-behavioral-sc-gate
+- **Type**: defer
+- **Boundary**: review-signoff
+- **Affected Requirement**: SC-004 / SC-007 / SC-008
+- **Affected Iteration**: specs\177-software-development-rules-lens\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-11
+- **Next Action**: RESOLVED — the published `v0.35.0-beta1` install-dogfood (Claude host; greenfield Casio F-91W build through the full specify->implement lifecycle; head-to-head against an ungoverned "vibe" control building the same watch) confirmed the three behavioral criteria: SC-004 (the human's State-pattern override of the recommended functional-switch was carried into the governed code as per-mode `IModeState` classes), SC-007 (baseline surfaced as paced decisions, not a rule-wall), and SC-008 (dependency stance honored; a real unit-test suite was present where the ungoverned control had none). On the strength of that gate the 0.33.0-0.35.0 line was promoted to stable `v0.35.0` on 2026-06-11. See `drift-log.md` D-003 (Status: resolved) and `dogfood-report.md` (## D-003 RESOLVED).
+- **Authorization Text**:
+  > Approved at the 2026-06-10 review-signoff: the deferred-with-gate variance (D-003) was explicitly offered and approved — the behavioral SC-004 / SC-007 / SC-008 confirmation is deferred to the published v0.35.0-beta1 install-dogfood, which MUST confirm them before the 0.35.0 line is promoted to stable.
+
+**Provenance (read this):** this canonical defer entry did NOT previously exist in `.squad\decisions.md`. It was written on 2026-06-11 during the F-177 feature-closeout reconciliation. The 2026-06-10 review-signoff reconciliation recorded D-003 in `drift-log.md` and in review.md's Gap Ledger (which asserts the gap is "recorded in `.squad\decisions.md`"), but the matching canonical ledger entry was never written — so the `Test-NoGapClosurePolicy` validator had no defer entry to find. The decision recorded here is the 2026-06-10 defer-with-gate approval (unchanged); only the missing ledger entry is added now, and the gate it set has since been met (see Next Action), so D-003 is resolved.
+
+## 2026-06-11T09:36:26Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 177-software-development-rules-lens
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5a668851d44a49c1d962507a4ffbf20ea61bbea9
+- **Recorded At**: 2026-06-11T09:36:25Z

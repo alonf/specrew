@@ -23,7 +23,7 @@
 ## Summary
 
 **Total drift events**: 2
-**Resolution rate**: 100% (2/2 recorded with a resolution: 1 accepted variance, 1 deferred-with-gate)
+**Resolution rate**: 100% (2/2 resolved: 1 accepted variance; 1 deferred-with-gate now CLOSED -- the beta install-dogfood gate was met 2026-06-11)
 **Specification drift**: None (both events are implementation/process variances, not spec drift)
 
 ## Events
@@ -62,7 +62,18 @@
   0.35.0 line is promoted to stable.
 - **Approved by**: maintainer (Alon), 2026-06-10 -- the review-signoff rejection explicitly offered and
   approved this variance / defer-with-gate.
-- **Status**: deferred-with-gate (open until the published-beta validation at feature-closeout).
+- **Status**: resolved (gate met).
+- **Resolved**: 2026-06-11 -- the published `v0.35.0-beta1` install-dogfood was run by the maintainer on the
+  Claude host (a real greenfield Casio F-91W build through the full specify->implement lifecycle), as a
+  **head-to-head behavioral comparison against an ungoverned "vibe" control** building the same watch. The
+  comparison confirmed the three behavioral SCs: the human's State-pattern override of the recommended
+  functional-switch was **carried into the governed code** (per-mode `IModeState` classes, not a `switch`);
+  the baseline was surfaced as paced decisions rather than a rule-wall (SC-007); and the dependency stance
+  was honored (SC-008). A **real test suite was present where the ungoverned control had none** (the
+  control: 0 tests, mutable public fields, magic numbers, a silently-grabbed dependency). On the strength of
+  that gate the 0.33.0-0.35.0 line was promoted to **stable `v0.35.0`** on 2026-06-11. Calibration note: a
+  strong base model converges with the governed plan on *architecture* even ungoverned; governance's
+  measurable value landed on craft discipline + tests + decision-traceability, not on architecture alone.
 
 ### Notes
 

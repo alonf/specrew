@@ -103,3 +103,36 @@ at feature-closeout (variance D-003). This report's value is that the human beta
 de-risked base: the deployed layout installs, wires up, and validates, and the manifest-authoring path the
 corrected conduct mandates works end-to-end on the deployed module. The T012/T013 writer-call ->
 hand-authored manifest change is the accepted variance **D-002**.
+
+## D-003 RESOLVED -- behavioral SCs confirmed on the published beta (2026-06-11)
+
+The deferred-with-gate behavioral criteria are now **CONFIRMED**. The gate this report set -- "the published
+`v0.35.0-beta1` install-dogfood MUST confirm SC-004 / SC-007 / SC-008 before the 0.35.0 line is promoted to
+stable" -- was met:
+
+- **What was run**: the maintainer installed the published `v0.35.0-beta1` and built a real greenfield
+  Casio F-91W watch on the **Claude host** through the full `specify -> implement` lifecycle, governed by the
+  F-177 `specrew-code-rules` skill + the code-implementation lens.
+- **How it was made conclusive (head-to-head)**: a side-by-side **ungoverned "vibe" control** (`casioWatch`)
+  built the same watch with no Specrew governance, so the two builds could be diffed to prove governance
+  *changed behavior* -- not merely that the governed output "looked fine".
+- **SC-004 (agent actually guided)** -- CONFIRMED via a falsifiable probe: the human overrode the
+  recommended functional-switch with the **State pattern**, and the governed code came back as per-mode
+  `IModeState` classes (`TimeModeState` / `AlarmModeState` / `StopwatchModeState` / `SetModeState` behind an
+  `IModeState` interface, `WatchReducer` delegating) -- the override was carried into the code, not ignored.
+- **SC-007 (no rule wall)** -- CONFIRMED: the baseline surfaced as paced, applicability-filtered decisions,
+  not the full catalog dumped as a wall; the human was able to drive the design and was not blocked.
+- **SC-008 (dependency stance honored)** -- CONFIRMED: the governed build honored "use existing / surface
+  before adding"; the ungoverned control silently grabbed `Plugin.Maui.Audio` with no surfacing.
+- **Craft delta (the measurable governance value)**: the governed build shipped immutable `sealed record`
+  state, a discriminated-union event type, named constants, derive-from-timestamp time math, and a **real
+  unit-test suite (8 files, incl. a Reducer purity assertion)**; the ungoverned control had **0 tests**,
+  mutable public fields, stringly-typed mode, and magic numbers. Honest calibration: a strong base model
+  converged with the governed plan on **architecture** even ungoverned (both chose a core/shell split,
+  drift-free time, the same audio package) -- so governance's measurable value landed on **craft discipline,
+  tests, and decision-traceability**, which is where the two builds genuinely diverged.
+
+On the strength of this gate the 0.33.0-0.35.0 line was promoted to **stable `v0.35.0`** on 2026-06-11.
+This resolves drift **D-003** (`drift-log.md`, Status: resolved). The behavioral assessment above
+**supersedes** the NOT-YET-VERIFIED grading recorded in the earlier sections of this report, which were
+accurate at the time of the deployed-module dogfood (2026-06-10) and are retained for the audit trail.
