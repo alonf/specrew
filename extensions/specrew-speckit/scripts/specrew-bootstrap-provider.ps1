@@ -59,13 +59,21 @@ function Format-BootstrapDirective {
     }
     if ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
         if ($d.handover.placeholder) {
-            $lines.Add('[!] HOLLOW HANDOVER - the previous session did NOT author a handover body (the rolling handover is a placeholder). Your resume context is REDUCED to the lifecycle artifacts + git state. Re-derive the situation from the artifacts; do NOT present rich resume context you do not actually have. You are the backstop - surface this gap to the human.')
+            $lines.Add('[!] HOLLOW HANDOVER (rare) - the previous session''s Stop hook captured NO session delta (git unavailable?), so resume context is reduced to the lifecycle artifacts + git state. Re-derive the situation from the artifacts and surface this gap to the human - you are the backstop.')
         }
         else {
-            $lines.Add(("Validated handover authored by the previous session (as of {0}; boundary: {1}). Surface this as your resume context (render item 2) - do not merely cite that it exists:" -f $d.handover.recorded_at, $d.handover.active_boundary))
+            $lines.Add(("Validated handover captured by the previous session (as of {0}; boundary: {1}). This is your resume context - surface it (render item 2), do not merely cite that it exists. The mechanical sections are hook-captured git/session state; any interpretive sections are agent-authored:" -f $d.handover.recorded_at, $d.handover.active_boundary))
             foreach ($k in $d.handover.sections.Keys) {
                 $c = [string]$d.handover.sections[$k]
-                if (Test-SpecrewHandoverSectionAuthored -Content $c) { $lines.Add(("  - {0}: {1}" -f $k, $c)) }
+                if (-not (Test-SpecrewHandoverSectionAuthored -Content $c)) { continue }
+                $clines = @($c -split "`r?`n")
+                if ($clines.Count -le 1) {
+                    $lines.Add(("  - {0}: {1}" -f $k, $c))
+                }
+                else {
+                    $lines.Add(("  - {0}:" -f $k))
+                    foreach ($cl in $clines) { $lines.Add(("      {0}" -f $cl)) }
+                }
             }
         }
     }

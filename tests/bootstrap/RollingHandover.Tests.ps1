@@ -116,7 +116,11 @@ try {
     Write-SpecrewRollingHandover -HandoverDir $hd2 -Source stop -FromHost claude -RecordedAt '2026-06-10T10:30:00Z' `
         -ActiveFeature myfeat -ActiveBoundary tasks | Out-Null
     $rec2 = Get-SpecrewRollingHandover -HandoverDir $hd2 -NowUtc '2026-06-10T10:31:00Z'
-    Assert-True (Test-SpecrewHandoverSectionAuthored -Content ([string]$rec2.sections[(Get-SpecrewHandoverSectionOrder)[0]])) 'floor-writer preserve path recovers the AUTHORED body from .old after the live file was lost'
+    # iter-9 section ownership: the floor-writer preserves AGENT-OWNED (interpretive) sections across stops;
+    # MECHANICAL sections are hook-owned (refreshed from the delta, not preserved). So recovery is checked on
+    # an interpretive section, not section[0] (which is the mechanical 'What I just did').
+    $interpTitle = (Get-SpecrewHandoverAgentOwnedSections)[0]
+    Assert-True (Test-SpecrewHandoverSectionAuthored -Content ([string]$rec2.sections[$interpTitle])) 'floor-writer preserve path recovers the AUTHORED interpretive (agent-owned) section from .old after the live file was lost'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

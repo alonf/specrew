@@ -40,9 +40,11 @@ function Get-HandoverProp {
 try {
     $eventJson = ''
     $rootOverride = $null
+    $hostKindArg = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKindArg = [string]$args[$i + 1] }
     }
 
     $root = if ($rootOverride) { $rootOverride } else { Get-HandoverProjectRoot }
@@ -85,6 +87,11 @@ try {
         catch { $null = $_ }
     }
 
+    # F-174 iter-9: the dispatcher passes the authoritative resolved host via --host-kind; prefer it so the
+    # handover provenance is the REAL host (claude/codex/copilot), not the 'host' default (iter-8 dogfood:
+    # 15/15 journal entries stamped 'host' because start-context carried no host field).
+    if (-not [string]::IsNullOrWhiteSpace($hostKindArg)) { $fromHost = $hostKindArg }
+
     # F-174 (T050): the pre-specify WORKSHOP window leaves the anchor's feature_ref blank (no boundary
     # crossed yet), so without this the floor stamps an empty active_feature -> the handover validates as
     # 'no-feature' and is NEVER surfaced on resume (the agent re-derives from scratch - the "resync takes
@@ -107,25 +114,67 @@ try {
     $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
     if (-not $mc.material) { exit 0 }   # quiet turn: skip cheaply
 
-    # iter-5 detection (failure-mode B, NON-BLOCKING): was the EXISTING body authored FOR THE CURRENT
-    # boundary? If so, the hook below preserves it (not hollow). If not (boundary moved, or never
-    # authored), the hook writes a placeholder and we record a same-session hollow detection.
-    $authoredForCurrent = $false
-    if ($null -ne $existing -and $existing.PSObject.Properties['sections'] -and (([string]$existing.active_boundary) -eq ([string]$boundary))) {
-        $authoredForCurrent = -not (Test-SpecrewHandoverBodyPlaceholder -Sections $existing.sections).placeholder
+    # F-174 iter-9 (hook-primary author): the hook CAPTURES the git/fs session delta and writes the
+    # MECHANICAL body sections every material stop - so the handover is never hollow without any agent
+    # cooperation. The prior from_commit (from the existing handover) bounds "new commits this session".
+    $head = ''
+    try { $head = ([string](& git -C $root rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ }
+    $sinceCommit = if ($null -ne $existing) { [string]$existing.from_commit } else { $null }
+    $delta = Get-SpecrewSessionDelta -ProjectRoot $root -SinceCommit $sinceCommit
+
+    $featureLabel = if ([string]::IsNullOrWhiteSpace([string]$feature)) { '(no active feature)' } else { [string]$feature }
+    $boundaryLabel = if ([string]::IsNullOrWhiteSpace([string]$boundary)) { '(pre-boundary / workshop)' } else { [string]$boundary }
+
+    # One activity line for THIS stop, accumulated newest-first across the boundary window (reset on a
+    # boundary change so a fresh boundary starts a fresh arc) - the "add changed info on every stop" behavior.
+    $fileNote = if ($delta.has_uncommitted) {
+        $shown = (@($delta.uncommitted_files) -join ', ')
+        if ($delta.uncommitted_truncated) { $shown = "$shown, +more" }
+        " [$shown]"
+    }
+    else { '' }
+    $commitNote = if ($delta.new_commit_count -gt 0) { ("; {0} new commit(s): {1}" -f $delta.new_commit_count, ((@($delta.new_commits)) -join ' | ')) } else { '' }
+    $stamp = if ($now.Length -ge 19) { ($now.Substring(0, 19) + 'Z') } else { $now }
+    $stopBullet = ("- [{0}] {1} uncommitted file(s){2}; HEAD {3} ({4}){5}" -f $stamp, $delta.uncommitted_count, $fileNote, $delta.head_short, $delta.head_subject, $commitNote)
+
+    $activityTitle = 'What I just did (last 3-5 turns or last boundary work)'
+    $priorBullets = @()
+    if ($null -ne $existing -and ([string]$existing.active_boundary -eq [string]$boundary) -and $existing.sections -and $existing.sections.Contains($activityTitle)) {
+        $prev = [string]$existing.sections[$activityTitle]
+        if (-not [string]::IsNullOrWhiteSpace($prev) -and $prev -notlike '(placeholder*') {
+            $priorBullets = @($prev -split "`n" | Where-Object { $_ -match '^\s*-\s' })
+        }
+    }
+    $activity = ((@($stopBullet) + $priorBullets) | Select-Object -First 6) -join "`n"
+
+    $whyStopping = ("End-of-turn Stop, hook-captured (the agent did not author a handover this turn). Boundary: {0}. Refresh reason: {1}." -f $boundaryLabel, $mc.reason)
+    $recNext = if ($delta.has_uncommitted) {
+        ("Resume feature {0} at boundary {1}. {2} uncommitted file(s) are NOT in git history yet - review/commit them before advancing." -f $featureLabel, $boundaryLabel, $delta.uncommitted_count)
+    }
+    else {
+        ("Resume feature {0} at boundary {1}. Working tree is clean; continue the next lifecycle step." -f $featureLabel, $boundaryLabel)
+    }
+    $uncommittedNote = if ($delta.has_uncommitted) { (" Uncommitted work NOT yet committed: {0}." -f ((@($delta.uncommitted_files) -join ', '))) } else { '' }
+    $context = ("branch {0}, HEAD {1} ({2}). Active feature {3}, boundary {4}.{5}" -f $delta.branch, $delta.head_short, $delta.head_subject, $featureLabel, $boundaryLabel, $uncommittedNote)
+
+    $mechanical = @{
+        $activityTitle                                                = $activity
+        "Why I'm stopping (the switch trigger)"                       = $whyStopping
+        'Recommended next-immediate-step'                             = $recNext
+        "Context the receiving host needs that artifacts don't carry" = $context
     }
 
-    $head = ''
-    try { $head = (& git -C $root rev-parse --short HEAD 2>$null) } catch { $null = $_ }
-
-    # The HOOK floor-writer: refresh the floor; preserve the agent body for THIS boundary, else placeholder.
+    # The HOOK floor-writer: write the fresh mechanical body; preserve any agent interpretive overlay.
     Write-SpecrewRollingHandover -HandoverDir $handoverDir -Source $source -FromHost $fromHost `
-        -RecordedAt $now -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary | Out-Null
+        -RecordedAt $now -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary `
+        -MechanicalSections $mechanical | Out-Null
 
-    # Same-session hollow-handover detection (non-blocking; the resume bootstrap re-detects + warns the
-    # human backstop). Fires when this material Stop left the body a placeholder.
-    if (-not $authoredForCurrent) {
-        [Console]::Error.WriteLine(("[specrew-handover] WARN HOLLOW_HANDOVER boundary='{0}' reason='{1}' - the rolling handover body is a placeholder (the agent did not author it for this boundary); the next session inherits a hollow handover." -f $boundary, $mc.reason))
+    # Recalibrated hollow detection (iter-9): hollow ONLY if the hook could author NO mechanical section
+    # (git unavailable) AND no agent overlay exists - now a rare true-failure, not the every-build-stop
+    # default. Journal it then so the resume bootstrap can still warn the human backstop.
+    $mechAuthored = @($mechanical.Values | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }).Count
+    if ($mechAuthored -eq 0) {
+        [Console]::Error.WriteLine(("[specrew-handover] WARN HOLLOW_HANDOVER boundary='{0}' reason='{1}' - the hook captured no session delta (git unavailable?); the next session inherits a hollow handover." -f $boundary, $mc.reason))
         try {
             $jpath = Join-Path $root '.specrew/runtime/handover-journal.jsonl'
             $jdir = Split-Path -Parent $jpath

@@ -27,6 +27,24 @@ function Get-SpecrewHandoverSectionOrder {
     )
 }
 
+function Get-SpecrewHandoverAgentOwnedSections {
+    # F-174 iter-9: the INTERPRETIVE sections only the agent can author (via Write-SpecrewHandoverContext);
+    # the hook never writes interpretive content, so a non-placeholder interpretive section IS the agent
+    # provenance (no schema field needed). The hook PRESERVES these across stops within a boundary.
+    return @(
+        'Open questions / pending clarifications',
+        "Agent's working hypothesis / mental model"
+    )
+}
+
+function Get-SpecrewHandoverMechanicalSections {
+    # F-174 iter-9: the HOOK-owned sections - refreshed every material stop from the git/fs session delta
+    # (they describe "now"). Derived as the complement of the agent-owned set within the fixed order, so a
+    # title rename in Get-SpecrewHandoverSectionOrder cannot silently desync the two lists.
+    $agent = Get-SpecrewHandoverAgentOwnedSections
+    return @(Get-SpecrewHandoverSectionOrder | Where-Object { $agent -notcontains $_ })
+}
+
 function Get-SpecrewHandoverPlaceholderMarker {
     # The body-section placeholder the HOOK writes when the agent has not authored a section for the
     # current boundary. Starts with "(placeholder" so the structural detector recognizes it without an
@@ -83,7 +101,8 @@ function ConvertFrom-SpecrewHandoverFile {
 
     [pscustomobject]@{
         schema          = $fm['schema']; source = $fm['source']; from_host = $fm['from_host']
-        recorded_at     = $fm['recorded_at']; active_feature = $fm['active_feature']
+        recorded_at     = $fm['recorded_at']; from_commit = $fm['from_commit']
+        active_feature  = $fm['active_feature']
         active_boundary = $fm['active_boundary']; sections = $sections
     }
 }
@@ -166,26 +185,40 @@ function Write-SpecrewRollingHandover {
         [Parameter(Mandatory)][string] $RecordedAt,       # ISO-8601 (caller-supplied; deterministic)
         [Parameter()][string] $FromCommit,
         [Parameter()][string] $ActiveFeature,
-        [Parameter()][string] $ActiveBoundary
+        [Parameter()][string] $ActiveBoundary,
+        # F-174 iter-9 (hook-primary): the hook passes the freshly-computed MECHANICAL section content (the
+        # git/fs session delta) here as title -> content. Mechanical sections are HOOK-OWNED and written
+        # fresh every material stop; a missing/blank mechanical title falls to the placeholder marker (the
+        # truly-empty / git-unavailable case). Interpretive sections stay AGENT-owned (preserved below).
+        [Parameter()][System.Collections.IDictionary] $MechanicalSections = @{}
     )
     if (-not (Test-Path -LiteralPath $HandoverDir)) { New-Item -ItemType Directory -Path $HandoverDir -Force | Out-Null }
     $path = Get-SpecrewRollingHandoverPath -HandoverDir $HandoverDir
 
-    # Preserve the existing body ONLY when it was authored AND for the current boundary; else placeholder
-    # (an empty $bodySections lets the shared writer fill every section with the placeholder marker).
+    # F-174 iter-9 SECTION OWNERSHIP (supersedes the iter-5 all-or-nothing preserve). Merge the body by
+    # ownership so it is NEVER hollow as long as the hook captured a delta, while an agent overlay survives:
+    #   - MECHANICAL (What I just did / Why I'm stopping / Recommended next / Context): written FRESH from
+    #     $MechanicalSections every stop - they describe "now", so the hook owns them.
+    #   - INTERPRETIVE (Open questions / Working hypothesis): AGENT-owned - preserve the EXISTING content iff
+    #     it is authored (non-placeholder) AND for the CURRENT boundary; else leave it to the placeholder
+    #     marker. The hook never writes interpretive content, so non-placeholder == the agent authored it
+    #     (the placeholder state IS the provenance; no schema field needed). A boundary change resets them.
     $bodySections = @{}
+    foreach ($mt in (Get-SpecrewHandoverMechanicalSections)) {
+        if ($MechanicalSections.Contains($mt) -and -not [string]::IsNullOrWhiteSpace([string]$MechanicalSections[$mt])) {
+            $bodySections[$mt] = [string]$MechanicalSections[$mt]
+        }
+    }
     if ((Test-Path -LiteralPath $path) -or (Test-Path -LiteralPath "$path.old")) {
-        # Same .old crash-fallback as the reader: preserve an authored body even when the live file was lost.
+        # Same .old crash-fallback as the reader: keep an agent overlay even if the live file was lost mid-write.
         $existing = if (Test-Path -LiteralPath $path) { ConvertFrom-SpecrewHandoverFile -Path $path } else { $null }
         if ($null -eq $existing) { $existing = ConvertFrom-SpecrewHandoverFile -Path "$path.old" }
-        if ($null -ne $existing -and $existing.sections -and $existing.sections.Count -gt 0) {
-            $sameBoundary = (([string]$existing.active_boundary) -eq ([string]$ActiveBoundary))
-            $authored = $false
-            foreach ($k in $existing.sections.Keys) {
-                if (Test-SpecrewHandoverSectionAuthored -Content ([string]$existing.sections[$k])) { $authored = $true; break }
-            }
-            if ($authored -and $sameBoundary) {
-                foreach ($k in $existing.sections.Keys) { $bodySections[$k] = [string]$existing.sections[$k] }
+        if ($null -ne $existing -and $existing.sections -and $existing.sections.Count -gt 0 -and
+            (([string]$existing.active_boundary) -eq ([string]$ActiveBoundary))) {
+            foreach ($it in (Get-SpecrewHandoverAgentOwnedSections)) {
+                if ($existing.sections.Contains($it) -and (Test-SpecrewHandoverSectionAuthored -Content ([string]$existing.sections[$it]))) {
+                    $bodySections[$it] = [string]$existing.sections[$it]
+                }
             }
         }
     }

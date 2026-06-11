@@ -26,8 +26,9 @@ function Assert-True {
     Write-Host "PASS: $Message" -ForegroundColor Green
 }
 
-$k1 = 'What I just did (last 3-5 turns or last boundary work)'
-$k5 = 'Recommended next-immediate-step'
+$k1 = 'What I just did (last 3-5 turns or last boundary work)'   # MECHANICAL (hook-owned, iter-9)
+$k5 = 'Recommended next-immediate-step'                          # MECHANICAL (hook-owned, iter-9)
+$ki = (Get-SpecrewHandoverAgentOwnedSections)[0]                 # INTERPRETIVE (agent-owned, preserved)
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t033-" + [guid]::NewGuid().ToString('N'))
 $hd = Join-Path $tmp 'handover'
 try {
@@ -35,7 +36,7 @@ try {
 
     # A1: the agent authors a rich body; it reads back rich; the detector says NOT placeholder.
     Write-SpecrewHandoverContext -HandoverDir $hd -FromHost claude -RecordedAt '2026-06-09T10:00:00Z' `
-        -ActiveFeature feat -ActiveBoundary plan -Sections @{ $k1 = 'Implemented the floor/body split.'; $k5 = 'Run the tests.' } | Out-Null
+        -ActiveFeature feat -ActiveBoundary plan -Sections @{ $k1 = 'Implemented the floor/body split.'; $k5 = 'Run the tests.'; $ki = 'Open Q: the migration risk.' } | Out-Null
     $h = Get-SpecrewRollingHandover -HandoverDir $hd -NowUtc '2026-06-09T10:05:00Z'
     Assert-Equal $h.sections[$k5] 'Run the tests.' 'A1: the agent-authored section reads back verbatim'
     Assert-True (-not (Test-SpecrewHandoverBodyPlaceholder -Sections $h.sections).placeholder) 'A1: an authored body is not a placeholder'
@@ -45,17 +46,24 @@ try {
     $persisted = Get-Content -LiteralPath (Get-SpecrewRollingHandoverPath -HandoverDir $hd) -Raw
     Assert-True ($persisted -match [regex]::Escape($h.sections[$k5])) 'A2: persisted bytes == the surfaced section (render==persist plumbing)'
 
-    # A3: a hook Stop on the SAME boundary PRESERVES the agent body (never clobbers).
-    Write-SpecrewRollingHandover -HandoverDir $hd -Source Stop -FromHost claude -RecordedAt '2026-06-09T10:10:00Z' -ActiveFeature feat -ActiveBoundary plan | Out-Null
+    # A3 (iter-9 section ownership): a same-boundary hook Stop REFRESHES the mechanical sections from the
+    # delta it is handed and PRESERVES the agent's interpretive overlay. The hook owns "what I just did /
+    # next" (they describe NOW); the agent owns the working notes.
+    Write-SpecrewRollingHandover -HandoverDir $hd -Source Stop -FromHost claude -RecordedAt '2026-06-09T10:10:00Z' `
+        -ActiveFeature feat -ActiveBoundary plan -MechanicalSections @{ $k5 = 'HOOK: refreshed next step.' } | Out-Null
     $h3 = Get-SpecrewRollingHandover -HandoverDir $hd -NowUtc '2026-06-09T10:11:00Z'
-    Assert-Equal $h3.sections[$k5] 'Run the tests.' 'A3: a same-boundary hook Stop preserves the agent body'
-    Assert-True (-not (Test-SpecrewHandoverBodyPlaceholder -Sections $h3.sections).placeholder) 'A3: the preserved body is still not a placeholder'
+    Assert-Equal $h3.sections[$ki] 'Open Q: the migration risk.' 'A3: a same-boundary hook Stop PRESERVES the agent interpretive overlay'
+    Assert-Equal $h3.sections[$k5] 'HOOK: refreshed next step.' 'A3: the hook REFRESHES the mechanical section (it owns "now"), not the stale agent value'
+    Assert-True (-not (Test-SpecrewHandoverBodyPlaceholder -Sections $h3.sections).placeholder) 'A3: the merged body is not a placeholder'
 
-    # A4: a hook Stop on a MOVED boundary resets the now-stale body to a placeholder.
-    Write-SpecrewRollingHandover -HandoverDir $hd -Source Stop -FromHost claude -RecordedAt '2026-06-09T10:20:00Z' -ActiveFeature feat -ActiveBoundary tasks | Out-Null
+    # A4 (iter-9): a hook Stop on a MOVED boundary RESETS the agent's now-stale interpretive overlay (the
+    # working notes belonged to the old boundary) while the mechanical sections refresh from the new delta.
+    Write-SpecrewRollingHandover -HandoverDir $hd -Source Stop -FromHost claude -RecordedAt '2026-06-09T10:20:00Z' `
+        -ActiveFeature feat -ActiveBoundary tasks -MechanicalSections @{ $k5 = 'HOOK: at tasks now.' } | Out-Null
     $h4 = Get-SpecrewRollingHandover -HandoverDir $hd -NowUtc '2026-06-09T10:21:00Z'
     Assert-Equal $h4.active_boundary 'tasks' 'A4: the floor refreshed to the new boundary'
-    Assert-True (Test-SpecrewHandoverBodyPlaceholder -Sections $h4.sections).placeholder 'A4: a boundary-move resets the body to a placeholder'
+    Assert-True (-not (Test-SpecrewHandoverSectionAuthored -Content ([string]$h4.sections[$ki]))) 'A4: a boundary-move RESETS the stale agent interpretive overlay (placeholder)'
+    Assert-Equal $h4.sections[$k5] 'HOOK: at tasks now.' 'A4: the mechanical section refreshed to the new-boundary delta'
 
     # A5: bootstrap SURFACING plumbing - the manager carries the PERSISTED authored body in the directive.
     $root = Join-Path $tmp 'proj'
@@ -100,7 +108,9 @@ try {
     Assert-True (Test-SpecrewHandoverBodyPlaceholder -Sections @{ $k5 = (Get-SpecrewHandoverPlaceholderMarker -Boundary plan) }).placeholder 'B1: a marker-only body -> placeholder'
     Assert-True (Test-SpecrewHandoverBodyPlaceholder -Sections $null).placeholder 'B1: a null body -> placeholder'
 
-    # B2: the Stop provider records a same-session hollow detection on a material Stop with no authored body.
+    # B2 (iter-9 recalibration): the Stop provider now AUTHORS the mechanical body from the git/fs delta on a
+    # material Stop with no agent authoring - so it is NOT hollow and NO hollow-handover-at-stop is journaled
+    # (the iter-5 every-build-stop hollow is retired; the journal fires only if the hook captures NO delta).
     $pj = Join-Path $tmp 'pj'
     New-Item -ItemType Directory -Path (Join-Path $pj '.specrew/handover') -Force | Out-Null
     Set-Content -LiteralPath (Join-Path $pj '.gitignore') -Value ".specrew/`n" -Encoding UTF8
@@ -109,9 +119,9 @@ try {
     (@{ session_state = @{ feature_ref = 'feat'; boundary_type = 'plan'; host = 'claude' } } | ConvertTo-Json -Depth 5) |
         Set-Content -LiteralPath (Join-Path $pj '.specrew/start-context.json') -Encoding UTF8
     & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $pj 2>$null | Out-Null
-    $jpath = Join-Path $pj '.specrew/runtime/handover-journal.jsonl'
-    Assert-True (Test-Path -LiteralPath $jpath) 'B2: a hollow detection journal is written on a hollow Stop'
-    Assert-True ((Get-Content -LiteralPath $jpath -Raw) -match 'hollow-handover-at-stop') 'B2: the journal records the hollow-handover-at-stop event'
+    $bh = Get-SpecrewRollingHandover -HandoverDir (Join-Path $pj '.specrew/handover') -NowUtc '2026-06-09T12:00:00Z'
+    Assert-True (-not (Test-SpecrewHandoverBodyPlaceholder -Sections $bh.sections).placeholder) 'B2: a no-agent material Stop is NOT hollow (the hook authored the mechanical body from the delta)'
+    Assert-True (-not (Test-Path -LiteralPath (Join-Path $pj '.specrew/runtime/handover-journal.jsonl'))) 'B2: NO hollow-handover-at-stop journaled (recalibrated from iter-5)'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

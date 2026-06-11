@@ -160,3 +160,51 @@ function Get-SpecrewWorkshopProgress {
         in_flight      = ($specExists -or ($doneAll.Count -gt 0))
     }
 }
+
+function Get-SpecrewSessionDelta {
+    # F-174 iter-9: the git/filesystem delta the Stop hook captures as the rolling handover's MECHANICAL
+    # body - host-universal, needs NO transcript and NO agent cooperation (the iter-8 dogfood proved the
+    # agent-/gate-dependent author is hollow in practice; the git delta is always available). Fail-safe: any
+    # git error yields the empty/zero shape so the handover degrades, never throws. $SinceCommit (the prior
+    # handover's from_commit) bounds "new commits this session"; $null/unresolvable -> no new-commit list.
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter()][AllowNull()][string] $SinceCommit,
+        [Parameter()][int] $MaxFiles = 12,
+        [Parameter()][int] $MaxCommits = 8
+    )
+    $branch = ''; $headShort = ''; $headSubject = ''
+    try { $branch = ([string](& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $null = $_ }
+    try { $headShort = ([string](& git -C $ProjectRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ }
+    try { $headSubject = ([string](& git -C $ProjectRoot log -1 --format=%s 2>$null)).Trim() } catch { $null = $_ }
+
+    $uncommittedFiles = @()
+    try {
+        $porcelain = @(& git -C $ProjectRoot status --porcelain 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        $uncommittedFiles = @($porcelain | ForEach-Object { ($_ -replace '^..\s+', '').Trim() } | Where-Object { $_ })
+    }
+    catch { $uncommittedFiles = @() }
+
+    $newCommits = @()
+    if (-not [string]::IsNullOrWhiteSpace($SinceCommit)) {
+        try {
+            $log = @(& git -C $ProjectRoot log --oneline ("{0}..HEAD" -f $SinceCommit) 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            if ($LASTEXITCODE -eq 0) { $newCommits = @($log) }
+        }
+        catch { $newCommits = @() }
+    }
+
+    [pscustomobject]@{
+        branch                = $branch
+        head_short            = $headShort
+        head_subject          = $headSubject
+        uncommitted_count     = $uncommittedFiles.Count
+        uncommitted_files     = @($uncommittedFiles | Select-Object -First $MaxFiles)
+        uncommitted_truncated = ($uncommittedFiles.Count -gt $MaxFiles)
+        has_uncommitted       = ($uncommittedFiles.Count -gt 0)
+        new_commits           = @($newCommits | Select-Object -First $MaxCommits)
+        new_commit_count      = $newCommits.Count
+    }
+}
