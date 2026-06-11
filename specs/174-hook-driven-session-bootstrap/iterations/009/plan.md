@@ -101,7 +101,7 @@ run showed the hook does not get to RUN often enough:
    (Side note, separate from handover: the run reproduced the free-run governance miss —
    Claude built `casio-watch/index.html` on `master` before being steered into the workshop.)
 
-## Design direction (maintainer, 2026-06-11) — HELD, do NOT implement until more testing
+## Design direction (maintainer, 2026-06-11) — IMPLEMENTED as iter-9.1 (T006)
 
 Multi-source, single-core handover save:
 - **Core abstraction (NEW)** in the bootstrap component layer — one orchestrator, e.g.

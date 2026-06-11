@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
-**Capacity**: 14/20 story_points
+**Status**: complete
+**Capacity**: 17/20 story_points
 **Started**: 2026-06-10
-**Completed**:
+**Completed**: 2026-06-11
 
 <!--
   Validator schema: Iteration Status one of planning|executing|reviewing|retro|complete|abandoned.
@@ -39,7 +39,7 @@ This iteration delivers the three maintainer asks on that green baseline:
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ |
 | T048 | Docs: reposition `specrew start` as an optional host-selector (README Quick Start + getting-started "Start the first feature" + host-pick note + CHANGELOG); the SessionStart hook drives after `specrew init` | FR-008, FR-001 | US-2 | 3 | Implementer | done |
 | T049 | Move user-profile intake to `specrew init` (ask ONLY when profile ABSENT and session INTERACTIVE; skip silently on `-Force`/CI; retain `specrew start` fallback; bootstrap directive nudges `/specrew-user-profile` when absent) | FR-025 | US-1 | 5 | Implementer | done |
-| T050 | Handover validation across exit modes + test-procedure doc (`/exit`, double Ctrl+C, window close, kill); confirm the crash-safe agent-authored body persists + resume restores; fix any authoring gap | FR-022, FR-009 | US-1 | 6 | Implementer | in-progress |
+| T050 | Handover validation across exit modes + test-procedure doc (`/exit`, double Ctrl+C, window close, kill); confirm the crash-safe agent-authored body persists + resume restores; fix any authoring gap | FR-022, FR-009 | US-1 | 6 | Implementer | done |
 | T051 | Session-continuity documentation (maintainer-approved mid-iteration, 2026-06-11): user-guide "Session Continuity" section (hook bootstrap + rolling handover + in-flight surfacing + host switching + honest limits); 3 troubleshooting entries (hook never fires / blind resume diagnosis via bootstrap-journal / handover+concurrency advisories) + symptom-guide rows; design-workshop methodology checkpoint-timing conduct (agenda-persist-at-confirm + per-lens persistence, Principle 7 + Phases 2/7) | FR-008, FR-022 | US-2 | 3 | Implementer | done |
 
 **Capacity: 17/20** (T048 3 + T049 5 + T050 6 + T051 3 = 17). The FR-024 codex / FR-004 banner / version fixes were

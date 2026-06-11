@@ -1,9 +1,9 @@
 # Iteration State: 007
 
 **Schema**: v1
-**Current Phase**: implement (review-signoff — PARITY ACHIEVED via the deployed dogfood; pending merge test-triage before retro)
+**Current Phase**: implement — review-signoff DEMONSTRATED-not-ratified (the deployed dogfood passed, but no review.md/verdict was ever recorded), superseded by iteration 008. Left OPEN as a recorded historical gap — see Disposition.
 **Iteration Status**: executing
-**Last Completed Task**: the DEPLOYED manual dogfood PASSED (2026-06-10, live in `C:\Temp\SpecrewTrials\iter7-dogfood2`, real installed-module layout). The hook fired; the agent oriented (read the contract), rendered the coordinator contract + the "expert on Software Architecture" expertise line + clarify-budget + re-entry-packet promise + file:/// paths, and DROVE into the governed lifecycle — invoked the specrew-design-workshop skill and ran the 9-lens intake (with the FR-040 agenda-as-assignment), instead of going straight to the task. Matches specrew start. The 47 KB inline COMPELLED read-and-follow deployed. iter-6's failure is fixed; PARITY ACHIEVED.
+**Last Completed Task**: the DEPLOYED manual dogfood PASSED (2026-06-10, live in `C:\Temp\SpecrewTrials\iter7-dogfood2`, real installed-module layout). The hook fired; the agent oriented (read the contract), rendered the coordinator contract + the "expert on Software Architecture" expertise line + clarify-budget + re-entry-packet promise + file:/// paths, and DROVE into the governed lifecycle — invoked the specrew-design-workshop skill and ran the 9-lens intake (with the FR-040 agenda-as-assignment), instead of going straight to the task. Matches specrew start. The 47 KB inline COMPELLED read-and-follow deployed. iter-6's failure is fixed; parity was DEMONSTRATED in this deployed dogfood — but it was never converted into a ratified review-signoff (no review.md / verdict recorded), so it stands as demonstrated-NOT-ratified. The parity work was carried into iteration 008 (which closed). See the Disposition note.
 **Tasks Remaining**: triage the merge test-sweep failures (~10, all in UNRELATED areas — dashboards / host-registry / sync-boundary-state / distribution — while every iter-7 + launch-contract test PASSES); separate pre-existing branch drift from merge-introduced, fix only the latter. THEN advance review-signoff → retro.
 **In Progress**: merge test-sweep triage (background sweep). Captured follow-on (NOT iter-7): the design-workshop FR-040 prep-message should emit BEFORE the heavy per-lens prep — the dogfood showed a ~3-min silent wait before the agenda surfaced, so the human had nothing to do.
 **Baseline Ref**: (iter-6 HEAD)
@@ -99,3 +99,15 @@
   do not exceed).
 - Next: T044 inline-core → T045 deploy-sync + mirror guard → T046 side-by-side acceptance test → T047 manual
   dogfood protocol. Parity is NOT re-claimed until the side-by-side (incl. the manual dogfood) passes.
+
+## Disposition (reconciliation, 2026-06-11)
+
+**Open historical gap — NOT a recorded close.** Iteration 007's parity work (T043-T047) and the deployed
+manual dogfood DEMONSTRATED hook ↔ `specrew start` parity, but review-signoff was explicitly HELD by the
+maintainer (2026-06-10, "NOT approved as parity-confirmed", "No parity claim until green") and was **never
+formally advanced to a ratified verdict** — no `review.md`, `retro.md`, or `review-report.yml` was ever
+written. Iteration 008 then opened on the green baseline and absorbed/continued the work; 008 closed. Because
+007 has no honest accepted review verdict to record (signoff held, never ratified), it is deliberately left
+**open-pending-review** and is **NOT added to `.specrew/closed-iterations.yml`**. This is recorded as a known
+historical process gap (Proposal-145 structured artifacts absent and not honestly reconstructable as an
+"accepted" close), not papered over as a pass. The parity it demonstrated is what iteration 008 built on.

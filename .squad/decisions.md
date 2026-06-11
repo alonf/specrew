@@ -26027,3 +26027,26 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Retroactive note**: this canonical defer entry was recorded 2026-06-11 alongside iteration 006's
   reconstructed review.md / retro.md (the iteration closed honestly-qualified on 2026-06-10 without the
   committed closure artifacts; this formalizes the documented send-back + deferral).
+
+### 2026-06-11 — Defer: rolling-handover HOLLOW-in-practice fix (FR-022) to iteration 009
+
+- **Decision ID**: f174-i008-defer-hollow-handover-to-009
+- **Type**: defer
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\008
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-11T00:00:00Z
+- **Next Action**: Iteration 009 makes the Stop hook the PRIMARY rolling-handover author — capture the git/fs
+  session delta into the mechanical body sections on every material stop (never hollow, host-universal, no
+  transcript or agent cooperation), accumulate across the boundary window, stamp the real host. F-174 stays
+  OPEN until the handover is non-hollow in practice (confirmed by an on-host re-dogfood).
+- **Rationale**: iteration 008's T050 multi-host (claude / codex / copilot) exit-resume dogfood PROVED the
+  resume re-anchor works AND fixed two real bugs in-iteration (the deployable-mirror skew, D-013; the
+  anchorless-workshop no-surface bug, D-014) — but it found the rolling-handover BODY is HOLLOW in practice
+  (84/84 and 15/15 `hollow-handover-at-stop`): authoring was agent-/gate-dependent and the Stop hook is
+  transcript-blind, so build / workshop / kill-mid-flight stops never authored. The machinery passed its
+  mechanical tests but produced no real content live (the `build != live` recurrence; drift D-012). The
+  delivered scope (T048-T051) is accepted; the practical-quality fix is iteration 009's explicit deliverable.
+- **Retroactive note**: recorded 2026-06-11 alongside iteration 008's reconstructed review.md / retro.md /
+  drift-log.md (008 closed at boundary commit 7fe04228 on 2026-06-11 without committed closure artifacts;
+  this formalizes the documented cross-host-validation outcome + the hollow-handover carry).
