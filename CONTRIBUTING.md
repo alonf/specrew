@@ -15,7 +15,7 @@ These can land via issues without much back-and-forth:
 
 ## What needs discussion first
 
-These should start in [Discussions](../../discussions) before any code changes:
+These should start in [Discussions](https://github.com/alonf/specrew/discussions) before any code changes:
 
 - **Methodology changes** — Squad agent definitions, lifecycle boundaries, hardening-gate shape, retro structure, validator philosophy.
 - **Prompt rules** — additions or modifications to the coordinator prompts or the Specrew governance template.
