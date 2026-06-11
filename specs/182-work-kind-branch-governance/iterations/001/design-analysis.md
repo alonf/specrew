@@ -168,9 +168,9 @@ points into the option comparison above — the discriminator.
   - Decision points: contract owner + versioning; declaration mechanism; sync/async; compatibility;
     fail-open.
   - Addressed: `.specrew/work-kind.yml` authoritative + branch-prefix hint (FR-009; PR labels rejected as
-    forge-coupled); the `ProviderAdapter` contract + the catalog/governance schemas carry schema_version
-    + stable IDs; fail-open + WARN everywhere; the validator runs with no adapter via git-diff. Option C's
-    pre-built adapters add contract surface with no SC need.
+    forge-coupled); the `ProviderAdapter` contract and the catalog/governance schemas carry a
+    schema_version and stable IDs; fail-open + WARN everywhere; the validator runs with no adapter via
+    git-diff. Option C's pre-built adapters add contract surface with no SC need.
 - **component-design** - `extensions/specrew-speckit/knowledge/design-lenses/component-design.md`
   - Decision points: responsibilities together vs separate; dependency direction; the right abstraction;
     the two key flows; iteration assignment.
