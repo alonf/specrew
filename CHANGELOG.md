@@ -21,11 +21,36 @@ baseline that each release number represents.
   silently ignored, so the hook ran but its output was dropped). The orientation banner is now hoisted to
   render first on every host, and the bootstrap contract renders the real Specrew version instead of "unknown".
 
+## [0.35.0] - 2026-06-11
+
+Stable promotion of the 0.35.0 line per the beta-before-stable mandate, validated by the maintainer's install testing across the 0.33–0.35 line on the Claude host (a full governed lifecycle building a cross-platform .NET MAUI app, head-to-head against an ungoverned control). Bundles the prerelease:
+
+- **Feature 177 — Code & Implementation lens (`code-implementation`) + `specrew-code-rules` guidance skill** (beta1): a design-workshop lens that captures implementation craft as binding constraints and actively guides the coding agent at implement time — guidance, not a gate.
+
+## [0.35.0-beta1] - 2026-06-11
+
+### Added
+
+- **Feature 177 — Code & Implementation lens (`code-implementation`) + `specrew-code-rules` guidance skill (Proposal 163).** A design-workshop lens that captures *how the code is written* (implementation craft) as binding constraints, then actively guides the coding agent at implement time. It is **conduct-driven and auto-on for any code-writing feature** (like `product-domain`, not a row in `applicability-map.json`), and runs after the technical lenses so it can bind the resolved stack and architecture. The lens drives a **source-of-truth-first** intake (asks for an existing coding guideline or one or more example projects to emulate -- GitHub, local, or other -- before anything else, the Figma-equivalent question), an assisted ingestion that maps a provided guideline/example onto the catalog and extracts non-catalog conventions as custom rules with provenance, a **grouped, pre-checked set/unset checklist** (baseline summarized, decision-prompts paced all-at-once or one-at-a-time, applicability-filtered rules shown only in context -- never a flat wall), and a **dependency / tooling selection** decision area (FR-013) that presents "use existing project tools / no new dependency" first and, for any chosen dependency, captures version, license, source org, canonical URL, maintenance signal, security/advisory status, compatibility, cost/quota, coupling weight, replaceability, and test implications into the manifest `dependency_policy`. Content lives in a data-driven catalog (`code-rules.yml`: cross-language baseline-craft defaults plus per-stack rules for C#/.NET, C/C++, TS/JS, Python, Go, Java, including SOLID, Strategy/State over repeated conditionals, and deliberate functional-vs-inheritance polymorphism); selection lives in a per-feature reference-by-ID manifest (`implementation-rules.yml`, schema `implementation-rules.schema.json`, authored by hand following the schema like `product-domain`); delivery lives in one static multi-host `specrew-code-rules` skill that resolves the active feature, composes BASELINE plus the feature OVERLAY (plus an optional `code-rules.local.yml` project overlay for company/org rules), and surfaces it task-scoped while writing code. Run cadence: the rules are mostly product-level -- decide once at a product-level workshop, inherit per feature, and re-open only the parts a new technology or programming language changes (`context_scope` hooks; V1 `feature_standalone`; forward-compatible with Proposal 162). It is **guidance, not a gate**: there is no Proposal-145 review-time conformance engine; the acceptance proof is a deployed-module dogfood (the agent is actually guided, the human is not walled, and a new dependency is never added without surfacing the decision -- SC-004 / SC-007 / SC-008).
+
+## [0.34.0] - 2026-06-11
+
+Stable promotion of the 0.34.0 line per the beta-before-stable mandate (validated as part of the 0.33–0.35 install testing). Bundles the prerelease:
+
+- **Feature 176 — Product & Problem Domain lens (`product-domain`)** (beta1): a required first design-workshop phase that grounds product/problem context (users, pain, MVP, constraints, alternatives) at adaptive depth before any technical lens.
+
 ## [0.34.0-beta1] - 2026-06-10
 
 ### Added
 
 - **Feature 176 — Product & Problem Domain lens (first workshop lens) (#2285).** A required first design-workshop phase, `product-domain`, that runs before technical-lens applicability selection and grounds product/problem context (users & stakeholders, pain/job, MVP, non-goals, constraints, outcomes, alternatives) at adaptive depth (Light/Standard/Deep by risk and novelty), tagging every material statement with an evidence quality (`known` / `assumed` / `unknown` / `research-needed`). It persists a human-readable and a structured record (`workshop/product-domain.{md,yml}`), is enforced at the specify boundary (a batch "confirm all" cannot satisfy it), conditionally blocks plan on a load-bearing `research-needed` gap, and runs before every feature at adaptive depth (`context_scope: feature_standalone`; `product_id` / `product_context_ref` forward-compat hooks for Proposal 162). Deferred to forward-compatible shape: Proposal 156 `workshop-decisions.yml` emission and Proposal 162 inheritance behavior.
+
+## [0.33.0] - 2026-06-11
+
+Stable promotion of the 0.33.0 line per the beta-before-stable mandate (validated as part of the 0.33–0.35 install testing). Bundles the prereleases:
+
+- **Feature 171 — Specrew Refocus: `/specrew-refocus` + event-driven auto-refocus** (beta1): re-loads scoped Specrew methodology discipline into context manually and at the moments drift sets in.
+- **Bug bash** (beta2): GitHub Actions Node 24 readiness, Claude-only `specrew-gate-stop` deployment, iteration `state.md` truth, and workshop confirmation integrity.
 
 ## [0.33.0-beta2] - 2026-06-09
 
@@ -206,10 +231,10 @@ Three Unix-install bugs found by the 0.31.0-beta1 Linux beta-before-stable valid
 
 ### Known follow-ups (deferred carry-forward chores)
 
-- **Framework-fix slice** _(still deferred)_: B-001 (duplicate `Get-ObjectPropertyString` with `-Names` vs `-PropertyNames` — later shadows former) + A-001 (`Get-QualityEvidenceContent` StrictMode crash on the `| Gate | Target | Notes |` quality-gate convention, blocking scaffold/mechanical/reviewer-artifact generation).
+- **Framework-fix slice** *(still deferred)*: B-001 (duplicate `Get-ObjectPropertyString` with `-Names` vs `-PropertyNames` — later shadows former) + A-001 (`Get-QualityEvidenceContent` StrictMode crash on the `| Gate | Target | Notes |` quality-gate convention, blocking scaffold/mechanical/reviewer-artifact generation).
 - **Validator hygiene — RESOLVED via PR #1153 (Proposal 144)**: closed/historical iterations are no longer FAILed by a later capacity-baseline change. The validator now enforces `iteration-config` capacity only for in-flight iterations (`planning`/`executing`); everything past implementation is grandfathered against its own stated capacity (durable closed-iteration index as belt-and-suspenders). The 29-iteration / 58-line capacity-drift set cleared to 0.
-- **Capacity baseline revert (queued slice)**: revert self-host `capacity_per_iteration` 25 → 20. The 20 cap is intentional (AI scope/context-sized); F-049 Iteration 003's 23.45 SP load should have been _split_, not accommodated by raising the cap. Iteration 003 stays grandfathered by the Proposal-144 rule (protected in both baseline directions).
-- **Proposal 143 — no longer required for F-049**: FR-038 in-situ is closed by the Iteration 005 directive refactor + Coordinator Welcome Orientation (above). Proposal 143 still ships post-F-049/F-050 as the _richer_ surface (CLI reset path, audit trail, structured Welcome Orientation with Unicode rendering, cross-platform polish) — not blocking.
+- **Capacity baseline revert (queued slice)**: revert self-host `capacity_per_iteration` 25 → 20. The 20 cap is intentional (AI scope/context-sized); F-049 Iteration 003's 23.45 SP load should have been *split*, not accommodated by raising the cap. Iteration 003 stays grandfathered by the Proposal-144 rule (protected in both baseline directions).
+- **Proposal 143 — no longer required for F-049**: FR-038 in-situ is closed by the Iteration 005 directive refactor + Coordinator Welcome Orientation (above). Proposal 143 still ships post-F-049/F-050 as the *richer* surface (CLI reset path, audit trail, structured Welcome Orientation with Unicode rendering, cross-platform polish) — not blocking.
 
 ## [0.27.6] - 2026-05-26
 

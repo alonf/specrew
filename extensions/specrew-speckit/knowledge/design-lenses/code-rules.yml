@@ -1,0 +1,442 @@
+schema_version: "1.0"
+description: >-
+  Canonical code-implementation rule catalog. The maintainer default rule set (Proposal 163 baseline)
+  plus the F-177 additions (Strategy/State, polymorphism-mechanism, SOLID) plus per-stack defaults.
+  Each rule has a stable id, a group (baseline-default | decision-prompt | applicability-filtered),
+  a scope (cross-language | language:<x> | framework:<y>), an applies predicate, a default posture,
+  and informational enforcement_mode(s). The lens presents these via the grouping model; the per-feature
+  implementation-rules.yml manifest references rules by id; the specrew-code-rules skill resolves rule
+  text by id and composes baseline + per-feature overlay. enforcement_mode is informational (no 145 gate).
+
+rules:
+  # --- Cross-language baseline defaults (always-on craft; stated as defaults, exceptions only) ---
+  - id: code-rule.intent-revealing-names
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Names carry design intent
+    default: "Find the best descriptive name; do not append the symbol kind (PenClass, DrawFunction) or prefix an abstraction Abstract/Base when a concrete role name fits (Painter, Marker)."
+    enforcement_mode: [review]
+  - id: code-rule.short-functions
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Functions and methods stay short
+    default: "Split work by intent; prefer a local function for readability-only helpers when scope should stay local."
+    enforcement_mode: [review]
+  - id: code-rule.avoid-deep-nesting
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Avoid deep nesting
+    default: "More than two levels of conditions/loops is a design smell; extract inner intent into a method, local function, or lambda."
+    enforcement_mode: [review, analyzer]
+  - id: code-rule.dependency-injection
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Use dependency injection as a principle
+    default: "Choose the idiomatic seam (constructor/setter/function injection, composition roots, function pointers, callbacks, closures) — DI as a principle, not only an IoC container."
+    enforcement_mode: [review]
+  - id: code-rule.dtos-between-services
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Use DTOs between services
+    default: "The calling service defines the DTO types it consumes; do not leak another service's internal model across the boundary."
+    enforcement_mode: [review]
+  - id: code-rule.avoid-common-utility-libs
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Avoid common/shared utility libraries by default
+    default: "Broad 'common' classes create coupling + ownership ambiguity; prefer caller-owned contracts or focused modules; extract a package only when the reuse boundary is real."
+    enforcement_mode: [review]
+  - id: code-rule.immutability-intent
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Express immutability and intent in code
+    default: "Use const/readonly/init/final/val/constexpr/immutable collections where they clarify intent and reduce accidental state change."
+    enforcement_mode: [review, analyzer]
+  - id: code-rule.comments-wisely
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Use comments wisely
+    default: "Tell the story with names + structure; comment intent/rationale/constraints/trade-offs, not obvious code; use doc comments for public/intellisense APIs. (See Proposal 074 vocabulary.)"
+    enforcement_mode: [review]
+  - id: code-rule.no-magic-numbers
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Avoid magic numbers and hidden constants
+    default: "Use named constants, option objects, or configuration; provide safe defaults; log when a default substitutes for a configured value."
+    enforcement_mode: [review, analyzer]
+  - id: code-rule.optimize-apis-for-call-site
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Optimize APIs for the call site
+    default: "Evaluate names, parameter order, defaults, overloads/option objects, and examples from the caller's point of view; readability at the use site is design evidence."
+    enforcement_mode: [review]
+  - id: code-rule.stronger-domain-types
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Prefer stronger domain types over primitive obsession
+    default: "Use value objects, records, discriminated unions, enums, newtypes, or branded types where they prevent invalid states or clarify units."
+    enforcement_mode: [review]
+  - id: code-rule.object-invariants
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Keep object invariants inside the object boundary
+    default: "Guard construction/mutation so members stay in range; prefer guarded setters, value objects, and type constraints over scattered defensive checks; validate untrusted input at boundaries."
+    enforcement_mode: [review, unit-tests]
+  - id: code-rule.no-leaky-mutable-internals
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Do not leak mutable internals
+    default: "Do not expose internal collections/buffers/dictionaries directly; prefer read-only views/projections/defensive copies unless mutation is the explicit contract."
+    enforcement_mode: [review]
+  - id: code-rule.normalize-state
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Normalize state
+    default: "Avoid duplicated/derivable state; keep canonical ownership clear; derive views from source; name cache/snapshot boundaries explicitly."
+    enforcement_mode: [review]
+  - id: code-rule.simple-trustworthy-tests
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Make tests simple enough to trust
+    default: "Prefer small deterministic tests for core logic, clear fixtures, readable assertions, focused integration tests for boundaries."
+    enforcement_mode: [review, unit-tests]
+  - id: code-rule.docs-as-api-test
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Use public docs and examples as an API design test
+    default: "If an API/CLI/module is hard to explain in examples, the shape needs another look; examples should exercise the intended path."
+    enforcement_mode: [review]
+  - id: code-rule.language-native-constructs
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Prefer language-native constructs over unnecessary classes
+    default: "Use functions, records, modules, extension methods, data classes, protocols, traits, closures, or declarative constructs when idiomatic; do not force an OO class shape."
+    enforcement_mode: [review]
+  - id: code-rule.secure-coding-defaults
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Make secure coding defaults explicit
+    default: "Decide input validation, output encoding, secret handling, authn/authz boundaries, dependency hygiene, least privilege, safe defaults, and failure behavior as part of implementation posture."
+    enforcement_mode: [review]
+
+  # --- F-177 additions ---
+  - id: code-rule.solid-baseline
+    group: baseline-default
+    scope: cross-language
+    applies: true
+    title: Apply SOLID as a baseline design posture
+    default: "SRP / OCP / LSP / ISP / DIP, adapted to the stack idiom. OCP composes with code-rule.extension-points; DIP composes with code-rule.dependency-injection (do not duplicate — reference)."
+    enforcement_mode: [review]
+  - id: code-rule.strategy-state-over-repeated-conditionals
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Prefer Strategy/State over repeated identical conditionals
+    default: "When multiple identical/parallel conditionals (or a growing switch on a type/state) recur, prefer the Strategy or State pattern over repeated branching."
+    enforcement_mode: [review]
+  - id: code-rule.polymorphism-mechanism
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Choose the polymorphism mechanism deliberately
+    default: "Functional (lambdas/closures/higher-order functions) vs inheritance/interfaces — choose by variation shape, testability, and stack idiom; do not default to class hierarchies where a function is clearer."
+    enforcement_mode: [review]
+
+  # --- Cross-language decision prompts (consequential forks surfaced to the human) ---
+  - id: code-rule.complex-code-stable
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Complex code should be stable
+    default: "Reduce coupling around complex logic; keep volatile adapters away from stable decision code (the IDesign Engine pressure)."
+    enforcement_mode: [review]
+  - id: code-rule.anti-corruption-layers
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Use anti-corruption layers for decoupling
+    default: "Translate external/upstream models into local domain/contract models instead of letting foreign shapes spread."
+    enforcement_mode: [review]
+  - id: code-rule.type-inference-deliberate
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Use type inference deliberately
+    default: "Use var/auto when the type/size is obvious or hiding it is the abstraction; avoid hiding it when precision, numeric size, ownership, or lifetime matters."
+    enforcement_mode: [review]
+  - id: code-rule.concurrency-over-locks
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Prefer concurrency designs over locks
+    default: "Prefer immutable snapshots, channels/actors, lock-free/wait-free or framework concurrent structures; if locks are needed, make ownership + ordering explicit."
+    enforcement_mode: [review]
+  - id: code-rule.declarative-collections
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Prefer declarative collection/query constructs when they clarify
+    default: "Use LINQ/streams/comprehensions/pipelines over manual loops when intent is clearer; do not over-compose simple control flow."
+    enforcement_mode: [review]
+  - id: code-rule.idiomatic-error-handling
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Use language-idiomatic error handling
+    default: "Exceptions, result types, error returns, panic boundaries, typed errors, and cancellation follow the stack's best practices; decide explicitly for service/API boundaries."
+    enforcement_mode: [review]
+  - id: code-rule.careful-retries
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Use retries carefully
+    default: "Bounded retries with exponential backoff + max delay + jitter; retry only safe/idempotent operations."
+    enforcement_mode: [review]
+  - id: code-rule.logging-traceability
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Make logging and traceability first-class
+    default: "Use the framework's capabilities; consider OpenTelemetry for services/distributed flows; decide what is logged, traced, correlated, and redacted."
+    enforcement_mode: [review]
+  - id: code-rule.robustness-state-boundaries
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Design for robustness and state boundaries
+    default: "Decide failure modes, transactions, sagas, outbox/inbox, circuit breakers, idempotency, concurrency control (ETags/locks), lifecycle scope, and eventual consistency explicitly."
+    enforcement_mode: [review]
+  - id: code-rule.testing-posture
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Decide the testing posture up front
+    default: "Decide TDD vs not; use decoupling to enable tests; pick mocking/faking/approval/snapshot tools; group tests by subject; decide CI vs local vs special-environment."
+    enforcement_mode: [review]
+  - id: code-rule.evidence-driven-performance
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Treat performance as evidence-driven
+    default: "When performance matters use profilers, benchmarks, PGO where supported; make speed/memory/GC/cache/allocation trade-offs explicit, not folklore."
+    enforcement_mode: [review]
+  - id: code-rule.copy-semantics
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Choose copy semantics deliberately
+    default: "Decide shallow/deep/copy-on-write/clone/immutable-snapshot/serialization/DTO projection by coupling, ownership, performance, identity, and mutation risk."
+    enforcement_mode: [review]
+  - id: code-rule.extension-points
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Declare extension points explicitly
+    default: "Decide open-for-extension / closed-internal / sealed / plugin / callback / config-driven; do not leave accidental inheritance or central-dispatch edits as the only extension story (OCP)."
+    enforcement_mode: [review]
+  - id: code-rule.api-service-design
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Treat API and service design as first-class
+    default: "Pick resource/action shape, versioning, idempotency, error envelope, correlation, authn/authz, and compatibility deliberately; do not let transport defaults define the API."
+    enforcement_mode: [review]
+  - id: code-rule.authz-security-context
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Decide code-level authorization and security-context flow
+    default: "Prefer declarative authz for static rules; explicit imperative checks for data/ownership/tenant/workflow rules; centralize in policy handlers; decide how security context flows (signed tokens across hops; explicit principal in-process; restrict ambient context to plumbing)."
+    enforcement_mode: [review, unit-tests]
+  - id: code-rule.validation-boundaries
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Validate at every relevant boundary
+    default: "Decide client vs server vs middle (gateway/OPA/schema/mesh) validation; client improves UX, server is authoritative, middle enforces cross-cutting policy without hiding business-rule ownership."
+    enforcement_mode: [review]
+  - id: code-rule.write-conflict-semantics
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Decide write-conflict semantics
+    default: "Last-write-wins / optimistic concurrency (version/ETag + repair UI) / merge / pessimistic lock / lease; record the UX + API contract for stale submissions."
+    enforcement_mode: [review]
+  - id: code-rule.collection-query-semantics
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Decide collection/query semantics across client and server
+    default: "Decide client vs server sort/group/filter/page/search, snapshot vs live re-query, stable ordering, and cursor guarantees."
+    enforcement_mode: [review]
+  - id: code-rule.pagination-delivery
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Choose pagination and delivery style deliberately
+    default: "Page numbers vs cursor tokens, infinite scroll vs paging, sync vs async jobs vs streaming; decide cancellation, partial failures, totals, and changing datasets."
+    enforcement_mode: [review]
+  - id: code-rule.protocol-choice
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Choose protocol by communication shape
+    default: "REST (resources/interop) / GraphQL (client-shaped graph) / gRPC (typed low-latency/streaming) / WebSocket-SignalR (server push) / webhooks (external events); record idempotency, versioning, observability."
+    enforcement_mode: [review]
+  - id: code-rule.messaging-event-processing
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Choose messaging and event processing deliberately
+    default: "Direct calls / queues / pub-sub / event streams / routers; orchestration (manager/saga) vs choreography; record delivery semantics, ordering, idempotency, retries, dead-letter, backpressure, schema/versioning, replay, tracing."
+    enforcement_mode: [review]
+  - id: code-rule.cache-boundaries
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Use cache for performance/state-sharing, not communication
+    default: "Local/distributed/CDN/db cache or none by latency/consistency/cost/failure; distributed cache for sharing ephemeral state between same-service instances; never use cache/DB as a communication channel; record TTL/invalidation/stampede/fallback."
+    enforcement_mode: [review]
+  - id: code-rule.lts-version-check
+    group: decision-prompt
+    scope: cross-language
+    applies: true
+    title: Check current LTS and supported versions at workshop time
+    default: "Check current language/library LTS + support on the web (training data may be stale); ask before a short-lived/preview/non-LTS choice and record the reason. Long-lived artifacts must avoid stale-version claims."
+    enforcement_mode: [review]
+
+  # --- Cross-language applicability-filtered (shown only when the context applies) ---
+  - id: code-rule.render-purity
+    group: applicability-filtered
+    scope: cross-language
+    applies: "feature has a UI/render surface"
+    title: Keep render code pure
+    default: "UI/render components compute output from inputs/state; move I/O, subscriptions, timers, mutation into effects/controllers/services/lifecycle seams."
+    enforcement_mode: [review]
+  - id: code-rule.never-block-event-loop
+    group: applicability-filtered
+    scope: cross-language
+    applies: "feature runs on an event-loop runtime (Node, browser UI, async Python, reactive)"
+    title: Never block an event loop
+    default: "Avoid CPU-heavy work, sync I/O, long loops, blocking locks on the loop; offload/batch/stream/yield or use workers."
+    enforcement_mode: [review]
+  - id: code-rule.vendor-neutral-observability
+    group: applicability-filtered
+    scope: cross-language
+    applies: "feature is a service or distributed flow"
+    title: Prefer vendor-neutral observability
+    default: "Use OpenTelemetry / portable semantic conventions unless a product constraint justifies vendor-specific instrumentation."
+    enforcement_mode: [review]
+  - id: code-rule.ui-controls-prevent-invalid-input
+    group: applicability-filtered
+    scope: cross-language
+    applies: "feature has user-facing input controls"
+    title: Prefer UI controls that prevent invalid input
+    default: "Use constrained controls (date pickers, numeric inputs, dropdowns, masks, disabled choices) before relying on error messages."
+    enforcement_mode: [review]
+  - id: code-rule.framework-validation
+    group: applicability-filtered
+    scope: cross-language
+    applies: "feature uses a framework with built-in validation"
+    title: Use language and framework validation capabilities
+    default: "Prefer built-in validators / schema systems / model binding / data annotations / JSON Schema-OpenAPI / policy languages over hand-rolled parallel validators."
+    enforcement_mode: [review]
+  - id: code-rule.technology-enabler-shortlist
+    group: applicability-filtered
+    scope: cross-language
+    applies: "feature is distributed / cloud / messaging-heavy"
+    title: Treat technology suggestions as a shortlist, not a closed menu
+    default: "Suggest stack-relevant enablers (Dapr, Aspire, MassTransit/NServiceBus, Temporal/Durable Functions, Orleans/Akka, managed cloud primitives) as prompts; the human/Crew may choose otherwise."
+    enforcement_mode: [review]
+  - id: code-rule.cncf-maturity
+    group: applicability-filtered
+    scope: cross-language
+    applies: "feature is cloud-native"
+    title: Check CNCF projects and explain maturity
+    default: "Match CNCF projects to the requirement category and explain Sandbox/Incubating/Graduated maturity as one signal (also fit, ecosystem, operator skill, security, support)."
+    enforcement_mode: [review]
+  - id: code-rule.rendering-hosting-model
+    group: applicability-filtered
+    scope: cross-language
+    applies: "feature has a web/UI rendering + hosting choice"
+    title: Choose the rendering and hosting model intentionally
+    default: "CSR / SSR / static / hybrid-islands / WebAssembly / server-driven / native by latency, SEO, offline, auth/data sensitivity, device, deployment, and operational complexity."
+    enforcement_mode: [review]
+
+  # --- Per-stack (language-scoped) decision prompts ---
+  - id: code-rule.csharp.langversion-posture
+    group: decision-prompt
+    scope: "language:csharp-dotnet"
+    applies: "stack is C#/.NET"
+    title: "C#: target framework + language-version posture"
+    default: "TFM default vs pinned language version vs preview/latest; nullable reference types, implicit usings, file-scoped namespaces, records, primary constructors, collection expressions, minimal APIs; .editorconfig + .NET analyzers; DI container vs manual composition; util packaging (extension/internal project/NuGet)."
+    enforcement_mode: [compiler, analyzer, review]
+  - id: code-rule.cpp.standard-and-safety-posture
+    group: decision-prompt
+    scope: "language:c-cpp"
+    applies: "stack is C/C++"
+    title: "C/C++: standard, ABI, ownership, and safety posture"
+    default: "C11/17/23 or C++17/20/23/26 + extensions; toolchain/ABI/header hygiene; RAII/smart pointers vs explicit alloc; exceptions/RTTI/templates/macros posture; safety profile (app/systems/embedded/safety-critical/security); clang-format/clang-tidy/sanitizers; baseline = Google C++ Style / C++ Core Guidelines / LLVM / GNU, with CERT/MISRA when safety-critical."
+    enforcement_mode: [compiler, analyzer, review]
+  - id: code-rule.ts.strictness-posture
+    group: decision-prompt
+    scope: "language:typescript-javascript"
+    applies: "stack is TypeScript/JavaScript"
+    title: "TS/JS: strictness + module + tooling posture"
+    default: "tsconfig strict (default for greenfield) vs gradual; ESM/CJS/module resolution; Prettier for formatting + ESLint/typescript-eslint for code-quality + typed linting where justified; functional/OO + framework patterns."
+    enforcement_mode: [compiler, analyzer, formatter, review]
+  - id: code-rule.python.typing-and-layout-posture
+    group: decision-prompt
+    scope: "language:python"
+    applies: "stack is Python"
+    title: "Python: version, typing, layout, and tooling posture"
+    default: "Version floor + modern syntax; typing posture (none/gradual/strict for core); src vs flat layout; ruff (lint + optional format) / Black / mypy via pyproject.toml; PEP 8 mediated by tooling."
+    enforcement_mode: [analyzer, formatter, review]
+  - id: code-rule.go.boundaries-and-tooling-posture
+    group: decision-prompt
+    scope: "language:go"
+    applies: "stack is Go"
+    title: "Go: version, package boundaries, and tooling posture"
+    default: "Min version/toolchain; idiomatic small interfaces + package boundaries (avoid over-layered DI); error/context propagation norms; gofmt + go vet + golangci-lint when needed; internal/ boundaries. Do not invent style rules (gofmt is canonical)."
+    enforcement_mode: [formatter, analyzer, review]
+  - id: code-rule.java.baseline-and-tooling-posture
+    group: decision-prompt
+    scope: "language:java"
+    applies: "stack is Java"
+    title: "Java: version, module, DI, and static-analysis posture"
+    default: "LTS baseline + preview posture; module system vs packages; DI/framework (Spring/CDI/manual), builder/factory, records/sealed; google-java-format + Checkstyle + PMD + SpotBugs; nullness/immutability where tooling supports."
+    enforcement_mode: [compiler, analyzer, formatter, review]
+
+  # --- Per-stack shared-code packaging (decision prompt, applies to compiled/package ecosystems) ---
+  - id: code-rule.shared-code-packaging
+    group: decision-prompt
+    scope: cross-language
+    applies: "feature creates shared/reusable code"
+    title: Decide how shared/util code is packaged
+    default: "NuGet package vs project reference vs internal shared assembly (C#); npm workspace/package (TS); module/package (Python/Go/Java) — decide by the real reuse boundary, not convenience."
+    enforcement_mode: [review]
+  - id: code-rule.public-api-reusable-design
+    group: decision-prompt
+    scope: cross-language
+    applies: "feature exposes consuming-code-facing API (more than one caller)"
+    title: Public API / reusable-code design posture
+    default: "Naming, member/parameter design, extensibility, exception behavior, versioning/compatibility, dependency-surface hygiene — borrow the .NET Framework Design Guidelines questions, adapt to the stack idiom (not .NET-only, not library-only)."
+    enforcement_mode: [review]
