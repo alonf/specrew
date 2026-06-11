@@ -103,6 +103,7 @@
         'extensions/specrew-speckit/refocus/specify.md',
         'extensions/specrew-speckit/refocus/tasks.md',
         'extensions/specrew-speckit/scripts/brownfield-merge.ps1',
+        'extensions/specrew-speckit/scripts/capability-detector.ps1',
         'extensions/specrew-speckit/scripts/collision-detect.ps1',
         'extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1',
         'extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1',
@@ -121,6 +122,7 @@
         'extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1',
         'extensions/specrew-speckit/scripts/provider-adapter.ps1',
         'extensions/specrew-speckit/scripts/provider-generic.ps1',
+        'extensions/specrew-speckit/scripts/provider-github.ps1',
         'extensions/specrew-speckit/scripts/refocus.ps1',
         'extensions/specrew-speckit/scripts/resolve-quality-profile.ps1',
         'extensions/specrew-speckit/scripts/resume-iteration.ps1',
@@ -273,6 +275,7 @@
         'templates/github/workflows/specrew-ci.yml',
         'templates/github/workflows/specrew-confidence-lane.yml',
         'templates/github/workflows/specrew-project-sync.yml',
+        'templates/github/workflows/specrew-work-kind.yml',
         'templates/lifecycle/devops-lifecycle.md',
         'templates/lifecycle/docs-only-lifecycle.md',
         'templates/specify/templates/agent-file-template.md',
@@ -311,6 +314,7 @@
         'templates/squad/identity/wisdom.md',
         'templates/work-kind/release-validation-record.md',
         'templates/work-kind/repository-governance.yml',
+        'templates/work-kind/synthesized-adapter.example.ps1',
         'templates/work-kind/work-kind.yml'
     )
     PrivateData = @{

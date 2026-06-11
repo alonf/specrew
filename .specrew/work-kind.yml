@@ -1,0 +1,7 @@
+# .specrew/work-kind.yml — Specrew's OWN work-kind declaration (dogfood, FR-013/SC-007).
+#
+# Feature 182 is product/runtime behavior delivered through the full Specrew lifecycle.
+
+work_kind: software-feature
+schema_version: "1.0"
+notes: "Feature 182 — Work Kind and Branch Governance Model (the feature dogfooded here)."

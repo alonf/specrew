@@ -3,8 +3,8 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T211
-**Tasks Remaining**: T204-T208, T210, T212 (capability detector, GitHub adapter, brownfield, CI workflow, synthesis, dogfood, denial-path tests)
+**Last Completed Task**: T212
+**Tasks Remaining**: (none — T201..T212 complete; entering review)
 **In Progress**: (none)
 **Baseline Ref**: 6cd1534434c59353e6731262212752fa5ae266b8
 **Updated**: 2026-06-11T20:30:00Z

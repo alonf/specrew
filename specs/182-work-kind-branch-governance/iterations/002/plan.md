@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 7/20 story_points
+**Capacity**: 17/20 story_points
 **Started**: 2026-06-11
 **Completed**:
 
@@ -39,15 +39,15 @@ neutral `ProviderAdapter` contract + generic fallback). This iteration consumes 
 | T201 | WorkKindValidator core (advisory; gap-naming; fail-open) | FR-007 | US4 | 2 | Implementer | extensions/specrew-speckit/scripts/work-kind-validator.ps1 | done | claude | done | i2-validator (T211 green) |
 | T202 | ChangedFileClassifier (scope match + allow-list) | FR-007 | US4 | 1 | Implementer | extensions/specrew-speckit/scripts/work-kind-validator.ps1 | done | claude | done | i2-validator (T211 green) |
 | T203 | CloseoutEvidenceChecker (required evidence / open boundary) | FR-007 | US4 | 1.5 | Implementer | extensions/specrew-speckit/scripts/work-kind-validator.ps1 | done | claude | done | i2-validator (T211 green) |
-| T204 | CapabilityDetector (honest mechanism; describe-only default) | FR-012 | US5 | 1.5 | Implementer | extensions/specrew-speckit/scripts/capability-detector.ps1 | planned | claude | — | — |
-| T205 | GitHubAdapter detection + apply (gh/API; gh confined here) | FR-015 | US5 | 2 | Implementer | extensions/specrew-speckit/scripts/provider-github.ps1 | planned | claude | — | — |
-| T206 | Brownfield detector (existing posture; adapt-or-change) | FR-021 | US6 | 1.5 | Implementer | extensions/specrew-speckit/scripts/capability-detector.ps1 | planned | claude | — | — |
-| T207 | CI workflow template (provider-neutral invocation) | FR-007 | US4 | 0.5 | Implementer | templates/github/workflows/specrew-work-kind.yml | planned | claude | — | — |
-| T208 | On-the-fly synthesis exercised (read-only until verified) | FR-016 | US5 | 1.5 | Implementer | extensions/specrew-speckit/scripts/provider-adapter.ps1 | planned | claude | — | — |
+| T204 | CapabilityDetector (honest mechanism; describe-only default) | FR-012 | US5 | 1.5 | Implementer | extensions/specrew-speckit/scripts/capability-detector.ps1 | done | claude | done | T212 green |
+| T205 | GitHubAdapter detection + apply (gh/API; gh confined here) | FR-015 | US5 | 2 | Implementer | extensions/specrew-speckit/scripts/provider-github.ps1 | done | claude | done | gh-confined; fail-open; apply guarded (T212) |
+| T206 | Brownfield detector (existing posture; adapt-or-change) | FR-021 | US6 | 1.5 | Implementer | extensions/specrew-speckit/scripts/capability-detector.ps1 | done | claude | done | T212 green |
+| T207 | CI workflow template (provider-neutral invocation) | FR-007 | US4 | 0.5 | Implementer | templates/github/workflows/specrew-work-kind.yml | done | claude | done | advisory-default workflow |
+| T208 | On-the-fly synthesis exercised (read-only until verified) | FR-016 | US5 | 1.5 | Implementer | templates/work-kind/synthesized-adapter.example.ps1 | done | claude | done | conduct (lens) + read-only example + tested (T015/T212) |
 | T209 | Emergency bypass audit (durable who/why/when/what) | FR-011 | US4 | 1 | Implementer | extensions/specrew-speckit/scripts/work-kind-validator.ps1 | done | claude | done | i2-validator (T211 green) |
-| T210 | Dogfood Specrew + SC-014 self-consistency (describe-only) | FR-013 | US1 | 1.5 | Reviewer | .specrew/work-kind.yml | planned | claude | — | — |
+| T210 | Dogfood Specrew + SC-014 self-consistency (describe-only) | FR-013 | US1 | 1.5 | Reviewer | .specrew/work-kind.yml | done | claude | done | .specrew/work-kind.yml + repository-governance.yml; SC-014 (T212) |
 | T211 | i2 tests — validator (capability + brownfield added with T204/T206) | FR-007 | US4 | 1.5 | Implementer | tests/unit/work-kind-validator.tests.ps1 | done | claude | done | 12 assertions green |
-| T212 | i2 denial-path + fail-open + parity tests | FR-020 | US5 | 1.5 | Implementer | tests/unit/work-kind-runtime.tests.ps1 | planned | claude | — | — |
+| T212 | i2 denial-path + fail-open + parity tests | FR-020 | US5 | 1.5 | Implementer | tests/unit/work-kind-runtime.tests.ps1 | done | claude | done | 19 assertions green |
 
 ## Effort Model
 
