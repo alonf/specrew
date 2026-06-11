@@ -84,6 +84,9 @@
         'extensions/specrew-speckit/knowledge/design-lenses/security-compliance.md',
         'extensions/specrew-speckit/knowledge/design-lenses/sources.md',
         'extensions/specrew-speckit/knowledge/design-lenses/ui-ux.md',
+        'extensions/specrew-speckit/knowledge/repository-governance.schema.json',
+        'extensions/specrew-speckit/knowledge/work-kinds.schema.json',
+        'extensions/specrew-speckit/knowledge/work-kinds.yml',
         'extensions/specrew-speckit/prompts/coordinator-decision-guidance.md',
         'extensions/specrew-speckit/prompts/coordinator-response.md',
         'extensions/specrew-speckit/README.md',
@@ -116,6 +119,8 @@
         'extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1',
         'extensions/specrew-speckit/scripts/manage-escalation-state.ps1',
         'extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1',
+        'extensions/specrew-speckit/scripts/provider-adapter.ps1',
+        'extensions/specrew-speckit/scripts/provider-generic.ps1',
         'extensions/specrew-speckit/scripts/refocus.ps1',
         'extensions/specrew-speckit/scripts/resolve-quality-profile.ps1',
         'extensions/specrew-speckit/scripts/resume-iteration.ps1',
@@ -135,6 +140,7 @@
         'extensions/specrew-speckit/scripts/Test-CopilotInstructionsChangeType.ps1',
         'extensions/specrew-speckit/scripts/validate-governance.ps1',
         'extensions/specrew-speckit/scripts/validate-versions.ps1',
+        'extensions/specrew-speckit/scripts/work-kind-common.ps1',
         'extensions/specrew-speckit/squad-templates/agents/implementer/charter.md',
         'extensions/specrew-speckit/squad-templates/agents/planner/charter.md',
         'extensions/specrew-speckit/squad-templates/agents/retro-facilitator/charter.md',
@@ -266,6 +272,8 @@
         'templates/github/workflows/specrew-ci.yml',
         'templates/github/workflows/specrew-confidence-lane.yml',
         'templates/github/workflows/specrew-project-sync.yml',
+        'templates/lifecycle/devops-lifecycle.md',
+        'templates/lifecycle/docs-only-lifecycle.md',
         'templates/specify/templates/agent-file-template.md',
         'templates/specify/templates/checklist-template.md',
         'templates/specify/templates/closeout-template.md',
@@ -299,7 +307,10 @@
         'templates/squad/agents/worf/charter.md',
         'templates/squad/agents/worf/history.md',
         'templates/squad/identity/now.md',
-        'templates/squad/identity/wisdom.md'
+        'templates/squad/identity/wisdom.md',
+        'templates/work-kind/release-validation-record.md',
+        'templates/work-kind/repository-governance.yml',
+        'templates/work-kind/work-kind.yml'
     )
     PrivateData = @{
         PSData = @{

@@ -1,0 +1,9 @@
+# .specrew/work-kind.yml — declare THIS work item's kind.
+#
+# Authoritative, forge-neutral, checked in. An optional branch-prefix convention (docs/, devops/,
+# fix/, feature/) supplies a default this file confirms or overrides. Validated against
+# work-kinds.schema.json ($defs.declaration).
+
+work_kind: software-feature   # one of: software-feature | bug-bash | docs-only | devops
+schema_version: "1.0"
+# notes: "optional free-text context for reviewers"

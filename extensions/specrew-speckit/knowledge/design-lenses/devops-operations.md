@@ -68,7 +68,72 @@ and operations choices as architecture, not afterthoughts.
 - CI proves the operating systems or hosts claimed by the plan.
 - Secrets are not embedded in scripts, logs, or generated artifacts.
 
+## Repository Governance & Work Kinds (Feature 182)
+
+This lens also captures **repository governance** — the work-kind taxonomy and the branch-protection
+posture — as a design-time decision. The taxonomy lives in the data-driven catalog
+`extensions/specrew-speckit/knowledge/work-kinds.yml` (4 kinds: `software-feature`, `bug-bash`,
+`docs-only`, `devops`); the captured governance persists to the **project-level**
+`.specrew/repository-governance.yml` (decided once, inherited per feature, deltas re-asked).
+
+### The invariant (always state it)
+
+```text
+main (the release-truth branch) is protected. feature-closeout happens BEFORE merge.
+A merged PR must not leave its work item open. Post-merge release/CI/docs findings create a
+NEW PR-backed work item (docs-only / devops / bug-bash) + a separate release-validation record —
+never a reopen of the merged feature.
+```
+
+### Brownfield first — detect, then adapt or change (FR-021)
+
+Before proposing a posture, **detect** the repo's existing CI/CD + branch protection + review setup
+and present the detected posture. Then offer **ADAPT** (slot the work-kind check into the existing CI
+lane; record the existing posture) or **CHANGE** (move to the recommended posture). **Never silently
+overwrite** an existing setup.
+
+### Governance questions (present the defaults; ask adopt / modify / skip)
+
+1. Block direct commits to the protected branch where the forge supports it? → default **yes**.
+2. **Branch model** — what is the branching style and what are the branch **names**? Capture
+   `branch_model`: `style` (trunk | integration-branch | gitflow | custom), the user-named
+   `release_truth_branch` (`main`/`master`/`trunk`/`production`/…; `main` is only a default *name*,
+   never an assumption), the protected `branches[]`, and the `promotion_path`. The promotion **to**
+   release-truth is the release-validation event.
+3. Apply protection to admins + automation? → default **apply to admins**; explicit `bypass_actors`
+   for automation only.
+4. Required status checks before merge? → default **Specrew governance/lint + project tests**.
+5. Force-pushes / branch deletions? → default **no**.
+6. **Review gate** — capture `review_gate`: human `required_approvals` + `require_comment_resolution`
+   (always available), and **opt-in** `automated_review` (off by default; on GitHub the adapter MAY
+   *suggest* Copilot the way Specrew uses it — the user decides in the workshop). `merge_requires`
+   names which signals gate the merge.
+7. Release tags human-created, automation-created, or both? → captured (default both).
+8. A release/post-merge validation record separate from feature-closeout? → default **yes**.
+9. Single-repo or multi-repo? → default **single-repo**; capture the `multi_repo` block only when
+   multi-repo.
+
+### Provider neutrality + capability honesty (FR-012/FR-014/FR-016)
+
+Capture **provider / plan / visibility BEFORE promising any enforcement mechanism**. The methodology
+and the validator are forge-neutral; the only forge-specific behavior sits behind the `ProviderAdapter`
+(`extensions/specrew-speckit/scripts/provider-adapter.ps1`): v1 ships a **GitHub reference adapter** + a
+**generic/unknown fallback** (`ci-only`/`manual` via git-diff). For another forge (GitLab / Azure
+DevOps / Bitbucket / Gitea), **synthesize an adapter on the fly** when the developer names it, captured
+at the downstream project under `.specrew/providers/<forge>.ps1` with provenance. **Synthesized adapters
+are read-only by default** — `detect_capability` / `describe_protection` only; `apply_protection`
+(which mutates repo security) stays **human-approved** and is refused for an unverified adapter. Report
+the **achievable** mechanism honestly; degrade to `ci-only`/`manual` when protection is unavailable.
+
+### Honesty (FR-010/SC-008 — non-negotiable)
+
+Label every enforcement claim with its true posture. The CI work-kind validator defaults to
+**advisory** (warn, never block) and graduates to blocking only when proven. Do **not** over-claim
+runtime enforcement; record anything partial as **phased/deferred**.
+
 ## Source Notes
 
 - Book Chapter 6.
 - Course Modules 1, 2, and 5.
+- Proposal 182 (Work Kind and Branch Governance Model); GitHub branch-protection + rulesets docs
+  (checked 2026-06-11).

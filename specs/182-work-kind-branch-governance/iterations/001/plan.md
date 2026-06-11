@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 16/20 story_points
 **Started**: 2026-06-11
 **Completed**:
@@ -49,21 +49,21 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | work-kinds.yml catalog | FR-001 | US1 | 1.5 | Implementer | extensions/specrew-speckit/knowledge/work-kinds.yml | planned | claude | — | — |
-| T002 | catalog + declaration schema | FR-009 | US1 | 1 | Implementer | extensions/specrew-speckit/knowledge/work-kinds.schema.json | planned | claude | — | — |
-| T003 | repository-governance schema | FR-003 | US2 | 1.5 | Implementer | extensions/specrew-speckit/knowledge/repository-governance.schema.json | planned | claude | — | — |
-| T004 | extend DevOps lens (governance + branch_model + review_gate + synthesis) | FR-002 | US2 | 2 | Spec Steward | extensions/specrew-speckit/knowledge/design-lenses/devops-operations.md | planned | claude | — | — |
-| T005 | work-kinds methodology doc + closeout-vs-release invariant | FR-004 | US1 | 1 | Spec Steward | docs/methodology/work-kinds.md | planned | claude | — | — |
-| T006 | docs-only lifecycle template | FR-005 | US3 | 0.5 | Spec Steward | templates/lifecycle/docs-only-lifecycle.md | planned | claude | — | — |
-| T007 | devops lifecycle template | FR-006 | US3 | 0.5 | Spec Steward | templates/lifecycle/devops-lifecycle.md | planned | claude | — | — |
-| T008 | capture templates | FR-018 | US1 | 0.5 | Implementer | templates/work-kind/ | planned | claude | — | — |
-| T009 | ProviderAdapter contract + dispatch + git-diff fallback | FR-014 | US5 | 1.5 | Implementer | extensions/specrew-speckit/scripts/provider-adapter.ps1 | planned | claude | — | — |
-| T010 | GenericFallbackAdapter | FR-015 | US5 | 1 | Implementer | extensions/specrew-speckit/scripts/provider-generic.ps1 | planned | claude | — | — |
-| T011 | phased-enforcement honesty labeling | FR-010 | US1 | 0.5 | Reviewer | extensions/specrew-speckit/knowledge/ | planned | claude | — | — |
-| T012 | forge-coupling audit/inventory | FR-019 | US2 | 1.5 | Implementer | specs/182-work-kind-branch-governance/iterations/001/forge-coupling-inventory.md | planned | claude | — | — |
-| T013 | registration/ship (FileList + extension.yml + mirror) | FR-013 | US1 | 1 | Implementer | Specrew.psd1 | planned | claude | — | — |
-| T014 | catalog + schema integrity tests | FR-001 | US1 | 1 | Implementer | tests/unit/work-kind-catalog.tests.ps1 | planned | claude | — | — |
-| T015 | provider-neutral core + fallback tests | FR-014 | US5 | 1 | Implementer | tests/unit/provider-adapter.tests.ps1 | planned | claude | — | — |
+| T001 | work-kinds.yml catalog | FR-001 | US1 | 1.5 | Implementer | extensions/specrew-speckit/knowledge/work-kinds.yml | done | claude | done | i1-implemented |
+| T002 | catalog + declaration schema | FR-009 | US1 | 1 | Implementer | extensions/specrew-speckit/knowledge/work-kinds.schema.json | done | claude | done | i1-implemented |
+| T003 | repository-governance schema | FR-003 | US2 | 1.5 | Implementer | extensions/specrew-speckit/knowledge/repository-governance.schema.json | done | claude | done | i1-implemented |
+| T004 | extend DevOps lens (governance + branch_model + review_gate + synthesis) | FR-002 | US2 | 2 | Spec Steward | extensions/specrew-speckit/knowledge/design-lenses/devops-operations.md | done | claude | done | i1-implemented |
+| T005 | work-kinds methodology doc + closeout-vs-release invariant | FR-004 | US1 | 1 | Spec Steward | docs/methodology/work-kinds.md | done | claude | done | i1-implemented |
+| T006 | docs-only lifecycle template | FR-005 | US3 | 0.5 | Spec Steward | templates/lifecycle/docs-only-lifecycle.md | done | claude | done | i1-implemented |
+| T007 | devops lifecycle template | FR-006 | US3 | 0.5 | Spec Steward | templates/lifecycle/devops-lifecycle.md | done | claude | done | i1-implemented |
+| T008 | capture templates | FR-018 | US1 | 0.5 | Implementer | templates/work-kind/ | done | claude | done | i1-implemented |
+| T009 | ProviderAdapter contract + dispatch + git-diff fallback | FR-014 | US5 | 1.5 | Implementer | extensions/specrew-speckit/scripts/provider-adapter.ps1 | done | claude | done | i1-implemented |
+| T010 | GenericFallbackAdapter | FR-015 | US5 | 1 | Implementer | extensions/specrew-speckit/scripts/provider-generic.ps1 | done | claude | done | i1-implemented |
+| T011 | phased-enforcement honesty labeling | FR-010 | US1 | 0.5 | Reviewer | extensions/specrew-speckit/knowledge/ | done | claude | done | i1-implemented |
+| T012 | forge-coupling audit/inventory | FR-019 | US2 | 1.5 | Implementer | specs/182-work-kind-branch-governance/iterations/001/forge-coupling-inventory.md | done | claude | done | i1-implemented |
+| T013 | registration/ship (FileList + extension.yml + mirror) | FR-013 | US1 | 1 | Implementer | Specrew.psd1 | done | claude | done | i1-implemented |
+| T014 | catalog + schema integrity tests | FR-001 | US1 | 1 | Implementer | tests/unit/work-kind-catalog.tests.ps1 | done | claude | done | i1-implemented |
+| T015 | provider-neutral core + fallback tests | FR-014 | US5 | 1 | Implementer | tests/unit/provider-adapter.tests.ps1 | done | claude | done | i1-implemented |
 
 ## Effort Model
 
