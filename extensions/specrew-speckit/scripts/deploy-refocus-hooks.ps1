@@ -157,10 +157,16 @@ if ($null -eq $settings) { $settings = [pscustomobject]@{} }
 # silently never fired on codex. ONE-TIME MIGRATION: when a codex file is still the old top-level shape,
 # strip our old top-level entries (user keys preserved) BEFORE switching to the wrapped map, so we do not
 # leave orphaned/duplicate hooks.
-if ($HostKind -eq 'codex' -and -not ($settings.PSObject.Properties['hooks'] -and $null -ne $settings.hooks)) {
+if ($HostKind -eq 'codex' -and -not ($settings.PSObject.Properties['hooks'] -and $null -ne $settings.hooks -and -not ($settings.hooks -is [System.Array]))) {
     Remove-SpecrewEntriesFromEventMap -EventMap $settings
 }
-if (-not $settings.PSObject.Properties['hooks'] -or $null -eq $settings.hooks) {
+if (-not $settings.PSObject.Properties['hooks'] -or $null -eq $settings.hooks -or ($settings.hooks -is [System.Array])) {
+    # Defensiveness: a stale `hooks` written as a JSON ARRAY by a corrupted prior deploy is NOT a valid
+    # event map. The old code passed it straight into Remove-SpecrewEntriesFromEventMap, which iterated the
+    # array's intrinsic members and crashed setting the read-only `Length` ("Length is a ReadOnly property"),
+    # aborting the deploy and leaving ~/.codex/hooks.json unparseable by codex ("invalid type: map, expected
+    # a sequence"). Drop the malformed `hooks` and reset it to a clean map so the deploy self-heals.
+    if ($settings.PSObject.Properties['hooks']) { $settings.PSObject.Properties.Remove('hooks') | Out-Null }
     $settings | Add-Member -NotePropertyName 'hooks' -NotePropertyValue ([pscustomobject]@{}) -Force
 }
 $eventMap = $settings.hooks
