@@ -58,9 +58,9 @@ so the feature branch remains visible in git history.
 
 ### Step 9: Tag and push the beta
 
-The agent tags the merge commit (or the PASS-candidate fix commit if looping after a FAIL) as `v<next-version>-beta.1` (or `beta.N`) and pushes the tag.
+The agent tags the merge commit (or the PASS-candidate fix commit if looping after a FAIL) as `v<next-version>-beta1` (then `-beta2`, … on a FAIL loop) and pushes the tag.
 For F-048, the target version is `0.27.6`, so the first beta tag is
-`v0.27.6-beta.1`.
+`v0.27.6-beta1`.
 
 ### Step 10: Verify prerelease publication
 
@@ -68,7 +68,7 @@ The publish workflow publishes the prerelease to PSGallery. The agent verifies
 that PSGallery can see the package, for example:
 
 ```powershell
-Find-Module Specrew -AllowPrerelease -RequiredVersion 0.27.6-beta.1
+Find-Module Specrew -AllowPrerelease -RequiredVersion 0.27.6-beta1
 ```
 
 Workflow existence is not enough. A missing workflow result, missing package,
@@ -81,7 +81,7 @@ The agent pauses and asks the human to install and exercise the prerelease from
 a clean shell:
 
 ```powershell
-Install-Module Specrew -RequiredVersion 0.27.6-beta.1 -AllowPrerelease -Force
+Install-Module Specrew -RequiredVersion 0.27.6-beta1 -AllowPrerelease -Force
 ```
 
 The human exercises the feature-specific surface and the smoke commands:
@@ -97,10 +97,11 @@ evidence, or a FAIL verdict, blocks stable promotion.
 
 ### Step 12: Loop on FAIL
 
-If the human reports FAIL, the agent fixes the issue on main after approval,
-tags the next beta such as `v0.27.6-beta.2`, verifies prerelease publication
-again, and repeats from Step 9 through Step 11. The beta.N loop continues until
-the human reports PASS.
+If the human reports FAIL, the agent fixes the issue through a PR against
+protected `main` (a bug-fix or docs-only PR per Proposal 182 — never a direct
+push), merges after approval and green checks, then tags the next beta such as
+`v0.27.6-beta2`, verifies prerelease publication again, and repeats from Step 9
+through Step 11. The betaN loop continues until the human reports PASS.
 
 Failed beta packages are not treated as stable release candidates. Their
 evidence is retained in the release audit trail.
@@ -154,4 +155,4 @@ complete.
 - Missing prerelease package verification is not success.
 - Missing stable package verification is not success.
 - Missing or ambiguous human verdict is not success.
-- Explicit FAIL blocks stable publication and starts the beta.N loop.
+- Explicit FAIL blocks stable publication and starts the betaN loop.
