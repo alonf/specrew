@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved in-iteration)
-**Specification drift**: 1 plan refinement (the regression net did not characterize the contract -> T035a split + SP re-baseline; human pre-authorized at before-implement)
+**Total drift events**: 2
+**Resolution rate**: 50% (1/2 resolved in-iteration; D-011 deferred to iteration 007)
+**Specification drift**: 1 plan refinement (the regression net did not characterize the contract -> T035a split + SP re-baseline; human pre-authorized at before-implement). 1 review-time finding (D-011: hook <-> specrew start parity DISPROVEN; the deployed floor proved file-existence, not live read-and-follow -> deferred to iteration 007).
 
 ## Events
 
@@ -48,6 +48,23 @@ build the genuine characterization (assert the contract's invariant markers surv
 + boundary_enforcement is initialized, after a real `specrew start` run) BEFORE the extraction; re-baseline
 capacity 19 -> 20 honestly (T035a = 1 SP) rather than silently absorbing it into T035's 4. The extraction
 (T035) is gated on T035a being green.
+
+### D-011 - hook <-> `specrew start` read-and-follow PARITY disproven at review-signoff (the build != live recurrence) -> deferred to iteration 007
+
+**Requirement**: FR-023 (read-and-follow parity), FR-024 (injection-reaches-model), FR-022 (deployed live wiring), SC-011 (the deployed live-wiring floor).
+
+**Finding (surfaced at review-signoff, maintainer side-by-side)**: T036/T037 landed the contract-write +
+DRIVE directive, and T038's deployed floor ran GREEN - but a maintainer side-by-side comparison of the hook
+path vs `specrew start` DISPROVED parity: the hook skips the coordinator-prompt-surgery step (so it writes a
+THIN contract), and the agent does not actually read `last-start-prompt.md` and follow it. T038's green
+asserted the contract file + the correct provider copy exist ON DISK, NOT the live read-and-follow
+experience. This is the exact `build != live` class iteration 6 existed to kill (iter-5 D-009), recurring
+one level up inside the floor built to catch it.
+
+**Resolution (deferred to iteration 007)**: keep the byte-identical, validator-green T035 generator
+extraction; DEFER the read-and-follow parity (FR-022/FR-023/FR-024) to iteration 007 with a REAL
+read-and-follow floor (not a file-existence smoke). Iteration 006 closes honestly-qualified - NOT a parity
+success. Canonical defer entry in `.squad\decisions.md`.
 
 ### Resolution Strategies (Unused)
 

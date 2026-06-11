@@ -26004,3 +26004,26 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 9bfcd9d0
 - **Recorded At**: 2026-06-09T07:28:47Z
+
+### 2026-06-11 — Defer: hook <-> `specrew start` read-and-follow parity (FR-023 + FR-024 + FR-022) to iteration 007
+
+- **Decision ID**: f174-i006-defer-parity-to-007
+- **Type**: defer
+- **Affected Requirement**: FR-023
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\006
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-11T00:00:00Z
+- **Next Action**: Iteration 007 delivers hook <-> `specrew start` read-and-follow PARITY (FR-023), plus the
+  related per-host injection (FR-024) and deployed live wiring (FR-022), with a REAL read-and-follow floor —
+  the hook writes the FULL launch contract (coordinator-prompt-surgery included, not a thin contract) AND the
+  agent demonstrably reads `last-start-prompt.md` and follows it. NOT a file-existence smoke.
+- **Rationale**: At the iteration-006 review-signoff a maintainer side-by-side DISPROVED parity — the hook
+  skips coordinator-prompt-surgery (so it writes a THIN contract) and the agent does not read-and-follow.
+  T038's deployed floor ran green but proved the contract file + provider copy exist ON DISK, NOT the live
+  read-and-follow experience (drift D-011, the `build != live` recurrence one level up inside the floor
+  built to catch it). The byte-identical, validator-green T035 generator extraction is KEPT; the parity
+  OUTCOME is iteration 007's explicit deliverable. Iteration 006 closes honestly-qualified — NOT a parity
+  success. F-174 stays OPEN.
+- **Retroactive note**: this canonical defer entry was recorded 2026-06-11 alongside iteration 006's
+  reconstructed review.md / retro.md (the iteration closed honestly-qualified on 2026-06-10 without the
+  committed closure artifacts; this formalizes the documented send-back + deferral).
