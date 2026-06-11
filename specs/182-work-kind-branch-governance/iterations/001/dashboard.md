@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: iteration-closeout
-**Captured At**: 2026-06-11T19:16:40Z
+**Captured At**: 2026-06-11T20:06:41Z
 **Render Mode**: compact
 **Rendering Mode**: rich
 **Color Mode**: monochrome
@@ -12,7 +12,7 @@
 
 ```text
 SPECREW VELOCITY DASHBOARD
-Summary: → F-182 Work Kind and Branch Governance Model | Implementation Complete · review | 9.73 SP/day (10 closed iterations, high)
+Summary: → F-182 Work Kind and Branch Governance Model | Implementation Complete · iteration-closeout | 9.73 SP/day (10 closed iterations, high)
 Today 2026-06-11 | Repo Specrew-work-kind-branch-governance
 Rendering rich
 ACTIVE
@@ -32,7 +32,7 @@ PROJECTION
 F:0SP implementation complete | P:n/a TBD
 R:566SP 59 calendar day(s)
 WARNINGS
-Multi-developer activity detected: 4 unique git authors; 12 feature branches; 2 c...
+Multi-developer activity detected: 4 unique git authors; 12 feature branches; 4 c...
 FOOTER
 Use --ASCII any time you need the monochrome-safe fallback; stored closeout snaps...
 ```
