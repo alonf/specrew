@@ -1,4 +1,4 @@
-# Iteration Plan: 001 (Stub)
+# Iteration Plan: 001
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
@@ -82,7 +82,7 @@
 
 - Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
 - Technology and scope signals: Mixed frontend and backend/service signals are present in the scoped requirements.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
+- Task dependency graph: the task table is populated and executed; tasks ran serially (single-developer execution) with no shared-surface conflicts. Phases 1-5 were sequential (data substrate → surfaces → adapter → audit → tests).
 - Workstream separability: Current scope does not yet prove enough safe parallelism for same-specialty expansion; default to a smaller serial team until tasks are clearer.
 - Shared-surface conflict risk: no elevated shared-surface warning inferred yet.
 - Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
@@ -92,27 +92,33 @@
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+| Planning | on-track | Design workshop converged the architecture before plan; see retro.md Phase Variance. |
+| Discovery/Spikes | small | One spike: the dependency-free YAML reader (Specrew avoids powershell-yaml). |
+| Implementation | 14 SP | T001–T015 source/test work (Iter-1 consumed 15.5 incl. process artifacts). |
+| Review | +rework | One review-caught task-status drift (D-001) + a baseline-ref correction. |
+| Rework | small | T013 split/correction + markdownlint fixes. See retro.md. |
 
 ## Traceability Summary
 
 - Requirement scope for **iteration 001 (methodology layer)**: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-008, FR-009, FR-010, FR-014, FR-015 (contract + fallback), FR-016 (doc), FR-017, FR-018, FR-019 (inventory only), FR-021 (content). Deferred to Iter 2: FR-007, FR-011, FR-012, FR-013, FR-015 (GitHub detect), FR-016 (exercised), FR-020, FR-021 (detector). Deferred to Iter 3: FR-019 (decouple migration).
 - User stories represented in iteration 001: US1 (lifecycle truth), US2 (DevOps-lens governance), US3 (docs-only/devops lifecycles), US6 (brownfield content). US4/US5 runtime land in Iter 2.
-- Pending detailed planning: populate the task table at the tasks phase, then run specrew-capacity-planning and specrew-traceability-check before the before-implement gate.
-- Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
+- Task table populated and executed: T001–T015 `done`; T013b `deferred` (approved). Traceability
+  verified (every in-scope FR/SC mapped) and capacity-planning ran across the tasks/before-implement
+  phases.
+- Capacity / deferral decisions recorded: Iteration 1 consumed 15.5 / cap 20 (no per-iteration
+  overcommit). The T013b deferral (extension.yml version bump + deploy-time `.specify` coverage) is
+  **approved** and carried to **T019 / release-deploy** (drift-log D-001).
 
 ## Notes
 
 - **Iteration 001 = the methodology layer** (Iter 1 of the 3-iteration plan in `../../plan.md`). The
-  Scope Summary table above lists the full feature FR set for reference; the actual iteration-001
-  delivery scope is the subset in the Traceability Summary. The task table is decomposed at the tasks
-  phase (next boundary); the hardening-gate `Overall Verdict: ready` + the populated task table land at
-  the before-implement gate.
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
-- Add task rows only for work that is traceable to the scoped requirements above.
-- Keep Status: planning until the plan is fully decomposed and approved.
-- If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
+  Scope Summary table above lists the full feature FR set for reference; the delivered iteration-001
+  scope is the subset in the Traceability Summary.
+- **Iteration 1 is COMPLETE at iteration-closeout** (Status: complete; Completed 2026-06-11). The task
+  table is populated and executed; the hardening-gate verdict was `ready` at before-implement; the
+  review verdict is `accepted`; the retrospective is recorded; the dashboard is rendered.
+- **T013b** (extension.yml version bump + deploy-time `.specify` coverage) is **approved-deferred** and
+  carried to **T019 / feature-closeout** (the release/deploy step; drift-log D-001) — not a hand-edit.
+- Carried watch-items (review-accepted, not pulled into Iter-1): the YAML-reader contract test, the
+  deployed-catalog location (the first Iteration-2 design decision), and the `New-*` ShouldProcess
+  false-positive (Proposal-037 queue).
