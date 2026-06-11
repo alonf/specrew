@@ -62,3 +62,40 @@ The Stop hook becomes the **primary author**. The agent path drops from *the mec
   the base lands clean and low-risk.
 - Folding `Write-SpecrewHandoverContext` into the gate-stop / workshop skills as the
   curated overlay (it already exists; the hook no longer depends on it).
+
+## Live dogfood findings (2026-06-11, claude on a fresh trial) → iter-9.1
+
+Capture-on-Stop is PROVEN (non-hollow body, real `from_host`, git delta). But the live
+run showed the hook does not get to RUN often enough:
+
+1. **No Stop events during the workshop (the big one).** The design workshop interacts
+   via AskUserQuestion pickers = mid-turn tool calls, not end-of-turn Stops. On the Claude
+   host the deployed hooks are `SessionStart + Stop` only, so the handover is FROZEN for
+   the entire workshop phase (proven: one write ever; stale `branch master` while actually
+   on `001-cross-platform-casio`). The agent-side per-lens checkpoint is the
+   "agent-dependent residual" and Claude isn't doing it.
+2. **A hard kill fires no Stop** → exit mid-turn captures nothing new.
+3. **Managed-dir noise in the delta** — `specrew init`'s ~53 uncommitted scaffolding files
+   (`.agents/.claude/.copilot/.cursor/.github/...`) drown the real work; the user source
+   (`casio-watch/index.html`) was pushed past the file cap. `Get-SpecrewSessionDelta`
+   should exclude/deprioritize the Specrew-managed dirs.
+   (Side note, separate from handover: the run reproduced the free-run governance miss —
+   Claude built `casio-watch/index.html` on `master` before being steered into the workshop.)
+
+## Design direction (maintainer, 2026-06-11) — HELD, do NOT implement until more testing
+
+Multi-source, single-core handover save:
+- **Core abstraction (NEW)** in the bootstrap component layer — one orchestrator, e.g.
+  `Update-SpecrewRollingHandover -ProjectRoot -HostKind -Source` — owning resolve-context →
+  material-change gate → `Get-SpecrewSessionDelta` → mechanical author + accumulate →
+  atomic `Write-SpecrewRollingHandoverContent` → hollow journal. THE single save path
+  (currently inline in the Stop provider; extract it).
+- **Thin trigger adapters, all call the core:**
+  - Stop hook (`specrew-handover-provider.ps1`) — Stop/agentStop/stop. [exists → refactor to call core]
+  - **PostToolUse hook** — NEW: add `PostToolUse` to the handover provider's events + wire a
+    Claude PostToolUse host hook; material-gated so it stays cheap. Covers the workshop
+    (refreshes on each tracked lens-record write).
+  - **Workshop skill** — the agent invokes a small script that calls the core per lens (and
+    may pass interpretive content). Same save path as the hooks.
+- Layering: `Write-SpecrewRollingHandoverContent` (atomic byte writer) < core orchestrator <
+  trigger adapters. Concurrency: material gate + atomic replace = last-writer-wins-safe.
