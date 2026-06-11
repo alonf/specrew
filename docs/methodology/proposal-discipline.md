@@ -142,10 +142,10 @@ Step-by-step (this sequence is enforced; deviations are reject-worthy):
 5. **Add an entry to `INDEX.md`** under the correct section (Shipped / Draft / Candidate). Entry format: `| [NNN](NNN-slug.md) | Title — description | phase | SP |`
 6. **Update the Candidate (or Draft) count** in the INDEX section header (`## Candidate (N)` → `## Candidate (N+1)`)
 7. **Lint locally** — `npx markdownlint-cli proposals/NNN-*.md proposals/INDEX.md` — push-to-main lint failure cascades to skip Deterministic + Contract lanes silently, so catching lint locally matters
-8. **Verify branch = main** before commit — `git branch --show-current` must return `main`. Proposals always commit to main, never to feature branches (real F-020 incident: proposals on feature branch caused closeout PR stray-disposition)
-9. **Use worktree pattern if currently on feature branch** — `git worktree add C:/path/to/worktree main`; copy files there; edit + commit + push from worktree; remove worktree
-10. **Commit with clear message** — pattern: `chore(proposals): draft NNN-<slug>`; include rationale + composition notes in body
-11. **Push to origin/main**
+8. **Use a docs-only branch — `main` is protected** — `main` now requires pull requests (see [Proposal 182](../../proposals/182-work-kind-branch-governance.md)); never direct-push. Create a short-lived branch off `main` (e.g. `git switch -c docs/proposals-<slug>`). Proposals must never be mixed into a software-feature branch (real F-020 incident: proposals on a feature branch caused closeout PR stray-disposition)
+9. **Use the worktree pattern if a feature branch is checked out** — `git worktree add <path>` a fresh checkout for the docs-only branch so you don't disturb the feature-branch working tree; edit + commit there
+10. **Commit with clear message** — pattern: `chore(proposals): draft NNN-<slug>` (or `docs:`); include rationale + composition notes in body
+11. **Push the branch and open a PR** — push the docs-only branch to origin and open a PR (`gh pr create`); merge after checks. Until Proposal 182 formalizes work kinds, treat this as a docs-only PR
 
 ## Updating an Existing Proposal
 
@@ -194,8 +194,8 @@ Reviewer (and validator) checks for any proposal-touching commit:
 | **Count accuracy** | `## Candidate (N)` in INDEX matches actual row count under that section; same for Draft + Shipped |
 | **Cross-reference validity** | Every `file:///` URL points to a real file; every `[[memory-name]]` link points to a real memory entry |
 | **Composition link bidirectionality** | If Proposal A says "composes with B", Proposal B should also reference A (best-effort; manual maintenance) |
-| **No proposals on feature branches** | `git log <feature-branch> -- proposals/` should be empty — proposals always commit to main |
-| **No squashed proposal commits** | Proposal commits should be clean direct-to-main commits, not part of merge-commit branches |
+| **No proposals on software-feature branches** | `git log <feature-branch> -- proposals/` should be empty — proposals land on their own docs-only PR branch, never mixed into a feature branch |
+| **Proposal commits stay reviewable** | Proposal commits live on a docs-only PR and merge via merge commit; they are not squashed into or co-mingled with a software-feature branch |
 | **Lint clean** | `markdownlint` passes; no trailing whitespace, broken table syntax, or unclosed code fences |
 | **Slug matches title** | File name slug should reasonably match the title (kebab-case from title words) |
 
@@ -207,7 +207,7 @@ When a commit touches `proposals/*.md`, the reviewer must:
 2. **Verify INDEX consistency** — did the entry move correctly between sections if status changed?
 3. **Check cross-references** — do new file:/// URLs and [[memory-name]] links resolve?
 4. **Verify count headers** — does `## Candidate (N)` match the actual count after the change?
-5. **Confirm branch discipline** — was the commit on main, not on a feature branch?
+5. **Confirm branch discipline** — did the change land via a docs-only PR (not a direct push to protected `main`, and not co-mingled into a software-feature branch)?
 6. **Confirm lint discipline** — does `markdownlint` pass on the touched files?
 7. **For new proposals**: verify all required sections are populated (not stub-form)
 8. **For status transitions**: verify the transition is documented in Status history with date + commit hash

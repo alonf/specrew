@@ -4,14 +4,18 @@
 
 ## Type of change
 
-- [ ] Feature closeout (PR-at-feature-close workflow)
+<!-- Pick the one work kind that fits. `main` is protected — every change merges via PR (see Proposal 182). -->
+
+- [ ] Software feature closeout (full Specrew lifecycle; PR-at-feature-close)
+- [ ] Bug bash / bug fix
+- [ ] Docs-only (README, docs, proposals, methodology, examples — no runtime change)
+- [ ] DevOps (CI/CD, repo settings, branch protection, release workflows, packaging)
 - [ ] Hotfix
 - [ ] Chore / repo hygiene
-- [ ] Documentation only
 
-## Lifecycle evidence (feature closeouts only)
+## Lifecycle evidence (software feature closeouts only)
 
-<!-- Skip for hotfix / chore / docs PRs -->
+<!-- Skip for docs-only / devops / hotfix / chore PRs -->
 
 - Spec: `specs/NNN-name/spec.md`
 - Plan: `specs/NNN-name/plan.md`
@@ -23,7 +27,9 @@
 ## Checklist
 
 - [ ] `validate-governance.ps1` runs clean (or deferrals are documented)
-- [ ] Tests pass locally
-- [ ] CHANGELOG entry added (feature closeouts and hotfixes)
-- [ ] Version bumped (feature closeouts only, per Rule 15)
+- [ ] Tests pass locally (or N/A for docs-only)
+- [ ] Markdown lint passes on touched docs (docs-only / proposals)
+- [ ] CHANGELOG entry added (feature closeouts and hotfixes; not required for docs-only / devops with no runtime change)
+- [ ] Version bumped (software-feature closeouts only, per Rule 15; never for docs-only)
 - [ ] Documentation updated where shipped behavior changed
+- [ ] Docs-only / devops PRs do not touch runtime source unless explicitly reclassified

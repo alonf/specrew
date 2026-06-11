@@ -137,7 +137,17 @@ evidence.
 
 ## Current Lens Catalog
 
-The current shipped workshop uses nine design lenses:
+The current shipped workshop uses eleven design lenses, run in three bands.
+
+**Band 1 — Product & problem domain (required first phase).** Always runs first,
+before any technical lens, at adaptive depth (Light / Standard / Deep by risk and
+novelty). Shipped in 0.34.0.
+
+| Lens | Purpose |
+|---|---|
+| `product-domain` | Users and stakeholders, the pain or job to be done, MVP and non-goals, constraints, target outcomes, and considered alternatives — grounded before any technical decision. |
+
+**Band 2 — Technical lenses (applicability-selected).**
 
 | Lens | Purpose |
 |---|---|
@@ -151,34 +161,37 @@ The current shipped workshop uses nine design lenses:
 | `devops-operations` | Hosting, deployment, CI/CD, configuration, secrets, rollout, rollback, and operational roles. |
 | `observability-resilience` | Logs, metrics, traces, health, failure modes, retries, recovery, and diagnosability. |
 
-Foundational lenses are normally always-on:
+Among the technical lenses, these are normally always-on:
 
 - `architecture-core`
 - `component-design`
 - `requirements-nfr`
 
-Specialized lenses are selected when the feature touches their area.
+The remaining technical lenses are selected when the feature touches their area.
 
-## Future / Candidate Lenses
+**Band 3 — Code & implementation (runs last, auto-on for code-writing features).**
+Runs after the technical lenses so it can bind the resolved stack and architecture.
+Shipped in 0.35.0.
 
-A proposed tenth lens, `code-implementation`, is tracked separately as a candidate
-proposal. It is not part of the shipped lens catalog yet.
+| Lens | Purpose |
+|---|---|
+| `code-implementation` | How the code is written — language version, constructs, DI / design-pattern posture, file and function size, comment policy, per-stack conventions, refactor-prevention posture, and dependency selection — captured as binding constraints and fed to the implement-time `specrew-code-rules` guidance skill. Auto-on for any feature that writes code (explicit skip for doc-only / config-only slices). |
 
-The proposed lens would cover implementation-craft decisions such as:
+## Lens Catalog Evolution
 
-- target language version;
-- modern language constructs;
-- dependency injection and design-pattern posture;
-- file, class, function, method, and line-length norms;
-- comment policy;
-- packaging of shared utility code;
-- per-stack conventions;
-- refactor-prevention posture;
-- analyzer and lint-tool binding.
+The lens catalog grew beyond the original nine technical lenses:
 
-This lens should remain research-gated until its scope, per-language defaults,
-record-vs-enforce model, and relationship to review-time code-quality checks are
-settled.
+- `product-domain` shipped in **0.34.0** as the required first phase (Band 1 above).
+- `code-implementation` shipped in **0.35.0** as the auto-on code-craft lens (Band 3
+  above). It was previously tracked as a candidate "tenth lens"; it now ships as a
+  data-driven rule catalog (`code-rules.yml`), a per-feature reference-by-ID manifest
+  (`implementation-rules.yml`), and an implement-time guidance skill
+  (`specrew-code-rules`). It is **guidance, not a review-time gate** — there is no
+  mechanical code-conformance engine.
+
+No additional lens is currently in flight. The next forward-looking change to the
+workshop is the two-tier (product-level + per-feature) model described under
+"Two-Tier Workshop Model" below, not a new lens.
 
 ## Workshop Flow
 
@@ -250,6 +263,7 @@ Each lens has a native visual vocabulary:
 
 | Lens | Typical visual |
 |---|---|
+| `product-domain` | Persona / journey sketch, problem-framing note, or MVP-scope table. |
 | `architecture-core` | Component, service, or flow diagram. |
 | `component-design` | Component map with dependency direction. |
 | `requirements-nfr` | Quality-attribute priority table or comparison matrix. |
@@ -259,6 +273,7 @@ Each lens has a native visual vocabulary:
 | `integration-api` | Contract sequence or service interaction diagram. |
 | `devops-operations` | Deployment topology and promotion path. |
 | `observability-resilience` | Request trace or failure-mode flow. |
+| `code-implementation` | Rule-group checklist or per-stack convention table (text-first). |
 
 The agent should offer to draw the diagram and ask whether the human has an
 existing diagram, Figma export, screenshot, whiteboard photo, or document to use as
