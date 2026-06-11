@@ -110,6 +110,7 @@ function Assert-PowerShellParses {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $repoRootUri = ($repoRoot -replace '\\', '/')
 $startScriptPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+$launchContractScriptPath = Join-Path $repoRoot 'scripts\internal\launch-contract.ps1'
 $syncBoundaryScriptPath = Join-Path $repoRoot 'scripts\internal\sync-boundary-state.ps1'
 $sharedGovernancePath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1'
 $sharedGovernanceMirrorPath = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\shared-governance.ps1'
@@ -126,12 +127,17 @@ Assert-True ((Get-Content -LiteralPath $handoffValidatorPath -Raw -Encoding UTF8
 Write-Pass 'Mirrored governance files remain identical'
 
 Assert-PowerShellParses -Path $startScriptPath
+Assert-PowerShellParses -Path $launchContractScriptPath
 Assert-PowerShellParses -Path $syncBoundaryScriptPath
 Assert-PowerShellParses -Path $sharedGovernancePath
 Assert-PowerShellParses -Path $validatorPath
 Write-Pass 'Edited PowerShell files parse'
 
-$startScript = Get-Content -LiteralPath $startScriptPath -Raw -Encoding UTF8
+# T035 (commit 83d0236a) relocated the launch-contract prose (the six-section packet,
+# boundary_enforcement.policy_classes, and the response-shape text) out of specrew-start.ps1
+# into scripts/internal/launch-contract.ps1. The Contains / -notmatch contract checks below
+# must therefore see BOTH files: the start entrypoint AND the extracted generator.
+$startScript = (Get-Content -LiteralPath $startScriptPath -Raw -Encoding UTF8) + "`n" + (Get-Content -LiteralPath $launchContractScriptPath -Raw -Encoding UTF8)
 Assert-True ($startScript -notmatch 'is the only gate that HARD-BLOCKS') 'Start prompt still contains beta2 four-gate hard-block wording.'
 Assert-True ($startScript -notmatch 'continue automatically through `speckit\.specrew-speckit\.before-plan`, `speckit\.plan`, `speckit\.tasks`') 'Start prompt still contains beta2 auto-chain wording.'
 foreach ($required in @(

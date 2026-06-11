@@ -17,6 +17,11 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $skillPath = Join-Path $repoRoot 'extensions\specrew-speckit\squad-templates\skills\design-workshop.md'
 $lensDir = Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\design-lenses'
 $startPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+# F-174 T035: the launch-prompt body (Get-StartPrompt + Rules 9/9a/9b/9c + the A4-A7 conduct pointer)
+# was extracted from specrew-start.ps1 into the shared launch-contract.ps1 generator so the SessionStart
+# bootstrap provider reuses the SAME source (no drift). The launch-prompt assertions below read the
+# combined surface (the dispatcher dot-sources the contract), so the relocated content is still asserted.
+$launchContractPath = Join-Path $repoRoot 'scripts\internal\launch-contract.ps1'
 $refocusPaths = @(
     (Join-Path $repoRoot 'extensions\specrew-speckit\refocus\specify.md'),
     (Join-Path $repoRoot '.specify\extensions\specrew-speckit\refocus\specify.md')
@@ -70,7 +75,8 @@ foreach ($id in $lensIds) {
 Write-Pass 'per-lens conduct co-located: all 10 lens md carry a Workshop Conduct section (ASCII-inline + re-invoke)'
 
 # --- The launch prompt is trimmed to a pointer (the conduct relocated, not duplicated verbose) ---
-$start = Get-Content -LiteralPath $startPath -Raw
+Assert-True (Test-Path -LiteralPath $launchContractPath) "the launch-contract generator exists ($launchContractPath)"
+$start = (Get-Content -LiteralPath $startPath -Raw) + "`n" + (Get-Content -LiteralPath $launchContractPath -Raw)
 Assert-Match -Text $start -Pattern 'specrew-design-workshop' 'launch prompt: points to the design-workshop skill (the relocation)'
 Assert-Match -Text $start -Pattern '(?m)^9a\. \*\*The per-lens design workshop' 'launch prompt: Rule 9a is the skill pointer'
 Assert-Match -Text $start -Pattern '(?m)^9b\. \(Folded into' 'launch prompt: Rule 9b trimmed to a folded-into-skill stub'

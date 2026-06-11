@@ -38,7 +38,8 @@ Assert-True ($null -ne $settings.hooks.SessionStart) 'SessionStart registered'
 Assert-True ($null -ne $settings.hooks.Stop) 'Stop registered (F-174 iter-4: rolling handover)'
 Assert-True (([string]$settings.hooks.Stop[0].hooks[0].command).Contains('-Event Stop')) 'Stop command dispatches -Event Stop'
 Assert-True (-not $settings.hooks.PSObject.Properties['SessionEnd']) 'SessionEnd NOT registered (iter-4 replaced it with the universal Stop)'
-Assert-True (-not $settings.hooks.PSObject.Properties['PostToolUse']) 'PostToolUse NOT registered (TG-004 option (a): channel 1 carries B3; latency bar)'
+Assert-True ($null -ne $settings.hooks.PostToolUse) 'PostToolUse registered (F-174 iter-9.1: mid-workshop rolling-handover refresh)'
+Assert-True (([string]$settings.hooks.PostToolUse[0].hooks[0].command).Contains('-Event PostToolUse')) 'PostToolUse command dispatches -Event PostToolUse'
 Assert-True (-not $settings.hooks.PSObject.Properties['PreToolUse']) 'PreToolUse NOT registered (dormant F-165 seat)'
 Assert-True (([string]$settings.hooks.SessionStart[0].hooks[0].command).Contains('specrew-hook-dispatcher.ps1')) 'command points at the dispatcher'
 
@@ -74,7 +75,7 @@ $ssCommands = @($settings.hooks.SessionStart | ForEach-Object { @($_.hooks) } | 
 Assert-True ($ssCommands -contains 'echo user-session-hook') 'user SessionStart hook preserved'
 Assert-True (@($ssCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1) 'our SessionStart entry added exactly once'
 $ptuCommands = @($settings.hooks.PostToolUse | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
-Assert-True (($ptuCommands -contains 'echo user-ptu-hook') -and -not ($ptuCommands -like '*specrew-hook-dispatcher*')) 'mixed group: user hook kept, stale Specrew hook removed from an event we do not register (PostToolUse)'
+Assert-True (($ptuCommands -contains 'echo user-ptu-hook') -and -not ($ptuCommands -like '*old/specrew-hook-dispatcher*') -and (@($ptuCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1)) 'mixed group: user hook kept, stale Specrew hook refreshed to exactly one current entry (PostToolUse now registered, F-174 iter-9.1)'
 
 # --- 4. Stale-entry refresh: our old command replaced, not duplicated ----------------
 $null = Invoke-Deploy
@@ -119,15 +120,15 @@ $userCodex = '{"PreToolUse":[{"matcher":"^(Write)$","hooks":[{"type":"command","
 [System.IO.File]::WriteAllText($codexPath, $userCodex, [System.Text.UTF8Encoding]::new($false))
 $out = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome)
 $codex = Get-Content -LiteralPath $codexPath -Raw | ConvertFrom-Json
-Assert-True ($null -ne $codex.PSObject.Properties['SessionStart'] -and $null -ne $codex.PSObject.Properties['UserPromptSubmit']) 'codex: SessionStart + UserPromptSubmit registered (full triad)'
-Assert-True (([string]$codex.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'codex: command carries -HostKind codex'
+Assert-True ($null -ne $codex.hooks.PSObject.Properties['SessionStart'] -and $null -ne $codex.hooks.PSObject.Properties['UserPromptSubmit']) 'codex: SessionStart + UserPromptSubmit registered (full triad; events nested under top-level hooks)'
+Assert-True (([string]$codex.hooks.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'codex: command carries -HostKind codex'
 Assert-True (([string]$codex.PreToolUse[0].hooks[0].command) -eq 'python3 user_scanner.py') 'codex: user PreToolUse entry untouched'
 $before = Get-Content -LiteralPath $codexPath -Raw
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome)
 Assert-True ((Get-Content -LiteralPath $codexPath -Raw) -eq $before) 'codex: re-deploy byte-idempotent'
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome, '-Remove')
 $codex = Get-Content -LiteralPath $codexPath -Raw | ConvertFrom-Json
-Assert-True ((-not $codex.PSObject.Properties['SessionStart']) -and $null -ne $codex.PSObject.Properties['PreToolUse']) 'codex: -Remove strips only ours'
+Assert-True ((-not $codex.hooks.PSObject.Properties['SessionStart']) -and $null -ne $codex.PSObject.Properties['PreToolUse']) 'codex: -Remove strips only ours'
 Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-codex')) 'codex: per-host opt-out recorded'
 
 # --- 9. T014: copilot binding (hooks-dir model; wholly-owned file; B2 only) ------------------

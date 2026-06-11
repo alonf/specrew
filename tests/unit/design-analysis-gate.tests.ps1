@@ -122,10 +122,12 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $helperPath = Join-Path $repoRoot 'scripts\internal\design-analysis-gate.ps1'
 $syncPath = Join-Path $repoRoot 'scripts\internal\sync-boundary-state.ps1'
 $startPath = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+$launchContractPath = Join-Path $repoRoot 'scripts\internal\launch-contract.ps1'
 
 Assert-PowerShellParses -Path $helperPath
 Assert-PowerShellParses -Path $syncPath
 Assert-PowerShellParses -Path $startPath
+Assert-PowerShellParses -Path $launchContractPath
 Write-Pass 'Design-analysis PowerShell surfaces parse'
 
 . $helperPath
@@ -212,7 +214,9 @@ New-DesignAnalysisFixtureProject -ProjectRoot $legacyProject -SpecrewVersion '0.
 Assert-True (-not (Test-SpecrewDesignAnalysisGateRequired -ProjectRoot $legacyProject -FeatureRef '140-design-analysis-gate' -IterationNumber '001')) 'Legacy version fixture should not require the new gate without an artifact.'
 Write-Pass 'Legacy compatibility fixture does not require the new gate'
 
-$startScript = Get-Content -LiteralPath $startPath -Raw -Encoding UTF8
+# T035 moved the lifecycle-guidance text out of specrew-start.ps1 into the shared
+# scripts\internal\launch-contract.ps1; assert against the combined launch surface.
+$startScript = (Get-Content -LiteralPath $startPath -Raw -Encoding UTF8) + "`n" + (Get-Content -LiteralPath $launchContractPath -Raw -Encoding UTF8)
 Assert-Match -Text $startScript -Pattern 'design-analysis stop for substantive features' 'Generated lifecycle guidance is missing the design-analysis flow insertion.'
 Assert-Match -Text $startScript -Pattern 'approved for plan with Option <X>' 'Generated lifecycle guidance is missing the explicit option-verdict shape.'
 Assert-Match -Text $startScript -Pattern 'Human Decision must record the chosen option' 'Generated lifecycle guidance is missing Human Decision evidence requirements.'

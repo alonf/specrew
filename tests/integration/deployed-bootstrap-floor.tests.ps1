@@ -22,9 +22,13 @@ $ErrorActionPreference = 'Stop'
 # finding, never the stale-install trap.
 
 $devTree = (Resolve-Path "$PSScriptRoot/../..").Path
+# Derive the version-folder segment from the manifest's ModuleVersion (NOT a hardcoded literal): the packed
+# module's folder MUST match the manifest version or Get-Module -ListAvailable cannot discover it. The version
+# bumps every feature, so a hardcoded '0.33.0' silently breaks discovery -> the child exits 2 (harness error).
+$moduleVersion = (Import-PowerShellDataFile -Path (Join-Path $devTree 'Specrew.psd1')).ModuleVersion
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t038-" + [guid]::NewGuid().ToString('N'))
 $modParent = Join-Path $tmp 'mods'
-$modRoot = Join-Path $modParent 'Specrew/0.33.0'
+$modRoot = Join-Path $modParent "Specrew/$moduleVersion"
 $proj = Join-Path $tmp 'proj'
 $deployed = Join-Path $tmp 'deployed-scripts'
 $childScript = Join-Path $tmp 'child-floor.ps1'
@@ -168,7 +172,7 @@ else {
 # PART 3: a FRESH resume READS the handover back AND SURFACES it (deployed, tier-3).
 $resumeOut = & $DeployedProvider --event-json '{"session_id":"t038-resume","source":"resume","hook_event_name":"SessionStart"}' --project-root $Proj 2>&1 | Out-String
 if ($resumeOut -match 'PROVIDER_FAILED') { Write-Output "FAIL Part3 (D-009 FINDING if real): deployed resume bootstrap failed-open under tier-3.`n--- output ---`n$resumeOut"; $fail = 1 }
-elseif ($resumeOut -notmatch 'Validated handover authored by the previous session') { Write-Output "FAIL Part3: resume did NOT surface the authored handover (validity/read failed in the deployed condition).`n--- directive ---`n$resumeOut"; $fail = 1 }
+elseif ($resumeOut -notmatch 'Validated handover captured by the previous session') { Write-Output "FAIL Part3: resume did NOT surface the authored handover (validity/read failed in the deployed condition).`n--- directive ---`n$resumeOut"; $fail = 1 }
 elseif ($resumeOut -notlike "*$authoredMarker*") { Write-Output "FAIL Part3: resume surfaced the handover header but NOT the rich body sections.`n--- directive ---`n$resumeOut"; $fail = 1 }
 else { Write-Output 'PASS Part3: deployed resume READ + SURFACED the agent-authored handover - full 3-part round-trip GREEN (tier-3, evidence_locus: deployed)' }
 
