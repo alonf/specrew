@@ -16,13 +16,13 @@ $scriptsDir = Join-Path $repoRoot 'extensions\specrew-speckit\scripts'
 . (Join-Path $scriptsDir 'provider-adapter.ps1')
 
 # --- read-only posture (DP-S2/S3) ---
-$gen = New-SpecrewProviderAdapter -Provider 'generic'
+$gen = Resolve-SpecrewProviderAdapter -Provider 'generic'
 Assert-True ([bool]$gen['read_only']) 'T015: the generic fallback is read-only'
-$gh = New-SpecrewProviderAdapter -Provider 'github'
+$gh = Resolve-SpecrewProviderAdapter -Provider 'github'
 Assert-True (-not [bool]$gh['read_only']) 'T015: the github reference adapter is not read-only'
-$synU = New-SpecrewProviderAdapter -Provider 'gitlab' -Synthesized
+$synU = Resolve-SpecrewProviderAdapter -Provider 'gitlab' -Synthesized
 Assert-True ([bool]$synU['read_only']) 'T015: an UNVERIFIED synthesized adapter is read-only'
-$synV = New-SpecrewProviderAdapter -Provider 'gitlab' -Synthesized -Verified
+$synV = Resolve-SpecrewProviderAdapter -Provider 'gitlab' -Synthesized -Verified
 Assert-True (-not [bool]$synV['read_only']) 'T015: a human-VERIFIED synthesized adapter is not read-only'
 
 # --- generic fallback capability is honest (ci-only when CI present, else manual) ---

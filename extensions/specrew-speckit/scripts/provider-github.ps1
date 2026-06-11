@@ -23,7 +23,6 @@ function Get-SpecrewGitHubCapability {
     }
 
     $visibility = $null
-    $plan = $null
     try {
         $json = & gh repo view --json visibility,isPrivate 2>$null | Out-String
         if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($json)) {
@@ -32,12 +31,9 @@ function Get-SpecrewGitHubCapability {
         }
     }
     catch { $visibility = $null }
-    try {
-        $owner = & gh repo view --json owner 2>$null | ConvertFrom-Json
-        # The plan is not always exposed; best-effort (owner type hints at org vs user).
-        if ($owner.owner.type) { $plan = [string]$owner.owner.type }
-    }
-    catch { }
+    # NOTE: the billing plan (Free/Pro/Team/Enterprise) is not reliably exposed via gh, and the owner
+    # type (user/org) does not determine it — so we deliberately do NOT fetch it and instead report the
+    # conservative, honest mechanism + a plan/visibility caveat below (rather than guessing from owner type).
 
     if ($null -eq $visibility) {
         return [ordered]@{ provider = 'github'; mechanism = 'ci-only'; constraints = @('gh present but repo visibility/capability not readable (unauthenticated or no access); reporting ci-only honestly.') }

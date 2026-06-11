@@ -4,8 +4,11 @@
 # The ONLY forge-specific seam. The methodology, the work-kind declaration, and the CI validator
 # core import NO forge assumption; they go through this contract. v1 ships:
 #   - generic / unknown : always-present fallback (ci-only/manual; git-diff read_pr_context)
-#   - github            : reference adapter (capability detection + apply land in iteration 2;
-#                         iteration 1 ships a read-only stub so the dispatch + guard are exercised)
+#   - github            : reference adapter. This forge-NEUTRAL core keeps only a placeholder for
+#                         github (FR-014: the core imports no forge adapter); the real github
+#                         capability detection + guarded apply live in the github adapter
+#                         (provider-github.ps1), reached via the capability-detector orchestrator —
+#                         never through this core dispatch (which is why the core never imports it).
 #   - synthesized       : generated on the fly for another forge; READ-ONLY until a human verifies it
 #
 # Contract operations:
@@ -19,9 +22,10 @@
 $script:WorkKindCommonPath = Join-Path $PSScriptRoot 'work-kind-common.ps1'
 if (Test-Path -LiteralPath $script:WorkKindCommonPath) { . $script:WorkKindCommonPath }
 
-function New-SpecrewProviderAdapter {
-    # Resolve a provider adapter. `read_only` is true for the generic fallback and for a
-    # synthesized adapter that a human has not yet verified (DP-S3 safety guardrail).
+function Resolve-SpecrewProviderAdapter {
+    # Resolve a provider adapter descriptor (a pure in-memory constructor — no state change).
+    # `read_only` is true for the generic fallback and for a synthesized adapter that a human has not
+    # yet verified (DP-S3 safety guardrail).
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)][string]$Provider,
@@ -31,7 +35,7 @@ function New-SpecrewProviderAdapter {
     $p = $Provider.Trim().ToLowerInvariant()
     $readOnly = $true
     switch ($p) {
-        'github' { $readOnly = $false }            # reference adapter (apply lands iteration 2)
+        'github' { $readOnly = $false }            # reference adapter: not read-only (the github adapter carries the guarded apply)
         { $_ -in @('generic', 'unknown', '') } { $p = 'generic'; $readOnly = $true }
         default {
             # any other forge id is treated as a synthesized adapter
@@ -83,8 +87,10 @@ function Get-SpecrewPrContext {
 }
 
 function Invoke-SpecrewDetectCapability {
-    # Read-only, always safe. The generic adapter reports ci-only/manual; github detection lands
-    # in iteration 2 (the iteration-1 stub returns ci-only with an honest 'deferred' constraint).
+    # Read-only, always safe. The generic adapter reports ci-only/manual. This is the FORGE-NEUTRAL
+    # contract surface: for github it returns a neutral placeholder because the core imports no forge
+    # adapter (FR-014). Real github capability detection lives in the github adapter and is reached
+    # through the capability-detector orchestrator, never through this core dispatch.
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]$Adapter,
@@ -96,7 +102,7 @@ function Invoke-SpecrewDetectCapability {
             return [ordered]@{
                 provider    = 'github'
                 mechanism   = 'ci-only'
-                constraints = @('github capability detection (branch-protection/rulesets) lands in iteration 2; reporting ci-only until then (honest, not over-claimed)')
+                constraints = @('forge-neutral core: ci-only is the honest answer the core gives without importing a forge adapter (FR-014); for real GitHub capability (branch-protection/rulesets) use the github adapter via the capability detector.')
             }
         }
         default {
@@ -150,6 +156,8 @@ function Invoke-SpecrewApplyProtection {
     if (-not $Approved) {
         return [ordered]@{ applied = $false; reason = 'apply_protection requires explicit human approval (-Approved); refused (DP-S2)' }
     }
-    # Approved + a non-read-only (github/verified) adapter: the real mutation lands in iteration 2.
-    return [ordered]@{ applied = $false; reason = "apply_protection for provider '$($Adapter['provider'])' is implemented in iteration 2 (phased); no mutation performed (honest, not over-claimed)" }
+    # Approved + a non-read-only (github/verified) adapter: this forge-neutral core performs NO
+    # mutation by design (it imports no forge adapter, FR-014). The real guarded apply lives in the
+    # github adapter (Invoke-SpecrewGitHubApplyProtection), human-approved + -Execute-gated.
+    return [ordered]@{ applied = $false; reason = "apply_protection is not performed by the forge-neutral core; route through the forge adapter's guarded apply (human-approved + -Execute-gated). No mutation performed here (honest, not over-claimed)." }
 }
