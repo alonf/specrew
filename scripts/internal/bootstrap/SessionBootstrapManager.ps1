@@ -62,6 +62,11 @@ function Invoke-SpecrewSessionBootstrap {
         }
     }
 
+    # F-174 iter-10 (T001): re-compute the CURRENT delta on resume so the agent gets the ACTUAL tree (not the
+    # stale snapshot) + a directive to read what changed since the last stop. SHARED with `specrew start` (T008).
+    $reconciliation = $null
+    try { $reconciliation = Get-SpecrewResumeReconciliation -ProjectRoot $ProjectRoot -Handover $handover } catch { $reconciliation = $null }
+
     $mode = Resolve-SpecrewBootstrapMode -AnchorValid $validity.valid -AnchorClearedReason $validity.cleared_reason -HandoverValid $handoverValid
 
     # Advisory SessionStart marker + same-worktree concurrency (US-4, FR-018/019). Never blocks; the
@@ -89,6 +94,7 @@ function Invoke-SpecrewSessionBootstrap {
         -ValidationFindings $allFindings `
         -RequiredReads @('.specrew/last-start-prompt.md', '.specrew/start-context.json') `
         -Handover $handoverDirective `
+        -Reconciliation $reconciliation `
         -Sources ([pscustomobject]@{ anchor_present = ($null -ne $validity.anchor); handover_valid = $handoverValid; concurrent_session = $concurrent })
 
     $record = [pscustomobject]@{

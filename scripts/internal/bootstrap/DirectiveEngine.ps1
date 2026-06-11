@@ -27,7 +27,11 @@ function New-SpecrewBootstrapDirective {
         [Parameter(Mandatory)][string] $DedupeKey,
         # F-174 iter-5: the rolling-handover body surfaced on resume - a {present, placeholder,
         # recorded_at, active_boundary, sections} object, or null when there is no valid handover.
-        [Parameter()][AllowNull()][object] $Handover = $null
+        [Parameter()][AllowNull()][object] $Handover = $null,
+        # F-174 iter-10 (T001): the cheap resume reconciliation - {last_stop_recorded_at, last_boundary,
+        # changed_user_files, directive_text, ...} re-computed on resume, or null. Tells the agent to read
+        # what changed since the last stop and continue from the real state.
+        [Parameter()][AllowNull()][object] $Reconciliation = $null
     )
 
     # The menu is the same set regardless of mode; the mode + findings drive what the agent says.
@@ -42,5 +46,6 @@ function New-SpecrewBootstrapDirective {
         validation_findings = @($ValidationFindings)
         dedupe_key          = $DedupeKey
         handover            = $Handover
+        reconciliation      = $Reconciliation
     }
 }

@@ -77,6 +77,15 @@ function Format-BootstrapDirective {
             }
         }
     }
+    # F-174 iter-10 (T001): the resume RECONCILIATION - the CURRENT delta re-computed NOW vs the snapshot
+    # above, so the agent reads what changed SINCE the last stop and continues from the REAL state (the
+    # snapshot may predate the latest work: antigravity, no-PostToolUse hosts, and hard-kills all lag the
+    # disk). Lean: a pointer to the changed files; the agent does the reading.
+    if ($d.PSObject.Properties['reconciliation'] -and $null -ne $d.reconciliation -and -not [string]::IsNullOrWhiteSpace([string]$d.reconciliation.directive_text)) {
+        $lines.Add('')
+        $lines.Add('=== RESUME RECONCILIATION (current tree, re-computed now) ===')
+        $lines.Add([string]$d.reconciliation.directive_text)
+    }
     # F-174 T050 round-2 (the last-mile resume gap): the intent + status ARE on disk, but neither a hollow
     # handover ("re-derive from the artifacts" - skimmed as an abstract pointer) nor full mode (the contract's
     # project-state stub is empty; the hook makes no scan) ever SURFACED them - so copilot asked "what do you

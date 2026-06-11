@@ -223,3 +223,59 @@ function Get-SpecrewSessionDelta {
         new_commit_count      = $newCommits.Count
     }
 }
+
+function Get-SpecrewResumeReconciliation {
+    # F-174 iter-10 (T001): the SHARED, CHEAP resume reconciliation. On RESUME, re-compute the CURRENT git
+    # delta (one `git status` via Get-SpecrewSessionDelta) bounded by the handover's from_commit, so the
+    # resuming agent is handed the ACTUAL tree state - NOT a stale last-stop snapshot - and is DIRECTED to
+    # read what changed since and continue from the real state (the snapshot may predate the latest work; a
+    # hard kill / no-PostToolUse host / antigravity all leave the handover behind the disk). Called by BOTH
+    # the SessionStart hook (Invoke-SpecrewSessionBootstrap) AND `specrew start` (T008) so recovery is
+    # host-universal. Lean by contract: ONE delta computation; the agent does the reading (the resume budget
+    # is already spent on the launch contract). Fail-safe: any error yields $null and the resume degrades to
+    # the snapshot, never throws.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter()][AllowNull()][pscustomobject] $Handover
+    )
+    $sinceCommit = if ($null -ne $Handover) { [string]$Handover.from_commit } else { $null }
+    $delta = $null
+    try { $delta = Get-SpecrewSessionDelta -ProjectRoot $ProjectRoot -SinceCommit $sinceCommit } catch { $delta = $null }
+    if ($null -eq $delta) { return $null }
+
+    $lastStop = if ($null -ne $Handover) { [string]$Handover.recorded_at } else { '' }
+    $lastBoundary = if ($null -ne $Handover) { [string]$Handover.active_boundary } else { '' }
+    $changedNow = @($delta.user_files)
+    $newCommits = @($delta.new_commits)
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    if (-not [string]::IsNullOrWhiteSpace($lastStop)) {
+        $bn = if (-not [string]::IsNullOrWhiteSpace($lastBoundary)) { " (boundary $lastBoundary)" } else { '' }
+        $lines.Add(("Last captured stop: {0}{1}." -f $lastStop, $bn)) | Out-Null
+    }
+    if ($changedNow.Count -gt 0) {
+        $more = if (([int]$delta.user_file_count) -gt $changedNow.Count) { ', +more' } else { '' }
+        $lines.Add(("Files changed since (re-computed NOW - may post-date the last stop): {0}{1}." -f ($changedNow -join ', '), $more)) | Out-Null
+        $lines.Add('READ those files to recover the true current state (the handover snapshot may predate your latest work), THEN continue.') | Out-Null
+    }
+    elseif (([int]$delta.managed_file_count) -gt 0) {
+        $lines.Add(("No user files changed since the last commit ({0} Specrew-managed scaffolding uncommitted); continue the next lifecycle step." -f $delta.managed_file_count)) | Out-Null
+    }
+    else {
+        $lines.Add('Working tree is clean since the last commit; continue the next lifecycle step.') | Out-Null
+    }
+    if ($newCommits.Count -gt 0) { $lines.Add(("New commits since the handover: {0}." -f ($newCommits -join ' | '))) | Out-Null }
+
+    [pscustomobject]@{
+        last_stop_recorded_at = $lastStop
+        last_boundary         = $lastBoundary
+        branch                = [string]$delta.branch
+        head_short            = [string]$delta.head_short
+        changed_user_files    = $changedNow
+        user_file_count       = [int]$delta.user_file_count
+        managed_file_count    = [int]$delta.managed_file_count
+        new_commits           = $newCommits
+        directive_text        = ($lines -join ' ')
+    }
+}
