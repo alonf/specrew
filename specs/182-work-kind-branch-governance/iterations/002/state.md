@@ -7,22 +7,24 @@
 **Tasks Remaining**: (none — T201..T212 complete; entering review)
 **In Progress**: (none)
 **Baseline Ref**: 6cd1534434c59353e6731262212752fa5ae266b8
-**Updated**: 2026-06-11T20:30:00Z
+**Updated**: 2026-06-12T00:00:00Z
 
 ## Execution Summary
 
-- Iteration 002 (runtime layer) IN PROGRESS. Done: T201-T203 (work-kind-validator.ps1:
-  WorkKindValidator + ChangedFileClassifier + CloseoutEvidenceChecker; advisory default;
-  gap-naming SC-005; fail-open), T209 (emergency bypass audit), T211 (12 validator assertions green).
-- Pending: T204 capability detector, T205 GitHub adapter (gh-confined), T206 brownfield detector,
-  T207 CI workflow template, T208 on-the-fly synthesis, T210 Specrew dogfood (describe-only) + SC-014,
-  T212 denial-path/fail-open/parity tests.
-- Consumed 7/20 SP. validate-governance gated; T013b carried to release/deploy (D-001).
-
-## Execution Summary
-
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- Iteration 002 (runtime layer) IMPLEMENTATION COMPLETE: **T201–T212 done; no tasks remaining**. The
+  runtime layer is ready for formal review.
+- T201-T203: `work-kind-validator.ps1` (WorkKindValidator + ChangedFileClassifier + CloseoutEvidenceChecker;
+  advisory default; gap-naming SC-005; fail-open). T209: emergency bypass audit (durable; FR-011).
+- T204 `capability-detector.ps1` (honest mechanism; describe-only). T205 `provider-github.ps1` (gh CONFINED
+  here; fail-open; apply_protection human-approved). T206 brownfield detector (adapt-or-change, never
+  overwrite). T207 CI workflow template (advisory). T208 synthesized-adapter example (read-only-until-
+  verified). T210 dogfood (`.specrew/work-kind.yml` + `.specrew/repository-governance.yml`; SC-014).
+- Tests: 88 unit assertions green (catalog 36, adapter 21, validator 12, runtime 19); PSScriptAnalyzer 0
+  errors; FileList-completeness PASS; validate-governance 0 FAIL; markdownlint clean.
+- **Consumed 17/20 SP** (matches the iteration-plan actuals).
+- Carried, NOT in this iteration: **T013b** (extension.yml version bump + deploy-time `.specify` coverage)
+  → release/deploy step (drift-log D-001); live GitHub `apply_protection` → human-approved / dogfood-beta;
+  **Iteration 3** (forge-neutralization migration) NOT started.
 
 ## Notes
 
