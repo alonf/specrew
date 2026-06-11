@@ -1,0 +1,90 @@
+schema_version: "1.0"
+depth: standard
+depth_reason: >-
+  Specrew is a known product and the trigger (Feature 177's release/closeout
+  mismatch) is well-documented, so most product context is known. But this is a
+  consequential change to lifecycle SHAPE (new first-class work kinds + a branch-
+  governance decision area in the DevOps lens), not a tiny utility, so it earns
+  current-workaround, success-metrics, and alternatives — hence Standard rather
+  than Light or Deep.
+context_scope: feature_standalone
+product_id: null
+product_context_ref: null
+
+areas:
+  users_customers_stakeholders:
+    primary_user: "The Specrew-driven developer (human + Crew) deciding 'what kind of change is this, and what lifecycle do I follow'."
+    operator: "The lifecycle phases + CI that consume the work-kind declaration and enforce closeout/branch policy."
+    buyer_maintainer: "Alon (maintainer) — sets the default PR-backed branch-governance posture."
+    harmed_if_bad: "Maintainers of protected-main repos who get blocked or mis-routed; anyone misled by over-claimed enforcement; downstream CI maintainers inheriting brittle work-kind checks."
+  pain_jobs_workaround:
+    pain: "Specrew treats feature delivery, release validation, docs-only changes, and DevOps/CI changes as ONE lifecycle shape. Post-merge release/CI/docs findings have nowhere to go except reopening a merged feature (unsafe on a protected main); trivial non-feature changes carry full-feature ceremony."
+    current_workaround: "Hold a feature open past merge to capture release/beta learning (the Feature 177 anti-pattern), or push small fixes informally."
+    cost_of_nothing: "Lifecycle truth gets corrupted by post-merge edits to merged features; protected-main repositories cannot follow the model; contributors over- or under-process changes."
+  existing_system_context:
+    relationship: "Extension of the existing design-lens system (the DevOps & Operations lens) plus the lifecycle / validator / CI surface. Not a new product."
+    new_surface: "A work-kind taxonomy + lightweight docs-only/devops lifecycle surfaces + a repository-governance decision area in the DevOps lens + a CI work-kind validator + GitHub capability detection."
+  constraints:
+    - "main is already protected on Specrew's repo as of 2026-06-11 (PR-required, applies to admins, no force-push/deletion) — interim mitigation; this feature defines the durable methodology + automation."
+    - "Multi-host: methodology surfaces (lens md, lifecycle templates) deploy across the 5 hosts."
+    - "Honest enforcement: MUST NOT over-claim runtime enforcement; partial enforcement labeled phased/deferred truthfully (maintainer rule)."
+    - "GitHub-first: provider/plan/visibility determine which enforcement mechanism is actually available; a provider capability model abstracts other providers later."
+    - "This feature is delivered as a normal software-feature until it introduces the work kinds it defines, then dogfoods them (maintainer rule)."
+    - "Proposals 174 (boundary-variance disclosure) and 178 (verification-strategy lens) stay follow-ups unless a very small supporting slice is strictly required."
+  outcomes_success_metrics:
+    lifecycle_truth: "Lifecycle truth survives merge: a post-merge finding creates a NEW PR-backed work item and a separate release-validation record, never a reopened merged feature."
+    governance_capture: "The DevOps lens captures the repository-governance decisions with honest capability reporting (no enforcement promise the repo cannot keep)."
+    leading_indicator: "In a dogfood, Specrew's own repo carries main PR-protection + a declared work kind for this feature, and the docs-only/devops lightweight lifecycles are actually usable end-to-end to a PR-ready closeout."
+  mvp_nongoals_vision:
+    mvp: "The full Proposal 182 across two iterations: work-kind taxonomy (software-feature/bug-bash/docs-only/devops) + docs-only/devops lifecycle surfaces + DevOps-lens repository-governance + multi-repo questions + feature-closeout-vs-release-validation invariant + CI work-kind validation + GitHub branch-protection capability detection."
+    non_goals:
+      - "Implementing every Git provider in v1 (GitHub first; provider capability model later)."
+      - "Enforcing a full ruleset policy as runtime automation in v1 (phased/deferred where partial)."
+      - "Rewriting historical feature artifacts (corrections are small new PRs, not retroactive edits)."
+      - "Creating a release for docs-only changes."
+      - "Proposals 174 and 178 (stay follow-ups)."
+    vision: "A provider capability model abstracts non-GitHub hosts; richer CI enforcement (changed-file classification, required-checks wiring) graduates from advisory to blocking as confidence grows."
+    v1_failure_even_if_it_works: "It over-claims enforcement it cannot actually deliver (CI-only masquerading as branch protection), or it blocks legitimate/emergency work with no audited bypass path."
+  alternatives_differentiation:
+    alternative_a: "Status quo — one lifecycle shape for everything: the exact cause of the Feature 177 release/closeout confusion."
+    alternative_b: "CI-only enforcement (no branch protection): false confidence — CI cannot prevent a direct push after it happens."
+    alternative_c: "Branch protection only (no work-kind semantics): stops direct pushes but does not right-size lifecycles or separate closeout from release validation."
+    differentiation: "Combine REAL branch protection (the actual enforcement layer) + work-kind semantics (the lifecycle layer) + HONEST capability reporting (degrade to ci-only/manual when protection is unavailable). Must beat status-quo on lifecycle-truth integrity and protected-repo usability."
+  adoption_rollout_change_impact:
+    rollout: "Ships beta-first (universal mandate), dogfooded on Specrew's own repo. Adoption = work kinds + the DevOps-lens governance questions join the standard workshop/lifecycle flow."
+    change_impact: "Developers now declare a work kind per change; mitigated by sensible defaults (software-feature default), the lightweight docs-only/devops kinds, and honest phased enforcement so nothing hard-blocks before it is real."
+
+statements:
+  - text: "Primary user is the Specrew-driven developer choosing a change's work kind and lifecycle; the operator is the lifecycle + CI that consume the declaration."
+    area: users_customers_stakeholders
+    evidence: known
+  - text: "Maintainers of protected-main repos and anyone misled by over-claimed enforcement are the harmed party when this is done wrong."
+    area: users_customers_stakeholders
+    evidence: assumed
+  - text: "Specrew treats feature, release-validation, docs, and devops changes as one lifecycle shape; post-merge findings reopen merged features (unsafe on protected main)."
+    area: pain_jobs_workaround
+    evidence: known
+  - text: "The current workaround is holding a feature open past merge (the Feature 177 anti-pattern) or pushing small fixes informally."
+    area: pain_jobs_workaround
+    evidence: known
+  - text: "main is already protected on Specrew's repo as of 2026-06-11; this feature defines the durable methodology + automation on top of that interim mitigation."
+    area: constraints
+    evidence: known
+  - text: "Enforcement must be labeled honestly: partial runtime enforcement is phased/deferred, never over-claimed (maintainer rule)."
+    area: constraints
+    evidence: known
+  - text: "The load-bearing outcome is that lifecycle truth survives merge — post-merge findings create a new work item, never reopen the merged feature."
+    area: outcomes_success_metrics
+    evidence: known
+  - text: "Differentiation is the combination of real branch protection + work-kind semantics + honest capability reporting; CI-only or branch-protection-only each fail one half."
+    area: alternatives_differentiation
+    evidence: assumed
+  - text: "Change impact is that developers now declare a work kind; mitigated by defaults, lightweight kinds, and phased enforcement."
+    area: adoption_rollout_change_impact
+    evidence: assumed
+
+skipped: []
+follow_up_research: []
+
+confirmation: human-confirmed
+confirmation_scope: lens-question

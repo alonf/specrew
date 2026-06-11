@@ -16,8 +16,9 @@
 
 ## Requirement Completeness
 
-- [ ] No `[NEEDS CLARIFICATION]` markers remain — **OPEN**: FR-009 (work-kind
-  declaration mechanism) carries a marker; resolve in clarify / DevOps design lens.
+- [x] No `[NEEDS CLARIFICATION]` markers remain — FR-009 (work-kind declaration mechanism)
+  resolved in the integration-api lens: `.specrew/work-kind.yml` authoritative + branch-prefix
+  hint; PR labels rejected as source of truth.
 - [x] Requirements are testable and unambiguous (FR-001..FR-013; SC-001..SC-009 are
   measurable)
 - [x] Success criteria are measurable and technology-honest (SC-004/SC-005/SC-007 assert
@@ -44,13 +45,16 @@
 
 ## Notes
 
-- **Open clarify forks** (to resolve before plan): (1) work-kind declaration mechanism
-  — checked-in `.specrew/work-kind.yml` (proposed default) vs PR label vs branch prefix
-  vs combination; (2) first enforcement mechanism — branch protection vs rulesets vs
-  branch-protection-first; (3) changed-file classification strictness for generated
-  mirrors / repository-global ledgers; (4) whether docs-only PRs may touch
-  `CHANGELOG.md` / proposal indexes by default; (5) multi-repo ownership of lifecycle
-  truth (orchestration repo vs per-repo closeout + shared release-train record).
+- **Clarify forks — all resolved in the design workshop** (see `## Clarifications` in
+  spec.md): (1) declaration mechanism → `.specrew/work-kind.yml` authoritative + branch-prefix
+  hint; (2) enforcement mechanism → provider-neutral core + pluggable `ProviderAdapter`
+  (GitHub reference + generic fallback + on-the-fly synthesis); branch protection vs rulesets
+  is a per-repo capability the adapter reports, not a fixed choice; (3) changed-file
+  classification → allow-list exempts global/generated files, fail-open; (4) docs-only scope →
+  catalog-defined allowed scope (incl. `CHANGELOG.md`, proposal indexes), reclassify on
+  mismatch; (5) multi-repo ownership → default single-repo, `multi_repo` block captured only
+  when chosen. Plus workshop additions: configurable `branch_model`, `review_gate`,
+  project-level capture, brownfield adapt-or-change, and the forge-neutralization pillar.
 - **Phased-enforcement honesty (FR-010/SC-008)** is a first-class quality bar: the
   feature MUST NOT over-claim runtime enforcement; partial enforcement is labeled
   phased/deferred.

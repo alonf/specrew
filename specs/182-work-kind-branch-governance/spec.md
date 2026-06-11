@@ -2,10 +2,10 @@
 
 **Feature Branch**: `182-work-kind-branch-governance`  
 **Created**: 2026-06-11  
-**Status**: Draft  
+**Status**: Draft (design-workshop complete)  
 **Input**: Proposal 182 — Work Kind and Branch Governance Model. Separate Specrew's
 single feature-lifecycle shape into first-class **work kinds** (software-feature,
-bug-bash, docs-only, devops), make PR-backed main protection a DevOps-lens decision,
+bug-bash, docs-only, devops), make PR-backed branch protection a DevOps-lens decision,
 and stop post-merge release/CI/CD/docs findings from reopening a merged feature.
 
 ## Context & Motivation *(informative)*
@@ -13,314 +13,410 @@ and stop post-merge release/CI/CD/docs findings from reopening a merged feature.
 Feature 177 exposed a lifecycle-shape problem: a software feature can be
 implementation-complete and merged, yet release/publish validation keeps producing
 lessons *after* the PR is accepted. Specrew tried to hold the feature open to capture
-that learning. That is unsafe for real repositories where `main` is protected and any
-post-merge correction must itself be a PR. The durable invariant is:
+that learning. That is unsafe for real repositories where the release branch is
+protected and any post-merge correction must itself be a PR. The durable invariant is:
 
 ```text
-A merged PR must not leave its work item open on main.
+A merged PR must not leave its work item open on the release branch.
 Post-merge findings create a new PR-backed work item.
 ```
 
-Specrew already has a full software-feature lifecycle and a bug-bash pattern. It now
-needs first-class lightweight work kinds for documentation-only changes, DevOps /
-CI-CD / repository-governance changes, and release/post-merge validation records that
-do not reopen the merged feature. The DevOps & Operations design lens is the right
-home for "how strict should repository governance be," because it already covers
-hosting, CI/CD, rollout, rollback, and operational roles.
+The DevOps & Operations design lens is the right home for "how strict should repository
+governance be," because it already covers hosting, CI/CD, rollout, rollback, and
+operational roles. This feature is itself delivered as a normal `software-feature` until
+it introduces the first-class work kinds it defines, then dogfoods them.
 
-This feature is itself delivered as a normal `software-feature` (per the proposal's
-own rule) until it introduces the first-class work kinds it defines.
+**Workshop outcome (binding design constraints).** The design workshop (product-domain +
+7 technical lenses + code-implementation, recorded under
+`specs/182-work-kind-branch-governance/workshop/` and `lens-applicability.json`)
+established three architectural pillars beyond the original proposal:
+
+1. **Provider-neutral core + pluggable `ProviderAdapter`.** The methodology, the work-kind
+   declaration, and the CI validator core import **no forge assumption**. A thin
+   `ProviderAdapter` seam carries the only forge-specific behavior; v1 ships a **GitHub
+   reference adapter** + a **generic/unknown fallback** (`ci-only`/`manual`); other forges
+   (GitLab/Azure/Bitbucket/Gitea) are **synthesized on the fly** when a downstream
+   developer names their forge (read-only by default; `apply_protection` human-approved).
+2. **Configurable `branch_model`.** Branch **names** (`main`/`master`/`trunk`/…) and the
+   branching **method** (trunk / integration-branch / GitFlow / custom) are user-set; the
+   promotion *to the release-truth branch* is the natural release-validation event.
+3. **Forge-neutralization of all downstream-governing surfaces.** Specrew's
+   downstream-*deployed* surfaces (lifecycle prompt, skills, extension scripts, charters,
+   lens content, CI templates) are decoupled from Specrew's own GitHub dev habits —
+   **without** changing Specrew's own GitHub usage for its own development.
+
+## Clarifications
+
+The design workshop (recorded under `workshop/` + `lens-applicability.json`) served as an
+extended clarification with the maintainer. Resolved forks:
+
+- **Declaration mechanism (FR-009)** → `.specrew/work-kind.yml` authoritative (forge-neutral,
+  versioned) + an optional branch-prefix hint; PR labels rejected as the source of truth.
+- **Enforcement mechanism** → provider-neutral core + pluggable `ProviderAdapter` (GitHub
+  reference adapter + generic/unknown fallback + on-the-fly synthesis). branch-protection vs
+  rulesets is a per-repo capability the adapter *reports*, not a fixed global choice.
+- **Branch name + method** → configurable `branch_model` (trunk/integration-branch/gitflow/
+  custom; user-named branches); the promotion to release-truth is the release-validation event.
+- **Review gate** → human approvals + comment-resolution always-available; automated review
+  opt-in (Copilot suggested on GitHub via the adapter), the user decides in the workshop.
+- **Changed-file classification** → allow-list exempts repository-global/generated files;
+  fail-open + WARN on anything unknown/malformed.
+- **Governance capture location** → project-level `.specrew/repository-governance.yml`
+  (decided once, inherited per feature).
+- **Multi-repo ownership** → default single-repo; `multi_repo` block captured only when chosen.
+- **Brownfield** → detect existing CI/CD + protection and offer adapt-or-change, never
+  overwrite.
+- **Scope extension (maintainer-directed)** → forge-neutralize ALL downstream-governing
+  surfaces of Specrew's own GitHub dev habits, without changing Specrew's own GitHub usage;
+  re-sized to ~16–24 SP / 3 iterations.
 
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Lifecycle truth survives merge (Priority: P1)
 
-A developer finishes a feature, closes it out, and merges the PR. Days later, release
-validation (beta install, CI, docs) surfaces a fix. Instead of reopening the merged
-feature on a protected `main`, Specrew directs the developer to open a *new*
-PR-backed work item of the appropriate kind (docs-only, devops, or bug-bash). The
+A developer finishes a feature, closes it out, and merges. Later, release validation
+surfaces a fix. Instead of reopening the merged feature on a protected release branch,
+Specrew directs them to a *new* PR-backed work item (docs-only, devops, or bug-bash). The
 merged feature's closeout truth is never retroactively edited.
 
-**Why this priority**: This is the core invariant the proposal exists to protect. It
-prevents release/post-merge learning from corrupting feature-lifecycle truth and keeps
-Specrew usable in protected-branch repositories.
+**Why this priority**: This is the core invariant the proposal exists to protect.
 
 **Independent Test**: Walk a worked example end-to-end (feature merged → post-merge
-finding → new work item) using only the shipped methodology surfaces; verify the
-guidance never instructs reopening the merged feature and that a release-validation
-record is captured separately from feature-closeout.
+finding → new work item) using only the shipped methodology surfaces; verify it never
+instructs reopening the merged feature and that a release-validation record is captured
+separately from feature-closeout.
 
 **Acceptance Scenarios**:
 
 1. **Given** a merged feature PR and a post-merge beta-install failure, **When** the
-   developer asks Specrew how to record it, **Then** Specrew directs them to open a new
-   bug-bash or devops work item and does NOT reopen the merged feature.
-2. **Given** a merged feature, **When** release validation produces lessons, **Then**
-   those lessons are captured in a release/post-merge validation record that is
-   explicitly separate from the feature's `feature-closeout` artifacts.
+   developer asks how to record it, **Then** Specrew directs them to open a new bug-bash
+   or devops work item and does NOT reopen the merged feature.
+2. **Given** a merged feature, **When** release validation produces lessons, **Then** they
+   are captured in a release/post-merge validation record explicitly separate from the
+   feature's `feature-closeout` artifacts.
 
 ---
 
-### User Story 2 - DevOps lens governs branch protection (Priority: P1)
+### User Story 2 - DevOps lens governs branch protection, on any forge and branch model (Priority: P1)
 
-When a developer works the DevOps & Operations design lens for a feature, the lens
-presents Specrew's default PR-backed main-protection model and asks the repository-
-governance decision questions (protected default branch, PR-required workflow,
-required checks, admin/automation bypass, force-push/deletion policy, release-vs-
-closeout separation, single-repo vs multi-repo). It detects or asks for provider,
-plan, and visibility *before* promising any specific enforcement mechanism, and
-captures the decisions in a structured schema.
+When a developer works the DevOps & Operations lens, it presents Specrew's default
+PR-backed protection model and asks the repository-governance questions — including the
+**branch model** (style + user-named branches + which are protected + promotion path) and
+the **review gate** (human approvals + comment-resolution; opt-in automated review). It
+detects or asks for provider, plan, and visibility *before* promising any enforcement
+mechanism, and captures the decisions in a **project-level** schema.
 
-**Why this priority**: Branch governance is a design-time operational decision, not a
-hidden default. Capturing it where the human can adopt/modify/skip it makes the
-posture explicit and portable across repos.
+**Why this priority**: Branch governance is a design-time operational decision, portable
+across repos, forges, and branch models — not a hidden GitHub-shaped default.
 
-**Independent Test**: Run the DevOps lens for a sample feature and confirm every
-governance question is surfaced, the provider/plan/visibility caveat is stated before
-any enforcement promise, and the answers are written to the capture schema.
+**Independent Test**: Run the DevOps lens for a sample feature; confirm every governance
+question is surfaced, the branch name + method are configurable, the provider/plan/
+visibility caveat precedes any enforcement promise, and the answers are written to
+`.specrew/repository-governance.yml`.
 
 **Acceptance Scenarios**:
 
-1. **Given** a feature whose DevOps lens is selected, **When** the lens runs, **Then**
-   it presents the default branch-governance model and asks the human to adopt, modify,
-   or skip it.
-2. **Given** an unknown provider/plan/visibility, **When** the lens reaches the
-   "block direct commits to main" question, **Then** it captures provider/plan/
-   visibility constraints and labels the achievable enforcement honestly (does not
-   promise branch protection it cannot guarantee).
+1. **Given** a feature whose DevOps lens is selected, **When** the lens runs, **Then** it
+   presents the default model and asks the human to adopt, modify, or skip it, including
+   the branch model and review gate.
+2. **Given** a project using `master` + a `dev` integration branch, **When** the lens
+   captures the branch model, **Then** the validator and lifecycle honor those names
+   (feature-closeout at the `dev` merge; `dev → master` promotion = release-validation).
+3. **Given** an unknown provider/plan/visibility, **When** the lens reaches "block direct
+   commits to the protected branch", **Then** it captures the constraints and labels the
+   achievable enforcement honestly.
 
 ---
 
 ### User Story 3 - Lightweight docs-only and devops lifecycles (Priority: P2)
 
-A developer needs to change only documentation (README, proposals, methodology
-wording, release notes) or only DevOps infrastructure (CI/CD, GitHub settings, release
-workflows). Instead of running the full feature lifecycle, they follow a lightweight
-docs-only or devops lifecycle surface with right-sized required evidence, completing
+A developer changing only documentation, or only DevOps infrastructure, follows a
+lightweight docs-only or devops lifecycle surface with right-sized evidence, completing
 through a PR without producing a release.
 
-**Why this priority**: Forcing every non-feature change through the full lifecycle is
-the over-heavy shape that caused the 177 confusion. Right-sized lifecycles keep
-discipline without ceremony.
+**Why this priority**: Forcing every non-feature change through the full lifecycle is the
+over-heavy shape that caused the 177 confusion.
 
-**Independent Test**: Carry a docs-only change from intent to a PR-ready closeout using
-the docs-only surface; confirm it requires the lightweight evidence set and produces no
-release.
+**Independent Test**: Carry a docs-only change from intent to a PR-ready closeout; confirm
+the lightweight evidence set and no release.
 
 **Acceptance Scenarios**:
 
 1. **Given** a docs-only change, **When** the developer follows the docs-only surface,
-   **Then** they reach a PR-ready closeout with the lightweight evidence (intent,
-   audience, changed docs, markdown/link checks, review) and no release is created.
+   **Then** they reach a PR-ready closeout with lightweight evidence and no release.
 2. **Given** a DevOps/CI change, **When** the developer follows the devops surface,
    **Then** the required evidence includes a risk/rollback plan and dry-run/CI evidence.
 
 ---
 
-### User Story 4 - CI enforces work-kind semantics (Priority: P2)
+### User Story 4 - CI enforces work-kind semantics, forge-neutrally (Priority: P2)
 
-On every PR, Specrew governance/CI validates that exactly one work kind is declared,
-the changed files match the declared kind, the required closeout artifacts exist for
-that kind, and software-feature/bug-bash PRs cannot merge with open lifecycle
-boundaries. Where runtime enforcement is only partial, the posture is recorded honestly
-as phased/deferred rather than over-claimed.
+On every PR, a **provider-neutral** validator checks exactly one declared work kind,
+changed-file/kind consistency, required closeout artifacts, and that
+software-feature/bug-bash PRs have no open lifecycle boundary. It runs in any CI (GitHub
+Actions is the v1 wiring) and defaults to **advisory**; partial enforcement is labeled
+phased/deferred, never over-claimed.
 
-**Why this priority**: Branch protection stops direct pushes; CI is where work-kind
-semantics are actually checked. This is the runtime layer that makes the methodology
-enforceable.
+**Why this priority**: CI is where work-kind semantics are actually checked, on top of the
+real push-block layer (branch protection).
 
-**Independent Test**: Run the validator against fixtures: a well-formed PR of each kind
-passes; a mismatched/under-evidenced PR fails (or warns, per the documented phased
-posture); confirm the result message states the enforcement posture truthfully.
+**Independent Test**: Run the validator against fixtures of each kind; a well-formed PR
+passes; a mismatched/under-evidenced PR is flagged with a message naming the exact gap;
+confirm the posture is stated truthfully.
 
 **Acceptance Scenarios**:
 
-1. **Given** a PR declaring `docs-only` that touches runtime source, **When** the
-   validator runs, **Then** it flags the changed-file/work-kind mismatch.
-2. **Given** a `software-feature` PR with an open lifecycle boundary, **When** the
-   validator runs, **Then** it flags the missing closeout evidence.
-3. **Given** a PR with no work-kind declaration, **When** the validator runs, **Then**
-   it reports exactly which declaration is missing and how to add it.
+1. **Given** a PR declaring `docs-only` that touches runtime source, **When** the validator
+   runs, **Then** it flags the changed-file/work-kind mismatch and names the allowed scope.
+2. **Given** a `software-feature` PR with an open lifecycle boundary, **When** the validator
+   runs, **Then** it flags the missing closeout evidence.
+3. **Given** a PR with no work-kind declaration, **When** the validator runs, **Then** it
+   reports exactly which declaration is missing (and any branch-prefix default) and how to
+   add it.
+4. **Given** a repository with no provider adapter, **When** the validator runs, **Then** it
+   still works via the `git diff` + `branch_model` fallback.
 
 ---
 
-### User Story 5 - GitHub capability detection (Priority: P3)
+### User Story 5 - Honest forge capability detection + on-the-fly adapters (Priority: P3)
 
-Before promising main-protection enforcement, Specrew detects what the GitHub repo can
-actually enforce given provider, plan, and visibility, and reports the achievable
-mechanism (branch-protection, rulesets, ci-only, or manual). It surfaces a helper to
-apply or describe the recommended protection, and never claims an enforcement layer the
-repo cannot use.
+Before promising protection, Specrew detects what the repo can actually enforce given
+provider/plan/visibility and reports the achievable mechanism
+(`branch-protection`/`rulesets`/`ci-only`/`manual`). On GitHub it can *suggest* Copilot PR
+review (opt-in) and describe/apply protection (apply is human-approved). For a non-GitHub
+forge it can synthesize a read-only adapter once the developer names the forge.
 
-**Why this priority**: Provider capability drifts with plan/visibility. Honest
-capability reporting prevents false confidence; it is valuable but builds on US2/US4.
+**Why this priority**: Provider capability drifts with plan/visibility; honest reporting
+prevents false confidence. Builds on US2/US4.
 
-**Independent Test**: Run capability detection against a known repo context and confirm
-the reported mechanism matches the documented GitHub capability matrix, with a
-`ci-only`/`manual` fallback when protection is unavailable.
+**Independent Test**: Run detection against a known repo context; confirm the reported
+mechanism matches the capability matrix with a `ci-only`/`manual` fallback; confirm a
+synthesized adapter is read-only until human-verified.
 
 **Acceptance Scenarios**:
 
-1. **Given** a public repo on a plan that supports branch protection, **When**
-   detection runs, **Then** it reports `branch-protection` (or `rulesets`) as available.
-2. **Given** a private repo on a plan without protected branches, **When** detection
-   runs, **Then** it reports `ci-only`/`manual` and does not promise branch protection.
+1. **Given** a public repo on a plan that supports protection, **When** detection runs,
+   **Then** it reports `branch-protection` (or `rulesets`).
+2. **Given** a private repo without protected branches, **When** detection runs, **Then**
+   it reports `ci-only`/`manual` and does not promise protection.
+3. **Given** a developer who names a non-GitHub forge, **When** synthesis runs, **Then** it
+   produces an adapter that is read-only (`detect`/`describe`) until a human verifies it.
+
+---
+
+### User Story 6 - Brownfield projects adapt, not overwrite (Priority: P2)
+
+A brownfield project that already has CI/CD + branch protection is met with detection of
+its existing posture and an **adapt-or-change** offer — slot the work-kind check into the
+existing CI lane, or change to the recommended posture — never a silent overwrite.
+
+**Why this priority**: Most real downstreams already have *some* governance; imposing or
+overwriting it is hostile and unsafe (NFR #5 brownfield-compat).
+
+**Independent Test**: Point the lens at a repo with existing protection + a CI lane;
+confirm it reports the detected posture and offers adapt-or-change rather than overwriting.
+
+**Acceptance Scenarios**:
+
+1. **Given** a repo with an existing protected branch + CI lane, **When** the DevOps lens
+   runs, **Then** it shows the detected posture and asks ADAPT or CHANGE.
+2. **Given** the developer chooses ADAPT, **When** the governance is captured, **Then** the
+   work-kind check is wired into the existing lane and the existing posture is recorded.
 
 ---
 
 ### Edge Cases
 
-- **Mixed-scope PR**: A PR touches both runtime source and docs. Which work kind wins,
-  and how strict is changed-file classification? (See FR-009 + clarification needed.)
-- **Generated mirrors & repository-global ledgers**: Files like `CHANGELOG.md`,
-  `.squad/decisions.md`, proposal indexes, and generated host mirrors are touched by
-  many work kinds. Classification must not produce false mismatches. (See FR-009.)
-- **Provider cannot protect**: Private repo on a plan without protected branches —
-  enforcement degrades to ci-only/manual and MUST be reported honestly.
-- **Emergency / hotfix bypass**: A production fire needs an expedited path. A bypass
-  must still leave an audit artifact rather than silently skipping governance.
-- **Multi-repo ownership**: Which repository owns lifecycle truth when implementation
-  PRs land in several repos coordinated by one orchestration repo.
-- **CI-only false confidence**: CI cannot prevent a direct push after it happens;
-  branch protection/rulesets must be the actual main-protection layer, with CI as the
-  semantic layer on top.
+- **Mixed-scope PR**: touches runtime source and docs → changed-file classification names
+  the dominant kind's allowed scope; an allow-list exempts global/generated files.
+- **Generated mirrors & global ledgers**: `CHANGELOG.md`, `.squad/decisions.md`, proposal
+  indexes, host mirrors — exempt via allow-list so they don't produce false mismatches.
+- **Provider cannot protect**: degrades to `ci-only`/`manual`, reported honestly.
+- **Emergency / hotfix bypass**: a bypass leaves a durable audit artifact, never a silent
+  skip.
+- **Multi-repo ownership**: which repo owns lifecycle truth across coordinated repos.
+- **CI-only false confidence**: CI cannot prevent a direct push; branch protection/rulesets
+  are the actual push-block layer, with CI as the semantic layer on top.
+- **No adapter present**: the validator runs via the `git diff` + `branch_model` fallback.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: Specrew MUST define a work-kind taxonomy covering at least
-  `software-feature`, `bug-bash`, `docs-only`, and `devops`, each with documented
-  lifecycle weight and required evidence, discoverable in a methodology surface.
-- **FR-002**: The DevOps & Operations lens MUST present the default PR-backed branch-
-  governance model and ask the human to adopt, modify, or skip it.
-- **FR-003**: The DevOps lens MUST ask whether direct commits to the default branch
-  should be blocked where the host supports it, and MUST capture provider/plan/
-  visibility constraints before promising any enforcement mechanism.
+- **FR-001**: Specrew MUST define a work-kind taxonomy covering at least `software-feature`,
+  `bug-bash`, `docs-only`, and `devops`, as a **data-driven catalog** (`work-kinds.yml`)
+  with documented lifecycle weight + required evidence + allowed changed-file scope.
+- **FR-002**: The DevOps lens MUST present the default PR-backed branch-governance model and
+  ask the human to adopt, modify, or skip it.
+- **FR-003**: The DevOps lens MUST capture a configurable **`branch_model`** — branching
+  style (trunk/integration-branch/gitflow/custom), user-named branches, which branches are
+  protected, and the promotion path — and MUST ask whether to block direct commits to the
+  protected branch where the forge supports it, capturing provider/plan/visibility
+  constraints before promising any enforcement mechanism.
 - **FR-004**: Specrew MUST distinguish `feature-closeout` from release/post-merge
   validation; post-merge findings MUST create a new PR-backed work item instead of
   reopening the merged feature, and MUST NOT retroactively rewrite merged closeout
-  artifacts.
-- **FR-005**: Specrew MUST provide a lightweight `docs-only` lifecycle surface that can
-  be completed through a PR without producing a release.
-- **FR-006**: Specrew MUST provide a `devops` work-kind lifecycle surface for CI/CD,
-  GitHub/repository settings, release workflows, branch protection, and publishing
-  infrastructure, with risk/rollback and dry-run/CI evidence requirements.
-- **FR-007**: Specrew governance/CI MUST validate, on a PR, that (a) exactly one work
-  kind is declared, (b) changed files are consistent with the declared kind where
-  practical, and (c) the required closeout artifacts exist for that kind; software-
-  feature and bug-bash PRs MUST be flagged when an open lifecycle boundary remains.
-- **FR-008**: The DevOps lens MUST ask whether the project is single-repo or multi-repo
-  and capture the orchestration and release-coordination model.
-- **FR-009**: Specrew MUST define how a work item / PR declares its work kind, with a
-  documented default declaration mechanism and an allow-list approach for repository-
-  global / generated files so they do not produce false changed-file mismatches.
-  *[NEEDS CLARIFICATION: declaration mechanism — checked-in `.specrew/work-kind.yml`
-  (default proposed), PR label, branch prefix, or a combination?]*
-- **FR-010**: Specrew MUST record enforcement posture honestly. Where runtime
-  enforcement is partial, documentation and validator output MUST label it
-  phased/deferred and MUST NOT over-claim automated enforcement.
-- **FR-011**: Specrew MUST define an emergency/bypass path for governance that still
-  leaves a durable audit artifact, rather than a silent skip.
-- **FR-012**: GitHub capability detection MUST report the achievable enforcement
-  mechanism (`branch-protection`, `rulesets`, `ci-only`, or `manual`) for the repo's
-  provider/plan/visibility and MUST surface `ci-only`/`manual` when protected branches
-  or rulesets are unavailable.
-- **FR-013**: Specrew MUST dogfood this model on its own repository: `main` protected
-  via PR-required workflow with a declared work kind for this feature, recorded as
-  evidence.
+  artifacts. The promotion to the release-truth branch is the natural release-validation
+  event.
+- **FR-005**: Specrew MUST provide a lightweight `docs-only` lifecycle surface completable
+  through a PR without producing a release.
+- **FR-006**: Specrew MUST provide a `devops` work-kind lifecycle surface (CI/CD, repo
+  settings, release workflows, branch protection, publishing infra) with risk/rollback and
+  dry-run/CI evidence requirements.
+- **FR-007**: A **provider-neutral** CI validator MUST check, on a PR, that (a) exactly one
+  work kind is declared, (b) changed files are consistent with the declared kind where
+  practical, and (c) required closeout artifacts exist; software-feature/bug-bash PRs MUST
+  be flagged when an open lifecycle boundary remains. It MUST default to **advisory**.
+- **FR-008**: The DevOps lens MUST ask single-repo vs multi-repo and capture the
+  orchestration and release-coordination model.
+- **FR-009**: A work item declares its kind via an authoritative, forge-neutral checked-in
+  **`.specrew/work-kind.yml`**, with an **optional branch-prefix convention**
+  (`docs/`,`devops/`,`fix/`,`feature/`) as a default the file confirms/overrides; an
+  allow-list exempts repository-global/generated files from changed-file checks. *(Resolved
+  in the integration-api lens; PR labels rejected as source of truth.)*
+- **FR-010**: Specrew MUST record enforcement posture honestly; partial runtime enforcement
+  MUST be labeled phased/deferred and MUST NOT over-claim automated enforcement.
+- **FR-011**: Specrew MUST define an emergency/bypass path that leaves a durable audit
+  artifact (who/why/when/what), not a silent skip.
+- **FR-012**: Capability detection MUST report the achievable enforcement mechanism
+  (`branch-protection`/`rulesets`/`ci-only`/`manual`) for the repo's provider/plan/
+  visibility and surface `ci-only`/`manual` when protection is unavailable.
+- **FR-013**: Specrew MUST dogfood this model on its own repository (protected branch via
+  PR-required workflow + a declared work kind for this feature), recorded as evidence.
+- **FR-014**: The methodology, the declaration, and the CI validator **core** MUST import no
+  forge assumption; the `ProviderAdapter` is the only forge-specific seam.
+- **FR-015**: Specrew MUST ship the `ProviderAdapter` **contract** + a **GitHub reference
+  adapter** + a **generic/unknown fallback** (`ci-only`/`manual` via `git diff`).
+- **FR-016**: Specrew MUST provide on-the-fly adapter **synthesis** conduct: generate a
+  forge adapter when the downstream developer names their forge, read-only by default, with
+  recorded provenance, captured at the downstream project.
+- **FR-017**: The DevOps lens MUST capture a **`review_gate`** — human approvals +
+  comment-resolution (always-available) and **opt-in** automated review (Copilot suggested
+  on GitHub via the adapter; the user decides in the workshop).
+- **FR-018**: Governance answers MUST persist to a **project-level**
+  `.specrew/repository-governance.yml` (decided once, inherited per feature, deltas re-asked).
+- **FR-019**: Specrew MUST audit + decouple ALL downstream-governing surfaces (lifecycle
+  prompt, skills, extension scripts, charters, lens content, CI templates) from Specrew's
+  own GitHub dev habits, producing an inventory, **without** changing Specrew's own GitHub
+  usage for its own development.
+- **FR-020**: `apply_protection` MUST be human-approved, never auto-applied, never from an
+  unverified synthesized adapter; Specrew MUST hold no forge secret (tokens come from CI or
+  the user's auth; least-privilege scopes).
+- **FR-021**: Specrew MUST detect an existing brownfield CI/CD + branch-protection + review
+  setup and offer to **adapt** the work-kind check into it OR **change** to the recommended
+  posture, never silently overwriting; the existing posture + chosen action are recorded.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: Each user story MUST map to one or more functional requirements.
 - **TG-002**: Each requirement MUST identify expected owner role(s).
 - **TG-003**: Each requirement MUST identify intended iteration or delivery window.
-- **TG-004**: Any known spec/implementation conflict MUST include an explicit
-  reconciliation path.
+- **TG-004**: Any known spec/implementation conflict MUST include an explicit reconciliation
+  path.
 
 ### Key Entities
 
-- **WorkKind**: A taxonomy entry — `id` (software-feature | bug-bash | docs-only |
-  devops), lifecycle weight, required-evidence set, and allowed changed-file scope.
-- **WorkKindDeclaration**: How a given work item / PR declares its kind (default
-  proposed: a checked-in `.specrew/work-kind.yml`); carries the work-kind id and
-  optional metadata.
-- **RepositoryGovernanceDecision**: Captured DevOps-lens decision — provider,
-  default_branch, protect_default_branch, require_pull_request, require_status_checks,
-  required_checks[], apply_to_admins, allow_force_pushes, allow_deletions,
-  bypass_actors[], enforcement_mode (branch-protection | rulesets | ci-only | manual).
-- **MultiRepoModel**: mode (single-repo | multi-repo), orchestration_repo,
-  participant_repos[], merge_coordination, release_coordination.
-- **ReleaseValidationRecord**: A post-merge validation record (beta/stable/CI learning)
-  separate from feature-closeout; references the merged feature without reopening it.
-- **ProviderCapability**: provider + plan + visibility → achievable enforcement
-  mechanisms; the input to honest capability reporting.
+- **WorkKind** — `work-kinds.yml` entry: id (software-feature|bug-bash|docs-only|devops),
+  lifecycle weight, required-evidence set, allowed changed-file scope.
+- **WorkKindDeclaration** — `.specrew/work-kind.yml`: the declared kind + optional metadata.
+- **RepositoryGovernance** — project-level `.specrew/repository-governance.yml`:
+  `provider`, `branch_model` (style + named branches + protection + promotion_path),
+  `review_gate`, `apply_to_admins`, `bypass_actors[]`, `enforcement_mode`.
+- **MultiRepoModel** — mode, orchestration_repo, participant_repos[], merge/release
+  coordination.
+- **ReleaseValidationRecord** — post-merge validation record separate from feature-closeout.
+- **ProviderAdapter** — `detect_capability`/`describe_protection`/`apply_protection`(guarded)
+  /`read_pr_context`; implementations: github (reference), generic/unknown (fallback),
+  synthesized (on the fly).
+- **ProviderCapability** — provider+plan+visibility → achievable enforcement mechanisms.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: The four work kinds are documented with lifecycle weight + required
-  evidence in a discoverable methodology surface, and a reader can identify which kind a
-  given change belongs to. *(FR-001)*
-- **SC-002**: Running the DevOps lens surfaces all eight repository-governance questions
-  and records the answers in the capture schema, with the provider/plan/visibility
-  caveat stated before any enforcement promise. *(FR-002, FR-003, FR-008)*
-- **SC-003**: A docs-only change can be carried end-to-end to a PR-ready closeout using
-  the docs-only surface with no release produced. *(FR-005)*
-- **SC-004**: A worked post-merge-finding example produces a NEW work item and a
-  separate release-validation record, never a reopened merged feature. *(FR-004)*
-- **SC-005**: The CI/governance validator passes a well-formed PR of each kind and flags
-  (or warns, per the documented phased posture) a mismatched or under-evidenced PR, with
-  a message that names the exact gap. *(FR-007, FR-009)*
-- **SC-006**: GitHub capability detection reports the correct enforcement mechanism for a
-  given provider/plan/visibility and falls back to `ci-only`/`manual` without promising
-  unavailable protection. *(FR-012)*
-- **SC-007**: Specrew's own repo carries `main` PR-protection and a declared work kind
-  for this feature as dogfood evidence. *(FR-013)*
+- **SC-001**: The four work kinds are documented (lifecycle weight + required evidence) in a
+  discoverable, data-driven catalog; a reader can classify a change. *(FR-001)*
+- **SC-002**: Running the DevOps lens surfaces all governance questions (incl. branch_model,
+  review_gate, single/multi-repo) and records answers, with the provider/plan/visibility
+  caveat before any enforcement promise. *(FR-002, FR-003, FR-008, FR-017)*
+- **SC-003**: A docs-only change reaches a PR-ready closeout with no release. *(FR-005)*
+- **SC-004**: A worked post-merge-finding example produces a NEW work item + a separate
+  release-validation record, never a reopened merged feature. *(FR-004)*
+- **SC-005**: The CI validator passes a well-formed PR of each kind and flags (or warns, per
+  phased posture) a mismatched/under-evidenced PR with a message naming the exact gap.
+  *(FR-007, FR-009)*
+- **SC-006**: Capability detection reports the correct mechanism for a given
+  provider/plan/visibility and falls back to `ci-only`/`manual` without over-promising.
+  *(FR-012)*
+- **SC-007**: Specrew's own repo carries protected-branch PR-protection + a declared work
+  kind for this feature as dogfood evidence. *(FR-013)*
 - **SC-008**: Every enforcement claim in the shipped surfaces is labeled with its true
-  posture (enforced vs phased/deferred); a reviewer can find no over-claim. *(FR-010)*
-- **SC-009**: An emergency/bypass path is documented that leaves an audit artifact.
-  *(FR-011)*
+  posture; a reviewer finds no over-claim. *(FR-010)*
+- **SC-009**: A documented emergency/bypass path leaves an audit artifact. *(FR-011)*
+- **SC-010**: The methodology + core validator run on a non-GitHub / no-adapter repo with
+  the full lifecycle (via the `git diff` + `branch_model` fallback). *(FR-014, FR-015)*
+- **SC-011**: A non-`main` integration-branch config (e.g. `master` + `dev`) is honored by
+  the validator + lifecycle (closeout at target merge; promotion = release-validation).
+  *(FR-003)*
+- **SC-012**: On-the-fly synthesis produces a forge adapter that is read-only until a human
+  verifies it. *(FR-016, FR-020)*
+- **SC-013**: The forge-neutralization audit inventory exists; migrated downstream-governing
+  surfaces carry no GitHub-only mandate (closeout "check Copilot" → opt-in); Specrew's own
+  infra is unchanged. *(FR-019)*
+- **SC-014**: Applying the updated DevOps lens to Specrew's own repo surfaces no conflict
+  (or is reconciled); Specrew's `.specrew/repository-governance.yml` matches its actual
+  posture — also proving the neutralized closeout still works for a GitHub project.
+  *(FR-013, FR-021)*
 
 ## Assumptions
 
-- **GitHub-first**: GitHub is the first provider; a provider capability model abstracts
-  other providers for later. (Proposal "Out of scope": not every Git provider in v1.)
-- **Main already protected**: As of 2026-06-11, Specrew's repo `main` already requires
-  pull requests, applies to admins, and blocks force-push/deletion (interim mitigation).
-  This feature defines the durable methodology + automation on top of that.
-- **Phased enforcement is acceptable**: Documentation + capture schema + DevOps-lens
-  questions land first; CI validation and GitHub capability helpers land as far as
-  practical, with honest phased/deferred labeling for anything not fully enforced.
-- **Self-feature classification**: This feature is delivered as a normal
-  `software-feature` until it introduces the work kinds it defines, then dogfoods them.
-- **Follow-ups stay deferred**: Proposals 174 (boundary-variance disclosure) and 178
-  (verification-strategy lens) remain follow-ups unless a very small supporting slice is
-  strictly required.
-- **No release for docs-only**: docs-only changes never create a release.
+- **GitHub-first, not GitHub-only**: GitHub is the first/reference adapter; a generic
+  fallback + on-the-fly synthesis cover other forges. The methodology + core never depend on
+  GitHub.
+- **Main already protected**: Specrew's repo `main` already requires PRs, applies to admins,
+  and blocks force-push/deletion (interim mitigation, 2026-06-11).
+- **Phased enforcement is acceptable**: docs + capture + lens questions land first; the CI
+  validator + capability helpers land as far as practical with honest phased/deferred
+  labeling.
+- **Self-delivery**: built as a normal `software-feature`, then dogfooded.
+- **Specrew's own GitHub usage is unchanged**: only downstream-*governing* surfaces are
+  forge-neutralized.
+- **Follow-ups deferred**: Proposals 174 and 178 stay follow-ups unless a very small
+  supporting slice is strictly required.
+- **No release for docs-only**.
 
 ## Dependencies
 
-- The DevOps & Operations design lens knowledge surface (extended by this feature).
-- The design-workshop skill and lens-applicability capture (records the new DevOps-lens
-  governance answers).
-- The existing validator / governance script surface (extended with work-kind checks).
-- The CI workflow surface (extended with a work-kind policy check).
-- `gh` CLI / GitHub API for capability detection (US5).
+- The DevOps & Operations design lens (extended) + the design-workshop capture.
+- The validator / governance script surface (extended with work-kind checks).
+- The CI workflow surface (a provider-neutral script + a GitHub Actions wrapper).
+- `gh` / GitHub API for the GitHub adapter only; pure git for the core + generic fallback.
+
+## Iteration Plan *(capacity confirmed at planning)*
+
+~16–24 SP across **three iterations** (re-sized from the proposal's 8–14 SP after the
+workshop added the provider-adapter, branch_model, and forge-neutralization pillars):
+
+- **Iter 1 — methodology + seam contract + audit**: FR-001..006, 008, 009, 010, 014,
+  015(contract+fallback), 016(doc), 017, 018, 019(inventory), 021(content) → SC-001..004, 011.
+- **Iter 2 — runtime**: FR-007, 011, 012, 015(GH detect), 016(exercised), 020, 021(detector)
+  → SC-005, 006, 007, 009, 010, 012, 014.
+- **Iter 3 — decouple**: FR-019(migration) → SC-008, 013.
+
+If the decouple migration is too large for one feature, it may be split into a sibling
+work item (decided at capacity / iteration-closeout).
 
 ## Governance Alignment *(mandatory)*
 
-- **Spec Steward**: Crew Spec Steward (delegated to `claude` this launch) — owns spec
-  integrity and the feature-closeout-vs-release-validation distinction.
-- **Iteration Facilitator**: Crew Planner + Retro Facilitator — own cadence across the
-  two iterations and the phased-enforcement honesty discipline.
-- **Capacity Model**: Story points. ~8–14 SP total across two iterations (Iter 1
-  methodology layer ~4–6 SP; Iter 2 runtime layer ~4–8 SP).
+- **Spec Steward**: Crew Spec Steward (delegated to `claude`) — owns spec integrity and the
+  feature-closeout-vs-release-validation distinction.
+- **Iteration Facilitator**: Crew Planner + Retro Facilitator — own cadence across three
+  iterations and the phased-enforcement honesty discipline.
+- **Capacity Model**: Story points. ~16–24 SP across three iterations.
 - **Drift Signals**: `validate-governance`, the drift-check surface, and the new CI
-  work-kind validator detect drift between the work-kind declaration, changed files, and
-  required evidence; over-claim is caught at review against SC-008/FR-010.
-- **Human Oversight Points**: every lifecycle boundary stop (clarify→plan, design-
-  analysis option choice, plan→tasks, before-implement, review-signoff, retro,
-  iteration-closeout, feature-closeout); plus explicit human approval before any push,
-  PR, merge, tag, publish, or release.
+  work-kind validator detect drift between declaration, changed files, and required
+  evidence; over-claim is caught at review against SC-008/FR-010; forge coupling is caught
+  against the FR-019 audit inventory.
+- **Human Oversight Points**: every lifecycle boundary stop; design-analysis option choice;
+  before-implement; review-signoff; iteration/feature-closeout; plus explicit human approval
+  before any push, PR, merge, tag, publish, release, or `apply_protection`.
