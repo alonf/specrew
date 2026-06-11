@@ -62,7 +62,7 @@
 | T011 | phased-enforcement honesty labeling | FR-010 | US1 | 0.5 | Reviewer | extensions/specrew-speckit/knowledge/ | done | claude | done | i1-implemented |
 | T012 | forge-coupling audit/inventory | FR-019 | US2 | 1.5 | Implementer | specs/182-work-kind-branch-governance/iterations/001/forge-coupling-inventory.md | done | claude | done | i1-implemented |
 | T013 | registration: FileList declare + sort (completeness test PASS) | FR-013 | US1 | 0.5 | Implementer | Specrew.psd1 | done | claude | done | i1-implemented |
-| T013b | extension.yml version bump + deploy-time .specify coverage | FR-013 | US1 | 0.5 | Implementer | extensions/specrew-speckit/extension.yml | deferred | claude | — | deferred-to-release/deploy (pending approval) |
+| T013b | extension.yml version bump + deploy-time .specify coverage | FR-013 | US1 | 0.5 | Implementer | extensions/specrew-speckit/extension.yml | deferred | claude | — | deferred-to-release/deploy (approved; carried to T019 / feature-closeout) |
 | T014 | catalog + schema integrity tests | FR-001 | US1 | 1 | Implementer | tests/unit/work-kind-catalog.tests.ps1 | done | claude | done | i1-implemented |
 | T015 | provider-neutral core + fallback tests | FR-014 | US5 | 1 | Implementer | tests/unit/provider-adapter.tests.ps1 | done | claude | done | i1-implemented |
 
