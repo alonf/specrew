@@ -346,16 +346,17 @@ function Update-SpecrewRollingHandover {
     $featureLabel = if ([string]::IsNullOrWhiteSpace([string]$feature)) { '(no active feature)' } else { [string]$feature }
     $boundaryLabel = if ([string]::IsNullOrWhiteSpace([string]$boundary)) { '(pre-boundary / workshop)' } else { [string]$boundary }
 
-    # One activity line for THIS refresh, accumulated newest-first across the boundary window.
-    $fileNote = if ($delta.has_uncommitted) {
-        $shown = (@($delta.uncommitted_files) -join ', ')
-        if ($delta.uncommitted_truncated) { $shown = "$shown, +more" }
-        " [$shown]"
-    }
-    else { '' }
+    # One activity line for THIS refresh, accumulated newest-first across the boundary window. Lead with the
+    # user's REAL changed files; the Specrew-managed scaffolding is noted by count, never listed (dogfood:
+    # the ~53 managed paths were drowning the real work + filling the file cap).
+    $userShownList = @($delta.user_files)
+    $userShown = if ($userShownList.Count -gt 0) { ($userShownList -join ', ') } else { '(none)' }
+    if (([int]$delta.user_file_count) -gt $userShownList.Count) { $userShown = "$userShown, +more" }
+    $managedNote = if (([int]$delta.managed_file_count) -gt 0) { (" (+{0} Specrew-managed)" -f $delta.managed_file_count) } else { '' }
+    $fileNote = " [$userShown]$managedNote"
     $commitNote = if ($delta.new_commit_count -gt 0) { ("; {0} new commit(s): {1}" -f $delta.new_commit_count, ((@($delta.new_commits)) -join ' | ')) } else { '' }
     $stamp = if ($NowUtc.Length -ge 19) { ($NowUtc.Substring(0, 19) + 'Z') } else { $NowUtc }
-    $stopBullet = ("- [{0}] ({1}) {2} uncommitted file(s){3}; HEAD {4} ({5}){6}" -f $stamp, $Source, $delta.uncommitted_count, $fileNote, $delta.head_short, $delta.head_subject, $commitNote)
+    $stopBullet = ("- [{0}] ({1}) {2} changed user file(s){3}; HEAD {4} ({5}){6}" -f $stamp, $Source, $delta.user_file_count, $fileNote, $delta.head_short, $delta.head_subject, $commitNote)
 
     $activityTitle = 'What I just did (last 3-5 turns or last boundary work)'
     $priorBullets = @()
@@ -368,13 +369,21 @@ function Update-SpecrewRollingHandover {
     $activity = ((@($stopBullet) + $priorBullets) | Select-Object -First 6) -join "`n"
 
     $whyStopping = ("Hook-captured at trigger '{0}' (the agent did not author a handover this turn). Boundary: {1}. Refresh reason: {2}." -f $Source, $boundaryLabel, $mc.reason)
-    $recNext = if ($delta.has_uncommitted) {
-        ("Resume feature {0} at boundary {1}. {2} uncommitted file(s) are NOT in git history yet - review/commit them before advancing." -f $featureLabel, $boundaryLabel, $delta.uncommitted_count)
+    $recNext = if (([int]$delta.user_file_count) -gt 0) {
+        ("Resume feature {0} at boundary {1}. {2} of YOUR file(s) are uncommitted [{3}]{4} - review/commit them before advancing." -f $featureLabel, $boundaryLabel, $delta.user_file_count, $userShown, $managedNote)
+    }
+    elseif ($delta.has_uncommitted) {
+        ("Resume feature {0} at boundary {1}. Only Specrew-managed scaffolding is uncommitted ({2} file(s)) - that is the init baseline; commit it at a boundary." -f $featureLabel, $boundaryLabel, $delta.managed_file_count)
     }
     else {
         ("Resume feature {0} at boundary {1}. Working tree is clean; continue the next lifecycle step." -f $featureLabel, $boundaryLabel)
     }
-    $uncommittedNote = if ($delta.has_uncommitted) { (" Uncommitted work NOT yet committed: {0}." -f ((@($delta.uncommitted_files) -join ', '))) } else { '' }
+    $uncommittedNote = if (([int]$delta.user_file_count) -gt 0) {
+        $mn = if (([int]$delta.managed_file_count) -gt 0) { (" ({0} Specrew-managed files also uncommitted.)" -f $delta.managed_file_count) } else { '' }
+        (" Your uncommitted work: {0}.{1}" -f $userShown, $mn)
+    }
+    elseif ($delta.has_uncommitted) { (" No user files changed; {0} Specrew-managed scaffolding file(s) uncommitted." -f $delta.managed_file_count) }
+    else { '' }
     $context = ("branch {0}, HEAD {1} ({2}). Active feature {3}, boundary {4}.{5}" -f $delta.branch, $delta.head_short, $delta.head_subject, $featureLabel, $boundaryLabel, $uncommittedNote)
 
     $mechanical = @{

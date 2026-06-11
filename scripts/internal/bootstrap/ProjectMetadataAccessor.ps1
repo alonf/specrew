@@ -182,10 +182,22 @@ function Get-SpecrewSessionDelta {
 
     $uncommittedFiles = @()
     try {
-        $porcelain = @(& git -C $ProjectRoot status --porcelain 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        # --untracked-files=all expands untracked DIRECTORIES (e.g. specs/) into their individual files so the
+        # user's real work (specs/<feature>/spec.md, workshop/<lens>.md) surfaces instead of a bare "specs/".
+        $porcelain = @(& git -C $ProjectRoot status --porcelain --untracked-files=all 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
         $uncommittedFiles = @($porcelain | ForEach-Object { ($_ -replace '^..\s+', '').Trim() } | Where-Object { $_ })
     }
     catch { $uncommittedFiles = @() }
+
+    # F-174 dogfood fix: the Specrew/Squad/Spec-Kit managed scaffolding (.agents/.claude/.copilot/.cursor/
+    # .github/.specify/.squad/.specrew + the init config files) sorts first in `git status` and was filling
+    # the MaxFiles cap, capping OUT the user's REAL work (specs/, src/) - so the rolling handover surfaced
+    # the same ~53 scaffolding paths every refresh and never the actual workshop/spec files. Partition
+    # managed vs user and surface USER files FIRST so the real work is never drowned or capped.
+    $managedRegex = '^\.(agents|claude|copilot|cursor|github|specify|squad|specrew)[/\\]|^\.(gitattributes|gitignore|markdownlint\.json)$'
+    $userFiles = @($uncommittedFiles | Where-Object { ($_ -replace '\\', '/') -notmatch $managedRegex })
+    $managedFiles = @($uncommittedFiles | Where-Object { ($_ -replace '\\', '/') -match $managedRegex })
+    $prioritized = @(@($userFiles) + @($managedFiles))
 
     $newCommits = @()
     if (-not [string]::IsNullOrWhiteSpace($SinceCommit)) {
@@ -201,9 +213,12 @@ function Get-SpecrewSessionDelta {
         head_short            = $headShort
         head_subject          = $headSubject
         uncommitted_count     = $uncommittedFiles.Count
-        uncommitted_files     = @($uncommittedFiles | Select-Object -First $MaxFiles)
+        uncommitted_files     = @($prioritized | Select-Object -First $MaxFiles)
         uncommitted_truncated = ($uncommittedFiles.Count -gt $MaxFiles)
         has_uncommitted       = ($uncommittedFiles.Count -gt 0)
+        user_file_count       = $userFiles.Count
+        user_files            = @($userFiles | Select-Object -First $MaxFiles)
+        managed_file_count    = $managedFiles.Count
         new_commits           = @($newCommits | Select-Object -First $MaxCommits)
         new_commit_count      = $newCommits.Count
     }
