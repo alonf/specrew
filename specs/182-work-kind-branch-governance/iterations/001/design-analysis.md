@@ -149,10 +149,12 @@ were rendered in-band and **confirmed by the maintainer** during the design work
 
 ## Human Decision
 
-*(To be recorded after the design-analysis stop verdict.)*
-
-- **Chosen option**: _pending_
-- **Reason / modifications**: _pending_
-- **Verdict**: _pending_ (`approved for plan with Option <X>`)
-- **Authorizing human**: _pending_
-- **Commit (containing this decision)**: _pending_
+- **Chosen option**: **Option B — Reasonable** (the co-designed 3-iteration plan).
+- **Reason / modifications**: Accepted the Crew recommendation as-is; no modifications. Delivers
+  the full approved scope, honors every workshop decision (provider-neutral, synthesize-don't-
+  pre-build, advisory-default honesty, no change to Specrew's own GitHub usage), with the
+  Iter-3 decouple bounded by the Iter-1 inventory + the split-to-sibling escape hatch.
+- **Verdict**: `approved for plan with Option B`
+- **Authorizing human**: Alon Fliess
+- **Date**: 2026-06-11
+- **Commit (containing this decision)**: this commit (the design-analysis Human Decision commit).
