@@ -150,9 +150,11 @@ function Write-SpecrewRollingHandoverContent {
     # ReplaceFile - swap + backup in one atomic call). A crash mid-write leaves the intact current file; a
     # crash between write and promote leaves current + a complete .new; after promote, .old is the backup the
     # reader falls back to. Fallback to plain Set-Content only if the atomic path fails (exotic FS).
-    $newPath = "$Path.new"
-    Set-Content -LiteralPath $newPath -Value ($out -join "`n") -Encoding UTF8
+    # M3 (iter-10): per-PROCESS sidecar so two hooks firing at once (e.g. PostToolUse + Stop) don't race on a
+    # shared "$Path.new". The .old backup name stays fixed (best-effort backup).
+    $newPath = "$Path.$PID.new"
     try {
+        Set-Content -LiteralPath $newPath -Value ($out -join "`n") -Encoding UTF8
         if (Test-Path -LiteralPath $Path) {
             [System.IO.File]::Replace($newPath, $Path, "$Path.old")
         }
@@ -161,11 +163,28 @@ function Write-SpecrewRollingHandoverContent {
         }
     }
     catch {
+        $primaryErr = $_
         try {
+            # Exotic-FS fallback: plain in-place write (loses the .old backup but keeps the handover current).
             Set-Content -LiteralPath $Path -Value ($out -join "`n") -Encoding UTF8
             Remove-Item -LiteralPath $newPath -Force -ErrorAction SilentlyContinue
         }
-        catch { $null = $_ }
+        catch {
+            # M3: a TOTAL write failure (atomic Replace AND the in-place fallback both failed - read-only /
+            # locked / AV'd / network-locked file) must NOT be swallowed: the handover silently stops updating
+            # and the next session inherits stale content with NO signal. Surface to stderr + the
+            # handover-journal (best-effort), mirroring the hollow path, so a frozen handover is diagnosable.
+            [Console]::Error.WriteLine(("[specrew-handover] WARN HANDOVER_WRITE_FAILED path='{0}' primary='{1}' fallback='{2}' - the handover did NOT update this stop." -f $Path, $primaryErr.Exception.Message, $_.Exception.Message))
+            try {
+                $jpath = Join-Path (Split-Path -Parent (Split-Path -Parent $Path)) 'runtime/handover-journal.jsonl'
+                $jdir = Split-Path -Parent $jpath
+                if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
+                $rec = [pscustomobject]@{ event = 'handover-write-failed'; recorded_at = $RecordedAt; path = $Path; primary_error = $primaryErr.Exception.Message; fallback_error = $_.Exception.Message }
+                ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $jpath -Encoding UTF8
+            }
+            catch { $null = $_ }
+            Remove-Item -LiteralPath $newPath -Force -ErrorAction SilentlyContinue
+        }
     }
     return $Path
 }
@@ -265,10 +284,15 @@ function Get-SpecrewRollingHandover {
     # One version stale beats nothing - the resume rides it plus the in-flight disk scan.
     $parsed = $null
     if (Test-Path -LiteralPath $path) { $parsed = ConvertFrom-SpecrewHandoverFile -Path $path }
-    if ($null -eq $parsed -and (Test-Path -LiteralPath "$path.old")) {
-        $parsed = ConvertFrom-SpecrewHandoverFile -Path "$path.old"
+    # M3 (iter-10): treat a STRUCTURALLY-INVALID parse (a truncated/corrupt file whose frontmatter has no
+    # recorded_at) the SAME as missing/unparseable and fall back to .old - previously only a fully-null parse
+    # triggered the fallback, so a partially-written file was accepted as a valid (but broken) handover.
+    $isValid = { param($p) ($null -ne $p) -and -not [string]::IsNullOrWhiteSpace([string]$p.recorded_at) }
+    if (-not (& $isValid $parsed) -and (Test-Path -LiteralPath "$path.old")) {
+        $oldParsed = ConvertFrom-SpecrewHandoverFile -Path "$path.old"
+        if (& $isValid $oldParsed) { $parsed = $oldParsed }
     }
-    if ($null -eq $parsed) { return $null }
+    if (-not (& $isValid $parsed)) { return $null }
     $fresh = $false
     try {
         $rec = [datetime]::Parse($parsed.recorded_at).ToUniversalTime()
@@ -397,8 +421,14 @@ function Update-SpecrewRollingHandover {
         -RecordedAt $NowUtc -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary `
         -MechanicalSections $mechanical | Out-Null
 
-    $mechAuthored = @($mechanical.Values | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }).Count
-    $hollow = ($mechAuthored -eq 0)
+    # M2 (iter-10): hollow = the git delta GENUINELY produced nothing (git unavailable / the fail-safe empty
+    # shape), NOT the formatted-section count. The old check counted $mechanical.Values, which are always-
+    # non-empty formatted strings, so $mechAuthored was always >=4 and $hollow was always false -> the WARN +
+    # journal backstop below was dead code, and a genuinely information-poor handover surfaced as authoritative.
+    $hollow = ([string]::IsNullOrWhiteSpace([string]$delta.branch) -and `
+        [string]::IsNullOrWhiteSpace([string]$delta.head_short) -and `
+        (-not $delta.has_uncommitted) -and `
+        (([int]$delta.new_commit_count) -eq 0))
     if ($hollow) {
         [Console]::Error.WriteLine(("[specrew-handover] WARN HOLLOW_HANDOVER boundary='{0}' reason='{1}' - the hook captured no session delta (git unavailable?); the next session inherits a hollow handover." -f $boundary, $mc.reason))
         try {

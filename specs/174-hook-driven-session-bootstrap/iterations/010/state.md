@@ -1,11 +1,11 @@
 # Iteration State: 010
 
 **Schema**: v1
-**Current Phase**: planning
-**Iteration Status**: planning
-**Last Completed Task**: (none — iteration just opened)
-**Tasks Remaining**: T001-T006 — resume reconciliation (T001), PostToolUse dial-back (T002), tracking surfacing (T003), `from_host` fix (T004), codex self-heal test debt (T005), tests (T006).
-**In Progress**: (none — plan authored; pending the before-implement boundary)
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: (none yet — implementation starting, robustness-first)
+**Tasks Remaining**: T001-T009 (scope finalized after the Prop-145 review + resilience audit; human-approved 22/20 overcommit). Order: bugs (M2/M3) -> shared reconciliation (T001) -> specrew start recovery (T008) -> conversation (T002) -> tracking/from_host/M1 (T003/T004/T007) -> tests + docs (T005/T006/T009).
+**In Progress**: bugs M2 (hollow detector) + M3 (writer hardening) in HandoverStore.ps1
 **Baseline Ref**: iteration-009 HEAD (`e4822428`)
 **Updated**: 2026-06-11T00:00:00Z
 
