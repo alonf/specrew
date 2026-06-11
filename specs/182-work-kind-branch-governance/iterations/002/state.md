@@ -1,19 +1,20 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T212
-**Tasks Remaining**: (none — T201..T212 complete; formal review + rework round done; re-review verdict accepted)
+**Tasks Remaining**: (none — T201..T212 complete; review accepted; retro done; iteration CLOSED)
 **In Progress**: (none)
 **Baseline Ref**: efba60a1
-**Updated**: 2026-06-12T01:40:00Z
+**Updated**: 2026-06-12T02:00:00Z
 
 ## Execution Summary
 
-- Iteration 002 (runtime layer) IMPLEMENTATION COMPLETE: **T201–T212 done; no tasks remaining**. Formal
-  review conducted (Proposal 145); the needs-rework findings F1–F4 were fixed in a rework round; the
-  re-review verdict is **accepted** (awaiting human review-signoff).
+- Iteration 002 (runtime layer) **CLOSED**: T201–T212 done; formal review conducted (Proposal 145);
+  the needs-rework findings F1–F4 were fixed in a rework round (`a10ecf22`); the re-review verdict is
+  **accepted** (`53210e27`); the maintainer signed off review-signoff and authorized retro +
+  iteration-closeout. Retro authored; hardening-gate post-implementation verification recorded.
 - T201-T203: `work-kind-validator.ps1` (WorkKindValidator + ChangedFileClassifier + CloseoutEvidenceChecker;
   advisory default; gap-naming SC-005; fail-open). T209: emergency bypass audit (durable; FR-011).
 - T204 `capability-detector.ps1` (honest mechanism; describe-only). T205 `provider-github.ps1` (gh CONFINED
