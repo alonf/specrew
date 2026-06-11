@@ -44,9 +44,12 @@
     so the deployed-catalog location is an Iter-2 deployment-design item) → status `deferred` to
     the release/deploy step (Iter-2 dogfood T019 + feature-closeout).
 - **Affected**: FR-013, SC-007, T013.
-- **Next action / human decision**: the defer of **T013b** to the release/deploy step is recorded
-  **pending the maintainer's explicit approval** at the review stop (Rule 41). Alternative: the
-  maintainer directs completing the `extension.yml` bump now with a chosen version.
+- **Next action / human decision**: **APPROVED** — the maintainer (Alon Fliess, 2026-06-11, at the
+  Iteration-1 review stop) approved deferring **T013b** to the release/deploy step (`extension.yml`
+  version bump and deploy-time `.specify` coverage belong to release/deploy, not Iteration 1).
+  Explicit instruction: do NOT bump `extension.yml` now and do NOT hand-edit `.specify`. T013b is
+  carried to Iter-2 dogfood (T019) + feature-closeout (Rule 41 satisfied: defer rationale, affected
+  requirement FR-013/SC-007, next action, and approving human all recorded).
 
 ### Resolution Strategies (Unused)
 
