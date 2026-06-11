@@ -1,9 +1,10 @@
 # Iteration Plan: 009 — Hook-primary rolling handover (delta-authored, section-owned)
 
 **Schema**: v1
-**Status**: executing
-**Capacity**: 13/20 story_points
+**Status**: complete
+**Capacity**: 16/20 story_points
 **Started**: 2026-06-11
+**Completed**: 2026-06-11
 **Feature**: 174-hook-driven-session-bootstrap
 **Opened**: 2026-06-11 (maintainer direction, after the iter-008 cross-host dogfood)
 **Baseline**: iter-008 HEAD (mirror-skew + anchorless-workshop fixes landed)
@@ -58,9 +59,10 @@ The Stop hook becomes the **primary author**. The agent path drops from *the mec
 | T004 | Bootstrap render surfaces hook-captured content (no false "hollow"); multi-line indented | FR-002, FR-004 | US-1 | 2 | Implementer | done |
 | T005 | Tests: delta, accumulation, boundary reset, `from_host`, agent-preserve, atomic `.old` | SC-004 | US-1 | 2 | Implementer | done |
 | T006 | iter-9.1 multi-source core save — extract `Update-SpecrewRollingHandover` (one save path) activated by the Stop hook, a new `PostToolUse` hook (mid-workshop refresh), and the workshop skill; dispatcher passes `--source-event`. The workshop-state-saving fix | FR-009, FR-010, SC-004 | US-1 | 1 | Implementer | done |
+| T007 | Delta-noise fix (dogfood-driven, the deferred fast-follow delivered): `Get-SpecrewSessionDelta` partitions Specrew-managed scaffolding vs user files and surfaces USER files first (the live cross-host dogfood found the handover drowned in ~53 managed paths with the real work capped out); `--untracked-files=all` expands untracked dirs to individual files; the renderer leads with user files and notes the managed count, never lists it | FR-010, FR-022 | US-1 | 3 | Implementer | done |
 
-**Capacity: 13/20** (T001 3 + T002 2 + T003 3 + T004 2 + T005 2 + T006 1 = 13). Hand-driven dev iteration;
-bootstrap suite 21/21, PostToolUse dispatch e2e-proven.
+**Capacity: 16/20** (T001 3 + T002 2 + T003 3 + T004 2 + T005 2 + T006 1 + T007 3 = 16). Hand-driven dev
+iteration; bootstrap suite 21/21, PostToolUse dispatch e2e-proven, delta-noise fix (T007) dogfood-verified live.
 
 ## Effort Model
 

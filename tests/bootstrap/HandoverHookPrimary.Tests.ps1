@@ -131,6 +131,24 @@ try {
     # (e) the Claude host now registers a PostToolUse host hook so (c) fires live during the workshop.
     $deploy = (Resolve-Path "$PSScriptRoot/../../scripts/internal/deploy-refocus-hooks.ps1").Path
     Assert-Match (Get-Content -LiteralPath $deploy -Raw) "'PostToolUse'\s*=\s*\[pscustomobject\]" 'deploy-refocus-hooks registers a Claude PostToolUse host hook (iter-9.1)'
+
+    # (f) iter-9 T007 delta-noise: Specrew-managed scaffolding is partitioned out + deprioritized so the
+    #     user's REAL files lead the handover (the live dogfood found the handover drowned in ~53 managed paths).
+    git -C $proj add -A 2>$null; git -C $proj commit -q -m 'pre-noise' 2>$null   # clean tree first
+    New-Item -ItemType Directory -Path (Join-Path $proj '.claude/skills/x') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $proj '.claude/skills/x/SKILL.md') -Value "managed`n" -Encoding UTF8
+    New-Item -ItemType Directory -Path (Join-Path $proj 'src') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $proj 'src/app.ps1') -Value "Write-Host hi`n" -Encoding UTF8
+    $dn = Get-SpecrewSessionDelta -ProjectRoot $proj
+    Assert-True (@($dn.user_files) -contains 'src/app.ps1') 'T007: the user file src/app.ps1 surfaces in user_files'
+    Assert-True (-not (@($dn.user_files) -contains '.claude/skills/x/SKILL.md')) 'T007: the .claude/ managed file is NOT in user_files'
+    Assert-True (([int]$dn.managed_file_count) -ge 1) 'T007: managed scaffolding is counted (managed_file_count >= 1)'
+    Assert-Equal (@($dn.uncommitted_files)[0]) 'src/app.ps1' 'T007: the prioritized list LEADS with the user file, not the managed scaffolding'
+    Update-SpecrewRollingHandover -ProjectRoot $proj -HostKind claude -Source refresh -NowUtc '2026-06-12T01:00:00Z' | Out-Null
+    $hh = Get-SpecrewRollingHandover -HandoverDir $hd -NowUtc '2026-06-12T01:00:01Z'
+    Assert-Match ([string]$hh.sections[$activityTitle]) 'changed user file\(s\)' 'T007: the activity bullet reports CHANGED USER FILE(S), leading with the real work'
+    Assert-Match ([string]$hh.sections[$activityTitle]) 'src/app\.ps1' 'T007: the activity bullet lists the user file'
+    Assert-Match ([string]$hh.sections[$activityTitle]) 'Specrew-managed' 'T007: the activity bullet notes the managed scaffolding by COUNT, not by listing it'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

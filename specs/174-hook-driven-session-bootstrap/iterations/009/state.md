@@ -1,11 +1,11 @@
 # Iteration State: 009
 
 **Schema**: v1
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: iter-9.1 — multi-source handover save (core `Update-SpecrewRollingHandover` + PostToolUse hook + workshop skill); T005 tests (new `HandoverHookPrimary.Tests.ps1` incl. the uncommitted-`notekeep.py` near-miss). Full bootstrap suite 21/21; start-recovery-flow PASS.
-**Tasks Remaining**: none in scope — pending on-host re-test (cross-host exit/resume re-dogfood) + maintainer review. Deferred fast-follows (logged in plan.md): transcript-tail enrichment; gate-stop/workshop curated overlay.
-**In Progress**: (none — implementation complete, awaiting review)
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: T007 — delta-noise fix (dogfood-driven): `Get-SpecrewSessionDelta` partitions managed vs user files, surfaces user files first (verified live). CLOSED accepted-with-qualification after the live cross-host dogfood; the resume-reconciliation + PostToolUse re-think (D-016) deferred to iteration 010.
+**Tasks Remaining**: none — T001-T007 all done; cross-host dogfood (codex/claude/copilot) DONE 2026-06-11. The resume-reconciliation gap + PostToolUse dial-back + tracking surfacing + `from_host` fix + carried tests are iteration 010 (defer entry `f174-i009-defer-reconciliation-to-010`).
+**In Progress**: (none — iteration CLOSED accepted-with-qualification)
 **Baseline Ref**: iteration 008 HEAD (cross-host validation closed; hollow-handover finding carried here)
 **Updated**: 2026-06-11T00:00:00Z
 

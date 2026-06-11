@@ -26073,3 +26073,29 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 5a668851d44a49c1d962507a4ffbf20ea61bbea9
 - **Recorded At**: 2026-06-11T09:36:25Z
+
+### 2026-06-11 — Defer: rolling-handover RESUME reconciliation + PostToolUse dial-back (FR-022) to iteration 010
+
+- **Decision ID**: f174-i009-defer-reconciliation-to-010
+- **Type**: defer
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\009
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-11T00:00:00Z
+- **Next Action**: Iteration 010 re-casts the rolling handover as a LEAN pointer + grounding + non-durable
+  intent: SessionStart re-computes the cheap delta (one `git status`) and emits a reconciliation directive
+  ("last stop was X; files changed since: [...]; read them and continue from the real state"), the agent
+  (already paying the Specrew-contract context cost) does the reading; PostToolUse mid-turn refresh is dialed
+  back (off-by-default / throttled) since the durable state is on disk; the workshop lens-progress + precise
+  gate-stop state are surfaced from `lens-applicability.json` + `workshop/`; and `from_host: host` in the
+  workshop-skill refresh is fixed (pass `--host-kind`). F-174 stays OPEN until resume actively reconciles.
+- **Rationale**: the iteration-009 live cross-host dogfood (codex / claude / copilot) proved the hook-primary
+  handover is never hollow and hands off across hosts, but reframed its VALUE: the durable state is already
+  on disk (workshop lens files, the tree), so the per-tool-call PostToolUse refresh snapshots something
+  cheaply re-derivable on resume at a `git status`-per-tool-call cost (the wrong lever); and
+  `SessionBootstrapManager` never re-computes the delta on SessionStart, so it replays a snapshot that can be
+  stale (codex/copilot have no PostToolUse; a hard kill fires no Stop). The maintainer-confirmed direction is
+  resume-side reconciliation over write-frequency. Drift D-016.
+- **Provenance**: recorded 2026-06-11 alongside iteration 009's closeout (review.md / retro.md / drift-log.md)
+  and its human-approved close; the design was co-settled with the maintainer in the dogfood review and
+  explicitly approved.

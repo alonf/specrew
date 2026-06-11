@@ -248,6 +248,9 @@ closed:
   - feature: 174-hook-driven-session-bootstrap
     iteration: 008
     closed_at: 2026-06-11T00:00:00Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 009
+    closed_at: 2026-06-11T18:00:00Z
   - feature: 176-product-domain-lens
     iteration: 001
     closed_at: 2026-06-09T21:24:12Z
