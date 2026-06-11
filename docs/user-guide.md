@@ -230,7 +230,7 @@ Type: `approved for before-implement`.
 
 #### Implement → Review → Retro
 
-Because this feature writes code, the **code & implementation** lens (run at design time) captured the craft rules — vanilla JS, no framework, small pure functions — into `specs/001-calculator/implementation-rules.yml`, and the `specrew-code-rules` skill surfaced them to the Implementer as it wrote. The Implementer writes the four files + 11 unit tests. Tests run; all 11 pass. The Reviewer reads the implementation, runs the validator, writes `iterations/001/review.md` with task verdicts.
+Because this feature writes code, the **code & implementation** lens (run at design time) captured the craft rules — vanilla JS, no framework, small pure functions — into `specs/001-calculator/implementation-rules.yml`, and the lens's implement-time guidance skill surfaced them to the Implementer as it wrote. The Implementer writes the four files + 11 unit tests. Tests run; all 11 pass. The Reviewer reads the implementation, runs the validator, writes `iterations/001/review.md` with task verdicts.
 
 Type: `approved for review-signoff`.
 
@@ -426,7 +426,7 @@ Goal: produce a requirement-traceable plan before execution starts.
 
 > **Before the plan: the Design Workshop.** For substantive features, planning does not start from a blank page. The Crew facilitates a [Design Workshop](methodology/design-workshop-methodology.md) at intake (selecting the design lenses that matter) and again at the design-analysis stop (co-designing the component map, responsibilities, and flows with you before alternatives are compared). The human-selected design option recorded in `design-analysis.md` is authoritative plan input — `plan.md` must consume it, not re-decide it.
 >
-> The workshop persists durable artifacts you can review: the product & problem domain record at `specs/<feature>/workshop/product-domain.{md,yml}` (users, pain, MVP, constraints — captured before any technical lens), and, for code-writing features, a per-feature `specs/<feature>/implementation-rules.yml` manifest of the implementation-craft rules selected from Specrew's shipped `code-rules.yml` catalog. At implement time the **`specrew-code-rules`** skill reads that manifest — plus an optional project-wide `code-rules.local.yml` overlay for your company/org rules — and guides the coding agent as it writes. It is guidance, not a review-time gate.
+> The workshop persists durable artifacts you can review: the product & problem domain record at `specs/<feature>/workshop/product-domain.{md,yml}` (users, pain, MVP, constraints — captured before any technical lens), and, for code-writing features, a per-feature `specs/<feature>/implementation-rules.yml` manifest of the implementation-craft rules selected from Specrew's shipped `code-rules.yml` catalog. At implement time, the code-implementation lens's implement-time guidance skill reads that manifest — plus an optional project-wide `code-rules.local.yml` overlay for your company/org rules — and guides the coding agent as it writes. It is guidance, not a review-time gate.
 
 Minimum artifact: `plan.md`
 
