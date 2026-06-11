@@ -23,8 +23,8 @@ and carries the workshop's co-design forward for the Human Decision.
 
 - **Decomposition** → data-driven catalog + thin validators + methodology surfaces
   (architecture-core DP-A1/A2).
-- **Forge coupling** → provider-neutral core + pluggable `ProviderAdapter`; GitHub reference
-  + generic fallback + on-the-fly read-only synthesis (DP-A4, integration-api DP-I1/I2).
+- **Forge coupling** → provider-neutral core + pluggable `ProviderAdapter`; a GitHub reference
+  adapter, a generic fallback, and on-the-fly read-only synthesis (DP-A4, integration-api DP-I1/I2).
 - **Lifecycle truth** → feature-closeout pre-merge; separate release-validation-record;
   post-merge finding → new work item (DP-A3).
 - **Enforcement posture** → advisory by default, phased to blocking; honest capability
@@ -123,6 +123,7 @@ lens "Confirm". Reaffirmed at this design-analysis stop.)*
 ```
 
 Responsibilities (one line each):
+
 - **WorkKindCatalog** — 4 kinds × lifecycle weight + required-evidence + allowed scope.
 - **CatalogSchema** — validates catalog + declaration. **WorkKindDeclaration** — declared kind + metadata. **RepositoryGovernance** — `branch_model` + `review_gate` + `multi_repo` capture.
 - **DevOpsLensContent** — governance questions + branch_model + review_gate + synthesis conduct. **DocsOnlyLifecycle** / **DevOpsLifecycle** — lightweight lifecycle surfaces. **CloseoutVsReleaseInvariant** — the invariant doc + release-validation-record template. **WorkKindTaxonomyDoc** — human-readable catalog companion.
