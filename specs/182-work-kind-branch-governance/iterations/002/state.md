@@ -4,15 +4,16 @@
 **Current Phase**: review-signoff
 **Iteration Status**: reviewing
 **Last Completed Task**: T212
-**Tasks Remaining**: (none — T201..T212 complete; formal review conducted, verdict needs-rework)
+**Tasks Remaining**: (none — T201..T212 complete; formal review + rework round done; re-review verdict accepted)
 **In Progress**: (none)
 **Baseline Ref**: efba60a1
-**Updated**: 2026-06-12T01:10:00Z
+**Updated**: 2026-06-12T01:40:00Z
 
 ## Execution Summary
 
-- Iteration 002 (runtime layer) IMPLEMENTATION COMPLETE: **T201–T212 done; no tasks remaining**. The
-  runtime layer is ready for formal review.
+- Iteration 002 (runtime layer) IMPLEMENTATION COMPLETE: **T201–T212 done; no tasks remaining**. Formal
+  review conducted (Proposal 145); the needs-rework findings F1–F4 were fixed in a rework round; the
+  re-review verdict is **accepted** (awaiting human review-signoff).
 - T201-T203: `work-kind-validator.ps1` (WorkKindValidator + ChangedFileClassifier + CloseoutEvidenceChecker;
   advisory default; gap-naming SC-005; fail-open). T209: emergency bypass audit (durable; FR-011).
 - T204 `capability-detector.ps1` (honest mechanism; describe-only). T205 `provider-github.ps1` (gh CONFINED
@@ -20,8 +21,17 @@
   overwrite). T207 CI workflow template (advisory). T208 synthesized-adapter example (read-only-until-
   verified). T210 dogfood (`.specrew/work-kind.yml` + `.specrew/repository-governance.yml`; SC-014).
 - Tests: 88 unit assertions green (catalog 36, adapter 21, validator 12, runtime 19); PSScriptAnalyzer 0
-  errors; FileList-completeness PASS; validate-governance 0 FAIL; markdownlint clean.
-- **Consumed 17/20 SP** (matches the iteration-plan actuals).
+  errors AND 0 warnings (Information only); FileList-completeness PASS; validate-governance 0 FAIL;
+  markdownlint 0 errors repo-wide (exact CI command).
+- Rework round (review-caught, all fixed-now): F4 — 2 MD047 trailing-newline lint errors fixed
+  (`iterations/002/drift-log.md`, `current-architecture.md`), so the markdownlint-clean claim is now
+  true; F1 — stale-by-time "lands in iteration 2" dispatch comments in `provider-adapter.ps1` reworded
+  to the honest forge-neutral-core vs github-adapter split (delegation rejected — it would break the
+  FR-014 forge-neutral-core invariant the T015 grep test enforces); F2 — dead `$plan` removed from
+  `provider-github.ps1`; F3 — empty catch removed + `New-SpecrewProviderAdapter` renamed
+  `Resolve-SpecrewProviderAdapter` (the ShouldProcess false positive is gone, no suppression added).
+- **Consumed 17/20 SP** implementation actuals + a small review/rework round (within the plan's review +
+  rework buffer; no new implementation scope).
 - Carried, NOT in this iteration: **T013b** (extension.yml version bump + deploy-time `.specify` coverage)
   → release/deploy step (drift-log D-001); live GitHub `apply_protection` → human-approved / dogfood-beta;
   **Iteration 3** (forge-neutralization migration) NOT started.
