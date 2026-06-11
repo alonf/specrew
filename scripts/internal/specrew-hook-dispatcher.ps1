@@ -531,8 +531,11 @@ try {
         else {
             # Pass the resolved host so the provider can shape host-aware delivery (F-174 codex fix: codex
             # drops the oversized SessionStart additionalContext, so the provider hands codex a lean pointer).
-            # Harmless to inject providers that do not read --host-kind.
-            $commandArgs = @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind)
+            # Also pass the neutral event name as a CLEAN arg (--source-event): the --event-json payload gets
+            # mangled through Start-Process -ArgumentList, so a provider that wants the event name (the F-174
+            # handover, to label its trigger source) cannot reliably parse it from the JSON. Both are harmless
+            # to inject providers that do not read them.
+            $commandArgs = @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind, '--source-event', $Event)
         }
         if ($null -eq $commandArgs) { continue }
 

@@ -263,8 +263,12 @@ Only after the product-domain phase is captured do you move to the lens applicab
    The workshop is long, and an exit or host-switch mid-workshop is expected, not exceptional — so make each
    lens durable the moment you finish it, never "all at the end". BEFORE you move to the next lens: **(a)** write
    this lens's `lens-applicability.json` record (step 6) and persist its diagram to
-   `specs/<feature>/workshop/<lens-id>.md` **now**; **(b)** refresh the rolling handover body via
-   `Write-SpecrewHandoverContext` so a resuming session inherits which lenses are done and what each decided. A
+   `specs/<feature>/workshop/<lens-id>.md` **now**; **(b)** refresh the rolling handover through the core save
+   path by running the handover provider with `--source workshop` (one line; the SAME path the hooks use):
+   `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/specrew-handover-provider.ps1 --project-root . --source workshop`
+   — this captures the freshly-written `workshop/` files into the handover so a resuming session inherits the
+   progress. (On the Claude host the `PostToolUse` hook ALSO refreshes the handover automatically the moment you
+   write the lens record; this explicit call is the cross-host fallback where PostToolUse is not wired.) A
    session that resumes then reads the handover + the `workshop/` folder and **continues from the next
    un-persisted lens instead of restarting the workshop**. A lens that lives only in the chat scrollback is lost
    on exit; a persisted lens is not. Then state which lens is next and reload this conduct + that lens's md.

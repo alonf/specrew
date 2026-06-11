@@ -76,7 +76,11 @@ Assert-True ($btext -match 'BEGIN SPECREW LAUNCH CONTRACT') 'bootstrap provider 
 
 $handoverExt = Join-Path $extDir 'specrew-handover-provider.ps1'
 $htext = (Get-Content -LiteralPath $handoverExt -Raw)
-Assert-True ($htext -match 'HOLLOW_HANDOVER') 'handover provider carries the iter-5 floor/body-split detection (not the stale pre-iter-5 copy, the T050 send-back)'
+Assert-True ($htext -match 'Update-SpecrewRollingHandover') 'handover provider funnels into the core save orchestrator (iter-9.1 thin adapter, not a stale stub)'
 Assert-True (-not ($htext.Contains('-Sections $sections'))) 'handover provider does NOT call the dropped -Sections param on the floor-writer (the exact T050 skew)'
+# iter-9.1: the SAVE logic + hollow detection moved OUT of the provider INTO the core orchestrator.
+$storeText = (Get-Content -LiteralPath (Join-Path $PSScriptRoot '../../scripts/internal/bootstrap/HandoverStore.ps1') -Raw)
+Assert-True ($storeText -match 'function Update-SpecrewRollingHandover') 'core orchestrator Update-SpecrewRollingHandover lives in HandoverStore (the single save path)'
+Assert-True ($storeText -match 'HOLLOW_HANDOVER') 'the core carries the hollow detection (moved from the provider)'
 
 Write-Host "`n=== ProviderMirrorParity.Tests.ps1: all full-copy provider mirrors in sync ===" -ForegroundColor Green

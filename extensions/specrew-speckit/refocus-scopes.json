@@ -57,7 +57,7 @@
     {
       "id": "handover",
       "kind": "inject",
-      "events": ["Stop", "agentStop", "stop"],
+      "events": ["Stop", "agentStop", "stop", "PostToolUse"],
       "order": 30,
       "budget_share": 1.0,
       "command": "specrew-handover-provider.ps1"

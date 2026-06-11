@@ -105,10 +105,14 @@ function Get-HostEventGroups {
     switch ($HostKind) {
         'claude' {
             # SessionStart (B1/B2 + F-174 bootstrap) + Stop (F-174 iter-4 rolling handover - portable +
-            # crash-safe; REPLACES the iter-3 SessionEnd-only handover). PostToolUse unregistered.
+            # crash-safe). PLUS PostToolUse (F-174 iter-9.1): refresh the rolling handover mid-turn during
+            # picker-driven phases like the design workshop, where no end-of-turn Stop fires - the handover
+            # provider's material-change gate keeps the per-tool-call cost cheap. (This also activates refocus
+            # B3 boundary-cross injection on claude, which is the intended F-171 behavior.)
             return [ordered]@{
                 'SessionStart' = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'SessionStart') }) }
                 'Stop'         = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'Stop') }) }
+                'PostToolUse'  = [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = (Get-SpecrewHookCommand -EventName 'PostToolUse') }) }
             }
         }
         'codex' {

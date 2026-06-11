@@ -103,6 +103,34 @@ try {
     Assert-Equal (@($mech).Count) 4 'four mechanical (hook-owned) sections'
     Assert-Equal (@($agent).Count) 2 'two interpretive (agent-owned) sections'
     Assert-True (@(@($mech) + @($agent) | Sort-Object -Unique).Count -eq @(Get-SpecrewHandoverSectionOrder).Count) 'mechanical + interpretive partition the full section order with no overlap or gap'
+
+    # --- iter-9.1 multi-source: ONE core save (Update-SpecrewRollingHandover) reached by every trigger ---
+    # (a) the core called directly with a 'workshop' source (the skill path).
+    Add-Content -LiteralPath (Join-Path $proj 'notekeep.py') -Value "print('ws')`n" -Encoding UTF8
+    $r = Update-SpecrewRollingHandover -ProjectRoot $proj -HostKind claude -Source 'workshop' -NowUtc '2026-06-11T02:00:00Z'
+    Assert-True $r.wrote 'core Update-SpecrewRollingHandover writes on a material change'
+    $hw = Get-SpecrewRollingHandover -HandoverDir $hd -NowUtc '2026-06-11T02:00:01Z'
+    Assert-Equal $hw.source 'workshop' "the core stamps the trigger source ('workshop') in the frontmatter"
+    Assert-Match ([string]$hw.sections["Why I'm stopping (the switch trigger)"]) "trigger 'workshop'" 'the body names the workshop trigger source'
+
+    # (b) the provider invoked with --source workshop (the skill's actual one-liner) -> same core, source stamped.
+    Add-Content -LiteralPath (Join-Path $proj 'notekeep.py') -Value "print('ws2')`n" -Encoding UTF8
+    & pwsh -NoProfile -File $provider --project-root $proj --host-kind claude --source workshop 2>$null | Out-Null
+    Assert-Equal (Get-SpecrewRollingHandover -HandoverDir $hd -NowUtc '2026-06-12T00:00:00Z').source 'workshop' 'provider --source workshop routes through the core'
+
+    # (c) the provider on a PostToolUse event -> refreshes MID-TURN (the workshop-freeze fix), source 'PostToolUse'.
+    Add-Content -LiteralPath (Join-Path $proj 'notekeep.py') -Value "print('ptu')`n" -Encoding UTF8
+    & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"PostToolUse"}' --project-root $proj --host-kind claude 2>$null | Out-Null
+    Assert-Equal (Get-SpecrewRollingHandover -HandoverDir $hd -NowUtc '2026-06-12T00:00:00Z').source 'PostToolUse' 'provider on a PostToolUse event refreshes mid-turn (no Stop needed)'
+
+    # (d) a CLEAN tree + unchanged boundary is gated out - the per-tool-call cheapness guarantee.
+    git -C $proj add -A 2>$null; git -C $proj commit -q -m wip 2>$null   # commit -> clean working tree
+    $rq = Update-SpecrewRollingHandover -ProjectRoot $proj -HostKind claude -Source 'PostToolUse' -NowUtc '2026-06-12T00:01:00Z'
+    Assert-True (-not $rq.wrote) 'a clean tree + unchanged boundary is gated out (the per-tool-call cheapness guarantee)'
+
+    # (e) the Claude host now registers a PostToolUse host hook so (c) fires live during the workshop.
+    $deploy = (Resolve-Path "$PSScriptRoot/../../scripts/internal/deploy-refocus-hooks.ps1").Path
+    Assert-Match (Get-Content -LiteralPath $deploy -Raw) "'PostToolUse'\s*=\s*\[pscustomobject\]" 'deploy-refocus-hooks registers a Claude PostToolUse host hook (iter-9.1)'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

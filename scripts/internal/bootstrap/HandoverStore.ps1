@@ -281,3 +281,126 @@ function Get-SpecrewRollingHandover {
     $parsed | Add-Member -NotePropertyName path -NotePropertyValue $path -Force
     return $parsed
 }
+
+function Update-SpecrewRollingHandover {
+    # F-174 iter-9.1: THE single handover-save orchestration. Every trigger source - the Stop hook, the
+    # PostToolUse hook, and the design-workshop skill - calls THIS; none re-implement the save. It resolves
+    # the current feature/boundary/host from committed session state (+ the branch fallback for the
+    # anchorless workshop window), runs the material-change gate (so it is cheap to call on EVERY tool call),
+    # computes the git/fs delta, authors the MECHANICAL sections (accumulating "What I just did" newest-first
+    # across the boundary window, reset on a boundary change), writes via the atomic writer, and records a
+    # true-empty hollow. Composes ClassificationEngine (Test-SpecrewHandoverMaterialChange) +
+    # ProjectMetadataAccessor (Resolve-SpecrewBranchFeatureRef, Get-SpecrewSessionDelta) - all co-loaded by
+    # the caller. Returns a result object; callers stay fail-open. (F-174 iter-9.1.)
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter()][AllowNull()][string] $HostKind,                 # authoritative current host (--host-kind); else resolved
+        [Parameter()][string] $Source = 'stop',                       # trigger label: stop | agentStop | PostToolUse | workshop
+        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o'))
+    )
+
+    $getProp = {
+        param($o, $n)
+        if ($null -eq $o) { return $null }
+        $p = $o.PSObject.Properties[$n]
+        if ($p) { return $p.Value } else { return $null }
+    }
+
+    # Current context from the committed session state (the orchestrator is transcript-blind by design).
+    $feature = $null; $boundary = $null; $fromHost = 'host'
+    $ctxPath = Join-Path $ProjectRoot '.specrew/start-context.json'
+    if (Test-Path -LiteralPath $ctxPath) {
+        try {
+            $ctx = Get-Content -LiteralPath $ctxPath -Raw | ConvertFrom-Json
+            $ss = & $getProp $ctx 'session_state'
+            $feature = & $getProp $ss 'feature_ref'
+            $boundary = & $getProp $ss 'boundary_type'
+            $h = & $getProp $ss 'host'; if ([string]::IsNullOrWhiteSpace($h)) { $h = & $getProp $ctx 'host' }
+            if (-not [string]::IsNullOrWhiteSpace($h)) { $fromHost = [string]$h }
+        }
+        catch { $null = $_ }
+    }
+    # Anchorless workshop window: resolve the feature from the branch so the handover is surfaceable (T050).
+    if ([string]::IsNullOrWhiteSpace([string]$feature)) { $feature = Resolve-SpecrewBranchFeatureRef -ProjectRoot $ProjectRoot }
+    # The trigger passes the authoritative host; prefer it over the start-context value or the 'host' default.
+    if (-not [string]::IsNullOrWhiteSpace($HostKind)) { $fromHost = $HostKind }
+
+    $handoverDir = Join-Path $ProjectRoot '.specrew/handover'
+
+    # Material-change gate (the call-cheapness guarantee - PostToolUse fires on every tool call): refresh only
+    # when the boundary moved OR there is a tracked-file change since the last write.
+    $existing = Get-SpecrewRollingHandover -HandoverDir $handoverDir -NowUtc $NowUtc
+    $lastBoundary = if ($null -ne $existing) { $existing.active_boundary } else { $null }
+    $hasChange = $false
+    try { $st = (& git -C $ProjectRoot status --porcelain 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
+    $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
+    if (-not $mc.material) { return [pscustomobject]@{ wrote = $false; reason = $mc.reason; source = $Source; feature = $feature; boundary = $boundary } }
+
+    $head = ''
+    try { $head = ([string](& git -C $ProjectRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ }
+    $sinceCommit = if ($null -ne $existing) { [string]$existing.from_commit } else { $null }
+    $delta = Get-SpecrewSessionDelta -ProjectRoot $ProjectRoot -SinceCommit $sinceCommit
+
+    $featureLabel = if ([string]::IsNullOrWhiteSpace([string]$feature)) { '(no active feature)' } else { [string]$feature }
+    $boundaryLabel = if ([string]::IsNullOrWhiteSpace([string]$boundary)) { '(pre-boundary / workshop)' } else { [string]$boundary }
+
+    # One activity line for THIS refresh, accumulated newest-first across the boundary window.
+    $fileNote = if ($delta.has_uncommitted) {
+        $shown = (@($delta.uncommitted_files) -join ', ')
+        if ($delta.uncommitted_truncated) { $shown = "$shown, +more" }
+        " [$shown]"
+    }
+    else { '' }
+    $commitNote = if ($delta.new_commit_count -gt 0) { ("; {0} new commit(s): {1}" -f $delta.new_commit_count, ((@($delta.new_commits)) -join ' | ')) } else { '' }
+    $stamp = if ($NowUtc.Length -ge 19) { ($NowUtc.Substring(0, 19) + 'Z') } else { $NowUtc }
+    $stopBullet = ("- [{0}] ({1}) {2} uncommitted file(s){3}; HEAD {4} ({5}){6}" -f $stamp, $Source, $delta.uncommitted_count, $fileNote, $delta.head_short, $delta.head_subject, $commitNote)
+
+    $activityTitle = 'What I just did (last 3-5 turns or last boundary work)'
+    $priorBullets = @()
+    if ($null -ne $existing -and ([string]$existing.active_boundary -eq [string]$boundary) -and $existing.sections -and $existing.sections.Contains($activityTitle)) {
+        $prev = [string]$existing.sections[$activityTitle]
+        if (-not [string]::IsNullOrWhiteSpace($prev) -and $prev -notlike '(placeholder*') {
+            $priorBullets = @($prev -split "`n" | Where-Object { $_ -match '^\s*-\s' })
+        }
+    }
+    $activity = ((@($stopBullet) + $priorBullets) | Select-Object -First 6) -join "`n"
+
+    $whyStopping = ("Hook-captured at trigger '{0}' (the agent did not author a handover this turn). Boundary: {1}. Refresh reason: {2}." -f $Source, $boundaryLabel, $mc.reason)
+    $recNext = if ($delta.has_uncommitted) {
+        ("Resume feature {0} at boundary {1}. {2} uncommitted file(s) are NOT in git history yet - review/commit them before advancing." -f $featureLabel, $boundaryLabel, $delta.uncommitted_count)
+    }
+    else {
+        ("Resume feature {0} at boundary {1}. Working tree is clean; continue the next lifecycle step." -f $featureLabel, $boundaryLabel)
+    }
+    $uncommittedNote = if ($delta.has_uncommitted) { (" Uncommitted work NOT yet committed: {0}." -f ((@($delta.uncommitted_files) -join ', '))) } else { '' }
+    $context = ("branch {0}, HEAD {1} ({2}). Active feature {3}, boundary {4}.{5}" -f $delta.branch, $delta.head_short, $delta.head_subject, $featureLabel, $boundaryLabel, $uncommittedNote)
+
+    $mechanical = @{
+        $activityTitle                                                = $activity
+        "Why I'm stopping (the switch trigger)"                       = $whyStopping
+        'Recommended next-immediate-step'                             = $recNext
+        "Context the receiving host needs that artifacts don't carry" = $context
+    }
+
+    Write-SpecrewRollingHandover -HandoverDir $handoverDir -Source $Source -FromHost $fromHost `
+        -RecordedAt $NowUtc -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary `
+        -MechanicalSections $mechanical | Out-Null
+
+    $mechAuthored = @($mechanical.Values | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }).Count
+    $hollow = ($mechAuthored -eq 0)
+    if ($hollow) {
+        [Console]::Error.WriteLine(("[specrew-handover] WARN HOLLOW_HANDOVER boundary='{0}' reason='{1}' - the hook captured no session delta (git unavailable?); the next session inherits a hollow handover." -f $boundary, $mc.reason))
+        try {
+            $jpath = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+            $jdir = Split-Path -Parent $jpath
+            if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
+            $rec = [pscustomobject]@{ event = 'hollow-handover-at-stop'; recorded_at = $NowUtc; boundary = $boundary; feature = $feature; from_host = $fromHost; material_reason = $mc.reason; source = $Source }
+            ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $jpath -Encoding UTF8
+        }
+        catch { $null = $_ }
+    }
+
+    return [pscustomobject]@{ wrote = $true; reason = $mc.reason; source = $Source; feature = $feature; boundary = $boundary; from_host = $fromHost; hollow = $hollow }
+}

@@ -47,13 +47,14 @@ The Stop hook becomes the **primary author**. The agent path drops from *the mec
 
 ## Tasks
 
-| ID | Status | Description | Traces |
-| --- | --- | --- | --- |
-| T001 | planned | Section-ownership model + per-section provenance (`authored_by_agent`) in `HandoverStore.ps1` (parser emits/reads it; writer merges hook-mechanical + preserved-agent). | FR-009, FR-021 |
-| T002 | planned | `Get-SpecrewSessionDelta` accessor: changed-file count, recent commit subjects, uncommitted summary, branch/HEAD — pure-ish, fail-safe on git error. | FR-010 |
-| T003 | planned | Stop provider authors mechanical sections from the delta, accumulates *What I just did* across the boundary window (reset on boundary change), stamps real `from_host` from `--host-kind`. Recalibrate hollow journaling to truly-empty only. | FR-009, FR-010, FR-021 |
-| T004 | planned | Bootstrap render (`specrew-bootstrap-provider.ps1`): surface hook-captured content as resume context; soften the placeholder warning; render multi-line section content with indentation. | FR-002, FR-004 |
-| T005 | planned | Tests: delta→not-hollow, accumulation, boundary reset, real from_host, agent-section preserve, atomic `.old` fallback; bootstrap suite stays green. | SC-004 |
+(Hand-driven dev iteration — bullet list, not the governed Task/Story/Owner schema.)
+
+- **T001** (done — FR-009, FR-021): section-ownership model + per-section provenance in `HandoverStore.ps1`.
+- **T002** (done — FR-010): `Get-SpecrewSessionDelta` accessor (changed files, recent commits, uncommitted, branch/HEAD; fail-safe).
+- **T003** (done — FR-009, FR-010, FR-021): Stop provider authors mechanical sections from the delta, accumulates across the boundary window, real `from_host`.
+- **T004** (done — FR-002, FR-004): bootstrap render surfaces hook-captured content (no false "hollow"); multi-line indented.
+- **T005** (done — SC-004): tests (delta, accumulation, boundary reset, from_host, agent-preserve, atomic `.old`).
+- **iter-9.1** (done — SC-004): the multi-source core save — extracted `Update-SpecrewRollingHandover` (the one save path) activated by the Stop hook, a new `PostToolUse` hook (the mid-workshop refresh), and the workshop skill; the dispatcher passes `--source-event` for accurate source labels. This is the workshop-state-saving fix. Bootstrap suite 21/21; PostToolUse dispatch e2e-proven.
 
 ## Out of scope (fast-follow)
 
