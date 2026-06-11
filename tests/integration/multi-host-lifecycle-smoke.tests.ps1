@@ -32,8 +32,8 @@ if ($shimContent -notmatch 'Stale Specrew install') {
 }
 Write-Pass "sync-boundary-state.ps1 detects stale install (project version > installed version)"
 
-# Test 4: shim reads specrew_version from project's .specrew/config.yml
-if ($shimContent -notmatch '\.specrew\\config\.yml') {
+# Test 4: shim reads specrew_version from project's .specrew/config.yml (accept either path separator)
+if ($shimContent -notmatch '\.specrew[/\\]config\.yml') {
     Write-Fail "sync-boundary-state.ps1 must read specrew_version from project's .specrew/config.yml for stale-install comparison."
 }
 if ($shimContent -notmatch 'specrew_version:') {

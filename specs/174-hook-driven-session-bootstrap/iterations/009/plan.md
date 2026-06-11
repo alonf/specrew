@@ -1,6 +1,9 @@
 # Iteration Plan: 009 — Hook-primary rolling handover (delta-authored, section-owned)
 
 **Schema**: v1
+**Status**: executing
+**Capacity**: 13/20 story_points
+**Started**: 2026-06-11
 **Feature**: 174-hook-driven-session-bootstrap
 **Opened**: 2026-06-11 (maintainer direction, after the iter-008 cross-host dogfood)
 **Baseline**: iter-008 HEAD (mirror-skew + anchorless-workshop fixes landed)
@@ -47,14 +50,29 @@ The Stop hook becomes the **primary author**. The agent path drops from *the mec
 
 ## Tasks
 
-(Hand-driven dev iteration — bullet list, not the governed Task/Story/Owner schema.)
+| Task | Title | Requirement | Story | Effort | Owner | Status |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ------ |
+| T001 | Section-ownership model + per-section provenance in `HandoverStore.ps1` (mechanical refresh, interpretive preserve, `from_commit`) | FR-009, FR-021 | US-1 | 3 | Implementer | done |
+| T002 | `Get-SpecrewSessionDelta` accessor (changed files, recent commits, uncommitted, branch/HEAD; fail-safe) | FR-010 | US-1 | 2 | Implementer | done |
+| T003 | Stop provider authors mechanical sections from the delta, accumulates across the boundary window, real `from_host` | FR-009, FR-010, FR-021 | US-1 | 3 | Implementer | done |
+| T004 | Bootstrap render surfaces hook-captured content (no false "hollow"); multi-line indented | FR-002, FR-004 | US-1 | 2 | Implementer | done |
+| T005 | Tests: delta, accumulation, boundary reset, `from_host`, agent-preserve, atomic `.old` | SC-004 | US-1 | 2 | Implementer | done |
+| T006 | iter-9.1 multi-source core save — extract `Update-SpecrewRollingHandover` (one save path) activated by the Stop hook, a new `PostToolUse` hook (mid-workshop refresh), and the workshop skill; dispatcher passes `--source-event`. The workshop-state-saving fix | FR-009, FR-010, SC-004 | US-1 | 1 | Implementer | done |
 
-- **T001** (done — FR-009, FR-021): section-ownership model + per-section provenance in `HandoverStore.ps1`.
-- **T002** (done — FR-010): `Get-SpecrewSessionDelta` accessor (changed files, recent commits, uncommitted, branch/HEAD; fail-safe).
-- **T003** (done — FR-009, FR-010, FR-021): Stop provider authors mechanical sections from the delta, accumulates across the boundary window, real `from_host`.
-- **T004** (done — FR-002, FR-004): bootstrap render surfaces hook-captured content (no false "hollow"); multi-line indented.
-- **T005** (done — SC-004): tests (delta, accumulation, boundary reset, from_host, agent-preserve, atomic `.old`).
-- **iter-9.1** (done — SC-004): the multi-source core save — extracted `Update-SpecrewRollingHandover` (the one save path) activated by the Stop hook, a new `PostToolUse` hook (the mid-workshop refresh), and the workshop skill; the dispatcher passes `--source-event` for accurate source labels. This is the workshop-state-saving fix. Bootstrap suite 21/21; PostToolUse dispatch e2e-proven.
+**Capacity: 13/20** (T001 3 + T002 2 + T003 3 + T004 2 + T005 2 + T006 1 = 13). Hand-driven dev iteration;
+bootstrap suite 21/21, PostToolUse dispatch e2e-proven.
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points. |
+| Defer Strategy | manual | How planning chooses deferrals when over capacity. |
+| Calibration Enabled | true | Retrospectives should suggest future capacity adjustments. |
 
 ## Out of scope (fast-follow)
 
