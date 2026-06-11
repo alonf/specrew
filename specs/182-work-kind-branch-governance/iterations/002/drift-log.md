@@ -43,3 +43,7 @@ The following resolution strategies remain available if drift is detected later 
 
 - This artifact was scaffolded before review starts so drift can be logged immediately when detected.
 - Replace the zero-drift summary with real counts when the first drift event is recorded.
+- The Iteration-2 formal review (Proposal 145) caught four quality/truthfulness findings (F1–F4),
+  fixed in the rework round (commit `a10ecf22`). These were review-phase findings, NOT
+  specification drift (spec and implementation never diverged), so the event count stays 0; the full
+  trail lives in `review.md` (Rework round + Gap Ledger).
