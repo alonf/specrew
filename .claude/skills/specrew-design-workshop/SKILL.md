@@ -164,7 +164,7 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
 
    Fill ONE line per applicable lens with its depth and the **concrete decision it raises** (not just the lens
    name); render the whole filled block in your message, THEN raise the confirm/adjust menu that references it.
-   **The moment the human confirms the agenda, PERSIST it (F-174 - before opening lens 1):** write the
+   **The moment the human confirms the agenda, PERSIST it (F-174 — before opening lens 1):** write the
    feature-level `lens-applicability.json` NOW with `workshop_intake: true`, `confirmation_required: true`, and
    the confirmed `selected` lens-id list (the per-lens `workshop` records are added later, as each lens completes
    per step 6). A resume can only compute the remaining agenda if the agenda itself is on disk; an agenda that
@@ -299,7 +299,19 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
      scope — the **agreed UI/screen layout** (the ASCII sketch the human approved). Set `co_design: true` in the
      iteration's `lens-applicability.json` so the deterministic co-design-record floor applies. An agreement
      that lives only in the chat scrollback is lost.
-7. **Re-invoke this skill for the next lens.** State which lens is next and reload this conduct + that lens's md.
+7. **Checkpoint this lens durable, THEN re-invoke for the next (F-174 — survive a mid-workshop exit/switch).**
+   The workshop is long, and an exit or host-switch mid-workshop is expected, not exceptional — so make each
+   lens durable the moment you finish it, never "all at the end". BEFORE you move to the next lens: **(a)** write
+   this lens's `lens-applicability.json` record (step 6) and persist its diagram to
+   `specs/<feature>/workshop/<lens-id>.md` **now**; **(b)** refresh the rolling handover through the core save
+   path by running the handover provider with `--source workshop` (one line; the SAME path the hooks use):
+   `pwsh -NoProfile -File .specify/extensions/specrew-speckit/scripts/specrew-handover-provider.ps1 --project-root . --source workshop`
+   — this captures the freshly-written `workshop/` files into the handover so a resuming session inherits the
+   progress. (On the Claude host the `PostToolUse` hook ALSO refreshes the handover automatically the moment you
+   write the lens record; this explicit call is the cross-host fallback where PostToolUse is not wired.) A
+   session that resumes then reads the handover + the `workshop/` folder and **continues from the next
+   un-persisted lens instead of restarting the workshop**. A lens that lives only in the chat scrollback is lost
+   on exit; a persisted lens is not. Then state which lens is next and reload this conduct + that lens's md.
 
 ## When to Use
 
