@@ -19,8 +19,10 @@
 - T009-T011: ProviderAdapter contract (`provider-adapter.ps1`) + git-diff fallback + apply_protection
   guard; GenericFallbackAdapter (`provider-generic.ps1`); phased-enforcement honesty baked in.
 - T012: forge-coupling inventory (5 genuine downstream items for Iter-3).
-- T013: FileList registration (sorted; completeness test PASS). extension.yml version bump + publish
-  plumbing DEFERRED to release (no publish in i1) — recorded.
+- T013 (FileList registration, sorted; completeness test PASS) = DONE. T013b (extension.yml version
+  bump + deploy-time `.specify` coverage) = DEFERRED to the release/deploy step — see drift-log D-001;
+  **pending maintainer approval** (this was a review-caught task-status truthfulness drift: T013 had
+  been over-marked `done`). Iter-1 consumed = 15.5 SP.
 - T014-T015: Pester suites green — catalog/schema integrity (37 assertions) + provider-neutral
   core/fallback/guard (21 assertions). markdownlint clean; PSScriptAnalyzer 0 errors.
 
