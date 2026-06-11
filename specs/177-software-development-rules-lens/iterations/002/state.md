@@ -40,6 +40,28 @@
   are now closed; **feature-closeout (push / PR / merge / tag / publish) is next, pending approval**. No push
   / tag / publish / beta until then.
 
+## Feature-Closeout Reconciliation (2026-06-11)
+
+> Corrective record added after the 0.35.0 stable promotion. The "**feature-closeout (push / PR / merge /
+> tag / publish) is next, pending approval**" and "No push / tag / publish / beta until then" language in the
+> Execution Summary above was accurate at iteration-closeout (2026-06-10) and is now **SUPERSEDED** -- those
+> steps have completed.
+
+- **D-003 RESOLVED (gate met).** The published `v0.35.0-beta1` install-dogfood was run by the maintainer on
+  the Claude host: a real greenfield Casio F-91W build through the full `specify -> implement` lifecycle, as
+  a head-to-head behavioral comparison against an ungoverned "vibe" control building the same watch. It
+  confirmed the behavioral SCs -- **SC-004** (the human's State-pattern override was carried into the
+  governed code as per-mode `IModeState` classes), **SC-007** (baseline surfaced as paced decisions, not a
+  rule-wall), **SC-008** (dependency stance honored) -- and a real unit-test suite was present where the
+  ungoverned control had none. See `drift-log.md` D-003 (Status: resolved) and `dogfood-report.md`
+  (## D-003 RESOLVED).
+- **Feature shipped.** F-177 PR merged to main; `v0.35.0-beta1` published; the 0.33.0-0.35.0 line promoted
+  to **stable `v0.35.0`** on 2026-06-11. `.specrew/config.yml`, the `v0.35.0` tag, CHANGELOG, and README all
+  reflect 0.35.0 stable.
+- **SC-004 / SC-007 / SC-008 are no longer open blockers.** D-003 is closed; this corrective feature-closeout
+  pass records the closeout dashboard + boundary-state sync so F-177 has no active/pending lifecycle
+  boundary.
+
 ## Notes
 
 - Update this file after each task completes.
