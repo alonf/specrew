@@ -23,7 +23,7 @@ areas:
     cost_of_nothing: "Lifecycle truth gets corrupted by post-merge edits to merged features; protected-main repositories cannot follow the model; contributors over- or under-process changes."
   existing_system_context:
     relationship: "Extension of the existing design-lens system (the DevOps & Operations lens) plus the lifecycle / validator / CI surface. Not a new product."
-    new_surface: "A work-kind taxonomy + lightweight docs-only/devops lifecycle surfaces + a repository-governance decision area in the DevOps lens + a CI work-kind validator + GitHub capability detection."
+    new_surface: "A work-kind taxonomy + lightweight docs-only/devops lifecycle surfaces + a repository-governance decision area in the DevOps lens (configurable branch_model + review_gate) + a PROVIDER-NEUTRAL CI work-kind validator + a pluggable ProviderAdapter (GitHub reference + generic/unknown fallback + on-the-fly read-only adapter synthesis) + honest capability detection + forge-neutralization of all downstream-governing surfaces."
   constraints:
     - "main is already protected on Specrew's repo as of 2026-06-11 (PR-required, applies to admins, no force-push/deletion) — interim mitigation; this feature defines the durable methodology + automation."
     - "Multi-host: methodology surfaces (lens md, lifecycle templates) deploy across the 5 hosts."
@@ -36,14 +36,15 @@ areas:
     governance_capture: "The DevOps lens captures the repository-governance decisions with honest capability reporting (no enforcement promise the repo cannot keep)."
     leading_indicator: "In a dogfood, Specrew's own repo carries main PR-protection + a declared work kind for this feature, and the docs-only/devops lightweight lifecycles are actually usable end-to-end to a PR-ready closeout."
   mvp_nongoals_vision:
-    mvp: "The full Proposal 182 across two iterations: work-kind taxonomy (software-feature/bug-bash/docs-only/devops) + docs-only/devops lifecycle surfaces + DevOps-lens repository-governance + multi-repo questions + feature-closeout-vs-release-validation invariant + CI work-kind validation + GitHub branch-protection capability detection."
+    mvp: "The full Proposal 182, WORKSHOP-EXPANDED across THREE iterations (~16-24 SP): work-kind taxonomy (software-feature/bug-bash/docs-only/devops) + docs-only/devops lifecycle surfaces + DevOps-lens repository-governance with a CONFIGURABLE branch_model (user-named branches + trunk/integration/gitflow) + review_gate + multi-repo questions + the feature-closeout-vs-release-validation invariant + a PROVIDER-NEUTRAL core with a pluggable ProviderAdapter (GitHub reference adapter + generic/unknown fallback + ON-THE-FLY READ-ONLY adapter synthesis for other forges) + a provider-neutral CI work-kind validator + honest capability detection + brownfield adapt-or-change + forge-neutralization of all downstream-governing surfaces. Iter 1 = methodology + adapter contract/fallback + audit/inventory + brownfield content; Iter 2 = runtime validator + capability detection + synthesis + dogfood; Iter 3 = forge-neutralization decouple migration."
     non_goals:
-      - "Implementing every Git provider in v1 (GitHub first; provider capability model later)."
-      - "Enforcing a full ruleset policy as runtime automation in v1 (phased/deferred where partial)."
+      - "Shipping pre-built GitLab/Azure/Bitbucket adapters in Specrew (GitHub is the only shipped reference adapter + a generic fallback; other forges are synthesized on the fly, read-only by default)."
+      - "Enforcing a full ruleset policy as runtime automation in v1 (phased/deferred where partial; the validator defaults to advisory)."
       - "Rewriting historical feature artifacts (corrections are small new PRs, not retroactive edits)."
       - "Creating a release for docs-only changes."
+      - "Changing Specrew's OWN use of GitHub for its own development (only downstream-governing surfaces are forge-neutralized)."
       - "Proposals 174 and 178 (stay follow-ups)."
-    vision: "A provider capability model abstracts non-GitHub hosts; richer CI enforcement (changed-file classification, required-checks wiring) graduates from advisory to blocking as confidence grows."
+    vision: "The model is provider-neutral by construction; on-the-fly read-only adapter synthesis covers non-GitHub forges in V1 and human-verified adapters can unlock apply_protection; richer CI enforcement (changed-file classification, required-checks wiring) graduates from advisory to blocking as confidence grows."
     v1_failure_even_if_it_works: "It over-claims enforcement it cannot actually deliver (CI-only masquerading as branch protection), or it blocks legitimate/emergency work with no audited bypass path."
   alternatives_differentiation:
     alternative_a: "Status quo — one lifecycle shape for everything: the exact cause of the Feature 177 release/closeout confusion."

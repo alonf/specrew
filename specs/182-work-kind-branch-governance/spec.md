@@ -330,6 +330,37 @@ confirm it reports the detected posture and offers adapt-or-change rather than o
   synthesized (on the fly).
 - **ProviderCapability** — provider+plan+visibility → achievable enforcement mechanisms.
 
+### Requirement Ownership & Delivery Window *(satisfies TG-002 + TG-003)*
+
+Every FR carries an expected owner role and an intended iteration. Owner roles are the
+Crew baseline roles (Spec Steward = methodology/spec/lens content; Implementer = code,
+catalog, validator, adapters; Reviewer = honesty/security/evidence review; all delegated
+to `claude` this launch).
+
+| FR | Owner role(s) | Delivery window |
+| --- | --- | --- |
+| FR-001 work-kind taxonomy catalog | Spec Steward + Implementer | Iter 1 |
+| FR-002 DevOps lens presents default model | Spec Steward | Iter 1 |
+| FR-003 `branch_model` capture + protected-branch + capability caveat | Spec Steward + Implementer | Iter 1 |
+| FR-004 closeout vs release-validation invariant | Spec Steward | Iter 1 |
+| FR-005 docs-only lifecycle surface | Spec Steward + Implementer | Iter 1 |
+| FR-006 devops lifecycle surface | Spec Steward + Implementer | Iter 1 |
+| FR-007 provider-neutral CI validator | Implementer | Iter 2 |
+| FR-008 single/multi-repo capture | Spec Steward | Iter 1 |
+| FR-009 declaration mechanism | Implementer | Iter 1 |
+| FR-010 honest/phased enforcement (no over-claim) | Reviewer + Spec Steward | Iter 1 (baked) → all |
+| FR-011 emergency/bypass audit | Implementer + Reviewer | Iter 2 |
+| FR-012 capability detection | Implementer | Iter 2 |
+| FR-013 dogfood on Specrew's repo | Implementer + Reviewer | Iter 2 |
+| FR-014 provider-neutral core | Implementer | Iter 1 |
+| FR-015 adapter contract + GitHub reference + fallback | Implementer | Iter 1 (contract + fallback) / Iter 2 (GitHub detect) |
+| FR-016 on-the-fly adapter synthesis | Spec Steward (conduct) + Implementer | Iter 1 (doc) / Iter 2 (exercised) |
+| FR-017 `review_gate` | Spec Steward | Iter 1 |
+| FR-018 project-level governance capture | Spec Steward + Implementer | Iter 1 |
+| FR-019 forge-neutralization audit + decouple | Implementer + Reviewer | Iter 1 (inventory) / Iter 3 (migration) |
+| FR-020 `apply_protection` human-gated + no secrets | Implementer + Reviewer | Iter 2 |
+| FR-021 brownfield adapt-or-change | Spec Steward (content) + Implementer (detector) | Iter 1 (content) / Iter 2 (detector) |
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes

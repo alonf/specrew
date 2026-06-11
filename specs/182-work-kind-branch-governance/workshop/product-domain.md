@@ -46,9 +46,16 @@ carry full-feature ceremony. The feature is checked against this problem through
   branch governance with honest capability reporting `known`; leading indicator:
   Specrew's own repo carries main protection + a work-kind declaration, and docs-only/
   devops lifecycles are usable end-to-end `assumed`.
-- **MVP / non-goals / vision** — MVP: the full proposal across 2 iterations. Non-goals:
-  every Git provider in v1; full ruleset enforcement automation; rewriting history;
-  releases for docs-only; 174/178. v1 fails even if it works if it over-claims
+- **MVP / non-goals / vision** — MVP (workshop-expanded, ~16–24 SP / **3 iterations**):
+  work-kind taxonomy + docs-only/devops lifecycle surfaces + DevOps-lens repository-
+  governance with a **configurable `branch_model`** + **`review_gate`** + the closeout-vs-
+  release-validation invariant + a **provider-neutral core + pluggable `ProviderAdapter`**
+  (GitHub reference + generic fallback + **on-the-fly read-only synthesis** for other
+  forges) + a provider-neutral CI validator + honest capability detection + brownfield
+  adapt-or-change + **forge-neutralization of all downstream-governing surfaces**. Non-goals:
+  shipping pre-built GitLab/Azure/Bitbucket adapters in Specrew (synthesized on the fly
+  instead); full ruleset enforcement automation; rewriting history; releases for docs-only;
+  changing Specrew's own GitHub usage; 174/178. v1 fails even if it works if it over-claims
   enforcement or blocks legitimate/emergency work with no audited bypass.
 - **Alternatives / differentiation** — A: status quo (one lifecycle) → caused 177.
   B: CI-only → false confidence. C: branch-protection-only → no lifecycle right-sizing.
