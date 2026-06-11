@@ -58,6 +58,8 @@ neutral `ProviderAdapter` contract + generic fallback). This iteration consumes 
 | Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
 | Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points. |
 | Defer Strategy | manual | How planning should choose deferrals when over capacity. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
 
 ## Concurrency Rationale
 

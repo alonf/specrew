@@ -141,6 +141,7 @@
         'extensions/specrew-speckit/scripts/validate-governance.ps1',
         'extensions/specrew-speckit/scripts/validate-versions.ps1',
         'extensions/specrew-speckit/scripts/work-kind-common.ps1',
+        'extensions/specrew-speckit/scripts/work-kind-validator.ps1',
         'extensions/specrew-speckit/squad-templates/agents/implementer/charter.md',
         'extensions/specrew-speckit/squad-templates/agents/planner/charter.md',
         'extensions/specrew-speckit/squad-templates/agents/retro-facilitator/charter.md',
