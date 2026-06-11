@@ -116,6 +116,13 @@ specification drift; they are recorded in review.md and cross-referenced from dr
 - The three new reviewer-instruction candidates above (claims-need-fresh-evidence,
   verify-remedies-against-tests, re-run-claims-need-real-commands) are PROMOTE candidates for the
   durable review playbook (Proposal 145 / reviewer charter), pending the maintainer's triage.
+- **Closeout housekeeping (deferred, WARN-level — confirm at feature-closeout):** Iteration 2 closed
+  without a `dashboard.md`, so it carries a `missing-dashboard-auto-render-regression` WARN alongside
+  048 + 141/006–008 — UNLIKE Iteration 1, which has a committed dashboard (a within-feature
+  inconsistency). The omission is deliberate: the only hand-driven render paths re-spawn the lint-dirty
+  reviewer supplements that were removed to keep the review clean. Confirm at feature-closeout that this
+  stays a non-blocking WARN (never hardens into a gate), or render it via the proper boundary-sync path
+  for parity with Iteration 1.
 
 ## Notes
 
