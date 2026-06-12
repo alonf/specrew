@@ -26,6 +26,7 @@ If you run `specrew update` when the installed module itself is stale, you only 
 | Launching the host shows no Specrew banner; the agent acts ungoverned | The SessionStart hook never fired (per-host hook config missing or malformed) | Go to [SessionStart hook never fires](#sessionstart-hook-never-fires). |
 | On restart the agent asks "what do you want to build?" instead of resuming | No valid handover or anchor surfaced; or the deployed providers are stale | Go to [Resume starts blind instead of welcoming you back](#resume-starts-blind-instead-of-welcoming-you-back). |
 | A `HOLLOW HANDOVER` warning, or "another session may be active in this worktree" | Expected advisories: an unauthored handover body; a fresh session marker from the previous session | Go to [Handover and concurrency advisories](#handover-and-concurrency-advisories). |
+| A crash lost the last few minutes, or Antigravity shows no welcome-back banner | Expected continuity limits: a hard kill fires no stop hook; Antigravity has no hook surface | Go to [A crash lost recent conversation, or Antigravity shows no welcome-back](#a-crash-lost-recent-conversation-or-antigravity-shows-no-welcome-back). |
 
 ## PSGallery side-by-side installs or stale cache
 
@@ -154,8 +155,15 @@ Get-Content .\.specrew\runtime\bootstrap-journal.jsonl -Tail 1
 
 Two messages around session start are advisories, not errors:
 
-- **`HOLLOW HANDOVER` / "the previous session did NOT author a handover body"** — the rolling handover's frontmatter floor is present (feature, boundary, commit), but the six rich body sections were never authored by the previous agent. The resuming agent is told to re-derive from the lifecycle artifacts instead — workshop records, spec, tasks. Work is not lost; the resume is simply artifact-derived rather than narrative.
+- **`HOLLOW HANDOVER` / "the previous session did NOT author a handover body"** — the rolling handover's frontmatter floor is present (feature, boundary, commit), but the seven rich body sections were never authored by the previous agent. The resuming agent is told to re-derive from the lifecycle artifacts instead — workshop records, spec, tasks. Work is not lost; the resume is simply artifact-derived rather than narrative.
 - **"another session may be active in this worktree (marker within 1h)"** — the previous session's `.specrew/runtime/session-marker.json` is less than an hour old. After a normal exit-and-relaunch (or a host switch) this is expected and safe to ignore. It matters only if you really do have two live agents in the same worktree — then coordinate or close one. Deleting the marker file silences it immediately; it is local scratch state.
+
+## A crash lost recent conversation, or Antigravity shows no welcome-back
+
+These are the two expected continuity limits — by design, not bugs:
+
+- **A hard kill (SIGKILL, power loss, a force-closed window) loses the conversation tail since the last capture.** No hook can fire after the process is already gone, so this floor is universal and uncloseable. What you lose is bounded by the host's capture cadence: on Claude the handover refreshes every PostToolUse (seconds), so a crash loses little; on Codex / Copilot / Cursor the last capture is the previous *graceful* Stop, so an ungraceful kill loses back to there. **Durable state never goes** — every committed artifact and the working tree survive, and the next session's disk scan re-derives the position. To minimize exposure, end sessions with `/exit` (a graceful stop) rather than closing the window.
+- **Antigravity produces no orientation banner and no handover of its own** — it has no hook surface, so it can neither bootstrap on SessionStart nor capture a rolling handover. This is expected. Antigravity is still fully governed and resumable: it RECOVERS through `specrew start`, which reads the handover written by whichever host last ran and runs the same reconciliation, and its own work survives on disk for the next session. If you need conversation capture from an Antigravity stretch, run a graceful stop in a hook-capable host (Claude / Codex / Copilot / Cursor) at the next switch so a handover gets written.
 
 ## Clean reinstall flow
 
