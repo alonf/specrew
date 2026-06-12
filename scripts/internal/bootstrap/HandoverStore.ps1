@@ -483,7 +483,15 @@ function Update-SpecrewRollingHandover {
     $existing = Get-SpecrewRollingHandover -HandoverDir $handoverDir -NowUtc $NowUtc
     $lastBoundary = if ($null -ne $existing) { $existing.active_boundary } else { $null }
     $hasChange = $false
-    try { $st = (& git -C $ProjectRoot status --porcelain 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
+    # Prop-145 round-6 (HIGH, write-path half of Finding 1): this `git status` is the HOTTER instance of the
+    # parent-repo-scan defect - it fires on EVERY PostToolUse, not once per session-start. Gate it on the SAME
+    # repo-root check Get-SpecrewSessionDelta uses: from a nested / non-repo root under a parent git repo or
+    # worktree, an ungated `git status` walks the whole parent tree (unbounded -> hangs the hook; try/catch
+    # cannot bound a hung process) AND would report the PARENT'S dirty files as this project's change. Not a
+    # repo root -> no tracked change to detect here (consistent with the empty Get-SpecrewSessionDelta below).
+    if (Test-SpecrewIsGitRepoRoot -ProjectRoot $ProjectRoot) {
+        try { $st = (& git -C $ProjectRoot status --porcelain 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
+    }
     $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
     # Prop-145 round-4 (HIGH): a conversation-only turn (clean tree, same boundary) is NOT a git/boundary "material
     # change", but it IS new context that T002 promises to capture. END-OF-TURN events (Stop/agentStop/stop) fire

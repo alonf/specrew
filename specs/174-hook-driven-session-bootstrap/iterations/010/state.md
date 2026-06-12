@@ -112,6 +112,16 @@
     the `SessionBootstrapManager.Tests.ps1` fixture so it is hermetic (its own root, bounded scan) instead of
     leaning on the parent. `SessionDeltaRepoRootGate.Tests.ps1` (repo-root + worktree-root pass; nested -> empty
     delta + the parent's uncommitted file provably NOT scanned; positive branch still scans).
+    - **HIGH write-path half** (advisor catch — the HOTTER instance): the reviewer named the read path
+      (`Get-SpecrewSessionDelta`, once per session-start), but the SAME ungated `git status --porcelain` lives in
+      `Update-SpecrewRollingHandover`'s material-change gate, which fires on EVERY PostToolUse. From a nested root
+      that scan walks the parent tree (hangs on the first file-editing turn) AND counts the parent's dirty files
+      as this project's change. Gated it with the same `Test-SpecrewIsGitRepoRoot` (not a repo root -> no tracked
+      change here, consistent with the now-empty `Get-SpecrewSessionDelta` below it). So the DEFECT CLASS is
+      retired across both the read and write paths, not half. `WritePathRepoRootGate.Tests.ps1` (nested +
+      PostToolUse + DIRTY PARENT -> wrote=false / no-material-change; repo root still scans + writes on a real
+      change). Genuine falsifier verified: with the gate stubbed to always-true the nested root writes
+      `tracked-change` off the parent — proving the assertion discriminates, not a vacuous pass.
   - **MEDIUM (stale handover drove resume snapshot)** — `Invoke-SpecrewSessionBootstrap` passed the RAW parsed
     handover into `Get-SpecrewResumeReconciliation` even when `Test-SpecrewHandoverValidity` said invalid, so the
     directive emitted "Last captured stop: <old ts> (boundary <old>)" off a STALE snapshot (violating "invalid
@@ -125,7 +135,7 @@
     `scripts/internal/bootstrap/` by the provider's 3-tier resolver), not provider-mirror artifacts.
 - **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (9) +
   ConversationOnlyCapture (12) + DispatcherLargeEvent (8) + SessionDeltaRepoRootGate (11, round-6) +
-  StaleHandoverNoResumeSnapshot (13, round-6) +
+  StaleHandoverNoResumeSnapshot (13, round-6) + WritePathRepoRootGate (4, round-6 write-path) +
   DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
   (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, CoordinatorResumeReconciliation,
   ProjectMetadataAccessor, SessionBootstrapManager, Concurrency, Regression, HostEventAdapter, PerHost) — a 28-suite
