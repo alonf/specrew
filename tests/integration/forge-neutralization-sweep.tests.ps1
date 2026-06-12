@@ -32,6 +32,34 @@ $forgeMandates  = @('gh pr create', 'gh pr merge')
 $specrewPublish = @('Find-Module Specrew', 'Install-Module Specrew', 'PSGallery', 'powershellgallery', 'PowerShell Gallery')
 $exampleMarker = 'not a downstream mandate'   # case-insensitive
 
+# --- iter-4 (FR-022 / SC-015): the full SC-015 token set for the RUNTIME/DEPLOYED surfaces ---
+# A runtime/deployed surface (.ps1 launch-prompt/contract generator, or a deployed per-host agent file)
+# is clean when it carries NONE of these unlabeled. File-level labeled example suffices (the closeout
+# SDLC is one block). Pattern-based: a FUTURE scripts/internal/launch-contract.ps1 (F-174) is caught.
+$sc015Tokens = @('gh pr create', 'gh pr merge', 'Find-Module Specrew', 'Install-Module Specrew', 'PSGallery', 'PowerShell Gallery')
+
+function Test-RuntimeSurfaceClean {
+    param([string]$Rel, [string]$Content, [string]$Marker, [string[]]$Tokens)
+    $local = New-Object System.Collections.Generic.List[string]
+    $hasMarker = ($Content -match "(?i)$([regex]::Escape($Marker))")
+    foreach ($t in $Tokens) {
+        if ($Content -match [regex]::Escape($t) -and -not $hasMarker) {
+            $local.Add(("{0}: SC-015 token '{1}' appears with no file-level '{2}' example label" -f $Rel, $t, $Marker)) | Out-Null
+        }
+    }
+    return , $local
+}
+
+# Specrew's OWN CLI / release / deploy tooling — legitimately names Install-Module Specrew / PSGallery
+# because it IS Specrew's own machinery (NOT a downstream-governing prompt). Allowlisted by file name.
+# A launch-prompt/contract generator (specrew-start.ps1, future launch-contract.ps1) is NOT here -> scanned.
+$ps1OwnInfra = @(
+    'specrew-init.ps1', 'specrew-update.ps1', 'specrew-version.ps1', 'specrew-install-shell-wrappers.ps1',
+    'deploy-speckit-extension.ps1', 'deploy-squad-runtime.ps1', 'sync-boundary-state.ps1',
+    'invoke-module-release.ps1', 'test-publish-harness.ps1', 'version-check.ps1', 'preflight.ps1',
+    'validate-versions.ps1', 'dashboard-renderer.ps1', 'template-deploy.ps1'
+)
+
 # --- the downstream-governing markdown surfaces to sweep ---
 $surfaceRoots = @(
     'extensions/specrew-speckit/prompts',
@@ -108,12 +136,45 @@ foreach ($root in $surfaceRoots) {
     }
 }
 
-if ($violations.Count -gt 0) {
-    Write-Host "OVER-CLAIM / bare-mandate violations (SC-008):" -ForegroundColor Red
-    foreach ($v in $violations) { Write-Host "  $v" -ForegroundColor Yellow }
-    Write-Fail ("Found {0} bare GitHub/PSGallery mandate(s) in downstream-governing surfaces." -f $violations.Count)
+# === iter-4 (FR-022 / SC-015): WIDEN beyond markdown to the RUNTIME/DEPLOYED surfaces that reach the
+#     downstream crew — (a) .ps1 launch-prompt/contract GENERATORS, (b) deployed per-host agent files. ===
+$ps1Scanned = 0
+$agentScanned = 0
+
+# (a) .ps1 launch-prompt/contract generators (own CLI/release tooling allowlisted by name; .specify mirror skipped).
+foreach ($root in @('scripts', 'extensions/specrew-speckit/scripts')) {
+    $full = Join-Path $repoRoot $root
+    if (-not (Test-Path -LiteralPath $full)) { continue }
+    foreach ($file in (Get-ChildItem -LiteralPath $full -Filter '*.ps1' -Recurse -File)) {
+        $rel = $file.FullName.Substring($repoRoot.Length + 1).Replace('\', '/')
+        if ($rel -match '(^|/)\.specify/') { continue }
+        if ($ps1OwnInfra -contains (Split-Path $rel -Leaf)) { continue }
+        $ps1Scanned++
+        $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
+        if ([string]::IsNullOrWhiteSpace($content)) { continue }
+        foreach ($v in (Test-RuntimeSurfaceClean -Rel $rel -Content $content -Marker $exampleMarker -Tokens $sc015Tokens)) { $violations.Add($v) | Out-Null }
+    }
 }
-Write-Pass ("SC-008 sweep: no bare GitHub/PSGallery mandate across {0} downstream-governing markdown surface(s)." -f $scanned)
+
+# (b) deployed per-host agent files — the assembled agent the crew actually reads in a project.
+foreach ($root in @('.github/agents')) {
+    $full = Join-Path $repoRoot $root
+    if (-not (Test-Path -LiteralPath $full)) { continue }
+    foreach ($file in (Get-ChildItem -LiteralPath $full -Filter '*.md' -Recurse -File)) {
+        $rel = $file.FullName.Substring($repoRoot.Length + 1).Replace('\', '/')
+        $agentScanned++
+        $content = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
+        if ([string]::IsNullOrWhiteSpace($content)) { continue }
+        foreach ($v in (Test-RuntimeSurfaceClean -Rel $rel -Content $content -Marker $exampleMarker -Tokens $sc015Tokens)) { $violations.Add($v) | Out-Null }
+    }
+}
+
+if ($violations.Count -gt 0) {
+    Write-Host "OVER-CLAIM / bare-mandate violations (SC-008 / SC-015):" -ForegroundColor Red
+    foreach ($v in $violations) { Write-Host "  $v" -ForegroundColor Yellow }
+    Write-Fail ("Found {0} bare GitHub/PSGallery/Specrew-release mandate(s) in downstream-governing surfaces." -f $violations.Count)
+}
+Write-Pass ("SC-008/SC-015 sweep: no bare mandate across {0} markdown + {1} .ps1 + {2} deployed-agent downstream-governing surface(s)." -f $scanned, $ps1Scanned, $agentScanned)
 
 # --- positive assertion: the 4 neutralized change-surfaces each carry the labeled example (proves they
 #     were neutralized-with-an-example, not silently stripped of all guidance) ---
@@ -191,4 +252,31 @@ if ($exampleFlow -notmatch 'gh pr create' -or $exampleFlow -notmatch 'Install-Mo
 }
 Write-Pass "T308: Specrew's own GitHub + PSGallery closeout steps remain documented in the labeled example (usable for Specrew, example-only for downstream)."
 
-Write-Host "`nForge-neutralization sweep (SC-008 + SC-013 + own-flow): all assertions pass" -ForegroundColor Green
+# --- iter-4 (FR-022 / SC-015): the neutralized RUNTIME/DEPLOYED change-surfaces carry the labeled example
+#     (neutralized-with-an-example, not silently stripped). These are F-182-owned current-tree surfaces. ---
+$mustCarryMarkerRuntime = @(
+    'scripts/specrew-start.ps1',           # the launch-prompt generator (F-174 supersedes it by deletion/refactor)
+    '.github/agents/squad.agent.md'        # the deployed per-host agent file
+)
+foreach ($m in $mustCarryMarkerRuntime) {
+    $p = Join-Path $repoRoot $m
+    if (-not (Test-Path -LiteralPath $p)) { continue }
+    $body = Get-Content -LiteralPath $p -Raw -Encoding UTF8
+    if ($body -notmatch "(?i)$([regex]::Escape($exampleMarker))") {
+        Write-Fail "$m carries the closeout SDLC but no labeled '$exampleMarker' example — neutralize it (FR-022 / T402)"
+    }
+}
+Write-Pass ("SC-015: the {0} neutralized runtime/deployed change-surfaces carry the labeled non-mandatory example." -f $mustCarryMarkerRuntime.Count)
+
+# --- F-174 regression fixture: prove the widened .ps1 scan WOULD catch a future
+#     scripts/internal/launch-contract.ps1 site carrying the bare mandate — WITHOUT editing F-174's
+#     worktree or owning that file. Synthetic content only; F-174 neutralizes the real file post-rebase. ---
+$f174FixtureRel = 'scripts/internal/launch-contract.ps1'
+$f174FixtureContent = 'At feature-closeout: Step 6 create the PR with gh pr create; Step 11 PAUSE for Install-Module Specrew -AllowPrerelease validation.'
+$f174Hits = Test-RuntimeSurfaceClean -Rel $f174FixtureRel -Content $f174FixtureContent -Marker $exampleMarker -Tokens $sc015Tokens
+if (@($f174Hits).Count -lt 1) {
+    Write-Fail "F-174 regression: the widened .ps1 sweep MUST flag a launch-contract.ps1-style site carrying the bare mandate (it did not) — F-182's reconciliation guard is broken"
+}
+Write-Pass ("SC-015 F-174 regression: the .ps1 scan flags a synthetic '{0}' mandate ({1} hit(s)) — F-182's widened sweep WILL catch F-174's site at reconciliation." -f $f174FixtureRel, @($f174Hits).Count)
+
+Write-Host "`nForge-neutralization sweep (SC-008 + SC-013 + SC-015 + own-flow): all assertions pass" -ForegroundColor Green

@@ -1,13 +1,13 @@
 # Iteration State: 004
 
 **Schema**: v1
-**Current Phase**: before-implement
-**Iteration Status**: planning
-**Last Completed Task**: (none — plan + before-implement gate authored; awaiting the maintainer's go)
-**Tasks Remaining**: T401..T408 (all planned)
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: T402 (DF-005 fix: widened sweep + runtime-surface neutralization; F-174 reconciliation guard green)
+**Tasks Remaining**: T403..T408
 **In Progress**: (none)
 **Baseline Ref**: 45415737
-**Updated**: 2026-06-12T15:10:00Z
+**Updated**: 2026-06-12T15:30:00Z
 
 ## Execution Summary
 
