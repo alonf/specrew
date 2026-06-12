@@ -152,13 +152,22 @@
     with no conflict. The ONE conflict surface is `specrew-start.ps1`: F-174 DELETED the launch-prompt block that
     F-182 neutralized in place (~L2590) -> a delete-vs-modify conflict, resolve in favor of F-174's deletion (the
     block now lives in launch-contract.ps1). F-182 not yet in origin/main; no rebase/neutralization performed.
-- **Codex double-hook-call hardening (dogfood finding, 2026-06-12; commit `7a9d2086`)**: the cross-host dogfood
-  left a corrupt `session-marker.json` on codex (two JSON objects, same session, ms apart). ROOT CAUSE of the
-  double FIRE was a non-idempotent OLDER deploy that left TWO SessionStart registrations in `~/.codex/hooks.json`
-  (the surviving `hooks.json.corrupt.bak` proves it: `hooks` as a JSON array wrapping the event-map PLUS a
-  duplicate top-level map = 5 dispatcher refs). The CURRENT deploy already self-heals that to exactly ONE
-  registration (verified empirically against the real corrupt shape) — so the registration code was NOT live-buggy;
-  the maintainer's idempotence instinct was right about the historical cause. Fixed mechanism-independently:
+- **Codex double-hook-call — CONTAINED, root cause not definitively pinned (dogfood finding, 2026-06-12; commit
+  `7a9d2086`)**: the cross-host dogfood left a corrupt `session-marker.json` on codex (two JSON objects, same
+  session, ms apart) and two SessionStart `b2` injections 7s apart (`refocus-state-unknown.json`). The double-FIRE
+  MECHANISM is NOT definitively pinned. Two candidates were examined: (1) a non-idempotent OLDER deploy DID leave a
+  duplicate registration — `hooks.json.corrupt.bak` proves it (`hooks` as a JSON array wrapping the event-map PLUS a
+  top-level duplicate = 5 dispatcher refs) — BUT that array shape is one codex cannot read (`hooks.SessionStart`
+  does not index an array; the top-level keys sit outside `hooks`), so that exact artifact would register ZERO/error,
+  not fire cleanly twice; (2) intrinsic codex re-firing (SessionStart emitted >1× at startup) — the 7-SECOND gap fits
+  two separate events far better than one event's two registrations firing ms apart, and codex's SessionStart payload
+  carries NO session_id (every codex SessionStart collides into `refocus-state-unknown.json`), consistent with a host
+  that re-emits. Forensics on `~/.codex/logs_2.sqlite` did not surface codex's own hook-fire records. WEIGHT of
+  evidence favors (2). EITHER WAY the harms are now contained + deploy idempotence is locked; the DECISIVE check is
+  the next codex run (one vs two bootstrap renders + a single valid marker). If two renders persist it is intrinsic
+  re-firing (now harmless: codex gets the lean pointer, the marker is atomic, refocus has its circuit breaker), not a
+  registration bug. The CURRENT live `~/.codex/hooks.json` is healed to exactly ONE registration (verified
+  empirically against the real corrupt shape). Fixed mechanism-independently:
   - **Atomic marker write** (`Write-SpecrewSessionMarker`): temp + `File.Replace` ($null backup, no `.old`
     clutter). The dest is only ever touched by an atomic rename, so a writer killed mid-write — or overlapping
     fires — can no longer leave it PERMANENTLY half-written (the corruption the dogfood saw). First write -> Move;
@@ -186,6 +195,10 @@
   (CODEX_API_KEY etc., often globally set) excluded to avoid false matches. `WorkshopHostDetection.Tests.ps1` (11
   assertions: per-host detection incl. the antigravity shared-root discriminator + lone-credential negative; full
   chain incl. `--host-kind` wins + state-host wins + honest sentinel). MODULE-internal single-copy, no mirror sync.
+  CAVEAT (pre-existing, out of scope): because env detection sits BELOW `session_state.host`, a STALE committed host
+  (codex committed the boundary, claude now runs the refresh) would still mislabel `from_host` as codex. Fixing that
+  needs env detection to win over the committed host on the refresh path — deferred; the dogfood gap was the
+  literal-`host` sentinel, which this closes.
 - **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (9) +
   ConversationOnlyCapture (12) + DispatcherLargeEvent (8) + SessionDeltaRepoRootGate (11, round-6) +
   StaleHandoverNoResumeSnapshot (13, round-6) + WritePathRepoRootGate (4, round-6 write-path) +
