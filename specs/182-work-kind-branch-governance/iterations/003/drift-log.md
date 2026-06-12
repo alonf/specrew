@@ -26,18 +26,23 @@
   T301 edits to G1–G3 ARE the G4 neutralization; no separate artifact exists. Verified no bare mandate
   survives in any source surface. Effort 0.5 SP vs the planned 1 SP.
 
-### D-302 — the `.specify/` deployed mirror re-syncs at deploy, not by hand-edit
+### D-302 — the `.specify/` deployed mirror synced to match the neutralized source (consistency)
 
-- **Requirement**: FR-019 (T301/T302).
-- **Observed**: The tracked `.specify/` self-host mirror partially mirrors the sources; its copy of
-  `specrew-governance.md` still carries the pre-neutralization prose. `.specify/` is a deploy-derived
-  mirror of Specrew's OWN self-host deployment, not what downstream projects receive (they get the
-  `extensions/` source shipped in the module).
-- **Resolution**: `deferred` (deploy-time). Per the established convention — `host-coupling-firewall`
-  `$skipDirs` excludes `.specify`, and CI markdownlint runs `--ignore .specify` — the mirror is excluded
-  from structural sweeps and re-syncs at the next deploy/publish (feature-closeout, outside Iter-3
-  scope). NOT hand-edited (honors the maintainer's "do not hand-edit .specify" rule). The Iteration-3
-  SC-008 sweep (T306) excludes `.specify/` consistently. Mirror parity is restored at deploy.
+- **Requirement**: FR-019 (T301/T302/T304).
+- **Observed**: The tracked `.specify/` self-host mirror partially mirrors the sources. Two iter-3-edited
+  sources have tracked mirrors: `shared-governance.ps1` (T304) and `specrew-governance.md` (T301/G3). The
+  former is held byte-for-byte by a SHA256 parity test (`pr-review-integration.tests.ps1`) and was synced
+  immediately; the latter initially still carried the pre-neutralization closeout prose (the bare
+  `gh pr create` mandate), leaving a committed mirror that contradicted the iteration's own purpose.
+- **Resolution**: `spec-updated` (mirror synced to source). Both tracked mirrors are now synced to their
+  neutralized sources — `specrew-governance.md` copied source→mirror (SHA256
+  `74ebd134…`), the same blessed "sync the mirror to MATCH source" operation already applied to
+  `shared-governance.ps1`. This is NOT a divergent hand-edit (the mirror is made identical to source, which
+  is exactly what deploy would produce); it honors the "do not hand-edit `.specify`" rule (sync-to-match is
+  allowed, divergent content authoring is not) and removes the inconsistency of syncing one tracked mirror
+  while deferring an equivalent one. `.specify/` remains excluded from the SC-008 sweep (T306) and the
+  host-coupling firewall as before; this change only brings the two tracked mirrors that DO appear in the
+  iter-3 diff into a consistent, non-contradictory state.
 
 ### D-303 — `proposal-discipline.md` carried a `gh pr create` mandate the audit missed
 
@@ -52,9 +57,9 @@
 
 ### Resolution Strategies
 
-- **spec-updated**: Update the plan to reflect the implementation reality (D-301).
-- **deferred**: Park with the correct downstream owner / deploy step (D-302).
+- **spec-updated**: Update the plan/mirror to reflect the implementation reality (D-301, D-302).
 - **implementation-reverted**: Neutralize a sweep-caught surface in place (D-303).
+- **deferred**: available, unused this iteration.
 - **human-decision**: available, unused this iteration.
 
 ### Notes
