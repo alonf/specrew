@@ -24,4 +24,12 @@ $stopCmd = [string]$cfg.hooks.Stop[0].hooks[0].command
 Assert-True ($stopCmd -match '-Event\s+Stop') 'deployed Stop command dispatches -Event Stop'
 Assert-True ($stopCmd.Contains('specrew-hook-dispatcher.ps1')) 'deployed Stop command points at the dispatcher'
 
+# iter-9.1/iter-10 closure: the PostToolUse hook (mid-turn handover refresh during picker phases like the
+# design workshop, where no end-of-turn Stop fires) must be live ON DISK, not just in the deployer code. The
+# external review found the live claude config was missing it (build != live) - this guards the re-deploy.
+Assert-True ($null -ne $cfg.hooks.PSObject.Properties['PostToolUse']) 'deployed config carries the PostToolUse handover-refresh hook ON DISK (iter-9.1 mid-turn refresh)'
+$postCmd = [string]$cfg.hooks.PostToolUse[0].hooks[0].command
+Assert-True ($postCmd -match '-Event\s+PostToolUse') 'deployed PostToolUse command dispatches -Event PostToolUse'
+Assert-True ($postCmd.Contains('specrew-hook-dispatcher.ps1')) 'deployed PostToolUse command points at the dispatcher'
+
 Write-Host 'DeployedHostConfig: all tests passed.' -ForegroundColor Green

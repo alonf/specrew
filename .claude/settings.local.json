@@ -124,6 +124,16 @@
           }
         ]
       }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \".specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event PostToolUse -HostKind claude"
+          }
+        ]
+      }
     ]
   }
 }

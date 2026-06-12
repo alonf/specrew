@@ -99,28 +99,49 @@ function Invoke-ProviderProcess {
         [string]$WorkingDirectory,
         [int]$TimeoutSeconds
     )
-    # Child process: provider scripts use `exit` (their CLI contract), which would
-    # terminate an in-process caller. Timeout enforced per provider (C3).
-    $stdoutPath = [System.IO.Path]::GetTempFileName()
-    $stderrPath = [System.IO.Path]::GetTempFileName()
+    # Child process: provider scripts use `exit` (their CLI contract), which would terminate an in-process
+    # caller. Timeout enforced per provider (C3).
+    #
+    # ARG DELIVERY (F-174 iter-10 fix): use ProcessStartInfo.ArgumentList, NOT `Start-Process -ArgumentList`.
+    # Start-Process joins the array into one command line WITHOUT robustly quoting elements that contain
+    # spaces - empirically a transcript_path under a spaced home (`C:\Users\First Last\...`, the common Windows
+    # case) is SPLIT into several args, and any embedded-quote/space value (the --event-json JSON) is mangled.
+    # ArgumentList applies correct per-arg Win32 escaping, so every clean arg (notably --transcript-path) and
+    # the JSON survive byte-for-byte. stdout/stderr are read ASYNCHRONOUSLY (started before WaitForExit) to
+    # avoid a full-pipe deadlock when a provider emits more than a pipe buffer.
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = 'pwsh'
+    foreach ($a in @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $CommandPath)) { $psi.ArgumentList.Add([string]$a) }
+    foreach ($a in @($CommandArgs)) { $psi.ArgumentList.Add([string]$a) }
+    $psi.WorkingDirectory = $WorkingDirectory
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+    $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+    $proc = [System.Diagnostics.Process]::new()
+    $proc.StartInfo = $psi
     try {
-        $proc = Start-Process -FilePath 'pwsh' `
-            -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $CommandPath) + $CommandArgs) `
-            -WorkingDirectory $WorkingDirectory -PassThru -NoNewWindow `
-            -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+        $null = $proc.Start()
+        $outTask = $proc.StandardOutput.ReadToEndAsync()
+        $errTask = $proc.StandardError.ReadToEndAsync()
         if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
-            try { $proc.Kill() } catch { }
+            try { $proc.Kill($true) } catch { }
             return @{ TimedOut = $true; ExitCode = -1; StdOut = ''; StdErr = '' }
         }
+        $stdout = ''; $stderr = ''
+        try { $stdout = $outTask.GetAwaiter().GetResult() } catch { $stdout = '' }
+        try { $stderr = $errTask.GetAwaiter().GetResult() } catch { $stderr = '' }
         return @{
             TimedOut = $false
             ExitCode = $proc.ExitCode
-            StdOut   = (Get-Content -LiteralPath $stdoutPath -Raw -ErrorAction SilentlyContinue) ?? ''
-            StdErr   = (Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue) ?? ''
+            StdOut   = ($stdout ?? '')
+            StdErr   = ($stderr ?? '')
         }
     }
     finally {
-        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        $proc.Dispose()
     }
 }
 
@@ -531,8 +552,27 @@ try {
         else {
             # Pass the resolved host so the provider can shape host-aware delivery (F-174 codex fix: codex
             # drops the oversized SessionStart additionalContext, so the provider hands codex a lean pointer).
-            # Harmless to inject providers that do not read --host-kind.
-            $commandArgs = @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind)
+            # Also pass the neutral event name as a CLEAN arg (--source-event): the --event-json payload gets
+            # mangled through Start-Process -ArgumentList, so a provider that wants the event name (the F-174
+            # handover, to label its trigger source) cannot reliably parse it from the JSON. Both are harmless
+            # to inject providers that do not read them.
+            $commandArgs = @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind, '--source-event', $Event)
+            # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event
+            # and pass it as a CLEAN arg (a plain path survives Start-Process -ArgumentList; the JSON does not),
+            # so the handover provider can capture the conversation tail. Field name varies (snake/camel);
+            # harmless to providers that ignore the arg. Fail-open.
+            if (-not [string]::IsNullOrWhiteSpace($rawEvent)) {
+                try {
+                    $evtObj = $rawEvent | ConvertFrom-Json -ErrorAction Stop
+                    $tpath = $null
+                    foreach ($k in @('transcript_path', 'transcriptPath')) {
+                        $pp = $evtObj.PSObject.Properties[$k]
+                        if ($pp -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $tpath = [string]$pp.Value; break }
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($tpath)) { $commandArgs += @('--transcript-path', $tpath) }
+                }
+                catch { $null = $_ }
+            }
         }
         if ($null -eq $commandArgs) { continue }
 
