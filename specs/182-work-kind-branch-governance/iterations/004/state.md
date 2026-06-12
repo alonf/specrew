@@ -6,8 +6,8 @@
 **Last Completed Task**: (none — plan + before-implement gate authored; awaiting the maintainer's go)
 **Tasks Remaining**: T401..T408 (all planned)
 **In Progress**: (none)
-**Baseline Ref**: (set at the before-implement boundary, after the origin/main sync)
-**Updated**: 2026-06-12T15:00:00Z
+**Baseline Ref**: 45415737
+**Updated**: 2026-06-12T15:10:00Z
 
 ## Execution Summary
 
