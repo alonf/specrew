@@ -28,6 +28,31 @@ function Get-BootstrapProjectRoot {
     return (Get-Location).Path
 }
 
+function Get-SpecrewContractDeliveryMode {
+    # T007/M1 (F-174 iter-10): the ONE seam deciding how the SessionStart launch contract reaches the agent -
+    # 'inline' (the full body in the directive) or 'pointer' (the agent reads .specrew/last-start-prompt.md).
+    # Default is BEHAVIOR-PRESERVING; flipping a host is a one-line change HERE.
+    #   claude  -> inline. SessionStart is delivered as PLAIN STDOUT (not additionalContext), so the documented
+    #              10,000-char additionalContext cap does NOT apply; claude also skims past a "read this file"
+    #              pointer (the iter-6 disproof), so it must be inline.
+    #   codex   -> pointer. ROLLOUT-PROVEN 2026-06-10 to silently DROP the oversized (~50KB) SessionStart
+    #              additionalContext; codex reads files, so the lean pointer lands.
+    #   copilot -> inline. UNVERIFIED drop. copilot/cursor deliver SessionStart via additionalContext /
+    #   cursor  -> inline. additional_context (the SAME mechanism codex drops), and the host research matrix
+    #              (specs/171-specrew-refocus/research-matrix.md) records a 10k cap only for CLAUDE's
+    #              additionalContext - NONE is documented for copilot/cursor. An oversized drop is SUSPECTED (same
+    #              mechanism) but UNPROVEN; copilot rendered in-band in the iter-8 dogfood. Behavior-preserving
+    #              default = inline. TO FLIP once confirmed on-host (both are in the dogfood loop): move the host
+    #              into the pointer arm below. Residual tracked in iteration-010 state + the T009 continuity docs.
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $HostKind)
+    switch ($HostKind) {
+        'codex'  { return 'pointer' }
+        default  { return 'inline' }   # claude / copilot / cursor / antigravity
+    }
+}
+
 function Format-BootstrapDirective {
     param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null)
     $d = $Result.directive
@@ -207,17 +232,9 @@ try {
     $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor -SpecrewVersion $specrewVersion
     $contractBody = if ($contractPath -and (Test-Path -LiteralPath $contractPath)) { Get-Content -LiteralPath $contractPath -Raw } else { '' }
 
-    # Host delivery policy (F-174 codex fix, 2026-06-10 - DELIVERY only; contract FRAMING unchanged):
-    #   claude         -> INLINE the full contract. Claude SKIPS a "read this file" pointer and self-orients
-    #                     past it (the iter-6 disproof), so the contract must be in-context.
-    #   codex          -> POINTER to the file. Codex silently DROPS the oversized (~50KB) SessionStart
-    #                     additionalContext (rollout-proven 2026-06-10: nothing surfaced, codex vibe-coded
-    #                     past every gate) AND it reads files - so hand it the lean read-the-file directive
-    #                     (Format-BootstrapDirective's else branch, which also says don't bypass gates /
-    #                     don't drive from raw Spec Kit).
-    #   copilot/cursor -> INLINE for now. UNVERIFIED on those hosts (different injection envelopes); left
-    #                     native pending an empirical test. Flip to the pointer here if they drop too.
-    $inlineContract = ($hostKind -ne 'codex')
+    # Host delivery policy (DELIVERY only; contract FRAMING unchanged). The per-host inline-vs-pointer rule +
+    # its rationale + the copilot/cursor UNVERIFIED-drop residual live in the ONE testable seam below (T007/M1).
+    $inlineContract = ((Get-SpecrewContractDeliveryMode -HostKind $hostKind) -eq 'inline')
     $directiveBody = if ($inlineContract) { $contractBody } else { '' }
 
     # F-174 T050 round-2: deterministic in-flight disk scan for the directive (the last-mile resume gap).

@@ -43,9 +43,16 @@ try {
     Assert-True (Test-Path -LiteralPath $promptFile) 'codex path STILL writes last-start-prompt.md (the pointer is alive)'
     Assert-True ($codex.Length -lt ($claude.Length / 2)) 'codex directive is dramatically smaller than claude inline'
 
-    # COPILOT: left native (inline) pending its own empirical test - only codex is a pointer today.
+    # COPILOT + CURSOR: behavior-preserving INLINE (T007/M1). Both deliver SessionStart via additionalContext /
+    # additional_context (the SAME envelope codex drops), but the host research matrix documents a size cap ONLY
+    # for claude's additionalContext - NONE for copilot/cursor - so an oversized drop is SUSPECTED but UNVERIFIED.
+    # The seam Get-SpecrewContractDeliveryMode keeps them inline by default; the flip is a one-line change there
+    # once confirmed on-host. This test LOCKS the current policy so a flip is deliberate, never accidental.
     $copilot = Invoke-Provider -HostKind 'copilot' -Root $tmp
-    Assert-True ($copilot -match 'BEGIN SPECREW LAUNCH CONTRACT') 'copilot remains INLINE (only codex is a pointer today)'
+    Assert-True ($copilot -match 'BEGIN SPECREW LAUNCH CONTRACT') 'copilot remains INLINE (oversized-drop UNVERIFIED; codex is the only proven pointer)'
+    $cursor = Invoke-Provider -HostKind 'cursor' -Root $tmp
+    Assert-True ($cursor -match 'BEGIN SPECREW LAUNCH CONTRACT') 'cursor remains INLINE (oversized-drop UNVERIFIED; codex is the only proven pointer)'
+    Assert-True ($cursor -match 'MANDATORY FIRST ACTION') 'cursor directive still leads with the mandatory banner'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
