@@ -16,6 +16,7 @@ composes-with:
   - 157  # Verdict-Menu Instruction-Text Capture
   - 165  # PreToolUse Render-Gate Hook
   - 167  # Post-Ship Proposal Amendment Discipline
+  - 188  # Host-Neutral Boundary Packet Enforcement
 audience: maintainers, Claude Code users, Crew agents
 ---
 
@@ -56,7 +57,9 @@ Add a Claude Code Stop hook that enforces, or at least one-turn-corrects, the
 human-visible Specrew boundary packet before Claude ends a boundary turn.
 
 The hook is Claude-only in v1. It must not affect Codex, Copilot, Cursor, or
-other hosts.
+other hosts. Proposal 188 owns the host-neutral enforcement architecture; this
+proposal remains the Claude adapter/slice because Claude Code exposes the
+`Stop` hook fields this design depends on.
 
 ### Primary mechanism: Stop hook
 
@@ -251,7 +254,8 @@ feasible.
 ## Out Of Scope
 
 - Replacing Proposal 155's typed boundary gate packet system.
-- Implementing a multi-host hook framework beyond Claude Code.
+- Implementing a multi-host hook framework beyond Claude Code. Proposal 188 owns
+  the cross-host packet-enforcement contract and degraded-mode model.
 - Changing lifecycle boundary authorization semantics.
 - Changing the verdict vocabulary.
 - Solving free-form instruction text capture; Proposal 157 owns that.
@@ -323,6 +327,7 @@ Knowledge used:
 - file:///C:/Dev/Specrew/proposals/157-verdict-menu-instruction-text-capture.md
 - file:///C:/Dev/Specrew/proposals/165-pretooluse-render-gate-hook.md
 - file:///C:/Dev/Specrew/proposals/167-post-ship-proposal-amendment-discipline.md
+- file:///C:/Dev/Specrew/proposals/188-host-neutral-boundary-packet-enforcement.md
 
 Knowledge used:
 
@@ -339,6 +344,8 @@ Knowledge used:
   workshop confirm menus.
 - Proposal 167 is why this is a new proposal instead of silently editing shipped
   or already-implemented proposal bodies.
+- Proposal 188 generalizes the mandatory boundary-packet rule across hosts; this
+  proposal remains the Claude-specific hard-enforcement adapter.
 
 ## Effort
 
@@ -376,3 +383,5 @@ ship the Stop hook first and defer the PreToolUse guard.
 - 2026-06-06: Created as a high-priority candidate after maintainer observed that
   Claude Code's MCQ path can omit Specrew's full boundary packet even though
   Codex follows the same Specrew instructions reliably.
+- 2026-06-12: Related to Proposal 188 as the Claude-specific hard-enforcement
+  slice under the host-neutral packet-enforcement umbrella.
