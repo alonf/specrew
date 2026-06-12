@@ -52,15 +52,24 @@
     (120KB captured intact, 3.2s — no truncation/deadlock on the primitive EVERY provider uses).
   - **F1 (deploy)** — the live `.specify/` dispatcher + catalog are stale and the per-host hook configs lack
     the F-174 stop/handover events; refreshed at deploy time (separate step, surfaced to the maintainer).
-- **Proposal-145 structured self-review** (6 phases + adversarial falsification, 12 agents): 5/6 phases PASS;
-  P3's "blocking" UTF-8 finding was a FALSE POSITIVE the falsifier killed empirically. P2 returned a real
-  finding the prior tests missed -> FIXED:
+- **Proposal-145 structured self-review** (6 phases + adversarial falsification, 12 agents): surfaced TWO real
+  bugs the prior tests missed (P2 + P3), both FIXED. (Process honesty: the falsifier WRONGLY refuted P3's UTF-8
+  finding as a false positive; an added Hebrew/emoji round-trip assertion EMPIRICALLY proved the corruption is
+  real - the reviewer was right, the falsifier wrong. Trust the executable evidence, not the panel verdict.)
   - **P2 (functional)** — `Write-SpecrewHandoverContext`'s F2 preserve lacked the boundary gate its sibling
     `Write-SpecrewRollingHandover` has: an agent authoring a PARTIAL packet at a NEW boundary would resurrect a
     prior-boundary ERA-scoped narrative mechanical (stale "Context"/"What I just did" leak). Now boundary-gated
     via a new `Get-SpecrewHandoverTimeScopedSections` helper — narrative mechanicals reset on a boundary change;
     the TIME-scoped 'Recent conversation' tail still carries across (cross-session continuity). New
     cross-boundary assertions in `HandoverConversationPreserve.Tests.ps1`.
+  - **P3 (NFR/encoding)** — REAL non-ASCII corruption (pre-existing; T002 makes it bite): the bootstrap provider
+    INLINES the captured handover (incl. 'Recent conversation' — Hebrew/emoji/unicode dialogue) into its
+    SessionStart stdout; the child pwsh's default OEM console codepage mangled it to '?' before capture, and the
+    dispatcher re-mangled its own stdout to the host. Fixed across all three legs: every emitter (the 3 providers
+    + the dispatcher) now declares `[Console]::OutputEncoding = UTF8` (marker `SPECREW-UTF8-OUTPUT`) and the
+    dispatcher reads UTF-8 (`StandardOutputEncoding`). Proven end-to-end by a Hebrew+emoji round-trip assertion in
+    `DispatcherLargeStdout`; a `ProviderMirrorParity` contract guard pins the declaration on all four emitters.
+    HIGH relevance — the maintainer is Hebrew-speaking.
   - **P6/P4 (robustness)** — `Invoke-ProviderProcess`'s success-path async drain is now BOUNDED (5s) so a
     provider that leaves a grandchild holding stdout can't hang the hook; a stuck stream degrades to partial
     output + a loud WARN (the documented fail-quiet-but-loud-once doctrine) instead of silent empty.

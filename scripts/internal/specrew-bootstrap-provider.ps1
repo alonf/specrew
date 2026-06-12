@@ -10,6 +10,13 @@
 
 $ErrorActionPreference = 'Stop'
 
+# SPECREW-UTF8-OUTPUT (F-174 iter-10, Prop-145 P3): declare UTF-8 stdout/stderr so non-ASCII provider output -
+# notably the handover content this provider INLINES into the SessionStart directive (Hebrew/emoji/unicode
+# dialogue captured into 'Recent conversation') - is not mangled to '?' by the child pwsh's default OEM console
+# codepage when the dispatcher captures it. The dispatcher reads UTF-8 (ProcessStartInfo.StandardOutputEncoding);
+# this is the child half of that contract. Fail-open.
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
+
 function Get-BootstrapProjectRoot {
     $c = (Get-Location).Path
     while (-not [string]::IsNullOrWhiteSpace($c)) {

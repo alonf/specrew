@@ -83,4 +83,13 @@ $storeText = (Get-Content -LiteralPath (Join-Path $PSScriptRoot '../../scripts/i
 Assert-True ($storeText -match 'function Update-SpecrewRollingHandover') 'core orchestrator Update-SpecrewRollingHandover lives in HandoverStore (the single save path)'
 Assert-True ($storeText -match 'HOLLOW_HANDOVER') 'the core carries the hollow detection (moved from the provider)'
 
+# F-174 iter-10 (Prop-145 P3): every provider the dispatcher launches + captures MUST declare UTF-8 output (the
+# CHILD half of the round-trip; the dispatcher reads UTF-8 via StandardOutputEncoding). Without it the child's
+# default OEM console codepage mangles non-ASCII (inlined handover dialogue / WARNs under a non-Latin home) to
+# '?'. Guard the declaration so the fix cannot silently regress.
+foreach ($pv in @('specrew-bootstrap-provider.ps1', 'specrew-handover-provider.ps1', 'refocus.ps1', 'specrew-hook-dispatcher.ps1')) {
+    $pvText = (Get-Content -LiteralPath (Join-Path $extDir $pv) -Raw)
+    Assert-True (($pvText -match 'SPECREW-UTF8-OUTPUT') -and ($pvText -match '\[Console\]::OutputEncoding')) "$pv declares UTF-8 output (Prop-145 P3 non-ASCII capture fix)"
+}
+
 Write-Host "`n=== ProviderMirrorParity.Tests.ps1: all full-copy provider mirrors in sync ===" -ForegroundColor Green

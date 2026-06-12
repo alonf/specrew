@@ -14,6 +14,12 @@
 
 $ErrorActionPreference = 'Stop'
 
+# SPECREW-UTF8-OUTPUT (F-174 iter-10, Prop-145 P3): declare UTF-8 stdout/stderr so non-ASCII output (e.g. a
+# transcript/path WARN under a non-Latin home) is not mangled to '?' by the child pwsh's default OEM console
+# codepage when the dispatcher captures it. The dispatcher reads UTF-8 (ProcessStartInfo.StandardOutputEncoding);
+# this is the child half of that contract. Fail-open.
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
+
 function Get-HandoverProjectRoot {
     $c = (Get-Location).Path
     while (-not [string]::IsNullOrWhiteSpace($c)) {

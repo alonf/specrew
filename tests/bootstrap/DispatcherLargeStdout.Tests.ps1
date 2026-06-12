@@ -26,11 +26,19 @@ try {
     } | ConvertTo-Json -Depth 6
     Set-Content -LiteralPath (Join-Path $proj '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
 
-    # Stub: emit CANARY-START, ~120KB of filler (well past any single pipe buffer ~4-64KB), then CANARY-END as
-    # the LAST bytes. If the async reader truncates at a buffer boundary, CANARY-END is the first thing lost.
+    # Stub: emit CANARY-START, a NON-ASCII canary (Hebrew RTL + a supplementary-plane emoji, built from code
+    # points so the stub file's own encoding can't confound it), ~120KB of filler (well past any single pipe
+    # buffer ~4-64KB), then CANARY-END as the LAST bytes. If the async reader truncates at a buffer boundary,
+    # CANARY-END is the first thing lost; if StandardOutputEncoding=UTF8 is wrong, the non-ASCII canary corrupts.
+    # The stub declares UTF-8 output, mirroring the real providers' SPECREW-UTF8-OUTPUT contract (the child half
+    # of the UTF-8 round-trip; the dispatcher reads UTF-8 via StandardOutputEncoding). Without BOTH halves a
+    # non-ASCII byte is mangled to '?' - this test pins the dispatcher's read half against a conformant provider.
     $stub = @'
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
 $big = 'X' * 120000
-[Console]::Out.Write("CANARY-START`n" + $big + "`nCANARY-END")
+$heb = [string][char]0x05E9 + [char]0x05DC + [char]0x05D5 + [char]0x05DD  # Hebrew "shalom" (RTL)
+$emoji = [System.Char]::ConvertFromUtf32(0x1F680)                        # rocket (surrogate pair)
+[Console]::Out.Write("CANARY-START`nNONASCII[" + $heb + $emoji + "]`n" + $big + "`nCANARY-END")
 exit 0
 '@
     Set-Content -LiteralPath (Join-Path $scriptsDir 'big-stub.ps1') -Value $stub -Encoding UTF8
@@ -48,10 +56,16 @@ exit 0
     $sw.Stop()
 
     Assert-True ($p.ExitCode -eq 0) 'dispatcher exits 0 on a large-stdout provider'
-    $captured = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue) ?? ''
+    $captured = (Get-Content -LiteralPath $outFile -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) ?? ''
     Assert-True ($captured.Contains('CANARY-START')) 'large-stdout: the START of the payload is captured'
     Assert-True ($captured.Contains('CANARY-END')) 'large-stdout: NO TRUNCATION - the END canary past the 100KB mark survived the async read'
     Assert-True ($captured.Length -ge 120000) ("large-stdout: full payload length preserved (got {0} bytes)" -f $captured.Length)
+    # UTF-8 round-trip (Prop-145 P3 / RTL scar tissue): the non-ASCII canary survives the ProcessStartInfo
+    # StandardOutputEncoding=UTF8 read. Reconstruct the expected runes from code points (test-file-encoding-proof).
+    $expectHeb = [string][char]0x05E9 + [char]0x05DC + [char]0x05D5 + [char]0x05DD
+    $expectEmoji = [System.Char]::ConvertFromUtf32(0x1F680)
+    Assert-True ($captured.Contains($expectHeb)) 'utf8: Hebrew (non-ASCII / RTL) round-trips through StandardOutputEncoding=UTF8 intact'
+    Assert-True ($captured.Contains($expectEmoji)) 'utf8: a supplementary-plane emoji (surrogate pair) round-trips intact'
     # NO DEADLOCK: a clean async-read completes in ~the process-launch cost; a deadlocked pipe waits out the
     # full 20s provider timeout + Kill. 15s cleanly separates the two even under moderate load.
     Assert-True ($sw.Elapsed.TotalSeconds -lt 15) ("large-stdout: returned fast - no pipe deadlock ({0:N1}s, well under the 20s timeout)" -f $sw.Elapsed.TotalSeconds)

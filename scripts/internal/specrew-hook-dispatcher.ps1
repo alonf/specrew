@@ -34,6 +34,13 @@ if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) { exit 0 }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# SPECREW-UTF8-OUTPUT (F-174 iter-10, Prop-145 P3): the dispatcher is the FINAL emitter to the host - it writes
+# the merged provider output (which inlines handover dialogue that may be Hebrew/emoji/unicode) to its own
+# stdout. Declare UTF-8 so the host (and the provider->dispatcher capture is the other half) receives the
+# non-ASCII intact rather than '?' from the child's default OEM console codepage. Fail-open; after the kill
+# switch so the switch always wins first.
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
+
 $script:Banner = '[specrew-refocus]'
 
 function Write-DispatcherWarn {
