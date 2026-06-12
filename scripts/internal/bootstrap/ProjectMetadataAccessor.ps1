@@ -161,6 +161,48 @@ function Get-SpecrewWorkshopProgress {
     }
 }
 
+function Test-SpecrewIsGitRepoRoot {
+    # F-174 iter-10 (Prop-145 round-6, HIGH): is $ProjectRoot the TOP-LEVEL of its own git repo (or a worktree
+    # root)? `git rev-parse --show-prefix` answers in O(repo-depth), NOT O(tree): empty output + exit 0 ==
+    # $ProjectRoot IS the top-level (a linked worktree root also returns empty -> passes); a NON-empty prefix ==
+    # $ProjectRoot sits BELOW some repo's root (nested); a non-zero exit == not a git repo at all. Why this and
+    # not `--show-toplevel` + a path-compare: the toplevel path comes back in git's casing/slash form and a temp
+    # root under an 8.3-short HOME ($env:TEMP = C:\Users\ALON~1.HOM) never string-equals git's C:\Users\alon.HOME
+    # -> a false "nested" on the developer's own machine. --show-prefix sidesteps all path normalization. The
+    # gate exists so Get-SpecrewSessionDelta never runs `git status` against a PARENT repo it merely lives inside
+    # (e.g. a non-repo project root under a HOME that is itself a worktree) - that scan walks the WHOLE parent
+    # tree and can hang the hook. Fail-safe: any error -> $false (treat as "not a clean repo root", skip the scan).
+    [CmdletBinding()]
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string] $ProjectRoot)
+    try {
+        $prefix = (& git -C $ProjectRoot rev-parse --show-prefix 2>$null)
+        return (($LASTEXITCODE -eq 0) -and [string]::IsNullOrEmpty(([string]$prefix).Trim()))
+    }
+    catch { return $false }
+}
+
+function Get-SpecrewEmptySessionDelta {
+    # The empty/zero delta shape Get-SpecrewSessionDelta returns when there is no git scan to run (not a repo
+    # root). Single source of truth so the gate and the happy path can never drift in shape.
+    [OutputType([pscustomobject])]
+    param()
+    [pscustomobject]@{
+        branch                = ''
+        head_short            = ''
+        head_subject          = ''
+        uncommitted_count     = 0
+        uncommitted_files     = @()
+        uncommitted_truncated = $false
+        has_uncommitted       = $false
+        user_file_count       = 0
+        user_files            = @()
+        managed_file_count    = 0
+        new_commits           = @()
+        new_commit_count      = 0
+    }
+}
+
 function Get-SpecrewSessionDelta {
     # F-174 iter-9: the git/filesystem delta the Stop hook captures as the rolling handover's MECHANICAL
     # body - host-universal, needs NO transcript and NO agent cooperation (the iter-8 dogfood proved the
@@ -175,6 +217,12 @@ function Get-SpecrewSessionDelta {
         [Parameter()][int] $MaxFiles = 12,
         [Parameter()][int] $MaxCommits = 8
     )
+    # Prop-145 round-6 (HIGH): gate the scan on "$ProjectRoot is its own repo root". When it is NOT (a non-repo
+    # project root that merely sits under a parent git repo / worktree), `git status --untracked-files=all`
+    # would scan the entire PARENT tree - unbounded, hangs the hook, and reports the parent's files as this
+    # project's delta. Returning the empty shape here is the same fail-safe degrade as any git error.
+    if (-not (Test-SpecrewIsGitRepoRoot -ProjectRoot $ProjectRoot)) { return Get-SpecrewEmptySessionDelta }
+
     $branch = ''; $headShort = ''; $headSubject = ''
     try { $branch = ([string](& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $null = $_ }
     try { $headShort = ([string](& git -C $ProjectRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ }

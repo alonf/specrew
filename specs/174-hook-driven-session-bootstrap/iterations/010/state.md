@@ -97,11 +97,39 @@
   - LOW: annotated the remaining empty catch in the large-stdout test stub.
   - T009 doc note (carry): with PostToolUse staying git-gated, "last capture = last PostToolUse, seconds" holds
     only for file-editing turns; pure-analysis turns capture at Stop. Soften that doc claim.
+- **Proposal-145 round-6** (third external review; both reproduced) — one HIGH (test-integrity + perf) + one
+  MEDIUM (resume-truth):
+  - **HIGH (parent-repo scan / hang)** — `Get-SpecrewSessionDelta` ran `git status --untracked-files=all` with
+    NO check that `$ProjectRoot` is its OWN repo root. When it is not (a non-repo project root that merely sits
+    under a parent git repo / worktree - exactly the temp dir the test fixture used, since `$env:TEMP` lives
+    under a HOME that is itself a worktree), git scans the WHOLE parent tree: unbounded (the reviewer's hook hung
+    twice) AND it reports the parent's files as this project's delta. `try/catch` does not bound a hung external
+    process - the only safe fix is to not START the scan. Added `Test-SpecrewIsGitRepoRoot` (`git rev-parse
+    --show-prefix`: empty + exit 0 == top-level OR worktree root; non-empty == nested; non-zero == not a repo -
+    O(repo-depth), and immune to the 8.3-short-path/casing landmine that sinks a `--show-toplevel` path-compare,
+    e.g. `C:\Users\ALON~1.HOM` vs git's `C:\Users\alon.HOME`). `Get-SpecrewSessionDelta` now returns the canonical
+    empty shape (new `Get-SpecrewEmptySessionDelta`, single source of truth) when not a repo root. Also git-init'd
+    the `SessionBootstrapManager.Tests.ps1` fixture so it is hermetic (its own root, bounded scan) instead of
+    leaning on the parent. `SessionDeltaRepoRootGate.Tests.ps1` (repo-root + worktree-root pass; nested -> empty
+    delta + the parent's uncommitted file provably NOT scanned; positive branch still scans).
+  - **MEDIUM (stale handover drove resume snapshot)** — `Invoke-SpecrewSessionBootstrap` passed the RAW parsed
+    handover into `Get-SpecrewResumeReconciliation` even when `Test-SpecrewHandoverValidity` said invalid, so the
+    directive emitted "Last captured stop: <old ts> (boundary <old>)" off a STALE snapshot (violating "invalid
+    state is never authoritative resume truth"), AND the stale reason was never surfaced. Fix: pass the handover
+    to reconciliation ONLY when valid (the current git delta is still computed from `$null`, so the agent still
+    gets the REAL tree - just no stale-snapshot anchor); add the invalid-handover findings (the `Test-...Validity`
+    findings, named: "older than the freshness window: ...") to `validation_findings`. `Test-...Validity` now has
+    its full `{valid; reason; findings}` result captured (was `.valid` only). `StaleHandoverNoResumeSnapshot.Tests.ps1`
+    (stale -> no "Last captured stop", stale ts absent, reason surfaced; fresh control -> snapshot intact, no
+    regression). No mirror/`.specify` redeploy: both files are MODULE-internal components (loaded from
+    `scripts/internal/bootstrap/` by the provider's 3-tier resolver), not provider-mirror artifacts.
 - **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (9) +
-  ConversationOnlyCapture (12) + DispatcherLargeEvent (8) +
+  ConversationOnlyCapture (12) + DispatcherLargeEvent (8) + SessionDeltaRepoRootGate (11, round-6) +
+  StaleHandoverNoResumeSnapshot (13, round-6) +
   DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
-  (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, Concurrency, Regression,
-  HostEventAdapter, PerHost) all green; the 3 subprocess-heavy suites (BootstrapProvider, AgentAuthoredHandover,
+  (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, CoordinatorResumeReconciliation,
+  ProjectMetadataAccessor, SessionBootstrapManager, Concurrency, Regression, HostEventAdapter, PerHost) — a 28-suite
+  sweep all green; the 3 subprocess-heavy suites (BootstrapProvider, AgentAuthoredHandover,
   HostDeliveryPolicy) stay load-bound (their change-relevant assertions pass; none touch the new primitive's
   hot path — HostDeliveryPolicy invokes the provider directly, not via `Invoke-ProviderProcess`).
 - **Carry-forward**: T006 has a down-payment (the two new test files) but stays OPEN for its hard-kill

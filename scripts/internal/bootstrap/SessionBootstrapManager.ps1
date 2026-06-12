@@ -40,10 +40,23 @@ function Invoke-SpecrewSessionBootstrap {
     # primary resume signal, read + validated before the anchor decides the mode.
     $handoverValid = $false
     $handover = $null
+    $handoverInvalidFindings = @()
     try {
         $handover = Get-SpecrewRollingHandover -HandoverDir (Join-Path $ProjectRoot '.specrew/handover') -NowUtc $NowUtc
         if ($null -ne $handover) {
-            $handoverValid = [bool](Test-SpecrewHandoverValidity -Handover $handover -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch).valid
+            $hv = Test-SpecrewHandoverValidity -Handover $handover -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch
+            $handoverValid = [bool]$hv.valid
+            # Prop-145 round-6 (MEDIUM): a present-but-INVALID handover (stale / wrong-branch / malformed) is
+            # NOT authoritative resume truth - capture WHY so the directive surfaces it (and so the stale
+            # snapshot below is never passed to reconciliation). The findings name the reason (e.g. "handover
+            # older than the freshness window: ...").
+            if (-not $handoverValid) {
+                $handoverInvalidFindings = @(@($hv.findings) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                if ($handoverInvalidFindings.Count -eq 0) {
+                    $r = if ($hv.reason) { [string]$hv.reason } else { 'invalid' }
+                    $handoverInvalidFindings = @("ignored a present-but-invalid handover ($r); resuming from anchor/current state, not the stale snapshot")
+                }
+            }
         }
     }
     catch { $handoverValid = $false }
@@ -64,8 +77,12 @@ function Invoke-SpecrewSessionBootstrap {
 
     # F-174 iter-10 (T001): re-compute the CURRENT delta on resume so the agent gets the ACTUAL tree (not the
     # stale snapshot) + a directive to read what changed since the last stop. SHARED with `specrew start` (T008).
+    # Prop-145 round-6 (MEDIUM): pass the handover ONLY when it is VALID - an invalid (stale/wrong-branch)
+    # handover must not seed "Last captured stop: <old timestamp>" into the resume directive (the current git
+    # delta is still computed from $null, so the agent gets the REAL tree without a stale-snapshot anchor).
+    $reconciliationHandover = if ($handoverValid) { $handover } else { $null }
     $reconciliation = $null
-    try { $reconciliation = Get-SpecrewResumeReconciliation -ProjectRoot $ProjectRoot -Handover $handover } catch { $reconciliation = $null }
+    try { $reconciliation = Get-SpecrewResumeReconciliation -ProjectRoot $ProjectRoot -Handover $reconciliationHandover } catch { $reconciliation = $null }
 
     $mode = Resolve-SpecrewBootstrapMode -AnchorValid $validity.valid -AnchorClearedReason $validity.cleared_reason -HandoverValid $handoverValid
 
@@ -86,6 +103,7 @@ function Invoke-SpecrewSessionBootstrap {
     catch { $null = $_ }
 
     $allFindings = @($validity.findings)
+    if ($handoverInvalidFindings.Count -gt 0) { $allFindings += $handoverInvalidFindings }
     if ($concurrent) { $allFindings += 'advisory: another session may be active in this worktree (marker within 1h)' }
 
     $directive = New-SpecrewBootstrapDirective `

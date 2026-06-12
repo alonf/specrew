@@ -30,6 +30,12 @@ function New-StateFile {
 $evt = '{"session_id":"sess-1","source":"startup","hook_event_name":"SessionStart"}'
 $root = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t007-" + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path (Join-Path $root 'specs/feat-x') -Force | Out-Null
+# Prop-145 round-6 (HIGH): git-init the fixture so it is its OWN repo root. The temp dir lives under a HOME
+# that is itself a git worktree, so without this `git status --untracked-files=all` (inside Get-SpecrewSessionDelta)
+# would scan the WHOLE parent tree - the unbounded hang the reviewer hit. As its own repo root the scan is
+# bounded to this tiny fixture, AND Test-SpecrewIsGitRepoRoot's positive branch (gate passes) is exercised.
+& git -C $root init -q 2>$null | Out-Null
+& git -C $root -c user.email='t@t' -c user.name='t' commit -q --allow-empty -m init 2>$null | Out-Null
 try {
     # No anchor -> full bootstrap, render-first directive, dedupe key from session id.
     $r1 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json')
