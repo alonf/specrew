@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T305 (runtime/script wave complete: G5 opt-in reviewer + tests + mirror sync)
-**Tasks Remaining**: T306, T307, T308
-**In Progress**: T306
+**Last Completed Task**: T308 (verification wave complete: SC-008 sweep + SC-013 + own-flow)
+**Tasks Remaining**: (none — T301..T308 complete; ready for the formal review boundary)
+**In Progress**: (none)
 **Baseline Ref**: 6d22dc85
-**Updated**: 2026-06-12T03:40:00Z
+**Updated**: 2026-06-12T04:00:00Z
 
 ## Execution Summary
 

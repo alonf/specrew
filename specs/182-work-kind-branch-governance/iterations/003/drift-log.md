@@ -9,9 +9,9 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 100% (2/2 resolved)
-**Specification drift**: None (both are plan-assumption-vs-reality reconciliations, not spec drift)
+**Total drift events**: 3
+**Resolution rate**: 100% (3/3 resolved)
+**Specification drift**: None (all three are plan/inventory-vs-reality reconciliations, not spec drift)
 
 ## Events
 
@@ -39,11 +39,23 @@
   scope). NOT hand-edited (honors the maintainer's "do not hand-edit .specify" rule). The Iteration-3
   SC-008 sweep (T306) excludes `.specify/` consistently. Mirror parity is restored at deploy.
 
+### D-303 — `proposal-discipline.md` carried a `gh pr create` mandate the audit missed
+
+- **Requirement**: FR-019 / SC-008 (T306).
+- **Observed**: The Iteration-1 coupling inventory AND the planning-time sweep both missed
+  `docs/methodology/proposal-discipline.md` step 11 ("open a PR (`gh pr create`)") — a downstream-governing
+  methodology doc with a forge mandate. The T306 SC-008 sweep CAUGHT it (the sweep doing its job).
+- **Resolution**: `implementation-reverted` (neutralized in place). Genericized to "open a PR/MR via your
+  forge (the provider adapter describes how)"; the `gh pr create` token removed; the now-formalized
+  Proposal-182 reference updated. In scope per the maintainer's "docs where they govern downstream
+  projects"; recorded as a delta in the neutralization inventory (D2), not silently folded in.
+
 ### Resolution Strategies
 
 - **spec-updated**: Update the plan to reflect the implementation reality (D-301).
 - **deferred**: Park with the correct downstream owner / deploy step (D-302).
-- **implementation-reverted** / **human-decision**: available, unused this iteration.
+- **implementation-reverted**: Neutralize a sweep-caught surface in place (D-303).
+- **human-decision**: available, unused this iteration.
 
 ### Notes
 

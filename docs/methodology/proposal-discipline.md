@@ -145,7 +145,7 @@ Step-by-step (this sequence is enforced; deviations are reject-worthy):
 8. **Use a docs-only branch — `main` is protected** — `main` now requires pull requests (see [Proposal 182](../../proposals/182-work-kind-branch-governance.md)); never direct-push. Create a short-lived branch off `main` (e.g. `git switch -c docs/proposals-<slug>`). Proposals must never be mixed into a software-feature branch (real F-020 incident: proposals on a feature branch caused closeout PR stray-disposition)
 9. **Use the worktree pattern if a feature branch is checked out** — `git worktree add <path>` a fresh checkout for the docs-only branch so you don't disturb the feature-branch working tree; edit + commit there
 10. **Commit with clear message** — pattern: `chore(proposals): draft NNN-<slug>` (or `docs:`); include rationale + composition notes in body
-11. **Push the branch and open a PR** — push the docs-only branch to origin and open a PR (`gh pr create`); merge after checks. Until Proposal 182 formalizes work kinds, treat this as a docs-only PR
+11. **Push the branch and open a PR/MR** — push the docs-only branch to your forge and open a PR/MR (the provider adapter describes how); merge after checks. Per Proposal 182's work-kind model, treat this as a **docs-only** work item
 
 ## Updating an Existing Proposal
 
