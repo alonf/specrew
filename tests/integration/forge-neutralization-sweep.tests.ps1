@@ -18,13 +18,18 @@ function Write-Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor R
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 
-# --- mandate tokens: a bare instruction to use GitHub/PSGallery as THE downstream flow ---
+# --- mandate tokens: a bare instruction to use GitHub/a specific registry as THE downstream flow ---
 # Generic forge mandates (gh pr ...) could wrongly transfer to ANY downstream project -> require a
-# SECTION-level labeled example. Specrew-self-publish tokens literally name the `Specrew` module
-# (inherently Specrew-self-referential; a downstream project never installs "Specrew" as its own
-# deliverable) -> a FILE-level example marker suffices.
+# SECTION-level labeled example. Specrew-self-publish + package-registry tokens either literally name
+# the `Specrew` module (inherently Specrew-self-referential; a downstream project never installs
+# "Specrew") or name a SPECIFIC package registry as Specrew's OWN distribution channel (PSGallery /
+# PowerShell Gallery — a downstream project on a different stack would not publish there) -> a
+# FILE-level example marker suffices. (Registry names recur across many sections of Specrew's own
+# release docs; a per-section marker is neither expected nor authored. iter-3 D-304: the registry-name
+# class widens the original 4-token set after the SC-008 broad-verification sweep found a `PSGallery`
+# heading-descriptor the narrow set missed in two downstream-governing methodology index docs.)
 $forgeMandates  = @('gh pr create', 'gh pr merge')
-$specrewPublish = @('Find-Module Specrew', 'Install-Module Specrew')
+$specrewPublish = @('Find-Module Specrew', 'Install-Module Specrew', 'PSGallery', 'powershellgallery', 'PowerShell Gallery')
 $exampleMarker = 'not a downstream mandate'   # case-insensitive
 
 # --- the downstream-governing markdown surfaces to sweep ---
@@ -41,6 +46,7 @@ $surfaceRoots = @(
 #     host adapter + Specrew's own infra + audit/quote docs + deploy mirror + seed histories.
 $allowListSubstrings = @(
     '/skills/specrew-version/',          # own-infra: Specrew's own version-check skill
+    '/skills/specrew-update/',           # own-infra: Specrew's own update skill (PSGallery version-available check)
     'deploy-speckit-extension.ps1',      # own-infra: Specrew's own installer
     '/agents/',                          # seed histories under squad-templates/agents/*/history.md (charters swept separately, clean)
     '.specify/', '.squad/', '.specrew/', 'node_modules/'
@@ -84,10 +90,10 @@ foreach ($root in $surfaceRoots) {
         $fileHasMarker = ($content -match "(?i)$([regex]::Escape($exampleMarker))")
         if ($fileHasMarker) { $markerFilesSeen.Add($rel) | Out-Null }
 
-        # Specrew-self-publish tokens (Find/Install-Module Specrew): a FILE-level example marker suffices.
+        # Specrew-self-publish + package-registry tokens: a FILE-level example marker suffices.
         foreach ($p in $specrewPublish) {
             if ($content -match [regex]::Escape($p) -and -not $fileHasMarker) {
-                $violations.Add(("{0}: Specrew-publish token '{1}' appears with no file-level '{2}' example label" -f $rel, $p, $exampleMarker)) | Out-Null
+                $violations.Add(("{0}: Specrew-publish/registry token '{1}' appears with no file-level '{2}' example label" -f $rel, $p, $exampleMarker)) | Out-Null
             }
         }
         # Generic forge mandates (gh pr ...): require a SECTION-level example marker.
@@ -125,10 +131,27 @@ foreach ($m in $mustCarryMarker) {
 }
 Write-Pass ("SC-008 sweep: all {0} neutralized change-surfaces carry the labeled non-mandatory example." -f $mustCarryMarker.Count)
 
+# --- D-304 completion: the two methodology INDEX docs neutralized by REMOVAL (no labeled example —
+#     they merely described lifecycle-discipline.md's release section). Assert they carry no
+#     registry-name descriptor, proving the broad-verification residual is closed + regression-guarded. ---
+$mustBeRegistryClean = @(
+    'docs/methodology/README.md',
+    'docs/methodology/review-instructions.md'
+)
+foreach ($m in $mustBeRegistryClean) {
+    $body = Get-Content -LiteralPath (Join-Path $repoRoot $m) -Raw -Encoding UTF8
+    foreach ($p in @('PSGallery', 'powershellgallery', 'PowerShell Gallery')) {
+        if ($body -match [regex]::Escape($p)) {
+            Write-Fail "$m must carry NO registry-name descriptor ('$p' found) — it is a downstream-governing index doc with no example label (iter-3 D-304 / T303+T306 completion)"
+        }
+    }
+}
+Write-Pass ("SC-008 sweep: the {0} methodology index docs carry no registry-name descriptor (D-304 residual closed)." -f $mustBeRegistryClean.Count)
+
 # --- the host adapter + own-infra are NOT swept here (they legitimately use GitHub) — assert the
 #     allowlist is inventory-backed (the inventory file enumerates the same exclusions) ---
 $inv = Get-Content -LiteralPath (Join-Path $repoRoot 'specs/182-work-kind-branch-governance/iterations/003/neutralization-inventory.md') -Raw -Encoding UTF8
-foreach ($needle in @('specrew-version', 'deploy-speckit-extension.ps1', 'templates/github')) {
+foreach ($needle in @('specrew-version', 'specrew-update', 'deploy-speckit-extension.ps1', 'templates/github')) {
     if ($inv -notmatch [regex]::Escape($needle)) {
         Write-Fail "SC-008 allowlist drift: '$needle' is exempt in the sweep but not recorded in the neutralization inventory"
     }

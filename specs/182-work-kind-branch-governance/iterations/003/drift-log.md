@@ -9,9 +9,9 @@
 
 ## Summary
 
-**Total drift events**: 3
-**Resolution rate**: 100% (3/3 resolved)
-**Specification drift**: None (all three are plan/inventory-vs-reality reconciliations, not spec drift)
+**Total drift events**: 4
+**Resolution rate**: 100% (4/4 resolved)
+**Specification drift**: None (all four are plan/inventory-vs-reality reconciliations, not spec drift)
 
 ## Events
 
@@ -54,15 +54,38 @@
   forge (the provider adapter describes how)"; the `gh pr create` token removed; the now-formalized
   Proposal-182 reference updated. In scope per the maintainer's "docs where they govern downstream
   projects"; recorded as a delta in the neutralization inventory (D2), not silently folded in.
+  **Maintainer-ratified at the review boundary** (keep as inheritable methodology, not Specrew-only
+  infra; the generic PR/MR wording is correct for this feature).
+
+### D-304 — two methodology index docs named `PSGallery` as a descriptor; the narrow sweep missed it
+
+- **Requirement**: FR-019 / SC-008 (T303 + T306).
+- **Observed**: The post-implementation SC-008 **broad-verification** sweep (the manual forge-token grep
+  run to verify the criterion rather than just the self-test) found `PSGallery` named as a heading-descriptor
+  of `lifecycle-discipline.md`'s Release Process Discipline section in two downstream-governing methodology
+  INDEX docs — `docs/methodology/README.md` (lines 9, 19) and `docs/methodology/review-instructions.md`
+  (line 18) — with NO example label. The shipped T306 sweep MISSED it: its token set was the four mandate
+  tokens (`gh pr create/merge`, `Find/Install-Module Specrew`); `PSGallery` was not among them. This is a
+  gate-coverage directional blind spot (review-signoff discipline Rule 6: a gate must cover what its spec
+  claims, both directions). The iter-1 inventory had even inspected `review-instructions.md` and recorded it
+  "already neutral", missing the descriptor (Section D correction).
+- **Resolution**: `implementation-reverted` (neutralized in place + guard widened). The registry-name
+  descriptors were genericized to `package-registry` / `prerelease-vs-stable` (the index now points at the
+  already-labeled section neutrally). The T306 sweep's token set was **widened** to add the registry-name
+  class (`PSGallery` / `powershellgallery` / `PowerShell Gallery`) at the file-level marker tier so the class
+  is regression-guarded, with `specrew-update` allowlisted as own-infra (it legitimately names PSGallery as
+  where the Specrew module itself lives). A focused positive assertion proves both index docs are now
+  registry-clean. Maintainer-directed at the review boundary as a small T303/T306 completion fix; recorded as
+  inventory delta D3.
 
 ### Resolution Strategies
 
 - **spec-updated**: Update the plan/mirror to reflect the implementation reality (D-301, D-302).
-- **implementation-reverted**: Neutralize a sweep-caught surface in place (D-303).
+- **implementation-reverted**: Neutralize a sweep-caught surface in place + guard it (D-303, D-304).
 - **deferred**: available, unused this iteration.
 - **human-decision**: available, unused this iteration.
 
 ### Notes
 
-- Neither event is specification drift (spec ↔ implementation never diverged); both are
-  plan-assumption reconciliations recorded so the descoped/deferred detail stays reviewable.
+- No event is specification drift (spec ↔ implementation never diverged); all four are
+  plan/inventory-assumption reconciliations recorded so the descoped/deferred detail stays reviewable.
