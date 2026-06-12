@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T003 — workshop-phase + authorized-gate handover frontmatter (surfacing + reader + preserve/clear)
-**Tasks Remaining**: T004, T005, T006, T007, T009
-**In Progress**: (none — T004 `from_host` fix is next)
+**Last Completed Task**: T004 — `from_host` host-resolution fix (live env-signal detection) + codex double-fire hardening (dogfood finding)
+**Tasks Remaining**: T005, T006, T007, T009
+**In Progress**: (none)
 **Baseline Ref**: iteration-009 HEAD (`e4822428`)
-**Updated**: 2026-06-12T13:00:00Z
+**Updated**: 2026-06-13T00:00:00Z
 
 ## Execution Summary
 
@@ -152,19 +152,53 @@
     with no conflict. The ONE conflict surface is `specrew-start.ps1`: F-174 DELETED the launch-prompt block that
     F-182 neutralized in place (~L2590) -> a delete-vs-modify conflict, resolve in favor of F-174's deletion (the
     block now lives in launch-contract.ps1). F-182 not yet in origin/main; no rebase/neutralization performed.
+- **Codex double-hook-call hardening (dogfood finding, 2026-06-12; commit `7a9d2086`)**: the cross-host dogfood
+  left a corrupt `session-marker.json` on codex (two JSON objects, same session, ms apart). ROOT CAUSE of the
+  double FIRE was a non-idempotent OLDER deploy that left TWO SessionStart registrations in `~/.codex/hooks.json`
+  (the surviving `hooks.json.corrupt.bak` proves it: `hooks` as a JSON array wrapping the event-map PLUS a
+  duplicate top-level map = 5 dispatcher refs). The CURRENT deploy already self-heals that to exactly ONE
+  registration (verified empirically against the real corrupt shape) — so the registration code was NOT live-buggy;
+  the maintainer's idempotence instinct was right about the historical cause. Fixed mechanism-independently:
+  - **Atomic marker write** (`Write-SpecrewSessionMarker`): temp + `File.Replace` ($null backup, no `.old`
+    clutter). The dest is only ever touched by an atomic rename, so a writer killed mid-write — or overlapping
+    fires — can no longer leave it PERMANENTLY half-written (the corruption the dogfood saw). First write -> Move;
+    any error -> direct-write fallback (a torn marker is recoverable via fail-open; a MISSING marker is the harm).
+  - **Reader fail-open completed** (`Get-SpecrewSessionMarker`): empty/whitespace, an array (two concatenated
+    objects — the EXACT dogfood shape), or a parse missing `started_at` now all return `$null` (was a half-true
+    all-null object for the empty case). Transient mid-race torn reads stay possible but harmless by this fail-open
+    (no Windows rename primitive gives 0 torn reads cheaply; the READER is the correctness guarantee).
+  - **Tests**: `MarkerAtomicWrite.Tests.ps1` (round-trip + first-write guards; reader fails open on every torn
+    shape; 400×2 concurrent writers -> real reader never throws + final state always a single valid marker);
+    `refocus-deploy.tests.ps1` §8b LOCKS the deploy self-heal (seed the exact corrupt.bak topology -> exactly ONE
+    SessionStart registration, top-level duplicate gone, 3 dispatcher refs, re-deploy byte-idempotent).
+  - NOTE: codex firing SessionStart with no session_id (sanitized to `unknown` -> all codex SessionStart sessions
+    collide into one refocus-state file) is a SEPARATE pre-existing observation, not addressed here.
+- **T004 complete (`from_host: host` fix)**: the design-workshop refresh runs the handover provider WITHOUT
+  `--host-kind` (agent-invoked, not via the per-host dispatcher) and, pre-specify, the anchor has no committed host
+  either -> `from_host` fell to the literal `host` sentinel (dogfood: codex + copilot). DESIGN EVOLVED from the
+  planned "skill passes `--host-kind`": per-host skill baking CANNOT work because `.agents/skills` is SHARED by
+  codex AND antigravity (baking one host token mislabels the other — the same deceptive-value failure the
+  marker-host fallback has). Instead `Update-SpecrewRollingHandover` now detects the LIVE host from env signals
+  (`Get-SpecrewRuntimeHostFromEnv`, mirroring `hosts/<kind>/handlers.ps1` `Get-<Kind>Signals`) — correct across the
+  shared root (codex vs antigravity by DISTINCT session vars), never stale (live env), degrading to the honest
+  `host` when nothing matches. Resolution chain: `--host-kind` (authoritative) > committed `session_state.host` >
+  live env detection > `host` sentinel (env only FILLS the gap, never overrides a known host). Credential-only vars
+  (CODEX_API_KEY etc., often globally set) excluded to avoid false matches. `WorkshopHostDetection.Tests.ps1` (11
+  assertions: per-host detection incl. the antigravity shared-root discriminator + lone-credential negative; full
+  chain incl. `--host-kind` wins + state-host wins + honest sentinel). MODULE-internal single-copy, no mirror sync.
 - **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (9) +
   ConversationOnlyCapture (12) + DispatcherLargeEvent (8) + SessionDeltaRepoRootGate (11, round-6) +
   StaleHandoverNoResumeSnapshot (13, round-6) + WritePathRepoRootGate (4, round-6 write-path) +
-  ResumePreservesIterationState (12, DF-006) +
+  ResumePreservesIterationState (12, DF-006) + MarkerAtomicWrite (18, double-fire) +
+  WorkshopHostDetection (11, T004) +
   DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
   (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, CoordinatorResumeReconciliation,
-  ProjectMetadataAccessor, SessionBootstrapManager, Concurrency, Regression, HostEventAdapter, PerHost) — a 28-suite
-  sweep all green; the 3 subprocess-heavy suites (BootstrapProvider, AgentAuthoredHandover,
-  HostDeliveryPolicy) stay load-bound (their change-relevant assertions pass; none touch the new primitive's
-  hot path — HostDeliveryPolicy invokes the provider directly, not via `Invoke-ProviderProcess`).
+  ProjectMetadataAccessor, SessionBootstrapManager, Concurrency, Regression, HostEventAdapter, PerHost) — the full
+  `tests/bootstrap` sweep (35 suites) all green after the double-fire + T004 changes, plus the full
+  `refocus-deploy` integration suite (incl. the new §8b self-heal lock).
 - **Carry-forward**: T006 has a down-payment (the two new test files) but stays OPEN for its hard-kill
   simulation + per-host coverage remainder. T002's tier-3 (`last_assistant_message`) is wired in the component
   + tested but not fed by the dispatcher (passing long strings through Start-Process is fragile; the
   `transcript_path` file route is the robust primary) — a deferred refinement if dogfood shows the file route
   insufficient.
-- **Next**: T004 (`from_host: host` fix — workshop-skill `--source workshop` passes `--host-kind`).
+- **Next**: T005 / T006 (hard-kill simulation + per-host coverage remainder) / T007 / T009.

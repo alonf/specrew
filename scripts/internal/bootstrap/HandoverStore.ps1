@@ -391,6 +391,35 @@ function Get-SpecrewRollingHandover {
     return $parsed
 }
 
+function Get-SpecrewRuntimeHostFromEnv {
+    # F-174 iter-10 (T004): best-effort detection of which AI host is running THIS process, from its env
+    # signals. The design-workshop refresh runs the handover provider WITHOUT --host-kind (it is invoked by
+    # the agent, not the per-host hook dispatcher) and, in the pre-specify window, the anchor has no committed
+    # host either - so from_host fell back to the literal 'host' sentinel (dogfood 2026-06-12). Detecting the
+    # LIVE host here is correct-by-construction across the shared .agents skill root (codex vs antigravity
+    # resolve by their DISTINCT session vars, which per-host skill baking could not), never stale (live env,
+    # not a stored marker), and degrades to $null -> the honest 'host' when nothing matches (never a deceptive
+    # value). Mirrors the per-host signal sets in hosts/<kind>/handlers.ps1 (Get-<Kind>Signals) - keep in sync;
+    # the credential-only vars (CODEX_API_KEY etc., often globally set) are deliberately excluded to avoid a
+    # false match in a different host's session. Returns the host kind or $null.
+    [CmdletBinding()]
+    [OutputType([string])]
+    param()
+    $signals = [ordered]@{
+        codex       = @('CODEX_SESSION_ID', 'OPENAI_CODEX_CLI')
+        claude      = @('CLAUDECODE', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_PROJECT_DIR')
+        copilot     = @('COPILOT_AGENT_SESSION_ID', 'COPILOT_CLI', 'COPILOT_CLI_BINARY_VERSION')
+        cursor      = @('CURSOR_AGENT', 'CURSOR_TRACE_ID')
+        antigravity = @('ANTIGRAVITY_SESSION_ID')
+    }
+    foreach ($kind in $signals.Keys) {
+        foreach ($var in $signals[$kind]) {
+            if (-not [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($var))) { return $kind }
+        }
+    }
+    return $null
+}
+
 function Update-SpecrewRollingHandover {
     # F-174 iter-9.1: THE single handover-save orchestration. Every trigger source - the Stop hook, the
     # PostToolUse hook, and the design-workshop skill - calls THIS; none re-implement the save. It resolves
@@ -457,6 +486,14 @@ function Update-SpecrewRollingHandover {
     }
     # Anchorless workshop window: resolve the feature from the branch so the handover is surfaceable (T050).
     if ([string]::IsNullOrWhiteSpace([string]$feature)) { $feature = Resolve-SpecrewBranchFeatureRef -ProjectRoot $ProjectRoot }
+    # T004: when neither the trigger nor the committed session-state named a host (the pre-specify workshop
+    # refresh, where the anchor is not yet committed), detect the LIVE host from its env signals before
+    # falling back to the literal 'host' sentinel. Only fills the gap (runs when $fromHost is still 'host'),
+    # so it never overrides a known session-state host; --host-kind below still wins as the authoritative source.
+    if ($fromHost -eq 'host') {
+        $envHost = Get-SpecrewRuntimeHostFromEnv
+        if (-not [string]::IsNullOrWhiteSpace($envHost)) { $fromHost = $envHost }
+    }
     # The trigger passes the authoritative host; prefer it over the start-context value or the 'host' default.
     if (-not [string]::IsNullOrWhiteSpace($HostKind)) { $fromHost = $HostKind }
 
