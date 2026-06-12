@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T303 (methodology-wording wave complete: G1–G3 + G4-verify + D1)
-**Tasks Remaining**: T304, T305, T306, T307, T308
-**In Progress**: T304
+**Last Completed Task**: T305 (runtime/script wave complete: G5 opt-in reviewer + tests + mirror sync)
+**Tasks Remaining**: T306, T307, T308
+**In Progress**: T306
 **Baseline Ref**: 6d22dc85
-**Updated**: 2026-06-12T03:20:00Z
+**Updated**: 2026-06-12T03:40:00Z
 
 ## Execution Summary
 
