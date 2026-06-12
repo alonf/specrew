@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T004 — `from_host` host-resolution fix (live env-signal detection) + codex double-fire hardening (dogfood finding)
-**Tasks Remaining**: T005, T006, T007, T009
+**Last Completed Task**: T009 — continuity docs (antigravity no-capture + universal hard-kill floor). ALL TASKS (T001–T009) COMPLETE.
+**Tasks Remaining**: (none — ready for iteration-closeout pending the maintainer's codex re-validation of the double-fire fix)
 **In Progress**: (none)
 **Baseline Ref**: iteration-009 HEAD (`e4822428`)
-**Updated**: 2026-06-13T00:00:00Z
+**Updated**: 2026-06-13T02:00:00Z
 
 ## Execution Summary
 
@@ -203,15 +203,35 @@
   ConversationOnlyCapture (12) + DispatcherLargeEvent (8) + SessionDeltaRepoRootGate (11, round-6) +
   StaleHandoverNoResumeSnapshot (13, round-6) + WritePathRepoRootGate (4, round-6 write-path) +
   ResumePreservesIterationState (12, DF-006) + MarkerAtomicWrite (18, double-fire) +
-  WorkshopHostDetection (11, T004) +
+  WorkshopHostDetection (11, T004) + HandoverCrashRecovery (T006 hard-kill) + HostDeliveryPolicy (T007, +cursor) +
   DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
   (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, CoordinatorResumeReconciliation,
   ProjectMetadataAccessor, SessionBootstrapManager, Concurrency, Regression, HostEventAdapter, PerHost) — the full
-  `tests/bootstrap` sweep (35 suites) all green after the double-fire + T004 changes, plus the full
-  `refocus-deploy` integration suite (incl. the new §8b self-heal lock).
-- **Carry-forward**: T006 has a down-payment (the two new test files) but stays OPEN for its hard-kill
-  simulation + per-host coverage remainder. T002's tier-3 (`last_assistant_message`) is wired in the component
-  + tested but not fed by the dispatcher (passing long strings through Start-Process is fragile; the
-  `transcript_path` file route is the robust primary) — a deferred refinement if dogfood shows the file route
-  insufficient.
-- **Next**: T005 / T006 (hard-kill simulation + per-host coverage remainder) / T007 / T009.
+  `tests/bootstrap` sweep all green after the double-fire + T004/T006/T007 changes, plus the full
+  `refocus-deploy` integration suite (incl. the §8b self-heal lock).
+- **T006 complete (tests; M3 was already done)**: the M3 writer hardening shipped earlier (T050 handover
+  atomic-replace/`.old`/write-failure-surfacing + the iter-10 marker atomic write), so T006 = the missing TESTS.
+  `HandoverCrashRecovery.Tests.ps1` reproduces crash artifacts on disk and locks: torn-live + valid `.old` ->
+  reader recovers `.old`; missing-live (delete+recreate-window kill) -> recovers; both-invalid -> honest `$null`
+  floor; a FOREIGN-PID `.new`/`.tmp` orphan is NEVER adopted (per-PID isolation); marker torn -> fail-open +
+  next-write self-heal. Per-host coverage is already SPANNED (PerHost event-parse, ConversationCapture ladder,
+  WorkshopHostDetection from_host x5, HostDeliveryPolicy delivery x4, refocus-deploy bindings x4) — documented,
+  not re-manufactured.
+- **T007/M1 complete (seam, not an unverified flip)**: factored the inline-vs-pointer delivery into one named
+  seam `Get-SpecrewContractDeliveryMode` (default behavior-preserving: claude/copilot/cursor inline, codex
+  pointer). EVIDENCE-DRIVEN: the host research matrix documents a 10k `additionalContext` cap ONLY for claude
+  (whose SessionStart uses PLAIN STDOUT, so it is unaffected — why inline works for the ~50KB contract); NONE is
+  documented for copilot/cursor, so their oversized-drop is SUSPECTED (same envelope codex drops) but UNVERIFIED
+  (copilot rendered in-band in the iter-8 dogfood). Per "don't flip delivery on a hypothesis": stay inline, LOCK
+  the policy with a cursor test, residual = a one-line flip in the seam once confirmed on-host (both in the
+  dogfood loop). `HostDeliveryPolicy.Tests.ps1` extended (+cursor); provider mirror re-synced.
+- **T009 complete (docs)**: user-guide Session Continuity + troubleshooting now document the UNIVERSAL hard-kill
+  conversation-loss floor (durable state always survives; loss bounded by per-host capture cadence) + antigravity's
+  no-capture/recover-via-`specrew start` limit; also fixed a code-truth drift ("six body sections" -> SEVEN, T002
+  added `Recent conversation`). markdownlint clean.
+- **Carry-forward (not iteration tasks)**: T002's tier-3 (`last_assistant_message`) is wired + tested in the
+  component but not fed by the dispatcher (the `transcript_path` file route is the robust primary) — a deferred
+  refinement if dogfood shows the file route insufficient. The T007 copilot/cursor oversized-drop verification +
+  the T004 stale-committed-host edge are open residuals (both documented above) for the dogfood loop.
+- **Next**: ALL TASKS T001–T009 COMPLETE. Ready for iteration-closeout (audit + verdict), pending the
+  maintainer's decisive codex re-run validating the double-fire fix (one render + a single valid marker).
