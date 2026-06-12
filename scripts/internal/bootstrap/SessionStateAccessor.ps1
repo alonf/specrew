@@ -67,7 +67,38 @@ function Write-SpecrewSessionMarker {
     if ($dir -and -not (Test-Path -LiteralPath $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
-    $marker | ConvertTo-Json | Set-Content -LiteralPath $MarkerPath -Encoding UTF8
+    # Atomic write (F-174 iter-10). The codex double-hook-call dogfood (2026-06-12) left a permanently
+    # corrupt session-marker.json (two JSON objects, same session, ms apart). A plain Set-Content
+    # truncates-then-writes the DEST in place, so a writer killed mid-write - or a host that re-emits
+    # SessionStart so two writers overlap - can leave the dest half-written FOR GOOD (the session ends
+    # before any later write heals it). Write to a PID-unique temp first, then swap it into place with
+    # File.Replace: the dest is only ever touched by an atomic filesystem-level rename, so it is always
+    # either the OLD marker or the NEW one - whole, never partial - no matter when the process dies.
+    # Replace with a $null backup (NOT Move): Replace is the true ReplaceFile primitive (atomic swap,
+    # the same one the rolling handover uses), and the $null backup avoids the `.old` clutter that would
+    # otherwise accrue in runtime/ for a file re-derived every session. First write (dest absent) ->
+    # plain Move. Fail-soft: any error falls back to a direct write so a session is never left WITHOUT a
+    # marker (a torn marker is recoverable - Get-SpecrewSessionMarker fails open to null; a MISSING one
+    # is the harmful case). Transient mid-race torn READS stay possible but are harmless by that same
+    # fail-open; what this closes is the PERSISTENT corruption a half-written dest leaves behind.
+    $json = ($marker | ConvertTo-Json)
+    $tmp = "$MarkerPath.$PID.tmp"
+    try {
+        Set-Content -LiteralPath $tmp -Value $json -Encoding UTF8
+        if (Test-Path -LiteralPath $MarkerPath) {
+            [System.IO.File]::Replace($tmp, $MarkerPath, $null)   # atomic same-volume swap, no .old backup
+        }
+        else {
+            [System.IO.File]::Move($tmp, $MarkerPath)             # first write: dest absent, nothing to replace
+        }
+    }
+    catch {
+        # Last resort: a direct write so a session is never left without a marker.
+        try { Set-Content -LiteralPath $MarkerPath -Value $json -Encoding UTF8 } catch { $null = $_ }
+    }
+    finally {
+        if (Test-Path -LiteralPath $tmp) { Remove-Item -LiteralPath $tmp -Force -ErrorAction SilentlyContinue }
+    }
     $marker
 }
 
@@ -78,11 +109,21 @@ function Get-SpecrewSessionMarker {
     param([Parameter(Mandatory)][string] $MarkerPath)
     if (-not (Test-Path -LiteralPath $MarkerPath)) { return $null }
     try {
-        $m = (Get-Content -LiteralPath $MarkerPath -Raw -ErrorAction Stop) | ConvertFrom-Json -ErrorAction Stop
+        $raw = Get-Content -LiteralPath $MarkerPath -Raw -ErrorAction Stop
+        # An empty/whitespace file is the truncate-window torn read: Get-Content -Raw yields $null and
+        # $null | ConvertFrom-Json is also $null, which would otherwise build an all-null-fields object
+        # that looks like a usable-but-empty marker. Fail open to $null instead (the safe "no marker").
+        if ([string]::IsNullOrWhiteSpace($raw)) { return $null }
+        $m = $raw | ConvertFrom-Json -ErrorAction Stop
     }
     catch { return $null }
+    # A torn or concatenated payload can parse to an array (two objects) or to an object missing the
+    # mandatory field. Either way there is no single usable marker -> fail open rather than half-trust it.
+    if ($m -is [System.Array]) { return $null }
+    $startedAt = Get-SpecrewProp $m 'started_at'
+    if ([string]::IsNullOrWhiteSpace([string]$startedAt)) { return $null }
     [pscustomobject]@{
-        started_at   = Get-SpecrewProp $m 'started_at'
+        started_at   = $startedAt
         host         = Get-SpecrewProp $m 'host'
         project_root = Get-SpecrewProp $m 'project_root'
         branch       = Get-SpecrewProp $m 'branch'

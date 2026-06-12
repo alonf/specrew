@@ -131,6 +131,43 @@ $codex = Get-Content -LiteralPath $codexPath -Raw | ConvertFrom-Json
 Assert-True ((-not $codex.hooks.PSObject.Properties['SessionStart']) -and $null -ne $codex.PSObject.Properties['PreToolUse']) 'codex: -Remove strips only ours'
 Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-codex')) 'codex: per-host opt-out recorded'
 
+# --- 8b. F-174 iter-10: codex DUPLICATE-REGISTRATION self-heal (the double-hook-call root cause) ---
+# The 2026-06-12 dogfood found ~/.codex/hooks.json in a corrupt shape that registered SessionStart TWICE:
+# `hooks` written as a JSON ARRAY wrapping the event-map, PLUS a duplicate top-level event-map. Codex
+# fired the dispatcher twice per SessionStart (double directive render + double marker write). A NON-
+# idempotent older deploy produced it; the current deploy MUST collapse it back to exactly one
+# registration. This locks that self-heal so the duplicate-registration regression cannot return.
+New-ScratchProject
+$dupHome = Join-Path $scratchRoot 'home-dup'
+New-Item -ItemType Directory -Path (Join-Path $dupHome '.codex') -Force | Out-Null
+$dupCodexPath = Join-Path $dupHome '.codex\hooks.json'
+$dispCmd = 'pwsh -NoProfile -ExecutionPolicy Bypass -File ".specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1" -Event {0} -HostKind codex'
+$grp = { param($evt) [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = ($dispCmd -f $evt); timeout = 30 }) } }
+# Exact corrupt.bak topology: hooks-as-array[ {event-map} ] + top-level duplicate SessionStart/UserPromptSubmit.
+$corrupt = [pscustomobject]@{
+    hooks            = @([pscustomobject]@{
+            SessionStart     = @((& $grp 'SessionStart'))
+            UserPromptSubmit = @((& $grp 'UserPromptSubmit'))
+            Stop             = @((& $grp 'Stop'))
+        })
+    SessionStart     = @((& $grp 'SessionStart'))
+    UserPromptSubmit = @((& $grp 'UserPromptSubmit'))
+}
+[System.IO.File]::WriteAllText($dupCodexPath, ($corrupt | ConvertTo-Json -Depth 16), [System.Text.UTF8Encoding]::new($false))
+$dispRefsBefore = ([regex]::Matches((Get-Content -LiteralPath $dupCodexPath -Raw), 'specrew-hook-dispatcher')).Count
+Assert-True ($dispRefsBefore -eq 5) 'precondition: seeded corrupt file has 5 dispatcher refs (array-nested triad + top-level duplicate pair)'
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $dupHome)
+$healed = Get-Content -LiteralPath $dupCodexPath -Raw | ConvertFrom-Json
+Assert-True (-not ($healed.hooks -is [System.Array])) 'self-heal: malformed array-shaped hooks collapsed back to a map'
+Assert-True (@($healed.hooks.SessionStart).Count -eq 1) 'self-heal: exactly ONE SessionStart group survives (no duplicate registration)'
+Assert-True (([string]$healed.hooks.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'self-heal: surviving SessionStart entry is the current dispatcher command'
+Assert-True (-not $healed.PSObject.Properties['SessionStart']) 'self-heal: the stray TOP-LEVEL SessionStart duplicate is gone (codex reads only hooks.<Event>)'
+$dispRefsAfter = ([regex]::Matches((Get-Content -LiteralPath $dupCodexPath -Raw), 'specrew-hook-dispatcher')).Count
+Assert-True ($dispRefsAfter -eq 3) 'self-heal: exactly 3 dispatcher refs remain (one each: SessionStart + UserPromptSubmit + Stop)'
+$healBefore = Get-Content -LiteralPath $dupCodexPath -Raw
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $dupHome)
+Assert-True ((Get-Content -LiteralPath $dupCodexPath -Raw) -eq $healBefore) 'self-heal: re-deploy onto the healed file is byte-idempotent (stays one registration)'
+
 # --- 9. T014: copilot binding (hooks-dir model; wholly-owned file; B2 only) ------------------
 $out = Invoke-Deploy -DeployArgs @('-HostKind', 'copilot', '-UserHomeOverride', $fakeHome)
 $copilotPath = Join-Path $fakeHome '.copilot\hooks\specrew-refocus.json'
