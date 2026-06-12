@@ -5,8 +5,10 @@
 **Overall Verdict**: accepted
 **Method**: Proposal 145 structured multi-phase reviewer (candidate; rules applied manually — no
 shipped 145 validator/skill exists yet).
-**Tree Under Review**: `1905760b` (HEAD; the D-304 broad-sweep completion fix); implementation diff
-baseline `6d22dc85` (before-implement boundary).
+**Tree Under Review**: `1905760b` (the D-304 broad-sweep completion fix — the last commit touching the
+surfaces under review; the later review-artifact commits `1f868991`/`6b5d7577` only author this review +
+flip state, and do not change any reviewed surface); implementation diff baseline `6d22dc85`
+(before-implement boundary).
 **Review history**: single pass. The review's own SC-008 broad-verification step surfaced one residual
 (D-304) that the shipped narrow sweep missed; it was neutralized + the sweep widened **in place under
 maintainer direction** (commit `1905760b`) before this accepted verdict was recorded — analogous to a
