@@ -241,15 +241,10 @@ I attempted to falsify the accept before recording it:
 
 ## Gap Ledger
 
-- No requirement (FR/SC) gaps in iteration-3 scope; FR-019 → SC-008 + SC-013 all implemented + evidenced
-  on the tree under review (T013b + the dashboard WARN are carried phasing, not gaps): fixed-now.
-- D-304 review finding (the shipped narrow sweep missed a `PSGallery` descriptor in two downstream-governing
-  index docs) neutralized in place + the sweep token set widened to regression-guard the class, committed
-  `1905760b`: fixed-now.
-- D-303 (`proposal-discipline.md` genericization) maintainer-ratified at the review boundary as inheritable
-  methodology — keep; not a gap: fixed-now.
-- D-302 (`.specify` `specrew-governance.md` mirror carried pre-neutralization prose) synced to match the
-  neutralized source, committed `58b42ded`: fixed-now.
+- No requirement (FR/SC) gaps in iteration-3 scope; FR-019 → SC-008 + SC-013 all implemented + evidenced on the tree under review (T013b + the dashboard WARN are carried phasing, not gaps): fixed-now.
+- D-304 review finding (the shipped narrow sweep missed a `PSGallery` descriptor in two downstream-governing index docs) neutralized in place + the sweep token set widened to regression-guard the class, committed `1905760b`: fixed-now.
+- D-303 (`proposal-discipline.md` genericization) maintainer-ratified at the review boundary as inheritable methodology — keep; not a gap: fixed-now.
+- D-302 (`.specify` `specrew-governance.md` mirror carried pre-neutralization prose) synced to match the neutralized source, committed `58b42ded`: fixed-now.
 
 ## Notes
 
