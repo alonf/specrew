@@ -1,13 +1,13 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Current Phase**: before-implement
-**Iteration Status**: planning
-**Last Completed Task**: (none — planning; no code written)
-**Tasks Remaining**: T301, T302, T303, T304, T305, T306, T307, T308
-**In Progress**: (none)
-**Baseline Ref**: a35cd954
-**Updated**: 2026-06-12T02:40:00Z
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: T303 (methodology-wording wave complete: G1–G3 + G4-verify + D1)
+**Tasks Remaining**: T304, T305, T306, T307, T308
+**In Progress**: T304
+**Baseline Ref**: 6d22dc85
+**Updated**: 2026-06-12T03:20:00Z
 
 ## Execution Summary
 
