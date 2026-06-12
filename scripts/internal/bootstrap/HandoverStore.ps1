@@ -485,7 +485,14 @@ function Update-SpecrewRollingHandover {
     $hasChange = $false
     try { $st = (& git -C $ProjectRoot status --porcelain 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
     $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
-    if (-not $mc.material) { return [pscustomobject]@{ wrote = $false; reason = $mc.reason; source = $Source; feature = $feature; boundary = $boundary } }
+    # Prop-145 round-4 (HIGH): a conversation-only turn (clean tree, same boundary) is NOT a git/boundary "material
+    # change", but it IS new context that T002 promises to capture. END-OF-TURN events (Stop/agentStop/stop) fire
+    # once per turn, so refresh on them regardless - capturing the latest transcript tail + recorded_at. PostToolUse
+    # (per-tool-call) and the workshop refresh STAY gated (the call-cheapness guarantee). The activity-bullet logic
+    # below stays delta-gated so a no-delta refresh never flushes real work out of the 6-bullet window.
+    $isEndOfTurn = $Source -in @('Stop', 'agentStop', 'stop')
+    if (-not $mc.material -and -not $isEndOfTurn) { return [pscustomobject]@{ wrote = $false; reason = $mc.reason; source = $Source; feature = $feature; boundary = $boundary } }
+    $refreshReason = if ($mc.material) { $mc.reason } else { 'end-of-turn conversation refresh (no git/boundary delta)' }
 
     $head = ''
     try { $head = ([string](& git -C $ProjectRoot rev-parse --short HEAD 2>$null)).Trim() } catch { $null = $_ }
@@ -515,9 +522,22 @@ function Update-SpecrewRollingHandover {
             $priorBullets = @($prev -split "`n" | Where-Object { $_ -match '^\s*-\s' })
         }
     }
-    $activity = ((@($stopBullet) + $priorBullets) | Select-Object -First 6) -join "`n"
+    # Only PREPEND a new activity bullet when this refresh did REAL work (changed user files or new commits). A
+    # no-delta end-of-turn refresh (a pure analysis/conversation turn) carries the prior bullets forward UNCHANGED,
+    # so a run of conversation-only turns cannot flush the last real-work bullet out of the 6-bullet window with
+    # "0 changed" noise (Prop-145 round-4). With nothing prior + no real work, the single bullet is the floor.
+    $hasRealWork = (([int]$delta.user_file_count) -gt 0) -or (([int]$delta.new_commit_count) -gt 0)
+    $activity = if ($hasRealWork) {
+        ((@($stopBullet) + $priorBullets) | Select-Object -First 6) -join "`n"
+    }
+    elseif ($priorBullets.Count -gt 0) {
+        (@($priorBullets) | Select-Object -First 6) -join "`n"
+    }
+    else {
+        $stopBullet
+    }
 
-    $whyStopping = ("Hook-captured at trigger '{0}' (the agent did not author a handover this turn). Boundary: {1}. Refresh reason: {2}." -f $Source, $boundaryLabel, $mc.reason)
+    $whyStopping = ("Hook-captured at trigger '{0}' (the agent did not author a handover this turn). Boundary: {1}. Refresh reason: {2}." -f $Source, $boundaryLabel, $refreshReason)
     $recNext = if (([int]$delta.user_file_count) -gt 0) {
         ("Resume feature {0} at boundary {1}. {2} of YOUR file(s) are uncommitted [{3}]{4} - review/commit them before advancing." -f $featureLabel, $boundaryLabel, $delta.user_file_count, $userShown, $managedNote)
     }

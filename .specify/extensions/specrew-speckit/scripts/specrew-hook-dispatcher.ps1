@@ -157,6 +157,15 @@ function Invoke-ProviderProcess {
             StdErr   = ($stderr ?? '')
         }
     }
+    catch {
+        # CONTAIN a per-provider LAUNCH failure (Prop-145 round-4): a too-long command line (Windows passes the
+        # full argv as one ~32KB-capped string; a large --event-json can exceed it) makes Process.Start() throw
+        # "The filename or extension is too long". Without this catch the exception propagates to the dispatcher's
+        # outer catch and ABORTS the whole event - every later provider for that event is skipped too. Degrade to a
+        # failed result for THIS provider only (the caller treats ExitCode<>0 as failed and continues), + one WARN.
+        Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' failed to launch: {1}; skipped" -f (Split-Path -Leaf $CommandPath), $_.Exception.Message)
+        return @{ TimedOut = $false; ExitCode = -1; StdOut = ''; StdErr = [string]$_.Exception.Message }
+    }
     finally {
         $proc.Dispose()
     }
@@ -575,7 +584,19 @@ try {
             # -ArgumentList arg-mangling; the launch primitive is now ProcessStartInfo.ArgumentList which escapes
             # every arg correctly, but the dedicated arg stays - it is clearer and decouples providers from the
             # host's JSON shape.) Both are harmless to inject providers that do not read them.
-            $commandArgs = @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind, '--source-event', $Event)
+            # Prop-145 round-4 (HIGH): the handover provider reads ONLY the clean args (--source-event for the
+            # trigger, --host-kind, --transcript-path) - it does NOT need the full event JSON. Codex's Stop event
+            # carries a `last_assistant_message` that can be 10s of KB; as --event-json that blows the Windows
+            # command-line length limit, ProcessStartInfo refuses to launch, and the handover (so the conversation
+            # capture) silently never runs. Pass only the bounded clean args to handover. The transcript FILE route
+            # (--transcript-path, extracted below) is the robust primary; tier-3 (last_assistant_message) stays
+            # DEFERRED. Other inject providers (bootstrap needs session_id/source) still get --event-json.
+            $commandArgs = if ($providerId -eq 'handover') {
+                @('--host-kind', $HostKind, '--source-event', $Event)
+            }
+            else {
+                @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind, '--source-event', $Event)
+            }
             # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event and
             # pass it as its own CLEAN arg, so the handover provider captures the conversation tail without
             # re-parsing the event JSON. Field name varies (snake/camel); harmless to providers that ignore the

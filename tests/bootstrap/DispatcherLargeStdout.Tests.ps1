@@ -34,7 +34,7 @@ try {
     # of the UTF-8 round-trip; the dispatcher reads UTF-8 via StandardOutputEncoding). Without BOTH halves a
     # non-ASCII byte is mangled to '?' - this test pins the dispatcher's read half against a conformant provider.
     $stub = @'
-try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }  # best-effort (mirrors the providers' fail-open encoding declaration)
 $big = 'X' * 120000
 $heb = [string][char]0x05E9 + [char]0x05DC + [char]0x05D5 + [char]0x05DD  # Hebrew "shalom" (RTL)
 $emoji = [System.Char]::ConvertFromUtf32(0x1F680)                        # rocket (surrogate pair)

@@ -78,7 +78,27 @@
   - Triaged/deferred (disposition recorded): user-home rollback runbook -> T009 docs; PostToolUse per-call
     latency -> validate in the on-host dogfood; full dispatcher->provider->handover capture integration test
     -> T006 (the deployed-path smoke covered it manually this session).
-- **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (6) +
+- **Proposal-145 round-4** (second external review; both reproduced) — TWO more HIGH bugs FIXED, both of which
+  would have bitten the on-host dogfood directly:
+  - **HIGH (conversation-only skip)** — the material-change gate (boundary OR tracked-file change) returned
+    early BEFORE the transcript read, so a pure analysis/conversation turn (clean tree, same boundary) never
+    captured its conversation — undercutting T002's core promise. Fix: END-OF-TURN events (Stop/agentStop/stop)
+    refresh regardless (PostToolUse + workshop stay gated for cheapness); the activity bullet stays delta-gated
+    so a run of conversation-only turns cannot flush real work out of the 6-bullet window (the advisor's catch).
+    `ConversationOnlyCapture.Tests.ps1` (4 conversation-only Stops: each captures + the real-work bullet survives).
+  - **HIGH (large event-json blocks the provider)** — the dispatcher passed the full raw event (codex's Stop
+    carries a 10s-of-KB `last_assistant_message`) as `--event-json` to every provider; it exceeds the Windows
+    command-line ceiling, `ProcessStartInfo` refuses to launch, and the handover (so the capture) silently never
+    ran. Fix (2b): the dispatcher passes the handover provider ONLY the bounded clean args (no `--event-json`; it
+    needs none — source via `--source-event`, path via `--transcript-path`; tier-3 stays deferred). Fix (2a):
+    `Invoke-ProviderProcess` CONTAINS a per-provider launch failure (WARN + skip) instead of aborting the whole
+    event. `DispatcherLargeEvent.Tests.ps1` (60KB event: a non-handover provider fails to launch + is contained;
+    the handover provider still launches with a small argv).
+  - LOW: annotated the remaining empty catch in the large-stdout test stub.
+  - T009 doc note (carry): with PostToolUse staying git-gated, "last capture = last PostToolUse, seconds" holds
+    only for file-editing turns; pure-analysis turns capture at Stop. Soften that doc claim.
+- **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (9) +
+  ConversationOnlyCapture (12) + DispatcherLargeEvent (8) +
   DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
   (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, Concurrency, Regression,
   HostEventAdapter, PerHost) all green; the 3 subprocess-heavy suites (BootstrapProvider, AgentAuthoredHandover,

@@ -43,7 +43,7 @@ try {
     Assert-Equal (Test-SpecrewHandoverMaterialChange -CurrentBoundary 'plan' -LastBoundary 'plan' -HasTrackedChange $true -HandoverExists $true).reason 'tracked-change' 'tracked change -> material'
     Assert-True (-not (Test-SpecrewHandoverMaterialChange -CurrentBoundary 'plan' -LastBoundary 'plan' -HasTrackedChange $false -HandoverExists $true).material) 'no boundary move + no tracked change -> skip'
 
-    # --- Stop provider integration: writes on a material turn (no existing handover), then skips a quiet turn ---
+    # --- Stop provider integration: writes on a material turn, then a quiet END-OF-TURN Stop still REFRESHES ---
     $proj = Join-Path $tmp 'proj'
     New-Item -ItemType Directory -Path (Join-Path $proj 'specs/myfeat') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $proj '.specrew') -Force | Out-Null
@@ -61,7 +61,13 @@ try {
     Start-Sleep -Milliseconds 50
     & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $proj 2>$null | Out-Null
     $after = Get-Content -LiteralPath $rf -Raw
-    Assert-Equal $after $before 'a quiet Stop (same boundary, no tracked change) does NOT rewrite (material-change skip)'
+    # Prop-145 round-4 (HIGH, conversation-only capture): an END-OF-TURN Stop now REFRESHES even with a clean tree
+    # + unchanged boundary, so a pure analysis/conversation turn still captures the latest transcript tail +
+    # recorded_at (PostToolUse stays gated for per-tool-call cheapness - see HandoverHookPrimary).
+    Assert-True ($after -ne $before) 'a quiet end-of-turn Stop now REFRESHES (conversation/recorded_at), no longer skipped'
+    # ...but the no-delta refresh must NOT add a second "0 changed" activity bullet - the prior real-work bullets
+    # are carried forward unchanged, so a run of conversation-only turns cannot flush real work out of the window.
+    Assert-Equal ([regex]::Matches($after, 'changed user file\(s\)').Count) 1 'no-delta refresh did NOT add a second activity bullet (real work preserved, not flushed)'
 
     # --- F-174 (T050): anchorless WORKSHOP window -> the floor stamps the BRANCH-resolved feature ---
     # Before the fix the pre-specify anchor (no feature_ref) made the floor stamp an EMPTY active_feature, so
