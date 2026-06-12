@@ -1,19 +1,19 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
-**Last Completed Task**: Prop-145 review authored (Overall Verdict accepted; D-304 broad-sweep residual closed in-review)
-**Tasks Remaining**: (none — T301..T308 complete; review accepted; awaiting the maintainer's review-signoff verdict)
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: T308 (review accepted; retro done; iteration CLOSED)
+**Tasks Remaining**: (none — T301..T308 complete; review accepted; retro done; iteration CLOSED)
 **In Progress**: (none)
 **Baseline Ref**: 6d22dc85
-**Updated**: 2026-06-12T13:00:00Z
+**Updated**: 2026-06-12T13:35:00Z
 
 ## Execution Summary
 
-- Iteration 003 (forge-neutralization migration, FR-019) is **implemented and reviewed**; the Prop-145
-  review verdict is **accepted**, and the iteration is stopped at **review-signoff** for the maintainer's
-  verdict (no retro/closeout/Iteration-4 work done).
+- Iteration 003 (forge-neutralization migration, FR-019) is **implemented, reviewed (Prop-145 accepted),
+  retro'd, and CLOSED** at iteration-closeout. Stopped **before feature-closeout** per the maintainer's
+  authorization (no push/PR/merge/tag/publish/release; no Iteration 4).
 - Source of truth: the [Iteration-1 coupling inventory](../001/forge-coupling-inventory.md), augmented
   by a planning-time + post-implementation sweep across ALL surface types into
   [neutralization-inventory.md](neutralization-inventory.md).
