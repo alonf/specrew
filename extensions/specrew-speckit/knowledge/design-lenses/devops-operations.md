@@ -26,10 +26,19 @@ and operations choices as architecture, not afterthoughts.
 - Which environments must be equivalent, and where may they differ?
 - How are secrets, configuration hierarchy, and dynamic configuration handled?
 - What CI/CD stages, gates, rollout strategy, and rollback path are required?
+- **Which CI lane belongs to THIS project's forge?** (FR-024) Propose the CI lane for the project's own
+  forge — a `.gitlab-ci.yml` on GitLab, a GitHub Actions workflow on GitHub, an Azure Pipelines file on
+  Azure DevOps, and so on. Never default a non-GitHub project to GitHub Actions.
 - What users, roles, service identities, and permissions are needed?
 
 ## Workshop Conduct
 
+- **Forge-aware CI lane (FR-024)**: when CI is in scope, propose the lane for the project's *own* forge
+  (read `provider` from `.specrew/repository-governance.yml`). If Specrew ships no work-kind CI lane for
+  that forge, **say so plainly** — offer the provider-neutral local validator (`Invoke-SpecrewWorkKindValidation`)
+  and let the human author the forge-native lane; do NOT silently hand them a GitHub Actions file on a
+  non-GitHub project. The work-kind CI lane shipped today targets GitHub Actions; other forges run the
+  validator manually or via a hand-authored lane until an adapter lane ships.
 - **Diagram for this lens**: deployment topology (environments, nodes, pipelines) — render it as **console ASCII inline** so the human sees it in the conversation (a fenced mermaid block is source text, not a picture, on a terminal host); any mermaid/svg/html file is an *additional* artifact whose clickable `file:///` link you surface in the same message.
 - **Facilitate, do not dictate**: raise the Design Decision Points above as a discussion, sketch the deployment topology and agree the promotion path, capture the human's decisions and explicit agreement, iterate until they say "move on", and record the agreement (never leave it only in the chat scrollback).
 - **Re-invoke the `specrew-design-workshop` skill** before moving to the next lens.

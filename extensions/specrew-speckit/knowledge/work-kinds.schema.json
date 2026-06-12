@@ -26,7 +26,7 @@
     },
     "workKind": {
       "type": "object",
-      "required": ["id", "lifecycle_weight", "required_evidence", "allowed_scope"],
+      "required": ["id", "lifecycle_weight", "lifecycle_template", "required_evidence", "allowed_scope"],
       "additionalProperties": false,
       "properties": {
         "id": { "$ref": "#/$defs/workKindId" },
@@ -47,6 +47,11 @@
           "items": { "type": "string" }
         },
         "branch_prefix_hint": { "type": "string" },
+        "lifecycle_template": {
+          "type": "string",
+          "pattern": "^templates/lifecycle/[a-z-]+-lifecycle\\.md$",
+          "description": "Path (repo-relative) to this work kind's lifecycle template, resolved at intake/start/refocus so a selected work_kind points the crew to its lifecycle contract (FR-023 / SC-016)."
+        },
         "closes_before_merge": { "type": "boolean" },
         "produces_release": { "type": "boolean" }
       }

@@ -119,6 +119,65 @@ function ConvertFrom-SpecrewWorkKindDeclaration {
     return $rec
 }
 
+function Get-SpecrewWorkKindLifecycle {
+    # FR-023 / SC-016: resolve the declared work_kind (.specrew/work-kind.yml) THROUGH the catalog to its
+    # lifecycle template, and confirm that template is actually resolvable (deployed / in the module).
+    # This is RUNTIME resolution, not file-presence: it proves the crew is pointed to the lifecycle the
+    # declaration selected. Returns @{ Declared, Kind, LifecycleTemplate, ResolvedPath, Exists, Reason }.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $result = [ordered]@{ Declared = $false; Kind = $null; LifecycleTemplate = $null; ResolvedPath = $null; Exists = $false; Reason = $null }
+    $resolved = (Resolve-Path -LiteralPath $ProjectRoot -ErrorAction SilentlyContinue)
+    if ($null -eq $resolved) { $result.Reason = 'project-root-not-found'; return [pscustomobject]$result }
+    $root = $resolved.Path
+
+    $declPath = Join-Path $root '.specrew/work-kind.yml'
+    if (-not (Test-Path -LiteralPath $declPath -PathType Leaf)) { $result.Reason = 'no-work-kind-declared'; return [pscustomobject]$result }
+    $decl = ConvertFrom-SpecrewWorkKindDeclaration -Text (Get-Content -LiteralPath $declPath -Raw -Encoding UTF8)
+    if ($null -eq $decl -or -not $decl.Contains('work_kind')) { $result.Reason = 'declaration-unparseable'; return [pscustomobject]$result }
+    $result.Declared = $true
+    $result.Kind = [string]$decl['work_kind']
+
+    $catalogPath = @(
+        (Join-Path $root 'extensions/specrew-speckit/knowledge/work-kinds.yml'),
+        (Join-Path $root '.specify/extensions/specrew-speckit/knowledge/work-kinds.yml')
+    ) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (-not $catalogPath) { $result.Reason = 'catalog-not-found'; return [pscustomobject]$result }
+    $catalog = ConvertFrom-SpecrewWorkKindCatalog -Text (Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8)
+    $entry = @($catalog.work_kinds) | Where-Object { [string]$_.id -eq $result.Kind } | Select-Object -First 1
+    if ($null -eq $entry) { $result.Reason = ('kind-not-in-catalog: {0}' -f $result.Kind); return [pscustomobject]$result }
+    $tmpl = if ($entry.Contains('lifecycle_template')) { [string]$entry['lifecycle_template'] } else { $null }
+    if ([string]::IsNullOrWhiteSpace($tmpl)) { $result.Reason = ('no-lifecycle_template-for: {0}' -f $result.Kind); return [pscustomobject]$result }
+    $result.LifecycleTemplate = $tmpl
+
+    # the lifecycle_template path is repo-relative ("templates/lifecycle/<kind>-lifecycle.md"); resolve it
+    # against the project, its .specify deploy, the catalog's own repo root, and the active module.
+    $catalogRoot = $catalogPath
+    foreach ($i in 1..4) { $catalogRoot = Split-Path -Parent $catalogRoot }   # .../knowledge/file -> repo root
+    $roots = @($root, (Join-Path $root '.specify'), $catalogRoot)
+    if ($env:SPECREW_MODULE_PATH) { $roots += $env:SPECREW_MODULE_PATH }
+    foreach ($r in ($roots | Where-Object { $_ })) {
+        $cand = Join-Path $r $tmpl
+        if (Test-Path -LiteralPath $cand -PathType Leaf) { $result.ResolvedPath = (Resolve-Path -LiteralPath $cand).Path; $result.Exists = $true; break }
+    }
+    if (-not $result.Exists) { $result.Reason = ('lifecycle-template-not-resolvable: {0}' -f $tmpl) }
+    return [pscustomobject]$result
+}
+
+function Get-SpecrewWorkKindLifecycleSurface {
+    # FR-023 / SC-016: the human-visible line the intake/start/refocus surfaces render so the crew is
+    # pointed to the SELECTED work_kind's lifecycle CONTRACT. Returns $null when nothing is declared.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+    $r = Get-SpecrewWorkKindLifecycle -ProjectRoot $ProjectRoot
+    if (-not $r.Declared) { return $null }
+    if ($r.Exists) {
+        return ("Work kind: {0} -> lifecycle contract: {1} (resolved). Follow this {0} lifecycle, not improvised ceremony." -f $r.Kind, $r.LifecycleTemplate)
+    }
+    return ("Work kind: {0} -> lifecycle template '{1}' is declared in the catalog but NOT resolvable ({2}) — deploy the lifecycle templates." -f $r.Kind, $r.LifecycleTemplate, $r.Reason)
+}
+
 function Test-SpecrewWorkKindGlob {
     # Minimal gitignore-style glob match: `**` matches any path segments, `*` matches within a
     # segment, `?` one char. Forge-neutral (operates on a normalized forward-slash path).

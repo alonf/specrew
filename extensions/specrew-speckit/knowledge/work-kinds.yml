@@ -16,6 +16,7 @@ work_kinds:
     lifecycle_weight: full
     description: "Product/runtime behavior and ordinary feature delivery. The full Specrew lifecycle."
     branch_prefix_hint: "feature/"
+    lifecycle_template: "templates/lifecycle/software-feature-lifecycle.md"
     closes_before_merge: true
     required_evidence:
       - spec
@@ -33,6 +34,7 @@ work_kinds:
     lifecycle_weight: focused
     description: "Defect fixes or regression bundles. A focused bug lifecycle."
     branch_prefix_hint: "fix/"
+    lifecycle_template: "templates/lifecycle/bug-bash-lifecycle.md"
     closes_before_merge: true
     required_evidence:
       - bug-list
@@ -47,6 +49,7 @@ work_kinds:
     lifecycle_weight: lightweight
     description: "README, docs, proposals, methodology, examples, release notes with NO runtime change. Completable through a PR without a release."
     branch_prefix_hint: "docs/"
+    lifecycle_template: "templates/lifecycle/docs-only-lifecycle.md"
     closes_before_merge: true
     produces_release: false
     required_evidence:
@@ -68,6 +71,7 @@ work_kinds:
     lifecycle_weight: operational
     description: "CI/CD, repository settings, branch protection, release workflows, package/publish infrastructure, repository management."
     branch_prefix_hint: "devops/"
+    lifecycle_template: "templates/lifecycle/devops-lifecycle.md"
     closes_before_merge: true
     required_evidence:
       - risk-rollback-plan

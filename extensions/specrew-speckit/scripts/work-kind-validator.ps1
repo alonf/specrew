@@ -156,7 +156,10 @@ function Invoke-SpecrewWorkKindValidation {
     $verdict = if (-not $hasFail) { if (@($findings).Count -gt 0) { "$Mode-warn" } else { "$Mode-pass" } }
     elseif ($Mode -eq 'blocking') { 'blocking-fail' } else { 'advisory-fail' }
 
-    return [ordered]@{ verdict = $verdict; kind = $kind; mode = $Mode; findings = @($findings.ToArray()) }
+    # FR-023 / SC-016: the intake/CI work-kind surface points the crew to the SELECTED kind's lifecycle
+    # contract (resolved through the catalog at runtime), so the lifecycle is governed, not improvised.
+    $lifecycle = Get-SpecrewWorkKindLifecycleSurface -ProjectRoot $ProjectPath
+    return [ordered]@{ verdict = $verdict; kind = $kind; mode = $Mode; findings = @($findings.ToArray()); lifecycle = $lifecycle }
 }
 
 function Write-SpecrewWorkKindBypassAudit {

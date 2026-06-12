@@ -12,15 +12,36 @@ $script:CapDetectorRoot = $PSScriptRoot
 . (Join-Path $script:CapDetectorRoot 'provider-generic.ps1')
 
 function Resolve-SpecrewGovernanceProvider {
-    # Read the provider from .specrew/repository-governance.yml (best-effort), else default 'generic'.
+    # FR-026: read the canonical FORGE provider from .specrew/repository-governance.yml. The forge is
+    # `provider.name` (the richer shape) OR a scalar `provider:` (top-level, or under repository_governance —
+    # the simpler/older shape). It is NEVER `ci.provider` (that names the CI system, e.g. gitlab-ci — the
+    # DF-004 mis-read). Block-aware so a nested ci.provider is ignored. Falls back to 'generic'.
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)][string]$ProjectPath)
     $govPath = Join-Path $ProjectPath '.specrew/repository-governance.yml'
-    if (Test-Path -LiteralPath $govPath) {
-        foreach ($line in (Get-Content -LiteralPath $govPath -Encoding UTF8)) {
-            if ($line -match '^\s{2}provider:\s*(?<v>\S+)') { return (ConvertFrom-SpecrewWorkKindScalar -Raw $Matches['v']) }
+    if (-not (Test-Path -LiteralPath $govPath)) { return 'generic' }
+    $block = ''
+    $rgProvider = $null
+    foreach ($line in (Get-Content -LiteralPath $govPath -Encoding UTF8)) {
+        if ($line -match '^(?<k>[a-z_]+):\s*(?<v>.*)$') {
+            $block = $Matches['k']
+            # simplest shape: a top-level `provider: <value>` scalar
+            if ($block -eq 'provider' -and -not [string]::IsNullOrWhiteSpace($Matches['v'])) {
+                return (ConvertFrom-SpecrewWorkKindScalar -Raw $Matches['v'])
+            }
+            continue
         }
+        # canonical rich shape: provider.name (nested under the top-level `provider:` block)
+        if ($block -eq 'provider' -and $line -match '^\s+name:\s*(?<v>\S+)') {
+            return (ConvertFrom-SpecrewWorkKindScalar -Raw $Matches['v'])
+        }
+        # canonical template shape: repository_governance.provider (a scalar under repository_governance)
+        if ($block -eq 'repository_governance' -and $line -match '^\s{2}provider:\s*(?<v>\S+)' -and $null -eq $rgProvider) {
+            $rgProvider = (ConvertFrom-SpecrewWorkKindScalar -Raw $Matches['v'])
+        }
+        # NOTE: `ci.provider` lives under block 'ci' and is intentionally NOT read here (DF-004 fix).
     }
+    if ($null -ne $rgProvider) { return $rgProvider }
     return 'generic'
 }
 
