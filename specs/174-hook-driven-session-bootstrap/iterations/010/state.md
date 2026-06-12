@@ -133,9 +133,29 @@
     (stale -> no "Last captured stop", stale ts absent, reason surfaced; fresh control -> snapshot intact, no
     regression). No mirror/`.specify` redeploy: both files are MODULE-internal components (loaded from
     `scripts/internal/bootstrap/` by the provider's 3-tier resolver), not provider-mirror artifacts.
+- **Cross-feature reconciliation (F-182 work-kind-branch-governance — MERGES BEFORE F-174)**: F-182 hands three
+  items to F-174 at merge time. Verified state on this branch (2026-06-12):
+  - **DF-006 (verify the session-start rewrite does NOT reset done->not-started on resume)** — DONE. F-174's
+    resume/bootstrap path NEVER invokes the scaffolder (`scaffold-iteration-artifacts.ps1`) and the bootstrap
+    components write ONLY the handover / session-marker / journal — they never touch state.md / tasks-progress.yml
+    / tasks.md. Locked in by `ResumePreservesIterationState.Tests.ps1` (resume welcome-back AND full bootstrap
+    leave committed iteration artifacts byte-identical; no done->pending reset).
+  - **DF-005 (neutralize the forge/registry mandate in `launch-contract.ps1` — F-174 owns the file)** — PENDING
+    the F-182 merge. F-174 MOVED the bare closeout-SDLC out of `specrew-start.ps1` (now 0 hits there) into the new
+    `scripts/internal/launch-contract.ps1:402`, which still carries `gh pr create` / `Find-Module Specrew` /
+    `Install-Module Specrew` with no "not a downstream mandate" marker. Neutralize it to F-182's labeled-example
+    pattern when reconciling; F-182's widened forge-neutralization CI sweep is the forcing function.
+  - **DF-010 (rebase onto F-182's neutralized coordinator sources, do NOT overwrite)** — reconciles CLEANLY.
+    F-174 left ALL FIVE of F-182's neutralization targets untouched (coordinator-decision-guidance.md,
+    coordinator-response.md, specrew-governance.md, shared-governance.ps1, lifecycle-discipline.md) — it only
+    carries their stale PRE-F-182 base, so a rebase onto post-F-182 main inherits F-182's neutralized versions
+    with no conflict. The ONE conflict surface is `specrew-start.ps1`: F-174 DELETED the launch-prompt block that
+    F-182 neutralized in place (~L2590) -> a delete-vs-modify conflict, resolve in favor of F-174's deletion (the
+    block now lives in launch-contract.ps1). F-182 not yet in origin/main; no rebase/neutralization performed.
 - **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (9) +
   ConversationOnlyCapture (12) + DispatcherLargeEvent (8) + SessionDeltaRepoRootGate (11, round-6) +
   StaleHandoverNoResumeSnapshot (13, round-6) + WritePathRepoRootGate (4, round-6 write-path) +
+  ResumePreservesIterationState (12, DF-006) +
   DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
   (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, CoordinatorResumeReconciliation,
   ProjectMetadataAccessor, SessionBootstrapManager, Concurrency, Regression, HostEventAdapter, PerHost) — a 28-suite
