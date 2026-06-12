@@ -18,7 +18,7 @@ $ErrorActionPreference = 'Stop'
 # transcript/path WARN under a non-Latin home) is not mangled to '?' by the child pwsh's default OEM console
 # codepage when the dispatcher captures it. The dispatcher reads UTF-8 (ProcessStartInfo.StandardOutputEncoding);
 # this is the child half of that contract. Fail-open.
-try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }  # best-effort: a host that rejects UTF-8 console encoding must still run (fail-open)
 
 function Get-HandoverProjectRoot {
     $c = (Get-Location).Path

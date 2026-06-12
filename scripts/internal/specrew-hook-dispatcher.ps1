@@ -39,7 +39,7 @@ $ErrorActionPreference = 'Stop'
 # stdout. Declare UTF-8 so the host (and the provider->dispatcher capture is the other half) receives the
 # non-ASCII intact rather than '?' from the child's default OEM console codepage. Fail-open; after the kill
 # switch so the switch always wins first.
-try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { }
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }  # best-effort: a host that rejects UTF-8 console encoding must still run (fail-open)
 
 $script:Banner = '[specrew-refocus]'
 
@@ -134,7 +134,7 @@ function Invoke-ProviderProcess {
         $outTask = $proc.StandardOutput.ReadToEndAsync()
         $errTask = $proc.StandardError.ReadToEndAsync()
         if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
-            try { $proc.Kill($true) } catch { }
+            try { $proc.Kill($true) } catch { $null = $_ }  # already exited (the goal) or unkillable; we abandon it on timeout regardless
             return @{ TimedOut = $true; ExitCode = -1; StdOut = ''; StdErr = '' }
         }
         # Drain the async readers, BOUNDED: after the process exits its pipes normally close and the reads
@@ -322,7 +322,7 @@ function Remove-StaleSessionState {
             }
         }
     }
-    catch { }
+    catch { $null = $_ }  # opportunistic GC of stale state files; a cleanup failure must never block the dispatch
 }
 
 # ---------------------------------------------------------------------------
