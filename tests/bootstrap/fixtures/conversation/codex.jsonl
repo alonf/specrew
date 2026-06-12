@@ -1,0 +1,5 @@
+{"timestamp":"2026-06-11T00:00:00Z","type":"session_meta","payload":{"id":"NOISE-CODEX-META","cwd":"C:\\t"}}
+{"timestamp":"2026-06-11T00:00:01Z","type":"response_item","payload":{"type":"message","role":"developer","content":[{"type":"input_text","text":"NOISE-CODEX-DEVELOPER system instructions"}]}}
+{"timestamp":"2026-06-11T00:00:02Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"CANARY-CODEX-USER my question"}]}}
+{"timestamp":"2026-06-11T00:00:03Z","type":"event_msg","payload":{"type":"agent_reasoning","text":"NOISE-CODEX-REASONING internal"}}
+{"timestamp":"2026-06-11T00:00:04Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"CANARY-CODEX-ASSISTANT my reply"}]}}

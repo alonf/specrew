@@ -1,0 +1,5 @@
+{"type":"session.start","data":{"sessionId":"NOISE-COPILOT-START"},"id":"a","timestamp":"t"}
+{"type":"system.message","data":{"role":"system","content":"NOISE-COPILOT-SYSTEM prompt"},"id":"b","timestamp":"t"}
+{"type":"user.message","data":{"content":"CANARY-COPILOT-USER my question"},"id":"c","timestamp":"t"}
+{"type":"tool.execution_start","data":{"name":"NOISE-COPILOT-TOOL"},"id":"d","timestamp":"t"}
+{"type":"assistant.message","data":{"model":"gpt-5.5","content":"CANARY-COPILOT-ASSISTANT my reply"},"id":"e","timestamp":"t"}

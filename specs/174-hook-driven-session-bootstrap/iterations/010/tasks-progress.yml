@@ -11,15 +11,15 @@ tasks:
     blocked_reason: ""
   T002:
     title: "Conversation capture, best-effort per host (read the transcript where exposed — Claude `transcript_path` — on Stop + mid-turn; honest floor elsewhere)"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "completed"
+    started_at: "2026-06-12T00:30:00Z"
+    completed_at: "2026-06-12T01:30:00Z"
     blocked_reason: ""
   T003:
     title: "Tracking surfacing (workshop lens-progress + gate-stop state into the handover + directive) **+ M2: fix-or-delete the dead hollow-handover detector**"
-    status: "pending"
-    started_at: ""
-    completed_at: ""
+    status: "completed"
+    started_at: "2026-06-12T01:30:00Z"
+    completed_at: "2026-06-12T02:00:00Z"
     blocked_reason: ""
   T004:
     title: "Fix `from_host: host` — the workshop-skill `--source workshop` refresh passes `--host-kind`"

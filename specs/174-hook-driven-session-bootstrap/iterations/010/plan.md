@@ -45,8 +45,8 @@ audit. Guiding priority: **robustness, then restart performance.** Findings that
 | Task | Title | Requirement | Story | Effort | Owner | Status |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ------ |
 | T001 | Resume reconciliation in a SHARED component: re-compute the cheap delta + the "changed since last stop -> read + continue" directive | FR-022 | US-1 | 3 | Implementer | done |
-| T002 | Conversation capture, best-effort per host (read the transcript where exposed — Claude `transcript_path` — on Stop + mid-turn; honest floor elsewhere) | FR-022 | US-1 | 4 | Implementer | planned |
-| T003 | Tracking surfacing (workshop lens-progress + gate-stop state into the handover + directive) **+ M2: fix-or-delete the dead hollow-handover detector** | FR-022 | US-1 | 4 | Implementer | planned |
+| T002 | Conversation capture, best-effort per host (read the transcript where exposed — Claude `transcript_path` — on Stop + mid-turn; honest floor elsewhere) | FR-022 | US-1 | 4 | Implementer | done |
+| T003 | Tracking surfacing (workshop lens-progress + gate-stop state into the handover + directive) **+ M2: fix-or-delete the dead hollow-handover detector** | FR-022 | US-1 | 4 | Implementer | done |
 | T004 | Fix `from_host: host` — the workshop-skill `--source workshop` refresh passes `--host-kind` | FR-009 | US-1 | 1 | Implementer | planned |
 | T005 | Codex array-shape `~/.codex/hooks.json` self-heal regression test | SC-004 | US-1 | 1 | Implementer | planned |
 | T006 | Tests (reconciliation, conversation, tracking, from_host, **hard-kill simulation**, per-host) **+ M3: surface handover write failures, per-PID temp names (kill the writer race), `.old` fallback on corrupt read** | SC-004 | US-1 | 3 | Implementer | planned |

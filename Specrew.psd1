@@ -219,6 +219,7 @@
         'scripts/init/template-deploy.ps1',
         'scripts/internal/atomic-write.ps1',
         'scripts/internal/bootstrap/ClassificationEngine.ps1',
+        'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1',
         'scripts/internal/bootstrap/DirectiveEngine.ps1',
         'scripts/internal/bootstrap/HandoverStore.ps1',
         'scripts/internal/bootstrap/HookJournalAccessor.ps1',

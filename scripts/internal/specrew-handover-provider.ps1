@@ -39,12 +39,16 @@ try {
     $hostKindArg = $null
     $sourceArg = $null
     $sourceEventArg = $null
+    $transcriptPathArg = $null
+    $lastAssistantArg = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKindArg = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--source' -and ($i + 1) -lt $args.Count) { $sourceArg = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--source-event' -and ($i + 1) -lt $args.Count) { $sourceEventArg = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--transcript-path' -and ($i + 1) -lt $args.Count) { $transcriptPathArg = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--last-assistant-message' -and ($i + 1) -lt $args.Count) { $lastAssistantArg = [string]$args[$i + 1] }
     }
 
     $root = if ($rootOverride) { $rootOverride } else { Get-HandoverProjectRoot }
@@ -60,7 +64,7 @@ try {
             if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
         }
     }
-    foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor') { . (Join-Path $bdir "$f.ps1") }
+    foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor', 'ConversationCaptureAccessor') { . (Join-Path $bdir "$f.ps1") }
 
     # Resolve the trigger source, in precedence order: an explicit --source (the workshop skill passes
     # `workshop`); else --source-event (the dispatcher passes the neutral event name as a CLEAN arg, since
@@ -79,10 +83,38 @@ try {
         }
     }
 
+    # F-174 iter-10 (T002): resolve the conversation transcript handle for capture. Robustness ladder:
+    #   1. the CLEAN --transcript-path arg the dispatcher extracts from the INTACT stdin event (the
+    #      --event-json arg gets mangled through Start-Process -ArgumentList, so it is not trusted for paths);
+    #   2. else parse transcript_path / transcriptPath (+ last_assistant_message) from --event-json itself
+    #      (direct/test invocations, where the JSON is intact);
+    #   3. else the Cursor CURSOR_TRANSCRIPT_PATH env var (inherited through the process tree).
+    $transcriptPath = $transcriptPathArg
+    $lastAssistant = $lastAssistantArg
+    if (([string]::IsNullOrWhiteSpace($transcriptPath) -or [string]::IsNullOrWhiteSpace($lastAssistant)) -and -not [string]::IsNullOrWhiteSpace($eventJson)) {
+        $tp = $null
+        try { $tp = $eventJson | ConvertFrom-Json } catch { $tp = $null }
+        if ($null -ne $tp) {
+            if ([string]::IsNullOrWhiteSpace($transcriptPath)) {
+                $t = Get-HandoverProp $tp 'transcript_path'
+                if ([string]::IsNullOrWhiteSpace($t)) { $t = Get-HandoverProp $tp 'transcriptPath' }
+                if (-not [string]::IsNullOrWhiteSpace($t)) { $transcriptPath = [string]$t }
+            }
+            if ([string]::IsNullOrWhiteSpace($lastAssistant)) {
+                $la = Get-HandoverProp $tp 'last_assistant_message'
+                if (-not [string]::IsNullOrWhiteSpace($la)) { $lastAssistant = [string]$la }
+            }
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($transcriptPath) -and -not [string]::IsNullOrWhiteSpace($env:CURSOR_TRANSCRIPT_PATH)) {
+        $transcriptPath = [string]$env:CURSOR_TRANSCRIPT_PATH
+    }
+
     # SINGLE save path (F-174 iter-9.1): every trigger - this Stop/PostToolUse hook AND the workshop skill -
     # funnels through the one core orchestrator. Its material-change gate makes the PostToolUse (every
     # tool call) path cheap, and the hollow-journal lives there too.
-    Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source | Out-Null
+    Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
+        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant | Out-Null
     exit 0
 }
 catch {

@@ -16,14 +16,19 @@
 #>
 
 function Get-SpecrewHandoverSectionOrder {
-    # The Proposal 130 Pillar-2 handover body, in order (verbatim section titles).
+    # The Proposal 130 Pillar-2 handover body, in order (verbatim section titles). F-174 iter-10 (T002,
+    # FR-022) appends a 7th HOOK-OWNED section, 'Recent conversation ...', extending 130's fixed-6 with the
+    # best-effort transcript tail (recorded as drift D-017 - a 174-authorized additive extension; 174 already
+    # evolved this schema in iter-9 with the mechanical/interpretive ownership split). Mechanical by default
+    # (it is not in the agent-owned set), so the complement logic includes it automatically.
     return @(
         'What I just did (last 3-5 turns or last boundary work)',
         "Why I'm stopping (the switch trigger)",
         'Open questions / pending clarifications',
         "Agent's working hypothesis / mental model",
         'Recommended next-immediate-step',
-        "Context the receiving host needs that artifacts don't carry"
+        "Context the receiving host needs that artifacts don't carry",
+        'Recent conversation (last few exchanges, hook-captured)'
     )
 }
 
@@ -103,7 +108,14 @@ function ConvertFrom-SpecrewHandoverFile {
         schema          = $fm['schema']; source = $fm['source']; from_host = $fm['from_host']
         recorded_at     = $fm['recorded_at']; from_commit = $fm['from_commit']
         active_feature  = $fm['active_feature']
-        active_boundary = $fm['active_boundary']; sections = $sections
+        active_boundary = $fm['active_boundary']
+        # F-174 iter-10 (T003): the AUTHORIZED-gate + workshop-phase frontmatter (distinct from active_boundary,
+        # which is the WORKING position). Present only when applicable; $null otherwise.
+        last_authorized_boundary = $fm['last_authorized_boundary']
+        last_verdict    = $fm['last_verdict']
+        workshop_done   = $fm['workshop_done']
+        workshop_remaining = $fm['workshop_remaining']
+        sections        = $sections
     }
 }
 
@@ -128,14 +140,40 @@ function Write-SpecrewRollingHandoverContent {
         [Parameter()][string] $FromCommit,
         [Parameter()][string] $ActiveFeature,
         [Parameter()][string] $ActiveBoundary,
+        # F-174 iter-10 (T003): the AUTHORIZED-gate + workshop-phase frontmatter. HOOK-computed (the hook passes
+        # them explicitly, even empty = clear); the agent body-author does NOT pass them -> they are PRESERVED
+        # from the existing file (so authoring the body never strips this hook-derived state). The
+        # $PSBoundParameters check distinguishes "preserve" (unbound) from "clear" (bound-but-empty).
+        [Parameter()][AllowNull()][string] $LastAuthorizedBoundary,
+        [Parameter()][AllowNull()][string] $LastVerdict,
+        [Parameter()][AllowNull()][string] $WorkshopDone,
+        [Parameter()][AllowNull()][string] $WorkshopRemaining,
         [Parameter()][System.Collections.IDictionary] $Sections = @{}
     )
+    # T003 preserve: a caller that did not supply a gate/workshop field inherits the existing file's value.
+    if (Test-Path -LiteralPath $Path) {
+        $prevFm = ConvertFrom-SpecrewHandoverFile -Path $Path
+        if ($null -ne $prevFm) {
+            if (-not $PSBoundParameters.ContainsKey('LastAuthorizedBoundary')) { $LastAuthorizedBoundary = [string]$prevFm.last_authorized_boundary }
+            if (-not $PSBoundParameters.ContainsKey('LastVerdict')) { $LastVerdict = [string]$prevFm.last_verdict }
+            if (-not $PSBoundParameters.ContainsKey('WorkshopDone')) { $WorkshopDone = [string]$prevFm.workshop_done }
+            if (-not $PSBoundParameters.ContainsKey('WorkshopRemaining')) { $WorkshopRemaining = [string]$prevFm.workshop_remaining }
+        }
+    }
+    # Frontmatter values are single-line key: value; collapse any newline so a value never breaks the block.
+    $clean = { param($v) if ([string]::IsNullOrWhiteSpace([string]$v)) { '' } else { (([string]$v) -replace '\s+', ' ').Trim() } }
     $marker = Get-SpecrewHandoverPlaceholderMarker -Boundary $ActiveBoundary
     $out = New-Object System.Collections.Generic.List[string]
     foreach ($l in @(
             '---', 'schema: v1', "source: $Source", "from_host: $FromHost", "recorded_at: $RecordedAt",
-            "from_commit: $FromCommit", "active_feature: $ActiveFeature", "active_boundary: $ActiveBoundary",
-            '---', '', '# Session Handover (rolling)', '')) { $out.Add($l) | Out-Null }
+            "from_commit: $FromCommit", "active_feature: $ActiveFeature", "active_boundary: $ActiveBoundary")) { $out.Add($l) | Out-Null }
+    # T003: emit the gate + workshop lines ONLY when present, so the frontmatter stays quiet outside the
+    # intake window / on legacy contexts. active_boundary above is the WORKING position; these are distinct.
+    if (-not [string]::IsNullOrWhiteSpace($LastAuthorizedBoundary)) { $out.Add("last_authorized_boundary: $(& $clean $LastAuthorizedBoundary)") | Out-Null }
+    if (-not [string]::IsNullOrWhiteSpace($LastVerdict)) { $out.Add("last_verdict: $(& $clean $LastVerdict)") | Out-Null }
+    if (-not [string]::IsNullOrWhiteSpace($WorkshopDone)) { $out.Add("workshop_done: $(& $clean $WorkshopDone)") | Out-Null }
+    if (-not [string]::IsNullOrWhiteSpace($WorkshopRemaining)) { $out.Add("workshop_remaining: $(& $clean $WorkshopRemaining)") | Out-Null }
+    foreach ($l in @('---', '', '# Session Handover (rolling)', '')) { $out.Add($l) | Out-Null }
     foreach ($title in (Get-SpecrewHandoverSectionOrder)) {
         $content = if ($Sections.Contains($title) -and -not [string]::IsNullOrWhiteSpace([string]$Sections[$title])) {
             [string]$Sections[$title]
@@ -209,7 +247,13 @@ function Write-SpecrewRollingHandover {
         # git/fs session delta) here as title -> content. Mechanical sections are HOOK-OWNED and written
         # fresh every material stop; a missing/blank mechanical title falls to the placeholder marker (the
         # truly-empty / git-unavailable case). Interpretive sections stay AGENT-owned (preserved below).
-        [Parameter()][System.Collections.IDictionary] $MechanicalSections = @{}
+        [Parameter()][System.Collections.IDictionary] $MechanicalSections = @{},
+        # F-174 iter-10 (T003): the HOOK-computed gate + workshop frontmatter, passed through (bound, even
+        # empty = authoritative clear) to the shared writer. The agent body-author does not set these.
+        [Parameter()][AllowNull()][string] $LastAuthorizedBoundary,
+        [Parameter()][AllowNull()][string] $LastVerdict,
+        [Parameter()][AllowNull()][string] $WorkshopDone,
+        [Parameter()][AllowNull()][string] $WorkshopRemaining
     )
     if (-not (Test-Path -LiteralPath $HandoverDir)) { New-Item -ItemType Directory -Path $HandoverDir -Force | Out-Null }
     $path = Get-SpecrewRollingHandoverPath -HandoverDir $HandoverDir
@@ -243,7 +287,9 @@ function Write-SpecrewRollingHandover {
     }
 
     return (Write-SpecrewRollingHandoverContent -Path $path -Source $Source -FromHost $FromHost -RecordedAt $RecordedAt `
-            -FromCommit $FromCommit -ActiveFeature $ActiveFeature -ActiveBoundary $ActiveBoundary -Sections $bodySections)
+            -FromCommit $FromCommit -ActiveFeature $ActiveFeature -ActiveBoundary $ActiveBoundary -Sections $bodySections `
+            -LastAuthorizedBoundary $LastAuthorizedBoundary -LastVerdict $LastVerdict `
+            -WorkshopDone $WorkshopDone -WorkshopRemaining $WorkshopRemaining)
 }
 
 function Write-SpecrewHandoverContext {
@@ -322,7 +368,9 @@ function Update-SpecrewRollingHandover {
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter()][AllowNull()][string] $HostKind,                 # authoritative current host (--host-kind); else resolved
         [Parameter()][string] $Source = 'stop',                       # trigger label: stop | agentStop | PostToolUse | workshop
-        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o'))
+        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o')),
+        [Parameter()][AllowNull()][string] $TranscriptPath = $null,   # F-174 iter-10 (T002): host transcript_path for conversation capture
+        [Parameter()][AllowNull()][string] $LastAssistantMessage = $null
     )
 
     $getProp = {
@@ -332,8 +380,10 @@ function Update-SpecrewRollingHandover {
         if ($p) { return $p.Value } else { return $null }
     }
 
-    # Current context from the committed session state (the orchestrator is transcript-blind by design).
+    # Current context from the committed session state. (F-174 iter-10: T002 adds best-effort transcript
+    # capture and T003 surfaces the authorized gate + workshop phase - all read from this same committed state.)
     $feature = $null; $boundary = $null; $fromHost = 'host'
+    $lastAuthBoundary = $null; $lastVerdict = $null
     $ctxPath = Join-Path $ProjectRoot '.specrew/start-context.json'
     if (Test-Path -LiteralPath $ctxPath) {
         try {
@@ -343,6 +393,26 @@ function Update-SpecrewRollingHandover {
             $boundary = & $getProp $ss 'boundary_type'
             $h = & $getProp $ss 'host'; if ([string]::IsNullOrWhiteSpace($h)) { $h = & $getProp $ctx 'host' }
             if (-not [string]::IsNullOrWhiteSpace($h)) { $fromHost = [string]$h }
+            # T003: the AUTHORIZED gate (deterministic governance state, not agent behavior) - DISTINCT from
+            # session_state.boundary_type (the WORKING position above). last_authorized_boundary + the richest
+            # human-legible proof from verdict_history[-1].
+            $be = & $getProp $ctx 'boundary_enforcement'
+            if ($null -ne $be) {
+                $lab = & $getProp $be 'last_authorized_boundary'
+                if (-not [string]::IsNullOrWhiteSpace($lab)) { $lastAuthBoundary = [string]$lab }
+                $vhArr = @(& $getProp $be 'verdict_history')
+                if ($vhArr.Count -gt 0) {
+                    $lastV = $vhArr[$vhArr.Count - 1]
+                    $vtext = & $getProp $lastV 'verdict_text'
+                    if (-not [string]::IsNullOrWhiteSpace($vtext)) {
+                        $lastVerdict = [string]$vtext
+                        $vhuman = & $getProp $lastV 'authorizing_human'
+                        $vcommit = & $getProp $lastV 'auth_commit_hash'
+                        if (-not [string]::IsNullOrWhiteSpace($vhuman)) { $lastVerdict += " by $vhuman" }
+                        if (-not [string]::IsNullOrWhiteSpace($vcommit)) { $lastVerdict += " @$vcommit" }
+                    }
+                }
+            }
         }
         catch { $null = $_ }
     }
@@ -350,6 +420,22 @@ function Update-SpecrewRollingHandover {
     if ([string]::IsNullOrWhiteSpace([string]$feature)) { $feature = Resolve-SpecrewBranchFeatureRef -ProjectRoot $ProjectRoot }
     # The trigger passes the authoritative host; prefer it over the start-context value or the 'host' default.
     if (-not [string]::IsNullOrWhiteSpace($HostKind)) { $fromHost = $HostKind }
+
+    # T003: the workshop phase, surfaced ONLY while in-flight (the pre-specify intake window); quiet otherwise.
+    # Reads the SAME deterministic disk truth the bootstrap directive uses (Get-SpecrewWorkshopProgress);
+    # guarded because the workshop-skill/test paths may not have co-loaded ProjectMetadataAccessor.
+    $workshopDone = $null; $workshopRemaining = $null
+    if (-not [string]::IsNullOrWhiteSpace([string]$feature) -and (Get-Command Get-SpecrewWorkshopProgress -ErrorAction SilentlyContinue)) {
+        try {
+            $wp = Get-SpecrewWorkshopProgress -ProjectRoot $ProjectRoot -FeatureRef ([string]$feature)
+            if ($null -ne $wp -and $wp.in_flight) {
+                $wd = @($wp.done); $wr = @($wp.remaining)
+                if ($wd.Count -gt 0) { $workshopDone = ($wd -join ', ') }
+                if ($wr.Count -gt 0) { $workshopRemaining = ($wr -join ', ') }
+            }
+        }
+        catch { $null = $_ }
+    }
 
     $handoverDir = Join-Path $ProjectRoot '.specrew/handover'
 
@@ -410,16 +496,29 @@ function Update-SpecrewRollingHandover {
     else { '' }
     $context = ("branch {0}, HEAD {1} ({2}). Active feature {3}, boundary {4}.{5}" -f $delta.branch, $delta.head_short, $delta.head_subject, $featureLabel, $boundaryLabel, $uncommittedNote)
 
+    # F-174 iter-10 (T002, FR-022): the best-effort conversation tail. Fail-open + additive - only when the
+    # capture component is loaded (the handover provider co-loads it; the workshop-skill/test paths may not)
+    # and it yields content. Bounded inside Get-SpecrewConversationTail; never grows with the session.
+    $conversation = $null
+    if (Get-Command Get-SpecrewConversationTail -ErrorAction SilentlyContinue) {
+        try { $conversation = Get-SpecrewConversationTail -HostKind $fromHost -TranscriptPath $TranscriptPath -LastAssistantMessage $LastAssistantMessage } catch { $conversation = $null }
+    }
+
     $mechanical = @{
         $activityTitle                                                = $activity
         "Why I'm stopping (the switch trigger)"                       = $whyStopping
         'Recommended next-immediate-step'                             = $recNext
         "Context the receiving host needs that artifacts don't carry" = $context
     }
+    if (-not [string]::IsNullOrWhiteSpace($conversation)) {
+        $mechanical['Recent conversation (last few exchanges, hook-captured)'] = $conversation
+    }
 
     Write-SpecrewRollingHandover -HandoverDir $handoverDir -Source $Source -FromHost $fromHost `
         -RecordedAt $NowUtc -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary `
-        -MechanicalSections $mechanical | Out-Null
+        -MechanicalSections $mechanical `
+        -LastAuthorizedBoundary $lastAuthBoundary -LastVerdict $lastVerdict `
+        -WorkshopDone $workshopDone -WorkshopRemaining $workshopRemaining | Out-Null
 
     # M2 (iter-10): hollow = the git delta GENUINELY produced nothing (git unavailable / the fail-safe empty
     # shape), NOT the formatted-section count. The old check counted $mechanical.Values, which are always-

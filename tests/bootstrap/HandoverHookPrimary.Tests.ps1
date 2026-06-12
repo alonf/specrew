@@ -100,7 +100,7 @@ try {
     # --- Section classification stays consistent with the fixed order ---
     $mech = Get-SpecrewHandoverMechanicalSections
     $agent = Get-SpecrewHandoverAgentOwnedSections
-    Assert-Equal (@($mech).Count) 4 'four mechanical (hook-owned) sections'
+    Assert-Equal (@($mech).Count) 5 'five mechanical (hook-owned) sections (F-174 iter-10 T002 added "Recent conversation")'
     Assert-Equal (@($agent).Count) 2 'two interpretive (agent-owned) sections'
     Assert-True (@(@($mech) + @($agent) | Sort-Object -Unique).Count -eq @(Get-SpecrewHandoverSectionOrder).Count) 'mechanical + interpretive partition the full section order with no overlap or gap'
 

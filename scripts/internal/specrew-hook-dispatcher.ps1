@@ -536,6 +536,22 @@ try {
             # handover, to label its trigger source) cannot reliably parse it from the JSON. Both are harmless
             # to inject providers that do not read them.
             $commandArgs = @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind, '--source-event', $Event)
+            # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event
+            # and pass it as a CLEAN arg (a plain path survives Start-Process -ArgumentList; the JSON does not),
+            # so the handover provider can capture the conversation tail. Field name varies (snake/camel);
+            # harmless to providers that ignore the arg. Fail-open.
+            if (-not [string]::IsNullOrWhiteSpace($rawEvent)) {
+                try {
+                    $evtObj = $rawEvent | ConvertFrom-Json -ErrorAction Stop
+                    $tpath = $null
+                    foreach ($k in @('transcript_path', 'transcriptPath')) {
+                        $pp = $evtObj.PSObject.Properties[$k]
+                        if ($pp -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $tpath = [string]$pp.Value; break }
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($tpath)) { $commandArgs += @('--transcript-path', $tpath) }
+                }
+                catch { $null = $_ }
+            }
         }
         if ($null -eq $commandArgs) { continue }
 
