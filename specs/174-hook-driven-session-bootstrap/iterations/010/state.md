@@ -7,7 +7,7 @@
 **Tasks Remaining**: T004, T005, T006, T007, T009
 **In Progress**: (none — T004 `from_host` fix is next)
 **Baseline Ref**: iteration-009 HEAD (`e4822428`)
-**Updated**: 2026-06-12T02:00:00Z
+**Updated**: 2026-06-12T13:00:00Z
 
 ## Execution Summary
 
@@ -34,9 +34,30 @@
   (174-authorized; the handover is a same-machine MIRROR, the durable truth stays committed
   `lens-applicability.json` + git `auth_commit_hash`). `HandoverHookPrimary` recalibrated to 5 mechanical
   sections.
-- **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + the targeted handover regression set
-  (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity) all green; full bootstrap
-  suite run as the pre-commit gate (the 2 subprocess-heavy tests stay load-bound, proven environmental).
+- **T002/T003 hardening pass** (external-review remediation, pre-dogfood): five reviewer findings + one
+  latent bug fixed before the maintainer's on-host test.
+  - **F2** — the agent body-author (`Write-SpecrewHandoverContext`) was placeholdering every section it
+    omitted, ERASING the hook-captured 'Recent conversation'. Now it preserves any AUTHORED hook-owned
+    mechanical section the agent omits (surgical: scoped to the mechanical complement + gated on authored).
+    Test: `HandoverConversationPreserve.Tests.ps1` (+ `AgentAuthoredHandover` A1-A4 unaffected).
+  - **F3** — the transcript read was whole-file (O(session) per PostToolUse). Now `Get-Content -Tail 500`.
+  - **F4** — added `DispatcherTranscriptDelivery.Tests.ps1` (real dispatcher -> stub, asserts `--transcript-path`
+    + `--source-event` + `--host-kind` delivered). Tier-3 `last_assistant_message` wiring stays DEFERRED.
+  - **LATENT BUG (beyond the 5)** — `Invoke-ProviderProcess` launched providers via `Start-Process
+    -ArgumentList`, which does NOT quote args containing spaces: a `transcript_path` under a spaced home
+    (`C:\Users\First Last\...`, the common case) was SPLIT into several args -> conversation capture silently
+    broke for those users (primary clean-arg AND event-json fallback both). Rewrote to
+    `ProcessStartInfo.ArgumentList` (correct per-arg Win32 escaping) + ASYNC stdout/stderr reads (pre-WaitForExit,
+    deadlock-safe). Tests: `DispatcherTranscriptDelivery` (spaced path byte-for-byte) + `DispatcherLargeStdout`
+    (120KB captured intact, 3.2s — no truncation/deadlock on the primitive EVERY provider uses).
+  - **F1 (deploy)** — the live `.specify/` dispatcher + catalog are stale and the per-host hook configs lack
+    the F-174 stop/handover events; refreshed at deploy time (separate step, surfaced to the maintainer).
+- **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (6) +
+  DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
+  (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, Concurrency, Regression,
+  HostEventAdapter, PerHost) all green; the 3 subprocess-heavy suites (BootstrapProvider, AgentAuthoredHandover,
+  HostDeliveryPolicy) stay load-bound (their change-relevant assertions pass; none touch the new primitive's
+  hot path — HostDeliveryPolicy invokes the provider directly, not via `Invoke-ProviderProcess`).
 - **Carry-forward**: T006 has a down-payment (the two new test files) but stays OPEN for its hard-kill
   simulation + per-host coverage remainder. T002's tier-3 (`last_assistant_message`) is wired in the component
   + tested but not fed by the dispatcher (passing long strings through Start-Process is fragile; the

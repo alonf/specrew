@@ -131,7 +131,12 @@ function Get-SpecrewConversationTail {
         [Parameter()][AllowNull()][string]$LastAssistantMessage,
         [int]$MaxTurns = 8,
         [int]$MaxChars = 4000,
-        [int]$PerTurn = 240
+        [int]$PerTurn = 240,
+        # F-174 iter-10 (T002 fix F3): bound the transcript read to the TAIL. The handover refreshes on Claude
+        # PostToolUse (every tool call); a long session's transcript is tens of thousands of JSONL lines, so a
+        # whole-file read per tool call is an O(session) overhead trap. 500 lines comfortably covers the last
+        # $MaxTurns user/assistant turns even on chatty hosts (many tool/system lines per turn).
+        [int]$MaxTailLines = 500
     )
     $hostLabel = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'this host' } else { $HostKind }
     $pointer = if (-not [string]::IsNullOrWhiteSpace($TranscriptPath)) { ('Full transcript (read on-demand for depth): {0}' -f $TranscriptPath) } else { $null }
@@ -140,7 +145,9 @@ function Get-SpecrewConversationTail {
     if (-not [string]::IsNullOrWhiteSpace($TranscriptPath)) {
         try {
             if (Test-Path -LiteralPath $TranscriptPath -PathType Leaf) {
-                $fileLines = @(Get-Content -LiteralPath $TranscriptPath -Encoding UTF8 -ErrorAction Stop)
+                # Read only the TAIL (not the whole file) - see $MaxTailLines. On Codex this also naturally
+                # skips the giant line-1 session_meta header.
+                $fileLines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop)
             }
         }
         catch { $fileLines = $null }

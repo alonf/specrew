@@ -311,8 +311,29 @@ function Write-SpecrewHandoverContext {
     )
     if (-not (Test-Path -LiteralPath $HandoverDir)) { New-Item -ItemType Directory -Path $HandoverDir -Force | Out-Null }
     $path = Get-SpecrewRollingHandoverPath -HandoverDir $HandoverDir
+    # F-174 iter-10 (T002 fix F2): the agent body-author does NOT capture the HOOK-owned mechanical sections -
+    # notably 'Recent conversation', which only the Stop/PostToolUse hook reads from the host transcript. Left
+    # alone, the shared writer would placeholder any section the agent's packet omits, so authoring the
+    # boundary packet ERASES the hook-captured conversation. Mirror Write-SpecrewRollingHandover's overlay
+    # preserve in reverse: carry forward any AUTHORED hook-owned mechanical section the agent omitted. Scoped
+    # to the mechanical complement + gated on authored (surgical, NOT a blanket preserve-on-missing -
+    # interpretive sections the agent intentionally clears stay cleared).
+    $merged = @{}
+    foreach ($k in $Sections.Keys) { $merged[$k] = $Sections[$k] }
+    if (Test-Path -LiteralPath $path) {
+        $existing = ConvertFrom-SpecrewHandoverFile -Path $path
+        if ($null -ne $existing -and $existing.sections -and $existing.sections.Count -gt 0) {
+            foreach ($mt in (Get-SpecrewHandoverMechanicalSections)) {
+                $agentSupplied = $merged.Contains($mt) -and -not [string]::IsNullOrWhiteSpace([string]$merged[$mt])
+                if (-not $agentSupplied -and $existing.sections.Contains($mt) -and
+                    (Test-SpecrewHandoverSectionAuthored -Content ([string]$existing.sections[$mt]))) {
+                    $merged[$mt] = [string]$existing.sections[$mt]
+                }
+            }
+        }
+    }
     return (Write-SpecrewRollingHandoverContent -Path $path -Source $Source -FromHost $FromHost -RecordedAt $RecordedAt `
-            -FromCommit $FromCommit -ActiveFeature $ActiveFeature -ActiveBoundary $ActiveBoundary -Sections $Sections)
+            -FromCommit $FromCommit -ActiveFeature $ActiveFeature -ActiveBoundary $ActiveBoundary -Sections $merged)
 }
 
 function Get-SpecrewRollingHandover {
