@@ -306,6 +306,26 @@ confirm it reports the detected posture and offers adapt-or-change rather than o
   setup and offer to **adapt** the work-kind check into it OR **change** to the recommended
   posture, never silently overwriting; the existing posture + chosen action are recorded.
 
+<!-- Iteration 4 additions: dogfood-finding completions (real-GitLab dogfood, 2026-06-12; see
+     iterations/004/ + dogfood-findings.md). FR-022 completes FR-019's "ALL surfaces" claim.
+     Scope: work-kind / forge-neutral governance ONLY — NOT F-174's session-bootstrap rewrite,
+     NOT DF-006 session-state clobbering. -->
+- **FR-022**: Forge-neutralization MUST cover downstream-governing **runtime/deployed surfaces** —
+  including launch-prompt text (`scripts/specrew-start.ps1` / `.specrew/last-start-prompt.md`) and
+  deployed per-host agent files (e.g. `.github/agents/squad.agent.md`) — not only methodology markdown.
+  (Completes FR-019's "ALL surfaces"; the iter-3 implementation's SC-008 sweep was markdown-only.)
+- **FR-023**: Work-kind **lifecycle templates** MUST be operationalized through **catalog/schema/deploy/
+  intake**, so a selected `work_kind` resolves to its `<kind>-lifecycle.md` lifecycle template (not
+  agent improvisation).
+- **FR-024**: CI-lane guidance MUST be **forge-aware**. Minimum: the DevOps lens proposes CI for the
+  project's forge and honestly states when no lane ships. Optional: ship a GitLab CI template if
+  planned. A non-GitHub project MUST NOT be defaulted to GitHub Actions.
+- **FR-025**: Lifecycle-end routing MUST distinguish **downstream project work**, **upstream Specrew/
+  tool defects** (routed to the tool's backlog, not the project's carried-forward items), and **new
+  work-kind items** (a separate work item, never "iteration N" of a different-kind feature).
+- **FR-026**: Capability detection MUST read the canonical `provider.name`, with a **fallback for
+  older/simpler schema shapes** (it MUST report `gitlab`, not `gitlab-ci`).
+
 ### Traceability & Governance Requirements *(mandatory)*
 
 - **TG-001**: Each user story MUST map to one or more functional requirements.
@@ -360,6 +380,11 @@ to `claude` this launch).
 | FR-019 forge-neutralization audit + decouple | Implementer + Reviewer | Iter 1 (inventory) / Iter 3 (migration) |
 | FR-020 `apply_protection` human-gated + no secrets | Implementer + Reviewer | Iter 2 |
 | FR-021 brownfield adapt-or-change | Spec Steward (content) + Implementer (detector) | Iter 1 (content) / Iter 2 (detector) |
+| FR-022 runtime-deployed surface neutralization + widened sweep (completes FR-019) | Implementer + Reviewer | Iter 4 |
+| FR-023 operationalize lifecycle templates | Spec Steward + Implementer | Iter 4 |
+| FR-024 forge-aware CI lane | Spec Steward + Implementer | Iter 4 |
+| FR-025 tool-defect vs project-work + new-kind-new-work-item | Spec Steward | Iter 4 |
+| FR-026 capability detection reads `provider.name` | Implementer | Iter 4 |
 
 ## Success Criteria *(mandatory)*
 
@@ -398,6 +423,16 @@ to `claude` this launch).
   (or is reconciled); Specrew's `.specrew/repository-governance.yml` matches its actual
   posture — also proving the neutralized closeout still works for a GitHub project.
   *(FR-013, FR-021)*
+- **SC-015**: The forge-neutralization sweep FAILS on **unlabeled** GitHub/PSGallery/Specrew-release
+  mandates in downstream-governing `.ps1`, deployed-agent, lifecycle, methodology, and coordinator
+  surfaces. It MUST include at least `gh pr create`, `gh pr merge`, `Find-Module Specrew`,
+  `Install-Module Specrew`, `PSGallery` / `PowerShell Gallery`, with explicit **allowlist / labeled-
+  example** semantics. (Confound-proof regression guard; also catches F-174's `launch-contract.ps1`
+  site at reconciliation via a pattern-based `.ps1` scan.) *(FR-022)*
+- **SC-016**: In a deployed downstream project, selecting a work kind resolves from
+  `.specrew/work-kind.yml` + the catalog to the correct `<kind>-lifecycle.md`, and the **intake/start
+  surface shows that lifecycle contract** (verified by artifact inspection, not agent behavior).
+  *(FR-023)*
 
 ## Assumptions
 

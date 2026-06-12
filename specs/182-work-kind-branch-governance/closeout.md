@@ -4,8 +4,17 @@
 **Feature**: 182-work-kind-branch-governance
 **Branch**: 182-work-kind-branch-governance
 **Closed**: 2026-06-12
-**Status**: COMPLETE — branch-ready evidence only
+**Status**: SUPERSEDED — REOPENED for Iteration 4 (2026-06-12)
 **Closer**: Claude, authorized by Alon Fliess for feature-closeout
+
+> **⚠ REOPENED (2026-06-12).** This iter-1–3 feature-closeout is preserved as the **historical record**.
+> Feature 182 was reopened **before merge** for **Iteration 4**, scoped to work-kind / forge-neutral
+> governance completeness from the real-GitLab dogfood (FR-022–FR-026; see
+> [iterations/004/](iterations/004/) + [dogfood-findings.md](dogfood-findings.md)). The dogfood proved
+> the iter-3 implementation of FR-019 had a markdown-only coverage gap (runtime/deployed surfaces
+> un-neutralized). A fresh feature-closeout supersedes this one at the end of Iteration 4. Reopening
+> pre-merge does NOT violate FR-004 (which governs **merged** features). DF-006 + F-174's
+> `launch-contract.ps1` are **out of scope** (F-174 handoffs).
 
 ## Executive Summary
 
