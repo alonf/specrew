@@ -57,4 +57,21 @@ try {
 }
 finally { Remove-Item -LiteralPath $big -Force -ErrorAction SilentlyContinue }
 
+# --- Tail bound (F3): the read is bounded to the LAST $MaxTailLines lines, so a turn BEYOND the tail window is
+#     never read (the O(session)->O(tail) optimization). Isolated from the MaxTurns cap by using a small tail
+#     with a LARGE MaxTurns: only the tail can be the limiter, so an early-line turn being absent proves the
+#     tail bound, not the turn cap. (Prop-145 P5: a turn past the window is provably skipped.) ---
+$tailFix = Join-Path ([System.IO.Path]::GetTempPath()) ("convtail-" + [guid]::NewGuid().ToString('N') + '.jsonl')
+try {
+    $tlines = 1..30 | ForEach-Object {
+        $mark = if ($_ -eq 1) { 'EARLY-CANARY-LINE1' } elseif ($_ -eq 30) { 'LATE-CANARY-LINE30' } else { "mid $_" }
+        '{"role":"' + (@('user', 'assistant')[$_ % 2]) + '","message":{"content":[{"type":"text","text":"' + $mark + '"}]}}'
+    }
+    Set-Content -LiteralPath $tailFix -Value $tlines -Encoding UTF8
+    $tailed = [string](Get-SpecrewConversationTail -HostKind cursor -TranscriptPath $tailFix -MaxTailLines 10 -MaxTurns 20 -MaxChars 8000)
+    Assert-True ($tailed.Contains('LATE-CANARY-LINE30')) 'tail-bound: a turn INSIDE the tail window survives'
+    Assert-True (-not $tailed.Contains('EARLY-CANARY-LINE1')) 'tail-bound: a turn BEYOND the tail window is never read (MaxTurns=20 would have kept it; the tail bound drops it)'
+}
+finally { Remove-Item -LiteralPath $tailFix -Force -ErrorAction SilentlyContinue }
+
 Write-Host "`n=== ConversationCapture.Tests.ps1: all assertions passed ===" -ForegroundColor Green

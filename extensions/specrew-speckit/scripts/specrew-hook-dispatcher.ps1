@@ -130,9 +130,19 @@ function Invoke-ProviderProcess {
             try { $proc.Kill($true) } catch { }
             return @{ TimedOut = $true; ExitCode = -1; StdOut = ''; StdErr = '' }
         }
-        $stdout = ''; $stderr = ''
-        try { $stdout = $outTask.GetAwaiter().GetResult() } catch { $stdout = '' }
-        try { $stderr = $errTask.GetAwaiter().GetResult() } catch { $stderr = '' }
+        # Drain the async readers, BOUNDED: after the process exits its pipes normally close and the reads
+        # settle at once (~0ms). But a provider that leaves a GRANDCHILD holding the stdout handle open can keep
+        # the pipe alive, so a bare GetResult() could hang the hook indefinitely. Cap the post-exit drain; on a
+        # miss take whatever arrived (fail-open) + one loud WARN (the degrade-to-silence-but-WARN doctrine), so
+        # a stuck stream is diagnosable instead of silently empty.
+        $drainMs = 5000
+        $drained = $false
+        try { $drained = [System.Threading.Tasks.Task]::WaitAll(@($outTask, $errTask), $drainMs) } catch { $drained = $false }
+        $stdout = if ($outTask.IsCompletedSuccessfully) { $outTask.Result } else { '' }
+        $stderr = if ($errTask.IsCompletedSuccessfully) { $errTask.Result } else { '' }
+        if (-not $drained) {
+            Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' exited but its output stream stayed open >{1}ms (a lingering child?); using partial output" -f (Split-Path -Leaf $CommandPath), $drainMs)
+        }
         return @{
             TimedOut = $false
             ExitCode = $proc.ExitCode
@@ -552,15 +562,18 @@ try {
         else {
             # Pass the resolved host so the provider can shape host-aware delivery (F-174 codex fix: codex
             # drops the oversized SessionStart additionalContext, so the provider hands codex a lean pointer).
-            # Also pass the neutral event name as a CLEAN arg (--source-event): the --event-json payload gets
-            # mangled through Start-Process -ArgumentList, so a provider that wants the event name (the F-174
-            # handover, to label its trigger source) cannot reliably parse it from the JSON. Both are harmless
-            # to inject providers that do not read them.
+            # Also pass the neutral event name as its own CLEAN arg (--source-event): a provider that wants the
+            # event name (the F-174 handover, to label its trigger source) reads it directly instead of digging
+            # the field out of the full --event-json blob. (Historically this also dodged Start-Process
+            # -ArgumentList arg-mangling; the launch primitive is now ProcessStartInfo.ArgumentList which escapes
+            # every arg correctly, but the dedicated arg stays - it is clearer and decouples providers from the
+            # host's JSON shape.) Both are harmless to inject providers that do not read them.
             $commandArgs = @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind, '--source-event', $Event)
-            # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event
-            # and pass it as a CLEAN arg (a plain path survives Start-Process -ArgumentList; the JSON does not),
-            # so the handover provider can capture the conversation tail. Field name varies (snake/camel);
-            # harmless to providers that ignore the arg. Fail-open.
+            # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event and
+            # pass it as its own CLEAN arg, so the handover provider captures the conversation tail without
+            # re-parsing the event JSON. Field name varies (snake/camel); harmless to providers that ignore the
+            # arg. (Invoke-ProviderProcess delivers it via ProcessStartInfo.ArgumentList, so a path with spaces
+            # survives byte-for-byte - the spaced-home bug this fixed.) Fail-open.
             if (-not [string]::IsNullOrWhiteSpace($rawEvent)) {
                 try {
                     $evtObj = $rawEvent | ConvertFrom-Json -ErrorAction Stop

@@ -52,6 +52,23 @@
     (120KB captured intact, 3.2s — no truncation/deadlock on the primitive EVERY provider uses).
   - **F1 (deploy)** — the live `.specify/` dispatcher + catalog are stale and the per-host hook configs lack
     the F-174 stop/handover events; refreshed at deploy time (separate step, surfaced to the maintainer).
+- **Proposal-145 structured self-review** (6 phases + adversarial falsification, 12 agents): 5/6 phases PASS;
+  P3's "blocking" UTF-8 finding was a FALSE POSITIVE the falsifier killed empirically. P2 returned a real
+  finding the prior tests missed -> FIXED:
+  - **P2 (functional)** — `Write-SpecrewHandoverContext`'s F2 preserve lacked the boundary gate its sibling
+    `Write-SpecrewRollingHandover` has: an agent authoring a PARTIAL packet at a NEW boundary would resurrect a
+    prior-boundary ERA-scoped narrative mechanical (stale "Context"/"What I just did" leak). Now boundary-gated
+    via a new `Get-SpecrewHandoverTimeScopedSections` helper — narrative mechanicals reset on a boundary change;
+    the TIME-scoped 'Recent conversation' tail still carries across (cross-session continuity). New
+    cross-boundary assertions in `HandoverConversationPreserve.Tests.ps1`.
+  - **P6/P4 (robustness)** — `Invoke-ProviderProcess`'s success-path async drain is now BOUNDED (5s) so a
+    provider that leaves a grandchild holding stdout can't hang the hook; a stuck stream degrades to partial
+    output + a loud WARN (the documented fail-quiet-but-loud-once doctrine) instead of silent empty.
+  - **P4** — refreshed the now-historical `Start-Process`-mangling comments to the ProcessStartInfo reality.
+  - **P5** — added a `$MaxTailLines` tail-bound test (a turn beyond the window is provably skipped).
+  - Triaged/deferred (disposition recorded): user-home rollback runbook -> T009 docs; PostToolUse per-call
+    latency -> validate in the on-host dogfood; full dispatcher->provider->handover capture integration test
+    -> T006 (the deployed-path smoke covered it manually this session).
 - **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (6) +
   DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
   (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, Concurrency, Regression,

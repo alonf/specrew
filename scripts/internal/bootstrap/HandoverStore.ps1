@@ -50,6 +50,16 @@ function Get-SpecrewHandoverMechanicalSections {
     return @(Get-SpecrewHandoverSectionOrder | Where-Object { $agent -notcontains $_ })
 }
 
+function Get-SpecrewHandoverTimeScopedSections {
+    # F-174 iter-10: the HOOK-owned sections that are TIME-scoped, not BOUNDARY-scoped - i.e. "recent
+    # exchanges", which should carry across a boundary change (cross-session continuity is the whole point of
+    # capturing them), unlike the era-scoped narrative mechanicals ("What I just did" / "Context ...") which a
+    # boundary change resets. Used by the agent body-author preserve to boundary-gate the narrative mechanicals
+    # while keeping the conversation tail. Currently just the conversation section (the only hook-ONLY section
+    # the agent never authors). Matched against the canonical title in Get-SpecrewHandoverSectionOrder.
+    return @(Get-SpecrewHandoverSectionOrder | Where-Object { $_ -like 'Recent conversation*' })
+}
+
 function Get-SpecrewHandoverPlaceholderMarker {
     # The body-section placeholder the HOOK writes when the agent has not authored a section for the
     # current boundary. Starts with "(placeholder" so the structural detector recognizes it without an
@@ -323,10 +333,18 @@ function Write-SpecrewHandoverContext {
     if (Test-Path -LiteralPath $path) {
         $existing = ConvertFrom-SpecrewHandoverFile -Path $path
         if ($null -ne $existing -and $existing.sections -and $existing.sections.Count -gt 0) {
+            # BOUNDARY GATING (Prop-145 P2 finding): a narrative mechanical the agent omits is ERA-scoped, so it
+            # must NOT be resurrected from a PRIOR boundary (that would leak stale "What I just did" / "Context"
+            # across a boundary change) - same boundary-gate the sibling hook writer applies to its preserve.
+            # The TIME-scoped conversation tail is the exception: it carries across boundaries (cross-session
+            # continuity is the point), so it is preserved regardless of the existing file's boundary.
+            $sameBoundary = (([string]$existing.active_boundary) -eq ([string]$ActiveBoundary))
+            $timeScoped = Get-SpecrewHandoverTimeScopedSections
             foreach ($mt in (Get-SpecrewHandoverMechanicalSections)) {
                 $agentSupplied = $merged.Contains($mt) -and -not [string]::IsNullOrWhiteSpace([string]$merged[$mt])
-                if (-not $agentSupplied -and $existing.sections.Contains($mt) -and
-                    (Test-SpecrewHandoverSectionAuthored -Content ([string]$existing.sections[$mt]))) {
+                if ($agentSupplied) { continue }
+                if (-not ($existing.sections.Contains($mt) -and (Test-SpecrewHandoverSectionAuthored -Content ([string]$existing.sections[$mt])))) { continue }
+                if (($timeScoped -contains $mt) -or $sameBoundary) {
                     $merged[$mt] = [string]$existing.sections[$mt]
                 }
             }

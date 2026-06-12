@@ -49,6 +49,27 @@ try {
     $p3 = ConvertFrom-SpecrewHandoverFile -Path (Get-SpecrewRollingHandoverPath -HandoverDir $tmp2)
     Assert-True (-not (Test-SpecrewHandoverSectionAuthored -Content $p3.sections[$convoTitle])) 'F2: no prior file -> the conversation stays a placeholder (no fabrication)'
 
+    # 5. CROSS-BOUNDARY (Prop-145 P2 finding): an agent authoring at a NEW boundary, omitting a narrative
+    #    mechanical, must NOT resurrect the PRIOR boundary's value (era-scoped) - but the TIME-scoped
+    #    conversation tail MUST carry across the boundary.
+    $ctxTitle = "Context the receiving host needs that artifacts don't carry"
+    $tmp3 = Join-Path ([System.IO.Path]::GetTempPath()) ("f2c-" + [guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $tmp3 -Force | Out-Null
+    try {
+        # Hook writes at boundary 'implement': a conversation tail + an era-scoped narrative 'Context'.
+        Write-SpecrewRollingHandover -HandoverDir $tmp3 -Source 'Stop' -FromHost 'claude' -RecordedAt '2026-06-12T00:00:00Z' `
+            -ActiveBoundary 'implement' -ActiveFeature 'feat-x' `
+            -MechanicalSections @{ $convoTitle = $convoBody; $ctxTitle = 'CTX-IMPLEMENT-ERA' } | Out-Null
+        # Agent authors at a DIFFERENT boundary 'review-signoff', omitting BOTH the conversation and 'Context'.
+        Write-SpecrewHandoverContext -HandoverDir $tmp3 -FromHost 'claude' -RecordedAt '2026-06-12T03:00:00Z' `
+            -ActiveBoundary 'review-signoff' -ActiveFeature 'feat-x' -Sections @{ $openTitle = 'a new-boundary question' } | Out-Null
+        $pc = ConvertFrom-SpecrewHandoverFile -Path (Get-SpecrewRollingHandoverPath -HandoverDir $tmp3)
+        Assert-True ($pc.sections[$convoTitle] -like '*CANARY-ASSISTANT*') 'F2/P2: the TIME-scoped conversation CARRIES across a boundary change'
+        Assert-True (-not (Test-SpecrewHandoverSectionAuthored -Content $pc.sections[$ctxTitle])) 'F2/P2: an ERA-scoped narrative mechanical is NOT resurrected from the prior boundary (placeholder, no stale leak)'
+        Assert-True ($pc.sections[$ctxTitle] -notlike '*CTX-IMPLEMENT-ERA*') 'F2/P2: the prior-boundary Context value did not leak forward'
+    }
+    finally { Remove-Item -LiteralPath $tmp3 -Recurse -Force -ErrorAction SilentlyContinue }
+
     Write-Host "`n=== HandoverConversationPreserve.Tests.ps1: all assertions passed ===" -ForegroundColor Green
 }
 finally {
