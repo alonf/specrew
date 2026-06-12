@@ -135,7 +135,7 @@ function Invoke-ProviderProcess {
         $errTask = $proc.StandardError.ReadToEndAsync()
         if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
             try { $proc.Kill($true) } catch { $null = $_ }  # already exited (the goal) or unkillable; we abandon it on timeout regardless
-            return @{ TimedOut = $true; ExitCode = -1; StdOut = ''; StdErr = '' }
+            return @{ TimedOut = $true; ExitCode = -1; StdOut = ''; StdErr = ''; LaunchFailed = $false }
         }
         # Drain the async readers, BOUNDED: after the process exits its pipes normally close and the reads
         # settle at once (~0ms). But a provider that leaves a GRANDCHILD holding the stdout handle open can keep
@@ -151,10 +151,11 @@ function Invoke-ProviderProcess {
             Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' exited but its output stream stayed open >{1}ms (a lingering child?); using partial output" -f (Split-Path -Leaf $CommandPath), $drainMs)
         }
         return @{
-            TimedOut = $false
-            ExitCode = $proc.ExitCode
-            StdOut   = ($stdout ?? '')
-            StdErr   = ($stderr ?? '')
+            TimedOut     = $false
+            ExitCode     = $proc.ExitCode
+            StdOut       = ($stdout ?? '')
+            StdErr       = ($stderr ?? '')
+            LaunchFailed = $false
         }
     }
     catch {
@@ -162,9 +163,9 @@ function Invoke-ProviderProcess {
         # full argv as one ~32KB-capped string; a large --event-json can exceed it) makes Process.Start() throw
         # "The filename or extension is too long". Without this catch the exception propagates to the dispatcher's
         # outer catch and ABORTS the whole event - every later provider for that event is skipped too. Degrade to a
-        # failed result for THIS provider only (the caller treats ExitCode<>0 as failed and continues), + one WARN.
-        Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' failed to launch: {1}; skipped" -f (Split-Path -Leaf $CommandPath), $_.Exception.Message)
-        return @{ TimedOut = $false; ExitCode = -1; StdOut = ''; StdErr = [string]$_.Exception.Message }
+        # failed result for THIS provider only; the CALLER emits the single WARN (LaunchFailed -> "failed to launch"),
+        # so a launch failure is reported once, not twice.
+        return @{ TimedOut = $false; ExitCode = -1; StdOut = ''; StdErr = [string]$_.Exception.Message; LaunchFailed = $true }
     }
     finally {
         $proc.Dispose()
@@ -619,7 +620,9 @@ try {
 
         $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs $commandArgs -WorkingDirectory $projectRoot -TimeoutSeconds $ProviderTimeoutSeconds
         if ($result.TimedOut -or $result.ExitCode -ne 0) {
-            $why = if ($result.TimedOut) { 'timed out' } else { "exited $($result.ExitCode)" }
+            $why = if ($result.TimedOut) { 'timed out' }
+            elseif ($result.LaunchFailed) { "failed to launch: $($result.StdErr)" }
+            else { "exited $($result.ExitCode)" }
             Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' {1}; skipped" -f $providerId, $why)
             if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
                 $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope 'unknown' -Channel 'hook' -Tokens 0 -Outcome 'failed'
