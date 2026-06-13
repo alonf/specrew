@@ -1,13 +1,36 @@
 # Feature 182 — Dogfood Findings (real GitLab forge test)
 
-**Status**: LIVING — collected during the 0.36.0-beta1 dogfood (real GitLab repo:
-`gitlab.com/alonfliess-group/alonfliess-project`). Drives a **reopen → Iteration 4** on this branch
-(before merge), NOT a separate proposal. Iteration 4 scope is decided at a before-implement gate after
-the dogfood wraps.
+**Status**: RECONCILED at feature-closeout (2026-06-13) — collected during the 0.36.0-beta1 dogfood (real
+GitLab repo: `gitlab.com/alonfliess-group/alonfliess-project`). Drove a **reopen → Iteration 4** on this
+branch (before merge), NOT a separate proposal. Iteration 4 (FR-022–FR-026) is implemented, reviewed
+(Prop-145 accepted after a send-back rework), and CLOSED. The per-finding disposition is in the
+**Iteration-4 Resolution Status** section below.
 
 **Test context**: branch build (`SPECREW_MODULE_PATH` dev tree, 0.36.0-beta1, not published); a
 greenfield link-shortener project; `provider: gitlab`; trunk-based, `main` release-truth. The point is
 to stress iteration-3's forge-neutralization on a genuinely non-GitHub forge.
+
+## Iteration-4 Resolution Status (feature-closeout, 2026-06-13)
+
+Iteration 4 (FR-022–FR-026) is implemented, reviewed (Prop-145 accepted after a send-back rework F1/F2/F3),
+and CLOSED — see [iterations/004/](iterations/004/). The dogfood findings are reconciled as follows. The
+RESOLVED rows rest on the confound-proof **artifact + deterministic-validator** evidence (the leak-grep, the
+resolver, the detector test), per the test-validity note below — not on behavior-level "the agent did the
+right thing".
+
+| Finding | Disposition | Resolved by (Iteration 4) — evidence |
+| --- | --- | --- |
+| **DF-001** — CI-lane GitHub-only default leaks on a non-GitHub forge | **RESOLVED** | **FR-024** — the DevOps lens proposes CI for the project's **own forge** + states honestly "no lane ships for `<forge>`"; never defaults a non-GitHub project to GitHub Actions (`design-lenses/devops-operations.md`; sweep-clean). The optional turnkey GitLab CI **template** is a recorded carry (descoped), not a blocker. |
+| **DF-004** — capability detector reports `gitlab-ci`, not `gitlab` | **RESOLVED** | **FR-026** — `Resolve-SpecrewGovernanceProvider` reads `provider.name`, **never** `ci.provider`; reports `gitlab`. `capability-provider-resolution.tests.ps1` (4 schema shapes + e2e). |
+| **DF-005** (HEADLINE) — runtime/launch-prompt layer un-neutralized | **RESOLVED** | **FR-022 / SC-015** — the widened sweep scans `.ps1` + deployed-agent surfaces (not just markdown); `scripts/specrew-start.ps1` + `.github/agents/squad.agent.md` neutralized to the labeled-example form; the pattern-based sweep + an F-174 regression fixture prove it will catch F-174's future `launch-contract.ps1` site at reconciliation. `forge-neutralization-sweep.tests.ps1` (43 md + 84 .ps1 + 22 agent surfaces). |
+| **DF-008** — framework defect mis-scoped downstream; new-kind offered as "iteration N" | **RESOLVED** | **FR-025** — lifecycle-end routing distinguishes downstream project work (→ a new work item) / upstream Specrew/tool defect (→ tool backlog, NOT a project carried-forward iteration) / a new work-kind item (→ a separate work item, NOT "iteration N"). `coordinator-decision-guidance.md`; sweep-clean. |
+| **DF-009** — lifecycle templates inert; not wired to intake | **RESOLVED** | **FR-023 / SC-016** — lifecycle templates operationalized via catalog `lifecycle_template` + schema + deploy/FileList + a deployed-shape resolver; a declared `work_kind` resolves to its `<kind>-lifecycle.md` in the real `.specify` deployed shape and is **surfaced at the refocus (session-start) intake path** (not just the too-late validator). `work-kind-lifecycle.tests.ps1` (runtime resolution + the refocus surface end-to-end, NOT file-presence). |
+| DF-006 — `specrew start` clobbers iteration state | **F-174 HANDOFF** (out of F-182 scope) | Session-start/runtime-state, not work-kind/forge. F-174 owns the session-start rewrite + adds a resume-preserves-state regression test. NOT marked F-182-resolved. |
+| DF-010 — release-train regression hazard | **F-174 HANDOFF** (out of F-182 scope) | F-174 waits for F-182 to merge first, rebases onto post-F-182 main preserving F-182's neutralized coordinator sources, resolves the `specrew-start.ps1` conflict in favor of its deletion, and neutralizes `launch-contract.ps1`. F-182's binding obligation (the widened sweep that catches that site) is **landed** + fixture-proven. NOT marked F-182-resolved. |
+
+DF-002 was already dispositioned RESOLVED-not-a-bug (honest "no remote configured" capture); DF-003
+(boundary discipline) trended a **non-finding** — the agent stopped at every human boundary (see
+"What's passing"), and was never in the reopen set. Neither is an Iteration-4 deliverable.
 
 ## Findings
 
