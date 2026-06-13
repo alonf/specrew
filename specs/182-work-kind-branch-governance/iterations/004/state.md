@@ -1,20 +1,21 @@
 # Iteration State: 004
 
 **Schema**: v1
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: T408 (verification wave; all T401..T408 complete + green; ready for the formal review boundary)
-**Tasks Remaining**: (none — T401..T408 complete)
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: T408 (review accepted after the send-back rework; retro done; iteration CLOSED)
+**Tasks Remaining**: (none — T401..T408 complete; review accepted; retro done; iteration CLOSED)
 **In Progress**: (none)
 **Baseline Ref**: 45415737
-**Updated**: 2026-06-13T00:30:00Z
+**Updated**: 2026-06-13T04:35:00Z
 
 ## Execution Summary
 
-- Iteration 004 (dogfood-findings completion, FR-022–FR-026) is **PLANNED, not started**. The spec
-  amendment (FR-022–FR-026 + SC-015/016), the Iteration-4 plan, this state, and the before-implement
-  hardening gate are authored; execution stops at the before-implement boundary for the maintainer's
-  authorization (no code written).
+- Iteration 004 (dogfood-findings completion, FR-022–FR-026) is **CLOSED**: implemented (T401–T408,
+  commits `7cf801cc` + `50d6743f`), formally reviewed (Prop-145), **sent back** with 3 findings,
+  **reworked** (commit `61e6b258`), and **accepted** by the maintainer; retro authored; the
+  before-implement hardening gate closed with post-implementation runtime evidence recorded. Stops at
+  iteration-closeout — no feature-closeout (next boundary), no push/PR/merge/tag/publish/release.
 - **Scope guardrail (maintainer-set):** work-kind / forge-neutral governance ONLY. NOT F-174's
   session-bootstrap rewrite, NOT DF-006, NOT session-state. Specrew's own GitHub release workflow changes
   only as a labeled example.
