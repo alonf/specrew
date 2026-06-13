@@ -51,6 +51,21 @@ What's your verdict?
   4. Discuss prompt #N — discuss that prompt only, then return for explicit approval
 ```
 
+Then, as the **VERY LAST line of your message**, emit the machine marker — an HTML comment, invisible when
+the message is rendered, but read by the Stop hook to capture the human's verdict and tie it to THIS exact
+boundary:
+
+```text
+<!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> -->
+```
+
+Replace `<from> -> <to>` with the **canonical** boundary you are gating (the from→to for this stop — e.g.
+`tasks -> before-implement`, `plan -> tasks`, `review-signoff -> retro`). This marker is how the hook records
+the human's ACTUAL typed verdict as the authorization (evidence-source `hook-captured-from-transcript`),
+instead of anything inventing one. Without it the gate stays un-authorized and the next session surfaces the
+boundary as "awaiting your verdict" so the human must re-confirm — so always include it, with the correct
+canonical boundary names. (It does not change what the human sees; it is a comment.)
+
 Then **STOP** — end your turn and wait for the human to type their choice (a number, or free text).
 
 - Do **NOT** call `AskUserQuestion` or any structured-question/menu tool for the verdict. It is disabled

@@ -624,6 +624,40 @@ function Update-SpecrewRollingHandover {
         -LastAuthorizedBoundary $lastAuthBoundary -LastVerdict $lastVerdict `
         -WorkshopDone $workshopDone -WorkshopRemaining $workshopRemaining | Out-Null
 
+    # F-174 iteration 011 (T004, FR-026 / decision f174-i011-verdict-authority-stop-hook): THE HOOK IS THE
+    # VERDICT AUTHORITY. On an end-of-turn stop, read the transcript for the human's verdict on the most recently
+    # rendered boundary packet (Get-SpecrewCapturedBoundaryVerdict, tied to the packet marker) and, if it is a
+    # CLEAR approval that advances the gate FORWARD, record the authorization with the captured verdict +
+    # evidence-source 'hook-captured-from-transcript'. This is what replaces boundary-sync's DELETED fabrication
+    # (T005): the gate advances ONLY on a real, captured human verdict - never invented. Guarded: runs only when
+    # BOTH the reader and the writer are loaded (the Stop-hook handover provider co-loads shared-governance; the
+    # design-workshop-refresh / test paths do not and correctly skip the authorization). Identity is left
+    # UNATTRIBUTED unless a host surface proves it (none reliably does yet) - honest over invented. Forward-only
+    # (the reader's contradiction/ambiguity guards already gate Found); fully fail-open - a capture failure
+    # degrades to "un-authorized", surfaced by the resume (T006), and NEVER blocks the stop.
+    if ($isEndOfTurn -and -not [string]::IsNullOrWhiteSpace($TranscriptPath) -and
+        (Get-Command Get-SpecrewCapturedBoundaryVerdict -ErrorAction SilentlyContinue) -and
+        (Get-Command Add-SpecrewBoundaryAuthorization -ErrorAction SilentlyContinue) -and
+        (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue)) {
+        try {
+            $captured = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath
+            if ($captured.Found) {
+                $bOrder = @(Get-SpecrewBoundaryOrder)
+                $toIdx = [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $captured.ToBoundary))
+                $authIdx = if ([string]::IsNullOrWhiteSpace([string]$lastAuthBoundary)) { -1 } else { [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuthBoundary)) }
+                # FORWARD-ONLY: advance only past the current authorized cursor (idempotent - a re-fired stop that
+                # re-reads the same captured verdict finds the gate already there and does nothing).
+                if ($toIdx -ge 0 -and $toIdx -gt $authIdx) {
+                    Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
+                        -CurrentBoundary $captured.FromBoundary -AuthorizedBoundary $captured.ToBoundary `
+                        -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
+                        -EvidenceSource 'hook-captured-from-transcript' | Out-Null
+                }
+            }
+        }
+        catch { [Console]::Error.WriteLine("[specrew-handover] WARN VERDICT_CAPTURE_FAILED $($_.Exception.Message)") }
+    }
+
     # M2 (iter-10): hollow = the git delta GENUINELY produced nothing (git unavailable / the fail-safe empty
     # shape), NOT the formatted-section count. The old check counted $mechanical.Values, which are always-
     # non-empty formatted strings, so $mechAuthored was always >=4 and $hollow was always false -> the WARN +

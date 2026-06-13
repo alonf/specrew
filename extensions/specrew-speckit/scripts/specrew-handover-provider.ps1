@@ -71,6 +71,17 @@ try {
         }
     }
     foreach ($f in 'HandoverStore', 'ClassificationEngine', 'ProjectMetadataAccessor', 'ConversationCaptureAccessor') { . (Join-Path $bdir "$f.ps1") }
+    # F-174 iteration 011 (T004): load shared-governance so the Stop-hook Update-SpecrewRollingHandover can record
+    # the captured human verdict (Add-SpecrewBoundaryAuthorization / Get-SpecrewBoundaryOrder). Same 3-tier
+    # resolution the bootstrap provider uses ($bdir -> scripts/internal -> module root -> extensions/.../scripts).
+    # FAIL-OPEN: if it cannot be resolved the handover still writes; the verdict-capture step self-guards on
+    # Get-Command and simply skips the authorization (the resume then surfaces the boundary as awaiting-verdict).
+    try {
+        $sgModuleRoot = Split-Path (Split-Path (Split-Path $bdir -Parent))
+        $sgPath = Join-Path (Join-Path $sgModuleRoot 'extensions/specrew-speckit/scripts') 'shared-governance.ps1'
+        if (Test-Path -LiteralPath $sgPath -PathType Leaf) { . $sgPath }
+    }
+    catch { $null = $_ }
 
     # Resolve the trigger source, in precedence order: an explicit --source (the workshop skill passes
     # `workshop`); else --source-event (the dispatcher passes the neutral event name as a CLEAN arg, since
