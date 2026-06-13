@@ -1,13 +1,13 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: clarify
+**Current Phase**: plan
 **Iteration Status**: executing
-**Last Completed Task**: specify — feature-spec amendment APPROVED WITH INSTRUCTIONS (`f174-i011-specify-clarify-approved`)
-**Tasks Remaining**: (task breakdown is produced at the plan boundary; clarify in progress)
-**In Progress**: clarify — resolving the mechanism ambiguities (verdict-capture match-strictness, the non-skippable backstop, identity attribution, antigravity fallback)
+**Last Completed Task**: clarify — mechanism ambiguities resolved; SC-013 tightened + SC-015 added (`f174-i011-clarify-plan-approved`)
+**Tasks Remaining**: T001–T007 planned (19/20, integrity core); DF-1/DF-2 (T008/T009) carried capacity-gated; awaiting plan→tasks verdict
+**In Progress**: plan — task breakdown drafted (Fix A→C→B core + tests; DF-1/DF-2 capacity-gated)
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-13T17:55:42Z
+**Updated**: 2026-06-13T18:07:00Z
 
 ## Charter
 
@@ -68,5 +68,18 @@ Specify approved with 5 instructions (1+2 confirmed the FR-022-amendment + FR-02
 - **Antigravity fallback** — record un-authorized + reconcile via `specrew start` (in FR-026 scope).
 - **(5) DF-1 / DF-2 plan-carry** — explicit plan tasks + evidence checks under FR-002 / FR-022.
 
-STOP at the clarify boundary for the maintainer verdict (clarify → plan). Per instruction: do NOT
-advance to plan on the specify approval.
+**Clarify APPROVED WITH INSTRUCTIONS** (2026-06-13, `f174-i011-clarify-plan-approved`): match-strictness
+default confirmed (recognized token tied to the boundary; ambiguous → un-authorized), antigravity
+fallback confirmed (un-authorized, don't block), SC-013 tightened + SC-015 (clobber) added, DF-1/DF-2
+tasked.
+
+## Plan (this boundary)
+
+Task breakdown drafted in
+`file:///C:/Dev/Specrew-session-bootstrap/specs/174-hook-driven-session-bootstrap/iterations/011/plan.md`,
+fully traced to FR-022/FR-026/FR-027 + SC-012/013/014/015 (+ DF-1/DF-2 under FR-002/FR-022). The
+integrity **core** (T001–T007 = 19/20) is committed and fits the cap; **DF-1/DF-2 (T008/T009, 3 SP) are
+carried capacity-gated** — they push the cluster to 22 SP over cap, so the capacity call (raise the cap
+to a human-approved 22 and pull them in, vs an iteration-012 fast-follow) is the plan verdict. STOP at
+the plan boundary for the maintainer verdict (plan → tasks). Per instruction: do NOT advance to tasks on
+the clarify approval.

@@ -1,3 +1,31 @@
+## 2026-06-13 — F-174 iteration-011 clarify→plan: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance clarify→plan; confirm match-strictness + tighten SCs
+
+- **Decision ID**: f174-i011-clarify-plan-approved
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-022, FR-026, FR-027
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:07:00Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-011 clarify→plan. Proceed to PLAN ONLY; do
+  NOT advance to tasks on this approval.
+- **Carried instructions**:
+  1. Match-strictness: build against the proposed default — a RECOGNIZED verdict token tied to the named
+     boundary; never "any human turn after the packet." Transcript ambiguous / contradictory / not tied to
+     the current boundary packet → record un-authorized + surface for human reconciliation.
+  2. Antigravity fallback: keep "record un-authorized, don't block" for no-hook hosts; the guarantee is that
+     resume / `specrew start` surfaces "awaiting verdict" and never infers approval or auto-advances.
+  3. Tighten SC-013: after the FR-026 identity clarification, "records the real human" is too strong → records
+     the proven human identity when the host surface proves it, else the captured verdict evidence with an
+     unknown/unattributed human source. → SC-013 tightened.
+  4. Carry a clobber/no-overwrite proof into the plan — Stop-hook capture MUST NOT overwrite an already-
+     authored richer body with placeholder/stale, and MUST set `active_boundary`. → SC-015 added.
+  5. Plan MUST include explicit DF-1/DF-2 tasks + evidence under FR-002 / FR-022 (already carried).
+- **Disposition**: SC-013 tightened + SC-015 added (instructions 3+4); match-strictness + antigravity fallback
+  (1+2) recorded as plan inputs; DF-1/DF-2 (5) tasked in the plan. Current Phase advanced to plan; STOP at
+  plan→tasks for the verdict.
+
 ## 2026-06-13 — F-174 iteration-011 specify→clarify: APPROVE WITH INSTRUCTIONS
 
 ### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance specify→clarify; spec amendments accepted

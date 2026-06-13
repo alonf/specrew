@@ -523,10 +523,16 @@ offered.
   agent-function-dependent), and a DIFFERENT host's resume inherits the AUTHORED packet — not
   placeholders. (FR-022 iteration-011 amendment)
 - **SC-013**: A boundary-sync with no captured human verdict records the crossing as un-authorized
-  (never `approved for <boundary>` attributed to the git committer); a real captured human verdict
-  records the real human. Proven by a deterministic test AND the re-dogfood. (FR-026)
+  (never `approved for <boundary>` attributed to the git committer); a captured human verdict records
+  the PROVEN human identity when the host surface proves it, else records the captured verdict
+  evidence with an unknown/unattributed human source (never fabricated). Proven by a deterministic
+  test AND the re-dogfood. (FR-026, clarify instruction 3)
 - **SC-014**: A resume on a committed-but-unverdicted boundary surfaces "awaiting your verdict",
   not "approved", and does not auto-advance on a bare "continue". (FR-027)
+- **SC-015**: Stop-hook mechanical capture MUST NOT overwrite an already-authored, richer body with a
+  placeholder or stale body, and MUST set `active_boundary`. Proven by a deterministic test (author →
+  turn-end Stop → the authored body + `active_boundary` are preserved, not clobbered). (FR-022
+  iteration-011 amendment, clarify instruction 4)
 
 ## Assumptions
 
