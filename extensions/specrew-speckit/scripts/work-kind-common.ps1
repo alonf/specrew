@@ -151,17 +151,20 @@ function Get-SpecrewWorkKindLifecycle {
     if ([string]::IsNullOrWhiteSpace($tmpl)) { $result.Reason = ('no-lifecycle_template-for: {0}' -f $result.Kind); return [pscustomobject]$result }
     $result.LifecycleTemplate = $tmpl
 
-    # the lifecycle_template path is repo-relative ("templates/lifecycle/<kind>-lifecycle.md"); resolve it
-    # against the project, its .specify deploy, the catalog's own repo root, and the active module.
-    $catalogRoot = $catalogPath
-    foreach ($i in 1..4) { $catalogRoot = Split-Path -Parent $catalogRoot }   # .../knowledge/file -> repo root
-    $roots = @($root, (Join-Path $root '.specify'), $catalogRoot)
-    if ($env:SPECREW_MODULE_PATH) { $roots += $env:SPECREW_MODULE_PATH }
-    foreach ($r in ($roots | Where-Object { $_ })) {
-        $cand = Join-Path $r $tmpl
-        if (Test-Path -LiteralPath $cand -PathType Leaf) { $result.ResolvedPath = (Resolve-Path -LiteralPath $cand).Path; $result.Exists = $true; break }
+    # lifecycle_template ("templates/lifecycle/<kind>-lifecycle.md") is relative to the EXTENSION ROOT
+    # (the catalog's grandparent): the templates ship WITH the extension, so the SAME relative path
+    # resolves in the dev tree (extensions/specrew-speckit/...) AND a deployed project
+    # (.specify/extensions/specrew-speckit/...). This is the deployed-shape fix (the prior repo-root
+    # resolution failed in a real deployment).
+    $extRoot = Split-Path -Parent (Split-Path -Parent $catalogPath)   # <ext>/knowledge/work-kinds.yml -> <ext>
+    $cand = Join-Path $extRoot $tmpl
+    if (Test-Path -LiteralPath $cand -PathType Leaf) {
+        $result.ResolvedPath = (Resolve-Path -LiteralPath $cand).Path
+        $result.Exists = $true
     }
-    if (-not $result.Exists) { $result.Reason = ('lifecycle-template-not-resolvable: {0}' -f $tmpl) }
+    else {
+        $result.Reason = ('lifecycle-template-not-resolvable: {0} (looked under {1})' -f $tmpl, $extRoot)
+    }
     return [pscustomobject]$result
 }
 

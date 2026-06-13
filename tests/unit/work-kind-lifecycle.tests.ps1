@@ -27,27 +27,42 @@ foreach ($k in $kinds) {
     if (-not $entry.Contains('lifecycle_template') -or [string]::IsNullOrWhiteSpace([string]$entry['lifecycle_template'])) {
         Write-Fail "kind '$k' has no lifecycle_template field (FR-023)"
     }
-    $tmplAbs = Join-Path $repoRoot ([string]$entry['lifecycle_template'])
+    # lifecycle_template is relative to the EXTENSION root (where the catalog lives), NOT the repo root.
+    $extRoot = Join-Path $repoRoot 'extensions/specrew-speckit'
+    $tmplAbs = Join-Path $extRoot ([string]$entry['lifecycle_template'])
     if (-not (Test-Path -LiteralPath $tmplAbs -PathType Leaf)) {
-        Write-Fail ("kind '{0}' lifecycle_template '{1}' does not exist on disk" -f $k, $entry['lifecycle_template'])
+        Write-Fail ("kind '{0}' lifecycle_template '{1}' does not exist under the extension tree" -f $k, $entry['lifecycle_template'])
     }
 }
-Write-Pass "SC-016: all 4 work kinds declare a lifecycle_template pointing to an existing template file."
+Write-Pass "SC-016: all 4 work kinds declare a lifecycle_template pointing to a real template file in the extension tree."
 
-# --- helper: build a throwaway project (CI-lane layout) with a declaration + catalog + templates ---
+# --- helper: build a throwaway project in the REAL DEPLOYED shape (the extension deploys to
+#     .specify/extensions/specrew-speckit/, templates + catalog ride WITH it) — F1 regression fixture ---
+$srcExt = Join-Path $repoRoot 'extensions/specrew-speckit'
 function New-LifecycleFixture {
-    param([string]$Kind, [switch]$OmitTemplates)
+    param([string]$Kind, [switch]$OmitTemplates, [switch]$WithRefocus)
     $dir = Join-Path ([System.IO.Path]::GetTempPath()) ("wk-lc-" + [System.IO.Path]::GetRandomFileName())
+    $deployExt = Join-Path $dir '.specify/extensions/specrew-speckit'
     New-Item -ItemType Directory -Force (Join-Path $dir '.specrew') | Out-Null
-    New-Item -ItemType Directory -Force (Join-Path $dir 'extensions/specrew-speckit/knowledge') | Out-Null
+    New-Item -ItemType Directory -Force (Join-Path $deployExt 'knowledge') | Out-Null
     "work_kind: $Kind`nschema_version: `"1.0`"" | Set-Content -LiteralPath (Join-Path $dir '.specrew/work-kind.yml') -Encoding UTF8
-    Copy-Item -LiteralPath $catalogPath -Destination (Join-Path $dir 'extensions/specrew-speckit/knowledge/work-kinds.yml')
+    Copy-Item -LiteralPath (Join-Path $srcExt 'knowledge/work-kinds.yml') -Destination (Join-Path $deployExt 'knowledge/work-kinds.yml')
     if (-not $OmitTemplates) {
-        $destLc = Join-Path $dir 'templates/lifecycle'
+        $destLc = Join-Path $deployExt 'templates/lifecycle'
         New-Item -ItemType Directory -Force $destLc | Out-Null
-        foreach ($t in (Get-ChildItem -LiteralPath (Join-Path $repoRoot 'templates/lifecycle') -Filter '*.md' -File)) {
+        foreach ($t in (Get-ChildItem -LiteralPath (Join-Path $srcExt 'templates/lifecycle') -Filter '*.md' -File)) {
             Copy-Item -LiteralPath $t.FullName -Destination (Join-Path $destLc $t.Name)
         }
+    }
+    if ($WithRefocus) {
+        # add the deployed refocus assets so the refocus (session-start) surface can run end-to-end
+        New-Item -ItemType Directory -Force (Join-Path $deployExt 'refocus') | Out-Null
+        New-Item -ItemType Directory -Force (Join-Path $deployExt 'scripts') | Out-Null
+        Copy-Item -LiteralPath (Join-Path $srcExt 'refocus-scopes.json') -Destination (Join-Path $deployExt 'refocus-scopes.json')
+        foreach ($d in (Get-ChildItem -LiteralPath (Join-Path $srcExt 'refocus') -Filter '*.md' -File)) {
+            Copy-Item -LiteralPath $d.FullName -Destination (Join-Path $deployExt "refocus/$($d.Name)")
+        }
+        Copy-Item -LiteralPath (Join-Path $srcExt 'scripts/work-kind-common.ps1') -Destination (Join-Path $deployExt 'scripts/work-kind-common.ps1')
     }
     return $dir
 }
@@ -105,26 +120,21 @@ try {
 finally { Remove-Item -Recurse -Force $bare -ErrorAction SilentlyContinue }
 Write-Pass "SC-016: no work-kind declared -> the surface is silent (no false lifecycle pointer)."
 
-# --- 6) LIVE SURFACE: the work-kind VALIDATOR (the intake/CI runtime surface) carries the lifecycle pointer ---
-. (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/work-kind-validator.ps1')
-$proj = New-LifecycleFixture -Kind 'docs-only'
+# --- 6) LIVE INTAKE/START SURFACE: the REFOCUS engine surfaces the lifecycle contract at session-start,
+#        BEFORE work begins. (DF-009 fired at intake; the validator runs too late — a work item can start
+#        with the agent improvising before the validator ever runs. Tested in the real DEPLOYED shape.) ---
+$proj = New-LifecycleFixture -Kind 'docs-only' -WithRefocus
 try {
-    Push-Location $proj
-    git init -q 2>$null; git config user.email t@t.t 2>$null; git config user.name t 2>$null
-    'doc' | Set-Content -LiteralPath (Join-Path $proj 'README.md') -Encoding UTF8
-    git add -A 2>$null; git commit -qm base 2>$null
-    "# more`ndocs" | Set-Content -LiteralPath (Join-Path $proj 'README.md') -Encoding UTF8
-    git add -A 2>$null; git commit -qm change 2>$null
-    Pop-Location
     $savedMp = $env:SPECREW_MODULE_PATH; $env:SPECREW_MODULE_PATH = $null
-    $res = Invoke-SpecrewWorkKindValidation -ProjectPath $proj -BaseRef HEAD~1 -HeadRef HEAD -Mode advisory
+    Push-Location $proj
+    $out = (& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $repoRoot 'scripts/internal/refocus.ps1') 2>&1 | Out-String)
+    Pop-Location
     $env:SPECREW_MODULE_PATH = $savedMp
-    if (-not $res.Contains('lifecycle')) { Write-Fail "validator result has no 'lifecycle' field (FR-023 surface wiring missing)" }
-    if ([string]::IsNullOrWhiteSpace([string]$res.lifecycle) -or [string]$res.lifecycle -notmatch 'docs-only-lifecycle\.md') {
-        Write-Fail ("validator 'lifecycle' surface must point to docs-only-lifecycle.md; got: {0}" -f $res.lifecycle)
+    if ($out -notmatch '(?i)work-kind lifecycle' -or $out -notmatch 'docs-only-lifecycle\.md') {
+        Write-Fail ("the refocus (session-start) surface must show the docs-only lifecycle contract; got:`n{0}" -f ($out.Substring(0, [Math]::Min(500, $out.Length))))
     }
 }
 finally { if ((Get-Location).Path -ne $repoRoot) { Set-Location $repoRoot }; Remove-Item -Recurse -Force $proj -ErrorAction SilentlyContinue }
-Write-Pass "SC-016: the live work-kind validator (intake/CI runtime surface) carries the resolved lifecycle contract pointer (DF-009 fixed)."
+Write-Pass "SC-016: the REFOCUS (intake/start) surface surfaces the resolved lifecycle contract at session-start in the real DEPLOYED shape — the surface that actually causes DF-009, not the too-late validator."
 
 Write-Host "`nWork-kind lifecycle operationalization (FR-023 / SC-016): all assertions pass" -ForegroundColor Green

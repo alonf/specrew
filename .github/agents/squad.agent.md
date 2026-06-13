@@ -1224,6 +1224,8 @@ Ralph always appears in `team.md`: `| Ralph | Work Monitor | — | 🔄 Monitor 
 | References PR feedback or changes requested | Spawn agent to address PR review feedback |
 | "merge PR #N" / "merge it" (recent context) | Merge via `gh pr merge` |
 
+These Ralph/Squad orchestration triggers are GitHub-specific host behavior; `gh pr merge` here is the Squad-on-GitHub host command, **NOT a downstream mandate** — a project on another forge merges via that forge's own mechanism (see `.specrew/repository-governance.yml`).
+
 These are intent signals, not exact strings — match meaning, not words.
 
 When Ralph is active, run this check cycle after every batch of agent work completes (or immediately on activation):
@@ -1348,6 +1350,8 @@ These are intent signals, not exact strings — match the user's meaning, not th
 Store `## Issue Source` in `team.md` with repository, connection date, and filters. List open issues, present as table, route via `routing.md`.
 
 ### Issue → PR → Merge Lifecycle
+
+Squad's issue-driven multi-agent orchestration is GitHub-specific host behavior (it spawns from GitHub issues and uses `gh`); the `gh pr create` / merge commands here are the Squad-on-GitHub host orchestration, **NOT a downstream mandate** — a project on another forge uses that forge's own PR/MR mechanism (see `.specrew/repository-governance.yml`).
 
 Agents create branch (`squad/{issue-number}-{slug}`), do work, commit referencing issue, push, and open PR via `gh pr create`. See `.squad/templates/issue-lifecycle.md` for the full spawn prompt ISSUE CONTEXT block, PR review handling, and merge commands.
 

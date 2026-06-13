@@ -41,9 +41,23 @@ $sc015Tokens = @('gh pr create', 'gh pr merge', 'Find-Module Specrew', 'Install-
 function Test-RuntimeSurfaceClean {
     param([string]$Rel, [string]$Content, [string]$Marker, [string[]]$Tokens)
     $local = New-Object System.Collections.Generic.List[string]
-    $hasMarker = ($Content -match "(?i)$([regex]::Escape($Marker))")
+    $fileHasMarker = ($Content -match "(?i)$([regex]::Escape($Marker))")
+    $isMd = $Rel -like '*.md'
+    # F3 (iter-4 review): generic forge mandates (gh pr ...) on a MARKDOWN deployed-agent surface require a
+    # SECTION-level marker — one labeled block (e.g. the feature-closeout example) must NOT whitewash a
+    # SEPARATE unlabeled `gh pr` in another section (the Squad issue-lifecycle case). Specrew-publish
+    # tokens (Find/Install-Module Specrew, PSGallery — inherently Specrew-self-referential) and ALL tokens
+    # on a `.ps1` launch-prompt block (one contiguous block, no markdown sections) keep a FILE-level marker.
+    $sectionScoped = @('gh pr create', 'gh pr merge')
     foreach ($t in $Tokens) {
-        if ($Content -match [regex]::Escape($t) -and -not $hasMarker) {
+        if ($isMd -and ($sectionScoped -contains $t)) {
+            foreach ($section in (Get-MarkdownSections -Lines ($Content -split "`r?`n"))) {
+                if ($section -match [regex]::Escape($t) -and $section -notmatch "(?i)$([regex]::Escape($Marker))") {
+                    $local.Add(("{0}: SC-015 forge-mandate '{1}' appears outside a labeled '{2}' example SECTION" -f $Rel, $t, $Marker)) | Out-Null
+                }
+            }
+        }
+        elseif ($Content -match [regex]::Escape($t) -and -not $fileHasMarker) {
             $local.Add(("{0}: SC-015 token '{1}' appears with no file-level '{2}' example label" -f $Rel, $t, $Marker)) | Out-Null
         }
     }
