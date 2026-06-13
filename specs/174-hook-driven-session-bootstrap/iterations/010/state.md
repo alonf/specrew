@@ -256,5 +256,35 @@
   component but not fed by the dispatcher (the `transcript_path` file route is the robust primary) — a deferred
   refinement if dogfood shows the file route insufficient. The T007 copilot/cursor oversized-drop verification +
   the T004 stale-committed-host edge are open residuals (both documented above) for the dogfood loop.
-- **Next**: ALL TASKS T001–T009 COMPLETE. Ready for iteration-closeout (audit + verdict), pending the
-  maintainer's decisive codex re-run validating the double-fire fix (one render + a single valid marker).
+- **Post-implementation review (4 findings, 2026-06-13; verified against the files, not the report)**: only F3
+  is about the new dedupe; F1/F2 are PRE-EXISTING and F4 is a gap in the EARLIER marker fix.
+  - **F1 — local manual-test state (FIXED, working-tree)**: iteration 004 had been re-anchored to not-started
+    (the known "specrew start re-anchors to a completed iteration" bug fired this session). Restored the tracked
+    `004/state.md` to its committed `complete` truth + removed the stray untracked `004/tasks-progress.yml`. The
+    gitignored `.specrew/start-context.json` still anchors to 174/004/retro (same re-anchor bug) — left for the
+    maintainer to clear (regenerating via `specrew start` re-triggers the bug until that fix lands), NOT
+    hand-fabricated.
+  - **F2 — `.specify/` deployed surface missing the two F-174 providers (SOURCE_CONFINED smoke red) + a stale
+    `deploy-refocus-hooks.ps1` (DEFERRED on purpose)**: the same "refreshed at deploy time" gap noted above. NOT
+    deployed now BECAUSE `Resolve-ProviderCommandPath` resolves `.specify/` FIRST, then the `scripts/internal`
+    self-host fallback — so TODAY the repo's codex runs the CO-LOCATED provider + co-located components (functions
+    present, ROBUST, zero env dependency). Deploying the UNPUBLISHED-dedupe provider into `.specify/` would shift
+    component resolution to tier-2 (`SPECREW_MODULE_PATH`) / tier-3 (installed 0.35.0, which LACKS the new
+    function) -> `PROVIDER_FAILED` unless the env var is set — strictly REDUCING robustness to satisfy a
+    downstream-simulating smoke. Correctly resolved at closeout/publish, when the module + deployed providers ship
+    CONSISTENT at one version. The red smoke is pre-existing, not a regression from the dedupe.
+  - **F3 — the dedupe skips the `no-session` codex shape (DOCUMENTED scope boundary)**: PROVEN for the session_id
+    case that matters for the product (iter10 codex sends a real GUID; deployed-provider direct test: renders
+    once, second fire deduped). The self-host repo's codex sends NO session_id -> `no-session` -> deliberately
+    NEVER deduped (keying on recency-without-a-stable-id would risk SUPPRESSING a genuine concurrent session — the
+    one unacceptable failure). Benign residual (the self-host double-render is cosmetic). FOLLOW-UP (non-blocking,
+    INDEPENDENT of F2 — deploy changes resolution, not codex's payload): if a real codex run still shows
+    `no-session`, weigh a guarded recency dedupe (tight window, project+source keyed) against the
+    concurrent-session risk — with data, not speculatively.
+  - **F4 — marker first-writer race coverage (FIXED, `a7d2efce`)**: the concurrency test pre-seeded the marker, so
+    the dest-absent `File.Move` + catch-fallback path (the one non-atomic write path) was never exercised under
+    load. Added a no-pre-seed race (both writers from a cold start); the invariant holds (13123 reader samples, 0
+    exceptions, final a single valid object).
+- **Next**: ALL TASKS T001–T009 COMPLETE + the double-RENDER dedupe (`61f17bd0`) + review findings dispositioned.
+  Ready for iteration-closeout (audit + verdict), pending the maintainer's decisive codex re-run validating the
+  double-fire fix (one render + a single valid marker) — with `SPECREW_MODULE_PATH` set for any iter10 re-run.
