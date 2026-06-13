@@ -1,10 +1,10 @@
 # Iteration State: 010
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T009 — continuity docs (antigravity no-capture + universal hard-kill floor). ALL TASKS (T001–T009) COMPLETE.
-**Tasks Remaining**: (none — retro.md + reconstructed review.md complete; double-fire dedupe CONFIRMED on real codex 2026-06-13; gap deferrals recorded with approving human; ready for iteration-closeout)
+**Tasks Remaining**: (none — iteration CLOSED, accepted for the delivered scope: resume reconciliation + host-universal recovery + codex dedupe, dogfood-validated. DF-3/4/5/7 boundary-authoring + verdict-integrity cluster → iteration 011; DF-6 stays within F-174; DF-8 → separate proposal. F-174 stays OPEN.)
 **In Progress**: (none)
 **Baseline Ref**: iteration-009 HEAD (`e4822428`)
 **Updated**: 2026-06-13T16:49:56Z
