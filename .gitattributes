@@ -4,6 +4,12 @@
 .squad/log/** merge=union
 .squad/orchestration-log/** merge=union
 
+# Agent-edited text artifacts stay LF across Windows, WSL, and Linux hosts.
+.gitattributes text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
 # feature 140: Unix wrappers + bootstrap are POSIX sh and MUST stay LF (overrides core.autocrlf)
 bin/* text eol=lf
 install.sh text eol=lf
