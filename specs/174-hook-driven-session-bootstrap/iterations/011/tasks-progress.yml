@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "174-hook-driven-session-bootstrap"
 iteration: "011"
-updated_at: "2026-06-13T23:21:24Z"
+updated_at: "2026-06-13T23:33:28Z"
 tasks:
   T001:
     title: "Expose a TESTED public/agent-callable authoring command/skill around the handover writer — PROVE/EXPORT the callable surface (do NOT assume Write-SpecrewHandoverContext is exported)"
@@ -23,8 +23,8 @@ tasks:
     blocked_reason: ""
   T004:
     title: "Verdict capture from transcript — recognized token tied to the boundary; ambiguous/contradictory/untied -> un-authorized + surface"
-    status: "planned"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-06-13T23:33:28Z"
     completed_at: ""
     blocked_reason: ""
   T005:

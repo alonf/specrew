@@ -55,6 +55,52 @@ function Get-SpecrewConversationContentText {
     return , $parts.ToArray()
 }
 
+function Test-SpecrewHumanVerdictToken {
+    # F-174 iteration 011 (T004, FR-026): classify a HUMAN turn's response to a boundary VERDICT packet —
+    # CONSERVATIVELY. The gate-stop packet offers: (1) Approve as-is, (2) Approve with instructions, (3) Send
+    # back, (4) Discuss prompt #N. A human types one of those, a bare option number, an "approve [X -> Y] [with
+    # instructions]" line, or a send-back / discuss / question. SAFETY RULE (the maintainer's): only IsApproval
+    # when the turn CLEARLY approves; anything negated / send-back / discuss / ambiguous / a bare question -> NOT
+    # an approval, so the caller records the crossing un-authorized rather than inventing one. Pure string logic;
+    # never throws.
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()][string]$Text)
+
+    $r = [pscustomobject]@{ Action = 'none'; IsApproval = $false; IsSendBack = $false; IsDiscuss = $false; NamedBoundaries = @() }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
+    $t = ($Text -replace '\s+', ' ').Trim()
+    $lower = $t.ToLowerInvariant()
+
+    # Extract any boundary the human NAMED ("X -> Y", "X → Y", "approve for <b>", "approve <b>"). Used by the
+    # caller only as a cross-check AGAINST the packet marker: a named boundary that contradicts the marker makes
+    # the verdict ambiguous (-> un-authorized). The marker, not this, is the primary tie.
+    $named = New-Object System.Collections.Generic.List[string]
+    foreach ($m in [regex]::Matches($lower, '\b(specify|clarify|plan|tasks|before-implement|implement|review-signoff|review|retro|iteration-closeout|iteration|closeout|feature-closeout|feature)\b')) {
+        if ($named -notcontains $m.Value) { $named.Add($m.Value) | Out-Null }
+    }
+    $r.NamedBoundaries = $named.ToArray()
+
+    # Send-back / reject FIRST: a turn that says "send back" (even alongside praise) is NOT an approval.
+    if ($lower -match '\bsend\s*back\b' -or $lower -match '\breject(ed|ing)?\b' -or $lower -match '^\s*3\b' -or $lower -match '\bchanges?\s+(needed|required|requested)\b') {
+        $r.IsSendBack = $true; $r.Action = 'send-back'; return $r
+    }
+    # Discuss a specific prompt — NOT an authorization (discussion is not approval).
+    if ($lower -match '\bdiscuss\b' -or $lower -match '^\s*4\b' -or $lower -match '\bprompt\s*#?\d') {
+        $r.IsDiscuss = $true; $r.Action = 'discuss'; return $r
+    }
+    # Negated / deferred approval -> NOT an approval (defends "do not approve", "not yet", "hold off ... approve").
+    if ($lower -match "\b(do\s*not|don'?t|never|not\s+yet|hold\s+off|wait|stop)\b[^.!?]{0,24}\bapprov") { return $r }
+    if ($lower -match "\bapprov\w*\b[^.!?]{0,16}\b(later|after|once|when|unless)\b") { return $r }
+    # CLEAR approval: an "approve"/"approved" verb (incl. canonical "approved for <boundary>"), OR a bare option
+    # 1/2 where the WHOLE turn is just that number. Deliberately NARROW — "start"/"proceed"/"continue"/"ok"/"yes"
+    # are NOT treated as boundary approvals (too ambiguous against the safety rule); they fall to pending so the
+    # human re-confirms rather than risk an invented approval.
+    if ($lower -match '\bapprove(d|s)?\b' -or $lower -match '^\s*[12]\s*[.):]?\s*$') {
+        $r.IsApproval = $true; $r.Action = 'approve'; return $r
+    }
+    return $r
+}
+
 function Get-SpecrewConversationTurnFromLine {
     # Best-effort (role,text) from one transcript JSONL line across the 4 host schemas. Returns $null for a
     # non-message line (session meta / tool / system / developer / parse failure) -> skipped by the caller.

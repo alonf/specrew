@@ -1699,7 +1699,15 @@ function Add-SpecrewBoundaryAuthorization {
         [string]$AuthCommitHash,
 
         [AllowNull()]
-        [string]$RecordedAt
+        [string]$RecordedAt,
+
+        # F-174 iteration 011 (T004, FR-026): the provenance of THIS authorization's evidence —
+        # 'hook-captured-from-transcript' (the Stop/UPS hook read the human's actual typed verdict) |
+        # 'human-confirmed-at-resume' (the human explicitly re-confirmed a surfaced-pending boundary) |
+        # 'unspecified'. Recorded on the verdict_history entry so the audit trail is honest about each
+        # authorization's provenance strength. It is NEVER 'fabricated' — sync no longer writes authorizations.
+        [AllowNull()]
+        [string]$EvidenceSource
     )
 
     $currentCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
@@ -1739,6 +1747,7 @@ function Add-SpecrewBoundaryAuthorization {
     foreach ($entry in @($enforcementState.State['verdict_history'])) {
         $verdictHistory.Add($entry) | Out-Null
     }
+    $effectiveEvidenceSource = if ([string]::IsNullOrWhiteSpace($EvidenceSource)) { 'unspecified' } else { $EvidenceSource.Trim() }
     $verdictHistory.Add([ordered]@{
         from_boundary     = $currentCanonical
         to_boundary       = $authorizedCanonical
@@ -1746,6 +1755,7 @@ function Add-SpecrewBoundaryAuthorization {
         authorizing_human = $AuthorizingHuman.Trim()
         recorded_at       = $effectiveRecordedAt
         auth_commit_hash  = $effectiveAuthCommitHash
+        evidence_source   = $effectiveEvidenceSource
     }) | Out-Null
 
     $updatedState = [ordered]@{
