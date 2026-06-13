@@ -105,6 +105,15 @@ in closeout.md (superseded note) + dogfood-findings.md, not as drift.)
     turnkey template is descoped.
   - The work-kind **validator** lifecycle field is kept as a **secondary** CI surface (the primary surface is
     the refocus session-start path, per F2).
+- **Dashboard WARN (confirm-not-harden at feature-closeout, parity with iter-2/iter-3):** Iteration 4 closes
+  WITHOUT a hand-rendered `dashboard.md`, so `validate-governance` carries the same
+  `missing-dashboard-auto-render-regression` WARN for `182…004` (exit-code-independent). Confirm at
+  feature-closeout that this stays a non-blocking WARN (never hardens into a gate), or render the iter-2/3/4
+  dashboards via the proper boundary-sync path for parity with Iteration 1.
+- **DF resolution-marking is feature-closeout reconciliation (NOT iteration work):** the dogfood findings
+  this iteration fixed (DF-001, DF-004, DF-005, DF-008, DF-009) are NOT yet marked resolved in
+  `dogfood-findings.md` — that cross-artifact reconciliation belongs at feature-closeout, behind the stop
+  line. DF-006 + DF-010 stay F-174 handoffs (do not mark them F-182-resolved).
 - **F-174 handoffs (recorded, NOT F-182 work):** DF-006 resume-preserves-state regression test;
   `launch-contract.ps1` neutralization (F-174 owns after rebasing onto F-182); DF-010 merge reconciliation
   (F-174 preserves F-182's neutralized coordinator sources + resolves the `specrew-start.ps1` conflict in
