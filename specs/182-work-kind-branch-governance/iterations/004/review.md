@@ -117,7 +117,8 @@ Every change was verified by **reading the changed surface**, not the summary:
   F-182-owned surfaces it flagged are neutralized to the **labeled-example** form: `scripts/specrew-start.ps1`
   (the launch-prompt closeout block, documented as **F-174-superseded — current-tree cleanup only**) and
   `.github/agents/squad.agent.md`. The **F-174 obligation is met**: the sweep is **pattern-based**, and a
-  regression fixture proves it flags a synthetic `scripts/internal/launch-contract.ps1` mandate (2 hits) —
+  regression fixture proves it flags a synthetic `launch-contract.ps1` mandate (F-174's future site under
+  `scripts/internal/`; 2 hits) —
   so F-182's widened sweep **will catch F-174's future site at reconciliation** without F-182 editing
   F-174's worktree.
 - **FR-023 / SC-016 — lifecycle operationalized (runtime resolution, NOT file-presence).** Each of the 4
