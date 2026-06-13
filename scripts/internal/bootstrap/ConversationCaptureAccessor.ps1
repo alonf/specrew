@@ -101,6 +101,69 @@ function Test-SpecrewHumanVerdictToken {
     return $r
 }
 
+function Get-SpecrewCapturedBoundaryVerdict {
+    # F-174 iteration 011 (T004, FR-026): read the host transcript for the human's verdict on the MOST RECENTLY
+    # rendered boundary VERDICT packet. The verdict is tied to a boundary ONLY via the packet's stable machine
+    # marker <!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> --> (T002 / the gate-stop skill emits it; it is an HTML
+    # comment, invisible in the rendered markdown, present in the transcript). NO marker -> NO capture (the human
+    # re-confirms via the pending surface). Finds the last marker-bearing ASSISTANT turn, then the FIRST human
+    # turn after it, and classifies that turn with Test-SpecrewHumanVerdictToken. Returns captured verdict
+    # evidence ONLY on a CLEAR approval whose human-named boundary (if any) does not CONTRADICT the marker;
+    # otherwise Found=$false so the caller records the crossing un-authorized. Pure read; fail-open (never throws).
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()][string]$TranscriptPath,
+        [int]$MaxTailLines = 500
+    )
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript' }
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
+    $lines = $null
+    try { $lines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop) } catch { $result.Reason = 'unreadable'; return $result }
+    if ($null -eq $lines -or $lines.Count -eq 0) { $result.Reason = 'empty'; return $result }
+
+    $turns = New-Object System.Collections.Generic.List[object]
+    foreach ($l in $lines) { $tn = Get-SpecrewConversationTurnFromLine -Line $l; if ($null -ne $tn) { $turns.Add($tn) | Out-Null } }
+    if ($turns.Count -eq 0) { $result.Reason = 'no-turns'; return $result }
+
+    # The packet marker: case-insensitive, tolerate '->' / unicode arrow / 'to' and flexible spacing.
+    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+
+    # The LAST assistant turn that carries a marker (the most recently gated boundary).
+    $markerIdx = -1; $mFrom = $null; $mTo = $null
+    for ($i = 0; $i -lt $turns.Count; $i++) {
+        if ([string]$turns[$i].role -ne 'assistant') { continue }
+        $mm = $markerRx.Match([string]$turns[$i].text)
+        if ($mm.Success) { $markerIdx = $i; $mFrom = $mm.Groups[1].Value.ToLowerInvariant(); $mTo = $mm.Groups[2].Value.ToLowerInvariant() }
+    }
+    if ($markerIdx -lt 0) { $result.Reason = 'no-marker'; return $result }
+
+    # The FIRST human turn AFTER that packet (the response to it; before it = the request, not the verdict).
+    $humanText = $null
+    for ($j = $markerIdx + 1; $j -lt $turns.Count; $j++) {
+        if ([string]$turns[$j].role -eq 'user') { $humanText = [string]$turns[$j].text; break }
+    }
+    if ([string]::IsNullOrWhiteSpace($humanText)) { $result.Reason = 'awaiting-response'; return $result }
+
+    $verdict = Test-SpecrewHumanVerdictToken -Text $humanText
+    if (-not $verdict.IsApproval) { $result.Reason = ("not-approval:{0}" -f $verdict.Action); return $result }
+
+    # Contradiction cross-check: if the human NAMED boundaries, at least one must match the marker's from/to;
+    # a human who named a DIFFERENT boundary makes the tie ambiguous -> un-authorized (safety rule).
+    $named = @($verdict.NamedBoundaries)
+    if ($named.Count -gt 0) {
+        $markerSet = @($mFrom, $mTo)
+        if (@($named | Where-Object { $markerSet -contains $_ }).Count -eq 0) { $result.Reason = 'named-boundary-contradicts-marker'; return $result }
+    }
+
+    $result.Found = $true
+    $result.FromBoundary = $mFrom
+    $result.ToBoundary = $mTo
+    $result.VerdictText = "approved for $mTo"
+    $result.HumanText = $humanText
+    $result.Reason = 'captured'
+    return $result
+}
+
 function Get-SpecrewConversationTurnFromLine {
     # Best-effort (role,text) from one transcript JSONL line across the 4 host schemas. Returns $null for a
     # non-message line (session meta / tool / system / developer / parse failure) -> skipped by the caller.

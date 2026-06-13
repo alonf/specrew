@@ -89,6 +89,69 @@ try {
     if ($vB.evidence_source -ne 'unspecified') { Fail "omitted EvidenceSource must default to 'unspecified', got '$($vB.evidence_source)'" }
     Write-Pass "evidence tag: omitted EvidenceSource defaults to 'unspecified' (never blank, never fabricated)"
 
+    # ---- Part C: the transcript reader (Get-SpecrewCapturedBoundaryVerdict) ---------------------------------
+    function New-Transcript {
+        param([object[]]$Turns)   # each: @{ role='assistant'|'user'; text='...' } in chronological order
+        $path = Join-Path $scratch ("tx-" + [guid]::NewGuid().ToString('N') + ".jsonl")
+        $lines = foreach ($t in $Turns) {
+            (@{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } } | ConvertTo-Json -Depth 8 -Compress)
+        }
+        [System.IO.File]::WriteAllText($path, ($lines -join "`n"), [System.Text.UTF8Encoding]::new($false))
+        return $path
+    }
+    $marker = '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->'
+
+    # C1: marker packet + a clear approval -> captured, tied to the marker's boundary.
+    $c1 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'user'; text = 'do the tasks work' },
+            @{ role = 'assistant'; text = "Here is the tasks boundary packet. $marker What's your verdict?" },
+            @{ role = 'user'; text = 'Approve with instructions: fold T008 in' }))
+    if (-not $c1.Found) { Fail "C1: marker + approval must capture (reason=$($c1.Reason))" }
+    if ($c1.ToBoundary -ne 'before-implement') { Fail "C1: ToBoundary expected before-implement, got '$($c1.ToBoundary)'" }
+    if ($c1.VerdictText -ne 'approved for before-implement') { Fail "C1: VerdictText expected 'approved for before-implement', got '$($c1.VerdictText)'" }
+    Write-Pass "reader: marker packet + human approval -> captured verdict tied to the marker's boundary"
+
+    # C2: NO marker -> NO capture (the human re-confirms via the pending surface).
+    $c2 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = 'Here is a packet with no marker. Verdict?' },
+            @{ role = 'user'; text = 'Approve' }))
+    if ($c2.Found) { Fail "C2: no marker must NOT capture" }
+    if ($c2.Reason -ne 'no-marker') { Fail "C2: reason expected no-marker, got '$($c2.Reason)'" }
+    Write-Pass "reader: no packet marker -> no capture (Reason=no-marker)"
+
+    # C3: marker but the human has not responded yet -> awaiting (not captured).
+    $c3 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'user'; text = 'do the work' },
+            @{ role = 'assistant'; text = "packet $marker verdict?" }))
+    if ($c3.Found) { Fail "C3: no human response yet must NOT capture" }
+    if ($c3.Reason -ne 'awaiting-response') { Fail "C3: reason expected awaiting-response, got '$($c3.Reason)'" }
+    Write-Pass "reader: packet rendered, no human turn yet -> awaiting-response (not captured)"
+
+    # C4: marker + send-back -> NOT captured (un-authorized).
+    $c4 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet $marker verdict?" },
+            @{ role = 'user'; text = 'Send back: needs a non-functional section' }))
+    if ($c4.Found) { Fail "C4: send-back must NOT capture" }
+    Write-Pass "reader: marker + send-back -> not captured (un-authorized)"
+
+    # C5: marker + an approval that NAMES a contradicting boundary -> NOT captured (ambiguous tie).
+    $c5 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet $marker verdict?" },
+            @{ role = 'user'; text = 'Approve for plan' }))
+    if ($c5.Found) { Fail "C5: approval naming a contradicting boundary (plan vs marker tasks->before-implement) must NOT capture" }
+    if ($c5.Reason -ne 'named-boundary-contradicts-marker') { Fail "C5: reason expected named-boundary-contradicts-marker, got '$($c5.Reason)'" }
+    Write-Pass "reader: approval naming a boundary that contradicts the marker -> not captured (ambiguous)"
+
+    # C6: TWO packets -> the MOST RECENT marker + its response wins.
+    $c6 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "first packet <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> verdict?" },
+            @{ role = 'user'; text = 'Approve' },
+            @{ role = 'assistant'; text = "second packet $marker verdict?" },
+            @{ role = 'user'; text = 'Approve with instructions' }))
+    if (-not $c6.Found) { Fail "C6: must capture the latest" }
+    if ($c6.ToBoundary -ne 'before-implement') { Fail "C6: latest packet's boundary (before-implement) must win, got '$($c6.ToBoundary)'" }
+    Write-Pass "reader: the MOST RECENT marker packet + its response wins (before-implement, not the earlier plan->tasks)"
+
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }
