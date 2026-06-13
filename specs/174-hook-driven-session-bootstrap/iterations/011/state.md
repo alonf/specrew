@@ -1,13 +1,13 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: plan
+**Current Phase**: tasks
 **Iteration Status**: executing
-**Last Completed Task**: clarify — mechanism ambiguities resolved; SC-013 tightened + SC-015 added (`f174-i011-clarify-plan-approved`)
-**Tasks Remaining**: T001–T007 planned (19/20, integrity core); DF-1/DF-2 (T008/T009) carried capacity-gated; awaiting plan→tasks verdict
-**In Progress**: plan — task breakdown drafted (Fix A→C→B core + tests; DF-1/DF-2 capacity-gated)
+**Last Completed Task**: plan — task breakdown + human-approved 22/22 cap raise (`f174-i011-plan-tasks-approved`)
+**Tasks Remaining**: T001–T009 (22/22) in tasks-progress.yml, all planned; awaiting tasks→before-implement verdict
+**In Progress**: tasks — executable task tracking generated (`tasks-progress.yml`)
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-13T18:07:00Z
+**Updated**: 2026-06-13T18:27:17Z
 
 ## Charter
 
@@ -77,9 +77,17 @@ tasked.
 
 Task breakdown drafted in
 `file:///C:/Dev/Specrew-session-bootstrap/specs/174-hook-driven-session-bootstrap/iterations/011/plan.md`,
-fully traced to FR-022/FR-026/FR-027 + SC-012/013/014/015 (+ DF-1/DF-2 under FR-002/FR-022). The
-integrity **core** (T001–T007 = 19/20) is committed and fits the cap; **DF-1/DF-2 (T008/T009, 3 SP) are
-carried capacity-gated** — they push the cluster to 22 SP over cap, so the capacity call (raise the cap
-to a human-approved 22 and pull them in, vs an iteration-012 fast-follow) is the plan verdict. STOP at
-the plan boundary for the maintainer verdict (plan → tasks). Per instruction: do NOT advance to tasks on
-the clarify approval.
+fully traced to FR-022/FR-026/FR-027 + SC-012/013/014/015 (+ DF-1/DF-2 under FR-002/FR-022).
+
+**Plan APPROVED WITH INSTRUCTIONS** (2026-06-13, `f174-i011-plan-tasks-approved`): cap RAISED to a
+human-approved 22, DF-1/DF-2 (T008/T009) folded into the committed table (22/22, validator PASS),
+T001 tightened (prove/export the callable surface), the re-dogfood made an explicit acceptance gate,
+defer-priority recorded (T008/T009 first on overrun). Estimates not deflated.
+
+## Tasks (this boundary)
+
+Executable task tracking generated:
+`file:///C:/Dev/Specrew-session-bootstrap/specs/174-hook-driven-session-bootstrap/iterations/011/tasks-progress.yml`
+— T001–T009, all `planned`, mirroring the plan table (22/22). STOP at the tasks boundary for the
+maintainer verdict (tasks → before-implement). Per instruction: do NOT advance to before-implement on
+the plan approval.

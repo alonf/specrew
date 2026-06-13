@@ -15,7 +15,14 @@ effort_unit: "story_points"
 # corrected position is recorded for the team. Closed iterations are protected
 # by the grandfather rule (Proposal 144 / PR #1153) so reverting the cap does
 # not retroactively fail historical plans.
-capacity_per_iteration: 20
+#
+# OVERRIDE (2026-06-13, F-174 iteration 011, verdict f174-i011-plan-tasks-approved):
+# raised 20 -> 22 by a human-approved plan verdict to keep the DF-3/4/5/7
+# boundary-authoring + verdict-integrity cluster one coherent iteration. The
+# maintainer made this call INFORMED of the split-not-raise position + the F-049
+# reverted precedent above. This is PROJECT-GLOBAL and REVERSIBLE: lower back to
+# 20 after iteration 011 closes (closed iterations are grandfathered).
+capacity_per_iteration: 22
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)

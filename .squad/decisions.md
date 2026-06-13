@@ -1,3 +1,34 @@
+## 2026-06-13 — F-174 iteration-011 plan→tasks: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance plan→tasks; raise cap to 22, fold DF-1/DF-2
+
+- **Decision ID**: f174-i011-plan-tasks-approved
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-022, FR-026, FR-027, FR-002
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:27:17Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-011 plan→tasks. Proceed to TASKS ONLY; do NOT
+  advance to before-implement on this approval.
+- **Carried instructions**:
+  1. RAISE the iteration capacity to 22 and fold T008/T009 (DF-1/DF-2) into the committed task table — they
+     touch the same bootstrap/directive surface; splitting adds more lifecycle overhead than risk reduction.
+  2. Preserve HONEST capacity: Capacity line + Effort Model → 22; do NOT deflate estimates to fit 20. Defer
+     priority on overrun: T008/T009 FIRST — never the integrity core, never T007 tests, never the re-dogfood
+     acceptance.
+  3. Tighten T001: expose a TESTED public/agent-callable authoring command around the handover writer; do NOT
+     assume `Write-SpecrewHandoverContext` exists/exported — proving/exporting the callable surface is part of
+     the task.
+  4. Keep the re-dogfood as the review ACCEPTANCE GATE (not an SP task) but make it EXPLICIT in tasks/review
+     evidence: fresh-session real-host proof for DF-3/4/5/7, with the no-hook Antigravity behavior recorded
+     honestly.
+- **Disposition**: cap raised 20→22 in `.specrew/iteration-config.yml` (PROJECT-GLOBAL, REVERSIBLE). The
+  maintainer made this call INFORMED of the config's documented split-not-raise position + the F-049
+  reverted-cap precedent (surfaced before proceeding); recorded as an explicit override in the config
+  comment. T008/T009 folded into the table (22/22, validator PASS); T001 tightened (prove/export the callable
+  surface); the re-dogfood acceptance gate made explicit; `tasks-progress.yml` generated. Current Phase
+  advanced to tasks; STOP at tasks→before-implement for the verdict.
+
 ## 2026-06-13 — F-174 iteration-011 clarify→plan: APPROVE WITH INSTRUCTIONS
 
 ### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance clarify→plan; confirm match-strictness + tighten SCs
