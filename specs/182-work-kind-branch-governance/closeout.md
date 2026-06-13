@@ -118,13 +118,19 @@ Local CI/parity/governance sweep — **all PASS** (the F-141 lesson: run the set
 ## Main-Integration Reconciliation (this closeout)
 
 `origin/main` is **fully contained in HEAD** (`git merge-base --is-ancestor origin/main HEAD` = yes; zero
-commits in `origin/main` are missing from the branch). The branch was last synced with main at the
-**Iteration-4 before-implement boundary** via merge commit `45415737` ("Merge origin/main into
-182-work-kind-branch-governance — sync before Iteration-4 implementation"), which integrated main through
-PR #2602 (Proposal 188 — boundary-packet enforcement) among others. That sync **supersedes** the earlier
-iteration-1–3 integration (`a2b7ff52`). No conflicts with the feature-182 change set. (This is the local
-`origin/main` ref; the definitive remote integration happens at the PR/merge step, which is not authorized
-here.)
+commits in `origin/main` are missing from the branch; ahead 61 / behind 0 after the PR-prep sync below).
+During Iteration 4 the branch was synced with main at the **Iteration-4 before-implement boundary** via
+merge commit `45415737`, which integrated main through PR #2602 (Proposal 188 — boundary-packet
+enforcement) among others, superseding the earlier iteration-1–3 integration (`a2b7ff52`).
+
+**Post-closeout PR-prep sync (2026-06-13).** After this feature-closeout was accepted as branch-ready, the
+branch was found 2 commits behind a newer `origin/main` and re-synced via merge commit `64994043` ("Merge
+origin/main into 182-work-kind-branch-governance — post-closeout PR-prep sync"), which integrated **PR #2603
+(Proposal 174 — variance agility / boundary-variance-disclosure)**. That change touches **only**
+`proposals/174-boundary-variance-disclosure.md` + `proposals/INDEX.md` — zero overlap with the feature-182
+change set; merge-tree reported 0 conflicts. The branch now contains current `origin/main` and is the
+intended **next PR** (must land before F-174 rebases). The definitive remote integration happens at the
+PR/merge step, authorized separately.
 
 ## Resolved at Closeout
 
@@ -196,8 +202,9 @@ the drift logs (D-304, D-401), and the iteration retros — not papered over.
 
 ## Branch Hygiene at Closeout
 
-- Branch: `182-work-kind-branch-governance`; `origin/main` fully contained in HEAD (synced at `45415737`,
-  the Iteration-4 before-implement boundary; no conflicts).
+- Branch: `182-work-kind-branch-governance`; `origin/main` fully contained in HEAD (last synced at
+  `64994043`, the post-closeout PR-prep sync — see Main-Integration Reconciliation; no conflicts; ahead 61 /
+  behind 0).
 - Working tree clean before closeout authorization except untracked/modified `.specrew`/`.squad` session +
   cache files (correctly left unstaged); closeout commits are path-limited to F-182 artifacts.
 
