@@ -180,27 +180,32 @@
     shape; 400×2 concurrent writers -> real reader never throws + final state always a single valid marker);
     `refocus-deploy.tests.ps1` §8b LOCKS the deploy self-heal (seed the exact corrupt.bak topology -> exactly ONE
     SessionStart registration, top-level duplicate gone, 3 dispatcher refs, re-deploy byte-idempotent).
-  - **Double-RENDER dedupe** (`specrew-bootstrap-provider.ps1` + `Get-/Write-/Test-SpecrewHookRenderMarker(Recent)`
-    in `LauncherIntegration.ps1`): the atomic marker write above fixes the CORRUPTION the double-fire caused; this
-    fixes the VISIBLE symptom — the bootstrap directive rendering twice. The provider records a marker
-    (`.specrew/runtime/hook-bootstrap-render.json`) AFTER a successful render; the duplicate fire reads it and stays
-    silent, keyed on the manager's canonical `dedupe_key` (`safe_session_id`, the SAME id the journal records) PLUS
-    the launch `source`. **Record-at-END is the fail-safe**: a first fire that died/timed-out before rendering never
-    records, so it never suppresses the retry — the worst case is the status-quo double render, never a MISSING
-    directive. The two cases where suppression would be WRONG are structurally excluded: `no-session` (no stable id —
-    the self-host repo where codex sends none, any Stop event) is NEVER deduped, and a different `source` (a `/clear`
-    re-bootstrap reusing the session id) always re-renders. `Invoke` still runs on the duplicate fire, so the journal
-    records BOTH fires (forensic count intact); the journal record now also carries `source` so the next dogfood
-    shows directly whether both fires share it (the one assumption code can't prove — codex emits no captured
-    `source` to grep). **SCOPE**: the bootstrap directive ONLY — the refocus banner (provider order 10) and handover
-    (order 30) also re-run on codex's duplicate dispatcher fire; handover is idempotent (atomic, same content) and
-    the refocus-banner doubling is a known BENIGN residual (a dispatcher-level dedupe — the only single point
-    covering all three at once — was rejected for highest-in-chain blast radius). `HookRenderDedupe.Tests.ps1` (14:
-    unit predicate incl. stale-window + torn/garbage-marker fail-open; integration — 2nd identical fire SILENT,
-    `/clear` re-renders, `no-session`×2 both render, both fires journaled with `source=startup`). **DEPLOYED-script
-    change** -> the live `.specify/` provider must be re-deployed to a downstream project to validate (an env-var
-    relaunch alone won't exercise it). HostDeliveryPolicy test updated (distinct session id per host: one shared root
-    + one reused session id would, correctly, self-dedupe).
+  - **Double-RENDER dedupe via an ATOMIC CLAIM** (`specrew-bootstrap-provider.ps1` +
+    `Get-SpecrewHookRenderClaimPath`/`Request-SpecrewHookRenderClaim` in `LauncherIntegration.ps1`; commit
+    `dbf13abd`): the atomic marker write above fixes the CORRUPTION; this fixes the VISIBLE symptom — the directive
+    rendering twice. **FALSIFIED-THEN-CORRECTED**: the first cut recorded a marker AFTER a successful render and had
+    the duplicate fire read it (record-at-end, keyed on `dedupe_key`+`source`). The worktree dogfood (2026-06-13)
+    DISPROVED its premise — real codex fires the two SessionStarts near-SIMULTANEOUSLY (~10us apart, same GUID
+    session id + `source=startup`), NOT the ~7s-sequential gap an earlier main-repo sample implied — so both fires
+    checked before either recorded and **BOTH rendered** (two render markers ~10us apart; the session-marker atomic
+    write DID hold — single valid object). Replaced with an ATOMIC single-winner claim:
+    `File.Open(path, CreateNew)` (O_EXCL) is ONE atomic syscall with no check-then-act gap, so the first fire of a
+    given (session, source) to create its per-key claim file WINS and renders while every concurrent sibling gets
+    the IOException and exits silent — electing exactly one winner REGARDLESS of timing (10us or 7s). Claim sits
+    LATE (right before `Write-Output`, after Invoke + contract write + scan), so the winner->emit window is pure
+    string-building — a transient failure in one fire can't suppress the other. `no-session` is NEVER claimed
+    (always renders); `/clear` wins its own (session,source) claim (re-renders); fail-open (claim returns "render"
+    on any non-"already-exists" error). `Invoke` runs in both fires -> journal records BOTH (forensic count); only
+    one RENDERS. No time-based cleanup of claim files (a threshold below the inter-fire gap would delete the first
+    claim and re-open the double-render); tiny + cosmetic accumulation. **SCOPE**: the bootstrap directive ONLY —
+    the refocus banner (order 10) + handover (order 30) still re-run on the duplicate dispatcher fire (refocus-banner
+    doubling = known BENIGN residual; a dispatcher-level dedupe was rejected for highest-in-chain blast radius).
+    `HookRenderDedupe.Tests.ps1` REWRITTEN to RACE concurrency (the property a sequential test could never catch): 8
+    concurrent racers -> 1 winner; two CONCURRENT provider fires -> exactly 1 render, both journaled; `/clear`
+    re-renders; `no-session`×2 both render. Full bootstrap suite 37/37 + deployed floor green. **Real codex remains
+    the DECISIVE acceptance** (green synthetic tests are exactly what gave false confidence the first time) — the
+    fix is deployed into the iter-test worktree (now on `dbf13abd`, stale runtime cleared) pending the maintainer's
+    re-run confirming 2 journal rows (the double-fire occurred) AND a single render.
   - NOTE: codex firing SessionStart with no session_id (sanitized to `unknown` -> all codex SessionStart sessions
     collide into one refocus-state file) is a SEPARATE pre-existing observation; the render dedupe's `no-session`
     guard means those self-host-repo fires are simply never deduped (they always render), so it is unaffected.
@@ -273,14 +278,16 @@
     function) -> `PROVIDER_FAILED` unless the env var is set — strictly REDUCING robustness to satisfy a
     downstream-simulating smoke. Correctly resolved at closeout/publish, when the module + deployed providers ship
     CONSISTENT at one version. The red smoke is pre-existing, not a regression from the dedupe.
-  - **F3 — the dedupe skips the `no-session` codex shape (DOCUMENTED scope boundary)**: PROVEN for the session_id
-    case that matters for the product (iter10 codex sends a real GUID; deployed-provider direct test: renders
-    once, second fire deduped). The self-host repo's codex sends NO session_id -> `no-session` -> deliberately
-    NEVER deduped (keying on recency-without-a-stable-id would risk SUPPRESSING a genuine concurrent session — the
-    one unacceptable failure). Benign residual (the self-host double-render is cosmetic). FOLLOW-UP (non-blocking,
-    INDEPENDENT of F2 — deploy changes resolution, not codex's payload): if a real codex run still shows
-    `no-session`, weigh a guarded recency dedupe (tight window, project+source keyed) against the
-    concurrent-session risk — with data, not speculatively.
+  - **F3 — the dedupe skips the `no-session` codex shape (DOCUMENTED scope boundary)**: the reviewer's instinct
+    here was the thread that unravelled the original fix. The session_id case IS the product case (a real worktree
+    codex run confirmed codex sends a real GUID + `source=startup`), but the original record-at-end dedupe FAILED on
+    it — the worktree run showed both fires rendered because codex fires near-simultaneously (see the double-render
+    bullet above; now fixed by the ATOMIC claim, pending the maintainer's re-run). The `no-session` shape (self-host
+    repo / any Stop event) remains deliberately NEVER claimed -> always renders: with no stable id, an atomic claim
+    keyed only on recency/project would risk SUPPRESSING a genuine concurrent session (the one unacceptable
+    failure). Benign residual (the self-host double-render is cosmetic). Note (INDEPENDENT of F2 — deploy changes
+    resolution, not codex's payload): the product path now has a real session id, so the claim covers it; the
+    `no-session` residual only affects id-less hosts/contexts.
   - **F4 — marker first-writer race coverage (FIXED, `a7d2efce`)**: the concurrency test pre-seeded the marker, so
     the dest-absent `File.Move` + catch-fallback path (the one non-atomic write path) was never exercised under
     load. Added a no-pre-seed race (both writers from a cold start); the invariant holds (13123 reader samples, 0
