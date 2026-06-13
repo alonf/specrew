@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: retro
 **Capacity**: 22/20 story_points
 **Started**: 2026-06-11
 **Feature**: 174-hook-driven-session-bootstrap
@@ -47,12 +47,12 @@ audit. Guiding priority: **robustness, then restart performance.** Findings that
 | T001 | Resume reconciliation in a SHARED component: re-compute the cheap delta + the "changed since last stop -> read + continue" directive | FR-022 | US-1 | 3 | Implementer | done |
 | T002 | Conversation capture, best-effort per host (read the transcript where exposed — Claude `transcript_path` — on Stop + mid-turn; honest floor elsewhere) | FR-022 | US-1 | 4 | Implementer | done |
 | T003 | Tracking surfacing (workshop lens-progress + gate-stop state into the handover + directive) **+ M2: fix-or-delete the dead hollow-handover detector** | FR-022 | US-1 | 4 | Implementer | done |
-| T004 | Fix `from_host: host` — the workshop-skill `--source workshop` refresh passes `--host-kind` | FR-009 | US-1 | 1 | Implementer | planned |
-| T005 | Codex array-shape `~/.codex/hooks.json` self-heal regression test | SC-004 | US-1 | 1 | Implementer | planned |
-| T006 | Tests (reconciliation, conversation, tracking, from_host, **hard-kill simulation**, per-host) **+ M3: surface handover write failures, per-PID temp names (kill the writer race), `.old` fallback on corrupt read** | SC-004 | US-1 | 3 | Implementer | planned |
-| T007 | M1: copilot/cursor oversized-`additionalContext` surface verification + lean-pointer fallback (so the SessionStart surface — incl. the reconciliation directive — isn't silently dropped) | FR-002 | US-1 | 2 | Implementer | planned |
+| T004 | Fix `from_host: host` — the workshop-skill `--source workshop` refresh passes `--host-kind` | FR-009 | US-1 | 1 | Implementer | done |
+| T005 | Codex array-shape `~/.codex/hooks.json` self-heal regression test | SC-004 | US-1 | 1 | Implementer | done |
+| T006 | Tests (reconciliation, conversation, tracking, from_host, **hard-kill simulation**, per-host) **+ M3: surface handover write failures, per-PID temp names (kill the writer race), `.old` fallback on corrupt read** | SC-004 | US-1 | 3 | Implementer | done |
+| T007 | M1: copilot/cursor oversized-`additionalContext` surface verification + lean-pointer fallback (so the SessionStart surface — incl. the reconciliation directive — isn't silently dropped) | FR-002 | US-1 | 2 | Implementer | done |
 | T008 | `specrew start` reads the handover + runs the SHARED reconciliation -> **antigravity + every `specrew start` launch recovers context** (host-universal recovery, not hook-only) | FR-022 | US-1 | 3 | Implementer | done |
-| T009 | Docs: antigravity's no-hook/no-capture limit (recover-via-`specrew start`, work survives on disk) + the universal hard-kill conversation-loss floor | FR-008 | US-2 | 1 | Implementer | planned |
+| T009 | Docs: antigravity's no-hook/no-capture limit (recover-via-`specrew start`, work survives on disk) + the universal hard-kill conversation-loss floor | FR-008 | US-2 | 1 | Implementer | done |
 
 **Capacity: 22/20** (T001 3 + T002 4 + T003 4 + T004 1 + T005 1 + T006 3 + T007 2 + T008 3 + T009 1 = 22).
 **Human-approved overcommit** (maintainer: robustness > capacity for this iteration).
