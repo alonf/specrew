@@ -18,6 +18,23 @@
   "uncommitted handover/work from last session" and let the user commit/push
   manually; no new persistent menu item beyond Resume / New / Pick-feature.
 
+### Session 2026-06-13
+
+- Q: After the iteration-010 multi-host dogfood surfaced the DF-3/4/5/7
+  boundary-authoring + verdict-integrity cluster, how does the spec evolve
+  (iteration 011)? → A: FR-022's PERSIST mechanism is refined — the rendered
+  packet is captured mechanically, unlocked by T002's Stop-hook transcript
+  access (the premise absent at iteration-005's detect-only decision); the
+  "agent-authored body" and "authoring not forced" guarantees are UNCHANGED
+  (capture ≠ author). Two new requirements add boundary-authorization
+  INTEGRITY: FR-026 (the recorded verdict derives from captured human input,
+  never fabricated nor attributed to the git committer) and FR-027 (a committed
+  boundary ≠ an authorized boundary on resume). Guarantees only; mechanism
+  (capture timing, match-strictness, the Antigravity fallback specifics) is the
+  iteration-011 plan's job. Decisions locked in
+  `iterations/011/fix-plan-draft.md`; deferral
+  `f174-i010-defer-integrity-cluster-to-011`.
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Direct host launch bootstraps the session (Priority: P1)
@@ -288,6 +305,23 @@ offered.
   defer `f174-i005-defer-live-wiring`). Iteration 006 must carry a live-wiring floor that asserts
   a real deployed session writes the handover (and the launch contract) to disk.
   **Owner**: Implementer. **Iteration**: 005-006.
+  **Amendment (iteration 011 — DF-3/DF-7, capture ≠ author)**: the iteration-010 multi-host
+  dogfood proved (artifact-confirmed) that `Write-SpecrewHandoverContext` is NOT agent-callable —
+  the module exports no such command — so the persist-path clause above is UNFOLLOWABLE, and the
+  boundary handover sat at placeholders exactly when it should be richest. REFINED: the agent still
+  RENDERS/authors the packet CONTENT, but its PERSISTENCE MUST NOT depend on the agent invoking a
+  function. The rendered boundary packet MUST be captured into the body by a mechanism the agent
+  cannot skip — the transcript-capable Stop hook capturing the rendered packet and/or an exposed
+  authoring command — and the same write MUST set the boundary state (`active_boundary`). The
+  "BODY MUST be agent-authored" and "authoring MUST NOT be forced" guarantees are UNCHANGED (the
+  agent authors content; only PERSISTENCE becomes reliable). This evolution is unlocked by a real
+  premise change: the "Stop hook is transcript-blind" justification for detect-only no longer
+  holds — T002 (iteration 010) gave the Stop hook transcript access, so mechanical capture of the
+  already-rendered packet is now feasible. Scope: hook-capable hosts; on a no-Stop-hook host
+  (Antigravity) the body is recovered via `specrew start` reconciliation (FR-023). Mechanism
+  (capture timing, exposed-command shape) is the iteration-011 plan's job; decisions locked in
+  `iterations/011/fix-plan-draft.md` (defer `f174-i010-defer-integrity-cluster-to-011`).
+  **Owner**: Implementer. **Iteration**: 011.
 - **FR-023**: The B2 SessionStart bootstrap MUST hand the agent the SAME launch
   contract and session state as `specrew start` - the full launch prompt persisted to
   `.specrew/last-start-prompt.md` AND an initialized `boundary_enforcement` block in
@@ -328,6 +362,26 @@ offered.
   fallback, and the SessionStart bootstrap directive MUST nudge the agent to surface
   `/specrew-user-profile` when the profile is absent (the hook cannot ask).
   **Owner**: Implementer. **Iteration**: 008.
+- **FR-026**: The recorded boundary AUTHORIZATION (the
+  `boundary_enforcement.verdict_history` entry and `last_authorized_boundary`) MUST derive from
+  CAPTURED human input — the human's actual response to the boundary verdict packet. Boundary-sync
+  MUST NOT fabricate a verdict (e.g. auto-generating `approved for <boundary>`) and MUST NOT
+  attribute the approving human to the git committer. When no captured human verdict is available
+  for the target boundary, the crossing MUST be recorded as UN-AUTHORIZED / agent-initiated — an
+  honest audit trail — never as an approval. Scope: hook-capable hosts capture the verdict from the
+  Stop / UserPromptSubmit transcript; on a no-hook host (Antigravity), where transcript capture is
+  impossible, the crossing is recorded un-authorized and reconciled via `specrew start`. (Surfaced
+  as DF-5: an agent advanced a boundary on a bare "continue" and the sync wrote
+  `approved for clarify by <git committer>` with no human in the loop.)
+  **Owner**: Implementer. **Iteration**: 011.
+- **FR-027**: A resume MUST treat a committed boundary ARTIFACT (a `boundary(<stage>)` commit) as
+  NOT an authorized boundary. The resume directive and `specrew where` MUST read
+  `boundary_enforcement.last_authorized_boundary` as decisive and surface "awaiting your verdict
+  for <stage>" when a boundary is committed but not human-authorized — never inferring closure from
+  the commit, and never auto-advancing on a bare "continue". This complements FR-017 (handover
+  validity) on the AUTHORIZATION axis. (Surfaced as DF-4: a resuming host read a `boundary(specify)`
+  commit as approval and was poised to skip two un-authorized gates.)
+  **Owner**: Implementer. **Iteration**: 011.
 
 ### Traceability & Governance Requirements
 
@@ -437,6 +491,15 @@ offered.
   (FR-024, the SC-008-style observation). A host joins the PARITY SET only when the
   plumbing floor is green AND injection-reaches-model is observed; Claude is satisfied by
   observation this iteration, codex / copilot / cursor are enumerated follow-on.
+- **SC-012**: A focused re-dogfood of the DF-3 scenario proves a boundary handover carries the
+  agent-rendered packet AND `active_boundary` at a boundary (mechanically captured, not
+  agent-function-dependent), and a DIFFERENT host's resume inherits the AUTHORED packet — not
+  placeholders. (FR-022 iteration-011 amendment)
+- **SC-013**: A boundary-sync with no captured human verdict records the crossing as un-authorized
+  (never `approved for <boundary>` attributed to the git committer); a real captured human verdict
+  records the real human. Proven by a deterministic test AND the re-dogfood. (FR-026)
+- **SC-014**: A resume on a committed-but-unverdicted boundary surfaces "awaiting your verdict",
+  not "approved", and does not auto-advance on a bare "continue". (FR-027)
 
 ## Assumptions
 
