@@ -288,7 +288,7 @@ function Get-SpecrewAutomatedReviewOptIn {
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot
     )
-    $govPath = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath '.specrew\repository-governance.yml'
+    $govPath = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath '.specrew' -AdditionalChildPath 'repository-governance.yml'
     $result = @{ Enabled = $false; ProviderSuggestion = $null }
     if (-not (Test-Path -LiteralPath $govPath -PathType Leaf)) { return $result }
     $inAutomated = $false

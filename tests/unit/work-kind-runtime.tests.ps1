@@ -12,8 +12,8 @@ function Write-Pass { param([string]$m) Write-Host "PASS: $m" -ForegroundColor G
 function Write-Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor Red; exit 1 }
 function Assert-True { param([bool]$c, [string]$m) if (-not $c) { Write-Fail $m } Write-Pass $m }
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$scriptsDir = Join-Path $repoRoot 'extensions\specrew-speckit\scripts'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+$scriptsDir = Join-Path $repoRoot 'extensions' 'specrew-speckit' 'scripts'
 . (Join-Path $scriptsDir 'capability-detector.ps1')
 . (Join-Path $scriptsDir 'provider-github.ps1')
 
@@ -32,7 +32,7 @@ try {
     Assert-True ((@($cap2.constraints) -join ' ') -match 'synthesize a READ-ONLY adapter') 'T212: unshipped forge offers a READ-ONLY synthesized adapter (apply stays human-approved)'
 
     # --- brownfield: a repo with a CI signal -> ADAPT; without -> CHANGE ---
-    $null = New-Item -ItemType Directory -Path (Join-Path $tmp '.github\workflows') -Force
+    $null = New-Item -ItemType Directory -Path (Join-Path $tmp '.github' 'workflows') -Force
     $bf = Invoke-SpecrewBrownfieldDetection -ProjectPath $tmp -Provider 'generic'
     Assert-True ([bool]$bf.ci_detected -and ($bf.recommendation -match '^ADAPT')) 'T212: brownfield with existing CI -> ADAPT (slot into existing lane)'
     Assert-True ($bf.never_overwrite_note -match 'never overwrites') 'T212: brownfield NEVER overwrites an existing setup'
@@ -51,8 +51,8 @@ $a2 = Invoke-SpecrewGitHubApplyProtection -Governance @{} -Approved   # approved
 Assert-True (-not [bool]$a2['applied']) 'T212: GitHub apply_protection with -Approved but no -Execute is describe-only (no mutation)'
 
 # --- SC-014 dogfood self-consistency: Specrew's own capture matches its actual posture (structural) ---
-$wkDecl = Join-Path $repoRoot '.specrew\work-kind.yml'
-$govFile = Join-Path $repoRoot '.specrew\repository-governance.yml'
+$wkDecl = Join-Path $repoRoot '.specrew' 'work-kind.yml'
+$govFile = Join-Path $repoRoot '.specrew' 'repository-governance.yml'
 Assert-True (Test-Path -LiteralPath $wkDecl) 'T212 (SC-014): Specrew dogfoods a .specrew/work-kind.yml'
 Assert-True ((Get-Content -LiteralPath $wkDecl -Raw) -match 'work_kind:\s*software-feature') 'T212 (SC-014): Specrew declares software-feature (feature 182)'
 Assert-True (Test-Path -LiteralPath $govFile) 'T212 (SC-014): Specrew dogfoods a .specrew/repository-governance.yml'
@@ -63,7 +63,7 @@ Assert-True ($gov -match 'protected:\s*true' -and $gov -match 'allow_force_pushe
 Assert-True ($gov -match 'apply_to_admins:\s*true') 'T212 (SC-014): protection applies to admins (matches actual posture)'
 
 # --- the governance schema validates the dogfood file shape (best-effort structural; Test-Json if available) ---
-$govSchemaPath = Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\repository-governance.schema.json'
+$govSchemaPath = Join-Path $repoRoot 'extensions' 'specrew-speckit' 'knowledge' 'repository-governance.schema.json'
 Assert-True (Test-Path -LiteralPath $govSchemaPath) 'T212: repository-governance.schema.json ships'
 $schema = Get-Content -LiteralPath $govSchemaPath -Raw | ConvertFrom-Json
 Assert-True ($null -ne $schema -and $schema.'$defs'.branchModel) 'T212: governance schema defines branchModel (the capture has a schema)'

@@ -93,7 +93,7 @@ function Invoke-SpecrewBrownfieldDetection {
     $protection = [ordered]@{ readable = $false; protected = $null; reason = 'not checked (non-github or gh unavailable)' }
     if ($Provider -eq 'github') {
         $ghPath = Join-Path $script:CapDetectorRoot 'provider-github.ps1'
-        if (Test-Path -LiteralPath $ghPath) { . $ghPath; $protection = Get-SpecrewGitHubExistingProtection -Branch $ReleaseTruthBranch }
+        if (Test-Path -LiteralPath $ghPath) { . $ghPath; $protection = Get-SpecrewGitHubExistingProtection -Branch $ReleaseTruthBranch -ProjectPath $ProjectPath }
     }
 
     $hasCi = $ciFound.Count -gt 0

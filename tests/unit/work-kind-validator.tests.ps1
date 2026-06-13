@@ -13,19 +13,19 @@ function Write-Pass { param([string]$m) Write-Host "PASS: $m" -ForegroundColor G
 function Write-Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor Red; exit 1 }
 function Assert-True { param([bool]$c, [string]$m) if (-not $c) { Write-Fail $m } Write-Pass $m }
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$scriptsDir = Join-Path $repoRoot 'extensions\specrew-speckit\scripts'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+$scriptsDir = Join-Path $repoRoot 'extensions' 'specrew-speckit' 'scripts'
 . (Join-Path $scriptsDir 'work-kind-validator.ps1')
 
 # --- hermetic temp project with the real catalog ---
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("wk-validator-" + [Guid]::NewGuid().ToString('N'))
-$knowledge = Join-Path $tmp 'extensions\specrew-speckit\knowledge'
+$knowledge = Join-Path $tmp 'extensions' 'specrew-speckit' 'knowledge'
 $null = New-Item -ItemType Directory -Path $knowledge -Force
 $null = New-Item -ItemType Directory -Path (Join-Path $tmp '.specrew') -Force
-Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\work-kinds.yml') -Destination (Join-Path $knowledge 'work-kinds.yml') -Force
+Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions' 'specrew-speckit' 'knowledge' 'work-kinds.yml') -Destination (Join-Path $knowledge 'work-kinds.yml') -Force
 
-function Set-Decl { param([string]$Kind) Set-Content -LiteralPath (Join-Path $tmp '.specrew\work-kind.yml') -Value "work_kind: $Kind`nschema_version: `"1.0`"" -Encoding UTF8 }
-function Clear-Decl { Remove-Item -LiteralPath (Join-Path $tmp '.specrew\work-kind.yml') -Force -ErrorAction SilentlyContinue }
+function Set-Decl { param([string]$Kind) Set-Content -LiteralPath (Join-Path $tmp '.specrew' 'work-kind.yml') -Value "work_kind: $Kind`nschema_version: `"1.0`"" -Encoding UTF8 }
+function Clear-Decl { Remove-Item -LiteralPath (Join-Path $tmp '.specrew' 'work-kind.yml') -Force -ErrorAction SilentlyContinue }
 
 try {
     # --- changed-file scope: docs-only touching a runtime .ps1 FAILS ---

@@ -23,7 +23,11 @@ function Get-SpecrewGitHubCapability {
     }
 
     $visibility = $null
+    # Run gh against the SUPPLIED ProjectPath, not the accidental current directory (a caller may invoke
+    # this from elsewhere). try/finally restores the location even on error; fail-open is preserved.
+    $savedLocation = Get-Location
     try {
+        if (Test-Path -LiteralPath $ProjectPath -PathType Container) { Set-Location -LiteralPath $ProjectPath }
         $json = & gh repo view --json visibility,isPrivate 2>$null | Out-String
         if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($json)) {
             $obj = $json | ConvertFrom-Json
@@ -31,6 +35,7 @@ function Get-SpecrewGitHubCapability {
         }
     }
     catch { $visibility = $null }
+    finally { Set-Location -LiteralPath $savedLocation -ErrorAction SilentlyContinue }
     # NOTE: the billing plan (Free/Pro/Team/Enterprise) is not reliably exposed via gh, and the owner
     # type (user/org) does not determine it — so we deliberately do NOT fetch it and instead report the
     # conservative, honest mechanism + a plan/visibility caveat below (rather than guessing from owner type).
@@ -56,12 +61,15 @@ function Get-SpecrewGitHubCapability {
 
 function Get-SpecrewGitHubExistingProtection {
     # Brownfield read (FR-021): the repo's EXISTING protection on a branch. Read-only; fail-open.
+    # Runs gh against the SUPPLIED ProjectPath, not the accidental current directory.
     [CmdletBinding()]
-    param([Parameter(Mandatory = $true)][string]$Branch)
+    param([Parameter(Mandatory = $true)][string]$Branch, [string]$ProjectPath = '.')
     if (-not (Test-SpecrewGhAvailable)) {
         return [ordered]@{ readable = $false; reason = 'gh not available'; protected = $null }
     }
+    $savedLocation = Get-Location
     try {
+        if (Test-Path -LiteralPath $ProjectPath -PathType Container) { Set-Location -LiteralPath $ProjectPath }
         $null = & gh api "repos/{owner}/{repo}/branches/$Branch/protection" 2>$null
         if ($LASTEXITCODE -eq 0) {
             return [ordered]@{ readable = $true; protected = $true; reason = "branch '$Branch' has protection configured" }
@@ -70,6 +78,9 @@ function Get-SpecrewGitHubExistingProtection {
     }
     catch {
         return [ordered]@{ readable = $false; protected = $null; reason = 'gh api error (fail-open)' }
+    }
+    finally {
+        Set-Location -LiteralPath $savedLocation -ErrorAction SilentlyContinue
     }
 }
 
