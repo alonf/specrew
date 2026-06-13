@@ -216,23 +216,11 @@ try {
     $journalPath = Join-Path $root '.specrew/runtime/bootstrap-journal.jsonl'
     $result = Invoke-SpecrewSessionBootstrap -RawEvent $eventJson -HostName $hostKind -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
 
-    # F-174 iter-10 DOUBLE-RENDER dedupe. codex intrinsically re-fires SessionStart TWICE per launch from ONE
-    # hook registration (CONFIRMED live: two fires ~7s apart, one registration), so this directive renders
-    # twice. Suppress the SECOND render when THIS session+source already produced one. Key = the manager's
-    # canonical dedupe_key (== safe_session_id, the SAME id the journal records) PLUS the launch source, so a
-    # genuine /clear re-bootstrap (same session, source=clear) still renders, and 'no-session' (no stable id -
-    # e.g. the self-host repo where codex sends none, or any Stop event) NEVER dedupes -> always renders. The
-    # marker is recorded only AFTER a successful Write-Output (end of this block), so a first fire that
-    # failed/timed-out before rendering can never suppress the retry (record-at-end fail-safe). Invoke ran
-    # above, so the journal still records BOTH fires - the forensic fire-count stays intact; only the second
-    # RENDER is suppressed. Benign by construction: the worst case is the status-quo double render, never a
-    # missing directive. Fail-open (Test-SpecrewHookRenderRecent returns $false on any error -> render).
-    # SCOPE: this dedupes the BOOTSTRAP directive only. The refocus banner (provider order 10) and the
-    # handover provider (order 30) also re-run on codex's duplicate dispatcher fire; handover is idempotent
-    # (atomic, same content) and the refocus banner doubling is a known BENIGN residual - a dispatcher-level
-    # dedupe (the only place to suppress all three at once) was rejected for blast radius (highest in the chain).
+    # F-174 iter-10 double-render dedupe: capture the manager's canonical key (== safe_session_id, the SAME id
+    # the journal records) NOW. The ATOMIC render CLAIM is taken LATER - right before Write-Output (see there) -
+    # so every fallible step (the contract write + the in-flight scan below) runs BEFORE the claim and the only
+    # thing between winning the claim and emitting is pure string building, which cannot suppress a sibling fire.
     $renderDedupeKey = [string]$result.record.dedupe_key
-    if ($renderDedupeKey -and $renderDedupeKey -ne 'no-session' -and (Test-SpecrewHookRenderRecent -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -NowUtc $nowUtc)) { exit 0 }
 
     # FR-023: the hook DRIVES - write the SAME launch contract + ensure boundary_enforcement on disk. The
     # manager component owns this logic (Write-SpecrewLaunchContractArtifact); the adapter invokes it here
@@ -269,15 +257,24 @@ try {
     }
     catch { $inFlight = $null }
 
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight)
-    # Record the render LAST - AFTER a successful Write-Output - so a first fire that died/timed-out before
-    # this point never suppresses the retry (the record-at-end fail-safe the check above relies on). No-op for
-    # 'no-session' (nothing stable to key on). Fail-open: a failed marker write just means the next fire
-    # re-renders (benign). $nowUtc is the pre-Invoke timestamp (a few seconds old) - reusing it makes the
-    # marker look marginally older, which only ever errs toward render, never toward over-suppression.
+    # F-174 iter-10 ATOMIC double-render dedupe (the CLAIM). codex fires SessionStart twice per launch
+    # near-SIMULTANEOUSLY (worktree dogfood 2026-06-13: two fires ~microseconds apart, same session id +
+    # source), so a recency/record-after-render scheme cannot dedupe them - both check before either records
+    # and BOTH render (the dogfood saw exactly that: two render markers ~10us apart). Elect exactly ONE
+    # renderer with an ATOMIC create-if-absent claim per (session, source): the winner renders, every
+    # concurrent sibling finds the claim present and exits silent. 'no-session' (no stable id - the self-host
+    # repo where codex sends none, or any Stop event) is NEVER claimed -> always renders; /clear (different
+    # source) wins its OWN claim -> re-renders. Fail-open (the claim returns $true on any non-"already-exists"
+    # error). The claim sits HERE - the last step before emit, AFTER all fallible work (Invoke, contract write,
+    # in-flight scan) - so the winner->emit window holds only pure string building; a transient failure in one
+    # fire cannot suppress the other. Invoke already ran, so the journal records BOTH fires (forensic count
+    # intact); only one RENDERS. Scope: the bootstrap directive only - the refocus banner (provider order 10) +
+    # handover (order 30) still re-run on the duplicate dispatcher fire (the refocus-banner doubling is the
+    # known benign residual; a dispatcher-level dedupe was rejected for blast radius - highest in the chain).
     if ($renderDedupeKey -and $renderDedupeKey -ne 'no-session') {
-        try { Write-SpecrewHookRenderMarker -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -RecordedAt $nowUtc | Out-Null } catch { $null = $_ }
+        if (-not (Request-SpecrewHookRenderClaim -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -RecordedAt $nowUtc)) { exit 0 }
     }
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight)
     exit 0
 }
 catch {

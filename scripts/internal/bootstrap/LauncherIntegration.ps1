@@ -52,72 +52,74 @@ function Test-SpecrewLauncherBootstrapRecent {
     catch { return $false }
 }
 
-# --- F-174 iter-10: HOOK double-render dedupe (a SEPARATE concern from the launcher<->hook dedupe above) ---
-# Some hosts (codex, CONFIRMED live) intrinsically fire SessionStart TWICE per launch from a SINGLE hook
-# registration (~7s apart in observation), so the bootstrap provider renders its directive twice. These three
-# functions keep at most ONE rendered directive per (session, launch-source): the provider RECORDS a marker
-# AFTER it renders, and the host's duplicate fire reads the marker and stays silent. Distinct from the
-# launcher dedupe in two ways that matter: (1) it is keyed on the session id + launch source, NOT pure
-# recency - a DIFFERENT session, or the SAME session under a different source (a /clear re-bootstrap), still
-# renders; (2) the caller filters the 'no-session' sentinel, so any event with no stable session id (a Stop
-# event, or the self-host repo where codex sends none) is NEVER deduped -> always renders. Fail-open
-# throughout: a MISSING directive is the only unacceptable outcome, a DUPLICATE one is benign, so every error
-# path (and a torn/garbage/stale marker) returns "render". The marker is intentionally NON-atomic for the
-# same reason: a torn read fails open to render and the next render overwrites it, so corruption cannot
-# persist into a suppressed directive (unlike the session marker, whose corruption WOULD persist).
+# --- F-174 iter-10: HOOK double-render dedupe via an ATOMIC single-winner CLAIM (a SEPARATE concern from the
+# launcher<->hook dedupe above) ---
+# codex intrinsically fires SessionStart TWICE per launch from a SINGLE hook registration, and the worktree
+# dogfood (2026-06-13) proved the two fires are near-SIMULTANEOUS (~microseconds apart, same session id +
+# source) - NOT the ~7s-sequential gap an earlier main-repo sample suggested. A recency / record-after-render
+# scheme cannot dedupe simultaneous fires: both check the marker before EITHER records, so both render (the
+# dogfood saw exactly this - two render markers ~10us apart). So we elect exactly ONE renderer with an ATOMIC
+# create-if-absent claim: the FIRST fire of a given (session, source) to create its claim file WINS and
+# renders; every concurrent/later fire finds the file present and stays silent. `File.Open(..., CreateNew)`
+# (O_EXCL) is a SINGLE atomic syscall - there is NO check-then-act gap for two processes to slip through - so
+# it elects a single winner regardless of timing (10us or 7s apart). Keyed per (session, source): a different
+# session, or a /clear (different source), wins its OWN claim and renders. The caller filters the 'no-session'
+# sentinel (no stable id - a Stop event, or the self-host repo where codex sends none) -> NEVER claimed ->
+# always renders. Fail-OPEN: the claim returns $true (render) on anything that is not "the file genuinely
+# already exists" - a duplicate render is benign, a SUPPRESSED one is the only unacceptable outcome. Per-key
+# claim files accumulate (one per session) - tiny + cosmetic; NO time-based cleanup by design (a cleanup
+# threshold below the inter-fire gap would delete the first fire's claim and re-open the double-render).
 
-function Get-SpecrewHookRenderMarkerPath {
-    param([Parameter(Mandatory)][string] $ProjectRoot)
-    return (Join-Path $ProjectRoot '.specrew/runtime/hook-bootstrap-render.json')
-}
-
-function Write-SpecrewHookRenderMarker {
-    # Called by the bootstrap provider AFTER a successful render, so the host's duplicate SessionStart fire
-    # dedupes against it. Records the (session, source) that rendered + when. The 'no-session' sentinel is
-    # filtered by the caller (it is never recorded), so the marker always carries a real session key.
-    [CmdletBinding()]
-    [OutputType([string])]
+function Get-SpecrewHookRenderClaimPath {
+    # Per-(session, source) claim path. Session id + source are sanitized to a filename-safe token (the same
+    # rule the session-id sanitizer uses) so the path is always valid.
     param(
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $DedupeKey,
-        [Parameter(Mandatory)][AllowEmptyString()][string] $Source,
-        [Parameter(Mandatory)][string] $RecordedAt
+        [Parameter(Mandatory)][AllowEmptyString()][string] $Source
     )
-    $path = Get-SpecrewHookRenderMarkerPath -ProjectRoot $ProjectRoot
-    $dir = Split-Path -Parent $path
-    if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-    ([pscustomobject]@{ dedupe_key = $DedupeKey; source = $Source; recorded_at = $RecordedAt } | ConvertTo-Json) | Set-Content -LiteralPath $path -Encoding UTF8
-    return $path
+    $safeKey = ([string]$DedupeKey) -replace '[^a-zA-Z0-9-]', '-'
+    $safeSrc = ([string]$Source) -replace '[^a-zA-Z0-9-]', '-'
+    return (Join-Path $ProjectRoot (".specrew/runtime/hook-bootstrap-render-{0}-{1}.json" -f $safeKey, $safeSrc))
 }
 
-function Test-SpecrewHookRenderRecent {
-    # True ONLY when a directive for the SAME (DedupeKey, Source) was rendered within the window -> a
-    # duplicate SessionStart fire must stay silent. Any mismatch (different session, different launch source),
-    # a stale marker, a torn/garbage marker, or any error -> $false (render): suppression requires positive
-    # proof that THIS session+source already rendered; absent that proof we render. The caller never passes
-    # the 'no-session' sentinel here.
+function Request-SpecrewHookRenderClaim {
+    # Atomic single-winner election for the codex double-fire. Returns $true if THIS fire WON the (session,
+    # source) claim and must render; $false if a sibling fire already claimed it and this fire must stay
+    # silent. The election is the atomic CreateNew (O_EXCL): exactly one concurrent caller creates the file;
+    # the rest get an IOException. Fail-OPEN: only "the file genuinely exists" returns $false; every other
+    # outcome (incl. unexpected errors) returns $true so a directive is never wrongly suppressed.
     [CmdletBinding()]
     [OutputType([bool])]
     param(
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $DedupeKey,
         [Parameter(Mandatory)][AllowEmptyString()][string] $Source,
-        [Parameter(Mandatory)][string] $NowUtc,           # ISO-8601 (deterministic for tests; Get-Date live)
-        [Parameter()][int] $WindowSeconds = 60
+        [Parameter(Mandatory)][string] $RecordedAt
     )
-    $path = Get-SpecrewHookRenderMarkerPath -ProjectRoot $ProjectRoot
-    if (-not (Test-Path -LiteralPath $path)) { return $false }
     try {
-        $m = Get-Content -LiteralPath $path -Raw -ErrorAction Stop | ConvertFrom-Json
-        if ($m -is [System.Array]) { return $false }                        # torn/garbage (two objects) -> render
-        if ([string]$m.dedupe_key -ne [string]$DedupeKey) { return $false }  # different session -> render
-        if ([string]$m.source -ne [string]$Source) { return $false }         # different launch source (e.g. /clear) -> render
-        # ConvertFrom-Json (PS7) auto-deserializes an ISO-8601 string to [datetime]; handle both.
-        $rawRec = $m.recorded_at
-        $r = if ($rawRec -is [datetime]) { $rawRec.ToUniversalTime() } else { [datetime]::Parse([string]$rawRec).ToUniversalTime() }
-        $n = [datetime]::Parse($NowUtc).ToUniversalTime()
-        $age = ($n - $r).TotalSeconds
-        return ($age -ge 0 -and $age -le $WindowSeconds)
+        $path = Get-SpecrewHookRenderClaimPath -ProjectRoot $ProjectRoot -DedupeKey $DedupeKey -Source $Source
+        $dir = Split-Path -Parent $path
+        if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $fs = $null
+        try {
+            # CreateNew = create-if-absent in ONE atomic step; throws IOException if the file already exists.
+            $fs = [System.IO.File]::Open($path, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+        }
+        catch [System.IO.IOException] {
+            # Lost the race ONLY if the file genuinely exists; any other IO fault -> fail-open to render.
+            if (Test-Path -LiteralPath $path) { return $false }
+            return $true
+        }
+        try {
+            $json = ([pscustomobject]@{ dedupe_key = $DedupeKey; source = $Source; recorded_at = $RecordedAt } | ConvertTo-Json -Compress)
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+            $fs.Write($bytes, 0, $bytes.Length)
+        }
+        finally { $fs.Dispose() }
+        return $true   # we created the claim -> sole winner -> render
     }
-    catch { return $false }
+    catch {
+        return $true   # fail-open: never suppress on an unexpected error
+    }
 }
