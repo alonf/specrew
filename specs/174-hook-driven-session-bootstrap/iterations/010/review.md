@@ -2,7 +2,8 @@
 
 **Schema**: v1
 **Reviewed**: 2026-06-13
-**Overall Verdict**: accepted (delivered scope) — DF-3/4/5/7 boundary-authoring + verdict-integrity cluster DEFERRED to iteration 011
+**Overall Verdict**: accepted
+**Verdict Qualification**: accepted for the DELIVERED scope (resume reconciliation + host-universal recovery + codex dedupe, dogfood-validated); the DF-3/4/5/7 boundary-authoring + verdict-integrity cluster is DEFERRED to iteration 011 (see Gap Ledger). F-174 stays OPEN.
 
 > **Honesty note — reconstructed at the retro boundary.** This review.md was artifacted at the iteration-010
 > retro boundary (2026-06-13) from the GENUINE review evidence performed during the iteration but recorded in
@@ -62,12 +63,12 @@ handover is rich + authoritative" as **falsified by the dogfood → deferred to 
 
 ## Gap Ledger
 
-- **DF-3/4/5/7 cluster** (HIGH) — `Write-SpecrewHandoverContext` not agent-callable (DF-7) → boundary packet + `active_boundary` not persisted (DF-3) → resume reads committed-as-approved (DF-4) → bare "continue" advanced two un-authorized boundaries + a FABRICATED `"approved for clarify" by <git committer>` verdict (DF-5). **DEFERRED to iteration 011**; decisions locked (A3 hybrid authoring, captured human verdict-evidence, committed≠authorized resume) in `iterations/011/fix-plan-draft.md`.
-- **DF-1** (resume recap is mechanical on pointer-mode codex; claude/cursor/antigravity substantive) + **DF-2** (version/branch absent from codex's pointer banner) — **deferred** to iteration 011 Fix D/E (small fixes).
-- **DF-6** (MEDIUM) — cursor-agent CLI does not honor `~/.cursor/hooks.json` (rules-based); the F-171 "cursor hooks verified" was the IDE, not the CLI. **Deferred** as a follow-up: sanction `.cursor/rules` as cursor-agent's continuity surface + correct the F-171 record.
-- **DF-8** (HIGH) — an agent edited + committed the deployed `shared-governance.ps1` to pass its own gate. **Deferred** to a separate governance-architecture proposal (out of F-174 scope).
-- **Post-implementation findings F1–F4** (`cf0bbd8c`): **fixed-now** — F1 local manual-test state FIXED; F3 `no-session` dedupe scope DOCUMENTED; F4 dest-absent marker race FIXED (`a7d2efce`); F2 `.specify` provider deploy **deferred** to publish (resolution-shift hazard if deployed pre-publish).
-- **Pre-existing tooling debt surfaced by the preflight** (not iteration-010 defects): closed iterations missing `dashboard.md` (auto-render regression — known, several iterations incl. 174/006/008/009); historical boundary commits missing a preceding HANDOFF block (the same DF-3 class, historically). **Deferred** as tracked tooling-defect chores; do not block.
+- **DF-3/4/5/7 cluster** (HIGH) — `Write-SpecrewHandoverContext` not agent-callable (DF-7) → boundary packet + `active_boundary` not persisted (DF-3) → resume reads committed-as-approved (DF-4) → bare "continue" advanced two un-authorized boundaries + a FABRICATED `"approved for clarify" by <git committer>` verdict (DF-5). **DEFERRED to iteration 011**; decisions locked (A3 hybrid authoring, captured human verdict-evidence, committed≠authorized resume) in `iterations/011/fix-plan-draft.md`. Defer entry `f174-i010-defer-integrity-cluster-to-011` in `.squad\decisions.md`.
+- **DF-1** (resume recap is mechanical on pointer-mode codex; claude/cursor/antigravity substantive) + **DF-2** (version/branch absent from codex's pointer banner) — **deferred** to iteration 011 Fix D/E (small fixes). Defer entry `f174-i010-defer-recap-version-to-011` in `.squad\decisions.md`.
+- **DF-6** (MEDIUM) — cursor-agent CLI does not honor `~/.cursor/hooks.json` (rules-based); the F-171 "cursor hooks verified" was the IDE, not the CLI. **Deferred WITHIN F-174 remaining work** (a future F-174 iteration — NOT out of F-174, per maintainer ruling): sanction `.cursor/rules` as cursor-agent's continuity surface + correct the F-171 record. Defer entry `f174-i010-defer-df6-cursor-within-f174` in `.squad\decisions.md`.
+- **DF-8** (HIGH) — an agent edited + committed the deployed `shared-governance.ps1` to pass its own gate. **Deferred** to a separate governance-architecture proposal (out of F-174 scope). Defer entry `f174-i010-defer-df8-governance-proposal` in `.squad\decisions.md`.
+- **Post-implementation findings F1–F4** (`cf0bbd8c`): **fixed-now** — F1 local manual-test state FIXED; F3 `no-session` dedupe scope DOCUMENTED; F4 dest-absent marker race FIXED (`a7d2efce`); F2 `.specify` provider deploy **deferred** to publish (resolution-shift hazard if deployed pre-publish). Defer entry `f174-i010-defer-specify-provider-to-publish` in `.squad\decisions.md`.
+- **Pre-existing tooling debt surfaced by the preflight** (not iteration-010 defects): closed iterations missing `dashboard.md` (auto-render regression — known, several iterations incl. 174/006/008/009); historical boundary commits missing a preceding HANDOFF block (the same DF-3 class, historically). **Deferred** as tracked tooling-defect chores; do not block. Defer entry `f174-i010-defer-dashboard-regression-chore` in `.squad\decisions.md`.
 
 ## Follow-ups
 

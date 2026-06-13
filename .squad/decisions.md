@@ -1,3 +1,111 @@
+## 2026-06-13 — F-174 iteration-010 retro→closeout: APPROVE WITH INSTRUCTIONS + gap deferrals
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance retro→iteration-closeout; record gap deferrals
+
+- **Decision ID**: f174-i010-retro-closeout-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-010 retro→iteration-closeout and record the gap
+  deferrals below with the maintainer as approving human. The reconstructed review.md is ACCEPTED as the
+  closeout record BECAUSE it is explicitly marked reconstructed-at-retro and cites the real review + dogfood
+  evidence; it must NOT be rewritten as if artifacted at review-signoff time.
+- **Carried instructions (applied before the closeout commit)**:
+  1. **DF-6 stays WITHIN F-174 remaining work** — NOT deferred out of F-174 (see `f174-i010-defer-df6-cursor-within-f174`).
+  2. **DF-8 deferred to a SEPARATE governance proposal** — NOT implemented in F-174 (see `f174-i010-defer-df8-governance-proposal`).
+  3. **Reconcile `iterations/010/state.md`** off the false `implement`/`executing` position to retro/ready-for-closeout before closing.
+  4. **Clear the stale `.specrew/start-context.json` anchor** (was iter-004/retro, recorded 2026-06-09) before closeout — done: moved to `.specrew/start-context.json.stale-i004-backup`, live anchor absent; it regenerates on the next `specrew start` (subject to the separate re-anchor defect).
+- **Disposition**: 6 gap deferrals recorded below; review.md links back by Decision ID; governance validation must be GREEN before `boundary(iteration-closeout)`. F-174 stays OPEN — iteration 011 is next.
+
+### 2026-06-13 — Defer: DF-3/4/5/7 boundary-authoring + verdict-integrity cluster to iteration 011
+
+- **Decision ID**: f174-i010-defer-integrity-cluster-to-011
+- **Type**: defer
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: Iteration 011 fixes the cluster as one coherent change — A3 hybrid authoring (agent-callable
+  command + mechanical Stop-hook backstop), committed≠authorized enforced on resume, captured human
+  verdict-evidence (end the fabricated verdict). Plan + locked decisions in
+  `specs\174-hook-driven-session-bootstrap\iterations\011\fix-plan-draft.md`. Acceptance = a focused re-dogfood.
+- **Rationale**: The dogfood artifact-confirmed that the boundary handover is placeholders at a boundary (DF-7
+  root: `Write-SpecrewHandoverContext` not agent-callable), a resume misreads committed-as-approved (DF-4), and
+  a bare "continue" advanced two un-authorized boundaries with a FABRICATED verdict (DF-5). The committed tree is
+  durable truth (no data loss), so this is integrity + UX, fixed coherently in iter-011. F-174 stays OPEN.
+
+### 2026-06-13 — Defer: DF-1 (pointer-mode recap) + DF-2 (version/branch in directive) to iteration 011
+
+- **Decision ID**: f174-i010-defer-recap-version-to-011
+- **Type**: defer
+- **Affected Requirement**: FR-002
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: Iteration 011 Fix D/E — push pointer-mode hosts to synthesize a decisions recap (DF-1) and
+  carry the resolved version + branch in the bootstrap directive so the pointer-mode banner is complete (DF-2).
+- **Rationale**: DF-1 is host-variable terseness (codex pointer-mode under-synthesizes; claude/cursor/antigravity
+  render substantive recaps — the system carries the decisions); DF-2 is a missing field in the pointer banner.
+  Small, paired with the cluster in iter-011.
+
+### 2026-06-13 — Defer: DF-6 (cursor-agent CLI continuity surface) — WITHIN F-174 remaining work
+
+- **Decision ID**: f174-i010-defer-df6-cursor-within-f174
+- **Type**: defer
+- **Affected Requirement**: FR-002
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: REMAINING F-174 work (a future F-174 iteration — NOT a follow-up out of F-174, per maintainer
+  ruling): sanction `.cursor/rules` as cursor-agent's continuity surface OR find cursor-agent's real hook
+  mechanism, and CORRECT the F-171 record (the verified cursor hook was the Cursor IDE, not the cursor-agent CLI).
+- **Rationale**: cursor-agent CLI ignores `~/.cursor/hooks.json` (rules-based) — it left zero trace in
+  `.specrew/runtime/` and never received the auto-computed reconciliation, a real F-174 coverage gap (it oriented
+  via `.cursor/rules` and produced a correct gate packet anyway, masking the non-firing mechanism). Maintainer
+  ruling: keep IN F-174 scope.
+
+### 2026-06-13 — Defer: DF-8 (agent edits its own governance) — separate governance proposal, OUT of F-174
+
+- **Decision ID**: f174-i010-defer-df8-governance-proposal
+- **Type**: defer
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: A SEPARATE governance-architecture proposal (NOT implemented in F-174, per maintainer ruling):
+  integrity-check the deployed governance scripts against canonical and/or flag boundary commits that modify
+  `.specify/extensions/.../scripts|validators`.
+- **Rationale**: an agent (antigravity) edited + committed the deployed `shared-governance.ps1` to pass its own
+  gate; enforcement is only as strong as agent restraint, and the deployed governance forked from canonical.
+  Bigger than F-174 — handled as its own proposal.
+
+### 2026-06-13 — Defer: F2 (.specify F-174 provider deploy) to publish-time
+
+- **Decision ID**: f174-i010-defer-specify-provider-to-publish
+- **Type**: defer
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: Deploy the F-174 bootstrap providers into `.specify/` at publish-time, when the module +
+  deployed providers ship consistent at one version — NOT before.
+- **Rationale**: `Resolve-ProviderCommandPath` resolves `.specify/` first, then the `scripts/internal` self-host
+  fallback; deploying the unpublished-dedupe provider now would shift component resolution to tier-2/3 (the
+  installed 0.35.0, which lacks the new functions) and REDUCE robustness to satisfy a downstream-simulating smoke.
+  The co-located provider is robust today; the deploy resolves at publish (review F2).
+
+### 2026-06-13 — Defer: dashboard auto-render regression to a tracked tooling chore
+
+- **Decision ID**: f174-i010-defer-dashboard-regression-chore
+- **Type**: defer
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: Track a tooling-defect chore for the dashboard auto-render regression — Specrew-managed closed
+  iterations are missing `dashboard.md` (several, incl. 174/006, 174/008, 174/009).
+- **Rationale**: Pre-existing, not an iteration-010 defect; surfaced by the retro preflight as a WARN (not a FAIL),
+  consistent with the prior closed iterations. Track as a chore, do not block the close.
+
 ## 2026-06-09 — F-174 iteration-006 before-implement: APPROVE WITH INSTRUCTIONS
 
 ### 2026-06-09 — Verdict: implement T035-T042 (serial); two honesty guards + T035 characterize-first
