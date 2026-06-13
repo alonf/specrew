@@ -1,13 +1,13 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: before-implement
+**Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: tasks — `tasks-progress.yml` generated; cap raise + folding approved (`f174-i011-tasks-before-implement-approved`)
-**Tasks Remaining**: T001–T009 (22/22), all planned; PAUSE point — implementation (Fix A→C→B→D/E) for a fresh session
-**In Progress**: before-implement — readiness verified; awaiting before-implement→implement verdict (the implement go)
+**Last Completed Task**: before-implement — readiness verified; implement-go approved (`f174-i011-implement-approved`)
+**Tasks Remaining**: T001–T009 (22/22) — IMPLEMENTING (Fix A→C→B→D/E); phases: understand → implement → verify
+**In Progress**: implement — understand-impact phase (parallel code-flow + side-effect mapping)
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-13T18:43:58Z
+**Updated**: 2026-06-13T18:59:36Z
 
 ## Charter
 

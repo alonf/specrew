@@ -1,3 +1,24 @@
+## 2026-06-13 — F-174 iteration-011 before-implement→implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — begin implementation (Fix A→C→B→D/E)
+
+- **Decision ID**: f174-i011-implement-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:59:36Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — "Implement all" (before-implement→implement). This is intended as
+  the FINAL code-editing session for this branch.
+- **Carried instructions**:
+  1. Be careful: CHECK every code change for SIDE EFFECTS. First UNDERSTAND the impact of the changes before
+     making them.
+  2. After implementing, do a DRY RUN and check ALL code flows.
+  3. Ensure GOOD TEST COVERAGE.
+  4. The maintainer will then conduct a manual MULTI-HOST test (the real-host acceptance gate, SC-012/013/014).
+- **Disposition**: implementing via three governed phases — understand (parallel impact map) → implement
+  (sequential, side-effect-checked, in-thread to avoid shared-file conflicts) → verify (parallel adversarial
+  review + dry-run all flows + coverage). Stops at review-signoff for the maintainer's manual multi-host test.
+
 ## 2026-06-13 — F-174 iteration-011 tasks→before-implement: APPROVE WITH INSTRUCTIONS
 
 ### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance tasks→before-implement; pause before code
