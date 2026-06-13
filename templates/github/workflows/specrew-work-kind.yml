@@ -1,0 +1,57 @@
+# Specrew work-kind CI check (Feature 182).
+#
+# GitHub Actions is the v1 WIRING; the check itself is the PROVIDER-NEUTRAL validator
+# (extensions/specrew-speckit/scripts/work-kind-validator.ps1) which operates on git + repo files.
+# Other CI systems wire the same script — only this workflow YAML is GitHub-specific.
+#
+# Default posture is ADVISORY: it warns and names the exact gap, and does NOT block the merge.
+# Graduate to blocking (set MODE: blocking) only when the team has proven the posture.
+
+name: Specrew Work Kind
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+jobs:
+  work-kind:
+    name: work-kind validation (advisory)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0   # the validator needs the base..head diff
+
+      - name: Validate work kind
+        shell: pwsh
+        env:
+          MODE: advisory   # advisory | blocking
+        run: |
+          # Resolve the validator from the DEPLOYED extension first (.specify/…, where a real
+          # `specrew init` project installs it — this template is copied verbatim into downstream
+          # projects where ONLY the .specify copy exists), then the in-repo source tree (Specrew's
+          # own repo). First existing wins; prefer .specify.
+          $candidates = @(
+            './.specify/extensions/specrew-speckit/scripts/work-kind-validator.ps1',
+            './extensions/specrew-speckit/scripts/work-kind-validator.ps1'
+          )
+          $validator = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $validator) {
+            Write-Host "::warning::work-kind validator not found (looked in .specify and source-tree extension paths) — skipping (advisory, not blocking)"
+            exit 0
+          }
+          . $validator
+          $base = "origin/${{ github.base_ref }}"
+          $result = Invoke-SpecrewWorkKindValidation -ProjectPath . -BaseRef $base -HeadRef HEAD -Mode $env:MODE
+          Write-Host (Format-SpecrewWorkKindVerdict -Result $result)
+          if ($result.verdict -eq 'blocking-fail') {
+            Write-Host "::error::work-kind validation failed (blocking mode)"
+            exit 1
+          }
+          # advisory mode: surface warnings but never fail the build (phased, honest)
+          if ($result.verdict -like '*-fail' -or $result.verdict -like '*-warn') {
+            Write-Host "::warning::work-kind advisory findings — see the verdict above (not blocking)"
+          }

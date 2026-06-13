@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/182-work-kind-branch-governance/spec.md",
+  "iterationRef": "specs/182-work-kind-branch-governance/iterations/002",
+  "generatedAt": "2026-06-11T22:46:01Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.35.0"
+  },
+  "findings": []
+}

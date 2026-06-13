@@ -125,6 +125,14 @@ Iteration-level review can skip this entire section. Full-feature review and pos
 
 ### Repository Conventions
 
+> **Forge-neutrality note (FR-019 / SC-013).** The conventions and the Post-Merge SDLC in this section
+> are **Specrew's OWN** repository setup — provider `github` + the PowerShell Gallery — shown as a
+> concrete **example**, NOT a downstream mandate. A project governed by Specrew substitutes its own
+> forge, branch model, `review_gate`, and release/publish mechanism per its
+> `.specrew/repository-governance.yml`; the GitHub-specific commands below (`gh pr create`,
+> `Find-Module`/`Install-Module Specrew`, PSGallery `workflow_dispatch`) are Specrew-specific and apply
+> only when a project's provider/workflow instantiates that path.
+
 - **Repository**: <https://github.com/alonf/specrew>
 - **Default branch**: `main`
 - **Feature branches**: named `<NNN>-<feature-slug>` (e.g., `049-pipeline-hardening-intake`); branched from `main`; one feature per branch.
@@ -133,9 +141,12 @@ Iteration-level review can skip this entire section. Full-feature review and pos
 - **Local lint before push**: run `npx markdownlint-cli` on touched markdown + the scoped governance validator. Push-to-main lint failure cascades to skip the Deterministic + Contract lanes (silent truth-check disable), so catching lint locally matters.
 - **Worktree pattern**: when working on main while a feature branch is checked out, use `git worktree add` for an isolated copy. Don't disturb the feature-branch working tree.
 
-### Post-Merge SDLC (F-048 Steps 5-14)
+### Post-Merge SDLC — Specrew's own example (F-048 Steps 5-14)
 
-Every feature touching runtime artifacts follows this sequence (universal mandate per Proposal 060):
+The sequence below is **Specrew's own** post-merge SDLC (provider `github` + PowerShell Gallery), an
+example of the closeout shape — not a downstream mandate. For Specrew itself every feature touching
+runtime artifacts follows it (universal mandate per Proposal 060); a downstream project runs the same
+*shape* via its own forge + release mechanism per its `.specrew/repository-governance.yml`:
 
 | Step | Owner | Action |
 |---|---|---|

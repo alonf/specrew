@@ -1,0 +1,124 @@
+# Iteration Plan: 001
+
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
+**Status**: complete
+**Capacity**: 15.5/20 story_points
+**Started**: 2026-06-11
+**Completed**: 2026-06-11
+
+<!--
+  Validator schema (canonical, enforced by validate-governance.ps1):
+  - Iteration Status MUST be one of:
+      planning | executing | reviewing | retro | complete | abandoned
+    (Common mistakes the validator REJECTS: `approved`, `in-progress`, `done`, `ready`.)
+  - Capacity format MUST be `<consumed>/<cap> <effort_unit>` with NO trailing prose on that line.
+    Append explanatory notes in the Notes section at the bottom instead.
+  - Task Status (in the Tasks table) MUST be one of:
+      planned | in-progress | done | needs-rework | deferred | blocked
+    (Note `in-progress` uses a hyphen, not an underscore. `done` not `completed`.)
+-->
+
+## Scope Summary
+
+| Requirement | Summary | Stories |
+| ----------- | ------- | ------- |
+| FR-001 | Specrew MUST define a work-kind taxonomy covering at least `software-feature`, | — |
+| FR-002 | The DevOps lens MUST present the default PR-backed branch-governance model and | — |
+| FR-003 | The DevOps lens MUST capture a configurable **`branch_model`** — branching | — |
+| FR-004 | Specrew MUST distinguish `feature-closeout` from release/post-merge | — |
+| FR-005 | Specrew MUST provide a lightweight `docs-only` lifecycle surface completable | — |
+| FR-006 | Specrew MUST provide a `devops` work-kind lifecycle surface (CI/CD, repo | — |
+| FR-007 | A **provider-neutral** CI validator MUST check, on a PR, that (a) exactly one | — |
+| FR-008 | The DevOps lens MUST ask single-repo vs multi-repo and capture the | — |
+| FR-009 | A work item declares its kind via an authoritative, forge-neutral checked-in | — |
+| FR-010 | Specrew MUST record enforcement posture honestly; partial runtime enforcement | — |
+| FR-011 | Specrew MUST define an emergency/bypass path that leaves a durable audit | — |
+| FR-012 | Capability detection MUST report the achievable enforcement mechanism | — |
+| FR-013 | Specrew MUST dogfood this model on its own repository (protected branch via | — |
+| FR-014 | The methodology, the declaration, and the CI validator **core** MUST import no | — |
+| FR-015 | Specrew MUST ship the `ProviderAdapter` **contract** + a **GitHub reference | — |
+| FR-016 | Specrew MUST provide on-the-fly adapter **synthesis** conduct: generate a | — |
+| FR-017 | The DevOps lens MUST capture a **`review_gate`** — human approvals + | — |
+| FR-018 | Governance answers MUST persist to a **project-level** | — |
+| FR-019 | Specrew MUST audit + decouple ALL downstream-governing surfaces (lifecycle | — |
+| FR-020 | `apply_protection` MUST be human-approved, never auto-applied, never from an | — |
+| FR-021 | Specrew MUST detect an existing brownfield CI/CD + branch-protection + review | — |
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T001 | work-kinds.yml catalog | FR-001 | US1 | 1.5 | Implementer | extensions/specrew-speckit/knowledge/work-kinds.yml | done | claude | done | i1-implemented |
+| T002 | catalog + declaration schema | FR-009 | US1 | 1 | Implementer | extensions/specrew-speckit/knowledge/work-kinds.schema.json | done | claude | done | i1-implemented |
+| T003 | repository-governance schema | FR-003 | US2 | 1.5 | Implementer | extensions/specrew-speckit/knowledge/repository-governance.schema.json | done | claude | done | i1-implemented |
+| T004 | extend DevOps lens (governance + branch_model + review_gate + synthesis) | FR-002 | US2 | 2 | Spec Steward | extensions/specrew-speckit/knowledge/design-lenses/devops-operations.md | done | claude | done | i1-implemented |
+| T005 | work-kinds methodology doc + closeout-vs-release invariant | FR-004 | US1 | 1 | Spec Steward | docs/methodology/work-kinds.md | done | claude | done | i1-implemented |
+| T006 | docs-only lifecycle template | FR-005 | US3 | 0.5 | Spec Steward | templates/lifecycle/docs-only-lifecycle.md | done | claude | done | i1-implemented |
+| T007 | devops lifecycle template | FR-006 | US3 | 0.5 | Spec Steward | templates/lifecycle/devops-lifecycle.md | done | claude | done | i1-implemented |
+| T008 | capture templates | FR-018 | US1 | 0.5 | Implementer | templates/work-kind/ | done | claude | done | i1-implemented |
+| T009 | ProviderAdapter contract + dispatch + git-diff fallback | FR-014 | US5 | 1.5 | Implementer | extensions/specrew-speckit/scripts/provider-adapter.ps1 | done | claude | done | i1-implemented |
+| T010 | GenericFallbackAdapter | FR-015 | US5 | 1 | Implementer | extensions/specrew-speckit/scripts/provider-generic.ps1 | done | claude | done | i1-implemented |
+| T011 | phased-enforcement honesty labeling | FR-010 | US1 | 0.5 | Reviewer | extensions/specrew-speckit/knowledge/ | done | claude | done | i1-implemented |
+| T012 | forge-coupling audit/inventory | FR-019 | US2 | 1.5 | Implementer | specs/182-work-kind-branch-governance/iterations/001/forge-coupling-inventory.md | done | claude | done | i1-implemented |
+| T013 | registration: FileList declare + sort (completeness test PASS) | FR-013 | US1 | 0.5 | Implementer | Specrew.psd1 | done | claude | done | i1-implemented |
+| T013b | extension.yml version bump + deploy-time .specify coverage | FR-013 | US1 | 0.5 | Implementer | extensions/specrew-speckit/extension.yml | deferred | claude | — | deferred-to-release/deploy (approved; carried to T019 / feature-closeout) |
+| T014 | catalog + schema integrity tests | FR-001 | US1 | 1 | Implementer | tests/unit/work-kind-catalog.tests.ps1 | done | claude | done | i1-implemented |
+| T015 | provider-neutral core + fallback tests | FR-014 | US5 | 1 | Implementer | tests/unit/provider-adapter.tests.ps1 | done | claude | done | i1-implemented |
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
+| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+
+## Concurrency Rationale
+
+- Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
+- Technology and scope signals: Mixed frontend and backend/service signals are present in the scoped requirements.
+- Task dependency graph: the task table is populated and executed; tasks ran serially (single-developer execution) with no shared-surface conflicts. Phases 1-5 were sequential (data substrate → surfaces → adapter → audit → tests).
+- Workstream separability: Current scope does not yet prove enough safe parallelism for same-specialty expansion; default to a smaller serial team until tasks are clearer.
+- Shared-surface conflict risk: no elevated shared-surface warning inferred yet.
+- Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
+- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+
+## Phase Baseline
+
+| Phase | Estimated Effort | Notes |
+| ----- | ---------------- | ----- |
+| Planning | on-track | Design workshop converged the architecture before plan; see retro.md Phase Variance. |
+| Discovery/Spikes | small | One spike: the dependency-free YAML reader (Specrew avoids powershell-yaml). |
+| Implementation | 14 SP | T001–T015 source/test work (Iter-1 consumed 15.5 incl. process artifacts). |
+| Review | +rework | One review-caught task-status drift (D-001) + a baseline-ref correction. |
+| Rework | small | T013 split/correction + markdownlint fixes. See retro.md. |
+
+## Traceability Summary
+
+- Requirement scope for **iteration 001 (methodology layer)**: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-008, FR-009, FR-010, FR-014, FR-015 (contract + fallback), FR-016 (doc), FR-017, FR-018, FR-019 (inventory only), FR-021 (content). Deferred to Iter 2: FR-007, FR-011, FR-012, FR-013, FR-015 (GitHub detect), FR-016 (exercised), FR-020, FR-021 (detector). Deferred to Iter 3: FR-019 (decouple migration).
+- User stories represented in iteration 001: US1 (lifecycle truth), US2 (DevOps-lens governance), US3 (docs-only/devops lifecycles), US6 (brownfield content). US4/US5 runtime land in Iter 2.
+- Task table populated and executed: T001–T015 `done`; T013b `deferred` (approved). Traceability
+  verified (every in-scope FR/SC mapped) and capacity-planning ran across the tasks/before-implement
+  phases.
+- Capacity / deferral decisions recorded: Iteration 1 consumed 15.5 / cap 20 (no per-iteration
+  overcommit). The T013b deferral (extension.yml version bump + deploy-time `.specify` coverage) is
+  **approved** and carried to **T019 / release-deploy** (drift-log D-001).
+
+## Notes
+
+- **Iteration 001 = the methodology layer** (Iter 1 of the 3-iteration plan in `../../plan.md`). The
+  Scope Summary table above lists the full feature FR set for reference; the delivered iteration-001
+  scope is the subset in the Traceability Summary.
+- **Iteration 1 is COMPLETE at iteration-closeout** (Status: complete; Completed 2026-06-11). The task
+  table is populated and executed; the hardening-gate verdict was `ready` at before-implement; the
+  review verdict is `accepted`; the retrospective is recorded; the dashboard is rendered.
+- **T013b** (extension.yml version bump + deploy-time `.specify` coverage) is **approved-deferred** and
+  carried to **T019 / feature-closeout** (the release/deploy step; drift-log D-001) — not a hand-edit.
+- Carried watch-items (review-accepted, not pulled into Iter-1): the YAML-reader contract test, the
+  deployed-catalog location (the first Iteration-2 design decision), and the `New-*` ShouldProcess
+  false-positive (Proposal-037 queue).

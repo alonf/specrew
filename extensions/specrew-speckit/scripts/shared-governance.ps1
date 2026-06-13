@@ -279,17 +279,51 @@ function Get-SpecrewPrReviewResolutionPath {
     return Join-Path -Path $IterationPath -ChildPath 'pr-review-resolution.md'
 }
 
+function Get-SpecrewAutomatedReviewOptIn {
+    # Feature 182 (FR-019): read the project's review_gate.automated_review OPT-IN from
+    # .specrew/repository-governance.yml. Forge-neutral default: OFF — human review is always-available;
+    # an automated reviewer is active ONLY when the project explicitly opted in. Returns
+    # @{ Enabled = <bool>; ProviderSuggestion = <string|null> }. Fail-open to disabled.
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+    $govPath = Join-Path -Path (Resolve-ProjectPath -Path $ProjectRoot) -ChildPath '.specrew' -AdditionalChildPath 'repository-governance.yml'
+    $result = @{ Enabled = $false; ProviderSuggestion = $null }
+    if (-not (Test-Path -LiteralPath $govPath -PathType Leaf)) { return $result }
+    $inAutomated = $false
+    foreach ($line in (Get-Content -LiteralPath $govPath -ErrorAction SilentlyContinue)) {
+        if ($line -match '^\s{4}automated_review:\s*(#.*)?$') { $inAutomated = $true; continue }
+        if ($inAutomated -and $line -match '^\s{0,4}\S') { $inAutomated = $false }   # left the block (sibling/parent key)
+        if ($inAutomated -and $line -match '^\s{6,}enabled:\s*(?<v>\S+)') {
+            $result.Enabled = ([string]$Matches['v'] -match '^(?i:true)$')
+        }
+        if ($inAutomated -and $line -match '^\s{6,}provider_suggestion:\s*(?<v>\S+)') {
+            $result.ProviderSuggestion = ([string]$Matches['v']).Trim()
+        }
+    }
+    return $result
+}
+
 function Test-HostProvidesAutomatedPrReview {
-    # Proposal 089: detects whether the current repo has automated PR review
-    # (e.g., GitHub Copilot reviewer). Returns @{ Active, Host, Reviewer }.
-    # Detection: `gh` CLI on PATH AND git remote URL contains 'github.com'.
-    # Other hosts (GitLab, Bitbucket) fall through to Active = $false until their
-    # detection is added in a future PR.
+    # Proposal 089 + Feature 182 (FR-019): reports the project's automated-PR-review reviewer, which is
+    # OPT-IN and forge-neutral. Specrew NEVER bakes in a forge or a reviewer: an automated reviewer is
+    # active ONLY when (a) the project opted in via review_gate.automated_review.enabled AND (b) the
+    # configured provider's capability is actually present. v1 ships the GitHub adapter's Copilot
+    # suggestion; other forges report Active = $false until a verified adapter is synthesized (honest —
+    # no baked-in reviewer). Returns @{ Active, Host, Reviewer }.
     param(
         [Parameter(Mandatory = $true)]
         [string]$ProjectRoot
     )
     $resolvedRoot = Resolve-ProjectPath -Path $ProjectRoot
+
+    # Opt-in gate (FR-019): no governance / not opted in -> human review only (never a baked-in reviewer).
+    $optIn = Get-SpecrewAutomatedReviewOptIn -ProjectRoot $resolvedRoot
+    if (-not $optIn.Enabled) {
+        return @{ Active = $false }
+    }
+    $provider = if (-not [string]::IsNullOrWhiteSpace($optIn.ProviderSuggestion)) { $optIn.ProviderSuggestion } else { 'copilot' }
 
     $ghAvailable = $false
     try {
@@ -311,13 +345,15 @@ function Test-HostProvidesAutomatedPrReview {
         Pop-Location -ErrorAction SilentlyContinue
     }
 
+    # Opted in + the GitHub adapter's capability is present -> the configured reviewer (GitHub: Copilot).
     if ($ghAvailable -and $remoteIsGitHub) {
         return @{
             Active   = $true
             Host     = 'github'
-            Reviewer = 'copilot-pull-request-reviewer'
+            Reviewer = "$provider-pull-request-reviewer"
         }
     }
+    # Opted in, but the forge capability isn't present (no gh / non-GitHub forge) -> honest inactive.
     return @{ Active = $false }
 }
 
