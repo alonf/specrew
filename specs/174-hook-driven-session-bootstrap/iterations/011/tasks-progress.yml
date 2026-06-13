@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "174-hook-driven-session-bootstrap"
 iteration: "011"
-updated_at: "2026-06-13T22:45:00Z"
+updated_at: "2026-06-13T23:09:59Z"
 tasks:
   T001:
     title: "Expose a TESTED public/agent-callable authoring command/skill around the handover writer — PROVE/EXPORT the callable surface (do NOT assume Write-SpecrewHandoverContext is exported)"
@@ -29,9 +29,9 @@ tasks:
     blocked_reason: ""
   T005:
     title: "Boundary-sync integrity — STOP fabrication (sync records the mechanical crossing only; never advances last_authorized_boundary, never appends/fabricates verdict_history, never git-committer). Authorization moves to the hook (T004) + explicit re-confirm (T006), per decision f174-i011-verdict-authority-stop-hook."
-    status: "in-progress"
+    status: "done"
     started_at: "2026-06-13T22:18:31Z"
-    completed_at: ""
+    completed_at: "2026-06-13T22:35:00Z"
     blocked_reason: ""
   T006:
     title: "Committed != authorized resume + specrew where — read last_authorized_boundary decisive; surface awaiting-verdict; never auto-advance. Shared Get-SpecrewPendingVerdictState helper + specrew-where surfacing DONE; bootstrap-provider resume-directive surfacing PENDING (part 2)."
