@@ -18,7 +18,12 @@ function Invoke-Provider {
     param([string]$HostKind, [string]$Root)
     $pf = Join-Path $Root '.specrew/last-start-prompt.md'
     if (Test-Path -LiteralPath $pf) { Remove-Item -LiteralPath $pf -Force }
-    $out = & pwsh -NoProfile -File $provider --event-json '{"source":"startup","session_id":"s1"}' --host-kind $HostKind --project-root $Root
+    # DISTINCT session_id per host: these calls share one $Root, and the F-174 double-render dedupe keys on
+    # (session_id, source). A single reused session_id across host calls would (correctly) make calls 2..N
+    # dedupe to silence - so give each host its own session id. This is also the REAL shape: one session id
+    # belongs to exactly one host/session, never four.
+    $evt = '{"source":"startup","session_id":"s1-' + $HostKind + '"}'
+    $out = & pwsh -NoProfile -File $provider --event-json $evt --host-kind $HostKind --project-root $Root
     return (($out -join "`n"))
 }
 

@@ -216,6 +216,24 @@ try {
     $journalPath = Join-Path $root '.specrew/runtime/bootstrap-journal.jsonl'
     $result = Invoke-SpecrewSessionBootstrap -RawEvent $eventJson -HostName $hostKind -ProjectRoot $root -BaseBranch 'main' -JournalPath $journalPath
 
+    # F-174 iter-10 DOUBLE-RENDER dedupe. codex intrinsically re-fires SessionStart TWICE per launch from ONE
+    # hook registration (CONFIRMED live: two fires ~7s apart, one registration), so this directive renders
+    # twice. Suppress the SECOND render when THIS session+source already produced one. Key = the manager's
+    # canonical dedupe_key (== safe_session_id, the SAME id the journal records) PLUS the launch source, so a
+    # genuine /clear re-bootstrap (same session, source=clear) still renders, and 'no-session' (no stable id -
+    # e.g. the self-host repo where codex sends none, or any Stop event) NEVER dedupes -> always renders. The
+    # marker is recorded only AFTER a successful Write-Output (end of this block), so a first fire that
+    # failed/timed-out before rendering can never suppress the retry (record-at-end fail-safe). Invoke ran
+    # above, so the journal still records BOTH fires - the forensic fire-count stays intact; only the second
+    # RENDER is suppressed. Benign by construction: the worst case is the status-quo double render, never a
+    # missing directive. Fail-open (Test-SpecrewHookRenderRecent returns $false on any error -> render).
+    # SCOPE: this dedupes the BOOTSTRAP directive only. The refocus banner (provider order 10) and the
+    # handover provider (order 30) also re-run on codex's duplicate dispatcher fire; handover is idempotent
+    # (atomic, same content) and the refocus banner doubling is a known BENIGN residual - a dispatcher-level
+    # dedupe (the only place to suppress all three at once) was rejected for blast radius (highest in the chain).
+    $renderDedupeKey = [string]$result.record.dedupe_key
+    if ($renderDedupeKey -and $renderDedupeKey -ne 'no-session' -and (Test-SpecrewHookRenderRecent -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -NowUtc $nowUtc)) { exit 0 }
+
     # FR-023: the hook DRIVES - write the SAME launch contract + ensure boundary_enforcement on disk. The
     # manager component owns this logic (Write-SpecrewLaunchContractArtifact); the adapter invokes it here
     # so the pure classification path (Invoke-SpecrewSessionBootstrap) stays test-isolated from the
@@ -252,6 +270,14 @@ try {
     catch { $inFlight = $null }
 
     Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight)
+    # Record the render LAST - AFTER a successful Write-Output - so a first fire that died/timed-out before
+    # this point never suppresses the retry (the record-at-end fail-safe the check above relies on). No-op for
+    # 'no-session' (nothing stable to key on). Fail-open: a failed marker write just means the next fire
+    # re-renders (benign). $nowUtc is the pre-Invoke timestamp (a few seconds old) - reusing it makes the
+    # marker look marginally older, which only ever errs toward render, never toward over-suppression.
+    if ($renderDedupeKey -and $renderDedupeKey -ne 'no-session') {
+        try { Write-SpecrewHookRenderMarker -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -RecordedAt $nowUtc | Out-Null } catch { $null = $_ }
+    }
     exit 0
 }
 catch {

@@ -180,8 +180,30 @@
     shape; 400×2 concurrent writers -> real reader never throws + final state always a single valid marker);
     `refocus-deploy.tests.ps1` §8b LOCKS the deploy self-heal (seed the exact corrupt.bak topology -> exactly ONE
     SessionStart registration, top-level duplicate gone, 3 dispatcher refs, re-deploy byte-idempotent).
+  - **Double-RENDER dedupe** (`specrew-bootstrap-provider.ps1` + `Get-/Write-/Test-SpecrewHookRenderMarker(Recent)`
+    in `LauncherIntegration.ps1`): the atomic marker write above fixes the CORRUPTION the double-fire caused; this
+    fixes the VISIBLE symptom — the bootstrap directive rendering twice. The provider records a marker
+    (`.specrew/runtime/hook-bootstrap-render.json`) AFTER a successful render; the duplicate fire reads it and stays
+    silent, keyed on the manager's canonical `dedupe_key` (`safe_session_id`, the SAME id the journal records) PLUS
+    the launch `source`. **Record-at-END is the fail-safe**: a first fire that died/timed-out before rendering never
+    records, so it never suppresses the retry — the worst case is the status-quo double render, never a MISSING
+    directive. The two cases where suppression would be WRONG are structurally excluded: `no-session` (no stable id —
+    the self-host repo where codex sends none, any Stop event) is NEVER deduped, and a different `source` (a `/clear`
+    re-bootstrap reusing the session id) always re-renders. `Invoke` still runs on the duplicate fire, so the journal
+    records BOTH fires (forensic count intact); the journal record now also carries `source` so the next dogfood
+    shows directly whether both fires share it (the one assumption code can't prove — codex emits no captured
+    `source` to grep). **SCOPE**: the bootstrap directive ONLY — the refocus banner (provider order 10) and handover
+    (order 30) also re-run on codex's duplicate dispatcher fire; handover is idempotent (atomic, same content) and
+    the refocus-banner doubling is a known BENIGN residual (a dispatcher-level dedupe — the only single point
+    covering all three at once — was rejected for highest-in-chain blast radius). `HookRenderDedupe.Tests.ps1` (14:
+    unit predicate incl. stale-window + torn/garbage-marker fail-open; integration — 2nd identical fire SILENT,
+    `/clear` re-renders, `no-session`×2 both render, both fires journaled with `source=startup`). **DEPLOYED-script
+    change** -> the live `.specify/` provider must be re-deployed to a downstream project to validate (an env-var
+    relaunch alone won't exercise it). HostDeliveryPolicy test updated (distinct session id per host: one shared root
+    + one reused session id would, correctly, self-dedupe).
   - NOTE: codex firing SessionStart with no session_id (sanitized to `unknown` -> all codex SessionStart sessions
-    collide into one refocus-state file) is a SEPARATE pre-existing observation, not addressed here.
+    collide into one refocus-state file) is a SEPARATE pre-existing observation; the render dedupe's `no-session`
+    guard means those self-host-repo fires are simply never deduped (they always render), so it is unaffected.
 - **T004 complete (`from_host: host` fix)**: the design-workshop refresh runs the handover provider WITHOUT
   `--host-kind` (agent-invoked, not via the per-host dispatcher) and, pre-specify, the anchor has no committed host
   either -> `from_host` fell to the literal `host` sentinel (dogfood: codex + copilot). DESIGN EVOLVED from the
@@ -202,13 +224,14 @@
 - **Validation**: ConversationCapture (20) + HandoverGateWorkshop (12) + HandoverConversationPreserve (9) +
   ConversationOnlyCapture (12) + DispatcherLargeEvent (8) + SessionDeltaRepoRootGate (11, round-6) +
   StaleHandoverNoResumeSnapshot (13, round-6) + WritePathRepoRootGate (4, round-6 write-path) +
-  ResumePreservesIterationState (12, DF-006) + MarkerAtomicWrite (18, double-fire) +
+  ResumePreservesIterationState (12, DF-006) + MarkerAtomicWrite (18, double-fire corruption) +
+  HookRenderDedupe (14, double-RENDER dedupe) +
   WorkshopHostDetection (11, T004) + HandoverCrashRecovery (T006 hard-kill) + HostDeliveryPolicy (T007, +cursor) +
   DispatcherTranscriptDelivery (6) + DispatcherLargeStdout (5) + the targeted handover regression set
   (RollingHandover, HandoverValidation, HandoverHookPrimary, ProviderMirrorParity, CoordinatorResumeReconciliation,
   ProjectMetadataAccessor, SessionBootstrapManager, Concurrency, Regression, HostEventAdapter, PerHost) — the full
-  `tests/bootstrap` sweep all green after the double-fire + T004/T006/T007 changes, plus the full
-  `refocus-deploy` integration suite (incl. the §8b self-heal lock).
+  `tests/bootstrap` sweep 37/37 green after the double-fire (corruption + render dedupe) + T004/T006/T007 changes,
+  plus the full `refocus-deploy` integration suite (incl. the §8b self-heal lock) and the deployed tier-3 floor.
 - **T006 complete (tests; M3 was already done)**: the M3 writer hardening shipped earlier (T050 handover
   atomic-replace/`.old`/write-failure-surfacing + the iter-10 marker atomic write), so T006 = the missing TESTS.
   `HandoverCrashRecovery.Tests.ps1` reproduces crash artifacts on disk and locks: torn-live + valid `.old` ->

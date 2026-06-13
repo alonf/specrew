@@ -124,6 +124,11 @@ function Invoke-SpecrewSessionBootstrap {
         concurrent_session = $concurrent
         concurrency_reason = $concurrencyReason
         dedupe_key         = $dedupeKey
+        # F-174 iter-10: the launch source (startup|resume|clear) on this fire. Free observability for the
+        # double-render dedupe: a host that re-fires SessionStart writes TWO journal rows; if both carry the
+        # SAME source, the (dedupe_key, source)-keyed render dedupe is correct to suppress the second. NOT
+        # consumed by the dedupe itself (the provider keys off its own parse) - this row is the diagnostic.
+        source             = $normalizedEvent.source
         findings           = $allFindings
     }
 
