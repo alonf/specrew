@@ -30,7 +30,20 @@ jobs:
         env:
           MODE: advisory   # advisory | blocking
         run: |
-          . ./extensions/specrew-speckit/scripts/work-kind-validator.ps1
+          # Resolve the validator from the DEPLOYED extension first (.specify/…, where a real
+          # `specrew init` project installs it — this template is copied verbatim into downstream
+          # projects where ONLY the .specify copy exists), then the in-repo source tree (Specrew's
+          # own repo). First existing wins; prefer .specify.
+          $candidates = @(
+            './.specify/extensions/specrew-speckit/scripts/work-kind-validator.ps1',
+            './extensions/specrew-speckit/scripts/work-kind-validator.ps1'
+          )
+          $validator = $candidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+          if (-not $validator) {
+            Write-Host "::warning::work-kind validator not found (looked in .specify and source-tree extension paths) — skipping (advisory, not blocking)"
+            exit 0
+          }
+          . $validator
           $base = "origin/${{ github.base_ref }}"
           $result = Invoke-SpecrewWorkKindValidation -ProjectPath . -BaseRef $base -HeadRef HEAD -Mode $env:MODE
           Write-Host (Format-SpecrewWorkKindVerdict -Result $result)

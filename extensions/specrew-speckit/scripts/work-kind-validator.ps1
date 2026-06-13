@@ -18,6 +18,26 @@ $script:WkValidatorRoot = $PSScriptRoot
 . (Join-Path $script:WkValidatorRoot 'work-kind-common.ps1')
 . (Join-Path $script:WkValidatorRoot 'provider-adapter.ps1')
 
+function Resolve-SpecrewWorkKindCatalogPath {
+    # Resolve work-kinds.yml across the deployed + source shapes (first existing wins; $null if none).
+    # The validator and its catalog ship together in the SAME extension package, so the catalog BESIDE
+    # THE SCRIPT is the most authoritative (it always matches this validator's own version). Fall through
+    # to the deployed project layout (.specify/extensions/...), then the in-repo source-tree layout
+    # (extensions/...). In a real deployed project the validator lives at
+    # <proj>/.specify/extensions/specrew-speckit/scripts/, so the beside-script and .specify candidates
+    # coincide; when the validator is loaded from a global module against a project, beside-script (the
+    # module's own catalog) is preferred — version-consistent with this validator's logic.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][string]$ProjectPath)
+    $extRoot = Split-Path -Parent $script:WkValidatorRoot   # <ext>/scripts -> <ext>
+    $candidates = @(
+        (Join-Path $extRoot 'knowledge/work-kinds.yml'),                                          # beside the script (this validator's extension package)
+        (Join-Path $ProjectPath '.specify/extensions/specrew-speckit/knowledge/work-kinds.yml'),  # deployed project shape
+        (Join-Path $ProjectPath 'extensions/specrew-speckit/knowledge/work-kinds.yml')            # in-repo source-tree shape
+    )
+    return @($candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1)
+}
+
 function Get-SpecrewWorkKindFromBranchPrefix {
     # Infer a default work_kind from the branch prefix (docs/, devops/, fix/, feature/) using each
     # kind's branch_prefix_hint. Returns $null when no prefix matches.
@@ -74,14 +94,18 @@ function Invoke-SpecrewWorkKindValidation {
     $findings = [System.Collections.Generic.List[object]]::new()
     function Add-Finding { param([string]$Check, [string]$Severity, [string]$Message) $findings.Add([ordered]@{ check = $Check; severity = $Severity; message = $Message }) | Out-Null }
 
-    # --- load catalog (fail-open) ---
-    $catalogPath = Join-Path $ProjectPath 'extensions/specrew-speckit/knowledge/work-kinds.yml'
+    # --- load catalog (fail-open) — resolve across deployed + source shapes (beside the validator's own
+    #     extension package wins; then ProjectPath/.specify, then ProjectPath source tree) ---
+    $catalogPath = Resolve-SpecrewWorkKindCatalogPath -ProjectPath $ProjectPath
     $catalog = $null
-    if (Test-Path -LiteralPath $catalogPath) {
+    if ($catalogPath) {
         $catalog = ConvertFrom-SpecrewWorkKindCatalog -Text (Get-Content -LiteralPath $catalogPath -Raw -Encoding UTF8)
     }
     if ($null -eq $catalog) {
-        Add-Finding 'catalog' 'warn' "work-kinds.yml catalog not found/parseable at $catalogPath; skipping work-kind checks (fail-open)"
+        # Name the deployed (.specify) candidate — the location a real `specrew init` project installs to —
+        # not the in-repo source-tree path that only exists in Specrew's own repo.
+        $reportedPath = if ($catalogPath) { $catalogPath } else { Join-Path $ProjectPath '.specify/extensions/specrew-speckit/knowledge/work-kinds.yml' }
+        Add-Finding 'catalog' 'warn' "work-kinds.yml catalog not found/parseable (looked beside the validator, then $reportedPath); skipping work-kind checks (fail-open)"
         return [ordered]@{ verdict = 'advisory-warn'; kind = $null; mode = $Mode; findings = @($findings.ToArray()) }
     }
     $catalogIds = @($catalog.work_kinds | ForEach-Object { [string]$_.id })
