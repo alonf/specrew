@@ -202,10 +202,17 @@
     doubling = known BENIGN residual; a dispatcher-level dedupe was rejected for highest-in-chain blast radius).
     `HookRenderDedupe.Tests.ps1` REWRITTEN to RACE concurrency (the property a sequential test could never catch): 8
     concurrent racers -> 1 winner; two CONCURRENT provider fires -> exactly 1 render, both journaled; `/clear`
-    re-renders; `no-session`×2 both render. Full bootstrap suite 37/37 + deployed floor green. **Real codex remains
-    the DECISIVE acceptance** (green synthetic tests are exactly what gave false confidence the first time) — the
-    fix is deployed into the iter-test worktree (now on `dbf13abd`, stale runtime cleared) pending the maintainer's
-    re-run confirming 2 journal rows (the double-fire occurred) AND a single render.
+    re-renders; `no-session`×2 both render. Full bootstrap suite 37/37 + deployed floor green. **CONFIRMED ON REAL
+    CODEX 2026-06-13** (a fresh worktree at the claim commit, first-turn SessionStart): codex double-fired (journal
+    = 2 rows, same GUID `019ec0a2...`, both `source=startup` — the failing concurrent condition genuinely occurred),
+    the atomic claim elected exactly ONE winner (a single per-key `hook-bootstrap-render-<guid>-startup.json`, one
+    valid object — no old unkeyed marker, so the CLAIM code ran), the orientation banner rendered ONCE in the codex
+    UI, and the session-marker stayed a single valid object (atomic write held under the real double-fire). HEAD
+    never left the claim commit (reflog clean) so it was provably the fix that fired. The earlier record-at-end
+    "pass" had been synthetic+sequential (false confidence); this is real, concurrent, and decisive. Harness note:
+    codex fires SessionStart on the FIRST TURN, not bare launch, and a self-host worktree is fragile (codex's
+    `specrew start` resumes any in-progress feature via the re-anchor bug, checking the worktree off the fix commit)
+    — a FRESH worktree with no resumable feature + a non-build first message is the clean target.
   - NOTE: codex firing SessionStart with no session_id (sanitized to `unknown` -> all codex SessionStart sessions
     collide into one refocus-state file) is a SEPARATE pre-existing observation; the render dedupe's `no-session`
     guard means those self-host-repo fires are simply never deduped (they always render), so it is unaffected.
@@ -292,6 +299,7 @@
     the dest-absent `File.Move` + catch-fallback path (the one non-atomic write path) was never exercised under
     load. Added a no-pre-seed race (both writers from a cold start); the invariant holds (13123 reader samples, 0
     exceptions, final a single valid object).
-- **Next**: ALL TASKS T001–T009 COMPLETE + the double-RENDER dedupe (`61f17bd0`) + review findings dispositioned.
-  Ready for iteration-closeout (audit + verdict), pending the maintainer's decisive codex re-run validating the
-  double-fire fix (one render + a single valid marker) — with `SPECREW_MODULE_PATH` set for any iter10 re-run.
+- **Next**: ALL TASKS T001–T009 COMPLETE + the double-RENDER dedupe (atomic claim, `dbf13abd`; the `61f17bd0`
+  record-at-end cut was falsified + replaced) + the 4 review findings dispositioned + the dedupe CONFIRMED ON REAL
+  CODEX (2026-06-13, one render under a genuine double-fire). Ready for iteration-closeout (audit + verdict). Carry
+  to closeout: F2 (`.specify` provider deploy) resolves at publish; the start re-anchor bug is a separate defect.
