@@ -1,3 +1,33 @@
+## 2026-06-13 — F-174 iteration-011 specify→clarify: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance specify→clarify; spec amendments accepted
+
+- **Decision ID**: f174-i011-specify-clarify-approved
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-022, FR-026, FR-027
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T17:55:42Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-011 specify→clarify. The spec amendments
+  (FR-022 capture≠author refinement, FR-026 verdict-integrity, FR-027 committed≠authorized, SC-012/013/014)
+  are accepted. Proceed to CLARIFY ONLY; do NOT advance to plan on this approval.
+- **Carried instructions**:
+  1. Keep FR-022 as an AMENDMENT, not a new FR — "capture ≠ author" is the right minimal evolution (the old
+     `Write-SpecrewHandoverContext` premise was false; T002 Stop-hook transcript access changed feasibility).
+  2. Keep FR-026 + FR-027 SPLIT — verdict write-integrity and resume read-integrity are different failure
+     modes deserving separate requirements/tests.
+  3. (clarify/plan) An exposed authoring command is a fast path but NOT sufficient as the integrity guarantee.
+     On hook-capable hosts the NON-SKIPPABLE Stop-hook backstop MUST be load-bearing. Do not let "and/or
+     exposed command" regress to "agent must remember to call a command." → FR-022 tightened.
+  4. Verdict identity: do NOT infer a person from git committer or environment unless the captured host
+     surface proves it. Identity unavailable → record captured verdict evidence with unknown/unattributed
+     human source, never a fabricated named approver. → FR-026 tightened.
+  5. DF-1/DF-2 need no new FRs but MUST NOT disappear — carry as explicit plan tasks / evidence checks under
+     FR-002 / FR-022.
+- **Disposition**: FR-022 + FR-026 tightened per instructions 3+4; clarify resolutions logged in the spec
+  Clarifications (Session 2026-06-13 clarify boundary); DF-1/DF-2 carried to the plan boundary (instruction 5).
+  Current Phase advanced to clarify; STOP at clarify→plan for the verdict.
+
 ## 2026-06-13 — F-174 iteration-010 retro→closeout: APPROVE WITH INSTRUCTIONS + gap deferrals
 
 ### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance retro→iteration-closeout; record gap deferrals

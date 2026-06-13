@@ -35,6 +35,27 @@
   `iterations/011/fix-plan-draft.md`; deferral
   `f174-i010-defer-integrity-cluster-to-011`.
 
+### Session 2026-06-13 (clarify boundary, iteration 011)
+
+- Q: Is an exposed authoring command sufficient as the FR-022 integrity guarantee? → A: NO. On
+  hook-capable hosts the NON-SKIPPABLE Stop-hook capture is the LOAD-BEARING guarantee; an exposed
+  command is only a convenience fast-path and MUST NOT reintroduce "the agent must remember to call
+  it" (FR-022 tightened; clarify instruction 3).
+- Q: How is the approving human identified for a captured verdict (FR-026)? → A: ONLY from a host
+  surface that actually proves the identity; never inferred from the git committer or environment.
+  Identity unprovable → record the captured verdict evidence with an unknown/unattributed human
+  source, never a fabricated name (FR-026 tightened; clarify instruction 4).
+- Q: Verdict-capture match-strictness — what counts as the human's verdict in the transcript?
+  → A (PROPOSED, to confirm at the clarify verdict): a RECOGNIZED verdict token tied to the named
+  boundary (an approve / option-N / instruction response to the boundary packet), NOT merely "any
+  human turn after the packet" (which risks capturing an unrelated message); aligns with the
+  verdict-menu contract ("approved for <boundary>"). Final mechanism is the plan/implement job.
+- Q: Antigravity (no Stop / UserPrompt hook) — verdict capture is impossible there. → A: record the
+  crossing as un-authorized and reconcile via `specrew start` (already in FR-026 scope).
+- Carry: DF-1 (pointer-mode recap synthesis) + DF-2 (version/branch in the directive) get explicit
+  plan TASKS + evidence checks under FR-002 / FR-022 at the plan boundary (no new FR, but they must
+  not disappear; clarify instruction 5).
+
 ## User Scenarios & Testing
 
 ### User Story 1 - Direct host launch bootstraps the session (Priority: P1)
@@ -310,9 +331,12 @@ offered.
   the module exports no such command — so the persist-path clause above is UNFOLLOWABLE, and the
   boundary handover sat at placeholders exactly when it should be richest. REFINED: the agent still
   RENDERS/authors the packet CONTENT, but its PERSISTENCE MUST NOT depend on the agent invoking a
-  function. The rendered boundary packet MUST be captured into the body by a mechanism the agent
-  cannot skip — the transcript-capable Stop hook capturing the rendered packet and/or an exposed
-  authoring command — and the same write MUST set the boundary state (`active_boundary`). The
+  function. The rendered boundary packet MUST be captured into the body by a NON-SKIPPABLE mechanism:
+  on hook-capable hosts, the transcript-capable Stop hook capturing the rendered packet is the
+  LOAD-BEARING integrity guarantee (it requires no agent action). An exposed authoring command MAY be
+  offered ADDITIONALLY as a convenience fast-path, but it is NOT the guarantee and MUST NOT reintroduce
+  a "the agent must remember to call it" dependency (clarify instruction 3). The same write MUST set the
+  boundary state (`active_boundary`). The
   "BODY MUST be agent-authored" and "authoring MUST NOT be forced" guarantees are UNCHANGED (the
   agent authors content; only PERSISTENCE becomes reliable). This evolution is unlocked by a real
   premise change: the "Stop hook is transcript-blind" justification for detect-only no longer
@@ -365,10 +389,13 @@ offered.
 - **FR-026**: The recorded boundary AUTHORIZATION (the
   `boundary_enforcement.verdict_history` entry and `last_authorized_boundary`) MUST derive from
   CAPTURED human input — the human's actual response to the boundary verdict packet. Boundary-sync
-  MUST NOT fabricate a verdict (e.g. auto-generating `approved for <boundary>`) and MUST NOT
-  attribute the approving human to the git committer. When no captured human verdict is available
-  for the target boundary, the crossing MUST be recorded as UN-AUTHORIZED / agent-initiated — an
-  honest audit trail — never as an approval. Scope: hook-capable hosts capture the verdict from the
+  MUST NOT fabricate a verdict (e.g. auto-generating `approved for <boundary>`). The approving
+  human's IDENTITY MUST be recorded only from a host surface that actually proves it — never
+  inferred from the git committer or environment (clarify instruction 4); when a verdict IS
+  captured but its human identity is not provable, the crossing is recorded WITH the captured
+  verdict evidence but an UNKNOWN / UNATTRIBUTED human source, never a fabricated named approver.
+  When NO human verdict is captured for the target boundary, the crossing MUST be recorded as
+  UN-AUTHORIZED / agent-initiated — an honest audit trail — never as an approval. Scope: hook-capable hosts capture the verdict from the
   Stop / UserPromptSubmit transcript; on a no-hook host (Antigravity), where transcript capture is
   impossible, the crossing is recorded un-authorized and reconciled via `specrew start`. (Surfaced
   as DF-5: an agent advanced a boundary on a bare "continue" and the sync wrote
