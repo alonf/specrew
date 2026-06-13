@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "174-hook-driven-session-bootstrap"
 iteration: "011"
-updated_at: "2026-06-13T22:18:31Z"
+updated_at: "2026-06-13T22:45:00Z"
 tasks:
   T001:
     title: "Expose a TESTED public/agent-callable authoring command/skill around the handover writer — PROVE/EXPORT the callable surface (do NOT assume Write-SpecrewHandoverContext is exported)"
@@ -34,9 +34,9 @@ tasks:
     completed_at: ""
     blocked_reason: ""
   T006:
-    title: "Committed != authorized resume + specrew where — read last_authorized_boundary decisive; surface awaiting-verdict; never auto-advance"
-    status: "planned"
-    started_at: ""
+    title: "Committed != authorized resume + specrew where — read last_authorized_boundary decisive; surface awaiting-verdict; never auto-advance. Shared Get-SpecrewPendingVerdictState helper + specrew-where surfacing DONE; bootstrap-provider resume-directive surfacing PENDING (part 2)."
+    status: "in-progress"
+    started_at: "2026-06-13T22:45:00Z"
     completed_at: ""
     blocked_reason: ""
   T007:
