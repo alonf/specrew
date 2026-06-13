@@ -49,12 +49,25 @@ function Write-DispatcherWarn {
 }
 
 function Get-DispatcherProjectRoot {
-    $candidate = (Get-Location).Path
-    while (-not [string]::IsNullOrWhiteSpace($candidate)) {
-        if (Test-Path -LiteralPath (Join-Path $candidate '.specrew') -PathType Container) { return $candidate }
-        $parent = Split-Path -Parent $candidate
-        if ($parent -eq $candidate) { break }
-        $candidate = $parent
+    # Resolve the project root (the dir holding .specrew) so the dispatcher works from ANY host cwd.
+    #
+    # When THIS dispatcher is the DEPLOYED copy — its own directory is
+    # <project>/.specify/extensions/specrew-speckit/scripts — its location reliably identifies the project the
+    # hook belongs to, so PREFER walking up from $PSScriptRoot over the cwd. This is the fix for the cwd bug: the
+    # host may fire the hook from an unrelated directory whose ancestors contain a STRAY .specrew (e.g.
+    # ~/.specrew), which a cwd-first walk-up would wrongly resolve. When it is the in-repo SOURCE copy
+    # (scripts/internal, used in dev/tests) the dispatcher's own location is the framework repo rather than the
+    # target project, so resolve from the cwd FIRST (the project under test), falling back to $PSScriptRoot.
+    $isDeployedCopy = $PSScriptRoot -match '[\\/]\.specify[\\/]extensions[\\/]specrew-speckit[\\/]scripts[\\/]?$'
+    $starts = if ($isDeployedCopy) { @($PSScriptRoot, (Get-Location).Path) } else { @((Get-Location).Path, $PSScriptRoot) }
+    foreach ($start in $starts) {
+        $candidate = $start
+        while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            if (Test-Path -LiteralPath (Join-Path $candidate '.specrew') -PathType Container) { return $candidate }
+            $parent = Split-Path -Parent $candidate
+            if ($parent -eq $candidate) { break }
+            $candidate = $parent
+        }
     }
     return $null
 }

@@ -110,7 +110,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \".specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event SessionStart -HostKind claude"
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event SessionStart -HostKind claude"
           }
         ]
       }
@@ -120,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \".specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event Stop -HostKind claude"
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event Stop -HostKind claude"
           }
         ]
       }
@@ -130,7 +130,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \".specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event PostToolUse -HostKind claude"
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event PostToolUse -HostKind claude"
           }
         ]
       }

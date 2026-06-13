@@ -160,10 +160,14 @@ $null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $
 $healed = Get-Content -LiteralPath $dupCodexPath -Raw | ConvertFrom-Json
 Assert-True (-not ($healed.hooks -is [System.Array])) 'self-heal: malformed array-shaped hooks collapsed back to a map'
 Assert-True (@($healed.hooks.SessionStart).Count -eq 1) 'self-heal: exactly ONE SessionStart group survives (no duplicate registration)'
-Assert-True (([string]$healed.hooks.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'self-heal: surviving SessionStart entry is the current dispatcher command'
+Assert-True (([string]$healed.hooks.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'self-heal: surviving SessionStart entry is the current launcher command (codex now points at the per-machine launcher)'
 Assert-True (-not $healed.PSObject.Properties['SessionStart']) 'self-heal: the stray TOP-LEVEL SessionStart duplicate is gone (codex reads only hooks.<Event>)'
-$dispRefsAfter = ([regex]::Matches((Get-Content -LiteralPath $dupCodexPath -Raw), 'specrew-hook-dispatcher')).Count
-Assert-True ($dispRefsAfter -eq 3) 'self-heal: exactly 3 dispatcher refs remain (one each: SessionStart + UserPromptSubmit + Stop)'
+# codex (USER-level) now points at the per-machine launcher (~/.specrew/specrew-hook-launch.ps1), not the
+# dispatcher directly. The corrupt fixture's OLD entries named the dispatcher relatively; the widened ownership
+# detector recognizes BOTH tokens, so it strips those stale entries and re-adds exactly one LAUNCHER entry per
+# event. Count launcher refs to prove exactly-one-per-event (no duplicates) after the heal.
+$dispRefsAfter = ([regex]::Matches((Get-Content -LiteralPath $dupCodexPath -Raw), 'specrew-hook-launch')).Count
+Assert-True ($dispRefsAfter -eq 3) 'self-heal: exactly 3 launcher refs remain (one each: SessionStart + UserPromptSubmit + Stop)'
 $healBefore = Get-Content -LiteralPath $dupCodexPath -Raw
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $dupHome)
 Assert-True ((Get-Content -LiteralPath $dupCodexPath -Raw) -eq $healBefore) 'self-heal: re-deploy onto the healed file is byte-idempotent (stays one registration)'

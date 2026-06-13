@@ -26355,3 +26355,65 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Provenance**: recorded 2026-06-11 alongside iteration 009's closeout (review.md / retro.md / drift-log.md)
   and its human-approved close; the design was co-settled with the maintainer in the dogfood review and
   explicitly approved.
+
+## 2026-06-14 — Decision (record): central hook-command cwd-resolution fix — claude `${CLAUDE_PROJECT_DIR}` placeholder + per-machine launcher for codex/copilot/cursor (F-171 deploy surface; F-174 iteration 011 enabling prerequisite)
+
+- **Decision ID**: f174-i011-hook-cwd-central-resolution
+- **Type**: decision
+- **Boundary**: before-implement (iteration 011 implementation prerequisite)
+- **Affected Surface**: the F-171 refocus-hook deploy (`deploy-refocus-hooks.ps1`) + the hook dispatcher
+  (`specrew-hook-dispatcher.ps1`). The F-174 SessionStart bootstrap and the Stop rolling-handover ride these
+  hooks, so a cwd-broken hook silently disables both — which is why this is an enabling prerequisite for the
+  iteration-011 DF-3/4/5/7 handover/verdict cluster, not a separate feature.
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-14
+- **Defect**: deployed hook commands used a bare RELATIVE `-File` dispatcher path that only resolves when the
+  host fires the hook with cwd == project root, which is NOT guaranteed (claude's ExitPlanMode fires hooks from
+  the user home; codex/copilot/cursor cwd is host-variable). From any other cwd the dispatcher file was "does
+  not exist" → the hook errored and the SessionStart bootstrap / Stop handover never ran. Surfaced repeatedly as
+  in-session hook errors during F-174 dogfooding.
+- **Decision (the central mechanism — maintainer-steered "the solution should be in the core")**:
+  1. The DEPLOYED dispatcher self-locates the project root from its OWN location (`$PSScriptRoot`) — never from a
+     guessed cwd — so it ignores a stray `.specrew` up the firing cwd's ancestry (e.g. `~/.specrew`). One core
+     resolver, host-blind.
+  2. The per-host command string names a cwd-robust entry point by config scope:
+     - claude (PROJECT-level, version-tracked `.claude/settings.local.json`): the host-substituted
+       `${CLAUDE_PROJECT_DIR}` BRACE placeholder (Claude replaces it host-side before spawn; portable across
+       clone / worktree / relocation; bare `$CLAUDE_PROJECT_DIR` is NOT substituted and fails on Windows —
+       research w55cr63pz).
+     - codex / copilot / cursor (USER-level configs shared across ALL the user's projects, which cannot name a
+       per-project path and expose no reliable command-string project-root placeholder): ONE per-machine launcher
+       (`~/.specrew/specrew-hook-launch.ps1`, generated idempotently by the deploy from a here-string) that
+       resolves which project the live session is in (env `CLAUDE_PROJECT_DIR`/`CURSOR_PROJECT_DIR` → stdin
+       `cwd`/`workspace_roots` → cwd walk-up keyed on the dispatcher subpath, with the stdin read guarded by
+       `[Console]::IsInputRedirected` so a non-redirected stdin can never block the session) and hands off to that
+       project's deployed dispatcher.
+- **Fix surface (3-copy mirror kept in sync)**: `scripts/internal/{deploy-refocus-hooks.ps1,
+  specrew-hook-dispatcher.ps1}` mirrored byte-identical to `extensions/specrew-speckit/scripts/` and
+  `.specify/extensions/specrew-speckit/scripts/`; the ownership detector (`Test-IsSpecrewCommandText`) widened to
+  recognize the launcher token as well as the dispatcher token (so a re-deploy recognizes-and-replaces legacy
+  relative entries with no orphans); live `.claude/settings.local.json` re-deployed to the placeholder form.
+- **Evidence**: `tests/bootstrap/HookCommandCwdResolution.Tests.ps1` (NEW) executes the resolution end-to-end
+  from a non-project cwd whose ancestor holds a stray `.specrew`, for all four hosts (claude via simulated
+  `${CLAUDE_PROJECT_DIR}` substitution; codex/copilot via the launcher + stdin payload cwd; cursor via the
+  launcher + `$env:CURSOR_PROJECT_DIR`), and pins both the relative-path regression and the no-hang stdin guard.
+  ProviderMirrorParity + refocus-deploy + refocus-dispatcher + Dispatcher{LargeEvent,LargeStdout,TranscriptDelivery}
+  suites are green. **Honest scope**: claude is STRUCTURALLY correct but a test CANNOT prove the host performs
+  `${CLAUDE_PROJECT_DIR}` substitution; that, plus the codex/copilot/cursor live launcher behavior, is PENDING
+  the maintainer's real-host multi-host manual test.
+- **Authorization Text** (maintainer directives, this session — quoted verbatim, not inferred):
+  > "stop treating the hook errors as incidental. Fix hook command generation so deployed hooks resolve from any
+  > host cwd, then add a regression test that executes the generated Claude hook command from a non-repo
+  > directory and proves the dispatcher runs."
+  > "Did you solve the problem just for Claude? we have 5 different AI hosts that must work correctly" / "Yes, we
+  > must fix all as we know"
+  > "It is for all hooks, and for all hook types. Try to find a central mechanism. ... the solution should be in
+  > the core"
+  > "OK, implement all and go back to implement iter 11 tasks" / "Its ok that it take more story point, as we
+  > said this should be the last code updating"
+- **Provenance**: recorded 2026-06-14 during F-174 iteration 011 implementation. This is a fix to the F-171
+  refocus-hook deploy surface, discovered during F-174 dogfooding and directed by the maintainer as an explicit
+  enabling prerequisite to the iteration-011 DF-3/4/5/7 handover/verdict cluster (which rides these hooks). Not a
+  deferral; no requirement gap is closed by this entry. The 5-host coverage note recorded here keeps DF-6
+  (cursor-agent CLI does not fire sessionStart/stop) inside F-174 per the iteration-010 close ruling.
