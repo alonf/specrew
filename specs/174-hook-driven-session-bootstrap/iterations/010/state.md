@@ -303,3 +303,18 @@
   record-at-end cut was falsified + replaced) + the 4 review findings dispositioned + the dedupe CONFIRMED ON REAL
   CODEX (2026-06-13, one render under a genuine double-fire). Ready for iteration-closeout (audit + verdict). Carry
   to closeout: F2 (`.specify` provider deploy) resolves at publish; the start re-anchor bug is a separate defect.
+
+- **Multi-host round-robin dogfood (2026-06-13) → iter-11 plan (decisions LOCKED)**: after the dedupe confirm, ran
+  a full 5-host round-robin handover dogfood (codex/claude/copilot/cursor/antigravity), record at
+  `file:///C:/Dev/Specrew-session-bootstrap/specs/174-hook-driven-session-bootstrap/iterations/010/dogfood-multihost-handover.md`.
+  Green baseline held (dedupe under real double-fire, every resume type incl. native `codex resume`, conversation
+  capture, from_host, marker atomicity, T008 antigravity recovery). 8 findings surfaced; the DF-3/4/5/7 cluster
+  (handover-authoring + boundary-authorization INTEGRITY) is the high one. Root chain: `Write-SpecrewHandoverContext`
+  is module-internal/not agent-callable (DF-7) → boundary packet + `active_boundary` never land (DF-3) →
+  `sync-boundary-state.ps1:1488` fabricates `"approved for <x>"` + attributes the git committer (DF-5) → resume
+  reads "committed == approved" + rewinds the gate (DF-4). Fix plan + LOCKED decisions at
+  `file:///C:/Dev/Specrew-session-bootstrap/specs/174-hook-driven-session-bootstrap/iterations/011/fix-plan-draft.md`:
+  **A3 hybrid authoring** (callable command + mechanical Stop-hook backstop), **captured human verdict-evidence**
+  (not a forgeable param), **reopen as iteration 011 on F-174**. Core lesson codified: *do NOT rely on agent
+  compliance for integrity-critical state.* DF-6 (cursor hooks) + DF-8 (agent-edits-governance) = separate
+  follow-ups. Iter-11 to be formalized through the governed flow (specify/plan/tasks) — NOT yet implemented.
