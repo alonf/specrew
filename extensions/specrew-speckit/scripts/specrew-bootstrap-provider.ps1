@@ -54,7 +54,7 @@ function Get-SpecrewContractDeliveryMode {
 }
 
 function Format-BootstrapDirective {
-    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null)
+    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
@@ -117,6 +117,19 @@ function Format-BootstrapDirective {
         $lines.Add('')
         $lines.Add('=== RESUME RECONCILIATION (current tree, re-computed now) ===')
         $lines.Add([string]$d.reconciliation.directive_text)
+    }
+    # F-174 iteration 011 (T006 part 2, FR-027 / decision f174-i011-verdict-authority-stop-hook): committed !=
+    # authorized. When a boundary was mechanically crossed (sync) but NOT human-authorized (no captured verdict),
+    # the resume MUST surface "awaiting your verdict" and the agent MUST NOT treat the committed boundary as
+    # approved, MUST NOT advance on it, and MUST NOT record an authorization itself. This is the SECOND-CHANCE
+    # re-confirm surface: on a hook host the human's re-confirmation is captured by the next hook fire; on a
+    # hookless host (antigravity) the agent relays it. Surfaced HIGH (right after the resume context) because it
+    # is integrity-critical - a committed boundary read as approved is exactly the DF-4/DF-5 failure.
+    if ($null -ne $PendingVerdict -and [bool]$PendingVerdict.HasPendingVerdict) {
+        $lines.Add('')
+        $lines.Add('=== AWAITING YOUR VERDICT (committed != authorized - FR-027) ===')
+        $lines.Add([string]$PendingVerdict.Message)
+        $lines.Add('Treat that boundary as NOT YET approved: do NOT advance the lifecycle on it and do NOT record an authorization yourself (a committed boundary is not an approved one). SURFACE this in your orientation banner and ASK the human to confirm the boundary verdict. If they approve, the verdict is captured from their actual response (the hook on the next turn, or their explicit confirmation); if they did not approve, stay at the prior authorized boundary.')
     }
     # F-174 T050 round-2 (the last-mile resume gap): the intent + status ARE on disk, but neither a hollow
     # handover ("re-derive from the artifacts" - skimmed as an abstract pointer) nor full mode (the contract's
@@ -257,6 +270,13 @@ try {
     }
     catch { $inFlight = $null }
 
+    # F-174 iteration 011 (T006 part 2, FR-027): the honest "committed != authorized" gate state, read from the
+    # SAME boundary_enforcement the sync writes. When the working boundary is ahead of the last HUMAN-authorized
+    # one, the directive surfaces "awaiting your verdict" (below). Fail-open (the helper never throws + never
+    # fabricates a pending state; the guard is belt-and-suspenders for a missing-helper deploy edge).
+    $pendingVerdict = $null
+    try { $pendingVerdict = Get-SpecrewPendingVerdictState -ProjectRoot $root } catch { $pendingVerdict = $null }
+
     # F-174 iter-10 ATOMIC double-render dedupe (the CLAIM). codex fires SessionStart twice per launch
     # near-SIMULTANEOUSLY (worktree dogfood 2026-06-13: two fires ~microseconds apart, same session id +
     # source), so a recency/record-after-render scheme cannot dedupe them - both check before either records
@@ -274,7 +294,7 @@ try {
     if ($renderDedupeKey -and $renderDedupeKey -ne 'no-session') {
         if (-not (Request-SpecrewHookRenderClaim -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -RecordedAt $nowUtc)) { exit 0 }
     }
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight)
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict)
     exit 0
 }
 catch {

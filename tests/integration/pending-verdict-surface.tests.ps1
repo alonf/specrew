@@ -85,6 +85,24 @@ try {
     if ($whereSrc -notmatch 'pending_verdict\s*=') { Fail "specrew-where JSON payload must include pending_verdict" }
     Write-Pass "specrew where wires Get-SpecrewPendingVerdictState (leading alert + JSON payload)"
 
+    # Case 6: the BOOTSTRAP RESUME DIRECTIVE surfaces the AWAITING block when (and only when) pending (T006 part
+    # 2). Extract just Format-BootstrapDirective from the provider (the script's top-level body must not run) and
+    # exercise its PendingVerdict branch directly.
+    $provSrc = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\internal\specrew-bootstrap-provider.ps1') -Raw
+    $fnMatch = [regex]::Match($provSrc, "(?s)^function Format-BootstrapDirective \{.*?\n\}", [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    if (-not $fnMatch.Success) { Fail "could not extract Format-BootstrapDirective from the provider" }
+    . ([scriptblock]::Create($fnMatch.Value))
+    $fakeResult = [pscustomobject]@{ directive = [pscustomobject]@{ mode = 'resume'; required_reads = @('.specrew/last-start-prompt.md', '.specrew/start-context.json'); validation_findings = @() } }
+    $pending = [pscustomobject]@{ HasPendingVerdict = $true; WorkingBoundary = 'tasks'; LastAuthorizedBoundary = 'plan'; Message = "AWAITING YOUR VERDICT: 'tasks' is committed / in-progress but NOT human-authorized (last authorized: plan)." }
+    $directiveWhenPending = Format-BootstrapDirective -Result $fakeResult -ContractBody '' -InFlight $null -PendingVerdict $pending
+    if ($directiveWhenPending -notmatch 'AWAITING YOUR VERDICT \(committed != authorized') { Fail "resume directive MUST surface the awaiting-verdict block when pending" }
+    if ($directiveWhenPending -notmatch 'do NOT advance the lifecycle on it') { Fail "resume directive MUST instruct the agent not to advance on a committed-but-unauthorized boundary" }
+    $directiveNotPending = Format-BootstrapDirective -Result $fakeResult -ContractBody '' -InFlight $null -PendingVerdict ([pscustomobject]@{ HasPendingVerdict = $false; Message = $null })
+    if ($directiveNotPending -match 'AWAITING YOUR VERDICT \(committed') { Fail "resume directive must NOT surface awaiting-verdict when not pending (no false alarm)" }
+    $directiveNullPending = Format-BootstrapDirective -Result $fakeResult -ContractBody '' -InFlight $null -PendingVerdict $null
+    if ($directiveNullPending -match 'AWAITING YOUR VERDICT \(committed') { Fail "resume directive must tolerate a null PendingVerdict (fail-open, no block)" }
+    Write-Pass "bootstrap resume directive surfaces the awaiting-verdict block when pending, stays silent otherwise, tolerates null (T006 part 2)"
+
     Write-Host "`n=== pending-verdict-surface.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }
