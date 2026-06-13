@@ -104,6 +104,30 @@ try {
     $final = Get-SpecrewSessionMarker -MarkerPath $mp
     Assert-True ($null -ne $final -and ($final.host -in @('codex', 'claude'))) 'after the race the marker is a single VALID object (no persistent corruption)'
     Assert-True (-not (Test-Path -LiteralPath "$mp.$PID.tmp")) 'no temp files orphaned after the race'
+
+    # --- 4b. FIRST-writer race (NO pre-seed): the section above pre-seeds the dest, so every one of its 800
+    # writes takes the File.Replace branch (dest present) - the dest-ABSENT File.Move branch + its catch ->
+    # direct-write fallback (the ONE non-atomic path) is never exercised concurrently. Start from a dest that
+    # does NOT exist so the very first writes of both processes hit the Move branch: one wins the Move, the
+    # other finds the dest now present and falls through to the catch fallback. The crash-safety invariant
+    # must still hold from a COLD start - reader never throws, final marker is one valid object. ---
+    $mp2 = Join-Path $tmp 'marker-firstwriter-race.json'
+    if (Test-Path -LiteralPath $mp2) { Remove-Item -LiteralPath $mp2 -Force }   # dest ABSENT at the start (forces the Move branch)
+    $f1 = Start-Job -ScriptBlock $writer -ArgumentList $mp2, $accessor, 'codex', $iterations
+    $f2 = Start-Job -ScriptBlock $writer -ArgumentList $mp2, $accessor, 'claude', $iterations
+    $readerThrew2 = 0; $samples2 = 0
+    while (($f1.State -eq 'Running') -or ($f2.State -eq 'Running')) {
+        try { $null = Get-SpecrewSessionMarker -MarkerPath $mp2; $samples2++ }
+        catch { $readerThrew2++ }
+    }
+    Receive-Job -Job $f1 -ErrorAction SilentlyContinue | Out-Null
+    Receive-Job -Job $f2 -ErrorAction SilentlyContinue | Out-Null
+    Remove-Job -Job $f1, $f2 -Force -ErrorAction SilentlyContinue
+    Write-Host ("  first-writer race: {0} reader samples, {1} reader exceptions" -f $samples2, $readerThrew2) -ForegroundColor Cyan
+    Assert-Equal $readerThrew2 0 'first-writer race (no pre-seed): the real reader NEVER throws (fail-open holds through the dest-absent Move + catch-fallback path)'
+    $final2 = Get-SpecrewSessionMarker -MarkerPath $mp2
+    Assert-True ($null -ne $final2 -and ($final2.host -in @('codex', 'claude'))) 'first-writer race: final marker is a single VALID object from a cold start'
+    Assert-True (-not (Test-Path -LiteralPath "$mp2.$PID.tmp")) 'first-writer race: no temp files orphaned'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
