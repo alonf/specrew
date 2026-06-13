@@ -1,3 +1,41 @@
+## 2026-06-13 — F-174 iteration-011 tasks→before-implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance tasks→before-implement; pause before code
+
+- **Decision ID**: f174-i011-tasks-before-implement-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:43:58Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-011 tasks→before-implement. Proceed to
+  before-implement ONLY; do NOT start implementation. Keep implementation for a fresh session. No push/PR.
+- **Carried instructions**:
+  1. before-implement only; no implementation on this approval.
+  2. Cap revert = a CONCRETE CLOSEOUT OBLIGATION (see `f174-i011-cap-revert-obligation`), not just a memory note.
+  3. before-implement verifies the order Fix A→C→B→D/E; T008/T009 first to defer; the integrity core + T007
+     tests + the real-host re-dogfood are NON-deferrable.
+  4. Implementation for a fresh session; clean pause point.
+  5. No push or PR.
+- **Disposition**: before-implement readiness recorded (order + defer-priority + target-file presence + clean
+  baseline a1dbae5d); cap-revert obligation filed; Current Phase advanced to before-implement; STOP at
+  before-implement→implement (the pause point — implementation next session).
+
+### 2026-06-13 — Obligation: revert the iteration-011 cap raise (22 → 20) at/after iter-011 closeout
+
+- **Decision ID**: f174-i011-cap-revert-obligation
+- **Type**: planning-constraint
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:43:58Z
+- **Obligation**: After iteration 011 closes, and BEFORE any later iteration is planned, restore
+  `.specrew/iteration-config.yml` `capacity_per_iteration` from 22 back to 20 and rerun the governance
+  validator. Closed iterations are grandfathered (Proposal 144), so the revert does NOT retroactively fail
+  iteration-011's 22/22 plan.
+- **Rationale**: the 22 cap was a human-approved iter-011 override of the documented split-not-raise position;
+  leaving it raised would let a temporary global cap become drift — exactly the F-049-Iteration-003 failure
+  (raised to 25, reverted at closeout 2026-05-30) the config comment warns against. This makes the revert a
+  TRACKED closeout step, not a memory note (clarify/plan instruction 2 at tasks→before-implement).
+
 ## 2026-06-13 — F-174 iteration-011 plan→tasks: APPROVE WITH INSTRUCTIONS
 
 ### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance plan→tasks; raise cap to 22, fold DF-1/DF-2

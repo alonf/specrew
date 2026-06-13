@@ -1,13 +1,13 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: tasks
+**Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: plan — task breakdown + human-approved 22/22 cap raise (`f174-i011-plan-tasks-approved`)
-**Tasks Remaining**: T001–T009 (22/22) in tasks-progress.yml, all planned; awaiting tasks→before-implement verdict
-**In Progress**: tasks — executable task tracking generated (`tasks-progress.yml`)
+**Last Completed Task**: tasks — `tasks-progress.yml` generated; cap raise + folding approved (`f174-i011-tasks-before-implement-approved`)
+**Tasks Remaining**: T001–T009 (22/22), all planned; PAUSE point — implementation (Fix A→C→B→D/E) for a fresh session
+**In Progress**: before-implement — readiness verified; awaiting before-implement→implement verdict (the implement go)
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-13T18:27:17Z
+**Updated**: 2026-06-13T18:43:58Z
 
 ## Charter
 
@@ -88,6 +88,26 @@ defer-priority recorded (T008/T009 first on overrun). Estimates not deflated.
 
 Executable task tracking generated:
 `file:///C:/Dev/Specrew-session-bootstrap/specs/174-hook-driven-session-bootstrap/iterations/011/tasks-progress.yml`
-— T001–T009, all `planned`, mirroring the plan table (22/22). STOP at the tasks boundary for the
-maintainer verdict (tasks → before-implement). Per instruction: do NOT advance to before-implement on
-the plan approval.
+— T001–T009, all `planned`, mirroring the plan table (22/22).
+
+**Tasks APPROVED WITH INSTRUCTIONS** (2026-06-13, `f174-i011-tasks-before-implement-approved`): cap raise +
+DF-1/DF-2 fold confirmed; the cap revert filed as a closeout OBLIGATION (`f174-i011-cap-revert-obligation`).
+
+## Before-implement (this boundary)
+
+Readiness verified for implementation (Fix A → C → B → D/E):
+
+- **Order CONFIRMED** (instruction 3): Fix A (T001–T003 authoring + clobber) → Fix C (T004–T005 verdict
+  capture + integrity) → Fix B (T006 committed ≠ authorized resume) → tests (T007) → D/E (T008/T009). A
+  before C/B because the authored packet must land before it can be verified or read.
+- **Defer-priority CONFIRMED**: T008/T009 (DF-1/DF-2) FIRST on overrun; the integrity core (T001–T006), the
+  T007 deterministic tests, and the real-host re-dogfood acceptance are **NON-deferrable**.
+- **Target surfaces present**: `HandoverStore.ps1`, `sync-boundary-state.ps1`,
+  `specrew-bootstrap-provider.ps1`, `specrew-where.ps1`, `Specrew.psd1` (the export surface for T001),
+  `tests/bootstrap/`. Baseline `a1dbae5d` clean.
+- **Cap-revert obligation filed**: `f174-i011-cap-revert-obligation` — restore the global cap 22→20 + rerun
+  the validator at/after iter-011 closeout (a tracked closeout step, not a memory note).
+
+**PAUSE POINT** (instruction 4): implementation is a fresh, substantial body of work; the durable plan +
+tasks support a clean-context start next session. STOP at before-implement → implement for the maintainer's
+implement go. No push / PR (instruction 5).
