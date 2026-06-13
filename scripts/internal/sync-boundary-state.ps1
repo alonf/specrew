@@ -1437,65 +1437,32 @@ function Invoke-SpecrewBoundaryStateSync {
             throw "Failed to refresh baseline_commit_hash in '$($paths.PromptPath)': $($_.Exception.Message)"
         }
     }
-    # US2: Inline verdict writer. Update boundary enforcement and verdict history in the same sync pass.
-    $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $paths.ProjectRoot
-    if ($null -ne $enforcementState -and $null -ne $enforcementState.State -and $enforcementState.State.enabled) {
-        $existingContext = $enforcementState.Context
-        $boundaryOrder = @(Get-SpecrewBoundaryOrder)
-        $targetCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $BoundaryType -ParameterName 'BoundaryType'
-        $currentLastAuthorized = [string]$enforcementState.State['last_authorized_boundary']
-        
-        $targetIndex = [Array]::IndexOf($boundaryOrder, $targetCanonical)
-        $lastAuthIndex = if (-not [string]::IsNullOrWhiteSpace($currentLastAuthorized)) {
-            [Array]::IndexOf($boundaryOrder, $currentLastAuthorized)
-        } else {
-            -1
-        }
-        
-        # Pillar 4 / T005 (Proposal 120, FR-021): record the crossing for any boundary CHANGE, not
-        # only forward advances. The previous `-lt` gate silently skipped the append (and the AC8
-        # hard-block) whenever last_authorized was stale/ahead of the target — the exact F-049 i005
-        # symptom, where a prior-iteration `iteration-closeout` cursor swallowed real before-implement/
-        # review-signoff/retro crossings. Only an identical-boundary re-sync is a benign no-op.
-        if ($lastAuthIndex -ne $targetIndex) {
-            if ($lastAuthIndex -gt $targetIndex) {
-                Write-Warning ("Boundary sync: last_authorized_boundary '{0}' is AHEAD of the boundary now being crossed '{1}'. Recording the real crossing to prevent silent state progression (Pillar 4 / FR-021). If this is not a new-iteration reset, audit .specrew/start-context.json boundary_enforcement.verdict_history." -f $currentLastAuthorized, $targetCanonical)
-            }
-            $authorizingHuman = 'Specrew Operator'
-            try {
-                $gitUser = @(& git -C $paths.ProjectRoot config user.name 2>$null)
-                if ($LASTEXITCODE -eq 0 -and $gitUser.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($gitUser[0])) {
-                    $authorizingHuman = $gitUser[0].Trim()
-                }
-            } catch {}
-            
-            $currentBoundary = 'specify'
-            if ($null -ne $existingContext -and $null -ne $existingContext['session_state'] -and -not [string]::IsNullOrWhiteSpace($existingContext['session_state']['boundary_type'])) {
-                $currentBoundary = [string]$existingContext['session_state']['boundary_type']
-            }
-            elseif ($null -ne $latestBoundary) {
-                $currentBoundary = [string]$latestBoundary.boundary_type
-            }
-            # Add-SpecrewBoundaryAuthorization rejects a backward from->to. In the stale-ahead /
-            # new-iteration-reset case the recorded boundary_type can be >= the target, so clamp the
-            # from_boundary to the target's canonical predecessor; the crossing still records (no
-            # silent skip) with a valid forward from->to.
-            $currentBoundaryCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $currentBoundary
-            $currentBoundaryIndex = [Array]::IndexOf($boundaryOrder, $currentBoundaryCanonical)
-            if ($currentBoundaryIndex -lt 0 -or $currentBoundaryIndex -ge $targetIndex) {
-                $currentBoundary = $boundaryOrder[[Math]::Max(0, $targetIndex - 1)]
-            }
-            $verdictText = "approved for $targetCanonical"
-
-            Add-SpecrewBoundaryAuthorization `
-                -ProjectRoot $paths.ProjectRoot `
-                -CurrentBoundary $currentBoundary `
-                -AuthorizedBoundary $targetCanonical `
-                -AuthorizingHuman $authorizingHuman `
-                -VerdictText $verdictText `
-                -AuthCommitHash $effectiveAuthCommitHash | Out-Null
-        }
-    }
+    # F-174 iteration 011 (T005, FR-026 / decision f174-i011-verdict-authority-stop-hook) — boundary-sync NO
+    # LONGER asserts boundary authorization. The verdict is the most integrity-critical state in the system: it
+    # is the one signal asserting a HUMAN authorized a boundary crossing. Sync is params-only AND agent-invoked,
+    # so it has NO agent-unforgeable human-verdict signal — therefore it MUST NOT record one. The code that was
+    # here fabricated `approved for <boundary>` (a literal string) attributed to the git committer with NO human
+    # signal at all; an agent that ran sync on a bare "continue" (DF-5) wrote a verdict_history record asserting
+    # a human approved when none did. That fabrication is DELETED.
+    #
+    # Sync now records ONLY the MECHANICAL crossing (session_state.boundary_type via Update-SpecrewStartContext
+    # below + the boundary-sync ledger / lifecycle event). It NEVER advances last_authorized_boundary and NEVER
+    # appends verdict_history. Authorization is captured by TWO mechanisms, both grounded in a REAL human action,
+    # neither fabricating:
+    #   - PRIMARY (deterministic): the Stop / UserPromptSubmit hook — the only surface that sees the human's
+    #     actual typed verdict in the host transcript — captures the verdict token tied to the crossed boundary
+    #     and advances last_authorized_boundary (Update-SpecrewRollingHandover, T004; evidence source
+    #     'hook-captured-from-transcript').
+    #   - SECOND CHANCE (explicit re-confirm): when the hook did not capture (a crash between this sync and the
+    #     Stop, an ambiguous/markerless packet) OR the host has NO hooks (antigravity), the crossing stays
+    #     un-authorized; the resume / `specrew where` / `specrew start` surface "<boundary> committed, AWAITING
+    #     your verdict" and ask, and the human's confirmation is recorded via the EXISTING
+    #     Add-SpecrewBoundaryAuthorization writer (T006; evidence source 'human-confirmed-at-resume'). On a hook
+    #     host that re-confirmation is a new human turn caught by the next hook fire (still deterministic); on a
+    #     hookless host it is agent-relayed — functional, but honestly weaker than a hook capture.
+    # Invariant, every host: sync never auto-invents an approval; the gate advances only on a real
+    # surfaced-pending -> human-response cycle. Safety rule (the maintainer's): prefer losing a real approval
+    # (the human re-confirms once) over inventing, inferring, or carrying forward an unproven one.
 
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'

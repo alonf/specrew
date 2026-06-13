@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 22/22 story_points
 **Started**: 2026-06-13
 **Completed**:
@@ -47,9 +47,17 @@ NOT rely on agent compliance for integrity-critical state** — the fixes must b
   the LOAD-BEARING, non-skippable Stop-hook capture of the rendered packet into the body + setting
   `active_boundary`; **plus the clobber guard** (never overwrite a richer authored body — SC-015). A
   first: the authored packet must land before anything can read or verify it.
-- **Fix C (verdict-integrity, FR-026)** — capture the human's recognized verdict token tied to the
-  boundary; boundary-sync consumes THAT; stop fabrication; identity only from a proven host surface
-  else unknown/unattributed; ambiguous/contradictory/untied → un-authorized. C after A.
+- **Fix C (verdict-integrity, FR-026)** — stop fabrication and capture the human's REAL verdict.
+  **Refined by decision `f174-i011-verdict-authority-stop-hook`** (resurfaced before implementation): the
+  verdict authority moved OFF params-only boundary-sync (which has no agent-unforgeable human signal) onto
+  the transcript-reading Stop/UserPromptSubmit hook. So the work split: **T005 narrows to "sync STOPS
+  fabricating"** — it records the mechanical crossing only; never advances `last_authorized_boundary`, never
+  appends/fabricates `verdict_history`, never attributes to the git committer. **T004 becomes the verdict
+  AUTHORITY** — the hook captures the human's recognized token tied to the boundary (via the packet
+  boundary-marker) and ADVANCES the gate; identity only from a proven host surface else unattributed;
+  ambiguous/contradictory/untied → un-authorized; each entry tagged with its evidence source. The
+  **second-chance explicit re-confirm** (hook-misses + hookless antigravity) rides Fix B's honest-pending
+  surface (T006). C after A.
 - **Fix B (committed ≠ authorized resume, FR-027)** — the resume + `specrew where` read
   `last_authorized_boundary` as decisive, surface "awaiting verdict," never auto-advance. B consumes
   the honest state A+C produce.
@@ -63,8 +71,8 @@ NOT rely on agent compliance for integrity-critical state** — the fixes must b
 | T001 | Expose a TESTED public/agent-callable authoring command/skill around the handover writer — PROVE/EXPORT the callable surface (do NOT assume `Write-SpecrewHandoverContext` is exported; exporting + testing it is part of this task) | FR-022 | US-3 | 2 | Implementer | `scripts/internal/bootstrap/HandoverStore.ps1`, `Specrew.psd1`, `scripts/specrew*.ps1`, `.claude/skills/**` | planned | TBD | | |
 | T002 | Mechanical Stop-hook packet capture (A2, LOAD-BEARING) — capture the rendered boundary packet into the body + set `active_boundary`; non-skippable | FR-022 | US-3 | 3 | Implementer | `scripts/internal/bootstrap/HandoverStore.ps1`, `scripts/internal/*stop*` | planned | TBD | | |
 | T003 | Clobber guard — capture MUST NOT overwrite a richer authored body with placeholder/stale (SC-015) | FR-022 | US-3 | 2 | Implementer | `scripts/internal/bootstrap/HandoverStore.ps1` | planned | TBD | | |
-| T004 | Verdict capture from transcript — recognized token tied to the boundary; ambiguous/contradictory/untied → un-authorized + surface | FR-026 | US-3 | 3 | Implementer | `scripts/internal/bootstrap/*`, `scripts/internal/sync-boundary-state.ps1` | planned | TBD | | |
-| T005 | Boundary-sync integrity — consume the captured verdict; stop fabrication; identity only from proven surface else unattributed; no git-committer | FR-026 | US-3 | 3 | Implementer | `scripts/internal/sync-boundary-state.ps1` | planned | TBD | | |
+| T004 | Verdict AUTHORITY (the Stop/UserPromptSubmit hook) — capture the human's recognized verdict token tied to the boundary (via the packet boundary-marker) and ADVANCE `last_authorized_boundary` + append `verdict_history` (evidence-source `hook-captured-from-transcript`); ambiguous/contradictory/untied → un-authorized + surface; identity only from a proven host surface else unattributed | FR-026 | US-3 | 3 | Implementer | `scripts/internal/bootstrap/*` | planned | TBD | | |
+| T005 | Boundary-sync STOPS fabricating — records the mechanical crossing only; NEVER advances `last_authorized_boundary`, NEVER appends/fabricates `verdict_history`, NEVER attributes to the git committer. (Verdict capture+consumption moved to T004 hook + T006 re-confirm per decision `f174-i011-verdict-authority-stop-hook`.) | FR-026 | US-3 | 3 | Implementer | `scripts/internal/sync-boundary-state.ps1` | in-progress | TBD | | |
 | T006 | Committed ≠ authorized resume + `specrew where` — read `last_authorized_boundary` decisive; surface "awaiting verdict"; never auto-advance | FR-027 | US-3 | 3 | Implementer | `scripts/internal/specrew-bootstrap-provider.ps1`, `scripts/specrew-where.ps1` | planned | TBD | | |
 | T007 | Deterministic tests — authoring round-trip (SC-012), clobber-preserve (SC-015), verdict-integrity unattributed + un-authorized (SC-013), committed ≠ authorized (SC-014) | SC-012, SC-013, SC-014, SC-015 | US-3 | 3 | Implementer | `tests/bootstrap/**` | planned | TBD | | |
 | T008 | DF-1 pointer-mode recap synthesis — push pointer-mode hosts to synthesize a decisions recap, not just lens names (first to defer if overrun) | FR-002, FR-022 | US-3 | 2 | Implementer | `scripts/internal/specrew-bootstrap-provider.ps1` | planned | TBD | | |
@@ -102,7 +110,10 @@ per the iteration-010 falsification lesson — green synthetic tests (T007) are 
 
 - **FR-022** (capture ≠ author; mechanical persistence load-bearing): T001 (tested callable surface),
   T002 (load-bearing Stop capture), T003 (clobber guard). SC-012, SC-015.
-- **FR-026** (verdict-integrity): T004 (capture), T005 (sync integrity + identity). SC-013.
+- **FR-026** (verdict-integrity): T004 (hook is the verdict AUTHORITY — captures the human token + advances
+  the gate + identity-only-if-proven), T005 (sync STOPS fabricating — mechanical crossing only), T006
+  (second-chance explicit re-confirm for hook-misses + hookless antigravity). SC-013. Split per decision
+  `f174-i011-verdict-authority-stop-hook`.
 - **FR-027** (committed ≠ authorized resume): T006. SC-014.
 - **FR-002 / FR-022** (small fixes — clarify instruction 5): T008 (DF-1), T009 (DF-2).
 - **SC-012/013/014/015**: T007 (deterministic tests) + the re-dogfood acceptance gate (run at review).

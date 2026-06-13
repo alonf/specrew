@@ -106,7 +106,14 @@ if ($syncResult.ExitCode -ne 0) {
     exit 1
 }
 
-# Verify both session_state and boundary_enforcement advanced in start-context.json
+# F-174 iteration 011 (T005, FR-026 / decision f174-i011-verdict-authority-stop-hook) — RECONCILED + now a
+# FALSIFICATION guard. boundary-sync records ONLY the MECHANICAL crossing: it advances the session_state cursor
+# (the working position) but MUST NOT assert authorization. A params-only, agent-invoked sync has no
+# agent-unforgeable human-verdict signal, so it must NEVER advance last_authorized_boundary and NEVER append
+# (let alone fabricate) a verdict_history entry — that fabrication, attributed to the git committer with no
+# human signal, was DF-5. Authorization is captured by the Stop/UserPromptSubmit hook (real human verdict) or
+# the explicit re-confirm; never here. (Previously this test asserted sync ADVANCED all three atomically — that
+# asserted the fabrication itself.)
 $context = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
 
 if ($context.session_state.boundary_type -ne 'review-signoff') {
@@ -114,32 +121,25 @@ if ($context.session_state.boundary_type -ne 'review-signoff') {
     exit 1
 }
 
-if ($context.boundary_enforcement.last_authorized_boundary -ne 'review-signoff') {
-    Write-Fail ("Audit trail in last_authorized_boundary did not advance. Expected 'review-signoff', found '{0}'" -f $context.boundary_enforcement.last_authorized_boundary)
+# FALSIFICATION 1: last_authorized_boundary must NOT have moved — sync never asserts authorization.
+if ($context.boundary_enforcement.last_authorized_boundary -ne 'before-implement') {
+    Write-Fail ("FABRICATION REGRESSION (DF-5): sync advanced last_authorized_boundary to '{0}' with NO captured human verdict. It MUST stay 'before-implement' — only the hook / explicit re-confirm authorizes." -f $context.boundary_enforcement.last_authorized_boundary)
     exit 1
 }
 
+# FALSIFICATION 2: verdict_history must NOT have grown — no invented entry, no git-committer-as-approver.
 $history = @($context.boundary_enforcement.verdict_history)
-if ($history.Count -ne 2) {
-    Write-Fail ("verdict_history did not append the new transition. Expected length 2, found {0}" -f $history.Count)
+if ($history.Count -ne 1) {
+    Write-Fail ("FABRICATION REGRESSION (DF-5): sync appended a verdict_history entry (length {0}, expected the 1 seeded). Sync must record no verdict without captured human evidence." -f $history.Count)
     exit 1
 }
 
-$newVerdict = $history[1]
-if ($newVerdict.from_boundary -ne 'before-implement' -or $newVerdict.to_boundary -ne 'review-signoff') {
-    Write-Fail ("verdict_history entry has incorrect transition boundaries. Found '{0}' -> '{1}'" -f $newVerdict.from_boundary, $newVerdict.to_boundary)
+# The single surviving entry is the SEEDED one (tasks -> before-implement), untouched.
+$seeded = $history[0]
+if ($seeded.to_boundary -ne 'before-implement') {
+    Write-Fail ("the seeded verdict_history entry was mutated. Expected to_boundary 'before-implement', found '{0}'" -f $seeded.to_boundary)
     exit 1
 }
 
-if ([string]::IsNullOrWhiteSpace($newVerdict.authorizing_human)) {
-    Write-Fail "verdict_history entry is missing authorizing_human."
-    exit 1
-}
-
-if ($newVerdict.auth_commit_hash -ne $authCommit) {
-    Write-Fail ("verdict_history entry has wrong auth_commit_hash. Expected '{0}', found '{1}'" -f $authCommit, $newVerdict.auth_commit_hash)
-    exit 1
-}
-
-Write-Pass 'Boundary sync atomically advanced cursor, last_authorized_boundary, and appended to verdict_history'
+Write-Pass 'Boundary sync advanced the mechanical cursor (session_state) but did NOT advance last_authorized_boundary or fabricate a verdict_history entry (T005/FR-026 — sync never invents an approval)'
 exit 0

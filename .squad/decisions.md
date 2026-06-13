@@ -26417,3 +26417,76 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   enabling prerequisite to the iteration-011 DF-3/4/5/7 handover/verdict cluster (which rides these hooks). Not a
   deferral; no requirement gap is closed by this entry. The 5-host coverage note recorded here keeps DF-6
   (cursor-agent CLI does not fire sessionStart/stop) inside F-174 per the iteration-010 close ruling.
+
+## 2026-06-14 — Decision (record): verdict-capture authority settled — the Stop/UserPromptSubmit hook authorizes; boundary-sync NEVER fabricates (F-174 iteration 011 T004/T005)
+
+- **Decision ID**: f174-i011-verdict-authority-stop-hook
+- **Type**: decision
+- **Boundary**: before-implement (settles the load-bearing under-specified sub-question the plan carried into
+  implementation: "who reads the human verdict?")
+- **Affected Requirement**: FR-026 (verdict-integrity), FR-027 (committed ≠ authorized resume)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-14
+- **The settled question**: `Invoke-SpecrewBoundaryStateSync` is params-only and runs MID-TURN (before that
+  turn's Stop hook fires); the transcript where the human's real verdict lives is reachable only inside the
+  Stop-hook→handover pipeline (the proven per-host `ConversationCaptureAccessor`). So "who captures the verdict
+  and writes the authorization?" was genuinely under-specified (fix-plan-draft Decision 2a/2b). Two candidates
+  were put to the maintainer: (1) the Stop/UserPromptSubmit hook is the authority (reads at end-of-turn, when the
+  verdict is definitely on disk; reuses the proven accessor); (2) sync reads the LIVE transcript at sync-time
+  (depends on incremental-write timing — confirmed on Claude, UNVERIFIABLE on codex/copilot/cursor).
+- **Decision**: **Option 1 — the Stop/UserPromptSubmit hook is the verdict authority.** Core safety rule
+  (maintainer): **prefer losing/forgetting a real approval over inventing, inferring, or carrying forward an
+  unproven one. The safe failure mode is "ask the human again," NEVER "pretend approval happened."**
+- **Required design (maintainer-specified, carried into T002–T007)**:
+  1. **Boundary-sync stops fabricating.** It may record the mechanical boundary crossing; it MUST NOT write
+     `approved for <boundary>` without direct captured human-verdict evidence for that EXACT boundary; it MUST
+     NOT infer approval from the git committer, env vars, branch names, agent text, previous commits, or "the
+     agent reached this point." Missing evidence → record **un-authorized / awaiting-verdict /
+     pending-human-confirmation**.
+  2. **Stop/UserPromptSubmit is the primary authorization reconciler** (the transcript-capable surface; runs
+     after the human verdict is in the conversation): capture recognized verdict tokens tied to the NAMED
+     boundary; update `last_authorized_boundary`, verdict_history, related authorization fields; PRESERVE the
+     agent-authored handover body (no clobber).
+  3. **Resume/bootstrap/`specrew where` are honest about pending state**: a mechanically-crossed-but-not-
+     authorized boundary is surfaced as such; committed is never silently treated as authorized; the human is
+     asked to confirm/re-approve; the wording notes this may have happened because the session ended before the
+     Stop hook persisted the verdict.
+  4. **Opportunistic sync-time capture is a per-host-TESTED optimization, not the baseline.** A host may capture
+     at sync-time only if it has PROVEN capability (tested for that host, not assumed); Claude's incremental
+     transcript writes do NOT generalize to codex/copilot/cursor; any doubt → fall back to pending/un-authorized.
+  5. **Falsification tests required (T007)**: sync alone never fabricates; git-committer/env/user-name never used
+     as approver evidence; missing evidence → pending/un-authorized; Stop/UPS with a valid boundary-tied verdict
+     → authorizes; unrelated human text after a packet is NOT captured as approval; missing/unprovable identity →
+     unknown/unattributed (not a fabricated name); resume/where surfaces committed-but-not-authorized; a
+     crash-window simulation between sync and Stop yields "ask again," not "continue as approved."
+- **Acceptance rule**: a small chance of losing a valid approval is acceptable; continuing under an unproven
+  approval is not.
+- **Authorization Text** (maintainer, this session — the captured design verdict, quoted not inferred):
+  > "Choose Option 1 as the baseline: the Stop/UserPromptSubmit hook is the authority for verdict authorization.
+  > The core safety rule is: Prefer losing/forgetting a real approval over inventing, inferring, or carrying
+  > forward an unproven approval. ... make the safe failure mode 'ask the human again,' never 'pretend approval
+  > happened.'"
+- **Provenance**: recorded 2026-06-14 during F-174 iteration 011 implementation, resurfaced to the maintainer
+  before writing T004/T005 (per the tasks→before-implement instruction). Settles fix-plan-draft Decision 2; the
+  A→C→B task sequence and locked scope are unchanged — only the verdict-authority mechanism inside Fix C is now
+  pinned. This entry records a REAL captured human design verdict (FR-026's own discipline), not an inferred one.
+- **Refinement (same session, maintainer)**: the hook is the PRIMARY authority, NOT the *sole* source — there are
+  **two** capture mechanisms, both grounded in a real human action, neither fabricating:
+  1. **Deterministic (hook)** — auto-captures the verdict token from the transcript at end-of-turn (hook-capable
+     hosts); evidence source `hook-captured-from-transcript`.
+  2. **Second chance (explicit re-confirm)** — when the hook did not capture (crash between sync and Stop, an
+     ambiguous/markerless packet) OR the host has NO hooks (antigravity), the honest-pending state (T006) surfaces
+     "awaiting your verdict" and asks; the human's confirmation is recorded via the EXISTING
+     `Add-SpecrewBoundaryAuthorization` writer; evidence source `human-confirmed-at-resume`. On a hook host the
+     re-confirmation is a new human turn caught by the next hook fire (still deterministic); on a hookless host it
+     is agent-relayed.
+  **Honest antigravity limit**: a hookless host has NO deterministic capture surface, so its verdict is
+  agent-relayed regardless — the second mechanism closes the LIVENESS gap (antigravity is never stuck/blocked),
+  NOT the INTEGRITY gap (it is honestly weaker than a hook capture). The invariant that holds on every host: sync
+  never auto-invents an approval; the gate advances only on a real surfaced-pending → human-response cycle.
+  **No new command** — the explicit path REUSES `Add-SpecrewBoundaryAuthorization` + the `specrew start`
+  reconciliation surface, not a new `confirm-verdict` command (which would be a fresh forgeable surface the agent
+  calls routinely — spiritually back toward DF-5). **Evidence-source tag** is added to every `verdict_history`
+  entry (`hook-captured-from-transcript` | `human-confirmed-at-resume`; never fabricated) so the audit trail is
+  honest about each authorization's provenance strength.
