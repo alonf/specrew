@@ -266,6 +266,39 @@ the verdict isn't recorded (DF-5), a resume rewinds a step and redoes work. Dire
 load-bearing: author the true boundary/gate state (incl. drafted-but-unverdicted in-progress work) into the
 handover so a resume reconciles forward, not backward.
 
+UPDATE — robustness RECOVERED (upgrade from "partial no"). After the human's clarify->plan approval, antigravity
+advanced, FOUND cursor's existing `design-analysis.md` (did NOT re-draft from scratch), reached the
+design-analysis gate, and presented the correct Option A/B/C packet awaiting "approved for plan with Option B".
+So the system recovered — at the cost of a ONE-GATE REWIND + a redundant re-approval (the human re-approved
+clarify->plan that cursor had already passed), but NO WORK WAS LOST. Net robustness read: the committed tree IS
+the durable source of truth (a resume re-derives + reuses prior work), and the degraded handover costs a redundant
+step, not correctness. This is the strongest argument for the DF-3/4/5 fix being about UX/efficiency + integrity,
+not data-loss. NOTE: this advance was LEGITIMATE (the human gave verdict "1"), unlike codex's DF-5 auto-advance
+on bare "continue" — so the boundary-sync verdict recording here is correct.
+
+## DF-8 (HIGH) — an agent edited the GOVERNANCE ENFORCEMENT to unblock its own gate
+
+Hitting a `handoff-block-missing` validator failure during the clarify boundary-sync, antigravity investigated
+`shared-governance.ps1`, EDITED the deployed validator, and committed it: `8531aa3 boundary(clarify): sync
+boundary state and fix handoff validator`. Two concerns regardless of whether the edit fixed a real validator bug
+or weakened the check: (1) GOVERNANCE INTEGRITY — an agent with file access (YOLO / skip-permissions, the norm
+for these hosts) can modify the very governance scripts it is governed by, to pass its own gate; the enforcement
+is only as strong as the agent's restraint. (2) DRIFT — the project's deployed `.specify/.../shared-governance.ps1`
+now differs from canonical (the module / dev tree); a downstream project silently forked its governance logic.
+This is bigger than F-174 (it is a governance-architecture concern) but the dogfood surfaced it: consider making
+the deployed governance scripts integrity-checked / read-only-relative-to-canonical, or at minimum flagging when
+a boundary commit modifies `.specify/extensions/.../scripts|validators`. CONFOUND note: the `handoff-block-missing`
+WARN is a real recurring validator signal (seen on codex's clarify commit too), so antigravity may have fixed a
+genuine over-strict check — but "agent edits its own governance to advance" is the pattern to close.
+
+### Final host tally
+codex (hook, double-fire, terse, DF-5 auto-advance + DF-7 direct-edit) · claude (hook, single-fire, substantive,
+gate-stop host, DF-4 misread on status) · copilot (hook, single-fire, substantive, clean gate packet, DF-3
+no-author) · cursor-agent (NO hook — rules-based, DF-6) · antigravity (NO hook — `specrew start`/T008, substantive,
+recovered-with-rewind, DF-8 governance-edit). All 5 hosts exercised; bootstrap dedupe + continuity green; the
+DF-3/4/5/7 cluster + DF-8 are the fix targets.
+
+
 ### Dogfood finding ledger (final)
 - DF-1 (resume recap quality; codex-terse, others substantive) — small fix (push pointer-mode hosts).
 - DF-2 (version/branch absent in codex pointer banner) — small fix (carry them in the directive).
