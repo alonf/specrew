@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: before-implement — readiness verified; implement-go approved (`f174-i011-implement-approved`)
-**Tasks Remaining**: T001–T009 (22/22) — IMPLEMENTING (Fix A→C→B→D/E); phases: understand → implement → verify
-**In Progress**: implement — understand-impact phase (parallel code-flow + side-effect mapping)
+**Last Completed Task**: T004 (the Stop hook IS the verdict authority) — the verdict-integrity CORE is complete: T004 + T005 (sync stops fabricating) + T006 (committed ≠ authorized resume), all proven end-to-end + green (commit `be93c771`)
+**Tasks Remaining**: T002 + T003 (authoring side — Fix A2 packet capture + clobber guard, DF-3/SC-015), T001 (callable authoring command — Fix A1, DF-7), T007 (full falsification suite), T008 + T009 (DF-1/DF-2, small) — plus the cross-host marker residual (drift-log D-001)
+**In Progress**: (checkpointed, working tree clean) — the authoring side (T002 → T003 → T001) is next
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-13T18:59:36Z
+**Updated**: 2026-06-14T00:13:37Z
 
 ## Charter
 
@@ -111,3 +111,39 @@ Readiness verified for implementation (Fix A → C → B → D/E):
 **PAUSE POINT** (instruction 4): implementation is a fresh, substantial body of work; the durable plan +
 tasks support a clean-context start next session. STOP at before-implement → implement for the maintainer's
 implement go. No push / PR (instruction 5).
+
+## Implement (this boundary)
+
+Maintainer gave the implement go. A load-bearing under-specified decision was RESURFACED before writing
+T004/T005 (per the before-implement instruction) and settled with the maintainer:
+**`f174-i011-verdict-authority-stop-hook`** — the Stop/UserPromptSubmit hook is the PRIMARY verdict authority;
+a second-chance explicit re-confirm covers hook-misses + hookless antigravity (the maintainer's two-mechanism
+correction); honest antigravity limit (agent-relayed, no deterministic surface); no new command (reuse
+`Add-SpecrewBoundaryAuthorization`); evidence-source tag per `verdict_history` entry; safety rule: prefer
+losing a real approval over inventing one.
+
+**Verdict-integrity CORE — DONE + green (T004/T005/T006):**
+
+- **T005** (`2e1a78fb`) — boundary-sync STOPS fabricating (`approved for <X>` + git-committer DELETED);
+  records the mechanical crossing only. `boundary-sync-atomic` reconciled into a falsification guard.
+- **T006** (`fa6ab2e1` + `ec709f09`) — `Get-SpecrewPendingVerdictState`; `specrew where` + the bootstrap
+  resume directive surface "AWAITING YOUR VERDICT" when committed ≠ authorized (FR-027), every host.
+- **T004** (`115f98d9` + `d35c92c2` + `be93c771`) — the hook captures the human's typed verdict from the
+  transcript (recognizer + reader tied to the packet marker), advances the gate with evidence-source
+  `hook-captured-from-transcript`, identity `unattributed`. Proven end-to-end (`HookVerdictCapture.Tests`).
+
+**Enabling prerequisite (maintainer-directed):** the central hook-cwd-resolution fix (`ff34e776`,
+`f174-i011-hook-cwd-central-resolution`) — claude `${CLAUDE_PROJECT_DIR}` placeholder + per-machine launcher
+for codex/copilot/cursor; the SessionStart bootstrap + Stop handover ride these hooks.
+
+**Comprehensive regression: 15/15 green** across the hook / dispatcher / parity / boundary / handover / refocus
+/ gate-stop surface.
+
+**REMAINING:** T002 + T003 (authoring side — capture the rendered packet body into the handover + clobber
+guard, DF-3/SC-015), T001 (callable authoring command, DF-7), T007 (full falsification suite), T008/T009
+(DF-1/DF-2, small, first-to-defer), the cross-host marker residual (drift-log D-001). Then the closeout
+cap-revert (22→20) + the real-host re-dogfood acceptance gate.
+
+**Process note (honest):** task-implementation commits this phase used the `feat/fix(174):` conventional-commit
+prefix with the T0NN reference in the body, rather than the `boundary(implement): T0NN` prefix; focused-per-task
+discipline held (one task per commit, tests riding with code). `boundary(implement): T0NN` adopted going forward.
