@@ -90,6 +90,37 @@ function Resolve-SpecrewBranchFeatureRef {
     return $branch
 }
 
+function Get-SpecrewLensDecisionSummary {
+    # F-174 iter-11 (T008, DF-1): a ONE-LINE decision recap for a design-workshop lens record, so a resume can
+    # surface WHAT WAS DECIDED (the decision topics), not just the lens NAME (the iteration-010 multi-host
+    # dogfood: pointer-mode hosts echoed lens names while the real decisions sat unread in the records).
+    # Extracts the '## Decision N - <title>' headings (the design-workshop record convention) and joins their
+    # titles, bounded. Fail-open: any read error / a record with no decision headings -> $null (the caller
+    # falls back to the bare lens name).
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([Parameter(Mandatory)][string] $RecordPath, [int] $MaxDecisions = 4, [int] $MaxLength = 220)
+    try {
+        if (-not (Test-Path -LiteralPath $RecordPath -PathType Leaf)) { return $null }
+        $titles = New-Object System.Collections.Generic.List[string]
+        foreach ($line in (Get-Content -LiteralPath $RecordPath -ErrorAction Stop)) {
+            # '## Decision <N|Nb> [-|–|:] <title>' - consume the number up to the first separator, capture the title.
+            $m = [regex]::Match([string]$line, '^##\s+Decision\b[^-–:]*[-–:]\s*(.+?)\s*$')
+            if ($m.Success) {
+                $t = ($m.Groups[1].Value -replace '`', '').Trim()
+                if (-not [string]::IsNullOrWhiteSpace($t)) { $titles.Add($t) | Out-Null }
+            }
+        }
+        if ($titles.Count -eq 0) { return $null }
+        $shown = @($titles | Select-Object -First $MaxDecisions)
+        $summary = ($shown -join '; ')
+        if ($titles.Count -gt $MaxDecisions) { $summary += (' (+{0} more)' -f ($titles.Count - $MaxDecisions)) }
+        if ($summary.Length -gt $MaxLength) { $summary = $summary.Substring(0, $MaxLength - 1).TrimEnd() + [char]0x2026 }
+        return $summary
+    }
+    catch { return $null }
+}
+
 function Get-SpecrewWorkshopProgress {
     # Deterministic DISK-TRUTH scan of a feature's in-flight intent + status, for the bootstrap directive
     # (F-174 T050 round-2 finding): on resume, the intent (spec.md) and status (workshop records +
@@ -149,12 +180,28 @@ function Get-SpecrewWorkshopProgress {
     $doneAll = @(@($done) + @($lensRecords) | Select-Object -Unique)
     $remaining = @($selected | Where-Object { $doneAll -notcontains $_ })
 
+    # F-174 iter-11 (T008, DF-1): a one-line decision recap per DONE lens that has a workshop record, so the
+    # resume directive can surface WHAT WAS DECIDED, not just the lens name. Ordered by $doneAll; only lenses
+    # with an extractable decision summary appear (a record-less moved_on lens stays in `done` as a name only).
+    $wdir = Join-Path $featureDir 'workshop'
+    $doneDecisions = New-Object System.Collections.Generic.List[object]
+    foreach ($lens in $doneAll) {
+        $summary = Get-SpecrewLensDecisionSummary -RecordPath (Join-Path $wdir ($lens + '.md'))
+        if (-not [string]::IsNullOrWhiteSpace($summary)) {
+            $doneDecisions.Add([pscustomobject]@{ lens = [string]$lens; summary = $summary }) | Out-Null
+        }
+    }
+
     [pscustomobject]@{
         feature_ref    = $FeatureRef
         spec_exists    = $specExists
         spec_path      = if ($specExists) { "specs/$FeatureRef/spec.md" } else { $null }
         selected       = $selected
         done           = $doneAll
+        # .ToArray() not @($doneDecisions): the array-subexpression operator on this List[object] of
+        # pscustomobjects throws "Argument types do not match" as a hashtable value (a PowerShell quirk); the
+        # explicit List.ToArray() is the reliable conversion.
+        done_decisions = $doneDecisions.ToArray()
         remaining      = $remaining
         has_applicability = $applicabilityFound
         in_flight      = ($specExists -or ($doneAll.Count -gt 0))

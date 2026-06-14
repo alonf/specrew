@@ -142,7 +142,23 @@ function Format-BootstrapDirective {
         $lines.Add(('=== IN-FLIGHT WORK ON DISK (deterministic scan - this project is NOT new) ===') )
         $lines.Add(("Feature {0} is in flight on this branch. The intent and status live in FILES - read them FIRST, before asking the human anything:" -f $InFlight.feature_ref))
         if ($InFlight.spec_exists) { $lines.Add(("  - the intent (what we are building): {0}" -f $InFlight.spec_path)) }
-        if (@($InFlight.done).Count -gt 0) { $lines.Add(("  - design-workshop lenses already DONE (records under specs/{0}/workshop/): {1}" -f $InFlight.feature_ref, (@($InFlight.done) -join ', '))) }
+        if (@($InFlight.done).Count -gt 0) {
+            # F-174 iter-11 (T008, DF-1): surface each done lens's DECISION (one line from its record), not just
+            # the lens NAME, so a pointer/terse host (codex) can SYNTHESIZE "what we decided so far" instead of
+            # echoing lens names. Fall back to the bare names when no decision record could be parsed.
+            $ddProp = $InFlight.PSObject.Properties['done_decisions']
+            $decisions = if ($ddProp -and $null -ne $ddProp.Value) { @($ddProp.Value) } else { @() }
+            if ($decisions.Count -gt 0) {
+                $lines.Add(("  - design-workshop DECISIONS recorded so far (records under specs/{0}/workshop/) - SYNTHESIZE these into a 'what we decided so far' recap for the human; do NOT just echo lens names:" -f $InFlight.feature_ref))
+                foreach ($dec in $decisions) { $lines.Add(("      * {0}: {1}" -f $dec.lens, $dec.summary)) }
+                $named = @($decisions | ForEach-Object { [string]$_.lens })
+                $bare = @($InFlight.done | Where-Object { $named -notcontains $_ })
+                if ($bare.Count -gt 0) { $lines.Add(("      (also recorded done, no decision record: {0})" -f ($bare -join ', '))) }
+            }
+            else {
+                $lines.Add(("  - design-workshop lenses already DONE (records under specs/{0}/workshop/): {1}" -f $InFlight.feature_ref, (@($InFlight.done) -join ', ')))
+            }
+        }
         if (@($InFlight.remaining).Count -gt 0) { $lines.Add(("  - workshop lenses REMAINING (from lens-applicability.json): {0}" -f (@($InFlight.remaining) -join ', '))) }
         # Codex round-3 lesson: with lens records but NO persisted agenda, "resume at the recorded position"
         # was too open - the host re-ran specify (rewrote spec.md) instead of continuing the workshop. When
@@ -154,7 +170,7 @@ function Format-BootstrapDirective {
         elseif ([bool]$InFlight.has_applicability -and @($InFlight.done).Count -gt 0) { 'the design workshop is COMPLETE (every selected lens is recorded done) - do NOT redo or re-propose it; resume at the lifecycle position AFTER the workshop (typically presenting the specify boundary packet / awaiting the human verdict, or the recorded boundary)' }
         elseif (@($InFlight.done).Count -gt 0) { 'CONTINUE the design workshop: the agenda was not persisted, so RE-PROPOSE the remaining lens agenda to the human (skipping the DONE lenses above) and proceed lens-by-lens. Do NOT re-run specify and do NOT rewrite spec.md - the spec already exists' }
         else { 'resume at the recorded lifecycle position (read the spec + workshop records to locate it)' }
-        $lines.Add(("When the human says 'continue' (or similar), {0}. Do NOT restart discovery, do NOT re-ask completed lenses, and do NOT ask 'what do you want to build' - spec.md answers that. Confirm your resume point to the human in one line, then proceed." -f $next))
+        $lines.Add(("When the human says 'continue' (or similar), {0}. Do NOT restart discovery, do NOT re-ask completed lenses, and do NOT ask 'what do you want to build' - spec.md answers that. Open your welcome-back with a 1-2 sentence SYNTHESIS of what we have decided so far (from the decisions/records above - synthesize the substance, do NOT just list lens names) and your resume point, then proceed." -f $next))
     }
     $lines.Add('Reminder (do not skip): your FIRST response MUST open with the MANDATORY orientation banner described at the top - Specrew + how-we-work + version/host/project/branch/lifecycle position + the user-profile/expertise adaptation (what you know about the human) - and only THEN address the user''s request.')
     if (@($d.validation_findings).Count -gt 0) {

@@ -46,10 +46,10 @@ tasks:
     completed_at: "2026-06-14T05:30:00Z"
     blocked_reason: ""
   T008:
-    title: "DF-1 pointer-mode recap synthesis — push pointer-mode hosts to synthesize a decisions recap, not just lens names (first to defer if overrun)"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    title: "DF-1 pointer-mode recap synthesis — surface each done lens's DECISION (one line from its record), not just the lens NAME, so pointer/terse hosts (codex) synthesize 'what we decided so far'. Get-SpecrewLensDecisionSummary (extracts the '## Decision N - <title>' headings, bounded + fail-open) + a done_decisions field on Get-SpecrewWorkshopProgress (single-source ProjectMetadataAccessor) + Format-BootstrapDirective renders the DECISIONS block with a SYNTHESIZE instruction + a strengthened welcome-back synthesis line (3 mirror copies of specrew-bootstrap-provider.ps1), with a bare-names fallback when no decision record parses. Fixed a pre-existing-pattern PowerShell trap (@($List[object]) as a hashtable value throws -> .ToArray()). Proven (WorkshopDecisionRecap.Tests, 17 assertions: extraction + bounding + null/fail-open + done_decisions + directive recap + synthesis + names fallback); accessor + provider consumers green."
+    status: "done"
+    started_at: "2026-06-14T05:35:00Z"
+    completed_at: "2026-06-14T06:15:00Z"
     blocked_reason: ""
   T009:
     title: "DF-2 version/branch carried in the bootstrap directive so the pointer-mode banner is complete (first to defer if overrun)"
