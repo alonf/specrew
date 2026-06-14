@@ -632,9 +632,10 @@ function Update-SpecrewRollingHandover {
     # (T005): the gate advances ONLY on a real, captured human verdict - never invented. Guarded: runs only when
     # BOTH the reader and the writer are loaded (the Stop-hook handover provider co-loads shared-governance; the
     # design-workshop-refresh / test paths do not and correctly skip the authorization). Identity is left
-    # UNATTRIBUTED unless a host surface proves it (none reliably does yet) - honest over invented. Forward-only
-    # (the reader's contradiction/ambiguity guards already gate Found); fully fail-open - a capture failure
-    # degrades to "un-authorized", surfaced by the resume (T006), and NEVER blocks the stop.
+    # UNATTRIBUTED unless a host surface proves it (none reliably does yet) - honest over invented. CONTIGUOUS
+    # one-boundary-at-a-time (the gate-contiguity guard below; the reader's contradiction/ambiguity guards already
+    # gate Found); fully fail-open - a capture failure degrades to "un-authorized", surfaced by the resume (T006),
+    # and NEVER blocks the stop.
     if ($isEndOfTurn -and -not [string]::IsNullOrWhiteSpace($TranscriptPath) -and
         (Get-Command Get-SpecrewCapturedBoundaryVerdict -ErrorAction SilentlyContinue) -and
         (Get-Command Add-SpecrewBoundaryAuthorization -ErrorAction SilentlyContinue) -and
@@ -643,15 +644,39 @@ function Update-SpecrewRollingHandover {
             $captured = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath
             if ($captured.Found) {
                 $bOrder = @(Get-SpecrewBoundaryOrder)
+                $fromIdx = [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $captured.FromBoundary))
                 $toIdx = [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $captured.ToBoundary))
                 $authIdx = if ([string]::IsNullOrWhiteSpace([string]$lastAuthBoundary)) { -1 } else { [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuthBoundary)) }
-                # FORWARD-ONLY: advance only past the current authorized cursor (idempotent - a re-fired stop that
-                # re-reads the same captured verdict finds the gate already there and does nothing).
-                if ($toIdx -ge 0 -and $toIdx -gt $authIdx) {
+                # GATE CONTIGUITY (one-boundary-at-a-time). Forward-only ($toIdx > $authIdx) is NECESSARY but NOT
+                # SUFFICIENT: with lastAuth=plan and a marker 'tasks -> before-implement', a forward-only check would
+                # apply the human's REAL before-implement approval while the 'plan -> tasks' gate was NEVER
+                # authorized - skipping a gate. So require the capture to advance EXACTLY one gate from the cursor:
+                #   (1) the marker's FROM must EQUAL last_authorized_boundary ($fromIdx == $authIdx), and
+                #   (2) the marker's TO must be the IMMEDIATE successor of FROM ($toIdx == $fromIdx + 1).
+                # Anything else (from != cursor, or a multi-gate jump like tasks -> review-signoff) is REJECTED. We
+                # do NOT rewrite FROM to the cursor to force contiguity - that would mask the skip; we reject the
+                # capture as unsafe, leave the gate where it is (the resume surfaces awaiting-verdict so the human
+                # re-confirms the missing boundary), and journal the mismatch. This ALSO gives idempotence: once the
+                # gate has advanced, the same marker's FROM no longer equals the (now-advanced) cursor, so a re-fired
+                # Stop is a no-op.
+                if ($fromIdx -ge 0 -and $fromIdx -eq $authIdx -and $toIdx -eq ($fromIdx + 1)) {
                     Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
                         -CurrentBoundary $captured.FromBoundary -AuthorizedBoundary $captured.ToBoundary `
                         -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
                         -EvidenceSource 'hook-captured-from-transcript' | Out-Null
+                }
+                elseif ($toIdx -gt $authIdx) {
+                    # A CLEAR approval whose marker is forward but NON-CONTIGUOUS with the cursor: refuse to apply it
+                    # (applying it would skip an earlier unauthorized gate). Record the mismatch for forensics; the
+                    # gate stays put and the resume (T006) surfaces awaiting-verdict for the contiguous boundary.
+                    [Console]::Error.WriteLine(("[specrew-handover] WARN MARKER_CURSOR_MISMATCH captured '{0}->{1}' is not contiguous with the authorized cursor '{2}'; NOT authorizing (one-boundary-at-a-time)." -f $captured.FromBoundary, $captured.ToBoundary, $lastAuthBoundary))
+                    try {
+                        $mmJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+                        $mmDir = Split-Path -Parent $mmJournal
+                        if ($mmDir -and -not (Test-Path -LiteralPath $mmDir)) { New-Item -ItemType Directory -Path $mmDir -Force | Out-Null }
+                        (([pscustomobject]@{ event = 'marker-cursor-mismatch'; recorded_at = $NowUtc; captured_from = $captured.FromBoundary; captured_to = $captured.ToBoundary; authorized_cursor = [string]$lastAuthBoundary; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $mmJournal -Encoding UTF8
+                    }
+                    catch { $null = $_ }
                 }
             }
         }

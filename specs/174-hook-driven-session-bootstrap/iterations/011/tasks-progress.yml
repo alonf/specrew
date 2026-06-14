@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "174-hook-driven-session-bootstrap"
 iteration: "011"
-updated_at: "2026-06-13T23:45:31Z"
+updated_at: "2026-06-14T00:23:14Z"
 tasks:
   T001:
     title: "Expose a TESTED public/agent-callable authoring command/skill around the handover writer — PROVE/EXPORT the callable surface (do NOT assume Write-SpecrewHandoverContext is exported)"
@@ -22,7 +22,7 @@ tasks:
     completed_at: ""
     blocked_reason: ""
   T004:
-    title: "Verdict capture from transcript — the Stop/UPS hook IS the verdict authority: recognizer + transcript reader + evidence-source tag + Update-SpecrewRollingHandover wiring (calls Add-SpecrewBoundaryAuthorization with the captured verdict, forward-only, fail-open) + gate-stop boundary marker. Proven end-to-end (HookVerdictCapture.Tests). RESIDUAL: marker emission on non-Claude hosts (they degrade safely to awaiting-verdict until added)."
+    title: "Verdict capture from transcript — the Stop/UPS hook IS the verdict authority: recognizer + transcript reader + evidence-source tag + Update-SpecrewRollingHandover wiring (calls Add-SpecrewBoundaryAuthorization with the captured verdict, forward-only, fail-open) + gate-stop boundary marker. Proven end-to-end (HookVerdictCapture.Tests). GATE-CONTIGUITY guard added (one-boundary-at-a-time): the captured marker FROM must equal the authorized cursor AND TO must be its immediate successor, else reject + journal marker-cursor-mismatch (fixes the maintainer-found from-skip hole); 5 falsification cases green. RESIDUAL: marker emission on non-Claude hosts (they degrade safely to awaiting-verdict until added)."
     status: "done"
     started_at: "2026-06-13T23:33:28Z"
     completed_at: "2026-06-13T23:45:31Z"
