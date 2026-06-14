@@ -6,6 +6,29 @@
 Divergences between spec / plan / tasks and the implementation, each with the requirement citation and the
 reconciliation path (lifecycle-discipline rule 4: drift is logged, not absorbed).
 
+## D-004 — governance-validator capacity mismatch on the DELIBERATELY-OPEN iter-007 (accepted cap-raise drift)
+
+- **Status**: open (pre-existing accepted drift; resolved by the `f174-i011-cap-revert-obligation` at closeout)
+- **Requirement**: the capacity-consistency validator (`validate-governance.ps1`: plan "Capacity per Iteration" +
+  "Capacity total" must match `.specrew/iteration-config.yml capacity_per_iteration`); adjacent to FR-028 only
+  because T010-T012 raised the cap.
+- **Divergence**: the validator FAILs `specs/174.../iterations/007` — "plan capacity '20' does not match
+  iteration-config '32'". F-174 iter-007 is DELIBERATELY left OPEN ("Iteration Status: executing ... review-signoff
+  DEMONSTRATED-not-ratified ... Left OPEN as a recorded historical gap", superseded by iter-008), so it is NOT in
+  the grandfather `closed-iterations.yml` (iter-010 IS, which is why it passes) and is therefore validated against
+  the CURRENT global cap. Since iter-007 records cap 20 and the only OTHER open F-174 iteration (011) needs a
+  different cap, NO single global value satisfies both — the mismatch has existed since iter-011's APPROVED 20→22
+  bump (`f174-i011-plan-tasks-approved`); the FR-028 32-bump only changes the number, not the failing set (still
+  exactly iter-007). The iter-011 validator FAIL was a SEPARATE, now-FIXED defect (the T011 plan-table title
+  contained literal `|` pipes that the validator's table parser split on — escaping with `\|` does not help —
+  shifting the Owner into the Status column; rewritten without pipes).
+- **Why parked**: iter-007 is intentionally open (a recorded historical gap — must NOT be force-closed or have its
+  historical cap rewritten); reverting the cap now would break the active iter-011 (which needs 32). The planned
+  reconciliation is the `f174-i011-cap-revert-obligation` (restore global 20 at closeout, once iter-011 is itself
+  grandfathered), which restores iter-007's match. Out of FR-028 scope to resolve mid-iteration.
+- **Reconciliation path**: at iter-011 closeout, revert `capacity_per_iteration` 32→20 + rerun the validator
+  (the obligation already on file); iter-007 then matches again. Recorded 2026-06-14.
+
 ## D-003 — PRE-EXISTING refocus-digests red (specify.md host-scoped gate-stop line) — branch/main drift
 
 - **Status**: open (pre-existing; parked — clears on a rebase of branch 174 onto main)
