@@ -1,4 +1,9 @@
 $ErrorActionPreference = 'Stop'
+# CRITICAL: run under the SAME strictness the real provider runs under. The provider's main block + its dot-sourced
+# components Set-StrictMode -Version Latest, so Format-BootstrapDirective executes strict at runtime. The extracted-
+# function tests historically did NOT set it, so `$null.Count` returned $null silently instead of throwing - which
+# is exactly how the real-host empty-done_decisions crash (the directive failed -> no banner) slipped past the suite.
+Set-StrictMode -Version Latest
 
 # F-174 iteration 011 (P2, FR-002/FR-004): the SessionStart hook payload MUST fit the host's hook-output cap.
 # Claude Code v2.1.177 silently drops hook STDOUT over 10,000 chars to a file + a ~2KB preview, so an oversized
@@ -151,5 +156,29 @@ Assert-True ($directive -match 'code-implementation')                 '4: the re
 Assert-True ($directive -match 'truncated to fit the session-start delivery cap') '4: the fat handover log was bounded (elision note present)'
 Assert-True ($directive -match 'Validated handover captured')         '4: the handover preamble survives'
 
-Write-Host "`n=== DirectiveDeliveryCap.Tests.ps1: all assertions passed (P2 cap-fit: pointer arm + bounded inlining) ===" -ForegroundColor Green
+# --- 5: REAL-HOST REGRESSION (2026-06-14). A workshop with done lenses but NO parseable decision summaries gives
+# done_decisions = an EMPTY array. Under StrictMode-Latest (the provider's real context) the old idiom
+# `$decisions = if(..){@(..)}else{@()}` collapsed the empty @() to $null, so `$decisions.Count` THREW -> the whole
+# directive failed -> EMPTY output -> the orientation banner never surfaced on the live host. The extracted-function
+# suite missed it because it did not run under StrictMode. This case reproduces the exact shape and asserts the
+# directive renders (no throw), the banner survives, and the bare-names fallback is used (no decision recap). Test
+# all three empty/null shapes that Get-SpecrewWorkshopProgress / a hand-built InFlight can produce.
+foreach ($emptyShape in @{ name = 'untyped @()'; v = @() }, @{ name = 'typed [object[]]@()'; v = ([object[]]@()) }, @{ name = '$null'; v = $null }) {
+    $inflightNoDecisions = [pscustomobject]@{
+        in_flight = $true; feature_ref = '001-atm-kids-simulator'; spec_exists = $true; spec_path = 'specs/001-atm-kids-simulator/spec.md'
+        has_applicability = $true
+        done = @('product-domain', 'requirements-nfr', 'ui-ux', 'data-storage', 'security-compliance')
+        remaining = @('architecture-core', 'component-design', 'observability-resilience', 'code-implementation')
+        done_decisions = $emptyShape.v
+    }
+    $d5 = $null
+    try { $d5 = Format-BootstrapDirective -Result $result -ContractBody '' -InFlight $inflightNoDecisions -PendingVerdict $null -SpecrewVersion '0.36.0' -Branch '001-atm-kids-simulator' }
+    catch { Assert-True $false ("5: directive render MUST NOT throw on empty done_decisions [$($emptyShape.name)] - it did: $($_.Exception.Message)") }
+    Assert-True ($d5 -and $d5.Length -gt 0)                  "5: directive renders non-empty with empty done_decisions [$($emptyShape.name)] (the real-host crash shape)"
+    Assert-True ($d5 -match 'MANDATORY FIRST ACTION')        "5: the banner survives with empty done_decisions [$($emptyShape.name)]"
+    Assert-True ($d5 -match 'lenses already DONE')           "5: the bare-names fallback renders (no decision recap) [$($emptyShape.name)]"
+    Assert-True ($d5 -notmatch 'DECISIONS recorded so far')  "5: the decisions-recap block is absent when there are no decisions [$($emptyShape.name)]"
+}
+
+Write-Host "`n=== DirectiveDeliveryCap.Tests.ps1: all assertions passed (P2 cap-fit + StrictMode empty-decisions regression) ===" -ForegroundColor Green
 exit 0

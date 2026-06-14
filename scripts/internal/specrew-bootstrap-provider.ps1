@@ -223,7 +223,15 @@ function Format-BootstrapDirective {
             # the lens NAME, so a pointer/terse host (codex) can SYNTHESIZE "what we decided so far" instead of
             # echoing lens names. Fall back to the bare names when no decision record could be parsed.
             $ddProp = $InFlight.PSObject.Properties['done_decisions']
-            $decisions = if ($ddProp -and $null -ne $ddProp.Value) { @($ddProp.Value) } else { @() }
+            # F-174 iter-11 (real-host fix 2026-06-14): an EMPTY @() returned from an if-EXPRESSION branch collapses
+            # to $null under StrictMode-Latest, so `$x = if(..){@(..)}else{@()}` makes $x null when the value is
+            # empty -> `$x.Count` then THROWS ("property 'Count' cannot be found") -> the whole directive fails ->
+            # the bootstrap banner never surfaces. This bit on a real workshop with done lenses but NO parseable
+            # decision summaries (done_decisions = empty array). Use DIRECT assignment (no if-expression), which
+            # preserves an empty array (Count 0). $ddProp.Value truthiness is $false for $null AND for an empty
+            # array, so the guard also avoids the @($null)->1-element-of-null trap.
+            $decisions = @()
+            if ($ddProp -and $ddProp.Value) { $decisions = @($ddProp.Value) }
             if ($decisions.Count -gt 0) {
                 $lines.Add(("  - design-workshop DECISIONS recorded so far (records under specs/{0}/workshop/) - SYNTHESIZE these into a 'what we decided so far' recap for the human; do NOT just echo lens names:" -f $InFlight.feature_ref))
                 # F-174 iter-11 (P2): cap BOTH the per-summary length AND the number of decisions inlined so the

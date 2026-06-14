@@ -1,4 +1,7 @@
 $ErrorActionPreference = 'Stop'
+# Run under the provider's real strictness (it Set-StrictMode -Version Latest) so the extracted Format-BootstrapDirective
+# is exercised faithfully - a non-strict extraction test masked the real-host empty-done_decisions $null.Count crash.
+Set-StrictMode -Version Latest
 
 # F-174 iteration 011 (T008, DF-1, FR-002 / FR-022): the pointer-mode DECISION RECAP. The iteration-010
 # multi-host dogfood found pointer/terse hosts (codex) echoed the design-workshop lens NAMES on resume while
