@@ -118,7 +118,7 @@ The lifecycle does not end at `implement`. Two more boundaries close the work: *
 Fires after the Crew passes review-signoff and writes `retro.md`. Your verdict (`approved for iteration-closeout`) triggers `Invoke-SpecrewBoundaryStateSync -BoundaryType iteration-closeout`, which:
 
 1. **Generates `specs/<feature>/iterations/<NNN>/dashboard.md`** — per-iteration snapshot with task verdicts, phase variance, drift summary, FR scoreboard, velocity.
-2. **Appends the iteration to `.specrew/closed-iteration-index.yml`** — the closed-iteration index is what the validator uses to skip already-finished iterations on later runs (Proposal 085, F-036). Without this entry the validator re-validates the iteration on every future run.
+2. **Appends the iteration to `.specrew/closed-iterations.yml`** — the closed-iterations index is what the validator uses to skip already-finished iterations on later runs (Proposal 085, F-036). Without this entry the validator re-validates the iteration on every future run.
 3. **Updates the feature's iteration `Status` to `complete`** in `iterations/<NNN>/plan.md`.
 4. **Sets `session_state_boundary: iteration-closeout`** in `.specrew/start-context.json` so the next `specrew start` knows the iteration is done.
 
@@ -154,7 +154,7 @@ Closeout is the explicit "this is done" gate, not the "I'm pausing" gate.
 
 | Boundary | Files written | State changes |
 |---|---|---|
-| `iteration-closeout` | `iterations/<NNN>/dashboard.md` | `closed-iteration-index.yml` += this iter; `plan.md` Status = complete |
+| `iteration-closeout` | `iterations/<NNN>/dashboard.md` | `closed-iterations.yml` += this iter; `plan.md` Status = complete |
 | `feature-closeout` | `closeout-dashboard.md` (one per feature, at feature root) | `roadmap.yml` feature status = complete; `start-context.json` session_state_boundary = feature-closeout |
 
 These artifacts are the canonical input for future estimation calibration (velocity reads them) and for any historical reconstruction of "what did this feature ship?". If you skip closeout, you keep the work but lose the index entry, the dashboard rendering, and the calibration data.
@@ -188,7 +188,7 @@ Specrew refreshes the runtime handoff, picks the default host (Copilot CLI), and
 
 #### Boundary 1: `specify`
 
-The Spec Steward asks for any clarifications it cannot answer from the prompt + repo, then proposes `specs/001-calculator/spec.md` with:
+Before drafting the spec, the Crew runs the **Design Workshop** intake: it hands you a lens agenda and opens with the **product & problem domain** lens (who the calculator is for, the core job, MVP scope) before any technical lens. The Spec Steward then asks for any clarifications it cannot answer from the prompt + repo, and proposes `specs/001-calculator/spec.md` with:
 
 - 6 functional requirements (FR-001 four arithmetic operations / FR-002 memory store/recall/add/subtract / FR-003 input validation / FR-004 division-by-zero handling / FR-005 keyboard support / FR-006 form-submit prevention)
 - 4 acceptance criteria
@@ -230,7 +230,7 @@ Type: `approved for before-implement`.
 
 #### Implement → Review → Retro
 
-The Implementer writes the four files + 11 unit tests. Tests run; all 11 pass. The Reviewer reads the implementation, runs the validator, writes `iterations/001/review.md` with task verdicts.
+Because this feature writes code, the **code & implementation** lens (run at design time) captured the craft rules — vanilla JS, no framework, small pure functions — into `specs/001-calculator/implementation-rules.yml`, and the lens's implement-time guidance skill surfaced them to the Implementer as it wrote. The Implementer writes the four files + 11 unit tests. Tests run; all 11 pass. The Reviewer reads the implementation, runs the validator, writes `iterations/001/review.md` with task verdicts.
 
 Type: `approved for review-signoff`.
 
@@ -240,7 +240,7 @@ Type: `approved for retro`.
 
 #### Boundary 9: `iteration-closeout`
 
-The Crew runs `sync-iteration-closeout`, which generates `iterations/001/dashboard.md` and appends iter-001 to `.specrew/closed-iteration-index.yml`. The Spec Steward summarizes: "iter-001 complete. 6 SP delivered. 11 tests green. 0 drift events. Velocity: 6 SP / 1 day."
+The Crew runs `sync-iteration-closeout`, which generates `iterations/001/dashboard.md` and appends iter-001 to `.specrew/closed-iterations.yml`. The Spec Steward summarizes: "iter-001 complete. 6 SP delivered. 11 tests green. 0 drift events. Velocity: 6 SP / 1 day."
 
 Type: `approved for iteration-closeout`.
 
@@ -290,7 +290,7 @@ Type: `approved for review-signoff`, `approved for retro`.
 
 #### Boundary 9: `iteration-closeout`
 
-`iterations/002/dashboard.md` written; iter-002 appended to closed-iteration-index. Velocity now reads as 4.5 SP / 1 day for iter-002, cross-iteration average 5.25 SP/day. Future iterations on this feature will use that figure for calibration.
+`iterations/002/dashboard.md` written; iter-002 appended to the closed-iterations index. Velocity now reads as 4.5 SP / 1 day for iter-002, cross-iteration average 5.25 SP/day. Future iterations on this feature will use that figure for calibration.
 
 Type: `approved for iteration-closeout`.
 
@@ -425,6 +425,8 @@ explanatory text changed.
 Goal: produce a requirement-traceable plan before execution starts.
 
 > **Before the plan: the Design Workshop.** For substantive features, planning does not start from a blank page. The Crew facilitates a [Design Workshop](methodology/design-workshop-methodology.md) at intake (selecting the design lenses that matter) and again at the design-analysis stop (co-designing the component map, responsibilities, and flows with you before alternatives are compared). The human-selected design option recorded in `design-analysis.md` is authoritative plan input — `plan.md` must consume it, not re-decide it.
+>
+> The workshop persists durable artifacts you can review: the product & problem domain record at `specs/<feature>/workshop/product-domain.{md,yml}` (users, pain, MVP, constraints — captured before any technical lens), and, for code-writing features, a per-feature `specs/<feature>/implementation-rules.yml` manifest of the implementation-craft rules selected from Specrew's shipped `code-rules.yml` catalog. At implement time, the code-implementation lens's implement-time guidance skill reads that manifest — plus an optional project-wide `code-rules.local.yml` overlay for your company/org rules — and guides the coding agent as it writes. It is guidance, not a review-time gate.
 
 Minimum artifact: `plan.md`
 

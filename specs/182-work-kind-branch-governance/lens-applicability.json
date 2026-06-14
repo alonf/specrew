@@ -1,0 +1,142 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "devops-operations",
+    "integration-api",
+    "component-design",
+    "security-compliance",
+    "requirements-nfr",
+    "ui-ux"
+  ],
+  "skipped": {
+    "data-storage": "The only structured data is config-style capture schemas (work-kinds.yml catalog, .specrew/work-kind.yml declaration, repository_governance + multi_repo capture); these are designed as contracts under integration-api/component-design. No domain data model or persistence concern.",
+    "observability-resilience": "The audit artifact (governance bypass) is handled under security-compliance and the honest-reporting NFR under requirements-nfr; the feature ships no runtime service, telemetry, or resilience surface of its own."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Decomposition style for the work-kind + branch-governance model?",
+        "Work-kind taxonomy as a data-driven catalog vs prose-in-lens?",
+        "How is feature-closeout separated from release/post-merge validation, and how does a post-merge finding route?",
+        "Provider coupling: are downstream projects coupled to GitHub, or pluggable to GitLab/Azure/others?",
+        "Phased-enforcement posture (advisory vs blocking) as structure?",
+        "What is hardest-to-reverse and must be isolated?"
+      ],
+      "decision": "Confirmed (human-confirmed). DP-A1: data-driven CATALOG (work-kinds.yml) + thin PowerShell validators + methodology surfaces (lens md + lifecycle templates), layered/modular, reusing the Feature-177 producer->declaration->enforcement spine. DP-A2: taxonomy as DATA not prose — 4 kinds (software-feature/bug-bash/docs-only/devops) x lifecycle-weight + required-evidence + allowed changed-file scope live in the catalog, referenced by lens/templates/validator so docs+enforcement cannot drift. DP-A3: feature-closeout is the last in-feature (pre-merge) boundary; a SEPARATE release-validation-record captures post-merge beta/CI/docs learning on main; a post-merge finding routes to a NEW work item, never reopens the merged feature, and merged closeout artifacts are not rewritten. DP-A4 (refined WITH the maintainer): provider-neutral CORE + pluggable ProviderAdapter — methodology + .specrew/work-kind.yml declaration + core validator never import a forge assumption; v1 ships a GitHub reference adapter + a generic/unknown fallback (ci-only/manual); other forges (GitLab/Azure/Bitbucket/Gitea) are SYNTHESIZED ON THE FLY from the adapter contract + GitHub reference when a downstream dev names their forge, captured at the downstream project with provenance (no GitLab/Azure code ships in Specrew); SAFETY: synthesized/unverified adapters are read-only by default (detect_capability + describe_protection only; apply_protection stays human-approved); plus a BOUNDED audit that decouples existing downstream-facing branch/PR/release-governance GitHub references (closeout gh-pr-create/merge-commit steps + PR-review-integration) behind the seam while Specrew's OWN dev infra stays GitHub. DP-A5: phased enforcement is architectural — the validator runs advisory|blocking, config-controlled, defaulting to advisory (no over-claim). DP-A6: the declaration contract (.specrew/work-kind.yml shape) + the catalog schema are the hardest-to-reverse and are isolated as versioned data + a documented contract.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/architecture-core.md — design-time->declaration->enforcement macro ASCII + provider-adapter seam + closeout-vs-release-validation lifecycle-truth invariant"
+    },
+    "devops-operations": {
+      "agenda": [
+        "What ships where (deploy topology) and the enforcement layering (methodology / CI semantic / branch protection)?",
+        "The repository-governance question set + defaults the DevOps lens will ask downstream?",
+        "Branch model: must branch NAME and branching METHOD be user-configurable (master/main/dev; trunk/integration/gitflow)?",
+        "Where are the governance answers captured (per-feature vs project-level)?",
+        "Single-repo vs multi-repo?",
+        "CI lane posture for the work-kind validator?",
+        "The feature's own ship/release discipline?",
+        "Review gate: human approvals/comments + opt-in automated review?",
+        "Forge-neutralization of ALL downstream-governing surfaces?"
+      ],
+      "decision": "Confirmed (human-confirmed). DP-D1: the DevOps lens asks the 8 governance questions with defaults (block direct commits to protected branch=yes; protection applies to admins + explicit automation bypass; required checks=Specrew governance/lint + project tests; no force-push/deletion; release tags both; release-validation-record separate from feature-closeout). GENERALIZED with the maintainer: (a) branch_model — branching style (trunk|integration-branch|gitflow|custom) + USER-NAMED branches (master/main/trunk/production/release/dev/develop) + which branches are protected + promotion_path; feature-closeout happens at merge into the feature's target branch and the promotion TO release-truth is the release-validation event (DP-A3 free for integration/GitFlow); trunk + name 'main' is the default only, never an assumption. (b) review_gate — human approvals + comment-resolution always-available + OPT-IN automated review (Copilot suggested on GitHub via the adapter as Specrew uses it, off by default, user decides in the workshop). DP-D2: capture is PROJECT-LEVEL in .specrew/repository-governance.yml (decided once, inherited per feature, re-ask deltas only). DP-D3: default single-repo; multi_repo block captured only when chosen. DP-D4: a new ADVISORY CI check run as a provider-neutral script invoked by a GitHub Actions workflow (v1 wiring; other CIs documented); real validation = verdict on a real PR fixture. DP-D5: the feature's own ship follows the F-176/177 release discipline (FileList + extension.yml bump + .specify mirror parity + markdownlint + CHANGELOG + beta-before-stable); dogfooded on Specrew's protected main; rollback = module version rollback. CROSS-CUTTING PILLAR (maintainer-directed): forge-neutralize ALL downstream-governing surfaces (remove Specrew's own GitHub dev habits — gh-pr-create/merge-commit closeout steps, the 'check Copilot PR review' mandate -> opt-in suggestion, GitHub-Actions-only wiring, branch=main assumptions) and route forge-specifics through the ProviderAdapter; do NOT change Specrew's OWN GitHub usage; precise inventory is the Iter-1 audit deliverable. SIZING: ~16-24 SP across 3 iterations (firmed at capacity; may split the decouple into a sibling).",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/devops-operations.md — enforcement-layer topology + 3 branch-model flows + project-level repository-governance.yml schema (branch_model + review_gate + multi_repo)"
+    },
+    "integration-api": {
+      "agenda": [
+        "How does a work item DECLARE its work kind (FR-009 fork)?",
+        "ProviderAdapter contract shape?",
+        "CI validator data-flow + inputs?",
+        "Contract versioning + fail-open posture?",
+        "Validator/gate seams?"
+      ],
+      "decision": "Confirmed (human-confirmed). DP-I1 (FR-009 resolved): .specrew/work-kind.yml is the AUTHORITATIVE, forge-neutral, versioned declaration + an OPTIONAL branch-prefix hint (docs/, devops/, fix/, feature/) the file confirms/overrides; PR/MR labels REJECTED as source of truth (forge-specific re-coupling); on GitHub an opt-in label mirror may be surfaced by the adapter but is never authoritative. DP-I2: ProviderAdapter = detect_capability / describe_protection (read-only) / apply_protection (guarded, human-approved; synthesized adapters omit/stub) / read_pr_context; the validator runs with NO adapter via the git-diff base..head + branch_model fallback. DP-I3: contracts (work-kinds.yml catalog + .specrew/work-kind.yml + .specrew/repository-governance.yml + per-feature closeout evidence) each carry schema_version; fail-open + WARN on unknown/malformed (177 pattern); stable work-kind IDs (deprecate-not-delete). DP-I4: fail-open edges — no declaration -> infer from branch prefix else advisory WARN; unknown kind -> WARN+skip; malformed -> WARN+neutral; generic forge -> git-diff + ci-only/manual. DP-I5: validator resolves the active feature and reads known manifest paths; the work-kind manifest is NOT a new hard gate in v1 (advisory, phased).",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/integration-api.md — ProviderAdapter contract + provider-neutral validator data-flow + fail-open edges"
+    },
+    "component-design": {
+      "agenda": [
+        "Component map + responsibilities + dependency direction?",
+        "Decomposition grouping (catalog-data / surfaces / validators / provider-seam / wiring)?",
+        "The two key flows (declare->validate, detect->report)?",
+        "Iteration assignment per component?"
+      ],
+      "decision": "Approved (human-confirmed). 17 components grouped by layer, dependency direction inward to CATALOG & CONTRACTS (data). CATALOG & CONTRACTS (Iter1): WorkKindCatalog (work-kinds.yml), CatalogSchema (work-kinds.schema.json), WorkKindDeclaration (.specrew/work-kind.yml template), RepositoryGovernance (.specrew/repository-governance.yml template). METHODOLOGY SURFACES (Iter1): DevOpsLensContent, DocsOnlyLifecycle, DevOpsLifecycle, CloseoutVsReleaseInvariant (+ release-validation-record template), WorkKindTaxonomyDoc. VALIDATORS forge-neutral (Iter2): WorkKindValidator, ChangedFileClassifier, CloseoutEvidenceChecker. PROVIDER SEAM (contract+reference+fallback Iter1; detection Iter2): ProviderAdapterContract, GitHubAdapter, GenericFallbackAdapter, CapabilityDetector, AdapterSynthesisConduct. WIRING: CIWorkflowTemplate (Iter2), ForgeNeutralizationMigration (Iter3). Flows: declare->validate (work-kind.yml -> workflow -> validator -> classifier+evidence-checker read catalog + read_pr_context|git-diff -> advisory/blocking verdict naming the gap); detect->report (CapabilityDetector -> adapter.detect_capability -> honest mechanism -> DevOps lens surfaces it).",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md — layered component map ASCII + named list grouped by vocabulary + per-component iteration assignment + two key flows"
+    },
+    "security-compliance": {
+      "agenda": [
+        "Authorization model for branch governance?",
+        "Safety of the privileged apply_protection action?",
+        "Trust of AI-synthesized adapters?",
+        "Emergency/bypass audit (FR-011)?",
+        "Secrets + least-privilege token scopes?",
+        "Validator confinement + denial-path tests?"
+      ],
+      "decision": "Confirmed (human-confirmed). DP-S1: Specrew CAPTURES branch-governance policy, the FORGE ENFORCES it (protected branch + required reviews + bypass list); Specrew implements no authz of its own; secure-by-default apply_to_admins=true, bypass_actors=[], force-push/delete off. DP-S2: apply_protection is the only privileged mutation — human-approved, never auto-applied, never from an unverified synthesized adapter; uses the user's own forge token (CI token or gh auth); Specrew stores NO secret. DP-S3: AI-synthesized adapters are read-only by default (detect/describe only), checked into the downstream repo (reviewable), provenance recorded; apply_protection unlocked only after a human verifies the adapter. DP-S4: emergency bypass (FR-011) writes a durable audit artifact (who/why/when/what), never a silent skip. DP-S5: detection needs read scope, apply needs admin scope; missing/insufficient token -> degrade to ci-only/manual with an honest message, never fail-closed-blocking. DP-S6: the CI validator reads repo files + git diff only, no secret access, fail-open (never spuriously blocks); denial-path tests required (too-broad bypass, missing-token path).",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/security-compliance.md — trust boundaries + attack surface (forge enforcer, human-gated apply_protection, read-only synthesized adapters, bypass audit, no Specrew-held secrets)"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Which NFRs are design drivers and in what priority order?",
+        "Consolidated FR/SC set after the workshop expansion?",
+        "FR/SC -> iteration map across the 3 iterations?",
+        "Brownfield CI/CD adaptation?",
+        "Specrew self-consistency with the updated lens?"
+      ],
+      "decision": "Confirmed (human-confirmed). NFR priority order (design drivers): 1 forge-neutrality/portability (proven by core running on non-GitHub/no-adapter), 2 honesty/no-over-claim (review finds no over-claim; partial enforcement labeled phased/deferred), 3 safety (denial-path tests: apply_protection human-gate, read-only adapters, no secrets), 4 maintainability (data-driven catalog = one source of truth), 5 brownfield-compat/fail-open (adapt to existing CI/CD; advisory default; never spuriously blocks), 6 multi-host parity; performance is a NON-driver. FR-001..013 stand (FR-003 generalized to branch_model; FR-009 resolved to file+branch-prefix). ADDED FR-014 provider-neutral core; FR-015 ProviderAdapter contract + GitHub reference + generic fallback; FR-016 on-the-fly synthesis (read-only default + provenance); FR-017 review_gate (human always + opt-in automated); FR-018 project-level .specrew/repository-governance.yml capture; FR-019 forge-neutralization audit+decouple (no change to Specrew's own GitHub use); FR-020 apply_protection human-approved + no Specrew secret; FR-021 brownfield-aware governance (detect existing CI/CD + protection, offer adapt-or-change, validator slots into existing CI, never overwrite). ADDED SC-010 core runs on non-GitHub; SC-011 non-main integration-branch honored; SC-012 synthesis produces read-only-until-verified adapter; SC-013 audit inventory + migrated surfaces carry no GitHub-only mandate; SC-014 applying the updated lens to Specrew's own repo surfaces no conflict (or reconciled) + .specrew/repository-governance.yml matches actual posture. Iteration map: Iter1 = methodology + seam contract + audit + brownfield discovery (FR-001..006,008,009,010,014,015c,016doc,017,018,019inv,021content -> SC-001..004,011); Iter2 = runtime (FR-007,011,012,015detect,016exercised,020,021detector -> SC-005,006,007,009,010,012,014); Iter3 = decouple migration (FR-019migration -> SC-008,013).",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/requirements-nfr.md — NFR priority table + consolidated FR/SC set + FR/SC->iteration map"
+    },
+    "ui-ux": {
+      "agenda": [
+        "Validator output UX — how does it name the exact gap (SC-005)?",
+        "Capability/brownfield report UX — honest mechanism + adapt-or-change?",
+        "Declaration template shape?"
+      ],
+      "decision": "Confirmed (human-confirmed). Text/CLI surface. Validator messages NAME THE EXACT GAP + the allowed scope + the fix and carry the advisory/blocking label (phased posture visible). Capability report states the honest mechanism (branch-protection/rulesets/ci-only/manual), describe-only by default, apply_protection requires approval; unknown provider -> ci-only/manual + offer to synthesize a read-only adapter. Brownfield governance prompt shows the detected existing posture and asks ADAPT (slot into existing CI lane) or CHANGE (recommended). Declaration template .specrew/work-kind.yml is a short commented file. Nothing claims enforcement it cannot deliver. Source of UX truth = text/console; accessibility/locale/RTL n/a.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/ui-ux.md — validator gap-naming output + honest capability report + brownfield adapt-or-change prompt + declaration template"
+    },
+    "code-implementation": {
+      "auto_on": true,
+      "agenda": [
+        "Source of code-rules truth (existing guideline / example project / none)?",
+        "Resolved stack + baseline craft exceptions?",
+        "Consequential forks (error handling, patterns, testing, contracts, security)?",
+        "Dependency policy?"
+      ],
+      "decision": "Confirmed (human-confirmed). Auto-on code feature. Source-of-truth: emulate Specrew's existing PowerShell conventions + the code-rules.yml catalog; no external guideline. Stack: PowerShell 7+ + YAML/JSON + JSON-schema + Pester + markdown. Baseline craft accepted (exceptions: concurrency-over-locks n/a, evidence-driven-performance non-driver). Forks: fail-open+WARN error handling (idiomatic-error-handling + robustness-state-boundaries; advisory default); ProviderAdapter as Strategy/anti-corruption-layer with no central provider switch (strategy-state + polymorphism-mechanism + anti-corruption-layers + extension-points); Pester unit + denial-path + fail-open + catalog-integrity + multi-host parity testing (behavior not file-presence); public contracts with schema_version + stable IDs + deprecate-not-delete (api-service-design + public-api-reusable-design); no secrets + gh confined to the GitHub adapter + least-privilege scopes + apply_protection human-gated (secure-coding-defaults + authz-security-context); validator takes the adapter as an injected dependency (dependency-injection); ship via module FileList + extension.yml bump + .specify mirror parity (shared-code-packaging). Dependency policy: use-existing-no-new-dependency (PowerShell + Pester + git + existing YAML handling; gh is an existing dep confined to the GitHub adapter). Captured in implementation-rules.yml (reference-by-ID) + workshop/code-implementation.md.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/code-implementation.md — design-time checklist -> manifest -> implement-time guidance + decisions"
+    }
+  }
+}

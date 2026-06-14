@@ -29,7 +29,7 @@ curl -fsSL https://raw.githubusercontent.com/alonf/specrew/main/install.sh | sh
 Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
 ```
 
-The `-SkipPublisherCheck` flag is required because the module is currently signed with a self-signed certificate. A CA-signed release is planned.
+`-SkipPublisherCheck` tells PowerShellGet to skip the Authenticode publisher check. Specrew modules ship **unsigned** (the OSS PowerShell Gallery norm) since v0.24.1, so the flag keeps the install from failing or prompting on machines that enforce that check. Use it only for the official Specrew Gallery package or a source you trust — see [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context. CA-signed releases for corporate/enterprise consumers are tracked as future work.
 
 > **macOS/Linux module fallback (only if you skip `install.sh`):** `Install-Module` exists only inside PowerShell — run `pwsh` first, then `Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck`. Running it in zsh/bash prints `command not found: Install-Module`. The PowerShell Gallery prompt defaults to **`N`** (pressing Enter *declines* the install) — answer **`A` / Yes to All** or pass `-Force`. After the module is installed, run `specrew install-shell-wrappers` to get the native `specrew` command without `pwsh`.
 
@@ -186,7 +186,7 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 >   **Antigravity** (no hook). When both a launcher and a hook fire in one startup, a dedupe handshake yields
 >   exactly one bootstrap.
 
-**The Design Workshop.** For substantive features, the Crew also facilitates a **Design Workshop** — first at intake (to pick the design lenses that matter and make the spec lens-informed) and again at the design-analysis stop before planning (to co-design the architecture with you: component map, responsibilities, flows, and trade-off options). It is a conversation, not a questionnaire — you see every diagram and agenda in-band, and every decision is recorded as a durable artifact. The full methodology is in [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md).
+**The Design Workshop.** For substantive features, the Crew also facilitates a **Design Workshop** — first at intake (it hands you a lens agenda, opens with the **product & problem domain** lens to ground users / pain / MVP / constraints, then works the technical lenses that apply) and again at the design-analysis stop before planning (to co-design the architecture with you: component map, responsibilities, flows, and trade-off options). For any code-writing feature it also runs the **code & implementation** lens, which captures implementation-craft rules (language version, patterns, per-stack conventions, dependency choices) into a per-feature `implementation-rules.yml` manifest, which the lens's implement-time guidance skill then uses to guide the coding agent while it writes code. It is a conversation, not a questionnaire — you see every diagram and agenda in-band, and every decision is recorded as a durable artifact. The full methodology is in [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md).
 
 > **Switching hosts on the same project** is supported: end the session, then **launch the other host directly** in the project (`claude` / `codex` / `copilot` / `cursor`) and type `continue` — its SessionStart hook reads the rolling handover and resumes the same feature at the same spot. `specrew start --host <other>` stays available as the optional explicit driver, and it is the way in on hookless **Antigravity**. Mid-session switching still means end-and-restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
 
@@ -194,7 +194,7 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 
 The lifecycle does not end at `implement`. Two more boundaries finish the work:
 
-- **`iteration-closeout`** — after the Crew passes review-signoff and writes `retro.md`, you approve the iteration close. Boundary-sync generates `specs/<feature>/iterations/<NNN>/dashboard.md` (per-iteration snapshot: variance, drift count, FR scoreboard) and appends the iteration to `.specrew/closed-iteration-index.yml`. Verdict shape: `approved for iteration-closeout`.
+- **`iteration-closeout`** — after the Crew passes review-signoff and writes `retro.md`, you approve the iteration close. Boundary-sync generates `specs/<feature>/iterations/<NNN>/dashboard.md` (per-iteration snapshot: variance, drift count, FR scoreboard) and appends the iteration to `.specrew/closed-iterations.yml`. Verdict shape: `approved for iteration-closeout`.
 - **`feature-closeout`** — after the final iteration of a feature is closed, you approve the feature close. Boundary-sync generates `specs/<feature>/closeout-dashboard.md` (cross-iteration FR scoreboard + velocity + delivery summary) and marks the feature complete. Verdict shape: `approved for feature-closeout`.
 
 **Why this matters**: these two boundaries are what mark the work durably "done". Until you authorize them, the feature is **in flight** — `specrew where` will list it as active, and starting a new `specrew start "<other feature>"` will resume the in-flight feature instead of starting fresh. The artifacts produced at closeout (dashboard.md per iteration + closeout-dashboard.md per feature) are also the canonical input that future iterations and features read for velocity calibration. Skipping closeout silently degrades both your project's state-tracking and Specrew's own estimation accuracy.
@@ -247,7 +247,7 @@ The PowerShell Gallery path above is the recommended install. The variants below
 
 ### Prerelease channel — early adopters
 
-Every Specrew release ships first as a `-beta.N` prerelease to PSGallery, then promotes to stable only after manual install validation passes. If you want to help validate the next version (or just track the bleeding edge), install the prerelease.
+Every Specrew release ships first as a `-beta1` prerelease to PSGallery (then `-beta2`, … if validation fails), then promotes to stable only after manual install validation passes. If you want to help validate the next version (or just track the bleeding edge), install the prerelease.
 
 #### Side-by-side gotcha
 
@@ -285,7 +285,7 @@ Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck -
 
 # 3. Verify
 Import-Module Specrew -Force
-specrew --version             # Should report the -beta.N version
+specrew --version             # Should report the -beta1 version
 Get-Module Specrew -ListAvailable | Select-Object Name, Version, @{N='Prerelease';E={$_.PrivateData.PSData.Prerelease}}
 ```
 
@@ -295,7 +295,7 @@ To pin a specific beta (not just "latest prerelease"):
 Install-Module Specrew -RequiredVersion '0.27.4-beta1' -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck -Force
 ```
 
-Note the prerelease syntax: PSGallery normalizes `-beta.1` (with dot) at tag-time to `-beta1` (no dot) in module metadata. Use `Find-Module Specrew -AllowPrerelease -AllVersions` to see exact installable strings.
+Note the prerelease syntax: the current convention tags releases as `v<X.Y.Z>-beta1` (no dot), and the installable version string matches — `0.35.0-beta1`, not `0.35.0-beta.1`. Use `Find-Module Specrew -AllowPrerelease -AllVersions` to see exact installable strings.
 
 #### Pattern B: Beta alongside stable (compare or fall back)
 
@@ -309,7 +309,7 @@ Install-Module Specrew -AllowPrerelease -Scope CurrentUser -SkipPublisherCheck -
 Remove-Module Specrew -ErrorAction SilentlyContinue
 Import-Module Specrew -RequiredVersion '0.27.4-beta1' -Force
 
-specrew --version             # Now reports -beta.N
+specrew --version             # Now reports -beta1
 ```
 
 To switch back to stable mid-session:
@@ -443,7 +443,7 @@ When `specrew start` runs without a feature description in an existing project, 
 - **Per-host coordinator overlay** (v0.27.0): Copilot users get a `.squad/coordinator-overlay.md` file materialized at init. Claude / Codex / Antigravity users get the same coordination behavior via the bootstrap prompt, but no overlay file is created (less discoverable). Functionally equivalent today; a future iteration may unify this.
 - **Multi-developer coordination**: single-developer workflow only. [Proposal 010](../proposals/010-multi-developer-reconciliation.md) covers the eventual model.
 - **Brownfield cartography**: discovery covers the obvious surfaces (manifests, configs, docs) but JIT codebase cartography for arbitrary inherited repos is a future item ([Proposal 025](../proposals/025-jit-codebase-cartography.md)).
-- **Module signing**: the `-SkipPublisherCheck` flag is required on `Install-Module` until a CA-signed release lands. See [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context.
+- **Module signing**: Specrew modules ship **unsigned** since v0.24.1 (the OSS PowerShell Gallery norm), so `Install-Module` uses `-SkipPublisherCheck` to skip the Authenticode publisher check. CA-signed releases for corporate/enterprise consumers are tracked as future work. See [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context.
 - **Windows path encoding**: some PowerShell environments encounter UTF-8 issues on Windows. Set `$env:PSDefaultParameterValues['*:Encoding'] = 'utf8'` if you see mojibake in artifacts.
 - **External pull requests**: not yet part of the alpha operating model. Reading, issues, and discussion are welcome; PRs are intentionally deferred until the operating model stabilizes.
 

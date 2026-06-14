@@ -15,7 +15,7 @@ This document serves multiple reviewer audiences. Use this map to find the secti
 | Reader role | Sections to read |
 |---|---|
 | **Iteration reviewer** (review-signoff, retro, iteration-closeout) | All of this document + [lifecycle-discipline.md](lifecycle-discipline.md) Boundary Discipline / Spec Authority / Traceability / Drift / Committed-Tree Durability / Lifecycle Metadata Integrity / Spec Coverage Verification / Shape Catalog |
-| **Feature-closeout / PR / Release reviewer** | All of the iteration-reviewer reading + [lifecycle-discipline.md](lifecycle-discipline.md) Release Process Discipline section (repository / SDLC Steps 5-14 / CI / PSGallery / beta-vs-stable / per-boundary checklist) |
+| **Feature-closeout / PR / Release reviewer** | All of the iteration-reviewer reading + [lifecycle-discipline.md](lifecycle-discipline.md) Release Process Discipline section (repository / SDLC Steps 5-14 / CI / package-registry / prerelease-vs-stable / per-boundary checklist) |
 | **Proposal reviewer** (any commit touching `proposals/*.md`) | This document Bootstrap + Source of Truth + Review Method + [proposal-discipline.md](proposal-discipline.md) end-to-end |
 | **AI agent acting in any reviewer role** | Read everything. Bootstrap section explicitly addresses cold-start orientation for AI sessions. |
 

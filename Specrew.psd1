@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.35.0'
+    ModuleVersion = '0.36.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -84,6 +84,9 @@
         'extensions/specrew-speckit/knowledge/design-lenses/security-compliance.md',
         'extensions/specrew-speckit/knowledge/design-lenses/sources.md',
         'extensions/specrew-speckit/knowledge/design-lenses/ui-ux.md',
+        'extensions/specrew-speckit/knowledge/repository-governance.schema.json',
+        'extensions/specrew-speckit/knowledge/work-kinds.schema.json',
+        'extensions/specrew-speckit/knowledge/work-kinds.yml',
         'extensions/specrew-speckit/prompts/coordinator-decision-guidance.md',
         'extensions/specrew-speckit/prompts/coordinator-response.md',
         'extensions/specrew-speckit/README.md',
@@ -100,6 +103,7 @@
         'extensions/specrew-speckit/refocus/specify.md',
         'extensions/specrew-speckit/refocus/tasks.md',
         'extensions/specrew-speckit/scripts/brownfield-merge.ps1',
+        'extensions/specrew-speckit/scripts/capability-detector.ps1',
         'extensions/specrew-speckit/scripts/collision-detect.ps1',
         'extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1',
         'extensions/specrew-speckit/scripts/deploy-speckit-extension.ps1',
@@ -116,6 +120,9 @@
         'extensions/specrew-speckit/scripts/intake/Invoke-SpecifyIntake.ps1',
         'extensions/specrew-speckit/scripts/manage-escalation-state.ps1',
         'extensions/specrew-speckit/scripts/manage-reviewer-regression.ps1',
+        'extensions/specrew-speckit/scripts/provider-adapter.ps1',
+        'extensions/specrew-speckit/scripts/provider-generic.ps1',
+        'extensions/specrew-speckit/scripts/provider-github.ps1',
         'extensions/specrew-speckit/scripts/refocus.ps1',
         'extensions/specrew-speckit/scripts/resolve-quality-profile.ps1',
         'extensions/specrew-speckit/scripts/resume-iteration.ps1',
@@ -137,6 +144,8 @@
         'extensions/specrew-speckit/scripts/Test-CopilotInstructionsChangeType.ps1',
         'extensions/specrew-speckit/scripts/validate-governance.ps1',
         'extensions/specrew-speckit/scripts/validate-versions.ps1',
+        'extensions/specrew-speckit/scripts/work-kind-common.ps1',
+        'extensions/specrew-speckit/scripts/work-kind-validator.ps1',
         'extensions/specrew-speckit/squad-templates/agents/implementer/charter.md',
         'extensions/specrew-speckit/squad-templates/agents/planner/charter.md',
         'extensions/specrew-speckit/squad-templates/agents/retro-facilitator/charter.md',
@@ -172,6 +181,10 @@
         'extensions/specrew-speckit/templates/design-analysis.template.md',
         'extensions/specrew-speckit/templates/downstream-constitution.md',
         'extensions/specrew-speckit/templates/iteration-config.yml',
+        'extensions/specrew-speckit/templates/lifecycle/bug-bash-lifecycle.md',
+        'extensions/specrew-speckit/templates/lifecycle/devops-lifecycle.md',
+        'extensions/specrew-speckit/templates/lifecycle/docs-only-lifecycle.md',
+        'extensions/specrew-speckit/templates/lifecycle/software-feature-lifecycle.md',
         'extensions/specrew-speckit/templates/quality/lenses/.gitkeep',
         'extensions/specrew-speckit/templates/quality/lenses/robustness-baseline-v1.md',
         'extensions/specrew-speckit/templates/quality/lenses/security-baseline-v1.md',
@@ -285,6 +298,7 @@
         'templates/github/workflows/specrew-ci.yml',
         'templates/github/workflows/specrew-confidence-lane.yml',
         'templates/github/workflows/specrew-project-sync.yml',
+        'templates/github/workflows/specrew-work-kind.yml',
         'templates/specify/templates/agent-file-template.md',
         'templates/specify/templates/checklist-template.md',
         'templates/specify/templates/closeout-template.md',
@@ -318,7 +332,11 @@
         'templates/squad/agents/worf/charter.md',
         'templates/squad/agents/worf/history.md',
         'templates/squad/identity/now.md',
-        'templates/squad/identity/wisdom.md'
+        'templates/squad/identity/wisdom.md',
+        'templates/work-kind/release-validation-record.md',
+        'templates/work-kind/repository-governance.yml',
+        'templates/work-kind/synthesized-adapter.example.ps1',
+        'templates/work-kind/work-kind.yml'
     )
     PrivateData = @{
         PSData = @{

@@ -1,0 +1,105 @@
+# Work-Kind Catalog (Feature 182 / Proposal 182)
+#
+# The data-driven taxonomy of PR-backed work kinds. One source of truth, referenced by the
+# DevOps lens, the lifecycle templates, the CI work-kind validator, and the methodology doc.
+# Stable IDs (deprecate-not-delete). Validated by work-kinds.schema.json.
+#
+# Authored in a parser-friendly subset (no folded scalars; nested lists at 6-space indent) so
+# the focused ConvertFrom-SpecrewWorkKindCatalog reader can load it WITHOUT the powershell-yaml
+# dependency (Specrew deliberately avoids that dependency).
+
+schema_version: "1.0"
+
+work_kinds:
+  - id: software-feature
+    title: "Software Feature"
+    lifecycle_weight: full
+    description: "Product/runtime behavior and ordinary feature delivery. The full Specrew lifecycle."
+    branch_prefix_hint: "feature/"
+    lifecycle_template: "templates/lifecycle/software-feature-lifecycle.md"
+    closes_before_merge: true
+    required_evidence:
+      - spec
+      - design-workshop
+      - plan
+      - tasks
+      - implementation
+      - review
+      - retro
+      - feature-closeout
+    allowed_scope:
+      - "**"
+  - id: bug-bash
+    title: "Bug Bash"
+    lifecycle_weight: focused
+    description: "Defect fixes or regression bundles. A focused bug lifecycle."
+    branch_prefix_hint: "fix/"
+    lifecycle_template: "templates/lifecycle/bug-bash-lifecycle.md"
+    closes_before_merge: true
+    required_evidence:
+      - bug-list
+      - root-cause
+      - fix-evidence
+      - regression-tests
+      - closeout
+    allowed_scope:
+      - "**"
+  - id: docs-only
+    title: "Docs Only"
+    lifecycle_weight: lightweight
+    description: "README, docs, proposals, methodology, examples, release notes with NO runtime change. Completable through a PR without a release."
+    branch_prefix_hint: "docs/"
+    lifecycle_template: "templates/lifecycle/docs-only-lifecycle.md"
+    closes_before_merge: true
+    produces_release: false
+    required_evidence:
+      - intent
+      - audience
+      - changed-docs
+      - markdown-link-checks
+      - review
+      - docs-closeout
+    allowed_scope:
+      - "**/*.md"
+      - "**/*.mdx"
+      - "**/*.txt"
+      - "docs/**"
+      - "proposals/**"
+      - "CHANGELOG.md"
+  - id: devops
+    title: "DevOps"
+    lifecycle_weight: operational
+    description: "CI/CD, repository settings, branch protection, release workflows, package/publish infrastructure, repository management."
+    branch_prefix_hint: "devops/"
+    lifecycle_template: "templates/lifecycle/devops-lifecycle.md"
+    closes_before_merge: true
+    required_evidence:
+      - risk-rollback-plan
+      - dry-run-evidence
+      - ci-evidence
+      - operational-retro
+      - devops-closeout
+    allowed_scope:
+      - ".github/**"
+      - ".gitlab/**"
+      - ".azuredevops/**"
+      - "templates/github/**"
+      - "**/*.yml"
+      - "**/*.yaml"
+      - "scripts/**"
+      - "install.sh"
+      - "**/*.psd1"
+      - "**/*.psm1"
+      - ".specrew/providers/**"
+      - ".specrew/repository-governance.yml"
+
+# Repository-global / generated files exempt from changed-file classification so they never
+# produce a false mismatch (they are touched by many kinds). The validator removes any changed
+# file matching this allow-list before scope-checking.
+global_allowlist:
+  - "CHANGELOG.md"
+  - ".squad/**"
+  - ".specrew/**"
+  - "**/INDEX.md"
+  - "proposals/INDEX.md"
+  - "**/*.generated.*"

@@ -22,10 +22,10 @@ The start-context.json artifact written by `specrew start` has grown additive fi
 | `launch_mode` | string | --new-window/--same-window | `same-window` (default) / `new-window` / `none` |
 | `copilot_autopilot` | bool | --autopilot flag | Backwards-compat field name; reflects Specrew's --autonomous lifecycle-gate posture (historical naming) |
 | `boundary_enforcement` | object | F-039 schema v2 | Per-boundary verdict-integrity state; see the verdict-integrity sub-schema below |
-| `selected_host` | string | **F-040 (v0.26.0)** | `copilot` / `claude` / `codex`; reflects the active --host kind (default copilot) |
+| `selected_host` | string | **F-040 (v0.26.0)** | `copilot` / `claude` / `cursor` / `codex` / `antigravity`; reflects the active --host kind (default copilot). Cursor added in F-050; Antigravity graduated to supported in v0.27.0 (F-044). |
 | `available_hosts` | object | **F-040 (v0.26.0)** | Map of host kind → bool (PATH probe result) |
 | `crew_runtime_status` | string | **F-040 (v0.26.0)** | `squad-runtime` (Copilot+Squad) or `bootstrap_only` (non-Copilot host without per-host Crew runtime deployed yet) |
-| `host_resolution` | object | **F-043 (planned)** | Records HOW the host was resolved (flag / last-selected / first-run-prompt / auto-single-available) plus alternatives available at probe time |
+| `host_resolution` | string | **F-043 (v0.27.0)** | How the active host was resolved: `flag` / `last-selected` / `first-run-prompt` / `auto-single-available`. Shipped — not planned. |
 | `delegated_routing` / `delegated_routing_evidence` | object | runtime computed | Delegated-agent routing plan (orthogonal to --host launch selection) |
 | `squad_model_overrides` | object | runtime computed | F-019 `Set-SquadModelOverrides` snapshot (Copilot host's per-role model selection) |
 | `prompt_path`, `summary_path` | string | runtime computed | Resolved paths to companion artifacts |
@@ -54,17 +54,16 @@ Each `bypass_history[]` entry is an object with: `session_id`, `reason` (must be
 
 ## Writer contract
 
-Writers must emit explicit `v1` schema markers for Specrew state artifacts:
+Writers must emit an explicit schema marker for Specrew state artifacts. `.specrew/start-context.json` carries `schema: v2` whenever it includes the F-039 `boundary_enforcement` section — which `specrew start` always writes today (see the schema-v2 field inventory above). The following artifacts carry the `v1` baseline marker:
 
 - `.specrew/config.yml`
-- `.specrew/start-context.json`
 - `.specrew/last-validator-summary.json`
 - `.specrew/handover/session-handover.md` (the rolling session handover; `schema: v1` frontmatter — see the handover file contract below)
 - `.specify/feature.json`
 - `.specify/extensions/specrew-speckit/extension.yml` (`schema` is distinct from `extension.version`)
 - `.squad/identity/now.md`
 
-Writers should preserve unrelated existing fields when refreshing an artifact, but they must normalize the schema marker back to `v1`.
+Writers should preserve unrelated existing fields when refreshing an artifact, and must normalize the schema marker to the artifact's current contract version (`v2` for `start-context.json`, `v1` for the others) rather than downgrading it.
 
 ## `.specrew/handover/session-handover.md` file contract (schema v1)
 

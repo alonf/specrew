@@ -282,6 +282,28 @@ function Invoke-RefocusScopePayload {
         }
     }
 
+    # FR-023 / SC-016 (iter-4): surface the SELECTED work_kind's lifecycle CONTRACT at session-start /
+    # refocus so the crew is pointed to its lifecycle BEFORE work begins (the DF-009 intake gap — the
+    # validator runs too late). Guarded (no-op when no work_kind is declared) + fail-open (refocus must
+    # never break). The resolver lives in the work-kind extension (same deployed scripts dir, or the
+    # dev-tree extension path).
+    try {
+        $wkCommon = @(
+            (Join-Path $PSScriptRoot 'work-kind-common.ps1'),
+            (Join-Path $ProjectRoot 'extensions/specrew-speckit/scripts/work-kind-common.ps1'),
+            (Join-Path $ProjectRoot '.specify/extensions/specrew-speckit/scripts/work-kind-common.ps1')
+        ) | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+        if ($wkCommon) {
+            . $wkCommon
+            $lifecycleLine = Get-SpecrewWorkKindLifecycleSurface -ProjectRoot $ProjectRoot
+            if (-not [string]::IsNullOrWhiteSpace($lifecycleLine)) {
+                $parts.Add(("## Work-kind lifecycle (this work item)`n`n" + $lifecycleLine)) | Out-Null
+                $sources += 1
+            }
+        }
+    }
+    catch { Write-RefocusWarn -Code 'SOURCE_MISSING' -Message ("work-kind lifecycle surface unavailable: {0}" -f $_.Exception.Message) }
+
     if ($parts.Count -eq 0) {
         $parts.Add((Get-RefocusFallbackPointerSet -ProjectRoot $ProjectRoot)) | Out-Null
     }

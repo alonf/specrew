@@ -26,7 +26,7 @@ Specrew has explicit lifecycle boundaries:
 
 `before-plan` and `before-implement` are Specrew-added readiness gates that hook into Spec Kit's extension points. They are mandatory but lightweight; their job is to verify the prior boundary's output is durable + the next boundary can start.
 
-After `feature-closeout`, the post-merge release SDLC runs Steps 5-14: push → PR → review → merge → tag `-beta.N` → publish prerelease → manual install validation (PAUSE here for human) → tag stable → publish stable → stop. This is mandated for every feature touching runtime artifacts, even small fixes; see Proposal 060 (universal beta-before-stable mandate). Detailed Release Process Discipline section below.
+After `feature-closeout`, the post-merge release SDLC runs Steps 5-14: push → PR → review → merge → tag `-beta1` → publish prerelease → manual install validation (PAUSE here for human) → tag stable → publish stable → stop. This is mandated for every feature touching runtime artifacts, even small fixes; see Proposal 060 (universal beta-before-stable mandate). Detailed Release Process Discipline section below.
 
 One human authorization advances at most one boundary unless the human explicitly gives a valid compound verdict. Agent prose cannot simulate approval.
 
@@ -133,17 +133,28 @@ Iteration-level review can skip this entire section. Full-feature review and pos
 
 ### Repository Conventions
 
+> **Forge-neutrality note (FR-019 / SC-013).** The conventions and the Post-Merge SDLC in this section
+> are **Specrew's OWN** repository setup — provider `github` + the PowerShell Gallery — shown as a
+> concrete **example**, NOT a downstream mandate. A project governed by Specrew substitutes its own
+> forge, branch model, `review_gate`, and release/publish mechanism per its
+> `.specrew/repository-governance.yml`; the GitHub-specific commands below (`gh pr create`,
+> `Find-Module`/`Install-Module Specrew`, PSGallery `workflow_dispatch`) are Specrew-specific and apply
+> only when a project's provider/workflow instantiates that path.
+
 - **Repository**: <https://github.com/alonf/specrew>
 - **Default branch**: `main`
 - **Feature branches**: named `<NNN>-<feature-slug>` (e.g., `049-pipeline-hardening-intake`); branched from `main`; one feature per branch.
 - **Merge strategy**: **merge-commit only** (NOT squash). The merge commit preserves the lifecycle's boundary-by-boundary atomic commit cadence which validators + audit trail depend on. A squash would collapse the boundary commits into one and destroy lifecycle traceability.
-- **Proposals**: commit direct-to-main (no PR). Never to feature branches. See empirical incident: F-020 closeout PR stray-disposition when proposals landed on a feature branch.
+- **Proposals and documentation**: `main` is protected — it requires pull requests (see [Proposal 182](../../proposals/182-work-kind-branch-governance.md)), so proposal and docs changes land through a PR-backed **docs-only** work item (a short-lived `docs/...` or `chore/proposals-...` branch → PR → merge), never a direct push to `main`. They must still never be mixed into a software-feature branch (empirical incident: F-020 closeout PR stray-disposition when proposals landed on a feature branch). Until Proposal 182 formalizes the work-kind / branch-governance model, treat proposal and documentation edits as docs-only PRs.
 - **Local lint before push**: run `npx markdownlint-cli` on touched markdown + the scoped governance validator. Push-to-main lint failure cascades to skip the Deterministic + Contract lanes (silent truth-check disable), so catching lint locally matters.
 - **Worktree pattern**: when working on main while a feature branch is checked out, use `git worktree add` for an isolated copy. Don't disturb the feature-branch working tree.
 
-### Post-Merge SDLC (F-048 Steps 5-14)
+### Post-Merge SDLC — Specrew's own example (F-048 Steps 5-14)
 
-Every feature touching runtime artifacts follows this sequence (universal mandate per Proposal 060):
+The sequence below is **Specrew's own** post-merge SDLC (provider `github` + PowerShell Gallery), an
+example of the closeout shape — not a downstream mandate. For Specrew itself every feature touching
+runtime artifacts follows it (universal mandate per Proposal 060); a downstream project runs the same
+*shape* via its own forge + release mechanism per its `.specrew/repository-governance.yml`:
 
 | Step | Owner | Action |
 |---|---|---|
@@ -151,7 +162,7 @@ Every feature touching runtime artifacts follows this sequence (universal mandat
 | 6 | Agent | Create PR via `gh pr create` with proper title + body |
 | 7 | Human + Agent | Read Copilot's automated PR review (`gh pr view <#> --json reviews && gh api repos/<owner>/<repo>/pulls/<#>/comments`); address every finding before merge |
 | 8 | Human | Approve merge (merge-commit strategy; not squash) |
-| 9 | Agent | Tag `v<X.Y.Z>-beta.N` on the merge commit |
+| 9 | Agent | Tag `v<X.Y.Z>-beta1` on the merge commit (`-beta2`, … on a FAIL loop) |
 | 10 | Agent | Publish prerelease to PSGallery via `workflow_dispatch` |
 | 11 | **Human PAUSE** | Manual install validation: `Install-Module Specrew -AllowPrerelease` on a clean machine; exercise the new feature end-to-end; verify no regression; verify FileList complete; verify mirror parity intact post-install |
 | 12 | Agent | If validation PASSED: tag `v<X.Y.Z>` (stable) at the SAME commit as the beta tag |
@@ -160,7 +171,7 @@ Every feature touching runtime artifacts follows this sequence (universal mandat
 
 Step 11 is the most consequential PAUSE — it has caught real bugs during dogfooding (e.g., FileList omissions broke v0.27.3 install on Mac; v0.27.4-beta.1 caught a `docs/release-discipline.md` omission between beta.1 → beta.2). NEVER skip step 11, even for trivial fixes.
 
-If step 11 FAILS: fix the issue, bump to `-beta.<N+1>`, re-validate, repeat until PASS, then promote stable. The stable promotion must come from a beta that PASSED — never directly from main without going through beta.
+If step 11 FAILS: fix the issue, bump to the next beta (`-beta2`, then `-beta3`, …), re-validate, repeat until PASS, then promote stable. The stable promotion must come from a beta that PASSED — never directly from main without going through beta.
 
 ### CI Lanes
 
@@ -196,7 +207,7 @@ Before any beta or stable publish, reviewers must verify:
 
 ### Beta-Before-Stable Universal Mandate (Proposal 060)
 
-Every release ships `-beta.N` first, manually validated, then promoted to stable. NO exceptions, including:
+Every release ships `-beta1` first, manually validated, then promoted to stable. NO exceptions, including:
 
 - Hot fixes
 - Production-fire emergencies
@@ -204,16 +215,16 @@ Every release ships `-beta.N` first, manually validated, then promoted to stable
 - Validator-only releases
 - Test-only releases that don't change code paths
 
-Proposal-only commits (no runtime changes) are exempt — proposals go direct to main and don't trigger the release pipeline.
+Proposal-only changes (no runtime artifacts) are exempt — they don't trigger the release pipeline. They still land as a docs-only PR against protected `main` (see [Proposal 182](../../proposals/182-work-kind-branch-governance.md)), not a direct push.
 
 Reviewers approving stable promotion must verify:
 
-- A corresponding `-beta.N` tag exists at the same merge commit
+- A corresponding `-beta<N>` tag exists at the same merge commit
 - PSGallery shows the prerelease version published successfully
 - Maintainer recorded manual install validation PASS (in `.squad/decisions.md` or commit message of the stable tag)
 - NO new commits between beta tag and stable tag (otherwise the validated artifact is different from what gets promoted; this is a real risk class)
 
-Standard release cycle: `v<X.Y.Z>-beta.1` → manual validation → if PASS: `v<X.Y.Z>` stable; if FAIL: fix + `-beta.2` → re-validate → eventually stable.
+Standard release cycle: `v<X.Y.Z>-beta1` → manual validation → if PASS: `v<X.Y.Z>` stable; if FAIL: fix + `-beta2` → re-validate → eventually stable.
 
 ### Reviewer Checklist by Boundary
 
@@ -243,7 +254,7 @@ Standard release cycle: `v<X.Y.Z>-beta.1` → manual validation → if PASS: `v<
 
 **Beta publish review (Steps 9-10, after merge)**:
 
-- `v<X.Y.Z>-beta.N` tag created on the merge commit (not on a feature-branch commit)
+- `v<X.Y.Z>-beta<N>` tag created on the merge commit (not on a feature-branch commit)
 - PSGallery prerelease published successfully — check <https://www.powershellgallery.com/packages/Specrew>
 - Module installable via `Install-Module Specrew -AllowPrerelease`
 
@@ -260,7 +271,7 @@ Standard release cycle: `v<X.Y.Z>-beta.1` → manual validation → if PASS: `v<
 **Stable promotion review (Steps 12-14)**:
 
 - Manual validation PASS explicitly recorded
-- `v<X.Y.Z>` stable tag created at the SAME commit as the validated `-beta.N` tag
+- `v<X.Y.Z>` stable tag created at the SAME commit as the validated `-beta<N>` tag
 - NO commits exist between the beta tag and the stable tag (if there are, the stable promotion is invalid — the validated artifact is different from what's being promoted)
 - PSGallery stable promoted successfully via `workflow_dispatch promote-prerelease`
 - Module installable via default `Install-Module Specrew` (stable channel)

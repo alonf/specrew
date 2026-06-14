@@ -1,0 +1,99 @@
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "powershell"
+selections:
+  - id: "code-rule.intent-revealing-names"
+    checked: true
+  - id: "code-rule.short-functions"
+    checked: true
+  - id: "code-rule.avoid-deep-nesting"
+    checked: true
+  - id: "code-rule.solid-baseline"
+    checked: true
+  - id: "code-rule.object-invariants"
+    checked: true
+  - id: "code-rule.no-magic-numbers"
+    checked: true
+  - id: "code-rule.no-leaky-mutable-internals"
+    checked: true
+  - id: "code-rule.dependency-injection"
+    checked: true
+    decision: "The validator takes the ProviderAdapter as an injected dependency so the git-diff fallback and Pester tests can substitute it; no hard-wired forge call in the core."
+    enforcement: [review, tests]
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "Fail-open + WARN. The validator/detector never throw or block spuriously; they return structured verdicts; malformed/unknown declaration or catalog -> WARN + neutral (advisory). Binds DP-A5/DP-I4."
+    enforcement: [review, tests]
+  - id: "code-rule.robustness-state-boundaries"
+    checked: true
+    decision: "Advisory by default; the validator emits advisory|blocking by config, defaulting to advisory; never spuriously blocks merge (fail-open at the boundary)."
+    enforcement: [review, tests]
+  - id: "code-rule.strategy-state-over-repeated-conditionals"
+    checked: true
+    decision: "ProviderAdapter is a Strategy (github | generic | synthesized) dispatched by the contract; no central switch on provider — adding a forge is a new adapter, not a new branch."
+    enforcement: [review]
+  - id: "code-rule.polymorphism-mechanism"
+    checked: true
+    decision: "Adapter dispatch by a function-set/module-per-adapter conforming to the contract (PowerShell), not class inheritance; the generic fallback is always present."
+    enforcement: [review]
+  - id: "code-rule.anti-corruption-layers"
+    checked: true
+    decision: "The ProviderAdapter is the anti-corruption layer isolating forge-specific APIs from the provider-neutral core; the core imports no forge tool (NFR #1)."
+    enforcement: [review]
+  - id: "code-rule.extension-points"
+    checked: true
+    decision: "The ProviderAdapter contract is the OCP extension point for new forges (synthesized on the fly); the work-kind catalog is the data extension point for new kinds."
+    enforcement: [review]
+  - id: "code-rule.validation-boundaries"
+    checked: true
+    decision: "Validate the declaration + catalog + governance schema at the boundary against their JSON schemas; invalid input -> WARN + neutral (fail-open), never a hard crash."
+    enforcement: [tests, review]
+  - id: "code-rule.secure-coding-defaults"
+    checked: true
+    decision: "No secrets in scripts; gh / GitHub API confined to the GitHub adapter; least-privilege token scopes (read for detect, admin for apply); apply_protection human-gated. Binds DP-S2/S5."
+    enforcement: [review, tests]
+  - id: "code-rule.authz-security-context"
+    checked: true
+    decision: "apply_protection (the only privileged mutation) is human-approved and never auto-applied from an unverified synthesized adapter; capability detection is read-only by default."
+    enforcement: [review, tests]
+  - id: "code-rule.simple-trustworthy-tests"
+    checked: true
+    decision: "Pester unit tests on pure validator/classifier/evidence-checker/fallback logic; behavior assertions, not file-presence."
+    enforcement: [tests]
+  - id: "code-rule.testing-posture"
+    checked: true
+    decision: "Unit + denial-path (too-broad bypass, missing token) + fail-open + catalog-integrity (unique/stable IDs, schema-valid) + multi-host parity for deployed surfaces."
+    enforcement: [tests]
+  - id: "code-rule.api-service-design"
+    checked: true
+    decision: "Catalog schema + .specrew/work-kind.yml declaration + ProviderAdapter contract are public surfaces: schema_version, stable IDs, deprecate-not-delete."
+    enforcement: [review]
+  - id: "code-rule.public-api-reusable-design"
+    checked: true
+    decision: "The work-kind catalog + governance schema + adapter contract are reusable across downstream projects and synthesized adapters; keep them forge-neutral and versioned."
+    enforcement: [review]
+  - id: "code-rule.avoid-common-utility-libs"
+    checked: true
+    decision: "Reinforces the dependency policy — no new utility library; reuse PowerShell built-ins + existing Specrew helpers."
+    enforcement: [review]
+  - id: "code-rule.lts-version-check"
+    checked: true
+    decision: "PowerShell 7+ (Specrew baseline); confirm the current supported runtime at implement time."
+    enforcement: [review]
+  - id: "code-rule.shared-code-packaging"
+    checked: true
+    decision: "New deployable files ship via the module (FileList + extension.yml bump + .specify mirror parity) — the F-176/177 release discipline."
+    enforcement: [tests, review]
+  - id: "code-rule.concurrency-over-locks"
+    checked: false
+    decision: "Exception: the feature has no concurrency surface (validator runs once per PR, single-threaded)."
+  - id: "code-rule.evidence-driven-performance"
+    checked: false
+    decision: "Exception: performance is an explicit NON-driver for this governance tooling (NFR table)."
+custom_rules: []
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+  notes: "PowerShell 7+ + Pester + git + Specrew's existing YAML handling. gh / GitHub API is an EXISTING Specrew dependency, confined to the GitHub adapter only; the generic fallback and the core use pure git. No new runtime dependency."
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"

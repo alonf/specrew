@@ -1,0 +1,45 @@
+# .specrew/repository-governance.yml — PROJECT-LEVEL branch governance.
+#
+# Captured once by the DevOps & Operations lens, inherited per feature, deltas re-asked. Branch NAMES
+# are yours (main is only a default). Validated against repository-governance.schema.json. For a
+# brownfield repo, record the DETECTED posture here and your adapt-or-change decision.
+
+repository_governance:
+  provider: github                       # or a synthesized adapter id (gitlab, azure-devops, …)
+  branch_model:
+    style: trunk                         # trunk | integration-branch | gitflow | custom
+    release_truth_branch: main           # YOUR name: main | master | trunk | production | release | …
+    branches:
+      - name: main
+        role: release-truth
+        protected: true
+        require_pull_request: true
+        required_checks: [specrew-governance, tests]
+        allow_force_pushes: false
+        allow_deletions: false
+      # integration-branch example (uncomment + set release-truth merges_from: [dev]):
+      # - name: dev
+      #   role: integration
+      #   protected: true
+      #   require_pull_request: true
+      #   required_checks: [specrew-governance]
+      #   merges_from: ["feature/*"]
+    promotion_path: "feature/* -> main"
+  review_gate:
+    human_review:
+      required_approvals: 1
+      require_comment_resolution: true
+    automated_review:
+      enabled: false                     # OPT-IN; the user decides in the workshop
+      provider_suggestion: copilot        # GitHub only; the adapter MAY suggest it
+    merge_requires: [human_review]
+  apply_to_admins: true
+  bypass_actors: []
+  enforcement_mode: branch-protection    # branch-protection | rulesets | ci-only | manual (achievable)
+
+multi_repo:
+  mode: single-repo                      # single-repo | multi-repo
+  orchestration_repo: null
+  participant_repos: []
+  merge_coordination: independent        # independent | release-train | manual
+  release_coordination: independent      # independent | release-train | manual
