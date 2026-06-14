@@ -7,7 +7,7 @@
 **Tasks Remaining**: T002 + T003 (authoring side — Fix A2 packet capture + clobber guard, DF-3/SC-015), T001 (callable authoring command — Fix A1, DF-7), T007 (full falsification suite), T008 + T009 (DF-1/DF-2, small) — plus the cross-host marker residual (drift-log D-001)
 **In Progress**: (checkpointed, working tree clean) — the authoring side (T002 → T003 → T001) is next
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-14T00:13:37Z
+**Updated**: 2026-06-14T00:30:08Z
 
 ## Charter
 
@@ -128,9 +128,13 @@ losing a real approval over inventing one.
   records the mechanical crossing only. `boundary-sync-atomic` reconciled into a falsification guard.
 - **T006** (`fa6ab2e1` + `ec709f09`) — `Get-SpecrewPendingVerdictState`; `specrew where` + the bootstrap
   resume directive surface "AWAITING YOUR VERDICT" when committed ≠ authorized (FR-027), every host.
-- **T004** (`115f98d9` + `d35c92c2` + `be93c771`) — the hook captures the human's typed verdict from the
-  transcript (recognizer + reader tied to the packet marker), advances the gate with evidence-source
-  `hook-captured-from-transcript`, identity `unattributed`. Proven end-to-end (`HookVerdictCapture.Tests`).
+- **T004** (`115f98d9` + `d35c92c2` + `be93c771`; **contiguity fix `f29333d6`**) — the hook captures the
+  human's typed verdict from the transcript (recognizer + reader tied to the packet marker), advances the gate
+  with evidence-source `hook-captured-from-transcript`, identity `unattributed`. Proven end-to-end
+  (`HookVerdictCapture.Tests`). **Post-"done" the maintainer falsified a HIGH from-skip hole** (forward-only was
+  not one-boundary-at-a-time: a real approval for a non-contiguous marker advanced a later gate while an earlier
+  one was never authorized). Fixed with a **gate-contiguity guard** (marker FROM == authorized cursor AND TO ==
+  FROM's immediate successor, else reject + journal `marker-cursor-mismatch`); 5 falsification cases green.
 
 **Enabling prerequisite (maintainer-directed):** the central hook-cwd-resolution fix (`ff34e776`,
 `f174-i011-hook-cwd-central-resolution`) — claude `${CLAUDE_PROJECT_DIR}` placeholder + per-machine launcher
