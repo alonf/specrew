@@ -40,10 +40,10 @@ tasks:
     completed_at: "2026-06-13T23:21:24Z"
     blocked_reason: ""
   T007:
-    title: "Deterministic tests — authoring round-trip (SC-012), clobber-preserve (SC-015), verdict-integrity unattributed + un-authorized (SC-013), committed != authorized (SC-014)"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    title: "Deterministic SC-acceptance consolidation (SC-012/013/014/015). Each SC's authoritative proof was written alongside T001-T006 (SC-012/015 = HookPacketCapture + HandoverAuthorCommand; SC-013 = HookVerdictCapture + verdict-capture-blocks + boundary-sync-atomic; SC-014 = pending-verdict-surface). T007 binds them into ONE auditable, runnable acceptance (tests/bootstrap/Sc012to015Acceptance.Tests.ps1): asserts each SC's proof FILE(s) exist + RUNS each unique proof + asserts GREEN-together, and emits the SC->proof matrix. Non-duplicative (orchestrates, does not re-assert); the deterministic floor that complements the real-host re-dogfood acceptance gate. 14/14 assertions green (6 unique proof files all pass together)."
+    status: "done"
+    started_at: "2026-06-14T05:10:00Z"
+    completed_at: "2026-06-14T05:30:00Z"
     blocked_reason: ""
   T008:
     title: "DF-1 pointer-mode recap synthesis — push pointer-mode hosts to synthesize a decisions recap, not just lens names (first to defer if overrun)"

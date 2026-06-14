@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T001 (agent-callable handover authoring command `specrew handover author` — DF-7; the reachable replacement for the un-exported `Write-SpecrewHandoverContext`, drift D-005), proven end-to-end + green (HandoverAuthorCommand.Tests, 6 cases incl. SC-012 round-trip + SC-015 clobber-guard preservation + --stdin)
-**Tasks Remaining**: T007 (deterministic test consolidation — SC-012/013/014/015, substantially covered by HandoverAuthorCommand + HookPacketCapture + HookVerdictCapture; confirm each SC has explicit proof), T008 + T009 (DF-1/DF-2, small) — plus the cross-host marker residual (drift-log D-001)
-**In Progress**: (checkpointed, working tree clean) — T007 (deterministic test consolidation) is next
+**Last Completed Task**: T007 (deterministic SC-acceptance consolidation — `Sc012to015Acceptance.Tests.ps1` binds each of SC-012/013/014/015 to its authoritative proof, asserts present + GREEN-together + emits the SC->proof matrix; 14/14 green, 6 unique proof files all pass together)
+**Tasks Remaining**: T008 + T009 (DF-1/DF-2, small — pointer-mode recap synthesis + version/branch in the directive) — plus the cross-host marker residual (drift-log D-001)
+**In Progress**: (checkpointed, working tree clean) — T008 (DF-1 pointer-mode recap synthesis) is next
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-14T05:05:00Z
+**Updated**: 2026-06-14T05:30:00Z
 
 ## Charter
 
@@ -194,10 +194,15 @@ COMMAND, not a module export (drift D-005 — agents invoke `specrew ...`, never
 `HandoverAuthorCommand.Tests` (round-trip incl. interpretive sections SC-012, tolerant headers, dispatch arm,
 unrecognized-skip, clobber-guard preservation SC-015, --stdin).
 
-**REMAINING:** T007 (deterministic test consolidation — substantially covered by HandoverAuthorCommand +
-HookPacketCapture + HookVerdictCapture; confirm each of SC-012/013/014/015 has explicit proof), T008/T009
-(DF-1/DF-2, small, first-to-defer), the cross-host marker residual (drift-log D-001). Then the closeout cap-revert
-(32→20) + the real-host re-dogfood acceptance gate.
+**Deterministic SC-acceptance — DONE + green (T007):** `tests/bootstrap/Sc012to015Acceptance.Tests.ps1` binds
+each of SC-012/013/014/015 to its authoritative proof (SC-012/015 = HookPacketCapture + HandoverAuthorCommand;
+SC-013 = HookVerdictCapture + verdict-capture-blocks + boundary-sync-atomic; SC-014 = pending-verdict-surface),
+asserts each proof file is present, RUNS each unique proof, asserts GREEN-together, and emits the SC->proof
+matrix (14/14 green, 6 unique files). Non-duplicative orchestration; the deterministic floor under the real-host
+re-dogfood (green synthetic tests are necessary, not sufficient — the re-dogfood is still the acceptance gate).
+
+**REMAINING:** T008/T009 (DF-1/DF-2, small, first-to-defer), the cross-host marker residual (drift-log D-001).
+Then the closeout cap-revert (32→20) + the real-host re-dogfood acceptance gate.
 
 **Process note (honest):** task-implementation commits this phase used the `feat/fix(174):` conventional-commit
 prefix with the T0NN reference in the body, rather than the `boundary(implement): T0NN` prefix; focused-per-task
