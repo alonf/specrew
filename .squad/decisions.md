@@ -1,3 +1,43 @@
+## 2026-06-14 — F-174 iteration-011 mid-implement SCOPE AMENDMENT: hook install/discovery hardening (3 layers)
+
+### 2026-06-14 — Decision: fold proactive hook provisioning + a `specrew hooks` command + a degradation diagnostic INTO iter-011 (extra SP pre-approved, NO proposal)
+
+- **Decision ID**: f174-i011-hook-deploy-hardening
+- **Type**: scope-amendment
+- **Affected Requirement**: FR-022 (+ a new FR-028 to be authored — proactive hook provisioning / discovery / degradation diagnostic)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-14T01:41:40Z
+- **Decision**: Fix a shortsight in how Specrew deploys hooks TODAY. F-174 makes hook-driven startup the PRIMARY
+  path, so `specrew start` (now mostly a UI/Antigravity helper) cannot be relied on to repair missing hooks, and a
+  startup hook cannot install itself. The current "install hooks only for hosts detected at init/update time" model
+  leaves a SILENT degradation hole: a user runs `specrew init`, later installs Codex/Copilot/Cursor, launches
+  directly, and Specrew behaves hookless with no clear warning. Belt-and-braces fix, THREE layers:
+  1. **Proactive provisioning** — `specrew init` + `specrew update` provision hook configs for ALL supported
+     hook-capable hosts (claude/codex/copilot/cursor), not only detected ones. Acceptable for codex/copilot/cursor
+     because the config points to the GENERIC per-machine launcher (no-ops outside a Specrew project), not a
+     project-specific dispatcher. PRESERVE user entries; replace only Specrew-owned entries; RESPECT opt-outs; FAIL
+     OPEN (hook problems never fail init/update).
+  2. **Discoverable repair surface** — `specrew hooks status | install | install --host <h> | remove --host <h>`;
+     reports installed / missing / stale / opted-out / failed per host. Not the main discovery mechanism, but a
+     concrete place to send the user.
+  3. **Always-loaded degradation diagnostic** — in the always-loaded instruction surface (or a skill it invokes):
+     if in a Specrew project (`.specrew/` + extension present) but the SessionStart/bootstrap directive did NOT
+     arrive, warn ONCE per session ("Specrew hooks do not appear active for this host. Automatic handover and
+     verdict capture may be unavailable. Run `specrew hooks status` or `specrew update` to repair."). FALLBACK
+     diagnostic only — NOT the integrity mechanism; no spam.
+- **Maintainer rulings (this turn, verbatim intent)**: (a) NO proposal — "I already consider the extra sp that we
+  will put here and approved." (b) IN-scope — "it is not something not related to this feature, it is fixing a
+  shortsight in the way we deploy hooks today. We must be able to provide a correct behavior when users install
+  agents such as copilot, cursor and other after having a specrew project." So this is folded into iter-011, not a
+  separate proposal/feature.
+- **Disposition**: governed within iter-011 — (1) a parallel impact map of the current hook-deploy subsystem
+  (running), then (2) author FR-028 (spec amendment) + add tasks T010–T01x to the plan/tasks with traceability +
+  raise the iteration capacity for the pre-approved extra SP, then (3) implement side-effect-checked with tests,
+  then (4) adversarial review. Honors `f174-i011-implement-approved` instruction 1 (understand impact BEFORE
+  changing). **Capacity note**: this adds to the 22 cap; the `f174-i011-cap-revert-obligation` (revert to 20 at
+  closeout) still stands — the closeout revert restores the GLOBAL default regardless of iter-011's final consumed.
+
 ## 2026-06-13 — F-174 iteration-011 before-implement→implement: APPROVE WITH INSTRUCTIONS
 
 ### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — begin implementation (Fix A→C→B→D/E)

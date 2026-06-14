@@ -22,7 +22,13 @@ effort_unit: "story_points"
 # maintainer made this call INFORMED of the split-not-raise position + the F-049
 # reverted precedent above. This is PROJECT-GLOBAL and REVERSIBLE: lower back to
 # 20 after iteration 011 closes (closed iterations are grandfathered).
-capacity_per_iteration: 22
+#
+# OVERRIDE 2 (2026-06-14, F-174 iteration 011, decision f174-i011-hook-deploy-hardening):
+# raised 22 -> 32 for the maintainer-pre-approved hook install/discovery hardening
+# (FR-028, T010-T012) folded mid-implement into iter-011 ("I already consider the extra
+# sp ... and approved"). Same REVERSIBLE + grandfathered terms: the
+# f174-i011-cap-revert-obligation restores this to the global default 20 at closeout.
+capacity_per_iteration: 32
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)

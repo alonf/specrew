@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 22/22 story_points
+**Capacity**: 32/32 story_points
 **Started**: 2026-06-13
 **Completed**:
 
@@ -77,9 +77,14 @@ NOT rely on agent compliance for integrity-critical state** — the fixes must b
 | T007 | Deterministic tests — authoring round-trip (SC-012), clobber-preserve (SC-015), verdict-integrity unattributed + un-authorized (SC-013), committed ≠ authorized (SC-014) | SC-012, SC-013, SC-014, SC-015 | US-3 | 3 | Implementer | `tests/bootstrap/**` | planned | TBD | | |
 | T008 | DF-1 pointer-mode recap synthesis — push pointer-mode hosts to synthesize a decisions recap, not just lens names (first to defer if overrun) | FR-002, FR-022 | US-3 | 2 | Implementer | `scripts/internal/specrew-bootstrap-provider.ps1` | planned | TBD | | |
 | T009 | DF-2 version/branch carried in the bootstrap directive so the pointer-mode banner is complete (first to defer if overrun) | FR-002 | US-1 | 1 | Implementer | `scripts/internal/specrew-bootstrap-provider.ps1` | planned | TBD | | |
+| T010 | Hook-deploy Layer 1 — proactive provisioning at init+update for ALL hook-capable registry hosts (claude/codex/copilot/cursor), not PATH-detected only; preserve user entries, replace only Specrew-owned, respect opt-outs, fail open, launcher provisioned even when no host binary is present (+ tests) | FR-028 | US-3 | 3 | Implementer | `hosts/_registry.ps1`, `scripts/internal/refocus-deploy-integration.ps1`, `tests/**` | planned | TBD | | |
+| T011 | Hook-deploy Layer 2 — `specrew hooks status\|install\|remove [--host]` command (dispatcher-only, no project-setup gate) + a non-mirrored `Get-SpecrewHooksStatus` inspector (installed/missing/stale/opted-out/failed; stale = regenerate-and-compare); register in dispatch + FileList + usage (+ tests) | FR-028 | US-3 | 4 | Implementer | `scripts/specrew.ps1`, `scripts/specrew-hooks.ps1`, `scripts/internal/specrew-hook-health.ps1`, `Specrew.psd1`, `tests/**` | planned | TBD | | |
+| T012 | Hook-deploy Layer 3 — degradation diagnostic on EXISTING always-loaded surfaces (copilot-instructions + refocus core + `specrew-hooks` skill): warn ONCE per session when in a Specrew project but the bootstrap directive did not arrive; `Test-SpecrewBootstrapDirectiveArrived` helper + warn-once gate; honest residual-gap doc for claude/codex/cursor (no new always-loaded files) (+ tests) | FR-028 | US-3 | 3 | Implementer | `scripts/internal/specrew-hook-health.ps1`, `.squad/templates/copilot-instructions.md`, `extensions/specrew-speckit/refocus/general.md`, `tests/**` | planned | TBD | | |
 
-**Capacity: 22/22** (T001–T009 = 2+3+2+3+3+3+3+2+1). Human-approved cap raise (plan verdict). Defer
-priority on overrun: T008/T009 first.
+**Capacity: 32/32** (T001–T009 = 22; T010–T012 hook-deploy hardening = 3+4+3 = 10). Cap raised 22→32 for the
+maintainer-pre-approved hook-deploy hardening (decision `f174-i011-hook-deploy-hardening`; "I already consider the
+extra sp ... and approved"). The `f174-i011-cap-revert-obligation` (restore global default 20 at closeout) still
+stands. Defer priority on overrun: T008/T009 first.
 
 ## Acceptance gate (review evidence — NOT an SP-counted task)
 
@@ -96,15 +101,17 @@ per the iteration-010 falsification lesson — green synthetic tests (T007) are 
 | Setting | Value |
 | ------- | ----- |
 | Effort Unit | story_points |
-| Capacity per Iteration | 22 |
+| Capacity per Iteration | 32 |
 | Iteration Bounding | scope |
 | Time Limit (hours) | n/a |
 | Overcommit Threshold | 1.0 |
 | Defer Strategy | manual |
 | Calibration Enabled | true |
 
-> Capacity per Iteration RAISED 20 → 22 for this iteration by human-approved plan verdict
-> (`f174-i011-plan-tasks-approved`) to keep the cluster coherent; estimates not deflated.
+> Capacity per Iteration RAISED 20 → 22 (plan verdict `f174-i011-plan-tasks-approved`, cluster coherence) → 32
+> (mid-implement scope amendment `f174-i011-hook-deploy-hardening`, maintainer pre-approved the hook-deploy
+> hardening SP). Estimates not deflated. The `f174-i011-cap-revert-obligation` (restore global default 20 at
+> closeout) still stands — the closeout revert restores the GLOBAL default regardless of iter-011's consumed.
 
 ## Traceability Summary
 
@@ -116,7 +123,11 @@ per the iteration-010 falsification lesson — green synthetic tests (T007) are 
   `f174-i011-verdict-authority-stop-hook`.
 - **FR-027** (committed ≠ authorized resume): T006. SC-014.
 - **FR-002 / FR-022** (small fixes — clarify instruction 5): T008 (DF-1), T009 (DF-2).
+- **FR-028** (hook install/discovery hardening — mid-implement scope amendment `f174-i011-hook-deploy-hardening`):
+  T010 (layer 1 proactive provisioning, SC-016), T011 (layer 2 `specrew hooks` command, SC-017), T012 (layer 3
+  degradation diagnostic, SC-018).
 - **SC-012/013/014/015**: T007 (deterministic tests) + the re-dogfood acceptance gate (run at review).
+- **SC-016/017/018**: T010/T011/T012 carry their own deterministic tests (tests folded per task).
 
 ## Clarify rulings carried into the plan
 

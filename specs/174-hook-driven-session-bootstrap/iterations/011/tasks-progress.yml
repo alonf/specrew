@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "174-hook-driven-session-bootstrap"
 iteration: "011"
-updated_at: "2026-06-14T01:33:49Z"
+updated_at: "2026-06-14T01:45:00Z"
 tasks:
   T001:
     title: "Expose a TESTED public/agent-callable authoring command/skill around the handover writer — PROVE/EXPORT the callable surface (do NOT assume Write-SpecrewHandoverContext is exported)"
@@ -53,6 +53,24 @@ tasks:
     blocked_reason: ""
   T009:
     title: "DF-2 version/branch carried in the bootstrap directive so the pointer-mode banner is complete (first to defer if overrun)"
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T010:
+    title: "Hook-deploy Layer 1 (FR-028, SC-016) — proactive provisioning at init+update for ALL hook-capable registry hosts (claude/codex/copilot/cursor), not PATH-detected only. Get-SpecrewHookCapableHosts registry helper (manifests carrying RefocusHookBindings; capability boolean ONLY — events stay from Get-HostEventGroups) + Invoke-RefocusHookDeployment iterates it (claude gated on .claude/ existence, user-level hosts always). Preserve user entries, replace only Specrew-owned, respect opt-outs, fail open, per-machine launcher provisioned even with no host binary present. Tests folded."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T011:
+    title: "Hook-deploy Layer 2 (FR-028, SC-017) — `specrew hooks status|install|remove [--host]` command (dispatcher-only, NO project-setup gate, runs in a broken project) + non-mirrored Get-SpecrewHooksStatus inspector (installed/missing/stale/opted-out/failed; stale = regenerate-and-compare vs Get-SpecrewHookCommand). install (no host) provisions missing + respects/reports opt-outs; install --host (or --force) clears that opt-out; remove records opt-out. Register in specrew.ps1 dispatch + FileList + Show-Usage. Tests folded."
+    status: "planned"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T012:
+    title: "Hook-deploy Layer 3 (FR-028, SC-018) — degradation diagnostic on EXISTING always-loaded surfaces only (managed copilot-instructions + always-true refocus core + specrew-hooks skill body): warn ONCE per session when in a Specrew project but the SessionStart/bootstrap directive did NOT arrive; Test-SpecrewBootstrapDirectiveArrived helper + warn-once gate; fallback-only, no spam. Honest residual-gap doc for claude/codex/cursor (no NEW always-loaded files — out of scope). Tests folded."
     status: "planned"
     started_at: ""
     completed_at: ""

@@ -409,6 +409,34 @@ offered.
   validity) on the AUTHORIZATION axis. (Surfaced as DF-4: a resuming host read a `boundary(specify)`
   commit as approval and was poised to skip two un-authorized gates.)
   **Owner**: Implementer. **Iteration**: 011.
+- **FR-028**: Hook installation MUST be resilient to hosts installed AFTER `specrew init` — F-174 makes
+  hook-driven startup the PRIMARY path, so `specrew start` (now mostly a UI / Antigravity helper) cannot be
+  relied on to repair missing hooks, and a startup hook cannot install itself. THREE layers (belt-and-braces;
+  the maintainer pre-approved the scope, decision `f174-i011-hook-deploy-hardening`):
+  1. **Proactive provisioning** — `specrew init` AND `specrew update` MUST provision hook configs for ALL
+     supported HOOK-CAPABLE hosts (the registry hosts carrying `RefocusHookBindings`: claude, codex, copilot,
+     cursor), NOT only hosts currently detected on PATH. For the user-level hosts (codex/copilot/cursor) the
+     config points at the generic per-machine launcher (`~/.specrew/specrew-hook-launch.ps1`), which no-ops
+     outside a Specrew project, so provisioning is safe even when the host binary is absent. Provisioning MUST
+     preserve user hook entries, replace only Specrew-owned entries, RESPECT recorded opt-outs (never silently
+     re-enable), and FAIL OPEN (a hook problem never fails init/update). Hookless hosts (antigravity — no
+     `RefocusHookBindings`) are excluded.
+  2. **Discoverable repair surface** — a `specrew hooks status | install | remove [--host <h>]` command that
+     reports per host: installed / missing / stale / opted-out / failed. `status` runs even in a broken project
+     (no project-setup gate). `install` (no host) provisions MISSING hosts but RESPECTS + REPORTS existing
+     opt-outs; `install --host <h>` (or `--force`) clears that opt-out and re-installs; `remove [--host <h>]`
+     records the opt-out. It is a concrete place to send a degraded user, not the main discovery mechanism.
+  3. **Degradation diagnostic** — guidance carried on the EXISTING always-loaded surfaces (the managed
+     copilot-instructions file; the always-true refocus core; the `specrew-hooks` skill body) telling the agent:
+     if it is in a Specrew project (`.specrew/` + the extension present) but did NOT receive the
+     SessionStart/bootstrap directive this session, warn ONCE per session that hooks do not appear active and to
+     run `specrew hooks status` / `specrew update`. This is a FALLBACK diagnostic only — NEVER the integrity
+     mechanism — and MUST NOT spam. **Honest residual**: hosts with no Specrew-deployed always-loaded surface
+     (claude/codex/cursor, where hooks ARE the surface) get no AUTOMATIC warning when hooks are FULLY absent;
+     for them the mitigations are the manual `specrew hooks status` command + the skill description in context +
+     (decisively) Layer 1, which PREVENTS the gap. Creating new per-host always-loaded instruction files is out
+     of scope for this iteration.
+  **Owner**: Implementer. **Iteration**: 011.
 
 ### Traceability & Governance Requirements
 
@@ -533,6 +561,20 @@ offered.
   placeholder or stale body, and MUST set `active_boundary`. Proven by a deterministic test (author →
   turn-end Stop → the authored body + `active_boundary` are preserved, not clobbered). (FR-022
   iteration-011 amendment, clarify instruction 4)
+- **SC-016**: `specrew init` / `specrew update` provision hook configs for ALL hook-capable registry hosts
+  (claude/codex/copilot/cursor) regardless of PATH detection, while preserving user entries, respecting
+  recorded opt-outs, and excluding the hookless host (antigravity). Proven by a deterministic test: a
+  provision run with NO host binaries on PATH still writes each host's config (the user-level ones pointing at
+  the per-machine launcher), a pre-existing user hook entry survives, and a recorded opt-out is NOT re-enabled.
+  (FR-028 layer 1)
+- **SC-017**: `specrew hooks status` reports installed / missing / stale / opted-out / failed per host and runs
+  without a project-setup gate; `install`/`remove` change the recorded state accordingly (`remove` records the
+  opt-out, `install --host` clears it). Proven by a deterministic test over the per-host states. (FR-028 layer 2)
+- **SC-018**: The degradation diagnostic emits the "hooks do not appear active" warning at most ONCE per session
+  and ONLY when in a Specrew project where the bootstrap directive did not arrive; it never fires when the
+  directive DID arrive, and never blocks. Proven by a deterministic test of the detection helper
+  (`Test-SpecrewBootstrapDirectiveArrived` + the warn-once gate). The cross-host always-loaded-surface residual
+  is documented, not asserted. (FR-028 layer 3)
 
 ## Assumptions
 
