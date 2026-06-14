@@ -90,6 +90,49 @@ Assert-True ($LASTEXITCODE -ne 0) 'install --host bogus: unknown host errors (no
 $out = Invoke-Hooks @('install', '--host', 'antigravity')
 Assert-True ($LASTEXITCODE -ne 0) 'install --host antigravity: hookless host rejected (non-zero exit)'
 
+# --- 10. (145-review P5-001): claude stale branch — dispatcher present but NOT the ${CLAUDE_PROJECT_DIR} form ---
+Reset-Scratch
+$claudeCfg = Join-Path $projectRoot '.claude\settings.local.json'
+New-Item -ItemType Directory -Path (Split-Path -Parent $claudeCfg) -Force | Out-Null
+# A pre-ff34e776 claude entry: names the dispatcher by a BARE relative path (no ${CLAUDE_PROJECT_DIR} placeholder).
+$legacyClaude = '{"hooks":{"SessionStart":[{"hooks":[{"type":"command","command":"pwsh -File .specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1 -Event SessionStart -HostKind claude"}]}]}}'
+[System.IO.File]::WriteAllText($claudeCfg, $legacyClaude, [System.Text.UTF8Encoding]::new($false))
+$out = Invoke-Hooks @('status', '--host', 'claude')
+Assert-True ((Status-Line -Out $out -HostKind 'claude') -match 'stale') 'status: a claude dispatcher entry WITHOUT the ${CLAUDE_PROJECT_DIR} placeholder is reported stale (claude migration arm)'
+
+# --- 11. (145-review defect-001): install REPORTS a deploy FAILURE, never a false "installed" -----------------
+Reset-Scratch
+# Seed a hand-broken (unparsable) claude config the deploy will REFUSE — install must report FAILED + exit non-zero.
+$brokenClaude = Join-Path $projectRoot '.claude\settings.local.json'
+New-Item -ItemType Directory -Path (Split-Path -Parent $brokenClaude) -Force | Out-Null
+[System.IO.File]::WriteAllText($brokenClaude, '{broken json, not parseable', [System.Text.UTF8Encoding]::new($false))
+$out = Invoke-Hooks @('install', '--host', 'claude')
+Assert-True ($LASTEXITCODE -ne 0) 'install on a broken config: exits non-zero (a genuine deploy failure is surfaced)'
+Assert-True (-not ((($out -join ' ')) -match 'claude\s+installed')) 'install on a broken config: does NOT falsely report "installed" (defect-001)'
+Assert-True ((($out -join ' ')) -match 'FAILED') 'install on a broken config: reports FAILED'
+Assert-True ((Get-Content -LiteralPath $brokenClaude -Raw) -eq '{broken json, not parseable') 'install on a broken config: the user file is left untouched'
+
+# --- 12. (145-review P5-005): bare `install --force` clears a recorded opt-out at the command level -----------
+Reset-Scratch
+$out = Invoke-Hooks @('install')                       # provision all
+$out = Invoke-Hooks @('remove', '--host', 'cursor')    # opt cursor out
+Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-cursor')) '12 precondition: cursor opt-out recorded'
+$out = Invoke-Hooks @('install', '--force')            # bare --force clears ALL opt-outs
+Assert-True (-not (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-cursor'))) 'install --force: clears the cursor opt-out (command-level --force, no --host)'
+$out = Invoke-Hooks @('status', '--host', 'cursor')
+Assert-True ((Status-Line -Out $out -HostKind 'cursor') -match 'installed') 'install --force: cursor reinstalled after the forced opt-out clear'
+
+# --- 13. (145-review P5-002): `status` SURFACES the degradation diagnostic in a full project w/o a directive ---
+Reset-Scratch
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.specify\extensions\specrew-speckit') -Force | Out-Null   # a FULL Specrew project
+# .specrew/runtime exists (from Reset-Scratch's .specrew) but NO session-marker.json/bootstrap-journal -> directive did NOT arrive.
+$out = Invoke-Hooks @('status')
+Assert-True ((($out -join "`n")) -match 'Diagnostic:.*hooks do not appear active') 'status in a full project with NO bootstrap-directive trail SURFACES the degradation diagnostic (L2<->L3 wiring)'
+# -Peek: a second status still shows it (the status surfacing never records the warn-once marker).
+$out2 = Invoke-Hooks @('status')
+Assert-True ((($out2 -join "`n")) -match 'Diagnostic:.*hooks do not appear active') 'status diagnostic is -Peek (repeatable; never records the warn-once marker)'
+Assert-True (-not (Get-ChildItem -LiteralPath (Join-Path $projectRoot '.specrew\runtime') -Filter 'hook-degradation-warned-*' -ErrorAction SilentlyContinue)) 'status diagnostic left NO warn-once marker on disk'
+
 # --- summary -------------------------------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {

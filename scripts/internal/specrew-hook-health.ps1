@@ -79,6 +79,15 @@ function Get-SpecrewHooksStatus {
         $optOut = Get-SpecrewHostOptOutMarkerPath -HostKind $hostKind -ProjectPath $ProjectPath
         $state = 'missing'; $detail = 'no Specrew hook entry'
 
+        # Defensive (145-review Q-001): Get-SpecrewHostHookConfigPath has cases for the 4 current hook-capable
+        # hosts; a FUTURE 5th host in the registry would yield a $null path. Keep the "never throws" contract
+        # real — report 'unknown' rather than passing $null to Test-Path (a binding throw that would fail-CLOSE
+        # the status surface). Not reachable today (the host list is exactly the 4 cased hosts).
+        if ($null -eq $configPath) {
+            $rows.Add([pscustomobject]@{ Host = $hostKind; State = 'unknown'; ConfigPath = $null; Detail = 'no config-path mapping for this host (add a case to Get-SpecrewHostHookConfigPath)' }) | Out-Null
+            continue
+        }
+
         if (Test-Path -LiteralPath $optOut -PathType Leaf) {
             $state = 'opted-out'; $detail = ("opt-out recorded (re-enable: specrew hooks install --host {0})" -f $hostKind)
         }

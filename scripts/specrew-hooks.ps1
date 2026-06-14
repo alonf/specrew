@@ -46,6 +46,12 @@ for ($i = 0; $i -lt $remaining.Count; $i++) {
     elseif ($arg -ieq '--force') { $force = $true }
 }
 if ([string]::IsNullOrWhiteSpace($projectPath)) { $projectPath = (Get-Location).Path }
+# Normalize to an ABSOLUTE path: the health helpers + the deploy subprocess use .NET file APIs, which resolve a
+# relative path against the PROCESS cwd, not the PowerShell location (a named Windows/PowerShell trap). Fail-open
+# if the path does not exist (keep the user's value so the not-a-project / broken-project path still reports).
+try { $resolved = (Resolve-Path -LiteralPath $projectPath -ErrorAction Stop).Path; if ($resolved) { $projectPath = $resolved } } catch { $null = $_ }
+
+$script:HookFailures = 0
 
 . (Join-Path $PSScriptRoot 'internal/specrew-hook-health.ps1')
 $deployScript = Join-Path $PSScriptRoot 'internal/deploy-refocus-hooks.ps1'
@@ -71,12 +77,16 @@ function Get-TargetHosts {
 }
 
 function Invoke-DeployForHost {
+    # Returns { Output (string[]); ExitCode } — the caller MUST consult ExitCode, not just scan the text, so a
+    # genuine deploy FAILURE (non-zero exit: e.g. the deploy refusing a hand-broken/unparsable config) is never
+    # mis-reported as success (145-review defect-001).
     param([string]$HostKind, [switch]$Remove, [switch]$ForceDeploy)
     $deployArgs = @('-ProjectPath', $projectPath, '-HostKind', $HostKind)
     if ($Remove) { $deployArgs += '-Remove' }
     if ($ForceDeploy) { $deployArgs += '-Force' }
     if (-not [string]::IsNullOrWhiteSpace($userHomeOverride)) { $deployArgs += @('-UserHomeOverride', $userHomeOverride) }
-    return @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $deployScript @deployArgs 2>&1 | ForEach-Object { [string]$_ })
+    $out = @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $deployScript @deployArgs 2>&1 | ForEach-Object { [string]$_ })
+    return [pscustomobject]@{ Output = $out; ExitCode = $LASTEXITCODE }
 }
 
 function Show-Status {
@@ -122,9 +132,15 @@ function Invoke-Install {
     # skips an opted-out host and prints "opt-out recorded"); never silently undoes a deliberate remove.
     $explicit = (-not [string]::IsNullOrWhiteSpace($targetHost)) -or $force
     foreach ($h in (Get-TargetHosts)) {
-        $out = Invoke-DeployForHost -HostKind $h -ForceDeploy:$explicit
-        $joined = ($out -join ' ')
-        if ($joined -match 'opt-out recorded') {
+        $r = Invoke-DeployForHost -HostKind $h -ForceDeploy:$explicit
+        $joined = ($r.Output -join ' ')
+        if ($r.ExitCode -ne 0) {
+            # A genuine deploy FAILURE (e.g. a hand-broken config the deploy refuses) — report it, never claim
+            # "installed" (145-review defect-001). Fail-open: keep going for the other hosts + exit non-zero.
+            $script:HookFailures++
+            Write-Host ("  {0,-9} FAILED — {1}" -f $h, ($joined.Trim())) -ForegroundColor Red
+        }
+        elseif ($joined -match 'opt-out recorded') {
             Write-Host ("  {0,-9} skipped — opt-out recorded (re-enable: specrew hooks install --host {0})" -f $h) -ForegroundColor DarkGray
         }
         else {
@@ -137,8 +153,14 @@ function Invoke-Install {
 
 function Invoke-Remove {
     foreach ($h in (Get-TargetHosts)) {
-        $null = Invoke-DeployForHost -HostKind $h -Remove
-        Write-Host ("  {0,-9} removed — opt-out recorded" -f $h) -ForegroundColor DarkGray
+        $r = Invoke-DeployForHost -HostKind $h -Remove
+        if ($r.ExitCode -ne 0) {
+            $script:HookFailures++
+            Write-Host ("  {0,-9} FAILED — {1}" -f $h, (($r.Output -join ' ').Trim())) -ForegroundColor Red
+        }
+        else {
+            Write-Host ("  {0,-9} removed — opt-out recorded" -f $h) -ForegroundColor DarkGray
+        }
     }
     Write-Host ''
     Write-Host "Done. Re-enable with 'specrew hooks install --host <host>'." -ForegroundColor Cyan
@@ -150,4 +172,6 @@ switch ($Command.ToLowerInvariant()) {
     'remove' { Invoke-Remove }
     default { Write-HooksError ("Unknown subcommand '{0}'." -f $Command) }
 }
-exit 0
+# Exit non-zero if any host genuinely FAILED to deploy (an opt-out skip is NOT a failure), so a script/user can
+# detect a broken repair. status never sets HookFailures, so it stays exit 0.
+exit ([int]($script:HookFailures -gt 0))
