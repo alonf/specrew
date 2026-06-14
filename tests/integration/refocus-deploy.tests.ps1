@@ -309,6 +309,43 @@ foreach ($wired in @($updateScript, $initScript, (Join-Path $repoRoot 'scripts\i
     Assert-True (@($parseErrors).Count -eq 0) ("parses clean: {0}" -f (Split-Path -Leaf $wired))
 }
 
+# --- 16. T010 (FR-028 layer 1, SC-016): Get-SpecrewHookCapableHosts is the registry-driven host set --------
+. (Join-Path $repoRoot 'hosts\_registry.ps1')
+$hookCapable = @(Get-SpecrewHookCapableHosts)
+Assert-True (($hookCapable -contains 'claude') -and ($hookCapable -contains 'codex') -and ($hookCapable -contains 'copilot') -and ($hookCapable -contains 'cursor')) 'hook-capable: all 4 hook-capable hosts present (registry-driven, manifest carries RefocusHookBindings)'
+Assert-True (-not ($hookCapable -contains 'antigravity')) 'hook-capable: antigravity EXCLUDED (hookless — supported but no RefocusHookBindings; capability is NOT derivable from Status)'
+
+# --- 17. T010 (SC-016): PROACTIVE provisioning — ALL hook-capable hosts provisioned regardless of PATH -------
+# The orchestrator must write EVERY host's config even when NO host binary is on PATH (the silent-degradation
+# hole: a user installs codex/copilot/cursor AFTER `specrew init`). Uses the REAL deploy with
+# -UserHomeOverride so the user-level writes + the per-machine launcher land in a scratch home, never the real one.
+New-ScratchProject
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.claude') -Force | Out-Null
+$proactiveHome = Join-Path $scratchRoot 'home-proactive'
+New-Item -ItemType Directory -Path $proactiveHome -Force | Out-Null
+$proActions = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $deployScript -UserHomeOverride $proactiveHome)
+$proHosts = @($proActions | Where-Object { $_.Action -eq 'refocus-hooks' } | ForEach-Object { [string]$_.HostKind })
+Assert-True (($proHosts -contains 'claude') -and ($proHosts -contains 'codex') -and ($proHosts -contains 'copilot') -and ($proHosts -contains 'cursor')) 'proactive: orchestrator deployed ALL 4 hook-capable hosts (no PATH gate)'
+Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.claude\settings.local.json')) 'proactive: claude PROJECT config written'
+Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.codex\hooks.json')) 'proactive: codex USER-level config written (binary not on PATH)'
+Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.copilot\hooks\specrew-refocus.json')) 'proactive: copilot USER-level config written'
+Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.cursor\hooks.json')) 'proactive: cursor USER-level config written'
+Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.specrew\specrew-hook-launch.ps1')) 'proactive: per-machine launcher provisioned even with NO host binary present'
+Assert-True (-not ($proHosts -contains 'antigravity')) 'proactive: hookless antigravity NOT provisioned'
+
+# --- 18. T010 (SC-016): PROACTIVE provisioning RESPECTS a recorded opt-out (no silent re-enable) -------------
+New-ScratchProject
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.claude') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.specrew\runtime') -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-codex'), 'opted out test', [System.Text.UTF8Encoding]::new($false))
+$optHome = Join-Path $scratchRoot 'home-optout'
+New-Item -ItemType Directory -Path $optHome -Force | Out-Null
+$optActions = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $deployScript -UserHomeOverride $optHome)
+$codexAction = @($optActions | Where-Object { $_.HostKind -eq 'codex' })
+Assert-True ($codexAction.Count -eq 1 -and ([string]$codexAction[0].Detail).Contains('opt-out')) 'proactive: codex with a recorded opt-out is reported skipped (no silent re-enable)'
+Assert-True (-not (Test-Path -LiteralPath (Join-Path $optHome '.codex\hooks.json'))) 'proactive: opted-out codex config NOT written'
+Assert-True (Test-Path -LiteralPath (Join-Path $optHome '.cursor\hooks.json')) 'proactive: a non-opted-out host (cursor) still provisioned alongside the opt-out'
+
 # --- summary ------------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {

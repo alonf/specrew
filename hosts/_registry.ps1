@@ -201,6 +201,37 @@ function Get-SpecrewHostsByStatus {
     )
 }
 
+function Get-SpecrewHookCapableHosts {
+    <#
+    .SYNOPSIS
+    Returns the SUPPORTED host kinds that are HOOK-CAPABLE, in registry (MenuPriority) order.
+    .DESCRIPTION
+    F-174 iteration 011 (FR-028, decision f174-i011-hook-deploy-hardening). The single source of
+    truth for "which hosts get hook configs proactively provisioned" (refocus-deploy-integration.ps1)
+    and "which hosts `specrew hooks` iterates" (the repair surface).
+
+    A host is hook-capable IFF its manifest carries a RefocusHookBindings field. This is a CAPABILITY
+    BOOLEAN ONLY — the ACTUAL events to register still come from deploy-refocus-hooks.ps1's
+    Get-HostEventGroups (the manifest's RefocusHookBindings.Events list is F-171-era and is NOT the
+    F-174 event source of truth). Hookless supported hosts (e.g. antigravity — no RefocusHookBindings)
+    are correctly excluded; hook-capability is NOT derivable from Status alone.
+    .OUTPUTS
+    string[]
+    #>
+    if ($null -eq $script:HostManifestCache) {
+        $null = Get-RegisteredHostKinds
+    }
+
+    return @(
+        foreach ($kind in $script:HostManifestCache.Keys) {
+            $m = $script:HostManifestCache[$kind]
+            if ($m.Status -eq 'supported' -and $m.ContainsKey('RefocusHookBindings') -and $null -ne $m['RefocusHookBindings']) {
+                $kind
+            }
+        }
+    )
+}
+
 # Phase B: handler dispatch
 # Contract function => actual per-host PowerShell function-name template.
 # To add a new contract function, add an entry here AND export it from each hosts/<kind>/handlers.ps1.
