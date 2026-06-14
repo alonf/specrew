@@ -44,6 +44,7 @@ Usage:
   specrew status [options]         Alias for specrew where
   specrew update [options]         Refresh Specrew assets or upgrade managed platforms
   specrew team <command> [args]    Manage Squad team members
+  specrew hooks <command> [args]   Inspect / install / repair Specrew host hooks
   specrew version [options]        Show version and slash-command compatibility state
 
 Commands:
@@ -54,6 +55,7 @@ Commands:
   status   Alias for where
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
+  hooks    Inspect/install/repair host hooks (status, install [--host], remove [--host])
   version  Show the installed Specrew version and slash-command compatibility
   install-shell-wrappers  Install/refresh the Unix shell wrappers (macOS/Linux)
   help     Show this help message
@@ -69,6 +71,9 @@ Examples:
   specrew update --info
   specrew update --all
   specrew team list
+  specrew hooks status
+  specrew hooks install --host codex
+  specrew hooks remove --host cursor
   specrew version
   specrew team add security-analyst --role "Security Analyst" --charter "Review security"
   specrew team update security-analyst --charter "Updated charter"
@@ -636,6 +641,21 @@ switch ($Command) {
 
         # Forward positional args: <subcommand> [<kind>] [--project-path <path>]
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $hostScript @Arguments
+        exit $LASTEXITCODE
+    }
+
+    'hooks' {
+        # F-174 iter-11 (FR-028 layer 2): discoverable hook install/repair/status surface.
+        # No Assert-WhitelistedArguments / no project-setup gate — `status` must run even in a broken
+        # project (it is the repair surface); the script parses its own Unix-style flags.
+        $hooksScript = Join-Path $scriptRoot 'specrew-hooks.ps1'
+        if (-not (Test-Path -LiteralPath $hooksScript)) {
+            Write-Host "ERROR: specrew-hooks.ps1 not found at $hooksScript" -ForegroundColor Red
+            exit 1
+        }
+
+        # Forward positional args: <status|install|remove> [--host <h>] [--force] [--project-path <path>]
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $hooksScript @Arguments
         exit $LASTEXITCODE
     }
 
