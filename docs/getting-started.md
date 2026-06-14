@@ -99,7 +99,7 @@ specrew --version
 
 `-Force` here belongs to PowerShellGet: it intentionally overwrites or reinstalls the module package. It does not bypass Specrew lifecycle gates and it does not make brownfield project conflicts safe to ignore. `-SkipPublisherCheck` bypasses publisher validation, so use it only for the official PowerShell Gallery Specrew package or a package source you already trust. Do not copy this flag into unrelated module installs as a default habit.
 
-After a module update, run `specrew init` again inside each existing Specrew project when the release notes mention runtime, extension, template, or skill-catalog changes, or when `specrew start` reports missing runtime surfaces. Re-running init is idempotent and redeploys managed project files from the updated module; add `-Force` only when you intentionally want to refresh managed surfaces even if the project is not empty.
+After updating the tool, refresh each existing Specrew project so its deployed hooks, skills, and templates match the new version. From inside the project, run **`specrew update`** — the canonical project re-sync that brings the project to the version of Specrew you now have installed (run `specrew update --info` first to see the version status). Re-running **`specrew init`** also redeploys managed project files and is the heavier equivalent; both are idempotent. Do this when the release notes mention runtime, extension, template, or skill-catalog changes, or when `specrew start` reports missing runtime surfaces. For `specrew init`, add `-Force` only when you intentionally want to refresh managed surfaces even if the project is not empty.
 
 If the wrong version still loads, project assets look incomplete, or a resumed session points at the wrong feature, use the recovery guide in [troubleshooting.md](troubleshooting.md) before editing generated files by hand.
 
@@ -112,13 +112,15 @@ git init
 specrew init
 ```
 
-`specrew init` installs Spec Kit (via `uv`) and Squad (via `npm`) if missing, scaffolds the `.specrew/`, `.specify/`, and `.squad/` directories, configures the multi-agent team baseline, deploys the slash-command surface to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`, and seeds the governance + roadmap configuration. The bootstrap is non-destructive and idempotent — safe to re-run.
+`specrew init` installs Spec Kit (via `uv`) and Squad (via `npm`) if missing, scaffolds the `.specrew/`, `.specify/`, and `.squad/` directories, configures the multi-agent team baseline, deploys the slash-command surface to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`, **deploys the Specrew session hooks**, and seeds the governance + roadmap configuration. The bootstrap is non-destructive and idempotent — safe to re-run.
+
+Because init deploys the hooks, on a **hook-capable host** (Claude, Codex, Copilot, Cursor) you just **launch your host** afterwards (`claude` / `codex` / `copilot` / `cursor`) — the SessionStart hook bootstraps you automatically, so you do **not** need `specrew start`. **Antigravity is the exception** (no hook surface): there you still start with `specrew start`.
 
 ### 4. Start the first feature
 
 After `specrew init`, there are two equivalent ways to begin — **the SessionStart hook is the primary path, and `specrew start` is optional**:
 
-- **Just open your host in the project** (`claude`, `codex`, `copilot`, `cursor`). A **SessionStart hook** bootstraps the session — it writes the governed launch contract, renders your orientation banner, and drives the `specify → plan → implement → review → retro` lifecycle. No `specrew start` needed. (Confirmed governed on Claude, Codex, and Copilot — see the hook note below.)
+- **Just open your host in the project** (`claude`, `codex`, `copilot`, `cursor`). A **SessionStart hook** bootstraps the session — it writes the governed launch contract, renders your orientation banner, and drives the `specify → plan → implement → review → retro` lifecycle. No `specrew start` needed.
 - **Or run `specrew start`** (optional) to **pick / switch the host** (`--host <kind>`), to **start from a script** with the feature prompt in one command, or for **Antigravity**, which has no hook and is launcher-only. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Cursor → Codex → Copilot → Antigravity):
 
 ```powershell
@@ -150,12 +152,13 @@ That single command:
 
 When the Crew surfaces a clarify question, answer it. When it surfaces a planning artifact, review it. When it asks for an implementation verdict, type one of the recognized verdict shapes (e.g. `approved for implementation-boundary entry`). The lifecycle then continues to the next boundary.
 
-> **Hook-driven bootstrap (Feature 174).** A **SessionStart hook** bootstraps and **drives** the session on a
-> host launch inside a Specrew project — it writes the governed launch contract (`.specrew/last-start-prompt.md`,
+> **Hook-driven bootstrap.** A **SessionStart hook** bootstraps and **drives** the session when you launch a
+> host inside a Specrew project — it writes the governed launch contract (`.specrew/last-start-prompt.md`,
 > with the user-profile/expertise adaptation + the coordinator framing), renders your orientation banner and a
 > Resume / New / Pick-feature menu as prose before any picker, and follows the governed lifecycle. So after
-> `specrew init` you do **not** need to run `specrew start` first. **Confirmed governed on Claude, Codex, and
-> Copilot.** **Antigravity has no SessionStart hook**, so there `specrew start` is the bootstrap path.
+> `specrew init` you do **not** need to run `specrew start` first. This works on **Claude, Codex, Copilot, and
+> Cursor**. **Antigravity has no SessionStart hook**, so there `specrew start` is the bootstrap path. (Full
+> cross-host story: [docs/user-guide.md "Session Continuity"](user-guide.md#session-continuity--auto-bootstrap-rolling-handover-host-switching).)
 >
 > **`specrew start` remains available — and does what only it can:** host selection / switching (`--host`),
 > a one-command scripted start with a feature prompt, uniform `--remote` / `--allow-all` / `--autopilot` flag
@@ -176,9 +179,8 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 > - **Direct launch** (`claude` / `codex` / `copilot` / `cursor` in the project) — the SessionStart hook
 >   bootstraps and **drives**: it writes the governed contract and the agent renders its orientation on the
 >   **first reply**, not the splash screen (a host hook cannot paint the host's UI). Just **ask** — "What
->   should I do now?" — or **state intent** — "Create a feature for …". **Confirmed governed on Claude,
->   Codex, and Copilot** — the hook hands the agent the same contract `specrew start` writes, via the same
->   generator (no drift).
+>   should I do now?" — or **state intent** — "Create a feature for …". The hook hands the agent the same
+>   contract `specrew start` writes, via the same generator (no drift).
 > - **`specrew start`** (optional) — host selection / switching (`--host`), a one-command scripted start,
 >   uniform `--remote` / `--allow-all` / `--autopilot` flag translation, and the **only** path on
 >   **Antigravity** (no hook). When both a launcher and a hook fire in one startup, a dedupe handshake yields
@@ -186,7 +188,7 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 
 **The Design Workshop.** For substantive features, the Crew also facilitates a **Design Workshop** — first at intake (to pick the design lenses that matter and make the spec lens-informed) and again at the design-analysis stop before planning (to co-design the architecture with you: component map, responsibilities, flows, and trade-off options). It is a conversation, not a questionnaire — you see every diagram and agenda in-band, and every decision is recorded as a durable artifact. The full methodology is in [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md).
 
-> **Switching hosts on the same project** is supported: end the session and restart `specrew start --host <other>`. Mid-session switching requires you to end and restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
+> **Switching hosts on the same project** is supported: end the session, then **launch the other host directly** in the project (`claude` / `codex` / `copilot` / `cursor`) and type `continue` — its SessionStart hook reads the rolling handover and resumes the same feature at the same spot. `specrew start --host <other>` stays available as the optional explicit driver, and it is the way in on hookless **Antigravity**. Mid-session switching still means end-and-restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
 
 ### 5. Close the iteration (and the feature)
 
@@ -197,7 +199,7 @@ The lifecycle does not end at `implement`. Two more boundaries finish the work:
 
 **Why this matters**: these two boundaries are what mark the work durably "done". Until you authorize them, the feature is **in flight** — `specrew where` will list it as active, and starting a new `specrew start "<other feature>"` will resume the in-flight feature instead of starting fresh. The artifacts produced at closeout (dashboard.md per iteration + closeout-dashboard.md per feature) are also the canonical input that future iterations and features read for velocity calibration. Skipping closeout silently degrades both your project's state-tracking and Specrew's own estimation accuracy.
 
-> If you only want to take a break (not finish), close your terminal — Specrew preserves session state in `.specrew/start-context.json`. The next `specrew start` resumes at the same boundary. Closeout is the explicit "this is done" gate, not the "I'm pausing" gate.
+> If you only want to take a break (not finish), close your terminal — Specrew preserves session state (and a rolling handover in `.specrew/handover/session-handover.md`). On a hook host, just **relaunch your host** in the project — the SessionStart hook auto-resumes at the same boundary from that handover; you do not route resume through `specrew start` (it stays optional, and is the recovery path on hookless Antigravity). Closeout is the explicit "this is done" gate, not the "I'm pausing" gate.
 
 That is the full minimal flow. Everything else on this page is optional — covered in the sections below.
 
@@ -215,7 +217,9 @@ calculator/
 │   ├── roadmap.yml        # phase/feature index
 │   ├── last-start-prompt.md
 │   ├── start-context.json
-│   └── start-summary.md
+│   ├── start-summary.md
+│   ├── handover/          # rolling cross-host session handover (gitignored)
+│   └── runtime/           # hook journals + session markers (gitignored)
 ├── .specify/              # Spec Kit installation (managed)
 ├── .squad/                # Squad team + casting + identity
 ├── .claude/skills/        # /specrew-* slash command catalog (Claude Code)

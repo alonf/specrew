@@ -10,6 +10,14 @@ Specrew is a governed agentic SDLC layer over GitHub Spec Kit. It keeps a human 
 
 This repository is dogfooding Specrew: Specrew is being built using Specrew. That means every change is not only a normal code change. It is also a methodology exercise. Implementers and reviewers must verify that the feature obeys Specrew's own lifecycle, traceability, audit, and boundary rules.
 
+## Session Bootstrap Model
+
+`specrew init` deploys the governance assets into the project, including the host's session hooks. From that point, launching the host (running `claude`, `codex`, and equivalents) is enough: the session bootstraps the governed lifecycle automatically. It orients the agent to the active feature and boundary, reloads the methodology discipline in force, and resumes the work already underway. `specrew start` remains available as an explicit entry point but is no longer required. Where a host exposes no hook surface, `specrew start` remains the way in.
+
+Continuity across sessions is carried by a rolling handover that Specrew keeps current as work progresses. This handover is part of the durable repository artifact trail described in the Purpose above — not a transient host-memory cache. Because the orientation and pickup point live in the trail rather than in any one host's conversation memory, a session can stop and resume later in the same host, or in a different host, and find the same feature, the same boundary, and the same recorded state. A non-Claude host picking up a feature mid-flight may ask the human to re-confirm the last approval before proceeding; this re-confirmation is an orientation step, not a new authorization.
+
+This model strengthens boundary discipline rather than relaxing it. Auto-bootstrap restores orientation; it never advances a boundary and never substitutes for a human verdict. The constraints in Boundary Discipline below are unchanged: one human authorization advances at most one boundary, and agent prose cannot simulate approval. What the bootstrap removes is the cost of re-establishing context at the start of every session; what it preserves is the human's gate-by-gate control over how the lifecycle moves.
+
 ## Boundary Discipline
 
 Specrew has explicit lifecycle boundaries:

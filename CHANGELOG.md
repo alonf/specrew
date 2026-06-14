@@ -4,22 +4,36 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
-## Unreleased
+## [0.37.0] - Unreleased
+
+### Added
+
+- **`specrew handover author`:** writes the agent's interpretive handover notes — open questions, working
+  hypothesis, and the recommended next step — into the rolling handover, so the next session inherits that
+  context instead of a blank slate. It reads a Markdown packet via `--from <file>` or `--stdin` (the `##`
+  headers name the sections) and accepts `--feature`, `--boundary`, and `--host`.
+- **`specrew hooks status | install | remove [--host <h>]`:** the command for installing, repairing, and
+  checking your Specrew session hooks.
 
 ### Changed
 
-- **Feature 174 (hook-driven session bootstrap):** the SessionStart hook now bootstraps AND drives the
-  governed lifecycle on Claude, Codex, and Copilot. `specrew start` is repositioned as an OPTIONAL
-  host-selector / launcher (and the no-hook path for Antigravity), not the required entry. README +
-  getting-started updated accordingly.
+- **Automatic session bootstrap (`specrew start` is now optional):** after `specrew init`, just launch your
+  host (for example, run `claude` or `codex`) and Specrew bootstraps you automatically — it greets you with an
+  orientation banner and drives the governed lifecycle. You no longer have to run `specrew start` first;
+  `specrew start` remains available as an explicit way to drive or re-anchor, and it is the entry point on
+  Antigravity, which has no hook surface.
+- **Rolling handover with cross-session, cross-host auto-resume:** Specrew now keeps a rolling handover of your
+  work so the next session picks up where you left off. When you come back — in the same host or a different
+  one — your in-progress feature follows you and the lifecycle resumes automatically. If you switch to a
+  non-Claude host mid-feature, the new session may ask you to re-confirm your last approval.
+- **Approvals stay real on resume:** when a resumed session lands at a boundary that has not been approved,
+  Specrew stops and waits for your verdict. The agent will not advance on a bare `continue`, a single approval
+  moves you forward by at most one boundary, and your approval is never invented for you.
 
 ### Fixed
 
-- **Codex SessionStart hook — two format mismatches:** `~/.codex/hooks.json` now uses codex's
-  `{ hooks: { <Event> } }` wrapper (it previously had top-level event keys, so codex never ran the hook), and
-  the dispatcher emits `hookSpecificOutput.additionalContext` for codex (the flat `additionalContext` form was
-  silently ignored, so the hook ran but its output was dropped). The orientation banner is now hoisted to
-  render first on every host, and the bootstrap contract renders the real Specrew version instead of "unknown".
+- **Session bootstrap on Codex:** the Specrew session hook now runs and surfaces its orientation on Codex,
+  and the bootstrap shows the correct Specrew version.
 
 ## [0.35.0] - 2026-06-11
 

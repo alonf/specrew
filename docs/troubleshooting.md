@@ -23,8 +23,9 @@ If you run `specrew update` when the installed module itself is stale, you only 
 | You want the cleanest recovery path after repeated drift | Mixed module versions or stale local assets | Go to [Clean reinstall flow](#clean-reinstall-flow). |
 | `specrew init` says Node is too old right after a `brew` upgrade (macOS) | `nvm` shadows the Homebrew Node on `PATH`; `pwsh` uses the same old Node | Go to [macOS: Node version shadowed by nvm](#macos-node-version-shadowed-by-nvm). |
 | `specrew init` says Spec Kit is missing or too old | `specify-cli` is absent or below the supported floor | Go to [Spec Kit missing or too old](#spec-kit-missing-or-too-old). |
-| Launching the host shows no Specrew banner; the agent acts ungoverned | The SessionStart hook never fired (per-host hook config missing or malformed) | Go to [SessionStart hook never fires](#sessionstart-hook-never-fires). |
+| You launch your host but no Specrew orientation banner appears; the agent acts ungoverned | The SessionStart hook is not installed for that host, or the banner did not reach the session | Go to [No orientation banner when you launch your host](#no-orientation-banner-when-you-launch-your-host). |
 | On restart the agent asks "what do you want to build?" instead of resuming | No valid handover or anchor surfaced; or the deployed providers are stale | Go to [Resume starts blind instead of welcoming you back](#resume-starts-blind-instead-of-welcoming-you-back). |
+| Resume reopens "`=== AWAITING YOUR VERDICT ===`" at a boundary you thought was done | A committed boundary is not an authorized boundary | Go to [Resume re-asks for a verdict you already gave](#resume-re-asks-for-a-verdict-you-already-gave). |
 | A `HOLLOW HANDOVER` warning, or "another session may be active in this worktree" | Expected advisories: an unauthored handover body; a fresh session marker from the previous session | Go to [Handover and concurrency advisories](#handover-and-concurrency-advisories). |
 | A crash lost the last few minutes, or Antigravity shows no welcome-back banner | Expected continuity limits: a hard kill fires no stop hook; Antigravity has no hook surface | Go to [A crash lost recent conversation, or Antigravity shows no welcome-back](#a-crash-lost-recent-conversation-or-antigravity-shows-no-welcome-back). |
 
@@ -122,19 +123,56 @@ specrew start
 
 Do not re-add those files to git to make the state feel durable. They are host-session scratch state, not authoritative delivery artifacts.
 
-## SessionStart hook never fires
+## No orientation banner when you launch your host
 
-If launching `claude` / `codex` / `copilot` inside an initialized project produces no Specrew orientation banner and the agent behaves as if the project were ungoverned, the SessionStart hook did not run or its output was dropped.
+After `specrew init`, you normally just launch your host — run `claude`, `codex`, `copilot`, or `cursor` — and Specrew greets you with an orientation banner and drives the governed lifecycle. (Antigravity has no hook surface, so there you start with `specrew start` instead.)
 
-First check the journal — every successful bootstrap appends one JSON line:
+If you launch your host inside an initialized project and no banner appears — the agent behaves as if the project were ungoverned — the SessionStart hook is not installed for that host, or it ran but the banner did not reach the session.
 
-```powershell
-Get-Content .\.specrew\runtime\bootstrap-journal.jsonl -Tail 3
+Here is what to do:
+
+1. Check whether the hook is installed for your host. This works even in a broken project and prints the exact repair command:
+
+   ```powershell
+   specrew hooks status
+   ```
+
+   It reports each host as installed, missing, stale, opted-out, or failed.
+
+2. Install or repair the hook for your host:
+
+   ```powershell
+   specrew hooks install
+   ```
+
+   Add `--host <claude|codex|copilot|cursor>` to target one host. `specrew hooks remove [--host h]` is the inverse — it removes the hook and records an opt-out so the next `specrew update` does not re-add it.
+
+3. If `specrew hooks status` shows the host installed but the banner still does not appear, re-run `specrew init` in the project root to refresh the project's hook and runtime surfaces, then relaunch.
+
+`specrew hooks status | install | remove` is the supported, discoverable surface for all hook install, repair, and diagnostic work — reach for it rather than editing host config files by hand.
+
+### The banner was delivered to a file (`WARN PAYLOAD_OVERSIZE`)
+
+Some hosts cap how much a SessionStart hook may print — on Claude Code and Codex the limit is about **10,000 characters**. When Specrew's launch contract would exceed that cap, the host saves the hook output to a file and hands the agent only a short preview plus a file pointer, so the full orientation never reaches the session and the agent acts as if the project were ungoverned. The tell is a `WARN PAYLOAD_OVERSIZE` line in the hook output (or the host's own "output too large, saved to file" notice).
+
+Specrew handles this automatically: on Claude and Codex it delivers the contract in **pointer mode** — it writes the full contract to `.specrew/last-start-prompt.md` and keeps the hook output small. If you still land in a session with no orientation, point the agent at the file yourself:
+
+```text
+Read .specrew/last-start-prompt.md and follow it.
 ```
 
-- **No new line for your launch** — the hook never ran. Verify the per-host registration: Claude reads the project's `.claude/settings.json`; Codex reads the user-level `~/.codex/hooks.json` and requires its events wrapped as `{ "hooks": { "<Event>": [...] } }` — top-level event keys are silently ignored. Re-run `specrew init` (or `deploy-refocus-hooks.ps1`) to redeploy the registrations.
-- **A line exists but nothing surfaced in the session** — the hook ran and the host dropped its output. On Codex this happens when the injected context is malformed for its envelope (it accepts only `hookSpecificOutput.additionalContext`) — redeploy so the current dispatcher is in place, and prefer the current module version.
-- The hook is fail-open by design: any internal error exits silently rather than blocking your session, so a broken deployment looks like "no banner", never a hang. `[specrew-bootstrap] WARN PROVIDER_FAILED ...` on stderr names the reason when the host shows hook diagnostics.
+That file always holds the complete launch contract for the current session, regardless of how it was delivered.
+
+### Running a dev or branch build (`SPECREW_MODULE_PATH`)
+
+If you are dogfooding an unreleased Specrew (a feature branch or a local dev tree), note that `SPECREW_MODULE_PATH` redirects the **runtime module commands** but **not** `specrew init`'s template source. So `specrew init` silently deploys templates from your **globally installed** version instead of your dev tree, and the project never picks up the changes you are trying to exercise — there is no warning, just stale files. To deploy a branch's surfaces, import the module **by path** first, then init:
+
+```powershell
+Import-Module C:\path\to\dev-tree\Specrew.psd1 -Force
+specrew init
+```
+
+The import-by-path makes `specrew init` deploy that tree's templates. (`SPECREW_MODULE_PATH` alone is enough for the runtime commands; it does not redirect the one-time template deploy.)
 
 ## Resume starts blind instead of welcoming you back
 
@@ -151,11 +189,24 @@ Get-Content .\.specrew\runtime\bootstrap-journal.jsonl -Tail 1
   3. The handover is fresher than 24 hours — older floors are intentionally not trusted.
 - A hard-killed session (closed window, no `/exit`) writes no floor at death. The resume then relies on the previous floor plus the on-disk feature artifacts — position in conversation is lost, work on disk is not.
 
+## Resume re-asks for a verdict you already gave
+
+If a resumed session reopens `=== AWAITING YOUR VERDICT ===` at a boundary you thought was already approved, this is verdict integrity working as designed, not a regression. A *committed* boundary is not an *authorized* boundary: artifacts can land in the tree without a recorded human verdict, so on resume a committed-but-unauthorized boundary surfaces the awaiting-verdict prompt and waits for you.
+
+The rules the resuming agent must hold:
+
+- It must not auto-advance on a bare "continue" — one approval advances at most one boundary.
+- The recorded approver is never fabricated; only your explicit verdict authorizes the boundary.
+
+What to do: read the surfaced packet and give the verdict explicitly (approve / redirect / send back). The boundary then advances exactly once.
+
+One plain behavior note: if you switch to a non-Claude host mid-feature, the new session may ask you to re-confirm your last approval. Re-confirming the verdict on the resuming host is the safe path; do not have the agent assume authorization from the committed artifacts alone.
+
 ## Handover and concurrency advisories
 
 Two messages around session start are advisories, not errors:
 
-- **`HOLLOW HANDOVER` / "the previous session did NOT author a handover body"** — the rolling handover's frontmatter floor is present (feature, boundary, commit), but the seven rich body sections were never authored by the previous agent. The resuming agent is told to re-derive from the lifecycle artifacts instead — workshop records, spec, tasks. Work is not lost; the resume is simply artifact-derived rather than narrative.
+- **`HOLLOW HANDOVER` / "the previous session did NOT author a handover body"** — the rolling handover's frontmatter floor is present (feature, boundary, commit), but the eight rich body sections were never authored by the previous agent (a section starting with "(placeholder" is the tell). The resuming agent is told to re-derive from the lifecycle artifacts instead — workshop records, spec, tasks. Work is not lost; the resume is simply artifact-derived rather than narrative. To prevent the hollow handover on a deliberate switch, have the outgoing agent persist its interpretive sections first: `specrew handover author --from <file>` (or `--stdin`) writes the agent-authored sections — notably the open questions and working hypothesis that no hook can derive — so the next session/host inherits authored context instead of placeholders. The Markdown `##` headers in that file name the sections (it also accepts `--feature`, `--boundary`, and `--host`).
 - **"another session may be active in this worktree (marker within 1h)"** — the previous session's `.specrew/runtime/session-marker.json` is less than an hour old. After a normal exit-and-relaunch (or a host switch) this is expected and safe to ignore. It matters only if you really do have two live agents in the same worktree — then coordinate or close one. Deleting the marker file silences it immediately; it is local scratch state.
 
 ## A crash lost recent conversation, or Antigravity shows no welcome-back
@@ -187,26 +238,6 @@ specrew update
 
 That sequence restores the installed module first, then redeploys the project-managed runtime and template surfaces from the recovered module.
 
-## Shape-5 lesson: review evidence must match the committed tree
-
-Validator passes against a working tree are not proof of delivery. If the files cited in review evidence are only staged or unstaged, they can disappear on session loss, cleanup, or reset.
-
-Before claiming a review or closeout verdict:
-
-1. Commit the implementation artifacts.
-2. Push the branch.
-3. Verify the cited files exist in `HEAD`.
-4. Only then cite them in `review.md`, `quality-evidence.md`, or closeout artifacts.
-
-Example check:
-
-```powershell
-git ls-tree -r HEAD --name-only |
-    Select-String 'docs/troubleshooting.md|README.md|docs/getting-started.md|docs/user-guide.md|Specrew.psd1'
-```
-
-If the file is not present in the committed tree under review, it is not shipped evidence yet.
-
 ## Refocus automation seems dead this session
 
 Run the status probe first — every branch ends in one named action:
@@ -215,7 +246,7 @@ Run the status probe first — every branch ends in one named action:
 2. **Breaker tripped?** The journal shows `BREAKER_TRIPPED` + the reason. Re-enable: `--reset-breaker`, or start a new session. Recurring? Disable that trigger durably in `refocus-scopes.json` and file the journal evidence.
 3. **Env kill switch set?** `SPECREW_REFOCUS_DISABLE` silences all hook triggers — unset it.
 4. **Trigger disabled in the catalog?** `--status` lists per-trigger `enabled` flags with no guesswork.
-5. **All green but silent?** Check the journal tail: `deduped` means channel 1 already delivered (working as designed); `budget-clipped` means the payload hit its token cap; nothing at all means the hook isn't registered — re-run `deploy-refocus-hooks.ps1` (it respects a recorded opt-out; use `-Force` to re-enable explicitly).
+5. **All green but silent?** Check the journal tail: `deduped` means channel 1 already delivered (working as designed); `budget-clipped` means the payload hit its token cap; nothing at all means the hook isn't registered — re-provision with `specrew hooks install` (it respects a recorded opt-out; add `--host <host>` or `--force` to re-enable an opted-out host explicitly). `specrew hooks status | install | remove` is the canonical, run-anywhere hook surface.
 
 Every warning carries a reason code (`EVENT_PARSE`, `CATALOG_SCHEMA`, `SOURCE_MISSING`, `SOURCE_CONFINED`, `STATE_UNAVAILABLE`, `BUDGET_EXCEEDED`, `BREAKER_TRIPPED`, `PROVIDER_FAILED`) — `EVENT_PARSE` after a host update usually means the host changed its event schema; see the research matrix in the Specrew repo.
 
@@ -256,7 +287,7 @@ The last line is the one that matters: always verify `node -v` **inside `pwsh`**
 Specrew requires Spec Kit >= 0.8.4 but found 0.0.22.
 ```
 
-The supported floor and the latest validated version are declared in `scripts/internal/supported-versions.yml` (`speckit.min` / `speckit.max_tested`) — currently floor **0.8.4**, validated up to **0.9.0**. `specrew init` prints the exact remediation command for the floor; run it (add `--force` to replace an existing tool install):
+The supported floor and the latest tested version are declared in `scripts/internal/supported-versions.yml` (`speckit.min` / `speckit.max_tested`) — currently floor **0.8.4**, tested up to **0.9.0**. `specrew init` prints the exact remediation command for the floor; run it (add `--force` to replace an existing tool install):
 
 ```sh
 uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.4 --force
