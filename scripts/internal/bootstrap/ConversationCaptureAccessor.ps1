@@ -164,11 +164,67 @@ function Get-SpecrewCapturedBoundaryVerdict {
     return $result
 }
 
+function Get-SpecrewCapturedBoundaryPacket {
+    # F-174 iteration 011 (T002, FR-022 / DF-3): read the host transcript for the VERBATIM boundary VERDICT packet
+    # the agent ACTUALLY RENDERED at the most recent gate stop - NOT a synthesized replacement (the maintainer's
+    # load-bearing constraint). Tied to a boundary via the SAME stable marker as the verdict reader
+    # <!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> --> (the gate-stop skill emits it). Returns the packet body RAW
+    # (read with -Raw so the six '## ' headers + newline structure survive), so a resume inherits the AUTHORED
+    # packet instead of placeholders. CONSERVATIVE capture: the marker MUST be present (no marker -> no capture) AND
+    # the turn MUST carry substantive content (a MINIMAL structural floor - a char count, NOT six exact '## '
+    # headers; demanding the exact form would be a form-without-runtime-compliance trap that a slightly-reworded but
+    # genuine packet would fail). No marker / no substance -> Found=$false; the caller degrades to the placeholder.
+    # Pure read; fail-open (never throws).
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()][string]$TranscriptPath,
+        [int]$MaxTailLines = 500,
+        # substantive-content floor: a real six-section packet is well over this; a bare marker comment (~60 chars)
+        # with no packet body is below it -> not captured (we do not persist an empty "packet").
+        [int]$MinPacketChars = 200
+    )
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; PacketBody = $null; Reason = 'no-transcript' }
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
+    $lines = $null
+    try { $lines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop) } catch { $result.Reason = 'unreadable'; return $result }
+    if ($null -eq $lines -or $lines.Count -eq 0) { $result.Reason = 'empty'; return $result }
+
+    # Same marker grammar as the verdict reader: case-insensitive, '->' / unicode arrow / 'to', flexible spacing.
+    $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+
+    # The LAST assistant turn carrying a marker (the most recently rendered packet), read VERBATIM (-Raw).
+    $found = $null
+    foreach ($l in $lines) {
+        $tn = Get-SpecrewConversationTurnFromLine -Line $l -Raw
+        if ($null -eq $tn -or [string]$tn.role -ne 'assistant') { continue }
+        $mm = $markerRx.Match([string]$tn.text)
+        if ($mm.Success) {
+            $found = [pscustomobject]@{ From = $mm.Groups[1].Value.ToLowerInvariant(); To = $mm.Groups[2].Value.ToLowerInvariant(); Body = [string]$tn.text }
+        }
+    }
+    if ($null -eq $found) { $result.Reason = 'no-marker'; return $result }
+
+    $body = [string]$found.Body
+    if ($body.Trim().Length -lt $MinPacketChars) { $result.Reason = 'marker-without-substance'; return $result }
+
+    $result.Found = $true
+    $result.FromBoundary = $found.From
+    $result.ToBoundary = $found.To
+    $result.PacketBody = $body
+    $result.Reason = 'captured'
+    return $result
+}
+
 function Get-SpecrewConversationTurnFromLine {
     # Best-effort (role,text) from one transcript JSONL line across the 4 host schemas. Returns $null for a
     # non-message line (session meta / tool / system / developer / parse failure) -> skipped by the caller.
+    # F-174 iter-11 (T002): -Raw preserves the message text VERBATIM (newlines + '## ' structure intact) for the
+    # boundary-packet capture, which must round-trip the six-section markdown. The DEFAULT (no -Raw) collapses all
+    # whitespace to single spaces for the bounded conversation TAIL, where structure is noise. Raw still strips the
+    # system-injected wrappers (targeted removals that do not touch packet structure) and joins multiple content
+    # parts with a newline (a part boundary is a block boundary), but never collapses internal whitespace.
     [OutputType([pscustomobject])]
-    param([Parameter()][AllowNull()][string]$Line)
+    param([Parameter()][AllowNull()][string]$Line, [switch]$Raw)
     if ([string]::IsNullOrWhiteSpace($Line)) { return $null }
     $o = $null
     try { $o = $Line | ConvertFrom-Json -Depth 40 -ErrorAction Stop } catch { return $null }
@@ -204,13 +260,16 @@ function Get-SpecrewConversationTurnFromLine {
     else { return $null }
 
     if ($role -notin @('user', 'assistant')) { return $null }   # drop developer/system/tool roles
-    $text = (@($parts) -join ' ')
+    # -Raw (T002): join parts with a newline to keep block boundaries; DEFAULT joins with a space for the flat tail.
+    $text = if ($Raw) { (@($parts) -join "`n") } else { (@($parts) -join ' ') }
     # strip query/redaction wrappers + the most obvious system-injected blocks (keep a short marker so the
-    # signal survives without the bulk)
+    # signal survives without the bulk). These are targeted removals; they do not touch '## ' packet structure.
     $text = $text -replace '</?user_query>', '' -replace '</?environment_details>', '' -replace '\[REDACTED\]', ''
     $text = $text -replace '<task-notification>[\s\S]*?</task-notification>', '[task-notification]'
     $text = $text -replace '<turn_aborted>[\s\S]*?</turn_aborted>', '[turn aborted]'
-    $text = ($text -replace '\s+', ' ').Trim()
+    # -Raw preserves internal whitespace (newlines + the markdown structure the packet round-trip needs); the
+    # default flattens it for the bounded tail. Both trim the outer edges.
+    $text = if ($Raw) { $text.Trim() } else { ($text -replace '\s+', ' ').Trim() }
     if ([string]::IsNullOrWhiteSpace($text)) { return $null }
     return [pscustomobject]@{ role = $role; text = $text }
 }

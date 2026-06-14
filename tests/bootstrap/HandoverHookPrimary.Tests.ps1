@@ -97,12 +97,16 @@ try {
     # --- No hollow-handover journal entry while the hook captures a real delta (recalibrated) ---
     Assert-True (-not (Test-Path -LiteralPath (Join-Path $proj '.specrew/runtime/handover-journal.jsonl'))) 'NO hollow-handover-at-stop journaled while the hook captures a delta (recalibrated from the iter-5 every-build-stop hollow)'
 
-    # --- Section classification stays consistent with the fixed order ---
+    # --- Section classification stays consistent with the fixed order (iter-11 T002: now a THREE-way partition) ---
     $mech = Get-SpecrewHandoverMechanicalSections
     $agent = Get-SpecrewHandoverAgentOwnedSections
+    $captured = Get-SpecrewHandoverCapturedSections
     Assert-Equal (@($mech).Count) 5 'five mechanical (hook-owned) sections (F-174 iter-10 T002 added "Recent conversation")'
     Assert-Equal (@($agent).Count) 2 'two interpretive (agent-owned) sections'
-    Assert-True (@(@($mech) + @($agent) | Sort-Object -Unique).Count -eq @(Get-SpecrewHandoverSectionOrder).Count) 'mechanical + interpretive partition the full section order with no overlap or gap'
+    Assert-Equal (@($captured).Count) 1 'one captured-packet section (iter-11 T002: the THIRD ownership category, hook-captured verbatim)'
+    Assert-True (@(@($mech) + @($agent) + @($captured) | Sort-Object -Unique).Count -eq @(Get-SpecrewHandoverSectionOrder).Count) 'mechanical + interpretive + captured partition the full section order with no overlap or gap'
+    Assert-True ((@($mech) | Where-Object { $captured -contains $_ }).Count -eq 0) 'the captured-packet section is NOT in the mechanical (refreshed-every-stop) bucket'
+    Assert-True ((@($agent) | Where-Object { $captured -contains $_ }).Count -eq 0) 'the captured-packet section is NOT in the agent-owned bucket (provenance invariant: non-placeholder interpretive == agent)'
 
     # --- iter-9.1 multi-source: ONE core save (Update-SpecrewRollingHandover) reached by every trigger ---
     # (a) the core called directly with a 'workshop' source (the skill path).

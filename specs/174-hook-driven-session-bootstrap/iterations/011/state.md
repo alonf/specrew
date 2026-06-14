@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T004 (the Stop hook IS the verdict authority) — the verdict-integrity CORE is complete: T004 + T005 (sync stops fabricating) + T006 (committed ≠ authorized resume), all proven end-to-end + green (commit `be93c771`)
-**Tasks Remaining**: T002 + T003 (authoring side — Fix A2 packet capture + clobber guard, DF-3/SC-015), T001 (callable authoring command — Fix A1, DF-7), T007 (full falsification suite), T008 + T009 (DF-1/DF-2, small) — plus the cross-host marker residual (drift-log D-001)
-**In Progress**: (checkpointed, working tree clean) — the authoring side (T002 → T003 → T001) is next
+**Last Completed Task**: T002 + T003 (authoring side — mechanical VERBATIM packet capture into the handover body + the centralized clobber guard, DF-3/SC-015), proven end-to-end + green (HookPacketCapture.Tests, 8 falsification cases; full 43-suite regression 0 failed)
+**Tasks Remaining**: T001 (callable authoring command — Fix A1, DF-7), T007 (full falsification suite — already substantially covered by HookPacketCapture + HookVerdictCapture; consolidate/round out for SC-012/013/014/015), T008 + T009 (DF-1/DF-2, small) — plus the cross-host marker residual (drift-log D-001)
+**In Progress**: (checkpointed, working tree clean) — T001 (expose/prove the agent-callable authoring command) is next
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-14T00:30:08Z
+**Updated**: 2026-06-14T01:33:49Z
 
 ## Charter
 
@@ -140,13 +140,37 @@ losing a real approval over inventing one.
 `f174-i011-hook-cwd-central-resolution`) — claude `${CLAUDE_PROJECT_DIR}` placeholder + per-machine launcher
 for codex/copilot/cursor; the SessionStart bootstrap + Stop handover ride these hooks.
 
-**Comprehensive regression: 15/15 green** across the hook / dispatcher / parity / boundary / handover / refocus
-/ gate-stop surface.
+**Authoring side — DONE + green (T002/T003):**
 
-**REMAINING:** T002 + T003 (authoring side — capture the rendered packet body into the handover + clobber
-guard, DF-3/SC-015), T001 (callable authoring command, DF-7), T007 (full falsification suite), T008/T009
-(DF-1/DF-2, small, first-to-defer), the cross-host marker residual (drift-log D-001). Then the closeout
-cap-revert (22→20) + the real-host re-dogfood acceptance gate.
+- **T002** (mechanical VERBATIM packet capture, FR-022/DF-3) — `Get-SpecrewCapturedBoundaryPacket` reads the host
+  transcript for the agent's ACTUALLY-RENDERED boundary packet (marker-tied; a new `-Raw` transcript read so the six
+  `## ` headers + newlines survive verbatim; a substantive-content floor, NOT six exact headers — the
+  form-without-runtime-compliance trap). It lands in a NEW THIRD section-ownership category (`Get-SpecrewHandover`
+  `CapturedSections`, excluded from BOTH the mechanical and agent-owned sets). The handover-file parser
+  (`ConvertFrom-SpecrewHandoverFile`) was made captured-section-verbatim-aware (the maintainer/advisor BLOCKER: the
+  packet's own `## ` would otherwise shred it on read-back) — inside a captured section a `## ` line closes it ONLY on
+  an EXACT canonical title. `active_boundary` is the forward-most of {session working position, prior file value, the
+  marker FROM} — set from the marker, NEVER regressing; the packet is WRITTEN only when the active boundary is within
+  the marker's `[FROM..TO]` range (a stale packet from a boundary already passed is dropped). Wired into
+  `Update-SpecrewRollingHandover`, fully fail-open.
+- **T003** (clobber guard, SC-015) — CENTRALIZED in the shared `Write-SpecrewRollingHandoverContent` so BOTH writers
+  (the hook floor-writer AND the agent body-author `Write-SpecrewHandoverContext`, which T001 exposes) honor it (the
+  advisor's both-writers catch). A later generic / no-marker / duplicate Stop PRESERVES the authored packet within its
+  boundary; a forward boundary change REPLACES the stale one.
+- **Tests**: `HookPacketCapture.Tests` — 8 falsification cases end-to-end against the real Stop-hook provider with a
+  REALISTIC six-section packet (1 verbatim round-trip, 2 resume-inherits-authored, 3 no-marker-no-capture, 4
+  stale-no-regress, 5 no-packet-preserves, 6 generic-Stop-preserves, 8 idempotent, 9 forward-change-replaces). The
+  `HandoverHookPrimary` partition test updated to the THREE-way ownership partition (test 7 = mirror parity stays
+  green; the two changed files are module-shipped, no mirror). Caught + fixed: the single-element-array return unwrap
+  (the documented gotcha — callers must `@()`-wrap; a leading-comma "fix" NESTS the array and breaks `-contains`).
+
+**Comprehensive regression: 43/43 suites, 0 failed** across the hook / dispatcher / parity / boundary / handover /
+refocus / gate-stop / verdict-capture surface.
+
+**REMAINING:** T001 (callable authoring command, DF-7), T007 (full falsification suite — substantially covered by
+HookPacketCapture + HookVerdictCapture; consolidate for SC-012/013/014/015), T008/T009 (DF-1/DF-2, small,
+first-to-defer), the cross-host marker residual (drift-log D-001). Then the closeout cap-revert (22→20) + the
+real-host re-dogfood acceptance gate.
 
 **Process note (honest):** task-implementation commits this phase used the `feat/fix(174):` conventional-commit
 prefix with the T0NN reference in the body, rather than the `boundary(implement): T0NN` prefix; focused-per-task

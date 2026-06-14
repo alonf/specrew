@@ -28,7 +28,14 @@ function Get-SpecrewHandoverSectionOrder {
         "Agent's working hypothesis / mental model",
         'Recommended next-immediate-step',
         "Context the receiving host needs that artifacts don't carry",
-        'Recent conversation (last few exchanges, hook-captured)'
+        'Recent conversation (last few exchanges, hook-captured)',
+        # F-174 iter-11 (T002, DF-3): the VERBATIM rendered boundary VERDICT packet, captured from the transcript
+        # by the Stop hook so a resume inherits the AUTHORED packet (not placeholders). A THIRD ownership category
+        # (Get-SpecrewHandoverCapturedSections) - written when the hook captures a marker-bearing packet, PRESERVED
+        # otherwise (the clobber guard, T003). It is NEITHER mechanical (it must not be refreshed/placeholdered
+        # every stop) NOR agent-owned (the hook writes it, so the "non-placeholder == agent-authored" provenance
+        # invariant must NOT include it).
+        'Authored boundary packet (captured at stop)'
     )
 }
 
@@ -42,12 +49,26 @@ function Get-SpecrewHandoverAgentOwnedSections {
     )
 }
 
+function Get-SpecrewHandoverCapturedSections {
+    # F-174 iter-11 (T002, DF-3): the THIRD ownership category - sections the HOOK populates by CAPTURING the
+    # agent's actually-rendered boundary packet verbatim from the transcript (not synthesizing it, not the agent
+    # calling a function). Excluded from BOTH the agent-owned set (so the "non-placeholder == agent-authored"
+    # provenance invariant stays true) AND the mechanical complement (so a generic Stop with no new packet does
+    # NOT refresh/placeholder it - the clobber guard preserves the last captured packet within its boundary).
+    # NOTE: this returns a single-element list; PowerShell unwraps it to a bare string on return, so EVERY caller
+    # must re-wrap with @(...) (or iterate with foreach, which treats a scalar as one item) before indexing [0] or
+    # using -contains. All in-tree callers do; do NOT add a leading-comma "fix" - it nests the array and breaks
+    # -contains (the element becomes Object[], not the title string).
+    return @('Authored boundary packet (captured at stop)')
+}
+
 function Get-SpecrewHandoverMechanicalSections {
     # F-174 iter-9: the HOOK-owned sections - refreshed every material stop from the git/fs session delta
-    # (they describe "now"). Derived as the complement of the agent-owned set within the fixed order, so a
-    # title rename in Get-SpecrewHandoverSectionOrder cannot silently desync the two lists.
-    $agent = Get-SpecrewHandoverAgentOwnedSections
-    return @(Get-SpecrewHandoverSectionOrder | Where-Object { $agent -notcontains $_ })
+    # (they describe "now"). Derived as the complement of the agent-owned set AND the captured set (iter-11 T002)
+    # within the fixed order, so a title rename in Get-SpecrewHandoverSectionOrder cannot silently desync the
+    # lists, and the captured-packet section can never fall back into the refreshed-every-stop mechanical bucket.
+    $reserved = @(Get-SpecrewHandoverAgentOwnedSections) + @(Get-SpecrewHandoverCapturedSections)
+    return @(Get-SpecrewHandoverSectionOrder | Where-Object { $reserved -notcontains $_ })
 }
 
 function Get-SpecrewHandoverTimeScopedSections {
@@ -100,14 +121,28 @@ function ConvertFrom-SpecrewHandoverFile {
     # Parse the Pillar-2 body sections (## <title> ... until the next ## or EOF). F-174 iter-5: the body
     # is read back so consumers surface the rich agent-authored content + the detector can flag a
     # placeholder. The H1 (# Session Handover ...) is skipped (single #; the regex requires exactly ##).
+    # F-174 iter-11 (T002, DF-3): the captured-packet section (Get-SpecrewHandoverCapturedSections) embeds the
+    # agent's VERBATIM boundary packet, which is itself six '## ' headers (## What I Just Did, ...). A flat '^##'
+    # split would shred it on read-back - every inner '## ' starting a bogus section, so the captured section keeps
+    # only the (near-empty) text before its first inner header -> Test-SpecrewHandoverSectionAuthored returns false
+    # -> placeholder -> the clobber guard AND the resume both break. So once INSIDE a captured section, a '## ' line
+    # closes it ONLY when it EXACTLY matches another KNOWN canonical handover title (the packet's own headers like
+    # '## What I Just Did' do NOT match the canonical '## What I just did (last 3-5 turns ...)'); otherwise the line
+    # is captured-body content. Non-captured sections parse EXACTLY as before (no behavior change off this path).
+    $knownTitles = @(Get-SpecrewHandoverSectionOrder)
+    $capturedTitles = @(Get-SpecrewHandoverCapturedSections)
     $sections = [ordered]@{}
     $curTitle = $null
+    $inCaptured = $false
     $curLines = New-Object System.Collections.Generic.List[string]
     for ($i = $bodyStart; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         if ($line -match '^##\s+(.*\S)\s*$') {
+            $candidate = $Matches[1].Trim()
+            if ($inCaptured -and ($knownTitles -notcontains $candidate)) { $curLines.Add($line) | Out-Null; continue }
             if ($null -ne $curTitle) { $sections[$curTitle] = (($curLines -join "`n").Trim()) }
-            $curTitle = $Matches[1].Trim()
+            $curTitle = $candidate
+            $inCaptured = ($capturedTitles -contains $candidate)
             $curLines = New-Object System.Collections.Generic.List[string]
         }
         elseif ($null -ne $curTitle) { $curLines.Add($line) | Out-Null }
@@ -161,6 +196,7 @@ function Write-SpecrewRollingHandoverContent {
         [Parameter()][System.Collections.IDictionary] $Sections = @{}
     )
     # T003 preserve: a caller that did not supply a gate/workshop field inherits the existing file's value.
+    $prevFm = $null
     if (Test-Path -LiteralPath $Path) {
         $prevFm = ConvertFrom-SpecrewHandoverFile -Path $Path
         if ($null -ne $prevFm) {
@@ -168,6 +204,26 @@ function Write-SpecrewRollingHandoverContent {
             if (-not $PSBoundParameters.ContainsKey('LastVerdict')) { $LastVerdict = [string]$prevFm.last_verdict }
             if (-not $PSBoundParameters.ContainsKey('WorkshopDone')) { $WorkshopDone = [string]$prevFm.workshop_done }
             if (-not $PSBoundParameters.ContainsKey('WorkshopRemaining')) { $WorkshopRemaining = [string]$prevFm.workshop_remaining }
+        }
+    }
+    # F-174 iter-11 (T003, SC-015) CLOBBER GUARD, CENTRALIZED so BOTH callers (the hook floor-writer AND the agent
+    # body-author Write-SpecrewHandoverContext) honor it. The captured-packet section (the THIRD ownership category)
+    # is HOOK-captured verbatim; neither caller's own per-writer preserve touches it (it is excluded from both the
+    # mechanical and agent-owned sets). So if THIS write does not supply a fresh captured packet, carry the existing
+    # one forward UNCHANGED - but ONLY while it is authored AND still belongs to the CURRENT active_boundary. A
+    # forward boundary change leaves it absent -> it falls to the placeholder (the prior boundary's packet is stale);
+    # a later generic Stop / a placeholder refresh / the agent authoring its own sections all PRESERVE it. Mutates a
+    # LOCAL copy, never the caller's dict.
+    $writeSections = @{}
+    foreach ($k in $Sections.Keys) { $writeSections[$k] = $Sections[$k] }
+    if ($null -ne $prevFm -and $prevFm.sections -and $prevFm.sections.Count -gt 0 -and
+        (([string]$prevFm.active_boundary) -eq ([string]$ActiveBoundary))) {
+        foreach ($ct in (Get-SpecrewHandoverCapturedSections)) {
+            $freshSupplied = $writeSections.Contains($ct) -and -not [string]::IsNullOrWhiteSpace([string]$writeSections[$ct])
+            if ($freshSupplied) { continue }
+            if ($prevFm.sections.Contains($ct) -and (Test-SpecrewHandoverSectionAuthored -Content ([string]$prevFm.sections[$ct]))) {
+                $writeSections[$ct] = [string]$prevFm.sections[$ct]
+            }
         }
     }
     # Frontmatter values are single-line key: value; collapse any newline so a value never breaks the block.
@@ -185,8 +241,8 @@ function Write-SpecrewRollingHandoverContent {
     if (-not [string]::IsNullOrWhiteSpace($WorkshopRemaining)) { $out.Add("workshop_remaining: $(& $clean $WorkshopRemaining)") | Out-Null }
     foreach ($l in @('---', '', '# Session Handover (rolling)', '')) { $out.Add($l) | Out-Null }
     foreach ($title in (Get-SpecrewHandoverSectionOrder)) {
-        $content = if ($Sections.Contains($title) -and -not [string]::IsNullOrWhiteSpace([string]$Sections[$title])) {
-            [string]$Sections[$title]
+        $content = if ($writeSections.Contains($title) -and -not [string]::IsNullOrWhiteSpace([string]$writeSections[$title])) {
+            [string]$writeSections[$title]
         }
         else { $marker }
         $out.Add("## $title") | Out-Null; $out.Add('') | Out-Null
@@ -263,7 +319,13 @@ function Write-SpecrewRollingHandover {
         [Parameter()][AllowNull()][string] $LastAuthorizedBoundary,
         [Parameter()][AllowNull()][string] $LastVerdict,
         [Parameter()][AllowNull()][string] $WorkshopDone,
-        [Parameter()][AllowNull()][string] $WorkshopRemaining
+        [Parameter()][AllowNull()][string] $WorkshopRemaining,
+        # F-174 iter-11 (T002, DF-3): the VERBATIM boundary packet the hook captured from the transcript this stop.
+        # Passed ONLY when the caller (Update-SpecrewRollingHandover) judged it a FRESH, CURRENT packet (its marker
+        # range brackets the active boundary). When supplied it OVERWRITES the captured section; when absent the
+        # shared writer's centralized clobber guard PRESERVES the existing one (within its boundary). Blank = no
+        # fresh packet this stop (the common case), not an authoritative clear.
+        [Parameter()][AllowNull()][string] $CapturedPacket
     )
     if (-not (Test-Path -LiteralPath $HandoverDir)) { New-Item -ItemType Directory -Path $HandoverDir -Force | Out-Null }
     $path = Get-SpecrewRollingHandoverPath -HandoverDir $HandoverDir
@@ -294,6 +356,12 @@ function Write-SpecrewRollingHandover {
                 }
             }
         }
+    }
+    # F-174 iter-11 (T002): inject a FRESH captured packet (the caller already judged it current). It is the third
+    # ownership category, so it goes STRAIGHT into the body (not via the mechanical/agent-owned merges above);
+    # when absent, the shared writer PRESERVES the existing captured section (the centralized clobber guard).
+    if (-not [string]::IsNullOrWhiteSpace($CapturedPacket)) {
+        foreach ($ct in (Get-SpecrewHandoverCapturedSections)) { $bodySections[$ct] = [string]$CapturedPacket }
     }
 
     return (Write-SpecrewRollingHandoverContent -Path $path -Source $Source -FromHost $FromHost -RecordedAt $RecordedAt `
@@ -608,6 +676,43 @@ function Update-SpecrewRollingHandover {
         try { $conversation = Get-SpecrewConversationTail -HostKind $fromHost -TranscriptPath $TranscriptPath -LastAssistantMessage $LastAssistantMessage } catch { $conversation = $null }
     }
 
+    # F-174 iter-11 (T002, FR-022 / DF-3): capture the VERBATIM rendered boundary packet + compute the forward-only
+    # working boundary. The agent renders/authors the packet; PERSISTING it is mechanical here so a resume inherits
+    # the AUTHORED packet, not placeholders (DF-3). Guarded on the same helpers the verdict capture needs (the Stop
+    # handover provider co-loads shared-governance; the workshop-skill / test paths do not and correctly skip both
+    # the packet capture AND the marker-based active-boundary advance, falling back to the session-state boundary).
+    # active_boundary = the forward-MOST of {the session-state working position, the prior file value, the marker's
+    # FROM} - the marker is a forward-only floor (the maintainer's "set active_boundary from the captured marker"),
+    # and it NEVER regresses an already-forward boundary. The packet is WRITTEN only when the new active boundary is
+    # NOT already PAST the marker's TO (the freshness/stale guard): a packet from a boundary we have moved beyond is
+    # dropped to the placeholder, while a forward boundary change naturally REPLACES the prior packet. Fail-open.
+    $activeBoundary = $boundary
+    $capturedPacketBody = $null
+    if (-not [string]::IsNullOrWhiteSpace($TranscriptPath) -and
+        (Get-Command Get-SpecrewCapturedBoundaryPacket -ErrorAction SilentlyContinue) -and
+        (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue) -and
+        (Get-Command Normalize-SpecrewCanonicalBoundaryType -ErrorAction SilentlyContinue)) {
+        try {
+            $pkt = Get-SpecrewCapturedBoundaryPacket -TranscriptPath $TranscriptPath
+            if ($pkt.Found) {
+                $bOrder = @(Get-SpecrewBoundaryOrder)
+                $idxOf = { param($b) if ([string]::IsNullOrWhiteSpace([string]$b)) { -1 } else { [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $b)) } }
+                $boundaryIdx = & $idxOf $boundary
+                $priorIdx = & $idxOf $lastBoundary
+                $fromIdx = & $idxOf $pkt.FromBoundary
+                $toIdx = & $idxOf $pkt.ToBoundary
+                # forward-most; a -1 (unrecognized boundary) never bumps the cursor (mirrors the T004 -ge 0 guards).
+                $newActiveIdx = ([int[]]@($boundaryIdx, $priorIdx, $fromIdx) | Measure-Object -Maximum).Maximum
+                if ($newActiveIdx -ge 0 -and $newActiveIdx -lt $bOrder.Count) { $activeBoundary = $bOrder[$newActiveIdx] }
+                # FRESHNESS: write iff the active boundary is within the marker's [FROM..TO] range, i.e. not already
+                # past TO. A -1 on either side fails OPEN (cannot rank -> do not reject), mirroring T004.
+                $isFresh = ($toIdx -lt 0) -or ($newActiveIdx -lt 0) -or ($newActiveIdx -le $toIdx)
+                if ($isFresh) { $capturedPacketBody = [string]$pkt.PacketBody }
+            }
+        }
+        catch { [Console]::Error.WriteLine("[specrew-handover] WARN PACKET_CAPTURE_FAILED $($_.Exception.Message)") }
+    }
+
     $mechanical = @{
         $activityTitle                                                = $activity
         "Why I'm stopping (the switch trigger)"                       = $whyStopping
@@ -619,8 +724,8 @@ function Update-SpecrewRollingHandover {
     }
 
     Write-SpecrewRollingHandover -HandoverDir $handoverDir -Source $Source -FromHost $fromHost `
-        -RecordedAt $NowUtc -FromCommit $head -ActiveFeature $feature -ActiveBoundary $boundary `
-        -MechanicalSections $mechanical `
+        -RecordedAt $NowUtc -FromCommit $head -ActiveFeature $feature -ActiveBoundary $activeBoundary `
+        -MechanicalSections $mechanical -CapturedPacket $capturedPacketBody `
         -LastAuthorizedBoundary $lastAuthBoundary -LastVerdict $lastVerdict `
         -WorkshopDone $workshopDone -WorkshopRemaining $workshopRemaining | Out-Null
 
