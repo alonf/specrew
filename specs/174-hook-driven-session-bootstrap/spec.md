@@ -426,16 +426,19 @@ offered.
      (no project-setup gate). `install` (no host) provisions MISSING hosts but RESPECTS + REPORTS existing
      opt-outs; `install --host <h>` (or `--force`) clears that opt-out and re-installs; `remove [--host <h>]`
      records the opt-out. It is a concrete place to send a degraded user, not the main discovery mechanism.
-  3. **Degradation diagnostic** — guidance carried on the EXISTING always-loaded surfaces (the managed
-     copilot-instructions file; the always-true refocus core; the `specrew-hooks` skill body) telling the agent:
-     if it is in a Specrew project (`.specrew/` + the extension present) but did NOT receive the
-     SessionStart/bootstrap directive this session, warn ONCE per session that hooks do not appear active and to
-     run `specrew hooks status` / `specrew update`. This is a FALLBACK diagnostic only — NEVER the integrity
-     mechanism — and MUST NOT spam. **Honest residual**: hosts with no Specrew-deployed always-loaded surface
-     (claude/codex/cursor, where hooks ARE the surface) get no AUTOMATIC warning when hooks are FULLY absent;
-     for them the mitigations are the manual `specrew hooks status` command + the skill description in context +
-     (decisively) Layer 1, which PREVENTS the gap. Creating new per-host always-loaded instruction files is out
-     of scope for this iteration.
+  3. **Degradation diagnostic** — a deterministic warn-once gate plus guidance on an EXISTING always-loaded
+     surface. The gate: `Get-SpecrewHookDegradationWarning` (with `Test-SpecrewBootstrapDirectiveArrived`) returns
+     the warning ONLY when in a Specrew project (`.specrew/` + the deployed extension) where the
+     SessionStart/bootstrap directive did NOT arrive this session, at most ONCE per session (a per-session
+     marker), fail-open toward SILENCE. The `specrew hooks status` command surfaces this same note (a `-Peek` that
+     never records the marker), so the layer-2 command IS the host-universal, self-contained diagnostic+repair
+     surface. Agent self-check guidance is carried on the managed Squad copilot-instructions template (copilot's
+     always-loaded surface). This is a FALLBACK only — NEVER the integrity mechanism — and MUST NOT spam.
+     **Honest residual**: there is no clean cross-host always-loaded INSTRUCTION surface to auto-inject the
+     self-check without inventing one (out of scope): the always-true refocus core is token-budget-locked (≤600)
+     and is hook-injected anyway; claude/codex/cursor have no Specrew-deployed always-loaded file, so when hooks
+     are FULLY absent they get no AUTOMATIC in-context warning. Their mitigations are the deterministic
+     `specrew hooks status` command (run by the user/agent) and — decisively — Layer 1, which PREVENTS the gap.
   **Owner**: Implementer. **Iteration**: 011.
 
 ### Traceability & Governance Requirements

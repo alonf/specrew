@@ -160,3 +160,47 @@ function Test-SpecrewBootstrapDirectiveArrived {
         return $true   # fail-open toward silence (never false-alarm the human)
     }
 }
+
+function Test-SpecrewIsProject {
+    # A Specrew project = a .specrew/ directory AND the deployed speckit extension present. Both, so a bare
+    # .specrew/ (or a non-Specrew repo that happens to have one) does not false-positive the diagnostic.
+    [OutputType([bool])]
+    param([Parameter(Mandatory)][string]$ProjectPath)
+    if (-not (Test-Path -LiteralPath (Join-Path $ProjectPath '.specrew') -PathType Container)) { return $false }
+    return (Test-Path -LiteralPath (Join-Path $ProjectPath '.specify/extensions/specrew-speckit') -PathType Container)
+}
+
+function Get-SpecrewHookDegradationWarning {
+    # F-174 iteration 011 (FR-028 layer 3, T012, SC-018): the warn-ONCE degradation gate. Returns the warning
+    # STRING when ALL hold — (1) in a Specrew project, (2) the SessionStart/bootstrap directive did NOT arrive
+    # this session (hooks look inactive for this host), (3) not already warned this session — else $null. This is
+    # a FALLBACK diagnostic the agent surfaces from an always-loaded instruction; it is NEVER the integrity
+    # mechanism. Warn-once is enforced by a per-session marker so a multi-turn session does not spam. -Peek
+    # computes the verdict WITHOUT recording the marker (for `specrew hooks status` / tests). Fail-open: any error
+    # returns $null (err toward silence; never false-alarm). Pure-ish I/O; never throws.
+    [OutputType([string])]
+    param(
+        [Parameter(Mandatory)][string]$ProjectPath,
+        [AllowNull()][string]$SessionId,
+        [switch]$Peek
+    )
+    try {
+        if (-not (Test-SpecrewIsProject -ProjectPath $ProjectPath)) { return $null }
+        if (Test-SpecrewBootstrapDirectiveArrived -ProjectPath $ProjectPath -SessionId $SessionId) { return $null }
+        $key = if ([string]::IsNullOrWhiteSpace($SessionId)) { 'nosession' } else { ($SessionId -replace '[^A-Za-z0-9]', '-') }
+        $marker = Join-Path $ProjectPath ('.specrew/runtime/hook-degradation-warned-' + $key)
+        if (Test-Path -LiteralPath $marker -PathType Leaf) { return $null }
+        if (-not $Peek) {
+            try {
+                $dir = Split-Path -Parent $marker
+                if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+                [System.IO.File]::WriteAllText($marker, ("warned {0}" -f $key), [System.Text.UTF8Encoding]::new($false))
+            }
+            catch { $null = $_ }
+        }
+        return 'Specrew hooks do not appear active for this host. Automatic handover and verdict capture may be unavailable. Run `specrew hooks status` or `specrew update` to repair.'
+    }
+    catch {
+        return $null
+    }
+}

@@ -107,6 +107,13 @@ function Show-Status {
     else {
         Write-Host 'All hook-capable hosts are installed or intentionally opted-out.' -ForegroundColor Green
     }
+    # F-174 iter-11 (FR-028 layer 3): surface the degradation signal — hooks may be installed yet NOT firing
+    # this session (no bootstrap-directive runtime trail). -Peek so `status` never records the warn-once marker.
+    $degraded = Get-SpecrewHookDegradationWarning -ProjectPath $projectPath -SessionId $null -Peek
+    if (-not [string]::IsNullOrWhiteSpace($degraded)) {
+        Write-Host ''
+        Write-Host ("Diagnostic: {0}" -f $degraded) -ForegroundColor Yellow
+    }
 }
 
 function Invoke-Install {

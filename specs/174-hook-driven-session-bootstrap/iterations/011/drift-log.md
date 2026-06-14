@@ -6,6 +6,23 @@
 Divergences between spec / plan / tasks and the implementation, each with the requirement citation and the
 reconciliation path (lifecycle-discipline rule 4: drift is logged, not absorbed).
 
+## D-003 — PRE-EXISTING refocus-digests red (specify.md host-scoped gate-stop line) — branch/main drift
+
+- **Status**: open (pre-existing; parked — clears on a rebase of branch 174 onto main)
+- **Requirement**: refocus digest content parity (`tests/integration/refocus-digests.tests.ps1:75`); unrelated to
+  FR-028 (surfaced only because Layer 3 touched `general.md`, then reverted).
+- **Divergence**: the test (updated by main-side commit `3d7180de` "fix: scope specify gate stop guidance by
+  host") asserts `specify.md` body contains "On Claude, invoke `specrew-gate-stop`; on non-Claude hosts, render
+  directly". Branch 174's `extensions/specrew-speckit/refocus/specify.md` predates that main-side digest fix and
+  lacks the line, so the assertion fails. None of this iteration's commits touch `specify.md` or this test — it
+  was red on branch 174 before the FR-028 work began. (The general.md ≤600-token check PASSES — Layer 3 added no
+  digest content; the general.md hook-health rule was reverted precisely because the core is budget-maxed.)
+- **Why parked**: it is a main-side digest alignment, not FR-028 scope. The memory note already anticipates F-174
+  rebasing onto a newer main (0.36.0); the rebase brings main's `specify.md` fix. Fixing it directly on 174 risks
+  a later rebase conflict for no in-scope benefit.
+- **Reconciliation path**: rebase branch 174 onto main (planned), OR add the one host-scoped gate-stop line to
+  `specify.md` to match `general.md`'s F-165 pattern. Recorded 2026-06-14.
+
 ## D-002 — PRE-EXISTING host-coupling-firewall red (SessionBootstrapManager ValidateSet) — NOT from hook-deploy work
 
 - **Status**: open (pre-existing; parked for the maintainer — a Phase-D-vs-allow-list judgment call)
