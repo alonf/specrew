@@ -28,7 +28,13 @@ effort_unit: "story_points"
 # (FR-028, T010-T012) folded mid-implement into iter-011 ("I already consider the extra
 # sp ... and approved"). Same REVERSIBLE + grandfathered terms: the
 # f174-i011-cap-revert-obligation restores this to the global default 20 at closeout.
-capacity_per_iteration: 32
+#
+# REVERTED 2026-06-14 at the F-174 iter-011 + iter-007 closeout (obligation
+# f174-i011-cap-revert-obligation DISCHARGED): restored to the global default 20.
+# iterations 010/011 (historical plan cap 32) are protected by the grandfather rule
+# (past-implementation status -> validated against their own plan capacity, not the
+# global default); iter-007 (plan cap 20) matches the global default again.
+capacity_per_iteration: 20
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)

@@ -6,6 +6,33 @@
 Divergences between spec / plan / tasks and the implementation, each with the requirement citation and the
 reconciliation path (lifecycle-discipline rule 4: drift is logged, not absorbed).
 
+## D-008 — provider fail-open emits NOTHING on internal error (silent-failure hardening, deferred → proposal candidate)
+
+- **Status**: open (deferred follow-up; proposal candidate)
+- **Requirement**: FR-004/FR-020 (the bootstrap directive must surface); robustness-adjacent.
+- **Divergence**: the bootstrap/handover providers' top-level `catch` fail-open writes only a stderr WARN and
+  exits 0 with NO stdout. On Claude stderr is not surfaced in-session, so ANY internal provider error renders a
+  bannerless agent with no visible error. Found at the iter-011 real-host gate, where it hid TWO distinct bugs (a
+  component version skew and the StrictMode `$null.Count` crash) — the human saw a self-exploring Claude and could
+  not tell the hook had failed.
+- **Why deferred**: a "fail-loud-ish" fallback directive on catch (emit a minimal orientation + `specrew where`
+  pointer instead of nothing) changes the fail-open contract and needs its own test; not blocking the iter-011
+  close. Recorded as a proposal candidate. Recorded 2026-06-14.
+
+## D-007 — bootstrap + refocus SessionStart budgets do not compose under the 10K cap (CAP-1, deferred → proposal candidate)
+
+- **Status**: open (deferred follow-up; proposal candidate). NOT breaching today.
+- **Requirement**: FR-002/FR-004 (the SessionStart payload must fit the host hook-output cap).
+- **Divergence**: P2 bounded the bootstrap directive in isolation, but the SessionStart payload is the JOIN of
+  the bootstrap directive (order 20) AND the co-resident refocus fragment (order 10). Each self-bounds to its OWN
+  budget (refocus b2 = 1200 tokens → ~4,984-char ceiling); at both ceilings the join exceeds 10,000. Surfaced by
+  the 2nd Proposal-145 review (CAP-1, HIGH). Not breaching today (the `DirectiveDeliveryCap` test now MEASURES the
+  real refocus fragment so general.md growth trips the test, and surfaces the ceiling residual); the dispatcher
+  `PAYLOAD_OVERSIZE` WARN is the runtime net.
+- **Reconciliation path**: a dispatcher FRAGMENT-PRIORITY DROP — keep the bootstrap fragment whole, shrink/drop
+  the lower-order refocus fragment when the join would overflow. Touches F-171's refocus budget, so deferred as a
+  scoped slice (proposal candidate), not changed unilaterally at closeout. Recorded 2026-06-14.
+
 ## D-006 — T012 Layer-3 agent-guidance surface consolidated (plan named 3 surfaces; spec/build ship 1)
 
 - **Status**: resolved (consolidation matches the spec's FR-028 Layer-3 Honest-residual; recorded for plan-vs-build traceability — review-signoff P4-2)
@@ -50,7 +77,10 @@ reconciliation path (lifecycle-discipline rule 4: drift is logged, not absorbed)
 
 ## D-004 — governance-validator capacity mismatch on the DELIBERATELY-OPEN iter-007 (accepted cap-raise drift)
 
-- **Status**: open (pre-existing accepted drift; resolved by the `f174-i011-cap-revert-obligation` at closeout)
+- **Status**: RESOLVED 2026-06-14 — at the iter-011 + iter-007 closeout the cap was reverted 32→20 (obligation
+  `f174-i011-cap-revert-obligation` discharged) and iter-007 was CLOSED (abandoned-superseded). iter-007's plan
+  cap 20 now matches the global default; iter-010/011 (plan 32) are grandfathered by their past-implementation
+  status. The validator no longer fails iter-007. (Original entry retained below for the record.)
 - **Requirement**: the capacity-consistency validator (`validate-governance.ps1`: plan "Capacity per Iteration" +
   "Capacity total" must match `.specrew/iteration-config.yml capacity_per_iteration`); adjacent to FR-028 only
   because T010-T012 raised the cap.
@@ -127,5 +157,8 @@ reconciliation path (lifecycle-discipline rule 4: drift is logged, not absorbed)
 - **Reconciliation path**: carry the marker instruction into the HOST-NEUTRAL boundary-packet guidance (the
   launch contract / coordinator framing / the Rule 46 packet spec) so every host emits it, not just the Claude
   skill. Small doc rollout; best informed by the real-host re-dogfood (which validates the Claude path first).
-- **Disposition**: deferred within F-174 iteration 011 as a fast-follow; does not block the verdict-integrity
-  core (T004/T005/T006 are complete + proven on the Claude packet format). Recorded 2026-06-14.
+- **Disposition**: **DECIDED at the 2026-06-14 closeout — FAST-FOLLOW** (maintainer). Integrity is safe today
+  (non-Claude hosts degrade to "awaiting verdict": no marker → no capture → pending re-confirm; no fabrication);
+  only cross-host LIVENESS (an extra human re-confirm per boundary on codex/copilot/cursor) is missing. Carry the
+  marker instruction into the host-neutral boundary-packet guidance as a fast-follow; does not block the
+  verdict-integrity core (T004/T005/T006 complete + proven on the Claude packet format). Recorded 2026-06-14.

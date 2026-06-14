@@ -110,3 +110,43 @@ every confirmed defect is fixed with a regression test, the integrity guarantees
 gate-skip, committed≠authorized, mechanical capture/clobber) hold under adversarial probing, and 50 suites are
 green. The remaining gates are the maintainer's: the **real-host re-dogfood** (the iteration-010 falsification
 lesson — green synthetic tests are necessary, not sufficient) and, at closeout, the **cap-revert**.
+
+## Closeout addendum (2026-06-14) — real-host gate ran; APPROVED + CLOSED
+
+The maintainer ran the **real-host re-dogfood on Claude** (the gate above). It did exactly its job — it surfaced
+a **host-delivery + packaging cluster the deterministic suite could not**, because the bootstrap orientation
+banner did not surface on the live host:
+
+- **P2 (HIGH, observed live):** the ~58KB SessionStart payload exceeded Claude Code v2.1.177's **10,000-char
+  hook-output cap** and was silently dropped. FIX: `Get-SpecrewContractDeliveryMode` puts claude in the POINTER
+  arm (contract on disk, not inlined) + a new `Limit-SpecrewInlineBlock` bounds the variable inlined blocks; a
+  dispatcher `PAYLOAD_OVERSIZE` WARN added (observability only). Commit `f76014a7`.
+- **P1 (clean-install foot-gun):** both providers now resolve bootstrap components from the newest module that
+  ACTUALLY CONTAINS `scripts/internal/bootstrap`, not blindly newest. Commit `f76014a7`.
+- **`$null.Count` StrictMode crash (the actual banner blocker):** the pre-existing T008 idiom
+  `$decisions = if(..){@($v)}else{@()}` collapsed an empty `@()` to `$null` under StrictMode-Latest, so
+  `$decisions.Count` THREW on a workshop with done lenses but no parseable decision summaries → empty directive →
+  no banner. FIX: direct-assignment; the extraction tests now run under StrictMode + a regression case reproduces
+  the exact shape. Commit `9d3564f2`.
+- A **2nd Proposal-145 multi-agent review** (5 confirmed / 6 refuted, adversarially verified) drove RES-1
+  (interpretive-first handover budget), RES-3 (name every decided lens), INT-1 (real verdict-message test),
+  REG-1 (bootstrap suite now CI-gated), and surfaced **CAP-1** (deferred).
+- **Real-host result: the banner now SURFACES on Claude** (maintainer-confirmed) — the previously-failing
+  acceptance gate now PASSES. Full bootstrap suite 45/45 + integration green.
+
+**Deferred follow-ups (recorded, not in this iteration):** **CAP-1** — the bootstrap + refocus SessionStart
+fragments don't compose under 10K at their budget ceilings; the structural fix is a dispatcher fragment-priority
+drop (drift D-007, proposal candidate). **Silent-failure hardening** — the provider emits nothing on a swallowed
+error, which hid the two bugs above (drift D-008, proposal candidate). **D-001** — host-neutral verdict-marker
+emission: **fast-follow** (integrity-safe today; only cross-host liveness is missing).
+
+**Maintainer instruction updates:** #2 (D-001) — **decided: fast-follow**. #3 — the real-host gate + the
+cap-revert (`capacity_per_iteration` 32→20, obligation DISCHARGED) are both now done; **iteration CLOSED**.
+
+## Verdict — APPROVED + CLOSED (maintainer, 2026-06-14)
+
+**APPROVE** iteration 011 and CLOSE it. The DF-3/4/5/7 verdict-integrity cluster + the FR-028 hook hardening are
+sound and green; the real-host gate ran, found the host-delivery cluster, and that cluster is fixed with the
+banner confirmed surfacing on Claude. Iteration 007 is closed (abandoned-superseded) at the same closeout.
+F-174 the feature stays OPEN. **Honest residual:** "banner surfaces on Claude" was confirmed on the dev-tree
+resolved setup; the published-beta install validation is a later feature-closeout gate. No push/PR/merge performed.

@@ -1,13 +1,13 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
-**Last Completed Task**: review-signoff structured review (Proposal-145, 10-agent multi-dimension + adversarial verification) CONDUCTED + remediated — 0 HIGH / 3 MEDIUM (all fixed) / LOW+INFO (cheap fixed, rest carried); 50 suites green post-remediation. (Implementation T001–T012 all DONE + green.)
-**Tasks Remaining**: NONE implementation. Remaining are the maintainer's at/after review-signoff: the review-signoff VERDICT, the real-host re-dogfood acceptance gate, and the closeout cap-revert (32→20 + validator rerun, `f174-i011-cap-revert-obligation`). Cross-host marker residual tracked (drift-log D-001); carried review follow-ups in review-signoff.md (P3-2, P4-1, P1-1).
-**In Progress**: (checkpointed, working tree clean) — review-signoff conducted + remediated; awaiting the maintainer's review-signoff verdict + the real-host re-dogfood
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: iteration-closeout (2026-06-14). review-signoff APPROVED by the maintainer after the real-host re-dogfood acceptance gate ran on Claude (the gate this iteration was awaiting). The gate FOUND a host-delivery + packaging cluster (P1 clean-install resolver, P2 10K-cap drop, and a StrictMode `$null.Count` crash on empty done_decisions) that kept the bootstrap banner from surfacing; all fixed + 2nd Proposal-145 review (5 confirmed/6 refuted, all addressed) + the banner CONFIRMED surfacing on the real host. Cap-revert obligation DISCHARGED (32→20). (Implementation T001–T012 all DONE + green; full bootstrap suite 45/45 + integration green.)
+**Tasks Remaining**: (none — iteration CLOSED, accepted for the delivered scope: DF-3/4/5/7 boundary-authoring + verdict-integrity cluster + FR-028 hook hardening + the real-host-found host-delivery cluster. F-174 stays OPEN.) Deferred follow-ups (NOT iteration tasks): CAP-1 dispatcher fragment-priority drop + the silent-failure-emits-nothing hardening (drift D-007/D-008, proposal candidates); D-001 host-neutral verdict-marker emission (fast-follow). iter-007 closed (abandoned-superseded) at the same closeout.
+**In Progress**: (none)
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-14T10:30:00Z
+**Updated**: 2026-06-14T17:24:46Z
 
 ## Charter
 
