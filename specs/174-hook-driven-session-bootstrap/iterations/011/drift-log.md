@@ -6,6 +6,30 @@
 Divergences between spec / plan / tasks and the implementation, each with the requirement citation and the
 reconciliation path (lifecycle-discipline rule 4: drift is logged, not absorbed).
 
+## D-005 — T001 shipped as a COMMAND, not a module-function export (deliberate design divergence)
+
+- **Status**: resolved (accepted design choice; recorded for traceability)
+- **Requirement**: FR-022 (capture ≠ author; the agent must have a reachable way to persist the handover body —
+  DF-7: `Write-SpecrewHandoverContext` is named by the bootstrap directive but is NOT a module export, so it is
+  unreachable except by dot-sourcing an internal file).
+- **Divergence**: plan T001's parenthetical said "exporting + testing it is part of this task," which reads as
+  "add `Write-SpecrewHandoverContext` to `Specrew.psd1` FunctionsToExport." The implementation instead ships a
+  thin `specrew handover author` DISPATCHER COMMAND (`scripts/specrew-handover.ps1`, registered in
+  `scripts/specrew.ps1`) that dot-sources `HandoverStore.ps1` and wraps the writer. The function is NOT exported.
+- **Why the command, not the export** (advisor-confirmed): agents and hosts invoke Specrew as `specrew <cmd>`,
+  never `Import-Module Specrew; Write-SpecrewHandoverContext ...` — so the genuinely *agent-callable* surface the
+  task demands is a command, and the FR-022 directive can now name a token the agent can actually run. A module
+  export would still be unreachable from the agent's real invocation path. The task title itself says
+  "command/skill," anticipating this. The command reuses `ConvertFrom-SpecrewHandoverFile` (the same reader a
+  resume uses) to parse `## ` sections — no bespoke multi-line CLI parser — and writes through the SAME atomic
+  writer + centralized clobber guard as the Stop hook, so the authored body and a hook-captured packet coexist
+  (proven by HandoverAuthorCommand.Tests case 5 / SC-015).
+- **Residual**: `Write-SpecrewHandoverContext` stays internal (reached by dot-source from the command + by the
+  existing tests that dot-source `HandoverStore.ps1`). No export was added; none is needed. The FR-022 directive
+  text (all 3 mirror copies of `specrew-bootstrap-provider.ps1`) was updated to name `specrew handover author`
+  instead of the bare function, keeping the "interpretive sections are agent-authored / Claude-only marker
+  capture" nuance (the latter ties to D-001). Recorded 2026-06-14.
+
 ## D-004 — governance-validator capacity mismatch on the DELIBERATELY-OPEN iter-007 (accepted cap-raise drift)
 
 - **Status**: open (pre-existing accepted drift; resolved by the `f174-i011-cap-revert-obligation` at closeout)

@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T002 + T003 (authoring side — mechanical VERBATIM packet capture into the handover body + the centralized clobber guard, DF-3/SC-015), proven end-to-end + green (HookPacketCapture.Tests, 8 falsification cases; full 43-suite regression 0 failed)
-**Tasks Remaining**: T001 (callable authoring command — Fix A1, DF-7), T007 (full falsification suite — already substantially covered by HookPacketCapture + HookVerdictCapture; consolidate/round out for SC-012/013/014/015), T008 + T009 (DF-1/DF-2, small) — plus the cross-host marker residual (drift-log D-001)
-**In Progress**: (checkpointed, working tree clean) — T001 (expose/prove the agent-callable authoring command) is next
+**Last Completed Task**: T001 (agent-callable handover authoring command `specrew handover author` — DF-7; the reachable replacement for the un-exported `Write-SpecrewHandoverContext`, drift D-005), proven end-to-end + green (HandoverAuthorCommand.Tests, 6 cases incl. SC-012 round-trip + SC-015 clobber-guard preservation + --stdin)
+**Tasks Remaining**: T007 (deterministic test consolidation — SC-012/013/014/015, substantially covered by HandoverAuthorCommand + HookPacketCapture + HookVerdictCapture; confirm each SC has explicit proof), T008 + T009 (DF-1/DF-2, small) — plus the cross-host marker residual (drift-log D-001)
+**In Progress**: (checkpointed, working tree clean) — T007 (deterministic test consolidation) is next
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-14T01:33:49Z
+**Updated**: 2026-06-14T05:05:00Z
 
 ## Charter
 
@@ -167,10 +167,37 @@ for codex/copilot/cursor; the SessionStart bootstrap + Stop handover ride these 
 **Comprehensive regression: 43/43 suites, 0 failed** across the hook / dispatcher / parity / boundary / handover /
 refocus / gate-stop / verdict-capture surface.
 
-**REMAINING:** T001 (callable authoring command, DF-7), T007 (full falsification suite — substantially covered by
-HookPacketCapture + HookVerdictCapture; consolidate for SC-012/013/014/015), T008/T009 (DF-1/DF-2, small,
-first-to-defer), the cross-host marker residual (drift-log D-001). Then the closeout cap-revert (22→20) + the
-real-host re-dogfood acceptance gate.
+**FR-028 hook install/discovery hardening — DONE + green (T010/T011/T012, mid-implement scope amendment
+`f174-i011-hook-deploy-hardening`, maintainer pre-approved; cap RAISED 22→32):** the maintainer surfaced that
+hook-driven startup is now the primary path while hooks deploy only for PATH-detected hosts — a silent-degradation
+hole when a user adds codex/copilot/cursor AFTER `specrew init`. Three layers, each with folded tests:
+- **T010** (`1f9b83fb`, SC-016) — proactive provisioning at init+update for ALL hook-capable registry hosts
+  (`Get-SpecrewHookCapableHosts` keyed on the manifest `RefocusHookBindings` capability, not PATH detection);
+  preserve user entries, replace only Specrew-owned, respect opt-outs, fail open.
+- **T011** (`dea3540c`, SC-017) — the `specrew hooks status|install|remove [--host]` repair surface
+  (dispatcher-only, no project-setup gate) + the non-mirrored `Get-SpecrewHooksStatus` inspector
+  (installed/missing/stale/opted-out/failed).
+- **T012** (`457a398d`, SC-018) — the always-loaded degradation diagnostic (`Get-SpecrewHookDegradationWarning`
+  warn-once gate + `Test-SpecrewBootstrapDirectiveArrived`); surfaced on the copilot template + `specrew hooks status`.
+- **145-review fixes** (`1aa8b2df`) — `install` no longer reports a false "installed" on a deploy failure
+  (defect-001) + 3 cheap hardenings; governance-validator pipe fix (`603a639a`); D-004 capacity drift parked.
+
+**Authoring fast-path — DONE + green (T001, DF-7):** `specrew handover author` (`scripts/specrew-handover.ps1`,
+registered in `specrew.ps1` + Show-Usage + FileList) is the reachable, agent-callable replacement for the
+un-exported `Write-SpecrewHandoverContext`. It parses a markdown body (`--from <file>` | `--stdin`) into the
+Pillar-2 handover sections via the SAME `ConvertFrom-SpecrewHandoverFile` reader a resume uses (tolerant
+lead-phrase header matching; unrecognized headers reported + ignored), resolves feature/boundary/host from
+committed session state (flag-overridable), and writes through `Write-SpecrewHandoverContext` → the shared atomic
+writer, so the centralized clobber guard holds (a hook-captured boundary packet and the agent's interpretive body
+coexist). The FR-022 bootstrap directive (all 3 mirror copies) now NAMES this reachable command. Shipped as a
+COMMAND, not a module export (drift D-005 — agents invoke `specrew ...`, never module functions). Proven by
+`HandoverAuthorCommand.Tests` (round-trip incl. interpretive sections SC-012, tolerant headers, dispatch arm,
+unrecognized-skip, clobber-guard preservation SC-015, --stdin).
+
+**REMAINING:** T007 (deterministic test consolidation — substantially covered by HandoverAuthorCommand +
+HookPacketCapture + HookVerdictCapture; confirm each of SC-012/013/014/015 has explicit proof), T008/T009
+(DF-1/DF-2, small, first-to-defer), the cross-host marker residual (drift-log D-001). Then the closeout cap-revert
+(32→20) + the real-host re-dogfood acceptance gate.
 
 **Process note (honest):** task-implementation commits this phase used the `feat/fix(174):` conventional-commit
 prefix with the T0NN reference in the body, rather than the `boundary(implement): T0NN` prefix; focused-per-task

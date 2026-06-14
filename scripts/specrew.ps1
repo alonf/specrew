@@ -45,6 +45,7 @@ Usage:
   specrew update [options]         Refresh Specrew assets or upgrade managed platforms
   specrew team <command> [args]    Manage Squad team members
   specrew hooks <command> [args]   Inspect / install / repair Specrew host hooks
+  specrew handover <command> [args] Author the cross-session handover body (agent-callable)
   specrew version [options]        Show version and slash-command compatibility state
 
 Commands:
@@ -56,6 +57,7 @@ Commands:
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
   hooks    Inspect/install/repair host hooks (status, install [--host], remove [--host])
+  handover Author the rolling cross-session handover body (author [--from <file>])
   version  Show the installed Specrew version and slash-command compatibility
   install-shell-wrappers  Install/refresh the Unix shell wrappers (macOS/Linux)
   help     Show this help message
@@ -74,6 +76,7 @@ Examples:
   specrew hooks status
   specrew hooks install --host codex
   specrew hooks remove --host cursor
+  specrew handover author --from .specrew/handover-draft.md
   specrew version
   specrew team add security-analyst --role "Security Analyst" --charter "Review security"
   specrew team update security-analyst --charter "Updated charter"
@@ -656,6 +659,21 @@ switch ($Command) {
 
         # Forward positional args: <status|install|remove> [--host <h>] [--force] [--project-path <path>]
         & pwsh -NoProfile -ExecutionPolicy Bypass -File $hooksScript @Arguments
+        exit $LASTEXITCODE
+    }
+
+    'handover' {
+        # F-174 iter-11 (T001, FR-022 / DF-7): the agent-callable handover BODY-authoring surface (the
+        # reachable replacement for the un-exported Write-SpecrewHandoverContext). No project-setup gate —
+        # it is fail-open and parses its own Unix-style flags + reads the body from --from/stdin.
+        $handoverScript = Join-Path $scriptRoot 'specrew-handover.ps1'
+        if (-not (Test-Path -LiteralPath $handoverScript)) {
+            Write-Host "ERROR: specrew-handover.ps1 not found at $handoverScript" -ForegroundColor Red
+            exit 1
+        }
+
+        # Forward positional args: author [--from <file>] [--feature <ref>] [--boundary <stage>] [--host <kind>]
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $handoverScript @Arguments
         exit $LASTEXITCODE
     }
 

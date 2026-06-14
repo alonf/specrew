@@ -267,6 +267,7 @@
         'scripts/internal/yaml-list.ps1',
         'scripts/psd1-sort.ps1',
         'scripts/specrew-config.ps1',
+        'scripts/specrew-handover.ps1',
         'scripts/specrew-host.ps1',
         'scripts/specrew-hooks.ps1',
         'scripts/specrew-init.ps1',

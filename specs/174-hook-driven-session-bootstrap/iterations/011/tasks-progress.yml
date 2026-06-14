@@ -1,13 +1,13 @@
 schema: "v1"
 feature: "174-hook-driven-session-bootstrap"
 iteration: "011"
-updated_at: "2026-06-14T02:30:20Z"
+updated_at: "2026-06-14T05:05:00Z"
 tasks:
   T001:
-    title: "Expose a TESTED public/agent-callable authoring command/skill around the handover writer — PROVE/EXPORT the callable surface (do NOT assume Write-SpecrewHandoverContext is exported)"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    title: "Expose a TESTED agent-callable authoring surface around the handover writer (DF-7). Shipped as the `specrew handover author` dispatcher command (the reachable replacement for the un-exported Write-SpecrewHandoverContext — agents invoke `specrew ...`, not module functions; divergence drift D-005). Parses a markdown body (--from <file> | --stdin) into the Pillar-2 handover sections via the SAME ConvertFrom-SpecrewHandoverFile reader a resume uses (tolerant lead-phrase header matching; unrecognized headers reported + ignored), resolves feature/boundary/host from committed session state (flag-overridable), and writes via Write-SpecrewHandoverContext -> the shared atomic writer (honors the centralized clobber guard, keeps .old crash backup). Registered in specrew.ps1 dispatch + Show-Usage + FileList; the FR-022 bootstrap directive now NAMES this reachable command. Proven end-to-end (HandoverAuthorCommand.Tests: round-trip incl. interpretive sections SC-012, tolerant headers, dispatch arm, unrecognized-skip, clobber-guard preservation SC-015, --stdin)."
+    status: "done"
+    started_at: "2026-06-14T04:00:00Z"
+    completed_at: "2026-06-14T05:00:00Z"
     blocked_reason: ""
   T002:
     title: "Mechanical Stop-hook packet capture (A2, LOAD-BEARING) — capture the VERBATIM rendered boundary packet into the body + set active_boundary; non-skippable. Reader Get-SpecrewCapturedBoundaryPacket (marker-tied, RAW -Raw read so the six '## ' headers + newlines survive; substantive-content floor, NOT six exact headers) + a THIRD section-ownership category (excluded from both mechanical and agent-owned) + the parser made captured-section-verbatim-aware (a '## ' line closes it only on an EXACT canonical title, so the packet's own '## ' do not shred it) + forward-only active_boundary from the marker FROM (never regress) + a [FROM..TO] freshness/stale guard. Captured into Update-SpecrewRollingHandover, fail-open. Proven end-to-end (HookPacketCapture.Tests, realistic six-section packet)."
