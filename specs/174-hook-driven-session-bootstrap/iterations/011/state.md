@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T008 (DF-1 pointer-mode recap synthesis — `Get-SpecrewLensDecisionSummary` extracts each done lens's `## Decision` titles; `Get-SpecrewWorkshopProgress` surfaces a `done_decisions` recap; the in-flight directive renders the DECISIONS + a SYNTHESIZE instruction (3 mirrors) with a bare-names fallback; WorkshopDecisionRecap.Tests 17/17 green; fixed a PowerShell `@($List)`-as-hashtable-value trap via `.ToArray()`)
-**Tasks Remaining**: T009 (DF-2, small — version/branch carried in the bootstrap directive) — plus the cross-host marker residual (drift-log D-001)
-**In Progress**: (checkpointed, working tree clean) — T009 (DF-2 version/branch in the directive) is next
+**Last Completed Task**: T009 (DF-2 version/branch in the bootstrap directive — embed the resolved Specrew version + git branch as literal banner values for pointer-mode hosts; DirectiveVersionBranch.Tests 9/9 green, incl. the real provider resolving manifest 0.35.0 + the git branch end-to-end)
+**Tasks Remaining**: NONE — ALL implementation tasks T001–T012 are DONE + green. Remaining is NOT implementation: the maintainer's review-signoff verdict, the real-host re-dogfood acceptance gate, and the closeout cap-revert (32→20) — all at/after review-signoff (the iteration is PAUSED at implement → review-signoff for the maintainer's review tomorrow). Cross-host marker residual is tracked (drift-log D-001).
+**In Progress**: (checkpointed, working tree clean) — implement phase COMPLETE; awaiting the maintainer's review-signoff
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-14T06:15:00Z
+**Updated**: 2026-06-14T06:50:00Z
 
 ## Charter
 
@@ -210,8 +210,21 @@ decision record parses. `WorkshopDecisionRecap.Tests` 17/17 green; accessor + pr
 pre-existing-pattern PowerShell trap: `@($List[object])` as a hashtable value throws "Argument types do not
 match" -> `.ToArray()`.
 
-**REMAINING:** T009 (DF-2, small — version/branch in the directive), the cross-host marker residual (drift-log
-D-001). Then the closeout cap-revert (32→20) + the real-host re-dogfood acceptance gate.
+**Version/branch in the directive — DONE + green (T009, DF-2, FR-002):** the in-flight + full bootstrap
+directive now EMBEDS the resolved Specrew version (module manifest) + git branch as LITERAL values
+(`Format-BootstrapDirective -SpecrewVersion/-Branch` + a resolved-values banner line, fail-soft on an
+unresolved value), so a pointer-mode host (codex, which does not inline the contract) renders a complete
+banner item 2 instead of "not resolved". The provider resolves the branch in the fallible-work region (BEFORE
+the atomic render claim, keeping the claim→emit window pure string-building). `DirectiveVersionBranch.Tests`
+9/9 green (embed/omit/single-value + the REAL provider resolving manifest 0.35.0 + the git branch end-to-end);
+provider consumers + mirror parity green.
+
+**IMPLEMENT PHASE COMPLETE — all of T001–T012 done + green.** What remains is NOT implementation: the
+maintainer's review-signoff verdict, the real-host re-dogfood acceptance gate (the iteration-010 falsification
+lesson — green synthetic tests are necessary, not sufficient), and the closeout cap-revert (32→20 + rerun the
+validator; obligation `f174-i011-cap-revert-obligation`). PAUSED at implement → review-signoff for the
+maintainer's review. Residual: the cross-host verdict-marker emission (drift-log D-001) + the parked
+pre-existing branch reds (D-002/D-003/D-004).
 
 **Process note (honest):** task-implementation commits this phase used the `feat/fix(174):` conventional-commit
 prefix with the T0NN reference in the body, rather than the `boundary(implement): T0NN` prefix; focused-per-task

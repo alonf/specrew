@@ -54,7 +54,7 @@ function Get-SpecrewContractDeliveryMode {
 }
 
 function Format-BootstrapDirective {
-    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null)
+    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
@@ -72,6 +72,17 @@ function Format-BootstrapDirective {
     $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
     $lines.Add('  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can (FR-025).')
     $lines.Add('  (4) Any validated handover summary; (5) a one-line state reason when non-default; (6) a brief recommended next step for THIS state; (7) the Resume / New / Pick-feature menu as TEXT (offer Resume only when a valid active session exists).')
+    # F-174 iter-11 (T009, DF-2): EMBED the resolved version + branch in the directive TEXT so a pointer-mode
+    # host (codex - it does NOT inline the contract, so the version/branch never reached its banner; the
+    # iteration-010 codex pointer-banner showed "not resolved") renders a COMPLETE banner item 2 from literal
+    # values. claude/copilot/cursor get these from the inlined contract; this makes the directive self-sufficient.
+    # Fail-soft: a value that could not be resolved is omitted (the agent falls back to what it can see).
+    $resolved = New-Object System.Collections.Generic.List[string]
+    if (-not [string]::IsNullOrWhiteSpace($SpecrewVersion)) { $resolved.Add("Specrew version $SpecrewVersion") | Out-Null }
+    if (-not [string]::IsNullOrWhiteSpace($Branch)) { $resolved.Add("branch $Branch") | Out-Null }
+    if ($resolved.Count -gt 0) {
+        $lines.Add(("  Resolved for THIS session (use these LITERAL values in banner item 2 - do NOT render 'unknown'/'not resolved'): {0}." -f ($resolved.ToArray() -join '; ')))
+    }
     # FR-002/FR-023 (iter-7 T044, Ruling b): DRIVE by INLINING the contract, not pointing at a file. The
     # iter-6 directive told the agent to READ last-start-prompt.md BEFORE acting; the side-by-side disproof
     # showed the agent never read it (a file is a skip the agent self-orients past). So when the contract
@@ -264,6 +275,11 @@ try {
     # "unknown" with no version). Fail-soft: an unreadable manifest leaves it null (banner falls back to unknown).
     $specrewVersion = $null
     try { $specrewVersion = [string]((Import-PowerShellDataFile -Path (Join-Path $moduleRoot 'Specrew.psd1')).ModuleVersion) } catch { $specrewVersion = $null }
+    # F-174 iter-11 (T009, DF-2): resolve the branch HERE (in the fallible-work region, BEFORE the atomic render
+    # claim below) so the directive can embed the literal version + branch for pointer-mode hosts. Must NOT run
+    # after the claim (the claim->emit window must stay pure string building - a git call could fail/hang).
+    $branch = $null
+    try { $branch = ([string](& git -C $root rev-parse --abbrev-ref HEAD 2>$null)).Trim(); if ([string]::IsNullOrWhiteSpace($branch)) { $branch = $null } } catch { $branch = $null }
     $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor -SpecrewVersion $specrewVersion
     $contractBody = if ($contractPath -and (Test-Path -LiteralPath $contractPath)) { Get-Content -LiteralPath $contractPath -Raw } else { '' }
 
@@ -310,7 +326,7 @@ try {
     if ($renderDedupeKey -and $renderDedupeKey -ne 'no-session') {
         if (-not (Request-SpecrewHookRenderClaim -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -RecordedAt $nowUtc)) { exit 0 }
     }
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict)
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch)
     exit 0
 }
 catch {

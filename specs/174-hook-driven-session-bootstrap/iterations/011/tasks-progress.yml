@@ -52,10 +52,10 @@ tasks:
     completed_at: "2026-06-14T06:15:00Z"
     blocked_reason: ""
   T009:
-    title: "DF-2 version/branch carried in the bootstrap directive so the pointer-mode banner is complete (first to defer if overrun)"
-    status: "planned"
-    started_at: ""
-    completed_at: ""
+    title: "DF-2 version/branch in the bootstrap directive — EMBED the resolved Specrew version (module manifest) + git branch as LITERAL values in the directive TEXT so a pointer-mode host (codex, which does NOT inline the contract) renders a complete orientation banner item 2 instead of 'not resolved'. Format-BootstrapDirective gains -SpecrewVersion/-Branch params + a resolved-values banner line (fail-soft, omits an unresolved value); the provider resolves the branch in the fallible-work region (BEFORE the atomic render claim, keeping the claim->emit window pure) and passes both (3 mirror copies). Proven (DirectiveVersionBranch.Tests, 9 assertions: embed/omit/single-value + the REAL provider resolves manifest version 0.35.0 + the git branch end-to-end). Provider consumers + mirror parity green."
+    status: "done"
+    started_at: "2026-06-14T06:20:00Z"
+    completed_at: "2026-06-14T06:50:00Z"
     blocked_reason: ""
   T010:
     title: "Hook-deploy Layer 1 (FR-028, SC-016) — proactive provisioning at init+update for ALL hook-capable registry hosts (claude/codex/copilot/cursor), not PATH-detected only. Get-SpecrewHookCapableHosts registry helper (manifests carrying RefocusHookBindings; capability boolean ONLY — events stay from Get-HostEventGroups) + Invoke-RefocusHookDeployment iterates it (claude gated on .claude/ existence, user-level hosts always). Preserve user entries, replace only Specrew-owned, respect opt-outs, fail open, per-machine launcher provisioned even with no host binary present. Tests folded (refocus-deploy.tests 16-18). Commit 1f9b83fb."
