@@ -333,6 +333,21 @@ Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.cursor\hooks.jso
 Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.specrew\specrew-hook-launch.ps1')) 'proactive: per-machine launcher provisioned even with NO host binary present'
 Assert-True (-not ($proHosts -contains 'antigravity')) 'proactive: hookless antigravity NOT provisioned'
 
+# --- 17b. (review-signoff P6-001) DETERMINISTIC PATH-independence guard. Case 17 above provisions all 4 hosts,
+# but on a PATH-COMPLETE machine (the common dev/CI case) the OLD PATH-gated code (Get-Command codex|copilot|
+# cursor) would ALSO resolve all 4 — so case 17 alone has NO falsification power for the "regardless of PATH
+# detection" property it advertises (it passes identically under the reverted feature). Pin it at the SOURCE,
+# machine-independently: the orchestrator MUST enumerate hosts from the REGISTRY and MUST NOT gate host selection
+# on a per-host-binary Get-Command. The only legitimate Get-Command in Invoke-RefocusHookDeployment is the
+# presence check for the registry helper itself; ANY additional Get-Command is a reverted/added PATH gate, and a
+# wholesale revert removes the registry call. Comment lines are stripped so the prose describing the OLD gate
+# does not pollute the match.
+$orchSrc = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1') -Raw
+$orchCode = (($orchSrc -split "`r?`n") | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+$orchGetCmd = @([regex]::Matches($orchCode, 'Get-Command\b'))
+Assert-True ($orchCode -match 'Get-SpecrewHookCapableHosts') 'P6-001: host enumeration is REGISTRY-driven (Get-SpecrewHookCapableHosts), not PATH — a wholesale revert to PATH-gating removes this'
+Assert-True ($orchGetCmd.Count -eq 1 -and ($orchCode -match 'Get-Command\s+Get-SpecrewHookCapableHosts')) 'P6-001: the ONLY Get-Command is the registry-fn presence check — no per-host-binary PATH gate (any added Get-Command fails this)'
+
 # --- 18. T010 (SC-016): PROACTIVE provisioning RESPECTS a recorded opt-out (no silent re-enable) -------------
 New-ScratchProject
 New-Item -ItemType Directory -Path (Join-Path $projectRoot '.claude') -Force | Out-Null

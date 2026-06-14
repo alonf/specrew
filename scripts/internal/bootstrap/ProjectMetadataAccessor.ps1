@@ -104,8 +104,10 @@ function Get-SpecrewLensDecisionSummary {
         if (-not (Test-Path -LiteralPath $RecordPath -PathType Leaf)) { return $null }
         $titles = New-Object System.Collections.Generic.List[string]
         foreach ($line in (Get-Content -LiteralPath $RecordPath -ErrorAction Stop)) {
-            # '## Decision <N|Nb> [-|–|:] <title>' - consume the number up to the first separator, capture the title.
-            $m = [regex]::Match([string]$line, '^##\s+Decision\b[^-–:]*[-–:]\s*(.+?)\s*$')
+            # '## Decision <N|Nb> [-|–|—|:] <title>' - anchor on the decision-id token (\S+) then the FIRST
+            # separator, so an internal hyphen in the title (e.g. 'Atomic write-replace') is NOT mistaken for the
+            # separator (review-signoff P5-1) and the em-dash (U+2014) is supported alongside hyphen/en-dash/colon.
+            $m = [regex]::Match([string]$line, '^##\s+Decision\s+\S+\s*[-–—:]\s*(.+?)\s*$')
             if ($m.Success) {
                 $t = ($m.Groups[1].Value -replace '`', '').Trim()
                 if (-not [string]::IsNullOrWhiteSpace($t)) { $titles.Add($t) | Out-Null }

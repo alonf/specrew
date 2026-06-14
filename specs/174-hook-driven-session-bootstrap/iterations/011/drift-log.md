@@ -6,6 +6,24 @@
 Divergences between spec / plan / tasks and the implementation, each with the requirement citation and the
 reconciliation path (lifecycle-discipline rule 4: drift is logged, not absorbed).
 
+## D-006 — T012 Layer-3 agent-guidance surface consolidated (plan named 3 surfaces; spec/build ship 1)
+
+- **Status**: resolved (consolidation matches the spec's FR-028 Layer-3 Honest-residual; recorded for plan-vs-build traceability — review-signoff P4-2)
+- **Requirement**: FR-028 Layer 3 (always-loaded degradation diagnostic). Plan T012's task text named THREE
+  surfaces — "copilot-instructions + refocus core + `specrew-hooks` skill" — and its owner-file-glob included
+  `extensions/specrew-speckit/refocus/general.md`.
+- **Divergence**: as built, the Layer-3 agent guidance lives ONLY on the managed Squad `copilot-instructions.md`
+  template, plus the `specrew hooks status` command surface. `general.md` was NOT modified (and the L3 attempt was
+  reverted — see D-003), and there is NO `specrew-hooks` SKILL.md anywhere (only `scripts/specrew-hooks.ps1` + its
+  test). The refocus core was left untouched because it is ≤600-token budget-locked (the refocus-digests cap).
+- **Why this is correct (not under-delivery)**: it matches the SPEC's FR-028 Layer-3 "Honest residual" exactly —
+  the copilot template is the one Specrew-deployed always-loaded surface; claude/codex/cursor have no Specrew
+  always-loaded file, so the honest mitigation there is `specrew hooks status` (Layer 1 prevents the gap in the
+  first place). SC-018's deterministic helper (`Get-SpecrewHookDegradationWarning` + `Test-SpecrewBootstrapDirectiveArrived`)
+  is fully met and tested; the residual is documented, not asserted. state.md's as-built T012 line is honest.
+- **Reconciliation path**: none required — the build matches the spec; this entry records the plan-text-vs-build
+  consolidation so a plan-vs-implementation audit does not read T012 as under-delivered. Recorded 2026-06-14.
+
 ## D-005 — T001 shipped as a COMMAND, not a module-function export (deliberate design divergence)
 
 - **Status**: resolved (accepted design choice; recorded for traceability)

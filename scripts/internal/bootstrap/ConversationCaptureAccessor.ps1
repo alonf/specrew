@@ -81,7 +81,11 @@ function Test-SpecrewHumanVerdictToken {
     $r.NamedBoundaries = $named.ToArray()
 
     # Send-back / reject FIRST: a turn that says "send back" (even alongside praise) is NOT an approval.
-    if ($lower -match '\bsend\s*back\b' -or $lower -match '\breject(ed|ing)?\b' -or $lower -match '^\s*3\b' -or $lower -match '\bchanges?\s+(needed|required|requested)\b') {
+    # F-174 iter-11 (review-signoff P7-1): the "changes needed/required/requested" clause must NOT fire on a
+    # NEGATED change clause - "approved, no changes needed" / "no further changes required" are APPROVALS, not
+    # send-backs. The negative lookbehind (variable-length, .NET-supported) rejects the clause when a negation
+    # word precedes "changes" within the same sentence; an affirmative "changes needed" still trips send-back.
+    if ($lower -match '\bsend\s*back\b' -or $lower -match '\breject(ed|ing)?\b' -or $lower -match '^\s*3\b' -or $lower -match '(?<!\b(?:no|zero|without|nothing|none|not)\b[^.!?]{0,20})\bchanges?\s+(needed|required|requested)\b') {
         $r.IsSendBack = $true; $r.Action = 'send-back'; return $r
     }
     # Discuss a specific prompt — NOT an authorization (discussion is not approval).
@@ -91,6 +95,11 @@ function Test-SpecrewHumanVerdictToken {
     # Negated / deferred approval -> NOT an approval (defends "do not approve", "not yet", "hold off ... approve").
     if ($lower -match "\b(do\s*not|don'?t|never|not\s+yet|hold\s+off|wait|stop)\b[^.!?]{0,24}\bapprov") { return $r }
     if ($lower -match "\bapprov\w*\b[^.!?]{0,16}\b(later|after|once|when|unless)\b") { return $r }
+    # F-174 iter-11 (review-signoff P3-1, INTEGRITY): a verdict approval is imperative/declarative, NEVER a
+    # question. An approve-bearing INTERROGATIVE ("approve?", "is this ready to approve?", "can you explain
+    # before I approve?", "should I approve this or not?") is deliberation, not authorization - reject it so the
+    # Stop-hook capture can NEVER fabricate an approval the human did not actually give (FR-026 / SC-013).
+    if ($t.EndsWith('?')) { return $r }
     # CLEAR approval: an "approve"/"approved" verb (incl. canonical "approved for <boundary>"), OR a bare option
     # 1/2 where the WHOLE turn is just that number. Deliberately NARROW — "start"/"proceed"/"continue"/"ok"/"yes"
     # are NOT treated as boundary approvals (too ambiguous against the safety rule); they fall to pending so the

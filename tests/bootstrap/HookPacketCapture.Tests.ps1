@@ -159,7 +159,33 @@ try {
     Assert-True ($body9 -like '*SPECREW-VERDICT-BOUNDARY: before-implement -> review-signoff*') "9: the NEW packet replaces the stale one (new marker present)"
     Assert-True ($body9 -notlike '*SPECREW-VERDICT-BOUNDARY: tasks -> before-implement*') "9: the STALE packet (tasks->before-implement) is GONE after the forward boundary change"
 
-    Write-Host "`n=== HookPacketCapture.Tests.ps1: all assertions passed (verbatim packet capture + clobber guard + stale/forward handling) ===" -ForegroundColor Green
+    # === Case 10 (review-signoff P2-1) — a packet whose inner '## ' header EXACTLY matches a verbose canonical
+    #     handover title must NOT shred the captured section (the colliding case the safe gate-stop headers hide). ===
+    $activityTitle = (@(Get-SpecrewHandoverSectionOrder))[0]   # 'What I just did (last 3-5 turns or last boundary work)'
+    $c10 = New-CaptureProject -Boundary 'before-implement'; $cases += $c10.Tmp
+    $collidingPacket = @"
+<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->
+
+## $activityTitle
+COLLIDING-BODY-MARKER: this rich body must survive VERBATIM inside the captured section, not leak out.
+
+## Why I Stopped
+Advancing from tasks to before-implement needs your explicit approval.
+
+## What I Need From You
+What's your verdict? 1. Approve as-is 2. Approve with instructions 3. Send back
+"@
+    Set-Transcript -Path $c10.Transcript -Turns @(@{ role = 'assistant'; text = $collidingPacket })
+    Invoke-StopHook -Proj $c10.Proj -Tx $c10.Transcript
+    $h10 = Read-Handover -Proj $c10.Proj
+    $cap10 = [string]$h10.sections[$capturedTitle]
+    Assert-True (Test-SpecrewHandoverSectionAuthored -Content $cap10) "10: a colliding-header packet is still captured AUTHORED (not shredded to the bare marker)"
+    Assert-True ($cap10 -like '*COLLIDING-BODY-MARKER*') "10: the captured section keeps the rich body VERBATIM even when an inner header matches a canonical title (P2-1 fix)"
+    Assert-True ($cap10 -like "*## $activityTitle*") "10: the colliding inner header is preserved inside the captured body (not treated as a section break)"
+    $canon10 = [string]$h10.sections[$activityTitle]
+    Assert-True ($canon10 -notlike '*COLLIDING-BODY-MARKER*') "10: the canonical '$activityTitle' section is NOT polluted by the packet body (no leak)"
+
+    Write-Host "`n=== HookPacketCapture.Tests.ps1: all assertions passed (verbatim packet capture + clobber guard + stale/forward handling + colliding-header P2-1) ===" -ForegroundColor Green
 }
 finally {
     foreach ($t in $cases) { Remove-Item -LiteralPath $t -Recurse -Force -ErrorAction SilentlyContinue }

@@ -103,6 +103,21 @@ try {
     if ($directiveNullPending -match 'AWAITING YOUR VERDICT \(committed') { Fail "resume directive must tolerate a null PendingVerdict (fail-open, no block)" }
     Write-Pass "bootstrap resume directive surfaces the awaiting-verdict block when pending, stays silent otherwise, tolerates null (T006 part 2)"
 
+    # Case 7/8 (review-signoff P6-002): prove the REAL compute->render integration, not just the isolated renderer
+    # + a source-grep. Stand up a scratch project and run the REAL specrew-bootstrap-provider.ps1, asserting the
+    # emitted directive surfaces (or omits) the AWAITING block — this catches a regression that broke the provider's
+    # call to Get-SpecrewPendingVerdictState or the pass-through into Format-BootstrapDirective (which cases 5-6 miss).
+    $provider = Join-Path $repoRoot 'scripts\internal\specrew-bootstrap-provider.ps1'
+    $p7 = New-Proj -Working 'tasks' -LastAuth 'plan'
+    $out7 = (& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --event-json '{"source":"startup","session_id":"pv-real-7"}' --project-root $p7 2>$null) -join "`n"
+    if ($out7 -notmatch 'AWAITING YOUR VERDICT \(committed != authorized') { Fail "real provider must surface the AWAITING block when committed != authorized (working 'tasks' > authorized 'plan')" }
+    Write-Pass "real provider end-to-end: committed != authorized surfaces the AWAITING block (compute->render integration, not the isolated renderer)"
+
+    $p8 = New-Proj -Working 'plan' -LastAuth 'plan'
+    $out8 = (& pwsh -NoProfile -ExecutionPolicy Bypass -File $provider --event-json '{"source":"startup","session_id":"pv-real-8"}' --project-root $p8 2>$null) -join "`n"
+    if ($out8 -match 'AWAITING YOUR VERDICT \(committed != authorized') { Fail "real provider must NOT surface the AWAITING block when working == authorized (no false alarm)" }
+    Write-Pass "real provider end-to-end: working == authorized does NOT surface the AWAITING block (no false alarm)"
+
     Write-Host "`n=== pending-verdict-surface.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }

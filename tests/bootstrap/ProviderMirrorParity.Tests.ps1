@@ -29,6 +29,10 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
 $srcDir = Join-Path $repoRoot 'scripts/internal'
 $extDir = Join-Path $repoRoot 'extensions/specrew-speckit/scripts'
+# review-signoff P1-3: the THIRD (project-side) copy the downstream actually runs. The guard previously asserted
+# only MODULE vs EXTENSION-SOURCE, leaving a skew of just this copy (e.g. the newly-added specrew-handover-provider.ps1)
+# undetected. Assert it too, when present (the self-host repo carries this tree).
+$specifyDir = Join-Path $repoRoot '.specify/extensions/specrew-speckit/scripts'
 
 # Wrapper exclusions: the extension copy is a thin launcher that resolves + invokes the module engine, so it
 # is SUPPOSED to differ from the scripts/internal engine. Document each with its reason.
@@ -59,13 +63,24 @@ Assert-True ($pairs.Count -ge 5) ('auto-discovery found the full-copy provider s
     "Found $($pairs.Count) - if fewer, a provider lost its scripts/internal counterpart or was wrongly excluded.")
 
 # The core guard: every full-copy pair is byte-identical (line-ending normalized).
+$specifyChecked = 0
 foreach ($p in $pairs) {
     $modText = (Get-Content -LiteralPath $p.Src -Raw) -replace "`r`n", "`n"
     $extText = (Get-Content -LiteralPath $p.Ext -Raw) -replace "`r`n", "`n"
     Assert-True ($modText -eq $extText) ("$($p.Name): MODULE + EXTENSION-SOURCE copies are byte-identical (mirror parity). " +
         "If this FAILS, re-sync: Copy-Item scripts/internal/$($p.Name) over extensions/specrew-speckit/scripts/$($p.Name) - " +
         'a change to one copy not mirrored to the other ships a stale provider downstream.')
+    # review-signoff P1-3: also assert the project-side (.specify) copy when present — the third copy a downstream
+    # actually executes; a skew here would ship a stale provider undetected by the module-vs-extension check alone.
+    $specifyCopy = Join-Path $specifyDir $p.Name
+    if (Test-Path -LiteralPath $specifyCopy) {
+        $specText = (Get-Content -LiteralPath $specifyCopy -Raw) -replace "`r`n", "`n"
+        Assert-True ($modText -eq $specText) ("$($p.Name): the .specify/ project-side copy is byte-identical to the module copy. " +
+            "If this FAILS, re-sync the .specify copy too (Copy-Item scripts/internal/$($p.Name) over .specify/extensions/specrew-speckit/scripts/$($p.Name)).")
+        $specifyChecked++
+    }
 }
+Write-Host ("Asserted .specify/ third-copy parity for {0} provider(s)" -f $specifyChecked)
 
 # Provider-specific sanity checks (on top of identity): the DEPLOYED copy carries the current behavior, not a
 # stale stub. These catch a same-content-but-wrong-version regression that identity alone cannot.

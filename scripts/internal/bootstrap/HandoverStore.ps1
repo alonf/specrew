@@ -134,15 +134,28 @@ function ConvertFrom-SpecrewHandoverFile {
     $sections = [ordered]@{}
     $curTitle = $null
     $inCaptured = $false
+    $capturedIdx = -1
     $curLines = New-Object System.Collections.Generic.List[string]
     for ($i = $bodyStart; $i -lt $lines.Count; $i++) {
         $line = $lines[$i]
         if ($line -match '^##\s+(.*\S)\s*$') {
             $candidate = $Matches[1].Trim()
-            if ($inCaptured -and ($knownTitles -notcontains $candidate)) { $curLines.Add($line) | Out-Null; continue }
+            # F-174 iter-11 (review-signoff P2-1) TERMINAL-AWARE captured-section close. Once INSIDE the captured
+            # (verbatim boundary packet) section, a '## ' line closes it ONLY if it is a canonical title that sorts
+            # AFTER the captured section in Get-SpecrewHandoverSectionOrder. The captured section is the LAST entry,
+            # so nothing sorts after it -> the packet's OWN '## ' headers are all swallowed as captured body, even
+            # ones that EXACTLY match a canonical handover title (e.g. '## What I just did (last 3-5 turns ...)').
+            # The old `-notcontains` guard closed the section on ANY canonical-title collision, shredding the packet
+            # to its bare marker (the resume then inherited a useless stub - the exact SC-012/SC-015 failure). This
+            # self-corrects if the order ever grows a real section after the captured one.
+            if ($inCaptured) {
+                $candIdx = [Array]::IndexOf($knownTitles, $candidate)
+                if ($candIdx -lt 0 -or $candIdx -le $capturedIdx) { $curLines.Add($line) | Out-Null; continue }
+            }
             if ($null -ne $curTitle) { $sections[$curTitle] = (($curLines -join "`n").Trim()) }
             $curTitle = $candidate
             $inCaptured = ($capturedTitles -contains $candidate)
+            $capturedIdx = if ($inCaptured) { [Array]::IndexOf($knownTitles, $candidate) } else { -1 }
             $curLines = New-Object System.Collections.Generic.List[string]
         }
         elseif ($null -ne $curTitle) { $curLines.Add($line) | Out-Null }

@@ -1,13 +1,13 @@
 # Iteration State: 011
 
 **Schema**: v1
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: T009 (DF-2 version/branch in the bootstrap directive — embed the resolved Specrew version + git branch as literal banner values for pointer-mode hosts; DirectiveVersionBranch.Tests 9/9 green, incl. the real provider resolving manifest 0.35.0 + the git branch end-to-end)
-**Tasks Remaining**: NONE — ALL implementation tasks T001–T012 are DONE + green. Remaining is NOT implementation: the maintainer's review-signoff verdict, the real-host re-dogfood acceptance gate, and the closeout cap-revert (32→20) — all at/after review-signoff (the iteration is PAUSED at implement → review-signoff for the maintainer's review tomorrow). Cross-host marker residual is tracked (drift-log D-001).
-**In Progress**: (checkpointed, working tree clean) — implement phase COMPLETE; awaiting the maintainer's review-signoff
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
+**Last Completed Task**: review-signoff structured review (Proposal-145, 10-agent multi-dimension + adversarial verification) CONDUCTED + remediated — 0 HIGH / 3 MEDIUM (all fixed) / LOW+INFO (cheap fixed, rest carried); 50 suites green post-remediation. (Implementation T001–T012 all DONE + green.)
+**Tasks Remaining**: NONE implementation. Remaining are the maintainer's at/after review-signoff: the review-signoff VERDICT, the real-host re-dogfood acceptance gate, and the closeout cap-revert (32→20 + validator rerun, `f174-i011-cap-revert-obligation`). Cross-host marker residual tracked (drift-log D-001); carried review follow-ups in review-signoff.md (P3-2, P4-1, P1-1).
+**In Progress**: (checkpointed, working tree clean) — review-signoff conducted + remediated; awaiting the maintainer's review-signoff verdict + the real-host re-dogfood
 **Baseline Ref**: iteration-010 HEAD (`c5756473`)
-**Updated**: 2026-06-14T06:50:00Z
+**Updated**: 2026-06-14T10:30:00Z
 
 ## Charter
 
@@ -225,6 +225,29 @@ lesson — green synthetic tests are necessary, not sufficient), and the closeou
 validator; obligation `f174-i011-cap-revert-obligation`). PAUSED at implement → review-signoff for the
 maintainer's review. Residual: the cross-host verdict-marker emission (drift-log D-001) + the parked
 pre-existing branch reds (D-002/D-003/D-004).
+
+## Review-signoff (this boundary)
+
+Maintainer AUTHORIZED implement → review-signoff (with 5 instructions: accept D-005; keep D-001 visible; do
+NOT close; leave D-002/3/4 parked; do not delete the stray temp file). The **structured review** required by
+instruction 3 was CONDUCTED:
+`file:///C:/Dev/Specrew-session-bootstrap/specs/174-hook-driven-session-bootstrap/iterations/011/review-signoff.md`
+— a 10-agent Proposal-145 multi-dimension review (P1–P7) over the full range `c5756473..HEAD` with adversarial
+default-refute verification. Result: **0 HIGH, 3 MEDIUM (all confirmed + FIXED with regression tests), 6 LOW,
+5 INFO**.
+
+- **MEDIUM fixed**: P2-1 captured-section terminal-aware parse (`HandoverStore.ps1` + HookPacketCapture case 10);
+  P3-1 reject approve-bearing questions — the verdict-integrity hole (`ConversationCaptureAccessor.ps1` +
+  verdict-capture-blocks cases); P6-001 deterministic SC-016 PATH-independence guard (`refocus-deploy.tests` 17b).
+- **LOW/INFO fixed**: P7-1 negated-changes approval; P5-1 decision-title regex (em-dash + internal hyphen);
+  P6-002 real provider→directive pending-verdict integration cases; P1-3 `.specify` third-copy mirror parity;
+  P4-2 drift-log D-006 (T012 surface consolidation).
+- **Carried** (review-signoff.md): P3-2 (non-canonical marker journaling — fail-safe), P4-1 (status diagnostic
+  peek self-suppresses in a bootstrapped project — Layer-3 fallback), P1-1 (8 commit prefixes), P6-003/004 (benign).
+- D-001 safe-degradation INDEPENDENTLY confirmed in code by P3/P7. No new firewall/capacity/parity regression.
+
+**Post-remediation: 50 suites green, 0 failed.** STILL OPEN (instruction 3): the maintainer's review-signoff
+verdict + the real-host re-dogfood + the closeout cap-revert. No push / PR.
 
 **Process note (honest):** task-implementation commits this phase used the `feat/fix(174):` conventional-commit
 prefix with the T0NN reference in the body, rather than the `boundary(implement): T0NN` prefix; focused-per-task

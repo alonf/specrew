@@ -54,6 +54,14 @@ body.
     Assert-True ($sMany -like '*(+2 more)*') '2: more than MaxDecisions decisions -> (+2 more)'
     Assert-True ($sMany -like 'a; b; c; d*') '2: the first MaxDecisions titles are joined in order'
 
+    # === 2b. (review-signoff P5-1) em-dash separator + an internal hyphen in the title -> FULL title captured. ===
+    $recDash = Join-Path $tmp 'dash-record.md'   # OUTSIDE workshop/ so it is not counted a done lens
+    $dashBody = "# Integration API`n`n## Decision 3 $([char]0x2014) Atomic write-replace (cross-platform safe)`n`n## Decision 4: colon-separated title here`n"
+    Set-Content -LiteralPath $recDash -Value $dashBody -Encoding UTF8
+    $sDash = Get-SpecrewLensDecisionSummary -RecordPath $recDash
+    Assert-True ($sDash -like '*Atomic write-replace (cross-platform safe)*') '2b: an em-dash heading captures the FULL title incl. the internal hyphen (not truncated at write-)'
+    Assert-True ($sDash -like '*colon-separated title here*') '2b: a colon-separated decision heading also captures its full title'
+
     # === 3. No decision headings / a missing file -> $null (fail-open; caller falls back to the name). ===
     $recNone = Join-Path $tmp 'norecord.md'   # OUTSIDE workshop/ so it is not counted a done lens
     Set-Content -LiteralPath $recNone -Encoding UTF8 -Value "# UI UX`n`nsome prose, no decision headings.`n"

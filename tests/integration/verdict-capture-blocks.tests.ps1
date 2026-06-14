@@ -28,7 +28,10 @@ try {
         'Approved for tasks',
         '1',
         '2',
-        '2.'
+        '2.',
+        # review-signoff P7-1: a NEGATED change clause is an approval, not a send-back (the changes-clause must not misfire).
+        'approved, no changes needed',
+        'approved, no further changes required'
     )
     foreach ($s in $approvals) {
         $v = Test-SpecrewHumanVerdictToken -Text $s
@@ -48,6 +51,11 @@ try {
         @{ t = 'what about the antigravity case?'; a = 'none' },
         @{ t = 'I have 1 concern about the plan'; a = 'none' },                    # '1' not the whole turn
         @{ t = 'start'; a = 'none' },                                             # too ambiguous -> pending
+        # review-signoff P3-1: an approve-bearing QUESTION is deliberation, NOT authorization (the false-approval hole).
+        @{ t = 'approve?'; a = 'none' },
+        @{ t = 'is this ready to approve?'; a = 'none' },
+        @{ t = 'should I approve this or not?'; a = 'none' },
+        @{ t = 'can you explain before I approve?'; a = 'none' },
         @{ t = ''; a = 'none' }
     )
     foreach ($c in $notApprovals) {
