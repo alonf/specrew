@@ -213,6 +213,24 @@ jobs:
         shell: pwsh
         run: ./tests/integration/filelist-completeness.tests.ps1
 
+      - name: Integration - bootstrap resolver guard (F-174 P1)
+        shell: pwsh
+        run: ./tests/integration/bootstrap-resolver-guard.tests.ps1
+
+      - name: Bootstrap suite (F-174 hook chain - incl. directive delivery cap, P2)
+        shell: pwsh
+        # The whole tests/bootstrap/*.Tests.ps1 suite was previously validated only manually at review time
+        # (Prop-145 REG-1). Gate it in CI so the F-174 hook-chain guards - notably DirectiveDeliveryCap (the P2
+        # 10K-cap fit) and HostDeliveryPolicy (the per-host pointer/inline policy) - cannot silently regress.
+        run: |
+          $failed = @()
+          Get-ChildItem -Path ./tests/bootstrap -Filter *.Tests.ps1 -File | Sort-Object Name | ForEach-Object {
+            & pwsh -NoProfile -File $_.FullName
+            if ($LASTEXITCODE -ne 0) { $failed += $_.Name }
+          }
+          if ($failed.Count -gt 0) { Write-Host "FAILED bootstrap suites: $($failed -join ', ')"; exit 1 }
+          Write-Host "Bootstrap suite: all green"
+
       - name: Integration - validate versions cli behavior
         if: runner.os != 'Linux'
         shell: pwsh

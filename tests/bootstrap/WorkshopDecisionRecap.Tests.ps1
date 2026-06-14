@@ -14,10 +14,13 @@ $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
 . (Join-Path $repoRoot 'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1')
 
 # Extract Format-BootstrapDirective from the provider (its top-level body must not run), as pending-verdict-surface does.
+# It now depends on Limit-SpecrewInlineBlock (the F-174 P2 delivery-cap bound), so extract that too.
 $provSrc = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/specrew-bootstrap-provider.ps1') -Raw
-$fnMatch = [regex]::Match($provSrc, "(?s)^function Format-BootstrapDirective \{.*?\n\}", [System.Text.RegularExpressions.RegexOptions]::Multiline)
-if (-not $fnMatch.Success) { throw 'FAIL: could not extract Format-BootstrapDirective from the provider' }
-. ([scriptblock]::Create($fnMatch.Value))
+foreach ($fn in 'Limit-SpecrewInlineBlock', 'Format-BootstrapDirective') {
+    $fnMatch = [regex]::Match($provSrc, "(?s)^function $fn \{.*?\n\}", [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    if (-not $fnMatch.Success) { throw "FAIL: could not extract $fn from the provider" }
+    . ([scriptblock]::Create($fnMatch.Value))
+}
 
 $cases = @()
 try {

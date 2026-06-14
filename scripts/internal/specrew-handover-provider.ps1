@@ -66,7 +66,14 @@ try {
         $devBdir = if ($env:SPECREW_MODULE_PATH) { Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap' } else { $null }
         if ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
         else {
-            $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending | Select-Object -First 1
+            # F-174 iter-11 (P1): pick the newest installed module that ACTUALLY CONTAINS scripts/internal/bootstrap,
+            # not blindly the newest - not every version ships the bootstrap components (0.34.0 did; 0.35.0/0.36.0
+            # did not), so "newest" can resolve to a bootstrap-LESS path and the handover then silently writes
+            # NOTHING (dot-source throws -> top-level try swallows -> exit 0). Same fail-open; a bootstrap-bearing
+            # older module is just no longer skipped. (Mirror of the bootstrap provider's P1 guard.)
+            $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+                Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase 'scripts/internal/bootstrap') } |
+                Select-Object -First 1
             if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
         }
     }

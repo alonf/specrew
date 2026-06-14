@@ -427,6 +427,17 @@ function Get-RefocusProviderArgs {
 
 function Write-InjectionOutput {
     param([string]$EventName, [string]$Payload, [string]$TargetHost = 'claude')
+    # F-174 iter-11 (P2): cap-overflow observability. Every current hook host caps its output (claude STDOUT +
+    # additionalContext at 10,000 chars on v2.1.177; codex drops oversized additionalContext; copilot/cursor
+    # caps unverified-but-suspected). When the ASSEMBLED payload (all provider fragments joined - the bootstrap
+    # directive + the variable refocus fragment) exceeds the cap, the host SILENTLY drops it to a file + a ~2KB
+    # preview and the directive never reaches the model (the exact iter-11 break). The providers bound their own
+    # inlined content, but this is the ONE place that sees the joined total, so it is the right place to make an
+    # overflow VISIBLE. This is observability only (the advisor's "defensible cap-role"): WARN, never truncate -
+    # a blind truncate here would drop the integrity-critical mid-payload sections (e.g. AWAITING YOUR VERDICT).
+    if (-not [string]::IsNullOrEmpty($Payload) -and $Payload.Length -gt 10000) {
+        Write-DispatcherWarn -Code 'PAYLOAD_OVERSIZE' -Message ("assembled {0} payload is {1} chars (> the 10000 host hook-output cap); the host will drop it to a file + preview and the directive may not reach the model - a provider's inlined content needs tightening (F-174 P2)" -f $EventName, $Payload.Length)
+    }
     # Per-host event output shaping (C2; contracts per the T013 research matrix,
     # all fetched live 2026-06-07):
     #   claude  : SessionStart -> plain stdout (added to context);

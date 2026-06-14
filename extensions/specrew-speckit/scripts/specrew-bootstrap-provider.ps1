@@ -32,25 +32,56 @@ function Get-SpecrewContractDeliveryMode {
     # T007/M1 (F-174 iter-10): the ONE seam deciding how the SessionStart launch contract reaches the agent -
     # 'inline' (the full body in the directive) or 'pointer' (the agent reads .specrew/last-start-prompt.md).
     # Default is BEHAVIOR-PRESERVING; flipping a host is a one-line change HERE.
-    #   claude  -> inline. SessionStart is delivered as PLAIN STDOUT (not additionalContext), so the documented
-    #              10,000-char additionalContext cap does NOT apply; claude also skims past a "read this file"
-    #              pointer (the iter-6 disproof), so it must be inline.
+    #   claude  -> pointer. DISPROVEN 2026-06-14 (iter-11 real-host, Claude Code v2.1.177): SessionStart IS plain
+    #              STDOUT, but the host caps hook STDOUT at 10,000 chars too - an oversized payload is saved to a
+    #              file and the model receives only a ~2KB preview + a file pointer. CONFIRMED live: the ~58KB
+    #              inline-contract directive was dropped, the orientation banner never rendered. The earlier
+    #              "stdout has no additionalContext cap" premise was empirically WRONG. So claude joins the pointer
+    #              arm: the directive stays lean (the banner + BOUNDED resume context inline; the full ~45KB
+    #              contract pointed-at on disk). RESIDUAL (maintainer's call): claude skims past file pointers (the
+    #              iter-6 disproof), so in pointer mode the contract's user-profile/expertise adaptation (banner
+    #              item 3) is not read - it degrades to the /specrew-user-profile fallback. That is a graceful,
+    #              integrity-SAFE degrade (governance is SCRIPT-enforced, not directive-borne); the follow-up
+    #              option is to extract+inline JUST the small user-profile block to restore item 3.
     #   codex   -> pointer. ROLLOUT-PROVEN 2026-06-10 to silently DROP the oversized (~50KB) SessionStart
     #              additionalContext; codex reads files, so the lean pointer lands.
     #   copilot -> inline. UNVERIFIED drop. copilot/cursor deliver SessionStart via additionalContext /
-    #   cursor  -> inline. additional_context (the SAME mechanism codex drops), and the host research matrix
+    #   cursor  -> inline. additional_context (the SAME mechanism codex drops). The host research matrix
     #              (specs/171-specrew-refocus/research-matrix.md) records a 10k cap only for CLAUDE's
-    #              additionalContext - NONE is documented for copilot/cursor. An oversized drop is SUSPECTED (same
-    #              mechanism) but UNPROVEN; copilot rendered in-band in the iter-8 dogfood. Behavior-preserving
-    #              default = inline. TO FLIP once confirmed on-host (both are in the dogfood loop): move the host
-    #              into the pointer arm below. Residual tracked in iteration-010 state + the T009 continuity docs.
+    #              additionalContext - NONE is documented for copilot/cursor, and copilot rendered in-band in BOTH
+    #              the iter-8 and iter-11 dogfoods. An oversized drop is SUSPECTED (same mechanism) but UNPROVEN;
+    #              flipping on suspicion would regress a host that works, so they stay inline. TO FLIP once
+    #              confirmed on-host (both are in the dogfood loop): move the host into the pointer arm below.
+    #              Residual tracked in the T009 continuity docs. (NOTE: even inline hosts get the BOUNDED handover/
+    #              reconciliation below - that cap is mode-independent; only the 45KB contract is mode-gated.)
     [CmdletBinding()]
     [OutputType([string])]
     param([Parameter(Mandatory)][string] $HostKind)
     switch ($HostKind) {
         'codex'  { return 'pointer' }
-        default  { return 'inline' }   # claude / copilot / cursor / antigravity
+        'claude' { return 'pointer' }
+        default  { return 'inline' }   # copilot / cursor / antigravity
     }
+}
+
+function Limit-SpecrewInlineBlock {
+    # F-174 iter-11 (P2): bound a variable-length block inlined into the SessionStart directive so the assembled
+    # hook payload stays under the host's output cap. Claude Code v2.1.177 silently drops hook output over 10,000
+    # chars to a file + a ~2KB preview, so the directive never reaches the model; codex/copilot/cursor caps are
+    # the same-or-unknown. The mechanical handover sections (esp. "What I just did") are an unbounded git-delta log
+    # that repeats the full uncommitted-file list per entry (~6KB in the iter-11 worst case) - inlining them
+    # verbatim alone blew the cap. Truncate at a line boundary when possible and append an elision pointer to the
+    # full on-disk source (the agent reads it for depth). Behavior on under-budget input: returns $Text unchanged.
+    [CmdletBinding()]
+    [OutputType([string])]
+    param([AllowNull()][string]$Text, [int]$MaxChars = 480, [string]$Pointer = '')
+    if ([string]::IsNullOrEmpty($Text) -or $Text.Length -le $MaxChars) { return $Text }
+    $cut = $Text.Substring(0, $MaxChars)
+    $nl = $cut.LastIndexOf("`n")
+    if ($nl -gt [int]($MaxChars / 2)) { $cut = $cut.Substring(0, $nl) }
+    $note = if ([string]::IsNullOrWhiteSpace($Pointer)) { '... (truncated to fit the session-start delivery cap)' }
+            else { ('... (truncated to fit the session-start delivery cap; full content at {0})' -f $Pointer) }
+    return ($cut.TrimEnd() + "`n" + $note)
 }
 
 function Format-BootstrapDirective {
@@ -98,7 +129,12 @@ function Format-BootstrapDirective {
         $lines.Add('')
     }
     else {
-        $lines.Add(("DRIVE this session from the governed contract (FR-023): READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, and policy classes) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts." -f $contractRead, $stateRead))
+        # POINTER mode (claude + codex - hosts whose hook-output cap drops the ~45KB inline contract; F-174 iter-11
+        # P2). The contract is NOT inlined - it is on disk - so name everything that lives ONLY in it (incl. the
+        # user-profile/expertise adaptation that feeds banner item 3 + the coordinator framing) and the explicit
+        # item-3 fallback, since a host that skims the pointer (claude, iter-6 disproof) would otherwise render an
+        # empty item 3. Governance itself is script-enforced, so skimming the contract does NOT bypass any gate.
+        $lines.Add(("DRIVE this session from the governed contract (FR-023): READ {0} (the authoritative Specrew launch contract - the full lifecycle rules, governance scripts, boundary authorization, policy classes, the user-profile/expertise adaptation that feeds banner item 3, and the coordinator framing) and {1} (the current lifecycle state) from the project root BEFORE acting. Follow the governed lifecycle EXACTLY as that contract directs; do NOT bypass clarify or governance gates, and do NOT drive the work from raw Spec Kit scripts. (Banner item 3 lives ONLY in that contract here - read it; if it carries no adaptation or you cannot read it, use the /specrew-user-profile fallback named at the top - do NOT invent one.)" -f $contractRead, $stateRead))
     }
     if ($d.PSObject.Properties['handover'] -and $null -ne $d.handover -and $d.handover.present) {
         if ($d.handover.placeholder) {
@@ -106,12 +142,39 @@ function Format-BootstrapDirective {
         }
         else {
             $lines.Add(("Validated handover captured by the previous session (as of {0}; boundary: {1}). This is your resume context - surface it (render item 2), do not merely cite that it exists. The mechanical sections are hook-captured git/session state; any interpretive sections are agent-authored:" -f $d.handover.recorded_at, $d.handover.active_boundary))
-            foreach ($k in $d.handover.sections.Keys) {
+            # F-174 iter-11 (P2): the inlined handover is the dominant SessionStart-payload bloat - the "What I
+            # just did" mechanical log repeats the full uncommitted-file list per entry (~6KB in the iter-11
+            # worst case), and inlining every section verbatim alone exceeded the host's 10K hook-output cap (the
+            # whole directive was then dropped to a file on claude). Bound it two ways: a per-section char cap AND
+            # a running TOTAL budget across sections - so one fat mechanical section cannot starve the rest, and
+            # the agent reads the full on-disk handover for depth. Interpretive sections are normally short; in
+            # practice the cap only bites the mechanical git-delta log.
+            $hoPointer = 'file:///.specrew/handover/session-handover.md'
+            $hoBudget = 380
+            # F-174 iter-11 (P2 + Prop-145 RES-1): the tight handover budget MUST be spent on the AGENT-AUTHORED
+            # interpretive sections FIRST - those (open questions, working hypothesis) are the only resume context
+            # NO other block carries, and the FR-022 footer promises "what you hand off == what the next session
+            # inherits". Iterating in raw section order spent the budget on the mechanical "What I just did"
+            # git-delta log first (which the RECONCILIATION + IN-FLIGHT scans below already re-derive) and starved
+            # the interpretive tail - the exact opposite of the intent. So: agent-owned sections first, then the
+            # rest; cap "What I just did" hardest; and charge ONLY the content length against the budget, never the
+            # elision-note boilerplate (else one truncated section's note alone ate ~1/3 of the budget).
+            $agentOwned = @(Get-SpecrewHandoverAgentOwnedSections)
+            $allKeys = @($d.handover.sections.Keys)
+            $orderedKeys = @(@($allKeys | Where-Object { $agentOwned -contains $_ }) + @($allKeys | Where-Object { $agentOwned -notcontains $_ }))
+            foreach ($k in $orderedKeys) {
                 $c = [string]$d.handover.sections[$k]
                 if (-not (Test-SpecrewHandoverSectionAuthored -Content $c)) { continue }
-                $clines = @($c -split "`r?`n")
+                if ($hoBudget -le 0) {
+                    $lines.Add(("  - (further handover sections omitted to fit the delivery cap; read {0})" -f $hoPointer))
+                    break
+                }
+                $secCap = [Math]::Min(($(if ($k -match 'just did') { 140 } else { 220 })), $hoBudget)
+                $rendered = Limit-SpecrewInlineBlock -Text $c -MaxChars $secCap -Pointer $hoPointer
+                $hoBudget -= [Math]::Min($c.Length, $secCap)   # charge CONTENT only, not the elision-note boilerplate
+                $clines = @($rendered -split "`r?`n")
                 if ($clines.Count -le 1) {
-                    $lines.Add(("  - {0}: {1}" -f $k, $c))
+                    $lines.Add(("  - {0}: {1}" -f $k, $rendered))
                 }
                 else {
                     $lines.Add(("  - {0}:" -f $k))
@@ -127,7 +190,9 @@ function Format-BootstrapDirective {
     if ($d.PSObject.Properties['reconciliation'] -and $null -ne $d.reconciliation -and -not [string]::IsNullOrWhiteSpace([string]$d.reconciliation.directive_text)) {
         $lines.Add('')
         $lines.Add('=== RESUME RECONCILIATION (current tree, re-computed now) ===')
-        $lines.Add([string]$d.reconciliation.directive_text)
+        # F-174 iter-11 (P2): the reconciliation re-lists the changed files (overlaps the handover delta) - bound
+        # it too so the assembled payload stays under the host hook-output cap; the agent reads the tree itself.
+        $lines.Add((Limit-SpecrewInlineBlock -Text ([string]$d.reconciliation.directive_text) -MaxChars 300 -Pointer 'file:///.specrew/handover/session-handover.md'))
     }
     # F-174 iteration 011 (T006 part 2, FR-027 / decision f174-i011-verdict-authority-stop-hook): committed !=
     # authorized. When a boundary was mechanically crossed (sync) but NOT human-authorized (no captured verdict),
@@ -140,7 +205,7 @@ function Format-BootstrapDirective {
         $lines.Add('')
         $lines.Add('=== AWAITING YOUR VERDICT (committed != authorized - FR-027) ===')
         $lines.Add([string]$PendingVerdict.Message)
-        $lines.Add('Treat that boundary as NOT YET approved: do NOT advance the lifecycle on it and do NOT record an authorization yourself (a committed boundary is not an approved one). SURFACE this in your orientation banner and ASK the human to confirm the boundary verdict. If they approve, the verdict is captured from their actual response (the hook on the next turn, or their explicit confirmation); if they did not approve, stay at the prior authorized boundary.')
+        $lines.Add('Treat that boundary as NOT YET approved: do NOT advance the lifecycle on it and do NOT record an authorization yourself. SURFACE this in your orientation banner and ASK the human to confirm; their actual response is the verdict (captured by the next hook fire, or their explicit confirmation), else stay at the prior authorized boundary.')
     }
     # F-174 T050 round-2 (the last-mile resume gap): the intent + status ARE on disk, but neither a hollow
     # handover ("re-derive from the artifacts" - skimmed as an abstract pointer) nor full mode (the contract's
@@ -161,7 +226,18 @@ function Format-BootstrapDirective {
             $decisions = if ($ddProp -and $null -ne $ddProp.Value) { @($ddProp.Value) } else { @() }
             if ($decisions.Count -gt 0) {
                 $lines.Add(("  - design-workshop DECISIONS recorded so far (records under specs/{0}/workshop/) - SYNTHESIZE these into a 'what we decided so far' recap for the human; do NOT just echo lens names:" -f $InFlight.feature_ref))
-                foreach ($dec in $decisions) { $lines.Add(("      * {0}: {1}" -f $dec.lens, $dec.summary)) }
+                # F-174 iter-11 (P2): cap BOTH the per-summary length AND the number of decisions inlined so the
+                # whole recap cannot blow the host hook-output cap (a full 9-lens workshop dumps ~1KB here). The
+                # lens name + decision-point heads are enough to synthesize; the full records are on disk.
+                # F-174 iter-11 (P2 + Prop-145 RES-3): inline the per-lens SUMMARY for the first few, but ALWAYS
+                # name EVERY decided lens (the overflow lenses get their bare names on one line, not just a count) -
+                # a pointer/skimming host that will not open the on-disk records still needs the full agenda to
+                # synthesize the recap. Lens names are short + catalog-bounded, so this stays budget-neutral.
+                $decMax = 3
+                $decShown = @($decisions | Select-Object -First $decMax)
+                foreach ($dec in $decShown) { $lines.Add(("      * {0}: {1}" -f $dec.lens, (Limit-SpecrewInlineBlock -Text ([string]$dec.summary) -MaxChars 95))) }
+                $decRest = @(@($decisions | Select-Object -Skip $decMax) | ForEach-Object { [string]$_.lens })
+                if ($decRest.Count -gt 0) { $lines.Add(("      * (also decided - synthesize from the records on disk under specs/{0}/workshop/): {1}" -f $InFlight.feature_ref, ($decRest -join ', '))) }
                 $named = @($decisions | ForEach-Object { [string]$_.lens })
                 $bare = @($InFlight.done | Where-Object { $named -notcontains $_ })
                 if ($bare.Count -gt 0) { $lines.Add(("      (also recorded done, no decision record: {0})" -f ($bare -join ', '))) }
@@ -183,7 +259,7 @@ function Format-BootstrapDirective {
         else { 'resume at the recorded lifecycle position (read the spec + workshop records to locate it)' }
         $lines.Add(("When the human says 'continue' (or similar), {0}. Do NOT restart discovery, do NOT re-ask completed lenses, and do NOT ask 'what do you want to build' - spec.md answers that. Open your welcome-back with a 1-2 sentence SYNTHESIS of what we have decided so far (from the decisions/records above - synthesize the substance, do NOT just list lens names) and your resume point, then proceed." -f $next))
     }
-    $lines.Add('Reminder (do not skip): your FIRST response MUST open with the MANDATORY orientation banner described at the top - Specrew + how-we-work + version/host/project/branch/lifecycle position + the user-profile/expertise adaptation (what you know about the human) - and only THEN address the user''s request.')
+    $lines.Add('Reminder (do not skip): your FIRST response MUST open with the MANDATORY orientation banner described at the top, and only THEN address the user''s request.')
     if (@($d.validation_findings).Count -gt 0) {
         $lines.Add(("State notes: {0}." -f ((@($d.validation_findings)) -join '; ')))
     }
@@ -223,7 +299,16 @@ try {
         $devBdir = if ($env:SPECREW_MODULE_PATH) { Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap' } else { $null }
         if ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
         else {
-            $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending | Select-Object -First 1
+            # F-174 iter-11 (P1): pick the newest installed module that ACTUALLY CONTAINS scripts/internal/bootstrap,
+            # not blindly the newest. Not every Specrew version ships the bootstrap components in its FileList (0.34.0
+            # did; 0.35.0/0.36.0 did not), so "newest module" can resolve to a bootstrap-LESS path -> the dot-source
+            # below throws -> the top-level try swallows it -> exit 0 -> the hook silently writes NOTHING. Filtering
+            # for the bootstrap dir makes the fallback land on a version that can actually serve it. Fail-open is
+            # unchanged: if NO installed module carries bootstrap, $bdir stays the (absent) co-located path and the
+            # dot-source fails into the same silent no-op - but a bootstrap-bearing older module is no longer skipped.
+            $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+                Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase 'scripts/internal/bootstrap') } |
+                Select-Object -First 1
             if ($mod) { $bdir = Join-Path $mod.ModuleBase 'scripts/internal/bootstrap' }
         }
     }
