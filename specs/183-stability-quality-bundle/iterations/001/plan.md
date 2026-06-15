@@ -1,0 +1,91 @@
+# Iteration Plan: 001
+
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
+**Status**: planning
+**Capacity**: 20/20 story_points
+**Started**: 2026-06-16
+**Completed**:
+
+<!--
+  Validator schema (canonical, enforced by validate-governance.ps1):
+  - Iteration Status MUST be one of:
+      planning | executing | reviewing | retro | complete | abandoned
+    (Common mistakes the validator REJECTS: `approved`, `in-progress`, `done`, `ready`.)
+  - Capacity format MUST be `<consumed>/<cap> <effort_unit>` with NO trailing prose on that line.
+    Append explanatory notes in the Notes section at the bottom instead.
+  - Task Status (in the Tasks table) MUST be one of:
+      planned | in-progress | done | needs-rework | deferred | blocked
+    (Note `in-progress` uses a hyphen, not an underscore. `done` not `completed`.)
+-->
+
+## Scope Summary
+
+| Requirement | Summary | Stories |
+| ----------- | ------- | ------- |
+| FR-001 | When the SessionStart composite would exceed the host hook-output | — |
+| FR-002 | When the bootstrap/refocus provider fails, the hook MUST emit a | — |
+| FR-003 | SessionStart journal/status/dedupe/breaker state MUST NOT collapse | — |
+| FR-004 | The delivery-cap test MUST measure a synthetic shipped | — |
+| FR-005 | Closeout sync MUST handle `.specify` dirty surfaces coherently, | — |
+| FR-006 | The two in-scope #1761 local tests MUST stop failing because of | — |
+| FR-007 | Specrew MUST add Antigravity to the hook-capable host path using | — |
+
+## Tasks
+
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T001 | SessionStart cap policy and provider fallback | FR-001, FR-002, SC-001, SC-002 | US1 | 4 | Implementer | extensions/specrew-speckit/scripts/**; tests/bootstrap/** | planned | codex | — | pending |
+| T002 | Delivery-cap hermetic fixture | FR-004, SC-004 | US1 | 2 | Implementer, Reviewer | tests/bootstrap/DirectiveDeliveryCap.Tests.ps1 | planned | codex | — | pending |
+| T003 | Session ID resolver and journal state | FR-003, SC-003 | US2 | 3 | Implementer | extensions/specrew-speckit/scripts/**; tests/bootstrap/** | planned | codex | — | pending |
+| T004 | Closeout classification, upstream wording, dashboard refresh | FR-005, SC-005 | US3 | 4 | Implementer | scripts/internal/sync-boundary-state.ps1; tests/integration/** | planned | codex | — | pending |
+| T005 | #1761 mechanical local-test hygiene | FR-006, SC-006 | US3 | 2 | Implementer, Reviewer | tests/integration/closeout-lifecycle-sync-commands.tests.ps1; tests/integration/** | planned | codex | — | pending |
+| T006 | Antigravity hook binding and docs cleanup | FR-007, SC-009, TG-004 | US4 | 4 | Implementer, Reviewer | hosts/**; scripts/internal/deploy-refocus-hooks.ps1; scripts/specrew-hooks.ps1; docs/**; README.md; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | planned | codex | — | pending |
+| T007 | Mirror parity, release readiness, and integration evidence | SC-007, SC-008, TG-003, TG-005 | US1-US4 | 1 | Reviewer, Spec Steward | extensions/specrew-speckit/**; .specify/extensions/specrew-speckit/**; specs/183-stability-quality-bundle/** | planned | codex | — | pending |
+
+## Effort Model
+
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; `time` enforces a time ceiling. |
+| Time Limit (hours) | n/a | Only applies when iteration bounding is `time`. |
+| Overcommit Threshold | 1.0 | Warn planners when total estimated effort exceeds 20 story_points (capacity 20 x threshold 1.0). |
+| Defer Strategy | manual | How planning should choose deferrals when the iteration is over capacity. |
+| Calibration Enabled | true | When true, retrospectives should suggest future capacity adjustments. |
+
+## Concurrency Rationale
+
+- Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
+- Technology and scope signals: Backend/service-oriented signals dominate the scoped requirements.
+- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
+- Workstream separability: Current scope does not yet prove enough safe parallelism for same-specialty expansion; default to a smaller serial team until tasks are clearer.
+- Shared-surface conflict risk: no elevated shared-surface warning inferred yet.
+- Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
+- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+
+## Phase Baseline
+
+| Phase | Estimated Effort | Notes |
+| ----- | ---------------- | ----- |
+| Planning | 2 | Plan, design gate, and Wave B artifacts |
+| Discovery/Spikes | 1 | Antigravity official schema/event/output verification |
+| Implementation | 13 | Runtime, hook, closeout, docs, and test changes |
+| Review | 3 | Deterministic validation, mirror parity, and real-host evidence |
+| Rework | 1 | Expected repair buffer |
+
+## Traceability Summary
+
+- Requirement scope: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007.
+- User stories represented in current scope: US1, US2, US3, US4.
+- Capacity check: 20/20 story_points. No slack remains.
+- Overcommit guardrail: if Antigravity verification expands beyond the bounded
+  adapter/config/docs/test slice, pause for a human split/defer decision before
+  implementation continues.
+
+## Notes
+
+- Design-analysis verdict: `approved for plan with Option B`.
+- Feature plan: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/plan.md
+- Wave B review artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/data-model.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/quickstart.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/contracts/stability-quality-bundle.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/review-diagrams.md
