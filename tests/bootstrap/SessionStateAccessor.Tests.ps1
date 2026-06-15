@@ -47,7 +47,10 @@ try {
     # Portability.
     $portable = [pscustomobject]@{ feature_path = (Join-Path $tmp 'specs/174-x') }
     Assert-True (Test-SpecrewAnchorPortable -Anchor $portable -ProjectRoot $tmp) 'under-root path is portable'
-    $foreign = [pscustomobject]@{ feature_path = 'D:/other/worktree/specs/171-x' }
+    # Cross-platform foreign absolute path: a Windows other-drive path on Windows; a foreign POSIX root path
+    # elsewhere. (A 'D:/...' string is NOT IsPathRooted on Linux, so it would wrongly read as portable there.)
+    $foreignFp = if ($IsWindows) { 'D:/other/worktree/specs/171-x' } else { '/other/worktree/specs/171-x' }
+    $foreign = [pscustomobject]@{ feature_path = $foreignFp }
     Assert-True (-not (Test-SpecrewAnchorPortable -Anchor $foreign -ProjectRoot $tmp)) 'foreign absolute path is non-portable'
     $noPath = [pscustomobject]@{ feature_path = $null }
     Assert-True (Test-SpecrewAnchorPortable -Anchor $noPath -ProjectRoot $tmp) 'no recorded path -> portable (resolve project-local)'

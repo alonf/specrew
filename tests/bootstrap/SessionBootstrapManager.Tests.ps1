@@ -44,7 +44,9 @@ try {
     Assert-Equal $r1.directive.dedupe_key 'sess-1' 'dedupe key derived from session id'
 
     # Non-portable anchor -> cleared-anchor with reason in the record + findings.
-    $s2 = New-StateFile -Path (Join-Path $root 's2.json') -FeatureRef 'feat-x' -FeaturePath 'D:/other/worktree/specs/feat-x'
+    # Cross-platform foreign absolute path (Windows other-drive; POSIX foreign root) - see SessionStateAccessor.Tests.
+    $foreignFp = if ($IsWindows) { 'D:/other/worktree/specs/feat-x' } else { '/other/worktree/specs/feat-x' }
+    $s2 = New-StateFile -Path (Join-Path $root 's2.json') -FeatureRef 'feat-x' -FeaturePath $foreignFp
     $r2 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath $s2
     Assert-Equal $r2.mode 'cleared-anchor' 'non-portable anchor resolves cleared-anchor'
     Assert-Equal $r2.record.anchor_cleared 'non-portable' 'record carries the clear reason'

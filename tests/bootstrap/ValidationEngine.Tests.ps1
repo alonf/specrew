@@ -39,7 +39,9 @@ try {
     Assert-True (-not (Test-SpecrewAnchorValidity -StatePath $s3 -ProjectRoot $root).valid) 'inactive anchor is invalid'
 
     # Non-portable absolute path -> cleared 'non-portable'.
-    $s4 = New-StateFile -Path (Join-Path $root 's4.json') -FeatureRef 'feat-x' -FeaturePath 'D:/other/worktree/specs/feat-x'
+    # Cross-platform foreign absolute path (Windows other-drive; POSIX foreign root) - see SessionStateAccessor.Tests.
+    $foreignFp = if ($IsWindows) { 'D:/other/worktree/specs/feat-x' } else { '/other/worktree/specs/feat-x' }
+    $s4 = New-StateFile -Path (Join-Path $root 's4.json') -FeatureRef 'feat-x' -FeaturePath $foreignFp
     $v4 = Test-SpecrewAnchorValidity -StatePath $s4 -ProjectRoot $root
     Assert-Equal $v4.cleared_reason 'non-portable' 'foreign absolute path cleared as non-portable'
 
