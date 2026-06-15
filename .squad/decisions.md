@@ -26728,3 +26728,23 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: af28d2da026fdbd85b2a55eda6ac7d3527b270d7
 - **Recorded At**: 2026-06-15T02:06:11Z
+
+## 2026-06-15T02:23:13Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 174-hook-driven-session-bootstrap
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: iteration-closeout
+- **Requested Boundary**: feature-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-15T02:26:41Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 39c218bee40ace3d5ee6857acdea915fd47a6d2b
+- **Recorded At**: 2026-06-15T02:26:40Z
