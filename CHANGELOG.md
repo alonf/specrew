@@ -4,7 +4,7 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
-## [0.37.0] - Unreleased
+## [0.37.0-beta1] - Unreleased
 
 ### Added
 

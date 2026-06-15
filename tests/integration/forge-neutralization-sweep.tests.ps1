@@ -269,8 +269,9 @@ Write-Pass "T308: Specrew's own GitHub + PSGallery closeout steps remain documen
 # --- iter-4 (FR-022 / SC-015): the neutralized RUNTIME/DEPLOYED change-surfaces carry the labeled example
 #     (neutralized-with-an-example, not silently stripped). These are F-182-owned current-tree surfaces. ---
 $mustCarryMarkerRuntime = @(
-    'scripts/specrew-start.ps1',           # the launch-prompt generator (F-174 supersedes it by deletion/refactor)
-    '.github/agents/squad.agent.md'        # the deployed per-host agent file
+    'scripts/specrew-start.ps1',                 # launcher: carries Specrew's own PSGallery update-check, marker-labeled
+    'scripts/internal/launch-contract.ps1',      # F-174 post-rebase: the relocated launch-contract generator (now holds the closeout-SDLC block + marker)
+    '.github/agents/squad.agent.md'              # the deployed per-host agent file
 )
 foreach ($m in $mustCarryMarkerRuntime) {
     $p = Join-Path $repoRoot $m

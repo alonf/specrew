@@ -192,6 +192,9 @@ function Format-BootstrapDirective {
         $lines.Add('=== RESUME RECONCILIATION (current tree, re-computed now) ===')
         # F-174 iter-11 (P2): the reconciliation re-lists the changed files (overlaps the handover delta) - bound
         # it too so the assembled payload stays under the host hook-output cap; the agent reads the tree itself.
+        # NOTE (2026-06-15): this 300 excerpt is a DOGFOODED resume floor - do NOT cut it to buy cap headroom
+        # (DirectiveDeliveryCap guards it >= 300). Recover headroom from the co-resident refocus B2 tail instead;
+        # the durable reduction is Proposal 191 (pre-compute the in-flight digest to a file + pointer).
         $lines.Add((Limit-SpecrewInlineBlock -Text ([string]$d.reconciliation.directive_text) -MaxChars 300 -Pointer 'file:///.specrew/handover/session-handover.md'))
     }
     # F-174 iteration 011 (T006 part 2, FR-027 / decision f174-i011-verdict-authority-stop-hook): committed !=

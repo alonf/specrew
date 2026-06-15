@@ -3236,6 +3236,9 @@ elseif ($staleSessionStateCheck.IsStale) {
 }
 
 $versionMismatchWarning = Get-SpecrewVersionMismatchWarning -ProjectRoot $resolvedProjectPath
+# Specrew's OWN update check uses the PowerShell Gallery (PSGallery) — this is Specrew-specific
+# machinery (Specrew is published there), NOT a downstream mandate. A downstream project checks its
+# own package registry per .specrew/repository-governance.yml; nothing here requires PSGallery of them.
 $psGalleryUpdateWarning = Get-PSGalleryUpdateWarning -ProjectRoot $resolvedProjectPath -SkipCheck:$SkipUpdateCheck
 
 if ($FeatureRequest -and -not $ResumeFeature) {

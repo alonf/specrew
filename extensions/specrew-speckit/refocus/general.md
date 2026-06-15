@@ -22,9 +22,6 @@ Inside Specrew, these rules hold at every stage and on every host:
 8. **Preflight every gate (two-tier model).** Before ANY boundary packet: reconstruct from artifacts, then run validator, upstream parity, dirty-state, artifact, stale-phrase, packet-consistency, and evidence checks. On failure: record, fix/classify, RERUN, then present. review-signoff gets the full structured review.
 9. **At any gate, when in doubt: stop** and render the six-section re-entry packet. At a **verdict** stop on the Claude host, invoke the `specrew-gate-stop` skill (F-165). On non-Claude hosts, render the full packet directly using that host's approved interaction path; do not invoke `specrew-gate-stop`. Workshop/clarify questions keep their normal path; never use the skill to deliver a verdict.
 
-Stage-scoped discipline: run `/specrew-refocus --boundary <stage>`.
-
 Deep sources:
 
 - {{project_root}}/docs/methodology/lifecycle-discipline.md
-- {{project_root}}/.specify/extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md

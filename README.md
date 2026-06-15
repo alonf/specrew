@@ -25,7 +25,7 @@ specrew init
 claude   # launch your AI host (or codex / copilot / cursor) — then just say: Build a tip calculator with a web UI
 ```
 
-For Mac and Linux, `install.sh` does it all: it auto-installs PowerShell Core as an internal dependency if it is missing (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew), installs Specrew from the PowerShell Gallery, and puts the native `specrew` command on your `PATH`. To validate a beta instead of the stable release, append `-s -- --prerelease` to the `curl … | sh` line.
+For Mac and Linux, `install.sh` does it all: it auto-installs PowerShell Core as an internal dependency if it is missing (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew), installs Specrew from the PowerShell Gallery, and puts the native `specrew` command on your `PATH`. To try a beta instead of the stable release, append `-s -- --prerelease` to the `curl … | sh` line — see [Try the latest beta](#try-the-latest-beta).
 
 > **Validating an unreleased prerelease?** The `main` URL above serves the *released* `install.sh`. When you're beta-testing a feature branch or tag that isn't merged yet, fetch the script from that ref instead — e.g. `curl -fsSL https://raw.githubusercontent.com/alonf/specrew/<branch-or-tag>/install.sh | sh -s -- --prerelease`.
 
@@ -55,6 +55,41 @@ git and one AI host CLI — [GitHub Copilot](https://docs.github.com/en/copilot/
 > **macOS/Linux fallback — module install instead of `install.sh`:** run `Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck` **from inside `pwsh`**, not zsh/bash (`Install-Module` does not exist in your login shell — running it there prints `command not found`). The PowerShell Gallery prompt defaults to **`N`**, so pressing Enter *declines* the install — choose **`A` / Yes to All** (or add `-Force`). The native `install.sh` path above avoids both pitfalls.
 
 See [docs/getting-started.md](docs/getting-started.md) for full install steps, dependency notes (uv, npm, Node, Spec Kit), and brownfield-project bootstrap.
+
+## Try the latest beta
+
+Want the newest features before they reach a stable release — and a hand in shaping them? Install the latest **beta**. Betas are functional but pre-stable on purpose: great for kicking the tires and sending feedback, not for production-critical work.
+
+**macOS / Linux** — add `--prerelease` to the install one-liner:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/alonf/specrew/main/install.sh | sh -s -- --prerelease
+```
+
+**Windows — PowerShell 7+** — add `-AllowPrerelease`:
+
+```powershell
+Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck -AllowPrerelease
+```
+
+**Already on a stable Specrew?** Move to the newest beta in place:
+
+```powershell
+Update-Module Specrew -AllowPrerelease
+```
+
+On macOS/Linux, re-run the `install.sh` line above with `--prerelease`. Then run `specrew update` inside each project so its hooks and skills match the beta.
+
+**Back to stable.** There's no special "promote" command — you move to stable by installing *without* the prerelease flag. The clean switch (so no beta lingers to confuse later updates):
+
+```powershell
+Uninstall-Module Specrew -AllVersions -Force
+Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck -Force
+```
+
+On macOS/Linux, re-run the `install.sh` line **without** `--prerelease`. Then run `specrew update` in each project. The full channel-switching guide — side-by-side installs, pinning a specific version, and the lingering-prerelease gotcha — is in [getting-started](docs/getting-started.md#prerelease-channel--early-adopters).
+
+**Send feedback.** Tried it? Tell us what worked and what didn't — open an issue at [github.com/alonf/specrew/issues](https://github.com/alonf/specrew/issues). Bug reports, rough edges, and "this surprised me" notes all directly shape the stable release.
 
 ## What just happened
 
@@ -202,7 +237,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 ## Status
 
 - **Latest stable baseline**: 0.35.0 — stable promotion of the 0.33.0–0.35.0 line (Specrew Refocus, Product & Problem Domain lens, Code & Implementation lens) after beta-before-stable validation; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: `0.37.0` (Feature 174 — hook-driven session bootstrap), in flight on this branch; the merged base now includes Feature 182 (work-kind & branch governance, `0.36.0`)
+- **Active development line**: `0.37.0-beta1` (Feature 174 — hook-driven session bootstrap), in flight on this branch; the merged base now includes Feature 182 (work-kind & branch governance, `0.36.0`)
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.

@@ -156,6 +156,16 @@ Assert-True ($directive -match 'code-implementation')                 '4: the re
 Assert-True ($directive -match 'truncated to fit the session-start delivery cap') '4: the fat handover log was bounded (elision note present)'
 Assert-True ($directive -match 'Validated handover captured')         '4: the handover preamble survives'
 
+# --- 4b: RESUME-FLOOR GUARD (2026-06-15). The cap fix must NEVER be paid by starving resume. The handover inline
+# budget (380) and the reconciliation excerpt cap (300) are the floors that passed real-host dogfood. Recover cap
+# headroom from the co-resident refocus B2 fragment (general.md tail) or Proposal 191 (pre-compute the in-flight
+# digest to a file + pointer) - NOT by cutting these. This guard fails the moment a change trades resume quality
+# for cap headroom, so the "solve cap by starving resume" regression cannot recur silently.
+$hoBudgetMatch = [regex]::Match($provSrc, '\$hoBudget\s*=\s*(\d+)')
+Assert-True ($hoBudgetMatch.Success -and [int]$hoBudgetMatch.Groups[1].Value -ge 380) ("4b RESUME-FLOOR: handover inline budget >= 380 (dogfooded floor; do not starve resume for cap headroom) - found {0}" -f $(if ($hoBudgetMatch.Success) { $hoBudgetMatch.Groups[1].Value } else { 'NONE' }))
+$reconCapMatch = [regex]::Match($provSrc, 'reconciliation\.directive_text\) -MaxChars (\d+)')
+Assert-True ($reconCapMatch.Success -and [int]$reconCapMatch.Groups[1].Value -ge 300) ("4b RESUME-FLOOR: reconciliation excerpt cap >= 300 (dogfooded floor; recover cap from refocus / Proposal 191, not resume) - found {0}" -f $(if ($reconCapMatch.Success) { $reconCapMatch.Groups[1].Value } else { 'NONE' }))
+
 # --- 5: REAL-HOST REGRESSION (2026-06-14). A workshop with done lenses but NO parseable decision summaries gives
 # done_decisions = an EMPTY array. Under StrictMode-Latest (the provider's real context) the old idiom
 # `$decisions = if(..){@(..)}else{@()}` collapsed the empty @() to $null, so `$decisions.Count` THREW -> the whole
