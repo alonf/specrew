@@ -45,7 +45,7 @@ lead-with-characterization check.)
 
 **Resolution (in-iteration, human pre-authorized at before-implement instruction #2)**: split **T035a** -
 build the genuine characterization (assert the contract's invariant markers survive in last-start-prompt.md
-+ boundary_enforcement is initialized, after a real `specrew start` run) BEFORE the extraction; re-baseline
+and boundary_enforcement is initialized, after a real `specrew start` run) BEFORE the extraction; re-baseline
 capacity 19 -> 20 honestly (T035a = 1 SP) rather than silently absorbing it into T035's 4. The extraction
 (T035) is gated on T035a being green.
 

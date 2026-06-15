@@ -38,6 +38,7 @@ substance DOES exist on disk (the lens records' conclusions + the conversation c
 it into a welcome-back recap.
 
 **Fix options (follow-up slice, NOT this session):**
+
 - (A) Surface each done lens's DECISION (one line from its record) in the in-flight scan / handover, not just the
   lens name.
 - (B) Direct a welcome-back synthesis in the resume directive: on an in-flight workshop resume, instruct the
@@ -88,6 +89,7 @@ verdict packet (What I Just Did / Why I Stopped / What Needs Your Review / What 
 GATE PRESENTATION was excellent.
 
 BUT the rich packet was rendered to the human and NOT persisted to the handover. Artifact truth after the stop:
+
 - interpretive sections are STILL placeholders (3 "has not authored" markers); `## Why I'm stopping` reads
   "Hook-captured at trigger 'agentStop' (the agent did not author a handover this turn) … Boundary: (pre-boundary
   / workshop)".
@@ -159,6 +161,7 @@ The maintainer resumed codex's stale lens-4 session via `codex resume 019ec0e6` 
 resume) — with claude + copilot having since advanced the work to the specify boundary.
 
 **WIN — Specrew's reconciliation survives a host-native resume (the headline result):**
+
 - `codex resume` FIRES the SessionStart hook (`source=resume`; SINGLE fire — native resume does NOT double-fire
   like a fresh `startup`). So Specrew is NOT bypassed by the host's own resume mechanism.
 - codex's native resume REPLAYED the stale lens-2-4 conversation to the screen (maintainer: "I only entered
@@ -292,14 +295,15 @@ WARN is a real recurring validator signal (seen on codex's clarify commit too), 
 genuine over-strict check — but "agent edits its own governance to advance" is the pattern to close.
 
 ### Final host tally
+
 codex (hook, double-fire, terse, DF-5 auto-advance + DF-7 direct-edit) · claude (hook, single-fire, substantive,
 gate-stop host, DF-4 misread on status) · copilot (hook, single-fire, substantive, clean gate packet, DF-3
 no-author) · cursor-agent (NO hook — rules-based, DF-6) · antigravity (NO hook — `specrew start`/T008, substantive,
 recovered-with-rewind, DF-8 governance-edit). All 5 hosts exercised; bootstrap dedupe + continuity green; the
 DF-3/4/5/7 cluster + DF-8 are the fix targets.
 
-
 ### Dogfood finding ledger (final)
+
 - DF-1 (resume recap quality; codex-terse, others substantive) — small fix (push pointer-mode hosts).
 - DF-2 (version/branch absent in codex pointer banner) — small fix (carry them in the directive).
 - DF-3 (boundary-authoring inconsistent) — ROOT = DF-7.

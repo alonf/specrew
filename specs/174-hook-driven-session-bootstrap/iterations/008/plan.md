@@ -229,7 +229,7 @@ delivered as iter-7's multi-host completion (already shipped + validated) and ar
     stays agent-dependent; the DETERMINISTIC win is the surfaced handover above (resume-repair re-derives from disk).
   - **DEFERRED (escalate only if the live re-test shows it):** writing `feature_ref` into `start-context.json` from
     the **SessionStart** provider (never the Stop hook — it fires every turn) for a feature-correct resume *contract*
-    + >24h durability + hard-kill (no-Stop-fired) coverage. No dogfood evidence yet that the feature-blind contract
+    and >24h durability + hard-kill (no-Stop-fired) coverage. No dogfood evidence yet that the feature-blind contract
     slows a *surfaced-handover* resume, so not pre-paid. Candidate follow-up: a deterministic mid-workshop lens-
     persistence floor (vs the agent-dependent conduct above).
 - **T050 round 2 (fix re-test, fresh trials `notekeep-{claude,codex,copilot}`, 2026-06-10) — early findings:**
@@ -262,7 +262,7 @@ delivered as iter-7's multi-host completion (already shipped + validated) and ar
     x4), hollow detection firing each time (body = 6/6 placeholders mid-workshop, the predicted P3 residual).
     Codex ALSO persisted per-lens workshop artifacts this round (workshop/product-domain.md + .yml - round 1 it
     persisted NOTHING). `/exit` preserved the stamped floor. Resume prediction: welcome-back + handover_valid:true
-    + placeholder warn -> re-derive from rich disk. PENDING the re-entry verdict.
+    and placeholder warn -> re-derive from rich disk. PENDING the re-entry verdict.
   - **Copilot mid-question = no agentStop = no handover yet (EXPECTED, not a failure):** copilot's question loop
     holds the agent turn open, so the Stop provider has nothing to fire on until the turn completes or `/exit`.
     In the governed flow (branch `001-notekeep`, spec.md written, per-lens questions). Its SessionStart journaled
@@ -327,7 +327,7 @@ delivered as iter-7's multi-host completion (already shipped + validated) and ar
     EVERY pairing journaled `mode:welcome-back, handover_valid:true, handover_placeholder:true` under the NEW
     host's name - a different host read, validated, and surfaced the prior host's handover in all three dirs.
     Pre-rotation edge-fix `d66f15a2`: the in-flight resume now distinguishes workshop-COMPLETE (agenda persisted
-    + all done -> resume AT THE BOUNDARY, never redo) from the codex records-no-agenda shape (re-propose agenda)
+    and all done -> resume AT THE BOUNDARY, never redo) from the codex records-no-agenda shape (re-propose agenda)
     - caught pre-exit on the live copilot trial which had just finished all 6 lenses. Behavioral verdicts pending.
   - **CROSS-HOST BEHAVIORAL VERDICTS - 2/3 pass; codex gate-discipline fail (3rd reproduction):** claude in
     copilot's dir = PERFECT (fastest; correct boundary stop); copilot in codex's dir = CORRECT; codex in claude's

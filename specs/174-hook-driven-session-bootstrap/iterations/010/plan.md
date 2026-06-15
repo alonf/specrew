@@ -11,7 +11,7 @@
 
 > **HUMAN-APPROVED OVERCOMMIT (22/20).** The maintainer's bar is "robustness first, then restart performance;
 > leave nothing open in this area." The resilience audit (workflow `wnd4i6d98`) found real common-path defects
-> + an antigravity recovery hole; the maintainer explicitly authorized one over-capacity robustness iteration
+> and an antigravity recovery hole; the maintainer explicitly authorized one over-capacity robustness iteration
 > rather than a split, accepting the extra story points.
 
 ## Why this iteration

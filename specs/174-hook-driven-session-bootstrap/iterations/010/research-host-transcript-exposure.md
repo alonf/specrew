@@ -56,6 +56,6 @@ separate high-priority proposal (`proposals/<n>-cross-host-transcript-format-dri
 
 ## Source URLs
 
-- Codex: https://developers.openai.com/codex/hooks · https://github.com/openai/codex/issues/23784
-- Copilot: https://docs.github.com/en/copilot/reference/hooks-reference (raw: github/docs main content/copilot/reference/hooks-reference.md)
-- Cursor: https://cursor.com/docs/hooks
+- Codex: <https://developers.openai.com/codex/hooks> · <https://github.com/openai/codex/issues/23784>
+- Copilot: <https://docs.github.com/en/copilot/reference/hooks-reference> (raw: github/docs main content/copilot/reference/hooks-reference.md)
+- Cursor: <https://cursor.com/docs/hooks>

@@ -24,6 +24,7 @@ hook-captured)') and T003 adds FOUR frontmatter keys (`last_authorized_boundary`
 `workshop_done`, `workshop_remaining`). Both diverge from 130's literal fixed schema.
 
 **Reconciliation (in-iteration)**: ACCEPTED as a 174-authorized ADDITIVE extension, not a 130 violation:
+
 - 174 already evolved this schema in iteration-9 (the mechanical/interpretive ownership split that 130 did not
   specify); the extension is consistent with that evolution and is what FR-022 ("useful content") requires.
 - The change is purely ADDITIVE: 130's six summary sections + seven frontmatter keys are unchanged in name,

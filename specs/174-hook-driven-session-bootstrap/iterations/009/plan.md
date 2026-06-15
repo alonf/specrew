@@ -106,6 +106,7 @@ run showed the hook does not get to RUN often enough:
 ## Design direction (maintainer, 2026-06-11) — IMPLEMENTED as iter-9.1 (T006)
 
 Multi-source, single-core handover save:
+
 - **Core abstraction (NEW)** in the bootstrap component layer — one orchestrator, e.g.
   `Update-SpecrewRollingHandover -ProjectRoot -HostKind -Source` — owning resolve-context →
   material-change gate → `Get-SpecrewSessionDelta` → mechanical author + accumulate →

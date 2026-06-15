@@ -42,7 +42,7 @@
     Test: `HandoverConversationPreserve.Tests.ps1` (+ `AgentAuthoredHandover` A1-A4 unaffected).
   - **F3** — the transcript read was whole-file (O(session) per PostToolUse). Now `Get-Content -Tail 500`.
   - **F4** — added `DispatcherTranscriptDelivery.Tests.ps1` (real dispatcher -> stub, asserts `--transcript-path`
-    + `--source-event` + `--host-kind` delivered). Tier-3 `last_assistant_message` wiring stays DEFERRED.
+    and `--source-event` + `--host-kind` delivered). Tier-3 `last_assistant_message` wiring stays DEFERRED.
   - **LATENT BUG (beyond the 5)** — `Invoke-ProviderProcess` launched providers via `Start-Process
     -ArgumentList`, which does NOT quote args containing spaces: a `transcript_path` under a spaced home
     (`C:\Users\First Last\...`, the common case) was SPLIT into several args -> conversation capture silently
@@ -66,7 +66,7 @@
     INLINES the captured handover (incl. 'Recent conversation' — Hebrew/emoji/unicode dialogue) into its
     SessionStart stdout; the child pwsh's default OEM console codepage mangled it to '?' before capture, and the
     dispatcher re-mangled its own stdout to the host. Fixed across all three legs: every emitter (the 3 providers
-    + the dispatcher) now declares `[Console]::OutputEncoding = UTF8` (marker `SPECREW-UTF8-OUTPUT`) and the
+    and the dispatcher) now declares `[Console]::OutputEncoding = UTF8` (marker `SPECREW-UTF8-OUTPUT`) and the
     dispatcher reads UTF-8 (`StandardOutputEncoding`). Proven end-to-end by a Hebrew+emoji round-trip assertion in
     `DispatcherLargeStdout`; a `ProviderMirrorParity` contract guard pins the declaration on all four emitters.
     HIGH relevance — the maintainer is Hebrew-speaking.

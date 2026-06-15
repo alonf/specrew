@@ -37,10 +37,10 @@ green, 0 failed.**
 ## Confirmed MEDIUM findings — FIXED with regression tests
 
 - **P2-1 (FR-022, SC-012/015)** — `ConvertFrom-SpecrewHandoverFile` shredded the captured boundary packet when
-  an inner `## ` header EXACTLY matched a canonical handover title (the section collapsed to the bare marker; a
+  an inner `##` header EXACTLY matched a canonical handover title (the section collapsed to the bare marker; a
   resume inherited a useless stub). Safe on the realistic path (the gate-stop skill's headers don't collide) —
   a latent trip-wire. **FIX**: terminal-aware captured-section parse (`HandoverStore.ps1`) — once inside the
-  captured section, a `## ` closes it only on a canonical title that sorts AFTER it (none do; captured is last →
+  captured section, a `##` closes it only on a canonical title that sorts AFTER it (none do; captured is last →
   greedy-to-EOF; self-corrects if the order grows). **Regression**: `HookPacketCapture.Tests` case 10 (colliding
   verbose canonical inner header → captured section round-trips intact, canonical section not polluted) — the
   assertion the prior suite structurally could not make.
@@ -63,7 +63,7 @@ green, 0 failed.**
   send-back "changes" clause; 2 approval cases added.
 - **P5-1 (LOW)** — the T008 decision-title regex truncated dash-titles at an internal hyphen and missed em-dash.
   FIX: anchor on the `\S+` id token + `[-–—:]`; `WorkshopDecisionRecap.Tests` case 2b (em-dash + internal hyphen
-  + colon).
+  and colon).
 - **P6-002 (LOW)** — SC-014 was proven only by source-grep + isolated renderer. FIX: 2 real-provider→directive
   integration cases in `pending-verdict-surface.tests.ps1` (committed≠authorized surfaces the AWAITING block;
   working==authorized does not).

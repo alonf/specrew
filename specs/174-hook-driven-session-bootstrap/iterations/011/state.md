@@ -144,11 +144,11 @@ for codex/copilot/cursor; the SessionStart bootstrap + Stop handover ride these 
 
 - **T002** (mechanical VERBATIM packet capture, FR-022/DF-3) — `Get-SpecrewCapturedBoundaryPacket` reads the host
   transcript for the agent's ACTUALLY-RENDERED boundary packet (marker-tied; a new `-Raw` transcript read so the six
-  `## ` headers + newlines survive verbatim; a substantive-content floor, NOT six exact headers — the
+  `##` headers + newlines survive verbatim; a substantive-content floor, NOT six exact headers — the
   form-without-runtime-compliance trap). It lands in a NEW THIRD section-ownership category (`Get-SpecrewHandover`
   `CapturedSections`, excluded from BOTH the mechanical and agent-owned sets). The handover-file parser
   (`ConvertFrom-SpecrewHandoverFile`) was made captured-section-verbatim-aware (the maintainer/advisor BLOCKER: the
-  packet's own `## ` would otherwise shred it on read-back) — inside a captured section a `## ` line closes it ONLY on
+  packet's own `##` would otherwise shred it on read-back) — inside a captured section a `##` line closes it ONLY on
   an EXACT canonical title. `active_boundary` is the forward-most of {session working position, prior file value, the
   marker FROM} — set from the marker, NEVER regressing; the packet is WRITTEN only when the active boundary is within
   the marker's `[FROM..TO]` range (a stale packet from a boundary already passed is dropped). Wired into
@@ -171,6 +171,7 @@ refocus / gate-stop / verdict-capture surface.
 `f174-i011-hook-deploy-hardening`, maintainer pre-approved; cap RAISED 22→32):** the maintainer surfaced that
 hook-driven startup is now the primary path while hooks deploy only for PATH-detected hosts — a silent-degradation
 hole when a user adds codex/copilot/cursor AFTER `specrew init`. Three layers, each with folded tests:
+
 - **T010** (`1f9b83fb`, SC-016) — proactive provisioning at init+update for ALL hook-capable registry hosts
   (`Get-SpecrewHookCapableHosts` keyed on the manifest `RefocusHookBindings` capability, not PATH detection);
   preserve user entries, replace only Specrew-owned, respect opt-outs, fail open.

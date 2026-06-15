@@ -20,6 +20,7 @@ lean-pointer + resume reconciliation) deferred to iteration 010.
 order + `Select -First 12`, so the Specrew/Squad/Spec-Kit managed dirs (.agents/.claude/.copilot/.cursor/
 .github/.specify/.squad/.specrew), which sort first, FILLED the file cap and capped OUT the user's real work
 (specs/, workshop/). Every refresh surfaced the same ~53 scaffolding paths and never the spec/workshop files
+
 - the handover was non-hollow but useless.
 
 **Resolution (in-iteration, T007)**: partition managed vs user files; surface USER files first;

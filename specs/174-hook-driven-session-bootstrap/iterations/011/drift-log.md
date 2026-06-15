@@ -66,7 +66,7 @@ reconciliation path (lifecycle-discipline rule 4: drift is logged, not absorbed)
   task demands is a command, and the FR-022 directive can now name a token the agent can actually run. A module
   export would still be unreachable from the agent's real invocation path. The task title itself says
   "command/skill," anticipating this. The command reuses `ConvertFrom-SpecrewHandoverFile` (the same reader a
-  resume uses) to parse `## ` sections — no bespoke multi-line CLI parser — and writes through the SAME atomic
+  resume uses) to parse `##` sections — no bespoke multi-line CLI parser — and writes through the SAME atomic
   writer + centralized clobber guard as the Stop hook, so the authored body and a hook-captured packet coexist
   (proven by HandoverAuthorCommand.Tests case 5 / SC-015).
 - **Residual**: `Write-SpecrewHandoverContext` stays internal (reached by dot-source from the command + by the

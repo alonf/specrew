@@ -67,7 +67,7 @@ dogfood proved it load-bearing) — honestly re-baselined 13 -> 16, not silently
 2. **Owner: Implementer | Phase: iter-10 | Type: cost.** Dial PostToolUse back (off-by-default / throttled);
    write on Stop for grounding, reconcile cheaply on resume. Reclaim the per-tool-call `git status` cost.
 3. **Owner: Implementer | Phase: iter-10 | Type: tracking.** Surface the workshop lens-progress (done / next)
-   + the precise gate-stop state, read from `lens-applicability.json` + `workshop/`, so "which phase" is
+   and the precise gate-stop state, read from `lens-applicability.json` + `workshop/`, so "which phase" is
    explicit, not inferred.
 4. **Owner: Implementer | Phase: iter-10 | Type: carry + test-debt.** Fix `from_host: host` in the
    workshop-skill refresh (pass `--host-kind`); add committed regression tests for T007 de-noise and the
