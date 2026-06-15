@@ -48,7 +48,7 @@ fallback, session-key state, closeout truth, and local test hygiene; weakest for
 host-support correctness because it preserves the known stale Antigravity
 no-hooks assumption until later.
 
-**Estimated effort**: 14-15 SP.
+**Effort estimate**: 14-15 SP.
 
 **Reversibility cost**: Medium. It is easy to add FR-007 later, but user-facing
 docs and host-support messaging remain wrong in the interim.
@@ -91,7 +91,7 @@ payload validation and config-preservation controls explicit; makes partial
 Antigravity support observable instead of binary; retains deterministic tests and
 real-host validation as separate evidence classes.
 
-**Estimated effort**: 20 SP exactly.
+**Effort estimate**: 20 SP exactly.
 
 **Reversibility cost**: Low to medium. Each slice is isolated enough to tune or
 back out, and Antigravity parity claims remain gated by verified behavior. The
@@ -137,7 +137,7 @@ documentation, but it expands beyond the accepted stability bundle and risks
 pulling in Proposal 191/168-style payload and Stop-hook work through the side
 door.
 
-**Estimated effort**: 28-35 SP across at least two iterations.
+**Effort estimate**: 28-35 SP across at least two iterations.
 
 **Reversibility cost**: High. A generalized hook-platform contract becomes a
 public design surface and is expensive to reshape after release.
@@ -313,6 +313,11 @@ specrew hooks install --host antigravity
   session-key resolution, closeout classification, dashboard refresh, test
   fixtures, mirror parity, and Antigravity adapters separate.
   - Addressed: see Option B's modular vertical slices and component map.
+- **requirements-nfr**: reliability, test integrity, lifecycle truth,
+  maintainability, and release discipline determine the evidence bar and split
+  guard.
+  - Addressed: see Option B's full-cap capacity model and deterministic
+    validation evidence, plus Option A's explicit Antigravity deferral trade-off.
 - **data-storage**: runtime state remains local-file and best-effort; no
   migration for old `unknown` files; Antigravity config writes preserve user
   entries.
