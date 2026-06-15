@@ -1,13 +1,13 @@
 # Iteration State: 012
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
-**Last Completed Task**: T007 (verification — markdownlint + doc token-parity + doc-coverage re-check); plus the F-182 merge reconciliation (drift D-009/D-010/D-011) folded in after `origin/main` was merged mid-iteration.
-**Tasks Remaining**: review-signoff verdict → retro → iteration-closeout → (F-174 feature-closeout). The doc edits (T001–T007) are implemented + committed; the lifecycle boundaries were driven inline by the maintainer (specify→implement reviewed turn-by-turn), so the iteration enters review-signoff.
-**In Progress**: review-signoff — `review.md` authored; awaiting the maintainer's review-signoff verdict. Scope now covers the docs reconciliation (DR-1..DR-10) + the F-182 merge reconciliation (D-009 cap/refocus, D-010 forge sweep, D-011 specify.md gate-stop) + the `0.37.0-beta1` release-prep bump.
+**Current Phase**: iteration-closeout
+**Iteration Status**: retro
+**Last Completed Task**: review-signoff — **approved** by the maintainer 2026-06-15 (`review-signoff.md`); `retro.md` authored.
+**Tasks Remaining**: iteration-closeout verdict (generates `dashboard.md` + appends the closed-iterations index) → (F-174 feature-closeout). The doc edits (T001–T007) + the F-182 merge reconciliation are implemented + committed (`4bfa1aa6`).
+**In Progress**: iteration-closeout — `review.md` (accepted), `review-signoff.md`, and `retro.md` authored; awaiting the maintainer's iteration-closeout verdict. Scope: docs reconciliation (DR-1..DR-10) + F-182 merge reconciliation (D-009 cap/refocus, D-010 forge sweep, D-011 specify.md gate-stop) + the `0.37.0-beta1` release-prep bump.
 **Baseline Ref**: iteration-011 HEAD (`b965abf1`); rebased onto `origin/main` via merge `727a1a9b` (Feature 182 / 0.36.0 base).
-**Updated**: 2026-06-15T00:59:56Z
+**Updated**: 2026-06-15T01:30:14Z
 
 ## Charter
 
