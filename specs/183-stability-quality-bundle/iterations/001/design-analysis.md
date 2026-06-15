@@ -64,6 +64,15 @@ docs and host-support messaging remain wrong in the interim.
 **Recommended for**: a schedule-driven beta where Antigravity cannot be verified
 before release.
 
+**Diagram**:
+
+```mermaid
+flowchart LR
+  S[SessionStart and closeout fixes] --> Core[FR-001..FR-006]
+  Core --> Beta[0.37.0 beta candidate]
+  A[Antigravity hooks] -.explicit defer.-> Followup[Follow-up feature]
+```
+
 ### Option B - Reasonable: one bounded seven-FR stability iteration
 
 **Approach**: Deliver FR-001 through FR-007 in one iteration by keeping each FR
@@ -102,6 +111,17 @@ the cap allows.
 
 **Recommended for**: this feature, with the split guard recorded in the plan.
 
+**Diagram**:
+
+```mermaid
+flowchart LR
+  Cap[SessionStart cap and fallback] --> Runtime[Hook runtime fixes]
+  Runtime --> State[Session key and journal state]
+  State --> Closeout[Closeout and local-test truth]
+  Closeout --> AG[Verified Antigravity hook binding]
+  AG --> Evidence[Mirror parity and real-host validation]
+```
+
 ### Option C - By the book: hook-platform hardening plus Antigravity parity
 
 **Approach**: Treat FR-007 as the start of a general hook-platform refactor:
@@ -132,6 +152,16 @@ public design surface and is expensive to reshape after release.
 
 **Recommended for**: a later host-hook platform feature, not this stability
 bundle.
+
+**Diagram**:
+
+```mermaid
+flowchart LR
+  Bundle[Feature 183 bundle] --> Platform[General hook capability subsystem]
+  Platform --> Matrix[Host capability matrix]
+  Platform --> Parity[Antigravity SessionStart and Stop parity]
+  Platform --> Payload[Payload optimization and Stop-hook expansion]
+```
 
 ## Crew Recommendation
 
@@ -277,33 +307,49 @@ specrew hooks install --host antigravity
 
 - **architecture-core**: one governed software-feature with bug-bash vertical
   slices unless capacity forces an explicit split.
+  - Addressed: see Option B's bounded seven-FR iteration and Option C's rejected
+    over-cap platform refactor.
 - **component-design**: local helper seams keep cap policy, fallback text,
   session-key resolution, closeout classification, dashboard refresh, test
   fixtures, mirror parity, and Antigravity adapters separate.
+  - Addressed: see Option B's modular vertical slices and component map.
 - **data-storage**: runtime state remains local-file and best-effort; no
   migration for old `unknown` files; Antigravity config writes preserve user
   entries.
+  - Addressed: see Option B's session-key state and Antigravity config adapter
+    slices.
 - **security-compliance**: host payloads and hook config are untrusted; parse and
   merge failures fail open without clobbering user config.
+  - Addressed: see Option B's verified-subset Antigravity posture and fail-open
+    hook config handling.
 - **integration-api**: Antigravity uses project-scoped `.agents/hooks.json` and
   only verified events/output semantics are mapped.
+  - Addressed: see Option B's Antigravity hook binding and Option C's rejected
+    generalized hook-platform contract.
 - **devops-operations**: dynamic beta target selection, mirror parity, real-host
   validation, and fallback guidance are release gates.
+  - Addressed: see Option B's evidence slice and release/mirror discipline.
 - **observability-resilience**: diagnostics distinguish cap handling, provider
   failure, session fallback, hook config failure, partial Antigravity support,
   and real-host validation failure.
+  - Addressed: see Option B's deterministic tests plus real-host validation.
 - **ui-ux**: fallback wording must say governance remains active and point to
   recovery commands.
+  - Addressed: see Option B's fail-loud fallback and Antigravity fallback
+    wording.
 - **code-implementation**: use existing PowerShell/Pester patterns, no new
   dependency, and source-to-deployed mirror parity for touched files.
+  - Addressed: see Option B's no-new-dependency adapter/config slices and Option
+    C's rejected broad subsystem.
 
 ## Co-Design Record
 
-**Status**: pending final design-analysis verdict.
+**Human-agreed**: yes. The maintainer approved the design verdict
+`approved for plan with Option B` on 2026-06-16.
 
 The component map and per-lens decisions were human-confirmed during the specify
 workshop. This design-analysis stop carries those decisions into three delivery
-options and asks for the final option verdict before `plan.md` is authored.
+options and records the final Option B verdict before `plan.md` is authored.
 
 Binding constraints already agreed:
 
@@ -316,4 +362,62 @@ Binding constraints already agreed:
 
 Human decision required:
 
-- Recommended verdict: `approved for plan with Option B`.
+- Decision received: `approved for plan with Option B`.
+
+Component-to-responsibility map:
+
+| Component | Responsibility |
+| --- | --- |
+| HookDispatcherPolicy | Computes cap-aware fragment priority/drop behavior. |
+| BootstrapProviderFallback | Emits the minimal fail-loud fallback directive on provider failure. |
+| DirectiveDeliveryCapFixture | Builds synthetic SessionStart inputs for hermetic cap assertions. |
+| SessionIdResolver | Extracts/sanitizes host session IDs and chooses a per-launch fallback token. |
+| HookJournalState | Owns dedupe/breaker/journal key behavior tied to session identity. |
+| HookLauncherDeploymentCheck | Flags when user-level hook launcher redeploy may be required. |
+| CloseoutDirtyClassifier | Classifies `.specify` dirty surfaces coherently. |
+| CloseoutRemoteMessage | Chooses commit-vs-push wording based on upstream existence. |
+| CloseoutDashboardRefresh | Regenerates dashboard on auto-detect closeout paths. |
+| CloseoutIdentityFixture | Isolates scratch git context from the real worktree. |
+| LifecycleSyncCommandAssertion | Points ValidateSet checks at the module-internal sync copy. |
+| AntigravityHookManifest | Adds verified hook capability metadata to the Antigravity host manifest. |
+| AntigravityHookConfigAdapter | Deploys Specrew-owned entries into project-scoped `.agents/hooks.json` while preserving user entries. |
+| AntigravityEventAdapter | Maps only verified Antigravity events to Specrew dispatcher/provider behavior. |
+| AntigravityHookDocsCleanup | Removes stale Antigravity-no-hooks wording. |
+| MirrorParityCheckpoint | Keeps source and deployed extension copies aligned. |
+| ReleaseValidationThread | Records beta target selection, real-host validation, and stable-promotion gate. |
+
+Agreed flow:
+
+```mermaid
+flowchart LR
+  Host[Host SessionStart] --> Cap[HookDispatcherPolicy]
+  Cap --> Fallback[BootstrapProviderFallback]
+  Fallback --> Session[SessionIdResolver]
+  Session --> Journal[HookJournalState]
+  Journal --> Agent[Governed bootstrap or degraded-governed fallback]
+```
+
+UI/screen-layout agreement:
+
+```text
+Fallback text surface
+  Specrew hook bootstrap is degraded for <host>.
+  Governance is still active.
+
+  Try:
+    1. specrew where
+    2. /specrew-refocus
+    3. specrew hooks status
+    4. specrew start --host <host>
+```
+
+## Human Decision
+
+- **Decision verdict**: approved for plan with Option B
+- **Chosen Option**: Option B
+- **Reason**: Proceed with all seven FRs in one bounded 20 SP iteration, while
+  keeping a hard split guard if Antigravity verification grows beyond the
+  adapter/config/docs/test slice.
+- **Modifications**: None.
+- **Design-analysis draft commit**: `2941b537`
+- **Decision recorded in commit**: `pending-decision-commit`
