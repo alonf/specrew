@@ -35,6 +35,24 @@ baseline that each release number represents.
 - **Session bootstrap on Codex:** the Specrew session hook now runs and surfaces its orientation on Codex,
   and the bootstrap shows the correct Specrew version.
 
+## [0.36.0] - 2026-06-13
+
+Stable promotion of the 0.36.0 line (Feature 182 — Work Kind and Branch Governance Model), validated by the
+maintainer per the beta-before-stable mandate. F-174 (0.37.0) builds on this baseline.
+
+- **Feature 182 — Work Kind and Branch Governance Model:** first-class **work kinds** so feature delivery,
+  docs changes, and DevOps/CI changes each follow a right-sized lifecycle instead of one heavy shape. A
+  data-driven taxonomy (`software-feature` · `bug-bash` · `docs-only` · `devops`) declared in a checked-in,
+  forge-neutral `.specrew/work-kind.yml`; a provider-neutral CI work-kind validator (changed-file scope +
+  closeout-evidence checks, advisory by default) with a GitHub reference adapter and a generic fallback; a
+  configurable branch-governance model (`.specrew/repository-governance.yml`); and the forge-neutralization
+  of Specrew's downstream-governing methodology surfaces.
+
+## [0.36.0-beta1] - 2026-06-13
+
+- **Feature 182 — Work Kind and Branch Governance Model** (beta1): the prerelease validated before the
+  0.36.0 stable promotion above.
+
 ## [0.35.0] - 2026-06-11
 
 Stable promotion of the 0.35.0 line per the beta-before-stable mandate, validated by the maintainer's install testing across the 0.33–0.35 line on the Claude host (a full governed lifecycle building a cross-platform .NET MAUI app, head-to-head against an ungoverned control). Bundles the prerelease:

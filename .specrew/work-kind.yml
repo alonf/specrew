@@ -1,7 +1,8 @@
 # .specrew/work-kind.yml — Specrew's OWN work-kind declaration (dogfood, FR-013/SC-007).
 #
-# Feature 182 is product/runtime behavior delivered through the full Specrew lifecycle.
+# Feature 174 (this branch) is product/runtime behavior delivered through the full Specrew lifecycle.
+# (Feature 182, the work-kind model itself, shipped from main as the 0.36.0 baseline this branch builds on.)
 
 work_kind: software-feature
 schema_version: "1.0"
-notes: "Feature 182 — Work Kind and Branch Governance Model (the feature dogfooded here)."
+notes: "Feature 174 — Hook-Driven Session Bootstrap (product/runtime behavior delivered through the full Specrew lifecycle; the feature dogfooded on this branch). Runtime hooks/dispatcher/providers + new commands ship a release, so this is a software-feature, not docs-only."
