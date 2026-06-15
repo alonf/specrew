@@ -1,0 +1,153 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "data-storage",
+    "security-compliance",
+    "integration-api",
+    "devops-operations",
+    "observability-resilience",
+    "ui-ux"
+  ],
+  "skipped": {},
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Decomposition style: one bug-bash-style software-feature with vertical FR slices or split by subsystem?",
+        "Major building blocks across SessionStart delivery, session identity/journal state, closeout sync/classification, mechanical test hygiene, and release/mirror discipline?",
+        "Volatile areas that should stay isolated: hook cap policy, fallback directive text, session ID extraction, closeout dirty classification, and test fixture construction?",
+        "Binding constraints: capacity, beta-before-stable, runtime evidence, mirror parity, dev-tree dogfood, and hard exclusions?",
+        "Out-of-scope boundary and amendment rule for excluded proposals/issues?"
+      ],
+      "decision": "Confirmed one governed software-feature with bug-bash conduct per vertical FR slice. Accepted five original building blocks: SessionStart Delivery Path; Session Identity and Journal State; Closeout Sync and Classification; Mechanical Test Hygiene; Release and Mirror Discipline. Amendment 2026-06-16 adds Antigravity Hook Support after maintainer-provided upstream evidence showed Antigravity now documents hooks while current Specrew registry/deploy tests still exclude Antigravity from hook provisioning. Accepted five volatile areas to isolate: hook cap policy; fallback directive text; session ID extraction; closeout dirty classification; hermetic test fixture construction. Binding constraints accepted with amendment: beta-before-stable remains binding, but the exact beta tag is not hard-coded now; before publish, check current release state and target the next appropriate 0.37.0-beta<N>, then promote stable only after real-host validation passes. Accepted hard out-of-scope boundary for Proposal 191, Proposal 165 / Issue #2081, Proposal 168, Issue #78, Proposal 159 Tier 2, Proposal 123, and Issue #1761 red #1 unless explicitly amended before planning.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/architecture-core.md -- feature decomposition ASCII with five building blocks, volatility/isolation notes, binding constraints, and hard exclusions"
+    },
+    "component-design": {
+      "agenda": [
+        "Component map: named components across SessionStart delivery, session identity/journal state, closeout sync/classification, mechanical test hygiene, and release/mirror discipline?",
+        "Dependency direction among cap policy, fallback text, session ID extraction, journal state, closeout classification, dashboard rendering, tests, and mirror parity?",
+        "Component test strategy for each accepted component?",
+        "Mirror and release component ownership, including clarification that mirror means source-to-.specify extension parity, not AI host fanout?"
+      ],
+      "decision": "Confirmed component map at the proposed granularity. Accepted dependency direction: tests use public entry points where practical, cap policy stays separate from fallback text, session ID extraction stays separate from journal writing, closeout classification stays separate from dashboard rendering, tests are hermetic, and source remains authoritative with .specify mirror following. Accepted component test strategy for dispatcher policy, provider fallback, delivery-cap fixture, session ID/journal state, closeout sync subcomponents, and mechanical test hygiene. Accepted cross-cutting mirror/release ownership after clarification: mirror means source-to-deployed extension parity between extensions/specrew-speckit and .specify/extensions/specrew-speckit in this project, distinct from host deployment/fanout; release checks current beta state before selecting the next beta tag and requires real-host validation before stable promotion. Amendment 2026-06-16 adds AntigravityHookManifest, AntigravityHookConfigAdapter, AntigravityEventAdapter, and AntigravityHookDocsCleanup components; Antigravity hook capability stays separate from generic supported-host status and may claim only verified event parity.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md -- component map ASCII, dependency direction, test strategy, and source-to-.specify mirror ownership"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Functional requirement set for the six in-scope items?",
+        "Measurable success criteria for cap-aware delivery, fail-loud fallback, session identity, hermetic cap fixture, closeout classification, local red cleanup, mirror/release readiness, and real-host validation?",
+        "NFR priority order and non-driver qualities?",
+        "Capacity and deferral rule if planning exceeds the 20 SP cap?"
+      ],
+      "decision": "Confirmed original six FRs: SessionStart fragment-priority drop; hook provider fail-loud fallback; refocus unknown-session-id fix; DirectiveDeliveryCap hermeticity; feature-closeout .specify classification and messaging; mechanical local-test hygiene for #1761 reds #2/#3. Amendment 2026-06-16 adds FR-007 Antigravity hook support using the current official Antigravity hook configuration surface, with verified event mapping and stale no-hook documentation cleanup. Confirmed SCs covering cap-aware delivery, fail-loud fallback, session identity correctness, hermetic cap fixture, closeout classification correctness, local red cleanup, mirror/release readiness, real-host bootstrap validation, and Antigravity hook parity evidence. Confirmed NFR priority order: reliability/fail-safe behavior, test integrity, lifecycle truth, maintainability, release discipline; performance beyond cap/test runtime, UI polish beyond clear wording, and new security/compliance controls are non-drivers. Confirmed amended capacity rule: the amended FR set remains in scope only if the plan fits under 20 SP or is explicitly split with human approval; FR-007 must be surfaced in capacity discussion and cannot be silently dropped.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/requirements-nfr.md -- FR/SC list, NFR priority order, and capacity/deferral rule"
+    },
+    "data-storage": {
+      "agenda": [
+        "Data types and ownership for session/journal runtime state, start/context closeout state, deployed extension mirror, and test/scratch state?",
+        "Consistency, retention, and migration model, including side-by-side host behavior in one worktree?",
+        "Data validation evidence for session state, multi-host advisory behavior, closeout state, and test fixtures?"
+      ],
+      "decision": "Confirmed light data model. Runtime session/journal state is owned by the hook dispatcher/provider path; per-launch fallback token replaces global unknown when the host session ID is missing or malformed. Start/context and closeout state is owned by sync-boundary-state / closeout flow and must reflect current upstream/dirty/dashboard state. Source extension files are authoritative and the .specify deployed extension mirror follows touched source files. Antigravity hook configuration becomes a merge-managed hook deployment data surface after the official config location/shape is verified; Specrew-owned entries preserve user hook entries. Test/scratch state is disposable and must not depend on the real worktree. Consistency is local-file and best-effort; side-by-side Copilot/Claude/Codex in one VS Code worktree remains advisory concurrency only; already-open hosts may have stale chat context, disk artifacts are authoritative, rolling handover is latest-writer-wins and not a lock, and true parallel implementation should use separate worktrees. No migration is required for old refocus-state-unknown.json files or old Antigravity launcher-only sessions; new writes avoid depending on global unknown. Evidence covers session-state keying, advisory non-blocking multi-host behavior, closeout regeneration from current artifacts, isolated scratch git fixtures, and Antigravity hook config add/refresh/remove/opt-out behavior.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/data-storage.md -- local file ownership, consistency/retention/migration model, and validation evidence"
+    },
+    "security-compliance": {
+      "agenda": [
+        "Trust boundaries for host hook input, generated stdout directive, local filesystem state, shell/git execution in tests, and release/promote path?",
+        "Security/failure-mode requirements for provider exception, malformed/missing session ID, oversized hook output, dirty-state fixtures, and release target confusion?",
+        "Focused security/compliance audit and evidence set?"
+      ],
+      "decision": "Confirmed light trust-boundary model. Host hook input is external JSON into Specrew scripts and must be validated/sanitized; generated stdout directive crosses into the AI host model context and must be minimal, explicit, under cap, and non-empty on error; local filesystem state writes are constrained to intended project paths; shell/git test execution uses scratch repos and must not act on the real worktree; release/promote path is gated by beta-before-stable and real-host validation. Antigravity hook configuration adds a deployment-to-host-config boundary: Specrew-owned hook entries must merge without clobbering user hooks and must not enable privileged behavior from unverified events. No new secrets, tokens, PII, auth, or network credentials are introduced. Accepted failure modes: provider exception fails loud but non-blocking, malformed/missing session ID does not poison global unknown state, oversized hook output preserves governance bootstrap, dirty-state fixtures do not classify/mutate the real repo, release target selection checks current beta/tag/publish state, and Antigravity hook support must not over-claim unverified event parity. Evidence stays focused on sanitization/substitution tests, safe fallback output tests, scratch isolation tests, release target evidence, Antigravity hook contract/config evidence, and secret/path leakage review only if new logging is added.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/security-compliance.md -- trust boundaries, failure modes, and focused evidence"
+    },
+    "integration-api": {
+      "agenda": [
+        "Contract surfaces for host hook events, dispatcher/provider output, refocus/session journal, closeout sync, mirror parity, GitHub/proposal linkage, and Antigravity hooks?",
+        "Compatibility and error semantics across hook providers, session IDs, closeout sync, mirror parity, GitHub issue closure, and Antigravity?",
+        "Fast delta decisions for Antigravity hook support: contract binding, provisioning/release path, degraded behavior, implementation posture, and project-scoped .agents/hooks.json vs global config?",
+        "Integration tests and evidence set?"
+      ],
+      "decision": "Confirmed integration contract surfaces: host hook event contract; dispatcher/provider output contract; refocus/session journal contract; closeout sync contract; mirror parity contract; GitHub/proposal linkage; and Antigravity hook contract. Accepted compatibility/error semantics: provider failures exit 0 with explicit degraded directive, session IDs tolerate host variance and sanitize/generate per-launch fallback, closeout sync derives messaging/dashboard from actual state, source is authoritative for mirror parity, and issue closure happens at feature closeout. Fast Antigravity delta accepted: verify current official config location/schema/events/output semantics, use project-scoped .agents/hooks.json for Specrew hooks rather than global ~/.gemini/config, treat Antigravity as project-local like Claude for config scope but Antigravity-schema-specific, include Antigravity in init/update/hooks command provisioning once RefocusHookBindings are added, preserve user entries and opt-outs, keep specrew start as fallback, document degraded behavior honestly, and claim only verified event parity. Accepted integration evidence set including synthetic hook/session fixtures, provider failure, over-cap, closeout, dashboard, mirror parity, Antigravity hook config/event/real-host validation, and closeout links to #2446/#1627/#1761.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/integration-api.md -- contract surfaces, Antigravity fast-delta binding, compatibility semantics, and integration evidence"
+    },
+    "devops-operations": {
+      "agenda": [
+        "Operational surfaces for hook provisioning, runtime validation, release path, and docs?",
+        "Validation matrix across deterministic tests, mirror/parity checks, and manual/real-host evidence?",
+        "Release target rule that checks current tags/published state before choosing 0.37.0-beta<N>?",
+        "Operational fallback rules, including skills/instructions/refocus/where and specrew start fallback when hooks fail?"
+      ],
+      "decision": "Confirmed operational surfaces: specrew init/update/hooks commands, deploy-refocus-hooks.ps1, per-host configs including Antigravity .agents/hooks.json, synthetic Pester validation, mirror parity, real-host validation, beta/stable release path, and docs cleanup. Confirmed validation matrix: local deterministic tests for delivery cap, dispatcher policy, provider fallback, session ID, closeout, #1761, and hook deployment including Antigravity; mirror/FileList checks; real-host evidence for SessionStart and Antigravity if FR-007 ships; beta install/use validation before stable. Confirmed release target rule: do not hard-code beta2; inspect local/origin tags and published state, choose next valid 0.37.0-beta<N>, validate, publish next beta on failure, and promote stable only from a beta that passed. Confirmed fallback rules: hook deploy/config failures fail open, report host/path, preserve user config, surface specrew hooks repair, and tell the user to use specrew start --host <host>; if hooks do not fire/inject, fall back to host skills/slash commands, AGENTS.md/coordinator instructions, /specrew-refocus, specrew where, and specrew start; Antigravity partial support keeps .agents/skills and AGENTS.md fallback and must document limitations honestly.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/devops-operations.md -- operational surfaces, validation matrix, release target rule, and fallback paths"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "Signals and diagnostics for dispatcher cap handling, provider fallback, session ID fallback, closeout sync, hook provisioning, and release?",
+        "Recovery behavior for oversized payload, provider failure, missing session ID, hook config failure, Antigravity partial hooks, and real-host validation failure?",
+        "Review evidence required for operational claims?"
+      ],
+      "decision": "Confirmed signals/diagnostics: log or record cap handling with bootstrap survival detail, emit provider fallback to stdout while diagnostics go to stderr/journal without raw stack text to the model, journal/status show generated per-launch session token rather than unknown, closeout output names dirty classification/upstream/dashboard regeneration path, specrew hooks status reports per-host installed/missing/stale/opted-out/failed, Antigravity partial capability reports verified vs unverified behavior, and release records beta-state check plus real-host PASS/FAIL. Confirmed recovery behavior: oversized payload preserves bootstrap and drops/shrinks lower-priority refocus without blocking; provider failure emits governed fallback and repair commands; missing session ID generates per-launch fallback with no historical migration; hook config failure preserves user config, fails open, and surfaces repair plus specrew start fallback; Antigravity partial hooks use verified subset and fall back to .agents/skills, AGENTS.md, specrew where, /specrew-refocus, and specrew start --host antigravity; failed real-host validation blocks stable and requires next beta. Confirmed review evidence set for cap/fallback tests, session ID journal/status, closeout classification/no-upstream/dashboard, hook deploy/status including Antigravity if in scope, mirror parity, and release beta-state/real-host validation.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/observability-resilience.md -- diagnostics, recovery behavior, and review evidence"
+    },
+    "ui-ux": {
+      "agenda": [
+        "User-visible text surfaces for fail-loud fallback directive, closeout push/commit wording, Antigravity docs/messages, and dashboard auto-detect?",
+        "Consistent interaction fallback wording for degraded hooks and Antigravity-specific partial support?"
+      ],
+      "decision": "Confirmed light UI/UX text requirements: fallback directive must be short, direct, clearly degraded-but-governed, name specrew where and /specrew-refocus, mention specrew hooks status when relevant, and avoid stack traces or vague failure language; closeout wording says 'must be pushed' only when upstream exists and handles no-upstream honestly; Antigravity docs/messages remove stale no-hook blanket claims, state verified Specrew mappings only, and keep specrew start --host antigravity as fallback; regenerated dashboard shows current closeout state. Confirmed fallback wording pattern: 'Specrew hook bootstrap is degraded for <host>. Governance is still active.' followed by specrew where, /specrew-refocus, specrew hooks status, and specrew start --host <host>; Antigravity-specific wording says hook support is available only for verified mappings and directs users to specrew start --host antigravity if no bootstrap banner arrives.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/ui-ux.md -- user-visible text surfaces and fallback wording patterns"
+    },
+    "code-implementation": {
+      "auto_on": true,
+      "agenda": [
+        "Source of code-rules truth, stack, and implementation posture for the code-writing feature?",
+        "Dependency policy and allowed existing tools?"
+      ],
+      "decision": "Confirmed implementation posture: use existing Specrew PowerShell/Pester patterns with no external guideline/example beyond this repo; stack is PowerShell 7+, JSON/YAML config, Pester-style tests, git/gh where already used, no new runtime dependency; use small focused helpers where variation is real, keep host-specific schema logic behind host-specific deploy/event adapters, fail-open for hooks with actionable diagnostics, preserve user config when parsing/merge is unsafe, test behavior through scripts/helpers rather than file presence only, and preserve source-to-.specify mirror parity. Confirmed dependency policy: use existing project tools/no new dependency; allowed PowerShell/pwsh, existing Pester-style tests, git/gh where already used, built-in JSON handling, and existing YAML patterns if needed; no new parser package, CLI dependency, test framework, or release/publish mechanism without a new decision.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/code-implementation.md -- implementation posture and dependency policy"
+    }
+  }
+}
