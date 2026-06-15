@@ -420,4 +420,4 @@ Fallback text surface
   adapter/config/docs/test slice.
 - **Modifications**: None.
 - **Design-analysis draft commit**: `2941b537`
-- **Decision recorded in commit**: `pending-decision-commit`
+- **Decision recorded in commit**: `c2fe1a32`
