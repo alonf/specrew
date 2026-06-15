@@ -42,14 +42,25 @@ function Assert-NotMatch {
 function Assert-FeatureCloseoutSdlcSurface {
     param(
         [Parameter(Mandatory = $true)][string]$Label,
-        [Parameter(Mandatory = $true)][string]$Path
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $false)][string[]]$AdditionalPaths = @()
     )
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         Write-Fail "Missing SDLC surface: $Path"
     }
 
+    # F-174 iter-006 (T035) relocated Get-StartPrompt and its launch-contract prose out of
+    # specrew-start.ps1 into scripts\internal\launch-contract.ps1, which specrew-start dot-sources
+    # at runtime. The coordinator-prompt handoff contract is the combined content of both files, so
+    # this assertion searches them together (matching boundary-authorization-prompt-truth.tests.ps1).
     $content = Get-Content -LiteralPath $Path -Raw -Encoding UTF8
+    foreach ($extraPath in $AdditionalPaths) {
+        if (-not (Test-Path -LiteralPath $extraPath -PathType Leaf)) {
+            Write-Fail "Missing SDLC surface companion: $extraPath"
+        }
+        $content += "`n" + (Get-Content -LiteralPath $extraPath -Raw -Encoding UTF8)
+    }
 
     Assert-Match -Text $content -Pattern '(?is)AGENT NEXT ACTION:' -Message "$Label is missing AGENT NEXT ACTION ownership row."
     Assert-Match -Text $content -Pattern '(?is)HUMAN ACTION NEEDED:' -Message "$Label is missing HUMAN ACTION NEEDED ownership row."
@@ -165,8 +176,9 @@ $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Pa
 
 $surfaces = @(
     @{
-        Label = 'specrew-start coordinator prompt handoff block'
-        Path  = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+        Label           = 'specrew-start coordinator prompt handoff block'
+        Path            = Join-Path $repoRoot 'scripts\specrew-start.ps1'
+        AdditionalPaths = @(Join-Path $repoRoot 'scripts\internal\launch-contract.ps1')
     },
     @{
         Label = 'coordinator response guidance'
@@ -183,7 +195,8 @@ $surfaces = @(
 )
 
 foreach ($surface in $surfaces) {
-    Assert-FeatureCloseoutSdlcSurface -Label $surface.Label -Path $surface.Path
+    $additional = if ($surface.ContainsKey('AdditionalPaths')) { $surface.AdditionalPaths } else { @() }
+    Assert-FeatureCloseoutSdlcSurface -Label $surface.Label -Path $surface.Path -AdditionalPaths $additional
 }
 
 Assert-ReleaseDisciplineDocumentation -Path (Join-Path $repoRoot 'docs\release-discipline.md')

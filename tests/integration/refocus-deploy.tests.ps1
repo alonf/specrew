@@ -35,7 +35,11 @@ $out = Invoke-Deploy
 Assert-True (Test-Path -LiteralPath $settingsPath -PathType Leaf) 'settings.local.json created when absent'
 $settings = Get-Content -LiteralPath $settingsPath -Raw | ConvertFrom-Json
 Assert-True ($null -ne $settings.hooks.SessionStart) 'SessionStart registered'
-Assert-True (-not $settings.hooks.PSObject.Properties['PostToolUse']) 'PostToolUse NOT registered (TG-004 option (a): channel 1 carries B3; latency bar)'
+Assert-True ($null -ne $settings.hooks.Stop) 'Stop registered (F-174 iter-4: rolling handover)'
+Assert-True (([string]$settings.hooks.Stop[0].hooks[0].command).Contains('-Event Stop')) 'Stop command dispatches -Event Stop'
+Assert-True (-not $settings.hooks.PSObject.Properties['SessionEnd']) 'SessionEnd NOT registered (iter-4 replaced it with the universal Stop)'
+Assert-True ($null -ne $settings.hooks.PostToolUse) 'PostToolUse registered (F-174 iter-9.1: mid-workshop rolling-handover refresh)'
+Assert-True (([string]$settings.hooks.PostToolUse[0].hooks[0].command).Contains('-Event PostToolUse')) 'PostToolUse command dispatches -Event PostToolUse'
 Assert-True (-not $settings.hooks.PSObject.Properties['PreToolUse']) 'PreToolUse NOT registered (dormant F-165 seat)'
 Assert-True (([string]$settings.hooks.SessionStart[0].hooks[0].command).Contains('specrew-hook-dispatcher.ps1')) 'command points at the dispatcher'
 
@@ -54,10 +58,10 @@ $userSettings = [pscustomobject]@{
         SessionStart = @(
             [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = 'echo user-session-hook' }) }
         )
-        Stop         = @(
+        PostToolUse  = @(
             [pscustomobject]@{ hooks = @(
-                    [pscustomobject]@{ type = 'command'; command = 'echo user-stop-hook' },
-                    [pscustomobject]@{ type = 'command'; command = 'pwsh -File old/specrew-hook-dispatcher.ps1 -Event Stop' }
+                    [pscustomobject]@{ type = 'command'; command = 'echo user-ptu-hook' },
+                    [pscustomobject]@{ type = 'command'; command = 'pwsh -File old/specrew-hook-dispatcher.ps1 -Event PostToolUse' }
                 )
             }
         )
@@ -70,8 +74,8 @@ Assert-True ([string]$settings.permissions.allow[0] -eq 'Bash(npm test:*)') 'non
 $ssCommands = @($settings.hooks.SessionStart | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
 Assert-True ($ssCommands -contains 'echo user-session-hook') 'user SessionStart hook preserved'
 Assert-True (@($ssCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1) 'our SessionStart entry added exactly once'
-$stopCommands = @($settings.hooks.Stop | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
-Assert-True (($stopCommands -contains 'echo user-stop-hook') -and -not ($stopCommands -like '*specrew-hook-dispatcher*')) 'mixed group: user hook kept, stale Specrew hook removed from an event we do not register'
+$ptuCommands = @($settings.hooks.PostToolUse | ForEach-Object { @($_.hooks) } | ForEach-Object { [string]$_.command })
+Assert-True (($ptuCommands -contains 'echo user-ptu-hook') -and -not ($ptuCommands -like '*old/specrew-hook-dispatcher*') -and (@($ptuCommands | Where-Object { $_.Contains('specrew-hook-dispatcher.ps1') }).Count -eq 1)) 'mixed group: user hook kept, stale Specrew hook refreshed to exactly one current entry (PostToolUse now registered, F-174 iter-9.1)'
 
 # --- 4. Stale-entry refresh: our old command replaced, not duplicated ----------------
 $null = Invoke-Deploy
@@ -116,16 +120,57 @@ $userCodex = '{"PreToolUse":[{"matcher":"^(Write)$","hooks":[{"type":"command","
 [System.IO.File]::WriteAllText($codexPath, $userCodex, [System.Text.UTF8Encoding]::new($false))
 $out = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome)
 $codex = Get-Content -LiteralPath $codexPath -Raw | ConvertFrom-Json
-Assert-True ($null -ne $codex.PSObject.Properties['SessionStart'] -and $null -ne $codex.PSObject.Properties['UserPromptSubmit']) 'codex: SessionStart + UserPromptSubmit registered (full triad)'
-Assert-True (([string]$codex.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'codex: command carries -HostKind codex'
+Assert-True ($null -ne $codex.hooks.PSObject.Properties['SessionStart'] -and $null -ne $codex.hooks.PSObject.Properties['UserPromptSubmit']) 'codex: SessionStart + UserPromptSubmit registered (full triad; events nested under top-level hooks)'
+Assert-True (([string]$codex.hooks.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'codex: command carries -HostKind codex'
 Assert-True (([string]$codex.PreToolUse[0].hooks[0].command) -eq 'python3 user_scanner.py') 'codex: user PreToolUse entry untouched'
 $before = Get-Content -LiteralPath $codexPath -Raw
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome)
 Assert-True ((Get-Content -LiteralPath $codexPath -Raw) -eq $before) 'codex: re-deploy byte-idempotent'
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $fakeHome, '-Remove')
 $codex = Get-Content -LiteralPath $codexPath -Raw | ConvertFrom-Json
-Assert-True ((-not $codex.PSObject.Properties['SessionStart']) -and $null -ne $codex.PSObject.Properties['PreToolUse']) 'codex: -Remove strips only ours'
+Assert-True ((-not $codex.hooks.PSObject.Properties['SessionStart']) -and $null -ne $codex.PSObject.Properties['PreToolUse']) 'codex: -Remove strips only ours'
 Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-codex')) 'codex: per-host opt-out recorded'
+
+# --- 8b. F-174 iter-10: codex DUPLICATE-REGISTRATION self-heal (the double-hook-call root cause) ---
+# The 2026-06-12 dogfood found ~/.codex/hooks.json in a corrupt shape that registered SessionStart TWICE:
+# `hooks` written as a JSON ARRAY wrapping the event-map, PLUS a duplicate top-level event-map. Codex
+# fired the dispatcher twice per SessionStart (double directive render + double marker write). A NON-
+# idempotent older deploy produced it; the current deploy MUST collapse it back to exactly one
+# registration. This locks that self-heal so the duplicate-registration regression cannot return.
+New-ScratchProject
+$dupHome = Join-Path $scratchRoot 'home-dup'
+New-Item -ItemType Directory -Path (Join-Path $dupHome '.codex') -Force | Out-Null
+$dupCodexPath = Join-Path $dupHome '.codex\hooks.json'
+$dispCmd = 'pwsh -NoProfile -ExecutionPolicy Bypass -File ".specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1" -Event {0} -HostKind codex'
+$grp = { param($evt) [pscustomobject]@{ hooks = @([pscustomobject]@{ type = 'command'; command = ($dispCmd -f $evt); timeout = 30 }) } }
+# Exact corrupt.bak topology: hooks-as-array[ {event-map} ] + top-level duplicate SessionStart/UserPromptSubmit.
+$corrupt = [pscustomobject]@{
+    hooks            = @([pscustomobject]@{
+            SessionStart     = @((& $grp 'SessionStart'))
+            UserPromptSubmit = @((& $grp 'UserPromptSubmit'))
+            Stop             = @((& $grp 'Stop'))
+        })
+    SessionStart     = @((& $grp 'SessionStart'))
+    UserPromptSubmit = @((& $grp 'UserPromptSubmit'))
+}
+[System.IO.File]::WriteAllText($dupCodexPath, ($corrupt | ConvertTo-Json -Depth 16), [System.Text.UTF8Encoding]::new($false))
+$dispRefsBefore = ([regex]::Matches((Get-Content -LiteralPath $dupCodexPath -Raw), 'specrew-hook-dispatcher')).Count
+Assert-True ($dispRefsBefore -eq 5) 'precondition: seeded corrupt file has 5 dispatcher refs (array-nested triad + top-level duplicate pair)'
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $dupHome)
+$healed = Get-Content -LiteralPath $dupCodexPath -Raw | ConvertFrom-Json
+Assert-True (-not ($healed.hooks -is [System.Array])) 'self-heal: malformed array-shaped hooks collapsed back to a map'
+Assert-True (@($healed.hooks.SessionStart).Count -eq 1) 'self-heal: exactly ONE SessionStart group survives (no duplicate registration)'
+Assert-True (([string]$healed.hooks.SessionStart[0].hooks[0].command).Contains('-HostKind codex')) 'self-heal: surviving SessionStart entry is the current launcher command (codex now points at the per-machine launcher)'
+Assert-True (-not $healed.PSObject.Properties['SessionStart']) 'self-heal: the stray TOP-LEVEL SessionStart duplicate is gone (codex reads only hooks.<Event>)'
+# codex (USER-level) now points at the per-machine launcher (~/.specrew/specrew-hook-launch.ps1), not the
+# dispatcher directly. The corrupt fixture's OLD entries named the dispatcher relatively; the widened ownership
+# detector recognizes BOTH tokens, so it strips those stale entries and re-adds exactly one LAUNCHER entry per
+# event. Count launcher refs to prove exactly-one-per-event (no duplicates) after the heal.
+$dispRefsAfter = ([regex]::Matches((Get-Content -LiteralPath $dupCodexPath -Raw), 'specrew-hook-launch')).Count
+Assert-True ($dispRefsAfter -eq 3) 'self-heal: exactly 3 launcher refs remain (one each: SessionStart + UserPromptSubmit + Stop)'
+$healBefore = Get-Content -LiteralPath $dupCodexPath -Raw
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'codex', '-UserHomeOverride', $dupHome)
+Assert-True ((Get-Content -LiteralPath $dupCodexPath -Raw) -eq $healBefore) 'self-heal: re-deploy onto the healed file is byte-idempotent (stays one registration)'
 
 # --- 9. T014: copilot binding (hooks-dir model; wholly-owned file; B2 only) ------------------
 $out = Invoke-Deploy -DeployArgs @('-HostKind', 'copilot', '-UserHomeOverride', $fakeHome)
@@ -263,6 +308,58 @@ foreach ($wired in @($updateScript, $initScript, (Join-Path $repoRoot 'scripts\i
     $null = [System.Management.Automation.Language.Parser]::ParseFile($wired, [ref]$null, [ref]$parseErrors)
     Assert-True (@($parseErrors).Count -eq 0) ("parses clean: {0}" -f (Split-Path -Leaf $wired))
 }
+
+# --- 16. T010 (FR-028 layer 1, SC-016): Get-SpecrewHookCapableHosts is the registry-driven host set --------
+. (Join-Path $repoRoot 'hosts\_registry.ps1')
+$hookCapable = @(Get-SpecrewHookCapableHosts)
+Assert-True (($hookCapable -contains 'claude') -and ($hookCapable -contains 'codex') -and ($hookCapable -contains 'copilot') -and ($hookCapable -contains 'cursor')) 'hook-capable: all 4 hook-capable hosts present (registry-driven, manifest carries RefocusHookBindings)'
+Assert-True (-not ($hookCapable -contains 'antigravity')) 'hook-capable: antigravity EXCLUDED (hookless — supported but no RefocusHookBindings; capability is NOT derivable from Status)'
+
+# --- 17. T010 (SC-016): PROACTIVE provisioning — ALL hook-capable hosts provisioned regardless of PATH -------
+# The orchestrator must write EVERY host's config even when NO host binary is on PATH (the silent-degradation
+# hole: a user installs codex/copilot/cursor AFTER `specrew init`). Uses the REAL deploy with
+# -UserHomeOverride so the user-level writes + the per-machine launcher land in a scratch home, never the real one.
+New-ScratchProject
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.claude') -Force | Out-Null
+$proactiveHome = Join-Path $scratchRoot 'home-proactive'
+New-Item -ItemType Directory -Path $proactiveHome -Force | Out-Null
+$proActions = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $deployScript -UserHomeOverride $proactiveHome)
+$proHosts = @($proActions | Where-Object { $_.Action -eq 'refocus-hooks' } | ForEach-Object { [string]$_.HostKind })
+Assert-True (($proHosts -contains 'claude') -and ($proHosts -contains 'codex') -and ($proHosts -contains 'copilot') -and ($proHosts -contains 'cursor')) 'proactive: orchestrator deployed ALL 4 hook-capable hosts (no PATH gate)'
+Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.claude\settings.local.json')) 'proactive: claude PROJECT config written'
+Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.codex\hooks.json')) 'proactive: codex USER-level config written (binary not on PATH)'
+Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.copilot\hooks\specrew-refocus.json')) 'proactive: copilot USER-level config written'
+Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.cursor\hooks.json')) 'proactive: cursor USER-level config written'
+Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.specrew\specrew-hook-launch.ps1')) 'proactive: per-machine launcher provisioned even with NO host binary present'
+Assert-True (-not ($proHosts -contains 'antigravity')) 'proactive: hookless antigravity NOT provisioned'
+
+# --- 17b. (review-signoff P6-001) DETERMINISTIC PATH-independence guard. Case 17 above provisions all 4 hosts,
+# but on a PATH-COMPLETE machine (the common dev/CI case) the OLD PATH-gated code (Get-Command codex|copilot|
+# cursor) would ALSO resolve all 4 — so case 17 alone has NO falsification power for the "regardless of PATH
+# detection" property it advertises (it passes identically under the reverted feature). Pin it at the SOURCE,
+# machine-independently: the orchestrator MUST enumerate hosts from the REGISTRY and MUST NOT gate host selection
+# on a per-host-binary Get-Command. The only legitimate Get-Command in Invoke-RefocusHookDeployment is the
+# presence check for the registry helper itself; ANY additional Get-Command is a reverted/added PATH gate, and a
+# wholesale revert removes the registry call. Comment lines are stripped so the prose describing the OLD gate
+# does not pollute the match.
+$orchSrc = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1') -Raw
+$orchCode = (($orchSrc -split "`r?`n") | Where-Object { $_ -notmatch '^\s*#' }) -join "`n"
+$orchGetCmd = @([regex]::Matches($orchCode, 'Get-Command\b'))
+Assert-True ($orchCode -match 'Get-SpecrewHookCapableHosts') 'P6-001: host enumeration is REGISTRY-driven (Get-SpecrewHookCapableHosts), not PATH — a wholesale revert to PATH-gating removes this'
+Assert-True ($orchGetCmd.Count -eq 1 -and ($orchCode -match 'Get-Command\s+Get-SpecrewHookCapableHosts')) 'P6-001: the ONLY Get-Command is the registry-fn presence check — no per-host-binary PATH gate (any added Get-Command fails this)'
+
+# --- 18. T010 (SC-016): PROACTIVE provisioning RESPECTS a recorded opt-out (no silent re-enable) -------------
+New-ScratchProject
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.claude') -Force | Out-Null
+New-Item -ItemType Directory -Path (Join-Path $projectRoot '.specrew\runtime') -Force | Out-Null
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-codex'), 'opted out test', [System.Text.UTF8Encoding]::new($false))
+$optHome = Join-Path $scratchRoot 'home-optout'
+New-Item -ItemType Directory -Path $optHome -Force | Out-Null
+$optActions = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $deployScript -UserHomeOverride $optHome)
+$codexAction = @($optActions | Where-Object { $_.HostKind -eq 'codex' })
+Assert-True ($codexAction.Count -eq 1 -and ([string]$codexAction[0].Detail).Contains('opt-out')) 'proactive: codex with a recorded opt-out is reported skipped (no silent re-enable)'
+Assert-True (-not (Test-Path -LiteralPath (Join-Path $optHome '.codex\hooks.json'))) 'proactive: opted-out codex config NOT written'
+Assert-True (Test-Path -LiteralPath (Join-Path $optHome '.cursor\hooks.json')) 'proactive: a non-opted-out host (cursor) still provisioned alongside the opt-out'
 
 # --- summary ------------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }

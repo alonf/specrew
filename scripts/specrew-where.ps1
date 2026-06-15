@@ -493,6 +493,10 @@ try {
         -CaptureKind $parsed.CaptureKind `
         -Team:$parsed.Team
     $boundaryEnforcementSummary = Get-SpecrewBoundaryEnforcementSummary -ProjectRoot $parsed.ProjectPath
+    # F-174 iteration 011 (T006, FR-027): committed != authorized. When the working boundary is ahead of the
+    # last HUMAN-authorized one, surface "awaiting your verdict" — `specrew where` reports the honest gate state
+    # and never implies a committed boundary was approved.
+    $pendingVerdict = Get-SpecrewPendingVerdictState -ProjectRoot $parsed.ProjectPath
 
     $lines = if ($parsed.Compact) {
         ConvertTo-SpecrewCompactDashboardLines -Snapshot $snapshot
@@ -508,6 +512,10 @@ try {
         ('Last enforcement timestamp: {0}' -f $(if ([string]::IsNullOrWhiteSpace([string]$boundaryEnforcementSummary.LastEnforcementAt)) { '(none)' } else { [string]$boundaryEnforcementSummary.LastEnforcementAt }))
         ('Total enforcement events: {0}' -f [int]$boundaryEnforcementSummary.EnforcementEventCount)
     )
+    # Lead with the awaiting-verdict alert when a committed boundary is not yet authorized (T006/FR-027).
+    if ($pendingVerdict.HasPendingVerdict) {
+        $enforcementLines = @([string]$pendingVerdict.Message, '') + $enforcementLines
+    }
     $lines = @($enforcementLines + @('') + $lines)
 
     if (-not [string]::IsNullOrWhiteSpace($parsed.OutputPath)) {
@@ -526,6 +534,7 @@ try {
         $payload = [pscustomobject]@{
             snapshot             = $snapshot
             boundary_enforcement = $boundaryEnforcementSummary
+            pending_verdict      = $pendingVerdict
             lines                = $lines
         }
         $payload | ConvertTo-Json -Depth 8

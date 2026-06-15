@@ -15,6 +15,25 @@ effort_unit: "story_points"
 # corrected position is recorded for the team. Closed iterations are protected
 # by the grandfather rule (Proposal 144 / PR #1153) so reverting the cap does
 # not retroactively fail historical plans.
+#
+# OVERRIDE (2026-06-13, F-174 iteration 011, verdict f174-i011-plan-tasks-approved):
+# raised 20 -> 22 by a human-approved plan verdict to keep the DF-3/4/5/7
+# boundary-authoring + verdict-integrity cluster one coherent iteration. The
+# maintainer made this call INFORMED of the split-not-raise position + the F-049
+# reverted precedent above. This is PROJECT-GLOBAL and REVERSIBLE: lower back to
+# 20 after iteration 011 closes (closed iterations are grandfathered).
+#
+# OVERRIDE 2 (2026-06-14, F-174 iteration 011, decision f174-i011-hook-deploy-hardening):
+# raised 22 -> 32 for the maintainer-pre-approved hook install/discovery hardening
+# (FR-028, T010-T012) folded mid-implement into iter-011 ("I already consider the extra
+# sp ... and approved"). Same REVERSIBLE + grandfathered terms: the
+# f174-i011-cap-revert-obligation restores this to the global default 20 at closeout.
+#
+# REVERTED 2026-06-14 at the F-174 iter-011 + iter-007 closeout (obligation
+# f174-i011-cap-revert-obligation DISCHARGED): restored to the global default 20.
+# iterations 010/011 (historical plan cap 32) are protected by the grandfather rule
+# (past-implementation status -> validated against their own plan capacity, not the
+# global default); iter-007 (plan cap 20) matches the global default again.
 capacity_per_iteration: 20
 
 # Iteration bounding strategy

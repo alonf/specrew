@@ -1,0 +1,76 @@
+schema: review-report/v1
+feature: 174-hook-driven-session-bootstrap
+iteration: "005"
+reviewer: claude
+reviewed_at: "2026-06-09"
+protocol: proposal-145-seven-phase
+
+qualification:
+  status: live-wiring-deferred
+  corrected_post_verdict: true
+  summary: >
+    Every matrix finding + claim_ledger item below is DEV-TREE-verified, NOT deployed-verified.
+    FR-022's LIVE behavior (the agent-authored handover firing in a DEPLOYED downstream project) is
+    NOT delivered in iteration 5 and is DEFERRED to iteration 6 - the Stop provider cannot resolve its
+    bootstrap components in a deployed tree (PROVIDER_FAILED, no file written). The failure-mode-A
+    floor asserted persisted-bytes == surfaced-bytes but never deployed-tree resolution (build != live;
+    drift D-009). Defer entry f174-i005-defer-live-wiring; verdict f174-i005-review-signoff-qualified.
+    See review.md "Live-Wiring Qualification (corrected post-verdict)".
+
+matrix:
+  - requirement: FR-022
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "agent-authored body (Write-SpecrewHandoverContext); hook preserve-or-placeholder; non-blocking detector (Stop journal + resume warn)" }
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "AgentAuthoredHandover.Tests A1-A8 (floor + provider render) + B1-B2 (detector + Stop journal)" }
+      phase_6: { applicable: yes, finding: clean, evidence_ref: "detector NON-BLOCKING (P1 fail-open); local + gitignored + write-only unchanged" }
+  - requirement: FR-009
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "reconciled: hook owns FLOOR, agent owns BODY; RollingHandover.Tests floor/crash-safety still green" }
+  - requirement: FR-010
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "bootstrap surfaces the rich body (A5/A7) + prominent placeholder warn (A6/A8)" }
+  - requirement: SC-010
+    phases:
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "A = CI-blocking plumbing (persisted==surfaced bytes, A2/A5); B = detected-not-prevented (B1/B2 + D-008)" }
+  - requirement: FR-008
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "docs/getting-started.md agent-authored-body + hollow-warning note" }
+
+claim_ledger:
+  - claim: "render==persist plumbing: an authored body survives a Stop + the persisted bytes == what is surfaced (NOT an agent-display claim)"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/AgentAuthoredHandover.Tests.ps1", exit_code: 0, result: "A1-A5: authored body reads back; persisted==surfaced; same-boundary preserve; manager carries the persisted body" }
+  - claim: "the bootstrap PROVIDER renders the body + the prominent HOLLOW warn (user-facing prose, not just the directive object)"
+    evidence:
+      - { type: test, command: "AgentAuthoredHandover.Tests A7/A8 (provider child-process)", exit_code: 0, result: "provider stdout carries the authored body + the protocol; a placeholder body -> HOLLOW HANDOVER warn" }
+  - claim: "the detector is NON-BLOCKING (failure-mode B is detected, not prevented) - the iter-5 mechanism-not-pledge honesty"
+    evidence:
+      - { type: test, command: "AgentAuthoredHandover.Tests B1/B2", exit_code: 0, result: "pure detector authored/marker/null; Stop provider writes a hollow-handover-at-stop journal record" }
+      - { type: proof, detail: "D-008: a Stop hook cannot warn the agent (Stop is not an inject event + P1 never-block); SC-010 encodes detect-not-prevent" }
+  - claim: "no regression: 19/19 bootstrap suites green; the SessionEnd writer + B1/B3 unchanged"
+    evidence:
+      - { type: test, command: "all tests/bootstrap/*.Tests.ps1", exit_code: 0, result: "19 suites, 0 failed" }
+  - claim: "spec reconciled SPEC-WIDE: zero stale handover-model refs (carry #1)"
+    evidence:
+      - { type: proof, detail: "grep handover-body-authoring phrases across specs/174 *.md -> US-3 scenario 1 fixed to the floor/body split; FR-021 stays write-only; FR-017/SC-009 unchanged (orthogonal to body authoring)" }
+  - claim: "no new dependencies; PSSA clean"
+    evidence:
+      - { type: proof, detail: "pure PowerShell + git; PSScriptAnalyzer 0 findings on the 6 changed scripts" }
+
+design_trace:
+  - design_ref: "f174-i005-mechanical-detector-in-scope + the A/B split (option-1 per drift D-008)"
+    implementation: ["HandoverStore floor/body split + Write-SpecrewHandoverContext", "ClassificationEngine Test-SpecrewHandoverBodyPlaceholder", "specrew-handover-provider.ps1 (option-1 detection)", "DirectiveEngine handover field", "SessionBootstrapManager surface", "specrew-bootstrap-provider.ps1 (render + protocol)"]
+    evidence: ["AgentAuthoredHandover.Tests A1-A8 + B1-B2", "PSSA clean", "validator PASS"]
+    status: matched
+
+verdict:
+  per_phase: { phase_0: pass, phase_1: pass, phase_2: pass, phase_3: pass, phase_4: pass, phase_5: pass, phase_6: pass, phase_7: pass }
+  overall: APPROVE for review-signoff (WITH QUALIFICATION - live wiring deferred to iter-6; see qualification:)
+  notes: >
+    Iteration 5 fixes the hollow-handover finding with honest A/B scoping: A (plumbing) is CI-blocking
+    and test-guaranteed (persisted==surfaced bytes, body preserved across Stop, the provider renders the
+    body + the HOLLOW warn); B (the agent never authors a rich body) is DETECTED-not-prevented (the
+    transcript-blindness ceiling, drift D-008). The review found + closed a coverage gap (the
+    provider-RENDER path, now A7/A8) and one stale spec ref (US-3 scenario 1). 19/19 suites green; PSSA
+    clean. Carries honored: #1 spec-wide reconcile, #2 bytes-not-display floor, #3 prominent resume warn.
+    Follow-up (non-blocking): a validator-side handover-body gate, gated on the #2216 rebase.

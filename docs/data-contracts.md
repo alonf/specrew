@@ -21,7 +21,7 @@ The start-context.json artifact written by `specrew start` has grown additive fi
 | `approval_mode` | string | runtime computed | `allow-all` / `prompt-approvals` |
 | `launch_mode` | string | --new-window/--same-window | `same-window` (default) / `new-window` / `none` |
 | `copilot_autopilot` | bool | --autopilot flag | Backwards-compat field name; reflects Specrew's --autonomous lifecycle-gate posture (historical naming) |
-| `boundary_enforcement` | object | F-039 schema v2 | Per-boundary verdict + bypass-record history |
+| `boundary_enforcement` | object | F-039 schema v2 | Per-boundary verdict-integrity state; see the verdict-integrity sub-schema below |
 | `selected_host` | string | **F-040 (v0.26.0)** | `copilot` / `claude` / `cursor` / `codex` / `antigravity`; reflects the active --host kind (default copilot). Cursor added in F-050; Antigravity graduated to supported in v0.27.0 (F-044). |
 | `available_hosts` | object | **F-040 (v0.26.0)** | Map of host kind → bool (PATH probe result) |
 | `crew_runtime_status` | string | **F-040 (v0.26.0)** | `squad-runtime` (Copilot+Squad) or `bootstrap_only` (non-Copilot host without per-host Crew runtime deployed yet) |
@@ -35,17 +35,58 @@ The start-context.json artifact written by `specrew start` has grown additive fi
 
 **Field additivity contract**: F-040's `selected_host`/`available_hosts`/`crew_runtime_status` were added without bumping schema beyond v2 because they are purely additive — pre-F-040 readers that don't know about these fields keep working (reader tolerance per Proposal 059). New readers should treat them as optional with defaults: `selected_host` defaults to `copilot`, `available_hosts` defaults to `null`, `crew_runtime_status` defaults to `squad-runtime`.
 
+### `boundary_enforcement` verdict-integrity sub-schema
+
+The `boundary_enforcement` object carries the auditable record of which boundaries a human has authorized. It is the durable source the resume bootstrap consults: a committed boundary is **not** an authorized one, so a committed-but-unauthorized boundary surfaces `=== AWAITING YOUR VERDICT ===` on the next session's resume — the agent must not auto-advance on a bare "continue", one approval advances at most one boundary, and the recorded approver is never fabricated.
+
+| Field | Type | Notes |
+|---|---|---|
+| `enabled` | bool | Whether boundary enforcement is active for this project |
+| `last_authorized_boundary` | string (canonical boundary) | The highest boundary a human has actually authorized; advanced ONLY by a captured human verdict |
+| `pending_next_boundary` | string (canonical boundary) / null | The boundary an advance has been requested for but not yet authorized; `null` once authorized |
+| `policy_classes` | object | Per-boundary policy-class map (project-scoped) |
+| `verdict_history` | array | Append-only audit of authorized advances (see entry shape below) |
+| `bypass_history` | array | Append-only audit of recorded bypasses (see entry shape below) |
+
+Each `verdict_history[]` entry is an object with: `from_boundary`, `to_boundary` (both canonical boundary types), `verdict_text`, `authorizing_human` (the recorded approver, never fabricated), `recorded_at` (ISO8601), `auth_commit_hash`, and `evidence_source` (how the verdict was captured; defaults to `unspecified`).
+
+Each `bypass_history[]` entry is an object with: `session_id`, `reason` (must be non-blank), `recorded_at`, `boundary` (canonical), `launch_mode`, `agent_response_snippet` (200 chars or fewer), and `auth_commit_hash`.
+
 ## Writer contract
 
 Writers must emit an explicit schema marker for Specrew state artifacts. `.specrew/start-context.json` carries `schema: v2` whenever it includes the F-039 `boundary_enforcement` section — which `specrew start` always writes today (see the schema-v2 field inventory above). The following artifacts carry the `v1` baseline marker:
 
 - `.specrew/config.yml`
 - `.specrew/last-validator-summary.json`
+- `.specrew/handover/session-handover.md` (the rolling session handover; `schema: v1` frontmatter — see the handover file contract below)
 - `.specify/feature.json`
 - `.specify/extensions/specrew-speckit/extension.yml` (`schema` is distinct from `extension.version`)
 - `.squad/identity/now.md`
 
 Writers should preserve unrelated existing fields when refreshing an artifact, and must normalize the schema marker to the artifact's current contract version (`v2` for `start-context.json`, `v1` for the others) rather than downgrading it.
+
+## `.specrew/handover/session-handover.md` file contract (schema v1)
+
+The rolling session handover is a single always-latest markdown file overwritten in place at end-of-turn (Claude `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`) and, on Claude only, mid-turn (`PostToolUse`). The next session's SessionStart bootstrap reads it and surfaces a resume reconciliation, so work auto-resumes where it stopped. It is host-agnostic (written by F-174's handover provider regardless of host) and **gitignored** (`.specrew/handover/` — local session-bridge context, never pushed).
+
+It is written **atomically**: content goes to a per-process sidecar, then promotes via `[System.IO.File]::Replace`, which swaps the file and keeps the previous version as `session-handover.md.old` in one call. That `.old` file is the crash backup the reader falls back to if the live file is missing, mid-write, or unparseable.
+
+**Frontmatter** (YAML, `schema: v1`). Always emitted: `schema`, `source`, `from_host`, `recorded_at`, `from_commit`, `active_feature`, `active_boundary`. Emitted only when present (kept quiet outside the intake / verdict window): `last_authorized_boundary`, `last_verdict`, `workshop_done`, `workshop_remaining`.
+
+**Body**: eight fixed `##` sections, always in this order:
+
+1. `## What I just did (last 3-5 turns or last boundary work)`
+2. `## Why I'm stopping (the switch trigger)`
+3. `## Open questions / pending clarifications`
+4. `## Agent's working hypothesis / mental model`
+5. `## Recommended next-immediate-step`
+6. `## Context the receiving host needs that artifacts don't carry`
+7. `## Recent conversation (last few exchanges, hook-captured)`
+8. `## Authored boundary packet (captured at stop)`
+
+Ownership splits across the eight: the mechanical sections (1, 2, 5, 6) are refreshed every material stop from the git/filesystem delta; the interpretive sections (3, 4) are agent-authored via `specrew handover author` and preserved across stops within a boundary; section 7 is hook-captured from the transcript tail; section 8 is the verbatim boundary verdict packet captured by the Stop hook (preserved by the clobber guard, never refreshed every stop).
+
+**Placeholder convention**: a section whose body starts with `(placeholder` is **not** agent-authored — the hook writes that marker when the agent has not authored an interpretive section for the current boundary, so the next session knows to fall back to the artifact-derived orientation rather than treating the placeholder as real context.
 
 ## Reader contract
 

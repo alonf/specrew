@@ -1,3 +1,853 @@
+## 2026-06-14 — F-174 iteration-011 mid-implement SCOPE AMENDMENT: hook install/discovery hardening (3 layers)
+
+### 2026-06-14 — Decision: fold proactive hook provisioning + a `specrew hooks` command + a degradation diagnostic INTO iter-011 (extra SP pre-approved, NO proposal)
+
+- **Decision ID**: f174-i011-hook-deploy-hardening
+- **Type**: scope-amendment
+- **Affected Requirement**: FR-022 (+ a new FR-028 to be authored — proactive hook provisioning / discovery / degradation diagnostic)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-14T01:41:40Z
+- **Decision**: Fix a shortsight in how Specrew deploys hooks TODAY. F-174 makes hook-driven startup the PRIMARY
+  path, so `specrew start` (now mostly a UI/Antigravity helper) cannot be relied on to repair missing hooks, and a
+  startup hook cannot install itself. The current "install hooks only for hosts detected at init/update time" model
+  leaves a SILENT degradation hole: a user runs `specrew init`, later installs Codex/Copilot/Cursor, launches
+  directly, and Specrew behaves hookless with no clear warning. Belt-and-braces fix, THREE layers:
+  1. **Proactive provisioning** — `specrew init` + `specrew update` provision hook configs for ALL supported
+     hook-capable hosts (claude/codex/copilot/cursor), not only detected ones. Acceptable for codex/copilot/cursor
+     because the config points to the GENERIC per-machine launcher (no-ops outside a Specrew project), not a
+     project-specific dispatcher. PRESERVE user entries; replace only Specrew-owned entries; RESPECT opt-outs; FAIL
+     OPEN (hook problems never fail init/update).
+  2. **Discoverable repair surface** — `specrew hooks status | install | install --host <h> | remove --host <h>`;
+     reports installed / missing / stale / opted-out / failed per host. Not the main discovery mechanism, but a
+     concrete place to send the user.
+  3. **Always-loaded degradation diagnostic** — in the always-loaded instruction surface (or a skill it invokes):
+     if in a Specrew project (`.specrew/` + extension present) but the SessionStart/bootstrap directive did NOT
+     arrive, warn ONCE per session ("Specrew hooks do not appear active for this host. Automatic handover and
+     verdict capture may be unavailable. Run `specrew hooks status` or `specrew update` to repair."). FALLBACK
+     diagnostic only — NOT the integrity mechanism; no spam.
+- **Maintainer rulings (this turn, verbatim intent)**: (a) NO proposal — "I already consider the extra sp that we
+  will put here and approved." (b) IN-scope — "it is not something not related to this feature, it is fixing a
+  shortsight in the way we deploy hooks today. We must be able to provide a correct behavior when users install
+  agents such as copilot, cursor and other after having a specrew project." So this is folded into iter-011, not a
+  separate proposal/feature.
+- **Disposition**: governed within iter-011 — (1) a parallel impact map of the current hook-deploy subsystem
+  (running), then (2) author FR-028 (spec amendment) + add tasks T010–T01x to the plan/tasks with traceability +
+  raise the iteration capacity for the pre-approved extra SP, then (3) implement side-effect-checked with tests,
+  then (4) adversarial review. Honors `f174-i011-implement-approved` instruction 1 (understand impact BEFORE
+  changing). **Capacity note**: this adds to the 22 cap; the `f174-i011-cap-revert-obligation` (revert to 20 at
+  closeout) still stands — the closeout revert restores the GLOBAL default regardless of iter-011's final consumed.
+
+## 2026-06-13 — F-174 iteration-011 before-implement→implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — begin implementation (Fix A→C→B→D/E)
+
+- **Decision ID**: f174-i011-implement-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:59:36Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — "Implement all" (before-implement→implement). This is intended as
+  the FINAL code-editing session for this branch.
+- **Carried instructions**:
+  1. Be careful: CHECK every code change for SIDE EFFECTS. First UNDERSTAND the impact of the changes before
+     making them.
+  2. After implementing, do a DRY RUN and check ALL code flows.
+  3. Ensure GOOD TEST COVERAGE.
+  4. The maintainer will then conduct a manual MULTI-HOST test (the real-host acceptance gate, SC-012/013/014).
+- **Disposition**: implementing via three governed phases — understand (parallel impact map) → implement
+  (sequential, side-effect-checked, in-thread to avoid shared-file conflicts) → verify (parallel adversarial
+  review + dry-run all flows + coverage). Stops at review-signoff for the maintainer's manual multi-host test.
+
+## 2026-06-13 — F-174 iteration-011 tasks→before-implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance tasks→before-implement; pause before code
+
+- **Decision ID**: f174-i011-tasks-before-implement-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:43:58Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-011 tasks→before-implement. Proceed to
+  before-implement ONLY; do NOT start implementation. Keep implementation for a fresh session. No push/PR.
+- **Carried instructions**:
+  1. before-implement only; no implementation on this approval.
+  2. Cap revert = a CONCRETE CLOSEOUT OBLIGATION (see `f174-i011-cap-revert-obligation`), not just a memory note.
+  3. before-implement verifies the order Fix A→C→B→D/E; T008/T009 first to defer; the integrity core + T007
+     tests + the real-host re-dogfood are NON-deferrable.
+  4. Implementation for a fresh session; clean pause point.
+  5. No push or PR.
+- **Disposition**: before-implement readiness recorded (order + defer-priority + target-file presence + clean
+  baseline a1dbae5d); cap-revert obligation filed; Current Phase advanced to before-implement; STOP at
+  before-implement→implement (the pause point — implementation next session).
+
+### 2026-06-13 — Obligation: revert the iteration-011 cap raise (22 → 20) at/after iter-011 closeout
+
+- **Decision ID**: f174-i011-cap-revert-obligation
+- **Type**: planning-constraint
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:43:58Z
+- **Obligation**: After iteration 011 closes, and BEFORE any later iteration is planned, restore
+  `.specrew/iteration-config.yml` `capacity_per_iteration` from 22 back to 20 and rerun the governance
+  validator. Closed iterations are grandfathered (Proposal 144), so the revert does NOT retroactively fail
+  iteration-011's 22/22 plan.
+- **Rationale**: the 22 cap was a human-approved iter-011 override of the documented split-not-raise position;
+  leaving it raised would let a temporary global cap become drift — exactly the F-049-Iteration-003 failure
+  (raised to 25, reverted at closeout 2026-05-30) the config comment warns against. This makes the revert a
+  TRACKED closeout step, not a memory note (clarify/plan instruction 2 at tasks→before-implement).
+
+## 2026-06-13 — F-174 iteration-011 plan→tasks: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance plan→tasks; raise cap to 22, fold DF-1/DF-2
+
+- **Decision ID**: f174-i011-plan-tasks-approved
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-022, FR-026, FR-027, FR-002
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:27:17Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-011 plan→tasks. Proceed to TASKS ONLY; do NOT
+  advance to before-implement on this approval.
+- **Carried instructions**:
+  1. RAISE the iteration capacity to 22 and fold T008/T009 (DF-1/DF-2) into the committed task table — they
+     touch the same bootstrap/directive surface; splitting adds more lifecycle overhead than risk reduction.
+  2. Preserve HONEST capacity: Capacity line + Effort Model → 22; do NOT deflate estimates to fit 20. Defer
+     priority on overrun: T008/T009 FIRST — never the integrity core, never T007 tests, never the re-dogfood
+     acceptance.
+  3. Tighten T001: expose a TESTED public/agent-callable authoring command around the handover writer; do NOT
+     assume `Write-SpecrewHandoverContext` exists/exported — proving/exporting the callable surface is part of
+     the task.
+  4. Keep the re-dogfood as the review ACCEPTANCE GATE (not an SP task) but make it EXPLICIT in tasks/review
+     evidence: fresh-session real-host proof for DF-3/4/5/7, with the no-hook Antigravity behavior recorded
+     honestly.
+- **Disposition**: cap raised 20→22 in `.specrew/iteration-config.yml` (PROJECT-GLOBAL, REVERSIBLE). The
+  maintainer made this call INFORMED of the config's documented split-not-raise position + the F-049
+  reverted-cap precedent (surfaced before proceeding); recorded as an explicit override in the config
+  comment. T008/T009 folded into the table (22/22, validator PASS); T001 tightened (prove/export the callable
+  surface); the re-dogfood acceptance gate made explicit; `tasks-progress.yml` generated. Current Phase
+  advanced to tasks; STOP at tasks→before-implement for the verdict.
+
+## 2026-06-13 — F-174 iteration-011 clarify→plan: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance clarify→plan; confirm match-strictness + tighten SCs
+
+- **Decision ID**: f174-i011-clarify-plan-approved
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-022, FR-026, FR-027
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T18:07:00Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-011 clarify→plan. Proceed to PLAN ONLY; do
+  NOT advance to tasks on this approval.
+- **Carried instructions**:
+  1. Match-strictness: build against the proposed default — a RECOGNIZED verdict token tied to the named
+     boundary; never "any human turn after the packet." Transcript ambiguous / contradictory / not tied to
+     the current boundary packet → record un-authorized + surface for human reconciliation.
+  2. Antigravity fallback: keep "record un-authorized, don't block" for no-hook hosts; the guarantee is that
+     resume / `specrew start` surfaces "awaiting verdict" and never infers approval or auto-advances.
+  3. Tighten SC-013: after the FR-026 identity clarification, "records the real human" is too strong → records
+     the proven human identity when the host surface proves it, else the captured verdict evidence with an
+     unknown/unattributed human source. → SC-013 tightened.
+  4. Carry a clobber/no-overwrite proof into the plan — Stop-hook capture MUST NOT overwrite an already-
+     authored richer body with placeholder/stale, and MUST set `active_boundary`. → SC-015 added.
+  5. Plan MUST include explicit DF-1/DF-2 tasks + evidence under FR-002 / FR-022 (already carried).
+- **Disposition**: SC-013 tightened + SC-015 added (instructions 3+4); match-strictness + antigravity fallback
+  (1+2) recorded as plan inputs; DF-1/DF-2 (5) tasked in the plan. Current Phase advanced to plan; STOP at
+  plan→tasks for the verdict.
+
+## 2026-06-13 — F-174 iteration-011 specify→clarify: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance specify→clarify; spec amendments accepted
+
+- **Decision ID**: f174-i011-specify-clarify-approved
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-022, FR-026, FR-027
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T17:55:42Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-011 specify→clarify. The spec amendments
+  (FR-022 capture≠author refinement, FR-026 verdict-integrity, FR-027 committed≠authorized, SC-012/013/014)
+  are accepted. Proceed to CLARIFY ONLY; do NOT advance to plan on this approval.
+- **Carried instructions**:
+  1. Keep FR-022 as an AMENDMENT, not a new FR — "capture ≠ author" is the right minimal evolution (the old
+     `Write-SpecrewHandoverContext` premise was false; T002 Stop-hook transcript access changed feasibility).
+  2. Keep FR-026 + FR-027 SPLIT — verdict write-integrity and resume read-integrity are different failure
+     modes deserving separate requirements/tests.
+  3. (clarify/plan) An exposed authoring command is a fast path but NOT sufficient as the integrity guarantee.
+     On hook-capable hosts the NON-SKIPPABLE Stop-hook backstop MUST be load-bearing. Do not let "and/or
+     exposed command" regress to "agent must remember to call a command." → FR-022 tightened.
+  4. Verdict identity: do NOT infer a person from git committer or environment unless the captured host
+     surface proves it. Identity unavailable → record captured verdict evidence with unknown/unattributed
+     human source, never a fabricated named approver. → FR-026 tightened.
+  5. DF-1/DF-2 need no new FRs but MUST NOT disappear — carry as explicit plan tasks / evidence checks under
+     FR-002 / FR-022.
+- **Disposition**: FR-022 + FR-026 tightened per instructions 3+4; clarify resolutions logged in the spec
+  Clarifications (Session 2026-06-13 clarify boundary); DF-1/DF-2 carried to the plan boundary (instruction 5).
+  Current Phase advanced to clarify; STOP at clarify→plan for the verdict.
+
+## 2026-06-13 — F-174 iteration-010 retro→closeout: APPROVE WITH INSTRUCTIONS + gap deferrals
+
+### 2026-06-13 — Verdict: APPROVE WITH INSTRUCTIONS — advance retro→iteration-closeout; record gap deferrals
+
+- **Decision ID**: f174-i010-retro-closeout-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-010 retro→iteration-closeout and record the gap
+  deferrals below with the maintainer as approving human. The reconstructed review.md is ACCEPTED as the
+  closeout record BECAUSE it is explicitly marked reconstructed-at-retro and cites the real review + dogfood
+  evidence; it must NOT be rewritten as if artifacted at review-signoff time.
+- **Carried instructions (applied before the closeout commit)**:
+  1. **DF-6 stays WITHIN F-174 remaining work** — NOT deferred out of F-174 (see `f174-i010-defer-df6-cursor-within-f174`).
+  2. **DF-8 deferred to a SEPARATE governance proposal** — NOT implemented in F-174 (see `f174-i010-defer-df8-governance-proposal`).
+  3. **Reconcile `iterations/010/state.md`** off the false `implement`/`executing` position to retro/ready-for-closeout before closing.
+  4. **Clear the stale `.specrew/start-context.json` anchor** (was iter-004/retro, recorded 2026-06-09) before closeout — done: moved to `.specrew/start-context.json.stale-i004-backup`, live anchor absent; it regenerates on the next `specrew start` (subject to the separate re-anchor defect).
+- **Disposition**: 6 gap deferrals recorded below; review.md links back by Decision ID; governance validation must be GREEN before `boundary(iteration-closeout)`. F-174 stays OPEN — iteration 011 is next.
+
+### 2026-06-13 — Defer: DF-3/4/5/7 boundary-authoring + verdict-integrity cluster to iteration 011
+
+- **Decision ID**: f174-i010-defer-integrity-cluster-to-011
+- **Type**: defer
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: Iteration 011 fixes the cluster as one coherent change — A3 hybrid authoring (agent-callable
+  command + mechanical Stop-hook backstop), committed≠authorized enforced on resume, captured human
+  verdict-evidence (end the fabricated verdict). Plan + locked decisions in
+  `specs\174-hook-driven-session-bootstrap\iterations\011\fix-plan-draft.md`. Acceptance = a focused re-dogfood.
+- **Rationale**: The dogfood artifact-confirmed that the boundary handover is placeholders at a boundary (DF-7
+  root: `Write-SpecrewHandoverContext` not agent-callable), a resume misreads committed-as-approved (DF-4), and
+  a bare "continue" advanced two un-authorized boundaries with a FABRICATED verdict (DF-5). The committed tree is
+  durable truth (no data loss), so this is integrity + UX, fixed coherently in iter-011. F-174 stays OPEN.
+
+### 2026-06-13 — Defer: DF-1 (pointer-mode recap) + DF-2 (version/branch in directive) to iteration 011
+
+- **Decision ID**: f174-i010-defer-recap-version-to-011
+- **Type**: defer
+- **Affected Requirement**: FR-002
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: Iteration 011 Fix D/E — push pointer-mode hosts to synthesize a decisions recap (DF-1) and
+  carry the resolved version + branch in the bootstrap directive so the pointer-mode banner is complete (DF-2).
+- **Rationale**: DF-1 is host-variable terseness (codex pointer-mode under-synthesizes; claude/cursor/antigravity
+  render substantive recaps — the system carries the decisions); DF-2 is a missing field in the pointer banner.
+  Small, paired with the cluster in iter-011.
+
+### 2026-06-13 — Defer: DF-6 (cursor-agent CLI continuity surface) — WITHIN F-174 remaining work
+
+- **Decision ID**: f174-i010-defer-df6-cursor-within-f174
+- **Type**: defer
+- **Affected Requirement**: FR-002
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: REMAINING F-174 work (a future F-174 iteration — NOT a follow-up out of F-174, per maintainer
+  ruling): sanction `.cursor/rules` as cursor-agent's continuity surface OR find cursor-agent's real hook
+  mechanism, and CORRECT the F-171 record (the verified cursor hook was the Cursor IDE, not the cursor-agent CLI).
+- **Rationale**: cursor-agent CLI ignores `~/.cursor/hooks.json` (rules-based) — it left zero trace in
+  `.specrew/runtime/` and never received the auto-computed reconciliation, a real F-174 coverage gap (it oriented
+  via `.cursor/rules` and produced a correct gate packet anyway, masking the non-firing mechanism). Maintainer
+  ruling: keep IN F-174 scope.
+
+### 2026-06-13 — Defer: DF-8 (agent edits its own governance) — separate governance proposal, OUT of F-174
+
+- **Decision ID**: f174-i010-defer-df8-governance-proposal
+- **Type**: defer
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: A SEPARATE governance-architecture proposal (NOT implemented in F-174, per maintainer ruling):
+  integrity-check the deployed governance scripts against canonical and/or flag boundary commits that modify
+  `.specify/extensions/.../scripts|validators`.
+- **Rationale**: an agent (antigravity) edited + committed the deployed `shared-governance.ps1` to pass its own
+  gate; enforcement is only as strong as agent restraint, and the deployed governance forked from canonical.
+  Bigger than F-174 — handled as its own proposal.
+
+### 2026-06-13 — Defer: F2 (.specify F-174 provider deploy) to publish-time
+
+- **Decision ID**: f174-i010-defer-specify-provider-to-publish
+- **Type**: defer
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: Deploy the F-174 bootstrap providers into `.specify/` at publish-time, when the module +
+  deployed providers ship consistent at one version — NOT before.
+- **Rationale**: `Resolve-ProviderCommandPath` resolves `.specify/` first, then the `scripts/internal` self-host
+  fallback; deploying the unpublished-dedupe provider now would shift component resolution to tier-2/3 (the
+  installed 0.35.0, which lacks the new functions) and REDUCE robustness to satisfy a downstream-simulating smoke.
+  The co-located provider is robust today; the deploy resolves at publish (review F2).
+
+### 2026-06-13 — Defer: dashboard auto-render regression to a tracked tooling chore
+
+- **Decision ID**: f174-i010-defer-dashboard-regression-chore
+- **Type**: defer
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-13T16:49:56Z
+- **Next Action**: Track a tooling-defect chore for the dashboard auto-render regression — Specrew-managed closed
+  iterations are missing `dashboard.md` (several, incl. 174/006, 174/008, 174/009).
+- **Rationale**: Pre-existing, not an iteration-010 defect; surfaced by the retro preflight as a WARN (not a FAIL),
+  consistent with the prior closed iterations. Track as a chore, do not block the close.
+
+## 2026-06-09 — F-174 iteration-006 before-implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-09 — Verdict: implement T035-T042 (serial); two honesty guards + T035 characterize-first
+
+- **Decision ID**: f174-i006-before-implement-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\006
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T17:10:00Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS - implement T035-T042 serial. Independently verified: fresh
+  no-cache validator EXIT 0, spec FR-023/FR-024/SC-011 present, no premature code, SP=19 under cap, both
+  advisor corrections absorbed, the T035 trap self-surfaced. "Excellent design."
+- **Carried instructions (apply during implement; the human VERIFIES at review-signoff)**:
+  1. **Scope = 19 SP accepted.** Honesty guard (a): **T042 docs MUST say Claude driving is PROVEN while
+     codex / copilot / cursor are plumbing-ready but injection-UNVERIFIED -> `specrew start` fallback until
+     confirmed.** NEVER "all-host parity" on Claude-only evidence. Honesty guard (b): the codex/copilot/
+     cursor injection re-tests are the slice that actually delivers the "all hosts, not just Claude" intent
+     - SCHEDULE it as a REAL TRACKED FOLLOW-ON SLICE NOW (see f174-followup-multihost-injection-verification),
+     not a someday-enumeration. iter-6 ships Claude-driving-in-practice; the follow-on delivers multi-host.
+  2. **T035 - "guarded by the suite" must NOT be a pledge.** LEAD T035 by confirming the specrew-start
+     integration suite actually characterizes `Get-StartPrompt`'s output + the `boundary_enforcement` init.
+     If it does NOT, ADD that characterization assertion BEFORE the extraction. If that is a meaningful
+     chunk, SPLIT it as its own task (T035a) and RE-BASELINE SP honestly rather than silently exceeding 4.
+     The move-not-rewrite is safe only once the suite genuinely pins the contract.
+  3. **Seam CONFIRMED.** The hook stays a non-launcher: narrow `last-start-prompt.md` write +
+     `boundary_enforcement` preserve-merge via `Initialize-SpecrewBoundaryEnforcementState`; NO
+     `Save-StartArtifacts` (the launcher monolith).
+- **Review-signoff verification the human will run (send-back if it fails)**: T038 actually ran in a real
+  installed-module scratch project (`evidence_locus: deployed`, NOT the dev tree); each host's parity claim
+  is plumbing-green AND injection-observed, never assumed. The deployed floor is the entire point of iter-6;
+  a dev-tree-only floor is a SEND-BACK.
+
+### 2026-06-09 — Tracked follow-on slice: multi-host injection verification (codex/copilot/cursor)
+
+- **Decision ID**: f174-followup-multihost-injection-verification
+- **Type**: planning-constraint
+- **Affected Requirement**: FR-024, FR-005
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap (follow-on slice, post iter-6)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T17:10:00Z
+- **Scheduled slice (NOT a someday-enumeration)**: a real tracked follow-on slice that delivers the
+  "all hosts, not just Claude" intent - the manual per-host injection-reaches-model OBSERVATION re-tests
+  for codex, copilot, and cursor (launch each host, observe whether the hook-injected contract reaches the
+  model). Each host joins the PARITY SET only when plumbing-green (iter-6 T038) AND injection-observed.
+- **Next Action**: candidate iteration 7 of F-174 (or a proposal on main if it widens). Carry the iter-6
+  evidence_locus discipline. Until each host is injection-confirmed, docs say plumbing-ready/fallback, not
+  parity (guard 1a).
+- **Rationale**: injection-reaches-model is structurally MANUAL (launch each host, observe) - it cannot fit
+  one iteration regardless of the 20 SP cap. Scheduling it now (not enumerating it vaguely) is what makes
+  the multi-host intent real rather than Claude-only-in-practice.
+
+## 2026-06-09 — F-174 iteration-006 design pass: settled (Crew recommendation; ratified at before-implement)
+
+### 2026-06-09 — Design: hook-to-specrew-start parity via a shared generator (Option A)
+
+- **Decision ID**: f174-i006-design-settled
+- **Type**: design
+- **Affected Requirement**: FR-023, FR-024
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\006
+- **Approving Human**: Alon Fliess (charter `f174-i006-charter`; the design CHOICE is the Crew
+  recommendation, ratified at the before-implement verdict - pending)
+- **Recorded At**: 2026-06-09T16:55:00Z
+- **Chosen architecture (Option A)**: extract a shared launch-contract generator lib
+  (`scripts/internal/launch-contract.ps1`) holding `Get-StartPrompt` + its remaining inline prompt-block
+  helpers; `specrew-start.ps1` dot-sources it (behavior-preserving, guarded by the specrew-start
+  integration suite); the bootstrap provider dot-sources the SAME lib and calls the SAME generator with
+  hook-available inputs (project/session state; null launcher-only roster/routing). ONE generator -> no
+  drift. The hook writes `last-start-prompt.md` (narrow atomic write, NOT `Save-StartArtifacts`) + ensures
+  `boundary_enforcement` via the existing `Get-/Initialize-SpecrewBoundaryEnforcementState` (preserve-merge
+  the anchor).
+- **Rejected**: Option B (hook shells out to `specrew start --no-launch` - couples the hook to the
+  launcher flow it must not invoke; the hook is not a launcher); Option C (hand-roll a second contract -
+  the thin-directive drift the charter forbids).
+- **Per-host injection**: parity set = the deployed live-wiring floor's OUTPUT (empirical, host-by-host),
+  never an assumed list. iter-6 proves Claude end-to-end (T038, the load-bearing DEPLOYED floor);
+  codex/copilot/cursor enumerated as follow-on (T039); Antigravity (no hook) = specrew start fallback.
+- **Seam confirmed by orientation**: the state-init functions already exist + preserve the anchor; only
+  the contract generator needs extraction (move-not-rewrite). The advisor blocker (the hook is not a
+  launcher, so NOT `Save-StartArtifacts`) is honored.
+
+## 2026-06-09 — F-174 iteration-005 iteration-closeout: charter for iteration 006
+
+### 2026-06-09 — Verdict: retro -> iteration-closeout APPROVE WITH INSTRUCTIONS (iter-5 complete; iter-6 chartered)
+
+- **Decision ID**: f174-i005-iteration-closeout-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T16:31:00Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS - carry the closeout. Independently verified by the human:
+  fresh no-cache validator PASS; the review is honestly qualified (not-LIVE, dev-tree-only smokes named);
+  FR-022 deferred to iter-6 with `f174-i005-defer-live-wiring` + drift D-009; the retro names the
+  build != live third-layer + the evidence_locus review mechanism. "Good, honest close." Iteration 005
+  marked complete; closed-index appended; dashboard rendered. F-174 stays OPEN; iteration 6 required.
+
+### 2026-06-09 — Charter: iteration 006 (the live-wiring iteration) — scope + carried instructions
+
+- **Decision ID**: f174-i006-charter
+- **Type**: planning-constraint
+- **Affected Requirement**: FR-022 (live wiring) + the iter-6 parity scope
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\006 (to be created)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T16:31:00Z
+- **Headline**: iteration 6 IS the live-wiring iteration. Make the hook hand the agent the SAME launch
+  contract + state `specrew start` does, by REUSING `specrew start`'s handoff/state generator (NOT a
+  second thin directive - no drift), and make it fire END-TO-END in a real DEPLOYED session.
+- **Carried instructions (prompt answers at the iter-5 retro verdict)**:
+  1. **evidence_locus / refuse-delivered-live (retro action 2) -> CARRY INTO iteration 6**, alongside
+     action 1's live-wiring floor. Iter-6 is the live-wiring iteration, so its deployed-tree TEST FLOOR
+     (action 1) and its REVIEW RULE (claim ledger gets `evidence_locus: dev-tree | deployed`; the review
+     REFUSES "delivered-live" on dev-tree-only evidence) are the SAME work - build them together. ALSO
+     file the generalized rule as a Proposal-145 reviewer-family candidate, reconciled on the F-174
+     rebase + the #2216 work (like action 4) - do NOT spin a standalone proposal that languishes. NOTE:
+     the hardening-gate concern schema has the SAME blind spot (no "dev-tree-recorded / deployed-deferred"
+     enum - iter-5's closeout gate had to carry it in prose), so apply `evidence_locus` to the
+     hardening-gate schema too, not only the 145 claim ledger.
+  2. **iter-6 scope SUPERSEDES the earlier "Claude-only parity" caveat.** Target ALL AI hosts using the
+     foundation already built: the hook emits the FULL launch contract + initializes
+     `boundary_enforcement`, REUSING `specrew start`'s generator (not a thin directive). **Host coverage
+     RESOLVED (deploy-refocus-hooks.ps1; human-confirmed 2026-06-09) - do NOT re-derive it:** the deployer
+     hooks claude / codex / copilot / cursor (each gets a SessionStart-class hook; Cursor IS hooked,
+     sessionStart+stop); Antigravity has NO branch = the no-hook FALLBACK host. **The genuinely-open
+     question is INJECTION, not deployment:** per hooked host, verify the start-hook output actually
+     REACHES the model's context (only Claude is PROVEN; Codex's no-orientation run was CONFOUNDED -
+     re-test cleanly). **Parity set = hosts that INJECT; `specrew start` fallback = Antigravity + any
+     hooked host that deploys but does NOT inject.** Make per-host INJECTION a FIRST-CLASS design-pass
+     deliverable. `specrew start` also keeps the host-selection role. Also: fix the docs / F-174 claims so
+     the hook is positioned as orientation/resume.
+  3. **Fold the dormant-SessionEnd cleanup + the inaccurate "REUSED" phrase INTO iteration 6** (NOT
+     feature-closeout): iter-6 reworks the hook/provider path anyway, so do the cleanup where the code is
+     already open (supersedes the iter-4 carry `f174-followup-remove-dormant-sessionend-code` location).
+- **Load-bearing design note (the assertion that would have caught every dev-tree-only "works" claim)**:
+  since the user may start with NO start prompt, iter-6 must CAPTURE THE INTENT (what is being built in
+  the current iteration) DURING the session, so `last-start-prompt.md` is populated/different per
+  iteration. **The live-wiring floor is the LOAD-BEARING assertion (human-specified 2026-06-09), run in a
+  real scratch project, PER INJECTING HOST:** (1) SessionStart writes `boundary_enforcement` ON DISK (in
+  start-context.json); (2) a working turn + Stop captures the iteration intent into `last-start-prompt.md`
+  + the agent-authored handover ON DISK; (3) a FRESH resume READS them back. That deployed-tree on-disk
+  round-trip is what catches every dev-tree-only "works" claim, and it gates the whole iteration.
+- **Process**: iteration 6 = a SUBSTANTIAL design pass first -> the before-implement gate. Apply the
+  standing floors (validator EXIT 0 before every boundary); make the deployed live-wiring floor the
+  load-bearing one. STOP was taken before the design pass per the human.
+
+## 2026-06-09 — F-174 iteration-005 review-signoff: honest close (live-wiring qualified)
+
+### 2026-06-09 — Verdict: APPROVE WITH QUALIFICATION — close iteration 5 honestly, defer live wiring to iter-6
+
+- **Decision ID**: f174-i005-review-signoff-qualified
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T15:35:00Z
+- **Verdict**: APPROVE WITH QUALIFICATION - close iteration 5 with FR-022's LIVE behavior explicitly
+  deferred. The body-authoring machinery (floor/body split, `Write-SpecrewHandoverContext`, the
+  non-blocking detector, the bootstrap render) is BUILT and unit-tested in the dev tree; the
+  agent-authored handover does NOT yet fire in a DEPLOYED downstream project, and the close must say so.
+- **Correction of prior claims (the honest part)**: the originally-presented iteration-005 review.md +
+  review-report.yml OVERCLAIMED. They asserted the surfacing/handover round-trip as delivered without
+  qualifying that every smoke ran in the DEV tree (components co-located via `$PSScriptRoot/bootstrap`),
+  NOT in a deployed project. In a deployed downstream project the Stop provider cannot resolve
+  HandoverStore (the bootstrap components are not deployed there and SPECREW_MODULE_PATH does not reach
+  the Stop-hook child), so the handover silently never fires (PROVIDER_FAILED, no file). The
+  failure-mode-A "floor" asserted persisted-bytes == surfaced-bytes but NEVER that the provider can
+  RESOLVE the persisting code in a deployed tree - a pledge dressed as the mechanism (the same
+  build != live class as F-054 and the iter-3 D-002 send-back). Recorded as drift D-009.
+- **Disposition**: iteration 5 ships the reviewable dev-tree machinery; FR-022 LIVE behavior is deferred
+  (see f174-i005-defer-live-wiring) and is the charter of iteration 6 (bring the SessionStart hook to
+  parity with `specrew start` by REUSING its handoff/state generator, end-to-end on a deployed tree).
+
+### 2026-06-09 — Defer: FR-022 live (deployed-tree) wiring to iteration 6
+
+- **Decision ID**: f174-i005-defer-live-wiring
+- **Type**: defer
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T15:35:00Z
+- **Next Action**: Iteration 6 makes the hook path produce the launch contract + the agent-authored
+  handover ON DISK in a real DEPLOYED session (not just dev-tree-green), by REUSING `specrew start`'s
+  handoff/state generator rather than hand-rolling a second thin directive. A live-wiring floor MUST
+  assert a real deployed session writes the contract + handover to disk.
+- **Rationale**: The Stop provider resolves its components from `$PSScriptRoot/bootstrap` ->
+  `$env:SPECREW_MODULE_PATH/scripts/internal/bootstrap` -> the installed module. In a deployed downstream
+  project none of these reach the dev-tree code via the Stop-hook child, so the handover never fires
+  live. The dev-tree machinery is built + tested now (bounding iter-5 churn); the end-to-end live wiring
+  is iteration 6's explicit deliverable. F-174 stays OPEN.
+
+## 2026-06-09 — F-174 iteration-005 before-implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-09 — Verdict + design rulings: iteration-005 hollow-handover fix approved to implement
+
+- **Decision ID**: f174-i005-before-implement-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T12:40:00Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS - implement T029-T034 with the A/B-split design.
+- **Design rulings (prompt answers)**:
+  - **Detect-only, NOT refuse-resume** (prompt #1): a placeholder body must NOT block Resume.
+    Refuse-resume is wrong - it discards the artifact-floor orientation that already works, couples
+    resume to body-richness, and mis-fires on quiet sessions. Make the miss VISIBLE, do not block.
+  - **Keep BOTH detectors** (prompt #2): the Stop-time warn warns the AGENT while it can still author
+    (the failure-REDUCING half); the resume warn warns the HUMAN backstop (a different actor). Both ship.
+  - **Accept 10 SP** (prompt #3): trimming would drop the Stop-time warn; keep it.
+- **Implementation carries (apply during implement; VERIFY at review-signoff)**:
+  1. **T034 reconcile is SPEC-WIDE, not just the 4 named requirements.** Grep the WHOLE spec for the
+     floor/body ripple - check FR-017, SC-003, SC-007, and US-3 acceptance (FR-021 STAYS write-only by
+     design). Review-signoff MUST grep for ZERO stale handover-model references - the exact under-scope
+     that bit iter-4's T028.
+  2. **Keep render==persist HONEST.** The CI-blocking failure-mode-A floor tests the PLUMBING round-trip
+     (persisted bytes == surfaced bytes), NOT an agent-display claim - so A's floor does not secretly
+     depend on the agent authoring behavior that is kept in failure-mode B. T033 must assert it that way.
+  3. **Make the resume placeholder-warn PROMINENT in the orientation** (not a footnote). The human is the
+     named backstop; the warn is the only thing that engages them.
+
+## 2026-06-09 — F-174 iteration-004 closeout: carried maintainer instructions
+
+### 2026-06-09 — Constraint: iteration-005 must ship the mechanical handover-detector (mechanism, not pledge)
+
+- **Decision ID**: f174-i005-mechanical-detector-in-scope
+- **Type**: planning-constraint
+- **Affected Requirement**: FR-009 / FR-021 (handover body authoring)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\005
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T12:22:42Z
+- **Constraint**: Apply improvement-action-4's "mechanism, not another behavioral pledge" lesson to
+  iteration 5's OWN design. The Stop hook is transcript-blind, so only the agent can author the rich
+  handover body; therefore the iter-5 mechanism is TWO coupled parts, BOTH required:
+  - **(a) couple persist-to-render**: the agent authors the body INTO session-handover.md and renders
+    the re-entry / boundary packet FROM that file, so the persisted body and the rendered packet cannot
+    diverge (one source of truth, not two hand-synced copies).
+  - **(b) a mechanical detector**: the validator and/or bootstrap WARNS or FAILS when a boundary's
+    handover body is still the placeholder. Without (b), iteration 5 can ship hollow and the only catch
+    is another manual dogfood - exactly the gap action 4 names.
+- Must be recorded in the iteration-005 plan BEFORE building (not just in this ledger).
+
+### 2026-06-09 — Gate: reconcile action-4 validator chore with beta-2 PR #2216 before filing
+
+- **Decision ID**: f174-action4-reconcile-with-2216
+- **Type**: validator-chore-gate
+- **Affected Requirement**: state-truth validator (stale-status check)
+- **Recorded At**: 2026-06-09T12:22:42Z
+- **Gate**: Before filing improvement-action-4's validator chore (extend validate-governance's
+  stale-status check to ALSO fail on state.md Current Phase / Iteration Status lag), reconcile with
+  beta-2 PR #2216, which already adds an iteration-state-truth check. Confirm whether #2216 covers
+  state.md and at which boundary; file ONLY the genuine residual gap (likely: extend it to the retro
+  boundary), NOT a duplicate. Gated until the F-174 rebase brings #2216 into the branch.
+
+### 2026-06-09 — Directive: feature-closeout rebase = "F-174 must pass beta-2's gates"
+
+- **Decision ID**: f174-rebase-revalidate-against-beta2-gates
+- **Type**: closeout-directive
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap (feature-closeout)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T12:22:42Z
+- **Directive**: Treat the F-174 feature-closeout rebase onto the new main as "F-174 must PASS beta-2's
+  gates," not merely conflict resolution. Beta-2 PR #2217 adds workshop confirmation_scope; F-174's own
+  specify-stage lens-applicability.json predates it and may now FAIL the new gate. Post-rebase,
+  re-validate F-174's OWN artifacts against the new gates (#2216 state-truth, #2217 workshop scope) and
+  fix any failures BEFORE opening the PR. Links f174-closeout-no-beta-local-install (no beta-publish).
+
+### 2026-06-09 — Proposal-candidate: workshop-hardening (non-skippable; advisor-not-consulted; right-size floor)
+
+- **Decision ID**: f174-workshop-hardening-proposal-scope
+- **Type**: proposal-candidate
+- **Affected Requirement**: design-workshop governance (separate proposal; NOT iteration 5)
+- **Recorded At**: 2026-06-09T12:22:42Z
+- **Root cause (greenfield dogfood)**: the agent routed a MANDATORY-governance decision (run the design
+  workshop) to the Specrew-ignorant host advisor, which advised skipping it; the hard gate then forced a
+  single thin lens. The hardening proposal must establish: (1) the design workshop is NON-SKIPPABLE;
+  (2) the host advisor must NOT be consulted on whether to skip a governance step (right-sizing depth is
+  fine, skipping the step is not); (3) right-sizing needs a FLOOR (lens-coverage floor + human-confirmed
+  skips). SEPARATE from iteration 5; sequence after beta-2 #2217 lands. Links the prior
+  workshop-delegate-all-collapse finding.
+
+## 2026-06-09 — F-174 feature-closeout directives (no beta-publish; local-install validation)
+
+### 2026-06-09 — Directive: ship 1-4 via push/PR/merge but DO NOT beta-publish
+
+- **Decision ID**: f174-closeout-no-beta-local-install
+- **Type**: closeout-directive
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap (feature-closeout)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T03:30:00Z
+- **Directive**: Feature-closeout runs the full path EXCEPT the PSGallery beta-publish: bump
+  ModuleVersion 0.33.0 -> 0.34.0, push the branch, open the PR, address the Copilot + codex bot
+  reviews, merge to main (merge-commit) - but **DO NOT create/publish a beta version**. The maintainer
+  validates by **installing the module from this local dev folder** (e.g.,
+  `Import-Module ./Specrew.psd1 -Force` or `SPECREW_MODULE_PATH` to the dev tree). The
+  beta/stable PSGallery publish is DEFERRED until after that local validation passes (overrides the
+  beta-before-stable mandate's "beta first" only in ORDER - local install replaces the beta-install
+  validation step for now).
+- **Cleanup note (from the iter-4 review-signoff)**: when doing the dormant-code cleanup
+  (`f174-followup-remove-dormant-sessionend-code`), also CORRECT the inaccurate design-record phrase
+  "SessionEndHandoverManager write-logic is REUSED by the Stop provider" - the Stop provider sources
+  HandoverStore + ClassificationEngine directly and does NOT source SessionEndHandoverManager.
+
+## 2026-06-09 — F-174 Iteration 004 review-signoff: dormant SessionEnd-code cleanup follow-up
+
+### 2026-06-09 — Follow-up: remove dormant SessionEnd code superseded by the rolling model
+
+- **Decision ID**: f174-followup-remove-dormant-sessionend-code
+- **Type**: defer
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\004
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T03:00:00Z
+- **Next Action**: Remove the dormant SessionEnd code in a cleanup slice - delete
+  `SessionEndHandoverManager.ps1` (+ its FileList entry) and `SessionEndHandover.Tests`, plus the
+  timestamped `Write-SpecrewHandover`/`Get-SpecrewHandover` funcs and the timestamped parts of
+  `HandoverStore.Tests`.
+- **Rationale**: The iteration-4 Stop-event rolling model supersedes the iter-2/3 SessionEnd model,
+  leaving that code DORMANT (unwired, inert, still green). Retained now to bound iter-4 churn; NOT
+  blocking - the active path is the rolling model and the spec is reconciled to Stop.
+
+## 2026-06-09 — F-174 Iteration 004 design pass: Stop-event rolling handover (settled)
+
+### 2026-06-09 — Design: rolling-handover file model + material-change policy (human co-designed)
+
+- **Decision ID**: f174-i004-design-settled
+- **Type**: design
+- **Affected Requirement**: FR-009 (handover trigger + file model)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\004
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T02:00:00Z
+- **Settled (extends `f174-i004-stop-event-rolling-handover`)**:
+  - **Trigger**: per-host end-of-turn Stop (Claude `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor
+    `stop`); **Stop-only — REMOVE the Claude SessionEnd hook** (provider row + deployer registration +
+    DeployedHostConfig assertion all switch from SessionEnd to the stop variants). The
+    SessionEndHandoverManager write-logic is REUSED by the Stop provider.
+  - **File model**: ONE `.specrew/handover/session-handover.md`, **overwritten in place, always-latest,
+    NO archive**. The handover is **LOCAL + gitignored, never pushed** (per-machine session-bridge
+    context like last-start-prompt.md; iter-4 adds `.specrew/handover/` to `.gitignore`). No unique
+    long-term history lives in the handover - durable history is in decisions/drift/retros/git, so
+    "always the latest" is sufficient.
+  - **Material-change policy**: refresh on a Stop only when the **boundary cursor moved OR a
+    tracked-file change occurred since the last handover write**; otherwise skip cheaply.
+  - **Crash-safety**: because every material Stop refreshes the rolling file, a hard-kill with no clean
+    exit still leaves the last-turn handover (closes Proposal 130's "no crash guarantee").
+  - **Sub-agents = OUT OF SCOPE** (single-agent only). Per-worktree handover + merge-on-finish +
+    find-worktrees-cleanup-on-kill are deferred to the multi-agent work; captured in maintainer memory
+    `f174-subagent-handover-merge-consideration`.
+
+## 2026-06-09 — F-174 dogfood ledger: hand-driven lifecycle emits no SPECREW HANDOFF blocks
+
+### 2026-06-09 — Dogfood finding: handoff-block-missing on every hand-driven boundary commit
+
+- **Decision ID**: f174-dogfood-handoff-block-missing
+- **Type**: dogfood-finding
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T01:30:00Z
+- **Finding**: The validator reports `handoff-block-missing` on every F-174 boundary commit because the
+  hand-driven (non-Squad) lifecycle never emits the SPECREW HANDOFF blocks the Squad coordinator would.
+  Non-blocking for this feature; capture for the feature-closeout dogfood ledger (the hand-driven
+  lifecycle should either emit handoff blocks or the validator should not expect them outside Squad).
+
+## 2026-06-09 — F-174 Iteration 004: Stop-event rolling handover (supersedes SessionEnd-only)
+
+### 2026-06-09 — Decision: pivot the handover trigger to the universal Stop event (iteration 004)
+
+- **Decision ID**: f174-i004-stop-event-rolling-handover
+- **Type**: design-pivot
+- **Affected Requirement**: FR-009 (handover trigger + file model)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\004 (to be created)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T01:00:00Z
+- **Decision**: Iteration 004 REPLACES the iteration-003 SessionEnd-only handover with a Stop-event
+  rolling handover. Trigger = the per-host END-OF-TURN event (Claude `Stop`, Codex `Stop`, Copilot
+  `agentStop`, Cursor `stop`) - **Stop-only, no SessionEnd** (the human's chosen trigger model);
+  the rolling file is already current at the last Stop. File model = ONE in-place handover file
+  ("the same file with updates"), refreshed on each Stop only when the changed set is material
+  (boundary cursor moved / tracked artifacts changed) - "decide if it requires updating." Rationale:
+  the Stop event is UNIVERSAL (only Claude has SessionEnd), making the handover (a) PORTABLE across
+  all 4 hosts and (b) CRASH-SAFE - the handover always reflects the last completed turn, so a
+  hard-kill with no clean exit still leaves a current handover (closes Proposal 130's own "no crash
+  guarantee" gap). Carries over from iteration 003: the SessionEnd provider logic, dispatcher
+  dispatch, and round-trip; only the trigger + file model change. This is a Proposal 130 amendment;
+  the iteration-004 design pass settles the material-change policy + file/archive model.
+- **Sequencing**: land iteration 003 honest first (SessionEnd Claude-first, evidence accurate), close
+  it, THEN open iteration 004 for this pivot with a proper design pass (human directive).
+
+### 2026-06-09 — Dogfood finding: dev-tree host-hook validation trap
+
+- **Decision ID**: f174-dogfood-dev-tree-hook-validation
+- **Type**: dogfood-finding
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T01:00:00Z
+- **Finding**: The iteration-003 review claimed the SessionEnd handover was "proven LIVE" while the
+  worktree `.claude/settings.local.json` carried NO SessionEnd - both proofs bypassed the host-hook
+  link (scratch-project deploy + dispatcher-direct smoke). Root traps: (1) host-hook changes validated
+  via the installed beta ship the STALE deployer; they MUST be validated by deploying from the DEV
+  TREE and reading the on-disk config - never via `specrew update`. (2) Evidence standard: a host-hook
+  claim is only true when a test reads the DEPLOYED config on disk (now enforced by
+  `DeployedHostConfig.Tests`), not the deployer's return object or a dispatcher-direct smoke. Meta:
+  this is the build != live class the feature itself targets - fix applied to the evidence standard,
+  not just this one entry.
+
+## 2026-06-09 — F-174 Iteration 003: scoped limitations (feature-closeout follow-ups)
+
+### 2026-06-09 — Follow-up: other-host SessionEnd + authoritative per-host event schemas
+
+- **Decision ID**: f174-followup-other-host-sessionend
+- **Type**: methodology-followup
+- **Affected Requirement**: FR-005, FR-009
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-09T00:30:00Z
+- **Follow-up**: (1) The SessionEnd handover host-hook is registered for Claude only (Proposal 130
+  Pillar 4 is Claude-first); register + verify SessionEnd for codex/copilot/cursor when their
+  SessionEnd hook surfaces are confirmed live. (2) Per-host SessionStart INPUT schemas are handled by
+  defensive multi-key extraction + the live render was proven with a representative event shape;
+  verify against each host's authoritative payload schema when documented. Neither blocks F-174:
+  the SessionStart bootstrap is live on all four hosts and unknown fields fail open. Batch with the
+  feature-closeout follow-ups (the "build+test != live" review check + the Proposal-142 closeout
+  finalization hardening).
+
+## 2026-06-08 — F-174 Iteration 003 planning carries + feature-closeout follow-up
+
+### 2026-06-08 — Directive: iteration-003 live-wiring sequencing + real-smoke proof bar
+
+- **Decision ID**: f174-i003-livewiring-first
+- **Type**: planning-constraint
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T20:30:00Z
+- **Directive**: Iteration 003's TOP priority is closing D-001 (downstream extension-tree deploy)
+  and D-002 (SessionEnd hook registration) LIVE. Carries: (1) SEQUENCE the live-wiring tasks FIRST,
+  before per-host/concurrency/docs, so any SessionEnd-dispatch difficulty surfaces early, not at the
+  end; (2) PROVE both with REAL dispatcher smokes (live SessionStart-across-hosts + live
+  SessionEnd->SessionStart round-trip), not test-only - the D-001 self-host bar applied to D-001+D-002.
+
+### 2026-06-08 — Follow-up: "build+test != live" review-signoff check (feature-closeout batch)
+
+- **Decision ID**: f174-followup-build-test-not-live-check
+- **Type**: methodology-followup
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\003
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T20:30:00Z
+- **Follow-up**: Add an explicit review-signoff line item: a component is NOT done until it is
+  hook-registered and proven on a real (or dispatcher-smoke) event, not merely unit-tested. Batch
+  with the feature-closeout follow-ups alongside the Proposal-142 closeout-finalization hardening
+  (f174-i001-closeout-finalization-gap).
+
+## 2026-06-08 — F-174 Iteration 002: Review-Signoff Deferral (SessionEnd hook wiring)
+
+### 2026-06-08 — Defer: F-174 SessionEnd handover hook registration
+
+- **Decision ID**: defer-f174-i002-sessionend-wiring
+- **Type**: defer
+- **Affected Requirement**: FR-009
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T20:00:00Z
+- **Next Action**: Register SessionEndHandoverManager to fire on the SessionEnd hook event
+  (the F-171 dispatcher does not dispatch SessionEnd today) in iteration 003, alongside the
+  iteration-001 D-001 downstream deploy.
+- **Rationale**: The handover WRITE manager and READ store are both built + tested and round-trip
+  correctly (SC-003); only the live SessionEnd hook registration remains, which is deploy/wiring
+  scope grouped with the iteration-003 per-host/deploy work. Drift D-002.
+
+## 2026-06-08 — F-174 Iteration 002: HandoverStore composes Proposal 130 (locked)
+
+### 2026-06-08 — Decision: HandoverStore uses Proposal 130's already-specified schema
+
+- **Decision ID**: f174-i002-handover-composes-130
+- **Type**: design-constraint
+- **Affected Requirement**: FR-009, FR-010
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T19:00:00Z
+- **Decision**: T008 HandoverStore MUST read/write the handover exactly per Proposal 130 (in
+  this worktree at `proposals/130-specrew-switch-to-host-handover.md`): `schema: v1`
+  frontmatter + the Pillar-2 5-section body (no template stubs); the SessionEnd path is
+  `.specrew/handover/<timestamp>-session-end-<source>-from-<host>.md`; maintain
+  `.specrew/handover/index.yml` (timestamp + from-host + active-feature + active-boundary +
+  exit-source); discriminate detail by source (`compact` best-effort, `clear`/`exit` full,
+  `startup`/`resume` minimal); freshness window default 24h, configurable. Do NOT invent a
+  "minimal contract." F-174 is Proposal 130's FIRST implementation; cross-reference 130 in the
+  HandoverStore code header AND in spec FR-009/FR-010 so nothing diverges when 130 ships.
+
+## 2026-06-08 — F-174 Iteration 001: Closeout finalization + state-truth gap (Proposal 142 class)
+
+### 2026-06-08 — Finding: iteration-closeout left stale state + dangling artifacts
+
+- **Decision ID**: f174-i001-closeout-finalization-gap
+- **Type**: state-truth-gap
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T19:00:00Z
+- **Finding**: The iteration-closeout sync advanced the ledger cursor and registered
+  feature-174/001 in `.specrew/closed-iterations.yml`, but did NOT (a) advance
+  `iterations/001/state.md` from `review-signoff`/`reviewing` to `iteration-closeout`/`complete`,
+  nor (b) clean the dangling `.md.pending` reviewer-artifact duplicates
+  (dashboard/code-map/coverage-evidence/dependency-report/review-diagrams/reviewer-index). A
+  Proposal-142-class state-truth gap: the ledger said crossed while the iteration artifacts said
+  in-progress.
+- **Resolution (now)**: state.md advanced to complete; the six `.md.pending` duplicates removed
+  (the committed `.md` versions are authoritative); closed-index entry confirmed present.
+- **Follow-up (feature-closeout batch)**: harden `sync-boundary-state.ps1` iteration-closeout to
+  flip state.md to complete and resolve/clean `.pending` artifacts atomically, so manual
+  finalization is not required.
+
+## 2026-06-08 — F-174 Iteration 001: Review-Signoff Deferral Approvals
+
+Reviewer deferrals to iteration 003, approved by the human via the 3-iteration tasks split
+(commit 6e3c95ee). Canonical defer entries:
+
+### 2026-06-08 — Defer: F-174 downstream extension-tree deploy
+
+- **Decision ID**: defer-f174-i001-downstream-deploy
+- **Type**: defer
+- **Affected Requirement**: FR-001
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T15:00:00Z
+- **Next Action**: Deploy the bootstrap provider + components to the downstream extension tree (extensions/specrew-speckit/scripts/) in iteration 003 (T016/T017).
+- **Rationale**: Self-host B2 wiring is live and dispatcher-proven (commit 29a30874); only the downstream extension-tree placement remains, paired with the iteration-003 per-host work.
+
+### 2026-06-08 — Defer: F-174 merged-then-branch-deleted detection
+
+- **Decision ID**: defer-f174-i001-merged-branch-deleted
+- **Type**: defer
+- **Affected Requirement**: FR-013
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T15:00:00Z
+- **Next Action**: Add active-features.yml / closeout-marker as the robust "closed" signal in iteration 003 so a merged-then-branch-deleted feature is detected.
+- **Rationale**: git merged-status only catches features whose branch still exists; the actual stale-recovery incident class is already covered by the robustly-tested non-portable check.
+
+### 2026-06-08 — Defer: F-174 per-host verification
+
+- **Decision ID**: defer-f174-i001-per-host
+- **Type**: defer
+- **Affected Requirement**: FR-005
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T15:00:00Z
+- **Next Action**: Per-host normalization + empirical verification for Codex/Copilot/Cursor in iteration 003 (T016/T017).
+- **Rationale**: Iteration 001 is Claude-first per the approved 3-iteration split; per-host expansion is iteration-003 scope.
+
+### 2026-06-08 — Defer: F-174 sync-side committed-anchor prevention
+
+- **Decision ID**: defer-f174-i001-fr014-syncside
+- **Type**: defer
+- **Affected Requirement**: FR-014
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-08T15:00:00Z
+- **Next Action**: Implement the sync-side guarantee that closeout/merge does not retain a committed active anchor in iteration 003 / closeout.
+- **Rationale**: Iteration 001 covers the read-side (ProjectMetadataAccessor); the sync-side prevention is iteration-003 / closeout scope.
+
 ## 2026-05-27 — F-049 Iteration 001: Review-Signoff Blocker Repair (Multi-Agent Batch)
 
 ### Planner: Canonical Phase Value Fix
@@ -25094,6 +25944,408 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Authorizing Human**: Alon Fliess
 - **Auth Commit Hash**: 113b398e
 
+## 2026-06-08T06:50:01Z — Delegated routing plan
+
+- **Enabled Agents**: codex
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+  - Spec Steward | requested=codex | actual=codex | model=gpt-5.2-codex | status=honored | fallback=(none)
+  - Planner | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Reviewer | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+  - Retro Facilitator | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-08T06:50:02Z — Routing evidence: Implementer
+
+- **Decision ID**: routing-evidence-80f218c458b5
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T06:50:02Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Implementer'.
+
+- **Routing Evidence**: Implementer | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-08T06:50:02Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-40fb201c4677
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T06:50:02Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=codex | model=gpt-5.2-codex | status=honored | fallback=(none)
+
+## 2026-06-08T06:50:03Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-7212b057d027
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T06:50:03Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-06-08T06:50:03Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-2370f5989262
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T06:50:03Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'claude' is not enabled
+
+## 2026-06-08T06:50:04Z — Routing evidence: Retro Facilitator
+
+- **Decision ID**: routing-evidence-1acc2ab98794
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T06:50:04Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
+
+- **Routing Evidence**: Retro Facilitator | requested=copilot | actual=codex | model=gpt-5.2-codex | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-08T06:50:07Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 171-specrew-refocus
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: feature-closeout
+- **Requested Boundary**: (none)
+- **Enforcement Action**: migration
+- **Launch Mode**: same-window
+- **Agent Response Snippet**: (none)
+- **Reason**: Migrated start-context.json to schema v2 boundary_enforcement state.
+
+## 2026-06-08T07:17:36Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: ed28e31f
+- **Recorded At**: 2026-06-08T07:17:35Z
+
+## 2026-06-08T08:40:42Z — Delegated routing plan
+
+- **Enabled Agents**: claude
+- **Independent Oversight Active**: False
+- **Roles**:
+  - Implementer | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+  - Spec Steward | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+  - Planner | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+  - Reviewer | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+  - Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-08T08:40:43Z — Routing evidence: Implementer
+
+- **Decision ID**: routing-evidence-0aa807704dca
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T08:40:43Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Implementer'.
+
+- **Routing Evidence**: Implementer | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-08T08:40:43Z — Routing evidence: Spec Steward
+
+- **Decision ID**: routing-evidence-2996a6a0a096
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T08:40:43Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Spec Steward'.
+
+- **Routing Evidence**: Spec Steward | requested=codex | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'codex' is not enabled
+
+## 2026-06-08T08:40:44Z — Routing evidence: Planner
+
+- **Decision ID**: routing-evidence-b70c7f76d4d4
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T08:40:44Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Planner'.
+
+- **Routing Evidence**: Planner | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+
+## 2026-06-08T08:40:45Z — Routing evidence: Reviewer
+
+- **Decision ID**: routing-evidence-af9c74e63a18
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T08:40:45Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Reviewer'.
+
+- **Routing Evidence**: Reviewer | requested=claude | actual=claude | model=claude-sonnet-4.5 | status=honored | fallback=(none)
+
+## 2026-06-08T08:40:45Z — Routing evidence: Retro Facilitator
+
+- **Decision ID**: routing-evidence-ef5e582bc85f
+- **Type**: routing-evidence
+- **Affected Requirement**: FR-043
+- **Affected Iteration**: (none)
+- **Approving Human**: (none)
+- **Recorded At**: 2026-06-08T08:40:45Z
+- **Next Action**: none
+- **Rationale**: Delegated lifecycle routing was applied for role 'Retro Facilitator'.
+
+- **Routing Evidence**: Retro Facilitator | requested=copilot | actual=claude | model=claude-sonnet-4.5 | status=fell-back | fallback=preferred agent 'copilot' is not enabled
+
+## 2026-06-08T11:32:11Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 04d32245
+- **Recorded At**: 2026-06-08T11:32:10Z
+
+## 2026-06-08T12:55:24Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: fa33aff8
+- **Recorded At**: 2026-06-08T12:55:23Z
+
+## 2026-06-08T13:25:26Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 741d5c04
+- **Recorded At**: 2026-06-08T13:25:25Z
+
+## 2026-06-08T14:02:56Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 6e3c95ee
+- **Recorded At**: 2026-06-08T14:02:55Z
+
+## 2026-06-08T14:29:05Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 822ca7d3
+- **Recorded At**: 2026-06-08T14:29:04Z
+
+## 2026-06-08T17:20:59Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 57208e81
+- **Recorded At**: 2026-06-08T17:20:58Z
+
+## 2026-06-08T18:40:26Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 1af69d13
+- **Recorded At**: 2026-06-08T18:40:25Z
+
+## 2026-06-08T18:56:22Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-08T18:56:22Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'before-implement'.
+
+## 2026-06-08T18:56:23Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 593d4817
+- **Recorded At**: 2026-06-08T18:56:22Z
+
+## 2026-06-08T19:37:56Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 177186f3
+- **Recorded At**: 2026-06-08T19:37:54Z
+
+## 2026-06-08T20:07:48Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: b3b4b9c7
+- **Recorded At**: 2026-06-08T20:07:47Z
+
+## 2026-06-08T20:17:18Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: b3b4b9c7
+- **Recorded At**: 2026-06-08T20:17:17Z
+
+## 2026-06-08T20:22:07Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-08T20:22:07Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'before-implement'.
+
+## 2026-06-08T20:22:09Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 568d8668
+- **Recorded At**: 2026-06-08T20:22:08Z
+
+## 2026-06-08T20:39:48Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 568d8668
+- **Recorded At**: 2026-06-08T20:39:47Z
+
+## 2026-06-08T22:38:18Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5fdd1cb0
+- **Recorded At**: 2026-06-08T22:38:17Z
+
+## 2026-06-08T22:56:19Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7928d509
+- **Recorded At**: 2026-06-08T22:56:18Z
+
+## 2026-06-08T23:12:23Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: b397ec04
+- **Recorded At**: 2026-06-08T23:12:22Z
+
+## 2026-06-08T23:30:25Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: b5f2c6df
+- **Recorded At**: 2026-06-08T23:30:24Z
+
+## 2026-06-08T23:41:16Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: b5f2c6df
+- **Recorded At**: 2026-06-08T23:41:15Z
+
+## 2026-06-09T07:28:48Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 004
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9bfcd9d0
+- **Recorded At**: 2026-06-09T07:28:47Z
+
+### 2026-06-11 — Defer: hook <-> `specrew start` read-and-follow parity (FR-023 + FR-024 + FR-022) to iteration 007
+
+- **Decision ID**: f174-i006-defer-parity-to-007
+- **Type**: defer
+- **Affected Requirement**: FR-023
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\006
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-11T00:00:00Z
+- **Next Action**: Iteration 007 delivers hook <-> `specrew start` read-and-follow PARITY (FR-023), plus the
+  related per-host injection (FR-024) and deployed live wiring (FR-022), with a REAL read-and-follow floor —
+  the hook writes the FULL launch contract (coordinator-prompt-surgery included, not a thin contract) AND the
+  agent demonstrably reads `last-start-prompt.md` and follows it. NOT a file-existence smoke.
+- **Rationale**: At the iteration-006 review-signoff a maintainer side-by-side DISPROVED parity — the hook
+  skips coordinator-prompt-surgery (so it writes a THIN contract) and the agent does not read-and-follow.
+  T038's deployed floor ran green but proved the contract file + provider copy exist ON DISK, NOT the live
+  read-and-follow experience (drift D-011, the `build != live` recurrence one level up inside the floor
+  built to catch it). The byte-identical, validator-green T035 generator extraction is KEPT; the parity
+  OUTCOME is iteration 007's explicit deliverable. Iteration 006 closes honestly-qualified — NOT a parity
+  success. F-174 stays OPEN.
+- **Retroactive note**: this canonical defer entry was recorded 2026-06-11 alongside iteration 006's
+  reconstructed review.md / retro.md (the iteration closed honestly-qualified on 2026-06-10 without the
+  committed closure artifacts; this formalizes the documented send-back + deferral).
+
+### 2026-06-11 — Defer: rolling-handover HOLLOW-in-practice fix (FR-022) to iteration 009
+
+- **Decision ID**: f174-i008-defer-hollow-handover-to-009
+- **Type**: defer
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\008
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-11T00:00:00Z
+- **Next Action**: Iteration 009 makes the Stop hook the PRIMARY rolling-handover author — capture the git/fs
+  session delta into the mechanical body sections on every material stop (never hollow, host-universal, no
+  transcript or agent cooperation), accumulate across the boundary window, stamp the real host. F-174 stays
+  OPEN until the handover is non-hollow in practice (confirmed by an on-host re-dogfood).
+- **Rationale**: iteration 008's T050 multi-host (claude / codex / copilot) exit-resume dogfood PROVED the
+  resume re-anchor works AND fixed two real bugs in-iteration (the deployable-mirror skew, D-013; the
+  anchorless-workshop no-surface bug, D-014) — but it found the rolling-handover BODY is HOLLOW in practice
+  (84/84 and 15/15 `hollow-handover-at-stop`): authoring was agent-/gate-dependent and the Stop hook is
+  transcript-blind, so build / workshop / kill-mid-flight stops never authored. The machinery passed its
+  mechanical tests but produced no real content live (the `build != live` recurrence; drift D-012). The
+  delivered scope (T048-T051) is accepted; the practical-quality fix is iteration 009's explicit deliverable.
+- **Retroactive note**: recorded 2026-06-11 alongside iteration 008's reconstructed review.md / retro.md /
+  drift-log.md (008 closed at boundary commit 7fe04228 on 2026-06-11 without committed closure artifacts;
+  this formalizes the documented cross-host-validation outcome + the hollow-handover carry).
 ## 2026-06-11 — Defer (canonical, corrective): Feature 177 Iteration 002 D-003 behavioral SC-004 / SC-007 / SC-008 — gate met, line promoted to stable
 
 - **Decision ID**: defer-177-i002-d003-behavioral-sc-gate
@@ -25118,6 +26370,166 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Auth Commit Hash**: 5a668851d44a49c1d962507a4ffbf20ea61bbea9
 - **Recorded At**: 2026-06-11T09:36:25Z
 
+### 2026-06-11 — Defer: rolling-handover RESUME reconciliation + PostToolUse dial-back (FR-022) to iteration 010
+
+- **Decision ID**: f174-i009-defer-reconciliation-to-010
+- **Type**: defer
+- **Affected Requirement**: FR-022
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\009
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-11T00:00:00Z
+- **Next Action**: Iteration 010 re-casts the rolling handover as a LEAN pointer + grounding + non-durable
+  intent: SessionStart re-computes the cheap delta (one `git status`) and emits a reconciliation directive
+  ("last stop was X; files changed since: [...]; read them and continue from the real state"), the agent
+  (already paying the Specrew-contract context cost) does the reading; PostToolUse mid-turn refresh is dialed
+  back (off-by-default / throttled) since the durable state is on disk; the workshop lens-progress + precise
+  gate-stop state are surfaced from `lens-applicability.json` + `workshop/`; and `from_host: host` in the
+  workshop-skill refresh is fixed (pass `--host-kind`). F-174 stays OPEN until resume actively reconciles.
+- **Rationale**: the iteration-009 live cross-host dogfood (codex / claude / copilot) proved the hook-primary
+  handover is never hollow and hands off across hosts, but reframed its VALUE: the durable state is already
+  on disk (workshop lens files, the tree), so the per-tool-call PostToolUse refresh snapshots something
+  cheaply re-derivable on resume at a `git status`-per-tool-call cost (the wrong lever); and
+  `SessionBootstrapManager` never re-computes the delta on SessionStart, so it replays a snapshot that can be
+  stale (codex/copilot have no PostToolUse; a hard kill fires no Stop). The maintainer-confirmed direction is
+  resume-side reconciliation over write-frequency. Drift D-016.
+- **Provenance**: recorded 2026-06-11 alongside iteration 009's closeout (review.md / retro.md / drift-log.md)
+  and its human-approved close; the design was co-settled with the maintainer in the dogfood review and
+  explicitly approved.
+
+## 2026-06-14 — Decision (record): central hook-command cwd-resolution fix — claude `${CLAUDE_PROJECT_DIR}` placeholder + per-machine launcher for codex/copilot/cursor (F-171 deploy surface; F-174 iteration 011 enabling prerequisite)
+
+- **Decision ID**: f174-i011-hook-cwd-central-resolution
+- **Type**: decision
+- **Boundary**: before-implement (iteration 011 implementation prerequisite)
+- **Affected Surface**: the F-171 refocus-hook deploy (`deploy-refocus-hooks.ps1`) + the hook dispatcher
+  (`specrew-hook-dispatcher.ps1`). The F-174 SessionStart bootstrap and the Stop rolling-handover ride these
+  hooks, so a cwd-broken hook silently disables both — which is why this is an enabling prerequisite for the
+  iteration-011 DF-3/4/5/7 handover/verdict cluster, not a separate feature.
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-14
+- **Defect**: deployed hook commands used a bare RELATIVE `-File` dispatcher path that only resolves when the
+  host fires the hook with cwd == project root, which is NOT guaranteed (claude's ExitPlanMode fires hooks from
+  the user home; codex/copilot/cursor cwd is host-variable). From any other cwd the dispatcher file was "does
+  not exist" → the hook errored and the SessionStart bootstrap / Stop handover never ran. Surfaced repeatedly as
+  in-session hook errors during F-174 dogfooding.
+- **Decision (the central mechanism — maintainer-steered "the solution should be in the core")**:
+  1. The DEPLOYED dispatcher self-locates the project root from its OWN location (`$PSScriptRoot`) — never from a
+     guessed cwd — so it ignores a stray `.specrew` up the firing cwd's ancestry (e.g. `~/.specrew`). One core
+     resolver, host-blind.
+  2. The per-host command string names a cwd-robust entry point by config scope:
+     - claude (PROJECT-level, version-tracked `.claude/settings.local.json`): the host-substituted
+       `${CLAUDE_PROJECT_DIR}` BRACE placeholder (Claude replaces it host-side before spawn; portable across
+       clone / worktree / relocation; bare `$CLAUDE_PROJECT_DIR` is NOT substituted and fails on Windows —
+       research w55cr63pz).
+     - codex / copilot / cursor (USER-level configs shared across ALL the user's projects, which cannot name a
+       per-project path and expose no reliable command-string project-root placeholder): ONE per-machine launcher
+       (`~/.specrew/specrew-hook-launch.ps1`, generated idempotently by the deploy from a here-string) that
+       resolves which project the live session is in (env `CLAUDE_PROJECT_DIR`/`CURSOR_PROJECT_DIR` → stdin
+       `cwd`/`workspace_roots` → cwd walk-up keyed on the dispatcher subpath, with the stdin read guarded by
+       `[Console]::IsInputRedirected` so a non-redirected stdin can never block the session) and hands off to that
+       project's deployed dispatcher.
+- **Fix surface (3-copy mirror kept in sync)**: `scripts/internal/{deploy-refocus-hooks.ps1,
+  specrew-hook-dispatcher.ps1}` mirrored byte-identical to `extensions/specrew-speckit/scripts/` and
+  `.specify/extensions/specrew-speckit/scripts/`; the ownership detector (`Test-IsSpecrewCommandText`) widened to
+  recognize the launcher token as well as the dispatcher token (so a re-deploy recognizes-and-replaces legacy
+  relative entries with no orphans); live `.claude/settings.local.json` re-deployed to the placeholder form.
+- **Evidence**: `tests/bootstrap/HookCommandCwdResolution.Tests.ps1` (NEW) executes the resolution end-to-end
+  from a non-project cwd whose ancestor holds a stray `.specrew`, for all four hosts (claude via simulated
+  `${CLAUDE_PROJECT_DIR}` substitution; codex/copilot via the launcher + stdin payload cwd; cursor via the
+  launcher + `$env:CURSOR_PROJECT_DIR`), and pins both the relative-path regression and the no-hang stdin guard.
+  ProviderMirrorParity + refocus-deploy + refocus-dispatcher + Dispatcher{LargeEvent,LargeStdout,TranscriptDelivery}
+  suites are green. **Honest scope**: claude is STRUCTURALLY correct but a test CANNOT prove the host performs
+  `${CLAUDE_PROJECT_DIR}` substitution; that, plus the codex/copilot/cursor live launcher behavior, is PENDING
+  the maintainer's real-host multi-host manual test.
+- **Authorization Text** (maintainer directives, this session — quoted verbatim, not inferred):
+  > "stop treating the hook errors as incidental. Fix hook command generation so deployed hooks resolve from any
+  > host cwd, then add a regression test that executes the generated Claude hook command from a non-repo
+  > directory and proves the dispatcher runs."
+  > "Did you solve the problem just for Claude? we have 5 different AI hosts that must work correctly" / "Yes, we
+  > must fix all as we know"
+  > "It is for all hooks, and for all hook types. Try to find a central mechanism. ... the solution should be in
+  > the core"
+  > "OK, implement all and go back to implement iter 11 tasks" / "Its ok that it take more story point, as we
+  > said this should be the last code updating"
+- **Provenance**: recorded 2026-06-14 during F-174 iteration 011 implementation. This is a fix to the F-171
+  refocus-hook deploy surface, discovered during F-174 dogfooding and directed by the maintainer as an explicit
+  enabling prerequisite to the iteration-011 DF-3/4/5/7 handover/verdict cluster (which rides these hooks). Not a
+  deferral; no requirement gap is closed by this entry. The 5-host coverage note recorded here keeps DF-6
+  (cursor-agent CLI does not fire sessionStart/stop) inside F-174 per the iteration-010 close ruling.
+
+## 2026-06-14 — Decision (record): verdict-capture authority settled — the Stop/UserPromptSubmit hook authorizes; boundary-sync NEVER fabricates (F-174 iteration 011 T004/T005)
+
+- **Decision ID**: f174-i011-verdict-authority-stop-hook
+- **Type**: decision
+- **Boundary**: before-implement (settles the load-bearing under-specified sub-question the plan carried into
+  implementation: "who reads the human verdict?")
+- **Affected Requirement**: FR-026 (verdict-integrity), FR-027 (committed ≠ authorized resume)
+- **Affected Iteration**: specs\174-hook-driven-session-bootstrap\iterations\011
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-14
+- **The settled question**: `Invoke-SpecrewBoundaryStateSync` is params-only and runs MID-TURN (before that
+  turn's Stop hook fires); the transcript where the human's real verdict lives is reachable only inside the
+  Stop-hook→handover pipeline (the proven per-host `ConversationCaptureAccessor`). So "who captures the verdict
+  and writes the authorization?" was genuinely under-specified (fix-plan-draft Decision 2a/2b). Two candidates
+  were put to the maintainer: (1) the Stop/UserPromptSubmit hook is the authority (reads at end-of-turn, when the
+  verdict is definitely on disk; reuses the proven accessor); (2) sync reads the LIVE transcript at sync-time
+  (depends on incremental-write timing — confirmed on Claude, UNVERIFIABLE on codex/copilot/cursor).
+- **Decision**: **Option 1 — the Stop/UserPromptSubmit hook is the verdict authority.** Core safety rule
+  (maintainer): **prefer losing/forgetting a real approval over inventing, inferring, or carrying forward an
+  unproven one. The safe failure mode is "ask the human again," NEVER "pretend approval happened."**
+- **Required design (maintainer-specified, carried into T002–T007)**:
+  1. **Boundary-sync stops fabricating.** It may record the mechanical boundary crossing; it MUST NOT write
+     `approved for <boundary>` without direct captured human-verdict evidence for that EXACT boundary; it MUST
+     NOT infer approval from the git committer, env vars, branch names, agent text, previous commits, or "the
+     agent reached this point." Missing evidence → record **un-authorized / awaiting-verdict /
+     pending-human-confirmation**.
+  2. **Stop/UserPromptSubmit is the primary authorization reconciler** (the transcript-capable surface; runs
+     after the human verdict is in the conversation): capture recognized verdict tokens tied to the NAMED
+     boundary; update `last_authorized_boundary`, verdict_history, related authorization fields; PRESERVE the
+     agent-authored handover body (no clobber).
+  3. **Resume/bootstrap/`specrew where` are honest about pending state**: a mechanically-crossed-but-not-
+     authorized boundary is surfaced as such; committed is never silently treated as authorized; the human is
+     asked to confirm/re-approve; the wording notes this may have happened because the session ended before the
+     Stop hook persisted the verdict.
+  4. **Opportunistic sync-time capture is a per-host-TESTED optimization, not the baseline.** A host may capture
+     at sync-time only if it has PROVEN capability (tested for that host, not assumed); Claude's incremental
+     transcript writes do NOT generalize to codex/copilot/cursor; any doubt → fall back to pending/un-authorized.
+  5. **Falsification tests required (T007)**: sync alone never fabricates; git-committer/env/user-name never used
+     as approver evidence; missing evidence → pending/un-authorized; Stop/UPS with a valid boundary-tied verdict
+     → authorizes; unrelated human text after a packet is NOT captured as approval; missing/unprovable identity →
+     unknown/unattributed (not a fabricated name); resume/where surfaces committed-but-not-authorized; a
+     crash-window simulation between sync and Stop yields "ask again," not "continue as approved."
+- **Acceptance rule**: a small chance of losing a valid approval is acceptable; continuing under an unproven
+  approval is not.
+- **Authorization Text** (maintainer, this session — the captured design verdict, quoted not inferred):
+  > "Choose Option 1 as the baseline: the Stop/UserPromptSubmit hook is the authority for verdict authorization.
+  > The core safety rule is: Prefer losing/forgetting a real approval over inventing, inferring, or carrying
+  > forward an unproven approval. ... make the safe failure mode 'ask the human again,' never 'pretend approval
+  > happened.'"
+- **Provenance**: recorded 2026-06-14 during F-174 iteration 011 implementation, resurfaced to the maintainer
+  before writing T004/T005 (per the tasks→before-implement instruction). Settles fix-plan-draft Decision 2; the
+  A→C→B task sequence and locked scope are unchanged — only the verdict-authority mechanism inside Fix C is now
+  pinned. This entry records a REAL captured human design verdict (FR-026's own discipline), not an inferred one.
+- **Refinement (same session, maintainer)**: the hook is the PRIMARY authority, NOT the *sole* source — there are
+  **two** capture mechanisms, both grounded in a real human action, neither fabricating:
+  1. **Deterministic (hook)** — auto-captures the verdict token from the transcript at end-of-turn (hook-capable
+     hosts); evidence source `hook-captured-from-transcript`.
+  2. **Second chance (explicit re-confirm)** — when the hook did not capture (crash between sync and Stop, an
+     ambiguous/markerless packet) OR the host has NO hooks (antigravity), the honest-pending state (T006) surfaces
+     "awaiting your verdict" and asks; the human's confirmation is recorded via the EXISTING
+     `Add-SpecrewBoundaryAuthorization` writer; evidence source `human-confirmed-at-resume`. On a hook host the
+     re-confirmation is a new human turn caught by the next hook fire (still deterministic); on a hookless host it
+     is agent-relayed.
+  **Honest antigravity limit**: a hookless host has NO deterministic capture surface, so its verdict is
+  agent-relayed regardless — the second mechanism closes the LIVENESS gap (antigravity is never stuck/blocked),
+  NOT the INTEGRITY gap (it is honestly weaker than a hook capture). The invariant that holds on every host: sync
+  never auto-invents an approval; the gate advances only on a real surfaced-pending → human-response cycle.
+  **No new command** — the explicit path REUSES `Add-SpecrewBoundaryAuthorization` + the `specrew start`
+  reconciliation surface, not a new `confirm-verdict` command (which would be a fresh forgeable surface the agent
+  calls routinely — spiritually back toward DF-5). **Evidence-source tag** is added to every `verdict_history`
+  entry (`hook-captured-from-transcript` | `human-confirmed-at-resume`; never fabricated) so the audit trail is
+  honest about each authorization's provenance strength.
 ## 2026-06-11T11:50:17Z — Delegated routing plan
 
 - **Enabled Agents**: codex
@@ -25289,3 +26701,50 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: b21ff264
 - **Recorded At**: 2026-06-11T15:13:21Z
+
+## 2026-06-15T02:04:58Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: (none)
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-15T02:06:11Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: specify
+- **Recorded At**: 2026-06-15T02:06:11Z
+- **Warning**: Expected next boundary 'clarify' but received 'iteration-closeout'.
+
+## 2026-06-15T02:06:12Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: 012
+- **Task ID**: (none)
+- **Auth Commit Hash**: af28d2da026fdbd85b2a55eda6ac7d3527b270d7
+- **Recorded At**: 2026-06-15T02:06:11Z
+
+## 2026-06-15T02:23:13Z — Boundary enforcement: feature-closeout
+
+- **Feature**: 174-hook-driven-session-bootstrap
+- **Boundary Type**: feature-closeout
+- **Current Boundary**: iteration-closeout
+- **Requested Boundary**: feature-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-15T02:26:41Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 174-hook-driven-session-bootstrap
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 39c218bee40ace3d5ee6857acdea915fd47a6d2b
+- **Recorded At**: 2026-06-15T02:26:40Z

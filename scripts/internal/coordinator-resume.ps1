@@ -25,6 +25,55 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
 }
 . $boundaryStateHelperPath
 
+# F-174 iter-10 (T008): the rolling-handover read + the SHARED resume reconciliation. `specrew start` is the
+# ONLY recovery path for antigravity (no hooks) and for any non-hook launch, so it must surface the same
+# git-delta resume context the SessionStart hook does. Dot-source the two bootstrap components that own those
+# functions; fail-open so a missing/broken component degrades the snapshot rather than failing the launcher.
+foreach ($bootstrapDep in @('bootstrap\HandoverStore.ps1', 'bootstrap\ProjectMetadataAccessor.ps1')) {
+    $bootstrapDepPath = Join-Path $PSScriptRoot $bootstrapDep
+    if (Test-Path -LiteralPath $bootstrapDepPath -PathType Leaf) {
+        try { . $bootstrapDepPath } catch { $null = $_ }
+    }
+}
+
+function Get-ResumeSessionStateProp {
+    # StrictMode-safe property read: returns the property value if present on the object, else $null.
+    # Get-SpecrewProp (the project-wide equivalent) lives in SessionStateAccessor.ps1, which is NOT in
+    # this file's dot-source chain - so this local reader keeps coordinator-resume dependency-free.
+    param([AllowNull()]$Object, [Parameter(Mandatory = $true)][string]$Name)
+    if ($null -eq $Object) { return $null }
+    $match = $Object.PSObject.Properties.Match($Name)
+    if ($match.Count -gt 0) { return $match[0].Value }
+    return $null
+}
+
+function ConvertTo-NormalizedResumeSessionState {
+    # F-174 iter-10 (T008 hardening): the resume snapshot is now the load-bearing recovery path for
+    # `specrew start` (the ONLY recovery seam for antigravity, which has no hooks). Callers pass EITHER the
+    # raw session anchor (Get-SpecrewSessionAnchor emits `boundary`/`iteration` and NO `task_id`) OR the
+    # already-mapped generator shape (`boundary_type`/`iteration_number`/`task_id`). Under
+    # Set-StrictMode -Version Latest (set at this file's scope) a direct `.iteration_number` read on the raw
+    # anchor THROWS "property cannot be found" -> a HARD throw inside Get-StartPrompt (the call at
+    # launch-contract.ps1 is NOT wrapped) -> crashed `specrew start` / silent provider fail-open: the same
+    # D-009 trap class that already bit this feature. Both real callers map first, so production is safe
+    # TODAY; this normalizes BOTH shapes to the generator shape ONCE so the snapshot body never reads an
+    # absent property regardless of which caller (or any FUTURE caller) hands it which shape. Defense-in-
+    # depth on the function T008 made load-bearing - it must never depend on the caller remembering to map.
+    param([AllowNull()][pscustomobject]$SessionState)
+    if ($null -eq $SessionState) { return $null }
+    $iteration = Get-ResumeSessionStateProp $SessionState 'iteration_number'
+    if ([string]::IsNullOrWhiteSpace([string]$iteration)) { $iteration = Get-ResumeSessionStateProp $SessionState 'iteration' }
+    $boundary = Get-ResumeSessionStateProp $SessionState 'boundary_type'
+    if ([string]::IsNullOrWhiteSpace([string]$boundary)) { $boundary = Get-ResumeSessionStateProp $SessionState 'boundary' }
+    return [pscustomobject]@{
+        feature_ref      = Get-ResumeSessionStateProp $SessionState 'feature_ref'
+        feature_path     = Get-ResumeSessionStateProp $SessionState 'feature_path'
+        boundary_type    = $boundary
+        iteration_number = $iteration
+        task_id          = Get-ResumeSessionStateProp $SessionState 'task_id'
+    }
+}
+
 function Get-ValidatorSummaryPath {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
@@ -103,6 +152,11 @@ function Get-CoordinatorResumeSnapshot {
         [AllowNull()][pscustomobject]$SessionState
     )
 
+    # F-174 iter-10 (T008 hardening): normalize the session-state shape ONCE (raw anchor OR mapped generator
+    # shape) so every read below - and Resolve-ResumeIterationNumber, which receives it - is StrictMode-safe
+    # and never throws on an absent property. See ConvertTo-NormalizedResumeSessionState for the why.
+    $SessionState = ConvertTo-NormalizedResumeSessionState -SessionState $SessionState
+
     $resolvedProjectRoot = Resolve-ProjectPath -Path $ProjectRoot
     $effectiveFeaturePath = if (-not [string]::IsNullOrWhiteSpace($ResolvedFeaturePath)) { $ResolvedFeaturePath } elseif ($null -ne $SessionState -and -not [string]::IsNullOrWhiteSpace([string]$SessionState.feature_path)) { [string]$SessionState.feature_path } else { $null }
     $featureRef = if ($null -ne $SessionState -and -not [string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) { [string]$SessionState.feature_ref } elseif (-not [string]::IsNullOrWhiteSpace($effectiveFeaturePath)) { Split-Path -Leaf $effectiveFeaturePath } else { $null }
@@ -116,6 +170,23 @@ function Get-CoordinatorResumeSnapshot {
 
     $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $resolvedProjectRoot
     $validatorSummary = Get-ValidatorWarningSummary -ProjectRoot $resolvedProjectRoot
+
+    # F-174 iter-10 (T008): read the rolling handover + run the SHARED reconciliation (re-compute the CURRENT
+    # cheap delta), so a `specrew start` launch recovers the same "changed since the last stop -> read +
+    # continue" context the hook surfaces. Fail-open: any failure leaves both $null and the snapshot still
+    # carries the lifecycle state above.
+    $resumeHandover = $null
+    $resumeReconciliation = $null
+    try {
+        if (Get-Command Get-SpecrewRollingHandover -ErrorAction SilentlyContinue) {
+            $resumeHandover = Get-SpecrewRollingHandover -HandoverDir (Join-Path $resolvedProjectRoot '.specrew/handover') -NowUtc ((Get-Date).ToUniversalTime().ToString('o'))
+        }
+        if (Get-Command Get-SpecrewResumeReconciliation -ErrorAction SilentlyContinue) {
+            $resumeReconciliation = Get-SpecrewResumeReconciliation -ProjectRoot $resolvedProjectRoot -Handover $resumeHandover
+        }
+    }
+    catch { $resumeHandover = $null; $resumeReconciliation = $null }
+
     $suggestedActions = New-Object System.Collections.Generic.List[string]
 
     if ($null -ne $taskSummary -and $taskSummary.InProgress.Count -gt 0) {
@@ -152,6 +223,8 @@ function Get-CoordinatorResumeSnapshot {
         last_boundary_at    = if ($null -ne $latestBoundary) { [string]$latestBoundary.recorded_at } else { $null }
         task_summary        = $taskSummary
         validator_summary   = $validatorSummary
+        handover            = $resumeHandover
+        reconciliation      = $resumeReconciliation
         suggested_actions   = $suggestedActions.ToArray()
     }
 }
@@ -218,6 +291,13 @@ function Get-CoordinatorResumePromptBlock {
         ''
     }
 
+    # F-174 iter-10 (T008): the resume reconciliation directive - re-computed CURRENT delta vs the last stop,
+    # so a `specrew start` launch (incl. antigravity) reads what changed since and continues from the real state.
+    $reconciliationBlock = if ($null -ne $snapshot.reconciliation -and -not [string]::IsNullOrWhiteSpace([string]$snapshot.reconciliation.directive_text)) {
+        [Environment]::NewLine + [Environment]::NewLine + '## Resume Reconciliation (current tree, re-computed now)' + [Environment]::NewLine + [Environment]::NewLine + [string]$snapshot.reconciliation.directive_text
+    }
+    else { '' }
+
     return @"
 ## Welcome Back Snapshot
 
@@ -233,7 +313,7 @@ $detailBlock- $validatorLine
 
 ### Suggested Next Actions
 
-$suggestedActionsBlock
+$suggestedActionsBlock$reconciliationBlock
 "@
 }
 

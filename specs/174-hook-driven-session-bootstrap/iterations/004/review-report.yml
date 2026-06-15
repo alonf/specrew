@@ -1,0 +1,58 @@
+schema: review-report/v1
+feature: 174-hook-driven-session-bootstrap
+iteration: "004"
+reviewer: claude
+reviewed_at: "2026-06-09"
+protocol: proposal-145-seven-phase
+
+matrix:
+  - requirement: FR-009
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "Stop-event rolling handover; per-host registration; manager reads rolling" }
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "RollingHandover.Tests + DeployedHostConfig on-disk floor + live cross-host Stop smoke" }
+  - requirement: FR-005
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "per-host Stop: Claude Stop, Codex Stop, Copilot agentStop, Cursor stop" }
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "live cross-host Stop dispatcher smoke (4 hosts)" }
+  - requirement: FR-008
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "docs/getting-started.md Stop rolling-handover note" }
+  - requirement: SC-009
+    phases:
+      phase_5: { applicable: yes, finding: clean-qualified, evidence_ref: "rolling file always-latest after each material Stop (RollingHandover.Tests); hard-kill mid-turn = SC-008 manual" }
+
+claim_ledger:
+  - claim: "Stop-event rolling handover is live across all 4 hosts via the real dispatcher"
+    evidence:
+      - { type: smoke, command: "specrew-hook-dispatcher.ps1 -Event {Stop|agentStop|stop} -EventJson ... -HostKind {claude,codex,copilot,cursor}", result: "PASS x4 (handover provider fired -> rolling handover written)" }
+  - claim: "Claude SessionEnd hook removed + Stop hook present ON DISK (not just in deployer code)"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/DeployedHostConfig.Tests.ps1", exit_code: 0, result: "committed .claude/settings.local.json: Stop present, SessionEnd absent" }
+      - { type: test, command: "pwsh -File tests/integration/refocus-deploy.tests.ps1", exit_code: 0, result: "deployer registers Stop, not SessionEnd" }
+  - claim: "rolling handover: overwrite-in-place, always-latest, material-change skip"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/RollingHandover.Tests.ps1", exit_code: 0, result: "one file, crash-safe always-latest, quiet Stop skips" }
+  - claim: "spec reconciled: zero stale SessionEnd trigger refs"
+    evidence:
+      - { type: proof, detail: "grep -i sessionend spec.md -> only the explicit 'removed/superseded' statements remain" }
+  - claim: "B1/B3 unchanged"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/Regression.Tests.ps1", exit_code: 0 }
+  - claim: "No new dependencies"
+    evidence:
+      - { type: proof, detail: "scaffolder new_deps=0; pure PowerShell + git" }
+
+design_trace:
+  - design_ref: "f174-i004-design-settled (Stop-only, rolling always-latest, material-change, crash-safe)"
+    implementation: ["HandoverStore rolling funcs", "ClassificationEngine Test-SpecrewHandoverMaterialChange", "specrew-handover-provider.ps1 (Stop)", "deploy-refocus-hooks.ps1 (per-host Stop, no SessionEnd)"]
+    evidence: ["RollingHandover.Tests", "DeployedHostConfig.Tests", "live cross-host Stop smoke"]
+    status: matched
+
+verdict:
+  per_phase: { phase_0: pass, phase_1: pass, phase_2: pass, phase_3: pass, phase_4: pass, phase_5: pass, phase_6: pass, phase_7: pass }
+  overall: APPROVE for review-signoff
+  notes: >
+    Final F-174 iteration. Stop-event rolling handover live across 4 hosts (dispatcher smoke) + the
+    on-disk floor proves Stop present / SessionEnd absent (iter-3 retro action 1 applied from the
+    start). Spec reconciled to zero stale SessionEnd trigger refs; SC-009 added. One cleanup
+    follow-up: remove the dormant SessionEnd code (non-blocking). No new dependencies.

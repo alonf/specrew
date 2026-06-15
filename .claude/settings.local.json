@@ -103,5 +103,37 @@
       "Bash(markdownlint \"**/*.md\" --ignore node_modules --ignore .squad --ignore .specify)",
       "Bash(gh pr create --title 'F-043 + F-044 bundle: Multi-host Onboarding + Per-Host Architecture Refactor \\(v0.27.0\\)' --body ' *)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event SessionStart -HostKind claude"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event Stop -HostKind claude"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event PostToolUse -HostKind claude"
+          }
+        ]
+      }
+    ]
   }
 }

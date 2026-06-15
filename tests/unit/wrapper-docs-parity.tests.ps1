@@ -31,8 +31,9 @@ if (Test-Path -LiteralPath $skillsDir -PathType Container) {
 if ($skills.Count -eq 0) { Write-Fail "no skills discovered under $skillsDir (expected specrew-* skill directories)" }
 
 #  (3) allowlist of non-command specrew-* tokens that legitimately appear in docs, with rationale:
-#      specrew-speckit -> the Spec Kit extension namespace (file paths + slash-command prefixes), not a command.
-$allowlist = @('specrew-speckit')
+#      specrew-speckit   -> the Spec Kit extension namespace (file paths + slash-command prefixes), not a command.
+#      specrew-bootstrap -> the SessionStart bootstrap stderr log-prefix (`[specrew-bootstrap] WARN ...`), not a command.
+$allowlist = @('specrew-speckit', 'specrew-bootstrap')
 
 $validSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 foreach ($n in ($registry + $skills + $allowlist)) { [void]$validSet.Add($n) }

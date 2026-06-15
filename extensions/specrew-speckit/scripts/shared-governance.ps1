@@ -1264,6 +1264,53 @@ function Get-SpecrewBoundaryEnforcementState {
     }
 }
 
+function Get-SpecrewPendingVerdictState {
+    # F-174 iteration 011 (T006, FR-027 / decision f174-i011-verdict-authority-stop-hook): is the session's
+    # WORKING boundary ahead of the last HUMAN-AUTHORIZED boundary? A committed / in-progress boundary is NOT an
+    # authorized one. session_state.boundary_type (the working position) is advanced MECHANICALLY by boundary-sync;
+    # boundary_enforcement.last_authorized_boundary is advanced ONLY by a captured human verdict (the Stop/UPS hook
+    # or the explicit re-confirm). When working is AHEAD of last-authorized, the crossing(s) between them are
+    # AWAITING the human's verdict — the resume + `specrew where` SURFACE this and ask; they never auto-advance.
+    # The wording names the crash-window possibility so a human who DID approve knows why they are asked again.
+    # Fail-open: any read/parse problem returns "no pending" — it must never FABRICATE a pending state either.
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $result = [pscustomobject]@{
+        HasPendingVerdict      = $false
+        WorkingBoundary        = $null
+        LastAuthorizedBoundary = $null
+        Message                = $null
+    }
+    try {
+        $enforcement = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+        if ($null -eq $enforcement -or $null -eq $enforcement.State -or -not [bool]$enforcement.State['enabled']) { return $result }
+
+        $lastAuth = [string]$enforcement.State['last_authorized_boundary']
+        $working = $null
+        $ctx = $enforcement.Context
+        if ($null -ne $ctx -and $ctx.Contains('session_state') -and $null -ne $ctx['session_state']) {
+            $ss = $ctx['session_state']
+            if ($ss.Contains('boundary_type')) { $working = [string]$ss['boundary_type'] }
+        }
+        $result.LastAuthorizedBoundary = $lastAuth
+        $result.WorkingBoundary = $working
+        if ([string]::IsNullOrWhiteSpace($working)) { return $result }
+
+        $order = @(Get-SpecrewBoundaryOrder)
+        $workingCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $working
+        $workingIdx = [Array]::IndexOf($order, $workingCanonical)
+        $authIdx = if ([string]::IsNullOrWhiteSpace($lastAuth)) { -1 } else { [Array]::IndexOf($order, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuth)) }
+
+        if ($workingIdx -ge 0 -and $workingIdx -gt $authIdx) {
+            $result.HasPendingVerdict = $true
+            $authLabel = if ($authIdx -lt 0) { '(none recorded yet)' } else { $lastAuth }
+            $result.Message = ("AWAITING YOUR VERDICT: '{0}' is committed / in-progress but NOT human-authorized (last authorized: {1}). A committed boundary is not an approved one — the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm." -f $workingCanonical, $authLabel)
+        }
+    }
+    catch { $null = $_ }
+    return $result
+}
+
 function Set-SpecrewBoundaryEnforcementState {
     param(
         [Parameter(Mandatory = $true)]
@@ -1688,7 +1735,15 @@ function Add-SpecrewBoundaryAuthorization {
         [string]$AuthCommitHash,
 
         [AllowNull()]
-        [string]$RecordedAt
+        [string]$RecordedAt,
+
+        # F-174 iteration 011 (T004, FR-026): the provenance of THIS authorization's evidence —
+        # 'hook-captured-from-transcript' (the Stop/UPS hook read the human's actual typed verdict) |
+        # 'human-confirmed-at-resume' (the human explicitly re-confirmed a surfaced-pending boundary) |
+        # 'unspecified'. Recorded on the verdict_history entry so the audit trail is honest about each
+        # authorization's provenance strength. It is NEVER 'fabricated' — sync no longer writes authorizations.
+        [AllowNull()]
+        [string]$EvidenceSource
     )
 
     $currentCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
@@ -1728,6 +1783,7 @@ function Add-SpecrewBoundaryAuthorization {
     foreach ($entry in @($enforcementState.State['verdict_history'])) {
         $verdictHistory.Add($entry) | Out-Null
     }
+    $effectiveEvidenceSource = if ([string]::IsNullOrWhiteSpace($EvidenceSource)) { 'unspecified' } else { $EvidenceSource.Trim() }
     $verdictHistory.Add([ordered]@{
         from_boundary     = $currentCanonical
         to_boundary       = $authorizedCanonical
@@ -1735,6 +1791,7 @@ function Add-SpecrewBoundaryAuthorization {
         authorizing_human = $AuthorizingHuman.Trim()
         recorded_at       = $effectiveRecordedAt
         auth_commit_hash  = $effectiveAuthCommitHash
+        evidence_source   = $effectiveEvidenceSource
     }) | Out-Null
 
     $updatedState = [ordered]@{

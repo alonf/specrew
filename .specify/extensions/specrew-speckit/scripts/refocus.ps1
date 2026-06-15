@@ -22,6 +22,11 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# SPECREW-UTF8-OUTPUT (F-174 iter-10, Prop-145 P3): declare UTF-8 stdout so a non-ASCII digest/banner is not
+# mangled to '?' by the child pwsh's default OEM console codepage when the dispatcher captures it (the dispatcher
+# reads UTF-8 via ProcessStartInfo.StandardOutputEncoding). Fail-open.
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }  # best-effort: a host that rejects UTF-8 console encoding must still run (fail-open)
+
 $script:Banner = '[specrew-refocus]'
 $script:CatalogSchemaVersion = '1'
 

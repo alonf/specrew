@@ -335,8 +335,9 @@ $dispatcher = New-ScratchProject
 $result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart', '-HostKind', 'codex') -StdinJson '{"session_id":"codex-1","source":"compact"}'
 $json = $null
 try { $json = $result.StdOut | ConvertFrom-Json } catch { }
-Assert-True ($null -ne $json -and $null -ne $json.PSObject.Properties['additionalContext']) 'codex output is additionalContext JSON'
-Assert-True ($null -ne $json -and ([string]$json.additionalContext) -match 'trigger=b1') 'codex compact routes to b1'
+Assert-True ($null -ne $json -and $null -ne $json.PSObject.Properties['hookSpecificOutput'] -and $null -ne $json.hookSpecificOutput.PSObject.Properties['additionalContext']) 'codex output is hookSpecificOutput.additionalContext JSON'
+Assert-True ($null -ne $json -and $json.hookSpecificOutput.hookEventName -eq 'SessionStart') 'codex output carries hookSpecificOutput.hookEventName'
+Assert-True ($null -ne $json -and ([string]$json.hookSpecificOutput.additionalContext) -match 'trigger=b1') 'codex compact routes to b1'
 
 # 15b. codex UserPromptSubmit -> B3 with state-diff gating (anchor, then crossing)
 $result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'UserPromptSubmit', '-HostKind', 'codex') -StdinJson '{"session_id":"codex-1","prompt":"hello"}'
@@ -346,7 +347,7 @@ $ctx = @{ session_state = @{ boundary_type = 'review-signoff'; feature_ref = 'di
 $result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'UserPromptSubmit', '-HostKind', 'codex') -StdinJson '{"session_id":"codex-1","prompt":"hello again"}'
 $json = $null
 try { $json = $result.StdOut | ConvertFrom-Json } catch { }
-Assert-True ($null -ne $json -and ([string]$json.additionalContext) -match 'trigger=b3 scope=general\+boundary\.retro') 'codex UserPromptSubmit crossing injects b3 (incoming stage)'
+Assert-True ($null -ne $json -and ([string]$json.hookSpecificOutput.additionalContext) -match 'trigger=b3 scope=general\+boundary\.retro') 'codex UserPromptSubmit crossing injects b3 (incoming stage)'
 
 # 15c. cursor: conversation_id session key + snake_case output
 $dispatcher = New-ScratchProject

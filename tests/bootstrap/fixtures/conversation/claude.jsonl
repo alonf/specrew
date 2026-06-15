@@ -1,0 +1,3 @@
+{"type":"summary","summary":"NOISE-CLAUDE-SUMMARY should be skipped"}
+{"type":"user","message":{"role":"user","content":[{"type":"text","text":"CANARY-CLAUDE-USER what is the design"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"CANARY-CLAUDE-ASSISTANT here is the answer"},{"type":"tool_use","name":"Read","input":{"file":"NOISE-CLAUDE-TOOLUSE"}}]}}

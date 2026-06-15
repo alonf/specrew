@@ -34,6 +34,13 @@ if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) { exit 0 }
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# SPECREW-UTF8-OUTPUT (F-174 iter-10, Prop-145 P3): the dispatcher is the FINAL emitter to the host - it writes
+# the merged provider output (which inlines handover dialogue that may be Hebrew/emoji/unicode) to its own
+# stdout. Declare UTF-8 so the host (and the provider->dispatcher capture is the other half) receives the
+# non-ASCII intact rather than '?' from the child's default OEM console codepage. Fail-open; after the kill
+# switch so the switch always wins first.
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }  # best-effort: a host that rejects UTF-8 console encoding must still run (fail-open)
+
 $script:Banner = '[specrew-refocus]'
 
 function Write-DispatcherWarn {
@@ -42,12 +49,25 @@ function Write-DispatcherWarn {
 }
 
 function Get-DispatcherProjectRoot {
-    $candidate = (Get-Location).Path
-    while (-not [string]::IsNullOrWhiteSpace($candidate)) {
-        if (Test-Path -LiteralPath (Join-Path $candidate '.specrew') -PathType Container) { return $candidate }
-        $parent = Split-Path -Parent $candidate
-        if ($parent -eq $candidate) { break }
-        $candidate = $parent
+    # Resolve the project root (the dir holding .specrew) so the dispatcher works from ANY host cwd.
+    #
+    # When THIS dispatcher is the DEPLOYED copy — its own directory is
+    # <project>/.specify/extensions/specrew-speckit/scripts — its location reliably identifies the project the
+    # hook belongs to, so PREFER walking up from $PSScriptRoot over the cwd. This is the fix for the cwd bug: the
+    # host may fire the hook from an unrelated directory whose ancestors contain a STRAY .specrew (e.g.
+    # ~/.specrew), which a cwd-first walk-up would wrongly resolve. When it is the in-repo SOURCE copy
+    # (scripts/internal, used in dev/tests) the dispatcher's own location is the framework repo rather than the
+    # target project, so resolve from the cwd FIRST (the project under test), falling back to $PSScriptRoot.
+    $isDeployedCopy = $PSScriptRoot -match '[\\/]\.specify[\\/]extensions[\\/]specrew-speckit[\\/]scripts[\\/]?$'
+    $starts = if ($isDeployedCopy) { @($PSScriptRoot, (Get-Location).Path) } else { @((Get-Location).Path, $PSScriptRoot) }
+    foreach ($start in $starts) {
+        $candidate = $start
+        while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            if (Test-Path -LiteralPath (Join-Path $candidate '.specrew') -PathType Container) { return $candidate }
+            $parent = Split-Path -Parent $candidate
+            if ($parent -eq $candidate) { break }
+            $candidate = $parent
+        }
     }
     return $null
 }
@@ -99,28 +119,69 @@ function Invoke-ProviderProcess {
         [string]$WorkingDirectory,
         [int]$TimeoutSeconds
     )
-    # Child process: provider scripts use `exit` (their CLI contract), which would
-    # terminate an in-process caller. Timeout enforced per provider (C3).
-    $stdoutPath = [System.IO.Path]::GetTempFileName()
-    $stderrPath = [System.IO.Path]::GetTempFileName()
+    # Child process: provider scripts use `exit` (their CLI contract), which would terminate an in-process
+    # caller. Timeout enforced per provider (C3).
+    #
+    # ARG DELIVERY (F-174 iter-10 fix): use ProcessStartInfo.ArgumentList, NOT `Start-Process -ArgumentList`.
+    # Start-Process joins the array into one command line WITHOUT robustly quoting elements that contain
+    # spaces - empirically a transcript_path under a spaced home (`C:\Users\First Last\...`, the common Windows
+    # case) is SPLIT into several args, and any embedded-quote/space value (the --event-json JSON) is mangled.
+    # ArgumentList applies correct per-arg Win32 escaping, so every clean arg (notably --transcript-path) and
+    # the JSON survive byte-for-byte. stdout/stderr are read ASYNCHRONOUSLY (started before WaitForExit) to
+    # avoid a full-pipe deadlock when a provider emits more than a pipe buffer.
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = 'pwsh'
+    foreach ($a in @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $CommandPath)) { $psi.ArgumentList.Add([string]$a) }
+    foreach ($a in @($CommandArgs)) { $psi.ArgumentList.Add([string]$a) }
+    $psi.WorkingDirectory = $WorkingDirectory
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+    $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+    $proc = [System.Diagnostics.Process]::new()
+    $proc.StartInfo = $psi
     try {
-        $proc = Start-Process -FilePath 'pwsh' `
-            -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $CommandPath) + $CommandArgs) `
-            -WorkingDirectory $WorkingDirectory -PassThru -NoNewWindow `
-            -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+        $null = $proc.Start()
+        $outTask = $proc.StandardOutput.ReadToEndAsync()
+        $errTask = $proc.StandardError.ReadToEndAsync()
         if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
-            try { $proc.Kill() } catch { }
-            return @{ TimedOut = $true; ExitCode = -1; StdOut = ''; StdErr = '' }
+            try { $proc.Kill($true) } catch { $null = $_ }  # already exited (the goal) or unkillable; we abandon it on timeout regardless
+            return @{ TimedOut = $true; ExitCode = -1; StdOut = ''; StdErr = ''; LaunchFailed = $false }
+        }
+        # Drain the async readers, BOUNDED: after the process exits its pipes normally close and the reads
+        # settle at once (~0ms). But a provider that leaves a GRANDCHILD holding the stdout handle open can keep
+        # the pipe alive, so a bare GetResult() could hang the hook indefinitely. Cap the post-exit drain; on a
+        # miss take whatever arrived (fail-open) + one loud WARN (the degrade-to-silence-but-WARN doctrine), so
+        # a stuck stream is diagnosable instead of silently empty.
+        $drainMs = 5000
+        $drained = $false
+        try { $drained = [System.Threading.Tasks.Task]::WaitAll(@($outTask, $errTask), $drainMs) } catch { $drained = $false }
+        $stdout = if ($outTask.IsCompletedSuccessfully) { $outTask.Result } else { '' }
+        $stderr = if ($errTask.IsCompletedSuccessfully) { $errTask.Result } else { '' }
+        if (-not $drained) {
+            Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' exited but its output stream stayed open >{1}ms (a lingering child?); using partial output" -f (Split-Path -Leaf $CommandPath), $drainMs)
         }
         return @{
-            TimedOut = $false
-            ExitCode = $proc.ExitCode
-            StdOut   = (Get-Content -LiteralPath $stdoutPath -Raw -ErrorAction SilentlyContinue) ?? ''
-            StdErr   = (Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue) ?? ''
+            TimedOut     = $false
+            ExitCode     = $proc.ExitCode
+            StdOut       = ($stdout ?? '')
+            StdErr       = ($stderr ?? '')
+            LaunchFailed = $false
         }
     }
+    catch {
+        # CONTAIN a per-provider LAUNCH failure (Prop-145 round-4): a too-long command line (Windows passes the
+        # full argv as one ~32KB-capped string; a large --event-json can exceed it) makes Process.Start() throw
+        # "The filename or extension is too long". Without this catch the exception propagates to the dispatcher's
+        # outer catch and ABORTS the whole event - every later provider for that event is skipped too. Degrade to a
+        # failed result for THIS provider only; the CALLER emits the single WARN (LaunchFailed -> "failed to launch"),
+        # so a launch failure is reported once, not twice.
+        return @{ TimedOut = $false; ExitCode = -1; StdOut = ''; StdErr = [string]$_.Exception.Message; LaunchFailed = $true }
+    }
     finally {
-        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        $proc.Dispose()
     }
 }
 
@@ -284,7 +345,7 @@ function Remove-StaleSessionState {
             }
         }
     }
-    catch { }
+    catch { $null = $_ }  # opportunistic GC of stale state files; a cleanup failure must never block the dispatch
 }
 
 # ---------------------------------------------------------------------------
@@ -366,16 +427,30 @@ function Get-RefocusProviderArgs {
 
 function Write-InjectionOutput {
     param([string]$EventName, [string]$Payload, [string]$TargetHost = 'claude')
+    # F-174 iter-11 (P2): cap-overflow observability. Every current hook host caps its output (claude STDOUT +
+    # additionalContext at 10,000 chars on v2.1.177; codex drops oversized additionalContext; copilot/cursor
+    # caps unverified-but-suspected). When the ASSEMBLED payload (all provider fragments joined - the bootstrap
+    # directive + the variable refocus fragment) exceeds the cap, the host SILENTLY drops it to a file + a ~2KB
+    # preview and the directive never reaches the model (the exact iter-11 break). The providers bound their own
+    # inlined content, but this is the ONE place that sees the joined total, so it is the right place to make an
+    # overflow VISIBLE. This is observability only (the advisor's "defensible cap-role"): WARN, never truncate -
+    # a blind truncate here would drop the integrity-critical mid-payload sections (e.g. AWAITING YOUR VERDICT).
+    if (-not [string]::IsNullOrEmpty($Payload) -and $Payload.Length -gt 10000) {
+        Write-DispatcherWarn -Code 'PAYLOAD_OVERSIZE' -Message ("assembled {0} payload is {1} chars (> the 10000 host hook-output cap); the host will drop it to a file + preview and the directive may not reach the model - a provider's inlined content needs tightening (F-174 P2)" -f $EventName, $Payload.Length)
+    }
     # Per-host event output shaping (C2; contracts per the T013 research matrix,
     # all fetched live 2026-06-07):
     #   claude  : SessionStart -> plain stdout (added to context);
     #             PostToolUse / UserPromptSubmit -> hookSpecificOutput.additionalContext
-    #   codex   : additionalContext JSON ("added as extra developer context")
+    #   codex   : hookSpecificOutput.additionalContext (WITH hookEventName). The flat { additionalContext }
+    #             form (which copilot accepts) is silently IGNORED by codex - the hook runs but its output
+    #             never reaches the agent (2026-06-10 dogfood: journal written, but no context injected).
+    #             Per developers.openai.com/codex/hooks the SessionStart output schema is hookSpecificOutput.
     #   copilot : additionalContext JSON (camelCase reference contract)
     #   cursor  : additional_context JSON (snake_case official contract)
     switch ($TargetHost) {
         'codex' {
-            @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+            @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
         }
         'copilot' {
             @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
@@ -526,13 +601,52 @@ try {
             $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source
         }
         else {
-            $commandArgs = @('--event-json', ($rawEvent ?? ''))
+            # Pass the resolved host so the provider can shape host-aware delivery (F-174 codex fix: codex
+            # drops the oversized SessionStart additionalContext, so the provider hands codex a lean pointer).
+            # Also pass the neutral event name as its own CLEAN arg (--source-event): a provider that wants the
+            # event name (the F-174 handover, to label its trigger source) reads it directly instead of digging
+            # the field out of the full --event-json blob. (Historically this also dodged Start-Process
+            # -ArgumentList arg-mangling; the launch primitive is now ProcessStartInfo.ArgumentList which escapes
+            # every arg correctly, but the dedicated arg stays - it is clearer and decouples providers from the
+            # host's JSON shape.) Both are harmless to inject providers that do not read them.
+            # Prop-145 round-4 (HIGH): the handover provider reads ONLY the clean args (--source-event for the
+            # trigger, --host-kind, --transcript-path) - it does NOT need the full event JSON. Codex's Stop event
+            # carries a `last_assistant_message` that can be 10s of KB; as --event-json that blows the Windows
+            # command-line length limit, ProcessStartInfo refuses to launch, and the handover (so the conversation
+            # capture) silently never runs. Pass only the bounded clean args to handover. The transcript FILE route
+            # (--transcript-path, extracted below) is the robust primary; tier-3 (last_assistant_message) stays
+            # DEFERRED. Other inject providers (bootstrap needs session_id/source) still get --event-json.
+            $commandArgs = if ($providerId -eq 'handover') {
+                @('--host-kind', $HostKind, '--source-event', $Event)
+            }
+            else {
+                @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind, '--source-event', $Event)
+            }
+            # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event and
+            # pass it as its own CLEAN arg, so the handover provider captures the conversation tail without
+            # re-parsing the event JSON. Field name varies (snake/camel); harmless to providers that ignore the
+            # arg. (Invoke-ProviderProcess delivers it via ProcessStartInfo.ArgumentList, so a path with spaces
+            # survives byte-for-byte - the spaced-home bug this fixed.) Fail-open.
+            if (-not [string]::IsNullOrWhiteSpace($rawEvent)) {
+                try {
+                    $evtObj = $rawEvent | ConvertFrom-Json -ErrorAction Stop
+                    $tpath = $null
+                    foreach ($k in @('transcript_path', 'transcriptPath')) {
+                        $pp = $evtObj.PSObject.Properties[$k]
+                        if ($pp -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $tpath = [string]$pp.Value; break }
+                    }
+                    if (-not [string]::IsNullOrWhiteSpace($tpath)) { $commandArgs += @('--transcript-path', $tpath) }
+                }
+                catch { $null = $_ }
+            }
         }
         if ($null -eq $commandArgs) { continue }
 
         $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs $commandArgs -WorkingDirectory $projectRoot -TimeoutSeconds $ProviderTimeoutSeconds
         if ($result.TimedOut -or $result.ExitCode -ne 0) {
-            $why = if ($result.TimedOut) { 'timed out' } else { "exited $($result.ExitCode)" }
+            $why = if ($result.TimedOut) { 'timed out' }
+            elseif ($result.LaunchFailed) { "failed to launch: $($result.StdErr)" }
+            else { "exited $($result.ExitCode)" }
             Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' {1}; skipped" -f $providerId, $why)
             if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
                 $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope 'unknown' -Channel 'hook' -Tokens 0 -Outcome 'failed'

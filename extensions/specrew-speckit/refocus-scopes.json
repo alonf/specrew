@@ -45,6 +45,22 @@
       "order": 10,
       "budget_share": 1.0,
       "command": "refocus.ps1"
+    },
+    {
+      "id": "bootstrap",
+      "kind": "inject",
+      "events": ["SessionStart"],
+      "order": 20,
+      "budget_share": 1.0,
+      "command": "specrew-bootstrap-provider.ps1"
+    },
+    {
+      "id": "handover",
+      "kind": "inject",
+      "events": ["Stop", "agentStop", "stop", "PostToolUse"],
+      "order": 30,
+      "budget_share": 1.0,
+      "command": "specrew-handover-provider.ps1"
     }
   ]
 }

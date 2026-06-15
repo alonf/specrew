@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.36.0'
+    ModuleVersion = '0.37.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -136,6 +136,8 @@
         'extensions/specrew-speckit/scripts/scaffold-review-artifact.ps1',
         'extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1',
         'extensions/specrew-speckit/scripts/shared-governance.ps1',
+        'extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1',
+        'extensions/specrew-speckit/scripts/specrew-handover-provider.ps1',
         'extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1',
         'extensions/specrew-speckit/scripts/sync-boundary-state.ps1',
         'extensions/specrew-speckit/scripts/sync-squad-model-overrides.ps1',
@@ -229,6 +231,17 @@
         'scripts/init/squad-deploy.ps1',
         'scripts/init/template-deploy.ps1',
         'scripts/internal/atomic-write.ps1',
+        'scripts/internal/bootstrap/ClassificationEngine.ps1',
+        'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1',
+        'scripts/internal/bootstrap/DirectiveEngine.ps1',
+        'scripts/internal/bootstrap/HandoverStore.ps1',
+        'scripts/internal/bootstrap/HookJournalAccessor.ps1',
+        'scripts/internal/bootstrap/HostEventAdapter.ps1',
+        'scripts/internal/bootstrap/LauncherIntegration.ps1',
+        'scripts/internal/bootstrap/ProjectMetadataAccessor.ps1',
+        'scripts/internal/bootstrap/SessionBootstrapManager.ps1',
+        'scripts/internal/bootstrap/SessionStateAccessor.ps1',
+        'scripts/internal/bootstrap/ValidationEngine.ps1',
         'scripts/internal/code-implementation-lens.ps1',
         'scripts/internal/coordinator-prompt-surgery.ps1',
         'scripts/internal/coordinator-resume.ps1',
@@ -243,6 +256,7 @@
         'scripts/internal/host-history.ps1',
         'scripts/internal/host-runtime-inventory.ps1',
         'scripts/internal/invoke-module-release.ps1',
+        'scripts/internal/launch-contract.ps1',
         'scripts/internal/lens-applicability.ps1',
         'scripts/internal/product-domain-lens.ps1',
         'scripts/internal/refocus-deploy-integration.ps1',
@@ -251,7 +265,10 @@
         'scripts/internal/session-management.ps1',
         'scripts/internal/session-recovery.ps1',
         'scripts/internal/skill-catalog-state.ps1',
+        'scripts/internal/specrew-bootstrap-provider.ps1',
+        'scripts/internal/specrew-handover-provider.ps1',
         'scripts/internal/specrew-hook-dispatcher.ps1',
+        'scripts/internal/specrew-hook-health.ps1',
         'scripts/internal/specrew-time.ps1',
         'scripts/internal/supported-versions.yml',
         'scripts/internal/sync-boundary-state.ps1',
@@ -263,6 +280,8 @@
         'scripts/internal/yaml-list.ps1',
         'scripts/psd1-sort.ps1',
         'scripts/specrew-config.ps1',
+        'scripts/specrew-handover.ps1',
+        'scripts/specrew-hooks.ps1',
         'scripts/specrew-host.ps1',
         'scripts/specrew-init.ps1',
         'scripts/specrew-install-shell-wrappers.ps1',

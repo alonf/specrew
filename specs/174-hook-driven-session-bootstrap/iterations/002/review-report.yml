@@ -1,0 +1,90 @@
+schema: review-report/v1
+feature: 174-hook-driven-session-bootstrap
+iteration: "002"
+reviewer: claude
+reviewed_at: "2026-06-08"
+protocol: proposal-145-seven-phase
+
+matrix:
+  - requirement: FR-006
+    phases:
+      phase_0: { applicable: yes }
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "specrew start retained; LauncherIntegration" }
+      phase_6: { applicable: yes, finding: clean }
+  - requirement: FR-007
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "tests/bootstrap/LauncherIntegration.Tests.ps1" }
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "SC-002 exactly-once, live provider dedupe" }
+  - requirement: FR-009
+    phases:
+      phase_2:
+        applicable: yes
+        finding: partial
+        note: "HandoverStore + SessionEndHandoverManager built+tested; SessionEnd hook registration deferred to it003 (drift D-002)"
+        evidence_ref: "tests/bootstrap/HandoverStore.Tests.ps1, tests/bootstrap/SessionEndHandover.Tests.ps1"
+      phase_3: { applicable: yes, finding: clean, evidence_ref: "write-only; no git add -A proven" }
+  - requirement: FR-010
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "tests/bootstrap/HandoverValidation.Tests.ps1" }
+  - requirement: FR-017
+    phases:
+      phase_2: { applicable: yes, finding: clean, evidence_ref: "recency necessary-not-sufficient validation" }
+  - requirement: FR-021
+    phases:
+      phase_2: { applicable: yes, finding: clean }
+      phase_6: { applicable: yes, finding: clean, evidence_ref: "write-only exit; no -A (decoy test)" }
+  - requirement: SC-002
+    phases:
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "tests/bootstrap/LauncherIntegration.Tests.ps1" }
+  - requirement: SC-003
+    phases:
+      phase_5: { applicable: yes, finding: clean, evidence_ref: "tests/bootstrap/SessionEndHandover.Tests.ps1 round-trip" }
+
+claim_ledger:
+  - claim: "HandoverStore composes Proposal 130's schema (not invented)"
+    evidence:
+      - { type: code, path: "scripts/internal/bootstrap/HandoverStore.ps1", symbol: "schema v1 + 6 sections + index.yml + source path" }
+      - { type: doc, path: "proposals/130-specrew-switch-to-host-handover.md", detail: "authoritative schema; F-174 first impl, cross-referenced" }
+      - { type: test, command: "pwsh -File tests/bootstrap/HandoverStore.Tests.ps1", exit_code: 0 }
+  - claim: "SessionEnd write is write-only and never git add -A"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/SessionEndHandover.Tests.ps1", exit_code: 0, result: "decoy stays untracked after scoped commit" }
+  - claim: "launcher + hook = exactly one bootstrap (SC-002)"
+    evidence:
+      - { type: test, command: "pwsh -File tests/bootstrap/LauncherIntegration.Tests.ps1", exit_code: 0, result: "provider silent when launcher recent" }
+  - claim: "PSScriptAnalyzer clean"
+    evidence:
+      - { type: test, command: "Invoke-ScriptAnalyzer -Path scripts/internal/bootstrap -Recurse", result: "CLEAN", exit_code: 0 }
+  - claim: "No new dependencies"
+    evidence:
+      - { type: proof, detail: "scaffolder reported new_deps=0; pure PowerShell + git" }
+
+design_trace:
+  - design_ref: "decisions ledger: defer-... no - f174-i002-handover-composes-130"
+    implementation: ["scripts/internal/bootstrap/HandoverStore.ps1"]
+    evidence: ["tests/bootstrap/HandoverStore.Tests.ps1"]
+    status: matched
+  - design_ref: "architecture-core d2 handover-first, recency necessary-not-sufficient"
+    implementation: ["ValidationEngine Test-SpecrewHandoverValidity", "ClassificationEngine handover-first branch"]
+    evidence: ["tests/bootstrap/HandoverValidation.Tests.ps1"]
+    status: matched
+  - design_ref: "data-storage d1 write-only exit, no -A"
+    implementation: ["SessionEndHandoverManager.ps1"]
+    evidence: ["tests/bootstrap/SessionEndHandover.Tests.ps1"]
+    status: matched
+
+verdict:
+  per_phase:
+    phase_0: pass
+    phase_1: pass
+    phase_2: pass
+    phase_3: pass
+    phase_4: pass
+    phase_5: pass
+    phase_6: pass
+    phase_7: pass
+  overall: APPROVE for review-signoff
+  notes: >
+    All applicable phases pass. One functional gap recorded + deferred: FR-009 SessionEnd hook
+    registration (drift D-002) to iteration 003. Handover read + write paths round-trip correctly;
+    only the live SessionEnd hook firing is carried.

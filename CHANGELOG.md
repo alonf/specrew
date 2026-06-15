@@ -4,7 +4,54 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
-## Unreleased
+## [0.37.0-beta1] - Unreleased
+
+### Added
+
+- **`specrew handover author`:** writes the agent's interpretive handover notes — open questions, working
+  hypothesis, and the recommended next step — into the rolling handover, so the next session inherits that
+  context instead of a blank slate. It reads a Markdown packet via `--from <file>` or `--stdin` (the `##`
+  headers name the sections) and accepts `--feature`, `--boundary`, and `--host`.
+- **`specrew hooks status | install | remove [--host <h>]`:** the command for installing, repairing, and
+  checking your Specrew session hooks.
+
+### Changed
+
+- **Automatic session bootstrap (`specrew start` is now optional):** after `specrew init`, just launch your
+  host (for example, run `claude` or `codex`) and Specrew bootstraps you automatically — it greets you with an
+  orientation banner and drives the governed lifecycle. You no longer have to run `specrew start` first;
+  `specrew start` remains available as an explicit way to drive or re-anchor, and it is the entry point on
+  Antigravity, which has no hook surface.
+- **Rolling handover with cross-session, cross-host auto-resume:** Specrew now keeps a rolling handover of your
+  work so the next session picks up where you left off. When you come back — in the same host or a different
+  one — your in-progress feature follows you and the lifecycle resumes automatically. If you switch to a
+  non-Claude host mid-feature, the new session may ask you to re-confirm your last approval.
+- **Approvals stay real on resume:** when a resumed session lands at a boundary that has not been approved,
+  Specrew stops and waits for your verdict. The agent will not advance on a bare `continue`, a single approval
+  moves you forward by at most one boundary, and your approval is never invented for you.
+
+### Fixed
+
+- **Session bootstrap on Codex:** the Specrew session hook now runs and surfaces its orientation on Codex,
+  and the bootstrap shows the correct Specrew version.
+
+## [0.36.0] - 2026-06-13
+
+Stable promotion of the 0.36.0 line (Feature 182 — Work Kind and Branch Governance Model), validated by the
+maintainer per the beta-before-stable mandate. F-174 (0.37.0) builds on this baseline.
+
+- **Feature 182 — Work Kind and Branch Governance Model:** first-class **work kinds** so feature delivery,
+  docs changes, and DevOps/CI changes each follow a right-sized lifecycle instead of one heavy shape. A
+  data-driven taxonomy (`software-feature` · `bug-bash` · `docs-only` · `devops`) declared in a checked-in,
+  forge-neutral `.specrew/work-kind.yml`; a provider-neutral CI work-kind validator (changed-file scope +
+  closeout-evidence checks, advisory by default) with a GitHub reference adapter and a generic fallback; a
+  configurable branch-governance model (`.specrew/repository-governance.yml`); and the forge-neutralization
+  of Specrew's downstream-governing methodology surfaces.
+
+## [0.36.0-beta1] - 2026-06-13
+
+- **Feature 182 — Work Kind and Branch Governance Model** (beta1): the prerelease validated before the
+  0.36.0 stable promotion above.
 
 ## [0.35.0] - 2026-06-11
 

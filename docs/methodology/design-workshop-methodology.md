@@ -126,7 +126,7 @@ structure with the human:
 Only after the component map and at least one flow are agreed should the agent
 present the remaining trade-off options.
 
-### 7. Persist decisions as artifacts
+### 7. Persist decisions as artifacts — at checkpoint time, not at the end
 
 Workshop decisions must survive the chat. They are recorded in feature artifacts
 so future agents, reviewers, and maintainers can understand why the system was
@@ -134,6 +134,24 @@ designed a certain way.
 
 A decision that exists only in conversation scrollback is not durable Specrew
 evidence.
+
+Timing matters as much as content (Feature 174). A workshop is long, and a
+mid-workshop exit, crash, or host switch is expected, not exceptional. Two
+checkpoint rules make the workshop resumable:
+
+- **Persist the agenda the moment the human confirms it** — the feature-level
+  `lens-applicability.json` with the `selected` list is written before lens 1
+  opens. A resuming session can only compute the remaining agenda if the agenda
+  itself is on disk.
+- **Persist each lens before advancing to the next** — the lens record and its
+  workshop file are written when the lens completes, never batched at the end.
+  A mid-workshop exit then loses at most the lens in progress; the resume
+  continues from the next un-persisted lens instead of restarting the workshop.
+
+Observed both ways in live cross-host trials: a host that persisted the agenda
+and each lens resumed precisely at the next remaining lens after an exit; a host
+that kept the agenda only in conversation re-ran the wrong lifecycle step on
+resume because nothing on disk said which lenses remained.
 
 ## Current Lens Catalog
 
@@ -238,6 +256,13 @@ devops-operations — no deployment, CI/CD, or hosting change.
 ```
 
 The agent then asks the human to confirm or adjust the agenda.
+
+The moment the human confirms, the agent persists the agenda: the feature-level
+`lens-applicability.json` is written with `workshop_intake: true`,
+`confirmation_required: true`, and the confirmed `selected` lens-id list —
+before lens 1 opens. The per-lens `workshop` records are appended later as each
+lens completes (Phase 7). This is the checkpoint that makes a mid-workshop
+resume computable (Core Principle 7).
 
 ### Phase 3 — Run one lens at a time
 
@@ -349,7 +374,12 @@ If the human modifies an option, the modification becomes plan input.
 
 ### Phase 7 — Capture and persist decisions
 
-The workshop produces durable artifacts.
+The workshop produces durable artifacts — incrementally. Each lens is persisted
+when it completes (its `workshop` record plus its `workshop/<lens-id>.md` file),
+and the rolling session handover body is refreshed at the same checkpoint, so an
+exit at any point hands the next session both the decisions so far and the
+position in the agenda. Batching persistence to the end of the workshop defeats
+the resume property and is an anti-pattern.
 
 At minimum, the per-lens record should include:
 

@@ -1,0 +1,116 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "co_design": true,
+  "selected": [
+    "architecture-core",
+    "integration-api",
+    "ui-ux",
+    "data-storage",
+    "security-compliance",
+    "observability-resilience",
+    "requirements-nfr",
+    "devops-operations"
+  ],
+  "skipped": {
+    "component-design": "Deferred to the design-analysis co-design stop, where the component map and flow must be built with the human before plan.md."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Decide the exact specrew start versus SessionStart hook division of labor.",
+        "Decide the B2 full-bootstrap versus lightweight welcome-back trigger.",
+        "Keep F-171 dispatcher behavior stable while adding a bootstrap provider."
+      ],
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) division of labor = launcher preface + hook bootstrap, hook is the only full orientation/menu source; (2) B2 classification is handover-first and two-stage - read+validate handover against current project state before anchor classification, recency necessary but not sufficient; (3) concurrency posture is advisory-only, no locks/lease, cross-machine prevention out of scope; (4) IDesign volatility-based decomposition (volatile host adapters over stable classification/validation/clearing/directive engines). Out of scope: B1/B3 unchanged, B4 + Antigravity deferred, distributed same-feature prevention deferred. See workshop/architecture-core.md.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/architecture-core.md - confirmed posture, two-stage handover-first classification, advisory concurrency, volatility decomposition"
+    },
+    "integration-api": {
+      "agenda": [
+        "Define SessionStart event input to bootstrap directive output contract.",
+        "Define SessionEnd handover-write integration with Proposal 130.",
+        "Empirically verify host-specific menu rendering across Claude, Codex, Copilot, and Cursor."
+      ],
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) contract ownership - F-171 owns event ingestion/breaker/dedupe/journal, Proposal 130 owns handover format, Feature 174 owns the data-oriented bootstrap directive (fields: mode, sources, required_reads, render_first, menu_intent, validation_findings, dedupe/session metadata) and classification rules; (1b/2) add an advisory SessionStart marker via the hook journal - no git commit, no handover rewrite on startup - to detect unclean prior exits; (3) error handling is fail-open to safe bootstrap, never hard-block, invalid state never authoritative resume; (4) verification = unit/contract + handover round-trip fixtures + B1/B3 regression + per-host empirical evidence (render-before-picker) for Claude/Codex/Copilot/Cursor. See workshop/integration-api.md.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/integration-api.md - confirmed contract ownership, data-oriented directive, SessionStart marker, fail-open error envelope, host verification baseline"
+    },
+    "ui-ux": {
+      "agenda": [
+        "Define visible orientation plus Resume/New/Pick menu sequence.",
+        "Resolve structured-picker versus prose-only fallback per host.",
+        "Preserve render-before-menu discipline from F-165."
+      ],
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) render sequence = strict render-first (orientation, validated handover summary, state line, text menu) BEFORE any picker, enforced mechanically via a disallowed-tools:AskUserQuestion skill (gate-stop-style) because hook directive text is advisory-only and collapses on Claude - makes FR-004/SC-001 enforced not hoped-for; (2) prose-first floor on every host + per-host structured-picker opt-in gated on FR-005 empirical evidence; (3) self-explaining states - always show the mode line, plus a one-line reason from validation_findings only when something non-default happened (cleared anchor, historical handover, unclean exit, mismatch). See workshop/ui-ux.md.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/ui-ux.md - confirmed render-first sequence + mechanical enforcement, prose floor + gated per-host picker, self-explaining states"
+    },
+    "data-storage": {
+      "agenda": [
+        "Classify session anchors, handover records, and index metadata.",
+        "Define validity and freshness checks before resume candidates are surfaced.",
+        "Treat absolute worktree path anchors as non-portable."
+      ],
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) exit hook is write-only - writes the Proposal 130 handover on clean exit, no git ops by default (no -A, no commit, no push); live anchor/marker/active-session signals are local-only and advisory; residual committed state is non-authoritative; interactive commit-on-exit is unsupported (FR-003) so the commit/push-to-continue-elsewhere choice is surfaced at the next bootstrap, with an off-by-default opt-in scoped-commit flag; (2) staleness is event/state-first (handover validity via commit reachability + open/closed + portability + artifact match, Proposal 130 wall-clock only a hint), single configurable time window only for the active-session marker; (3) feature resolution re-resolves the ref to the current project root (never the absolute path, FR-015), judges resumability from project-local presence + active-features registry + artifact status with git merged-status corroboration, clears the anchor on failure (FR-013). See workshop/data-storage.md.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/data-storage.md - write-only exit hook, event/state-first staleness, project-local resolution with git corroboration"
+    },
+    "security-compliance": {
+      "agenda": [
+        "Identify trust boundaries for hook event JSON, filesystem state, absolute paths, and generated directives.",
+        "Define failure-safe behavior for stale, untrusted, or defunct-worktree anchors.",
+        "Prevent hook interactivity or external state from steering unauthorized lifecycle continuation."
+      ],
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) trust boundary = the local project tree - inputs trusted to the same degree as the hooks/code that already execute; validate for correctness and fail-safety (schema, path-portability, freshness), NOT anti-injection (theater locally); adversarial/untrusted-artifact hardening for cross-machine/CI/hosted/multi-tenant contexts deferred to a separate proposal candidate; (2) lifecycle-authority boundary - external state (handover next-step, anchor) is advisory only and never auto-authorizes a gate, the directive labels it non-authorizing and re-anchors to the real human verdict (Rule 1); (3) failure-safe posture - fail-open on availability (broken/stale state never blocks starting work), fail-closed on authority (never auto-advance / silent-resume on failure or ambiguity). See workshop/security-compliance.md.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/security-compliance.md - local-tree trust boundary, advisory-not-authorizing external state, fail-open availability / fail-closed authority"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "Define journal, breaker, dedupe, and state-classification evidence for B2 bootstrap paths.",
+        "Ensure full bootstrap, light welcome-back, and cleared-anchor behavior are diagnosable.",
+        "Define failure evidence for missing or invalid handover/session-state files."
+      ],
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) emit one structured classification record per B2 run into the EXISTING F-171 hook journal (mode, sources evaluated, validation_findings, anchor_cleared+reason, unclean_exit, dedupe key) - no new log surface; (2) diagnosability via behavior + journal-assertion tests - every path (full / welcome-back / cleared-anchor / unclean-exit / invalid-or-missing input) asserts both the rendered mode and its distinguishable journal record, plus explicit failure-evidence tests, making LIR-006 distinguishability a tested property. See workshop/observability-resilience.md.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/observability-resilience.md - structured journal record reusing F-171 envelope, behavior + journal-assertion test evidence"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Set compatibility and idempotency as design-driving NFRs.",
+        "Preserve unchanged B1 and B3 behavior as regression criteria.",
+        "Keep B4 pre-compaction capture and Antigravity binding out of scope."
+      ],
+      "decision": "Human-confirmed (facilitated one decision at a time, 2026-06-08): (1) each NFR becomes a measurable SC/FR-mapped pass/fail test - backward compatibility (SC-006/FR-006: specrew start smoke + docs reframed), idempotency (SC-002/FR-007: launcher+hook = exactly one bootstrap via dedupe test), B1/B3 regression safety (SC-005/FR-011: digest unchanged vs F-171), deferred scope held (FR-012: negative test that no B4/Antigravity code path executes). Priority: compatibility + regression-safety are non-negotiable/mandated and outrank simplification; no live NFR conflict exists. See workshop/requirements-nfr.md.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/requirements-nfr.md - measurable SC-mapped NFR criteria incl. FR-012 negative test, non-negotiable compatibility priority"
+    },
+    "devops-operations": {
+      "agenda": [
+        "Define deployment-loop impact for B2 bootstrap provider and SessionEnd handover registration.",
+        "Preserve kill-switch and managed-marker behavior from F-171.",
+        "Avoid introducing a new install path."
+      ],
+      "decision": "Human-confirmed (2026-06-08): reuse F-171's existing hook deployment loop to register the B2 bootstrap provider and the SessionEnd handover writer - no new install path (LIR-008); preserve the F-171 kill switch (can disable bootstrap), managed markers (protect user edits), breaker, dedupe, and uninstall behavior; rollout/rollback ride F-171's existing controls. See workshop/devops-operations.md.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "diagram": "workshop/devops-operations.md - reuse F-171 deployment loop + kill switch + managed markers, no new install path"
+    }
+  }
+}

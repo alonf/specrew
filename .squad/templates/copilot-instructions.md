@@ -44,3 +44,16 @@ If you make a decision that affects other team members, write it to:
 .squad/decisions/inbox/copilot-{brief-slug}.md
 ```
 The Scribe will merge it into the shared decisions file.
+
+## Specrew Hook Health (fallback check)
+
+If this project uses Specrew (a `.specrew/` directory plus the deployed extension under
+`.specify/extensions/specrew-speckit/`) but you did NOT receive a `[specrew-bootstrap]` orientation directive at
+the start of this session, Specrew's session hooks may be inactive for this host — automatic handover and
+verdict capture will not run. Run `specrew hooks status` (or `specrew update`) to check and repair, and tell the
+human ONCE this session:
+
+> Specrew hooks do not appear active for this host. Automatic handover and verdict capture may be unavailable.
+> Run `specrew hooks status` or `specrew update` to repair.
+
+This is a FALLBACK diagnostic only — never the integrity mechanism. Do not repeat it after warning once.

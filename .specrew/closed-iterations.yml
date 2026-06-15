@@ -227,6 +227,30 @@ closed:
   - feature: 171-specrew-refocus
     iteration: 002
     closed_at: 2026-06-07T20:05:49Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 001
+    closed_at: 2026-06-08T18:40:27Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 002
+    closed_at: 2026-06-08T20:17:19Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 003
+    closed_at: 2026-06-08T22:56:21Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 004
+    closed_at: 2026-06-09T12:22:42Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 005
+    closed_at: 2026-06-09T16:31:00Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 006
+    closed_at: 2026-06-10T18:00:00Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 008
+    closed_at: 2026-06-11T00:00:00Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 009
+    closed_at: 2026-06-11T18:00:00Z
   - feature: 176-product-domain-lens
     iteration: 001
     closed_at: 2026-06-09T21:24:12Z
@@ -236,3 +260,15 @@ closed:
   - feature: 177-software-development-rules-lens
     iteration: 002
     closed_at: 2026-06-10T17:50:16Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 010
+    closed_at: 2026-06-13T16:49:56Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 007
+    closed_at: 2026-06-14T17:24:46Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 011
+    closed_at: 2026-06-14T17:24:46Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 012
+    closed_at: 2026-06-15T02:06:13Z
