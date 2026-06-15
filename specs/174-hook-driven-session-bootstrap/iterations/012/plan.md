@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: retro
+**Status**: complete
 **Capacity**: 16/20 story_points
 **Started**: 2026-06-14
-**Completed**:
+**Completed**: 2026-06-15
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -36,7 +36,7 @@ hook bootstrap + rolling handover read/write, Cursor pending, rich packet/verdic
 | T002 | getting-started reconcile — say `init` deploys the hooks; "after init just launch your host, no `specrew start`" (antigravity exception); add `.specrew/handover/` + `.specrew/runtime/` to the tree; fix the resume note routed through `specrew start`; fix the host-confirmation claim with the same evidence-scoped wording (DR-1/DR-3/DR-9) | FR-028, FR-006 | US-1 | 2 | Implementer | `docs/getting-started.md` | done | Implementer | | |
 | T003 | user-guide Session Continuity — bring current to iter-011: cross-host handover incl. the Claude-only rich-packet limit; verdict-integrity-on-resume ("awaiting your verdict"); per-host delivery (pointer vs inline); `specrew handover author`; fix "seven sections"→eight + the overstated three-way-rotation claim (DR-2/DR-7/DR-8) | FR-009, FR-022, FR-027 | US-3 | 3 | Implementer | `docs/user-guide.md` | done | Implementer | | |
 | T004 | troubleshooting — add the iter-011 failure modes: 10K hook-output cap drop (`WARN PAYLOAD_OVERSIZE`), `SPECREW_MODULE_PATH` dev/dogfood silent-failure; replace stale `deploy-refocus-hooks.ps1` repair pointers with `specrew hooks status/install/remove`; verdict re-confirm on resume (DR-6/DR-7) | FR-028, FR-027 | US-3 | 2 | Implementer | `docs/troubleshooting.md` | done | Implementer | | |
-| T005 | data-contracts + api-reference — document the handover FILE schema (`.specrew/handover/session-handover.md`: frontmatter + 8 `## ` sections + placeholder convention + atomic `.old` backup + gitignored) and add it to the Writer-contract list; document `specrew handover author` + `specrew hooks` commands; expand the `boundary_enforcement` verdict-integrity sub-schema (DR-4/DR-5) | FR-022, FR-026 | US-3 | 3 | Implementer | `docs/data-contracts.md`, `docs/api-reference.md` | done | Implementer | | |
+| T005 | data-contracts + api-reference — document the handover FILE schema (`.specrew/handover/session-handover.md`: frontmatter + 8 `##` sections + placeholder convention + atomic `.old` backup + gitignored) and add it to the Writer-contract list; document `specrew handover author` + `specrew hooks` commands; expand the `boundary_enforcement` verdict-integrity sub-schema (DR-4/DR-5) | FR-022, FR-026 | US-3 | 3 | Implementer | `docs/data-contracts.md`, `docs/api-reference.md` | done | Implementer | | |
 | T006 | CHANGELOG + methodology pointer — announce the handover round-trip / auto-resume + the two new commands; remove the contradicted pre-iter-11 claims; add a methodology discovery pointer to the new session-continuity model (DR-10/DR-3) | FR-009 | US-3 | 1 | Implementer | `CHANGELOG.md`, `docs/methodology/**` | done | Implementer | | |
 | T007 | Verification — markdownlint + doc token-parity (wrapper-docs-parity) green; re-run the doc-coverage assessment (or equivalent check) to confirm no HIGH gaps + no stale/false new-model claims remain, including the updated real-host evidence scope for Claude/Codex/Copilot/Cursor and the Claude-only rich-packet/verdict-capture caveat (SC-1..SC-6) | SC-001 | US-3 | 2 | Implementer | `tests/**`, `docs/**` | done | Implementer | | |
 
