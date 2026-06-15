@@ -34,6 +34,11 @@
   honestly: use project-scoped `.agents/hooks.json`, verify Antigravity schema,
   events, and output semantics before claiming parity, and keep
   `specrew start --host antigravity` as fallback.
+- Q: Are any additional clarify questions required before planning? → A: No.
+  The specify workshop already resolved the material scope, release-target,
+  multi-host concurrency, Antigravity hook-scope, fallback, and capacity-split
+  decisions. Planning may proceed with the current FR/SC set, with the explicit
+  guard that any capacity split or deferral still requires human approval.
 
 ## User Scenarios & Testing
 
