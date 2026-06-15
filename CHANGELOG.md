@@ -4,7 +4,18 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
-## [0.37.0-beta1] - Unreleased
+## [0.37.0] - 2026-06-16
+
+Stable promotion of the 0.37.0-beta1 line (Feature 174 — Hook-Driven Session Bootstrap), validated by the
+maintainer per the beta-before-stable mandate. Builds on the 0.36.0 (Work-Kind & Branch Governance) base.
+
+- **Feature 174 — Hook-Driven Session Bootstrap (Proposal 172):** automatic session orientation via host
+  hooks — no `specrew start` required. Bundles rolling cross-session handover, approval integrity on resume,
+  `specrew hooks status | install | remove`, `specrew handover author`, user-profile intake at
+  `specrew init`, Codex double-fire hardening, and per-host lean directives that stay under the 10 K hook
+  output cap.
+
+## [0.37.0-beta1] - 2026-06-15
 
 ### Added
 
