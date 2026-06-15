@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "description": "Specrew design-analysis lens applicability map. Decoupled sibling to index.yml (Feature 141 Iteration 4 / FR-025); index.yml stays pure. Maps fixed questionnaire answers to lenses; selection is deterministic and LLM/network-free. Foundational lenses are always-on; specialized lenses are gated by their question answer.",
+  "always_on": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr"
+  ],
+  "questions": [
+    { "id": "ui",          "prompt": "Does the feature have a user-facing UI?",                              "gates": ["ui-ux"] },
+    { "id": "security",    "prompt": "Does it handle auth, secrets, PII, or compliance?",                    "gates": ["security-compliance"] },
+    { "id": "data",        "prompt": "Does it read or write persistent data (database, files, durable state)?", "gates": ["data-storage"] },
+    { "id": "integration", "prompt": "Does it integrate with external services or APIs?",                    "gates": ["integration-api"] },
+    { "id": "ops",         "prompt": "Does it change deployment, CI/CD, or release?",                        "gates": ["devops-operations"] },
+    { "id": "perf",        "prompt": "Does it have performance/scale or resilience concerns?",               "gates": ["observability-resilience"] }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specrew.dev/schemas/repository-governance.schema.json",
+  "title": "Repository Governance Capture",
+  "description": "Validates the project-level .specrew/repository-governance.yml captured by the DevOps lens (branch_model + review_gate + multi_repo). Forge-neutral: the provider/enforcement_mode carry forge specificity, the schema does not bind to one forge.",
+  "type": "object",
+  "required": ["repository_governance"],
+  "additionalProperties": false,
+  "properties": {
+    "repository_governance": { "$ref": "#/$defs/repositoryGovernance" },
+    "multi_repo": { "$ref": "#/$defs/multiRepo" }
+  },
+  "$defs": {
+    "repositoryGovernance": {
+      "type": "object",
+      "required": ["provider", "branch_model", "review_gate", "enforcement_mode"],
+      "additionalProperties": false,
+      "properties": {
+        "provider": { "type": "string", "description": "github, or a synthesized adapter id" },
+        "branch_model": { "$ref": "#/$defs/branchModel" },
+        "review_gate": { "$ref": "#/$defs/reviewGate" },
+        "apply_to_admins": { "type": "boolean", "default": true },
+        "bypass_actors": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "enforcement_mode": {
+          "type": "string",
+          "enum": ["branch-protection", "rulesets", "ci-only", "manual"]
+        }
+      }
+    },
+    "branchModel": {
+      "type": "object",
+      "required": ["style", "release_truth_branch", "branches"],
+      "additionalProperties": false,
+      "properties": {
+        "style": { "type": "string", "enum": ["trunk", "integration-branch", "gitflow", "custom"] },
+        "release_truth_branch": { "type": "string", "description": "User-named (main/master/trunk/production/release/...)" },
+        "branches": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/branch" } },
+        "promotion_path": { "type": "string", "description": "Human-readable; derived from branches[].merges_from" }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "required": ["name", "role", "protected"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["release-truth", "integration", "feature", "hotfix", "release"] },
+        "protected": { "type": "boolean" },
+        "require_pull_request": { "type": "boolean" },
+        "required_checks": { "type": "array", "items": { "type": "string" } },
+        "merges_from": { "type": "array", "items": { "type": "string" } },
+        "allow_force_pushes": { "type": "boolean", "default": false },
+        "allow_deletions": { "type": "boolean", "default": false }
+      }
+    },
+    "reviewGate": {
+      "type": "object",
+      "required": ["human_review", "automated_review", "merge_requires"],
+      "additionalProperties": false,
+      "properties": {
+        "human_review": {
+          "type": "object",
+          "required": ["required_approvals", "require_comment_resolution"],
+          "additionalProperties": false,
+          "properties": {
+            "required_approvals": { "type": "integer", "minimum": 0 },
+            "require_comment_resolution": { "type": "boolean" }
+          }
+        },
+        "automated_review": {
+          "type": "object",
+          "required": ["enabled"],
+          "additionalProperties": false,
+          "properties": {
+            "enabled": { "type": "boolean", "default": false },
+            "provider_suggestion": { "type": "string", "description": "e.g. copilot (GitHub only); opt-in" }
+          }
+        },
+        "merge_requires": { "type": "array", "items": { "type": "string", "enum": ["human_review", "automated_review", "status_checks"] } }
+      }
+    },
+    "multiRepo": {
+      "type": "object",
+      "required": ["mode"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": { "type": "string", "enum": ["single-repo", "multi-repo"] },
+        "orchestration_repo": { "type": ["string", "null"] },
+        "participant_repos": { "type": "array", "items": { "type": "string" } },
+        "merge_coordination": { "type": "string", "enum": ["independent", "release-train", "manual"] },
+        "release_coordination": { "type": "string", "enum": ["independent", "release-train", "manual"] }
+      }
+    }
+  }
+}

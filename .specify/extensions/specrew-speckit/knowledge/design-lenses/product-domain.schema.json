@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://specrew.dev/schemas/product-domain.schema.json",
+  "title": "product-domain record",
+  "description": "Structured per-feature product-domain record (specs/<feature>/workshop/product-domain.yml). Forward-compatible with Proposal 156 workshop-decisions consumption and Proposal 162 product-level inheritance. V1 (Proposal 176) writes context_scope=feature_standalone and never builds inheritance behavior.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "depth",
+    "depth_reason",
+    "context_scope",
+    "areas",
+    "statements",
+    "confirmation",
+    "confirmation_scope"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "Additive evolution marker; a mismatch is a fail-open WARN, never a hard block."
+    },
+    "depth": { "enum": ["light", "standard", "deep"] },
+    "depth_reason": { "type": "string", "minLength": 1 },
+    "context_scope": {
+      "enum": ["feature_standalone", "product_baseline", "feature_delta"],
+      "description": "V1 writes feature_standalone; product_baseline/feature_delta are reserved for Proposal 162."
+    },
+    "product_id": {
+      "type": ["string", "null"],
+      "description": "Optional stable id; the forward-compat hook for Proposal 162 inheritance. No behavior in V1."
+    },
+    "product_context_ref": {
+      "type": ["string", "null"],
+      "description": "Optional reference to a product-level baseline record; the forward-compat hook for Proposal 162."
+    },
+    "areas": {
+      "type": "object",
+      "description": "Per-decision-area answers captured at the selected depth.",
+      "additionalProperties": { "type": ["string", "object", "array", "null"] }
+    },
+    "statements": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["text", "area", "evidence"],
+        "properties": {
+          "text": { "type": "string", "minLength": 1 },
+          "area": { "type": "string", "minLength": 1 },
+          "evidence": { "enum": ["known", "assumed", "unknown", "research-needed"] },
+          "load_bearing": {
+            "type": "boolean",
+            "description": "Required when evidence=research-needed; true blocks the plan boundary (FR-011)."
+          },
+          "divergence_reason": {
+            "type": "string",
+            "description": "Required when the statement contradicts inherited product context (post-162)."
+          }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "evidence": { "const": "research-needed" } } },
+            "then": { "required": ["load_bearing"] }
+          }
+        ]
+      }
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["area", "reason"],
+        "properties": {
+          "area": { "type": "string", "minLength": 1 },
+          "reason": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "follow_up_research": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "confirmation": { "enum": ["human-confirmed", "human-delegated", "human-skipped"] },
+    "confirmation_scope": { "enum": ["lens-question", "explicit-delegation", "explicit-skip"] }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "confirmation": { "const": "human-confirmed" } } },
+      "then": { "properties": { "confirmation_scope": { "const": "lens-question" } } }
+    },
+    {
+      "if": { "properties": { "confirmation": { "const": "human-delegated" } } },
+      "then": { "properties": { "confirmation_scope": { "const": "explicit-delegation" } } }
+    },
+    {
+      "if": { "properties": { "confirmation": { "const": "human-skipped" } } },
+      "then": { "properties": { "confirmation_scope": { "const": "explicit-skip" } } }
+    }
+  ]
+}
