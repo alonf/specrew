@@ -82,7 +82,7 @@ Behavior:
 Location: `scripts/specrew-hooks.ps1`
 
 ```text
-specrew hooks status  [--host <claude|codex|copilot|cursor>]
+specrew hooks status  [--host <claude|codex|copilot|cursor|antigravity>]
 specrew hooks install [--host <h>] [--force]
 specrew hooks remove  [--host <h>]
 ```
@@ -94,7 +94,7 @@ Specrew hooks.
 Flags:
 
 - `--host <kind>` scopes the action to one hook-capable host; otherwise all
-  hook-capable hosts (claude, codex, copilot, cursor) are acted on
+  hook-capable hosts (claude, codex, copilot, cursor, antigravity) are acted on
 - `--force` forces a re-install that clears a recorded opt-out
 - `--project-path <path>` selects the target project (defaults to the cwd)
 

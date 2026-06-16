@@ -384,9 +384,9 @@ Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.cursor\hooks.jso
 Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.agents\hooks.json')) 'proactive: antigravity PROJECT config written'
 Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.specrew\specrew-hook-launch.ps1')) 'proactive: per-machine launcher provisioned even with NO host binary present'
 
-# --- 17b. (review-signoff P6-001) DETERMINISTIC PATH-independence guard. Case 17 above provisions all 4 hosts,
+# --- 17b. (review-signoff P6-001) DETERMINISTIC PATH-independence guard. Case 17 above provisions all 5 hosts,
 # but on a PATH-COMPLETE machine (the common dev/CI case) the OLD PATH-gated code (Get-Command codex|copilot|
-# cursor) would ALSO resolve all 4 — so case 17 alone has NO falsification power for the "regardless of PATH
+# cursor) would ALSO resolve all 5 — so case 17 alone has NO falsification power for the "regardless of PATH
 # detection" property it advertises (it passes identically under the reverted feature). Pin it at the SOURCE,
 # machine-independently: the orchestrator MUST enumerate hosts from the REGISTRY and MUST NOT gate host selection
 # on a per-host-binary Get-Command. The only legitimate Get-Command in Invoke-RefocusHookDeployment is the

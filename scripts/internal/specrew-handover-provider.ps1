@@ -1,14 +1,14 @@
 # Specrew ROLLING-handover provider (Feature 174). Thin TRIGGER ADAPTER (iter-9.1): it resolves the project
 # root, host, and trigger source, then funnels into the ONE core save path `Update-SpecrewRollingHandover`
 # (HandoverStore). It re-implements no save logic. Registered for the per-host END-OF-TURN events (Claude
-# `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`) AND `PostToolUse` (so the handover refreshes
+# `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`, Antigravity `Stop`) AND `PostToolUse` (so the handover refreshes
 # mid-turn during picker-driven phases like the workshop, where no end-of-turn Stop fires). It is ALSO
 # invoked directly by the design-workshop skill with `--source workshop`. Portable across hosts + crash-safe
 # (the core's material-change gate keeps the per-tool-call PostToolUse cost cheap; the atomic writer keeps
 # the file safe). Fail-open: any error -> exit 0.
 #
 #   --event-json <json>     the host event payload (Stop/agentStop/PostToolUse); source derived from it
-#   --host-kind <kind>      the authoritative resolved host (claude|codex|copilot|cursor)
+#   --host-kind <kind>      the authoritative resolved host (claude|codex|copilot|cursor|antigravity)
 #   --source <label>        explicit trigger label (used by the workshop skill: `--source workshop`)
 #   --project-root <path>   optional override (testability); else resolve up to .specrew
 

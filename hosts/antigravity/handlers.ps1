@@ -77,8 +77,8 @@ function ConvertTo-AntigravityFlag {
     <#
     .SYNOPSIS
     Translate a Specrew-side flag to Antigravity CLI flag(s).
-    Translations are UNVERIFIED for Antigravity (no verified remote/allow-all/autopilot equivalents);
-    each arm warns rather than silently dropping.
+    Translations are verified for the interactive launch surface where the agy CLI exposes an equivalent.
+    Remote-control and autopilot still warn because Antigravity has no verified native equivalent for those.
     .OUTPUTS
     pscustomobject @{ Args[]; Notice; SuppressWarning }
     #>

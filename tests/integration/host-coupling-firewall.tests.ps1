@@ -32,7 +32,7 @@ $allowListExact = @(
     'tests/integration/host-registry.tests.ps1',        # test asserts the expected enum
     'tests/integration/multi-host-launch-path.tests.ps1', # F-040 integration test goldens
     'tests/integration/host-coupling-firewall.tests.ps1', # this file (defines the regex literals)
-    'tests/integration/crew-bootstrap-contract.tests.ps1', # E2E test legitimately iterates all 4 hosts
+    'tests/integration/crew-bootstrap-contract.tests.ps1', # E2E test legitimately iterates all supported hosts
     # Phase D follow-up — these 3 ValidateSets are the LAST remaining intentional hardcodes;
     # they become registry-driven when Phase D's [ValidateScript({...})] refactor lands.
     'scripts/specrew-start.ps1',

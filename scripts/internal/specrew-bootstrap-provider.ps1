@@ -204,8 +204,9 @@ function Format-BootstrapDirective {
     # authorized. When a boundary was mechanically crossed (sync) but NOT human-authorized (no captured verdict),
     # the resume MUST surface "awaiting your verdict" and the agent MUST NOT treat the committed boundary as
     # approved, MUST NOT advance on it, and MUST NOT record an authorization itself. This is the SECOND-CHANCE
-    # re-confirm surface: on a hook host the human's re-confirmation is captured by the next hook fire; on a
-    # hookless host (antigravity) the agent relays it. Surfaced HIGH (right after the resume context) because it
+    # re-confirm surface: on a verdict-capture hook host the human's re-confirmation is captured by the next
+    # hook fire; on hosts without that capture path (including Antigravity's bounded hook slice) the agent
+    # relays it. Surfaced HIGH (right after the resume context) because it
     # is integrity-critical - a committed boundary read as approved is exactly the DF-4/DF-5 failure.
     if ($null -ne $PendingVerdict -and [bool]$PendingVerdict.HasPendingVerdict) {
         $lines.Add('')
