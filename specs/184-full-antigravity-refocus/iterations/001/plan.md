@@ -88,6 +88,30 @@
 - Capacity check: 26/26 story_points, using a temporary F-184 override from the baseline 20 SP cap authorized by the user's 2026-06-17 completeness instruction.
 - Overcommit guardrail: no deferral selected because the override binds this iteration only. If T001 fails any split-guard trigger, stop for a human split/defer verdict despite the broad implementation authorization.
 
+## After-Tasks Traceability Check
+
+**Verdict**: PASS. The task table is also rendered for the Speckit task surface
+at file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/tasks.md.
+
+| Check | Result |
+| --- | --- |
+| Every task maps to at least one FR, SC, or TG | PASS |
+| Every FR-001 through FR-010 has at least one task | PASS |
+| Every SC-001 through SC-010 has at least one task | PASS |
+| Every TG-001 through TG-006 has at least one task | PASS |
+| Tasks include owner, effort, story, and verification metadata | PASS |
+| Invalid or stale requirement references | None |
+| Orphan tasks | None |
+| Uncovered requirements | None |
+
+Traceability matrix: FR-001 -> T002; FR-002 -> T002; FR-003 -> T001/T003;
+FR-004 -> T004; FR-005 -> T002/T005; FR-006 -> T003/T004; FR-007 -> T005;
+FR-008 -> T006; FR-009 -> T006/T008; FR-010 -> T001/T003; SC-001 -> T002/T007;
+SC-002 -> T002/T008; SC-003 -> T003/T008; SC-004 -> T004/T007; SC-005 -> T005/T008;
+SC-006 -> T005/T007; SC-007 -> T003/T007; SC-008 -> T006/T007;
+SC-009 -> T001/T003/T008; SC-010 -> T006/T007/T008; TG-001/TG-002/TG-003 -> T007;
+TG-004/TG-005 -> T001/T008; TG-006 -> T006/T008.
+
 ## Notes
 
 - Design-analysis decision: Option B, complete bounded Antigravity refocus in one temporarily expanded 26 SP iteration.
