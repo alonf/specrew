@@ -26946,3 +26946,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 2a510cfb
 - **Recorded At**: 2026-06-16T23:10:34Z
+
+## 2026-06-16T23:28:27Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 130f68e6
+- **Recorded At**: 2026-06-16T23:28:26Z
