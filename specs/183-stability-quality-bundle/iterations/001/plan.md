@@ -23,13 +23,13 @@
 
 | Requirement | Summary | Stories |
 | ----------- | ------- | ------- |
-| FR-001 | When the SessionStart composite would exceed the host hook-output | — |
-| FR-002 | When the bootstrap/refocus provider fails, the hook MUST emit a | — |
-| FR-003 | SessionStart journal/status/dedupe/breaker state MUST NOT collapse | — |
-| FR-004 | The delivery-cap test MUST measure a synthetic shipped | — |
-| FR-005 | Closeout sync MUST handle `.specify` dirty surfaces coherently, | — |
-| FR-006 | The two in-scope #1761 local tests MUST stop failing because of | — |
-| FR-007 | Specrew MUST add Antigravity to the hook-capable host path using | — |
+| FR-001 | When the SessionStart composite would exceed the host hook-output | US1 |
+| FR-002 | When the bootstrap/refocus provider fails, the hook MUST emit a | US1 |
+| FR-003 | SessionStart journal/status/dedupe/breaker state MUST NOT collapse | US2 |
+| FR-004 | The delivery-cap test MUST measure a synthetic shipped | US1 |
+| FR-005 | Closeout sync MUST handle `.specify` dirty surfaces coherently, | US3 |
+| FR-006 | The two in-scope #1761 local tests MUST stop failing because of | US3 |
+| FR-007 | Specrew MUST add Antigravity to the hook-capable host path using | US4 |
 
 ## Tasks
 
@@ -58,12 +58,12 @@
 ## Concurrency Rationale
 
 - Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
-- Technology and scope signals: Backend/service-oriented signals dominate the scoped requirements.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
-- Workstream separability: Current scope does not yet prove enough safe parallelism for same-specialty expansion; default to a smaller serial team until tasks are clearer.
-- Shared-surface conflict risk: no elevated shared-surface warning inferred yet.
+- Technology and scope signals: The resolved quality profile is `powershell-json-yaml-pester`; scoped work is PowerShell governance/runtime code, host metadata, JSON/YAML config, markdown docs, and Pester tests.
+- Task dependency graph: T001 and T003 both touch hook runtime/bootstrap surfaces and `tests/bootstrap/**`; keep them serial unless tasks.md narrows owner globs enough to prove parallel safety.
+- Workstream separability: Closeout/test-hygiene and Antigravity workstreams are conceptually separable, but the 20/20 SP cap and shared Specrew governance surfaces favor a smaller serial team for this iteration.
+- Shared-surface conflict risk: elevated around `extensions/specrew-speckit/scripts/**`, `tests/bootstrap/**`, and mirror parity when runtime slices overlap.
 - Prior reviewer ownership/hotspot evidence: No prior reviewer hotspot signals were found for this feature.
-- Recommendation: do not propose Junior/Senior same-specialty expansion until the task table and ownership boundaries make safe parallelism explicit. If a same-specialty pair is approved later, record `Owner File Globs` for the parallel tasks or keep the work serial.
+- Recommendation: keep the iteration serial by default. If a same-specialty pair is approved later, first narrow `Owner File Globs` for the parallel tasks and record the parallelism proof; otherwise keep overlapping slices serial.
 
 ## Phase Baseline
 
@@ -89,3 +89,5 @@
 - Design-analysis verdict: `approved for plan with Option B`.
 - Feature plan: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/plan.md
 - Wave B review artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/data-model.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/quickstart.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/contracts/stability-quality-bundle.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/review-diagrams.md
+- Tasks authoring must decompose T007 into four named rows for SC-007, SC-008, TG-003, and TG-005. The SC-008 real-host validation row must include an explicit pass/fail criterion and be sequenced as review-stage evidence after the relevant implementation slices merge.
+- Tasks authoring must preserve the T001/T003 shared-glob constraint: execute serially, or narrow owner globs before claiming safe parallelism.
