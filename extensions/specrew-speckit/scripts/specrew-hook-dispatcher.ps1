@@ -42,10 +42,119 @@ $ErrorActionPreference = 'Stop'
 try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }  # best-effort: a host that rejects UTF-8 console encoding must still run (fail-open)
 
 $script:Banner = '[specrew-refocus]'
+$script:HostHookOutputCapChars = 10000
 
 function Write-DispatcherWarn {
     param([string]$Code, [string]$Message)
     [Console]::Error.WriteLine(("{0} WARN {1} {2}" -f $script:Banner, $Code, $Message))
+}
+
+function Get-DispatcherFragmentPriority {
+    param([string]$ProviderId)
+    switch ($ProviderId) {
+        'bootstrap' { return 100 }
+        'fallback' { return 90 }
+        'refocus' { return 10 }
+        default { return 50 }
+    }
+}
+
+function New-DispatcherFragment {
+    param(
+        [string]$ProviderId,
+        [string]$Text,
+        [int]$Order = 0
+    )
+    return [pscustomobject]@{
+        ProviderId = $ProviderId
+        Priority   = Get-DispatcherFragmentPriority -ProviderId $ProviderId
+        Order      = $Order
+        Text       = $Text
+    }
+}
+
+function Limit-DispatcherFragmentText {
+    param(
+        [AllowNull()][string]$Text,
+        [int]$MaxChars,
+        [string]$ProviderId
+    )
+    if ([string]::IsNullOrWhiteSpace($Text) -or $MaxChars -le 0) { return '' }
+    $note = "`n`n[specrew-refocus] lower-priority $ProviderId fragment truncated to fit the SessionStart hook-output cap; bootstrap remains intact. Run `/specrew-refocus` for full refocus context."
+    if ($MaxChars -le ($note.Length + 80)) { return '' }
+    $bodyCap = $MaxChars - $note.Length
+    if ($Text.Length -le $bodyCap) { return $Text }
+    $cut = $Text.Substring(0, $bodyCap)
+    $nl = $cut.LastIndexOf("`n")
+    if ($nl -gt [int]($bodyCap / 2)) { $cut = $cut.Substring(0, $nl) }
+    return ($cut.TrimEnd() + $note)
+}
+
+function Join-DispatcherFragments {
+    param(
+        [object[]]$Fragments,
+        [string]$EventName,
+        [int]$CapChars = $script:HostHookOutputCapChars
+    )
+    $available = @($Fragments | Where-Object { $null -ne $_ -and -not [string]::IsNullOrWhiteSpace([string]$_.Text) })
+    if ($available.Count -eq 0) { return '' }
+    if ($EventName -ne 'SessionStart') {
+        return ((@($available | ForEach-Object { [string]$_.Text })) -join "`n`n")
+    }
+
+    # SessionStart is the only hook event where the startup banner is load-bearing.
+    # Compose by policy priority, not catalog order: bootstrap must survive before
+    # lower-priority refocus content when the host cap would drop the whole payload.
+    # PowerShell emission appends a line ending; reserve two chars so the bytes
+    # handed to the host remain below the documented 10k cap after Write-Output.
+    $effectiveCap = [Math]::Max(1, ($CapChars - 2))
+    $ordered = @($available | Sort-Object @{ Expression = { [int]$_.Priority }; Descending = $true }, @{ Expression = { [int]$_.Order }; Descending = $false })
+    $kept = New-Object System.Collections.Generic.List[string]
+    foreach ($fragment in $ordered) {
+        $text = [string]$fragment.Text
+        $current = (($kept.ToArray()) -join "`n`n")
+        $sep = if ($kept.Count -gt 0) { "`n`n" } else { '' }
+        $candidate = $current + $sep + $text
+        if ($candidate.Length -le $effectiveCap) {
+            $kept.Add($text) | Out-Null
+            continue
+        }
+
+        if ([int]$fragment.Priority -ge 90) {
+            # Bootstrap/fallback are the governed minimum. Keep them whole and
+            # make any unresolved oversize visible rather than silently truncating
+            # the lifecycle banner.
+            $kept.Add($text) | Out-Null
+            Write-DispatcherWarn -Code 'PAYLOAD_OVERSIZE' -Message ("priority provider '{0}' is {1} chars; kept intact even though SessionStart may exceed the {2} host hook-output cap" -f $fragment.ProviderId, $text.Length, $CapChars)
+            continue
+        }
+
+        $remaining = $effectiveCap - $current.Length - $sep.Length
+        $limited = Limit-DispatcherFragmentText -Text $text -MaxChars $remaining -ProviderId ([string]$fragment.ProviderId)
+        if (-not [string]::IsNullOrWhiteSpace($limited)) {
+            $kept.Add($limited) | Out-Null
+            Write-DispatcherWarn -Code 'PAYLOAD_CLIPPED' -Message ("lower-priority provider '{0}' truncated so SessionStart output stays under {1} chars" -f $fragment.ProviderId, $CapChars)
+        }
+        else {
+            Write-DispatcherWarn -Code 'PAYLOAD_CLIPPED' -Message ("lower-priority provider '{0}' dropped so SessionStart bootstrap stays under {1} chars" -f $fragment.ProviderId, $CapChars)
+        }
+    }
+    return (($kept.ToArray()) -join "`n`n")
+}
+
+function New-GovernedProviderFailureFallback {
+    param(
+        [string]$HostKind,
+        [string[]]$FailedProviders
+    )
+    $failed = if (@($FailedProviders).Count -gt 0) { (@($FailedProviders | Sort-Object -Unique) -join ', ') } else { 'provider' }
+    return (@(
+        '[specrew-bootstrap] degraded governed fallback',
+        ("Specrew governance is still active, but the normal SessionStart provider path failed ({0})." -f $failed),
+        'Continue under the current lifecycle artifacts; do not treat this hook failure as boundary authorization.',
+        'Recovery: run `specrew where` to inspect lifecycle state, or `/specrew-refocus` to reload Specrew guidance.',
+        ("If hook delivery keeps failing, run `specrew hooks status` and `specrew start --host {0}` from the project root." -f $HostKind)
+    ) -join "`n")
 }
 
 function Get-DispatcherProjectRoot {
@@ -535,14 +644,19 @@ try {
     # unordered; Specrew owns ordering internally — the lens-2 dispatcher decision).
     $providers = @($catalog.providers | Where-Object { @($_.events) -contains $Event } | Sort-Object { [int]$_.order })
 
-    $fragments = New-Object System.Collections.Generic.List[string]
+    $fragments = New-Object System.Collections.Generic.List[object]
+    $failedSessionStartProviders = New-Object System.Collections.Generic.List[string]
     foreach ($provider in $providers) {
         $kind = if ($provider.PSObject.Properties['kind']) { [string]$provider.kind } else { 'inject' }
         $providerId = [string]$provider.id
+        $providerOrder = if ($provider.PSObject.Properties['order']) { [int]$provider.order } else { 1000 }
 
         $commandPath = Resolve-ProviderCommandPath -ProjectRoot $projectRoot -Command ([string]$provider.command)
         if ($null -eq $commandPath) {
             Write-DispatcherWarn -Code 'SOURCE_CONFINED' -Message ("provider '{0}' command does not resolve under the deployed tree; skipped" -f $providerId)
+            if ($Event -eq 'SessionStart' -and $providerId -in @('bootstrap', 'refocus')) {
+                $failedSessionStartProviders.Add($providerId) | Out-Null
+            }
             continue
         }
 
@@ -648,6 +762,9 @@ try {
             elseif ($result.LaunchFailed) { "failed to launch: $($result.StdErr)" }
             else { "exited $($result.ExitCode)" }
             Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' {1}; skipped" -f $providerId, $why)
+            if ($Event -eq 'SessionStart' -and $providerId -in @('bootstrap', 'refocus')) {
+                $failedSessionStartProviders.Add($providerId) | Out-Null
+            }
             if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
                 $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope 'unknown' -Channel 'hook' -Tokens 0 -Outcome 'failed'
                 $stateDirty = $true
@@ -655,13 +772,16 @@ try {
             continue
         }
         if (-not [string]::IsNullOrWhiteSpace($result.StdOut)) {
-            $fragments.Add($result.StdOut.Trim()) | Out-Null
+            $fragments.Add((New-DispatcherFragment -ProviderId $providerId -Text $result.StdOut.Trim() -Order $providerOrder)) | Out-Null
             if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
                 $facts = Get-BannerFacts -Payload $result.StdOut
                 $outcome = if ($result.StdErr -match 'WARN BUDGET_EXCEEDED') { 'budget-clipped' } else { 'injected' }
                 $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope $facts.Scope -Channel 'hook' -Tokens $facts.Tokens -Outcome $outcome
                 $stateDirty = $true
             }
+        }
+        if ($Event -eq 'SessionStart' -and $providerId -in @('bootstrap', 'refocus') -and $result.StdErr -match '\bPROVIDER_FAILED\b') {
+            $failedSessionStartProviders.Add($providerId) | Out-Null
         }
         if (-not [string]::IsNullOrWhiteSpace($result.StdErr)) {
             # Provider WARNs pass through once (visible, attributable).
@@ -673,12 +793,22 @@ try {
         Save-SessionState -Path $sessionStatePath -State $sessionState
     }
 
+    if ($Event -eq 'SessionStart' -and $failedSessionStartProviders.Count -gt 0) {
+        $hasBootstrap = @($fragments | Where-Object { [string]$_.ProviderId -eq 'bootstrap' }).Count -gt 0
+        if (-not $hasBootstrap) {
+            $fragments.Add((New-DispatcherFragment -ProviderId 'fallback' -Text (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders $failedSessionStartProviders.ToArray()) -Order 0)) | Out-Null
+        }
+    }
+
     if ($fragments.Count -gt 0) {
-        Write-InjectionOutput -EventName $Event -Payload (($fragments -join "`n`n")) -TargetHost $HostKind
+        Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -TargetHost $HostKind
     }
     exit 0
 }
 catch {
     Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("dispatcher fail-open: {0}" -f $_.Exception.Message)
+    if ($Event -eq 'SessionStart') {
+        Write-InjectionOutput -EventName $Event -Payload (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders @('dispatcher')) -TargetHost $HostKind
+    }
     exit 0
 }

@@ -35,7 +35,7 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | SessionStart cap policy and provider fallback | FR-001, FR-002, SC-001, SC-002 | US1 | 4 | Implementer | extensions/specrew-speckit/scripts/**; tests/bootstrap/** | planned | codex | — | pending |
+| T001 | SessionStart cap policy and provider fallback | FR-001, FR-002, SC-001, SC-002 | US1 | 4 | Implementer | extensions/specrew-speckit/scripts/**; tests/bootstrap/** | done | codex | 4 | pass |
 | T002 | Delivery-cap hermetic fixture | FR-004, SC-004 | US1 | 2 | Implementer, Reviewer | tests/bootstrap/DirectiveDeliveryCap.Tests.ps1 | planned | codex | — | pending |
 | T003 | Session ID resolver and journal state | FR-003, SC-003 | US2 | 3 | Implementer | extensions/specrew-speckit/scripts/**; tests/bootstrap/** | planned | codex | — | pending |
 | T004 | Closeout classification, upstream wording, dashboard refresh | FR-005, SC-005 | US3 | 4 | Implementer | scripts/internal/sync-boundary-state.ps1; tests/integration/** | planned | codex | — | pending |
@@ -95,3 +95,4 @@
 - Tasks authoring decomposed the former combined T007 evidence slice into T007-T010 for mirror parity, dynamic beta readiness, real-host validation, and closeout issue linkage.
 - T001/T003 preserve the shared-glob constraint: execute serially, or narrow owner globs before claiming safe parallelism.
 - Before-implement hardening gate is ready at `quality/hardening-gate.md`; runtime evidence remains pending until implementation and review.
+- T001 implemented dispatcher SessionStart fragment priority/cap handling and governed provider-failure fallback. Validation passed for file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DispatcherSessionStartPolicy.Tests.ps1, dispatcher launch guards, host delivery/bootstrap provider checks, and file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/ProviderMirrorParity.Tests.ps1; file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DirectiveDeliveryCap.Tests.ps1 remains the planned T002 fixture rewrite.

@@ -23,7 +23,7 @@ or missing host session IDs would otherwise hide or corrupt lifecycle state.
 bootstrap, provider failures emit a governed fallback, and missing/blank/
 malformed session IDs use per-launch tokens instead of global `unknown`.
 
-- [ ] T001 [US1] [Owner: Implementer] [Capacity: 4 SP] Implement SessionStart cap policy and provider fallback in `extensions/specrew-speckit/scripts/**` with tests in `tests/bootstrap/**`; preserve bootstrap ahead of refocus, emit under-cap governed fallback on provider failure, exit 0, and include recovery guidance for `specrew where` or `/specrew-refocus` (Trace: FR-001, FR-002, SC-001, SC-002, LIR-007, LIR-008).
+- [x] T001 [US1] [Owner: Implementer] [Capacity: 4 SP] Implement SessionStart cap policy and provider fallback in `extensions/specrew-speckit/scripts/**` with tests in `tests/bootstrap/**`; preserve bootstrap ahead of refocus, emit under-cap governed fallback on provider failure, exit 0, and include recovery guidance for `specrew where` or `/specrew-refocus` (Trace: FR-001, FR-002, SC-001, SC-002, LIR-007, LIR-008).
 - [ ] T002 [US1] [Owner: Implementer, Reviewer] [Capacity: 2 SP] Rewrite `tests/bootstrap/DirectiveDeliveryCap.Tests.ps1` to measure a synthetic shipped SessionStart composite rather than ambient developer-machine refocus state (Trace: FR-004, SC-004).
 - [ ] T003 [US2] [Owner: Implementer] [Capacity: 3 SP] Implement the Session ID resolver and journal/status/dedupe/breaker state changes in `extensions/specrew-speckit/scripts/**` and `tests/bootstrap/**`; sanitize host session IDs and generate filesystem-safe per-launch fallback tokens when IDs are missing, blank, or malformed (Trace: FR-003, SC-003, LIR-003, LIR-004, LIR-007).
 
