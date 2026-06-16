@@ -1,0 +1,78 @@
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "powershell-json-yaml-pester"
+selections:
+  - id: "code-rule.intent-revealing-names"
+    checked: true
+  - id: "code-rule.short-functions"
+    checked: true
+  - id: "code-rule.avoid-deep-nesting"
+    checked: true
+  - id: "code-rule.dependency-injection"
+    checked: true
+    decision: "Use existing PowerShell helper seams and parameterized functions for host variation; do not introduce a DI framework."
+    enforcement: [review, tests]
+  - id: "code-rule.comments-wisely"
+    checked: true
+  - id: "code-rule.simple-trustworthy-tests"
+    checked: true
+  - id: "code-rule.docs-as-api-test"
+    checked: true
+  - id: "code-rule.language-native-constructs"
+    checked: true
+  - id: "code-rule.secure-coding-defaults"
+    checked: true
+    decision: "Do not log full prompts/transcripts or require weakened Antigravity permissions; preserve fail-open behavior with bounded warnings."
+    enforcement: [review, tests]
+  - id: "code-rule.solid-baseline"
+    checked: true
+  - id: "code-rule.strategy-state-over-repeated-conditionals"
+    checked: true
+    decision: "Reuse the host manifest/adapter strategy surface; add only a focused helper for Antigravity self-marker classification if needed."
+    enforcement: [review, tests]
+  - id: "code-rule.polymorphism-mechanism"
+    checked: true
+    decision: "Prefer PowerShell functions and data-driven manifest entries over class hierarchies for this host adapter work."
+    enforcement: [review]
+  - id: "code-rule.complex-code-stable"
+    checked: true
+    decision: "Keep stable refocus decision logic in existing dispatcher/state/classification components and isolate Antigravity event-shape volatility at the adapter boundary."
+    enforcement: [review, tests]
+  - id: "code-rule.anti-corruption-layers"
+    checked: true
+    decision: "Normalize Antigravity hook input/output into Specrew's existing dispatcher contract before refocus logic consumes it."
+    enforcement: [review, tests]
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "Hook/runtime failures fail open with bounded actionable warnings and no false full-parity claim."
+    enforcement: [tests, review]
+  - id: "code-rule.logging-traceability"
+    checked: true
+    decision: "Record event, sanitized conversationId, outcome, warning code, and evidence path; avoid full prompt/transcript logging."
+    enforcement: [review, tests]
+  - id: "code-rule.robustness-state-boundaries"
+    checked: true
+    decision: "SessionStateAccessor owns refocus state, dedupe, breaker, and anchor persistence; Antigravity code normalizes host identity and delegates state read/write."
+    enforcement: [tests, review]
+  - id: "code-rule.testing-posture"
+    checked: true
+    decision: "Use automated Pester coverage for adapter/state/config behavior plus manual real-host agy evidence for hook firing, B3 injection, Stop handover, and exit/re-entry."
+    enforcement: [tests, review]
+  - id: "code-rule.extension-points"
+    checked: true
+    decision: "Use the existing host manifest/adapter extension point; stop for split/defer if B3 requires a broad host-model rewrite."
+    enforcement: [review]
+  - id: "code-rule.public-api-reusable-design"
+    checked: true
+    decision: "Host matrix/docs/status wording must reflect implemented and verified Antigravity behavior, not planned behavior."
+    enforcement: [review]
+  - id: "code-rule.shared-code-packaging"
+    checked: true
+    decision: "Preserve source-to-deployed .specify parity and FileList readiness for any extension/runtime files added or changed."
+    enforcement: [tests, review]
+custom_rules: []
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"

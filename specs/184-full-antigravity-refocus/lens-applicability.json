@@ -1,0 +1,177 @@
+{
+  "schema": "v2",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "note": "Technical lens agenda confirmed by the human on 2026-06-17. This agenda confirmation is not lens-question confirmation; per-lens workshop records are added only after each lens is surfaced and answered, delegated, or skipped.",
+  "answers": {
+    "ui": true,
+    "security": false,
+    "data": true,
+    "integration": true,
+    "ops": true,
+    "perf": true
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "data-storage",
+    "integration-api",
+    "observability-resilience",
+    "devops-operations",
+    "requirements-nfr",
+    "ui-ux",
+    "code-implementation"
+  ],
+  "depths": {
+    "architecture-core": "full",
+    "component-design": "full",
+    "data-storage": "standard",
+    "integration-api": "full",
+    "observability-resilience": "standard",
+    "devops-operations": "standard",
+    "requirements-nfr": "standard",
+    "ui-ux": "light",
+    "code-implementation": "standard"
+  },
+  "skipped": {
+    "security-compliance": "No new credentials, auth model, PII handling, or permission surface beyond preserving existing host-hook and permission guidance; shell/hook safety is covered by integration and devops unless the human reopens a dedicated pass."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Which design method / decomposition style governs the structure?",
+        "What are the major building blocks and their responsibilities?",
+        "Which areas are volatile and should be isolated behind data, interfaces, or extension points?",
+        "Which constraints are binding, and which are preferences?",
+        "What is deliberately out of scope for this iteration?",
+        "Which option best balances simplicity, reversibility, and future cost?"
+      ],
+      "decision": "Reuse the current Specrew refocus architecture and design. Isolate Antigravity-specific behavior in bounded host adapter/state changes while reusing the existing dispatcher, SessionStateAccessor, ClassificationEngine, Test-B3ShouldInject, dedupe, breaker, bootstrap, and handover machinery. Proof sequence: first prove PreInvocation sees a fresh enough boundary cursor before a turn; then wire Antigravity to existing per-session refocus state/anchor; then prove B3 fires once on a real boundary crossing and not on ordinary turns. Split guard: stop for a human split/defer decision if this requires a broad host-model refactor beyond bounded adapter/state extension.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/architecture-core.md -- Antigravity PreInvocation/Stop through existing dispatcher, state, classification, B3, and refocus provider path"
+    },
+    "component-design": {
+      "agenda": [
+        "What responsibilities belong together, and what should stay separate?",
+        "Which dependencies point inward vs outward?",
+        "Is the right abstraction a function, helper, module, service, plugin, engine, accessor, data file, generated artifact, or SDK?",
+        "Where should schemas be decoupled from internal models?",
+        "What extension mechanism fits: inheritance, composition, configuration, events, aspect, plugin, or generated code?"
+      ],
+      "decision": "Reuse the existing Specrew refocus component design. Current components remain responsible for dispatching, event mapping, session state, classification, B3 decision, refocus payload composition, hook deployment, host config access, bootstrap, and handover. If needed, add only a small ConcurrencyMarkerClassifier helper to distinguish Antigravity's own session marker from a real competing session rather than burying that exception inside the dispatcher.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md -- existing refocus component map with bounded Antigravity adapter/state changes and optional small marker classifier"
+    },
+    "data-storage": {
+      "agenda": [
+        "What Antigravity data must survive across agy exit and re-entry?",
+        "Which component owns refocus state read/write and which component only normalizes host input?",
+        "Is any migration required for old startup-only Antigravity state?",
+        "What consistency and validation model proves Antigravity uses the same per-session refocus state behavior as other hosts?"
+      ],
+      "decision": "Use the same durable per-session refocus state model as the other hosts. Antigravity must normalize the real agy session/conversation key and delegate all refocus state read/write to SessionStateAccessor. Persist boundary cursor, anchor/context metadata, dedupe, breaker, and journal data in .specrew/runtime/refocus-state-<session>.json; do not create an Antigravity-only private state file, do not migrate startup-only state unless discovery proves preservation is required, and never fall back to global unknown. If state read/write fails, use the existing governed failure/fallback path and surface the failure. Validation must include exit/re-entry and prove the same per-session anchor persists.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/data-storage.md -- Antigravity per-session refocus state ownership, persistence, consistency, and validation model"
+    },
+    "integration-api": {
+      "agenda": [
+        "How does Antigravity integrate with Specrew: hook config, event names, payload shape, and dispatcher normalization?",
+        "How does Antigravity differ from other hosts at the adapter and event-output level?",
+        "Which Antigravity events actually fire in a real agy run?",
+        "Which Antigravity events accept refocus injection output, and which must not be used for injection?",
+        "What contract and validation evidence should bind the implementation?"
+      ],
+      "decision": "Use workspace .agents/hooks.json named hook definitions and normalize Antigravity events into the existing Specrew launcher and dispatcher contract. Use PreInvocation as the primary Antigravity carrier for bootstrap and B3 refocus injection because a real agy probe proved it accepts injectSteps. Use Stop for handover with decision=allow output. Treat PostToolUse as a real observed event but not an injection-safe carrier: the real-host spike proved PostToolUse fires, but injectSteps from PostToolUse is rejected with unknown field \"injectSteps\" and can interfere with the tool call. PostInvocation also accepts injectSteps and can inject into a follow-on invocation, but it is not the default B3 carrier because it deliberately creates another invocation cycle. conversationId is the per-session identity and is stable across agy --conversation resume.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/integration-api.md -- Antigravity hook contract, event mapping, output schemas, and real-host compatibility evidence"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "What must be logged, measured, traced, or reported to understand Antigravity refocus behavior?",
+        "What correlation context should flow through warnings, state, and evidence?",
+        "Which errors are expected and which are exceptional?",
+        "What retry, timeout, idempotency, breaker, or recovery pattern applies?",
+        "What evidence should review require before accepting full Antigravity parity claims?"
+      ],
+      "decision": "Keep Antigravity hook failures fail-open for the host session, but make failures diagnosable through existing Specrew stderr warning codes, per-session runtime state, bounded journal evidence, and required real-host validation before any full parity claim. Runtime evidence should include sanitized conversationId, event name, trigger, boundary cursor/change, outcome, warning code, and transcript path reference. Do not log full prompts, full transcript content, or large model responses into runtime state. State read/write failures must use the governed fallback path and avoid silently claiming full refocus. Review evidence must prove hook firing, injection delivery, B3 correctness, self-marker concurrency behavior, handover, and exit/re-entry.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/observability-resilience.md -- Antigravity refocus request trace, warning/state evidence, and failure-mode flow"
+    },
+    "devops-operations": {
+      "agenda": [
+        "What install or deployment command should a normal user run?",
+        "What dependencies are passive and automated vs explicit prerequisites?",
+        "What environments must the plan validate: dev, CI, beta, stable, Windows, or real Antigravity host?",
+        "How do we roll forward, roll back, or disable the feature?",
+        "Which CI checks are authoritative and which checks are only syntax/proxy checks?",
+        "What release, beta, or publish action is authorized?"
+      ],
+      "decision": "Antigravity support is a local-tool integration where users run agy and Specrew deploys/removes hooks through deploy-refocus-hooks.ps1 -HostKind antigravity using the host manifest. Hook config lives in workspace .agents/hooks.json and must preserve user hook definitions while replacing only Specrew-owned entries. Disable mirrors other hosts through -Remove and an opt-out marker, with docs also covering Antigravity /permissions and ~/.gemini/antigravity-cli/settings.json enableTerminalSandbox. CI can validate static config, manifest shape, JSON, Pester tests, and deploy/remove idempotency, but full parity requires manual real-host agy validation. Release proceeds beta first after manual real-host evidence, then stable only after existing-config/legacy-upgrade and release validation pass. Rollback removes the Specrew Antigravity hook definition and leaves user hooks intact.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/devops-operations.md -- Antigravity install, hook deployment, disable, validation, release, and rollback topology"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Which NFRs are design drivers for this slice?",
+        "Which constraints are mandatory rather than preferences?",
+        "Which requirements need a measurable threshold?",
+        "Which acceptance criteria prove the quality, not only the happy path?",
+        "Which quality claims must not be accepted without real-host evidence?"
+      ],
+      "decision": "Full Antigravity refocus support is accepted only when measurable real-host, state, safety, config-preservation, release, and documentation criteria are met. Binding NFRs: real agy parity proof for bootstrap, B3, Stop, exit/re-entry, and stable conversationId; no global unknown state key; B3 injects only on real lifecycle boundary changes; hook failures fail open with bounded warnings/evidence; deploy/remove preserves user hooks in .agents/hooks.json; beta is required before stable and stable is blocked until legacy upgrade plus release validation pass; Antigravity docs reach parity with other hosts, including agy, hook install/remove, /permissions, and enableTerminalSandbox.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/requirements-nfr.md -- Antigravity parity quality drivers and measurable acceptance signals"
+    },
+    "ui-ux": {
+      "agenda": [
+        "What source of UX truth exists: Figma, screenshots, design system, existing product patterns, prototype, or text-only intent?",
+        "What are the primary user journeys and interruption/recovery paths?",
+        "How are loading, empty, error, disabled, offline, and conflict states shown?",
+        "Which UI state belongs on the client, server, URL, cache, or durable store?",
+        "What accessibility, localization, RTL, theming, or regulatory constraints apply?"
+      ],
+      "decision": "F-184 has no application UI. The user-facing experience is documentation, status/help wording, host matrix placement, warning language, and operational guidance for Antigravity users. Antigravity must appear at the same level as other supported hosts once real-host evidence exists, while wording clearly distinguishes bounded, full, verified, machine-local, beta, and stable states. Docs must include agy, deploy/remove hooks, /permissions, enableTerminalSandbox, fail-open recovery language, and specrew start re-entry guidance.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/ui-ux.md -- Antigravity user-facing docs, status, permissions, disable, recovery, and evidence wording flow"
+    },
+    "code-implementation": {
+      "agenda": [
+        "Does the human have an existing coding guideline or example project to emulate?",
+        "What stack/runtime baseline is binding for this feature?",
+        "Which baseline craft defaults should be changed or turned off?",
+        "Which consequential implementation forks are binding for Antigravity refocus?",
+        "May this feature add a dependency, or must it use existing project tools?"
+      ],
+      "decision": "Use existing Specrew repo patterns as the source of code-rules truth. No external guideline or example project is needed. The resolved stack is PowerShell 7 plus JSON/YAML configuration, Pester-style tests, Markdown docs, and existing repository tooling. Use the existing host manifest/adapter/state architecture; add only a small helper such as ConcurrencyMarkerClassifier if it removes real branching. Dependency policy is use-existing-no-new-dependency unless discovery proves one is necessary and a later human decision approves it.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/code-implementation.md -- PowerShell/JSON/YAML/Pester implementation posture, manifest, testing, and dependency policy"
+    }
+  }
+}
