@@ -97,3 +97,4 @@
 {"event_type":"boundary-sync","recorded_at":"2026-06-16T20:53:26Z","payload":{"task_id":null,"auth_commit_hash":"8e9d110d14016b2d83205c7f07f6d3e5435b55d0","boundary_type":"feature-closeout","feature_ref":"183-stability-quality-bundle","iteration_number":"001"},"schema":"v1"}
 {"payload":{"iteration_number":"","auth_commit_hash":"2a510cfb","feature_ref":"184-full-antigravity-refocus","task_id":null,"boundary_type":"specify"},"schema":"v1","event_type":"boundary-sync","recorded_at":"2026-06-16T23:10:34Z"}
 {"payload":{"feature_ref":"184-full-antigravity-refocus","iteration_number":"","auth_commit_hash":"130f68e6","boundary_type":"clarify","task_id":null},"recorded_at":"2026-06-16T23:28:26Z","schema":"v1","event_type":"boundary-sync"}
+{"schema":"v1","event_type":"boundary-sync","payload":{"iteration_number":"001","auth_commit_hash":"5334d266","task_id":null,"feature_ref":"184-full-antigravity-refocus","boundary_type":"plan"},"recorded_at":"2026-06-16T23:45:55Z"}
