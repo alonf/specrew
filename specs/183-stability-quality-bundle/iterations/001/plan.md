@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 20/20 story_points
 **Started**: 2026-06-16
 **Completed**:
@@ -41,7 +41,10 @@
 | T004 | Closeout classification, upstream wording, dashboard refresh | FR-005, SC-005 | US3 | 4 | Implementer | scripts/internal/sync-boundary-state.ps1; tests/integration/** | planned | codex | — | pending |
 | T005 | #1761 mechanical local-test hygiene | FR-006, SC-006 | US3 | 2 | Implementer, Reviewer | tests/integration/closeout-lifecycle-sync-commands.tests.ps1; tests/integration/** | planned | codex | — | pending |
 | T006 | Antigravity hook binding and docs cleanup | FR-007, SC-009, TG-004 | US4 | 4 | Implementer, Reviewer | hosts/**; scripts/internal/deploy-refocus-hooks.ps1; scripts/specrew-hooks.ps1; docs/**; README.md; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | planned | codex | — | pending |
-| T007 | Mirror parity, release readiness, and integration evidence | SC-007, SC-008, TG-003, TG-005 | US1-US4 | 1 | Reviewer, Spec Steward | extensions/specrew-speckit/**; .specify/extensions/specrew-speckit/**; specs/183-stability-quality-bundle/** | planned | codex | — | pending |
+| T007 | Mirror parity evidence | SC-007, TG-003 | US1-US4 | 0.25 | Reviewer | extensions/specrew-speckit/**; .specify/extensions/specrew-speckit/** | planned | codex | — | pending |
+| T008 | Dynamic beta release readiness | SC-007 | US1-US4 | 0.25 | Spec Steward | specs/183-stability-quality-bundle/** | planned | codex | — | pending |
+| T009 | Real-host validation evidence | SC-008, SC-009, TG-004 | US1, US4 | 0.25 | Reviewer | specs/183-stability-quality-bundle/** | planned | codex | — | pending |
+| T010 | Closeout issue linkage and traceability evidence | TG-001, TG-002, TG-005 | US3 | 0.25 | Spec Steward, Reviewer | specs/183-stability-quality-bundle/** | planned | codex | — | pending |
 
 ## Effort Model
 
@@ -89,5 +92,6 @@
 - Design-analysis verdict: `approved for plan with Option B`.
 - Feature plan: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/plan.md
 - Wave B review artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/data-model.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/quickstart.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/contracts/stability-quality-bundle.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/review-diagrams.md
-- Tasks authoring must decompose T007 into four named rows for SC-007, SC-008, TG-003, and TG-005. The SC-008 real-host validation row must include an explicit pass/fail criterion and be sequenced as review-stage evidence after the relevant implementation slices merge.
-- Tasks authoring must preserve the T001/T003 shared-glob constraint: execute serially, or narrow owner globs before claiming safe parallelism.
+- Tasks authoring decomposed the former combined T007 evidence slice into T007-T010 for mirror parity, dynamic beta readiness, real-host validation, and closeout issue linkage.
+- T001/T003 preserve the shared-glob constraint: execute serially, or narrow owner globs before claiming safe parallelism.
+- Before-implement hardening gate is ready at `quality/hardening-gate.md`; runtime evidence remains pending until implementation and review.
