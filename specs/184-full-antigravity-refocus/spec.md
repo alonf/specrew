@@ -2,7 +2,7 @@
 
 **Feature Branch**: `184-full-antigravity-refocus`  
 **Created**: 2026-06-17  
-**Status**: Draft - specify workshop complete; awaiting specify verdict  
+**Status**: Draft - clarify complete; awaiting clarify verdict
 **Input**: User description: "Complete Antigravity refocus support as the continuation of F-183"
 
 ## Product-Domain Summary
@@ -15,6 +15,34 @@
 - **constraints**: Reuse existing refocus machinery and preserve F-183 bootstrap, Stop handover, resume, and real conversation-id behavior.
 - **Follow-up research**: Discovery spike must confirm whether Antigravity `PreInvocation` has a fresh enough boundary cursor before a turn and whether B3 can be mapped without a larger host-model rewrite.
 - Full record: see `workshop/product-domain.md` and `workshop/product-domain.yml`.
+
+## Clarifications
+
+### Session 2026-06-17
+
+- **Docs parity sequencing**: FR-008 means documentation depth parity, not an
+  unearned support-status flip. Antigravity docs may be authored to the same
+  depth and discoverability level as other hosts before final proof, but every
+  host matrix/status/release label MUST remain evidence-gated by FR-009 until
+  real-host `agy` validation passes.
+- **Falsifiable split guard**: The discovery spike must produce a PASS/FAIL row
+  for each split-guard trigger. The feature MUST stop for a human split/defer
+  verdict if any trigger fails: `PreInvocation` cannot see or derive a fresh
+  enough lifecycle boundary cursor before the model turn; B3 cannot be emitted
+  exactly once through `PreInvocation` `injectSteps` using existing dedupe and
+  breaker behavior; or the implementation requires changing shared host-model
+  contracts in a way that alters non-Antigravity host behavior rather than a
+  bounded Antigravity manifest/adapter/state/helper change.
+- **Branch and release topology**: F-184 stacks on the accepted F-183 work and
+  releases together with it. There is no standalone F-183 beta or stable
+  release; the next beta covers the combined F-183 + F-184 Antigravity support
+  after F-184 review evidence passes, and stable remains blocked by the
+  legacy-upgrade/config-migration release gate.
+- **Governance validation**: The specify packet for `specs/184` has passed the
+  local specify preflight checks: lens records complete, product-domain record
+  valid, implementation-rules manifest valid, Markdown clean for the feature
+  packet, placeholder scan clean, whitespace diff check clean, and the
+  feature-specific specify-boundary lens gate returned valid.
 
 ## Design Workshop Summary
 
@@ -218,17 +246,24 @@ validation.
 - **FR-007**: Antigravity hook deploy/remove MUST preserve user-owned
   `.agents/hooks.json` entries and replace/remove only Specrew-owned hook
   definitions.
-- **FR-008**: Documentation MUST place Antigravity at the same level as other
-  hosts and include `agy`, deploy/remove commands, `/permissions`,
-  `enableTerminalSandbox`, fail-open recovery, `specrew start` re-entry, and
-  evidence/status labels.
-- **FR-009**: Full Antigravity parity MUST NOT be claimed until manual real-host
-  `agy` evidence proves hook firing, B3 injection correctness, Stop handover,
-  exit/re-entry, stable conversation identity, and absence of self-marker false
-  concurrency.
+- **FR-008**: Documentation MUST place Antigravity at the same content depth
+  and discoverability level as other hosts and include `agy`, deploy/remove
+  commands, `/permissions`, `enableTerminalSandbox`, fail-open recovery,
+  `specrew start` re-entry, and evidence/status labels. Documentation depth may
+  reach parity before final proof, but status labels MUST remain candidate,
+  pending-validation, machine-local, beta, stable, or verified according to
+  evidence.
+- **FR-009**: Full, verified, stable, or parity-equivalent Antigravity support
+  status MUST NOT be claimed until manual real-host `agy` evidence proves hook
+  firing, B3 injection correctness, Stop handover, exit/re-entry, stable
+  conversation identity, and absence of self-marker false concurrency.
 - **FR-010**: The implementation MUST reuse existing Specrew refocus machinery
-  and stop for a human split/defer decision if B3-on-`PreInvocation` requires a
-  broad host-model rewrite beyond the bounded adapter/state slice.
+  and stop for a human split/defer decision if B3-on-`PreInvocation` hits any
+  falsifiable split-guard trigger: no fresh-enough boundary cursor before turn,
+  no exactly-once `PreInvocation` `injectSteps` B3 delivery with existing
+  dedupe/breaker behavior, or any required shared host-model contract change
+  that alters non-Antigravity host behavior beyond the bounded Antigravity
+  manifest/adapter/state/helper slice.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -240,8 +275,9 @@ validation.
   reconciliation path.
 - **TG-005**: Manual real-host Antigravity evidence MUST be labeled as
   repo-reproducible or machine-local before review/release claims rely on it.
-- **TG-006**: Release MUST proceed beta before stable; stable promotion MUST be
-  blocked until legacy upgrade/config migration and release validation pass.
+- **TG-006**: Release MUST proceed beta before stable; F-184 stacks on F-183 and
+  releases together with it; stable promotion MUST be blocked until legacy
+  upgrade/config migration and release validation pass.
 
 ### Traceability Summary
 
@@ -292,10 +328,15 @@ validation.
 - **SC-007**: Negative-path tests prove hook/provider/state failures fail open
   with bounded warning text and no full prompt/transcript logging.
 - **SC-008**: Documentation review proves README/getting-started/host matrix
-  include Antigravity at parity level with `agy`, hook deploy/remove,
-  `/permissions`, `enableTerminalSandbox`, recovery, and evidence/status
-  wording.
-- **SC-009**: Release evidence includes beta-before-stable plus legacy
+  include Antigravity at documentation-depth parity with `agy`, hook
+  deploy/remove, `/permissions`, `enableTerminalSandbox`, recovery, and
+  evidence/status wording, while no status text claims full/verified/stable
+  support before FR-009 evidence exists.
+- **SC-009**: Discovery spike evidence contains explicit PASS/FAIL rows for the
+  fresh boundary cursor, exactly-once B3 `injectSteps` delivery, and bounded
+  host-model-change triggers; any FAIL stops for a human split/defer verdict.
+- **SC-010**: Release evidence includes beta-before-stable plus F-183/F-184
+  combined-release topology and legacy
   upgrade/config migration validation before stable promotion.
 
 ## Assumptions
@@ -323,7 +364,10 @@ validation.
   review-signoff, retro, feature-closeout, and release gates. One approval
   advances exactly one boundary.
 - **Split Guard**: If B3-on-Antigravity requires a broad host-model rewrite
-  beyond bounded adapter/state/helper changes, stop for a human split/defer
+  beyond bounded adapter/state/helper changes, or fails any of the falsifiable
+  discovery-spike triggers in FR-010/SC-009, stop for a human split/defer
   verdict.
 - **Release Discipline**: Beta is required before stable; stable is blocked
-  until legacy upgrade/config migration and release validation pass.
+  until legacy upgrade/config migration and release validation pass. F-184
+  stacks on F-183, and the next beta/release covers the combined work rather
+  than a standalone F-183 release.

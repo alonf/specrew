@@ -15,7 +15,7 @@ file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/s
 - [x] Requirements are testable and reviewable: FR-001 through FR-010 name
   observable state, hook behavior, config preservation, documentation, release,
   or split-guard behavior.
-- [x] Success criteria are measurable: SC-001 through SC-009 name automated
+- [x] Success criteria are measurable: SC-001 through SC-010 name automated
   tests, manual real-host `agy` evidence, documentation review, and release
   validation evidence.
 - [x] Scope exclusions are explicit: no unrelated host parity fixes, no
@@ -28,7 +28,8 @@ file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/s
 - [x] Functional requirements cover real conversation identity, per-session
   refocus state, B3 on `PreInvocation`, self-marker classification, F-183
   regression preservation, fail-open diagnostics, hook config preservation,
-  documentation parity, evidence gates, and the split guard.
+  documentation-depth parity, evidence-gated status labels, and falsifiable
+  split-guard triggers.
 - [x] Acceptance scenarios cover exit/re-entry state, real boundary-cross B3,
   non-boundary no-op, own-marker vs competing-marker behavior, bootstrap, Stop
   handover, welcome-back resume, docs, disable, and release gates.
@@ -54,8 +55,9 @@ file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/s
   file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/lens-applicability.json.
 - [x] Code implementation posture is captured in
   file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/implementation-rules.yml.
-- [x] Clarify is still the next lifecycle boundary after human specify approval;
-  no clarify work has been performed in this stop.
+- [x] Clarify resolved the three specify-verdict carry items: docs parity
+  sequencing, falsifiable split-guard triggers, and stacked F-183/F-184
+  release topology.
 
 ## Notes
 
