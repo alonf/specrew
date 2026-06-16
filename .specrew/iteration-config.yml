@@ -34,7 +34,13 @@ effort_unit: "story_points"
 # iterations 010/011 (historical plan cap 32) are protected by the grandfather rule
 # (past-implementation status -> validated against their own plan capacity, not the
 # global default); iter-007 (plan cap 20) matches the global default again.
-capacity_per_iteration: 20
+#
+# OVERRIDE 3 (2026-06-17, F-184 iteration 001, user completeness directive):
+# raised 20 -> 26 so the known F-183 Antigravity completion work lands in one
+# coherent slice after the maintainer explicitly rejected another partial feature
+# return. This is a temporary project-global override for F-184 only; retro and
+# iteration-closeout must restore the default 20 and record the actual 26 SP load.
+capacity_per_iteration: 26
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)
