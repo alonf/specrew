@@ -2,17 +2,17 @@
 
 **Schema**: v1
 **Last Completed Task**: (none)
-**Tasks Remaining**: T001, T002, T003, T004, T005, T006, T007
+**Tasks Remaining**: T001, T002, T003, T004, T005, T006, T007, T008, T009, T010
 **In Progress**: (none)
 **Baseline Ref**: a8f413d0f2d46deff4fce0965e1d337a96d212d1
-**Updated**: 2026-06-15T23:27:52Z
+**Updated**: 2026-06-16T00:23:20Z
 
 ## Execution Summary
 
 - Execution has not started yet.
 - Planning selected design-analysis Option B and decomposed Iteration 001 into
-  seven planned task slices totaling 20 story_points.
-- Resume from plan approval should proceed to tasks authoring, not
+  ten tasks totaling 20 story_points.
+- Resume from tasks approval should proceed to before-implement readiness, not
   implementation.
 
 ## Notes
