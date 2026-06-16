@@ -4,7 +4,7 @@
 **Task**: T009 - Real-host validation evidence
 **Trace**: SC-008, SC-009, TG-004
 **Recorded At**: 2026-06-16T10:53:30Z
-**Overall Verdict**: pass
+**Overall Verdict**: pass, bounded-support-only
 
 ## Scope
 
@@ -93,3 +93,52 @@ The repair replaces the Antigravity relative dispatcher command with the cwd-rob
 
 - A shorter 2-minute run in `file:///C:/Dev/183-stability-quality-bundle/.specrew/runtime/agy-t009-launcher.log` proved repeated `PreInvocation` firing but timed out before Stop. It is not used as the Stop pass criterion.
 - The validated support claim remains bounded: project-local `.agents/hooks.json`, `PreInvocation` bootstrap injection, `Stop` handover decision, and fallback guidance through `specrew start --host antigravity`.
+
+## Maintainer Real-Host Dogfood: C:\Temp\f183-test
+
+Closeout also records the maintainer-run `agy` dogfood in a downstream-style
+workspace at `file:///C:/Temp/f183-test/`. This is durable closeout evidence
+for the bounded Antigravity support claim; it is still not a full hook-parity
+claim.
+
+Observed setup:
+
+- Antigravity CLI launched directly with `agy` in `file:///C:/Temp/f183-test/`
+  and later re-entered with `agy`.
+- `file:///C:/Temp/f183-test/.agents/hooks.json` contains Specrew-owned
+  `PreInvocation` and `Stop` command hooks under `specrew-refocus`.
+- The manual transcript showed no provider launch failure, hook command stderr,
+  `PROVIDER_FAILED`, or `LAUNCH_FAILED` error in the user-visible Antigravity
+  run. A scoped grep over `file:///C:/Temp/f183-test/.specrew/` and
+  `file:///C:/Temp/f183-test/.agents/` found no Specrew provider/launch failure
+  tokens in the runtime evidence files.
+
+Evidence recorded:
+
+| Claim | Result | Evidence |
+| ----- | ------ | -------- |
+| Bootstrap injection reaches real Antigravity turns | pass | `file:///C:/Temp/f183-test/.specrew/runtime/bootstrap-journal.jsonl` records repeated `host=antigravity` entries in `full` and `welcome-back` modes. |
+| Stop -> handover reaches durable storage | pass | `file:///C:/Temp/f183-test/.specrew/handover/session-handover.md` frontmatter records `source: Stop`, `from_host: antigravity`, `recorded_at: 2026-06-16T19:58:49.6412497Z`, `from_commit: 0f970fb`, and `active_boundary: plan`. |
+| Cross-session welcome-back resume works | pass | `file:///C:/Temp/f183-test/.specrew/last-start-prompt.md` records `Mode: welcome-back`, active feature `001-multi-user-notepad`, current boundary `plan`, and recomputed resume context from commits `40edfe5` and `0f970fb`. |
+| FR-003 per-launch identity holds | pass | `bootstrap-journal.jsonl` uses real Antigravity conversation/dedupe keys such as `4b4e7dc7-17ae-4b0e-b550-ab3620c89523`, `f55a2e01-7cfe-4a6d-abba-e3126a7ee1fc`, and `467da039-3e03-4ba3-998c-d43fb1d5ce5e`; the global `unknown` fallback is not used as the session key in this run. |
+| Known bounded behavior is visible | pass-with-carry | The same evidence exposes the two TG-004 rough edges below, both carried to the full-Antigravity follow-up feature. |
+
+Known bounded-Antigravity rough edges carried forward:
+
+1. Edge 1 - same-worktree concurrency advisory false-positive: after the
+   session marker exists, `bootstrap-journal.jsonl` repeatedly records
+   `concurrent_session=true`, `concurrency_reason=fresh-marker`, and the
+   advisory `another session may be active in this worktree`, even for the
+   session's own Antigravity `PreInvocation` turns.
+2. Edge 2 - missing per-session refocus state/anchor on the Antigravity
+   bootstrap path: `file:///C:/Temp/f183-test/.specrew/runtime/` contains only
+   `refocus-state-2a7f776f-f148-4f48-9780-2e6db9b6f811.json`; no matching
+   per-session refocus-state file exists for the observed Antigravity
+   conversation keys `4b4e7dc7-...`, `f55a2e01-...`, or `467da039-...`.
+
+Disposition: both rough edges are inside TG-004 bounded behavior, outside the
+F-183 closeout claim, and explicitly assigned to the next full-Antigravity
+refocus feature. The host matrix/docs must continue to avoid a full
+Antigravity parity claim until that follow-up records real-host evidence for
+B3 boundary-cross refocus on `PreInvocation`, no false concurrency advisory,
+and durable per-session anchor/state behavior.

@@ -16,6 +16,7 @@
   validation remain separate future boundaries.
 - Task progress: 11 complete, 0 in-progress, 0 pending, 0 blocked.
 - Latest completed task: T011
+
 ## Notes
 
 - Update this file after each task completes.
@@ -102,8 +103,16 @@
   verify the legacy/existing-config upgrade path for
   `MigrateLegacyTopLevelEventMap`, add a non-Antigravity SessionStart real-host
   run for SC-008, make T009 evidence reproducible from the repo or explicitly
-  mark it machine-local, and execute the version bump for `0.38.0-beta1` before
-  publishing.
+  mark it machine-local, and execute the eventual version bump before
+  publishing. Feature-closeout DR-005 skips the standalone F-183
+  `0.38.0-beta1`; the next release gate moves after the full-Antigravity
+  follow-up feature.
+- Feature-closeout Antigravity carry-forward: the `file:///C:/Temp/f183-test/`
+  real-host dogfood verifies bounded Antigravity bootstrap, Stop handover, and
+  welcome-back resume, while exposing two explicit rough edges for the next
+  feature: same-worktree concurrency advisory false-positive on the session's
+  own marker and missing per-session refocus state/anchor on the Antigravity
+  bootstrap path.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

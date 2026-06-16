@@ -5,7 +5,7 @@
 **Iteration**: 001
 **Task**: T008
 **Recorded At**: 2026-06-16T10:16:36Z
-**Result**: PASS WITH RELEASE-LINE UPDATE
+**Result**: PASS WITH RELEASE-LINE UPDATE; STANDALONE BETA SKIPPED BY HUMAN DECISION
 
 ## Decision
 
@@ -20,6 +20,35 @@ package exists.
 
 No beta or stable promotion is authorized until T009 records real-host validation
 PASS, including the Antigravity hook-firing evidence required by FR-007/SC-009.
+
+## Feature-Closeout Release Decision
+
+At feature closeout, the maintainer elected to skip a standalone
+`0.38.0-beta1` publish for F-183 and continue directly into the full
+Antigravity refocus feature. This is a human-authorized release-discipline
+deviation recorded as DR-005 in
+`file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/drift-log.md`.
+
+Rationale:
+
+- F-183 bounded Antigravity surfaces were manually validated on a real `agy`
+  host in `file:///C:/Temp/f183-test/`.
+- The remaining Antigravity gaps are known and named: same-worktree concurrency
+  false-positive and missing per-session refocus state/anchor on the
+  Antigravity bootstrap path.
+- Publishing a standalone beta before the full-Antigravity feature would create
+  a short-lived beta that still carries intentionally bounded behavior.
+
+Release consequence:
+
+- Do not tag or publish a standalone F-183 `v0.38.0-beta1`.
+- Do not promote stable from F-183.
+- The next beta/stable release decision moves to the combined release gate after
+  the full-Antigravity feature closes.
+- If packaged PSGallery install/upgrade validation or the legacy
+  `MigrateLegacyTopLevelEventMap` path cannot be validated without a packaged
+  beta, stop at that release gate for an explicit human verdict rather than
+  proceeding silently.
 
 ## Inputs Checked
 
@@ -113,10 +142,11 @@ No GitHub release for `0.37.1*` or `0.38.0*` exists.
 
 ## Release Prep Guardrails
 
-- Before publish, update version-bearing surfaces from the stale `0.37.0-beta1`
-  development line to `0.38.0-beta1`.
-- Publish `v0.38.0-beta1` only after review-signoff and the release SDLC reaches
-  the beta publish step.
-- Promote `v0.38.0` stable only from a beta that passed manual validation.
+- Before the next publish, update version-bearing surfaces from the stale
+  `0.37.0-beta1` development line to the human-selected beta target for the
+  combined release.
+- Do not publish a standalone F-183 `v0.38.0-beta1`; the maintainer explicitly
+  skipped it at feature closeout.
+- Promote stable only from a beta that passed manual validation.
 - If the maintainer chooses a patch line instead, record that human decision and
   retarget to `0.37.1-beta1`; no current artifact reserves that line.

@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 75% (3/4 resolved)
-**Specification drift**: Governance drift, release-line drift, and scope-boundary drift detected and recorded
+**Total drift events**: 5
+**Resolution rate**: 80% (4/5 resolved)
+**Specification drift**: Governance drift, release-line drift, beta-skip release drift, and scope-boundary drift detected and recorded
 
 ## Events
 
@@ -84,6 +84,20 @@
 **Resolution Detail**: Resolved by Alon's 2026-06-16 Option A verdict. The expanded `RefocusHookBindings` host-model refactor is accepted into F-183, FR-008/SC-010/TG-006/T011 are added as explicit scope, and capacity is re-baselined to 24/20 story_points as a human-approved over-cap exception. Review-signoff still requires durability repair, lifecycle-state reconciliation, configured reviewer-command repair or formal deferral, and a fresh Proposal 145 review against the expanded scope.
 **Status**: `resolved`.
 
+### DR-005 - Standalone F-183 Beta Skipped
+
+**Detected At**: 2026-06-16T20:35:00Z
+**Type**: `violation`
+**Severity**: `moderate`
+**Task/Boundary Ref**: feature-closeout / release validation
+**Requirement Ref**: file:///C:/Dev/183-stability-quality-bundle/docs/methodology/lifecycle-discipline.md Beta-Before-Stable Universal Mandate and file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/spec.md SC-007
+**Requirement Citation**: "Every release ships `-beta1` first, manually validated, then promoted to stable." SC-007 also requires release readiness to record the next actual beta target only after inspecting current local tags, origin tags, and published release/package state.
+**Evidence**: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/release-readiness.md selected `0.38.0-beta1` as the next valid beta target after T008. At feature closeout, Alon explicitly directed that the standalone F-183 beta be skipped until the full Antigravity implementation is complete. Bounded F-183 surfaces were manually validated on real Antigravity in file:///C:/Temp/f183-test/, and the two known Antigravity rough edges are carried to the follow-up feature.
+**Description**: The planned standalone `0.38.0-beta1` release for F-183 is not being published. This is a deliberate release-train deviation, not an implicit claim that beta validation happened. Stable promotion remains blocked until a future beta passes manual install/runtime validation.
+**Resolution**: `human-decision`
+**Resolution Detail**: Resolved by the feature-closeout directive: skip the standalone F-183 beta, do not tag or publish `v0.38.0-beta1` from F-183, continue into the full-Antigravity feature, and surface any packaged PSGallery install/upgrade or legacy-config migration validation gap at the later release gate for an explicit human verdict.
+**Status**: `resolved`.
+
 ### Resolution Strategies (Unused)
 
 The following resolution strategies remain available if drift is detected later in execution:
@@ -99,3 +113,6 @@ The following resolution strategies remain available if drift is detected later 
 - DR-002 remains open as a separate governance-only repair outside F-183's 20 SP scope and does not block T003.
 - DR-003 is resolved by file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/release-readiness.md and changes the release target from the superseded `0.37.0-beta<N>` line to `0.38.0-beta1`.
 - DR-004 is resolved by the 2026-06-16 Option A scope verdict; F-183 now includes the explicit 24/20 host-model refactor scope.
+- DR-005 is resolved by the feature-closeout directive: no standalone F-183 beta
+  is published; the next release gate belongs after the full-Antigravity
+  follow-up feature and must not imply F-183 beta validation already happened.
