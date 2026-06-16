@@ -36,6 +36,15 @@
         BoundTriggers  = @('b2')
         Events         = @('sessionStart')
         SettingsFile   = '~/.copilot/hooks/specrew-refocus.json'   # hooks-dir model: wholly Specrew-owned file
+        OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-copilot'
         DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+        ConfigShape    = 'event-map'
+        CommandMode    = 'launcher-file'
+        SettingsVersion = 1
+        OwnsSettingsFile = $true
+        Registrations  = @(
+            @{ Event = 'sessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'dual-shell-entry'; TimeoutSec = 30 },
+            @{ Event = 'agentStop'; DispatcherEvent = 'agentStop'; HandlerShape = 'dual-shell-entry'; TimeoutSec = 30 }
+        )
     }
 }

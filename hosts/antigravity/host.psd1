@@ -26,4 +26,23 @@
     # Phase B handler file (not yet present)
     HandlersFile         = 'handlers.ps1'
     CoordinatorRulesFile = 'coordinator-rules.psd1'
+
+    # F-183 T006: verified Antigravity hook surface. Project-scoped .agents/hooks.json carries named hook
+    # definitions; PreInvocation supports injectSteps, and Stop requires a decision JSON. B2 rides
+    # PreInvocation through the bootstrap-only neutral event; no B1/B3 parity is claimed here.
+    RefocusHookBindings = @{
+        BoundTriggers  = @('b2')
+        Events         = @('PreInvocation', 'Stop')
+        SettingsFile   = '.agents/hooks.json'
+        OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-antigravity'
+        DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+        ConfigShape    = 'named-definition'
+        DefinitionName = 'specrew-refocus'
+        DefinitionNameWhenOccupied = 'specrew-refocus-managed'
+        CommandMode    = 'launcher-encoded'
+        Registrations  = @(
+            @{ Event = 'PreInvocation'; DispatcherEvent = 'PreInvocation'; HandlerShape = 'direct-command'; Timeout = 30 },
+            @{ Event = 'Stop'; DispatcherEvent = 'Stop'; HandlerShape = 'direct-command'; Timeout = 30 }
+        )
+    }
 }

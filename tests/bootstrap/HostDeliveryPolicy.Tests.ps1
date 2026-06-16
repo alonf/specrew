@@ -5,6 +5,8 @@
 #     additionalContext (rollout-proven); claude's hook STDOUT is capped at 10,000 chars on Claude Code v2.1.177
 #     (iter-11 real-host: the inline directive was dropped to a file, the banner never rendered) - DISPROVING the
 #     earlier "claude stdout has no cap" premise. Both read files, so both point at the on-disk contract.
+#   - antigravity also gets a LEAN POINTER through the verified PreInvocation injectSteps path. T009 still owns
+#     real-host firing evidence; the bounded adapter must not ship a 45KB inline contract before parity is proven.
 #   - copilot + cursor stay INLINE (oversized-drop SUSPECTED, same envelope, but UNVERIFIED; they rendered in-band
 #     in the dogfoods - flipping on suspicion would regress a working host). The flip is a one-line change in the
 #     seam; this test LOCKS the policy so any change is deliberate, never accidental.
@@ -55,6 +57,13 @@ try {
     Assert-True ($codex -match 'READ .*last-start-prompt') 'codex directive POINTS at the contract file'
     Assert-True (Test-Path -LiteralPath $promptFile) 'codex path STILL writes last-start-prompt.md (the pointer is alive)'
 
+    # ANTIGRAVITY: bounded verified hook path uses PreInvocation injectSteps, so keep it lean and point at disk.
+    $antigravity = Invoke-Provider -HostKind 'antigravity' -Root $tmp
+    Assert-True ($antigravity -notmatch 'BEGIN SPECREW LAUNCH CONTRACT') 'antigravity does NOT inline the ~45KB contract (bounded PreInvocation support uses a lean pointer)'
+    Assert-True ($antigravity -match 'MANDATORY FIRST ACTION') 'antigravity directive STILL leads with the mandatory banner'
+    Assert-True ($antigravity -match 'READ .*last-start-prompt') 'antigravity directive POINTS at the contract file'
+    Assert-True (Test-Path -LiteralPath $promptFile) 'antigravity path STILL writes last-start-prompt.md (the pointer is alive)'
+
     # COPILOT + CURSOR: behavior-preserving INLINE (T007/M1). Both deliver SessionStart via additionalContext /
     # additional_context (the SAME envelope codex drops), but the host research matrix documents a size cap ONLY
     # for claude's additionalContext - NONE for copilot/cursor - so an oversized drop is SUSPECTED but UNVERIFIED;
@@ -70,6 +79,7 @@ try {
     # gap IS the cap fix (the ~45KB contract is what overran the 10K hook-output cap).
     Assert-True ($claude.Length -lt ($copilot.Length / 2)) 'claude pointer directive is dramatically smaller than the copilot inline directive'
     Assert-True ($codex.Length -lt ($copilot.Length / 2)) 'codex pointer directive is dramatically smaller than the copilot inline directive'
+    Assert-True ($antigravity.Length -lt ($copilot.Length / 2)) 'antigravity pointer directive is dramatically smaller than the copilot inline directive'
 }
 finally {
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue

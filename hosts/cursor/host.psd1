@@ -34,6 +34,15 @@
         BoundTriggers  = @('b2')
         Events         = @('sessionStart')
         SettingsFile   = '~/.cursor/hooks.json'   # user-level; dispatcher self-gates per project
+        OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-cursor'
         DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+        ConfigShape    = 'event-map'
+        CommandMode    = 'launcher-file'
+        SettingsVersion = 1
+        ProjectRootEnvironmentVariables = @('CURSOR_PROJECT_DIR', 'CLAUDE_PROJECT_DIR')
+        Registrations  = @(
+            @{ Event = 'sessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'command-entry' },
+            @{ Event = 'stop'; DispatcherEvent = 'stop'; HandlerShape = 'command-entry' }
+        )
     }
 }

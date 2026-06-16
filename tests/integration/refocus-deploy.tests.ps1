@@ -29,6 +29,13 @@ function Invoke-Deploy {
     return @(& pwsh -NoProfile -ExecutionPolicy Bypass -File $deployScript -ProjectPath $projectRoot @DeployArgs 2>&1 | ForEach-Object { [string]$_ })
 }
 
+function Decode-EncodedPwshCommand {
+    param([string]$Command)
+    $match = [regex]::Match($Command, '(?i)(?:^|\s)-EncodedCommand\s+([A-Za-z0-9+/=]+)')
+    if (-not $match.Success) { return '' }
+    return [Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($match.Groups[1].Value))
+}
+
 # --- 1. Fresh project: settings created with our entries, PreToolUse absent -------
 New-ScratchProject
 $out = Invoke-Deploy
@@ -198,6 +205,51 @@ $before = Get-Content -LiteralPath $cursorPath -Raw
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'cursor', '-UserHomeOverride', $fakeHome)
 Assert-True ((Get-Content -LiteralPath $cursorPath -Raw) -eq $before) 'cursor: re-deploy byte-idempotent'
 
+# --- 10b. F-183 T006: antigravity binding (project .agents/hooks.json; PreInvocation + Stop) ---
+New-ScratchProject
+$antiPath = Join-Path $projectRoot '.agents\hooks.json'
+$antiHome = Join-Path $scratchRoot 'anti-home'
+New-Item -ItemType Directory -Path (Split-Path -Parent $antiPath) -Force | Out-Null
+$userAnti = [pscustomobject]@{
+    'user-audit' = [pscustomobject]@{
+        PreToolUse = @(
+            [pscustomobject]@{
+                matcher = 'run_command'
+                hooks   = @([pscustomobject]@{ type = 'command'; command = 'echo user-antigravity-hook'; timeout = 7 })
+            }
+        )
+    }
+}
+[System.IO.File]::WriteAllText($antiPath, ($userAnti | ConvertTo-Json -Depth 16), [System.Text.UTF8Encoding]::new($false))
+$out = Invoke-Deploy -DeployArgs @('-HostKind', 'antigravity', '-UserHomeOverride', $antiHome)
+$anti = Get-Content -LiteralPath $antiPath -Raw | ConvertFrom-Json
+Assert-True ($null -ne $anti.PSObject.Properties['user-audit']) 'antigravity: existing user hook definition preserved'
+Assert-True ([string]$anti.'user-audit'.PreToolUse[0].hooks[0].command -eq 'echo user-antigravity-hook') 'antigravity: user hook command preserved exactly'
+Assert-True ($null -ne $anti.PSObject.Properties['specrew-refocus']) 'antigravity: Specrew named hook definition added'
+Assert-True ($null -ne $anti.'specrew-refocus'.PreInvocation -and $null -ne $anti.'specrew-refocus'.Stop) 'antigravity: PreInvocation + Stop registered'
+Assert-True (-not $anti.'specrew-refocus'.PSObject.Properties['PreToolUse']) 'antigravity: PreToolUse dormant (no B1/B3 parity claim)'
+$antiPreCmd = [string]$anti.'specrew-refocus'.PreInvocation[0].command
+$antiStopCmd = [string]$anti.'specrew-refocus'.Stop[0].command
+$antiPreDecoded = Decode-EncodedPwshCommand -Command $antiPreCmd
+$antiStopDecoded = Decode-EncodedPwshCommand -Command $antiStopCmd
+Assert-True (Test-Path -LiteralPath (Join-Path $antiHome '.specrew\specrew-hook-launch.ps1') -PathType Leaf) 'antigravity: cwd-robust per-machine launcher generated'
+Assert-True ($antiPreCmd.Contains('-EncodedCommand') -and $antiPreDecoded.Contains('specrew-hook-launch.ps1') -and $antiPreDecoded.Contains("-Event 'PreInvocation'") -and $antiPreDecoded.Contains('-HostKind antigravity')) 'antigravity: PreInvocation command uses encoded cwd-robust launcher'
+Assert-True (-not $antiPreCmd.Contains('./.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1')) 'antigravity: PreInvocation command does not depend on project-root cwd'
+Assert-True ($antiStopCmd.Contains('-EncodedCommand') -and $antiStopDecoded.Contains('specrew-hook-launch.ps1') -and $antiStopDecoded.Contains("-Event 'Stop'") -and $antiStopDecoded.Contains('-HostKind antigravity')) 'antigravity: Stop command dispatches through cwd-robust launcher'
+$before = Get-Content -LiteralPath $antiPath -Raw
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'antigravity', '-UserHomeOverride', $antiHome)
+Assert-True ((Get-Content -LiteralPath $antiPath -Raw) -eq $before) 'antigravity: re-deploy byte-idempotent'
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'antigravity', '-UserHomeOverride', $antiHome, '-Remove')
+$antiRemoved = Get-Content -LiteralPath $antiPath -Raw | ConvertFrom-Json
+Assert-True ($null -ne $antiRemoved.PSObject.Properties['user-audit'] -and $null -eq $antiRemoved.PSObject.Properties['specrew-refocus']) 'antigravity: -Remove strips only Specrew-owned hook definition'
+Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-antigravity')) 'antigravity: per-host opt-out recorded'
+$out = Invoke-Deploy -DeployArgs @('-HostKind', 'antigravity', '-UserHomeOverride', $antiHome)
+Assert-True (($out -join ' ').Contains('skipped: opt-out recorded')) 'antigravity: plain deploy respects recorded opt-out'
+$null = Invoke-Deploy -DeployArgs @('-HostKind', 'antigravity', '-UserHomeOverride', $antiHome, '-Force')
+$antiForced = Get-Content -LiteralPath $antiPath -Raw | ConvertFrom-Json
+Assert-True ($null -ne $antiForced.PSObject.Properties['specrew-refocus']) 'antigravity: -Force re-enables explicitly'
+Assert-True (-not (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-antigravity'))) 'antigravity: -Force clears opt-out marker'
+
 # --- 11. T017: catalog managed-with-overlay merge (FR-014/FR-018) ----------------------------
 . (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
 $canonicalCatalog = Join-Path $repoRoot 'extensions\specrew-speckit\refocus-scopes.json'
@@ -312,8 +364,7 @@ foreach ($wired in @($updateScript, $initScript, (Join-Path $repoRoot 'scripts\i
 # --- 16. T010 (FR-028 layer 1, SC-016): Get-SpecrewHookCapableHosts is the registry-driven host set --------
 . (Join-Path $repoRoot 'hosts\_registry.ps1')
 $hookCapable = @(Get-SpecrewHookCapableHosts)
-Assert-True (($hookCapable -contains 'claude') -and ($hookCapable -contains 'codex') -and ($hookCapable -contains 'copilot') -and ($hookCapable -contains 'cursor')) 'hook-capable: all 4 hook-capable hosts present (registry-driven, manifest carries RefocusHookBindings)'
-Assert-True (-not ($hookCapable -contains 'antigravity')) 'hook-capable: antigravity EXCLUDED (hookless — supported but no RefocusHookBindings; capability is NOT derivable from Status)'
+Assert-True (($hookCapable -contains 'claude') -and ($hookCapable -contains 'codex') -and ($hookCapable -contains 'copilot') -and ($hookCapable -contains 'cursor') -and ($hookCapable -contains 'antigravity')) 'hook-capable: all 5 hook-capable hosts present (registry-driven, manifest carries RefocusHookBindings)'
 
 # --- 17. T010 (SC-016): PROACTIVE provisioning — ALL hook-capable hosts provisioned regardless of PATH -------
 # The orchestrator must write EVERY host's config even when NO host binary is on PATH (the silent-degradation
@@ -325,13 +376,13 @@ $proactiveHome = Join-Path $scratchRoot 'home-proactive'
 New-Item -ItemType Directory -Path $proactiveHome -Force | Out-Null
 $proActions = @(Invoke-RefocusHookDeployment -ProjectPath $projectRoot -DeployScriptPath $deployScript -UserHomeOverride $proactiveHome)
 $proHosts = @($proActions | Where-Object { $_.Action -eq 'refocus-hooks' } | ForEach-Object { [string]$_.HostKind })
-Assert-True (($proHosts -contains 'claude') -and ($proHosts -contains 'codex') -and ($proHosts -contains 'copilot') -and ($proHosts -contains 'cursor')) 'proactive: orchestrator deployed ALL 4 hook-capable hosts (no PATH gate)'
+Assert-True (($proHosts -contains 'claude') -and ($proHosts -contains 'codex') -and ($proHosts -contains 'copilot') -and ($proHosts -contains 'cursor') -and ($proHosts -contains 'antigravity')) 'proactive: orchestrator deployed ALL 5 hook-capable hosts (no PATH gate)'
 Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.claude\settings.local.json')) 'proactive: claude PROJECT config written'
 Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.codex\hooks.json')) 'proactive: codex USER-level config written (binary not on PATH)'
 Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.copilot\hooks\specrew-refocus.json')) 'proactive: copilot USER-level config written'
 Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.cursor\hooks.json')) 'proactive: cursor USER-level config written'
+Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.agents\hooks.json')) 'proactive: antigravity PROJECT config written'
 Assert-True (Test-Path -LiteralPath (Join-Path $proactiveHome '.specrew\specrew-hook-launch.ps1')) 'proactive: per-machine launcher provisioned even with NO host binary present'
-Assert-True (-not ($proHosts -contains 'antigravity')) 'proactive: hookless antigravity NOT provisioned'
 
 # --- 17b. (review-signoff P6-001) DETERMINISTIC PATH-independence guard. Case 17 above provisions all 4 hosts,
 # but on a PATH-COMPLETE machine (the common dev/CI case) the OLD PATH-gated code (Get-Command codex|copilot|

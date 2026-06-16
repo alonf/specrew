@@ -42,4 +42,11 @@ Assert-True ($r5.safe_session_id -match '^launch-[a-f0-9]{32}$') 'malformed sess
 Assert-True ($r4.safe_session_id -ne $r5.safe_session_id) 'fallback tokens are per launch, not shared'
 Assert-True ($r4.safe_session_id -ne 'unknown' -and $r5.safe_session_id -ne 'unknown') 'fallback tokens never use global unknown'
 
+# Antigravity uses camelCase conversation/workspace fields in the verified hook payload.
+$anti = ConvertFrom-SpecrewHostHookEvent -RawEvent '{"conversationId":"ec33ebf9-0cba-4100-8142-c61503f6c587","workspacePaths":["C:/anti/project"],"transcriptPath":"C:/anti/transcript.jsonl"}' -HostName antigravity
+Assert-Equal $anti.host 'antigravity' 'antigravity host accepted'
+Assert-Equal $anti.session_id 'ec33ebf9-0cba-4100-8142-c61503f6c587' 'antigravity conversationId becomes session_id'
+Assert-Equal $anti.safe_session_id 'ec33ebf9-0cba-4100-8142-c61503f6c587' 'antigravity conversationId is filename-safe'
+Assert-Equal $anti.project_root 'C:/anti/project' 'antigravity workspacePaths[0] becomes project_root'
+
 Write-Host 'HostEventAdapter: all tests passed.' -ForegroundColor Green

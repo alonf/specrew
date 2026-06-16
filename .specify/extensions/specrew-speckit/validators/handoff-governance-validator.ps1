@@ -252,6 +252,19 @@ function Get-MissingHumanReentryPacketSections {
     return @($missing.ToArray())
 }
 
+function Get-MissingFivePartStopContextSections {
+    param([hashtable]$SectionMap)
+
+    $missing = New-Object System.Collections.Generic.List[string]
+    foreach ($heading in @('What I just did', 'Why I stopped', 'What needs your review', 'What happens next', 'What I need from you')) {
+        if (-not $SectionMap.Contains($heading)) {
+            $missing.Add($heading) | Out-Null
+        }
+    }
+
+    return @($missing.ToArray())
+}
+
 function Test-DiscussionPromptsCompliant {
     param([AllowEmptyString()][string]$Text)
 
@@ -310,6 +323,8 @@ function Get-AuthoredParagraphs {
 
     $normalized = $Text -replace "`r`n", "`n"
     $normalized = [regex]::Replace($normalized, '(?ms)```.*?```', '')
+    $normalized = [regex]::Replace($normalized, '(?ms)<command\b[^>]*>.*?</command>', '')
+    $normalized = [regex]::Replace($normalized, '(?m)^\s*(?:PASS|FAIL|INFO|WARN|ERROR|TRACE):\s+.+$', '')
     $normalized = [regex]::Replace($normalized, '(?m)^\s*>.+$', '')
     return @($normalized -split '(?:\n\s*\n)+' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
 }
@@ -743,6 +758,11 @@ if (Test-UsesStopMessageFormat -SectionMap $sectionMap) {
         $warnings.Add('soft-warning.transitional-stop-claim') | Out-Null
     }
 
+    $missingFivePartSections = @(Get-MissingFivePartStopContextSections -SectionMap $sectionMap)
+    if ($missingFivePartSections.Count -gt 0) {
+        $warnings.Add(("soft-warning.incomplete-five-part-stop-context :: missing={0}" -f ($missingFivePartSections -join ','))) | Out-Null
+    }
+
     if ($resolvedResponseScope -eq 'boundary-handoff' -and $hasInteractionBoundaryContext) {
         $identifierCount = Get-IdentifierCount -Text $whatIJustDid
         $wordCount = Get-WordCount -Text $whatIJustDid
@@ -763,7 +783,7 @@ if (Test-UsesStopMessageFormat -SectionMap $sectionMap) {
     }
 }
 
-if ($resolvedResponseScope -eq 'boundary-handoff' -and (Test-UsesHumanReentryPacketCandidate -SectionMap $sectionMap)) {
+if ($resolvedResponseScope -eq 'boundary-handoff' -and $hasInteractionBoundaryContext -and (Test-UsesHumanReentryPacketCandidate -SectionMap $sectionMap)) {
     $missingPacketSections = @(Get-MissingHumanReentryPacketSections -SectionMap $sectionMap)
     if ($missingPacketSections.Count -gt 0) {
         $failures.Add(("validation-fail.incomplete-human-reentry-packet :: missing={0}" -f ($missingPacketSections -join ','))) | Out-Null
@@ -840,7 +860,11 @@ if ($warnings.Contains('soft-warning.empty-user-action-section')) {
 }
 
 if ($warnings.Contains('soft-warning.transitional-stop-claim')) {
-    $summaryLines.Add('Use the three-section stop-message format only for real human blockers; keep transitional waiting updates as single-line progress prose.') | Out-Null
+    $summaryLines.Add('Use the five-part context packet only for real human blockers or long-work stops; keep transitional waiting updates as single-line progress prose.') | Out-Null
+}
+
+if (@($warnings | Where-Object { $_ -like 'soft-warning.incomplete-five-part-stop-context*' }).Count -gt 0) {
+    $summaryLines.Add('Include all five long-work stop context sections: What I just did, Why I stopped, What needs your review, What happens next, and What I need from you.') | Out-Null
 }
 
 if (@($warnings | Where-Object { $_ -like 'soft-warning.thin-what-i-just-did*' }).Count -gt 0) {

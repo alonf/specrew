@@ -92,6 +92,11 @@ Write-Pass 'Mirror extension.yml lists all 4 new sync commands'
 # deliberately abandoned (and a ValidateSet would break alias support), so assert the contract.
 $syncBoundaryPath = Join-Path -Path $repoRoot -ChildPath 'scripts\internal\sync-boundary-state.ps1'
 $syncBoundaryContent = Get-Content -LiteralPath $syncBoundaryPath -Raw -Encoding UTF8
+$deployedSyncBoundaryPath = Join-Path -Path $repoRoot -ChildPath '.specify\extensions\specrew-speckit\scripts\sync-boundary-state.ps1'
+if ($syncBoundaryPath -eq $deployedSyncBoundaryPath -or $syncBoundaryPath -notmatch 'scripts[\\/]internal[\\/]sync-boundary-state\.ps1$') {
+    Write-Fail "Lifecycle sync boundary assertion must target the module-internal sync script, got: $syncBoundaryPath"
+}
+Write-Pass 'Lifecycle sync assertion targets the module-internal sync-boundary-state.ps1 copy'
 
 # 7a (negative guard, runtime): an unrecognized boundary is rejected before any project access.
 $nxRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('__specrew_nx_' + [System.Guid]::NewGuid().ToString('N'))
@@ -127,14 +132,14 @@ if (-not $canonicalFn.Success -or $canonicalFn.Value -notmatch "'retro'") {
 }
 Write-Pass "Get-SpecrewCanonicalBoundaryTypes includes 'retro' in the canonical boundary order"
 
-# Test 9: Smoke-invoke `Invoke-SpecrewBoundaryStateSync -BoundaryType retro` does NOT throw a ValidateSet error
-# (We can't run a full sync without a fixture; we just verify the parameter is accepted.)
+# Test 9: Smoke-invoke the module-internal session-state helper with `retro`
+# to prove the lifecycle boundary assertion is aimed at the real module copy.
 $syncScriptInvocation = "& { . '$syncBoundaryPath'; try { New-SpecrewSessionState -BoundaryType 'retro' -FeatureRef 'test' -IterationNumber '001' -TaskId `$null -AuthCommitHash `$null } catch { if (`$_.Exception.Message -match 'ValidateSet') { 'VALIDATE_SET_ERROR' } else { 'OK' } } }"
 $smokeResult = pwsh -NoProfile -Command $syncScriptInvocation 2>&1 | Out-String
 if ($smokeResult -match 'VALIDATE_SET_ERROR') {
     Write-Fail "Smoke-invoking New-SpecrewSessionState -BoundaryType 'retro' threw a ValidateSet error: $smokeResult"
 }
-Write-Pass "BoundaryType 'retro' is accepted by sync-boundary-state.ps1 ValidateSet"
+Write-Pass "BoundaryType 'retro' is accepted by the module-internal sync-boundary-state.ps1 helper"
 
 Write-Host ''
 Write-Host 'Closeout lifecycle sync commands integration: all assertions pass'

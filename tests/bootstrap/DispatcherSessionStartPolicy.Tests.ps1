@@ -17,7 +17,9 @@ function Invoke-SessionStartDispatcherScenario {
     param(
         [Parameter(Mandatory = $true)][object[]]$Providers,
         [string]$SessionId = 'sess-183',
-        [string]$HostKind = 'claude'
+        [string]$HostKind = 'claude',
+        [string]$EventName = 'SessionStart',
+        [AllowNull()][string]$EventJson = $null
     )
     $proj = Join-Path ([System.IO.Path]::GetTempPath()) ("sspolicy-" + [guid]::NewGuid().ToString('N'))
     $scriptsDir = Join-Path $proj '.specify/extensions/specrew-speckit/scripts'
@@ -27,7 +29,10 @@ function Invoke-SessionStartDispatcherScenario {
     $catalog = @{
         schema_version = '1'
         providers      = @($Providers | ForEach-Object {
-                @{ id = $_.id; kind = 'inject'; events = @('SessionStart'); order = $_.order; budget_share = 1.0; command = $_.command }
+                $events = if ($_ -is [hashtable] -and $_.ContainsKey('events')) { @($_.events) }
+                elseif ($_.PSObject.Properties['events']) { @($_.events) }
+                else { @($EventName) }
+                @{ id = $_.id; kind = 'inject'; events = $events; order = $_.order; budget_share = 1.0; command = $_.command }
             })
     } | ConvertTo-Json -Depth 6
     Set-Content -LiteralPath (Join-Path $proj '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
@@ -35,14 +40,14 @@ function Invoke-SessionStartDispatcherScenario {
         Set-Content -LiteralPath (Join-Path $scriptsDir $p.command) -Value $p.body -Encoding UTF8
     }
 
-    $event = @{ session_id = $SessionId; source = 'startup'; hook_event_name = 'SessionStart' } | ConvertTo-Json -Compress
+    $event = if ($null -ne $EventJson) { $EventJson } else { @{ session_id = $SessionId; source = 'startup'; hook_event_name = $EventName } | ConvertTo-Json -Compress }
     $eventFile = Join-Path $proj 'event.json'
     Set-Content -LiteralPath $eventFile -Value $event -Encoding UTF8 -NoNewline
     $outFile = Join-Path $proj 'd.out'
     $errFile = Join-Path $proj 'd.err'
 
     $pr = Start-Process -FilePath 'pwsh' `
-        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'SessionStart', '-HostKind', $HostKind) `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', $EventName, '-HostKind', $HostKind) `
         -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
         -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile
 
@@ -106,6 +111,22 @@ try {
 }
 finally {
     Remove-Item -LiteralPath $fallback.Project -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+$antigravityFallback = Invoke-SessionStartDispatcherScenario -Providers @(
+    @{ id = 'bootstrap'; events = @('PreInvocation'); order = 20; command = 'bootstrap-fails.ps1'; body = $failingBootstrapStub }
+) -HostKind 'antigravity' -EventName 'PreInvocation' -SessionId 'anti-fallback' -EventJson '{"conversationId":"anti-fallback","workspacePaths":["C:/anti/project"],"hookEventName":"PreInvocation"}'
+try {
+    Assert-True ($antigravityFallback.ExitCode -eq 0) 'antigravity PreInvocation provider failure dispatcher exits 0'
+    $antiJson = $antigravityFallback.StdOut | ConvertFrom-Json
+    Assert-True ($null -ne $antiJson.injectSteps -and @($antiJson.injectSteps).Count -eq 1) 'antigravity PreInvocation returns injectSteps JSON'
+    $antiMessage = [string]$antiJson.injectSteps[0].ephemeralMessage
+    Assert-True ($antiMessage -match 'degraded governed fallback') 'antigravity fallback identifies degraded governed mode'
+    Assert-True ($antiMessage -match 'specrew start --host antigravity') 'antigravity fallback tells the agent to recover with specrew start --host antigravity'
+    Assert-True ($antigravityFallback.StdErr -match 'PROVIDER_FAILED') 'antigravity provider failure is observable on stderr'
+}
+finally {
+    Remove-Item -LiteralPath $antigravityFallback.Project -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host "`n=== DispatcherSessionStartPolicy.Tests.ps1: all assertions passed ===" -ForegroundColor Green

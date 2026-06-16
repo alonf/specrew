@@ -23,7 +23,7 @@ param(
     # T014: per-host event/output shaping. The neutral -Event vocabulary stays
     # host-blind (SessionStart | PostToolUse | UserPromptSubmit | PreToolUse);
     # the BINDING (per-host hook config) names both when it registers.
-    [ValidateSet('claude', 'codex', 'copilot', 'cursor')][string]$HostKind = 'claude'
+    [ValidateSet('claude', 'codex', 'copilot', 'cursor', 'antigravity')][string]$HostKind = 'claude'
 )
 
 # KILL SWITCH FIRST (FR-008): this check must precede ANY logic that could itself
@@ -155,6 +155,11 @@ function New-GovernedProviderFailureFallback {
         'Recovery: run `specrew where` to inspect lifecycle state, or `/specrew-refocus` to reload Specrew guidance.',
         ("If hook delivery keeps failing, run `specrew hooks status` and `specrew start --host {0}` from the project root." -f $HostKind)
     ) -join "`n")
+}
+
+function Test-IsBootstrapDeliveryEvent {
+    param([string]$EventName, [string]$TargetHost)
+    return ($EventName -eq 'SessionStart' -or ($TargetHost -eq 'antigravity' -and $EventName -eq 'PreInvocation'))
 }
 
 function Get-DispatcherProjectRoot {
@@ -558,6 +563,17 @@ function Write-InjectionOutput {
     #   copilot : additionalContext JSON (camelCase reference contract)
     #   cursor  : additional_context JSON (snake_case official contract)
     switch ($TargetHost) {
+        'antigravity' {
+            if ($EventName -eq 'Stop') {
+                @{ decision = 'allow' } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+            }
+            elseif (-not [string]::IsNullOrWhiteSpace($Payload)) {
+                @{ injectSteps = @(@{ ephemeralMessage = $Payload }) } | ConvertTo-Json -Depth 6 -Compress | Write-Output
+            }
+            else {
+                @{} | ConvertTo-Json -Depth 3 -Compress | Write-Output
+            }
+        }
         'codex' {
             @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
         }
@@ -601,10 +617,11 @@ try {
     }
 
     # Session-id field varies per host contract: session_id (Claude/Codex),
-    # sessionId (Copilot camelCase), conversation_id (Cursor).
+    # sessionId (Copilot camelCase), conversation_id (Cursor), conversationId
+    # (Antigravity camelCase).
     $rawSessionId = $null
     if ($null -ne $hostEvent) {
-        foreach ($idKey in @('session_id', 'sessionId', 'conversation_id')) {
+        foreach ($idKey in @('session_id', 'sessionId', 'conversation_id', 'conversationId')) {
             if ($hostEvent.PSObject.Properties[$idKey] -and -not [string]::IsNullOrWhiteSpace([string]$hostEvent.$idKey)) {
                 $rawSessionId = [string]$hostEvent.$idKey
                 break
@@ -654,7 +671,7 @@ try {
         $commandPath = Resolve-ProviderCommandPath -ProjectRoot $projectRoot -Command ([string]$provider.command)
         if ($null -eq $commandPath) {
             Write-DispatcherWarn -Code 'SOURCE_CONFINED' -Message ("provider '{0}' command does not resolve under the deployed tree; skipped" -f $providerId)
-            if ($Event -eq 'SessionStart' -and $providerId -in @('bootstrap', 'refocus')) {
+            if ((Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) -and $providerId -in @('bootstrap', 'refocus')) {
                 $failedSessionStartProviders.Add($providerId) | Out-Null
             }
             continue
@@ -762,7 +779,7 @@ try {
             elseif ($result.LaunchFailed) { "failed to launch: $($result.StdErr)" }
             else { "exited $($result.ExitCode)" }
             Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' {1}; skipped" -f $providerId, $why)
-            if ($Event -eq 'SessionStart' -and $providerId -in @('bootstrap', 'refocus')) {
+            if ((Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) -and $providerId -in @('bootstrap', 'refocus')) {
                 $failedSessionStartProviders.Add($providerId) | Out-Null
             }
             if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
@@ -780,7 +797,7 @@ try {
                 $stateDirty = $true
             }
         }
-        if ($Event -eq 'SessionStart' -and $providerId -in @('bootstrap', 'refocus') -and $result.StdErr -match '\bPROVIDER_FAILED\b') {
+        if ((Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) -and $providerId -in @('bootstrap', 'refocus') -and $result.StdErr -match '\bPROVIDER_FAILED\b') {
             $failedSessionStartProviders.Add($providerId) | Out-Null
         }
         if (-not [string]::IsNullOrWhiteSpace($result.StdErr)) {
@@ -793,7 +810,7 @@ try {
         Save-SessionState -Path $sessionStatePath -State $sessionState
     }
 
-    if ($Event -eq 'SessionStart' -and $failedSessionStartProviders.Count -gt 0) {
+    if ((Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) -and $failedSessionStartProviders.Count -gt 0) {
         $hasBootstrap = @($fragments | Where-Object { [string]$_.ProviderId -eq 'bootstrap' }).Count -gt 0
         if (-not $hasBootstrap) {
             $fragments.Add((New-DispatcherFragment -ProviderId 'fallback' -Text (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders $failedSessionStartProviders.ToArray()) -Order 0)) | Out-Null
@@ -803,12 +820,18 @@ try {
     if ($fragments.Count -gt 0) {
         Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -TargetHost $HostKind
     }
+    elseif ($HostKind -eq 'antigravity' -and $Event -eq 'Stop') {
+        Write-InjectionOutput -EventName $Event -Payload '' -TargetHost $HostKind
+    }
     exit 0
 }
 catch {
     Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("dispatcher fail-open: {0}" -f $_.Exception.Message)
-    if ($Event -eq 'SessionStart') {
+    if (Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) {
         Write-InjectionOutput -EventName $Event -Payload (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders @('dispatcher')) -TargetHost $HostKind
+    }
+    elseif ($HostKind -eq 'antigravity' -and $Event -eq 'Stop') {
+        Write-InjectionOutput -EventName $Event -Payload '' -TargetHost $HostKind
     }
     exit 0
 }

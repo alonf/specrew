@@ -73,9 +73,9 @@ The `--reason` flag is **mandatory**. Session-scoped (not per-boundary) — one 
 - Both: gates still fire; turns advance without input but every boundary surfaces a directive
 - `--bypass-boundary-enforcement`: suspends gates; `--autonomous` still controls turn advancement
 
-## What you'll see at every boundary
+## What you'll see at every stop
 
-Every time the Crew stops at a boundary, the console shows a **three-section handoff** in this exact shape:
+Every time the Crew stops at a boundary, the console shows a **six-section human re-entry packet** in this exact shape:
 
 ```text
 ## What I just did
@@ -88,26 +88,41 @@ Every time the Crew stops at a boundary, the console shows a **three-section han
 
 I stopped at the <boundary> boundary because <reason the next step needs you>.
 
+## What needs your review
+
+[The artifacts, decisions, risks, skipped checks, and safe-skim areas that matter for this verdict.
+ Review targets are linked via BARE `file:///` URIs (NOT markdown-link form `[name](url)`) so you
+ can Ctrl+Click through to the artifact.]
+
+## What happens next
+
+[The next lifecycle phase, artifacts that will be produced, and the next expected boundary stop.]
+
+## Discussion prompts
+
+[One to three targeted prompts, each with context, the question, the recommended/default path when
+ one exists, and the consequence of changing direction.]
+
 ## What I need from you
 
-[The single best immediate action. Review targets are linked via BARE `file:///` URIs (NOT
- markdown-link form `[name](url)`) so you can Ctrl+Click through to the artifact. Names the
- canonical verdict shape you should type.]
+[The single best immediate action. Names the canonical verdict shape you should type.]
 ```
 
-The three sections are not stylistic — they are a methodology guarantee from Feature 016 (Substantive Interaction Model, Pillar 1). The format lets you scan a handoff in seconds and decide whether to advance, even when you have been away from the session.
+When the Crew stops after substantial work outside a boundary verdict, it uses the same context minus `Discussion prompts`: `What I just did`, `Why I stopped`, `What needs your review`, `What happens next`, and `What I need from you`. This is mandatory in downstream projects and on every host, even when hooks are unavailable or failed open.
+
+These sections are not stylistic — they are a methodology guarantee from Feature 016 (Substantive Interaction Model, Pillar 1). The format lets you scan a handoff in seconds and decide whether to advance, even when you have been away from the session.
 
 **Bare `file:///` URIs, not markdown link form.** Modern PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them Ctrl+Clickable. They do NOT render markdown — so if the Crew emits `[plan.md](file:///C:/foo/plan.md)`, the URL is hidden inside the parentheses and you cannot click through. If you see markdown-link form in a handoff, that is the regression: re-prompt the Crew with `please emit bare file:/// URIs, not markdown-link form`.
 
 **What to do**:
 
-1. Read all three sections. The flow is intentional: what happened → why you matter now → what to type.
-2. Ctrl+Click any bare `file:///` link the Crew shows you in `What I need from you` — those are the artifacts the verdict applies to.
+1. Read the packet sections. The flow is intentional: what happened → why it stopped → what to inspect → what happens next → what to type.
+2. Ctrl+Click any bare `file:///` link the Crew shows you — those are the artifacts the verdict applies to.
 3. Type one of the canonical verdict shapes from the "Recognized verdict shapes" section above. Ambiguous prose (`looks good`, `continue`) is rejected and re-prompted.
 
-**If you see a handoff that doesn't follow this format** — for example, a bare technical status line, a pile of tool output, or a question without context — that is a methodology regression. Re-prompt the Crew with `please use the three-section boundary handoff format` and the Crew should regenerate the handoff. If it persists across hosts (Copilot / Claude / Codex / Antigravity), open an issue — the canonical templates govern this UX promise.
+**If you see a stop that doesn't follow this format** — for example, a bare technical status line, a pile of tool output, or a question without context — that is a methodology regression. Re-prompt the Crew with `please use the Specrew stop context packet` and the Crew should regenerate the handoff. If it persists across hosts (Copilot / Claude / Codex / Antigravity), open an issue — the canonical templates govern this UX promise.
 
-> Mid-task progress updates are NOT three-section handoffs. When the Crew is still actively working (writing a file, running a test, waiting on a background process), it uses single-line prose without the user-action section. The three-section format is reserved for boundary stops where you are the immediate blocker.
+> Mid-task progress updates are NOT stop packets. When the Crew is still actively working (writing a file, running a test, waiting on a background process), it uses single-line prose without the user-action section. The packet format is reserved for boundary stops, real human blockers, long-work pauses, and handoff-worthy stops.
 
 ## Closing iterations + features
 
@@ -789,14 +804,14 @@ Long sessions drift: compaction destroys methodology context, cold launches neve
 
 - **Manual recovery (every host)**: run `/specrew-refocus` any time — no-args loads the always-true core + the current stage's discipline digest; `--boundary <stage>` and `--role <name>` scope it; `--status` shows the operational truth (kill switches, breaker state, injection journal); `--compact-instructions` emits a paste-ready `/compact` preserve-list built from live lifecycle state.
 - **Boundary-cross injection (every host, mechanical)**: every boundary sync appends the INCOMING stage's digest to its own output — treat any `[specrew-refocus]` block in tool output as binding stage discipline.
-- **Hook triggers (per host, per the verified matrix)**: Claude re-injects after compaction and on session start; Codex binds the full triad (post-compaction, launch, and per-prompt boundary checks); Copilot and Cursor re-ground on session start. Hooks deploy to PER-USER config only (never shared settings — a cloned repo can never import auto-executing hooks) and respect a recorded opt-out.
+- **Hook triggers (per host, per the verified matrix)**: Claude re-injects after compaction and on session start; Codex binds the full triad (post-compaction, launch, and per-prompt boundary checks); Copilot and Cursor re-ground on session start. Antigravity has bounded project hook support through `.agents/hooks.json`: `PreInvocation` injects the bootstrap message and `Stop` returns the handover decision. If those hooks do not fire, recover with `specrew start --host antigravity`. Hooks deploy to PER-USER config where the host supports it; Antigravity's supported slice is project-local and merge-aware. All hosts respect a recorded opt-out.
 - **Safety**: a per-session circuit breaker trips on runaway injection (loudly once, with re-enable guidance); kill switches at three levels (`SPECREW_REFOCUS_DISABLE=1` env, per-trigger `enabled: false` in `refocus-scopes.json`, hook de-registration via `specrew hooks remove`); `specrew update` never silently flips a disable decision in either direction.
 
 ## Session Continuity — Auto-Bootstrap, Rolling Handover, Host Switching
 
 Sessions end — you `/exit`, close a window, hit a crash, or simply switch to a different AI host. Specrew treats every restart as a resume problem, so the next session starts where the last one stopped instead of asking "what do you want to build?".
 
-- **Auto-bootstrap (the way in)**: once `specrew init` has set things up, you just launch your host (run `claude`, `codex`, `copilot`, or `cursor`) inside the project. Specrew greets you with an orientation banner, reminds the agent of the governed lifecycle, and surfaces where you left off. You no longer need to run `specrew start` to get going — launching the host is the front door. (`specrew start` still works and is exactly how you get in on Antigravity, which has no auto-bootstrap.)
+- **Auto-bootstrap (the way in)**: once `specrew init` has set things up, you just launch your host (run `claude`, `codex`, `copilot`, or `cursor`) inside the project. Specrew greets you with an orientation banner, reminds the agent of the governed lifecycle, and surfaces where you left off. You no longer need to run `specrew start` to get going — launching the host is the front door. Antigravity also has bounded project-hook bootstrap when `.agents/hooks.json` fires; `specrew start --host antigravity` remains the recovery path if it does not.
 - **Rolling handover (the way out)**: as you work, Specrew keeps a single up-to-date handover file on disk that captures what the agent just did, why it stopped, where to pick up next, and the context the next session needs. It is refreshed as you go and written safely, so even an abrupt shutdown leaves a usable resume point rather than a corrupted one. This file — together with the rest of your work, which lives in files on disk — is what makes your progress durable: it follows the project, not the agent's memory.
 - **You resume right where you stopped**: on every launch Specrew reads your committed work and that handover, then tells the agent concretely where to continue — "resume the design workshop at the next remaining lens" or "the workshop is done; you're at the approval gate". Because your work lives on disk, even a hard crash can lose a little of the most recent conversation but never the work itself.
 - **Switching hosts mid-feature**: the handover is portable across hosts. Exit one host, launch a *different* one in the same project, type `continue`, and the new session picks up the same feature at the same spot — your work follows you. One behavior note: if you switch to a non-Claude host and resume right at an approval boundary, the new session may ask you to re-confirm your last approval before it moves on. That is a safety choice, not a loss of progress — your work and your place are intact.
@@ -899,12 +914,12 @@ In all cases, if an agent writes directly to `.specrew/start-context.json` bound
 | Capability | Copilot | Claude | Cursor | Codex | Antigravity |
 |---|---|---|---|---|---|
 | User-defined slash commands | ✅ `.github/skills/<name>.md` | ✅ `.claude/skills/<name>/SKILL.md` | ❌ **Not supported** (skills deploy as `.cursor/rules/*.mdc` context) | ❌ **Not supported** | ✅ `.agents/skills/<name>.md` |
-| Hooks (PreToolUse, etc.) | ❌ None | ✅ Rich, configured in `.claude/settings.json` | ⚠️ Unverified at F-050 time | ⚠️ Unclear at v0.26.0 research time | ⚠️ Unclear at v0.27.0 research time |
+| Hooks (PreToolUse, etc.) | ✅ Session-start refocus/bootstrap | ✅ Rich, configured in `.claude/settings.json` | ✅ Session-start refocus/bootstrap | ✅ Full refocus triad | ⚠️ Bounded `.agents/hooks.json` support: `PreInvocation` bootstrap + `Stop` handover decision; use `specrew start --host antigravity` if hooks do not fire |
 | Subagents (multi-agent teams) | ⚠️ Via `--agent <name>` (Squad) | ✅ `.claude/agents/*.md` | ⚠️ Crew charters deploy as `.cursor/rules/*.mdc` (no native agent picker) | ✅ `.codex/agents/*.toml` | ✅ `.agents/agents/*.md` |
 | MCP server config | ⚠️ Limited (recent) | ✅ `.mcp.json` first-class | ✅ `cursor-agent mcp` + `--approve-mcps` | ✅ `.codex/mcp.toml` first-class | ⚠️ Unverified at graduation time |
 | Project memory | ⚠️ None native | ✅ `CLAUDE.md` | ✅ `AGENTS.md` | ✅ `AGENTS.md` | ⚠️ Unverified at graduation time |
 
-F-040 manages skills + slash commands (uniformly via existing F-021 multi-host deploy). F-040 explicitly defers hooks, MCP, project memory, and subagents to future proposals (Proposal 105 for hooks; Proposal 024 Slice 3 for the rest).
+F-040 managed skills + slash commands (uniformly via existing F-021 multi-host deploy) and deferred hooks, MCP, project memory, and subagents to later work. Current Specrew releases add hook-driven bootstrap/refocus where verified; Antigravity's current slice remains bounded to `PreInvocation` bootstrap and `Stop` handover decisions.
 
 ### Cursor host interaction model (F-050)
 

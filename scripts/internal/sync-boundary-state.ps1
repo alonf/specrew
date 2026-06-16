@@ -1105,10 +1105,14 @@ function Invoke-PreFeatureCloseoutWorkingTreeGate {
     )
 
     # Feature-implementation surfaces that MUST be committed before closeout.
+    # Treat deployed Spec Kit / Specrew extension companions as one surface:
+    # excluding only boundary-owned session state prevents partial closeout
+    # commits where `.specify/extensions/` is visible but its registration or
+    # template companions are silently ignored.
     $featureRelevantPathPatterns = @(
         '^scripts/'
         '^extensions/'
-        '^\.specify/extensions/'
+        '^\.specify/'
         '^tests/'
         '^docs/'
         '^proposals/'
@@ -1146,12 +1150,27 @@ function Invoke-PreFeatureCloseoutWorkingTreeGate {
 
     if ($relevantUncommitted.Count -eq 0) { return }
 
+    $upstreamBranch = Get-SpecrewGitUpstreamBranch -ProjectRoot $resolvedProjectRoot
+    $hasUpstream = -not [string]::IsNullOrWhiteSpace($upstreamBranch)
+    $commitRequirementLine = if ($hasUpstream) {
+        ("Feature-closeout requires ALL implementation work to be committed AND pushed to the configured upstream ({0})." -f $upstreamBranch)
+    }
+    else {
+        'Feature-closeout requires ALL implementation work to be committed before closeout.'
+    }
+    $deliveryStep = if ($hasUpstream) {
+        ("  4. Push to upstream ({0}): git push" -f $upstreamBranch)
+    }
+    else {
+        '  4. No upstream is configured for this branch; after committing, continue locally or configure a remote only if your delivery path requires one.'
+    }
+
     $fileList = ($relevantUncommitted | ForEach-Object { "  - $_" }) -join "`n"
     $messageLines = @(
         ("[feature-closeout-working-tree-gate] {0} feature-implementation file(s) are unstaged or uncommitted at feature-closeout boundary:" -f $relevantUncommitted.Count)
         $fileList
         ''
-        'Feature-closeout requires ALL implementation work to be committed AND pushed.'
+        $commitRequirementLine
         'This gate exists because the F-039 / Proposal 065 closeout on 2026-05-22 declared'
         '"shipped as v0.25.0" while ~1900 lines of implementation code sat uncommitted in'
         'the working tree. The closeout boundary advanced under that hollow state.'
@@ -1161,12 +1180,35 @@ function Invoke-PreFeatureCloseoutWorkingTreeGate {
         '  1. Review the unstaged surfaces: git status'
         '  2. Stage them: git add <files>'
         "  3. Commit: git commit -m 'feat(F-NNN): <description>'"
-        '  4. Push: git push'
+        $deliveryStep
         '  5. Re-invoke /speckit.specrew-speckit.sync-feature-closeout'
         ''
         'Boundary-sync HALTED until the working tree contains no uncommitted feature-implementation surfaces.'
     )
     throw ($messageLines -join "`n")
+}
+
+function Get-SpecrewGitUpstreamBranch {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $upstreamOutput = @(& git -C $ProjectRoot rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null)
+    $upstreamExitCode = $LASTEXITCODE
+    $global:LASTEXITCODE = 0
+    if ($upstreamExitCode -ne 0) {
+        return $null
+    }
+
+    foreach ($line in $upstreamOutput) {
+        $candidate = ([string]$line).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            return $candidate
+        }
+    }
+
+    return $null
 }
 
 function Invoke-SpecrewAutoRenderDashboard {
@@ -1192,7 +1234,9 @@ function Invoke-SpecrewAutoRenderDashboard {
         [string]$FeatureRef,
 
         [AllowNull()]
-        [string]$IterationNumber
+        [string]$IterationNumber,
+
+        [switch]$PreserveExistingArtifact
     )
 
     # Locate specrew-where.ps1 in the same scripts/ root that holds this file.
@@ -1212,9 +1256,11 @@ function Invoke-SpecrewAutoRenderDashboard {
         '-ProjectPath', $ProjectRoot,
         '-OutputPath', $OutputPath,
         '-CaptureKind', $CaptureKind,
-        '-NoColor',
-        '-PreserveExistingArtifact'
+        '-NoColor'
     )
+    if ($PreserveExistingArtifact.IsPresent) {
+        $whereArgs += '-PreserveExistingArtifact'
+    }
     if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
         $whereArgs += @('-FeatureId', $FeatureRef)
     }

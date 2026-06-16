@@ -178,6 +178,7 @@ if (Test-Path -LiteralPath $scratchRoot) {
 }
 
 $null = New-Item -Path (Join-Path $fixtureExtensionRoot 'scripts') -ItemType Directory -Force
+$null = New-Item -Path $fixtureTemplateRoot -ItemType Directory -Force
 Copy-Item -LiteralPath $sourceScriptPath -Destination $fixtureScriptPath -Force
 Copy-Item -LiteralPath $sharedGovernancePath -Destination $fixtureSharedGovernancePath -Force
 Copy-Item -Path (Join-Path $sourceTemplateRoot '*') -Destination $fixtureTemplateRoot -Recurse -Force

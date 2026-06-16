@@ -34,6 +34,12 @@
   honestly: use project-scoped `.agents/hooks.json`, verify Antigravity schema,
   events, and output semantics before claiming parity, and keep
   `specrew start --host antigravity` as fallback.
+- Q: DR-004 scope verdict — should the generalized host hook model refactor stay
+  in F-183? → A: Yes. Accept Option A: keep the generalized
+  `RefocusHookBindings` host-manifest refactor in this feature, add it as
+  explicit scope, update capacity to a 24/20 human-approved over-cap baseline,
+  and re-review after durability, lifecycle, and configured reviewer-command
+  blockers are fixed.
 - Q: Are any additional clarify questions required before planning? → A: No.
   The specify workshop already resolved the material scope, release-target,
   multi-host concurrency, Antigravity hook-scope, fallback, and capacity-split
@@ -141,6 +147,33 @@ validation for the mapped events before claiming stable parity.
    verified, **When** docs or status render capability, **Then** Specrew does not
    claim parity and keeps `specrew start --host antigravity` as fallback.
 
+---
+
+### User Story 5 - Hook-capable host bindings are manifest-driven (Priority: P2)
+
+A Specrew maintainer can add or adjust hook-capable host bindings in
+`hosts/<kind>/host.psd1` without adding new host-name conditionals to the shared
+hook deploy/status core.
+
+**Why this priority**: DR-004 accepted the host-model refactor into F-183 because
+Antigravity support exposed that hook config path, config shape, command mode,
+registration, opt-out, and ownership data belong in host manifests rather than
+inside shared core scripts.
+
+**Independent Test**: Existing Claude/Codex/Copilot/Cursor hook registrations
+remain semantically equivalent under manifest-driven bindings, Antigravity uses
+its verified project `.agents/hooks.json` named-definition shape, and hook status
+derives installed/missing/stale/opted-out state from host manifests.
+
+**Acceptance Scenarios**:
+
+1. **Given** an existing hook-capable host manifest, **When** Specrew installs or
+   checks hooks, **Then** shared deploy/status logic reads the host's
+   `RefocusHookBindings` fields instead of branching on the concrete host name.
+2. **Given** a host manifest omits required hook-binding fields, **When** deploy
+   or status runs, **Then** Specrew fails loud enough for maintainers without
+   clobbering existing user hook configuration.
+
 ### Edge Cases
 
 - Hook provider throws before producing output.
@@ -187,6 +220,14 @@ validation for the mapped events before claiming stable parity.
   Antigravity-no-hooks wording.
   **Owner**: Implementer, Reviewer. **Delivery window**: stability bundle unless
   capacity planning explicitly splits/defer it.
+- **FR-008**: Specrew hook deploy/status logic for hook-capable hosts MUST be
+  driven by each host's `RefocusHookBindings` manifest data, including hook
+  settings path, opt-out marker, dispatcher path, config shape, command mode,
+  registrations, ownership/version metadata, and project-root signals, while
+  preserving existing Claude, Codex, Copilot, and Cursor behavior and adding the
+  verified Antigravity binding.
+  **Owner**: Implementer, Reviewer. **Delivery window**: stability bundle,
+  accepted into F-183 by DR-004 Option A.
 
 ### Traceability & Governance Requirements
 
@@ -198,6 +239,9 @@ validation for the mapped events before claiming stable parity.
   deferred.
 - **TG-005**: Feature closeout MUST link fixing commits to issues #2446, #1627,
   and #1761; proposals are referenced but not silently edited.
+- **TG-006**: The accepted host-model refactor MUST have explicit evidence that
+  manifest schema, deploy behavior, status behavior, and mirror copies agree for
+  every touched hook-capable host.
 
 ### Lens-Informed Requirements
 
@@ -260,6 +304,11 @@ validation for the mapped events before claiming stable parity.
   Specrew dispatcher/provider path for verified events, and does not claim
   SessionStart/Stop parity for any Antigravity event whose injection/capture
   behavior is unverified.
+- **SC-010**: Tests prove manifest-driven hook deploy/status preserves existing
+  Claude, Codex, Copilot, and Cursor hook behavior, provisions the verified
+  Antigravity binding from `hosts/antigravity/host.psd1`, and reports hook
+  health from manifest data without concrete host-name conditionals in shared
+  deploy/status core.
 
 ## Key Entities
 
@@ -279,6 +328,10 @@ validation for the mapped events before claiming stable parity.
 - **Antigravity Hook Binding**: Specrew-owned entries in project-scoped
   `.agents/hooks.json`, mapped only to verified Antigravity hook events and
   output/capture semantics.
+- **RefocusHookBindings Host Model**: Host-manifest data under
+  `hosts/<kind>/host.psd1` that declares hook config location, config shape,
+  command-rendering mode, event registrations, opt-out marker, ownership rules,
+  and project-root signals for shared deploy/status code.
 
 ## Assumptions
 
@@ -291,8 +344,10 @@ validation for the mapped events before claiming stable parity.
 - Existing `specrew start --host antigravity` remains the governed fallback even
   after Antigravity hook support is added.
 - Historical local `refocus-state-unknown.json` files do not require migration.
-- The amended FR set fits under the 20 SP cap only if planning confirms it; if
-  not, the split/defer decision requires explicit human approval.
+- The original amended FR set fit under the 20 SP cap only while FR-007 stayed
+  bounded to Antigravity adapter/config/docs/tests. DR-004 Option A explicitly
+  accepts the generalized host-model refactor into F-183 and re-baselines this
+  iteration as a 24/20 story point human-approved over-cap scope.
 
 ## Out of Scope
 
@@ -312,7 +367,9 @@ validation for the mapped events before claiming stable parity.
   amendment honesty.
 - **Iteration Facilitator**: Keeps the plan within the 20 SP cap or forces an
   explicit split/defer decision.
-- **Capacity Model**: Story points, 20 SP maximum per iteration.
+- **Capacity Model**: Story points, 20 SP default maximum per iteration; F-183
+  iteration 001 is re-baselined to 24/20 story points by the DR-004 Option A
+  human scope verdict.
 - **Drift Signals**: `iterations/001/drift-log.md`, traceability checks,
   mirror-parity checks, runtime evidence, and review evidence.
 - **Human Oversight Points**: Human approval required at specify, clarify,

@@ -280,6 +280,17 @@ for ($index = 0; $index -lt $boundaries.Count; $index++) {
     }
 
     if ($boundary -eq 'tasks') {
+        # The repeat-sync idempotency check should exercise boundary state
+        # refresh, not the pre-boundary dirty/lint gate. Commit the scratch
+        # boundary artifacts first to mirror real boundary-commit discipline
+        # without touching the developer's worktree.
+        $null = & git -C $lifecycleProject.ProjectRoot add -A 2>&1
+        $pendingBoundaryArtifacts = @(& git -C $lifecycleProject.ProjectRoot status --porcelain 2>&1)
+        if ($pendingBoundaryArtifacts.Count -gt 0) {
+            $null = & git -C $lifecycleProject.ProjectRoot commit -m 'Commit tasks boundary artifacts before repeat sync' --quiet 2>&1
+            $expectedHead = Get-GitHead -ProjectRoot $lifecycleProject.ProjectRoot
+        }
+
         $repeatSyncResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
             '-ProjectPath', $lifecycleProject.ProjectRoot,
             '-BoundaryType', $boundary,

@@ -57,6 +57,19 @@ try {
     $r3 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath $s3 -BaseBranch 'main'
     Assert-Equal $r3.mode 'welcome-back' 'valid anchor resolves welcome-back'
 
+    # A fresh handover for a different feature is stale context even when specs/<old-feature> still exists.
+    # The active feature from start-context/anchor wins, so resume cannot surface the wrong "why I stopped" body.
+    New-Item -ItemType Directory -Path (Join-Path $root 'specs/feat-old') -Force | Out-Null
+    Write-SpecrewHandoverContext -HandoverDir (Join-Path $root '.specrew/handover') -FromHost codex `
+        -RecordedAt ((Get-Date).ToUniversalTime().ToString('o')) -ActiveFeature 'feat-old' -ActiveBoundary 'feature-closeout' `
+        -Sections @{ 'Recommended next-immediate-step' = 'STALE-WRONG-FEATURE-NEXT' } | Out-Null
+    $r3b = Invoke-SpecrewSessionBootstrap -RawEvent '{"session_id":"sess-1b","source":"startup","hook_event_name":"SessionStart"}' -HostName claude -ProjectRoot $root -StatePath $s3 -BaseBranch 'main'
+    Assert-Equal $r3b.mode 'welcome-back' 'wrong-feature handover does not override the valid active anchor'
+    Assert-True (-not [bool]$r3b.record.handover_valid) 'wrong-feature handover is rejected as invalid'
+    Assert-True ($null -eq $r3b.directive.handover) 'wrong-feature handover is not surfaced in the directive'
+    Assert-True ((@($r3b.directive.validation_findings) -join "`n") -match 'does not match the current active feature') 'wrong-feature rejection is explained in validation findings'
+    Remove-Item -LiteralPath (Join-Path $root '.specrew/handover') -Recurse -Force -ErrorAction SilentlyContinue
+
     # Journal record is appended when a journal path is supplied.
     $jp = Join-Path $root 'journal/records.jsonl'
     Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -JournalPath $jp | Out-Null

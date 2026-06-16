@@ -14,14 +14,15 @@ The core user-facing risk is jargon-first handoff wording that hides the actual 
 
 | Check | Pass Condition | Soft Warning Trigger | Notes |
 |---|---|---|---|
-| Response-type selector | Real human blockers use the three-section stop-message format; in-flight work uses a single-line progress update | The response uses the stop-message format even though no immediate human action is required | Warn, suggest rewrite |
+| Response-type selector | Real human blockers and long-work stops use the five-part context packet; in-flight work uses a single-line progress update | The response uses the context-packet format even though no immediate human action or handoff-worthy pause exists | Warn, suggest rewrite |
 | Mixed transition handling | A mixed transition + true blocker response still uses the stop-message format because the human action wins | The response treats a real blocker as mere progress, or treats pure progress as a stop | Warn, suggest rewrite |
-| In-flight progress shape | Progress-only updates stay as concise single-line prose with no user-action section | An in-flight update reuses the three-section stop-message structure or invents a new structured format | Warn, suggest rewrite |
+| In-flight progress shape | Progress-only updates stay as concise single-line prose with no user-action section | An in-flight update reuses the five-part context packet or invents a new structured format | Warn, suggest rewrite |
 | Substantive stop action | A final stop message names one substantive immediate human action | The `What I need from you` section is empty or uses placeholder wording such as `Nothing yet` or `No action needed` | Warn with `soft-warning.empty-user-action-section` |
 | Transitional stop reason | A final stop message's `Why I stopped` describes a real human blocker | `Why I stopped` is really just wait-state or transition narration | Warn with `soft-warning.transitional-stop-claim` |
 | Plain-language-first lead | The lead sentence starts in human-readable language | The lead starts with three or more governance acronyms, lifecycle labels, or schema-field names without paraphrase | Warn, suggest rewrite |
 | Current progress status present | The response clearly states what is complete, changed, verified, open, or blocked | No explicit progress statement is present | Warn, do not hard-fail |
 | Recommended next step present | The response names one immediate next action | No explicit next step is present | Warn, do not hard-fail |
+| Five-part stop context complete | Long-work and real-blocker final stop messages include `What I just did`, `Why I stopped`, `What needs your review`, `What happens next`, and `What I need from you` | One or more five-part context sections are missing | Warn with `soft-warning.incomplete-five-part-stop-context` |
 | Readable identifier references | When authored prose contains three or more feature, iteration, task, requirement, corpus, or commit references, each one has inline descriptive scope or a valid shared scope statement | Three or more authored references appear without readable descriptive scope | Warn, do not hard-fail |
 | Shared-scope grouping clarity | A grouped list or range uses one shared explanation only when the grouping is unmistakable | A grouped list relies on one explanation but the covered identifiers are ambiguous | Warn, request rewrite |
 | Excluded verbatim surfaces stay excluded | Numeric references that appear only in quoted material, code blocks, raw tool output, or Copilot-rendered tool-call result blocks are ignored | The review counts excluded verbatim content toward the descriptive-reference warning | Warn, request rewrite |
@@ -38,7 +39,7 @@ The core user-facing risk is jargon-first handoff wording that hides the actual 
 ### 1. Response-Type Selector Check
 
 - Ask whether a real immediate human action is required now.
-- If yes, require the three-section stop-message format.
+- If yes, require the five-part context packet.
 - If no, require a concise single-line progress update instead.
 
 ### 2. Mixed-Case Check
@@ -106,6 +107,7 @@ When the next step is to review a local repository file in this Windows environm
 
 - Missing progress status = `soft-warning.missing-progress-status`
 - Missing next step = `soft-warning.missing-next-step`
+- Missing five-part stop context section = `soft-warning.incomplete-five-part-stop-context`
 - Empty or placeholder stop-message action = `soft-warning.empty-user-action-section`
 - Transitional waiting narrated as a stop = `soft-warning.transitional-stop-claim`
 - Three-or-more opaque authored references = `soft-warning.opaque-numeric-references`
@@ -121,6 +123,6 @@ When the next step is to review a local repository file in this Windows environm
 ## Reviewer Notes
 
 - This checklist is intentionally human-reviewable and soft-validator-friendly.
-- It supports compact handoffs as long as both semantic fields remain explicit.
+- It supports compact handoffs as long as the five context fields remain explicit: progress, stop reason, review context, resume path, and immediate action.
 - The descriptive-reference rule is additive and remains non-blocking.
 - Use it to improve clarity, not to replace reviewer judgment.

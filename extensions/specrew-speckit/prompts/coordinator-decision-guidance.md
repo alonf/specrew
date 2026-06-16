@@ -12,9 +12,11 @@ Use these decision rules to choose the right coordinator response type for the c
 **Then**
 
 1. Use a `final-stop-message`.
-2. Preserve the existing three-section format:
+2. Use the five-part context packet:
    - **What I just did**
    - **Why I stopped**
+   - **What needs your review**
+   - **What happens next**
    - **What I need from you**
 3. Make the user action substantive and singular.
 
@@ -31,6 +33,8 @@ Use these decision rules to choose the right coordinator response type for the c
 
 - Use the `final-stop-message`, because the immediate human action is the deciding factor.
 
+Use the same five-part context packet when stopping after substantial work, a long tool run, a context-heavy investigation, an interruption, or any handoff-worthy pause. Boundary verdict stops use the Rule 46 six-section human re-entry packet instead, adding **Discussion prompts** to the same context.
+
 Examples:
 
 - **Correct final stop message**: "I updated the scoped guidance and validator wording. I stopped because I cannot continue to the next lifecycle step until you approve the selector wording. What I need from you: review and approve the bounded wording change."
@@ -44,8 +48,10 @@ Examples:
 
 1. Put the plain-language blocker in **Why I stopped**.
 2. State the blocked work or withheld step.
-3. In **What I need from you**, recommend the single unblock action.
-4. Do not suggest continued implementation until the unblock action is named first.
+3. In **What needs your review**, state the relevant risk, skipped check, or blocker evidence.
+4. In **What happens next**, describe the safe resume path after unblock.
+5. In **What I need from you**, recommend the single unblock action.
+6. Do not suggest continued implementation until the unblock action is named first.
 
 ### 3. Final Stop Message: Review Decision
 
@@ -53,9 +59,11 @@ Examples:
 **Then**
 
 1. Summarize what changed in **What I just did**.
-2. In **What I need from you**, say exactly what should be reviewed.
-3. If the review target is a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
-4. Name the owner when it matters.
+2. In **What needs your review**, say exactly what should be reviewed and why.
+3. In **What happens next**, say what will happen after review or approval.
+4. In **What I need from you**, ask for the single review/verdict action.
+5. If the review target is a local repository file in this Windows workflow, include a `file:///` URI using the absolute Windows path.
+6. Name the owner when it matters.
 
 Example next step:
 
@@ -108,7 +116,7 @@ Examples:
 **If** a real blocker prevents safe continuation  
 **Then**
 
-- Use the three-section `final-stop-message` and recommend the unblock action.
+- Use the five-part `final-stop-message` and recommend the unblock action.
 
 **If** Squad can continue safely without a human action  
 **Then**
@@ -132,11 +140,11 @@ Examples:
 
 | Scenario | Response Type | Format | Required Semantics |
 |---|---|---|---|
-| Human approval, clarification, review, or manual action is required now | `final-stop-message` | Existing three-section stop-message format | substantive progress, real stop reason, one substantive human action |
-| Automated verification was skipped or failed and human review or approval is now required before proceeding | `final-stop-message` | Existing three-section stop-message format | explicit confidence gap plus the immediate human next step |
+| Human approval, clarification, review, or manual action is required now | `final-stop-message` | Five-part context packet | substantive progress, real stop reason, review context, resume path, one substantive human action |
+| Automated verification was skipped or failed and human review or approval is now required before proceeding | `final-stop-message` | Five-part context packet | explicit confidence gap plus the immediate human next step |
 | Squad is still working, waiting on a background run, or transitioning internally | `in-flight-progress-update` | Concise single-line prose | current status plus explicit forward motion |
 | Session-opening acknowledgement with no current human action required | `in-flight-progress-update` | Concise single-line prose | acknowledge start, state current work, and indicate continued motion |
-| Mixed transition plus true human blocker | `final-stop-message` | Existing three-section stop-message format | the real human blocker wins over the transition note |
+| Mixed transition plus true human blocker | `final-stop-message` | Five-part context packet | the real human blocker wins over the transition note |
 
 ## Plain-Language Guardrail
 
@@ -151,18 +159,24 @@ Examples:
 
 - **What I just did**: Updated **feature 012, descriptive references in handoffs**, and aligned **iteration 001, the readable-reference rollout** template with the prompt guidance.
 - **Why I stopped**: The approved slice is implemented, but the wording still needs a human review pass.
+- **What needs your review**: Review the coordinator response wording, the decision guidance, and the validator expectations for consistency.
+- **What happens next**: If approved, the rollout proceeds to the next proof task; if sent back, I will revise only the wording slice.
 - **What I need from you**: Review the wording in the prompt, template, and Squad agent section for clarity and consistency. Start with `file:///C:/Dev/Specrew/specs/001-specrew-product/contracts/coordinator-handoff-template.md`.
 
 ### Boundary-Blocked Stop Message
 
 - **What I just did**: Completed **the substantive interaction model**, across **FR-001 through FR-019, the Iteration 001 three-pillar scope**, and verified the updated prompt and validator surfaces with the repo governance checks.
 - **Why I stopped**: I stopped at the review-boundary because per-boundary discipline requires a separate authorization before any review-boundary commit can be emitted.
+- **What needs your review**: Review the plan and hardening gate evidence before deciding whether the review-boundary should advance.
+- **What happens next**: If approved, the Crew emits the review-boundary commit and begins review evidence collection.
 - **What I need from you**: Review `file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md` and approve or reject advancement to the review-boundary.
 
 ### Verification-Gap Stop Message
 
 - **What I just did**: Finished the documentation changes for **iteration 001, the readable-reference rollout**.
 - **Why I stopped**: I did not run runtime validator coverage because that work belongs to Iteration 002, so rollout confidence is limited to document review in this slice.
+- **What needs your review**: Review the documentation-only scope and the explicit runtime-validation carry-forward.
+- **What happens next**: If accepted, Iteration 002 owns runtime validation before broader rollout.
 - **What I need from you**: Confirm this iteration should stop at the documentation boundary and carry runtime validation into Iteration 002.
 
 ### In-Flight Progress Update

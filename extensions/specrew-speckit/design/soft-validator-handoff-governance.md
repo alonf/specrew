@@ -37,7 +37,7 @@ This rule is the formalized acceptance-test seed from `.specrew/quality/known-tr
 
 The validator should support both:
 
-1. explicit three-section handoffs (`What I just did`, `Why I stopped`, `What I need from you`)
+1. explicit five-part context packets (`What I just did`, `Why I stopped`, `What needs your review`, `What happens next`, `What I need from you`)
 2. compact lightweight handoffs where both semantic fields appear in one paragraph
 
 ### Governance-Term Candidate Set

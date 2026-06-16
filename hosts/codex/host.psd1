@@ -36,6 +36,15 @@
         BoundTriggers  = @('b1', 'b2', 'b3')
         Events         = @('SessionStart', 'UserPromptSubmit')
         SettingsFile   = '~/.codex/hooks.json'   # user-level; dispatcher self-gates per project
+        OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-codex'
         DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+        ConfigShape    = 'event-map'
+        CommandMode    = 'launcher-file'
+        MigrateLegacyTopLevelEventMap = $true
+        Registrations  = @(
+            @{ Event = 'SessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'hooks-array'; Timeout = 30 },
+            @{ Event = 'UserPromptSubmit'; DispatcherEvent = 'UserPromptSubmit'; HandlerShape = 'hooks-array'; Timeout = 30 },
+            @{ Event = 'Stop'; DispatcherEvent = 'Stop'; HandlerShape = 'hooks-array'; Timeout = 30 }
+        )
     }
 }

@@ -64,3 +64,5 @@ Thumbs.db
 .specrew/last-validator-summary.json
 .specrew/active-sessions.yml
 .specrew/workshop-visuals/
+# Antigravity project hook config contains per-developer launcher paths.
+.agents/hooks.json

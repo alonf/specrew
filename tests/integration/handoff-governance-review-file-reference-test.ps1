@@ -29,6 +29,12 @@ Updated the handoff guidance and verified the affected files.
 ## Why I stopped
 This slice is complete, so I paused for review.
 
+## What needs your review
+Review the local spec path format and confirm the validator surfaces the missing file URI.
+
+## What happens next
+After review, the wording can be accepted or converted to a visible file URI.
+
 ## What I need from you
 Review the updated handoff wording in `C:\Dev\Specrew\specs\007-user-facing-progress-handoff\spec.md`. Next step: confirm the wording is acceptable for rollout.
 '@

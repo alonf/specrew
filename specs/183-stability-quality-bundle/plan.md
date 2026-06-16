@@ -7,16 +7,17 @@
 
 ## Summary
 
-Deliver the seven clarified FRs as one bounded 20 SP stability iteration. The
-implementation keeps each fix as a vertical slice over the existing Specrew
-PowerShell/Pester/runtime surfaces: SessionStart cap policy and provider
-fallback, per-launch session identity, closeout sync truth, local test hygiene,
-verified Antigravity hook binding, mirror parity, and release-readiness evidence.
+Deliver the eight clarified FRs as one human-approved 24/20 SP stability
+iteration. The implementation keeps the original bug-bash fixes as vertical
+slices over the existing Specrew PowerShell/Pester/runtime surfaces, and DR-004
+Option A accepts the generalized hook-capable host model refactor into this
+feature rather than splitting it out.
 
 The plan consumes Option B from
 file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/design-analysis.md.
-It does not create a new hook framework, parser package, dependency, release
-mechanism, or broad host-platform refactor.
+It does not create a new parser package, dependency, or release mechanism. It
+does create the accepted `RefocusHookBindings` host-manifest model for hook
+deploy/status behavior, with no parity claim beyond verified events.
 
 ## Technical Context
 
@@ -52,6 +53,7 @@ stack: `powershell-json-yaml-pester`.
 | Closeout sync tests | Dirty `.specify`, no-upstream wording, and auto-detect dashboard regeneration fixtures. |
 | #1761 local red cleanup | Scratch git isolation and module-internal sync-script assertion tests. |
 | Antigravity hook tests | Config merge/remove/opt-out tests plus verified-event contract tests. |
+| Host hook model tests | Manifest-driven deploy/status tests for hook-capable hosts and schema failure paths. |
 | Mirror parity | Touched source and `.specify` mirror files are byte-aligned. |
 | Real-host validation | SessionStart/fallback reaches at least one real hook-capable host; Antigravity real-host validation before stable if FR-007 ships. |
 
@@ -67,7 +69,9 @@ stack: `powershell-json-yaml-pester`.
 
 ## Architecture
 
-Option B uses modular vertical slices rather than a new platform abstraction.
+Option B originally used modular vertical slices. DR-004 Option A amends that
+plan by accepting a small host-model abstraction for hook deploy/status binding
+data, while keeping enforcement and parity claims tied to verified behavior.
 
 | Component | Responsibility | Primary Evidence |
 | --- | --- | --- |
@@ -85,6 +89,9 @@ Option B uses modular vertical slices rather than a new platform abstraction.
 | AntigravityHookConfigAdapter | Merge Specrew entries into project `.agents/hooks.json` without clobbering user hooks. | FR-007 / SC-009 |
 | AntigravityEventAdapter | Map only verified Antigravity events/output semantics to Specrew behavior. | FR-007 / TG-004 |
 | AntigravityHookDocsCleanup | Remove stale no-hooks wording and document fallback. | FR-007 / LIR-008 |
+| RefocusHookBindingContract | Define manifest fields for hook settings path, command mode, config shape, registrations, ownership, and project-root signals. | FR-008 / TG-006 |
+| ManifestDrivenHookDeployer | Render, merge, remove, and preserve hook entries using `RefocusHookBindings` instead of host-name branches. | FR-008 / SC-010 |
+| ManifestDrivenHookHealth | Report installed/missing/stale/opted-out hook status from host manifest data. | FR-008 / SC-010 |
 | MirrorParityCheckpoint | Keep touched source and deployed mirror aligned. | SC-007 / TG-003 |
 | ReleaseValidationThread | Record beta choice and real-host validation before stable. | SC-007 / SC-008 |
 
@@ -99,15 +106,17 @@ Option B uses modular vertical slices rather than a new platform abstraction.
 | FR-005 | Closeout sync fixtures cover `.specify` dirty companion files, no-upstream wording, and dashboard refresh. |
 | FR-006 | #1761 tests run against scratch git/module-internal files for the intended reasons. |
 | FR-007 | Refocus deploy/hooks command tests cover Antigravity hook capability, `.agents/hooks.json` merge/remove/opt-out, verified events, docs cleanup, and fallback status. |
+| FR-008 | Manifest-driven hook deploy/status tests prove hook binding data comes from `hosts/<kind>/host.psd1` and existing hook-capable hosts keep their behavior. |
 | TG-003 | Mirror parity check for every touched extension/runtime file. |
 | TG-004 | Antigravity parity evidence names verified events/output behavior and labels unsupported events degraded/deferred. |
 | TG-005 | Closeout links fixes to issues #2446, #1627, and #1761. |
+| TG-006 | Host-model evidence maps manifest schema, deploy behavior, status behavior, and mirror copies for touched hook-capable hosts. |
 
 ## Capacity Plan
 
-Capacity is exactly 20 story_points. No slack remains. Any growth, especially
-from Antigravity schema/output verification, requires a human split/defer
-decision before implementation continues.
+The default iteration capacity remains 20 story_points. DR-004 Option A accepts
+the expanded host-model refactor into F-183 and re-baselines this iteration to
+24/20 story_points as an explicit human-approved over-cap exception.
 
 | Slice | Requirements | Effort |
 | --- | --- | ---: |
@@ -117,8 +126,9 @@ decision before implementation continues.
 | Closeout classification, upstream wording, dashboard refresh | FR-005, SC-005 | 4.0 |
 | #1761 mechanical test hygiene | FR-006, SC-006 | 2.0 |
 | Antigravity hook binding, config merge, docs cleanup, verified-event tests | FR-007, SC-009, TG-004 | 4.0 |
+| Manifest-driven hook-capable host model | FR-008, SC-010, TG-006 | 4.0 |
 | Mirror/release readiness evidence and integration pass | SC-007, SC-008, TG-003, TG-005 | 1.0 |
-| **Total** |  | **20.0** |
+| **Total** |  | **24.0** |
 
 ## Phase Baseline
 
@@ -126,25 +136,36 @@ decision before implementation continues.
 | --- | ---: |
 | Planning and artifact authoring | 2.0 |
 | Discovery/spikes | 1.0 |
-| Implementation | 13.0 |
+| Implementation | 17.0 |
 | Review and deterministic validation | 3.0 |
 | Expected rework | 1.0 |
-| **Total** | **20.0** |
+| **Total** | **24.0** |
 
 ## Split Guard
 
-FR-007 remains in scope under Option B, but it is the first explicit split
-candidate if current Antigravity hook verification expands beyond:
+FR-007 remains in scope under Option B. DR-004 Option A accepts one expansion
+that crossed the original split guard: the generalized `RefocusHookBindings`
+host-manifest model needed to keep hook binding data in host packages rather
+than shared core branches. That expansion is now explicit FR-008 scope.
+
+Further FR-007 or FR-008 growth still requires a fresh human split/defer
+decision. The accepted expansion is limited to:
 
 - project-scoped `.agents/hooks.json` merge/remove/opt-out support;
 - verified event mapping only;
 - docs/status cleanup for stale no-hooks wording;
 - fallback guidance through `specrew start --host antigravity`;
-- real-host validation before stable.
+- real-host validation before stable;
+- manifest fields for hook settings path, opt-out marker, dispatcher path,
+  config shape, command mode, registrations, ownership/version metadata, and
+  project-root signals;
+- deploy/status behavior that consumes those manifest fields for touched
+  hook-capable hosts.
 
 Any full parity work for unverified SessionStart/Stop behavior, generalized host
-capability matrices, payload optimization, or broader Stop-hook handover belongs
-to a new human-approved feature or later iteration.
+capability matrices beyond hook deployment/status, payload optimization, or
+broader Stop-hook handover belongs to a new human-approved feature or later
+iteration.
 
 ## Plan Outputs
 

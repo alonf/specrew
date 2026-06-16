@@ -19,7 +19,7 @@ function Invoke-SpecrewSessionBootstrap {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string] $RawEvent,
-        [Parameter(Mandatory)][ValidateSet('claude', 'codex', 'copilot', 'cursor')][string] $HostName,
+        [Parameter(Mandatory)][ValidateSet('claude', 'codex', 'copilot', 'cursor', 'antigravity')][string] $HostName,
         [Parameter(Mandatory)][string] $ProjectRoot,
         # Defaults to the project-local session-state file.
         [Parameter()][string] $StatePath,
@@ -44,7 +44,14 @@ function Invoke-SpecrewSessionBootstrap {
     try {
         $handover = Get-SpecrewRollingHandover -HandoverDir (Join-Path $ProjectRoot '.specrew/handover') -NowUtc $NowUtc
         if ($null -ne $handover) {
-            $hv = Test-SpecrewHandoverValidity -Handover $handover -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch
+            $expectedHandoverFeature = $null
+            if ($null -ne $validity.anchor -and -not [string]::IsNullOrWhiteSpace([string]$validity.anchor.feature_ref)) {
+                $expectedHandoverFeature = [string]$validity.anchor.feature_ref
+            }
+            if ([string]::IsNullOrWhiteSpace($expectedHandoverFeature)) {
+                $expectedHandoverFeature = Resolve-SpecrewBranchFeatureRef -ProjectRoot $ProjectRoot
+            }
+            $hv = Test-SpecrewHandoverValidity -Handover $handover -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch -ExpectedFeatureRef $expectedHandoverFeature
             $handoverValid = [bool]$hv.valid
             # Prop-145 round-6 (MEDIUM): a present-but-INVALID handover (stale / wrong-branch / malformed) is
             # NOT authoritative resume truth - capture WHY so the directive surfaces it (and so the stale

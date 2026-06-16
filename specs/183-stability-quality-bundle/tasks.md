@@ -4,7 +4,7 @@
 **Plan**: plan.md
 **Iteration**: 001
 **Design-analysis verdict**: approved for plan with Option B
-**Capacity**: 20/20 story_points
+**Capacity**: 24/20 story_points
 
 ## Format
 
@@ -39,20 +39,23 @@ actual repo state instead of stale, no-upstream, or dirty real-tree assumptions.
 surfaces, no-upstream wording, dashboard regeneration, scratch git isolation,
 and module-internal lifecycle sync assertions.
 
-- [ ] T004 [US3] [Owner: Implementer] [Capacity: 4 SP] Update closeout classification, upstream wording, and dashboard refresh behavior in `scripts/internal/sync-boundary-state.ps1` with fixtures in `tests/integration/**`; dirty `.specify/extensions/` plus companion `.specify` files classify coherently, no-upstream branches do not say "must be pushed", and auto-detect closeout regenerates dashboards from current artifacts (Trace: FR-005, SC-005, LIR-007).
-- [ ] T005 [US3] [Owner: Implementer, Reviewer] [Capacity: 2 SP] Fix the two in-scope #1761 mechanical local tests in `tests/integration/closeout-lifecycle-sync-commands.tests.ps1` and related `tests/integration/**` fixtures so dirty-state tests use scratch repos and ValidateSet assertions target the module-internal sync script copy (Trace: FR-006, SC-006).
+- [x] T004 [US3] [Owner: Implementer] [Capacity: 4 SP] Update closeout classification, upstream wording, and dashboard refresh behavior in `scripts/internal/sync-boundary-state.ps1` with fixtures in `tests/integration/**`; dirty `.specify/extensions/` plus companion `.specify` files classify coherently, no-upstream branches do not say "must be pushed", and auto-detect closeout regenerates dashboards from current artifacts (Trace: FR-005, SC-005, LIR-007).
+- [x] T005 [US3] [Owner: Implementer, Reviewer] [Capacity: 2 SP] Fix the two in-scope #1761 mechanical local tests in `tests/integration/closeout-lifecycle-sync-commands.tests.ps1` and related `tests/integration/**` fixtures so dirty-state tests use scratch repos and ValidateSet assertions target the module-internal sync script copy (Trace: FR-006, SC-006).
 
-## Phase 3: Antigravity Verified Hook Support
+## Phase 3: Antigravity Verified Hook Support and Host Hook Model
 
 **Goal**: Add Antigravity to the hook-capable path only where project-scoped
-hook configuration, event mapping, and output semantics are verified.
+hook configuration, event mapping, and output semantics are verified, and keep
+hook-capable host deployment/status binding data in host manifests rather than
+shared core host-name branches.
 
 **Independent test**: Antigravity hook install/remove/opt-out tests preserve
 existing user hook entries in `.agents/hooks.json`, verified events invoke the
 Specrew dispatcher/provider path, unsupported parity remains labeled degraded,
 and fallback guidance still points to `specrew start --host antigravity`.
 
-- [ ] T006 [US4] [Owner: Implementer, Reviewer] [Capacity: 4 SP] Implement bounded Antigravity hook binding and docs cleanup across `hosts/**`, `scripts/internal/deploy-refocus-hooks.ps1`, `scripts/specrew-hooks.ps1`, `docs/**`, `README.md`, `tests/integration/refocus-deploy.tests.ps1`, and `tests/integration/specrew-hooks-command.tests.ps1`; use project-scoped `.agents/hooks.json`, preserve user hook entries, map only verified events/output behavior, remove stale no-hooks wording, and keep `specrew start --host antigravity` as fallback (Trace: FR-007, SC-009, TG-004, LIR-004, LIR-005, LIR-007, LIR-008).
+- [x] T006 [US4] [Owner: Implementer, Reviewer] [Capacity: 4 SP] Implement bounded Antigravity hook binding and docs cleanup across `hosts/**`, `scripts/internal/deploy-refocus-hooks.ps1`, `scripts/specrew-hooks.ps1`, `docs/**`, `README.md`, `tests/integration/refocus-deploy.tests.ps1`, and `tests/integration/specrew-hooks-command.tests.ps1`; use project-scoped `.agents/hooks.json`, preserve user hook entries, map only verified events/output behavior, remove stale no-hooks wording, and keep `specrew start --host antigravity` as fallback (Trace: FR-007, SC-009, TG-004, LIR-004, LIR-005, LIR-007, LIR-008).
+- [x] T011 [US5] [Owner: Implementer, Reviewer] [Capacity: 4 SP] Implement the DR-004 Option A manifest-driven `RefocusHookBindings` host model across `hosts/**`, `scripts/internal/deploy-refocus-hooks.ps1`, `scripts/internal/specrew-hook-health.ps1`, mirrored `extensions/specrew-speckit/scripts/**` and `.specify/extensions/specrew-speckit/scripts/**`, and focused hook deploy/status tests; preserve existing Claude/Codex/Copilot/Cursor behavior while adding Antigravity through manifest data instead of shared-core host-name conditionals (Trace: FR-008, SC-010, TG-006, LIR-002, LIR-004, LIR-009).
 
 ## Phase 4: Review Evidence and Release Readiness
 
@@ -63,10 +66,10 @@ claiming unverified host parity or hard-coding the beta suffix.
 release target selection inputs, real-host pass/fail result, and fixing commit
 links for issues #2446, #1627, and #1761.
 
-- [ ] T007 [US1-US4] [Owner: Reviewer] [Capacity: 0.25 SP] Record mirror parity for every touched extension/runtime file under `extensions/specrew-speckit/**` and `.specify/extensions/specrew-speckit/**`; pass only when touched source and deployed mirror files are byte-aligned or the drift is explicitly recorded and resolved before review-signoff (Trace: SC-007, TG-003).
-- [ ] T008 [US1-US4] [Owner: Spec Steward] [Capacity: 0.25 SP] Record release readiness for the dynamic beta target in `specs/183-stability-quality-bundle/**`; inspect local tags, origin tags, and published release/package state before naming the next valid `0.37.0-beta<N>` (Trace: SC-007, LIR-006).
-- [ ] T009 [US1, US4] [Owner: Reviewer] [Capacity: 0.25 SP] Run and record real-host validation after T001, T003, and T006 are merged; PASS requires a real hook-capable host to show SessionStart bootstrap or degraded-governed fallback reaching the agent, and Antigravity validation to prove only the verified event/output behavior claimed by T006. FAIL if the host drops the payload silently, no governed fallback reaches the agent, Antigravity clobbers user hook entries, or docs/status claim unverified SessionStart/Stop parity (Trace: SC-008, SC-009, TG-004).
-- [ ] T010 [US3] [Owner: Spec Steward, Reviewer] [Capacity: 0.25 SP] Record closeout issue linkage for the fixing commits in `specs/183-stability-quality-bundle/**`; link fixes to issues #2446, #1627, and #1761, reference proposals without silently editing them, and include the traceability-check result before before-implement readiness is requested (Trace: TG-001, TG-002, TG-005).
+- [x] T007 [US1-US5] [Owner: Reviewer] [Capacity: 0.25 SP] Record mirror parity for every touched extension/runtime file under `extensions/specrew-speckit/**` and `.specify/extensions/specrew-speckit/**`; pass only when touched source and deployed mirror files are byte-aligned or the drift is explicitly recorded and resolved before review-signoff (Trace: SC-007, TG-003).
+- [x] T008 [US1-US5] [Owner: Spec Steward] [Capacity: 0.25 SP] Record release readiness for the dynamic beta target in `specs/183-stability-quality-bundle/**`; inspect local tags, origin tags, and published release/package state before naming the next valid `0.37.0-beta<N>` (Trace: SC-007, LIR-006).
+- [x] T009 [US1, US4] [Owner: Reviewer] [Capacity: 0.25 SP] Run and record real-host validation after T001, T003, and T006 are merged; PASS requires a real hook-capable host to show SessionStart bootstrap or degraded-governed fallback reaching the agent, and Antigravity validation to prove only the verified event/output behavior claimed by T006. FAIL if the host drops the payload silently, no governed fallback reaches the agent, Antigravity clobbers user hook entries, or docs/status claim unverified SessionStart/Stop parity (Trace: SC-008, SC-009, TG-004).
+- [x] T010 [US3] [Owner: Spec Steward, Reviewer] [Capacity: 0.25 SP] Record closeout issue linkage for the fixing commits in `specs/183-stability-quality-bundle/**`; link fixes to issues #2446, #1627, and #1761, reference proposals without silently editing them, and include the traceability-check result before before-implement readiness is requested (Trace: TG-001, TG-002, TG-005).
 
 ## Dependencies and Execution Order
 
@@ -74,9 +77,10 @@ links for issues #2446, #1627, and #1761.
   are serial unless owner globs are narrowed before implementation.
 - T004 and T005 can begin after the implementer has a clean working tree and
   scratch-repo fixtures are available; they do not depend on Antigravity work.
-- T006 depends on official Antigravity schema/event/output verification staying
-  inside the bounded adapter/config/docs/test slice. If it grows beyond that
-  slice, pause for a human split/defer decision before implementation continues.
+- T006 originally depended on official Antigravity schema/event/output
+  verification staying inside the bounded adapter/config/docs/test slice.
+  DR-004 Option A accepts the crossed split guard into this iteration and adds
+  T011 as the explicit host-model refactor task.
 - T007 and T008 run during review after touched files and release inputs are
   known.
 - T009 is review-stage evidence after T001, T003, and T006 are merged.
@@ -96,6 +100,7 @@ links for issues #2446, #1627, and #1761.
 - FR-005: T004
 - FR-006: T005
 - FR-007: T006
+- FR-008: T011
 
 **SC coverage**:
 
@@ -108,6 +113,7 @@ links for issues #2446, #1627, and #1761.
 - SC-007: T007, T008
 - SC-008: T009
 - SC-009: T006, T009
+- SC-010: T011
 
 **TG coverage**:
 
@@ -116,8 +122,9 @@ links for issues #2446, #1627, and #1761.
 - TG-003: T007
 - TG-004: T006, T009
 - TG-005: T010
+- TG-006: T011
 
-**Capacity check**: 4 + 2 + 3 + 4 + 2 + 4 + 0.25 + 0.25 + 0.25 + 0.25 = 20 story_points.
+**Capacity check**: 4 + 2 + 3 + 4 + 2 + 4 + 4 + 0.25 + 0.25 + 0.25 + 0.25 = 24 story_points. DR-004 Option A is the explicit human-approved 24/20 over-cap scope decision.
 
 **Parallelism check**: no tasks are marked `[P]` because the approved iteration
 defaults to serial execution. Parallel work requires narrowed owner file globs
@@ -126,8 +133,8 @@ and a recorded safety proof before implementation.
 ## Before-Implement Readiness Inputs
 
 - Governance validator must pass after this file is committed.
-- Bidirectional traceability must remain PASS for FR-001 through FR-007,
-  SC-001 through SC-009, and TG-001 through TG-005.
+- Bidirectional traceability must remain PASS for FR-001 through FR-008,
+  SC-001 through SC-010, and TG-001 through TG-006.
 - The before-implement approval `f183-i001-before-implement-approved` ratifies
   T001 on its merits and authorizes T003, serial after T001.
 - T001/T003 are serial by default, and T009 is review-stage real-host evidence.
@@ -138,8 +145,8 @@ and a recorded safety proof before implementation.
   must replace any `Get-SanitizedSessionId` global `unknown` return with the
   per-launch token path; fallback coverage must include non-zero provider exit,
   command-unresolved provider launch, dispatcher outer-catch, and
-  bootstrap-over-cap; T006 must surface Antigravity schema/event/output
-  verification early and stop for split/defer if it exceeds the bounded
-  `.agents/hooks.json` adapter/config/docs/test slice; T009 must validate a
-  hook-firing Antigravity host and non-Claude host behavior because the inner
-  payload cap does not guarantee the final host JSON envelope stays under 10k.
+  bootstrap-over-cap; DR-004 Option A accepts the manifest-driven host-model
+  refactor into F-183 as T011; any further FR-007/FR-008 growth still requires a
+  fresh split/defer decision; T009 must validate a hook-firing Antigravity host
+  and non-Claude host behavior because the inner payload cap does not guarantee
+  the final host JSON envelope stays under 10k.

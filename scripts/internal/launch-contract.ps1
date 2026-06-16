@@ -399,6 +399,30 @@ Allowed responses: approve as-is, approve with instructions, send back, or discu
 
 Every artifact, file, or directory reference in every packet section MUST use visible ``file:///`` URL form, not bare repository paths such as ``specs/...``, ``.specrew/...``, ``.squad/...``, ``tests/...``, or ``README.md``. Command/code blocks and explicit command examples are exempt. The packet text recorded as boundary evidence MUST be the exact human-visible packet you emit for approval; do not validate one packet and then summarize, relabel, or rewrite artifact references in the final visible approval packet. If the human chooses ``discuss prompt #N``, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing. One approval advances at most one lifecycle boundary.
 
+46A. **Long-work stop context packet (mandatory).** When you stop after substantial work, a long tool run, a context-heavy investigation, an interruption, or a handoff-worthy pause, render a visible five-part context packet so the human can re-enter without reconstructing the session. This is required in every downstream project and on every host, even when SessionStart/Stop hooks are missing, stale, suppressed, or failed open. Boundary verdict stops still use the full Rule 46 six-section packet; do not duplicate both shapes for the same stop. For non-boundary long-work stops, render these five headings:
+
+``````markdown
+## What I Just Did
+
+Summarize the meaningful work completed, including changed artifacts, decisions, tests or checks run, commits, and important observations. Every artifact, file, or directory reference uses visible ``file:///`` URL form.
+
+## Why I Stopped
+
+Explain the real stop reason: human action needed, blocked condition, verification gap, context limit, requested pause, or natural handoff point after a long run.
+
+## What Needs Your Review
+
+Name the review surfaces, risks, uncertainty, skipped checks, and safe-skim areas. If no review is needed, say what the human should know before resuming.
+
+## What Happens Next
+
+Give the exact resume point and the next safe step for the same agent or a different host. Include any commands only when they are genuinely useful.
+
+## What I Need From You
+
+State the single immediate human action, verdict, or resume instruction. If no human action is needed, say that explicitly and name the next agent-owned action.
+``````
+
 At ``feature-closeout``, the ``## What I Need From You`` section MUST split release SDLC ownership into ``AGENT NEXT ACTION:`` and ``HUMAN ACTION NEEDED:`` rows so the human is never asked to do agent-owned push/PR/merge work. Instantiate each step from the project's ``.specrew/repository-governance.yml`` (provider, ``branch_model``, ``review_gate``) and the project's own release/publish mechanism — never assume a specific forge or package registry. ``AGENT NEXT ACTION:`` executes Step 5 push the feature branch to the project's forge, Step 6 open the PR/MR via that forge (the provider adapter describes how), Step 7 self-review and address the project's ``review_gate`` (human approvals + comment resolution always-available; automated review opt-in), Step 8 merge per the ``branch_model`` after approvals/checks, Step 9 if the work produces a release, tag the merge commit (or the PASS-candidate fix commit if looping) and publish a prerelease per the project's release mechanism, Step 10 verify the prerelease published via the project's package/registry tooling, Step 11 PAUSE for the human manual-test PASS/FAIL verdict on the installed prerelease in a clean environment, Step 12 if FAIL fix on the release-truth branch then tag the next prerelease and repeat from Step 9, Step 13 if PASS tag the PASS-validated commit and publish the stable release per the project's release mechanism then verify, and Step 14 stop before any new feature work. ``HUMAN ACTION NEEDED:`` asks the human only to approve each agent action when prompted and, at Step 11, install + exercise the prerelease via the project's package mechanism and report PASS or FAIL with evidence. Specrew's own instantiation (a Specrew-specific example, NOT a downstream mandate): provider ``github`` + PowerShell Gallery — Step 6 ``gh pr create``; Step 10 ``Find-Module Specrew -AllowPrerelease``; Step 11 ``Install-Module Specrew -AllowPrerelease``; push ``v<next-version>-beta.1`` then promote ``v<next-version>`` stable.
 47. The handoff block must use the canonical lifecycle boundary names (``specify``, ``clarify``, ``plan``, ``tasks``, ``before-implement``, ``implement``, ``review``, ``retro``, ``feature-closeout``) or the literal string ``lifecycle-end``. Do not invent boundary labels.
 48. **Session opening orientation (mandatory FIRST output).** Your very first user-visible output, immediately after reading ``.specrew\last-start-prompt.md`` + ``.specrew\start-context.json``, must be a short friendly orientation block in the host-rendered shape below (8-15 lines, conversational tone, no bullet-list of phases). The visible Specrew version, selected host, runtime class, and lifecycle position in this block are generated from the installed runtime and saved start context; do not substitute, infer, omit, or claim any other host/runtime behavior. **All artifact and directory references in this block MUST use visible bare ``file:///`` URLs** built from the Project root URL above (see Rule 52):

@@ -1,7 +1,8 @@
 $ErrorActionPreference = 'Stop'
 
-# F-171 regression + FR-012 negative: prove the F-174 bootstrap/handover additions are ADDITIVE -
-# refocus B1/B2/B3 are byte-unchanged and no B4/Antigravity path was introduced.
+# F-171 regression: prove the F-174 bootstrap/handover additions and F-183 Antigravity
+# PreInvocation binding are additive. Refocus B1/B2/B3 stay byte-unchanged and no B4
+# trigger is introduced.
 $scopesPath = (Resolve-Path "$PSScriptRoot/../../.specify/extensions/specrew-speckit/refocus-scopes.json").Path
 $raw = Get-Content -LiteralPath $scopesPath -Raw
 $cfg = $raw | ConvertFrom-Json
@@ -32,14 +33,15 @@ Assert-True ($null -eq $cfg.triggers.PSObject.Properties['b4']) 'no b4 trigger (
 
 # --- F-174 additions are additive + correctly scoped ---
 $boot = $cfg.providers | Where-Object { $_.id -eq 'bootstrap' }
-Assert-Equal (@($boot.events).Count) 1 'bootstrap registered for exactly one event'
-Assert-True ($boot.events -contains 'SessionStart') 'bootstrap = SessionStart only (B2; never touches B3/PostToolUse)'
+Assert-Equal (@($boot.events).Count) 2 'bootstrap registered for exactly two delivery events'
+Assert-True ($boot.events -contains 'SessionStart') 'bootstrap handles SessionStart (B2 on existing hook hosts)'
+Assert-True ($boot.events -contains 'PreInvocation') 'bootstrap handles Antigravity PreInvocation (verified injectSteps path)'
 $ho = $cfg.providers | Where-Object { $_.id -eq 'handover' }
 Assert-True ($ho.events -contains 'Stop') 'handover registered for the universal Stop event (iter-4 rolling handover)'
 Assert-True (-not ($ho.events -contains 'SessionEnd')) 'handover NOT registered for SessionEnd (iter-4 replaced SessionEnd with Stop)'
 
-# --- FR-012 negative: no Antigravity path anywhere in the scopes ---
-Assert-True (-not ($raw -match 'antigravity')) 'no Antigravity provider/path (FR-012 deferred)'
+# --- Antigravity bounded support: bootstrap only; refocus still does not ride PreInvocation. ---
+Assert-True (-not (@($refocus.events) -contains 'PreInvocation')) 'refocus does NOT ride Antigravity PreInvocation (no B1/B3 parity claim)'
 
 # --- B1 regression: the bootstrap provider stays silent on compact (F-171 B1 path untouched) ---
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t019-" + [guid]::NewGuid().ToString('N'))

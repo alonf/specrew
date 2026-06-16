@@ -45,6 +45,16 @@
         BoundTriggers       = @('b1', 'b2')   # b3 via channel 1 (TG-004 option a)
         Events              = @('SessionStart')
         SettingsFile        = '.claude/settings.local.json'
+        OptOutMarkerFile    = '.specrew/runtime/refocus-hooks-optout'
         DispatcherPath      = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+        ConfigShape         = 'event-map'
+        CommandMode         = 'project-placeholder'
+        ProjectDirPlaceholder = '${CLAUDE_PROJECT_DIR}'
+        ProjectRootEnvironmentVariables = @('CLAUDE_PROJECT_DIR')
+        Registrations       = @(
+            @{ Event = 'SessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'hooks-array' },
+            @{ Event = 'Stop'; DispatcherEvent = 'Stop'; HandlerShape = 'hooks-array' },
+            @{ Event = 'PostToolUse'; DispatcherEvent = 'PostToolUse'; HandlerShape = 'hooks-array' }
+        )
     }
 }

@@ -45,6 +45,8 @@ function Get-SpecrewContractDeliveryMode {
     #              option is to extract+inline JUST the small user-profile block to restore item 3.
     #   codex   -> pointer. ROLLOUT-PROVEN 2026-06-10 to silently DROP the oversized (~50KB) SessionStart
     #              additionalContext; codex reads files, so the lean pointer lands.
+    #   antigravity -> pointer. T006 binds the verified PreInvocation injectSteps path before real-host
+    #              parity evidence exists, so keep the hook output lean and put the full contract on disk.
     #   copilot -> inline. UNVERIFIED drop. copilot/cursor deliver SessionStart via additionalContext /
     #   cursor  -> inline. additional_context (the SAME mechanism codex drops). The host research matrix
     #              (specs/171-specrew-refocus/research-matrix.md) records a 10k cap only for CLAUDE's
@@ -58,9 +60,10 @@ function Get-SpecrewContractDeliveryMode {
     [OutputType([string])]
     param([Parameter(Mandatory)][string] $HostKind)
     switch ($HostKind) {
-        'codex'  { return 'pointer' }
-        'claude' { return 'pointer' }
-        default  { return 'inline' }   # copilot / cursor / antigravity
+        'codex'       { return 'pointer' }
+        'claude'      { return 'pointer' }
+        'antigravity' { return 'pointer' }
+        default       { return 'inline' }   # copilot / cursor
     }
 }
 
@@ -289,7 +292,7 @@ try {
         elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKind = [string]$args[$i + 1] }
     }
     # Hooks only deploy for these kinds; an unknown value fails safe to the claude default.
-    if ($hostKind -notin @('claude', 'codex', 'copilot', 'cursor')) { $hostKind = 'claude' }
+    if ($hostKind -notin @('claude', 'codex', 'copilot', 'cursor', 'antigravity')) { $hostKind = 'claude' }
 
     # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011).
     $source = $null
@@ -298,17 +301,19 @@ try {
     }
     if ($source -eq 'compact') { exit 0 }
 
-    $root = if ($rootOverride) { $rootOverride } else { Get-BootstrapProjectRoot }
+    $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-BootstrapProjectRoot }
 
     # Component resolution (D-001 downstream deploy): components sit beside the provider in the
-    # self-host tree (scripts/internal/bootstrap); in a downstream project the provider deploys to
-    # the extension tree while the components ship in the installed Specrew module (FileList), so
-    # fall back to the module's scripts/internal/bootstrap. SPECREW_MODULE_PATH (the documented
-    # dev-tree override, honored by specrew.ps1) wins first so a dev/unpublished module is testable.
+    # source tree (scripts/internal/bootstrap); in a self-host dogfood the provider may execute from
+    # the deployed .specify mirror, so prefer the project-local source tree before any ambient
+    # SPECREW_MODULE_PATH/installed-module fallback. Downstream projects normally lack scripts/internal,
+    # so they still resolve through the dev-tree override or the installed module (FileList).
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
     if (-not (Test-Path -LiteralPath $bdir)) {
+        $selfHostBdir = Join-Path $root 'scripts/internal/bootstrap'
         $devBdir = if ($env:SPECREW_MODULE_PATH) { Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap' } else { $null }
-        if ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
+        if (Test-Path -LiteralPath $selfHostBdir) { $bdir = $selfHostBdir }
+        elseif ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
         else {
             # F-174 iter-11 (P1): pick the newest installed module that ACTUALLY CONTAINS scripts/internal/bootstrap,
             # not blindly the newest. Not every Specrew version ships the bootstrap components in its FileList (0.34.0
