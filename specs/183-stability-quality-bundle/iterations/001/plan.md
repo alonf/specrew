@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro
 **Capacity**: 24/20 story_points
 **Started**: 2026-06-16
 **Completed**:
@@ -112,3 +112,4 @@
 - T008 recorded dynamic release readiness in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/release-readiness.md. Local tags, origin tags, PSGallery packages, and GitHub releases show `0.37.0-beta1` and `0.37.0` already published, so the superseded `0.37.0-beta<N>` line is closed for this feature. DR-003 records the release-line drift and selects `0.38.0-beta1` as the next valid beta target, with stable `0.38.0` gated behind T009 real-host validation and manual beta PASS.
 - T009 recorded real-host validation evidence in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/real-host-validation.md. The passing Antigravity run loaded project `.agents/hooks.json`, executed `PreInvocation`, executed `Stop`, produced no hook stderr/failure lines, updated the durable handover, and measured the final Antigravity JSON envelope at 6,637 characters under the 10,000 character cap. This remains bounded support, not a full parity claim.
 - T010 recorded closeout issue linkage and traceability evidence in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/closeout-issue-linkage.md. After DR-004 Option A, traceability covers 11/11 tasks and 24/24 in-scope FR/SC/TG requirements. #2446, #1627, and #1761 must be bound at feature closeout to bundle commit `b79b59d8` or to the final merge/squash commit if the branch is rewritten.
+- Retrospective recorded in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/retro.md. Effective actual effort is recorded as roughly 30 SP: 24 SP accepted implementation/evidence scope plus an estimated 6 SP review/governance tail.

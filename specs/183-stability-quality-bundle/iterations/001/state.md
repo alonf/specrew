@@ -1,8 +1,8 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T011
 **Tasks Remaining**: (none)
 **In Progress**: (none)
@@ -11,7 +11,7 @@
 
 ## Execution Summary
 
-- Implementation tasks are complete; review-signoff is in progress.
+- Implementation and review-signoff tasks are complete; retro is in progress.
 - Task progress: 11 complete, 0 in-progress, 0 pending, 0 blocked.
 - Latest completed task: T011
 ## Notes
@@ -89,6 +89,11 @@
   hook-capable host registrations into host manifests, manifest-driven
   deploy/status command rendering, hook-health resolution from manifest data,
   and mirrored deploy script alignment.
+- Retro artifact recorded: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/retro.md.
+  Effective actuals are recorded as roughly 30 SP: 24 SP accepted
+  implementation/evidence scope plus an estimated 6 SP review/governance tail.
+  Iteration-closeout remains blocked until the human returns `approved for
+  retro`.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
