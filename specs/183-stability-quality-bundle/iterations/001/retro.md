@@ -2,7 +2,8 @@
 
 **Schema**: v1
 **Date**: 2026-06-16
-**Overall Verdict**: retro-ready, pending human verdict
+**Overall Verdict**: accepted
+**Human Approval**: approved for retro, 2026-06-16
 
 ## Estimation Accuracy
 
@@ -95,4 +96,5 @@ first-class work before the review/governance reserve is added.
 ## Notes
 
 - This artifact was scaffolded from `plan.md`, `state.md`, `drift-log.md`, and `review.md`; placeholders were replaced with iteration evidence.
-- Retro stops here for human verdict. The next required verdict is `approved for retro` before iteration-closeout.
+- Retro was approved on 2026-06-16. Iteration-closeout is the current and only
+  advanced boundary; feature-closeout and release validation remain separate.

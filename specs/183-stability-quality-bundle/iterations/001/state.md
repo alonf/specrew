@@ -1,17 +1,19 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T011
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: a8f413d0f2d46deff4fce0965e1d337a96d212d1
-**Updated**: 2026-06-16T15:27:42Z
+**Updated**: 2026-06-16T17:30:00Z
 
 ## Execution Summary
 
-- Implementation and review-signoff tasks are complete; retro is in progress.
+- Iteration 001 is closed at the iteration-closeout boundary. Implementation,
+  review-signoff, and retro are complete; feature-closeout and release
+  validation remain separate future boundaries.
 - Task progress: 11 complete, 0 in-progress, 0 pending, 0 blocked.
 - Latest completed task: T011
 ## Notes
@@ -94,8 +96,14 @@
 - Retro artifact recorded: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/retro.md.
   Effective actuals are recorded as roughly 30 SP: 28 SP actual task effort
   plus an estimated 2 SP review/governance tail.
-  Iteration-closeout remains blocked until the human returns `approved for
-  retro`.
+  Retro was approved on 2026-06-16, authorizing this one-boundary advance to
+  iteration-closeout.
+- Release-validation carry-forward remains open after iteration closeout:
+  verify the legacy/existing-config upgrade path for
+  `MigrateLegacyTopLevelEventMap`, add a non-Antigravity SessionStart real-host
+  run for SC-008, make T009 evidence reproducible from the repo or explicitly
+  mark it machine-local, and execute the version bump for `0.38.0-beta1` before
+  publishing.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
