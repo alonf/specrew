@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T003
-**Tasks Remaining**: T002, T004, T005, T006, T007, T008, T009, T010
+**Last Completed Task**: T002
+**Tasks Remaining**: T004, T005, T006, T007, T008, T009, T010
 **In Progress**: (none)
 **Baseline Ref**: a8f413d0f2d46deff4fce0965e1d337a96d212d1
-**Updated**: 2026-06-16T06:03:45Z
+**Updated**: 2026-06-16T07:45:02Z
 
 ## Execution Summary
 
@@ -21,14 +21,17 @@
   to filesystem-safe `launch-<guid>` fallback tokens in bootstrap journal,
   dedupe, breaker, and dispatcher refocus-state paths instead of global
   `unknown` or `no-session` buckets.
+- T002 is complete: the delivery-cap fixture now measures a synthetic shipped
+  SessionStart composite through a scratch dispatcher project and synthetic
+  `source=startup` event instead of ambient developer-machine refocus state.
 - The hardening gate records Condition A host availability and keeps
   availability distinct from parity: Antigravity behavior proof remains owned by
   T006/T009.
 - Planning selected design-analysis Option B and decomposed Iteration 001 into
   ten tasks totaling 20 story_points.
-- T002 remains planned and must clear the known-red
+- The known-red
   file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DirectiveDeliveryCap.Tests.ps1
-  before review-signoff.
+  is now green.
 
 ## Notes
 
@@ -37,9 +40,8 @@
 - Gate slip drift is recorded in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/drift-log.md.
 - DR-001 is fully resolved by `f183-i001-before-implement-approved`; DR-002 is
   a separate non-blocking governance-only follow-up outside F-183's 20 SP scope.
-- Carry-forward controls: T003 must replace the `Get-SanitizedSessionId` global
-  `unknown` fallback with the per-launch token path; dispatcher fallback
-  negative-path coverage must include non-zero provider exit,
+- Carry-forward controls: dispatcher fallback negative-path coverage must include
+  non-zero provider exit,
   command-unresolved provider launch, dispatcher outer-catch, and
   bootstrap-over-cap; T009 must include non-Claude host validation because the
   inner payload cap does not guarantee the final Codex/Copilot/Cursor JSON
@@ -47,9 +49,8 @@
 - T001 validation passed: file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DispatcherSessionStartPolicy.Tests.ps1,
   dispatcher launch guards, file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/HostDeliveryPolicy.Tests.ps1,
   file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/BootstrapProvider.Tests.ps1, and
-  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/ProviderMirrorParity.Tests.ps1. The existing
-  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DirectiveDeliveryCap.Tests.ps1 failure remains assigned to
-  T002.
+  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/ProviderMirrorParity.Tests.ps1.
+- T002 validation passed: file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DirectiveDeliveryCap.Tests.ps1.
 - T003 validation passed: file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/HostEventAdapter.Tests.ps1,
   file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/SessionBootstrapManager.Tests.ps1,
   file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DispatcherSessionIdFallback.Tests.ps1,
