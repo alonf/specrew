@@ -31,7 +31,14 @@ function New-ScratchProject {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\internal\specrew-hook-dispatcher.ps1') -Destination $scriptsDir -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\internal\refocus.ps1') -Destination $scriptsDir -Force
     Copy-Item -Path (Join-Path $repoRoot 'extensions\specrew-speckit\refocus\*.md') -Destination $refocusDir -Force
+    $catalogPath = Join-Path $projectRoot '.specify\extensions\specrew-speckit\refocus-scopes.json'
     Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\refocus-scopes.json') -Destination (Join-Path $projectRoot '.specify\extensions\specrew-speckit') -Force
+    $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
+    # This fixture exercises the refocus dispatcher in isolation. Provider-fallback composition for bootstrap
+    # is covered by DispatcherSessionStartPolicy.Tests.ps1; keeping only refocus here prevents that fallback from
+    # obscuring breaker-suppression assertions.
+    $catalog.providers = @($catalog.providers | Where-Object { [string]$_.id -eq 'refocus' })
+    [System.IO.File]::WriteAllText($catalogPath, ($catalog | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
     $startContext = @{ session_state = @{ boundary_type = 'implement'; feature_ref = 'dispatcher-fixture' } } | ConvertTo-Json -Depth 4
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $startContext, [System.Text.UTF8Encoding]::new($false))
     return (Join-Path $scriptsDir 'specrew-hook-dispatcher.ps1')

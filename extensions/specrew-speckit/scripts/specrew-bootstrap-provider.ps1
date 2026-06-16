@@ -410,10 +410,11 @@ try {
     # source), so a recency/record-after-render scheme cannot dedupe them - both check before either records
     # and BOTH render (the dogfood saw exactly that: two render markers ~10us apart). Elect exactly ONE
     # renderer with an ATOMIC create-if-absent claim per (session, source): the winner renders, every
-    # concurrent sibling finds the claim present and exits silent. 'no-session' (no stable id - the self-host
-    # repo where codex sends none, or any Stop event) is NEVER claimed -> always renders; /clear (different
-    # source) wins its OWN claim -> re-renders. Fail-open (the claim returns $true on any non-"already-exists"
-    # error). The claim sits HERE - the last step before emit, AFTER all fallible work (Invoke, contract write,
+    # concurrent sibling finds the claim present and exits silent. Events with no usable host session id receive
+    # a per-launch fallback token before this point, so they never collapse into a global bucket; the historical
+    # 'no-session' sentinel remains fail-open for older callers. /clear (different source) wins its OWN claim
+    # -> re-renders. Fail-open (the claim returns $true on any non-"already-exists" error). The claim sits HERE
+    # - the last step before emit, AFTER all fallible work (Invoke, contract write,
     # in-flight scan) - so the winner->emit window holds only pure string building; a transient failure in one
     # fire cannot suppress the other. Invoke already ran, so the journal records BOTH fires (forensic count
     # intact); only one RENDERS. Scope: the bootstrap directive only - the refocus banner (provider order 10) +

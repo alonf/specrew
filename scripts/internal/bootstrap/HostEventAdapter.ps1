@@ -24,6 +24,25 @@ function Get-SpecrewEventField {
     return $null
 }
 
+function New-SpecrewPerLaunchSessionToken {
+    return ('launch-{0}' -f ([guid]::NewGuid().ToString('N')))
+}
+
+function ConvertTo-SpecrewFilesystemSafeSessionId {
+    param([AllowNull()][string]$RawSessionId)
+
+    if ([string]::IsNullOrWhiteSpace($RawSessionId)) {
+        return (New-SpecrewPerLaunchSessionToken)
+    }
+
+    $clean = ([string]$RawSessionId) -replace '[^a-zA-Z0-9-]+', '-'
+    $clean = $clean.Trim('-')
+    if ([string]::IsNullOrWhiteSpace($clean)) {
+        return (New-SpecrewPerLaunchSessionToken)
+    }
+    return $clean
+}
+
 function ConvertFrom-SpecrewHostHookEvent {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
@@ -47,8 +66,9 @@ function ConvertFrom-SpecrewHostHookEvent {
     $eventName = Get-SpecrewEventField $payload @('hook_event_name', 'hookEventName', 'event_name')
     $cwd       = Get-SpecrewEventField $payload @('cwd', 'workspace_root', 'workspaceRoot', 'project_root', 'projectRoot', 'workingDirectory')
 
-    # Sanitize the session id to a filename-safe token before it is ever used in a path.
-    $safeSessionId = if ($sessionId) { ([string]$sessionId) -replace '[^a-zA-Z0-9-]', '-' } else { $null }
+    # Sanitize the session id before it is ever used in a path. Missing or malformed ids get a
+    # per-launch token, never a global "unknown" bucket.
+    $safeSessionId = ConvertTo-SpecrewFilesystemSafeSessionId -RawSessionId $sessionId
     $resolvedRoot = if ($ProjectRoot) { $ProjectRoot } elseif ($cwd) { $cwd } else { $null }
 
     [pscustomobject]@{

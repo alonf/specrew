@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T001
-**Tasks Remaining**: T002, T003, T004, T005, T006, T007, T008, T009, T010
+**Last Completed Task**: T003
+**Tasks Remaining**: T002, T004, T005, T006, T007, T008, T009, T010
 **In Progress**: (none)
 **Baseline Ref**: a8f413d0f2d46deff4fce0965e1d337a96d212d1
-**Updated**: 2026-06-16T05:43:30Z
+**Updated**: 2026-06-16T06:03:45Z
 
 ## Execution Summary
 
@@ -17,13 +17,16 @@
 - T001 is complete: dispatcher SessionStart composition now keeps bootstrap
   ahead of lower-priority refocus under cap pressure and emits an under-cap
   governed fallback when the bootstrap/refocus provider path fails.
+- T003 is complete: missing, blank, and malformed host session IDs now resolve
+  to filesystem-safe `launch-<guid>` fallback tokens in bootstrap journal,
+  dedupe, breaker, and dispatcher refocus-state paths instead of global
+  `unknown` or `no-session` buckets.
 - The hardening gate records Condition A host availability and keeps
   availability distinct from parity: Antigravity behavior proof remains owned by
   T006/T009.
 - Planning selected design-analysis Option B and decomposed Iteration 001 into
   ten tasks totaling 20 story_points.
-- Resume proceeds to T003 per human direction. T002 remains planned and must
-  clear the known-red
+- T002 remains planned and must clear the known-red
   file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DirectiveDeliveryCap.Tests.ps1
   before review-signoff.
 
@@ -47,6 +50,15 @@
   file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/ProviderMirrorParity.Tests.ps1. The existing
   file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DirectiveDeliveryCap.Tests.ps1 failure remains assigned to
   T002.
+- T003 validation passed: file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/HostEventAdapter.Tests.ps1,
+  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/SessionBootstrapManager.Tests.ps1,
+  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DispatcherSessionIdFallback.Tests.ps1,
+  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/HookRenderDedupe.Tests.ps1,
+  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/DispatcherSessionStartPolicy.Tests.ps1,
+  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/BootstrapProvider.Tests.ps1,
+  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/LauncherIntegration.Tests.ps1,
+  file:///C:/Dev/183-stability-quality-bundle/tests/bootstrap/ProviderMirrorParity.Tests.ps1, and
+  file:///C:/Dev/183-stability-quality-bundle/tests/integration/refocus-dispatcher.tests.ps1.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

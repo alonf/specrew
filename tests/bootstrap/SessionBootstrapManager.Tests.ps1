@@ -62,6 +62,11 @@ try {
     Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -JournalPath $jp | Out-Null
     Assert-True (Test-Path -LiteralPath $jp) 'journal record file written'
     Assert-True ((Get-Content -LiteralPath $jp -Raw) -match '"mode":"full"') 'journal record captures the mode'
+
+    # Missing session IDs get per-launch fallback keys in the manager journal, not a shared no-session bucket.
+    $r4 = Invoke-SpecrewSessionBootstrap -RawEvent '{"source":"startup"}' -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json')
+    Assert-True ([string]$r4.record.dedupe_key -match '^launch-[a-f0-9]{32}$') 'missing session id gets per-launch dedupe key'
+    Assert-True ([string]$r4.record.dedupe_key -ne 'no-session' -and [string]$r4.record.dedupe_key -ne 'unknown') 'dedupe key avoids global fallback buckets'
 }
 finally {
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue

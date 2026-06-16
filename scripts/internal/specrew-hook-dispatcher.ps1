@@ -183,11 +183,11 @@ function Get-DispatcherProjectRoot {
 
 function Get-SanitizedSessionId {
     param([AllowNull()][string]$RawSessionId)
-    # Security control (lens 5): the session id becomes part of a FILENAME — strip
-    # everything outside [a-zA-Z0-9-] so a hostile id cannot traverse paths.
-    if ([string]::IsNullOrWhiteSpace($RawSessionId)) { return 'unknown' }
-    $clean = ($RawSessionId -replace '[^a-zA-Z0-9-]', '')
-    if ([string]::IsNullOrWhiteSpace($clean)) { return 'unknown' }
+    # Security control (lens 5): the session id becomes part of a FILENAME - normalize
+    # everything outside [a-zA-Z0-9-] and fall back per launch if no usable id remains.
+    if ([string]::IsNullOrWhiteSpace($RawSessionId)) { return ('launch-{0}' -f ([guid]::NewGuid().ToString('N'))) }
+    $clean = (([string]$RawSessionId) -replace '[^a-zA-Z0-9-]+', '-').Trim('-')
+    if ([string]::IsNullOrWhiteSpace($clean)) { return ('launch-{0}' -f ([guid]::NewGuid().ToString('N'))) }
     return $clean
 }
 
