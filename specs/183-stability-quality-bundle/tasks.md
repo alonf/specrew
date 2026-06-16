@@ -128,15 +128,18 @@ and a recorded safety proof before implementation.
 - Governance validator must pass after this file is committed.
 - Bidirectional traceability must remain PASS for FR-001 through FR-007,
   SC-001 through SC-009, and TG-001 through TG-005.
-- The re-presented before-implement packet must state that T001 ran before the
-  explicit before-implement verdict, is accepted on its merits, and is pending
-  ratification by that verdict before T003 resumes.
+- The before-implement approval `f183-i001-before-implement-approved` ratifies
+  T001 on its merits and authorizes T003, serial after T001.
 - T001/T003 are serial by default, and T009 is review-stage real-host evidence.
+- DR-002 is a separate non-blocking governance-only follow-up outside F-183's
+  20 SP scope; it is not bound to T004 and has no FR/SC trace in this sprint.
 - Carry-forward task constraints from the protocol correction: T002 must clear
   the known-red `DirectiveDeliveryCap.Tests.ps1` before review-signoff; T003
   must replace any `Get-SanitizedSessionId` global `unknown` return with the
   per-launch token path; fallback coverage must include non-zero provider exit,
   command-unresolved provider launch, dispatcher outer-catch, and
-  bootstrap-over-cap; T009 must validate non-Claude host behavior because the
-  inner payload cap does not guarantee the final host JSON envelope stays under
-  10k.
+  bootstrap-over-cap; T006 must surface Antigravity schema/event/output
+  verification early and stop for split/defer if it exceeds the bounded
+  `.agents/hooks.json` adapter/config/docs/test slice; T009 must validate a
+  hook-firing Antigravity host and non-Claude host behavior because the inner
+  payload cap does not guarantee the final host JSON envelope stays under 10k.

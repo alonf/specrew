@@ -39,22 +39,22 @@
 **Evidence**: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/state.md and file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/plan.md record T001 as done, while file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/hardening-gate.md still has `Approval Ref: —` and the before-implement packet was not stopped for an explicit human verdict before T001 ran.
 **Description**: The crew treated the tasks approval as sufficient to author the before-implement readiness gate and begin implementation. That collapsed the tasks -> before-implement crossing and the before-implement human-judgment stop into one approval.
 **Resolution**: `human-decision`
-**Resolution Detail**: Ratified-by-human for T001 on its merits: T001 is not redone. Implementation is paused, the gate slip is recorded here, and the re-presented before-implement verdict must explicitly ratify T001 and authorize T003 onward before further implementation work resumes.
-**Status**: `resolved-for-t001`; boundary authorization still pending explicit before-implement verdict.
+**Resolution Detail**: Fully resolved by `f183-i001-before-implement-approved`: T001 is ratified on its merits, T001 is not redone, Condition A is accepted, and T003 is authorized serial after T001.
+**Status**: `resolved`.
 
 ### DR-002 - Boundary State and Execution State Conflation
 
 **Detected At**: 2026-06-16T01:34:46Z
 **Type**: `incomplete`
 **Severity**: `minor`
-**Task/Boundary Ref**: T004 carry-forward / before-implement
+**Task/Boundary Ref**: governance-only follow-up / before-implement
 **Requirement Ref**: file:///C:/Dev/183-stability-quality-bundle/docs/methodology/lifecycle-discipline.md Honest state discipline
 **Requirement Citation**: "state.md, task statuses, and capacity lines reflect disk truth, in canonical enums only."
 **Evidence**: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/state.md correctly keeps `Current Phase: before-implement` as the last canonical boundary while also recording `Iteration Status: executing` and `Last Completed Task: T001`. file:///C:/Dev/183-stability-quality-bundle/scripts/internal/task-progress.ps1 attempts to write `Current Phase: implement` once tasks start, but file:///C:/Dev/183-stability-quality-bundle/extensions/specrew-speckit/scripts/shared-governance.ps1 omits `implement` from canonical boundary types and file:///C:/Dev/183-stability-quality-bundle/extensions/specrew-speckit/scripts/validate-governance.ps1 rejects non-canonical `Current Phase` values.
 **Description**: The artifacts and helper scripts use `Current Phase` for two different concepts: last authorized lifecycle boundary and active task-execution phase. That makes valid post-T001 state look confusing and would make the task-progress helper produce validator-invalid state if allowed to update the field.
 **Resolution**: `human-decision`
-**Resolution Detail**: Bind the state-model repair into T004 unless a narrower governance-only repair is approved first. The preferred repair is to preserve `Current Phase` as a canonical boundary and represent implementation progress through `Iteration Status`, task rows, or a separate execution-state field rather than adding `implement` blindly to the boundary enum.
-**Status**: `open-bound-to-t004`.
+**Resolution Detail**: Track as a separate governance-only repair outside F-183's 20 SP scope. It has no FR/SC trace and is not bound to T004 because the repair surface crosses file:///C:/Dev/183-stability-quality-bundle/scripts/internal/task-progress.ps1, file:///C:/Dev/183-stability-quality-bundle/extensions/specrew-speckit/scripts/shared-governance.ps1, and file:///C:/Dev/183-stability-quality-bundle/extensions/specrew-speckit/scripts/validate-governance.ps1, which sit outside T004's owner globs. If it must land during this iteration, add its own capacity line rather than absorbing it into T004.
+**Status**: `open-nonblocking-governance-follow-up`.
 
 ### Resolution Strategies (Unused)
 
@@ -67,5 +67,5 @@ The following resolution strategies remain available if drift is detected later 
 
 ### Notes
 
-- DR-001 is resolved for the completed T001 slice by human ratification, but the before-implement boundary still requires an explicit verdict before T003 starts.
-- DR-002 remains open as a T004 carry-forward because it touches closeout/state/dashboard governance surfaces rather than the T001 runtime behavior.
+- DR-001 is fully resolved by `f183-i001-before-implement-approved`.
+- DR-002 remains open as a separate governance-only repair outside F-183's 20 SP scope and does not block T003.

@@ -1,3 +1,22 @@
+## 2026-06-16 — F-183 iteration-001 before-implement approval with instructions
+
+### 2026-06-16 — Decision: approve before-implement; ratify T001; authorize T003
+
+- **Decision ID**: f183-i001-before-implement-approved
+- **Type**: decision
+- **Affected Iteration**: specs\183-stability-quality-bundle\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-16T05:43:30Z
+- **Verdict**: approved for before-implement with instructions.
+- **Decision**: Ratify T001 on its merits and authorize T003, serial after T001. Condition A is accepted: host/Antigravity availability is real and correctly scoped as availability not parity.
+- **Carried instructions**:
+  1. DR-002 is a separate governance-only repair outside F-183's 20 SP scope; do not bind it to T004 or any FR/SC trace. Keep the DR-002 drift entry as the pointer. If it must land in this iteration, give it its own capacity line.
+  2. FR-007 remains in scope. At T006, surface Antigravity schema/event/output verification early and stop for a human split/defer decision the moment it exceeds the bounded `.agents/hooks.json` adapter/config/docs/test slice.
+  3. Before T009, confirm a hook-firing Antigravity host, not just `agy` CLI presence.
+  4. Stop at every human gate for an explicit verdict. One approval advances one boundary.
+  5. T002 still must clear the known-red `DirectiveDeliveryCap.Tests.ps1` before review-signoff.
+- **Disposition**: before-implement approved with instructions; implementation may proceed to T003. T001 remains done and accepted; no redo.
+
 ## 2026-06-14 — F-174 iteration-011 mid-implement SCOPE AMENDMENT: hook install/discovery hardening (3 layers)
 
 ### 2026-06-14 — Decision: fold proactive hook provisioning + a `specrew hooks` command + a degradation diagnostic INTO iter-011 (extra SP pre-approved, NO proposal)
