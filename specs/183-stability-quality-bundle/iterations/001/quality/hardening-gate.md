@@ -9,7 +9,7 @@
 **Overall Verdict**: `ready`
 **Approval Ref**: `—`
 **Reviewed By**: Reviewer
-**Reviewed At**: 2026-06-16T00:37:03Z
+**Reviewed At**: 2026-06-16T01:34:46Z
 
 ## Concern Review
 
@@ -21,9 +21,16 @@
 | `test-integrity-targets` | `test-integrity` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Tests must prove behavior, not file presence: synthetic SessionStart cap fixture, provider-failure fallback, missing/blank/malformed session IDs, dirty `.specify` classification, no-upstream wording, dashboard regeneration, #1761 scratch git isolation/module-internal assertion, Antigravity merge/remove/opt-out, and review-stage real-host pass/fail evidence. | `true` | FR-004 and the #1761 cleanup exist specifically because ambient-machine and wrong-copy tests were untrustworthy. T001-T006 provide deterministic Pester coverage; T009 records real-host validation after the implementation slices merge. | `—` |
 | `operational-resilience-concerns` | `operational` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | User-visible fallback text says governance is still active and points to `specrew where`, `/specrew-refocus`, `specrew hooks status`, and `specrew start --host <host>` where relevant. Source and `.specify` mirror parity are checked for touched extension/runtime files. Release beta target remains dynamic until local tags, origin tags, and published state are inspected. | `true` | Operational success is degraded-but-governed behavior, truthful partial Antigravity support, mirror parity, and release-readiness evidence. T007-T009 are review-stage controls and T006 carries the Antigravity split guard. | `—` |
 
+## Before-Implement Conditions
+
+| Condition | Status | Evidence | Decision |
+| --- | --- | --- | --- |
+| `condition-a-host-availability` | `closed` | 2026-06-16 local checks: `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/specrew-hooks.ps1 status --project-path .` reported `claude`, `cursor`, `codex`, and `copilot` installed; `Get-SpecrewHookCapableHosts` returned `claude`, `cursor`, `codex`, and `copilot`; `agy --version` returned `1.0.8`; file:///C:/Dev/183-stability-quality-bundle/.antigravitycli exists. | Real hook-capable host availability is present through the existing hook-capable hosts. An Antigravity environment is reachable through `agy`, so the FR-007 split guard is not tripped by host availability. T006/T009 still must prove only verified Antigravity hook events/output behavior and real-host validation before any Antigravity parity claim. |
+
 ## Notes
 
 - Planning-time readiness is `ready`; runtime evidence remains pending until implementation/review records the named Pester, mirror, release-readiness, and real-host validation evidence.
 - The quality-profile resolver still detects repository-level React signals, but this feature's approved scoped profile is `powershell-json-yaml-pester`.
 - T001 and T003 remain serial by default because they share hook runtime/bootstrap surfaces and `tests/bootstrap/**`.
 - If Antigravity verification expands beyond project-scoped `.agents/hooks.json` merge/remove/opt-out, verified event mapping, docs/status cleanup, and fallback guidance, pause for a human split/defer decision before continuing.
+- Protocol correction: before-implement is a human-judgment stop. This gate is ready for explicit human verdict but does not itself authorize implementation; the T001 gate slip is logged in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/drift-log.md and must be ratified by the re-presented before-implement verdict before T003 resumes.
