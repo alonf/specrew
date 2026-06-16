@@ -6,11 +6,13 @@
 
 ## Estimation Accuracy
 
-The task table records the human-approved expanded scope at 24/20 SP. That is the
-minimum measured actual. The effective actual was higher because the iteration
-absorbed an unplanned review/governance tail: the FR-007 split-guard stop,
-Option A scope rebasing, T011 insertion, durability repair, review-packet
-rebuild, and T010 issue-linkage tightening.
+The task table originally recorded the human-approved expanded scope at 24/20
+SP. That was the minimum measured actual, not the final calibration truth. The
+effective actual was higher for two separate reasons: T011 was a large
+cross-host host-model refactor, and the iteration also absorbed an unplanned
+review/governance tail from the FR-007 split-guard stop, Option A scope
+rebasing, durability repair, review-packet rebuild, and T010 issue-linkage
+tightening.
 
 | Task | Estimated | Actual | Delta |
 | ---- | --------- | ------ | ----- |
@@ -20,17 +22,18 @@ rebuild, and T010 issue-linkage tightening.
 | T004 | 4 | 4 | 0 |
 | T005 | 2 | 2 | 0 |
 | T006 | 4 | 4 | 0 |
-| T011 | 4 | 4 | 0 |
+| T011 | 4 | ~8 | +4 |
 | T007 | 0.25 | 0.25 | 0 |
 | T008 | 0.25 | 0.25 | 0 |
 | T009 | 0.25 | 0.25 | 0 |
 | T010 | 0.25 | 0.25 | 0 |
-| Review/governance tail | 0 | ~6 | +6 |
+| Review/governance tail | 0 | ~2 | +2 |
 | **Total** | **24** | **~30** | **~+6** |
 
-**Average variance**: task rows held after the human-approved rebaseline, but the
-iteration still cost roughly 30 SP effective effort because governance/review
-repair was not represented as capacity.
+**Average variance**: the iteration still cost roughly 30 SP effective effort,
+but the variance is not only "reserve a review tail." The larger calibration
+lesson is that cross-host hook-model refactors are large and should be sized as
+first-class work before the review/governance reserve is added.
 
 ## Phase Variance
 
@@ -38,9 +41,9 @@ repair was not represented as capacity.
 | ----- | --------- | ------ | ----- | ----- |
 | Planning | 2 | ~3 | +1 | Scope summary, traceability, concurrency rationale, capacity, and design-analysis artifacts needed multiple reconciliation passes before tasks were self-consistent. |
 | Discovery/Spikes | 1 | ~1.5 | +0.5 | Antigravity hook documentation, local `agy` availability, and event/output verification were cheap but still non-zero. |
-| Implementation | 17 | ~19 | +2 | The accepted Option A host-model refactor made T011 explicit and migrated five hook-capable hosts through `RefocusHookBindings`. |
-| Review | 3 | ~5 | +2 | Proposal 145 review, external-review send-back, real-host evidence, issue-linkage tightening, and reviewer artifact durability all landed here. |
-| Rework | 1 | ~1.5 | +0.5 | T010 wording, lifecycle-state truth, and validation reruns were bounded but real. |
+| Implementation | 17 | ~21 | +4 | The accepted Option A host-model refactor made T011 explicit and migrated five hook-capable hosts through `RefocusHookBindings`; this was the biggest task, not a 4 SP exact-fit slice. |
+| Review | 3 | ~3.5 | +0.5 | Proposal 145 review, external-review send-back, real-host evidence, issue-linkage tightening, and reviewer artifact durability all landed here. |
+| Rework | 1 | ~1 | 0 | T010 wording, lifecycle-state truth, and validation reruns were bounded but real. |
 
 ## Drift Summary
 
@@ -63,7 +66,7 @@ repair was not represented as capacity.
 - The host-model refactor crossed the original T006 slice before the split decision was surfaced. The eventual Option A repair was correct, but the stop should have happened earlier.
 - Lifecycle/runtime state was noisy: the committed iteration artifacts reached review-signoff, while `.specrew/start-context.json` lagged behind until the retro entry preflight re-recorded the human approval.
 - Review durability had to be repaired after the first review pass; the quality-profile-foundation check, scope classification, and reviewer packet had to be made durable before approval.
-- The actual cost was larger than the 24 SP rebaseline because review/governance repair was not given its own capacity line.
+- The actual cost was larger than the 24 SP rebaseline because T011 was under-sized as a host-model refactor and review/governance repair was not given its own capacity line.
 
 ## Improvement Actions
 
@@ -75,11 +78,12 @@ repair was not represented as capacity.
 6. Owner: Spec Steward | Phase: closeout | Type: linkage | Bind #2446, #1627, and #1761 at feature closeout to `b79b59d8` or to the final merge/squash commit.
 7. Owner: Maintainer | Phase: follow-up | Type: governance | Keep DR-002 as a separate governance repair; do not hide it inside F-183 implementation capacity.
 8. Owner: Maintainer | Phase: closeout | Type: hygiene | Resolve the unrelated line-ending churn outside F-183 before final closeout.
+9. Owner: Implementer | Phase: implement/review recovery | Type: git discipline | Commit per task even during durability recovery. The squashed 103-file durability commit made T010 issue linkage depend on a bundle commit instead of task-local fixing commits; future recovery work should preserve per-task commits or record an explicit per-task commit map before squashing.
 
 ## Calibration Suggestion
 
-- Suggested capacity adjustment: keep the nominal 20 SP cap, but treat stability/governance bundles with host verification as high-risk and reserve a visible 25-35% review/governance tail.
-- Rationale: the accepted implementation scope was 24 SP, but effective actuals were about 30 SP once split-guard adjudication, real-host proof, review repair, and lifecycle-state reconciliation were counted.
+- Suggested capacity adjustment: keep the nominal 20 SP cap, but size cross-host host-model refactors as large work first, then reserve a visible 15-25% review/governance tail for stability bundles with host verification.
+- Rationale: the accepted implementation scope was 24 SP, but effective actuals were about 30 SP: roughly +4 SP from T011 being a real cross-host refactor and roughly +2 SP from split-guard adjudication, real-host proof, review repair, and lifecycle-state reconciliation.
 
 ## Signals for Closeout and Release
 

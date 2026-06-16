@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: retro
-**Capacity**: 24/20 story_points
+**Capacity**: 28/20 story_points
 **Started**: 2026-06-16
 **Completed**:
 
@@ -42,7 +42,7 @@
 | T004 | Closeout classification, upstream wording, dashboard refresh | FR-005, SC-005 | US3 | 4 | Implementer | scripts/internal/sync-boundary-state.ps1; tests/integration/** | done | codex | 4 | pass |
 | T005 | #1761 mechanical local-test hygiene | FR-006, SC-006 | US3 | 2 | Implementer, Reviewer | tests/integration/closeout-lifecycle-sync-commands.tests.ps1; tests/integration/** | done | codex | 2 | pass |
 | T006 | Antigravity hook binding and docs cleanup | FR-007, SC-009, TG-004 | US4 | 4 | Implementer, Reviewer | hosts/**; scripts/internal/deploy-refocus-hooks.ps1; scripts/specrew-hooks.ps1; docs/**; README.md; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | done | codex | 4 | pass |
-| T011 | Manifest-driven hook-capable host model | FR-008, SC-010, TG-006 | US5 | 4 | Implementer, Reviewer | hosts/**; scripts/internal/deploy-refocus-hooks.ps1; scripts/internal/specrew-hook-health.ps1; extensions/specrew-speckit/scripts/**; .specify/extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | done | codex | 4 | pass |
+| T011 | Manifest-driven hook-capable host model | FR-008, SC-010, TG-006 | US5 | 4 | Implementer, Reviewer | hosts/**; scripts/internal/deploy-refocus-hooks.ps1; scripts/internal/specrew-hook-health.ps1; extensions/specrew-speckit/scripts/**; .specify/extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | done | codex | 8 | pass |
 | T007 | Mirror parity evidence | SC-007, TG-003 | US1-US5 | 0.25 | Reviewer | extensions/specrew-speckit/**; .specify/extensions/specrew-speckit/** | done | codex | 0.25 | pass |
 | T008 | Dynamic beta release readiness | SC-007 | US1-US5 | 0.25 | Spec Steward | specs/183-stability-quality-bundle/** | done | codex | 0.25 | pass |
 | T009 | Real-host validation evidence | SC-008, SC-009, TG-004 | US1, US4 | 0.25 | Reviewer | specs/183-stability-quality-bundle/** | done | codex | 0.25 | pass |
@@ -85,8 +85,10 @@
 - Requirement scope: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007,
   FR-008.
 - User stories represented in current scope: US1, US2, US3, US4, US5.
-- Capacity check: 24/20 story_points. DR-004 Option A is the explicit
-  human-approved over-cap scope decision; no hidden slack remains.
+- Capacity check: 28/20 story_points actual task effort. DR-004 Option A
+  approved a 24/20 expanded scope baseline; retro calibration records T011 as
+  roughly 8 SP because the 511-line cross-host host-model refactor was the
+  iteration's largest task.
 - Overcommit guardrail: DR-004 resolved the first FR-007 split guard by
   accepting the manifest-driven host-model refactor into F-183. Any further
   FR-007 or FR-008 growth still requires a fresh human split/defer decision.
@@ -112,4 +114,4 @@
 - T008 recorded dynamic release readiness in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/release-readiness.md. Local tags, origin tags, PSGallery packages, and GitHub releases show `0.37.0-beta1` and `0.37.0` already published, so the superseded `0.37.0-beta<N>` line is closed for this feature. DR-003 records the release-line drift and selects `0.38.0-beta1` as the next valid beta target, with stable `0.38.0` gated behind T009 real-host validation and manual beta PASS.
 - T009 recorded real-host validation evidence in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/real-host-validation.md. The passing Antigravity run loaded project `.agents/hooks.json`, executed `PreInvocation`, executed `Stop`, produced no hook stderr/failure lines, updated the durable handover, and measured the final Antigravity JSON envelope at 6,637 characters under the 10,000 character cap. This remains bounded support, not a full parity claim.
 - T010 recorded closeout issue linkage and traceability evidence in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/closeout-issue-linkage.md. After DR-004 Option A, traceability covers 11/11 tasks and 24/24 in-scope FR/SC/TG requirements. #2446, #1627, and #1761 must be bound at feature closeout to bundle commit `b79b59d8` or to the final merge/squash commit if the branch is rewritten.
-- Retrospective recorded in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/retro.md. Effective actual effort is recorded as roughly 30 SP: 24 SP accepted implementation/evidence scope plus an estimated 6 SP review/governance tail.
+- Retrospective recorded in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/retro.md. Effective actual effort is recorded as roughly 30 SP: 28 SP actual task effort plus an estimated 2 SP review/governance tail.

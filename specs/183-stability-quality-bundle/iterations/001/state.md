@@ -23,7 +23,9 @@
   a separate non-blocking governance-only follow-up outside F-183's 20 SP scope.
 - DR-004 is resolved by Alon's Option A scope verdict: F-183 now explicitly
   includes the `RefocusHookBindings` host-model refactor as FR-008/SC-010/TG-006
-  and T011, with a 24/20 human-approved over-cap capacity baseline.
+  and T011. The human-approved expanded baseline was 24/20 story_points; retro
+  calibration records 28/20 actual task effort after sizing T011 as the
+  iteration's large cross-host refactor.
 - Carry-forward controls: dispatcher fallback negative-path coverage must include
   non-zero provider exit,
   command-unresolved provider launch, dispatcher outer-catch, and
@@ -90,8 +92,8 @@
   deploy/status command rendering, hook-health resolution from manifest data,
   and mirrored deploy script alignment.
 - Retro artifact recorded: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/retro.md.
-  Effective actuals are recorded as roughly 30 SP: 24 SP accepted
-  implementation/evidence scope plus an estimated 6 SP review/governance tail.
+  Effective actuals are recorded as roughly 30 SP: 28 SP actual task effort
+  plus an estimated 2 SP review/governance tail.
   Iteration-closeout remains blocked until the human returns `approved for
   retro`.
 
