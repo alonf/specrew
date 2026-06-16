@@ -12,7 +12,11 @@
 #   docker build -f tests/Dockerfile.publish-test -t specrew-publish-test .
 #   docker run --rm specrew-publish-test
 
-FROM mcr.microsoft.com/powershell:lts-ubuntu-22.04
+# Use Docker Hub ubuntu instead of mcr.microsoft.com/powershell to avoid the
+# intermittent 401 Unauthorized that GitHub Actions runners hit against MCR's
+# anonymous-pull endpoint. PowerShell is installed from Microsoft's apt feed,
+# which is a separate endpoint and reliably reachable from CI runners.
+FROM ubuntu:22.04
 
 # Toolchain required by harness Phases 4-5. specrew init/update perform git
 # operations and shell out to the specify (spec-kit) and squad CLIs. The minimal
@@ -22,8 +26,15 @@ ARG SPEC_KIT_VERSION=0.8.4
 ARG SQUAD_VERSION=0.9.1
 ENV PATH="/root/.local/bin:${PATH}"
 
+# Install PowerShell from Microsoft's apt package feed + base toolchain.
+# Folded into one layer to minimise image size.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git curl ca-certificates \
+    && apt-get install -y --no-install-recommends wget apt-transport-https ca-certificates git curl \
+    && wget -q "https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb" \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends powershell \
     && rm -rf /var/lib/apt/lists/*
 
 # GitHub CLI (gh). Baseline v0.27.6 `specrew init`'s dependency check lists gh under
