@@ -4,19 +4,21 @@
 **Task**: T010 - Closeout issue linkage and traceability evidence
 **Trace**: TG-001, TG-002, TG-005
 **Recorded At**: 2026-06-16T11:05:00Z
-**Updated At**: 2026-06-16T15:09:14Z
-**Overall Verdict**: pass-for-readiness
+**Updated At**: 2026-06-16T19:45:00Z
+**Overall Verdict**: pass-for-readiness, linkage-pending-at-feature-closeout
 
 ## Issue Linkage Ledger
 
 TG-005 requires feature closeout to link fixing commits to issues #2446, #1627,
-and #1761. The linkage state is:
+and #1761. The linkage state is readiness-pass only; final issue binding happens
+at feature closeout against the bundle commit because the implementation was
+consolidated into `b79b59d8`.
 
 | Issue | In-scope fix surface | Tasks | Fixing commit state | Closeout binding |
 | ----- | -------------------- | ----- | ------------------- | ---------------- |
-| #2446 | Session identity and journal state no longer collapse missing/blank/malformed host IDs into global `unknown`; per-launch fallback tokens drive dedupe/status/breaker state. | T003 | `4dc710ec` (`boundary(implement): T003 stabilize session id fallback`) | Use `4dc710ec` as the #2446 fixing commit unless later squash/rebase changes the hash. |
-| #1627 | Feature-closeout dirty `.specify` classification, no-upstream wording, and auto-detect dashboard refresh. | T004 | Pending final implementation commit; current fix surface is in the working tree. | Feature closeout must link the final T004-containing commit to #1627 before the issue is closed. |
-| #1761 | The two in-scope mechanical reds (#2/#3) use scratch git isolation and assert the module-internal lifecycle sync script copy. Red #1 remains out of scope. | T005 | Pending final implementation commit; current fix surface is in the working tree. | Feature closeout must link the final T005-containing commit to #1761 before the issue is closed, explicitly excluding red #1. |
+| #2446 | Session identity and journal state no longer collapse missing/blank/malformed host IDs into global `unknown`; per-launch fallback tokens drive dedupe/status/breaker state. | T003 | Implemented in the bundle durability commit `b79b59d8`; earlier task commit `4dc710ec` remains historical evidence but is not the closeout binding target. | Feature closeout must bind #2446 to `b79b59d8`, or to the final merge/squash commit if the branch is squashed again. |
+| #1627 | Feature-closeout dirty `.specify` classification, no-upstream wording, and auto-detect dashboard refresh. | T004 | Implemented in the bundle durability commit `b79b59d8`; no working-tree-pending fix remains for this scope. | Feature closeout must bind #1627 to `b79b59d8`, or to the final merge/squash commit if the branch is squashed again. |
+| #1761 | The two in-scope mechanical reds (#2/#3) use scratch git isolation and assert the module-internal lifecycle sync script copy. Red #1 remains out of scope. | T005 | Implemented in the bundle durability commit `b79b59d8`; no working-tree-pending fix remains for this scope. | Feature closeout must bind #1761 to `b79b59d8`, or to the final merge/squash commit if the branch is squashed again, explicitly excluding red #1. |
 
 ## Proposal Handling
 
@@ -74,7 +76,6 @@ Requirement-to-task summary:
   issue mapping, proposal non-edit rule, and bidirectional traceability result.
 - DR-004 Option A added T011/FR-008/SC-010/TG-006 after the first readiness
   evidence pass; this artifact was updated to include the expanded scope.
-- It does not close #1627 or #1761 by itself. Those issues require the final
-  implementation commit hashes after the working tree is committed or squashed.
-- If the branch is squashed or rebased, update the #2446 row from `4dc710ec` to
-  the final commit hash before feature closeout.
+- It does not close #2446, #1627, or #1761 by itself. Feature closeout must link
+  all three issues to `b79b59d8` or to the final merge/squash commit if the
+  branch is rewritten before release.

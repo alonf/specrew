@@ -78,11 +78,12 @@
   updated durable handover, and measured the Antigravity JSON envelope at 6,637
   characters under the 10,000 character cap. This remains bounded support, not
   a full parity claim.
-- T010 closeout issue linkage and traceability evidence recorded:
+- T010 closeout issue linkage and traceability readiness evidence recorded:
   file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/closeout-issue-linkage.md.
   After DR-004 Option A, traceability covers 11/11 tasks and 24/24 in-scope
-  FR/SC/TG requirements; #2446 maps to commit `4dc710ec`, while #1627 and #1761
-  are bound to the final T004/T005 implementation commits at feature closeout.
+  FR/SC/TG requirements. #2446, #1627, and #1761 must be bound at feature
+  closeout to bundle commit `b79b59d8` or to the final merge/squash commit if
+  the branch is rewritten.
 - T011 host-model refactor scope recorded by DR-004 Option A. The accepted
   surface covers `RefocusHookBindings` manifest schema, migration of existing
   hook-capable host registrations into host manifests, manifest-driven

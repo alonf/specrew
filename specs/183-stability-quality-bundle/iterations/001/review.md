@@ -2,11 +2,12 @@
 
 **Schema**: v1
 **Reviewed**: 2026-06-16
-**Overall Verdict**: accepted for review-signoff evidence
+**Overall Verdict**: accepted
 **Review Commit**: `b79b59d8`
+**Human Approval**: approved for review-signoff, 2026-06-16
 
-Reviewer acceptance does not advance the boundary. The next lifecycle move still
-requires Alon's explicit `approved for review-signoff` verdict.
+Alon's `approved for review-signoff` verdict advances exactly one boundary: the
+iteration may enter retro, and must stop again before iteration-closeout.
 
 ## Findings
 
@@ -55,7 +56,7 @@ requires Alon's explicit `approved for review-signoff` verdict.
 | T007 | SC-007, TG-003 | pass | Mirror parity evidence is committed and `ProviderMirrorParity.Tests.ps1` passes. |
 | T008 | SC-007 | pass | Release readiness selects `0.38.0-beta1` after local/origin/package/release checks in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/release-readiness.md. |
 | T009 | SC-008, SC-009, TG-004 | pass | Real Antigravity host evidence shows `.agents/hooks.json` loaded, `PreInvocation` and `Stop` fired, handover updated, and the final JSON envelope measured 6,637 chars under the 10,000 cap. |
-| T010 | TG-001, TG-002, TG-005 | pass | Traceability covers 11/11 tasks and 24/24 FR/SC/TG rows; issue linkage is recorded in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/closeout-issue-linkage.md. |
+| T010 | TG-001, TG-002, TG-005 | pass, linkage pending at closeout | Traceability covers 11/11 tasks and 24/24 FR/SC/TG rows; issue linkage readiness is recorded in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/closeout-issue-linkage.md, and #2446/#1627/#1761 must be bound to the bundle or final merge/squash commit at feature closeout. |
 
 ## Proposal 145 Phase Summary
 
@@ -83,7 +84,7 @@ requires Alon's explicit `approved for review-signoff` verdict.
 - `git diff --check -- .gitignore .agents .specify/extensions/specrew-speckit README.md docs extensions/specrew-speckit hosts scripts specs/183-stability-quality-bundle tests/bootstrap tests/integration tests/unit/feature-051-file-classification.tests.ps1` passed.
 - All focused commands listed in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/coverage-evidence.md passed after `b79b59d8`.
 
-## Required Human Verdict
+## Boundary Result
 
-Review-signoff is ready for human decision. The required next verdict shape is
-`approved for review-signoff` or a rejection with instructions.
+Review-signoff is approved. The next stage is retro, and the next required human
+verdict after retro is `approved for retro` before iteration-closeout.

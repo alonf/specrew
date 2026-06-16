@@ -4,11 +4,11 @@
 **Iteration**: 001
 **Date**: 2026-06-16
 **Reviewer**: Codex, single-agent sequential Proposal 145 pass
-**Verdict**: accepted for review-signoff evidence
+**Verdict**: accepted
 **Review Commit**: `b79b59d8`
+**Human Approval**: approved for review-signoff, 2026-06-16
 
-This is a reviewer recommendation only. Human approval is still required before
-the lifecycle advances beyond review-signoff.
+Human approval advances exactly one boundary: from review-signoff to retro.
 
 ## Scope Loaded
 
@@ -102,5 +102,5 @@ residual_risks:
 
 ## Required Human Verdict
 
-Review-signoff is ready to present. The lifecycle must stop here until Alon
-returns `approved for review-signoff` or rejection instructions.
+Review-signoff is approved. The lifecycle is now ready to enter retro and must
+stop again before iteration-closeout.
