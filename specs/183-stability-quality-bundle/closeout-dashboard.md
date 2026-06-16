@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: feature-closeout
-**Captured At**: 2026-06-16T20:31:36Z
+**Captured At**: 2026-06-16T20:53:34Z
 **Render Mode**: full
 **Rendering Mode**: monochrome
 **Color Mode**: monochrome
@@ -12,14 +12,14 @@
 
 ```text
 Boundary enforcement: enabled
-Last authorized boundary: iteration-closeout
+Last authorized boundary: feature-closeout
 Pending next boundary: (none)
-Last enforcement timestamp: 06/16/2026 17:27:14
-Total enforcement events: 5
+Last enforcement timestamp: 06/16/2026 20:53:02
+Total enforcement events: 6
 
 SPECREW VELOCITY DASHBOARD
 ------------------------------------------------------------------------
-Today: 2026-06-16 | Captured: 2026-06-16T20:31:36Z
+Today: 2026-06-16 | Captured: 2026-06-16T20:53:34Z
 Repo: 183-stability-quality-bundle | Branch: 183-stability-quality-bundle
 Rendering: monochrome-safe fallback
 Summary: > F-183 Stability and Quality Bundle (Implementation Complete) | Velocity 11.94 SP/day (10 closed iterations, high)
@@ -84,9 +84,9 @@ Current phase remaining: n/a | ETA: TBD | confidence high
 Roadmap remaining: 566 SP | ETA: 48 calendar day(s) | confidence high
 
 WARNINGS
-WARN: ASCII rendering forced by --ASCII.
-WARN: Multi-developer activity detected: 4 unique git authors; 8 feature branches; 4 close-together shared-state writes
-WARN: Multiple developers detected (4 unique git authors, 8 feature branches, 4 close-together shared-state writes). Consider enabling multi-session mode: `specrew config set session_mode multi`
+WARN: Monochrome-safe fallback forced by --no-color / NO_COLOR.
+WARN: Multi-developer activity detected: 4 unique git authors; 8 feature branches; 3 close-together shared-state writes
+WARN: Multiple developers detected (4 unique git authors, 8 feature branches, 3 close-together shared-state writes). Consider enabling multi-session mode: `specrew config set session_mode multi`
 WARN: Feature '183-stability-quality-bundle' has no active iteration artifact; showing feature-level context only.
 
 FOOTER
