@@ -272,3 +272,6 @@ closed:
   - feature: 174-hook-driven-session-bootstrap
     iteration: 012
     closed_at: 2026-06-15T02:06:13Z
+  - feature: 183-stability-quality-bundle
+    iteration: 001
+    closed_at: 2026-06-16T17:40:24Z
