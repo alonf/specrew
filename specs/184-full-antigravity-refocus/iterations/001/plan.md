@@ -90,7 +90,7 @@
 
 ## Notes
 
-- Design-analysis decision: Option A, complete bounded Antigravity refocus in one temporarily expanded 26 SP iteration.
+- Design-analysis decision: Option B, complete bounded Antigravity refocus in one temporarily expanded 26 SP iteration.
 - Wave B artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/data-model.md, file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/quickstart.md, file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/contracts/full-antigravity-refocus.md, file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/review-diagrams.md
 - User instruction: proceed through implementation and stop for the next human gate after complete implementation. Boundary commits and syncs still occur; Proposal 145-style review/fix/rerun applies at every stop.
 - T001 is a hard split-guard task, not optional research. A FAIL row blocks runtime work.
