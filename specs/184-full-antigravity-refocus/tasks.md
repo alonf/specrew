@@ -3,7 +3,7 @@
 **Schema**: v1
 **Feature**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/spec.md
 **Iteration**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/plan.md
-**Status**: iteration-closeout prepared; awaiting human iteration-closeout verdict
+**Status**: iteration 001 closed; iteration 002 specify approved; awaiting plan boundary
 **Capacity**: 26/26 story_points
 
 ## Task Table
@@ -21,6 +21,13 @@
 
 ## Sequencing
 
+- Iteration 001 is closed at `abf18b99`; T001-T008 remain historical records
+  for that iteration.
+- Iteration 002 specify is approved; task planning is not yet authored. The
+  authorized iteration 002 scope is persistent host instructions during `specrew init`,
+  an anti-raw-`specify.exe workflow` guard, bootstrap front-loading/speedup,
+  host-neutral manifest delivery, user instruction-file preservation, and
+  Opus/Flash real-host validation.
 - T001 gates T002-T005. Any FAIL row in the split-guard evidence stops runtime
   implementation for a human split/defer decision.
 - T002 precedes T003 because B3 dedupe/state keys depend on real session

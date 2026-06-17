@@ -27052,3 +27052,68 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 00d2b7bd
 - **Recorded At**: 2026-06-17T12:19:51Z
+
+## 2026-06-17 — F-184 iteration-001 closeout approval and iteration-002 open
+
+### 2026-06-17 — Decision: approve iteration-closeout; authorize iteration 002 specify only
+
+- **Decision ID**: f184-i001-iteration-closeout-approved-open-i002
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\184-full-antigravity-refocus\iterations\001
+- **Next Iteration**: specs\184-full-antigravity-refocus\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T13:34:21Z
+- **Verdict**: approved for iteration-closeout.
+- **Decision**: Accept iteration 001 closeout at committed tree `abf18b99` and
+  open F-184 iteration 002 for the persistent host-instruction and workshop-speed
+  follow-up slice.
+- **Authorized iteration 002 scope**:
+  1. Deploy persistent Specrew coordinator instructions during `specrew init` to
+     each host's manifest-declared `InstructionsFile`, including `AGENTS.md` for
+     Antigravity/Codex and equivalents elsewhere.
+  2. Preserve user-owned `AGENTS.md` content by merging a Specrew-owned section,
+     not clobbering the whole file.
+  3. Put the coordinator contract and anti-raw-`specify.exe workflow` guard
+     prominently in both persistent instructions and bootstrap.
+  4. Front-load the bootstrap so the immediate Specrew action appears before
+     slower context.
+  5. Keep the host-coupling firewall green.
+  6. Validate with real-host Antigravity Opus 4.6 and Gemini Flash, preserving
+     the weak-model caveat if Flash still cannot drive the governed workshop.
+- **Non-authorization**: feature-closeout, release, beta/stable promotion, and
+  iteration 002 implementation are not authorized by this decision.
+- **Disposition**: iteration 001 closeout approved; iteration 002 specify opened.
+  Stop at the iteration 002 specify verdict before clarify, plan, tasks, or
+  implementation.
+
+## 2026-06-17 — F-184 iteration-002 specify approval
+
+### 2026-06-17 — Decision: approve specify content; require boundary commit before planning
+
+- **Decision ID**: f184-i002-specify-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\184-full-antigravity-refocus\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T14:39:12Z
+- **Verdict**: approved for specify, content-wise, conditional on committing the
+  specify boundary.
+- **Decision**: Accept the iteration 002 specify packet for persistent host
+  instruction delivery, the anti-raw-`specify.exe workflow` guard, bootstrap
+  front-loading, host-neutral manifest projection, user instruction-file
+  preservation, packaged-template/FileList readiness, human-confirmed lens
+  provenance, and dual-model Antigravity Opus/Flash validation with the
+  weak-model caveat if Flash still cannot drive the governed workshop.
+- **Required before advancing**: Commit the specify artifacts as a focused
+  `boundary(specify)` commit to avoid Shape-5 / boundary-ledger lag.
+- **Carry into plan**:
+  1. Size the cross-host instruction-delivery scope honestly against the restored
+     20 SP cap; split rather than silently overrun.
+  2. Enforce SC-014 with the host-coupling firewall, including a negative test
+     proving instruction-delivery code reads `InstructionsFile` from manifests
+     and does not branch on host names.
+  3. Put the anti-raw-Spec-Kit guard in both surfaces: persistent instruction
+     files and the front-loaded bootstrap.
+- **Non-authorization**: Implementation, feature-closeout, beta, stable, and
+  release are not authorized by this verdict.
+- **Disposition**: Specify content accepted; boundary commit required before
+  planning work begins.

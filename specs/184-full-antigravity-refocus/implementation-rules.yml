@@ -28,7 +28,7 @@ selections:
     checked: true
   - id: "code-rule.strategy-state-over-repeated-conditionals"
     checked: true
-    decision: "Reuse the host manifest/adapter strategy surface; add only a focused helper for Antigravity self-marker classification if needed."
+    decision: "Reuse the host manifest/adapter strategy surface; for iteration 002, drive instruction-file targets from manifest InstructionsFile rather than shared-core host branches."
     enforcement: [review, tests]
   - id: "code-rule.polymorphism-mechanism"
     checked: true
@@ -36,11 +36,11 @@ selections:
     enforcement: [review]
   - id: "code-rule.complex-code-stable"
     checked: true
-    decision: "Keep stable refocus decision logic in existing dispatcher/state/classification components and isolate Antigravity event-shape volatility at the adapter boundary."
+    decision: "Keep stable refocus decision logic in existing dispatcher/state/classification components. For iteration 002, add one focused instruction-delivery helper and avoid scattering managed-block merge logic through init/start/update."
     enforcement: [review, tests]
   - id: "code-rule.anti-corruption-layers"
     checked: true
-    decision: "Normalize Antigravity hook input/output into Specrew's existing dispatcher contract before refocus logic consumes it."
+    decision: "Normalize host-specific instruction surfaces through the manifest InstructionsFile contract; persistent instruction content should come from one Specrew template/fragment projected into AGENTS.md, CLAUDE.md, .github/copilot-instructions.md, or future host-declared equivalents."
     enforcement: [review, tests]
   - id: "code-rule.idiomatic-error-handling"
     checked: true
@@ -56,7 +56,7 @@ selections:
     enforcement: [tests, review]
   - id: "code-rule.testing-posture"
     checked: true
-    decision: "Use automated Pester coverage for adapter/state/config behavior plus manual real-host agy evidence for hook firing, B3 injection, Stop handover, and exit/re-entry."
+    decision: "Use automated Pester-style coverage for instruction-file lookup, user-content-preserving merge, init/update/start-heal behavior, bootstrap guard/front-load ordering, package FileList readiness, and the host-coupling firewall; use manual real-host agy evidence for Opus/Flash workshop behavior."
     enforcement: [tests, review]
   - id: "code-rule.extension-points"
     checked: true
@@ -68,7 +68,7 @@ selections:
     enforcement: [review]
   - id: "code-rule.shared-code-packaging"
     checked: true
-    decision: "Preserve source-to-deployed .specify parity and FileList readiness for any extension/runtime files added or changed."
+    decision: "Preserve source-to-deployed .specify parity and FileList readiness for any extension/runtime files added or changed, including the packaged coordinator instruction template/fragment and deploy helper."
     enforcement: [tests, review]
 custom_rules: []
 dependency_policy:

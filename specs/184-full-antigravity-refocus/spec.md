@@ -2,7 +2,7 @@
 
 **Feature Branch**: `184-full-antigravity-refocus`  
 **Created**: 2026-06-17  
-**Status**: Draft - clarify complete; awaiting clarify verdict
+**Status**: Draft - iteration 002 specify approved; awaiting plan boundary
 **Input**: User description: "Complete Antigravity refocus support as the continuation of F-183"
 
 ## Product-Domain Summary
@@ -78,6 +78,156 @@ The specify workshop completed these lenses:
 
 Full records are under `workshop/`; implementation craft rules are captured in
 `implementation-rules.yml`.
+
+## Iteration 002 Amendment: Persistent Host Instructions and Workshop Speedup
+
+### Context
+
+Iteration 001 delivered Antigravity refocus behavior and was closed at
+`abf18b99`. Manual dogfood after the retro showed that Antigravity full parity
+is not yet achieved. The remaining parity slice is not more B3 plumbing; it is
+the durable host-instruction and weak-model-driving path that makes a raw host
+session follow Specrew before the model starts improvising.
+
+### Product-Domain Delta
+
+- **Users and stakeholders**: Same as F-184 overall: downstream Specrew users
+  launching Antigravity/Codex-style hosts directly, plus maintainers validating
+  host parity.
+- **Pain/job**: AI host agents are not focused on the Specrew process,
+  especially the workshop. Multiple manual tests showed hosts doing raw Spec Kit
+  work instead of the governed Specrew workshop, and it takes too much prompt
+  time and effort for the host to discover the correct next step. Weak models
+  are especially sensitive: Opus reached the workshop slowly; Gemini Flash was
+  effectively undrivable in the manual dogfood.
+- **MVP**: Deploy a persistent Specrew coordinator instruction section to each
+  host's manifest-declared `InstructionsFile` during `specrew init`; front-load
+  the bootstrap with the immediate action; place a prominent anti-raw-Spec-Kit
+  guard in both the persistent file and bootstrap; preserve user-owned
+  instruction-file content; refresh/heal through `specrew update` and
+  `specrew start`; keep host-neutral shared core; validate with real
+  Antigravity Opus and Flash runs.
+- **Out of scope**: Feature-closeout, release, beta/stable promotion, general
+  host-instruction overhaul beyond the manifest-driven file path, and any new
+  release claim before iteration 002 evidence lands.
+
+Full iteration-local workshop records are under
+`iterations/002/workshop/`, with applicability captured in
+`iterations/002/lens-applicability.json`.
+
+### User Stories Added For Iteration 002
+
+#### User Story 6 - Persistent Host Instructions Exist After Init (Priority: P1)
+
+As a downstream Specrew user who runs a host directly after `specrew init`, I
+want the host's persistent instruction file to contain the Specrew coordinator
+contract so the model knows to drive the governed lifecycle even on the
+hook-only path.
+
+**Independent Test**: Run `specrew init` in a scratch project with host
+manifests declaring `InstructionsFile` paths. Verify the Specrew-owned section
+exists in the correct file, includes the coordinator and anti-raw-workflow
+guard, and preserves pre-existing user content.
+
+#### User Story 7 - Bootstrap Front-Loads The Governed Next Action (Priority: P1)
+
+As a Specrew maintainer validating weak hosts, I want the bootstrap to lead with
+the immediate Specrew action and explicit "do not run raw Spec Kit workflow"
+guard so weaker models reach the workshop quickly and do not shell out to
+`specify.exe workflow`.
+
+**Independent Test**: Launch real-host Antigravity with Opus 4.6 and Gemini
+Flash after the change. Opus should reach workshop faster than the iter-001
+manual dogfood path; Flash should follow the governed workshop and not run
+`specify.exe workflow`. If Flash still cannot drive the lifecycle, the evidence
+must keep the weak-model caveat explicit.
+
+#### User Story 8 - Host-Neutral Instruction Delivery Stays Bounded (Priority: P2)
+
+As a Specrew maintainer, I want persistent instruction delivery to read host
+locations from host manifests and merge Specrew-owned sections without
+hardcoding Antigravity or `agy` in shared core so the host-coupling firewall
+remains meaningful.
+
+**Independent Test**: Run the host-coupling firewall plus focused instruction
+deployment tests. Shared core must use manifest-declared `InstructionsFile`
+data, and user-owned instruction-file content must survive init/update/start
+heal.
+
+### Functional Requirements Added For Iteration 002
+
+- **FR-011**: `specrew init` MUST deploy a persistent Specrew coordinator
+  instruction section to every supported host's manifest-declared
+  `InstructionsFile`, including `AGENTS.md` for Codex/Cursor/Antigravity CLI,
+  `CLAUDE.md` for Claude, and `.github/copilot-instructions.md` for Copilot.
+- **FR-012**: Persistent instruction deployment MUST preserve user-owned file
+  content by merging a clearly delimited Specrew-owned section instead of
+  clobbering the whole file.
+- **FR-013**: The persistent instruction section and bootstrap text MUST
+  prominently include: "You are the Specrew Crew coordinator. Drive the
+  lifecycle via the design-workshop skill and the per-boundary speckit
+  slash-commands. Do NOT run the raw specify.exe workflow / bundled SDD engine
+  - it bypasses the governed boundary gates."
+- **FR-014**: Bootstrap orientation MUST front-load the immediate next Specrew
+  lifecycle action before broader explanatory context, with special attention to
+  getting a new feature request to the product-domain/design-workshop path
+  quickly.
+- **FR-015**: Instruction delivery MUST remain host-neutral in shared core:
+  file locations come from host manifests, not shared-core Antigravity or `agy`
+  literals.
+- **FR-016**: `specrew update` MUST refresh the managed instruction section from
+  the packaged source, and `specrew start` MUST be able to heal or refresh a
+  missing/stale managed section without becoming the only deployment path.
+- **FR-017**: Real-host Antigravity validation MUST rerun the manual dogfood on
+  Opus 4.6 and Gemini Flash. Opus evidence must compare time-to-workshop against
+  iter-001 behavior; Flash evidence must verify it follows the workshop and does
+  not shell out to `specify.exe workflow`, or explicitly preserve the weak-model
+  caveat if it still cannot.
+- **FR-018**: Persistent instruction content MUST come from one packaged static
+  Specrew coordinator template or fragment included in the module package list,
+  so host instruction files and bootstrap guard wording do not drift.
+
+### Success Criteria Added For Iteration 002
+
+- **SC-011**: A scratch `specrew init` creates or updates each supported host's
+  manifest-declared `InstructionsFile` with the Specrew-owned coordinator
+  section.
+- **SC-012**: Pre-existing user-authored content in `AGENTS.md`, `CLAUDE.md`,
+  `.github/copilot-instructions.md`, or another manifest-declared instruction
+  file remains byte-for-byte unchanged outside the Specrew-owned section after
+  init/update/start-heal.
+- **SC-013**: The coordinator section and bootstrap contain the exact anti-raw
+  `specify.exe workflow` guard from FR-013.
+- **SC-014**: Tests prove shared core reads `InstructionsFile` from host
+  manifests and the host-coupling firewall remains green for `agy` and
+  Antigravity shared-core literals.
+- **SC-015**: Bootstrap content places the immediate lifecycle action above
+  slower context, and regression tests pin that ordering.
+- **SC-016**: Opus 4.6 real-host evidence reaches the design workshop faster
+  than the iter-001 manual path or records a concrete reason it could not be
+  measured.
+- **SC-017**: Gemini Flash real-host evidence follows the governed workshop and
+  does not invoke `specify.exe workflow`; if not achieved, the evidence and
+  status text keep the weak-model caveat.
+- **SC-018**: Feature status and release text continue to say full Antigravity
+  parity is caveated until iteration 002 evidence lands, and release
+  carry-forwards remain open: beta-before-stable,
+  `MigrateLegacyTopLevelEventMap`, and reproducible or explicitly machine-local
+  `agy` evidence.
+- **SC-019**: `specrew update` refreshes changed managed instruction content,
+  and `specrew start` heals a missing or stale managed section without
+  clobbering user content.
+- **SC-020**: `Specrew.psd1` `FileList` includes any new instruction
+  template/fragment and deploy helper, and package validation proves those files
+  exist.
+
+### Iteration 002 Traceability Summary
+
+| Story | Functional Requirements | Success Criteria |
+| --- | --- | --- |
+| US6 | FR-011, FR-012, FR-016, FR-018 | SC-011, SC-012, SC-019, SC-020 |
+| US7 | FR-013, FR-014, FR-017, FR-018 | SC-013, SC-015, SC-016, SC-017, SC-018 |
+| US8 | FR-015, FR-012, FR-016, FR-018 | SC-012, SC-014, SC-018, SC-019, SC-020 |
 
 ## User Scenarios & Testing *(mandatory)*
 
