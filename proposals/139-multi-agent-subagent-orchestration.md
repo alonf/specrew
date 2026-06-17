@@ -408,6 +408,7 @@ But single-iter is preferred because the pillars compose tightly.
 | **Proposal 133 (Specrew Primer — drafting candidate)** | Direct composer for Pillar 5 — primer + subagent isolation = defense-in-depth against compaction-vulnerability + post-compaction discipline drop |
 | **Proposal 010 + Proposal 134 (Multi-Developer)** | Adjacent — multi-dev story (multiple humans) is separate from multi-agent story (multiple AI agents); both compose to enable "multiple humans + multiple AI agents per human" scaling |
 | **Proposal 039 (Squad Upstream Reconciliation)** | Strategic — Squad's `squad triage --execute` runs single-loop with no concurrent execution; subagent orchestration is upstream-contribution candidate per `[[reference-brady-gaster-squad-inventor-2026-05-25]]` |
+| **Proposal 197 (Continuous Co-Review)** | Direct consumer — 197's read-only inline reviewer uses this host-neutral spawn CONTRACT (not the heavy foundation); it ships ahead of 139 at the headless `-p`/`exec` floor and graduates onto it (cross-host + cross-model) for its rung 1 |
 
 ## Strategic upside
 

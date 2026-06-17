@@ -507,6 +507,7 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - `[[proposal-140-reviewer-instruction-surface]]` — runtime realization of the Per-Boundary Checklist Matrix; 145 makes 140's playbook structurally enforceable
 - `[[proposal-102-cross-model-independent-reviewer]]` — different reviewer models per phase (specialty per phase) — Phase 2 functional review could use one model, Phase 3 security review another
 - `[[proposal-139-multi-agent-subagent-orchestration]]` (F-051) — runtime substrate for multi-agent dispatch
+- `[[197-continuous-co-review]]` — shifts these review dimensions LEFT to the edit boundary (continuous inline co-review); 197 runs the dimensions inline against the design contract while 145 stays the guaranteed review-signoff backstop
 - `[[proposal-157-verdict-menu-instruction-text-capture]]` — adjacent gate UX bug: instruction-bearing verdict options must capture free-form text before dispatch; 145 depends on verdict packets being truthful
 - `[[proposal-086-validation-pipeline-performance-bundle]]` — Pillar 1 memoization applies per-phase
 - `[[proposal-021-bypass-detector]]` — Phase 5 gate-completeness check is structural realization of the bypass-detector concept
