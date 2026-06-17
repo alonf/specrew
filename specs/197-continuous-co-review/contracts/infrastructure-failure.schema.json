@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specrew.local/contracts/continuous-co-review/infrastructure-failure.schema.json",
+  "title": "InfrastructureFailure",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "failure_id", "run_id", "category", "message", "created_at"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "failure_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "invocation_id": { "type": ["string", "null"] },
+    "category": {
+      "enum": [
+        "missing-provider",
+        "unauthorized-provider",
+        "unavailable-requested-model",
+        "timeout",
+        "nonzero-exit",
+        "empty-stdout",
+        "invalid-json",
+        "schema-mismatch",
+        "command-invocation-failure",
+        "malformed-durable-state",
+        "fallback-exhausted",
+        "cleanup-failed"
+      ]
+    },
+    "message": { "type": "string", "minLength": 1 },
+    "safe_details": { "type": "object" },
+    "retryable": { "type": "boolean" },
+    "fallback_allowed": { "type": "boolean" },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}
