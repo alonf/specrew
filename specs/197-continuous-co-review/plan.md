@@ -14,12 +14,12 @@ Proposal 197 shifts design-conformance review from final Proposal 145 review-sig
 **Language/Version**: PowerShell 7.x plus Markdown/YAML/JSON governance and contract artifacts.  
 **Primary Dependencies**: Existing Specrew module/script surfaces, Git CLI, and installed headless AI host CLIs when explicitly configured/authorized; no new dependencies.  
 **Storage**: Versioned filesystem artifacts only. Durable evidence under `.specrew/review/inline/<run-id>/...`; temporary immutable bundles in per-run workspaces.  
-**Testing**: Deterministic Pester unit/contract/fixture tests, schema/fixture validation, controlled fake/fixture adapter path, markdown/governance validation; live AI-host smoke is optional and explicitly authorized only.  
+**Testing**: Deterministic Pester unit/contract/fixture tests, schema/fixture validation, controlled fake/fixture adapter path, markdown/governance validation; maintainer-run manual real-host validation is required before feature closeout, while automated live cross-host CI remains out of scope.  
 **Target Platform**: Local developer checkout/session on supported Specrew hosts; no server, daemon, queue, cloud resource, background service, hosted worker, service identity, or new GitHub Actions workflow.  
 **Project Type**: Local Specrew tooling/module-command spine with file/stdin/stdout/process-exit contracts.  
 **Performance Goals**: Bounded synchronous reviewer invocation with configured timeout; no tuning goal beyond deterministic timeout handling and checkpoint-level review.  
 **Constraints**: New-file-only first slice; no F-184 protected-surface edits; no `specrew update`; no proposal-governance branch edits; keep `.squad/agents/spec-steward/history.md` runtime churn out of commits; no new dependencies; do not name/scope a new CI/CD E2E companion proposal; preserve hooks/fixtures for Proposal 181 plus Proposal 194 canary composition.  
-**Scale/Scope**: Iteration 001 host-neutral spine. Planning budget: 18 capacity points: contracts/schemas 3, diff/request/context 3, adapter/config/selection 4, execution/failure normalization 3, blackboard/gate/evidence 3, fixture/test/governance evidence 2.
+**Scale/Scope**: Iteration 001 host-neutral spine. Planning budget: 19.50/20 capacity points: contracts/schemas 3, diff/request/context 3, adapter/config/selection 5, execution/failure normalization 3, blackboard/gate/evidence 3, fixture/test/governance/manual-validation evidence 2.50.
 
 ## Phase 1 Quality Planning
 
@@ -67,6 +67,7 @@ Proposal 197 shifts design-conformance review from final Proposal 145 review-sig
 | `qg-security-boundary` | tooling/manual | Safe argv, no source mutation, no secrets/raw transcripts, authorization before paid/non-default provider | planned |
 | `qg-protected-surface-guard` | mechanical/manual | Git diff/file-list review proving no protected files changed | planned |
 | `qg-implementation-rules-trace` | manual | Tasks/reviews reference `implementation-rules.yml` and dependency policy | planned |
+| `qg-manual-real-host-validation` | manual | Maintainer records real-host reviewer results against the planted design-violation fixture before feature closeout | planned |
 
 ### Not-Applicable Dimensions and Rationale
 
@@ -76,6 +77,7 @@ Proposal 197 shifts design-conformance review from final Proposal 145 review-sig
 | Server/API availability and load | No server, daemon, queue, cloud, or hosted worker. | Revisit if hosted review workers are scoped. |
 | Database migration/integrity | Filesystem-only storage. | None. |
 | CI/CD E2E implementation | Proposal 197 preserves contract hooks/fixtures only. | Downstream composition with Proposal 181 plus Proposal 194 canary. |
+| Automated live cross-host CI harness | Proposal 197 ships manual-validation enablers only, not scheduled/rotating real-host automation, brokered keys, or drift canaries. | Downstream composition with Proposal 181 plus Proposal 194 canary. |
 
 ### Explicit Phase 2+ Deferrals
 
@@ -136,9 +138,9 @@ Proposal 197 shifts design-conformance review from final Proposal 145 review-sig
 - **Layering Gate**: PASS — Specrew local tooling/module-command behavior plus feature-local Spec Kit contracts; no platform hacks or protected F-184 edits.
 - **Traceability Gate**: PASS — deliverables map to Story 1 (contract/diff/gate/reviewer), Story 2 (blackboard/thread/disposition), Story 3 (host-neutral adapters/config/authorization), and FR/DS/SEC/INT/OPS/OBS/IMPL/TG requirements.
 - **Ownership Gate**: PASS — Architect owns contracts; Implementer owns diff/request/adapters; Reviewer owns gate validation; Security Reviewer owns mutation/secret/authorization controls; Spec Steward owns scope/protected-surface guard; Iteration Facilitator owns checkpoint-loop planning/capacity.
-- **Capacity Gate**: PASS — capacity points and 18-point Iteration 001 budget recorded.
+- **Capacity Gate**: PASS — capacity points and 19.50/20-point Iteration 001 budget recorded.
 - **Drift/Reconciliation Gate**: PASS — drift signals include protected-surface edits, PostToolUse/hook triggers, reviewer source mutation, new dependencies, ambiguous provider-file names, unnamed CI/CD expansion, Proposal 196 provenance absorption, and proposal-governance edits.
-- **Verification Gate**: PASS — contract fixtures, deterministic Pester tests, adapter fake/failure floor, markdownlint, protected file diff review, no-dependency review, and SC-001..SC-011 mapping planned.
+- **Verification Gate**: PASS — contract fixtures, deterministic Pester tests, adapter fake/failure floor, manual real-host runbook/fixture, markdownlint, protected file diff review, no-dependency review, and SC-001..SC-012 mapping planned.
 
 ## Project Structure
 
@@ -151,6 +153,10 @@ specs/197-continuous-co-review/
 ├── data-model.md
 ├── quickstart.md
 ├── implementation-rules.yml
+├── iterations/
+│   └── 001/
+│       ├── manual-validation.md
+│       └── planted-design-violation.diff
 ├── lens-applicability.json
 ├── contracts/
 │   ├── review-request.schema.json
@@ -215,8 +221,8 @@ See [data-model.md](./data-model.md), [quickstart.md](./quickstart.md), and `con
 
 - **Spec Authority Gate**: PASS — artifacts preserve Iteration 001 and do not absorb Proposal 196 provenance work, CI/CD E2E implementation, Proposal 139 foundation, rung 1, or hook-triggered review.
 - **Layering Gate**: PASS — contracts/runtime surfaces remain Specrew local tooling and feature-local artifacts.
-- **Traceability Gate**: PASS — entities/contracts map to FR-001..FR-016, DS-001..DS-005, SEC-001..SEC-006, INT-001..INT-009, OPS-001..OPS-007, OBS-001..OBS-009, IMPL-001..IMPL-007, TG-001..TG-012, and SC-001..SC-011.
+- **Traceability Gate**: PASS — entities/contracts map to FR-001..FR-016, DS-001..DS-005, SEC-001..SEC-006, INT-001..INT-009, OPS-001..OPS-007, OBS-001..OBS-009, IMPL-001..IMPL-007, TG-001..TG-012, and SC-001..SC-012.
 - **Ownership Gate**: PASS — ownership is explicit by workstream.
-- **Capacity Gate**: PASS — 18-point Iteration 001 planning budget can be decomposed by `/speckit.tasks`.
+- **Capacity Gate**: PASS — 19.50/20-point Iteration 001 planning budget remains within the configured capacity.
 - **Drift/Reconciliation Gate**: PASS — protected-surface, dependency, proposal-governance, runtime-history, CI/CD naming, and provider-file collision rules are blocking drift signals.
 - **Verification Gate**: PASS — contract, schema, fixture, gate, adapter, security, and governance evidence sources are planned without claiming runtime proof.

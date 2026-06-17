@@ -10,7 +10,7 @@ This quickstart describes how maintainers should use Proposal 197 planning artif
 - Do not edit F-184-protected host-runtime, hook, provider, registry, refocus, shared-governance, or `validate-governance.ps1` surfaces.
 - Do not create Proposal 197 reviewer files named `provider-adapter.ps1`; use explicit reviewer-domain names such as `reviewer-host-adapter-*` or `reviewer-model-capability`.
 - Do not add dependencies unless explicitly re-scoped with dependency-policy evidence.
-- CI/CD E2E stays unnamed in Proposal 197; preserve hooks/fixtures only for later composition with Proposal 181 plus Proposal 194 canary.
+- Automated live cross-host CI stays unnamed and out of scope in Proposal 197; preserve hooks/fixtures only for later composition with Proposal 181 plus Proposal 194 canary.
 - Proposal 196 owns human-confirmed lens-stamp provenance/audit.
 
 ## Planning artifacts
@@ -29,7 +29,7 @@ Review before `/speckit.tasks`:
 
 - Create tasks in dependency order: contracts/schemas, fixture validation, diff/request/context packaging, adapter/config/authorization seams, execution/normalization, blackboard/gate/run evidence, governance/quality evidence.
 - Every task should trace to FR/DS/SEC/INT/OPS/OBS/IMPL/TG requirements and one user story.
-- Every task should name owner role and capacity placement within the 18-point Iteration 001 budget.
+- Every task should name owner role and capacity placement within the 19.50/20-point Iteration 001 budget.
 - Preserve new-file-only behavior unless a human explicitly approves F-184 coordination.
 - If an iteration scaffold is required, use installed Specrew helpers rather than hand-writing state.
 
@@ -59,4 +59,4 @@ Protected-surface review must show no changes to F-184 protected files listed in
 9. Write `ReviewThread`, dispositions, `GateVerdict`, and `ReviewRun` under `.specrew/review/inline/<run-id>/...`.
 10. Block on unresolved `blocking` findings, malformed state, infrastructure failures, or non-convergence after initial review plus one fix-verification round.
 
-Live AI-host smoke is optional and must be explicitly configured and authorized.
+Maintainer-run real-host validation is required before feature closeout using `iterations/001/manual-validation.md`; scheduled or rotating live-host CI remains future work.

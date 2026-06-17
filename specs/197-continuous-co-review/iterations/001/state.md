@@ -2,22 +2,23 @@
 
 **Schema**: v1
 **Current Phase**: before-implement
-**Iteration Status**: ready-for-implementation-authorization
+**Iteration Status**: implementation-authorized
 **Last Completed Task**: (none)
-**Tasks Remaining**: T001-T034, T038-T048
+**Tasks Remaining**: T001-T050
 **In Progress**: (none)
 **Baseline Ref**: 390e3718
-**Updated**: 2026-06-17T20:21:45Z
+**Updated**: 2026-06-17T21:35:00Z
 
 ## Planning Summary
 
-Iteration 001 is the approved 18.00 SP Proposal 197 continuous co-review spine slice. The `tasks -> before-implement` boundary is authorized and readiness-checked. It remains pre-implementation until the subsequent `before-implement -> implement` boundary receives an implementation go.
+Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spine slice after the before-implement scope-change verdict restored all five host-neutral adapters and added manual real-host validation enablers. The repaired `tasks -> before-implement` boundary passed capacity, traceability, after-tasks, and before-implement readiness checks; implementation is authorized to start at T001-T006.
 
 ## Scope and Deferrals
 
-- **In Scope**: T001-T034 and T038-T048 as listed in file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/tasks.md.
-- **Deferred to Iteration 002**: T035, T036, and T037 with 0.00 SP in Iteration 001.
-- **Scoped within T042**: Claude and Codex real headless adapter implementations only; Copilot, Cursor, and Antigravity implementations are deferred to Iteration 002.
+- **In Scope**: T001-T050 as listed in file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/tasks.md.
+- **Deferred to Iteration 002**: No Iteration 001 adapter breadth is deferred; automated live cross-host CI remains future Proposal 181 plus Proposal 194 scope.
+- **Scoped within T042**: Claude, Codex, Copilot, Cursor, and Antigravity real headless adapter implementations all remain in Iteration 001 and must map unsupported or quirky host behavior to deterministic InfrastructureFailure.
+- **Manual Validation**: T049 and T050 ship the maintainer-run manual-validation runbook and planted-design-violation fixture required by SC-012 before feature closeout.
 - **Hardening Gate**: Not applicable for Iteration 001 because FR-031 through FR-033 are not in the active requirement scope and file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/plan.md records no Iteration 001 hardening-gate artifact.
 
 ## Before-Implement Readiness Notes
@@ -25,11 +26,11 @@ Iteration 001 is the approved 18.00 SP Proposal 197 continuous co-review spine s
 - Governance validation was run for the active iteration and returned PASS for file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/001 with WARN-only repository-scope findings outside this feature's execution readiness.
 - The execution tracker exists at file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/001/tasks-progress.yml.
 - The drift anchor exists at file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/001/drift-log.md.
-- Boundary authorization is confirmed: the local authorization check found the persisted `tasks -> before-implement` verdict recorded at 2026-06-17T20:21:45Z.
+- Repaired readiness is current: capacity is 19.50/20 SP, FR-001 through FR-016 and SC-001 through SC-012 are covered, after-tasks passed, before-implement passed, and the latest human verdict authorizes starting the T001-T006 contract spine.
 
 ## Next Action
 
-Stop at the `before-implement -> implement` human-verdict boundary. Do not start T001 or any implementation task until that implementation approval is recorded.
+Begin T001-T006 in dependency order while keeping the SC-006 protected-surface guard armed early and preserving the Proposal 197 implementation guardrails.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

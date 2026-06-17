@@ -610,6 +610,12 @@ can request a structured findings response without writing to the source tree.
 - **SC-011**: The generated implementation plan and tasks reference
   `implementation-rules.yml`, and no first-iteration task adds a new dependency
   without the required dependency-policy evidence.
+- **SC-012**: Before feature closeout, the maintainer-run manual real-host
+  validation records a parseable blocking finding for the canonical
+  planted-design-violation fixture on each available authorized host
+  (`claude -p`, `codex exec`, `copilot -p`, `cursor-agent -p`, and
+  `antigravity -p`). A crash, empty output, non-finding result, or finding that
+  does not name the violated design decision is not accepted as a pass.
 
 ## Assumptions
 
@@ -660,6 +666,10 @@ can request a structured findings response without writing to the source tree.
 - If a downstream CI/CD E2E proposal is named later, it should compose with
   Proposal 181, Live Cross-Host E2E Automation, and the Proposal 194 canary path
   rather than creating a fresh isolated E2E lane.
+- Iteration 001 must ship a maintainer-facing manual-validation runbook and a
+  canonical planted-design-violation fixture so real host behavior can be
+  checked before feature closeout without adding an automated live cross-host CI
+  harness.
 
 ## Governance Alignment *(mandatory)*
 

@@ -1,0 +1,27 @@
+diff --git a/scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1 b/scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1
+@@
++function Invoke-CheckpointReview {
++    param(
++        [Parameter(Mandatory = $true)]
++        [string] $HostKind,
++
++        [Parameter(Mandatory = $true)]
++        [hashtable] $ReviewRequest
++    )
++
++    # PLANTED DESIGN VIOLATION:
++    # The accepted design requires reviewer host behavior to be reached through
++    # reviewer-host-adapter-* files and the registry seam. Direct host-condition
++    # branching in the orchestrator bypasses that seam and must be blocked.
++    if ($HostKind -eq 'claude') {
++        return & claude -p ($ReviewRequest | ConvertTo-Json -Depth 20)
++    }
++
++    if ($HostKind -eq 'codex') {
++        return & codex exec ($ReviewRequest | ConvertTo-Json -Depth 20)
++    }
++}

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "197-continuous-co-review"
 iteration: "001"
-updated_at: "2026-06-17T20:17:40Z"
+updated_at: "2026-06-17T21:05:00Z"
 tasks:
   T001:
     title: "Create additive Proposal 197 implementation and test directories"
@@ -208,23 +208,23 @@ tasks:
     completed_at: ""
     blocked_reason: ""
   T035:
-    title: "Deferred to Iteration 002: add Copilot adapter fixture tests"
-    status: "deferred"
+    title: "Add Copilot adapter fixture tests"
+    status: "pending"
     started_at: ""
     completed_at: ""
-    blocked_reason: "Human-approved deferral to Iteration 002; 0.00 SP in Iteration 001."
+    blocked_reason: ""
   T036:
-    title: "Deferred to Iteration 002: add Cursor adapter fixture tests"
-    status: "deferred"
+    title: "Add Cursor adapter fixture tests"
+    status: "pending"
     started_at: ""
     completed_at: ""
-    blocked_reason: "Human-approved deferral to Iteration 002; 0.00 SP in Iteration 001."
+    blocked_reason: ""
   T037:
-    title: "Deferred to Iteration 002: add Antigravity adapter fixture tests"
-    status: "deferred"
+    title: "Add Antigravity adapter fixture tests"
+    status: "pending"
     started_at: ""
     completed_at: ""
-    blocked_reason: "Human-approved deferral to Iteration 002; 0.00 SP in Iteration 001."
+    blocked_reason: ""
   T038:
     title: "Add reviewer-execution-engine unit tests"
     status: "pending"
@@ -250,7 +250,7 @@ tasks:
     completed_at: ""
     blocked_reason: ""
   T042:
-    title: "Implement phase-1 Claude and Codex real headless adapters; defer Copilot/Cursor/Antigravity implementations"
+    title: "Implement all five phase-1 real headless adapters"
     status: "pending"
     started_at: ""
     completed_at: ""
@@ -287,6 +287,18 @@ tasks:
     blocked_reason: ""
   T048:
     title: "Update tasks.md only if implementation re-planning is explicitly approved"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T049:
+    title: "Add manual real-host validation runbook"
+    status: "pending"
+    started_at: ""
+    completed_at: ""
+    blocked_reason: ""
+  T050:
+    title: "Add planted-design-violation fixture"
     status: "pending"
     started_at: ""
     completed_at: ""

@@ -6,15 +6,15 @@
 **Human verdict**: approved for tasks
 **Worktree / branch**: `C:\Dev\197-continuous-co-review` on `197-continuous-co-review`
 
-**Tests**: Required. The approved spec includes acceptance scenarios and SC-001..SC-011; Pester tests and fixtures are intentionally sliced beside the code they prove rather than deferred to the end.
+**Tests**: Required. The approved spec includes acceptance scenarios and SC-001..SC-012; Pester tests and fixtures are intentionally sliced beside the code they prove rather than deferred to the end. Manual real-host validation is a maintainer-performed feature-closeout acceptance step; Iteration 001 ships the runbook, planted fixture, and acceptance hook but not automated live-host CI.
 
 **Organization**: Dependency order is preserved inside story phases: contract + forced-findings schema first, then git-diff change-set + blackboard protocol, then standalone gate validator, then reviewer-domain headless-floor adapters and fresh-context reviewer path.
 
 **Capacity**:
 
-- Iteration 001 spine slice estimate: **18.00 story points** after approved deferral of lower-priority real-adapter breadth.
+- Iteration 001 spine slice estimate: **19.50 story points** after restoring the full five-adapter host-neutral floor and adding manual-validation enablers.
 - Proposal-level planning range: **13-21 story points**.
-- Capacity status: **18.00/18 SP meets the approved Iteration 001 spine target**. Human-approved deferral moves `T035`, `T036`, `T037`, and Copilot/Cursor/Antigravity adapter implementations from `T042` to Iteration 002 while preserving Claude (`T033`) and Codex (`T034`) as the phase-1 host proof. Any added rung 1 work, hook/PostToolUse trigger, Proposal 139 foundation work, Proposal 196 provenance/audit work, CI/CD E2E implementation, new dependency, or protected-surface coordination is additional overcommit and must be deferred or re-approved.
+- Capacity status: **19.50/20 SP is within the configured Iteration 001 cap**. `T035`, `T036`, `T037`, and all five real headless adapters in `T042` are restored to Iteration 001. Any added rung 1 work, hook/PostToolUse trigger, Proposal 139 foundation work, Proposal 196 provenance/audit work, automated live cross-host CI implementation, new dependency, or protected-surface coordination is additional overcommit and must be deferred or re-approved.
 
 **Hard scope guardrails**:
 
@@ -24,6 +24,7 @@
 - Do **not** edit F-184 protected host-runtime, hook, provider, registry, refocus, shared-governance, mirrored `.specify/extensions/specrew-speckit/scripts/` surfaces, or `validate-governance.ps1`.
 - Keep Proposal 197 reviewer-provider components in the `scripts/internal/continuous-co-review/` namespace with reviewer-domain names such as `reviewer-host-adapter-*`, `reviewer-model-capability`, and `reviewer-host-catalog`; do not create generic `provider-adapter.ps1`.
 - Preserve unnamed CI/CD E2E contract hooks/fixtures only for future Proposal 181 + Proposal 194 canary composition.
+- Preserve manual real-host validation as a maintainer acceptance step before feature closeout; do not build scheduled/rotating live-host CI, brokered-key automation, or drift-canary automation in Proposal 197.
 - Treat human-confirmed lens-stamp provenance/audit as non-blocking Proposal 196 scope, not Proposal 197 work.
 
 ## Format: `- [ ] T### [P?] [US#?] [owner: ...] [sp: ...] Description with exact file path(s) (Trace: ...; Rules: specs/197-continuous-co-review/implementation-rules.yml)`
@@ -128,9 +129,9 @@
 - [ ] T032 [P] [US3] [owner: Reviewer] [sp: 0.25] Add `tests/continuous-co-review/unit/reviewer-host-adapter-registry.Tests.ps1` proving only reviewer-domain adapter files named `reviewer-host-adapter-*.ps1` are registered and no `provider-adapter.ps1` or F-184 provider files are referenced (Trace: FR-012, FR-013, IMPL-004, TG-012, SC-006, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [ ] T033 [P] [US3] [owner: Reviewer] [sp: 0.25] Add Claude adapter fixture tests in `tests/continuous-co-review/unit/reviewer-host-adapter-claude-prompt.Tests.ps1` proving `claude -p` returns valid `FindingsResult` or deterministic `InfrastructureFailure` and uses safe argv/equivalent invocation (Trace: FR-012, SEC-005, INT-009, SC-005, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [ ] T034 [P] [US3] [owner: Reviewer] [sp: 0.25] Add Codex adapter fixture tests in `tests/continuous-co-review/unit/reviewer-host-adapter-codex-exec.Tests.ps1` proving `codex exec` returns valid `FindingsResult` or deterministic `InfrastructureFailure` and uses safe argv/equivalent invocation (Trace: FR-012, SEC-005, INT-009, SC-005, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
-- [ ] T035 [P] [US3] [owner: Reviewer] [sp: 0.00] Deferred to Iteration 002: add Copilot adapter fixture tests in `tests/continuous-co-review/unit/reviewer-host-adapter-copilot-prompt.Tests.ps1` proving `copilot -p` returns valid `FindingsResult` or deterministic `InfrastructureFailure` and uses safe argv/equivalent invocation (Trace: FR-012, SEC-005, INT-009, SC-005, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
-- [ ] T036 [P] [US3] [owner: Reviewer] [sp: 0.00] Deferred to Iteration 002: add Cursor adapter fixture tests in `tests/continuous-co-review/unit/reviewer-host-adapter-cursor-agent-prompt.Tests.ps1` proving `cursor-agent -p` returns valid `FindingsResult` or deterministic `InfrastructureFailure` and uses safe argv/equivalent invocation (Trace: FR-012, SEC-005, INT-009, SC-005, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
-- [ ] T037 [P] [US3] [owner: Reviewer] [sp: 0.00] Deferred to Iteration 002: add Antigravity adapter fixture tests in `tests/continuous-co-review/unit/reviewer-host-adapter-antigravity-prompt.Tests.ps1` proving `antigravity -p` returns valid `FindingsResult` or deterministic `InfrastructureFailure` and uses safe argv/equivalent invocation (Trace: FR-012, SEC-005, INT-009, SC-005, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T035 [P] [US3] [owner: Reviewer] [sp: 0.25] Add Copilot adapter fixture tests in `tests/continuous-co-review/unit/reviewer-host-adapter-copilot-prompt.Tests.ps1` proving `copilot -p` returns valid `FindingsResult` or deterministic `InfrastructureFailure` and uses safe argv/equivalent invocation (Trace: FR-012, SEC-005, INT-009, SC-005, SC-012, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T036 [P] [US3] [owner: Reviewer] [sp: 0.25] Add Cursor adapter fixture tests in `tests/continuous-co-review/unit/reviewer-host-adapter-cursor-agent-prompt.Tests.ps1` proving `cursor-agent -p` returns valid `FindingsResult` or deterministic `InfrastructureFailure` and uses safe argv/equivalent invocation (Trace: FR-012, SEC-005, INT-009, SC-005, SC-012, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T037 [P] [US3] [owner: Reviewer] [sp: 0.25] Add Antigravity adapter fixture tests in `tests/continuous-co-review/unit/reviewer-host-adapter-antigravity-prompt.Tests.ps1` proving `antigravity -p` returns valid `FindingsResult` or deterministic `InfrastructureFailure` and uses safe argv/equivalent invocation (Trace: FR-012, SEC-005, INT-009, SC-005, SC-012, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [ ] T038 [P] [US3] [owner: Reviewer] [sp: 0.50] Add `tests/continuous-co-review/unit/reviewer-execution-engine.Tests.ps1` covering synchronous bounded invocation, timeout, at most one pre-authorized availability fallback, hard block for unavailable specifically requested model without exact alternate authorization, requested/actual host-model provenance, and no silent downgrade (Trace: FR-009, FR-010, FR-016, INT-004, OBS-006, SC-010, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [ ] T039 [P] [US3] [owner: Reviewer] [sp: 0.25] Add `tests/continuous-co-review/unit/fresh-context-readonly-boundary.Tests.ps1` proving reviewer execution consumes an immutable bundle, does not edit source files, does not stage commits, does not push, does not mutate Specrew state, and does not persist raw prompts/transcripts/full stdout/stderr by default (Trace: FR-009, FR-010, SEC-002, SEC-003, SEC-006, OBS-009, SC-005, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 
@@ -138,7 +139,7 @@
 
 - [ ] T040 [US3] [owner: Implementer] [sp: 0.50] Implement `scripts/internal/continuous-co-review/reviewer-host-catalog.ps1`, `scripts/internal/continuous-co-review/reviewer-model-capability.ps1`, `scripts/internal/continuous-co-review/reviewer-selection-policy.ps1`, and `scripts/internal/continuous-co-review/reviewer-authorization-gate.ps1` for non-secret configuration, capability discovery order, review-class recommendation, explicit authorization, and one authorized availability fallback (Trace: FR-016, INT-006, INT-007, INT-008, OBS-006, SC-010, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [ ] T041 [US3] [owner: Implementer] [sp: 0.50] Implement `scripts/internal/continuous-co-review/reviewer-execution-engine.ps1` and `scripts/internal/continuous-co-review/reviewer-host-adapter-registry.ps1` to spawn exactly one fresh-context adapter attempt plus at most one authorized availability fallback, using local file/stdin/stdout/process-exit contracts only (Trace: FR-008, FR-009, FR-010, INT-001, INT-004, SC-005, SC-010, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
-- [ ] T042 [P] [US3] [owner: Implementer] [sp: 0.50] Implement phase-1 real headless adapter files `scripts/internal/continuous-co-review/reviewer-host-adapter-claude-prompt.ps1` and `scripts/internal/continuous-co-review/reviewer-host-adapter-codex-exec.ps1` with safe argument arrays/equivalent APIs and deterministic infrastructure-failure mapping; defer Copilot, Cursor, and Antigravity implementations to Iteration 002 (Trace: FR-012, SEC-005, INT-009, SC-005, SC-006, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T042 [P] [US3] [owner: Implementer] [sp: 0.75] Implement all five phase-1 real headless adapter files `scripts/internal/continuous-co-review/reviewer-host-adapter-claude-prompt.ps1`, `scripts/internal/continuous-co-review/reviewer-host-adapter-codex-exec.ps1`, `scripts/internal/continuous-co-review/reviewer-host-adapter-copilot-prompt.ps1`, `scripts/internal/continuous-co-review/reviewer-host-adapter-cursor-agent-prompt.ps1`, and `scripts/internal/continuous-co-review/reviewer-host-adapter-antigravity-prompt.ps1` with safe argument arrays/equivalent APIs and deterministic infrastructure-failure mapping for unsupported or quirky host flags instead of crashes (Trace: FR-012, SEC-005, INT-009, SC-005, SC-006, SC-012, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [ ] T043 [US3] [owner: Implementer] [sp: 0.50] Implement `scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1` to wire checkpoint baseline -> git diff -> request bundle -> capability/authorization -> fresh-context reviewer -> normalizer -> blackboard -> gate verdict without PostToolUse, hook trigger, rung 1, or Proposal 139 foundation work (Trace: FR-008, FR-009, FR-013, INT-001, OBS-002, SC-001, SC-002, SC-006, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 
 **Checkpoint**: User Story 3 satisfies the host-neutral headless floor and deterministic adapter failure floor.
@@ -154,6 +155,8 @@
 - [ ] T046 [owner: Reviewer] [sp: 0.25] Run `pwsh -NoProfile -Command "Invoke-Pester -Path tests/continuous-co-review"` and record any failures against the owning task/file in `specs/197-continuous-co-review/quality/iteration-001-quality-evidence.md` (Trace: INT-009, OPS-003, OBS-003, SC-001, SC-002, SC-005, SC-011, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [ ] T047 [owner: Spec Steward] [sp: 0.25] Run the SC-006 guard from `tests/continuous-co-review/governance/protected-surface-guard.Tests.ps1` and confirm `git --no-pager diff --name-only` touches none of the protected F-184 files, mirrored `.specify/extensions/specrew-speckit/scripts/` equivalents, `proposals/197-continuous-co-review.md`, or `.squad/agents/spec-steward/history.md` (Trace: FR-013, TG-005, SC-006, SC-011, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [ ] T048 [owner: Planner] [sp: 0.00] Update this file `specs/197-continuous-co-review/tasks.md` only if implementation re-planning is explicitly approved, preserving every task's FR/SC trace and `implementation-rules.yml` reference and re-running traceability checks before implementation starts (Trace: TG-001, TG-011, SC-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T049 [owner: Spec Steward] [sp: 0.25] Add `specs/197-continuous-co-review/iterations/001/manual-validation.md` with maintainer-run real-host prerequisites, exact per-host commands (`claude -p`, `codex exec`, `copilot -p`, `cursor-agent -p`, `antigravity -p`), expected parseable blocking finding, and a results table for host, CLI version, pass/fail, notes, and date (Trace: FR-012, FR-014, FR-015, OPS-006, SC-005, SC-012, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T050 [owner: Reviewer] [sp: 0.25] Add canonical planted-design-violation fixture `specs/197-continuous-co-review/iterations/001/planted-design-violation.diff` and document the expected blocking finding that names the violated design decision without requiring network/model/auth/cost in hermetic CI (Trace: FR-011, FR-012, INT-009, OBS-003, OPS-006, SC-001, SC-012, TG-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 
 ---
 
@@ -165,7 +168,7 @@
 - **Phase 2 Foundational**: Depends on Phase 1; blocks all user stories.
 - **Phase 3 US1 (P1 MVP)**: Depends on Phase 2; establishes git-diff, request, controlled fake adapter, normalizer, and minimum deterministic path.
 - **Phase 4 US2 (P2)**: Depends on Phase 2 and the US1 result contracts; blackboard protocol precedes the standalone gate validator implementation inside this phase.
-- **Phase 5 US3 (P3)**: Depends on Phase 2 plus US1/US2 contract, thread, and gate seams; phase-1 Claude and Codex real adapters must prove valid result or deterministic infrastructure failure, while Copilot, Cursor, and Antigravity adapter breadth is deferred to Iteration 002.
+- **Phase 5 US3 (P3)**: Depends on Phase 2 plus US1/US2 contract, thread, and gate seams; all five phase-1 real adapters must prove valid result or deterministic infrastructure failure without live-host dependence in fixture tests.
 - **Phase 6 Polish**: Depends on selected story scope completion.
 
 ### User Story Dependencies
@@ -181,8 +184,8 @@
 3. Git-diff change-set, design context, request bundle, workspace, and result normalization (`T012`-`T023`).
 4. Blackboard protocol and disposition evidence (`T024`, `T027`, `T030`).
 5. Standalone gate validator (`T025`, `T026`, `T028`, `T029`).
-6. Reviewer-domain catalog, authorization, adapter seams, fake adapter, phase-1 Claude/Codex real headless adapters, and fresh-context orchestrator (`T031`-`T043`; `T035`-`T037` deferred to Iteration 002).
-7. Quality evidence, Pester execution, traceability, and protected-surface validation (`T044`-`T048`).
+6. Reviewer-domain catalog, authorization, adapter seams, fake adapter, all five phase-1 real headless adapters, and fresh-context orchestrator (`T031`-`T043`).
+7. Quality evidence, Pester execution, traceability, protected-surface validation, and manual-validation enablers (`T044`-`T050`).
 
 ---
 
@@ -215,7 +218,9 @@ T026 tests/continuous-co-review/unit/non-convergence-escalation.Tests.ps1
 # Phase-1 adapter fixture tests can be authored in parallel after T032 defines registry expectations:
 T033 tests/continuous-co-review/unit/reviewer-host-adapter-claude-prompt.Tests.ps1
 T034 tests/continuous-co-review/unit/reviewer-host-adapter-codex-exec.Tests.ps1
-# T035-T037 are explicitly deferred to Iteration 002.
+T035 tests/continuous-co-review/unit/reviewer-host-adapter-copilot-prompt.Tests.ps1
+T036 tests/continuous-co-review/unit/reviewer-host-adapter-cursor-agent-prompt.Tests.ps1
+T037 tests/continuous-co-review/unit/reviewer-host-adapter-antigravity-prompt.Tests.ps1
 ```
 
 ---
@@ -235,15 +240,16 @@ T034 tests/continuous-co-review/unit/reviewer-host-adapter-codex-exec.Tests.ps1
 1. Deliver contracts + fixtures + SC-006 guard.
 2. Deliver US1 deterministic request/result/gate path with fake adapter.
 3. Deliver US2 blackboard/disposition/gate auditability.
-4. Deliver US3 catalog, authorization, Claude/Codex real headless-floor adapters, and fresh-context orchestrator; keep Copilot/Cursor/Antigravity adapter breadth in Iteration 002.
-5. Complete polish checks and quality evidence.
+4. Deliver US3 catalog, authorization, all five real headless-floor adapters, and fresh-context orchestrator.
+5. Complete polish checks, quality evidence, and manual real-host validation enablers.
 
 ### Capacity Deferral Guidance
 
-- Approved deferral to hold the 18 SP spine target while preserving the contract spine:
-  1. Defer `T035`, `T036`, and `T037` Copilot/Cursor/Antigravity adapter fixture tests to Iteration 002.
-  2. Scope `T042` to Claude and Codex phase-1 adapter implementations only; move Copilot/Cursor/Antigravity implementations to Iteration 002.
-  3. Keep contract/schema, git-diff change-set, blackboard, standalone gate, SC-006 guard (`T011`/`T047`), fake/fixture adapter (`T017`/`T023`), and infrastructure-failure floor (`T009`) in Iteration 001.
+- Current approved capacity position:
+  1. Restore `T035`, `T036`, and `T037` Copilot/Cursor/Antigravity adapter fixture tests to Iteration 001.
+  2. Restore `T042` to all five phase-1 real adapter implementations: Claude, Codex, Copilot, Cursor, and Antigravity.
+  3. Add `T049` and `T050` manual-validation enablers for SC-012 while keeping automated live cross-host CI out of scope.
+  4. Keep contract/schema, git-diff change-set, blackboard, standalone gate, SC-006 guard (`T011`/`T047`), fake/fixture adapter (`T017`/`T023`), and infrastructure-failure floor (`T009`) in Iteration 001.
 - Do **not** defer contract schemas, forced findings, SC-006 protected-surface guard, deterministic gate semantics, fake adapter readiness floor, or adapter valid-result/infrastructure-failure proof.
 
 ---
@@ -252,8 +258,8 @@ T034 tests/continuous-co-review/unit/reviewer-host-adapter-codex-exec.Tests.ps1
 
 - **US1**: `T012`-`T023`; maps to FR-001, FR-002, FR-003, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-016, SC-001, SC-002, SC-005, SC-007, SC-009, SC-010, SC-011.
 - **US2**: `T024`-`T030`; maps to FR-002, FR-004, FR-005, FR-006, FR-007, FR-014, SC-002, SC-003, SC-004, SC-008, SC-009, SC-011.
-- **US3**: `T031`-`T043`; maps to FR-001, FR-008, FR-009, FR-010, FR-012, FR-013, FR-015, FR-016, SC-005, SC-006, SC-010, SC-011.
-- **Cross-cutting / foundational / polish**: `T001`-`T011`, `T044`-`T048`; maps to FR-001, FR-002, FR-013, FR-014, FR-015, FR-016, INT-009, OBS-003, OPS-006, TG-005, TG-009, TG-011, TG-012, SC-001, SC-005, SC-006, SC-011.
+- **US3**: `T031`-`T043`; maps to FR-001, FR-008, FR-009, FR-010, FR-012, FR-013, FR-015, FR-016, SC-005, SC-006, SC-010, SC-011, SC-012.
+- **Cross-cutting / foundational / polish**: `T001`-`T011`, `T044`-`T050`; maps to FR-001, FR-002, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, INT-009, OBS-003, OPS-006, TG-005, TG-009, TG-011, TG-012, SC-001, SC-005, SC-006, SC-011, SC-012.
 
 ---
 
