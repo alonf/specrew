@@ -3,7 +3,7 @@
 **Schema**: v1
 **Feature**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/spec.md
 **Iteration**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/plan.md
-**Status**: ready-for-implementation
+**Status**: implementation-complete; awaiting review-signoff
 **Capacity**: 26/26 story_points
 
 ## Task Table
@@ -17,7 +17,7 @@
 | T005 | Hook config preservation and F-183 Antigravity regression guards | FR-005, FR-007, SC-005, SC-006 | US4, US5 | 3 | Implementer, Reviewer | `hosts/antigravity/**`; `scripts/internal/deploy-refocus-hooks.ps1`; `extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1`; `tests/integration/refocus-deploy.tests.ps1`; `tests/integration/specrew-hooks-command.tests.ps1` | done | Deploy/remove tests preserve user hooks, register Antigravity `PreInvocation` + `Stop`, and prove the manifest advertises B2+B3 without B1. |
 | T006 | Antigravity documentation, permission, recovery, and evidence-gated status wording | FR-008, FR-009, TG-006, SC-008, SC-010 | US5 | 2 | Spec Steward, Reviewer | `README.md`; `docs/**`; `specs/184-full-antigravity-refocus/**` | done | Docs reach host-level depth for `agy`, hook install/remove, permissions, sandboxing, recovery, and evidence-gated labels; markdownlint and stale-phrase scans pass. |
 | T007 | Automated validation, mirror parity, and FileList/release readiness | TG-001, TG-002, TG-003, SC-001, SC-004, SC-006, SC-007, SC-008, SC-010 | US1-US5 | 3 | Reviewer | `tests/**`; `extensions/specrew-speckit/**`; `.specify/extensions/specrew-speckit/**`; `Specrew.psd1`; `specs/184-full-antigravity-refocus/**` | done | Pester suite, mirror parity, FileList/release readiness, and scoped governance validation pass after the canonical state repair. |
-| T008 | Real-host `agy` validation and Proposal 145 review evidence | FR-009, TG-004, TG-005, TG-006, SC-002, SC-003, SC-005, SC-009, SC-010 | US1-US5 | 3 | Reviewer | `specs/184-full-antigravity-refocus/iterations/001/**` | planned | Real-host `agy` evidence proves B3, marker, state, handover, exit/re-entry, and support-label honesty. |
+| T008 | Real-host `agy` validation and Proposal 145 review evidence | FR-009, TG-004, TG-005, TG-006, SC-002, SC-003, SC-005, SC-009, SC-010 | US1-US5 | 3 | Reviewer | `specs/184-full-antigravity-refocus/iterations/001/**` | done | Machine-local real-host `agy` evidence in file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/real-host-antigravity-evidence.md proves B3, marker, state, handover, exit/re-entry, and support-label honesty. |
 
 ## Sequencing
 

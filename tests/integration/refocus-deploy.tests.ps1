@@ -253,6 +253,29 @@ $antiForced = Get-Content -LiteralPath $antiPath -Raw | ConvertFrom-Json
 Assert-True ($null -ne $antiForced.PSObject.Properties['specrew-refocus']) 'antigravity: -Force re-enables explicitly'
 Assert-True (-not (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew\runtime\refocus-hooks-optout-antigravity'))) 'antigravity: -Force clears opt-out marker'
 
+# --- 10c. F-184 T008: dev-tree module override survives host-spawned hook process --------
+# Real Antigravity runs proved the hook child does not inherit the PowerShell session that imported the dev
+# module. When init/update is executed from a development tree, the generated launcher command must carry that
+# module path explicitly; otherwise providers fall through to stale installed modules.
+$originalModuleOverride = $env:SPECREW_MODULE_PATH
+try {
+    New-ScratchProject
+    $devModulePath = Join-Path $scratchRoot 'dev-module-override'
+    New-Item -ItemType Directory -Path $devModulePath -Force | Out-Null
+    $env:SPECREW_MODULE_PATH = $devModulePath
+    $overrideHome = Join-Path $scratchRoot 'anti-home-module-override'
+    $null = Invoke-Deploy -DeployArgs @('-HostKind', 'antigravity', '-UserHomeOverride', $overrideHome)
+    $overrideAnti = Get-Content -LiteralPath (Join-Path $projectRoot '.agents\hooks.json') -Raw | ConvertFrom-Json
+    $overrideDecoded = Decode-EncodedPwshCommand -Command ([string]$overrideAnti.'specrew-refocus'.PreInvocation[0].command)
+    Assert-True ($overrideDecoded.Contains('-ModulePath') -and $overrideDecoded.Contains($devModulePath)) 'antigravity: encoded launcher command carries dev-tree SPECREW_MODULE_PATH for host-spawned hooks'
+    $launcherText = Get-Content -LiteralPath (Join-Path $overrideHome '.specrew\specrew-hook-launch.ps1') -Raw
+    Assert-True ($launcherText.Contains('[string]$ModulePath') -and $launcherText.Contains('$env:SPECREW_MODULE_PATH = $ModulePath')) 'launcher: accepts ModulePath and exports it before invoking the project dispatcher'
+}
+finally {
+    if ($null -eq $originalModuleOverride) { Remove-Item Env:SPECREW_MODULE_PATH -ErrorAction SilentlyContinue }
+    else { $env:SPECREW_MODULE_PATH = $originalModuleOverride }
+}
+
 # --- 11. T017: catalog managed-with-overlay merge (FR-014/FR-018) ----------------------------
 . (Join-Path $repoRoot 'scripts\internal\refocus-deploy-integration.ps1')
 $canonicalCatalog = Join-Path $repoRoot 'extensions\specrew-speckit\refocus-scopes.json'

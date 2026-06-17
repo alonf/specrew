@@ -139,6 +139,10 @@ $ownsSettingsFile = (Test-ManifestKey -Map $hookBindings -Key 'OwnsSettingsFile'
 $migrateLegacyTopLevelEventMap = (Test-ManifestKey -Map $hookBindings -Key 'MigrateLegacyTopLevelEventMap') -and [bool](Get-ManifestValue -Map $hookBindings -Key 'MigrateLegacyTopLevelEventMap')
 $definitionName = [string](Get-ManifestValue -Map $hookBindings -Key 'DefinitionName')
 $definitionNameWhenOccupied = [string](Get-ManifestValue -Map $hookBindings -Key 'DefinitionNameWhenOccupied')
+$launcherModulePath = $null
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH) -and (Test-Path -LiteralPath $env:SPECREW_MODULE_PATH -PathType Container)) {
+    $launcherModulePath = (Resolve-Path -LiteralPath $env:SPECREW_MODULE_PATH).Path
+}
 # The per-machine launcher used by launcher command modes. It lives outside any project
 # because those configs may be shared across projects; it resolves whichever project the
 # live session is in, then hands off to that project's deployed dispatcher.
@@ -149,6 +153,12 @@ function Get-SpecrewHookCommand {
     param([string]$EventName)
     # Command shape is host manifest data (`RefocusHookBindings.CommandMode`),
     # not host-name branching. The deployer only knows generic strategies.
+    $modulePathArg = if (-not [string]::IsNullOrWhiteSpace($launcherModulePath)) {
+        ' -ModulePath "' + ($launcherModulePath.Replace('"', '\"')) + '"'
+    }
+    else {
+        ''
+    }
     switch ($hookCommandMode) {
         'project-placeholder' {
             $placeholder = [string](Get-ManifestValue -Map $hookBindings -Key 'ProjectDirPlaceholder' -Default '')
@@ -159,12 +169,16 @@ function Get-SpecrewHookCommand {
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}' -f $target, $EventName, $HostKind)
         }
         'launcher-file' {
-            return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}' -f $launcherPath, $EventName, $HostKind)
+            return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}{3}' -f $launcherPath, $EventName, $HostKind, $modulePathArg)
         }
         'launcher-encoded' {
             $escapedLauncher = $launcherPath.Replace("'", "''")
             $escapedEvent = $EventName.Replace("'", "''")
-            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes(("& '{0}' -Event '{1}' -HostKind {2}" -f $escapedLauncher, $escapedEvent, $HostKind)))
+            $modulePathEncodedArg = ''
+            if (-not [string]::IsNullOrWhiteSpace($launcherModulePath)) {
+                $modulePathEncodedArg = " -ModulePath '" + ($launcherModulePath.Replace("'", "''")) + "'"
+            }
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes(("& '{0}' -Event '{1}' -HostKind {2}{3}" -f $escapedLauncher, $escapedEvent, $HostKind, $modulePathEncodedArg)))
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -EncodedCommand {0}' -f $encoded)
         }
         default {
@@ -253,11 +267,18 @@ function Install-HookLauncher {
 param(
     [Parameter(Mandatory = $true)][string]$Event,
     [string]$HostKind = 'unknown',
+    [string]$ModulePath,
     [int]$ProviderTimeoutSeconds = 20
 )
 # KILL SWITCH FIRST — before any logic that could itself fail (FR-008 doctrine).
 if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) { exit 0 }
 $ErrorActionPreference = 'Stop'
+
+# Dev-tree dogfood path: when specrew init/update ran from an imported development tree, bake that module
+# root into the launcher command so host-spawned hook children do not fall through to stale installed modules.
+if (-not [string]::IsNullOrWhiteSpace($ModulePath) -and (Test-Path -LiteralPath $ModulePath -PathType Container)) {
+    $env:SPECREW_MODULE_PATH = $ModulePath
+}
 
 # The dispatcher's project-relative subpath — the SENTINEL we look for when walking up a candidate root. We key
 # on the dispatcher FILE (not a .specrew dir) so a stray ~/.specrew up the cwd tree never mis-resolves a project

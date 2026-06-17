@@ -45,7 +45,7 @@
 | T005 | Hook config preservation and F-183 Antigravity regression guards | FR-005, FR-007, SC-005, SC-006 | US4, US5 | 3 | Implementer, Reviewer | hosts/antigravity/**; scripts/internal/deploy-refocus-hooks.ps1; extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | done | codex | 3 | pass |
 | T006 | Antigravity documentation, permission, recovery, and evidence-gated status wording | FR-008, FR-009, TG-006, SC-008, SC-010 | US5 | 2 | Spec Steward, Reviewer | README.md; docs/**; specs/184-full-antigravity-refocus/** | done | codex | 2 | pass |
 | T007 | Automated validation, mirror parity, and FileList/release readiness | TG-001, TG-002, TG-003, SC-001, SC-004, SC-006, SC-007, SC-008, SC-010 | US1-US5 | 3 | Reviewer | tests/**; extensions/specrew-speckit/**; .specify/extensions/specrew-speckit/**; Specrew.psd1; specs/184-full-antigravity-refocus/** | done | codex | 3 | pass |
-| T008 | Real-host `agy` validation and Proposal 145 review evidence | FR-009, TG-004, TG-005, TG-006, SC-002, SC-003, SC-005, SC-009, SC-010 | US1-US5 | 3 | Reviewer | specs/184-full-antigravity-refocus/iterations/001/** | planned | codex | — | — |
+| T008 | Real-host `agy` validation and Proposal 145 review evidence | FR-009, TG-004, TG-005, TG-006, SC-002, SC-003, SC-005, SC-009, SC-010 | US1-US5 | 3 | Reviewer | specs/184-full-antigravity-refocus/iterations/001/** | done | codex | 3 | pass |
 
 ## Effort Model
 
@@ -147,6 +147,16 @@ TG-004/TG-005 -> T001/T008; TG-006 -> T006/T008.
   runtime tests, deploy tests, FileList/release harnesses, wrapper parity, mirror
   hashes, and scoped governance validation pass after repairing the stale
   noncanonical `Current Phase: implement` state edit back to `before-implement`.
+- T008 completed with machine-local real-host Antigravity evidence at
+  file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/real-host-antigravity-evidence.md;
+  `agy 1.0.8` fired `PreInvocation` and `Stop`, the launcher carried
+  `-ModulePath` to avoid stale installed modules, the stable conversation id
+  `eba5a643-d9cc-44b4-94ae-8e55d03ca139` kept a per-session state file, B3
+  recorded exactly once after a boundary change, an unchanged resume did not
+  reinject, same-session markers classified as `same-session`, and handover was
+  written.
+- Proposal 145-style implementation-completion review evidence is recorded at
+  file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/implementation-completion-review-145.md.
 - Retro and iteration-closeout must restore `.specrew/iteration-config.yml` to the baseline 20 SP cap after F-184 closes.
 - Status is `executing` after tasks and before-implement readiness were committed
   and lifecycle state was synchronized.

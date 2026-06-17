@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T007
-**Tasks Remaining**: T008
+**Last Completed Task**: T008
+**Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
-**Updated**: 2026-06-17T01:01:09Z
+**Updated**: 2026-06-17T01:40:00Z
 
 ## Execution Summary
 
@@ -40,6 +40,17 @@
   readiness, wrapper parity, mirror hashes, and scoped governance validation
   pass after repairing the noncanonical `Current Phase: implement` edit back to
   the canonical `before-implement` boundary state.
+- T008 completed: machine-local real-host `agy 1.0.8` evidence proves
+  `PreInvocation` and `Stop` hook firing, handover writes, stable conversation id
+  `eba5a643-d9cc-44b4-94ae-8e55d03ca139`, per-session refocus state, B3 exactly
+  once on a boundary crossing, no B3 reinjection on unchanged resume,
+  same-session marker classification, and support-label honesty. T008 also
+  repaired the real-host-discovered dev-tree module-path defect by baking
+  `-ModulePath` into generated Antigravity launcher commands and adding a deploy
+  regression test.
+- Proposal 145-style implementation-completion review passed with no blocking
+  findings after focused runtime/deploy/FileList/governance/markdown/diff
+  validation.
 
 ## Notes
 
@@ -69,11 +80,11 @@
 - **Timestamp**: 2026-06-17T00:09:20Z
 - **Mode**: continue
 - **Status**: ready
-- **Last Completed Task**: T007
-- **Next Suggested Task**: T008
+- **Last Completed Task**: T008
+- **Next Suggested Task**: review-signoff
 - **Next Recovery Action**: (none)
 - **In-Progress Tasks**: (none)
-- **Remaining Tasks**: T008
+- **Remaining Tasks**: (none)
 - **Repair Escalation**: inactive
 - **Blockers**: (none)
 - **Salvageable Tasks**: n/a
