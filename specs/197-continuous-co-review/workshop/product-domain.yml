@@ -1,0 +1,102 @@
+schema_version: v1
+depth: standard
+depth_reason: >-
+  Proposal 197 is a normal Specrew product feature with host-neutral behavior,
+  lifecycle trust implications, and active sibling-branch coordination risk. It
+  is not a brand-new product or regulated domain, so Deep discovery is not
+  warranted, but Light would miss the product risk around F-184 overlap and
+  reviewer trust.
+context_scope: feature_standalone
+product_id: specrew
+product_context_ref: null
+areas:
+  users_stakeholders: >-
+    Primary users are Specrew implementers, Spec Stewards, reviewers, and
+    maintainers working through lifecycle checkpoints. The maintainer / chief
+    architect remains the final reviewer. Downstream Specrew project teams
+    benefit indirectly because fewer design violations reach late review.
+  pain_job: >-
+    Specrew's structured Proposal 145 review runs at review-signoff, after
+    design drift and abstraction leaks are already expensive. AI coding agents
+    can forget or deprioritize design rules mid-flow, so the job is to re-check
+    each checkpoint against the design contract while the fix is still cheap.
+  current_workaround: >-
+    Current mitigation is late structured review plus human review. That remains
+    the final backstop but does not catch edit-boundary drift early.
+  existing_system_context: >-
+    This is an extension to Specrew's existing Spec Kit / Squad lifecycle in the
+    Specrew repository. The first slice must stay additive and avoid active
+    F-184 host-runtime, hook, provider, registry, refocus, and shared governance
+    surfaces.
+  constraints: >-
+    Run against the worktree Specrew module, never run `specrew update` in this
+    repository, use markdownlint before every commit, preserve PR-protected main,
+    keep the first slice new-files-only, and treat
+    `C:\Dev\183-stability-quality-bundle` as read-only sibling context until the
+    branches are merged.
+  outcomes_success_metrics: >-
+    Blocking design violations stop checkpoint advancement, advisory and nit
+    findings remain auditable without blocking, blackboard records preserve
+    finding/disposition/rationale/escalation state, and deterministic fixtures
+    prove validator behavior before any live host-hook integration claim.
+  mvp: >-
+    Iteration 001 delivers the host-neutral spine: reviewer contract, forced
+    findings JSON schema, git-diff change-set, blackboard review-thread
+    protocol, standalone blocking gate, orchestrator checkpoint loop trigger,
+    headless-floor adapters, and rung 2b fresh-context reviewer.
+  non_goals: >-
+    Do not implement rung 1, PostToolUse hook triggers, Proposal 139 heavy
+    foundation, or edits to F-184-protected host-runtime/hook/provider/registry
+    surfaces in the first iteration.
+  alternatives_differentiation: >-
+    The main alternative is relying on late Proposal 145 review only. Another
+    alternative is a host-specific hook solution, rejected for this slice because
+    host neutrality and a stable contract come first.
+  adoption_rollout: >-
+    Dogfood the rung 2b contract in Specrew first, keep Proposal 145 as the final
+    aggregate backstop, and re-check / merge with F-184 before integrating
+    anything that depends on the rewritten host-runtime or provider surfaces.
+statements:
+  - text: Primary users are Specrew implementers, Spec Stewards, reviewers, and maintainers at lifecycle checkpoints.
+    area: users_stakeholders
+    evidence: known
+  - text: Downstream Specrew project teams benefit indirectly through fewer late review surprises.
+    area: users_stakeholders
+    evidence: assumed
+  - text: Proposal 145 review runs late at review-signoff and cannot cheaply prevent design decisions already built into the implementation.
+    area: pain_job
+    evidence: known
+  - text: AI coding agents may forget or deprioritize design rules mid-flow.
+    area: pain_job
+    evidence: known
+  - text: The current workaround is late structured review plus human review.
+    area: current_workaround
+    evidence: known
+  - text: Iteration 001 must be additive and avoid F-184-protected host-runtime, hook, provider, registry, refocus, and shared governance surfaces.
+    area: constraints
+    evidence: known
+  - text: The sibling worktree at C:\Dev\183-stability-quality-bundle is read-only context for Proposal 197, and the branches will need to merge later.
+    area: constraints
+    evidence: known
+  - text: Blocking findings gate checkpoint advancement; advisory and nit findings are recorded but non-blocking.
+    area: outcomes_success_metrics
+    evidence: known
+  - text: Deterministic fixtures and validator behavior are the first success proof, not live host-hook integration.
+    area: outcomes_success_metrics
+    evidence: assumed
+  - text: The MVP is the host-neutral rung 2b spine with new contract, schema, blackboard, gate, orchestrator loop trigger, and headless-floor adapters.
+    area: mvp
+    evidence: known
+  - text: Rung 1, PostToolUse triggers, and Proposal 139 foundation work are deferred.
+    area: non_goals
+    evidence: known
+  - text: The first slice should beat late-only review on earlier detection, auditability, and host neutrality.
+    area: alternatives_differentiation
+    evidence: assumed
+  - text: F-184 iteration 001 appears complete and stopped at an iteration-closeout verdict, while iteration 002 planning targets persistent host instructions and bootstrap guard work.
+    area: existing_system_context
+    evidence: known
+skipped: []
+follow_up_research: []
+confirmation: human-confirmed
+confirmation_scope: lens-question
