@@ -51,14 +51,26 @@ code-implementation. The records therefore use `human-confirmed` /
 
 ## Next Action
 
-Implementation authorized (`tasks -> before-implement` approved with
-instructions, 2026-06-17). T001 discovery complete: the host-landscape premise
-HOLDS for all hosts (no split-guard trigger; see `discovery-host-landscape.md`).
-Next: T002 (packaged coordinator fragment + delimited managed-section merge
-helper), then T003-T005; T006 (real-host Opus/Flash) is human-owned. Honor the
-live split guard (stop for split/defer if a host diverges), the 20/20 zero-slack
-cap, the host-neutral firewall, and single-source guard text (FR-018). Next human
-stop: review-signoff.
+Implementation authorized (`tasks -> before-implement`, 2026-06-17). DONE: T001
+(discovery, premise holds) + T002 (coordinator fragment + managed-section merge
+helper `scripts/internal/instruction-file-merge.ps1` exposing
+`Set-SpecrewInstructionFileSection` and `Get-SpecrewCoordinatorFragment`; 8/8
+unit tests green, `tests/unit/instruction-file-merge.tests.ps1`).
+
+NEXT: T003 - wire manifest-driven deployment into `specrew init` (deploy) +
+`specrew update` (refresh) + `specrew start` (heal). Model it on
+`scripts/internal/deploy-refocus-hooks.ps1` (enumerate `Get-RegisteredHostKinds`
+from `hosts/_registry.ps1`, read each `host.psd1` `InstructionsFile` via the
+`Find-HostManifestPath` pattern, resolve the project path, call
+`Set-SpecrewInstructionFileSection`). Host-neutral - NO host-name branches; read
+`InstructionsFile` from the manifest. Integration tests with pre-existing user
+content in `AGENTS.md`/`CLAUDE.md`/`.github/copilot-instructions.md`. Then T004
+(bootstrap front-load + guard mirror sourced from `Get-SpecrewCoordinatorFragment`)
+and T005 (host-coupling firewall negative test + coverage). T006 (real-host
+Opus/Flash, also confirming the `AGENTS.md -> GEMINI.md` priority behaviorally) is
+human-owned. Honor the live split guard, the 20/20 zero-slack cap, the
+host-neutral firewall, and single-source guard text (FR-018). Next human stop:
+review-signoff.
 
 ## Carry Into Plan
 
