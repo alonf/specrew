@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: implement
+**Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T006
-**Tasks Remaining**: T007, T008
+**Last Completed Task**: T007
+**Tasks Remaining**: T008
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
-**Updated**: 2026-06-17T00:46:17Z
+**Updated**: 2026-06-17T01:01:09Z
 
 ## Execution Summary
 
@@ -36,6 +36,10 @@
   with `agy`, B3-on-`PreInvocation`, hook status/install/remove, `/permissions`,
   `enableTerminalSandbox`, sandbox/auto-approval distinctions, `specrew start`
   fallback, and evidence-gated status wording.
+- T007 completed: focused runtime/deploy/docs validation, FileList/release
+  readiness, wrapper parity, mirror hashes, and scoped governance validation
+  pass after repairing the noncanonical `Current Phase: implement` edit back to
+  the canonical `before-implement` boundary state.
 
 ## Notes
 
@@ -65,11 +69,11 @@
 - **Timestamp**: 2026-06-17T00:09:20Z
 - **Mode**: continue
 - **Status**: ready
-- **Last Completed Task**: T006
-- **Next Suggested Task**: T007
+- **Last Completed Task**: T007
+- **Next Suggested Task**: T008
 - **Next Recovery Action**: (none)
 - **In-Progress Tasks**: (none)
-- **Remaining Tasks**: T007, T008
+- **Remaining Tasks**: T008
 - **Repair Escalation**: inactive
 - **Blockers**: (none)
 - **Salvageable Tasks**: n/a
