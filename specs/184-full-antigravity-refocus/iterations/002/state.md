@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T001 discovery (host-landscape premise confirmed; no split-guard trigger)
-**Tasks Remaining**: T002, T003, T004, T005, T006
+**Last Completed Task**: T002 (coordinator fragment + managed-section merge helper; 8/8 unit tests green)
+**Tasks Remaining**: T003, T004, T005, T006
 **In Progress**: (none)
 **Baseline Ref**: abf18b99
-**Updated**: 2026-06-17T16:40:00Z
+**Updated**: 2026-06-17T17:05:00Z
 
 ## Charter
 
