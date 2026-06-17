@@ -26982,3 +26982,41 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: ed656671
 - **Recorded At**: 2026-06-16T23:56:06Z
+
+## 2026-06-17T09:47:08Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8abc3d39
+- **Recorded At**: 2026-06-17T09:47:07Z
+
+## 2026-06-17T09:55:35Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8abc3d39
+- **Recorded At**: 2026-06-17T09:55:34Z
+
+## 2026-06-17 — F-184 iteration-001 review-signoff approval
+
+### 2026-06-17 — Decision: approve review-signoff; authorize retro only
+
+- **Decision ID**: f184-i001-review-signoff-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\184-full-antigravity-refocus\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T09:55:07Z
+- **Verdict**: approved for review-signoff.
+- **Decision**: Accept the review-signoff packet after the abstraction-leak send-back repair at commit `8abc3d39`.
+  Shared hook/bootstrap/deploy core is manifest-driven through `RefocusHookBindings.DispatcherRuntime`, and the
+  host-coupling firewall blocks shared-core `agy` or Antigravity routing literals.
+- **Carried instructions**:
+  1. Record the 26 SP F-184 capacity override during retro calibration and restore the project-global cap to 20.
+  2. Treat Antigravity B3 delivery proof as inferential because the host does not expose the injected prompt transcript.
+  3. At release, keep beta-before-stable, `MigrateLegacyTopLevelEventMap` legacy-upgrade validation, and reproducible
+     `agy` evidence or explicit machine-local labeling as release-gate obligations.
+- **Disposition**: review-signoff approved; retro boundary opened. Iteration-closeout remains unopened until a fresh human verdict.

@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
+**Status**: retro
 **Capacity**: 26/26 story_points
 **Started**: 2026-06-17
 **Completed**:
@@ -157,6 +157,7 @@ TG-004/TG-005 -> T001/T008; TG-006 -> T006/T008.
   written.
 - Proposal 145-style implementation-completion review evidence is recorded at
   file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/implementation-completion-review-145.md.
-- Retro and iteration-closeout must restore `.specrew/iteration-config.yml` to the baseline 20 SP cap after F-184 closes.
-- Status is `executing` after tasks and before-implement readiness were committed
-  and lifecycle state was synchronized.
+- Retro restored `.specrew/iteration-config.yml` to the baseline 20 SP cap after
+  recording the F-184 26 SP override as historical calibration data.
+- Status is `retro` after review-signoff approval and the committed
+  abstraction-leak repair.

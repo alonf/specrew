@@ -1,17 +1,19 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T008
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
-**Updated**: 2026-06-17T01:40:00Z
+**Updated**: 2026-06-17T09:55:00Z
 
 ## Execution Summary
 
-- Implementation is complete and review-signoff evidence is being presented.
+- Review-signoff was approved after the abstraction-leak send-back repair at
+  commit `8abc3d39`; the iteration is now in retro and awaiting the human retro
+  verdict before iteration-closeout.
 - Iteration 001 uses a temporary 26 SP capacity override from the baseline 20 SP
   cap, authorized by the user's 2026-06-17 instruction to implement all known
   F-184 scope before the next human gate.
@@ -56,8 +58,11 @@
 
 - Update this file after each task completes.
 - Keep task identifiers aligned to plan.md.
-- Retro and iteration-closeout must restore `.specrew/iteration-config.yml` to
-  the baseline 20 SP cap.
+- Retro restored `.specrew/iteration-config.yml` to the baseline 20 SP cap while
+  preserving the iteration's 26/26 story point record as historical calibration.
+- Release carry-forward remains open: beta-before-stable, legacy upgrade
+  validation for `MigrateLegacyTopLevelEventMap`, and reproducible `agy`
+  evidence or an explicit machine-local label.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
@@ -81,7 +86,7 @@
 - **Mode**: continue
 - **Status**: ready
 - **Last Completed Task**: T008
-- **Next Suggested Task**: review-signoff
+- **Next Suggested Task**: retro verdict
 - **Next Recovery Action**: (none)
 - **In-Progress Tasks**: (none)
 - **Remaining Tasks**: (none)
