@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 26/26 story_points
 **Started**: 2026-06-17
 **Completed**:
@@ -38,7 +38,7 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T001 | Discovery spike: B3-on-PreInvocation split-guard proof | FR-003, FR-010, SC-009, TG-004, TG-005 | US2 | 3 | Planner, Reviewer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; hosts/antigravity/**; specs/184-full-antigravity-refocus/** | planned | codex | — | — |
+| T001 | Discovery spike: B3-on-PreInvocation split-guard proof | FR-003, FR-010, SC-009, TG-004, TG-005 | US2 | 3 | Planner, Reviewer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; hosts/antigravity/**; specs/184-full-antigravity-refocus/** | done | codex | 3 | pass |
 | T002 | Antigravity session identity and per-session refocus state/anchor | FR-001, FR-002, FR-005, SC-001, SC-002 | US1, US4 | 4 | Implementer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-dispatcher.tests.ps1 | planned | codex | — | — |
 | T003 | B3 `PreInvocation` injection with dedupe/breaker and fail-open diagnostics | FR-003, FR-006, FR-010, SC-003, SC-007, SC-009 | US2 | 5 | Implementer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-dispatcher.tests.ps1 | planned | codex | — | — |
 | T004 | Antigravity self-marker concurrency classifier | FR-004, FR-006, SC-004 | US3 | 3 | Implementer | scripts/internal/bootstrap/**; tests/bootstrap/ClassificationEngine.Tests.ps1; tests/bootstrap/SessionBootstrapManager.Tests.ps1 | planned | codex | — | — |
@@ -118,5 +118,9 @@ TG-004/TG-005 -> T001/T008; TG-006 -> T006/T008.
 - Wave B artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/data-model.md, file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/quickstart.md, file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/contracts/full-antigravity-refocus.md, file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/review-diagrams.md
 - User instruction: proceed through implementation and stop for the next human gate after complete implementation. Boundary commits and syncs still occur; Proposal 145-style review/fix/rerun applies at every stop.
 - T001 is a hard split-guard task, not optional research. A FAIL row blocks runtime work.
+- T001 discovery recorded PASS rows for `fresh-boundary-cursor`,
+  `exactly-once-b3`, and `bounded-host-model` at
+  file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/discovery-antigravity-b3-preinvocation.md.
 - Retro and iteration-closeout must restore `.specrew/iteration-config.yml` to the baseline 20 SP cap after F-184 closes.
-- Status remains `planning` until tasks and before-implement readiness are committed.
+- Status is `executing` after tasks and before-implement readiness were committed
+  and lifecycle state was synchronized.

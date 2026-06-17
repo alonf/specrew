@@ -1,8 +1,10 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: T001, T002, T003, T004, T005, T006, T007, T008
+**Current Phase**: before-implement
+**Iteration Status**: executing
+**Last Completed Task**: T001
+**Tasks Remaining**: T002, T003, T004, T005, T006, T007, T008
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
 **Updated**: 2026-06-16T23:32:02Z
@@ -14,6 +16,8 @@
   cap, authorized by the user's 2026-06-17 instruction to implement all known
   F-184 scope before the next human gate.
 - Execution has not started yet; T001 discovery must run first.
+- T001 discovery completed and passed all split-guard triggers. Runtime
+  implementation may proceed to T002.
 
 ## Notes
 
