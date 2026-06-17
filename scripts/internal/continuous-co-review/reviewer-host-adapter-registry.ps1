@@ -7,15 +7,36 @@ function Get-ContinuousCoReviewReviewerHostAdapterFunctionName {
         [string] $AdapterId
     )
 
-    switch ($AdapterId) {
-        'reviewer-host-adapter-claude-prompt' { return 'Invoke-ContinuousCoReviewReviewerHostAdapterClaudePrompt' }
-        'reviewer-host-adapter-codex-exec' { return 'Invoke-ContinuousCoReviewReviewerHostAdapterCodexExec' }
-        'reviewer-host-adapter-copilot-prompt' { return 'Invoke-ContinuousCoReviewReviewerHostAdapterCopilotPrompt' }
-        'reviewer-host-adapter-cursor-agent-prompt' { return 'Invoke-ContinuousCoReviewReviewerHostAdapterCursorAgentPrompt' }
-        'reviewer-host-adapter-antigravity-prompt' { return 'Invoke-ContinuousCoReviewReviewerHostAdapterAntigravityPrompt' }
-        'reviewer-host-adapter-fixture' { return 'Invoke-ContinuousCoReviewFixtureReviewerPath' }
-        default { return $null }
+    if ($AdapterId -eq 'reviewer-host-adapter-fixture') {
+        return 'Invoke-ContinuousCoReviewFixtureReviewerPath'
     }
+
+    $adapterPrefix = 'reviewer-host-adapter-'
+    if (-not $AdapterId.StartsWith($adapterPrefix, [System.StringComparison]::Ordinal)) {
+        return $null
+    }
+
+    $adapterName = $AdapterId.Substring($adapterPrefix.Length)
+    if ([string]::IsNullOrWhiteSpace($adapterName)) {
+        return $null
+    }
+
+    $functionSuffixParts = @(
+        foreach ($segment in ($adapterName -split '-')) {
+            if ($segment -notmatch '^[a-z0-9]+$') {
+                return $null
+            }
+
+            if ($segment.Length -eq 1) {
+                $segment.ToUpperInvariant()
+            }
+            else {
+                $segment.Substring(0, 1).ToUpperInvariant() + $segment.Substring(1)
+            }
+        }
+    )
+
+    return "Invoke-ContinuousCoReviewReviewerHostAdapter$($functionSuffixParts -join '')"
 }
 
 function Get-ContinuousCoReviewReviewerHostAdapterRegistry {

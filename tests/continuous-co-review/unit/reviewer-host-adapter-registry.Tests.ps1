@@ -28,6 +28,8 @@ Describe 'Proposal 197 T032 TG-011 TG-012 reviewer host adapter registry obeys i
                 'reviewer-host-adapter-claude-prompt.ps1',
                 'reviewer-host-adapter-codex-exec.ps1',
                 'reviewer-host-adapter-copilot-prompt.ps1',
+                'reviewer-host-adapter-example-dropin.ps1',
+                'reviewer-host-adapter-fixture.ps1',
                 'provider-adapter.ps1',
                 'provider-github.ps1',
                 'host-runtime-inventory.ps1',
@@ -51,6 +53,8 @@ Describe 'Proposal 197 T032 TG-011 TG-012 reviewer host adapter registry obeys i
         ($registeredFileNames -contains 'reviewer-host-adapter-claude-prompt.ps1') | Should Be $true
         ($registeredFileNames -contains 'reviewer-host-adapter-codex-exec.ps1') | Should Be $true
         ($registeredFileNames -contains 'reviewer-host-adapter-copilot-prompt.ps1') | Should Be $true
+        ($registeredFileNames -contains 'reviewer-host-adapter-example-dropin.ps1') | Should Be $true
+        ($registeredFileNames -contains 'reviewer-host-adapter-fixture.ps1') | Should Be $true
         ($registeredFileNames -contains 'provider-adapter.ps1') | Should Be $false
         ($registeredFileNames -contains 'provider-github.ps1') | Should Be $false
         ($registeredFileNames -contains 'host-runtime-inventory.ps1') | Should Be $false
@@ -70,11 +74,29 @@ Describe 'Proposal 197 T032 TG-011 TG-012 reviewer host adapter registry obeys i
         ($adapterIds -join ',') | Should Not Match 'provider-adapter|provider-generic|provider-github|capability-detector'
     }
 
+    It 'derives host adapter function names by file-name convention while preserving the fixture seam' {
+        $command = Get-T032Command
+        $adapterRoot = New-T032AdapterRoot
+
+        $registry = & $command -AdapterRoot $adapterRoot
+        $functionNamesByAdapterId = @{}
+        foreach ($adapter in $registry.adapters) {
+            $functionNamesByAdapterId[$adapter.adapter_id] = $adapter.function_name
+        }
+
+        $functionNamesByAdapterId['reviewer-host-adapter-claude-prompt'] | Should Be 'Invoke-ContinuousCoReviewReviewerHostAdapterClaudePrompt'
+        $functionNamesByAdapterId['reviewer-host-adapter-codex-exec'] | Should Be 'Invoke-ContinuousCoReviewReviewerHostAdapterCodexExec'
+        $functionNamesByAdapterId['reviewer-host-adapter-copilot-prompt'] | Should Be 'Invoke-ContinuousCoReviewReviewerHostAdapterCopilotPrompt'
+        $functionNamesByAdapterId['reviewer-host-adapter-example-dropin'] | Should Be 'Invoke-ContinuousCoReviewReviewerHostAdapterExampleDropin'
+        $functionNamesByAdapterId['reviewer-host-adapter-fixture'] | Should Be 'Invoke-ContinuousCoReviewFixtureReviewerPath'
+    }
+
     It 'does not reference protected F-184 provider, registry, host-runtime, refocus, or shared governance surfaces' {
         $sourcePath = Join-Path $script:ReviewerModuleRoot 'reviewer-host-adapter-registry.ps1'
         (Test-Path -LiteralPath $sourcePath -PathType Leaf) | Should Be $true
         $source = Get-Content -LiteralPath $sourcePath -Raw
 
+        $source | Should Not Match 'switch\s*\(\s*\$AdapterId\s*\)'
         $source | Should Not Match 'extensions/specrew-speckit/scripts/provider-adapter\.ps1'
         $source | Should Not Match 'provider-(adapter|generic|github)\.ps1'
         $source | Should Not Match 'hosts/_registry\.ps1|host-runtime-inventory\.ps1|shared-governance\.ps1|validate-governance\.ps1|refocus\.ps1'
