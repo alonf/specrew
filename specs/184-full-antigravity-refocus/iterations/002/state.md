@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T005 (host-coupling firewall: new core files guarded + negative test fails-closed then passes; all assertions green)
-**Tasks Remaining**: T006
-**In Progress**: (none)
+**Last Completed Task**: T005 + FR-008 docs (ALL agent-owned implementation complete: T001-T005 green-tested + the Antigravity AGENTS.md/GEMINI.md docs note)
+**Tasks Remaining**: T006 (human-owned real-host run; evidence template ready)
+**In Progress**: T006 (real-host-evidence.md scaffolded; awaiting the maintainer's Opus 4.6 + Gemini Flash run)
 **Baseline Ref**: abf18b99
-**Updated**: 2026-06-17T18:10:00Z
+**Updated**: 2026-06-17T18:25:00Z
 
 ## Charter
 
@@ -62,17 +62,18 @@ T004 DONE: bootstrap front-load + single-source guard injection via
 parity GREEN (ProviderMirrorParity); CoordinatorFrontLoad 7/7 +
 DirectiveVersionBranch regression green.
 
-T005 DONE: host-coupling firewall extended - instruction-deploy.ps1 +
-instruction-file-merge.ps1 added to the forbidden-core guarded set; negative test
-proves the firewall fails-closed on a planted `HostKind -eq 'antigravity'` literal
-and passes clean manifest-driven content; all assertions green.
+ALL agent-owned implementation is COMPLETE, each committed with run tests: T001
+(discovery), T002 (merge helper + fragment, 8/8 unit), T003 (init/update/start
+deploy/refresh/heal, 6/6 integration), T004 (bootstrap front-load + single-source
+guard, mirror-parity green + 7/7), T005 (firewall: new core guarded + negative
+test fail-then-pass), and the FR-008 Antigravity docs note.
 
-NEXT (agent): the FR-008 docs note - Specrew deploys the coordinator section to
-`AGENTS.md` on Antigravity and it takes priority over a user's `GEMINI.md`. Then
-ALL agent-owned implementation (T001-T005 + FR-008 docs) is complete; T006
-(real-host Opus 4.6 + Gemini Flash, plus the behavioral `AGENTS.md -> GEMINI.md`
-priority check that the defer rests on) is HUMAN-owned. Next human stop:
-review-signoff (the full structured 145 review). Then T005 (host-coupling firewall negative
+NEXT (HUMAN): T006 - the real-host Opus 4.6 + Gemini Flash run. Fill
+`real-host-evidence.md`, including the behavioral `AGENTS.md -> GEMINI.md`
+priority check (AGENTS.md wins -> defer proven; GEMINI.md wins -> STOP, defer
+flips to in-scope). Then the next human stop is review-signoff (the full
+structured 145 review). Release carry-forwards remain OPEN (SC-018):
+beta-before-stable, `MigrateLegacyTopLevelEventMap`, machine-local `agy` evidence. Then T005 (host-coupling firewall negative
 test - must FAIL on a planted single-host literal, then PASS - plus coverage). Add
 the FR-008 docs note (Specrew deploys to `AGENTS.md` on Antigravity, priority over
 a user's `GEMINI.md`). T006 (real-host Opus/Flash + behavioral
