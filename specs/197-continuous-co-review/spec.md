@@ -35,6 +35,14 @@ read-only rung 2b fresh-context reviewer."
 - **Full record**: see `workshop/product-domain.md` and
   `workshop/product-domain.yml`.
 
+## Clarifications
+
+### Session 2026-06-17
+
+No critical ambiguities detected worth formal clarification; specify approvals
+and Proposal 197 guardrails are already represented in the requirements, scope
+boundaries, assumptions, and success criteria.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Review each checkpoint against the design contract (Priority: P1)
