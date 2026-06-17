@@ -2963,6 +2963,17 @@ if ($missingBootstrapPaths.Count -gt 0) {
     exit 1
 }
 
+# F-184 iter-002 (T003, FR-016): heal/refresh the coordinator instruction section in each
+# supported host's InstructionsFile (idempotent backstop; init/update are the primary deploy
+# path). Fail-open + silent: never fails `specrew start`.
+try {
+    . (Join-Path $PSScriptRoot 'internal\instruction-deploy.ps1')
+    $null = @(Invoke-SpecrewInstructionDeployment -ProjectPath $resolvedProjectPath)
+}
+catch {
+    Write-Verbose ("Coordinator-instruction heal skipped: {0}" -f $_.Exception.Message)
+}
+
 # Feature 049 Iteration 003: User profile first-run check (FR-023, FR-024, FR-026)
 # Check for user profile and prompt on first run
 if (-not (Test-UserProfileExists)) {

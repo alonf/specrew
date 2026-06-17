@@ -846,6 +846,25 @@ else {
     Add-Action -Actions $actions -Step 'refocus-hooks' -Outcome 'skipped: .specify is absent in brownfield workspace'
 }
 
+# F-184 iter-002 (T003, FR-011): deploy the Specrew coordinator instruction section to each
+# supported host's manifest-declared InstructionsFile (AGENTS.md / CLAUDE.md / copilot). Host-
+# neutral (reads InstructionsFile from the manifest), preserves user content, idempotent.
+Write-Step 'Deploying coordinator instructions'
+if ($specifySurfaceReady) {
+    if ($DryRun) {
+        Add-Action -Actions $actions -Step 'coordinator-instructions' -Outcome 'would deploy the coordinator section to each host InstructionsFile'
+    }
+    else {
+        . (Join-Path $repoRoot 'scripts\internal\instruction-deploy.ps1')
+        foreach ($ia in @(Invoke-SpecrewInstructionDeployment -ProjectPath $resolvedProjectPath)) {
+            Add-Action -Actions $actions -Step 'coordinator-instructions' -Outcome ('{0}: {1}' -f $ia.HostKind, $ia.Detail)
+        }
+    }
+}
+else {
+    Add-Action -Actions $actions -Step 'coordinator-instructions' -Outcome 'skipped: .specify is absent in brownfield workspace'
+}
+
 # FR-025 (iter-8 T049): capture the user-profile expertise dials at init when the profile is ABSENT and the
 # session is INTERACTIVE, so hook-driven users (who may never run `specrew start`) still get the expertise
 # adaptation in the bootstrap banner. NON-interactive / -Force / CI / piped inits skip silently so

@@ -1417,6 +1417,14 @@ if ($scopes -contains 'Specrew') {
         foreach ($hookAction in @(Invoke-RefocusHookDeployment -ProjectPath $resolvedProjectPath -DeployScriptPath (Join-Path $repoRoot 'scripts\internal\deploy-refocus-hooks.ps1'))) {
             $null = $summary.Add([pscustomobject]@{ Platform = 'Specrew'; Action = [string]$hookAction.Action; Detail = ('{0}: {1}' -f $hookAction.HostKind, $hookAction.Detail) })
         }
+
+        # F-184 iter-002 (T003, FR-016): refresh the coordinator instruction section in each
+        # supported host's InstructionsFile from the packaged single source. Host-neutral,
+        # preserves user content, idempotent.
+        . (Join-Path $repoRoot 'scripts\internal\instruction-deploy.ps1')
+        foreach ($ia in @(Invoke-SpecrewInstructionDeployment -ProjectPath $resolvedProjectPath)) {
+            $null = $summary.Add([pscustomobject]@{ Platform = 'Specrew'; Action = [string]$ia.Action; Detail = ('{0}: {1}' -f $ia.HostKind, $ia.Detail) })
+        }
     }
 
     $templateRefreshActions = @(
