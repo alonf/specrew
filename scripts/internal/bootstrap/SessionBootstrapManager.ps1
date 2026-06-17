@@ -99,13 +99,13 @@ function Invoke-SpecrewSessionBootstrap {
     $concurrencyReason = 'none'
     try {
         $markerPath = Join-Path $ProjectRoot '.specrew/runtime/session-marker.json'
-        $cc = Test-SpecrewConcurrentSession -Marker (Get-SpecrewSessionMarker -MarkerPath $markerPath) -ProjectRoot $ProjectRoot -NowUtc $NowUtc
+        $cc = Test-SpecrewConcurrentSession -Marker (Get-SpecrewSessionMarker -MarkerPath $markerPath) -ProjectRoot $ProjectRoot -NowUtc $NowUtc -CurrentSessionId $dedupeKey
         $concurrent = [bool]$cc.concurrent
         $concurrencyReason = $cc.reason
         $branch = ''; $head = ''
         try { $branch = (& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null) } catch { $null = $_ }
         try { $head = (& git -C $ProjectRoot rev-parse --short HEAD 2>$null) } catch { $null = $_ }
-        Write-SpecrewSessionMarker -MarkerPath $markerPath -HostName $HostName -ProjectRoot $ProjectRoot -Branch $branch -HeadCommit $head -StartedAt $NowUtc | Out-Null
+        Write-SpecrewSessionMarker -MarkerPath $markerPath -HostName $HostName -ProjectRoot $ProjectRoot -Branch $branch -HeadCommit $head -SessionId $dedupeKey -StartedAt $NowUtc | Out-Null
     }
     catch { $null = $_ }
 

@@ -52,6 +52,7 @@ function Write-SpecrewSessionMarker {
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter()][string] $Branch,
         [Parameter()][string] $HeadCommit,
+        [Parameter()][string] $SessionId,
         # Caller supplies the timestamp (keeps the accessor deterministic + unit-testable).
         [Parameter(Mandatory)][string] $StartedAt
     )
@@ -59,6 +60,7 @@ function Write-SpecrewSessionMarker {
     $marker = [pscustomobject]@{
         started_at   = $StartedAt
         host         = $HostName
+        session_id   = $SessionId
         project_root = $ProjectRoot
         branch       = $Branch
         head_commit  = $HeadCommit
@@ -125,6 +127,7 @@ function Get-SpecrewSessionMarker {
     [pscustomobject]@{
         started_at   = $startedAt
         host         = Get-SpecrewProp $m 'host'
+        session_id   = Get-SpecrewProp $m 'session_id'
         project_root = Get-SpecrewProp $m 'project_root'
         branch       = Get-SpecrewProp $m 'branch'
         head_commit  = Get-SpecrewProp $m 'head_commit'

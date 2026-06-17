@@ -80,6 +80,17 @@ try {
     $r4 = Invoke-SpecrewSessionBootstrap -RawEvent '{"source":"startup"}' -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json')
     Assert-True ([string]$r4.record.dedupe_key -match '^launch-[a-f0-9]{32}$') 'missing session id gets per-launch dedupe key'
     Assert-True ([string]$r4.record.dedupe_key -ne 'no-session' -and [string]$r4.record.dedupe_key -ne 'unknown') 'dedupe key avoids global fallback buckets'
+
+    # Antigravity resume with its own marker should not warn about same-worktree concurrency.
+    $antiMarkerPath = Join-Path $root '.specrew/runtime/session-marker.json'
+    Write-SpecrewSessionMarker -MarkerPath $antiMarkerPath -HostName antigravity -ProjectRoot $root -Branch 'main' -HeadCommit 'abc123' -SessionId 'anti-conv-1' -StartedAt '2026-06-17T00:00:00Z' | Out-Null
+    $antiEvent = '{"conversationId":"anti-conv-1","workspacePaths":["' + (($root -replace '\\', '/') -replace '"', '\"') + '"],"transcriptPath":"C:/temp/anti-transcript.jsonl"}'
+    $r5 = Invoke-SpecrewSessionBootstrap -RawEvent $antiEvent -HostName antigravity -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc '2026-06-17T00:01:00Z'
+    Assert-Equal $r5.record.dedupe_key 'anti-conv-1' 'antigravity conversationId drives the bootstrap dedupe key'
+    Assert-True (-not [bool]$r5.record.concurrent_session) 'antigravity own marker is not reported concurrent'
+    Assert-Equal $r5.record.concurrency_reason 'same-session' 'antigravity own marker classified as same-session'
+    $writtenMarker = Get-SpecrewSessionMarker -MarkerPath $antiMarkerPath
+    Assert-Equal $writtenMarker.session_id 'anti-conv-1' 'antigravity marker stores the session id for subsequent turns'
 }
 finally {
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
