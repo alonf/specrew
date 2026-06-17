@@ -122,6 +122,21 @@ does not leak into the next plan.
   instructions or keep the machine-local label visible.
 - The next host-related slice should start with a coupling/firewall scan before
   code review, not as a late send-back repair.
+- Antigravity "full parity" is not fully achieved until iteration 002 lands.
+  The manual dogfood found three parity gaps that iteration 002 must carry:
+  persistent `AGENTS.md` instructions are not deployed on the hook-only path;
+  the bootstrap lacks a prominent "drive Specrew / do not run raw
+  `specify.exe workflow`" guard; and time-to-workshop is slow on Opus and
+  effectively undrivable on Flash.
+- Iteration 002 should confirm whether persistent host instruction deployment is
+  currently `specrew start`-only, then deploy the host-manifest
+  `InstructionsFile` during `specrew init` without clobbering user-owned
+  `AGENTS.md` content.
+- Iteration 002 should validate the anti-raw-Spec-Kit guard in real
+  Antigravity host tests: Opus 4.6 should reach the workshop faster, and Gemini
+  Flash should follow the governed workshop path without shelling out to
+  `specify.exe workflow`; if Flash still cannot drive it, keep the weak-model
+  caveat explicit.
 
 ## Calibration Suggestion
 

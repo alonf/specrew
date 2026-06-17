@@ -3,7 +3,7 @@
 **Schema**: v1
 **Feature**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/spec.md
 **Iteration**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/plan.md
-**Status**: review-signoff accepted; retro in progress
+**Status**: iteration-closeout prepared; awaiting human iteration-closeout verdict
 **Capacity**: 26/26 story_points
 
 ## Task Table

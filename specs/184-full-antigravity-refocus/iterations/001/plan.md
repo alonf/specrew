@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: retro
+**Status**: complete
 **Capacity**: 26/26 story_points
 **Started**: 2026-06-17
-**Completed**:
+**Completed**: 2026-06-17
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
@@ -159,5 +159,10 @@ TG-004/TG-005 -> T001/T008; TG-006 -> T006/T008.
   file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/implementation-completion-review-145.md.
 - Retro restored `.specrew/iteration-config.yml` to the baseline 20 SP cap after
   recording the F-184 26 SP override as historical calibration data.
-- Status is `retro` after review-signoff approval and the committed
-  abstraction-leak repair.
+- Status is `complete` for iteration 001 closeout preparation. The separate
+  iteration-closeout verdict is pending; feature 184 remains open and iteration
+  002 has not been opened.
+- Manual dogfood carry-forward for iteration 002: persistent host instructions
+  at `specrew init`, an anti-raw-`specify.exe workflow` guard, and Opus/Flash
+  Antigravity workshop validation. Antigravity "full parity" remains caveated
+  until that slice lands.

@@ -27020,3 +27020,35 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   3. At release, keep beta-before-stable, `MigrateLegacyTopLevelEventMap` legacy-upgrade validation, and reproducible
      `agy` evidence or explicit machine-local labeling as release-gate obligations.
 - **Disposition**: review-signoff approved; retro boundary opened. Iteration-closeout remains unopened until a fresh human verdict.
+
+## 2026-06-17 — F-184 iteration-001 retro approval
+
+### 2026-06-17 — Decision: approve retro; authorize iteration-closeout preparation only
+
+- **Decision ID**: f184-i001-retro-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\184-full-antigravity-refocus\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T12:18:08Z
+- **Verdict**: approved for retro.
+- **Decision**: Accept the retrospective after recording the temporary 26 SP historical truth,
+  restoring the project-global cap to 20, preserving the abstraction-leak lesson, and carrying
+  release validation obligations forward.
+- **Carried instructions**:
+  1. Amend the retro during closeout to add the three manual-dogfood findings: missing persistent
+     `AGENTS.md` deployment on the hook-only path; no prominent "drive Specrew / do not run raw
+     `specify.exe workflow`" guard; and slow-on-Opus / undrivable-on-Flash time-to-workshop.
+  2. Point each dogfood finding to iteration 002 and state plainly that Antigravity "full parity"
+     is not achieved until iteration 002 lands.
+  3. Generate the iteration-closeout dashboard and append the closed-iteration index, then stop for
+     a separate iteration-closeout verdict before opening iteration 002.
+- **Disposition**: retro approved; iteration-closeout preparation opened. Iteration 002 remains unopened until a fresh human verdict.
+
+## 2026-06-17T12:19:51Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 00d2b7bd
+- **Recorded At**: 2026-06-17T12:19:51Z

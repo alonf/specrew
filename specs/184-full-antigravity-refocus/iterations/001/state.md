@@ -1,24 +1,24 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
-**Last Completed Task**: T008
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: iteration-closeout preparation (2026-06-17) — retro was approved with carry-forward instructions; the closeout dashboard was rendered and the closed-iteration index was appended for the iteration-closeout verdict. Feature 184 remains open; iteration 002 is not opened until a separate approval.
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
-**Updated**: 2026-06-17T09:55:00Z
+**Updated**: 2026-06-17T12:18:08Z
 
 ## Execution Summary
 
 - Review-signoff was approved after the abstraction-leak send-back repair at
-  commit `8abc3d39`; the iteration is now in retro and awaiting the human retro
-  verdict before iteration-closeout.
+  commit `8abc3d39`; retro was approved with explicit carry-forward
+  instructions for iteration 002, and iteration 001 is now prepared for the
+  separate iteration-closeout verdict.
 - Iteration 001 uses a temporary 26 SP capacity override from the baseline 20 SP
   cap, authorized by the user's 2026-06-17 instruction to implement all known
   F-184 scope before the next human gate.
-- T001 discovery completed and passed all split-guard triggers. Runtime
-  implementation may proceed to T002.
+- T001 discovery completed and passed all split-guard triggers.
 - T002 completed: automated dispatcher evidence proves Antigravity
   `conversationId` keys the per-session refocus state, anchors on first
   `PreInvocation`, stays silent without a boundary cursor change, and does not
@@ -63,6 +63,10 @@
 - Release carry-forward remains open: beta-before-stable, legacy upgrade
   validation for `MigrateLegacyTopLevelEventMap`, and reproducible `agy`
   evidence or an explicit machine-local label.
+- Iteration 002 carry-forward remains open: persistent host instruction
+  deployment during `specrew init`, an anti-raw-`specify.exe workflow` guard,
+  and Antigravity workshop speed/weak-model validation. Antigravity "full
+  parity" is not fully achieved until that slice lands and is validated.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
@@ -82,11 +86,11 @@
 <!-- >>> specrew-managed resume-report >>> -->
 ## Resume Report
 
-- **Timestamp**: 2026-06-17T00:09:20Z
+- **Timestamp**: 2026-06-17T12:18:08Z
 - **Mode**: continue
 - **Status**: ready
-- **Last Completed Task**: T008
-- **Next Suggested Task**: retro verdict
+- **Last Completed Task**: iteration-closeout preparation
+- **Next Suggested Task**: iteration-closeout verdict
 - **Next Recovery Action**: (none)
 - **In-Progress Tasks**: (none)
 - **Remaining Tasks**: (none)

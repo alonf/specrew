@@ -102,3 +102,4 @@
 {"schema":"v1","recorded_at":"2026-06-16T23:56:06Z","event_type":"boundary-sync","payload":{"iteration_number":"001","boundary_type":"before-implement","task_id":null,"auth_commit_hash":"ed656671","feature_ref":"184-full-antigravity-refocus"}}
 {"event_type":"boundary-sync","payload":{"auth_commit_hash":"8abc3d39","task_id":null,"boundary_type":"review-signoff","iteration_number":"001","feature_ref":"184-full-antigravity-refocus"},"schema":"v1","recorded_at":"2026-06-17T09:47:07Z"}
 {"recorded_at":"2026-06-17T09:55:34Z","payload":{"feature_ref":"184-full-antigravity-refocus","boundary_type":"retro","task_id":null,"auth_commit_hash":"8abc3d39","iteration_number":"001"},"schema":"v1","event_type":"boundary-sync"}
+{"event_type":"boundary-sync","payload":{"iteration_number":"001","boundary_type":"iteration-closeout","task_id":null,"feature_ref":"184-full-antigravity-refocus","auth_commit_hash":"00d2b7bd"},"recorded_at":"2026-06-17T12:19:51Z","schema":"v1"}
