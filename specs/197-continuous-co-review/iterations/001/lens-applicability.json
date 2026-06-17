@@ -1,0 +1,24 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "co_design": true,
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "data-storage",
+    "security-compliance",
+    "integration-api",
+    "devops-operations",
+    "observability-resilience",
+    "code-implementation"
+  ],
+  "skipped": {
+    "ui-ux": "No app UI or user-facing screen is introduced in Iteration 001. User-facing behavior is CLI/artifact wording and review-thread/gate messages, covered by requirements-nfr, observability-resilience, devops-operations, and code-implementation."
+  },
+  "design_analysis": {
+    "decision": "Option B - layered reviewer-domain spine with static adapter registry",
+    "human_agreed": true,
+    "source": "specs/197-continuous-co-review/iterations/001/design-analysis.md"
+  }
+}
