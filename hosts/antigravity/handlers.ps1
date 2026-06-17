@@ -38,8 +38,10 @@ function New-AntigravityLaunchInvocation {
         [bool]$UseRemote = $false
     )
 
-    $hostCmd = Get-Command 'agy' -ErrorAction SilentlyContinue
-    $resolvedBinary = if ($null -ne $hostCmd) { $hostCmd.Source } else { 'agy' }
+    $manifest = Get-HostManifest -Kind 'antigravity'
+    $binaryName = [string]$manifest.Binary
+    $hostCmd = Get-Command $binaryName -ErrorAction SilentlyContinue
+    $resolvedBinary = if ($null -ne $hostCmd) { $hostCmd.Source } else { $binaryName }
 
     $argList = New-Object System.Collections.Generic.List[string]
     $notices = New-Object System.Collections.Generic.List[string]

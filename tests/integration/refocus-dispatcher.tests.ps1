@@ -52,10 +52,25 @@ function Invoke-Dispatcher {
     $stderrPath = Join-Path $scratchRoot 'stderr.txt'
     $stdinPath = Join-Path $scratchRoot 'stdin.json'
     [System.IO.File]::WriteAllText($stdinPath, ($StdinJson ?? ''), [System.Text.UTF8Encoding]::new($false))
+    $effectiveArgs = @($DispatcherArgs)
+    if ($effectiveArgs -notcontains '-HostBinding') {
+        $hostArgIndex = [array]::IndexOf($effectiveArgs, '-HostKind')
+        if ($hostArgIndex -ge 0 -and ($hostArgIndex + 1) -lt $effectiveArgs.Count) {
+            $manifestPath = Join-Path $repoRoot ("hosts\{0}\host.psd1" -f $effectiveArgs[$hostArgIndex + 1])
+            if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                $runtime = $manifest.RefocusHookBindings.DispatcherRuntime
+                if ($null -ne $runtime) {
+                    $binding = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($runtime | ConvertTo-Json -Depth 8 -Compress)))
+                    $effectiveArgs += @('-HostBinding', $binding)
+                }
+            }
+        }
+    }
     $saved = @{}
     foreach ($key in $ExtraEnv.Keys) { $saved[$key] = [Environment]::GetEnvironmentVariable($key); [Environment]::SetEnvironmentVariable($key, $ExtraEnv[$key]) }
     try {
-        $proc = Start-Process -FilePath 'pwsh' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Dispatcher) + $DispatcherArgs) `
+        $proc = Start-Process -FilePath 'pwsh' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Dispatcher) + $effectiveArgs) `
             -WorkingDirectory $WorkingDirectory -Wait -PassThru -NoNewWindow `
             -RedirectStandardInput $stdinPath -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
         return @{

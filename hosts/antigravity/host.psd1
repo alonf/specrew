@@ -40,6 +40,15 @@
         DefinitionName = 'specrew-refocus'
         DefinitionNameWhenOccupied = 'specrew-refocus-managed'
         CommandMode    = 'launcher-encoded'
+        DispatcherRuntime = @{
+            BootstrapDeliveryEvents = @('PreInvocation')
+            B3DeliveryEvents        = @('PreInvocation')
+            RefocusTriggerByEvent   = @{ PreInvocation = 'b3' }
+            SuppressedRefocusEvents = @('PostToolUse', 'UserPromptSubmit')
+            OutputShape             = 'injectSteps'
+            DecisionOnlyEvents      = @('Stop')
+            BootstrapDeliveryMode   = 'pointer'
+        }
         Registrations  = @(
             @{ Event = 'PreInvocation'; DispatcherEvent = 'PreInvocation'; HandlerShape = 'direct-command'; Timeout = 30 },
             @{ Event = 'Stop'; DispatcherEvent = 'Stop'; HandlerShape = 'direct-command'; Timeout = 30 }

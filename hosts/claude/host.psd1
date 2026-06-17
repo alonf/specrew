@@ -51,6 +51,15 @@
         CommandMode         = 'project-placeholder'
         ProjectDirPlaceholder = '${CLAUDE_PROJECT_DIR}'
         ProjectRootEnvironmentVariables = @('CLAUDE_PROJECT_DIR')
+        DispatcherRuntime   = @{
+            BootstrapDeliveryEvents = @('SessionStart')
+            B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
+            RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }
+            SuppressedRefocusEvents = @()
+            OutputShape             = 'plain-or-hookSpecificOutput'
+            DecisionOnlyEvents      = @()
+            BootstrapDeliveryMode   = 'pointer'
+        }
         Registrations       = @(
             @{ Event = 'SessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'hooks-array' },
             @{ Event = 'Stop'; DispatcherEvent = 'Stop'; HandlerShape = 'hooks-array' },

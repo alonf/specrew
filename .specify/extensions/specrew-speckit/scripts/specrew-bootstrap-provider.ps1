@@ -31,40 +31,66 @@ function Get-BootstrapProjectRoot {
 function Get-SpecrewContractDeliveryMode {
     # T007/M1 (F-174 iter-10): the ONE seam deciding how the SessionStart launch contract reaches the agent -
     # 'inline' (the full body in the directive) or 'pointer' (the agent reads .specrew/last-start-prompt.md).
-    # Default is BEHAVIOR-PRESERVING; flipping a host is a one-line change HERE.
-    #   claude  -> pointer. DISPROVEN 2026-06-14 (iter-11 real-host, Claude Code v2.1.177): SessionStart IS plain
-    #              STDOUT, but the host caps hook STDOUT at 10,000 chars too - an oversized payload is saved to a
-    #              file and the model receives only a ~2KB preview + a file pointer. CONFIRMED live: the ~58KB
-    #              inline-contract directive was dropped, the orientation banner never rendered. The earlier
-    #              "stdout has no additionalContext cap" premise was empirically WRONG. So claude joins the pointer
-    #              arm: the directive stays lean (the banner + BOUNDED resume context inline; the full ~45KB
-    #              contract pointed-at on disk). RESIDUAL (maintainer's call): claude skims past file pointers (the
-    #              iter-6 disproof), so in pointer mode the contract's user-profile/expertise adaptation (banner
-    #              item 3) is not read - it degrades to the /specrew-user-profile fallback. That is a graceful,
-    #              integrity-SAFE degrade (governance is SCRIPT-enforced, not directive-borne); the follow-up
-    #              option is to extract+inline JUST the small user-profile block to restore item 3.
-    #   codex   -> pointer. ROLLOUT-PROVEN 2026-06-10 to silently DROP the oversized (~50KB) SessionStart
-    #              additionalContext; codex reads files, so the lean pointer lands.
-    #   antigravity -> pointer. T006 binds the verified PreInvocation injectSteps path before real-host
-    #              parity evidence exists, so keep the hook output lean and put the full contract on disk.
-    #   copilot -> inline. UNVERIFIED drop. copilot/cursor deliver SessionStart via additionalContext /
-    #   cursor  -> inline. additional_context (the SAME mechanism codex drops). The host research matrix
-    #              (specs/171-specrew-refocus/research-matrix.md) records a 10k cap only for CLAUDE's
-    #              additionalContext - NONE is documented for copilot/cursor, and copilot rendered in-band in BOTH
-    #              the iter-8 and iter-11 dogfoods. An oversized drop is SUSPECTED (same mechanism) but UNPROVEN;
-    #              flipping on suspicion would regress a host that works, so they stay inline. TO FLIP once
-    #              confirmed on-host (both are in the dogfood loop): move the host into the pointer arm below.
-    #              Residual tracked in the T009 continuity docs. (NOTE: even inline hosts get the BOUNDED handover/
-    #              reconciliation below - that cap is mode-independent; only the 45KB contract is mode-gated.)
+    # Default is BEHAVIOR-PRESERVING through manifest data:
+    # hosts/<kind>/host.psd1 -> RefocusHookBindings.DispatcherRuntime.BootstrapDeliveryMode.
+    # The optional encoded binding is passed by deploy-refocus-hooks.ps1 so
+    # downstream deployed providers do not need the source tree beside them.
     [CmdletBinding()]
     [OutputType([string])]
-    param([Parameter(Mandatory)][string] $HostKind)
-    switch ($HostKind) {
-        'codex'       { return 'pointer' }
-        'claude'      { return 'pointer' }
-        'antigravity' { return 'pointer' }
-        default       { return 'inline' }   # copilot / cursor
+    param(
+        [Parameter(Mandatory)][string] $HostKind,
+        [AllowNull()][string] $HostBinding
+    )
+
+    $runtime = $null
+    if (-not [string]::IsNullOrWhiteSpace($HostBinding)) {
+        try {
+            $runtime = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($HostBinding)) | ConvertFrom-Json -ErrorAction Stop
+        }
+        catch { $runtime = $null }
     }
+
+    if ($null -eq $runtime) {
+        $manifestPath = $null
+        $cwd = $null
+        try { $cwd = (Get-Location).Path } catch { $cwd = $null }
+        foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $cwd)) {
+            if ([string]::IsNullOrWhiteSpace($start) -or -not (Test-Path -LiteralPath $start -PathType Container)) { continue }
+            $candidate = (Resolve-Path -LiteralPath $start).Path
+            while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+                $probe = Join-Path $candidate ("hosts/{0}/host.psd1" -f $HostKind)
+                if (Test-Path -LiteralPath $probe -PathType Leaf) { $manifestPath = $probe; break }
+                $parent = Split-Path -Parent $candidate
+                if ($parent -eq $candidate) { break }
+                $candidate = $parent
+            }
+            if ($manifestPath) { break }
+        }
+        if (-not $manifestPath) {
+            try {
+                $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+                    Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase ("hosts/{0}/host.psd1" -f $HostKind)) -PathType Leaf } |
+                    Select-Object -First 1
+                if ($module) { $manifestPath = Join-Path $module.ModuleBase ("hosts/{0}/host.psd1" -f $HostKind) }
+            }
+            catch { $manifestPath = $null }
+        }
+        if ($manifestPath) {
+            try {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                $runtime = $manifest.RefocusHookBindings.DispatcherRuntime
+            }
+            catch { $runtime = $null }
+        }
+    }
+
+    $mode = $null
+    if ($null -ne $runtime) {
+        if ($runtime -is [System.Collections.IDictionary] -and $runtime.Contains('BootstrapDeliveryMode')) { $mode = [string]$runtime['BootstrapDeliveryMode'] }
+        elseif ($runtime.PSObject.Properties['BootstrapDeliveryMode']) { $mode = [string]$runtime.BootstrapDeliveryMode }
+    }
+    if ($mode -in @('inline', 'pointer')) { return $mode }
+    return 'inline'
 }
 
 function Limit-SpecrewInlineBlock {
@@ -287,13 +313,15 @@ try {
     $eventJson = ''
     $rootOverride = $null
     $hostKind = 'claude'
+    $hostBinding = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKind = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--host-binding' -and ($i + 1) -lt $args.Count) { $hostBinding = [string]$args[$i + 1] }
     }
-    # Hooks only deploy for these kinds; an unknown value fails safe to the claude default.
-    if ($hostKind -notin @('claude', 'codex', 'copilot', 'cursor', 'antigravity')) { $hostKind = 'claude' }
+    # Hooks pass manifest folder names; malformed input fails safe to the default.
+    if ($hostKind -notmatch '^[A-Za-z0-9_.-]+$') { $hostKind = 'claude' }
 
     # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011).
     $source = $null
@@ -387,7 +415,7 @@ try {
 
     # Host delivery policy (DELIVERY only; contract FRAMING unchanged). The per-host inline-vs-pointer rule +
     # its rationale + the copilot/cursor UNVERIFIED-drop residual live in the ONE testable seam below (T007/M1).
-    $inlineContract = ((Get-SpecrewContractDeliveryMode -HostKind $hostKind) -eq 'inline')
+    $inlineContract = ((Get-SpecrewContractDeliveryMode -HostKind $hostKind -HostBinding $hostBinding) -eq 'inline')
     $directiveBody = if ($inlineContract) { $contractBody } else { '' }
 
     # F-174 T050 round-2: deterministic in-flight disk scan for the directive (the last-mile resume gap).

@@ -41,6 +41,15 @@
         ConfigShape    = 'event-map'
         CommandMode    = 'launcher-file'
         MigrateLegacyTopLevelEventMap = $true
+        DispatcherRuntime = @{
+            BootstrapDeliveryEvents = @('SessionStart')
+            B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
+            RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }
+            SuppressedRefocusEvents = @()
+            OutputShape             = 'hookSpecificOutput'
+            DecisionOnlyEvents      = @()
+            BootstrapDeliveryMode   = 'pointer'
+        }
         Registrations  = @(
             @{ Event = 'SessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'hooks-array'; Timeout = 30 },
             @{ Event = 'UserPromptSubmit'; DispatcherEvent = 'UserPromptSubmit'; HandlerShape = 'hooks-array'; Timeout = 30 },

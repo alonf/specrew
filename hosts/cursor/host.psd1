@@ -40,6 +40,15 @@
         CommandMode    = 'launcher-file'
         SettingsVersion = 1
         ProjectRootEnvironmentVariables = @('CURSOR_PROJECT_DIR', 'CLAUDE_PROJECT_DIR')
+        DispatcherRuntime = @{
+            BootstrapDeliveryEvents = @('SessionStart')
+            B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
+            RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }
+            SuppressedRefocusEvents = @()
+            OutputShape             = 'additional_context'
+            DecisionOnlyEvents      = @()
+            BootstrapDeliveryMode   = 'inline'
+        }
         Registrations  = @(
             @{ Event = 'sessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'command-entry' },
             @{ Event = 'stop'; DispatcherEvent = 'stop'; HandlerShape = 'command-entry' }

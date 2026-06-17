@@ -236,9 +236,9 @@ $antiStopCmd = [string]$anti.'specrew-refocus'.Stop[0].command
 $antiPreDecoded = Decode-EncodedPwshCommand -Command $antiPreCmd
 $antiStopDecoded = Decode-EncodedPwshCommand -Command $antiStopCmd
 Assert-True (Test-Path -LiteralPath (Join-Path $antiHome '.specrew\specrew-hook-launch.ps1') -PathType Leaf) 'antigravity: cwd-robust per-machine launcher generated'
-Assert-True ($antiPreCmd.Contains('-EncodedCommand') -and $antiPreDecoded.Contains('specrew-hook-launch.ps1') -and $antiPreDecoded.Contains("-Event 'PreInvocation'") -and $antiPreDecoded.Contains('-HostKind antigravity')) 'antigravity: PreInvocation command uses encoded cwd-robust launcher'
+Assert-True ($antiPreCmd.Contains('-EncodedCommand') -and $antiPreDecoded.Contains('specrew-hook-launch.ps1') -and $antiPreDecoded.Contains("-Event 'PreInvocation'") -and $antiPreDecoded.Contains('-HostKind antigravity') -and $antiPreDecoded.Contains('-HostBinding')) 'antigravity: PreInvocation command uses encoded cwd-robust launcher with manifest runtime binding'
 Assert-True (-not $antiPreCmd.Contains('./.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1')) 'antigravity: PreInvocation command does not depend on project-root cwd'
-Assert-True ($antiStopCmd.Contains('-EncodedCommand') -and $antiStopDecoded.Contains('specrew-hook-launch.ps1') -and $antiStopDecoded.Contains("-Event 'Stop'") -and $antiStopDecoded.Contains('-HostKind antigravity')) 'antigravity: Stop command dispatches through cwd-robust launcher'
+Assert-True ($antiStopCmd.Contains('-EncodedCommand') -and $antiStopDecoded.Contains('specrew-hook-launch.ps1') -and $antiStopDecoded.Contains("-Event 'Stop'") -and $antiStopDecoded.Contains('-HostKind antigravity') -and $antiStopDecoded.Contains('-HostBinding')) 'antigravity: Stop command dispatches through cwd-robust launcher with manifest runtime binding'
 $before = Get-Content -LiteralPath $antiPath -Raw
 $null = Invoke-Deploy -DeployArgs @('-HostKind', 'antigravity', '-UserHomeOverride', $antiHome)
 Assert-True ((Get-Content -LiteralPath $antiPath -Raw) -eq $before) 'antigravity: re-deploy byte-idempotent'

@@ -58,6 +58,31 @@ foreach ($kind in $registered) {
 }
 Write-Pass "All 5 manifests pass Test-HostManifestValid"
 
+# Test 2b: every hook-capable host carries dispatcher runtime policy in the manifest.
+# This keeps hook-event routing, output shape, and bootstrap pointer/inline policy out
+# of the shared dispatcher/bootstrap core.
+$validOutputShapes = @('plain-or-hookSpecificOutput', 'hookSpecificOutput', 'additionalContext', 'additional_context', 'injectSteps')
+$validDeliveryModes = @('inline', 'pointer')
+foreach ($kind in @(Get-SpecrewHookCapableHosts)) {
+    $manifest = Get-HostManifest -Kind $kind
+    $runtime = $manifest.RefocusHookBindings.DispatcherRuntime
+    if ($null -eq $runtime) {
+        Write-Fail "Hook-capable host '$kind' is missing RefocusHookBindings.DispatcherRuntime."
+    }
+    foreach ($field in @('BootstrapDeliveryEvents', 'B3DeliveryEvents', 'OutputShape', 'BootstrapDeliveryMode')) {
+        if (-not $runtime.ContainsKey($field) -or $null -eq $runtime[$field]) {
+            Write-Fail "Host '$kind' DispatcherRuntime missing '$field'."
+        }
+    }
+    if ([string]$runtime.OutputShape -notin $validOutputShapes) {
+        Write-Fail "Host '$kind' DispatcherRuntime.OutputShape '$($runtime.OutputShape)' is not valid."
+    }
+    if ([string]$runtime.BootstrapDeliveryMode -notin $validDeliveryModes) {
+        Write-Fail "Host '$kind' DispatcherRuntime.BootstrapDeliveryMode '$($runtime.BootstrapDeliveryMode)' is not valid."
+    }
+}
+Write-Pass "All hook-capable hosts declare manifest-driven dispatcher runtime policy"
+
 # Test 3: registry parity with legacy Get-SpecrewSupportedHostKinds
 $legacy = @(Get-SpecrewSupportedHostKinds | Sort-Object)
 $registry = @(Get-RegisteredHostKinds | Sort-Object)

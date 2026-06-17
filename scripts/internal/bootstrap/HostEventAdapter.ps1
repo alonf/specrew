@@ -57,7 +57,7 @@ function ConvertFrom-SpecrewHostHookEvent {
         # Raw hook event payload as the host emits it (JSON text). Empty/garbage is tolerated.
         [Parameter(Mandatory)][AllowEmptyString()][string] $RawEvent,
         # The launching host. ('Host' is a PowerShell automatic variable, so this is HostName.)
-        [Parameter(Mandatory)][ValidateSet('claude', 'codex', 'copilot', 'cursor', 'antigravity')][string] $HostName,
+        [Parameter(Mandatory)][ValidatePattern('^[A-Za-z0-9_.-]+$')][string] $HostName,
         # Optional explicit project root; falls back to the event's cwd.
         [Parameter()][string] $ProjectRoot
     )

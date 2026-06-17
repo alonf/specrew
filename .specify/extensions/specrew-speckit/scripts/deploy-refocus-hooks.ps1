@@ -41,6 +41,13 @@ function Get-ManifestValue {
     return $Map.PSObject.Properties[$Key].Value
 }
 
+function Get-ManifestKeys {
+    param($Map)
+    if ($null -eq $Map) { return @() }
+    if ($Map -is [System.Collections.IDictionary]) { return @($Map.Keys) }
+    return @($Map.PSObject.Properties | ForEach-Object { $_.Name })
+}
+
 function Find-HostManifestPath {
     param([string]$Kind)
     foreach ($start in @($PSScriptRoot, $projectRoot)) {
@@ -111,6 +118,29 @@ function Resolve-ProjectPathFromManifest {
     return (Join-Path $projectRoot $RelativePath)
 }
 
+function Get-HostRuntimeBindingEncoded {
+    param($Bindings)
+    if (-not (Test-ManifestKey -Map $Bindings -Key 'DispatcherRuntime')) { return $null }
+    $runtime = Get-ManifestValue -Map $Bindings -Key 'DispatcherRuntime'
+    if ($null -eq $runtime) { return $null }
+    $triggerMap = [ordered]@{}
+    $rawTriggerMap = Get-ManifestValue -Map $runtime -Key 'RefocusTriggerByEvent' -Default @{}
+    foreach ($key in @(Get-ManifestKeys -Map $rawTriggerMap | Sort-Object)) {
+        $triggerMap[[string]$key] = [string](Get-ManifestValue -Map $rawTriggerMap -Key ([string]$key))
+    }
+    $stableRuntime = [ordered]@{
+        BootstrapDeliveryEvents = @(Get-ManifestValue -Map $runtime -Key 'BootstrapDeliveryEvents' -Default @())
+        B3DeliveryEvents        = @(Get-ManifestValue -Map $runtime -Key 'B3DeliveryEvents' -Default @())
+        RefocusTriggerByEvent   = $triggerMap
+        SuppressedRefocusEvents = @(Get-ManifestValue -Map $runtime -Key 'SuppressedRefocusEvents' -Default @())
+        OutputShape             = [string](Get-ManifestValue -Map $runtime -Key 'OutputShape' -Default 'plain-or-hookSpecificOutput')
+        DecisionOnlyEvents      = @(Get-ManifestValue -Map $runtime -Key 'DecisionOnlyEvents' -Default @())
+        BootstrapDeliveryMode   = [string](Get-ManifestValue -Map $runtime -Key 'BootstrapDeliveryMode' -Default 'inline')
+    }
+    $json = $stableRuntime | ConvertTo-Json -Depth 8 -Compress
+    return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
+}
+
 if ([string]::IsNullOrWhiteSpace($HostKind)) {
     $HostKind = Get-DefaultHookHostKind
 }
@@ -139,6 +169,7 @@ $ownsSettingsFile = (Test-ManifestKey -Map $hookBindings -Key 'OwnsSettingsFile'
 $migrateLegacyTopLevelEventMap = (Test-ManifestKey -Map $hookBindings -Key 'MigrateLegacyTopLevelEventMap') -and [bool](Get-ManifestValue -Map $hookBindings -Key 'MigrateLegacyTopLevelEventMap')
 $definitionName = [string](Get-ManifestValue -Map $hookBindings -Key 'DefinitionName')
 $definitionNameWhenOccupied = [string](Get-ManifestValue -Map $hookBindings -Key 'DefinitionNameWhenOccupied')
+$hostRuntimeBinding = Get-HostRuntimeBindingEncoded -Bindings $hookBindings
 $launcherModulePath = $null
 if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH) -and (Test-Path -LiteralPath $env:SPECREW_MODULE_PATH -PathType Container)) {
     $launcherModulePath = (Resolve-Path -LiteralPath $env:SPECREW_MODULE_PATH).Path
@@ -159,6 +190,12 @@ function Get-SpecrewHookCommand {
     else {
         ''
     }
+    $hostBindingArg = if (-not [string]::IsNullOrWhiteSpace($hostRuntimeBinding)) {
+        ' -HostBinding "' + $hostRuntimeBinding + '"'
+    }
+    else {
+        ''
+    }
     switch ($hookCommandMode) {
         'project-placeholder' {
             $placeholder = [string](Get-ManifestValue -Map $hookBindings -Key 'ProjectDirPlaceholder' -Default '')
@@ -166,10 +203,10 @@ function Get-SpecrewHookCommand {
                 throw "Host manifest '$hostManifestPath' uses CommandMode=project-placeholder but has no ProjectDirPlaceholder."
             }
             $target = $placeholder.TrimEnd('/', '\') + '/' + $dispatcherRelPath
-            return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}' -f $target, $EventName, $HostKind)
+            return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}{3}' -f $target, $EventName, $HostKind, $hostBindingArg)
         }
         'launcher-file' {
-            return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}{3}' -f $launcherPath, $EventName, $HostKind, $modulePathArg)
+            return ('pwsh -NoProfile -ExecutionPolicy Bypass -File "{0}" -Event {1} -HostKind {2}{3}{4}' -f $launcherPath, $EventName, $HostKind, $modulePathArg, $hostBindingArg)
         }
         'launcher-encoded' {
             $escapedLauncher = $launcherPath.Replace("'", "''")
@@ -178,7 +215,11 @@ function Get-SpecrewHookCommand {
             if (-not [string]::IsNullOrWhiteSpace($launcherModulePath)) {
                 $modulePathEncodedArg = " -ModulePath '" + ($launcherModulePath.Replace("'", "''")) + "'"
             }
-            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes(("& '{0}' -Event '{1}' -HostKind {2}{3}" -f $escapedLauncher, $escapedEvent, $HostKind, $modulePathEncodedArg)))
+            $hostBindingEncodedArg = ''
+            if (-not [string]::IsNullOrWhiteSpace($hostRuntimeBinding)) {
+                $hostBindingEncodedArg = " -HostBinding '" + ($hostRuntimeBinding.Replace("'", "''")) + "'"
+            }
+            $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes(("& '{0}' -Event '{1}' -HostKind {2}{3}{4}" -f $escapedLauncher, $escapedEvent, $HostKind, $modulePathEncodedArg, $hostBindingEncodedArg)))
             return ('pwsh -NoProfile -ExecutionPolicy Bypass -EncodedCommand {0}' -f $encoded)
         }
         default {
@@ -267,6 +308,7 @@ function Install-HookLauncher {
 param(
     [Parameter(Mandatory = $true)][string]$Event,
     [string]$HostKind = 'unknown',
+    [string]$HostBinding,
     [string]$ModulePath,
     [int]$ProviderTimeoutSeconds = 20
 )
@@ -344,6 +386,7 @@ if ([string]::IsNullOrWhiteSpace($dispatcher)) { exit 0 }   # no project resolva
 # flows through this process to the host. Always exit 0.
 $dispatchArgs = @{ Event = $Event; HostKind = $HostKind; ProviderTimeoutSeconds = $ProviderTimeoutSeconds }
 if (-not [string]::IsNullOrWhiteSpace($raw)) { $dispatchArgs['EventJson'] = $raw }
+if (-not [string]::IsNullOrWhiteSpace($HostBinding)) { $dispatchArgs['HostBinding'] = $HostBinding }
 try { & $dispatcher @dispatchArgs }
 catch { [Console]::Error.WriteLine("[specrew-refocus] WARN LAUNCH_FAILED $($_.Exception.Message)") }
 exit 0

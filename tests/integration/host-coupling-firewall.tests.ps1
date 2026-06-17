@@ -92,10 +92,38 @@ if ($violations.Count -gt 0) {
     }
     Write-Host ''
     Write-Host "To resolve: replace the hardcoded enum with Get-RegisteredHostKinds (from hosts/_registry.ps1) OR add the file to the allow-list with a documented exception." -ForegroundColor Yellow
-    Write-Fail ("Found {0} hardcoded-enum violation(s) across {1} file(s)." -f $violations.Count, ($violations.File | Sort-Object -Unique).Count)
+    $violationFiles = @($violations | ForEach-Object { $_.File } | Sort-Object -Unique)
+    Write-Fail ("Found {0} hardcoded-enum violation(s) across {1} file(s)." -f $violations.Count, $violationFiles.Count)
 }
 
 Write-Pass ("No hardcoded host-enum violations across {0} scanned production .ps1 file(s) (allow-list: {1} known)." -f $scriptFiles.Count, $allowListExact.Count)
+
+# F-184 sendback guard: shared hook/bootstrap core may receive a HostKind value,
+# but host routing/output policy must come from RefocusHookBindings.DispatcherRuntime,
+# not from Antigravity/agy literals in core conditionals.
+$forbiddenCorePatterns = @(
+    "Get-Command 'agy'",
+    "Get-Command `"agy`"",
+    "TargetHost -eq 'antigravity'",
+    "HostKind -eq 'antigravity'",
+    "'antigravity' {",
+    "hostKind -notin @('claude', 'codex', 'copilot', 'cursor', 'antigravity')",
+    "antigravity' { return 'pointer'"
+)
+foreach ($coreRel in @(
+        'scripts/internal/specrew-hook-dispatcher.ps1',
+        'scripts/internal/specrew-bootstrap-provider.ps1',
+        'scripts/internal/deploy-refocus-hooks.ps1'
+    )) {
+    $corePath = Join-Path $repoRoot $coreRel
+    $coreText = Get-Content -LiteralPath $corePath -Raw
+    foreach ($pattern in $forbiddenCorePatterns) {
+        if ($coreText.Contains($pattern)) {
+            Write-Fail "Forbidden host abstraction leak in ${coreRel}: $pattern"
+        }
+    }
+}
+Write-Pass 'Shared hook/bootstrap core has no Antigravity/agy routing literals; it consumes manifest runtime policy'
 
 # Bonus check: manifest-completeness — every supported host should have InstructionsFile set
 # (caught the Antigravity drift in the deep-review audit).

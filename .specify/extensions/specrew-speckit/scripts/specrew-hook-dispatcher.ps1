@@ -20,10 +20,11 @@ param(
     [Parameter(Mandatory = $true)][string]$Event,
     [string]$EventJson,
     [int]$ProviderTimeoutSeconds = 20,
+    [string]$HostBinding,
     # T014: per-host event/output shaping. The neutral -Event vocabulary stays
     # host-blind (SessionStart | PostToolUse | UserPromptSubmit | PreToolUse);
     # the BINDING (per-host hook config) names both when it registers.
-    [ValidateSet('claude', 'codex', 'copilot', 'cursor', 'antigravity')][string]$HostKind = 'claude'
+    [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$HostKind = 'claude'
 )
 
 # KILL SWITCH FIRST (FR-008): this check must precede ANY logic that could itself
@@ -157,15 +158,114 @@ function New-GovernedProviderFailureFallback {
     ) -join "`n")
 }
 
+function Test-DispatcherMapKey {
+    param($Map, [string]$Key)
+    if ($null -eq $Map) { return $false }
+    if ($Map -is [System.Collections.IDictionary]) { return $Map.Contains($Key) }
+    return ($null -ne $Map.PSObject.Properties[$Key])
+}
+
+function Get-DispatcherMapValue {
+    param($Map, [string]$Key, $Default = $null)
+    if (-not (Test-DispatcherMapKey -Map $Map -Key $Key)) { return $Default }
+    if ($Map -is [System.Collections.IDictionary]) { return $Map[$Key] }
+    return $Map.PSObject.Properties[$Key].Value
+}
+
+function ConvertTo-DispatcherStringArray {
+    param($Value)
+    if ($null -eq $Value) { return @() }
+    return @($Value | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+}
+
+function ConvertFrom-DispatcherRuntimeBinding {
+    param($Runtime)
+    $defaultTriggers = [pscustomobject]@{}
+    return [pscustomobject]@{
+        BootstrapDeliveryEvents = $(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $Runtime -Key 'BootstrapDeliveryEvents' -Default @('SessionStart')))
+        B3DeliveryEvents        = $(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $Runtime -Key 'B3DeliveryEvents' -Default @('PostToolUse', 'UserPromptSubmit')))
+        RefocusTriggerByEvent   = Get-DispatcherMapValue -Map $Runtime -Key 'RefocusTriggerByEvent' -Default $defaultTriggers
+        SuppressedRefocusEvents = $(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $Runtime -Key 'SuppressedRefocusEvents' -Default @()))
+        OutputShape             = [string](Get-DispatcherMapValue -Map $Runtime -Key 'OutputShape' -Default 'plain-or-hookSpecificOutput')
+        DecisionOnlyEvents      = $(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $Runtime -Key 'DecisionOnlyEvents' -Default @()))
+        BootstrapDeliveryMode   = [string](Get-DispatcherMapValue -Map $Runtime -Key 'BootstrapDeliveryMode' -Default 'inline')
+    }
+}
+
+function Find-DispatcherHostManifestPath {
+    param([string]$Kind, [AllowNull()][string]$ProjectRoot)
+    $starts = New-Object System.Collections.Generic.List[string]
+    foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot)) {
+        if (-not [string]::IsNullOrWhiteSpace($start) -and (Test-Path -LiteralPath $start -PathType Container)) {
+            $starts.Add((Resolve-Path -LiteralPath $start).Path) | Out-Null
+        }
+    }
+    foreach ($start in $starts.ToArray()) {
+        $candidate = $start
+        while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            $probe = Join-Path $candidate ("hosts/{0}/host.psd1" -f $Kind)
+            if (Test-Path -LiteralPath $probe -PathType Leaf) { return $probe }
+            $parent = Split-Path -Parent $candidate
+            if ($parent -eq $candidate) { break }
+            $candidate = $parent
+        }
+    }
+    try {
+        $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase ("hosts/{0}/host.psd1" -f $Kind)) -PathType Leaf } |
+            Select-Object -First 1
+        if ($module) { return (Join-Path $module.ModuleBase ("hosts/{0}/host.psd1" -f $Kind)) }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Resolve-DispatcherHostRuntimeBinding {
+    param(
+        [string]$Kind,
+        [AllowNull()][string]$ProjectRoot,
+        [AllowNull()][string]$EncodedBinding
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($EncodedBinding)) {
+        try {
+            $json = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($EncodedBinding))
+            return (ConvertFrom-DispatcherRuntimeBinding -Runtime ($json | ConvertFrom-Json -ErrorAction Stop))
+        }
+        catch {
+            Write-DispatcherWarn -Code 'HOST_BINDING' -Message ("runtime binding for host '{0}' is unreadable; trying manifest fallback" -f $Kind)
+        }
+    }
+
+    $manifestPath = Find-DispatcherHostManifestPath -Kind $Kind -ProjectRoot $ProjectRoot
+    if (-not [string]::IsNullOrWhiteSpace($manifestPath)) {
+        try {
+            $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+            $hookBindings = Get-DispatcherMapValue -Map $manifest -Key 'RefocusHookBindings'
+            $runtime = Get-DispatcherMapValue -Map $hookBindings -Key 'DispatcherRuntime'
+            if ($null -ne $runtime) { return (ConvertFrom-DispatcherRuntimeBinding -Runtime $runtime) }
+        }
+        catch {
+            Write-DispatcherWarn -Code 'HOST_BINDING' -Message ("manifest runtime binding for host '{0}' is unreadable; using dispatcher defaults" -f $Kind)
+        }
+    }
+
+    return (ConvertFrom-DispatcherRuntimeBinding -Runtime ([pscustomobject]@{}))
+}
+
+function Test-DispatcherEventInList {
+    param([string]$EventName, [string[]]$Events)
+    return (@($Events) -contains $EventName)
+}
+
 function Test-IsBootstrapDeliveryEvent {
-    param([string]$EventName, [string]$TargetHost)
-    return ($EventName -eq 'SessionStart' -or ($TargetHost -eq 'antigravity' -and $EventName -eq 'PreInvocation'))
+    param([string]$EventName, $Binding)
+    return (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'BootstrapDeliveryEvents' -Default @('SessionStart')))
 }
 
 function Test-IsB3DeliveryEvent {
-    param([string]$EventName, [string]$TargetHost)
-    if ($TargetHost -eq 'antigravity') { return ($EventName -eq 'PreInvocation') }
-    return ($EventName -in @('PostToolUse', 'UserPromptSubmit'))
+    param([string]$EventName, $Binding)
+    return (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'B3DeliveryEvents' -Default @('PostToolUse', 'UserPromptSubmit')))
 }
 
 function Get-DispatcherProjectRoot {
@@ -528,29 +628,30 @@ function Set-BreakerTripped {
 }
 
 function Get-RefocusProviderArgs {
-    param([string]$EventName, [AllowNull()][string]$Source, [string]$TargetHost = 'claude')
+    param([string]$EventName, [AllowNull()][string]$Source, $Binding)
     # RefocusProvider routing (FR-009 surface; B3 state-diff lands in T007):
     #   SessionStart source: compact            -> B1 (general + current stage)
     #   SessionStart source: startup|resume|clear -> B2 (launch grounding)
-    #   PostToolUse                              -> B3 (boundary-cross; T007 gates
+    #   Host-defined B3 events                   -> B3 (boundary-cross; T007 gates
     #                                               this behind the state-diff)
-    #   Antigravity PreInvocation                -> B3 (its proven injectSteps carrier;
-    #                                               PostToolUse rejects injectSteps)
-    if ($TargetHost -eq 'antigravity' -and $EventName -eq 'PreInvocation') { return @('--trigger', 'b3') }
-    if ($TargetHost -eq 'antigravity' -and $EventName -in @('PostToolUse', 'UserPromptSubmit')) { return $null }
-    switch ($EventName) {
-        'SessionStart' {
-            if ($Source -eq 'compact') { return @('--trigger', 'b1') }
-            return @('--trigger', 'b2')
-        }
-        'PostToolUse' { return @('--trigger', 'b3') }
-        'UserPromptSubmit' { return @('--trigger', 'b3') }   # the per-human-prompt B3 carrier (T013 latency analysis)
-        default { return $null }
+    if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'SuppressedRefocusEvents' -Default @())) {
+        return $null
     }
+    if ($EventName -eq 'SessionStart') {
+        if ($Source -eq 'compact') { return @('--trigger', 'b1') }
+        return @('--trigger', 'b2')
+    }
+    $triggerMap = Get-DispatcherMapValue -Map $Binding -Key 'RefocusTriggerByEvent' -Default ([pscustomobject]@{})
+    $explicitTrigger = Get-DispatcherMapValue -Map $triggerMap -Key $EventName
+    if (-not [string]::IsNullOrWhiteSpace([string]$explicitTrigger)) {
+        return @('--trigger', [string]$explicitTrigger)
+    }
+    if (Test-IsB3DeliveryEvent -EventName $EventName -Binding $Binding) { return @('--trigger', 'b3') }
+    return $null
 }
 
 function Write-InjectionOutput {
-    param([string]$EventName, [string]$Payload, [string]$TargetHost = 'claude')
+    param([string]$EventName, [string]$Payload, $Binding)
     # F-174 iter-11 (P2): cap-overflow observability. Every current hook host caps its output (claude STDOUT +
     # additionalContext at 10,000 chars on v2.1.177; codex drops oversized additionalContext; copilot/cursor
     # caps unverified-but-suspected). When the ASSEMBLED payload (all provider fragments joined - the bootstrap
@@ -562,35 +663,32 @@ function Write-InjectionOutput {
     if (-not [string]::IsNullOrEmpty($Payload) -and $Payload.Length -gt 10000) {
         Write-DispatcherWarn -Code 'PAYLOAD_OVERSIZE' -Message ("assembled {0} payload is {1} chars (> the 10000 host hook-output cap); the host will drop it to a file + preview and the directive may not reach the model - a provider's inlined content needs tightening (F-174 P2)" -f $EventName, $Payload.Length)
     }
-    # Per-host event output shaping (C2; contracts per the T013 research matrix,
-    # all fetched live 2026-06-07):
-    #   claude  : SessionStart -> plain stdout (added to context);
-    #             PostToolUse / UserPromptSubmit -> hookSpecificOutput.additionalContext
-    #   codex   : hookSpecificOutput.additionalContext (WITH hookEventName). The flat { additionalContext }
-    #             form (which copilot accepts) is silently IGNORED by codex - the hook runs but its output
-    #             never reaches the agent (2026-06-10 dogfood: journal written, but no context injected).
-    #             Per developers.openai.com/codex/hooks the SessionStart output schema is hookSpecificOutput.
-    #   copilot : additionalContext JSON (camelCase reference contract)
-    #   cursor  : additional_context JSON (snake_case official contract)
-    switch ($TargetHost) {
-        'antigravity' {
-            if ($EventName -eq 'Stop') {
-                @{ decision = 'allow' } | ConvertTo-Json -Depth 3 -Compress | Write-Output
-            }
-            elseif ($EventName -eq 'PreInvocation' -and -not [string]::IsNullOrWhiteSpace($Payload)) {
+    # Per-host event output shaping (C2) is manifest data
+    # (RefocusHookBindings.DispatcherRuntime.OutputShape). The dispatcher only
+    # knows generic envelope strategies; adding or changing a host updates the
+    # manifest, not this core switch.
+    if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
+        @{ decision = 'allow' } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+        return
+    }
+
+    $outputShape = [string](Get-DispatcherMapValue -Map $Binding -Key 'OutputShape' -Default 'plain-or-hookSpecificOutput')
+    switch ($outputShape) {
+        'injectSteps' {
+            if (-not [string]::IsNullOrWhiteSpace($Payload)) {
                 @{ injectSteps = @(@{ ephemeralMessage = $Payload }) } | ConvertTo-Json -Depth 6 -Compress | Write-Output
             }
             else {
                 @{} | ConvertTo-Json -Depth 3 -Compress | Write-Output
             }
         }
-        'codex' {
+        'hookSpecificOutput' {
             @{ hookSpecificOutput = @{ hookEventName = $EventName; additionalContext = $Payload } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
         }
-        'copilot' {
+        'additionalContext' {
             @{ additionalContext = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
         }
-        'cursor' {
+        'additional_context' {
             @{ additional_context = $Payload } | ConvertTo-Json -Depth 3 -Compress | Write-Output
         }
         default {
@@ -643,6 +741,7 @@ try {
 
     $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
     if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) { exit 0 }
+    $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
 
     Remove-StaleSessionState -ProjectRoot $projectRoot
 
@@ -665,7 +764,7 @@ try {
     }
     $stateDirty = $false
     # The refocus trigger this event maps to (journal attribution).
-    $eventTrigger = if (Test-IsB3DeliveryEvent -EventName $Event -TargetHost $HostKind) { 'b3' } elseif ($source -eq 'compact') { 'b1' } else { 'b2' }
+    $eventTrigger = if (Test-IsB3DeliveryEvent -EventName $Event -Binding $hostRuntimeBinding) { 'b3' } elseif ($source -eq 'compact') { 'b1' } else { 'b2' }
 
     # Providers for THIS event, deterministic order (the host runs parallel hooks
     # unordered; Specrew owns ordering internally — the lens-2 dispatcher decision).
@@ -681,7 +780,7 @@ try {
         $commandPath = Resolve-ProviderCommandPath -ProjectRoot $projectRoot -Command ([string]$provider.command)
         if ($null -eq $commandPath) {
             Write-DispatcherWarn -Code 'SOURCE_CONFINED' -Message ("provider '{0}' command does not resolve under the deployed tree; skipped" -f $providerId)
-            if ((Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) -and $providerId -in @('bootstrap', 'refocus')) {
+            if ((Test-IsBootstrapDeliveryEvent -EventName $Event -Binding $hostRuntimeBinding) -and $providerId -in @('bootstrap', 'refocus')) {
                 $failedSessionStartProviders.Add($providerId) | Out-Null
             }
             continue
@@ -716,7 +815,7 @@ try {
             }
             # B3 gating (T007, FR-009): watch the boundary cursor, dedupe against
             # the channel-1 fingerprint, anchor on first sight.
-            if (Test-IsB3DeliveryEvent -EventName $Event -TargetHost $HostKind) {
+            if (Test-IsB3DeliveryEvent -EventName $Event -Binding $hostRuntimeBinding) {
                 $b3 = Test-B3ShouldInject -ProjectRoot $projectRoot -SessionState $sessionState
                 $sessionState = $b3.State
                 $stateDirty = $true
@@ -739,7 +838,7 @@ try {
                 $stateDirty = $true
                 continue
             }
-            $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source -TargetHost $HostKind
+            $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source -Binding $hostRuntimeBinding
         }
         else {
             # Pass the resolved host so the provider can shape host-aware delivery (F-174 codex fix: codex
@@ -762,6 +861,9 @@ try {
             }
             else {
                 @('--event-json', ($rawEvent ?? ''), '--host-kind', $HostKind, '--source-event', $Event)
+            }
+            if (-not [string]::IsNullOrWhiteSpace($HostBinding)) {
+                $commandArgs += @('--host-binding', $HostBinding)
             }
             # F-174 iter-10 (T002): also extract the conversation transcript_path from the INTACT stdin event and
             # pass it as its own CLEAN arg, so the handover provider captures the conversation tail without
@@ -789,7 +891,7 @@ try {
             elseif ($result.LaunchFailed) { "failed to launch: $($result.StdErr)" }
             else { "exited $($result.ExitCode)" }
             Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("provider '{0}' {1}; skipped" -f $providerId, $why)
-            if ((Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) -and $providerId -in @('bootstrap', 'refocus')) {
+            if ((Test-IsBootstrapDeliveryEvent -EventName $Event -Binding $hostRuntimeBinding) -and $providerId -in @('bootstrap', 'refocus')) {
                 $failedSessionStartProviders.Add($providerId) | Out-Null
             }
             if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
@@ -807,7 +909,7 @@ try {
                 $stateDirty = $true
             }
         }
-        if ((Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) -and $providerId -in @('bootstrap', 'refocus') -and $result.StdErr -match '\bPROVIDER_FAILED\b') {
+        if ((Test-IsBootstrapDeliveryEvent -EventName $Event -Binding $hostRuntimeBinding) -and $providerId -in @('bootstrap', 'refocus') -and $result.StdErr -match '\bPROVIDER_FAILED\b') {
             $failedSessionStartProviders.Add($providerId) | Out-Null
         }
         if (-not [string]::IsNullOrWhiteSpace($result.StdErr)) {
@@ -820,7 +922,7 @@ try {
         Save-SessionState -Path $sessionStatePath -State $sessionState
     }
 
-    if ((Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) -and $failedSessionStartProviders.Count -gt 0) {
+    if ((Test-IsBootstrapDeliveryEvent -EventName $Event -Binding $hostRuntimeBinding) -and $failedSessionStartProviders.Count -gt 0) {
         $hasBootstrap = @($fragments | Where-Object { [string]$_.ProviderId -eq 'bootstrap' }).Count -gt 0
         if (-not $hasBootstrap) {
             $fragments.Add((New-DispatcherFragment -ProviderId 'fallback' -Text (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders $failedSessionStartProviders.ToArray()) -Order 0)) | Out-Null
@@ -828,20 +930,21 @@ try {
     }
 
     if ($fragments.Count -gt 0) {
-        Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -TargetHost $HostKind
+        Write-InjectionOutput -EventName $Event -Payload (Join-DispatcherFragments -Fragments $fragments.ToArray() -EventName $Event) -Binding $hostRuntimeBinding
     }
-    elseif ($HostKind -eq 'antigravity' -and $Event -eq 'Stop') {
-        Write-InjectionOutput -EventName $Event -Payload '' -TargetHost $HostKind
+    elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {
+        Write-InjectionOutput -EventName $Event -Payload '' -Binding $hostRuntimeBinding
     }
     exit 0
 }
 catch {
     Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("dispatcher fail-open: {0}" -f $_.Exception.Message)
-    if (Test-IsBootstrapDeliveryEvent -EventName $Event -TargetHost $HostKind) {
-        Write-InjectionOutput -EventName $Event -Payload (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders @('dispatcher')) -TargetHost $HostKind
+    $catchRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $null -EncodedBinding $HostBinding
+    if (Test-IsBootstrapDeliveryEvent -EventName $Event -Binding $catchRuntimeBinding) {
+        Write-InjectionOutput -EventName $Event -Payload (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders @('dispatcher')) -Binding $catchRuntimeBinding
     }
-    elseif ($HostKind -eq 'antigravity' -and $Event -eq 'Stop') {
-        Write-InjectionOutput -EventName $Event -Payload '' -TargetHost $HostKind
+    elseif (Test-DispatcherEventInList -EventName $Event -Events @(Get-DispatcherMapValue -Map $catchRuntimeBinding -Key 'DecisionOnlyEvents' -Default @())) {
+        Write-InjectionOutput -EventName $Event -Payload '' -Binding $catchRuntimeBinding
     }
     exit 0
 }
