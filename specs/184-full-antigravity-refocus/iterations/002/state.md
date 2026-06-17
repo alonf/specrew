@@ -2,12 +2,12 @@
 
 **Schema**: v1
 **Current Phase**: plan
-**Iteration Status**: specify-approved
-**Last Completed Task**: specify boundary approved
-**Tasks Remaining**: (not planned yet)
+**Iteration Status**: planning
+**Last Completed Task**: specify boundary committed at 2d65f3ed
+**Tasks Remaining**: T001, T002, T003, T004, T005, T006
 **In Progress**: (none)
 **Baseline Ref**: abf18b99
-**Updated**: 2026-06-17T14:39:12Z
+**Updated**: 2026-06-17T15:16:09Z
 
 ## Charter
 
@@ -51,10 +51,10 @@ code-implementation. The records therefore use `human-confirmed` /
 
 ## Next Action
 
-Specify is approved content-wise and must be committed as a focused
-`boundary(specify)` commit before planning advances. The next boundary is plan
-for the iteration 002 scope; do not implement, open feature-closeout, or start
-release work without the next explicit human verdict.
+Present the iteration 002 plan boundary for human verdict. The plan is
+materialized in `plan.md`, stays at `Status: planning`, and totals 20/20
+story_points. Approval advances to tasks only; do not implement, open
+feature-closeout, or start release work without the next explicit human verdict.
 
 ## Carry Into Plan
 
@@ -76,10 +76,14 @@ release work without the next explicit human verdict.
 - Preserve user-owned instruction-file content; only the Specrew-owned section
   may be replaced.
 - Keep the host-coupling firewall green.
+- Planning scaffold helper was attempted but failed before writing `plan.md` on
+  an existing StrictMode `.Count` issue; the plan artifact was authored directly
+  and records this as a non-blocking planning note.
 - Artifact-local checks passed for lens JSON shape/provenance, stale delegated
   workshop records, old single-file/deploy-path wording, and whitespace diff.
-  Scoped governance validation is not green yet because iteration 002 has no
-  `plan.md`; that is expected until the next plan boundary materializes it.
+  Plan-boundary checks now pass for capacity arithmetic, traceability, host
+  coupling firewall baseline, scoped governance validation, whitespace diff, and
+  placeholder scan.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
@@ -102,11 +106,11 @@ release work without the next explicit human verdict.
 - **Timestamp**: 2026-06-17T14:39:12Z
 - **Mode**: continue
 - **Status**: ready
-- **Last Completed Task**: specify boundary approved
+- **Last Completed Task**: specify boundary committed at 2d65f3ed
 - **Next Suggested Task**: plan boundary
 - **Next Recovery Action**: (none)
 - **In-Progress Tasks**: (none)
-- **Remaining Tasks**: (not planned yet)
+- **Remaining Tasks**: T001, T002, T003, T004, T005, T006
 - **Repair Escalation**: inactive
 - **Blockers**: (none)
 - **Salvageable Tasks**: n/a
