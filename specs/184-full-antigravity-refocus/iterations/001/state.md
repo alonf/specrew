@@ -3,8 +3,8 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T002
-**Tasks Remaining**: T003, T004, T005, T006, T007, T008
+**Last Completed Task**: T003
+**Tasks Remaining**: T004, T005, T006, T007, T008
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
 **Updated**: 2026-06-17T00:09:20Z
@@ -21,6 +21,10 @@
   `conversationId` keys the per-session refocus state, anchors on first
   `PreInvocation`, stays silent without a boundary cursor change, and does not
   create a global `unknown` state file when a real conversation id exists.
+- T003 completed: automated dispatcher evidence proves Antigravity B3 fires
+  through `PreInvocation` only on real boundary crossings, dedupes channel-1
+  fingerprints, avoids `PostToolUse` injection, and fails open with bounded
+  recovery diagnostics.
 
 ## Notes
 
@@ -50,11 +54,11 @@
 - **Timestamp**: 2026-06-17T00:09:20Z
 - **Mode**: continue
 - **Status**: ready
-- **Last Completed Task**: T002
-- **Next Suggested Task**: T003
+- **Last Completed Task**: T003
+- **Next Suggested Task**: T004
 - **Next Recovery Action**: (none)
 - **In-Progress Tasks**: (none)
-- **Remaining Tasks**: T003, T004, T005, T006, T007, T008
+- **Remaining Tasks**: T004, T005, T006, T007, T008
 - **Repair Escalation**: inactive
 - **Blockers**: (none)
 - **Salvageable Tasks**: n/a

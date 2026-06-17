@@ -385,6 +385,50 @@ Assert-True ([string]$antiState.session_id -eq 'anti-conv-1' -and [string]$antiS
 
 $result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
 Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity unchanged PreInvocation remains silent'
+
+Set-Cursor -Boundary 'review-signoff'
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
+$json = $null
+try { $json = $result.StdOut | ConvertFrom-Json } catch { }
+Assert-True ($result.ExitCode -eq 0) 'antigravity B3 crossing exits 0'
+Assert-True ($null -ne $json -and $null -ne $json.PSObject.Properties['injectSteps']) 'antigravity B3 output uses injectSteps'
+Assert-True ($null -ne $json -and ([string]$json.injectSteps[0].ephemeralMessage) -match 'trigger=b3 scope=general\+boundary\.retro') 'antigravity B3 payload carries incoming-stage refocus'
+$antiState = Get-Content -LiteralPath $antiStatePath -Raw | ConvertFrom-Json
+Assert-True ([string]$antiState.last_seen_boundary -eq 'review-signoff') 'antigravity B3 crossing updates last_seen'
+
+Set-Cursor -Boundary 'retro'
+$fingerprint = @{ boundary = 'retro'; at = '2026-06-17T00:00:00Z' } | ConvertTo-Json -Compress
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\runtime\refocus-channel1.json'), $fingerprint, [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity channel-1 fingerprint dedupes B3 crossing'
+
+Set-Cursor -Boundary 'iteration-closeout'
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse', '-HostKind', 'antigravity') -StdinJson $antiEvent
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity PostToolUse is not used for refocus injection'
+Assert-True (-not $result.StdOut.Contains('injectSteps')) 'antigravity PostToolUse never emits injectSteps'
+
+# 15f. antigravity fail-open diagnostics stay bounded and do not leak prompt text.
+$dispatcher = New-ScratchProject
+$antiSecretEvent = '{"conversationId":"anti-fail-1","workspacePaths":["C:/anti/project"],"transcriptPath":"C:/anti/transcript.jsonl","prompt":"SECRET_PROMPT_SHOULD_NOT_LEAK"}'
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiSecretEvent
+Set-Cursor -Boundary 'review-signoff'
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\refocus.ps1'), "exit 1", [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiSecretEvent
+Assert-True ($result.ExitCode -eq 0) 'antigravity provider crash fails open'
+Assert-True ($result.StdErr.Contains('WARN PROVIDER_FAILED')) 'antigravity provider crash warns PROVIDER_FAILED'
+Assert-True ($result.StdOut.Contains('degraded governed fallback') -and $result.StdOut.Contains('specrew start --host antigravity')) 'antigravity provider crash injects governed recovery fallback'
+Assert-True (-not (($result.StdErr + $result.StdOut).Contains('SECRET_PROMPT_SHOULD_NOT_LEAK'))) 'antigravity provider crash diagnostic does not leak prompt text'
+
+$dispatcher = New-ScratchProject
+$corruptAntiState = Join-Path $projectRoot '.specrew\runtime\refocus-state-anti-corrupt-1.json'
+New-Item -ItemType Directory -Path (Split-Path -Parent $corruptAntiState) -Force | Out-Null
+[System.IO.File]::WriteAllText($corruptAntiState, '{corrupt', [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson '{"conversationId":"anti-corrupt-1","prompt":"SECRET_PROMPT_SHOULD_NOT_LEAK"}'
+Assert-True ($result.ExitCode -eq 0) 'antigravity corrupt state fails open'
+Assert-True ($result.StdErr.Contains('WARN STATE_UNAVAILABLE')) 'antigravity corrupt state warns STATE_UNAVAILABLE'
+Assert-True ([string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity corrupt state produces no injection'
+Assert-True (-not (($result.StdErr + $result.StdOut).Contains('SECRET_PROMPT_SHOULD_NOT_LEAK'))) 'antigravity corrupt-state diagnostic does not leak prompt text'
+
 # --- summary --------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {
