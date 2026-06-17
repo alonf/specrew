@@ -114,7 +114,7 @@ function Limit-SpecrewInlineBlock {
 }
 
 function Format-BootstrapDirective {
-    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null)
+    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
@@ -122,6 +122,14 @@ function Format-BootstrapDirective {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
+    # F-184 iter-002 (T004, FR-013/FR-014/FR-018): FRONT-LOAD the coordinator posture + the exact anti-
+    # specify.exe guard from the SINGLE packaged source (the caller resolves it via
+    # Get-SpecrewCoordinatorFragment, so the bootstrap guard cannot drift from the instruction-file guard),
+    # ABOVE the broader banner/contract context so a weak model attends to the immediate action + guard first.
+    if (-not [string]::IsNullOrWhiteSpace($CoordinatorFragment)) {
+        $lines.Add('=== SPECREW COORDINATOR (front-loaded - the immediate posture + the anti-raw-Spec-Kit guard; read FIRST) ===')
+        $lines.Add($CoordinatorFragment.Trim())
+    }
     # FR-001 (banner fix, 2026-06-10): the orientation BANNER is mandatory on EVERY host and must render
     # FIRST. It was skipped on claude (the render instruction sat AFTER the ~45KB inline contract, so claude
     # skimmed past it to the task; copilot rendered it). Hoist the full, EXPANDED banner mandate to the TOP -
@@ -377,6 +385,10 @@ try {
     . (Join-Path $internalDir 'coordinator-prompt-surgery.ps1')
     . (Join-Path $internalDir 'user-profile.ps1')
     . (Join-Path (Join-Path $moduleRoot 'extensions/specrew-speckit/scripts') 'shared-governance.ps1')
+    # F-184 iter-002 (T004, FR-018): the single-source coordinator fragment / FR-013 guard, resolved through the
+    # SAME proven 3-tier $internalDir chain. Fail-soft (optional): a missing helper omits the front-loaded
+    # coordinator block but never kills the bootstrap.
+    try { . (Join-Path $internalDir 'instruction-file-merge.ps1') } catch { $null = $_ }
 
     # Launcher<->hook dedupe (FR-007, SC-002): if `specrew start` just bootstrapped this session,
     # stay silent so the startup yields exactly one bootstrap surface.
@@ -457,7 +469,9 @@ try {
     if ($renderDedupeKey -and $renderDedupeKey -ne 'no-session') {
         if (-not (Request-SpecrewHookRenderClaim -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -RecordedAt $nowUtc)) { exit 0 }
     }
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch)
+    $coordinatorFragment = $null
+    try { $coordinatorFragment = Get-SpecrewCoordinatorFragment } catch { $coordinatorFragment = $null }
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch -CoordinatorFragment $coordinatorFragment)
     exit 0
 }
 catch {
