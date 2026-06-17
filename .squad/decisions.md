@@ -27117,3 +27117,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   release are not authorized by this verdict.
 - **Disposition**: Specify content accepted; boundary commit required before
   planning work begins.
+
+## 2026-06-17T15:46:25Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-17T15:46:25Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-06-17T15:46:25Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: a632a882f657b10b686151cce326695567b3d53d
+- **Recorded At**: 2026-06-17T15:46:25Z
