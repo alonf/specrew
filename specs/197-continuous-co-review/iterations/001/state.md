@@ -36,7 +36,7 @@ Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spin
 
 ## Next Action
 
-Implementation is ready for the implement->review boundary after validation evidence is inspected and the completed T044-T050 changes are committed by the implementation owner.
+Implementation is ready for the implement->review boundary. Committed evidence now covers T001-T050 through the final T044-T050 validation and manual-acceptance-enabler slice.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
