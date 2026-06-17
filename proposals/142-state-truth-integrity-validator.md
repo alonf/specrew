@@ -3,7 +3,7 @@ proposal: 142
 title: State-Truth Integrity Validator (Cross-Artifact Lifecycle Consistency Enforcement)
 status: draft
 phase: phase-2
-estimated-sp: 3-5
+estimated-sp: 3-7
 priority-tier: 1
 type: tooling
 discussion: surfaced 2026-05-29 by second empirical instance of iteration-closeout state-artifact-truth gap within F-049 alone (instances 2 + 5 in [[cross-reviewer-3rd-empirical-instance-2026-05-28]]); cross-reviewer caught both via reading state-artifact contents but no tooling enforcement exists
@@ -12,6 +12,7 @@ composes-with:
   - 120  # Handoff-Block Validator Enforcement — defense-in-depth layer parallel
   - 132  # Mirror-Parity Validator Enforcement — same pattern (cross-artifact consistency)
   - 140  # Reviewer Instruction Surface — defense-in-depth layer 2 (reviewer-charter discipline)
+  - 172  # Hook-Driven Session Bootstrap — owns the resume/SessionStart write-path that FR-009 must guard
 audience: tooling
 ---
 
@@ -64,6 +65,12 @@ F-051 Iteration 2a added a third high-signal production data point on 2026-06-01
 
 These are not isolated prose nits. They are durable state-truth and artifact-coherence defects that created additional human review loops after the substantive implementation had already passed. Proposal 142 should therefore expand beyond the original five state-artifact checks to include scaffold-residue detection and review-report remediation-history coherence where those artifacts exist.
 
+### F-184 iter-002 addendum: resume re-scaffolded a CLOSED iteration (2026-06-17)
+
+A third, more severe class surfaced during F-184 iteration 002: the resume/SessionStart machinery did not merely let drift accumulate — it *actively corrupted committed truth*. On a session switch (codex → Claude), `.specrew/start-context.json` `session_state` still pointed at the already-CLOSED iteration 001 (`iteration_number: 001` / `boundary_type: iteration-closeout`, predating the iter-001 close `abf18b99` and the iter-002 specify `2d65f3ed`). The resume machinery trusted that stale cursor and re-scaffolded the closed iteration — `iterations/001/state.md` was reset from `complete` back to `not-started`, plus a spurious all-pending `tasks-progress.yml`. It was reverted from committed truth, but only because the next session happened to check.
+
+This is a different failure mode than instances 1–2: not cross-artifact drift caught at validate-time, but the resume write-path silently REVERTING a committed, closed iteration from a stale cursor. Detection-after-the-fact is insufficient here — an unattended or cron resume would corrupt closed-iteration history and never notice. The write-path itself needs a guard, and the cursor needs validating against committed reality before any resume acts on it. It is also model-independent: a codex session left the stale cursor; a Claude session caught it — but the fix cannot depend on a strong model happening to check.
+
 ### Why prose-rule-only is insufficient
 
 Same pattern as `[[proposal-132-mirror-parity-validator-enforcement]]` (mirror parity prose rule → mechanical validator backfill) and `[[proposal-105-host-native-hook-deployment]]`'s "if a prompt says X you have a request; if a hook blocks it you have a boundary" framing. State-truth integrity today is a discipline expectation with no mechanical enforcement.
@@ -82,6 +89,8 @@ A validator rule that runs at boundary-recording time (and at each `validate-gov
 - **FR-006**: At iteration-closeout boundary specifically, validator MUST execute all five checks above as a HARD-BLOCK precondition. iteration-closeout cannot record without state-truth consistency.
 - **FR-007 (added 2026-06-01)**: Validator SHOULD detect duplicate lifecycle scaffold headings in `state.md` and `plan.md` when duplicate headings carry generic template residue next to iteration-specific content. At minimum WARN; FAIL at closeout if the duplicate creates contradictory lifecycle meaning.
 - **FR-008 (added 2026-06-01)**: When `review-report.yml` exists, validator SHOULD cross-check round-N remediation history against durable review artifacts: fixed finding counts, verdict string, and finding statuses must reflect the latest committed remediation round.
+- **FR-009 (added 2026-06-17)**: The resume / SessionStart / scaffold write-path MUST NOT overwrite or re-scaffold the state artifacts of a CLOSED iteration (one whose committed `state.md` is `complete` and/or which is listed in `.specrew/closed-iterations.yml`). If the resume cursor resolves to a closed iteration, the machinery MUST refuse the write, reconcile the cursor to the actual active position, and emit a named integrity event — it MUST NEVER silently revert committed truth. This is the write-path guard; detection alone (FR-001…FR-008) does not prevent the corruption.
+- **FR-010 (added 2026-06-17)**: On resume, the machinery MUST cross-check `.specrew/start-context.json` `session_state` (iteration_number / boundary_type) against committed lifecycle reality — `.specrew/closed-iterations.yml` plus the latest iteration's committed `state.md` — and FAIL (not WARN) if the cursor points at a closed or superseded iteration, so a lagged cursor cannot drive a resume. This escalates the FR-004 `session_state` drift check from WARN to FAIL for the closed/superseded-iteration case.
 
 ### Validator rule shape
 
@@ -98,7 +107,7 @@ RULE state-truth-iteration-closeout (severity: FAIL):
 
 ### Out of scope
 
-- Auto-repair (validator surfaces inconsistency; agent or human repairs)
+- Auto-repair of *existing* drift (the validator surfaces inconsistency; agent or human repairs it). Note: the FR-009 resume-path guard is *prevention* — it refuses a corrupting write and reconciles the cursor — not auto-repair of pre-existing drift, and it IS in scope.
 - Cross-feature state-truth checks (this proposal is per-iteration scoped)
 - Squad-side state files outside `.squad/identity/now.md` (decisions.md, team.md, routing.md have their own validators or no validator)
 - Validator for lifecycle artifacts that don't have explicit "Current Phase" semantics (plan.md, tasks.md, retro.md — those carry implicit state but not the same way)
@@ -152,3 +161,4 @@ Two empirical instances of the same failure mode in the same feature = strong ev
 
 - **2026-05-29** — Drafted as direct response to F-049 iter-5 iteration-closeout state-truth gap (2nd in F-049 alone). Maintainer raised the question "Why can't we enforce the methodology?" The most leveraged single answer is a validator rule at boundary-recording time. This proposal codifies that rule. Ships as draft because empirical motivation is concrete, ~3-5 SP scope is small, and shipping captures immediate methodology lift across all in-flight features.
 - **2026-06-01** — Partially promoted ahead of remaining F-051 iterations after Iteration 2a required three review-remediation rounds for state-truth, scaffold-residue, and review-report coherence gaps. Scope expanded with FR-007 and FR-008.
+- **2026-06-17** — F-184 iteration 002 surfaced a third, more severe instance: the resume/SessionStart write-path re-scaffolded a CLOSED iteration (iter-001 `complete`→`not-started` + a spurious `tasks-progress.yml`) from a stale `.specrew/start-context.json` cursor on a codex→Claude session switch. Reverted from committed truth; recorded in `specs/184-full-antigravity-refocus/iterations/002/drift-log.md`. Scope extended with FR-009 (resume write-path guard: never silently revert a closed iteration) and FR-010 (resume-time cursor-vs-committed-truth validation), elevating 142 from detect-only to a write-path guard. Surfaced via the F-184 iter-002 plan-boundary review; the file-don't-blind-fix discipline kept the fix out of that boundary and here in the proposal instead.
