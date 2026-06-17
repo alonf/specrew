@@ -1,8 +1,8 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: before-implement
-**Iteration Status**: executing
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
 **Last Completed Task**: T008
 **Tasks Remaining**: (none)
 **In Progress**: (none)
@@ -11,7 +11,7 @@
 
 ## Execution Summary
 
-- Implementation is executing.
+- Implementation is complete and review-signoff evidence is being presented.
 - Iteration 001 uses a temporary 26 SP capacity override from the baseline 20 SP
   cap, authorized by the user's 2026-06-17 instruction to implement all known
   F-184 scope before the next human gate.

@@ -47,9 +47,9 @@ the next human gate verdict. The full release gate remains separate.
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests/integration/publish-module-harness.tests.ps1` | PASS |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests/unit/wrapper-filelist-parity.tests.ps1` | PASS |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tests/unit/wrapper-registry-parity.tests.ps1` | PASS |
-| `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/184-full-antigravity-refocus/iterations/001 -NoParallel` | PASS for F-184; historical warnings only. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File .specify/extensions/specrew-speckit/scripts/validate-governance.ps1 -ProjectPath . -IterationPath specs/184-full-antigravity-refocus/iterations/001 -NoParallel` | PASS for F-184; non-blocking warnings only, including historical dashboard/handoff warnings and the expected missing `dashboard.md` warning before iteration-closeout render. |
 | `git diff --check` | PASS |
-| `markdownlint specs/184-full-antigravity-refocus/iterations/001/real-host-antigravity-evidence.md specs/184-full-antigravity-refocus/iterations/001/implementation-completion-review-145.md specs/184-full-antigravity-refocus/iterations/001/plan.md specs/184-full-antigravity-refocus/tasks.md specs/184-full-antigravity-refocus/iterations/001/state.md` | PASS |
+| `markdownlint specs/184-full-antigravity-refocus/iterations/001/review.md specs/184-full-antigravity-refocus/iterations/001/code-map.md specs/184-full-antigravity-refocus/iterations/001/coverage-evidence.md specs/184-full-antigravity-refocus/iterations/001/dependency-report.md specs/184-full-antigravity-refocus/iterations/001/review-diagrams.md specs/184-full-antigravity-refocus/iterations/001/reviewer-index.md specs/184-full-antigravity-refocus/iterations/001/implementation-completion-review-145.md specs/184-full-antigravity-refocus/iterations/001/real-host-antigravity-evidence.md` | PASS |
 | `(Test-ModuleManifest .\Specrew.psd1)` | PASS; version `0.37.0`, FileList count `308`. |
 
 The first combined test runner timed out at the shell timeout and was not used
@@ -76,5 +76,6 @@ Non-blocking carry-forward:
   the machine-local label explicit.
 - Stable promotion remains blocked until legacy upgrade/config migration is
   validated at the release gate.
-- Historical governance warnings about closed-iteration dashboards and handoff
-  blocks remain outside F-184 and were not introduced by this implementation.
+- Governance warnings are non-blocking: historical closed-iteration dashboard
+  and handoff warnings remain, and F-184's own `dashboard.md` is expected to
+  render at iteration-closeout rather than review-signoff.
