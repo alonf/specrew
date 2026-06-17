@@ -1,7 +1,7 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: implement
+**Current Phase**: before-implement
 **Iteration Status**: executing
 **Last Completed Task**: T005 + FR-008 docs (ALL agent-owned implementation complete: T001-T005 green-tested + the Antigravity AGENTS.md/GEMINI.md docs note)
 **Tasks Remaining**: T006 (human-owned real-host run; evidence template ready)
