@@ -26788,3 +26788,23 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 4c3d99fd7cd745ba9af181119d781d7c94297573
 - **Recorded At**: 2026-06-17T19:16:08Z
+
+## 2026-06-17T19:46:17Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 737b88fd6f6c5c05b4e842e73c10f38899ad4c21
+- **Recorded At**: 2026-06-17T19:46:17Z
+
+## 2026-06-17T19:48:26Z — Runtime evidence: Proposal 197 after-tasks PASS pending before-implement
+
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 001
+- **Requested By**: Alon Fliess
+- **After-tasks Gate**: PASS (reported at tasks-boundary synchronization request)
+- **Boundary State**: tasks synchronized; before-implement remains human-judgment-required
+- **Capacity Evidence**: `specs/197-continuous-co-review/tasks.md` records 18.75 story points against the approved 18 SP Iteration 001 capacity
+- **Decision State**: human decision pending; do not start implementation until explicit before-implement authorization resolves the 18.75/18 SP overcommit
+- **Implementation State**: not started by this synchronization
