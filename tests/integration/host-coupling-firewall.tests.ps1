@@ -113,7 +113,9 @@ $forbiddenCorePatterns = @(
 foreach ($coreRel in @(
         'scripts/internal/specrew-hook-dispatcher.ps1',
         'scripts/internal/specrew-bootstrap-provider.ps1',
-        'scripts/internal/deploy-refocus-hooks.ps1'
+        'scripts/internal/deploy-refocus-hooks.ps1',
+        'scripts/internal/instruction-deploy.ps1',        # F-184 iter-002 (T005): host-neutral instruction-delivery core
+        'scripts/internal/instruction-file-merge.ps1'     # F-184 iter-002 (T005): single-source merge primitive
     )) {
     $corePath = Join-Path $repoRoot $coreRel
     $coreText = Get-Content -LiteralPath $corePath -Raw
@@ -124,6 +126,21 @@ foreach ($coreRel in @(
     }
 }
 Write-Pass 'Shared hook/bootstrap core has no Antigravity/agy routing literals; it consumes manifest runtime policy'
+
+# F-184 iter-002 (T005): NEGATIVE test - prove the forbidden-core scan actually CATCHES a planted single-host
+# literal (the Shape-8 lesson: exercise the failure path, not only the happy path). Uses the SAME
+# $forbiddenCorePatterns + Contains detection the scan above runs on the guarded core files.
+$plantedLiteral = "if (`$HostKind -eq 'antigravity') { return 'pointer' }"
+$detectedOnPlant = $false
+foreach ($pattern in $forbiddenCorePatterns) { if ($plantedLiteral.Contains($pattern)) { $detectedOnPlant = $true; break } }
+if (-not $detectedOnPlant) { Write-Fail "Negative test broken: the firewall did NOT detect a planted single-host literal: $plantedLiteral" }
+Write-Pass 'Negative test: the firewall DETECTS a planted single-host literal (fails closed, not just on clean files)'
+
+$cleanContent = "if (`$kind -in (Get-RegisteredHostKinds)) { Get-HostManifest -Kind `$kind }"
+$detectedOnClean = $false
+foreach ($pattern in $forbiddenCorePatterns) { if ($cleanContent.Contains($pattern)) { $detectedOnClean = $true; break } }
+if ($detectedOnClean) { Write-Fail 'Negative test broken: the firewall flagged clean manifest-driven content' }
+Write-Pass 'Negative test: the firewall PASSES clean host-neutral (manifest-driven) content'
 
 # Bonus check: manifest-completeness — every supported host should have InstructionsFile set
 # (caught the Antigravity drift in the deep-review audit).
