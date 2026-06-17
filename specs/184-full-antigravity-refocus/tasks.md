@@ -2,83 +2,82 @@
 
 **Schema**: v1
 **Feature**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/spec.md
-**Iteration**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/plan.md
-**Status**: iteration 001 closed; iteration 002 specify approved; awaiting plan boundary
-**Capacity**: 26/26 story_points
+**Iteration**: file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/002/plan.md
+**Status**: iteration 002 tasks decomposed; awaiting before-implement go-ahead
+**Capacity**: 20/20 story_points
+
+## Iteration 001 (closed)
+
+Iteration 001 closed at `abf18b99` (T001-T008, all `done`, 26/26 temporary-overcap
+story_points). Its historical task table and traceability live in
+file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/plan.md
+and this file's git history. The table below is the active iteration 002
+decomposition; iteration 002 requirement scope is FR-011 through FR-018, SC-011
+through SC-020, and TG-005 (real-host evidence labeling).
 
 ## Task Table
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Verification |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- |
-| T001 | Discovery spike: B3-on-PreInvocation split-guard proof | FR-003, FR-010, SC-009, TG-004, TG-005 | US2 | 3 | Planner, Reviewer | `scripts/internal/bootstrap/**`; `scripts/internal/specrew-hook-dispatcher.ps1`; `extensions/specrew-speckit/scripts/**`; `hosts/antigravity/**`; `specs/184-full-antigravity-refocus/**` | done | Evidence rows for `fresh-boundary-cursor`, `exactly-once-b3`, and `bounded-host-model` all PASS in file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/discovery-antigravity-b3-preinvocation.md. |
-| T002 | Antigravity session identity and per-session refocus state/anchor | FR-001, FR-002, FR-005, SC-001, SC-002 | US1, US4 | 4 | Implementer | `scripts/internal/bootstrap/**`; `scripts/internal/specrew-hook-dispatcher.ps1`; `extensions/specrew-speckit/scripts/**`; `tests/bootstrap/**`; `tests/integration/refocus-dispatcher.tests.ps1` | done | Automated tests prove real `conversationId` keys and no global `unknown`; manual `agy --conversation` proves exit/re-entry anchor persistence. |
-| T003 | B3 `PreInvocation` injection with dedupe/breaker and fail-open diagnostics | FR-003, FR-006, FR-010, SC-003, SC-007, SC-009 | US2 | 5 | Implementer | `scripts/internal/bootstrap/**`; `scripts/internal/specrew-hook-dispatcher.ps1`; `extensions/specrew-speckit/scripts/**`; `tests/bootstrap/**`; `tests/integration/refocus-dispatcher.tests.ps1` | done | Automated and manual evidence prove B3 injects once on real boundary crossing, not ordinary turns, with bounded fail-open diagnostics. |
-| T004 | Antigravity self-marker concurrency classifier | FR-004, FR-006, SC-004 | US3 | 3 | Implementer | `scripts/internal/bootstrap/**`; `tests/bootstrap/ClassificationEngine.Tests.ps1`; `tests/bootstrap/SessionBootstrapManager.Tests.ps1` | done | Current Antigravity marker emits no advisory; competing marker still warns. |
-| T005 | Hook config preservation and F-183 Antigravity regression guards | FR-005, FR-007, SC-005, SC-006 | US4, US5 | 3 | Implementer, Reviewer | `hosts/antigravity/**`; `scripts/internal/deploy-refocus-hooks.ps1`; `extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1`; `tests/integration/refocus-deploy.tests.ps1`; `tests/integration/specrew-hooks-command.tests.ps1` | done | Deploy/remove tests preserve user hooks, register Antigravity `PreInvocation` + `Stop`, and prove the manifest advertises B2+B3 without B1. |
-| T006 | Antigravity documentation, permission, recovery, and evidence-gated status wording | FR-008, FR-009, TG-006, SC-008, SC-010 | US5 | 2 | Spec Steward, Reviewer | `README.md`; `docs/**`; `specs/184-full-antigravity-refocus/**` | done | Docs reach host-level depth for `agy`, hook install/remove, permissions, sandboxing, recovery, and evidence-gated labels; markdownlint and stale-phrase scans pass. |
-| T007 | Automated validation, mirror parity, and FileList/release readiness | TG-001, TG-002, TG-003, SC-001, SC-004, SC-006, SC-007, SC-008, SC-010 | US1-US5 | 3 | Reviewer | `tests/**`; `extensions/specrew-speckit/**`; `.specify/extensions/specrew-speckit/**`; `Specrew.psd1`; `specs/184-full-antigravity-refocus/**` | done | Pester suite, mirror parity, FileList/release readiness, and scoped governance validation pass after the canonical state repair. |
-| T008 | Real-host `agy` validation and Proposal 145 review evidence | FR-009, TG-004, TG-005, TG-006, SC-002, SC-003, SC-005, SC-009, SC-010 | US1-US5 | 3 | Reviewer | `specs/184-full-antigravity-refocus/iterations/001/**` | done | Machine-local real-host `agy` evidence in file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/real-host-antigravity-evidence.md proves B3, marker, state, handover, exit/re-entry, and support-label honesty. |
+| T001 | Confirm current instruction-file behavior and related proposal posture | FR-011, FR-016, FR-018, SC-011, SC-019, SC-020 | US6 | 2 | Planner, Reviewer | `hosts/**`; `scripts/specrew-init.ps1`; `scripts/specrew-update.ps1`; `scripts/specrew-start.ps1`; `scripts/init/**`; `scripts/internal/**`; `Specrew.psd1`; `proposals/**` | planned | Discovery note records which hosts already deploy instruction content, the current manifest `InstructionsFile` values, and whether a proposal amendment is needed; a PASS/FAIL split-guard row is emitted. |
+| T002 | Add packaged coordinator instruction fragment and managed-section merge helper | FR-012, FR-013, FR-018, SC-012, SC-013, SC-020 | US6, US7, US8 | 4 | Implementer | `scripts/internal/**`; `templates/**`; `extensions/specrew-speckit/**`; `.specify/extensions/specrew-speckit/**`; `Specrew.psd1`; `tests/**` | planned | Unit tests prove the merge helper replaces only the delimited Specrew-owned section and preserves user content byte-for-byte; the packaged fragment carries the exact FR-013 guard text. |
+| T003 | Wire manifest-driven init deployment, update refresh, and start heal | FR-011, FR-015, FR-016, FR-018, SC-011, SC-014, SC-019, SC-020 | US6, US8 | 4 | Implementer | `hosts/**`; `scripts/specrew-init.ps1`; `scripts/specrew-update.ps1`; `scripts/specrew-start.ps1`; `scripts/init/**`; `scripts/internal/**`; `Specrew.psd1`; `tests/integration/**` | planned | Integration test: scratch init creates/merges each host's manifest-declared `InstructionsFile`; `specrew update` refreshes; `specrew start` heals a missing/stale section -- all reading `InstructionsFile` from manifests with no host-name branch. |
+| T004 | Front-load bootstrap action and mirror the anti-raw-Spec-Kit guard | FR-013, FR-014, FR-018, SC-013, SC-015, SC-018 | US7 | 3 | Implementer, Spec Steward | `scripts/internal/specrew-bootstrap-provider.ps1`; `extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1`; `.specify/extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1`; `scripts/internal/bootstrap/**`; `tests/bootstrap/**` | planned | Ordering test pins the immediate Specrew action above broader context; text test pins the exact FR-013 guard in the bootstrap; both surfaces carry identical guard text. |
+| T005 | Add automated coverage: instruction merge, FileList, bootstrap ordering, host-coupling firewall | FR-012, FR-015, FR-016, FR-018, SC-011, SC-012, SC-013, SC-014, SC-015, SC-019, SC-020 | US6, US7, US8 | 4 | Reviewer | `tests/integration/**`; `tests/bootstrap/**`; `tests/unit/**`; `scripts/**`; `hosts/**`; `Specrew.psd1` | planned | Host-coupling firewall negative test rejects `agy`/Antigravity literals and host-name branching in shared instruction-delivery core; FileList test proves the template/helper paths exist; idempotence tests for init/update/start-heal. |
+| T006 | Run real-host Antigravity Opus 4.6 and Gemini Flash dogfood evidence | FR-017, SC-016, SC-017, SC-018, TG-005 | US7 | 3 | Reviewer, Human | `specs/184-full-antigravity-refocus/iterations/002/**` | planned | Machine-local real-host evidence record: Opus 4.6 time-to-workshop vs iter-001; Gemini Flash follows the governed workshop and does not invoke `specify.exe workflow`, or the weak-model caveat is explicitly preserved. Human-owned parity-validation acceptance -- not droppable for slack. |
 
 ## Sequencing
 
-- Iteration 001 is closed at `abf18b99`; T001-T008 remain historical records
-  for that iteration.
-- Iteration 002 specify is approved; task planning is not yet authored. The
-  authorized iteration 002 scope is persistent host instructions during `specrew init`,
-  an anti-raw-`specify.exe workflow` guard, bootstrap front-loading/speedup,
-  host-neutral manifest delivery, user instruction-file preservation, and
-  Opus/Flash real-host validation.
-- T001 gates T002-T005. Any FAIL row in the split-guard evidence stops runtime
-  implementation for a human split/defer decision.
-- T002 precedes T003 because B3 dedupe/state keys depend on real session
-  identity and per-session anchor persistence.
-- T004 starts after T002 stabilizes marker identity.
-- T006 may proceed after T001, but status labels remain evidence-gated until
-  T008.
-- T007 and T008 are review-stage tasks after implementation slices merge.
+- T001 (discovery) gates implementation: it confirms current instruction-file
+  behavior, exact deploy surfaces, and the proposal posture before any code lands.
+- **Split guard (live):** if T001 or T003 shows this requires per-host handlers
+  instead of a shared manifest-driven `InstructionsFile` projection, or if T004
+  needs bootstrap/runtime contract rewrites beyond front-loading plus guard
+  wording, STOP for a human split/defer decision rather than overrun the 20/20 cap.
+- T002 creates the reusable template plus merge primitive; T003 consumes it from
+  init/update/start.
+- T004 (bootstrap text) may run partly in parallel with T003 after T002, but
+  T002/T003/T005 share deploy/package surfaces (`scripts/specrew-*.ps1`, the
+  bootstrap provider plus its mirrors, `Specrew.psd1`, the host-coupling firewall
+  test) and stay serial to avoid conflicting edits -- one implementer workstream.
+- T005 validates the completed behavior; T006 is the human-owned real-host
+  acceptance and must not be deferred for slack.
 
 ## Traceability Check
 
-**Verdict**: PASS
+**Verdict**: PASS (bidirectional -- both directions checked)
 
 | Check | Result |
 | --- | --- |
 | Every task maps to at least one FR, SC, or TG | PASS |
-| Every FR-001 through FR-010 has at least one task | PASS |
-| Every SC-001 through SC-010 has at least one task | PASS |
-| Every TG-001 through TG-006 has at least one task | PASS |
+| Every FR-011 through FR-018 has at least one task | PASS |
+| Every SC-011 through SC-020 has at least one task | PASS |
+| TG-005 (real-host evidence labeling) has at least one task | PASS |
 | Tasks include owner, effort, story, and verification metadata | PASS |
 | Invalid or stale requirement references | None |
-| Orphan tasks | None |
-| Uncovered requirements | None |
+| Orphan tasks (task with no FR/SC/TG) | None |
+| Uncovered requirements (in-scope FR/SC/TG with no task) | None |
 
 ## Traceability Matrix
 
 | Requirement | Covering Tasks |
 | --- | --- |
-| FR-001 | T002 |
-| FR-002 | T002 |
-| FR-003 | T001, T003 |
-| FR-004 | T004 |
-| FR-005 | T002, T005 |
-| FR-006 | T003, T004 |
-| FR-007 | T005 |
-| FR-008 | T006 |
-| FR-009 | T006, T008 |
-| FR-010 | T001, T003 |
-| SC-001 | T002, T007 |
-| SC-002 | T002, T008 |
-| SC-003 | T003, T008 |
-| SC-004 | T004, T007 |
-| SC-005 | T005, T008 |
-| SC-006 | T005, T007 |
-| SC-007 | T003, T007 |
-| SC-008 | T006, T007 |
-| SC-009 | T001, T003, T008 |
-| SC-010 | T006, T007, T008 |
-| TG-001 | T007 |
-| TG-002 | T007 |
-| TG-003 | T007 |
-| TG-004 | T001, T008 |
-| TG-005 | T001, T008 |
-| TG-006 | T006, T008 |
+| FR-011 | T001, T003 |
+| FR-012 | T002, T005 |
+| FR-013 | T002, T004 |
+| FR-014 | T004 |
+| FR-015 | T003, T005 |
+| FR-016 | T001, T003, T005 |
+| FR-017 | T006 |
+| FR-018 | T001, T002, T003, T004, T005 |
+| SC-011 | T001, T003, T005 |
+| SC-012 | T002, T005 |
+| SC-013 | T002, T004, T005 |
+| SC-014 | T003, T005 |
+| SC-015 | T004, T005 |
+| SC-016 | T006 |
+| SC-017 | T006 |
+| SC-018 | T004, T006 |
+| SC-019 | T001, T003, T005 |
+| SC-020 | T001, T002, T003, T005 |
+| TG-005 | T006 |

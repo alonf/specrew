@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: plan
+**Current Phase**: tasks
 **Iteration Status**: planning
-**Last Completed Task**: specify boundary committed at 2d65f3ed
+**Last Completed Task**: plan approved at a632a882; tasks decomposed in tasks.md
 **Tasks Remaining**: T001, T002, T003, T004, T005, T006
 **In Progress**: (none)
 **Baseline Ref**: abf18b99
-**Updated**: 2026-06-17T15:16:09Z
+**Updated**: 2026-06-17T16:12:00Z
 
 ## Charter
 
@@ -51,10 +51,13 @@ code-implementation. The records therefore use `human-confirmed` /
 
 ## Next Action
 
-Present the iteration 002 plan boundary for human verdict. The plan is
-materialized in `plan.md`, stays at `Status: planning`, and totals 20/20
-story_points. Approval advances to tasks only; do not implement, open
-feature-closeout, or start release work without the next explicit human verdict.
+Plan approved (a632a882) and tasks decomposed in `tasks.md` (T001-T006, 20/20
+story_points, bidirectional traceability PASS for FR-011..FR-018 + SC-011..SC-020
++ TG-005). The `plan -> tasks` crossing is authorized (verdict_history, evidence
+human-confirmed-at-resume). Next: prepare the before-implement readiness
+(hardening gate) and stop at the `tasks -> before-implement` boundary for the
+explicit implementation go-ahead. Do not run implementation, open
+feature-closeout, or start release work without that next explicit human verdict.
 
 ## Carry Into Plan
 
@@ -84,6 +87,12 @@ feature-closeout, or start release work without the next explicit human verdict.
   Plan-boundary checks now pass for capacity arithmetic, traceability, host
   coupling firewall baseline, scoped governance validation, whitespace diff, and
   placeholder scan.
+- Tasks boundary: `tasks.md` decomposed (T001-T006); bidirectional traceability
+  PASS (every task -> >=1 FR/SC/TG and every FR-011..018 / SC-011..020 / TG-005
+  -> >=1 task). Cursor reconciled to {iter-002, plan->tasks} and the `plan ->
+  tasks` authorization recorded (verdict_history). The session-start integrity
+  event (closed iter-001 re-scaffold from a stale cursor) is remediated and
+  filed as GitHub issue #2784 (alonf/specrew); see drift-log.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
