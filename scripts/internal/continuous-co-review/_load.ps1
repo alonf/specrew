@@ -9,10 +9,22 @@ $proposal197ReviewerModules = @(
     'review-request-builder.ps1'
     'review-run-workspace-manager.ps1'
     'review-result-normalizer.ps1'
+    'reviewer-host-catalog.ps1'
+    'reviewer-model-capability.ps1'
+    'reviewer-authorization-gate.ps1'
+    'reviewer-selection-policy.ps1'
+    'reviewer-host-adapter-registry.ps1'
     'reviewer-host-adapter-fixture.ps1'
+    'reviewer-host-adapter-claude-prompt.ps1'
+    'reviewer-host-adapter-codex-exec.ps1'
+    'reviewer-host-adapter-copilot-prompt.ps1'
+    'reviewer-host-adapter-cursor-agent-prompt.ps1'
+    'reviewer-host-adapter-antigravity-prompt.ps1'
+    'reviewer-execution-engine.ps1'
     'review-blackboard-writer.ps1'
     'inline-review-gate-evaluator.ps1'
     'review-run-index-writer.ps1'
+    'checkpoint-review-orchestrator.ps1'
 )
 
 foreach ($moduleName in $proposal197ReviewerModules) {

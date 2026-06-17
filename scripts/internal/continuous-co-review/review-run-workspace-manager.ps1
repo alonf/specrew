@@ -13,7 +13,11 @@ function New-ContinuousCoReviewRunWorkspace {
     New-Item -ItemType Directory -Path $RootPath -Force | Out-Null
     $workspacePath = Join-Path $RootPath $RunId
     if (Test-Path -LiteralPath $workspacePath) {
-        throw "Review run workspace already exists for run id '$RunId'."
+        $suffix = 1
+        do {
+            $workspacePath = Join-Path $RootPath ("$RunId-$suffix")
+            $suffix++
+        } while (Test-Path -LiteralPath $workspacePath)
     }
 
     New-Item -ItemType Directory -Path $workspacePath -Force | Out-Null
@@ -43,13 +47,27 @@ function Write-ContinuousCoReviewRequestBundle {
         throw "Review request bundle already exists for run id '$($Workspace.run_id)'."
     }
 
+    $requestJson = $Request | ConvertTo-Json -Depth 100
     $Request | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $requestPath -Encoding UTF8 -NoNewline
+    $requestHash = if (Test-ReviewerContractPropertyExists -Object $Request -Name 'request_hash') {
+        Get-ReviewerContractPropertyValue -Object $Request -Name 'request_hash'
+    }
+    else {
+        $sha = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($requestJson)
+            [System.BitConverter]::ToString($sha.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant()
+        }
+        finally {
+            $sha.Dispose()
+        }
+    }
     return [pscustomobject][ordered]@{
         schema_version = '1.0'
         run_id         = $Workspace.run_id
         workspace_path = $Workspace.path
         request_path   = $requestPath
-        request_hash   = $Request.request_hash
+        request_hash   = $requestHash
         immutable      = $true
     }
 }
