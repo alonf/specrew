@@ -57,11 +57,17 @@ deploy/refresh/heal wired into `specrew init`/`update`/`start` via
 `Invoke-SpecrewInstructionDeployment`; 6/6 integration tests; host-neutral,
 byte-for-byte preservation, AGENTS.md dedupe).
 
-NEXT: T004 - front-load the bootstrap with the immediate Specrew action AND mirror
-the exact FR-013 guard into the bootstrap from the single packaged source via
-`Get-SpecrewCoordinatorFragment` (so the bootstrap guard cannot drift from the
-instruction-file guard). Tests pin the immediate-action ordering (SC-015) and the
-exact guard text in the bootstrap. Then T005 (host-coupling firewall negative
+NEXT: T004 - in `Format-BootstrapDirective`
+(`scripts/internal/specrew-bootstrap-provider.ps1:116`; the "MANDATORY FIRST
+ACTION" block at ~line 129) front-load the immediate Specrew lifecycle action
+above the broader context (FR-014), AND inject the exact FR-013 guard sourced
+from `Get-SpecrewCoordinatorFragment` so the bootstrap guard cannot drift from
+the instruction-file guard (FR-018). CRITICAL: the bootstrap provider is a 3-COPY
+MIRROR - sync `scripts/internal/` + `extensions/specrew-speckit/scripts/` +
+`.specify/extensions/specrew-speckit/scripts/` (mirror-parity validator) and
+confirm cross-location fragment resolution (the provider already prefers the
+project-local source tree, ~line 337). Tests pin the immediate-action ordering
+(SC-015) and the exact guard text in the bootstrap (SC-013). Then T005 (host-coupling firewall negative
 test - must FAIL on a planted single-host literal, then PASS - plus coverage). Add
 the FR-008 docs note (Specrew deploys to `AGENTS.md` on Antigravity, priority over
 a user's `GEMINI.md`). T006 (real-host Opus/Flash + behavioral
