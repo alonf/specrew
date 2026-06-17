@@ -76,3 +76,13 @@ none blocks iteration 002. Disposition is the maintainer's; do NOT blind-fix on 
   hook self-healed them before the model read them on the normal path, so it did not
   trip — but the content contract is incomplete. Candidate: absence-tolerant fragment
   wording and/or greenfield/brownfield init orientation (Proposal 143).
+
+#### Pre-iteration-closeout reconciliation (flagged by the review-signoff review, 2026-06-18)
+
+- The dev-tree `.specrew/start-context.json` `verdict_history` is internally
+  scrambled (10 entries out of chronological order; some `verdict_text` disagrees
+  with its own from/to transition; `feature-closeout` approvals are present while
+  the cursor sits at `before-implement`). This is pre-existing Proposal-142 resume
+  churn, NOT an iter-002 defect and NOT a review-signoff blocker — but
+  iteration-closeout and feature-closeout READ this ledger. **Before
+  iteration-closeout: reconcile it, or explicitly accept it with a maintainer note.**

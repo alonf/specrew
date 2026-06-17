@@ -32,7 +32,7 @@ The behavioral BANANA/APPLE probe was **staged at `C:/Temp/test-f184-gemini` but
 
 ## SC-005 — bootstrap, handover, resume (PASS)
 
-Bootstrap / `Stop`-handover / resume held across **three host transitions** (agy-Opus → claude → agy-Flash): every new session came up welcome-back with `handover_valid: true`, **no provider/launch errors**, and **`start-context.json` did NOT suffer the iter-001 stale-cursor re-scaffold** (byte-unchanged throughout, even under Flash). Bonus: cross-host (`agy ↔ claude`) handover continuity — each host read the other's handover and resumed the correct feature/lens.
+Bootstrap / `Stop`-handover / resume held across **three host transitions** (agy-Opus → claude → agy-Flash): every new session came up welcome-back with `handover_valid: true`, **no provider/launch errors**. **Integrity (corrected per the Proposal-145 review):** `start-context.json` was **byte-unchanged through the STRONG-model transitions** (Opus restart, agy→claude); **under Flash it was mutated by self-authorization and ended inconsistent** — the verdict-ledger reset (Proposal 142). The **iter-001 stale-cursor re-scaffold specifically did NOT recur**. Bonus: cross-host (`agy ↔ claude`) handover continuity — each host read the other's handover and resumed the correct feature/lens.
 
 ## Deferred follow-ups (FILED, not blind-fixed — see drift-log)
 
