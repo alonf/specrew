@@ -41,6 +41,7 @@ Review these user-facing surfaces:
 - `docs/getting-started.md`
 - `docs/user-guide.md`
 - `docs/api-reference.md`
+- `docs/troubleshooting.md`
 
 They must include:
 

@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T005
-**Tasks Remaining**: T006, T007, T008
+**Last Completed Task**: T006
+**Tasks Remaining**: T007, T008
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
-**Updated**: 2026-06-17T00:34:02Z
+**Updated**: 2026-06-17T00:46:17Z
 
 ## Execution Summary
 
@@ -32,6 +32,10 @@
   user-owned Antigravity hook definitions survive install/remove, F-183
   PreInvocation/Stop behavior remains registered, and the manifest declares
   B2+B3 without claiming B1.
+- T006 completed: public docs now place Antigravity at host-level content depth
+  with `agy`, B3-on-`PreInvocation`, hook status/install/remove, `/permissions`,
+  `enableTerminalSandbox`, sandbox/auto-approval distinctions, `specrew start`
+  fallback, and evidence-gated status wording.
 
 ## Notes
 
@@ -61,11 +65,11 @@
 - **Timestamp**: 2026-06-17T00:09:20Z
 - **Mode**: continue
 - **Status**: ready
-- **Last Completed Task**: T005
-- **Next Suggested Task**: T006
+- **Last Completed Task**: T006
+- **Next Suggested Task**: T007
 - **Next Recovery Action**: (none)
 - **In-Progress Tasks**: (none)
-- **Remaining Tasks**: T006, T007, T008
+- **Remaining Tasks**: T007, T008
 - **Repair Escalation**: inactive
 - **Blockers**: (none)
 - **Salvageable Tasks**: n/a

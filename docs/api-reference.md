@@ -107,6 +107,9 @@ Behavior:
   opt-outs; `install --host <h>` (or `--force`) clears that opt-out and re-installs
 - `remove` removes Specrew hook entries and records an opt-out, so a later
   `specrew update` does not silently re-add them
+- for Antigravity, hook config is project-local `.agents/hooks.json`; install
+  adds/replaces only the Specrew-owned definition for `PreInvocation` and
+  `Stop`, and remove preserves user-owned hook definitions
 - it does not gate on project setup (so `status` works in a broken project) and is
   fail-open; the exit code is non-zero only when a host genuinely fails to deploy
   (an opt-out skip is not a failure)
