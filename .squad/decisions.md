@@ -26808,3 +26808,43 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Capacity Evidence**: `specs/197-continuous-co-review/tasks.md` records 18.75 story points against the approved 18 SP Iteration 001 capacity
 - **Decision State**: human decision pending; do not start implementation until explicit before-implement authorization resolves the 18.75/18 SP overcommit
 - **Implementation State**: not started by this synchronization
+
+## 2026-06-17T20:18:24Z — Boundary enforcement: before-implement
+
+- **Feature**: 197-continuous-co-review
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched tasks -> before-implement.
+
+## 2026-06-17T20:21:45Z — F-197 iteration-001 tasks->before-implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-17 — Verdict: APPROVE WITH INSTRUCTIONS — defer lower-priority real-adapter breadth and proceed to before-implement
+
+- **Decision ID**: f197-i001-tasks-before-implement-approved
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008, SC-009, SC-010
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T20:21:45Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-001 tasks->before-implement after reducing the active spine scope to 18.00 SP. Proceed to before-implement only; do not start implementation without a separate `before-implement -> implement` authorization.
+- **Carried instructions**:
+  1. Defer T035, T036, and T037 to Iteration 002 with 0.00 SP in Iteration 001.
+  2. Scope T042 to Claude and Codex adapter implementations only; move Copilot, Cursor, and Antigravity implementations to Iteration 002.
+  3. Do not defer spine-integrity work: contract/schema, git-diff change-set, blackboard protocol, standalone gate validator, SC-006 guard T011/T047, fake/fixture adapter T017/T023, and infrastructure-failure floor T009.
+  4. Re-run capacity and after-tasks checks; expected capacity is 18.00/18 SP before proceeding to before-implement.
+- **Disposition**: task and iteration-plan capacity repaired to 18.00 SP, after-tasks PASS confirmed, governance validation PASS confirmed, and execution-readiness artifacts scaffolded. Implementation remains blocked until the separate before-implement->implement authorization.
+
+## 2026-06-17T20:20:08Z — Boundary enforcement: before-implement
+
+- **Feature**: 197-continuous-co-review
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched tasks -> before-implement.
