@@ -53,7 +53,18 @@ recorded as a deferred follow-up, explicitly OUT of iter-002 scope.
   `AGENTS.md`. Candidate Antigravity-manifest enrichment (a secondary/also-read
   instruction-file list). Not built in iter-002 — `AGENTS.md` priority makes the
   current single-`InstructionsFile` deployment correct; adding `GEMINI.md` handling
-  would be scope creep against the 20/20 cap.
+  would be scope creep against the 20/20 cap. **The `AGENTS.md -> GEMINI.md`
+  priority is docs-corroborated only (the official hooks/instructions page is
+  JS-rendered), so T006 MUST verify it BEHAVIORALLY in the real-host `agy` run:
+  place a conflicting marker in `AGENTS.md` vs `GEMINI.md` and confirm which `agy`
+  honors. `AGENTS.md` wins -> defer proven. `GEMINI.md` wins -> STOP and surface;
+  the defer flips to in-scope (human split/defer decision).** (Before-implement
+  verdict carry, 2026-06-17.)
+- **`AGENTS.md` size budget (Codex 32 KiB concatenation cap)**: Codex loads
+  `AGENTS.md` whole into a root->cwd concatenation capped at 32 KiB and does not
+  parse sections, so a large Specrew section atop a large user `AGENTS.md` risks
+  truncation. T002 holds the packaged coordinator fragment LEAN under an explicit
+  size budget, asserted by a test. (Before-implement verdict carry, 2026-06-17.)
 - **Codex `/init` "update existing"** (`openai/codex` #21932): if it ships, re-test
   managed-section survival under a re-run `/init`.
 - **`~/.gemini/config/hooks.json` user-scoped hooks tier**: relevant to the
