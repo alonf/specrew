@@ -1,8 +1,7 @@
 $ErrorActionPreference = 'Stop'
 
-# F-171 regression: prove the F-174 bootstrap/handover additions and F-183 Antigravity
-# PreInvocation binding are additive. Refocus B1/B2/B3 stay byte-unchanged and no B4
-# trigger is introduced.
+# F-171 regression: prove the F-174/F-184 bootstrap/handover/refocus additions
+# are additive. Refocus B1/B2/B3 stay intact and no B4 trigger is introduced.
 $scopesPath = (Resolve-Path "$PSScriptRoot/../../.specify/extensions/specrew-speckit/refocus-scopes.json").Path
 $raw = Get-Content -LiteralPath $scopesPath -Raw
 $cfg = $raw | ConvertFrom-Json
@@ -24,6 +23,7 @@ $refocus = $cfg.providers | Where-Object { $_.id -eq 'refocus' }
 Assert-True ($refocus.events -contains 'SessionStart') 'refocus still handles SessionStart (B1/B2)'
 Assert-True ($refocus.events -contains 'PostToolUse') 'refocus still handles PostToolUse (B3)'
 Assert-True ($refocus.events -contains 'UserPromptSubmit') 'refocus still handles UserPromptSubmit'
+Assert-True ($refocus.events -contains 'PreInvocation') 'refocus handles Antigravity PreInvocation (F-184 B3 carrier)'
 
 # --- triggers b1/b2/b3 enabled; FR-012: no b4 trigger ---
 Assert-True ([bool]$cfg.triggers.b1.enabled) 'b1 trigger enabled'
@@ -40,8 +40,10 @@ $ho = $cfg.providers | Where-Object { $_.id -eq 'handover' }
 Assert-True ($ho.events -contains 'Stop') 'handover registered for the universal Stop event (iter-4 rolling handover)'
 Assert-True (-not ($ho.events -contains 'SessionEnd')) 'handover NOT registered for SessionEnd (iter-4 replaced SessionEnd with Stop)'
 
-# --- Antigravity bounded support: bootstrap only; refocus still does not ride PreInvocation. ---
-Assert-True (-not (@($refocus.events) -contains 'PreInvocation')) 'refocus does NOT ride Antigravity PreInvocation (no B1/B3 parity claim)'
+# --- Antigravity full refocus binding: B2 + B3 share PreInvocation; B1 remains absent. ---
+$antiManifest = Import-PowerShellDataFile -LiteralPath (Resolve-Path "$PSScriptRoot/../../hosts/antigravity/host.psd1").Path
+$antiTriggers = @($antiManifest.RefocusHookBindings.BoundTriggers)
+Assert-True (($antiTriggers -contains 'b2') -and ($antiTriggers -contains 'b3') -and -not ($antiTriggers -contains 'b1')) 'antigravity manifest declares B2+B3 only'
 
 # --- B1 regression: the bootstrap provider stays silent on compact (F-171 B1 path untouched) ---
 $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-t019-" + [guid]::NewGuid().ToString('N'))

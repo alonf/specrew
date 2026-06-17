@@ -227,7 +227,10 @@ Assert-True ($null -ne $anti.PSObject.Properties['user-audit']) 'antigravity: ex
 Assert-True ([string]$anti.'user-audit'.PreToolUse[0].hooks[0].command -eq 'echo user-antigravity-hook') 'antigravity: user hook command preserved exactly'
 Assert-True ($null -ne $anti.PSObject.Properties['specrew-refocus']) 'antigravity: Specrew named hook definition added'
 Assert-True ($null -ne $anti.'specrew-refocus'.PreInvocation -and $null -ne $anti.'specrew-refocus'.Stop) 'antigravity: PreInvocation + Stop registered'
-Assert-True (-not $anti.'specrew-refocus'.PSObject.Properties['PreToolUse']) 'antigravity: PreToolUse dormant (no B1/B3 parity claim)'
+Assert-True (-not $anti.'specrew-refocus'.PSObject.Properties['PreToolUse']) 'antigravity: PreToolUse dormant (B3 rides PreInvocation)'
+$antiManifest = Import-PowerShellDataFile -LiteralPath (Join-Path $repoRoot 'hosts\antigravity\host.psd1')
+$antiTriggers = @($antiManifest.RefocusHookBindings.BoundTriggers)
+Assert-True (($antiTriggers -contains 'b2') -and ($antiTriggers -contains 'b3') -and -not ($antiTriggers -contains 'b1')) 'antigravity: manifest declares B2+B3 without B1'
 $antiPreCmd = [string]$anti.'specrew-refocus'.PreInvocation[0].command
 $antiStopCmd = [string]$anti.'specrew-refocus'.Stop[0].command
 $antiPreDecoded = Decode-EncodedPwshCommand -Command $antiPreCmd

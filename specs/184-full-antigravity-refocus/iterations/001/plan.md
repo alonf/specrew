@@ -42,7 +42,7 @@
 | T002 | Antigravity session identity and per-session refocus state/anchor | FR-001, FR-002, FR-005, SC-001, SC-002 | US1, US4 | 4 | Implementer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-dispatcher.tests.ps1 | done | codex | 4 | pass |
 | T003 | B3 `PreInvocation` injection with dedupe/breaker and fail-open diagnostics | FR-003, FR-006, FR-010, SC-003, SC-007, SC-009 | US2 | 5 | Implementer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-dispatcher.tests.ps1 | done | codex | 5 | pass |
 | T004 | Antigravity self-marker concurrency classifier | FR-004, FR-006, SC-004 | US3 | 3 | Implementer | scripts/internal/bootstrap/**; tests/bootstrap/ClassificationEngine.Tests.ps1; tests/bootstrap/SessionBootstrapManager.Tests.ps1 | done | codex | 3 | pass |
-| T005 | Hook config preservation and F-183 Antigravity regression guards | FR-005, FR-007, SC-005, SC-006 | US4, US5 | 3 | Implementer, Reviewer | hosts/antigravity/**; scripts/internal/deploy-refocus-hooks.ps1; extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | planned | codex | — | — |
+| T005 | Hook config preservation and F-183 Antigravity regression guards | FR-005, FR-007, SC-005, SC-006 | US4, US5 | 3 | Implementer, Reviewer | hosts/antigravity/**; scripts/internal/deploy-refocus-hooks.ps1; extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | done | codex | 3 | pass |
 | T006 | Antigravity documentation, permission, recovery, and evidence-gated status wording | FR-008, FR-009, TG-006, SC-008, SC-010 | US5 | 2 | Spec Steward, Reviewer | README.md; docs/**; specs/184-full-antigravity-refocus/** | planned | codex | — | — |
 | T007 | Automated validation, mirror parity, and FileList/release readiness | TG-001, TG-002, TG-003, SC-001, SC-004, SC-006, SC-007, SC-008, SC-010 | US1-US5 | 3 | Reviewer | tests/**; extensions/specrew-speckit/**; .specify/extensions/specrew-speckit/**; Specrew.psd1; specs/184-full-antigravity-refocus/** | planned | codex | — | — |
 | T008 | Real-host `agy` validation and Proposal 145 review evidence | FR-009, TG-004, TG-005, TG-006, SC-002, SC-003, SC-005, SC-009, SC-010 | US1-US5 | 3 | Reviewer | specs/184-full-antigravity-refocus/iterations/001/** | planned | codex | — | — |
@@ -133,6 +133,10 @@ TG-004/TG-005 -> T001/T008; TG-006 -> T006/T008.
   Antigravity conversation is classified as `same-session` with no advisory,
   while a different fresh same-worktree marker still emits the existing
   concurrency advisory.
+- T005 completed with automated regression evidence that Antigravity hook
+  deployment preserves user-owned `.agents/hooks.json` entries, registers
+  `PreInvocation` + `Stop`, and keeps the manifest scoped to B2+B3 without a
+  B1 compaction carrier.
 - Retro and iteration-closeout must restore `.specrew/iteration-config.yml` to the baseline 20 SP cap after F-184 closes.
 - Status is `executing` after tasks and before-implement readiness were committed
   and lifecycle state was synchronized.

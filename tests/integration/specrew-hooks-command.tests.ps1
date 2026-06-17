@@ -89,7 +89,7 @@ Assert-True ((Status-Line -Out $out -HostKind 'codex') -match 'failed') 'status:
 $out = Invoke-Hooks @('install', '--host', 'bogus')
 Assert-True ($LASTEXITCODE -ne 0) 'install --host bogus: unknown host errors (non-zero exit)'
 $out = Invoke-Hooks @('install', '--host', 'antigravity')
-Assert-True ($LASTEXITCODE -eq 0) 'install --host antigravity: bounded hook host accepted'
+Assert-True ($LASTEXITCODE -eq 0) 'install --host antigravity: hook host accepted'
 $out = Invoke-Hooks @('status', '--host', 'antigravity')
 Assert-True ((Status-Line -Out $out -HostKind 'antigravity') -match 'installed') 'status --host antigravity: antigravity installed'
 $antiCfg = Join-Path $projectRoot '.agents\hooks.json'

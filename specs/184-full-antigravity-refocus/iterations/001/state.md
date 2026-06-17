@@ -1,13 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: before-implement
+**Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T004
-**Tasks Remaining**: T005, T006, T007, T008
+**Last Completed Task**: T005
+**Tasks Remaining**: T006, T007, T008
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
-**Updated**: 2026-06-17T00:26:27Z
+**Updated**: 2026-06-17T00:34:02Z
 
 ## Execution Summary
 
@@ -28,6 +28,10 @@
 - T004 completed: automated bootstrap/classifier evidence proves the current
   Antigravity session marker is not reported as a competing same-worktree
   session, while a different fresh marker still warns.
+- T005 completed: automated deployment and hook-command evidence proves
+  user-owned Antigravity hook definitions survive install/remove, F-183
+  PreInvocation/Stop behavior remains registered, and the manifest declares
+  B2+B3 without claiming B1.
 
 ## Notes
 
@@ -57,11 +61,11 @@
 - **Timestamp**: 2026-06-17T00:09:20Z
 - **Mode**: continue
 - **Status**: ready
-- **Last Completed Task**: T004
-- **Next Suggested Task**: T005
+- **Last Completed Task**: T005
+- **Next Suggested Task**: T006
 - **Next Recovery Action**: (none)
 - **In-Progress Tasks**: (none)
-- **Remaining Tasks**: T005, T006, T007, T008
+- **Remaining Tasks**: T006, T007, T008
 - **Repair Escalation**: inactive
 - **Blockers**: (none)
 - **Salvageable Tasks**: n/a

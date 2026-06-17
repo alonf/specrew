@@ -27,11 +27,11 @@
     HandlersFile         = 'handlers.ps1'
     CoordinatorRulesFile = 'coordinator-rules.psd1'
 
-    # F-183 T006: verified Antigravity hook surface. Project-scoped .agents/hooks.json carries named hook
-    # definitions; PreInvocation supports injectSteps, and Stop requires a decision JSON. B2 rides
-    # PreInvocation through the bootstrap-only neutral event; no B1/B3 parity is claimed here.
+    # F-184: verified Antigravity hook surface. Project-scoped .agents/hooks.json carries named hook
+    # definitions; PreInvocation supports injectSteps for B2 bootstrap and B3 boundary refocus, and
+    # Stop requires a decision JSON for handover. Antigravity has no B1 compaction carrier.
     RefocusHookBindings = @{
-        BoundTriggers  = @('b2')
+        BoundTriggers  = @('b2', 'b3')
         Events         = @('PreInvocation', 'Stop')
         SettingsFile   = '.agents/hooks.json'
         OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-antigravity'
