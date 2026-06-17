@@ -39,7 +39,7 @@
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T001 | Discovery spike: B3-on-PreInvocation split-guard proof | FR-003, FR-010, SC-009, TG-004, TG-005 | US2 | 3 | Planner, Reviewer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; hosts/antigravity/**; specs/184-full-antigravity-refocus/** | done | codex | 3 | pass |
-| T002 | Antigravity session identity and per-session refocus state/anchor | FR-001, FR-002, FR-005, SC-001, SC-002 | US1, US4 | 4 | Implementer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-dispatcher.tests.ps1 | planned | codex | — | — |
+| T002 | Antigravity session identity and per-session refocus state/anchor | FR-001, FR-002, FR-005, SC-001, SC-002 | US1, US4 | 4 | Implementer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-dispatcher.tests.ps1 | done | codex | 4 | pass |
 | T003 | B3 `PreInvocation` injection with dedupe/breaker and fail-open diagnostics | FR-003, FR-006, FR-010, SC-003, SC-007, SC-009 | US2 | 5 | Implementer | scripts/internal/bootstrap/**; scripts/internal/specrew-hook-dispatcher.ps1; extensions/specrew-speckit/scripts/**; tests/bootstrap/**; tests/integration/refocus-dispatcher.tests.ps1 | planned | codex | — | — |
 | T004 | Antigravity self-marker concurrency classifier | FR-004, FR-006, SC-004 | US3 | 3 | Implementer | scripts/internal/bootstrap/**; tests/bootstrap/ClassificationEngine.Tests.ps1; tests/bootstrap/SessionBootstrapManager.Tests.ps1 | planned | codex | — | — |
 | T005 | Hook config preservation and F-183 Antigravity regression guards | FR-005, FR-007, SC-005, SC-006 | US4, US5 | 3 | Implementer, Reviewer | hosts/antigravity/**; scripts/internal/deploy-refocus-hooks.ps1; extensions/specrew-speckit/scripts/deploy-refocus-hooks.ps1; tests/integration/refocus-deploy.tests.ps1; tests/integration/specrew-hooks-command.tests.ps1 | planned | codex | — | — |
@@ -121,6 +121,10 @@ TG-004/TG-005 -> T001/T008; TG-006 -> T006/T008.
 - T001 discovery recorded PASS rows for `fresh-boundary-cursor`,
   `exactly-once-b3`, and `bounded-host-model` at
   file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/discovery-antigravity-b3-preinvocation.md.
+- T002 completed with automated evidence that Antigravity `conversationId` keys
+  `.specrew/runtime/refocus-state-<session>.json`, anchors on first
+  `PreInvocation`, remains silent when the boundary cursor is unchanged, and
+  never creates `refocus-state-unknown.json` when a real conversation id exists.
 - Retro and iteration-closeout must restore `.specrew/iteration-config.yml` to the baseline 20 SP cap after F-184 closes.
 - Status is `executing` after tasks and before-implement readiness were committed
   and lifecycle state was synchronized.

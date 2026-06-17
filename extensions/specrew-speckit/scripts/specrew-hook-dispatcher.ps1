@@ -5,7 +5,7 @@
 # — never a second registration on the host settings surface (ownership rule).
 #
 # Contract:
-#   -Event <name>      host-neutral event name (SessionStart | PostToolUse | PreToolUse)
+#   -Event <name>      host-neutral event name (SessionStart | PostToolUse | UserPromptSubmit | PreInvocation | PreToolUse)
 #   stdin              host event JSON (Claude shape: {session_id, source, tool_name, ...})
 #   stdout             injection output, shaped per event (plain for SessionStart;
 #                      hookSpecificOutput JSON for PostToolUse; permissionDecision
@@ -160,6 +160,12 @@ function New-GovernedProviderFailureFallback {
 function Test-IsBootstrapDeliveryEvent {
     param([string]$EventName, [string]$TargetHost)
     return ($EventName -eq 'SessionStart' -or ($TargetHost -eq 'antigravity' -and $EventName -eq 'PreInvocation'))
+}
+
+function Test-IsB3DeliveryEvent {
+    param([string]$EventName, [string]$TargetHost)
+    if ($TargetHost -eq 'antigravity') { return ($EventName -eq 'PreInvocation') }
+    return ($EventName -in @('PostToolUse', 'UserPromptSubmit'))
 }
 
 function Get-DispatcherProjectRoot {
@@ -522,12 +528,16 @@ function Set-BreakerTripped {
 }
 
 function Get-RefocusProviderArgs {
-    param([string]$EventName, [AllowNull()][string]$Source)
+    param([string]$EventName, [AllowNull()][string]$Source, [string]$TargetHost = 'claude')
     # RefocusProvider routing (FR-009 surface; B3 state-diff lands in T007):
     #   SessionStart source: compact            -> B1 (general + current stage)
     #   SessionStart source: startup|resume|clear -> B2 (launch grounding)
     #   PostToolUse                              -> B3 (boundary-cross; T007 gates
     #                                               this behind the state-diff)
+    #   Antigravity PreInvocation                -> B3 (its proven injectSteps carrier;
+    #                                               PostToolUse rejects injectSteps)
+    if ($TargetHost -eq 'antigravity' -and $EventName -eq 'PreInvocation') { return @('--trigger', 'b3') }
+    if ($TargetHost -eq 'antigravity' -and $EventName -in @('PostToolUse', 'UserPromptSubmit')) { return $null }
     switch ($EventName) {
         'SessionStart' {
             if ($Source -eq 'compact') { return @('--trigger', 'b1') }
@@ -567,7 +577,7 @@ function Write-InjectionOutput {
             if ($EventName -eq 'Stop') {
                 @{ decision = 'allow' } | ConvertTo-Json -Depth 3 -Compress | Write-Output
             }
-            elseif (-not [string]::IsNullOrWhiteSpace($Payload)) {
+            elseif ($EventName -eq 'PreInvocation' -and -not [string]::IsNullOrWhiteSpace($Payload)) {
                 @{ injectSteps = @(@{ ephemeralMessage = $Payload }) } | ConvertTo-Json -Depth 6 -Compress | Write-Output
             }
             else {
@@ -655,7 +665,7 @@ try {
     }
     $stateDirty = $false
     # The refocus trigger this event maps to (journal attribution).
-    $eventTrigger = if ($Event -in @('PostToolUse', 'UserPromptSubmit')) { 'b3' } elseif ($source -eq 'compact') { 'b1' } else { 'b2' }
+    $eventTrigger = if (Test-IsB3DeliveryEvent -EventName $Event -TargetHost $HostKind) { 'b3' } elseif ($source -eq 'compact') { 'b1' } else { 'b2' }
 
     # Providers for THIS event, deterministic order (the host runs parallel hooks
     # unordered; Specrew owns ordering internally — the lens-2 dispatcher decision).
@@ -706,7 +716,7 @@ try {
             }
             # B3 gating (T007, FR-009): watch the boundary cursor, dedupe against
             # the channel-1 fingerprint, anchor on first sight.
-            if ($Event -in @('PostToolUse', 'UserPromptSubmit')) {
+            if (Test-IsB3DeliveryEvent -EventName $Event -TargetHost $HostKind) {
                 $b3 = Test-B3ShouldInject -ProjectRoot $projectRoot -SessionState $sessionState
                 $sessionState = $b3.State
                 $stateDirty = $true
@@ -729,7 +739,7 @@ try {
                 $stateDirty = $true
                 continue
             }
-            $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source
+            $commandArgs = Get-RefocusProviderArgs -EventName $Event -Source $source -TargetHost $HostKind
         }
         else {
             # Pass the resolved host so the provider can shape host-aware delivery (F-174 codex fix: codex

@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T001
-**Tasks Remaining**: T002, T003, T004, T005, T006, T007, T008
+**Last Completed Task**: T002
+**Tasks Remaining**: T003, T004, T005, T006, T007, T008
 **In Progress**: (none)
 **Baseline Ref**: de725ac4bbe550d19bda0df2e22451f8e4e8c333
-**Updated**: 2026-06-16T23:32:02Z
+**Updated**: 2026-06-17T00:09:20Z
 
 ## Execution Summary
 
@@ -15,9 +15,12 @@
 - Iteration 001 uses a temporary 26 SP capacity override from the baseline 20 SP
   cap, authorized by the user's 2026-06-17 instruction to implement all known
   F-184 scope before the next human gate.
-- Execution has not started yet; T001 discovery must run first.
 - T001 discovery completed and passed all split-guard triggers. Runtime
   implementation may proceed to T002.
+- T002 completed: automated dispatcher evidence proves Antigravity
+  `conversationId` keys the per-session refocus state, anchors on first
+  `PreInvocation`, stays silent without a boundary cursor change, and does not
+  create a global `unknown` state file when a real conversation id exists.
 
 ## Notes
 
@@ -40,3 +43,19 @@
 - **Resolved At**: (none)
 - **Notes**: (none)
 <!-- <<< specrew-managed escalation-state <<< -->
+
+<!-- >>> specrew-managed resume-report >>> -->
+## Resume Report
+
+- **Timestamp**: 2026-06-17T00:09:20Z
+- **Mode**: continue
+- **Status**: ready
+- **Last Completed Task**: T002
+- **Next Suggested Task**: T003
+- **Next Recovery Action**: (none)
+- **In-Progress Tasks**: (none)
+- **Remaining Tasks**: T003, T004, T005, T006, T007, T008
+- **Repair Escalation**: inactive
+- **Blockers**: (none)
+- **Salvageable Tasks**: n/a
+<!-- <<< specrew-managed resume-report <<< -->

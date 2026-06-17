@@ -41,7 +41,7 @@
     {
       "id": "refocus",
       "kind": "inject",
-      "events": ["SessionStart", "PostToolUse", "UserPromptSubmit"],
+      "events": ["SessionStart", "PostToolUse", "UserPromptSubmit", "PreInvocation"],
       "order": 10,
       "budget_share": 1.0,
       "command": "refocus.ps1"

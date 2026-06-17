@@ -370,6 +370,21 @@ $json = $null
 try { $json = $result.StdOut | ConvertFrom-Json } catch { }
 Assert-True ($null -ne $json -and ([string]$json.additionalContext) -match 'trigger=b2') 'copilot camelCase sessionId parsed; additionalContext b2 payload'
 
+# 15e. antigravity: PreInvocation is the only B3 injection carrier; conversationId keys state.
+$dispatcher = New-ScratchProject
+$antiEvent = '{"conversationId":"anti-conv-1","workspacePaths":["C:/anti/project"],"transcriptPath":"C:/anti/transcript.jsonl","prompt":"SECRET_PROMPT_SHOULD_NOT_LEAK"}'
+$antiStatePath = Join-Path $projectRoot '.specrew\runtime\refocus-state-anti-conv-1.json'
+$unknownStatePath = Join-Path $projectRoot '.specrew\runtime\refocus-state-unknown.json'
+
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity PreInvocation first sight anchors silently'
+Assert-True (Test-Path -LiteralPath $antiStatePath -PathType Leaf) 'antigravity conversationId creates a per-session refocus state file'
+Assert-True (-not (Test-Path -LiteralPath $unknownStatePath)) 'antigravity conversationId never creates global unknown state'
+$antiState = Get-Content -LiteralPath $antiStatePath -Raw | ConvertFrom-Json
+Assert-True ([string]$antiState.session_id -eq 'anti-conv-1' -and [string]$antiState.last_seen_boundary -eq 'implement') 'antigravity state records session id and anchor cursor'
+
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity unchanged PreInvocation remains silent'
 # --- summary --------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 if ($script:Failures -gt 0) {
