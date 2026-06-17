@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T006 (real-host evidence recorded in real-host-evidence.md)
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: abf18b99
-**Updated**: 2026-06-18T01:30:00Z
+**Updated**: 2026-06-18T02:00:00Z
 
 ## Charter
 
@@ -16,10 +16,11 @@ dogfood after iteration 001. The slice is persistent host instructions at
 `specrew init`, the prominent anti-raw-`specify.exe workflow` guard, bootstrap
 front-loading/speedup, and real-host Opus/Flash validation.
 
-Feature-closeout is not authorized in this iteration. Release carry-forwards
-remain open: beta-before-stable, `MigrateLegacyTopLevelEventMap`
-legacy-upgrade validation, and reproducible or explicitly machine-local `agy`
-evidence.
+Feature-closeout was not authorized in the original plan; on 2026-06-18 the
+maintainer expanded scope to carry through feature-closeout + a beta PR (explicit
+scope decision, recorded in drift-log.md). Release carry-forwards remain open:
+beta-before-stable, `MigrateLegacyTopLevelEventMap` legacy-upgrade validation, and
+reproducible or explicitly machine-local `agy` evidence.
 
 ## Specify Boundary
 
@@ -76,16 +77,17 @@ overclaim was corrected on the reviewer's send-back). Retrospective authored
 iteration-001 lesson up front; the SC-005 overclaim and the weak-model gate-skip
 were the key frictions.
 
-NEXT: retro boundary - awaiting the maintainer's explicit "approved for retro" to
-advance retro -> iteration-closeout. One verdict, one boundary; do NOT pre-run
-iteration-closeout.
+Retro ACCEPTED (verdict: retro -> iteration-closeout | approved for retro,
+human-confirmed via the maintainer's "close the iteration, close the feature,
+create a PR for a beta release" directive). ITERATION-CLOSEOUT complete: all six
+tasks done; capacity 20/20 = sum of Actuals; `verdict_history` ACCEPTED as-is
+(Proposal 142, see drift-log.md); dashboard rendered.
 
-PRE-ITERATION-CLOSEOUT OBLIGATION: reconcile or explicitly accept the scrambled
-`verdict_history` (Proposal 142, flagged in drift-log.md) before iteration-closeout
-reads it. The maintainer is expanding scope to carry this iteration through
-feature-closeout + a beta PR (record as an explicit scope decision at that
-boundary). Release carry-forwards remain OPEN (SC-018): beta-before-stable,
-`MigrateLegacyTopLevelEventMap`, machine-local `agy` evidence (now gathered).
+NEXT: feature-closeout -> beta PR (shipping as 0.38.0-beta1). The directive
+authorizes carrying through feature-closeout + a beta PR (scope-expansion recorded
+in drift-log.md, beyond the original plan). Release carry-forwards remain OPEN
+(SC-018): beta-before-stable, `MigrateLegacyTopLevelEventMap`, machine-local `agy`
+evidence. The PR claims BETA only and carries the Flash weak-model caveat.
 
 ## Carry Into Plan
 

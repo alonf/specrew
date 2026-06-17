@@ -86,3 +86,19 @@ none blocks iteration 002. Disposition is the maintainer's; do NOT blind-fix on 
   churn, NOT an iter-002 defect and NOT a review-signoff blocker — but
   iteration-closeout and feature-closeout READ this ledger. **Before
   iteration-closeout: reconcile it, or explicitly accept it with a maintainer note.**
+
+#### Iteration-closeout decisions (2026-06-18, maintainer directive)
+
+- **`verdict_history` — ACCEPTED as-is, not reconciled.** The dev-tree ledger mixes
+  conventions (this session's entries name the TO boundary, e.g.
+  `before-implement -> review-signoff | approved for review-signoff`; iter-001's
+  entries name the FROM boundary). The actual boundary authorizations are sound —
+  each was a human verdict at an explicit stop and the cursor never self-advanced —
+  so the labels are cosmetic; the internal cleanup is deferred to Proposal 142.
+  Accepting (not rewriting) avoids risking corruption of the ledger.
+- **Scope expansion (maintainer).** The directive "Close the iteration, close the
+  feature, create a PR, for a beta release" authorizes advancing through
+  iteration-closeout -> feature-closeout -> a beta PR (0.38.0-beta1), beyond the
+  plan's original "feature-closeout is not authorized in this iteration." Recorded
+  as an explicit maintainer scope decision; merge/tag/publish are NOT done in this
+  pass (BETA PR + Copilot-fix only).

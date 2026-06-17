@@ -27160,3 +27160,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 7d170b8ca59029ff604f3e64044f634d7314eb1c
 - **Recorded At**: 2026-06-17T22:10:50Z
+
+## 2026-06-17T22:55:23Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-06-17T22:55:23Z
+- **Warning**: Expected next boundary 'retro' but received 'iteration-closeout'.
+
+## 2026-06-17T22:55:24Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 746312fc58b75b6a50e86d955216afe8c806d831
+- **Recorded At**: 2026-06-17T22:55:24Z

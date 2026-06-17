@@ -278,3 +278,6 @@ closed:
   - feature: 184-full-antigravity-refocus
     iteration: 001
     closed_at: 2026-06-17T12:19:52Z
+  - feature: 184-full-antigravity-refocus
+    iteration: 002
+    closed_at: 2026-06-17T22:55:26Z
