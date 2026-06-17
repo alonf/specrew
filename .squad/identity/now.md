@@ -1,18 +1,18 @@
 ---
-focus_area: "No active feature"
+focus_area: "Feature 197 before-implement boundary"
 active_issues: "[]"
 schema: v1
-updated_at: 2026-06-17T19:46:17Z
+updated_at: 2026-06-17T20:26:07Z
 session_state_active: true
-session_state_boundary: tasks
+session_state_boundary: before-implement
 session_state_feature: 197-continuous-co-review
 session_state_feature_path: "C:\Dev\197-continuous-co-review\specs\197-continuous-co-review"
 session_state_iteration: 001
 session_state_task: "(none)"
-session_state_auth_commit: 737b88fd6f6c5c05b4e842e73c10f38899ad4c21
-session_state_recorded_at: 2026-06-17T19:46:17Z
+session_state_auth_commit: b79f73a5d1f9ec6f0ef729cdda5c3543f225d112
+session_state_recorded_at: 2026-06-17T20:26:07Z
 ---
 
 # What We're Focused On
 
-No active feature. Last completed: Feature 174 at 2026-06-15T02:26:31Z. Next roadmap item: Phase 3: Runtime Abstraction & Spec Fidelity (not yet authorized).
+Feature 197, continuous co-review, is paused at the before-implement boundary for Iteration 001. The task spine is capacity-repaired to 18.00 SP, execution-readiness artifacts exist, and implementation must not start until the human explicitly authorizes `before-implement -> implement`.
