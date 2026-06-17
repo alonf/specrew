@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: tasks
-**Iteration Status**: planning
-**Last Completed Task**: plan approved at a632a882; tasks decomposed in tasks.md
-**Tasks Remaining**: T001, T002, T003, T004, T005, T006
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: T001 discovery (host-landscape premise confirmed; no split-guard trigger)
+**Tasks Remaining**: T002, T003, T004, T005, T006
 **In Progress**: (none)
 **Baseline Ref**: abf18b99
-**Updated**: 2026-06-17T16:12:00Z
+**Updated**: 2026-06-17T16:40:00Z
 
 ## Charter
 
@@ -51,13 +51,14 @@ code-implementation. The records therefore use `human-confirmed` /
 
 ## Next Action
 
-Plan approved (a632a882) and tasks decomposed in `tasks.md` (T001-T006, 20/20
-story_points, bidirectional traceability PASS for FR-011..FR-018 + SC-011..SC-020
-+ TG-005). The `plan -> tasks` crossing is authorized (verdict_history, evidence
-human-confirmed-at-resume). Next: prepare the before-implement readiness
-(hardening gate) and stop at the `tasks -> before-implement` boundary for the
-explicit implementation go-ahead. Do not run implementation, open
-feature-closeout, or start release work without that next explicit human verdict.
+Implementation authorized (`tasks -> before-implement` approved with
+instructions, 2026-06-17). T001 discovery complete: the host-landscape premise
+HOLDS for all hosts (no split-guard trigger; see `discovery-host-landscape.md`).
+Next: T002 (packaged coordinator fragment + delimited managed-section merge
+helper), then T003-T005; T006 (real-host Opus/Flash) is human-owned. Honor the
+live split guard (stop for split/defer if a host diverges), the 20/20 zero-slack
+cap, the host-neutral firewall, and single-source guard text (FR-018). Next human
+stop: review-signoff.
 
 ## Carry Into Plan
 
