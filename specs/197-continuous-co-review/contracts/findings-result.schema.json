@@ -23,7 +23,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["finding_id", "source_run_id", "severity", "kind", "design_reference", "comment", "disposition", "resolution"],
+        "required": ["finding_id", "source_run_id", "location", "severity", "kind", "design_reference", "comment", "disposition", "resolution"],
         "properties": {
           "finding_id": { "type": "string", "minLength": 1 },
           "source_run_id": { "type": "string", "minLength": 1 },

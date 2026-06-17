@@ -3,15 +3,15 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T006
-**Tasks Remaining**: T007-T050
+**Last Completed Task**: T011
+**Tasks Remaining**: T012-T050
 **In Progress**: (none)
 **Baseline Ref**: 390e3718
-**Updated**: 2026-06-17T21:18:12Z
+**Updated**: 2026-06-17T21:25:47Z
 
 ## Planning Summary
 
-Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spine slice after the before-implement scope-change verdict restored all five host-neutral adapters and added manual real-host validation enablers. The repaired `tasks -> before-implement` boundary passed capacity, traceability, after-tasks, and before-implement readiness checks; implementation has completed the T001-T006 contract spine.
+Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spine slice after the before-implement scope-change verdict restored all five host-neutral adapters and added manual real-host validation enablers. The repaired `tasks -> before-implement` boundary passed capacity, traceability, after-tasks, and before-implement readiness checks; implementation has completed the T001-T011 contract, forced-findings, infrastructure-failure, and protected-surface guard spine.
 
 ## Scope and Deferrals
 
@@ -26,11 +26,11 @@ Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spin
 - Governance validation was run for the active iteration and returned PASS for file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/001 with WARN-only repository-scope findings outside this feature's execution readiness.
 - The execution tracker exists at file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/001/tasks-progress.yml.
 - The drift anchor exists at file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/001/drift-log.md.
-- Repaired readiness is current: capacity is 19.50/20 SP, FR-001 through FR-016 and SC-001 through SC-012 are covered, after-tasks passed, before-implement passed, and the latest human verdict authorized the now-complete T001-T006 contract spine.
+- Repaired readiness is current: capacity is 19.50/20 SP, FR-001 through FR-016 and SC-001 through SC-012 are covered, after-tasks passed, before-implement passed, and the latest human verdict authorized the now-complete T001-T011 contract, forced-findings, infrastructure-failure, and protected-surface guard spine.
 
 ## Next Action
 
-Continue with T007-T011 in dependency order while keeping the SC-006 protected-surface guard armed and preserving the Proposal 197 implementation guardrails.
+Continue with T012-T017 in dependency order while keeping the SC-006 protected-surface guard armed and preserving the Proposal 197 implementation guardrails.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

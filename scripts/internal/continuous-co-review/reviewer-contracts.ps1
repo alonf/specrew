@@ -400,3 +400,580 @@ function Assert-ReviewerContractObject {
 
     return $InputObject
 }
+
+function Get-ReviewerContractSha256Hex {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Text
+    )
+
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+    $hashBytes = [System.Security.Cryptography.SHA256]::HashData($bytes)
+    return ([System.BitConverter]::ToString($hashBytes) -replace '-', '').ToLowerInvariant()
+}
+
+function ConvertTo-ReviewerContractCanonicalJson {
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        $InputObject
+    )
+
+    return ($InputObject | ConvertTo-Json -Depth 100 -Compress)
+}
+
+function ConvertTo-ReviewerContractText {
+    param(
+        [AllowNull()]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    return ([string] $Value).Trim()
+}
+
+function Get-ReviewerFindingDispositionValues {
+    return @(
+        'open'
+        'accepted_fix_pending'
+        'resolved'
+        'rejected_with_rationale'
+        'escalated_to_human'
+    )
+}
+
+function Get-ReviewerFindingValidDispositionValues {
+    return Get-ReviewerFindingDispositionValues
+}
+
+function Test-ReviewerFindingDispositionValue {
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Disposition
+    )
+
+    return ((Get-ReviewerFindingDispositionValues) -contains $Disposition)
+}
+
+function Test-ReviewerFindingDisposition {
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Disposition
+    )
+
+    return Test-ReviewerFindingDispositionValue -Disposition $Disposition
+}
+
+function Get-ReviewerFindingResolutionStateValues {
+    return @(
+        'unresolved'
+        'resolved'
+        'rejected'
+        'escalated'
+    )
+}
+
+function Get-ReviewerFindingValidResolutionStateValues {
+    return Get-ReviewerFindingResolutionStateValues
+}
+
+function Test-ReviewerFindingResolutionStateValue {
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $State
+    )
+
+    return ((Get-ReviewerFindingResolutionStateValues) -contains $State)
+}
+
+function Test-ReviewerFindingResolutionState {
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $State
+    )
+
+    return Test-ReviewerFindingResolutionStateValue -State $State
+}
+
+function Get-ReviewerFindingLocationFingerprintFields {
+    param(
+        [AllowNull()]
+        $Location
+    )
+
+    $path = $null
+    $lineStart = $null
+    $lineEnd = $null
+    if ($null -ne $Location) {
+        if (Test-ReviewerContractPropertyExists -Object $Location -Name 'path') {
+            $path = ConvertTo-ReviewerContractText -Value (Get-ReviewerContractPropertyValue -Object $Location -Name 'path')
+            if ($null -ne $path) {
+                $path = ($path -replace '\\', '/').ToLowerInvariant()
+            }
+        }
+        if (Test-ReviewerContractPropertyExists -Object $Location -Name 'line_start') {
+            $lineStart = Get-ReviewerContractPropertyValue -Object $Location -Name 'line_start'
+        }
+        if (Test-ReviewerContractPropertyExists -Object $Location -Name 'line_end') {
+            $lineEnd = Get-ReviewerContractPropertyValue -Object $Location -Name 'line_end'
+        }
+    }
+
+    return [ordered]@{
+        path       = $path
+        line_start = $lineStart
+        line_end   = $lineEnd
+    }
+}
+
+function New-ReviewerFindingFingerprint {
+    param(
+        [AllowNull()]
+        $Finding,
+
+        [AllowNull()]
+        $Location,
+
+        [AllowNull()]
+        [string] $Severity,
+
+        [AllowNull()]
+        [string] $Kind,
+
+        [AllowNull()]
+        [string] $DesignReference,
+
+        [AllowNull()]
+        [string] $Comment
+    )
+
+    if ($null -ne $Finding) {
+        if (Test-ReviewerContractPropertyExists -Object $Finding -Name 'location') {
+            $Location = Get-ReviewerContractPropertyValue -Object $Finding -Name 'location'
+        }
+        if (Test-ReviewerContractPropertyExists -Object $Finding -Name 'severity') {
+            $Severity = Get-ReviewerContractPropertyValue -Object $Finding -Name 'severity'
+        }
+        if (Test-ReviewerContractPropertyExists -Object $Finding -Name 'kind') {
+            $Kind = Get-ReviewerContractPropertyValue -Object $Finding -Name 'kind'
+        }
+        if (Test-ReviewerContractPropertyExists -Object $Finding -Name 'design_reference') {
+            $DesignReference = Get-ReviewerContractPropertyValue -Object $Finding -Name 'design_reference'
+        }
+        if (Test-ReviewerContractPropertyExists -Object $Finding -Name 'comment') {
+            $Comment = Get-ReviewerContractPropertyValue -Object $Finding -Name 'comment'
+        }
+    }
+
+    $fingerprintFields = [ordered]@{
+        location         = Get-ReviewerFindingLocationFingerprintFields -Location $Location
+        severity         = ConvertTo-ReviewerContractText -Value $Severity
+        kind             = ConvertTo-ReviewerContractText -Value $Kind
+        design_reference = ConvertTo-ReviewerContractText -Value $DesignReference
+        comment          = ConvertTo-ReviewerContractText -Value $Comment
+    }
+    $canonicalJson = ConvertTo-ReviewerContractCanonicalJson -InputObject $fingerprintFields
+    return "sha256:$(Get-ReviewerContractSha256Hex -Text $canonicalJson)"
+}
+
+function Get-ReviewerFindingFingerprint {
+    param(
+        [AllowNull()]
+        $Finding,
+
+        [AllowNull()]
+        $Location,
+
+        [AllowNull()]
+        [string] $Severity,
+
+        [AllowNull()]
+        [string] $Kind,
+
+        [AllowNull()]
+        [string] $DesignReference,
+
+        [AllowNull()]
+        [string] $Comment
+    )
+
+    return New-ReviewerFindingFingerprint -Finding $Finding -Location $Location -Severity $Severity -Kind $Kind -DesignReference $DesignReference -Comment $Comment
+}
+
+function Get-ReviewerInfrastructureFailureCategoryValues {
+    return @(
+        'missing-provider'
+        'unauthorized-provider'
+        'unavailable-requested-model'
+        'timeout'
+        'nonzero-exit'
+        'empty-stdout'
+        'invalid-json'
+        'schema-mismatch'
+        'command-invocation-failure'
+        'malformed-durable-state'
+        'fallback-exhausted'
+        'cleanup-failed'
+    )
+}
+
+function Test-ReviewerInfrastructureFailureCategory {
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Category
+    )
+
+    return ((Get-ReviewerInfrastructureFailureCategoryValues) -contains $Category)
+}
+
+function Test-ReviewerInfrastructureSafeDetailName {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Name
+    )
+
+    $unsafeNamePattern = '(?i)(stdout|stderr|std[_-]?out|std[_-]?err|prompt|transcript|env|environment|token|secret|password|credential|api[_-]?key|private[_-]?key|machine|hostname|computername|userprofile|home|path|pwd|cwd|working[_-]?directory)'
+    return ($Name -notmatch $unsafeNamePattern)
+}
+
+function ConvertTo-ReviewerInfrastructureSafeString {
+    param(
+        [AllowNull()]
+        [string] $Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    $secretValuePatterns = @(
+        '(?i)\bbearer\s+[a-z0-9._~+/=-]+'
+        '(?i)\b(token|secret|password|credential|api[_-]?key)\s*[:=]\s*\S+'
+        '\bghp_[A-Za-z0-9_]{20,}\b'
+        '\bgithub_pat_[A-Za-z0-9_]{20,}\b'
+        '\bsk-[A-Za-z0-9]{20,}\b'
+    )
+    foreach ($pattern in $secretValuePatterns) {
+        if ($Value -match $pattern) {
+            return '[redacted]'
+        }
+    }
+
+    return $Value
+}
+
+function ConvertTo-ReviewerInfrastructureSafeDetailValue {
+    param(
+        [AllowNull()]
+        $Value
+    )
+
+    if ($null -eq $Value) {
+        return $null
+    }
+
+    if ($Value -is [string]) {
+        return ConvertTo-ReviewerInfrastructureSafeString -Value $Value
+    }
+
+    if (($Value -is [bool]) -or ($Value -is [byte]) -or ($Value -is [int16]) -or ($Value -is [int]) -or ($Value -is [long]) -or ($Value -is [decimal]) -or ($Value -is [double])) {
+        return $Value
+    }
+
+    if (($Value -is [System.Collections.IEnumerable]) -and ($Value -isnot [string]) -and ($Value -isnot [System.Collections.IDictionary]) -and ($Value -isnot [pscustomobject])) {
+        return @($Value | ForEach-Object { ConvertTo-ReviewerInfrastructureSafeDetailValue -Value $_ })
+    }
+
+    if (($Value -is [System.Collections.IDictionary]) -or ($Value -is [pscustomobject])) {
+        return ConvertTo-ReviewerInfrastructureSafeDetails -SafeDetails $Value
+    }
+
+    return (ConvertTo-ReviewerInfrastructureSafeString -Value ([string] $Value))
+}
+
+function ConvertTo-ReviewerInfrastructureSafeDetails {
+    param(
+        [AllowNull()]
+        $SafeDetails
+    )
+
+    $details = [ordered]@{}
+    if ($null -eq $SafeDetails) {
+        return [pscustomobject] $details
+    }
+
+    foreach ($propertyName in (Get-ReviewerContractPropertyNames -Object $SafeDetails)) {
+        if (-not (Test-ReviewerInfrastructureSafeDetailName -Name $propertyName)) {
+            continue
+        }
+
+        $details[$propertyName] = ConvertTo-ReviewerInfrastructureSafeDetailValue -Value (Get-ReviewerContractPropertyValue -Object $SafeDetails -Name $propertyName)
+    }
+
+    return [pscustomobject] $details
+}
+
+function Get-ReviewerInfrastructureFailureDefaultRetryable {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Category
+    )
+
+    return (@(
+            'missing-provider'
+            'timeout'
+            'nonzero-exit'
+            'empty-stdout'
+            'invalid-json'
+            'command-invocation-failure'
+        ) -contains $Category)
+}
+
+function Get-ReviewerInfrastructureFailureDefaultFallbackAllowed {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Category
+    )
+
+    return (@(
+            'missing-provider'
+            'timeout'
+            'nonzero-exit'
+            'empty-stdout'
+            'invalid-json'
+            'command-invocation-failure'
+            'unavailable-requested-model'
+        ) -contains $Category)
+}
+
+function New-ReviewerInfrastructureFailureId {
+    param(
+        [Parameter(Mandatory)]
+        [string] $RunId,
+
+        [AllowNull()]
+        [string] $InvocationId,
+
+        [Parameter(Mandatory)]
+        [string] $Category,
+
+        [Parameter(Mandatory)]
+        [string] $Message
+    )
+
+    $idFields = [ordered]@{
+        run_id        = $RunId
+        invocation_id = $InvocationId
+        category      = $Category
+        message       = $Message
+    }
+    $hash = Get-ReviewerContractSha256Hex -Text (ConvertTo-ReviewerContractCanonicalJson -InputObject $idFields)
+    return "failure-$($hash.Substring(0, 16))"
+}
+
+function New-ReviewerInfrastructureFailure {
+    param(
+        [Parameter(Mandatory)]
+        [string] $RunId,
+
+        [Parameter(Mandatory)]
+        [string] $Category,
+
+        [Parameter(Mandatory)]
+        [string] $Message,
+
+        [AllowNull()]
+        [string] $InvocationId,
+
+        [AllowNull()]
+        [string] $FailureId,
+
+        [AllowNull()]
+        $SafeDetails,
+
+        [AllowNull()]
+        [System.Nullable[bool]] $Retryable,
+
+        [AllowNull()]
+        [System.Nullable[bool]] $FallbackAllowed,
+
+        [datetime] $CreatedAt = [datetime]::MinValue
+    )
+
+    if (-not (Test-ReviewerInfrastructureFailureCategory -Category $Category)) {
+        throw "Unknown infrastructure failure category '$Category'."
+    }
+
+    $safeMessage = ConvertTo-ReviewerInfrastructureSafeString -Value $Message
+    $resolvedInvocationId = if ([string]::IsNullOrWhiteSpace($InvocationId)) {
+        $null
+    }
+    else {
+        $InvocationId
+    }
+    $resolvedCreatedAt = if ($CreatedAt -eq [datetime]::MinValue) {
+        [datetime]::UtcNow
+    }
+    else {
+        $CreatedAt.ToUniversalTime()
+    }
+    $resolvedRetryable = if ($PSBoundParameters.ContainsKey('Retryable')) {
+        [bool] $Retryable
+    }
+    else {
+        Get-ReviewerInfrastructureFailureDefaultRetryable -Category $Category
+    }
+    $resolvedFallbackAllowed = if ($PSBoundParameters.ContainsKey('FallbackAllowed')) {
+        [bool] $FallbackAllowed
+    }
+    else {
+        Get-ReviewerInfrastructureFailureDefaultFallbackAllowed -Category $Category
+    }
+    $resolvedFailureId = if ([string]::IsNullOrWhiteSpace($FailureId)) {
+        New-ReviewerInfrastructureFailureId -RunId $RunId -InvocationId $resolvedInvocationId -Category $Category -Message $safeMessage
+    }
+    else {
+        $FailureId
+    }
+
+    $failure = [ordered]@{
+        schema_version   = '1.0'
+        failure_id       = $resolvedFailureId
+        run_id           = $RunId
+        invocation_id    = $resolvedInvocationId
+        category         = $Category
+        message          = $safeMessage
+        safe_details     = ConvertTo-ReviewerInfrastructureSafeDetails -SafeDetails $SafeDetails
+        retryable        = $resolvedRetryable
+        fallback_allowed = $resolvedFallbackAllowed
+        created_at       = $resolvedCreatedAt.ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+    }
+
+    return [pscustomobject] $failure
+}
+
+function New-ReviewerContractInfrastructureFailure {
+    param(
+        [Parameter(Mandatory)]
+        [string] $RunId,
+
+        [Parameter(Mandatory)]
+        [string] $Category,
+
+        [Parameter(Mandatory)]
+        [string] $Message,
+
+        [AllowNull()]
+        [string] $InvocationId,
+
+        [AllowNull()]
+        [string] $FailureId,
+
+        [AllowNull()]
+        $SafeDetails,
+
+        [AllowNull()]
+        [System.Nullable[bool]] $Retryable,
+
+        [AllowNull()]
+        [System.Nullable[bool]] $FallbackAllowed,
+
+        [datetime] $CreatedAt = [datetime]::MinValue
+    )
+
+    $parameters = @{
+        RunId    = $RunId
+        Category = $Category
+        Message  = $Message
+    }
+    foreach ($optionalName in @('InvocationId', 'FailureId', 'SafeDetails', 'Retryable', 'FallbackAllowed', 'CreatedAt')) {
+        if ($PSBoundParameters.ContainsKey($optionalName)) {
+            $parameters[$optionalName] = $PSBoundParameters[$optionalName]
+        }
+    }
+
+    return New-ReviewerInfrastructureFailure @parameters
+}
+
+function Get-ContinuousCoReviewFindingDispositionValues {
+    return Get-ReviewerFindingDispositionValues
+}
+
+function Get-ContinuousCoReviewFindingResolutionStates {
+    return Get-ReviewerFindingResolutionStateValues
+}
+
+function New-ContinuousCoReviewFindingFingerprint {
+    param(
+        [AllowNull()]
+        $Finding,
+
+        [AllowNull()]
+        $Location,
+
+        [AllowNull()]
+        [string] $Severity,
+
+        [AllowNull()]
+        [string] $Kind,
+
+        [AllowNull()]
+        [string] $DesignReference,
+
+        [AllowNull()]
+        [string] $Comment
+    )
+
+    return New-ReviewerFindingFingerprint -Finding $Finding -Location $Location -Severity $Severity -Kind $Kind -DesignReference $DesignReference -Comment $Comment
+}
+
+function New-ContinuousCoReviewInfrastructureFailure {
+    param(
+        [Parameter(Mandatory)]
+        [string] $RunId,
+
+        [Parameter(Mandatory)]
+        [string] $Category,
+
+        [Parameter(Mandatory)]
+        [string] $Message,
+
+        [AllowNull()]
+        [string] $InvocationId,
+
+        [AllowNull()]
+        [string] $FailureId,
+
+        [AllowNull()]
+        $SafeDetails,
+
+        [AllowNull()]
+        [System.Nullable[bool]] $Retryable,
+
+        [AllowNull()]
+        [System.Nullable[bool]] $FallbackAllowed,
+
+        [datetime] $CreatedAt = [datetime]::MinValue
+    )
+
+    $parameters = @{
+        RunId    = $RunId
+        Category = $Category
+        Message  = $Message
+    }
+    foreach ($optionalName in @('InvocationId', 'FailureId', 'SafeDetails', 'Retryable', 'FallbackAllowed', 'CreatedAt')) {
+        if ($PSBoundParameters.ContainsKey($optionalName)) {
+            $parameters[$optionalName] = $PSBoundParameters[$optionalName]
+        }
+    }
+
+    return New-ReviewerInfrastructureFailure @parameters
+}

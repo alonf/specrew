@@ -6,6 +6,11 @@
     {
       "finding_id": "finding-consumer-001",
       "source_run_id": "run-197-fixture-consumer-001",
+      "location": {
+        "path": "specs/197-continuous-co-review/plan.md",
+        "line_start": 1,
+        "line_end": 1
+      },
       "severity": "advisory",
       "kind": "fixture-advisory",
       "design_reference": "INT-002",
