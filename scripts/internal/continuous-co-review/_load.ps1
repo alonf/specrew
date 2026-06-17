@@ -3,6 +3,13 @@ Set-StrictMode -Version Latest
 
 $proposal197ReviewerModules = @(
     'reviewer-contracts.ps1'
+    'review-visibility-policy-builder.ps1'
+    'design-context-collector.ps1'
+    'checkpoint-diff-provider.ps1'
+    'review-request-builder.ps1'
+    'review-run-workspace-manager.ps1'
+    'review-result-normalizer.ps1'
+    'reviewer-host-adapter-fixture.ps1'
 )
 
 foreach ($moduleName in $proposal197ReviewerModules) {

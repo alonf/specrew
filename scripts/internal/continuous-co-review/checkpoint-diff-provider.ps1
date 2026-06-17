@@ -1,0 +1,217 @@
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+function ConvertTo-ContinuousCoReviewRelativePath {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path
+    )
+
+    return $Path.Trim().Replace('\', '/')
+}
+
+function Test-ContinuousCoReviewPathExcluded {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path,
+
+        [string[]] $ExcludedPathPatterns = @()
+    )
+
+    $normalizedPath = ConvertTo-ContinuousCoReviewRelativePath -Path $Path
+    foreach ($pattern in @($ExcludedPathPatterns)) {
+        if ([string]::IsNullOrWhiteSpace($pattern)) {
+            continue
+        }
+
+        $normalizedPattern = ConvertTo-ContinuousCoReviewRelativePath -Path $pattern
+        if ($normalizedPattern.EndsWith('/**')) {
+            $prefix = $normalizedPattern.Substring(0, $normalizedPattern.Length - 3)
+            if (($normalizedPath -eq $prefix) -or $normalizedPath.StartsWith("$prefix/")) {
+                return $true
+            }
+        }
+
+        if ([System.Management.Automation.WildcardPattern]::new($normalizedPattern, [System.Management.Automation.WildcardOptions]::IgnoreCase).IsMatch($normalizedPath)) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Invoke-ContinuousCoReviewGit {
+    param(
+        [Parameter(Mandatory)]
+        [string] $RepoRoot,
+
+        [Parameter(Mandatory)]
+        [string[]] $Arguments
+    )
+
+    Push-Location -LiteralPath $RepoRoot
+    try {
+        $output = @(& git @Arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
+
+    return [pscustomobject]@{
+        ExitCode = $exitCode
+        Output   = @($output)
+    }
+}
+
+function New-ContinuousCoReviewSkippedRun {
+    param(
+        [Parameter(Mandatory)]
+        [string] $RunId,
+
+        [Parameter(Mandatory)]
+        [string] $CheckpointId,
+
+        [Parameter(Mandatory)]
+        [string] $BaselineRef,
+
+        [Parameter(Mandatory)]
+        [string] $DiffHash
+    )
+
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        run_id         = $RunId
+        checkpoint_id  = $CheckpointId
+        baseline_ref   = $BaselineRef
+        reason         = 'no-reviewable-diff'
+        diff_hash      = $DiffHash
+    }
+}
+
+function Get-ContinuousCoReviewSha256Hex {
+    param(
+        [AllowNull()]
+        [string] $Text
+    )
+
+    $resolvedText = if ($null -eq $Text) { '' } else { $Text }
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($resolvedText)
+    $hashBytes = [System.Security.Cryptography.SHA256]::HashData($bytes)
+    return ([System.BitConverter]::ToString($hashBytes) -replace '-', '').ToLowerInvariant()
+}
+
+function Get-ContinuousCoReviewCheckpointDiff {
+    param(
+        [Parameter(Mandatory)]
+        [string] $RepoRoot,
+
+        [Parameter(Mandatory)]
+        [string] $BaselineRef,
+
+        [Parameter(Mandatory)]
+        [string] $CheckpointId,
+
+        [string[]] $ExcludedPathPatterns = @(),
+
+        [string] $RunId
+    )
+
+    $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $resolvedRunId = if ([string]::IsNullOrWhiteSpace($RunId)) {
+        "run-$CheckpointId"
+    }
+    else {
+        $RunId
+    }
+
+    $baselineCheck = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('rev-parse', '--verify', "$BaselineRef^{commit}")
+    if ($baselineCheck.ExitCode -ne 0) {
+        return [pscustomobject][ordered]@{
+            schema_version = '1.0'
+            run_id         = $resolvedRunId
+            checkpoint_id  = $CheckpointId
+            baseline_ref   = $BaselineRef
+            status         = 'infrastructure_failure'
+            failure        = New-ContinuousCoReviewInfrastructureFailure `
+                -RunId $resolvedRunId `
+                -Category 'command-invocation-failure' `
+                -Message 'Checkpoint baseline could not be resolved as a git commit.' `
+                -SafeDetails ([pscustomobject]@{ baseline_ref = $BaselineRef; checkpoint_id = $CheckpointId })
+        }
+    }
+
+    $diffResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, '--')
+    if ($diffResult.ExitCode -ne 0) {
+        return [pscustomobject][ordered]@{
+            schema_version = '1.0'
+            run_id         = $resolvedRunId
+            checkpoint_id  = $CheckpointId
+            baseline_ref   = $BaselineRef
+            status         = 'infrastructure_failure'
+            failure        = New-ContinuousCoReviewInfrastructureFailure `
+                -RunId $resolvedRunId `
+                -Category 'command-invocation-failure' `
+                -Message 'Checkpoint git diff could not be produced.' `
+                -SafeDetails ([pscustomobject]@{ baseline_ref = $BaselineRef; checkpoint_id = $CheckpointId })
+        }
+    }
+
+    $nameResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('diff', '--name-only', '--no-ext-diff', $BaselineRef, '--')
+    if ($nameResult.ExitCode -ne 0) {
+        return [pscustomobject][ordered]@{
+            schema_version = '1.0'
+            run_id         = $resolvedRunId
+            checkpoint_id  = $CheckpointId
+            baseline_ref   = $BaselineRef
+            status         = 'infrastructure_failure'
+            failure        = New-ContinuousCoReviewInfrastructureFailure `
+                -RunId $resolvedRunId `
+                -Category 'command-invocation-failure' `
+                -Message 'Checkpoint changed paths could not be produced.' `
+                -SafeDetails ([pscustomobject]@{ baseline_ref = $BaselineRef; checkpoint_id = $CheckpointId })
+        }
+    }
+
+    $diffText = ($diffResult.Output -join "`n")
+    $diffHash = "sha256:$(Get-ContinuousCoReviewSha256Hex -Text $diffText)"
+    $changedPaths = [System.Collections.Generic.List[string]]::new()
+    $excludedPaths = [System.Collections.Generic.List[string]]::new()
+
+    foreach ($path in @($nameResult.Output)) {
+        if ([string]::IsNullOrWhiteSpace([string] $path)) {
+            continue
+        }
+
+        $normalizedPath = ConvertTo-ContinuousCoReviewRelativePath -Path ([string] $path)
+        if (Test-ContinuousCoReviewPathExcluded -Path $normalizedPath -ExcludedPathPatterns $ExcludedPathPatterns) {
+            $excludedPaths.Add($normalizedPath)
+        }
+        else {
+            $changedPaths.Add($normalizedPath)
+        }
+    }
+
+    $status = if ($changedPaths.Count -eq 0) { 'skipped' } else { 'reviewable' }
+    $changeSet = [ordered]@{
+        schema_version         = '1.0'
+        run_id                 = $resolvedRunId
+        checkpoint_id          = $CheckpointId
+        baseline_ref           = $BaselineRef
+        status                 = $status
+        review_kind            = 'code-change-set'
+        diff_inline            = $diffText
+        diff_hash              = $diffHash
+        changed_paths          = @($changedPaths)
+        reviewable_path_count  = $changedPaths.Count
+        excluded_paths         = @($excludedPaths)
+        excluded_path_patterns = @($ExcludedPathPatterns)
+    }
+
+    if ($status -eq 'skipped') {
+        $changeSet['skip_reason'] = 'no-reviewable-diff'
+        $changeSet['skipped_run'] = New-ContinuousCoReviewSkippedRun -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $diffHash
+    }
+
+    return [pscustomobject] $changeSet
+}
