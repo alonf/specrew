@@ -27151,3 +27151,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: fb2233e6e5221a3eed596b6c6a67f9ae4dadb296
 - **Recorded At**: 2026-06-17T17:01:40Z
+
+## 2026-06-17T22:10:50Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7d170b8ca59029ff604f3e64044f634d7314eb1c
+- **Recorded At**: 2026-06-17T22:10:50Z
