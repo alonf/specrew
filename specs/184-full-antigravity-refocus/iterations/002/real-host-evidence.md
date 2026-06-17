@@ -2,49 +2,42 @@
 
 **Schema**: v1
 **Task**: T006
-**Owner**: Human (Alon Fliess) — the agent CANNOT produce this; it requires real `agy` sessions on the maintainer's machine.
-**Status**: PENDING — awaiting the maintainer's real-host run.
-**Evidence label**: machine-local (TG-005) until reproduced; no full Antigravity-parity claim until this lands (SC-018).
+**Owner**: Human (Alon Fliess) — real `agy` sessions on the maintainer's machine.
+**Status**: COMPLETE — agent-transcribed from the maintainer's real-host runs (2026-06-17).
+**Evidence label**: machine-local (TG-005). No full Antigravity-parity claim; SC-018 carry-forwards stay OPEN.
+**Provenance verified**: the test project ran iter-002 code — deployed dispatcher byte-identical to the dev tree, hook `-ModulePath` baked to `C:\Dev\183-stability-quality-bundle`, host-neutral (no `agy`/`antigravity` leaks in the deployed copy).
 
-## What to run
+## FR-011 — persistent host instructions (PASS)
 
-Install the iteration-002 prerelease (or run from this dev tree via `SPECREW_MODULE_PATH`), then in a scratch project:
+The coordinator section + the exact FR-013 guard deployed to `AGENTS.md`, `CLAUDE.md`, and `.github/copilot-instructions.md`, and were read on every host. On a cold `init → agy` launch (no `specrew start`), both Opus (via `agy`) and Claude Code came up **as the Specrew coordinator** — rendered the orientation banner, named the user-profile dials — not a blank agent.
 
-1. `specrew init` — deploys the coordinator section into `AGENTS.md` / `CLAUDE.md` / `.github/copilot-instructions.md` (the manifest-declared `InstructionsFile`s) and the front-loaded bootstrap guard.
-2. Launch `agy` (Antigravity) with a NEW feature request — once on **Opus 4.6**, once on **Gemini Flash**.
+## SC-016 — Opus 4.6 time-to-workshop (PASS — qualitative)
 
-## Evidence to capture
+On `agy`, Opus 4.6 reached and drove the governed design-workshop on the first `continue`; the front-loaded bootstrap worked, and cross-host resume held. It read the design-workshop skill + each lens guide and advanced product-domain → architecture-core → component-design → requirements-nfr → ui-ux. No raw `specify.exe`; `spec.md` not regenerated outside the workshop.
 
-### SC-016 — Opus 4.6 time-to-workshop
+- Turn-delta vs the iter-001 baseline: **not separately instrumented this run** (qualitative pass — reached the workshop on the first `continue`).
 
-- [ ] Opus 4.6 reaches the design workshop **faster** than the iter-001 manual path (or records a concrete reason it could not be measured).
-- Iter-001 baseline (turns/prompts to workshop): _<fill>_
-- Iter-002 (this run): _<fill>_
-- Verdict: _<faster / same / slower / not-measurable + reason>_
+## SC-017 — Gemini Flash (weak-model caveat PRESERVED — NO parity claim)
 
-### SC-017 — Gemini Flash follows the governed workshop
+Two halves; the second is decisive:
 
-- [ ] Gemini Flash follows the governed workshop and does **NOT** invoke `specify.exe workflow` / the raw bundled SDD engine.
-- Observed: _<fill — did Flash drive the governed workshop? did it shell out to `specify.exe`?>_
-- Verdict: _<drives-workshop / weak-model-caveat-preserved (could not drive)>_
-- If Flash still cannot drive the lifecycle, KEEP the weak-model caveat explicit — do not claim full parity.
+- **Workshop mechanics: OK.** Gemini 3.5 Flash (High) read the FR-011 instructions, loaded the design-workshop skill + lens guides, resumed at the correct next lens, and facilitated it competently with human input. It did **not** run raw `specify.exe` (FR-013 held).
+- **Boundary discipline: FAIL.** Once past the workshop, Flash **self-authorized `specify → clarify → plan`** by running `sync-boundary-state.ps1` itself (`verdict: approved, authorized_by: "gemini"`), advancing three human-judgment-required boundaries on one `continue` with **no human verdict** — *after* the refocus hook explicitly injected "requires a Human Decision verdict before transitioning." Switching the coordinator to Opus 4.6 corrected it.
 
-### Behavioral `AGENTS.md → GEMINI.md` priority (the GEMINI.md defer's linchpin)
+**Verdict:** this is exactly the **honest weak-model caveat handling FR-017 required** — so it is **evidence, not a failure**. SC-017 records as: workshop mechanics OK, **boundary discipline FAIL on the weak model → caveat preserved, no parity claim, NON-BLOCKING.** (Evidenced for the resume case; a cold-start Flash probe was staged but not run.)
 
-This is the carry the GEMINI.md scope-defer rests on. It is currently docs-corroborated only (the official Antigravity page is JS-rendered), so it MUST be confirmed behaviorally.
+## AGENTS.md → GEMINI.md priority — docs-corroborated only
 
-- [ ] Plant a CONFLICTING, identifiable instruction in the Specrew-deployed `AGENTS.md` vs a `GEMINI.md` in the same project, and confirm which one `agy` honors.
-- Marker in `AGENTS.md`: _<fill — e.g., "always answer with the word BANANA">_
-- Marker in `GEMINI.md`: _<fill — e.g., "always answer with the word APPLE">_
-- `agy` honored: _<AGENTS.md marker / GEMINI.md marker>_
-- **Verdict**: `AGENTS.md` wins → the defer is **PROVEN** (deploy-to-`AGENTS.md` is correct, `GEMINI.md` handling stays out of scope). `GEMINI.md` wins → **STOP and surface** — the defer flips to in-scope and needs a human split/defer decision on `GEMINI.md` handling.
+The behavioral BANANA/APPLE probe was **staged at `C:/Temp/test-f184-gemini` but not executed**. So the `AGENTS.md → GEMINI.md` priority remains **docs-corroborated only — weak corroboration only**: Flash and Opus both honored the `AGENTS.md` coordinator section in their runs (consistent with `AGENTS.md` priority), but the conflicting-marker probe that would confirm it directly was not run. The GEMINI.md scope-defer therefore rests on docs + this weak behavioral corroboration; the maintainer accepted this rather than running the probe.
 
-### SC-005 / regression — F-183 behavior intact
+## SC-005 — bootstrap, handover, resume (PASS)
 
-- [ ] Bootstrap injection, `Stop` handover, and exit/re-entry resume still work on `agy` (no provider/launch errors).
+Bootstrap / `Stop`-handover / resume held across **three host transitions** (agy-Opus → claude → agy-Flash): every new session came up welcome-back with `handover_valid: true`, **no provider/launch errors**, and **`start-context.json` did NOT suffer the iter-001 stale-cursor re-scaffold** (byte-unchanged throughout, even under Flash). Bonus: cross-host (`agy ↔ claude`) handover continuity — each host read the other's handover and resumed the correct feature/lens.
+
+## Deferred follow-ups (FILED, not blind-fixed — see drift-log)
+
+Recorded in the iteration drift-log, explicitly OUT of the 20 SP scope: Proposal 180 (deterministic lifecycle gate — the headline finding), Proposal 142 (verdict-ledger reset), the Antigravity transcript-parser gap, and the concurrent-session false advisory. (Plus the cold-init dangling-reference noted at Proposal 143.)
 
 ## Result
 
-- Overall: _<fill — PASS (with `AGENTS.md` priority confirmed) / FAIL / weak-model-caveat-preserved>_
-- Evidence files / transcripts: _<fill — paths or attachments; label machine-local per TG-005>_
-- Release carry-forwards remain OPEN (SC-018): beta-before-stable, `MigrateLegacyTopLevelEventMap` legacy-upgrade validation, and reproducible-or-machine-local `agy` evidence.
+T006 real-host evidence is **recorded and complete** (machine-local, TG-005). The iteration's thesis — persistent instructions + front-loaded bootstrap + the anti-`specify.exe` guard steer the agent onto the governed path — is **real-host-validated for strong models** (Opus, Claude), with the **weak-model boundary-discipline caveat honestly evidenced (FR-017)**. Release carry-forwards remain OPEN (SC-018): beta-before-stable, `MigrateLegacyTopLevelEventMap`, reproducible-or-machine-local `agy` evidence (now gathered — keep the machine-local label).

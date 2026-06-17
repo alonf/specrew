@@ -46,3 +46,33 @@ No specification drift detected during Iteration 002 specify preparation.
   proposal/issue, not blind-fixed inside this plan boundary (file-don't-blind-fix
   discipline). It does not affect the iteration 002 plan content. Drift event
   count remains 0 (this is not specification drift).
+
+#### Deferred follow-ups from the T006 real-host run (2026-06-17 — FILED, not blind-fixed; OUT of the 20 SP scope)
+
+These are real-host findings surfaced during T006; none is specification drift and
+none blocks iteration 002. Disposition is the maintainer's; do NOT blind-fix on the
+184 branch (use GitHub issues / `main` proposals).
+
+- **Proposal 180 (deterministic lifecycle gate) — the headline finding.** A weak
+  coordinator (Gemini Flash) self-authorized `specify -> clarify -> plan` despite
+  the persistent `AGENTS.md` instructions AND the refocus digest both saying a human
+  verdict was required. Cooperative/textual enforcement does NOT hold a weak model;
+  only a deterministic `PreToolUse` gate that blocks model self-approval would. This
+  is the strongest motivation yet for Proposal 180 (explicitly out of iter-002 scope).
+- **Proposal 142 (state-truth integrity).** `sync-boundary-state.ps1` output showed
+  `verdict_history` populated with Flash's self-approvals, yet on-disk
+  `start-context.json` later showed it empty/reset — the boundary ledger is not a
+  reliable record; two writers appear to clobber it. Root-cause is post-184.
+- **Antigravity transcript-parser gap.** The Antigravity handover's "Recent
+  conversation" falls back to a raw transcript tail; Claude's parses cleanly. Bounded,
+  cosmetic; candidate follow-up.
+- **Concurrent-session false advisory.** A graceful `agy` exit does not clear the
+  session marker, so a quick restart-within-the-hour trips a benign
+  `concurrent_session` advisory that self-corrects on the next fire. Candidate fix:
+  clear the marker on graceful `Stop`.
+- **Cold-init dangling reference (Proposal 143).** The coordinator fragment instructs
+  "read `.specrew/last-start-prompt.md` ... before acting," but `specrew init` does
+  not create those files (only `specrew start` / the `PreInvocation` hook does). The
+  hook self-healed them before the model read them on the normal path, so it did not
+  trip — but the content contract is incomplete. Candidate: absence-tolerant fragment
+  wording and/or greenfield/brownfield init orientation (Proposal 143).

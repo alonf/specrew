@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T005 + FR-008 docs (ALL agent-owned implementation complete: T001-T005 green-tested + the Antigravity AGENTS.md/GEMINI.md docs note)
-**Tasks Remaining**: T006 (human-owned real-host run; evidence template ready)
-**In Progress**: T006 (real-host-evidence.md scaffolded; awaiting the maintainer's Opus 4.6 + Gemini Flash run)
+**Last Completed Task**: T006 (real-host evidence recorded in real-host-evidence.md)
+**Tasks Remaining**: (none)
+**In Progress**: (none)
 **Baseline Ref**: abf18b99
-**Updated**: 2026-06-17T18:25:00Z
+**Updated**: 2026-06-18T00:30:00Z
 
 ## Charter
 
@@ -51,35 +51,27 @@ code-implementation. The records therefore use `human-confirmed` /
 
 ## Next Action
 
-Implementation authorized (`tasks -> before-implement`, 2026-06-17). DONE: T001
-(discovery), T002 (merge helper + fragment; 8/8 unit tests), T003 (manifest-driven
-deploy/refresh/heal wired into `specrew init`/`update`/`start` via
-`Invoke-SpecrewInstructionDeployment`; 6/6 integration tests; host-neutral,
-byte-for-byte preservation, AGENTS.md dedupe).
+All implementation is COMPLETE and committed with run tests: T001 (discovery),
+T002 (merge helper + fragment, 8/8 unit), T003 (init/update/start deploy/refresh/
+heal, 6/6 integration), T004 (bootstrap front-load + single-source guard, mirror
+parity green + 7/7), T005 (firewall: new core guarded + negative test
+fail-then-pass), the FR-008 docs note, and T006 (real-host evidence recorded).
 
-T004 DONE: bootstrap front-load + single-source guard injection via
-`Get-SpecrewCoordinatorFragment` in `Format-BootstrapDirective`; 3-copy mirror
-parity GREEN (ProviderMirrorParity); CoordinatorFrontLoad 7/7 +
-DirectiveVersionBranch regression green.
+T006 real-host result (maintainer, 2026-06-17; machine-local TG-005): FR-011 + the
+governed workshop validated on STRONG models (Opus/Claude) across same-host and
+cross-host resume; `start-context.json` byte-unchanged (the iter-001 stale-cursor
+bug did NOT recur, even under Flash); weak-model (Gemini Flash) boundary-discipline
+FAIL -> the FR-017 caveat is preserved (evidence, not a failure), NON-BLOCKING.
+`AGENTS.md -> GEMINI.md` priority is docs-corroborated only (probe not run; weak
+corroboration: both models honored `AGENTS.md`). Maintainer decision: the
+coordinator must be a strong model. Deferred follow-ups filed in the drift-log
+(Proposals 180 / 142 / 143 + two nits), OUT of the 20 SP scope.
 
-ALL agent-owned implementation is COMPLETE, each committed with run tests: T001
-(discovery), T002 (merge helper + fragment, 8/8 unit), T003 (init/update/start
-deploy/refresh/heal, 6/6 integration), T004 (bootstrap front-load + single-source
-guard, mirror-parity green + 7/7), T005 (firewall: new core guarded + negative
-test fail-then-pass), and the FR-008 Antigravity docs note.
-
-NEXT (HUMAN): T006 - the real-host Opus 4.6 + Gemini Flash run. Fill
-`real-host-evidence.md`, including the behavioral `AGENTS.md -> GEMINI.md`
-priority check (AGENTS.md wins -> defer proven; GEMINI.md wins -> STOP, defer
-flips to in-scope). Then the next human stop is review-signoff (the full
-structured 145 review). Release carry-forwards remain OPEN (SC-018):
-beta-before-stable, `MigrateLegacyTopLevelEventMap`, machine-local `agy` evidence. Then T005 (host-coupling firewall negative
-test - must FAIL on a planted single-host literal, then PASS - plus coverage). Add
-the FR-008 docs note (Specrew deploys to `AGENTS.md` on Antigravity, priority over
-a user's `GEMINI.md`). T006 (real-host Opus/Flash + behavioral
-`AGENTS.md -> GEMINI.md` priority) is human-owned. Honor the live split guard, the
-20/20 zero-slack cap, the host-neutral firewall, and single-source guard text.
-Next human stop: review-signoff.
+NEXT: review-signoff - the full structured (Proposal 145) review of the iter-002
+implementation + the T006 evidence, then STOP for the maintainer's explicit
+"approved for review-signoff." One verdict advances one boundary; do NOT pre-run
+retro/closeout. Release carry-forwards remain OPEN (SC-018): beta-before-stable,
+`MigrateLegacyTopLevelEventMap`, machine-local `agy` evidence (now gathered).
 
 ## Carry Into Plan
 
