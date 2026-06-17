@@ -1,17 +1,17 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Current Phase**: before-implement
-**Iteration Status**: executing
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
 **Last Completed Task**: T050
 **Tasks Remaining**: none
 **In Progress**: (none)
 **Baseline Ref**: 390e3718
-**Updated**: 2026-06-17T22:19:09Z
+**Updated**: 2026-06-17T22:45:59Z
 
 ## Planning Summary
 
-Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spine slice after the before-implement scope-change verdict restored all five host-neutral adapters and added manual real-host validation enablers. The repaired `tasks -> before-implement` boundary passed capacity, traceability, after-tasks, and before-implement readiness checks; implementation has completed T001-T050, including the contract, forced-findings, infrastructure-failure, protected-surface guard, change-set, design-context, request-bundle, workspace, result-normalization, fixture-reviewer-path, blackboard, gate, escalation, disposition-evidence, host-catalog, adapter-registry, five-host adapter, execution-engine, checkpoint-orchestration spine, T044 end-to-end controlled fake-adapter spine integration, T045 quality evidence, T046/T047 validation runs, T048 no-op re-planning disposition, T049 manual real-host validation runbook, and T050 planted design-violation fixture.
+Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spine slice after the before-implement scope-change verdict restored all five host-neutral adapters and added manual real-host validation enablers. The repaired `tasks -> before-implement` boundary passed capacity, traceability, after-tasks, and before-implement readiness checks; implementation has completed T001-T050, including the contract, forced-findings, infrastructure-failure, protected-surface guard, change-set, design-context, request-bundle, workspace, result-normalization, fixture-reviewer-path, blackboard, gate, escalation, disposition-evidence, host-catalog, adapter-registry, five-host adapter, execution-engine, checkpoint-orchestration spine, T044 end-to-end controlled fake-adapter spine integration, T045 quality evidence, T046/T047 validation runs, T048 no-op re-planning disposition, T049 manual real-host validation runbook, and T050 planted design-violation fixture. The iteration is now truthfully positioned at Proposal 145 review-signoff / `reviewing`; the latest review evidence records implementation behavior as requirement-conformant and identifies lifecycle-state evidence as the only closure blocker.
 
 ## Scope and Deferrals
 
@@ -21,7 +21,7 @@ Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spin
 - **Manual Validation**: T049 and T050 ship the maintainer-run manual-validation runbook and planted-design-violation fixture required by SC-012 before feature closeout.
 - **Hardening Gate**: Not applicable for Iteration 001 because FR-031 through FR-033 are not in the active requirement scope and file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/plan.md records no Iteration 001 hardening-gate artifact.
 
-## Before-Implement Readiness Notes
+## Boundary Readiness Notes
 
 - Governance validation was run for the active iteration and returned PASS for file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/001 with WARN-only repository-scope findings outside this feature's execution readiness.
 - The execution tracker exists at file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/001/tasks-progress.yml.
@@ -33,10 +33,11 @@ Iteration 001 is the approved 19.50/20 SP Proposal 197 continuous co-review spin
 - `Invoke-Pester -Path tests/continuous-co-review` passed with 108 passed, 0 failed, and 0 skipped after loading the self-host module from file:///C:/Dev/197-continuous-co-review/Specrew.psd1 with `TEMP`/`TMP` set to `.scratch\tmp`.
 - `Invoke-Pester -Path tests/continuous-co-review/governance/protected-surface-guard.Tests.ps1` passed with 1 passed and 0 failed; `git --no-pager diff --name-only` showed no protected F-184 host/hook/provider/registry/refocus/shared-governance surfaces, mirrored `.specify` equivalents, `proposals/197-continuous-co-review.md`, or `.squad/agents/spec-steward/history.md`.
 - `tasks.md` was not changed because T048 re-planning was not explicitly approved.
+- Proposal 145 review-signoff evidence at `9f7cadb7` records all T001-T050 task verdicts as pass and the implementation behavior as requirement-conformant; its needs-rework verdict is scoped to the stale lifecycle-state artifact mismatch now repaired here.
 
 ## Next Action
 
-Implementation is ready for the implement->review boundary. Committed evidence now covers T001-T050 through the final T044-T050 validation and manual-acceptance-enabler slice.
+Iteration 001 remains in review-signoff / reviewing. The implementation evidence covers T001-T050 through the final T044-T050 validation and manual-acceptance-enabler slice; the current action is narrow governance validation and review closeout confirmation after this lifecycle-state repair.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
