@@ -5,7 +5,7 @@
 **Status**: complete
 **Capacity**: 20/20 story_points
 **Started**: 2026-06-17
-**Completed**:
+**Completed**: 2026-06-18
 
 <!--
   Validator schema (canonical, enforced by validate-governance.ps1):
