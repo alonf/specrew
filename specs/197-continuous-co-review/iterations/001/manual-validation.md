@@ -18,15 +18,23 @@
 
 ## Per-Host Commands
 
-Replace `<reviewer-command>` with the implemented Proposal 197 reviewer entry point once T043 wires the orchestrator. The maintainer runs the same planted fixture through each available host adapter.
+These commands are maintainer-run only. They keep automated live cross-host CI out of Iteration 001 scope and exercise each real host directly with the same planted design violation prompt. Save each host's parseable JSON response as local evidence if your environment allows it; do not commit raw transcripts, credentials, token stores, or environment dumps.
 
-| Host | CLI version command | Reviewer command |
-| ---- | ------------------- | ---------------- |
-| Claude | `claude --version` | `<reviewer-command> --adapter claude --diff specs/197-continuous-co-review/iterations/001/planted-design-violation.diff` |
-| Codex | `codex --version` | `<reviewer-command> --adapter codex --diff specs/197-continuous-co-review/iterations/001/planted-design-violation.diff` |
-| Copilot | `copilot --version` | `<reviewer-command> --adapter copilot --diff specs/197-continuous-co-review/iterations/001/planted-design-violation.diff` |
-| Cursor | `cursor-agent --version` | `<reviewer-command> --adapter cursor --diff specs/197-continuous-co-review/iterations/001/planted-design-violation.diff` |
-| Antigravity | `antigravity --version` | `<reviewer-command> --adapter antigravity --diff specs/197-continuous-co-review/iterations/001/planted-design-violation.diff` |
+Use this common prompt text, replacing `<fixture-diff>` with the file content from `specs/197-continuous-co-review/iterations/001/planted-design-violation.diff`:
+
+```text
+You are validating Specrew Proposal 197 continuous co-review. Review the following planted diff against specs/197-continuous-co-review/implementation-rules.yml and return only a FindingsResult-compatible JSON object. Expected behavior: report one unresolved blocking finding that names the violated design decision, "reviewer host behavior must be reached through the reviewer-host-adapter interface, not direct host-condition branching." Do not require network, model training, repository auth, or paid services beyond the already-authorized local CLI invocation.
+
+<fixture-diff>
+```
+
+| Host | CLI version command | Exact validation command |
+| ---- | ------------------- | ------------------------ |
+| Claude | `claude --version` | `claude -p "<common prompt text with planted-design-violation.diff content>"` |
+| Codex | `codex --version` | `codex exec "<common prompt text with planted-design-violation.diff content>"` |
+| Copilot | `copilot --version` | `copilot -p "<common prompt text with planted-design-violation.diff content>"` |
+| Cursor | `cursor-agent --version` | `cursor-agent -p "<common prompt text with planted-design-violation.diff content>"` |
+| Antigravity | `antigravity --version` | `antigravity -p "<common prompt text with planted-design-violation.diff content>"` |
 
 ## Pass/Fail Rule
 

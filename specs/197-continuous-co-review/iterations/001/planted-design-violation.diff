@@ -25,3 +25,11 @@ index 0000000..1111111
 +        return & codex exec ($ReviewRequest | ConvertTo-Json -Depth 20)
 +    }
 +}
+
+Expected blocking finding:
+
+- Severity: `blocking`
+- Kind: `design-contract-violation`
+- Design reference: `implementation-rules.yml` / TG-011
+- Violated design decision: reviewer host behavior must be reached through the `reviewer-host-adapter-*` interface and registry seam, not direct host-condition branching in the orchestrator.
+- Hermetic CI expectation: this fixture is static and requires no network, model invocation, authentication, paid host, or token-bearing environment capture.
