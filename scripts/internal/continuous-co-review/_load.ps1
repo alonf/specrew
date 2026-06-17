@@ -10,6 +10,9 @@ $proposal197ReviewerModules = @(
     'review-run-workspace-manager.ps1'
     'review-result-normalizer.ps1'
     'reviewer-host-adapter-fixture.ps1'
+    'review-blackboard-writer.ps1'
+    'inline-review-gate-evaluator.ps1'
+    'review-run-index-writer.ps1'
 )
 
 foreach ($moduleName in $proposal197ReviewerModules) {
