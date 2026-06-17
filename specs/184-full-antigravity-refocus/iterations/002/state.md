@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T006 (real-host evidence recorded in real-host-evidence.md)
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: abf18b99
-**Updated**: 2026-06-18T00:30:00Z
+**Updated**: 2026-06-18T01:30:00Z
 
 ## Charter
 
@@ -69,10 +69,22 @@ corroboration: both models honored `AGENTS.md`). Maintainer decision: the
 coordinator must be a strong model. Deferred follow-ups filed in the drift-log
 (Proposals 180 / 142 / 143 + two nits), OUT of the 20 SP scope.
 
-NEXT: review-signoff - the full structured (Proposal 145) review of the iter-002
-implementation + the T006 evidence, then STOP for the maintainer's explicit
-"approved for review-signoff." One verdict advances one boundary; do NOT pre-run
-retro/closeout. Release carry-forwards remain OPEN (SC-018): beta-before-stable,
+Review-signoff ACCEPTED at `7d170b8c` (verdict recorded: before-implement ->
+review-signoff | approved for review-signoff, human-confirmed; an SC-005 evidence
+overclaim was corrected on the reviewer's send-back). Retrospective authored
+(retro.md): 20/20 SP zero-variance; the firewall negative test applied the
+iteration-001 lesson up front; the SC-005 overclaim and the weak-model gate-skip
+were the key frictions.
+
+NEXT: retro boundary - awaiting the maintainer's explicit "approved for retro" to
+advance retro -> iteration-closeout. One verdict, one boundary; do NOT pre-run
+iteration-closeout.
+
+PRE-ITERATION-CLOSEOUT OBLIGATION: reconcile or explicitly accept the scrambled
+`verdict_history` (Proposal 142, flagged in drift-log.md) before iteration-closeout
+reads it. The maintainer is expanding scope to carry this iteration through
+feature-closeout + a beta PR (record as an explicit scope decision at that
+boundary). Release carry-forwards remain OPEN (SC-018): beta-before-stable,
 `MigrateLegacyTopLevelEventMap`, machine-local `agy` evidence (now gathered).
 
 ## Carry Into Plan
