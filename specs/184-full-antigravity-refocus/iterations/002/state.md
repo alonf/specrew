@@ -59,8 +59,10 @@ fail-then-pass), the FR-008 docs note, and T006 (real-host evidence recorded).
 
 T006 real-host result (maintainer, 2026-06-17; machine-local TG-005): FR-011 + the
 governed workshop validated on STRONG models (Opus/Claude) across same-host and
-cross-host resume; `start-context.json` byte-unchanged (the iter-001 stale-cursor
-bug did NOT recur, even under Flash); weak-model (Gemini Flash) boundary-discipline
+cross-host resume; the iter-001 stale-cursor re-scaffold did NOT recur
+(`start-context.json` byte-unchanged through the strong-model transitions; under
+Flash it was mutated by self-authorization -> the Prop-142 ledger reset);
+weak-model (Gemini Flash) boundary-discipline
 FAIL -> the FR-017 caveat is preserved (evidence, not a failure), NON-BLOCKING.
 `AGENTS.md -> GEMINI.md` priority is docs-corroborated only (probe not run; weak
 corroboration: both models honored `AGENTS.md`). Maintainer decision: the
