@@ -234,6 +234,12 @@ before the lifecycle advanced?
 the semantic rule that approved artifacts remain authoritative until a variance
 is accepted and reconciled.
 
+Proposal 197 (Continuous Co-Review) is an upstream producer of these variance
+records: when its inline reviewer flags a design-conformance issue and the editor
+*rejects with a rationale* rather than fixing it, that justified deviation is
+recorded as a material variance per this proposal — surfaced at the edit boundary
+instead of discovered late at review-signoff.
+
 ## Acceptance Criteria
 
 - **AC1**: Every human-judgment gate packet includes a
