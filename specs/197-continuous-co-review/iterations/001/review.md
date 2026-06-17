@@ -3,12 +3,12 @@
 **Schema**: v1  
 **Reviewed**: 2026-06-18  
 **Reviewer**: Reviewer  
-**Review scope**: Proposal 197 / Proposal 145 verification pass at `bc18b8175a89fc3834fbec9c277c50b165dcd077`  
-**Overall Verdict**: needs-rework
+**Review scope**: Proposal 197 / Proposal 145 verification pass at `bc18b8175a89fc3834fbec9c277c50b165dcd077`; lifecycle repair verified at `b8a761023ff3a448bc1f730ecbc6e2129f4a5282`
+**Overall Verdict**: accepted
 
 ## Verdict Summary
 
-Implementation behavior is requirement-conformant for the Proposal 197 Iteration 001 code/test scope, including the Proposal 156 workshop decisions, the Proposal 145 abstraction-leak gate, the T032 adapter-registry repair, redaction, read-only execution, bounded fallback, non-convergence escalation, and infrastructure-failure taxonomy. Closure is not accepted because the lifecycle artifacts are stale: the governance validator reports `iterations/001/plan.md` still has status `planning` even though this review artifact exists. Reviewer is not authorized in this pass to fix non-review artifacts, so the review remains `needs-rework` until the lifecycle state is corrected and governance validation is rerun.
+Implementation behavior is requirement-conformant for the Proposal 197 Iteration 001 code/test scope, including the Proposal 156 workshop decisions, the Proposal 145 abstraction-leak gate, the T032 adapter-registry repair, redaction, read-only execution, bounded fallback, non-convergence escalation, and infrastructure-failure taxonomy. The prior closure blocker was lifecycle-artifact staleness only. Spec Steward repaired the lifecycle state in `b8a761023ff3a448bc1f730ecbc6e2129f4a5282`, and Reviewer reran the review-boundary governance validator plus whitespace check successfully. Review-signoff is accepted.
 
 ## Task Verdicts
 
@@ -113,13 +113,13 @@ Verified fixed. `reviewer-host-adapter-registry.ps1:Get-ContinuousCoReviewReview
 | Continuous co-review Pester suite | `pwsh -NoProfile -Command "Invoke-Pester -Path tests/continuous-co-review"` | pass: `109 Passed, 0 Failed, 0 Skipped` |
 | Protected-surface guard | `pwsh -NoProfile -Command "Invoke-Pester -Path tests/continuous-co-review/governance/protected-surface-guard.Tests.ps1"` | pass: `1 Passed, 0 Failed` |
 | T032 registry test | `pwsh -NoProfile -Command "Invoke-Pester -Path tests/continuous-co-review/unit/reviewer-host-adapter-registry.Tests.ps1"` | pass: `5 Passed, 0 Failed` |
-| Whitespace check | `git --no-pager diff --check` | pass after review artifact update |
-| Governance validator | `pwsh -NoProfile -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\197-continuous-co-review\iterations\001 -BoundaryName review` | fail: stale iteration plan status `planning` while `review.md` exists; expected `reviewing`, `retro`, or `complete` |
+| Whitespace check | `git --no-pager diff --check` | pass after lifecycle repair verification; final pass recorded after this artifact update |
+| Governance validator | `pwsh -NoProfile -File .\extensions\specrew-speckit\scripts\validate-governance.ps1 -ProjectPath . -IterationPath .\specs\197-continuous-co-review\iterations\001 -BoundaryName review` | pass for `specs/197-continuous-co-review/iterations/001` after lifecycle repair commit `b8a761023ff3a448bc1f730ecbc6e2129f4a5282`; repository-scope dashboard/trust-hardening findings were WARN-only |
 
 ## Gap Ledger
 
-- deferred: GOV-197-001 lifecycle-state artifact mismatch remains unresolved because `specs/197-continuous-co-review/iterations/001/plan.md` reports `Status: planning` while `review.md` exists; no closure approval is recorded, and this is the blocking reason for `needs-rework`.
-- deferred: GOV-197-002 drift evidence is stale because `specs/197-continuous-co-review/iterations/001/drift-log.md` still describes no implementation started even though implementation commits are present; no closure approval is recorded, and the drift artifact must be reconciled before acceptance.
+- fixed-now: GOV-197-001 lifecycle-state artifact mismatch is resolved by repair commit `b8a761023ff3a448bc1f730ecbc6e2129f4a5282`; `plan.md` now reports `Status: reviewing`, `state.md` reports `Current Phase: review-signoff` / `Iteration Status: reviewing`, and the review-boundary governance validator passes.
+- fixed-now: GOV-197-002 drift evidence staleness is resolved by repair commit `b8a761023ff3a448bc1f730ecbc6e2129f4a5282`; `drift-log.md` now records no implementation drift and identifies the prior issue as repaired lifecycle/governance evidence.
 
 ## Developer-Facing Implementation Briefing
 
@@ -137,5 +137,4 @@ Testing strategy and confidence: confidence is high for the hermetic Iteration 0
 
 ## Reviewer Closeout
 
-Code/test verdict: pass for in-scope implementation. Lifecycle closure verdict: needs-rework. Required repair before acceptance: update/reconcile lifecycle evidence (`plan.md` status and stale `drift-log.md`), rerun the governance validator, then request a narrow review closeout confirmation. Reviewer did not implement code fixes or lifecycle-state repairs in this pass.
-
+Code/test verdict: pass for in-scope implementation. Lifecycle closure verdict: accepted after repair commit `b8a761023ff3a448bc1f730ecbc6e2129f4a5282` and rerun validation. No remaining review-signoff blocker is known.
