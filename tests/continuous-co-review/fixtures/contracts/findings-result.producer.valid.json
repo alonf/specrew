@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "run_id": "run-197-fixture-001",
+  "status": "findings",
+  "reviewer": {
+    "host": "fixture",
+    "model": "fixture-reviewer",
+    "adapter_id": "fixture"
+  },
+  "findings": [
+    {
+      "finding_id": "finding-001",
+      "source_run_id": "run-197-fixture-001",
+      "fingerprint": "sha256:finding-001",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/reviewer-contracts.ps1",
+        "line_start": 1,
+        "line_end": 1
+      },
+      "severity": "blocking",
+      "kind": "design-contract-drift",
+      "design_reference": "FR-001",
+      "comment": "Fixture blocking finding for contract validation.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "result_hash": "sha256:findings-result-producer",
+  "created_at": "2026-06-17T21:02:00Z"
+}

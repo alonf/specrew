@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "invocation_id": "invocation-consumer-001",
+  "run_id": "run-197-fixture-consumer-001",
+  "attempt_number": 2,
+  "adapter_id": "fixture-fallback",
+  "timeout_seconds": 30,
+  "started_at": "2026-06-17T21:11:00Z"
+}

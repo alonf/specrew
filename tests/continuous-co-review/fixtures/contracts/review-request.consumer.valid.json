@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0",
+  "run_id": "run-197-fixture-consumer-001",
+  "checkpoint_id": "checkpoint-consumer-001",
+  "baseline_ref": "390e3718",
+  "review_kind": "code-change-set",
+  "change_set": {
+    "baseline_ref": "390e3718",
+    "diff_inline": "diff --git a/example b/example",
+    "diff_hash": "sha256:review-request-consumer",
+    "changed_paths": [
+      "tests/continuous-co-review/fixtures/contracts/review-request.consumer.valid.json"
+    ],
+    "reviewable_path_count": 1
+  },
+  "design_context_refs": [
+    "specs/197-continuous-co-review/contracts/reviewer-spawn-contract.md"
+  ],
+  "provider_request": {
+    "requested_host": null,
+    "requested_model": null,
+    "authorization_ref": null,
+    "timeout_seconds": 30
+  },
+  "output_contract": "FindingsResult.v1",
+  "request_hash": "sha256:request-consumer",
+  "created_at": "2026-06-17T21:01:00Z"
+}

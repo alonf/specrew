@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "run_id": "run-197-fixture-001",
+  "checkpoint_id": "checkpoint-001",
+  "baseline_ref": "0d428bfb69d1f54ecc81ea79925a13a26a55ec11",
+  "review_kind": "code-change-set",
+  "change_set": {
+    "baseline_ref": "0d428bfb69d1f54ecc81ea79925a13a26a55ec11",
+    "diff_ref": "diffs/run-197-fixture-001.diff",
+    "diff_hash": "sha256:review-request-producer",
+    "changed_paths": [
+      "scripts/internal/continuous-co-review/reviewer-contracts.ps1"
+    ],
+    "reviewable_path_count": 1
+  },
+  "design_context_refs": [
+    "specs/197-continuous-co-review/spec.md",
+    "specs/197-continuous-co-review/implementation-rules.yml"
+  ],
+  "allowed_paths": [
+    "scripts/internal/continuous-co-review/"
+  ],
+  "forbidden_paths": [
+    "hosts/",
+    "extensions/specrew-speckit/scripts/provider-adapter.ps1"
+  ],
+  "provider_request": {
+    "requested_host": "fixture",
+    "requested_model": "fixture-reviewer",
+    "authorization_ref": "local-fixture-only",
+    "timeout_seconds": 60,
+    "fallback_policy": "none"
+  },
+  "output_contract": "FindingsResult.v1",
+  "request_hash": "sha256:request-producer",
+  "created_at": "2026-06-17T21:00:00Z"
+}
