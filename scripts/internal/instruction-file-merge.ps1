@@ -39,7 +39,15 @@ function Get-SpecrewCoordinatorFragment {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "Packaged coordinator fragment not found at '$path'."
     }
-    return (Get-Content -LiteralPath $path -Raw -Encoding UTF8).Trim()
+    $fragment = (Get-Content -LiteralPath $path -Raw -Encoding UTF8).Trim()
+    # Enforce the size budget at READ time (not only in tests): a packaged fragment that grows past
+    # the cap would push a Specrew section atop a large user AGENTS.md past Codex's 32 KiB root->cwd
+    # concatenation limit and silently regress startup. Fail loudly on the packaging regression.
+    $fragmentBytes = [System.Text.Encoding]::UTF8.GetByteCount($fragment)
+    if ($fragmentBytes -gt $script:SpecrewCoordinatorFragmentMaxBytes) {
+        throw ("Packaged coordinator fragment is $fragmentBytes bytes, over the $($script:SpecrewCoordinatorFragmentMaxBytes)-byte budget (Codex AGENTS.md cap). Trim '$path'.")
+    }
+    return $fragment
 }
 
 function Merge-SpecrewManagedInstructionSection {
@@ -101,13 +109,26 @@ function Set-SpecrewInstructionFileSection {
             $null = New-Item -ItemType Directory -Path $dir -Force
         }
         $tempPath = '{0}.{1}.tmp' -f $Path, ([guid]::NewGuid().ToString('N'))
+        $backupPath = $null
         try {
             [System.IO.File]::WriteAllText($tempPath, $merged, [System.Text.UTF8Encoding]::new($false))
-            Move-Item -LiteralPath $tempPath -Destination $Path -Force -ErrorAction Stop
+            if (Test-Path -LiteralPath $Path -PathType Leaf) {
+                # Atomic in-place swap via the repo's established primitive (HandoverStore uses the same
+                # [IO.File]::Replace = Win32 ReplaceFile): one call swaps in the new file and preserves the
+                # destination's attributes. File.Replace REQUIRES a backup path (a bare $null marshals to an
+                # empty string in PowerShell and throws), so use a transient backup and remove it below.
+                $backupPath = '{0}.{1}.bak' -f $Path, ([guid]::NewGuid().ToString('N'))
+                [System.IO.File]::Replace($tempPath, $Path, $backupPath)
+            }
+            else {
+                [System.IO.File]::Move($tempPath, $Path)
+            }
         }
         finally {
-            if (Test-Path -LiteralPath $tempPath -PathType Leaf) {
-                Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+            foreach ($cleanup in @($tempPath, $backupPath)) {
+                if ($cleanup -and (Test-Path -LiteralPath $cleanup -PathType Leaf)) {
+                    Remove-Item -LiteralPath $cleanup -Force -ErrorAction SilentlyContinue
+                }
             }
         }
     }

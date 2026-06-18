@@ -134,10 +134,15 @@ Write-Pass "Get-SpecrewCanonicalBoundaryTypes includes 'retro' in the canonical 
 
 # Test 9: Smoke-invoke the module-internal session-state helper with `retro`
 # to prove the lifecycle boundary assertion is aimed at the real module copy.
-$syncScriptInvocation = "& { . '$syncBoundaryPath'; try { New-SpecrewSessionState -BoundaryType 'retro' -FeatureRef 'test' -IterationNumber '001' -TaskId `$null -AuthCommitHash `$null } catch { if (`$_.Exception.Message -match 'ValidateSet') { 'VALIDATE_SET_ERROR' } else { 'OK' } } }"
+$syncScriptInvocation = "& { . '$syncBoundaryPath'; try { `$null = New-SpecrewSessionState -BoundaryType 'retro' -FeatureRef 'test' -IterationNumber '001' -TaskId `$null -AuthCommitHash `$null; 'SESSION_STATE_OK' } catch { if (`$_.Exception.Message -match 'ValidateSet') { 'VALIDATE_SET_ERROR' } else { 'UNEXPECTED_ERROR: ' + `$_.Exception.Message } } }"
 $smokeResult = pwsh -NoProfile -Command $syncScriptInvocation 2>&1 | Out-String
 if ($smokeResult -match 'VALIDATE_SET_ERROR') {
     Write-Fail "Smoke-invoking New-SpecrewSessionState -BoundaryType 'retro' threw a ValidateSet error: $smokeResult"
+}
+# A missing function or ANY non-ValidateSet failure must NOT pass as success (the prior `else { 'OK' }`
+# masked exactly that): require the positive success marker, so this stays a real regression guard.
+if ($smokeResult -notmatch 'SESSION_STATE_OK') {
+    Write-Fail "Smoke-invoking New-SpecrewSessionState -BoundaryType 'retro' did not succeed (function missing or unexpected error): $smokeResult"
 }
 Write-Pass "BoundaryType 'retro' is accepted by the module-internal sync-boundary-state.ps1 helper"
 
