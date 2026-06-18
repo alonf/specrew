@@ -40,7 +40,7 @@ claude   # launch your AI host (or codex / copilot / cursor / agy) — then just
 
 That's it. Specrew now drives you through the spec-driven lifecycle: you'll co-author a spec with the AI, sign off on a plan, and end with working code traceable to every decision.
 
-> **`specrew init` is a one-time setup — then just launch your host.** You run `specrew init` **once per project** to deploy Specrew's session hooks; you never need to run it again in that project. From then on, every session you simply run your host CLI (`claude` / `codex` / `copilot` / `cursor-agent` / `agy`) inside the project and Specrew bootstraps you automatically — `specrew start` is **optional**. Your **first message** — "What should I do now?" or "Create a feature for …" — gets a Specrew orientation banner as the agent's first reply, and Specrew drives the governed lifecycle from there. When you stop, a rolling handover file is written, so your next launch **auto-resumes where you left off** — same host or a different one. Specrew works on **Claude, Codex, Copilot, Cursor, and Antigravity**; Antigravity uses project-local `.agents/hooks.json` where `PreInvocation` carries bootstrap plus B3 boundary-refocus injection and `Stop` writes the rolling handover, with `specrew start --host antigravity` as the fallback if those hooks do not fire ([see below](#starting-on-antigravity)). You can still use `specrew start` anywhere to pick or switch hosts (`--host`) or start from a script.
+> **`specrew init` is a one-time setup — then just launch your host.** You run `specrew init` **once per project** to deploy Specrew's session hooks; you never need to run it again in that project. From then on, every session you simply run your host CLI (`claude` / `codex` / `copilot` / `cursor-agent` / `agy`) inside the project and Specrew bootstraps you automatically — `specrew start` is **optional**. Your **first message** — "What should I do now?" or "Create a feature for …" — gets a Specrew orientation banner as the agent's first reply, and Specrew drives the governed lifecycle from there. When you stop, a rolling handover file is written, so your next launch **auto-resumes where you left off** — same host or a different one. Specrew works on **Claude, Codex, Copilot, Cursor, and Antigravity**. You can still use `specrew start` anywhere to pick or switch hosts (`--host`) or start from a script.
 
 ### Prerequisites
 
@@ -112,7 +112,7 @@ Specrew encodes that methodology as four guarantees:
 1. **Boundary discipline.** The lifecycle has explicit approval boundaries (`specify`, `clarify`, `plan`, `tasks`, `before-implement`, `review-signoff`, `retro`, `iteration-closeout`, `feature-closeout`). One human authorization advances at most one boundary. No agent prose can simulate authorization. Enforcement is moving from prose to code (see [Proposal 065](proposals/065-launch-mode-boundary-enforcement.md), shipped as Feature 039).
 2. **Substantive interaction.** Every boundary handoff is reviewable in the console with the essence of "what I just did / why I stopped / what I need from you" visible without opening files. Status pings are not enough.
 3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` (Copilot host) or the host-native decisions ledger with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
-4. **Methodology survives the host.** Specrew runs on **GitHub Copilot CLI, Claude Code, Cursor (`cursor-agent`), Codex CLI, or Antigravity (`agy`)** — on a hook-capable host you just launch the CLI directly and Specrew bootstraps you; `specrew start --host <kind>` (or the interactive menu) is the explicit way to pick or switch a host, and the fallback path for Antigravity when project `.agents/hooks.json` support does not fire. VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface; canonical Crew identity lives at `.specrew/team/agents/<role>.md` and translates to each host's native subagent format on launch. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
+4. **Methodology survives the host.** Specrew runs on **GitHub Copilot CLI, Claude Code, Cursor (`cursor-agent`), Codex CLI, or Antigravity (`agy`)** — on a hook-capable host you just launch the CLI directly and Specrew bootstraps you; `specrew start --host <kind>` (or the interactive menu) is the explicit way to pick or switch a host. VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface; canonical Crew identity lives at `.specrew/team/agents/<role>.md` and translates to each host's native subagent format on launch. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
 
 ## Post-Commit Verification Protocol
 
@@ -151,7 +151,7 @@ Wednesday — copilot "continue"   (resumes at plan)
                        → plan.md committed, /speckit.tasks queued
 Thursday — claude   "continue"   (resumes at iteration scaffold)
                        → iter-001/plan.md, ready for /speckit.implement
-Friday   — agy       "continue"   (or `agy -c`; use `specrew start --host antigravity` if project hooks do not fire)
+Friday   — agy       "continue"   (resumes at implement)
                        → tests + code committed, /speckit.review-signoff queued
 ```
 
@@ -165,42 +165,6 @@ On each launch, the new host:
 One thing to know: if you switch to a non-Claude host mid-feature, the new session may ask you to re-confirm your last approval before it advances. Your work and your place still follow you — you just say the word once more.
 
 The methodology is what makes this practical. Without governed boundaries + durable artifacts, switching host mid-feature means context loss and silent decision divergence between sessions. With them, the host is interchangeable — you can chase the cheapest model, the strongest reasoner, or the host that's loaded on the machine you happen to be at, and the project doesn't care.
-
-## Starting on Antigravity
-
-Antigravity (Google's `agy` CLI) is a supported host with project-local hook support. After `specrew init`, the normal Antigravity entry point is the native CLI:
-
-```powershell
-agy
-# then type: Build a tip calculator with a web UI
-```
-
-To resume, either start Antigravity normally and type `continue`, or use its native resume flags:
-
-```powershell
-agy -c
-agy --conversation <conversation-id>
-```
-
-Specrew installs a Specrew-owned definition in `.agents/hooks.json`: `PreInvocation` injects the bootstrap message and B3 boundary refocus through `injectSteps[].ephemeralMessage`, and `Stop` returns the handover decision as JSON. Antigravity differs from the other hook hosts because it has no B1 compaction-refocus carrier; B2 launch/bootstrap and B3 boundary refocus both ride `PreInvocation`. If the Antigravity host in your environment does not fire those hooks, start or recover explicitly with `specrew start --host antigravity`:
-
-```powershell
-specrew start --host antigravity
-# …or open with a request:
-specrew start --host antigravity "Build a tip calculator with a web UI"
-```
-
-Everything downstream is identical to the other hosts — the same decision boundaries, the same decisions ledger, the same rolling handover on disk. Because that handover is just a file, you can still hand a feature **between** Antigravity and another host: stop in one, pick it up in the other. When Antigravity hooks do not fire, `specrew start --host antigravity` reads the same artifacts and re-anchors the session.
-
-To inspect, repair, or disable Specrew's Antigravity hooks without touching user-owned hook definitions:
-
-```powershell
-specrew hooks status --host antigravity
-specrew hooks install --host antigravity
-specrew hooks remove --host antigravity
-```
-
-Antigravity-native permission controls remain Antigravity-owned. Use `/permissions` inside `agy` to inspect or adjust tool permissions. Use `agy --dangerously-skip-permissions` only when you intentionally want to auto-approve tool prompts between Specrew lifecycle boundaries, and use Antigravity sandboxing (`agy --sandbox` or the `enableTerminalSandbox` setting) when you want a constrained terminal session. These controls do not bypass Specrew's human approval gates.
 
 ## Hands-off mode (auto-approve)
 
