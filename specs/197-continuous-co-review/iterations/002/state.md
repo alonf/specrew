@@ -1,17 +1,18 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: T051
-**Tasks Remaining**: T052, T053, T054, T055, T056, T057
+**Last Completed Task**: T052
+**Tasks Remaining**: T053, T054, T055, T056, T057
 **In Progress**: (none)
 **Baseline Ref**: a5f1b3ac44a41e82ca4514e266c43a637e17e1cd
-**Updated**: 2026-06-18T22:50:14Z
+**Updated**: 2026-06-18T22:51:27Z
 
 ## Execution Summary
 
+- T052 complete: canonical reviewer instruction source, marker fixture, and contract test are in place; reviewer-instruction.Tests.ps1 passed 5/5.
 - T051 complete: remote-main sync evidence from f31e0c74b53c4652bf7a6aff575dd90cf9a89c19 accepted, with fresh status confirming HEAD equals origin/197-continuous-co-review and no drift before runtime repair.
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
-- Iteration 002 is executing after human before-implement approval; next task is T052.
+- Iteration 002 is executing after human before-implement approval; next task is T053.
 
 ## Notes
 
