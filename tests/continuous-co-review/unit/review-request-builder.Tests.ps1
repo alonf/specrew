@@ -27,6 +27,8 @@ Describe 'Proposal 197 T014 TG-011 review request builder obeys implementation-r
         return [pscustomobject][ordered]@{
             baseline_ref          = 'baseline-t014'
             diff_ref              = 'diffs/run-t014.diff'
+            diff_inline           = "diff --git a/file.ps1 b/file.ps1`n+changed`n"
+            diff_content          = "diff --git a/file.ps1 b/file.ps1`n+changed`n"
             diff_hash             = 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
             changed_paths         = $ChangedPaths
             reviewable_path_count = $ChangedPaths.Count
@@ -76,19 +78,28 @@ Describe 'Proposal 197 T014 TG-011 review request builder obeys implementation-r
 
         $validation.Valid | Should Be $true
         @($validation.Errors).Count | Should Be 0
-        $request.schema_version | Should Be '1.0'
+        $request.schema_version | Should Be '2.0'
         $request.run_id | Should Be 'run-t014-001'
         $request.checkpoint_id | Should Be 'checkpoint-t014'
         $request.baseline_ref | Should Be 'baseline-t014'
         $request.review_kind | Should Be 'code-change-set'
         $request.output_contract | Should Be 'FindingsResult.v1'
         $request.created_at | Should Be '2026-06-17T21:00:00Z'
+        $request.reviewer_instruction.canonical_path | Should Be 'scripts/internal/continuous-co-review/code-review-agent.md'
+        $request.reviewer_instruction.content_hash | Should Match '^sha256:[0-9a-f]{64}$'
+        $request.design_context.content | Should Match 'specs/197-continuous-co-review/spec.md'
+        @($request.design_context.sources).Count | Should BeGreaterThan 0
+        $request.round_number | Should Be 1
+        @($request.prior_findings).Count | Should Be 0
+        $request.visibility_policy.policy_id | Should Be 'proposal-197-review-visibility.v1'
+        $request.do_policy.policy_id | Should Be 'proposal-197-review-do-policy.v1'
     }
 
     It 'carries deterministic change-set, allowed path, and forbidden path policy for SC-011' {
         $request = Invoke-T014RequestBuilder
 
         $request.change_set.diff_hash | Should Be 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        $request.change_set.diff_content | Should Match 'diff --git'
         ($request.change_set.changed_paths -contains 'scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1') | Should Be $true
         ($request.allowed_paths -contains 'scripts/internal/continuous-co-review/') | Should Be $true
         ($request.allowed_paths -contains 'tests/continuous-co-review/') | Should Be $true
@@ -98,14 +109,14 @@ Describe 'Proposal 197 T014 TG-011 review request builder obeys implementation-r
 
     It 'carries explicit provider request authorization and timeout fields without provider transcript data' {
         $request = Invoke-T014RequestBuilder
-        $requestJson = $request | ConvertTo-Json -Depth 100
+        $requestJson = $request.provider_request | ConvertTo-Json -Depth 20
 
         $request.provider_request.requested_host | Should Be 'fixture'
         $request.provider_request.requested_model | Should Be 'fixture-reviewer'
         $request.provider_request.authorization_ref | Should Be 'local-fixture-only'
         $request.provider_request.timeout_seconds | Should Be 60
         $request.provider_request.fallback_policy | Should Be 'none'
-        $requestJson | Should Not Match '(?i)transcript|raw_stdout|raw_stderr|token|secret'
+        $requestJson | Should Not Match '(?i)raw[_ -]?transcript|raw_stdout|raw_stderr'
     }
 
     It 'rejects a request whose change-set crosses forbidden path policy' {

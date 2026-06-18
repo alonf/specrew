@@ -1,24 +1,25 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Last Completed Task**: T052
-**Tasks Remaining**: T053, T054, T055, T056, T057
+**Last Completed Task**: T053
+**Tasks Remaining**: T054, T055, T056, T057
 **In Progress**: (none)
 **Baseline Ref**: a5f1b3ac44a41e82ca4514e266c43a637e17e1cd
-**Updated**: 2026-06-18T22:51:27Z
+**Updated**: 2026-06-18T23:10:00Z
 
 ## Execution Summary
 
+- T053 complete: ReviewRequest.v2 runtime builder and prompt composer now inject canonical reviewer instruction metadata/hash, bundled design context, exact diff content, round/prior findings, visibility/do policy, and FindingsResult.v1; T053 Pester set passed 16/16.
 - T052 complete: canonical reviewer instruction source, marker fixture, and contract test are in place; reviewer-instruction.Tests.ps1 passed 5/5.
 - T051 complete: remote-main sync evidence from f31e0c74b53c4652bf7a6aff575dd90cf9a89c19 accepted, with fresh status confirming HEAD equals origin/197-continuous-co-review and no drift before runtime repair.
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
-- Iteration 002 is executing after human before-implement approval; next task is T053.
+- Iteration 002 is executing after human before-implement approval; next task is T054.
 
 ## Notes
 
 - Update this file after each task completes.
 - Keep task identifiers aligned to plan.md.
-- Runtime implementation has not started. Planning-only contract/runbook updates are captured in the boundary commit and must not be counted as completed T051-T057 work.
+- Runtime prompt/request implementation started with T053 and remains bounded to Proposal 197 feature-local surfaces.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

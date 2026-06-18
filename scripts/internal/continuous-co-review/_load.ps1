@@ -7,6 +7,7 @@ $proposal197ReviewerModules = @(
     'design-context-collector.ps1'
     'checkpoint-diff-provider.ps1'
     'review-request-builder.ps1'
+    'review-prompt-composer.ps1'
     'review-run-workspace-manager.ps1'
     'review-result-normalizer.ps1'
     'reviewer-host-catalog.ps1'

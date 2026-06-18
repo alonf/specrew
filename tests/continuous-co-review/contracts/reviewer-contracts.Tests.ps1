@@ -39,7 +39,7 @@ Describe 'Proposal 197 reviewer contracts' {
     It 'rejects unknown major schema versions before a checkpoint can consume the DTO' {
         $fixturePath = Join-Path $script:FixtureRoot 'review-request.producer.valid.json'
         $dto = Read-ReviewerContractJson -Path $fixturePath
-        $dto.schema_version = '2.0'
+        $dto.schema_version = '3.0'
 
         $result = Test-ReviewerContractObject -ContractName 'ReviewRequest' -SchemaRoot $script:SchemaRoot -InputObject $dto
 

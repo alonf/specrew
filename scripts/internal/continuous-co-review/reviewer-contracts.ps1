@@ -309,7 +309,9 @@ function Test-ReviewerContractSchemaVersion {
         [AllowNull()]
         $InputObject,
 
-        [System.Collections.Generic.List[string]] $Errors
+        [System.Collections.Generic.List[string]] $Errors,
+
+        [string] $ContractName
     )
 
     if (-not (Test-ReviewerContractPropertyExists -Object $InputObject -Name 'schema_version')) {
@@ -328,7 +330,8 @@ function Test-ReviewerContractSchemaVersion {
     }
 
     $major = ($schemaVersion -split '\.')[0]
-    if ($major -ne '1') {
+    $allowedMajors = if ($ContractName -eq 'ReviewRequest') { @('1', '2') } else { @('1') }
+    if ($allowedMajors -notcontains $major) {
         $Errors.Add("Unknown schema major version '$major'.")
     }
 }
@@ -348,7 +351,7 @@ function Test-ReviewerContractObject {
     $errors = [System.Collections.Generic.List[string]]::new()
     $schema = Get-ReviewerContractSchema -ContractName $ContractName -SchemaRoot $SchemaRoot
 
-    Test-ReviewerContractSchemaVersion -InputObject $InputObject -Errors $errors
+    Test-ReviewerContractSchemaVersion -InputObject $InputObject -Errors $errors -ContractName $ContractName
     Test-ReviewerContractSchemaNode -Value $InputObject -Schema $schema -Path '$' -Errors $errors
 
     return [pscustomobject]@{
