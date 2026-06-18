@@ -76,3 +76,111 @@ The audit record must not record secret values, raw ambient machine state, or fu
 - Dynamic provider plugin loading.
 - Persisting full raw prompts or provider transcripts for audit.
 - Allowing reviewer-authored source edits as part of the review run.
+
+## Iteration 002 Send-Back Addendum: Reviewer Definition Trust Boundary
+
+The review send-back tightens the security/compliance lens around the actual
+reviewer-definition delivery path. The reviewer remains trusted for bounded read
+access, but the execution path must prove that the canonical reviewer instruction,
+visibility policy, do-policy, design context, round context, and prior findings
+were injected before any host adapter invokes a model.
+
+```text
+Reviewer-definition security boundary
+
+                         trusted Specrew-controlled inputs
++----------------------------------------------------------------------------------+
+|                                                                                  |
+|  +----------------------+      load canonical text       +----------------------+ |
+|  | code-review-agent.md |------------------------------->| Instruction Source   | |
+|  | Specrew-owned file   | source path + content hash     | no host invocation   | |
+|  +----------------------+                                +----------+-----------+ |
+|                                                                     |             |
+|                                                                     v             |
+|  +----------------------+      structured request         +----------------------+ |
+|  | Design Context       |------------------------------->| ReviewRequest.v2     | |
+|  | Diff / Change-set    |                                | visibility/do policy | |
+|  | Prior Findings       |                                +----------+-----------+ |
+|  +----------------------+                                           |             |
+|                                                                     v             |
+|                                                        +----------------------+  |
+|                                                        | Prompt Composer      |  |
+|                                                        | injects reviewer     |  |
+|                                                        | definition + policy  |  |
+|                                                        +----------+-----------+  |
+|                                                                   |              |
++-------------------------------------------------------------------|--------------+
+                                                                    |
+                                                                    v
+                                                        +----------------------+
+                                                        | Host Adapter Edge    |
+                                                        | Claude/Codex/etc.    |
+                                                        | transport + flags    |
+                                                        +----------+-----------+
+                                                                   |
+                        isolated disposable review workspace        |
++-------------------------------------------------------------------|--------------+
+|                                                                  v               |
+|  +----------------------+   pre baseline     +----------------------+            |
+|  | Mutation Guard       |------------------->| Reviewer Process     |            |
+|  | pre/post compare     |                    | may read review ctx   |            |
+|  +----------+-----------+<-------------------| must not mutate       |            |
+|             | post baseline / mutation diff  +----------------------+            |
+|             v                                                                    |
+|  +----------------------+       orchestrator-owned durable writes                 |
+|  | Invalid execution if |-----------------------------------------------------+  |
+|  | mutation detected    |                                                     |  |
+|  +----------------------+                                                     |  |
++-------------------------------------------------------------------------------|--+
+                                                                                v
+                                                                  +----------------------+
+                                                                  | Redacted evidence    |
+                                                                  | findings/gate/audit  |
+                                                                  | no raw secrets       |
+                                                                  +----------------------+
+```
+
+### Send-Back Decisions
+
+- **Visibility policy**: The reviewer may read supplied `ReviewRequest.v2`
+  content, the exact diff/change-set, prior findings, design context content,
+  and bounded repository context needed to validate the changed surface. The
+  reviewer must not inspect or persist ambient secrets, token stores, environment
+  variables, unrelated local config, or private machine state.
+- **Do-policy**: The reviewer is review-only. It may analyze and emit exactly one
+  `FindingsResult.v1` object. It must not modify, create, delete, format, or
+  stage files; commit, push, or switch branches; mutate Specrew state; run
+  repair tools, generators, installers, or migrations; or emit alternate output
+  schemas.
+- **Host read-only enforcement**: Adapters pass native read-only,
+  permission-deny, sandbox, no-write, or equivalent flags where supported. Lack
+  of native support is recorded as capability metadata, not hidden. Native flags
+  are defense-in-depth; the mandatory mutation guard is the uniform enforcement
+  layer.
+- **Mutation guard**: Review runs in an isolated disposable workspace. Pre/post
+  validation detects source, spec, state, and Git mutations. Any mutation
+  invalidates the review execution and blocks the gate. Mutation evidence records
+  paths and classification only; changes are never copied back or treated as
+  fixes. A narrow explicit allowlist is permitted only for harmless host
+  byproducts.
+- **Redaction and audit**: Real runs persist hashes, versions, source references,
+  run metadata, gate verdicts, failure classifications, and mutation status, not
+  raw prompts, raw provider transcripts, environment variables, tokens, token
+  stores, credentials, private local config, or secret values. Deterministic
+  fixture tests may capture sanitized composed prompts to prove the real prompt
+  path includes the Proposal 145 rubric, design context, round number, and prior
+  findings.
+- **Adapter safety**: Host adapters receive a complete composed prompt and remain
+  transport-only. They use safe argv or equivalent invocation, apply timeouts and
+  read-only flags where available, and report deterministic
+  `InfrastructureFailure.v1` for unavailable, unsupported, or malformed host
+  execution. Adapters do not own rubric text, policy wording, prior-finding
+  semantics, durable writes, or gate verdicts.
+
+### Done Interpretation
+
+A reviewer-definition run is security-acceptable only when the actual outbound
+host path carries the canonical reviewer instruction and policy, the reviewer is
+constrained to read-only analysis, durable artifacts avoid raw secrets and raw
+transcripts, and any reviewer mutation in the disposable workspace invalidates
+the run instead of being treated as a fix.

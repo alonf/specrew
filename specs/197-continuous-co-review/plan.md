@@ -3,11 +3,11 @@
 **Branch**: `197-continuous-co-review` | **Date**: 2026-06-17 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/197-continuous-co-review/spec.md`
 
-**Note**: Stops after planning; no tasks or implementation are started.
+**Note**: Iteration 001 implementation completed before the review send-back. This repaired plan stops at Iteration 002 planning/readiness; no reviewer-definition implementation starts until the next before-implement approval.
 
 ## Summary
 
-Proposal 197 shifts design-conformance review from final Proposal 145 review-signoff to checkpoint boundaries. Iteration 001 delivers the host-neutral rung 2b spine: reviewer contract, forced findings schema, git-diff change-set, blackboard review-thread protocol, deterministic blocking gate, orchestrator checkpoint-loop trigger, explicit provider/model authorization, headless-floor spawn adapter seams, and a fresh-context read-only reviewer. The slice is local, contract-first, filesystem-backed, PowerShell/Pester-oriented, additive/new-file-only, and isolated from F-184 protected host-runtime, hook, provider, registry, refocus, shared-governance, and `validate-governance.ps1` surfaces.
+Proposal 197 shifts design-conformance review from final Proposal 145 review-signoff to checkpoint boundaries. Iteration 001 delivered the host-neutral rung 2b spine: reviewer contract, forced findings schema, git-diff change-set, blackboard review-thread protocol, deterministic blocking gate, orchestrator checkpoint-loop trigger, explicit provider/model authorization, headless-floor spawn adapter seams, and a fresh-context read-only reviewer. Iteration 002 is a focused review send-back repair: preserve the completed Iteration 001 spine while making the canonical reviewer definition, `ReviewRequest.v2`, injected prompt, read-only/mutation guard, deterministic prompt evidence, and SC-012 exact manual path explicit. The slice remains local, contract-first, filesystem-backed, PowerShell/Pester-oriented, additive within the Proposal 197 namespace, and isolated from F-184 protected host-runtime, hook, provider, registry, refocus, shared-governance, `validate-governance.ps1`, Proposal 139 foundation, Proposal 196 provenance work, automated live CI, new dependencies, and `proposals/197-continuous-co-review.md`.
 
 ## Technical Context
 
@@ -19,7 +19,7 @@ Proposal 197 shifts design-conformance review from final Proposal 145 review-sig
 **Project Type**: Local Specrew tooling/module-command spine with file/stdin/stdout/process-exit contracts.  
 **Performance Goals**: Bounded synchronous reviewer invocation with configured timeout; no tuning goal beyond deterministic timeout handling and checkpoint-level review.  
 **Constraints**: New-file-only first slice; no F-184 protected-surface edits; no `specrew update`; no proposal-governance branch edits; keep `.squad/agents/spec-steward/history.md` runtime churn out of commits; no new dependencies; do not name/scope a new CI/CD E2E companion proposal; preserve hooks/fixtures for Proposal 181 plus Proposal 194 canary composition.  
-**Scale/Scope**: Iteration 001 host-neutral spine. Planning budget: 19.50/20 capacity points: contracts/schemas 3, diff/request/context 3, adapter/config/selection 5, execution/failure normalization 3, blackboard/gate/evidence 3, fixture/test/governance/manual-validation evidence 2.50.
+**Scale/Scope**: Iteration 001 host-neutral spine is complete at 19.50/20 capacity points. Iteration 002 reviewer-definition repair is planned at 8.00/20 story points: remote-main sync 1.00, canonical instruction/contract 1.00, `ReviewRequest.v2` plus prompt composer 2.00, read-only/mutation guard 1.25, host mirror/runbook repair 0.75, prompt-fixture E2E evidence 1.50, and validation/traceability closeout 0.50.
 
 ## Phase 1 Quality Planning
 
@@ -136,11 +136,11 @@ Proposal 197 shifts design-conformance review from final Proposal 145 review-sig
 
 - **Spec Authority Gate**: PASS — scope maps to approved `spec.md`, workshop artifacts, `lens-applicability.json`, `implementation-rules.yml`, clarify evidence commit `20f3ab1e80f17a444b3c8763f953bafbf932edbc`, and human clarify -> plan approval.
 - **Layering Gate**: PASS — Specrew local tooling/module-command behavior plus feature-local Spec Kit contracts; no platform hacks or protected F-184 edits.
-- **Traceability Gate**: PASS — deliverables map to Story 1 (contract/diff/gate/reviewer), Story 2 (blackboard/thread/disposition), Story 3 (host-neutral adapters/config/authorization), and FR/DS/SEC/INT/OPS/OBS/IMPL/TG requirements.
+- **Traceability Gate**: PASS — Iteration 001 deliverables map to Story 1 (contract/diff/gate/reviewer), Story 2 (blackboard/thread/disposition), Story 3 (host-neutral adapters/config/authorization), and FR/DS/SEC/INT/OPS/OBS/IMPL/TG requirements; the Iteration 002 send-back repair maps FR-017..FR-023 and SC-013..SC-018 to T051..T057.
 - **Ownership Gate**: PASS — Architect owns contracts; Implementer owns diff/request/adapters; Reviewer owns gate validation; Security Reviewer owns mutation/secret/authorization controls; Spec Steward owns scope/protected-surface guard; Iteration Facilitator owns checkpoint-loop planning/capacity.
-- **Capacity Gate**: PASS — capacity points and 19.50/20-point Iteration 001 budget recorded.
+- **Capacity Gate**: PASS — capacity points and 19.50/20-point Iteration 001 budget recorded; the Iteration 002 repair budget is 8.00/20 story points.
 - **Drift/Reconciliation Gate**: PASS — drift signals include protected-surface edits, PostToolUse/hook triggers, reviewer source mutation, new dependencies, ambiguous provider-file names, unnamed CI/CD expansion, Proposal 196 provenance absorption, and proposal-governance edits.
-- **Verification Gate**: PASS — contract fixtures, deterministic Pester tests, adapter fake/failure floor, manual real-host runbook/fixture, markdownlint, protected file diff review, no-dependency review, and SC-001..SC-012 mapping planned.
+- **Verification Gate**: PASS — contract fixtures, deterministic Pester tests, adapter fake/failure floor, manual real-host runbook/fixture, prompt-composer evidence, mutation-guard evidence, markdownlint, protected file diff review, no-dependency review, and SC-001..SC-018 mapping planned.
 
 ## Project Structure
 
@@ -176,6 +176,10 @@ scripts/
 └── internal/
     └── continuous-co-review/           # proposed new namespace only
         ├── reviewer-contracts.ps1
+        ├── code-review-agent.md              # Iteration 002 canonical reviewer definition
+        ├── review-prompt-composer.ps1        # Iteration 002 composed prompt boundary
+        ├── workspace-mutation-guard.ps1      # Iteration 002 mutation invalidation
+        ├── host-agent-mirror.ps1             # Iteration 002 best-effort mirror maintenance
         ├── checkpoint-diff-provider.ps1
         ├── review-request-builder.ps1
         ├── design-context-collector.ps1
@@ -205,13 +209,69 @@ tests/
 
 **Structure Decision**: Use a new explicit `continuous-co-review` / reviewer-domain namespace. Do not create or edit `provider-adapter.ps1`, generic provider files, protected host-runtime/hook/registry/refocus/shared-governance files, `.specify/extensions/...` mirrored protected files, or `validate-governance.ps1`.
 
+## Iteration 002 Reviewer-Definition Repair Plan
+
+### Scope
+
+Iteration 002 repairs the reviewer-definition send-back without reopening Iteration 001 behavior. The work is dependency ordered as: synchronize with latest remote `main`, define the canonical reviewer instruction contract/source, evolve `ReviewRequest` to v2 and compose the actual outbound prompt, enforce read-only/mutation invalidation, repair host mirror/runbook expectations, prove prompt injection through deterministic fixtures, and run validation/traceability closeout.
+
+### Quality Gates
+
+| Gate | Evidence | Requirement / SC |
+| --- | --- | --- |
+| `qg-remote-main-sync` | Preparatory merge or rebase from latest remote `main`, conflicts resolved before runtime edits | FR-023, IMPL-011 |
+| `qg-canonical-reviewer-definition` | `code-review-agent.md` includes Proposal 145 rubric phases, workshop-decision conformance, claim/design trace, report-falsification, per-lens validation, visibility policy, do-policy, and round protocol | FR-017, SC-013 |
+| `qg-review-request-v2` | Schema and fixtures validate required v2 instruction metadata, design-context content/sources, exact diff content, round/prior-findings, policies, and `FindingsResult.v1` | FR-019, SC-015 |
+| `qg-injected-prompt-evidence` | Tests inspect the actual adapter-bound composed prompt and fail on empty prompt or fixture-owned substitute prompt | FR-018, FR-021, SC-014 |
+| `qg-transport-only-adapters` | Adapter tests prove adapters receive a composed prompt and host mirrors are best-effort only | INT-011, INT-012, SC-017 |
+| `qg-mutation-invalidation` | Tests prove source/Git/Specrew mutations invalidate the run uniformly, with read-only flags used where supported | FR-020, SEC-008, SEC-009, SC-016 |
+| `qg-sc012-exact-path` | Manual runbook invokes the orchestrator/prompt-composer path, not handwritten prompt text | FR-022, SC-018 |
+
+### Source and Test Structure Additions
+
+| Surface | Planned addition | Notes |
+| --- | --- | --- |
+| Canonical reviewer definition | `scripts/internal/continuous-co-review/code-review-agent.md` | Specrew-owned authority for reviewer instructions. |
+| Request/prompt runtime | `scripts/internal/continuous-co-review/review-prompt-composer.ps1` plus updates to request builder/execution seams | Composer owns rubric/policy/context/diff/round injection; adapters stay transport-only. |
+| Mutation guard | `scripts/internal/continuous-co-review/workspace-mutation-guard.ps1` | Pre/post source, Git, and Specrew-state checks invalidate mutated runs. |
+| Host mirror support | `scripts/internal/continuous-co-review/host-agent-mirror.ps1` or equivalent feature-local helper | Maintains best-effort native copies without making them authoritative. |
+| Schema/contracts | `contracts/review-request.schema.json`, `contracts/reviewer-spawn-contract.md` | `ReviewRequest` v2 and composed-prompt adapter contract. |
+| Tests/fixtures | `tests/continuous-co-review/contracts/review-request-v2.Tests.ps1`, `tests/continuous-co-review/unit/review-prompt-composer.Tests.ps1`, `tests/continuous-co-review/unit/workspace-mutation-guard.Tests.ps1`, prompt fixtures under `tests/continuous-co-review/fixtures/` | Tests must inspect the actual outbound prompt and falsify empty/bypassed prompts. |
+
+### FR-to-Test Mapping
+
+| Requirement | Primary test evidence |
+| --- | --- |
+| FR-017 / SC-013 | Canonical reviewer instruction content test for all required rubric/policy/round sections. |
+| FR-018 / SC-014 / SC-017 | Prompt composer and adapter seam tests inspecting actual composed prompt content passed to adapters. |
+| FR-019 / SC-015 | ReviewRequest v2 schema/fixture producer-consumer tests. |
+| FR-020 / SC-016 | Workspace mutation guard tests for source, Git, and Specrew-state mutation invalidation plus read-only flag propagation where supported. |
+| FR-021 / OBS-011 | Empty-prompt and fixture-masking negative tests. |
+| FR-022 / SC-018 | Manual-validation documentation review and command-shape test/inspection. |
+| FR-023 | Pre-implementation remote-main sync task evidence before code edits. |
+
+### Capacity Estimate
+
+| Task group | Effort |
+| --- | ---: |
+| Remote-main sync and conflict repair | 1.00 |
+| Canonical reviewer instruction contract/source | 1.00 |
+| `ReviewRequest.v2` and prompt composer | 2.00 |
+| Read-only invocation and mutation guard | 1.25 |
+| Host mirror and SC-012 runbook repair | 0.75 |
+| Deterministic prompt fixture/E2E evidence | 1.50 |
+| Validation and traceability closeout | 0.50 |
+| **Total** | **8.00/20 SP** |
+
+Capacity status: **OK**. No deferral is required at 8.00/20 SP. If conflict repair from latest remote `main` exceeds the preparatory task, split synchronization into its own human-approved preparatory step before implementing the runtime repair. Do not absorb rung 1, PostToolUse/hook triggers, Proposal 139 foundation, Proposal 196 provenance, automated live CI, new dependencies, protected F-184 edits, `proposals/197-continuous-co-review.md`, or `.squad/agents/spec-steward/history.md`.
+
 ## Complexity Tracking
 
 No constitutional violations are accepted or justified. Complexity is limited to contracts, strategy seams, and deterministic state machines required by the approved requirements.
 
 ## Phase 0 Research
 
-See [research.md](./research.md). All Technical Context unknowns are resolved; no clarification placeholders remain.
+See [research.md](./research.md). The send-back decision is now explicit: runtime review correctness comes from injecting the canonical `code-review-agent.md` content into the composed headless prompt, while host-native mirrors remain non-authoritative.
 
 ## Phase 1 Design and Contracts
 
@@ -221,8 +281,8 @@ See [data-model.md](./data-model.md), [quickstart.md](./quickstart.md), and `con
 
 - **Spec Authority Gate**: PASS — artifacts preserve Iteration 001 and do not absorb Proposal 196 provenance work, CI/CD E2E implementation, Proposal 139 foundation, rung 1, or hook-triggered review.
 - **Layering Gate**: PASS — contracts/runtime surfaces remain Specrew local tooling and feature-local artifacts.
-- **Traceability Gate**: PASS — entities/contracts map to FR-001..FR-016, DS-001..DS-005, SEC-001..SEC-006, INT-001..INT-009, OPS-001..OPS-007, OBS-001..OBS-009, IMPL-001..IMPL-007, TG-001..TG-012, and SC-001..SC-012.
+- **Traceability Gate**: PASS — entities/contracts map to FR-001..FR-023, DS-001..DS-005, SEC-001..SEC-009, INT-001..INT-013, OPS-001..OPS-007, OBS-001..OBS-012, IMPL-001..IMPL-011, TG-001..TG-014, and SC-001..SC-018.
 - **Ownership Gate**: PASS — ownership is explicit by workstream.
-- **Capacity Gate**: PASS — 19.50/20-point Iteration 001 planning budget remains within the configured capacity.
+- **Capacity Gate**: PASS — 19.50/20-point Iteration 001 budget remains within the configured capacity, and the Iteration 002 reviewer-definition repair is 8.00/20 story points.
 - **Drift/Reconciliation Gate**: PASS — protected-surface, dependency, proposal-governance, runtime-history, CI/CD naming, and provider-file collision rules are blocking drift signals.
-- **Verification Gate**: PASS — contract, schema, fixture, gate, adapter, security, and governance evidence sources are planned without claiming runtime proof.
+- **Verification Gate**: PASS — contract, schema, fixture, gate, adapter, security, prompt-composer, mutation-guard, and governance evidence sources are planned without claiming runtime proof.

@@ -216,3 +216,136 @@ checkpoint boundary
   independence when available and authorized; model IDs remain data/config because model catalogs are volatile.
 - Iteration 001 does not probe provider token quota or usage. If a requested provider/model is unavailable, the
   run blocks or requests new authorization rather than silently downgrading.
+
+## Iteration 002 Send-Back Addendum: Reviewer Definition Components
+
+The reviewer-definition repair preserves the layered/modular design and adds explicit components around reviewer
+instruction ownership, prompt composition, round context, and mutation detection. Reviewer semantics stay in core
+definition/context/prompt components; host adapters remain transport-only edges. The canonical reviewer
+instruction is a Markdown runtime artifact, `scripts/internal/continuous-co-review/code-review-agent.md`, and
+host-folder copies are deployment mirrors only.
+
+```text
+Proposed component map — reviewer-definition repair
+
++----------------------------------------------------------------------------------+
+| Orchestration Layer                                                              |
+|                                                                                  |
+|  CheckpointReviewOrchestrator                                                    |
+|      |                                                                           |
+|      +--> CheckpointDiffProvider                                                 |
+|      |                                                                           |
+|      +--> ReviewRoundContextBuilder                                              |
+|      |                                                                           |
+|      v                                                                           |
+|  ReviewRequestBuilder                                                            |
++------+---------------------------------------------------------------------------+
+       |
+       +-------------------------------+----------------------------------+
+       |                               |                                  |
+       v                               v                                  v
++-----------------------------+  +--------------------------------+  +----------------------+
+| Contract Layer              |  | Definition + Context Layer      |  | Policy Layer         |
+|                             |  |                                |  |                      |
+|  ReviewRequestSchema.v2     |  |  ReviewerInstructionSource     |  |  ReviewPolicyBuilder |
+|  FindingsResultSchema.v1    |  |  DesignContextCollector        |  |  ReadOnlyPolicy      |
+|  InfrastructureFailure      |  |  ReviewPromptComposer          |  |  VisibilityPolicy    |
+|  MutationViolationEvidence  |  +---------------+----------------+  |  DoPolicy            |
++-------------+---------------+                  |                   +----------+-----------+
+              |                                  |                              |
+              +----------------------+-----------+------------------------------+
+                                     |
+                                     v
++----------------------------------------------------------------------------------+
+| Workspace + Execution Layer                                                      |
+|                                                                                  |
+|  ReviewRunWorkspaceManager                                                       |
+|      |                                                                           |
+|      v                                                                           |
+|  WorkspaceMutationGuard                                                          |
+|      |                                                                           |
+|      v                                                                           |
+|  ReviewerExecutionEngine                                                         |
+|      |                                                                           |
+|      v                                                                           |
+|  ReviewerHostAdapterRegistry                                                     |
+|      |                                                                           |
+|      +--> ReviewerHostAdapter: ClaudePrompt                                      |
+|      +--> ReviewerHostAdapter: CodexExec                                         |
+|      +--> ReviewerHostAdapter: CopilotPrompt                                     |
+|      +--> ReviewerHostAdapter: CursorAgentPrompt                                 |
+|      +--> ReviewerHostAdapter: AntigravityPrompt                                 |
++------+---------------------------------------------------------------------------+
+       |
+       v
++----------------------------------------------------------------------------------+
+| Result + Gate + Persistence Layer                                                 |
+|                                                                                  |
+|  ReviewResultNormalizer                                                          |
+|      |                                                                           |
+|      v                                                                           |
+|  InlineReviewGateEvaluator                                                       |
+|      |                                                                           |
+|      v                                                                           |
+|  ReviewBlackboardWriter                                                          |
+|      |                                                                           |
+|      v                                                                           |
+|  HostAgentMirrorDeployer                                                         |
+|  (copy code-review-agent.md to managed host folders; not runtime execution path)  |
++----------------------------------------------------------------------------------+
+```
+
+### Added Responsibilities
+
+- `ReviewRoundContextBuilder` — supplies `round_number` and `prior_findings`, including prior blocking findings
+  and claimed resolutions, without deciding the gate verdict.
+- `ReviewRequestSchema.v2` — owns the structured input contract fields for design context content, exact diff
+  content, round number, prior findings, visibility policy, do-policy, and reviewer-instruction metadata/content
+  hash.
+- `MutationViolationEvidence` — records pre/post mutation evidence when a reviewer writes in the isolated
+  workspace.
+- `ReviewerInstructionSource` — reads the canonical reviewer instruction and exposes its content/hash to request
+  and prompt composition; it does not depend on host-folder auto-load behavior.
+- `ReviewPromptComposer` — renders the complete host prompt from the canonical reviewer definition,
+  `ReviewRequest.v2`, design context, diff, round context, prior findings, visibility policy, and do-policy.
+- `ReviewPolicyBuilder`, `ReadOnlyPolicy`, `VisibilityPolicy`, and `DoPolicy` — construct and carry explicit
+  review-only and supplied-context-only constraints.
+- `WorkspaceMutationGuard` — captures pre/post isolated-workspace baselines, records mutation diffs, and
+  invalidates mutated review results.
+- `HostAgentMirrorDeployer` — copies the canonical reviewer instruction into managed host folders for
+  consistency and discoverability only; it is not part of the required runtime execution path.
+
+### Binding Send-Back Component Decisions
+
+- Responsibility boundaries stay separated by reason-to-change: instruction source, structured request builder,
+  prompt composer, round context, mutation guard, host adapters, and host mirror deployment are distinct.
+- Dependencies remain inward to contracts and policies, with host-specific behavior limited to the
+  adapter/catalog seam. The prompt composer and contracts stay host-neutral.
+- The repair uses PowerShell function/module seams plus explicit Markdown/JSON artifacts. It does not add dynamic
+  plugins, generated code, provider SDKs, or a host-native agent-file execution dependency.
+- `ReviewRequest.v2` is the structured input contract; `FindingsResult.v1` remains the only valid reviewer stdout
+  contract; prompt text is generated from those fields and is not the source-of-truth contract.
+- Adapter extension remains convention-based adapter files plus catalog/config. The centralized reviewer
+  definition applies to every host through prompt injection.
+
+### Send-Back Key Flow
+
+```text
+checkpoint boundary
+  -> CheckpointReviewOrchestrator
+  -> CheckpointDiffProvider
+  -> ReviewRoundContextBuilder
+  -> DesignContextCollector + ReviewPolicyBuilder
+  -> ReviewerInstructionSource
+  -> ReviewRequestBuilder (ReviewRequest.v2)
+  -> ReviewPromptComposer (complete injected host prompt)
+  -> ReviewRunWorkspaceManager (isolated workspace)
+  -> WorkspaceMutationGuard (pre snapshot)
+  -> ReviewerExecutionEngine
+  -> ReviewerHostAdapterRegistry
+  -> one ReviewerHostAdapter
+  -> WorkspaceMutationGuard (post snapshot)
+  -> ReviewResultNormalizer
+  -> InlineReviewGateEvaluator
+  -> ReviewBlackboardWriter
+```

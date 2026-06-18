@@ -42,6 +42,12 @@
 
 **Alternatives considered**: Editing F-184 provider files (forbidden); central host-name switches (poor separation); dynamic plugins (future scope).
 
+## Decision: Inject the canonical reviewer definition into every runtime prompt
+
+**Rationale**: The review send-back showed that a bare request JSON does not carry the Proposal 145 rubric, workshop-decision conformance policy, visibility policy, do-policy, or round/prior-finding context to a fresh reviewer model. Runtime correctness therefore depends on a Specrew-owned canonical reviewer instruction file at `scripts/internal/continuous-co-review/code-review-agent.md` and a prompt-composer boundary that injects that file's content, `ReviewRequest.v2` design-context content, exact diff content, round number, prior findings, visibility policy, do-policy, and `FindingsResult.v1` output contract into the headless `-p` / `exec` prompt before any adapter invocation.
+
+**Alternatives considered**: Relying on host-native agent/skill folders (rejected because host auto-loading is inconsistent and not uniformly testable); duplicating rubric text in each adapter (rejected because adapters must remain transport-only); leaving instructions in durable request JSON only (rejected because the model receives the prompt, not an implicit contract document).
+
 ## Decision: Use deterministic gate states and structured infrastructure failures
 
 **Rationale**: FR-006, FR-007, NFR-001, INT-005, OBS-004, and OBS-005 require blocking on unresolved `blocking` findings, malformed state, invalid schemas, timeouts, missing providers, invalid JSON, unavailable requested model, and non-convergence. No reviewable diff becomes explicit `ReviewRunSkipped` plus pass/no-op verdict.

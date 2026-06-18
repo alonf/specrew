@@ -91,3 +91,103 @@ finding escalates to a human decision instead of continuing automatically.
 - Paid or non-default reviewer provider/model spawning requires explicit configuration and user authorization.
 - Stable schemas, provider adapter seams, and a standalone deterministic gate validator are required for
   maintainability and testability.
+
+## Iteration 002 Send-Back Addendum: Reviewer Definition Quality Bar
+
+### Send-Back Quality Agenda
+
+- Should prompt completeness be a binding NFR, and which reviewer-definition fields must be asserted in the
+  actual outbound host prompt?
+- Should `ReviewRequest.v2` structured observability be binding, and which fields must schema/fixture evidence
+  expose?
+- How do deterministic fixture tests prove the prompt is complete instead of hiding an empty or skeletal prompt
+  behind a successful fake `FindingsResult.v1`?
+- How should review-only behavior, supported host read-only flags, isolated workspaces, and mutation detection
+  be measured?
+- How should the host-neutral injected-prompt path relate to non-authoritative native host mirrors?
+- How should SC-012 manual validation and no-scope-creep constraints be made measurable for the send-back?
+
+### Send-Back Quality Attribute Priorities
+
+```text
++---------------------------+----------+----------------------------------------------------------+
+| Quality / constraint      | Priority | Measurable acceptance target                             |
++---------------------------+----------+----------------------------------------------------------+
+| Prompt completeness       | Binding  | Outbound host prompt contains Proposal 145 rubric,       |
+|                           |          | design context content, exact diff, round number,        |
+|                           |          | prior findings, visibility policy, and do-policy.        |
++---------------------------+----------+----------------------------------------------------------+
+| Contract observability    | Binding  | ReviewRequest.v2 fixtures expose the same fields as      |
+|                           |          | structured data; tests fail if fields are missing.       |
++---------------------------+----------+----------------------------------------------------------+
+| Fixture cannot hide empty | Binding  | Fake/fixture adapter tests assert the actual prompt       |
+| prompt                    |          | passed to the adapter, not just normalized result output. |
++---------------------------+----------+----------------------------------------------------------+
+| Review-only behavior      | Binding  | Prompt/do-policy forbids modify/stage/commit; supported  |
+|                           |          | host readonly flags are used where available.            |
++---------------------------+----------+----------------------------------------------------------+
+| Mutation detection        | Binding  | Isolated workspace pre/post guard detects any reviewer    |
+|                           |          | file mutation, records diff evidence, invalidates result, |
+|                           |          | and discards workspace.                                  |
++---------------------------+----------+----------------------------------------------------------+
+| Host neutrality           | Binding  | Same prompt-composition path feeds Claude, Codex,         |
+|                           |          | Copilot, Cursor, Antigravity, and fixture adapters.      |
++---------------------------+----------+----------------------------------------------------------+
+| Native host mirrors       | Important| code-review-agent.md is copied to managed host folders   |
+|                           |          | for consistency, but tests prove runtime does not depend  |
+|                           |          | on auto-loading those mirrors.                           |
++---------------------------+----------+----------------------------------------------------------+
+| Manual SC-012 alignment   | Binding  | Manual runbook invokes the same injected-prompt path,     |
+|                           |          | not a hand-written host prompt.                          |
++---------------------------+----------+----------------------------------------------------------+
+| No dependency/scope creep | Binding  | No new dependencies; no live-host CI; no rung-1 hook;     |
+|                           |          | no Proposal 139/196/181/194 implementation.              |
++---------------------------+----------+----------------------------------------------------------+
+```
+
+### Binding Send-Back Requirements-NFR Decisions
+
+- Prompt completeness is binding. Every outbound reviewer prompt sent to any adapter must include the canonical
+  `code-review-agent.md` content, Proposal 145 rubric phases, workshop-decision conformance expectations,
+  claim/design trace checks, report-falsification checks, supplied design context content, exact diff/change-set
+  content, `round_number`, `prior_findings`, visibility policy, do-policy, and an instruction to output only a
+  `FindingsResult.v1` JSON object.
+- Prompt-composition tests must inspect the actual prompt passed to the adapter. They must fail if the prompt is
+  empty, skeletal, or missing the rubric marker, known design-context phrase, known diff phrase, round semantics,
+  known prior blocking finding, visibility/do-policy text, or `FindingsResult.v1`-only output instruction.
+- `ReviewRequest.v2` structured observability is binding. Fixtures and schema evidence must expose reviewer
+  instruction metadata/content hash, `design_context.content`, `design_context.sources`, diff/change-set content,
+  `round_number`, `prior_findings`, `visibility_policy`, and `do_policy`. `FindingsResult.v1` remains the only
+  valid stdout output contract.
+- Fake/fixture reviewer tests must prove the full path from request to composed prompt to adapter input to
+  findings/gate output. A successful fake finding result is insufficient if the captured outbound prompt did not
+  carry the reviewer definition and context.
+- Review-only behavior is binding. The policy/request/prompt must forbid modifying, staging, committing,
+  formatting, or repairing files; adapters must apply supported read-only or permission flags where available;
+  unsupported host limitations must be represented as explicit capability facts rather than silent assumptions.
+- Mutation detection is binding. Reviewer execution uses an isolated review workspace with pre/post baseline
+  capture; any reviewer mutation is captured as diff evidence, classified as invalid review execution, and
+  discarded with the workspace. The active feature worktree is never reverted as the recovery path.
+- Host-neutral prompt injection is binding for Claude, Codex, Copilot, Cursor, Antigravity, and fixture adapters.
+  Host adapters remain transport/read-only capability edges and do not own rubric wording, policy wording, round
+  verification logic, or durable writes.
+- Native host mirrors are useful but non-authoritative. The canonical `code-review-agent.md` should be copied to
+  managed host folders for consistency, but runtime correctness depends on injected prompt content, not host
+  auto-loading.
+- Manual SC-012 validation must invoke the same injected-prompt reviewer path that automated fixtures exercise,
+  using the planted design-violation fixture and expecting a parseable blocking finding that names the violated
+  design decision.
+- Scope exclusions remain binding: no new dependencies, no automated live cross-host CI, no rung-1/PostToolUse
+  trigger execution, no Proposal 139 foundation, no Proposal 196 provenance, and no Proposal 181/194 live canary
+  automation in this iteration.
+
+### Done Interpretation
+
+```text
+A reviewer-definition run is acceptable only if:
+  ReviewRequest.v2 contains the structured review inputs
+  AND ReviewPromptComposer renders them into the outbound prompt
+  AND an adapter receives that composed prompt
+  AND the reviewer output is FindingsResult.v1 or a deterministic failure
+  AND no mutation occurred in the isolated review workspace
+```

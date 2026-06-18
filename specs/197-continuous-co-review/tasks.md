@@ -3,7 +3,7 @@
 **Input**: Design documents from `/specs/197-continuous-co-review/`
 **Prerequisites**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `implementation-rules.yml`, `iterations/001/design-analysis.md`, and `contracts/`
 **Requested by**: Alon Fliess
-**Human verdict**: approved for tasks
+**Human verdict**: Iteration 001 approved for tasks; review send-back requires Iteration 002 before-implement approval before T051 starts.
 **Worktree / branch**: `C:\Dev\197-continuous-co-review` on `197-continuous-co-review`
 
 **Tests**: Required. The approved spec includes acceptance scenarios and SC-001..SC-012; Pester tests and fixtures are intentionally sliced beside the code they prove rather than deferred to the end. Manual real-host validation is a maintainer-performed feature-closeout acceptance step; Iteration 001 ships the runbook, planted fixture, and acceptance hook but not automated live-host CI.
@@ -13,6 +13,7 @@
 **Capacity**:
 
 - Iteration 001 spine slice estimate: **19.50 story points** after restoring the full five-adapter host-neutral floor and adding manual-validation enablers.
+- Iteration 002 reviewer-definition repair estimate: **8.00 story points**. Capacity status: **8.00/20 SP is within the configured Iteration 002 cap**.
 - Proposal-level planning range: **13-21 story points**.
 - Capacity status: **19.50/20 SP is within the configured Iteration 001 cap**. `T035`, `T036`, `T037`, and all five real headless adapters in `T042` are restored to Iteration 001. Any added rung 1 work, hook/PostToolUse trigger, Proposal 139 foundation work, Proposal 196 provenance/audit work, automated live cross-host CI implementation, new dependency, or protected-surface coordination is additional overcommit and must be deferred or re-approved.
 
@@ -26,6 +27,8 @@
 - Preserve unnamed CI/CD E2E contract hooks/fixtures only for future Proposal 181 + Proposal 194 canary composition.
 - Preserve manual real-host validation as a maintainer acceptance step before feature closeout; do not build scheduled/rotating live-host CI, brokered-key automation, or drift-canary automation in Proposal 197.
 - Treat human-confirmed lens-stamp provenance/audit as non-blocking Proposal 196 scope, not Proposal 197 work.
+- Iteration 002 preserves completed Iteration 001; do not rewrite accepted T001-T050 behavior except where the reviewer-definition repair explicitly threads through the existing request/prompt/adapter seams.
+- Before Iteration 002 implementation, merge or rebase latest remote `main` and resolve conflicts.
 
 ## Format: `- [ ] T### [P?] [US#?] [owner: ...] [sp: ...] Description with exact file path(s) (Trace: ...; Rules: specs/197-continuous-co-review/implementation-rules.yml)`
 
@@ -160,6 +163,24 @@
 
 ---
 
+## Phase 7: Iteration 002 - Reviewer-Definition Repair
+
+**Purpose**: Repair the review send-back by making the canonical reviewer definition, `ReviewRequest.v2`, injected prompt, read-only/mutation guard, and exact SC-012 validation path authoritative without reopening the completed Iteration 001 spine.
+
+**Capacity**: **8.00/20 SP**. Status: OK. Deferral guidance: if latest-remote-`main` conflict repair exceeds the preparatory slice, stop and split sync into its own human-approved step; do not absorb rung 1, hooks/PostToolUse, Proposal 139 foundation, Proposal 196 provenance, automated live CI, new dependencies, F-184 protected edits, `proposals/197-continuous-co-review.md`, or `.squad/agents/spec-steward/history.md`.
+
+- [ ] T051 [owner: Iteration Facilitator] [sp: 1.00] Merge or rebase latest remote `main` into `197-continuous-co-review`, resolve conflicts before runtime repair work, and confirm the changed-file list excludes F-184 protected surfaces, `proposals/197-continuous-co-review.md`, and `.squad/agents/spec-steward/history.md` (Trace: FR-023, IMPL-011, TG-013, SC-006, SC-011; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T052 [owner: Spec Steward] [sp: 1.00] Add canonical reviewer instruction source `scripts/internal/continuous-co-review/code-review-agent.md` and contract tests/fixtures proving it contains Proposal 145 rubric phases, workshop-decision conformance, claim/design trace, report-falsification, explicit per-lens validation of workshop results, visibility policy, do-policy, and round protocol (Trace: FR-017, SEC-007, IMPL-008, SC-013, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T053 [owner: Architect] [sp: 2.00] Update `scripts/internal/continuous-co-review/review-request-builder.ps1`, `scripts/internal/continuous-co-review/reviewer-contracts.ps1`, `specs/197-continuous-co-review/contracts/review-request.schema.json`, and a new feature-local `scripts/internal/continuous-co-review/review-prompt-composer.ps1` so `ReviewRequest.v2` carries reviewer instruction metadata/hash, design-context content and sources, exact diff/change-set content, `round_number`, `prior_findings`, `visibility_policy`, `do_policy`, and output contract `FindingsResult.v1`, then composes the exact adapter-bound prompt from those fields (Trace: FR-018, FR-019, INT-010, INT-013, OBS-010, IMPL-009, SC-014, SC-015, TG-013, TG-014; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T054 [owner: Security Reviewer] [sp: 1.25] Add read-only host invocation propagation where supported and implement `scripts/internal/continuous-co-review/workspace-mutation-guard.ps1` plus execution-engine tests so source, Git, or Specrew-state mutation during reviewer execution invalidates the run uniformly instead of passing or being treated as a fix (Trace: FR-020, SEC-008, SEC-009, OBS-012, SC-016, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T055 [owner: Implementer] [sp: 0.75] Add feature-local host mirror support or documentation for best-effort native agent copies, update `specs/197-continuous-co-review/contracts/reviewer-spawn-contract.md`, `specs/197-continuous-co-review/quickstart.md`, and `specs/197-continuous-co-review/iterations/001/manual-validation.md` to state adapters are transport-only, receive the composed prompt, and host-folder/native copies are non-authoritative (Trace: FR-018, FR-022, INT-011, INT-012, SC-017, SC-018, TG-014; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T056 [owner: Reviewer] [sp: 1.50] Add deterministic prompt-composer and adapter-seam tests under `tests/continuous-co-review/` proving the actual outbound prompt contains the canonical rubric, design-context content, exact diff/change-set content, round number, prior findings, visibility policy, do-policy, and `FindingsResult.v1`, and that fixtures fail when the prompt is empty, bypassed, or fixture-owned (Trace: FR-021, OBS-011, IMPL-010, SC-014, SC-017, SC-018, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T057 [owner: Reviewer] [sp: 0.50] Run Iteration 002 validation for JSON schema parsing, `ReviewRequest.v2` contract fixtures, prompt-composer fixture tests, mutation-guard tests, protected-surface guard, and traceability verification before implementation review handoff (Trace: FR-021, FR-023, INT-013, OBS-011, SC-006, SC-011, SC-014, SC-015, SC-016, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+
+**Checkpoint**: Iteration 002 proves runtime correctness comes from the injected canonical reviewer prompt and mutation-invalidated execution path, while host mirrors remain best-effort and completed Iteration 001 behavior remains preserved.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -170,12 +191,14 @@
 - **Phase 4 US2 (P2)**: Depends on Phase 2 and the US1 result contracts; blackboard protocol precedes the standalone gate validator implementation inside this phase.
 - **Phase 5 US3 (P3)**: Depends on Phase 2 plus US1/US2 contract, thread, and gate seams; all five phase-1 real adapters must prove valid result or deterministic infrastructure failure without live-host dependence in fixture tests.
 - **Phase 6 Polish**: Depends on selected story scope completion.
+- **Phase 7 Iteration 002 repair**: Depends on completed Iteration 001 and begins with latest remote `main` synchronization (`T051`) before runtime repair tasks.
 
 ### User Story Dependencies
 
 - **US1 (P1)**: MVP after foundational contracts. Can be validated with the fake adapter without live hosts.
 - **US2 (P2)**: Depends on shared contracts and complements US1 by making thread/disposition/gate state auditable.
 - **US3 (P3)**: Depends on contracts, request bundle, normalizer, blackboard, and gate seams; each real adapter can be worked in parallel after registry/catalog tests exist.
+- **Iteration 002 repair**: `T052` depends on `T051`; `T053` depends on `T052`; `T054` depends on `T053`; `T055` depends on `T053`; `T056` depends on `T053` and `T054`; `T057` depends on `T052`-`T056`.
 
 ### Required Dependency Spine
 
@@ -186,6 +209,7 @@
 5. Standalone gate validator (`T025`, `T026`, `T028`, `T029`).
 6. Reviewer-domain catalog, authorization, adapter seams, fake adapter, all five phase-1 real headless adapters, and fresh-context orchestrator (`T031`-`T043`).
 7. Quality evidence, Pester execution, traceability, protected-surface validation, and manual-validation enablers (`T044`-`T050`).
+8. Iteration 002 reviewer-definition repair (`T051`-`T057`): remote-main sync -> canonical instruction -> `ReviewRequest.v2`/prompt composer -> read-only/mutation guard -> host mirror/runbook -> deterministic prompt evidence -> validation.
 
 ---
 
@@ -260,6 +284,7 @@ T037 tests/continuous-co-review/unit/reviewer-host-adapter-antigravity-prompt.Te
 - **US2**: `T024`-`T030`; maps to FR-002, FR-004, FR-005, FR-006, FR-007, FR-014, SC-002, SC-003, SC-004, SC-008, SC-009, SC-011.
 - **US3**: `T031`-`T043`; maps to FR-001, FR-008, FR-009, FR-010, FR-012, FR-013, FR-015, FR-016, SC-005, SC-006, SC-010, SC-011, SC-012.
 - **Cross-cutting / foundational / polish**: `T001`-`T011`, `T044`-`T050`; maps to FR-001, FR-002, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, INT-009, OBS-003, OPS-006, TG-005, TG-009, TG-011, TG-012, SC-001, SC-005, SC-006, SC-011, SC-012.
+- **Iteration 002 reviewer-definition repair**: `T051`-`T057`; maps to FR-017, FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, SEC-007, SEC-008, SEC-009, INT-010, INT-011, INT-012, INT-013, OBS-010, OBS-011, OBS-012, IMPL-008, IMPL-009, IMPL-010, IMPL-011, TG-013, TG-014, SC-006, SC-011, SC-013, SC-014, SC-015, SC-016, SC-017, SC-018.
 
 ---
 

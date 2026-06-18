@@ -4,9 +4,26 @@
   "title": "ReviewRequest",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "run_id", "checkpoint_id", "baseline_ref", "review_kind", "change_set", "design_context_refs", "provider_request", "output_contract", "request_hash", "created_at"],
+  "required": [
+    "schema_version",
+    "run_id",
+    "checkpoint_id",
+    "baseline_ref",
+    "review_kind",
+    "change_set",
+    "design_context",
+    "reviewer_instruction",
+    "round_number",
+    "prior_findings",
+    "visibility_policy",
+    "do_policy",
+    "provider_request",
+    "output_contract",
+    "request_hash",
+    "created_at"
+  ],
   "properties": {
-    "schema_version": { "const": "1.0" },
+    "schema_version": { "const": "2.0" },
     "run_id": { "type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$" },
     "checkpoint_id": { "type": "string", "minLength": 1 },
     "baseline_ref": { "type": "string", "minLength": 1 },
@@ -14,18 +31,85 @@
     "change_set": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["baseline_ref", "diff_hash", "changed_paths", "reviewable_path_count"],
+      "required": ["baseline_ref", "diff_hash", "diff_content", "changed_paths", "reviewable_path_count"],
       "properties": {
         "baseline_ref": { "type": "string", "minLength": 1 },
         "diff_ref": { "type": "string" },
         "diff_inline": { "type": "string" },
+        "diff_content": { "type": "string", "minLength": 1 },
         "diff_hash": { "type": "string", "minLength": 1 },
         "changed_paths": { "type": "array", "items": { "type": "string" } },
         "reviewable_path_count": { "type": "integer", "minimum": 0 },
         "excluded_paths": { "type": "array", "items": { "type": "string" }, "default": [] }
       }
     },
-    "design_context_refs": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } },
+    "design_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["content", "sources"],
+      "properties": {
+        "content": { "type": "string", "minLength": 1 },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path", "content_hash"],
+            "properties": {
+              "path": { "type": "string", "minLength": 1 },
+              "content_hash": { "type": "string", "minLength": 1 },
+              "section": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "reviewer_instruction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canonical_path", "content_hash", "schema_version"],
+      "properties": {
+        "schema_version": { "type": "string", "minLength": 1 },
+        "canonical_path": { "const": "scripts/internal/continuous-co-review/code-review-agent.md" },
+        "content_hash": { "type": "string", "minLength": 1 },
+        "mirror_refs": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+    "round_number": { "type": "integer", "minimum": 1 },
+    "prior_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["finding_id", "status"],
+        "properties": {
+          "finding_id": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "minLength": 1 }
+        }
+      },
+      "default": []
+    },
+    "visibility_policy": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["policy_id", "allowed_context", "excluded_context"],
+      "properties": {
+        "policy_id": { "type": "string", "minLength": 1 },
+        "allowed_context": { "type": "array", "items": { "type": "string" } },
+        "excluded_context": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "do_policy": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["policy_id", "allowed_actions", "forbidden_actions"],
+      "properties": {
+        "policy_id": { "type": "string", "minLength": 1 },
+        "allowed_actions": { "type": "array", "items": { "type": "string" } },
+        "forbidden_actions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
     "allowed_paths": { "type": "array", "items": { "type": "string" }, "default": [] },
     "forbidden_paths": { "type": "array", "items": { "type": "string" }, "default": [] },
     "provider_request": {

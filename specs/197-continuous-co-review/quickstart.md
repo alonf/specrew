@@ -1,6 +1,6 @@
 # Quickstart: Continuous Co-Review Planning Artifacts
 
-This quickstart describes how maintainers should use Proposal 197 planning artifacts before task generation and later implementation. It does not start implementation.
+This quickstart describes how maintainers should use Proposal 197 planning artifacts after the review send-back and before Iteration 002 implementation. It does not start implementation.
 
 ## Scope reminders
 
@@ -12,10 +12,13 @@ This quickstart describes how maintainers should use Proposal 197 planning artif
 - Do not add dependencies unless explicitly re-scoped with dependency-policy evidence.
 - Automated live cross-host CI stays unnamed and out of scope in Proposal 197; preserve hooks/fixtures only for later composition with Proposal 181 plus Proposal 194 canary.
 - Proposal 196 owns human-confirmed lens-stamp provenance/audit.
+- Preserve the completed Iteration 001 spine; Iteration 002 is only the reviewer-definition repair.
+- Before Iteration 002 implementation, merge or rebase latest remote `main` and resolve conflicts.
+- Treat native host-folder reviewer-agent copies as best-effort mirrors only. Runtime correctness must come from the composed prompt that injects `scripts/internal/continuous-co-review/code-review-agent.md`.
 
 ## Planning artifacts
 
-Review before `/speckit.tasks`:
+Review before the next before-implement readiness check:
 
 1. `spec.md`
 2. `lens-applicability.json` and `workshop/*.md`
@@ -25,12 +28,13 @@ Review before `/speckit.tasks`:
 6. `data-model.md`
 7. `contracts/*.schema.json` and `contracts/reviewer-spawn-contract.md`
 
-## Expected task-generation posture
+## Expected Iteration 002 task posture
 
-- Create tasks in dependency order: contracts/schemas, fixture validation, diff/request/context packaging, adapter/config/authorization seams, execution/normalization, blackboard/gate/run evidence, governance/quality evidence.
-- Every task should trace to FR/DS/SEC/INT/OPS/OBS/IMPL/TG requirements and one user story.
-- Every task should name owner role and capacity placement within the 19.50/20-point Iteration 001 budget.
-- Preserve new-file-only behavior unless a human explicitly approves F-184 coordination.
+- Preserve the completed Iteration 001 spine and execute only the reviewer-definition repair tasks.
+- Keep tasks in dependency order: latest-remote-`main` sync, canonical reviewer instruction, `ReviewRequest.v2`/prompt composer, read-only/mutation guard, host mirrors/runbook, deterministic prompt evidence, validation.
+- Every Iteration 002 task should trace to at least one FR/SC plus `implementation-rules.yml`.
+- Every Iteration 002 task should name owner role and capacity placement within the 8.00/20-point Iteration 002 budget.
+- Preserve new-file-only/protected-surface behavior unless a human explicitly approves F-184 coordination.
 - If an iteration scaffold is required, use installed Specrew helpers rather than hand-writing state.
 
 ## Future local validation commands
@@ -51,12 +55,14 @@ Protected-surface review must show no changes to F-184 protected files listed in
 1. Resolve checkpoint baseline.
 2. Run `git diff`.
 3. If no reviewable diff exists, write `ReviewRunSkipped` and pass/no-op `GateVerdict` without spawning reviewer.
-4. Build `ReviewRequest` with design context refs, path policy, provider/model request, output schema request, and run correlation.
-5. Create a unique per-run immutable request bundle.
-6. Discover configured host capabilities and require authorization for paid, non-default, external, or newly added provider/model use.
-7. Invoke one fresh reviewer through a reviewer-domain host adapter using safe argv/equivalent invocation.
-8. Accept only valid stdout JSON matching `FindingsResult`; otherwise record `InfrastructureFailure` or unsafe state.
-9. Write `ReviewThread`, dispositions, `GateVerdict`, and `ReviewRun` under `.specrew/review/inline/<run-id>/...`.
-10. Block on unresolved `blocking` findings, malformed state, infrastructure failures, or non-convergence after initial review plus one fix-verification round.
+4. Build `ReviewRequest.v2` with design-context content and sources, exact diff/change-set content, reviewer-instruction metadata/content hash, `round_number`, `prior_findings`, visibility policy, do-policy, provider/model request, output contract `FindingsResult.v1`, and run correlation.
+5. Compose the actual outbound `ReviewPrompt` by injecting the canonical `scripts/internal/continuous-co-review/code-review-agent.md` content plus request v2 content. Do not rely on host-folder/native agent auto-loading.
+6. Create a unique per-run immutable request bundle and prompt artifact.
+7. Discover configured host capabilities and require authorization for paid, non-default, external, or newly added provider/model use.
+8. Invoke one fresh reviewer through a reviewer-domain host adapter using safe argv/equivalent invocation, passing supported read-only/no-write flags where available.
+9. Run the workspace mutation guard before and after invocation; source, Git, or Specrew-state mutation invalidates the run as unsafe.
+10. Accept only valid stdout JSON matching `FindingsResult`; otherwise record `InfrastructureFailure` or unsafe state.
+11. Write `ReviewThread`, dispositions, `GateVerdict`, and `ReviewRun` under `.specrew/review/inline/<run-id>/...`.
+12. Block on unresolved `blocking` findings, malformed state, infrastructure failures, invalidated mutation guard, or non-convergence after initial review plus one fix-verification round.
 
-Maintainer-run real-host validation is required before feature closeout using `iterations/001/manual-validation.md`; scheduled or rotating live-host CI remains future work.
+Maintainer-run real-host validation is required before feature closeout using `iterations/001/manual-validation.md`; that runbook must invoke the implemented orchestrator/prompt-composer path so each host receives the same injected prompt. Scheduled or rotating live-host CI remains future work.

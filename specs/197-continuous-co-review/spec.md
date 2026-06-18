@@ -25,6 +25,10 @@ read-only rung 2b fresh-context reviewer."
   contract, forced findings JSON schema, git-diff change-set, blackboard
   protocol, standalone blocking gate, orchestrator checkpoint loop trigger,
   headless-floor adapters, and fresh-context read-only reviewer.
+- **Send-back repair**: Iteration 002 preserves the completed Iteration 001
+  spine and repairs reviewer-definition correctness by making Specrew's
+  canonical reviewer instructions, v2 request content, prompt injection,
+  mutation guard, and SC-012 manual path explicit and testable.
 - **Non-goals**: Rung 1, PostToolUse hook triggers, Proposal 139 heavy
   foundation work, and edits to F-184-protected host-runtime/hook/provider/
   registry/refocus/shared governance surfaces are out of scope.
@@ -195,6 +199,44 @@ can request a structured findings response without writing to the source tree.
 - **FR-016**: The feature MUST require explicit reviewer provider/model
   configuration and user authorization before spawning any paid or non-default
   reviewer process. Owner: Spec Steward. Delivery: Iteration 001.
+- **FR-017**: The feature MUST author a Specrew-owned canonical reviewer
+  instruction file at
+  `scripts/internal/continuous-co-review/code-review-agent.md`; this file is
+  the reviewer definition and MUST encode Proposal 145 rubric phases,
+  workshop-decision conformance, claim/design trace, report-falsification,
+  explicit per-lens validation of workshop results, visibility policy,
+  do-policy, and the review/fix round protocol. Owner: Spec Steward. Delivery:
+  Iteration 002.
+- **FR-018**: Runtime correctness MUST depend on injecting the canonical
+  reviewer instruction content into the actual headless `-p`/`exec` prompt
+  sent to adapters; native host-folder or agent-file mirrors MAY exist only as
+  consistency/best-effort copies and MUST NOT be relied on for correctness.
+  Owner: Architect. Delivery: Iteration 002.
+- **FR-019**: `ReviewRequest` MUST evolve to schema version `2.0` carrying
+  design-context content and sources, exact diff/change-set content,
+  `round_number`, `prior_findings`, `visibility_policy`, `do_policy`,
+  reviewer-instruction metadata/content hash, and output contract
+  `FindingsResult.v1`. Owner: Architect. Delivery: Iteration 002.
+- **FR-020**: Reviewer invocation MUST request read-only host behavior where a
+  supported headless host exposes such a flag or mode, and MUST enforce a
+  uniform mutation guard that invalidates the run when source, Git, or Specrew
+  state changes during reviewer execution. Owner: Security Reviewer. Delivery:
+  Iteration 002.
+- **FR-021**: Deterministic tests MUST assert that the actual outbound prompt
+  contains the Proposal 145 rubric, canonical reviewer instruction content,
+  design-context content, exact diff/change-set content, round number, prior
+  findings, visibility policy, do-policy, and `FindingsResult.v1` output
+  contract; fixtures MUST fail when the prompt is empty or bypassed. Owner:
+  Reviewer. Delivery: Iteration 002.
+- **FR-022**: The SC-012 manual runbook MUST invoke the exact implemented
+  orchestrator/prompt-composer path that produces the injected prompt, not a
+  handwritten common prompt copied into host CLIs. Owner: Spec Steward.
+  Delivery: Iteration 002.
+- **FR-023**: Before Iteration 002 implementation starts, the feature branch
+  MUST merge or rebase latest remote `main` and resolve conflicts; a large
+  conflict surface MAY be split into a preparatory sync task but MUST happen
+  before reviewer-definition runtime work. Owner: Iteration Facilitator.
+  Delivery: Iteration 002.
 
 ### Non-Functional Requirements
 
@@ -279,6 +321,16 @@ can request a structured findings response without writing to the source tree.
   findings, traceability IDs, provider/model/run metadata, status, bounded
   snippets needed to explain findings, and audit/provenance metadata, but MUST
   redact secret values and MUST NOT persist raw ambient machine state.
+- **SEC-007 Canonical instruction integrity**: Reviewer instruction content
+  MUST be read from the Specrew-owned canonical file and represented by a
+  content hash in the request/prompt evidence so host-local mirrors cannot
+  silently become authoritative.
+- **SEC-008 Enforced read-only invocation posture**: Host adapters MUST pass
+  supported read-only/no-write flags or equivalent mode controls when available
+  and record when a host has no such flag, without weakening the mutation guard.
+- **SEC-009 Mutation invalidation boundary**: If the reviewer process mutates
+  source files, Git index/history, or Specrew state, the run MUST be recorded as
+  invalid/unsafe and MUST NOT be treated as a reviewer finding pass or as a fix.
 
 ### Integration and API Requirements
 
@@ -324,6 +376,21 @@ can request a structured findings response without writing to the source tree.
   deterministic infrastructure failures, and each headless-floor adapter MUST
   prove it can return either a valid result or deterministic infrastructure
   failure.
+- **INT-010 Prompt-composer boundary**: The orchestrator MUST compose a
+  complete `ReviewPrompt` from `ReviewRequest.v2`, canonical reviewer
+  instruction content, design-context content, exact diff/change-set content,
+  round context, visibility policy, do-policy, and the `FindingsResult.v1`
+  output contract before adapter invocation.
+- **INT-011 Transport-only adapters**: Host adapters MUST receive the composed
+  prompt as their transport payload and MUST NOT own reviewer rubric text,
+  policy wording, prior-finding semantics, durable writes, or gate verdicts.
+- **INT-012 Host mirror non-authority**: Any native host-folder or agent-file
+  copy of `code-review-agent.md` is a best-effort mirror only; runtime behavior
+  MUST remain correct when that mirror is absent, stale, or ignored by the host.
+- **INT-013 ReviewRequest v2 compatibility**: Unknown major versions remain
+  unsafe; v2 fixtures MUST prove producer/consumer compatibility for
+  instruction metadata, design-context content/sources, exact diff content,
+  round context, prior findings, visibility/do policies, and output contract.
 
 ### DevOps and Operations Requirements
 
@@ -402,6 +469,18 @@ can request a structured findings response without writing to the source tree.
   stderr/stdout, environment variables, credentials, token stores, unrelated
   files, unrelated temp state, and provider account/quota details MUST be omitted
   by default unless explicit debug preservation is enabled with warning.
+- **OBS-010 Prompt injection evidence**: Each review run MUST record enough
+  structured evidence to prove which canonical reviewer instruction hash,
+  design-context sources, diff hash/content source, round number, prior finding
+  ids, visibility policy, do-policy, and output contract were injected, without
+  committing raw transcripts by default.
+- **OBS-011 Empty-prompt falsification**: Fixture tests MUST falsify the prompt
+  path by failing if the adapter can pass while receiving an empty prompt,
+  request-only JSON without the reviewer rubric, or fixture-owned substitute
+  prompt text.
+- **OBS-012 Mutation guard evidence**: Run evidence MUST record pre/post source,
+  Git, and Specrew-state mutation guard checks and mark mutation as an unsafe
+  invalidated run.
 
 ### Implementation Craft Requirements
 
@@ -434,6 +513,22 @@ can request a structured findings response without writing to the source tree.
 - **IMPL-007 Packaging posture**: Reusable Proposal 197 implementation surfaces
   MUST ship through existing Specrew module/deployment mechanisms and avoid a
   new separate package or broad common utility library in Iteration 001.
+- **IMPL-008 Canonical reviewer definition source**: The canonical
+  `code-review-agent.md` file MUST live under
+  `scripts/internal/continuous-co-review/` and be loaded by a feature-local
+  prompt composer; host-folder copies are generated or maintained only as
+  non-authoritative mirrors.
+- **IMPL-009 ReviewRequest v2 and prompt composer**: The implementation MUST
+  keep request building, prompt composition, adapter invocation, result
+  normalization, blackboard writing, and gate evaluation as separate
+  feature-local responsibilities.
+- **IMPL-010 No fixture masking**: Tests and fixtures MUST inspect the actual
+  adapter-bound prompt string or prompt file produced by the composer; fixture
+  findings MUST NOT be able to satisfy tests while the composed prompt is empty
+  or missing the canonical reviewer definition.
+- **IMPL-011 Pre-implementation sync**: Iteration 002 implementation MUST begin
+  with a latest-remote-`main` merge or rebase and conflict repair before editing
+  runtime code for the reviewer-definition repair.
 
 ### Scope Boundaries
 
@@ -450,6 +545,20 @@ can request a structured findings response without writing to the source tree.
   reviewer-agent contract hooks for downstream CI/CD E2E coverage.
 - The per-feature code implementation manifest and code-rule guidance needed to
   bind planning, implementation, and review to the approved craft decisions.
+
+**In scope for Iteration 002 reviewer-definition repair**:
+
+- Canonical reviewer instruction file at
+  `scripts/internal/continuous-co-review/code-review-agent.md`.
+- `ReviewRequest.v2`, `ReviewerInstruction`, `ReviewPrompt`, `RoundContext`,
+  `WorkspaceMutationGuard`, and `HostAgentMirror` planning/runtime contracts.
+- Prompt-composer path that injects canonical reviewer instruction content into
+  the actual adapter-bound headless prompt.
+- Read-only host invocation flags where supported plus uniform source/Git/
+  Specrew mutation invalidation.
+- Deterministic prompt-fixture tests and SC-012 manual runbook updates that use
+  the exact injected-prompt path.
+- Latest remote `main` synchronization before implementation.
 
 **Out of scope for Iteration 001**:
 
@@ -489,6 +598,11 @@ can request a structured findings response without writing to the source tree.
   and fixtures for a downstream or companion CI/CD proposal.
 - New runtime, test, build, PowerShell, npm, Python, or .NET package dependencies
   unless explicitly re-scoped through the dependency policy.
+- Rung 1, PostToolUse/hook triggers, Proposal 139 foundation work, Proposal 196
+  provenance work, automated live CI, new dependencies, F-184 protected file
+  edits, edits to `proposals/197-continuous-co-review.md`, and commits
+  containing `.squad/agents/spec-steward/history.md` remain out of scope for
+  Iteration 002.
 
 ### Traceability & Governance Requirements *(mandatory)*
 
@@ -521,6 +635,13 @@ can request a structured findings response without writing to the source tree.
   capability records; they MUST NOT be implemented by changing F-184 repository
   provider files or by reusing ambiguous provider filenames that obscure the
   reviewer-agent domain.
+- **TG-013**: Iteration 002 planning and tasks MUST preserve the completed
+  Iteration 001 spine, add only the focused reviewer-definition repair scope,
+  and map every new task to at least one FR/SC plus
+  `implementation-rules.yml`.
+- **TG-014**: Iteration 002 planning MUST make host-folder/native-agent copies
+  non-authoritative and must trace runtime correctness to the composed prompt
+  injected through the orchestrator/prompt-composer path.
 
 ### Traceability Map
 
@@ -535,6 +656,10 @@ can request a structured findings response without writing to the source tree.
   FR-016, SEC-002, SEC-004, SEC-005, SEC-006, INT-006, INT-007, INT-008,
   OPS-006, OBS-003, OBS-006, OBS-009, IMPL-004, IMPL-006, IMPL-007, TG-009,
   and TG-011.
+- **Iteration 002 reviewer-definition repair** maps to FR-017, FR-018, FR-019,
+  FR-020, FR-021, FR-022, FR-023, SEC-007, SEC-008, SEC-009, INT-010,
+  INT-011, INT-012, INT-013, OBS-010, OBS-011, OBS-012, IMPL-008, IMPL-009,
+  IMPL-010, IMPL-011, TG-013, TG-014, and SC-013 through SC-018.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -560,9 +685,22 @@ can request a structured findings response without writing to the source tree.
   review run based on availability, authorization, strength for review, and
   independence from the code-authoring model when available.
 - **Review Request**: The canonical reviewer input contract containing the diff
-  reference or content, design-context references, review kind, schema version,
-  allowed paths, output schema request, provider/model request, and run
-  correlation id.
+  reference and exact diff content, design-context content and sources, review
+  kind, schema version, allowed paths, output schema request, provider/model
+  request, reviewer-instruction metadata/content hash, round context, visibility
+  policy, do-policy, and run correlation id.
+- **Reviewer Instruction**: The canonical Specrew-owned reviewer definition
+  loaded from `scripts/internal/continuous-co-review/code-review-agent.md`.
+- **Review Prompt**: The exact composed prompt sent to headless host adapters,
+  including canonical instruction content, design context, exact diff, round
+  context, prior findings, visibility policy, do-policy, and output contract.
+- **Round Context**: The current review round number and prior findings used to
+  enforce the review/fix round protocol.
+- **Workspace Mutation Guard**: The pre/post source, Git, and Specrew-state
+  check that invalidates a run if reviewer execution mutates the workspace.
+- **Host Agent Mirror**: A best-effort copy of the canonical reviewer
+  instruction into native host-folder conventions; never an authority for
+  runtime correctness.
 - **Spawn Invocation**: The adapter execution record containing host adapter,
   argv/command summary, timeout, workspace, capture policy, exit status, and
   normalized failure category for one reviewer attempt.
@@ -616,6 +754,28 @@ can request a structured findings response without writing to the source tree.
   (`claude -p`, `codex exec`, `copilot -p`, `cursor-agent -p`, and
   `antigravity -p`). A crash, empty output, non-finding result, or finding that
   does not name the violated design decision is not accepted as a pass.
+- **SC-013**: The repository contains
+  `scripts/internal/continuous-co-review/code-review-agent.md`, and review tests
+  verify it includes the Proposal 145 rubric phases, workshop-decision
+  conformance, claim/design trace, report-falsification, explicit per-lens
+  validation, visibility policy, do-policy, and round protocol.
+- **SC-014**: Prompt-composer tests prove the actual outbound adapter prompt
+  includes the canonical reviewer instruction content/hash, design-context
+  content, exact diff/change-set content, `round_number`, prior findings,
+  visibility policy, do-policy, and `FindingsResult.v1` output instruction.
+- **SC-015**: `ReviewRequest` schema/fixture validation accepts version `2.0`
+  with required reviewer instruction, design-context content/sources, exact diff
+  content, round context, prior findings, visibility/do policies, and output
+  contract, and rejects missing required fields.
+- **SC-016**: Mutation-guard tests prove source, Git, or Specrew-state mutation
+  during reviewer execution invalidates the run uniformly even if host-specific
+  read-only flags are unavailable.
+- **SC-017**: Adapter contract tests prove host adapters receive only the
+  composed prompt/transport payload and do not own reviewer rubric text or rely
+  on native host-folder agent copies.
+- **SC-018**: SC-012 manual validation invokes the implemented
+  orchestrator/prompt-composer path and fails documentation review if it uses a
+  handwritten common prompt.
 
 ## Assumptions
 
@@ -670,6 +830,14 @@ can request a structured findings response without writing to the source tree.
   canonical planted-design-violation fixture so real host behavior can be
   checked before feature closeout without adding an automated live cross-host CI
   harness.
+- Iteration 002 does not reopen or rewrite the completed Iteration 001 spine; it
+  layers the reviewer-definition repair over the existing orchestrator, request,
+  adapter, blackboard, and gate seams.
+- Native host-folder reviewer-agent files may help humans inspect consistency,
+  but the runtime must remain correct when those host-specific files are absent,
+  stale, ignored, or unsupported.
+- Latest remote `main` synchronization is a required preparatory step before
+  Iteration 002 implementation touches runtime code.
 
 ## Governance Alignment *(mandatory)*
 
