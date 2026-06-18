@@ -180,13 +180,15 @@ feature so the active branches do not absorb uncontrolled scope.
 
 ## Cross-references
 
-- Related proposals: 063, 137, 141, 145, 163, 174, 175.
+- Related proposals: 063, 137, 141, 145, 163, 174, 175, 197.
 - Source artifacts:
   `extensions/specrew-speckit/knowledge/design-lenses/`.
 - Composability with: Proposal 137 design-analysis gate, Proposal 063
   substantive intake, Proposal 141 persona/lens separation, Proposal 145
   workshop-decision conformance, Proposal 163 code-implementation rules,
-  Proposal 174 boundary variance, and Proposal 175 supplemental packs.
+  Proposal 174 boundary variance, Proposal 175 supplemental packs, and
+  Proposal 197 continuous co-review (which consumes these workshop decisions as
+  the rubric for its inline reviewer).
 
 ## Implementation status (2026-06-03; amended 2026-06-08)
 

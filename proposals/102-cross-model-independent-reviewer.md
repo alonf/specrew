@@ -259,6 +259,7 @@ Sequencing: ships after 069 enables practical multi-host execution. Plausible Q3
 - **Required dependency (added 2026-05-28)**:
   - [140 Reviewer Instruction Surface](140-reviewer-instruction-surface.md) — REQUIRED. The playbook FR-016 mandates loading lives there. 102 cannot deliver value without 140; 140 ships standalone but 102 cannot ship without it. Both proposals coexist intentionally: 140 captures empirical urgency + ships the playbook content + deployment; 102 mandates loading + structural cross-reviewer independence.
 - **Composes with**:
+  - [197 Continuous Co-Review](197-continuous-co-review.md) — 197's rung-1 inline reviewer uses 102's cross-model independence (different-provider judgment); 197 supplies the shift-left inline trigger, 102 the cross-model verification
   - [014 Red Team Agent](014-red-team-agent.md) — 099 implements a structural version of what 014 proposes; possibly subsumes 014 at clarify time
   - [018 Source-Spec Fidelity Contract](018-source-spec-fidelity.md) — 099's spec-traceback (FR-007) is the mechanism; 018 sets the contract
   - [030 Quality Hardening Bundle (Form-vs-Meaning)](030-quality-hardening-bundle.md) — same form-vs-meaning pattern
