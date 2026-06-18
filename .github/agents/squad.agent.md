@@ -1479,6 +1479,7 @@ These rules override generic Squad coordination whenever the repository is boots
 - For `brownfield-new` work, perform discovery first and then ask targeted follow-up questions about the intended change; discovery alone is never sufficient scope, and unresolved intake still requires a human answer before lifecycle execution begins.
 - If the human provides a URL, pasted draft, or other source document during intake, extract the relevant scope from it, confirm any remaining behavior questions at intake, and only then invoke `speckit.specify`.
 - Do not ask about specialist team additions before `speckit.specify` and the clarify outcome make the required stack/domain constraints concrete.
+- **The per-lens design workshop is interactive and completeness-gated — do NOT stop early or backfill (A7/FR-038).** When the `specrew-design-workshop` skill runs the lens workshop, intake is NOT "concrete enough" for `speckit.specify` until **every selected lens** has been surfaced to the human and resolved — each with the human's confirmation, or an explicit "you decide / skip" from them. Run the per-lens facilitation yourself, interactively, one lens at a time (exactly like the greenfield "What do you want to build?" rule above); do NOT delegate it to a background sub-agent that cannot pause for the human, and do NOT decide after a few questions that intake is "specific enough" and then author the remaining lens records yourself. Recording "Human agreed" for a lens the human never saw is a fabrication — **count-check before you finalize: N recorded lens agreements require N human confirmations (or explicit delegate/skip)**. Lens approval is not workshop-question approval. The SC-026 specify gate blocks sync until every selected lens *declares* both `confirmation` provenance (`human-confirmed | human-delegated | human-skipped`) and matching `confirmation_scope` (`lens-question | explicit-delegation | explicit-skip`); honoring what that provenance claims (i.e. that you actually asked) is on you.
 
 1. **Fail fast on artifact-generation errors**
 
@@ -1510,38 +1511,57 @@ These rules override generic Squad coordination whenever the repository is boots
      - After `speckit.specrew-speckit.after-tasks` succeeds, treat `speckit.specrew-speckit.before-implement` as the next automatic lifecycle step once implementation approval is granted. Do not stop at the `after-tasks` boundary to ask the human to manually trigger hardening review, explain the blocker, or request a deferral decision that belongs to `before-implement`.
      - If `speckit.specrew-speckit.before-implement` blocks, explain the concrete blocking artifact or verdict, why it blocks implementation, and the next valid human action before stopping.
 
-14A. **Enforce Feature 016 substantive interaction**
-    - Treat planning, hardening-gate-and-implementation-auth, implementation, review-boundary, review-verdict-signoff, retro-boundary, and iteration-closeout as separate per-iteration boundaries. `feature-closeout` is separate and feature-level.
+14A. **Enforce human re-entry at lifecycle boundaries**
+    - Treat every boundary whose `boundary_enforcement.policy_classes` entry is `human-judgment-required` as a human re-entry point. Under the default policy this includes specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, and feature-closeout.
     - One human authorization advances at most one boundary. `continue` means advance to the next single boundary stop, then halt and ask again.
     - If one approval paste covers hardening-gate sign-off and implementation authorization, create two `.squad/decisions.md` entries that preserve the same verbatim authorization text.
-    - **Every boundary stop MUST use the three-section handoff format.** This is a fundamental Specrew UX guarantee, not a stylistic suggestion. The format is what makes the human able to scan the handoff in seconds and decide whether to advance. Skipping it silently degrades the substantive-interaction guarantee (Feature 016 Pillar 1) — and the human loses the contextual signal they rely on. The canonical template (copy this shape exactly at every boundary stop):
+    - **Every human-judgment boundary stop MUST use the six-section human re-entry packet.** This is a fundamental Specrew UX guarantee, not a stylistic suggestion. The packet is what lets the human re-enter without opening every artifact, understand why the agent stopped, choose what to inspect, shape the next phase, and approve only one boundary. The packet is the primary stop contract; do not duplicate the same stop with a legacy `=== SPECREW HANDOFF ===` block unless a transitional host/runtime explicitly requires that compatibility. The canonical template:
 
-```text
-## What I just did
+      ```text
+      ## What I Just Did
 
-[Substantive narration of what changed: features advanced, artifacts written, tests run,
- decisions captured. Pair every numeric reference (FR-NNN, T-NNN, commit SHA) with a short
- plain-language scope phrase, e.g. "FR-007, the sin/cos/atan extension" or "T003, the
- precision-normalization helper". Include the committed-evidence reference (commit SHA or
- hash range) per 14B boundary-commit discipline.]
+      [Summarize meaningful outcomes: artifacts created or changed, committed evidence,
+       decisions captured, assumptions added, scope changes, and notable risks. Every artifact,
+       file, or directory reference in this section uses `file:///` URL form.]
 
-## Why I stopped
+      ## Why I Stopped
 
-I stopped at the [exact boundary name] boundary because [why the next step needs human input].
-[Boundary names are: specify / clarify / plan / tasks / before-implement / implement /
- review-signoff / retro / iteration-closeout / feature-closeout.]
+      I stopped at [current boundary -> requested boundary] because [concrete reason human
+      judgment is required]. For clarify -> plan, explain that planning turns the spec into
+      architecture and task direction.
 
-## What I need from you
+      ## What Needs Your Review
 
-[State the single best immediate action. Reference review targets with BARE `file:///` URIs
- pointing to absolute paths so the human can click through. Name the canonical verdict shape
- they should type (e.g. `approved for plan`, `approved for review-signoff`, `rejected for
- clarify`, `parked`).]
-```
+      [Use `file:///` review links; name exact sections, high-impact choices,
+       assumptions, uncertainties, safe-skim areas, and release-blocking checks when in scope.]
 
-Welcoming, contextual, flow-oriented — not technical or terse. The reader is the human who has been away from this session and now needs to re-enter it. Give them what they need to advance, in the order they will read it.
+      ## What Happens Next
+
+      [Preview the next phase, artifacts, whether code will be written or only planning/tasks,
+       harder-to-change decisions, and the next expected boundary stop. Every future artifact,
+       file, or directory reference in this section uses `file:///` URL form.]
+
+      ## Discussion Prompts
+
+      [Ask 1-3 contextual, decision-reducing prompts together. Include the context, question,
+       default/recommended path when available, and consequence when relevant. Say: "You can
+       answer any prompt that should change direction, or approve with the defaults."]
+
+      ## What I Need From You
+
+      [Allowed responses: approve as-is, approve with instructions, send back, or discuss
+       prompt #N. Approval must be explicit. Free-form discussion is not approval unless the
+       human clearly authorizes the boundary. If you ask the human to review an artifact,
+       file, or directory here, use `file:///` URL form.]
+      ```
+
+      Welcoming, contextual, flow-oriented — not technical or terse. The reader is the human who has been away from this session and now needs to re-enter it. Give them what they need to advance, in the order they will read it.
     - **Use BARE `file:///` URIs, NOT markdown-link form `[name](file:///...)`.** PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them clickable via Ctrl+Click. They do NOT render markdown, so wrapping a URI in `[name](url)` hides the URL inside parentheses and the human cannot click through. Emit `file:///C:/Dev/project/specs/001/plan.md` on its own (or as part of a sentence), never `[plan.md](file:///...)`.
-    - The three-section format is reserved for **boundary stops** where the human is the immediate blocker. In-flight progress updates (Crew still actively working, waiting on background work, mid-task acknowledgement) MUST use single-line prose without the user-action section. Do not pad routine progress updates into the three-section shape — that dilutes the signal of an actual boundary stop.
+    - Every artifact, file, or directory reference in every packet section MUST use visible `file:///` URL form, not bare repository paths such as `specs/...`, `.specrew/...`, `.squad/...`, `tests/...`, or `README.md`. Command/code blocks and explicit command examples are exempt.
+    - The packet text recorded as boundary evidence MUST be the exact human-visible packet emitted for approval. Do not validate one packet and then summarize, relabel, or rewrite artifact references in the final visible approval packet.
+    - The six-section packet is reserved for **boundary stops** where the human is the immediate blocker. In-flight progress updates (Crew still actively working, waiting on background work, mid-task acknowledgement) MUST use single-line prose without the user-action section. Do not pad routine progress updates into the packet shape — that dilutes the signal of an actual boundary stop.
+    - **Long-work stop context packet (mandatory downstream behavior).** When the Crew stops after substantial work, a long tool run, a context-heavy investigation, an interruption, or a handoff-worthy pause outside a boundary verdict, it MUST render a visible five-part context packet so the human can re-enter without reconstructing the session. This applies in every downstream project and on every host, even when SessionStart/Stop hooks are missing, stale, suppressed, or failed open. Boundary verdict stops still use the full six-section packet above; do not duplicate both shapes for the same stop. The five headings are `## What I Just Did`, `## Why I Stopped`, `## What Needs Your Review`, `## What Happens Next`, and `## What I Need From You`.
+    - If the human chooses `discuss prompt #N`, discuss that item only, summarize the agreed decision, and ask again for explicit boundary approval before advancing.
     - Use BARE `file:///` artifact references in authored narration and handoffs outside approved exempt contexts.
     - At `feature-closeout`, split release SDLC ownership into `AGENT NEXT ACTION:` and `HUMAN ACTION NEEDED:` rows. Instantiate each step from the project's `.specrew/repository-governance.yml` (provider, `branch_model`, `review_gate`) and the project's own release/publish mechanism — never assume a specific forge or package registry. `AGENT NEXT ACTION:` executes Step 5 push the feature branch to the project's forge, Step 6 open the PR/MR via that forge (the provider adapter describes how), Step 7 self-review and address the project's `review_gate` (human approvals + comment resolution always-available; automated review opt-in), Step 8 merge per the `branch_model` after approvals/checks, Step 9 if the work produces a release, tag the merge commit (or the PASS-candidate fix commit if looping) and publish a prerelease per the project's release mechanism, Step 10 verify the prerelease published via the project's package/registry tooling, Step 11 PAUSE for the human manual test PASS/FAIL verdict on the installed prerelease in a clean environment, Step 12 if FAIL fix on the release-truth branch then tag the next prerelease and repeat from Step 9, Step 13 if PASS tag the PASS-validated commit and publish the stable release per the project's release mechanism, then verify, and Step 14 stop before any new feature work. `HUMAN ACTION NEEDED:` asks the human to approve each agent action when prompted and, at Step 11, install + exercise the prerelease via the project's package mechanism and report PASS or FAIL with evidence. **Specrew's own instantiation (a Specrew-specific example, NOT a downstream mandate)**: provider `github` + PowerShell Gallery — Step 6 `gh pr create`; Step 7 address Copilot's opt-in PR review; Step 10 `Find-Module Specrew -AllowPrerelease`; Step 11 `Install-Module Specrew -AllowPrerelease`; push `v<next-version>-beta.1` then promote `v<next-version>` stable.
     - After each committed boundary handoff, synchronize `Commit Reference` away from `pending`, keep `Recorded At` in UTC seconds precision, run a stale-reference scan on the cited `file:///` targets, and rerun validation on the exact committed tree before claiming readiness.
@@ -1549,7 +1569,7 @@ Welcoming, contextual, flow-oriented — not technical or terse. The reader is t
 14B. **Enforce boundary commit + upstream push discipline (Proposal 082 Tier 1)**
     - At EVERY lifecycle boundary (specify, clarify, plan, tasks, implementation, review-signoff, retro, iteration-closeout, feature-closeout), the Crew MUST commit the boundary-phase work in semantic commit groups BEFORE invoking `Invoke-SpecrewBoundaryStateSync` or emitting the boundary handoff. Working-tree-only changes are not boundary-durable evidence.
     - After every commit, the Crew MUST push the feature branch to `origin/<feature-branch>` immediately. Local-only commits are not upstream-backed-up and are subject to working-tree corruption / force-quit loss.
-    - The Crew MUST verify `git rev-parse HEAD` equals `git rev-parse origin/<feature-branch>` BEFORE signaling boundary readiness in the three-section handoff. Mention the committed evidence reference (commit SHA or hash range) in `What I just did`.
+    - The Crew MUST verify `git rev-parse HEAD` equals `git rev-parse origin/<feature-branch>` BEFORE signaling boundary readiness in the human re-entry packet. Mention the committed evidence reference (commit SHA or hash range) in `What I just did`.
     - Boundary-sync's validator passes when working-tree content matches expected state. That is NOT sufficient — the Crew's commit and push discipline is the durable evidence boundary readiness requires. Any boundary signal without committed-and-pushed evidence is a violation and the next coordinator audit MUST reject it.
     - Conditional skip: if `git remote` returns empty (no `origin` configured), push silently skips. Commit discipline still applies.
     - When commits at a boundary land trivially small or status-only (e.g., a status-tracking-only update to plan.md), commit them anyway. The rule is "commit-and-push at every boundary," not "produce substantial code at every boundary."
@@ -1610,4 +1630,10 @@ Welcoming, contextual, flow-oriented — not technical or terse. The reader is t
     - **Coexistence with `/speckit.*`**: both namespaces are additive. Neither shadows the other. `/specrew-help` shows the Specrew catalog; `/speckit.*` discovery comes from Spec Kit. Use both freely in the same session.
     - **Argument whitelist enforcement**: the underlying PowerShell scripts reject unsupported arguments with a `WARNING:` prefix and `--help` guidance. Pass through user arguments as-is rather than silently filtering — let the backend reject, surface the rejection to the human, then offer help guidance.
     - **Compatibility gate**: command compatibility is evaluated against the running Specrew module and the project's recorded `.specrew/config.yml` `specrew_version`. If the running module is older than the project baseline, emit upgrade guidance; do not silently no-op.
+
+4. **Refocus recovery surface (Feature 171)**
+    - `/specrew-refocus` re-loads scoped methodology discipline on demand (no-args = always-true core + current stage; `--boundary <stage>`, `--role <name>`, `--status` for diagnosis). When context feels degraded — after compaction, a host restart, or a long session — run it BEFORE proceeding; do not reconstruct methodology from memory.
+    - Boundary syncs automatically append the incoming stage's discipline digest to their output. Treat any `[specrew-refocus]` block you see in tool output as binding stage discipline, not informational noise.
+    - **Advisory fallback (hosts without hook bindings, e.g. Copilot):** at drift-risk moments — entering review-signoff after a long implementation run, resuming after a visible compaction notice, repeated governance-gate failures — explicitly suggest (or yourself run) `/specrew-refocus --boundary <stage>` before continuing. On hook-bound hosts this firing is mechanical; where it is not, this advisory IS the trigger.
+    - **Managed compaction points (boundary-stop context hygiene):** boundary stops are natural context watersheds — the durable truth is already on disk and the human is at the keyboard. When context is heavy at a human boundary stop, include a context-hygiene line in the re-entry packet with the paste-ready output of `refocus.ps1 --compact-instructions` (a `/compact` preserve-list built from live lifecycle state) so the human can compact at a clean point; the post-compaction trigger then restores stage discipline automatically.
 <!-- <<< specrew-managed specrew-governance <<< -->
