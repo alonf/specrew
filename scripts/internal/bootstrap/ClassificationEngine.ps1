@@ -49,6 +49,7 @@ function Test-SpecrewConcurrentSession {
         [Parameter()][AllowNull()]$Marker,            # from Get-SpecrewSessionMarker, or $null
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $NowUtc,
+        [Parameter()][AllowNull()][string] $CurrentSessionId,
         [Parameter()][int] $WindowSeconds = 3600       # 1h (clarify answer)
     )
     if ($null -eq $Marker) { return [pscustomobject]@{ concurrent = $false; reason = 'none'; age_seconds = $null } }
@@ -59,6 +60,14 @@ function Test-SpecrewConcurrentSession {
     if (-not [string]::IsNullOrWhiteSpace($mr)) {
         $same = (([string]$mr).Replace('\', '/').TrimEnd('/') -ieq $ProjectRoot.Replace('\', '/').TrimEnd('/'))
         if (-not $same) { return [pscustomobject]@{ concurrent = $false; reason = 'different-worktree'; age_seconds = $null } }
+    }
+
+    $markerSessionId = $null
+    if ($Marker.PSObject.Properties['session_id'] -and -not [string]::IsNullOrWhiteSpace([string]$Marker.session_id)) {
+        $markerSessionId = [string]$Marker.session_id
+    }
+    if (-not [string]::IsNullOrWhiteSpace($markerSessionId) -and -not [string]::IsNullOrWhiteSpace($CurrentSessionId) -and $markerSessionId -eq $CurrentSessionId) {
+        return [pscustomobject]@{ concurrent = $false; reason = 'same-session'; age_seconds = $null }
     }
 
     try {

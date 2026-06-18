@@ -67,7 +67,7 @@ Writers should preserve unrelated existing fields when refreshing an artifact, a
 
 ## `.specrew/handover/session-handover.md` file contract (schema v1)
 
-The rolling session handover is a single always-latest markdown file overwritten in place at end-of-turn (Claude `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`) and, on Claude only, mid-turn (`PostToolUse`). The next session's SessionStart bootstrap reads it and surfaces a resume reconciliation, so work auto-resumes where it stopped. It is host-agnostic (written by F-174's handover provider regardless of host) and **gitignored** (`.specrew/handover/` — local session-bridge context, never pushed).
+The rolling session handover is a single always-latest markdown file overwritten in place at end-of-turn (Claude `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`, and Antigravity `Stop` when the project `.agents/hooks.json` slice fires) and, on Claude only, mid-turn (`PostToolUse`). The next session's SessionStart or equivalent bootstrap reads it and surfaces a resume reconciliation, so work auto-resumes where it stopped. It is host-agnostic (written by F-174's handover provider regardless of host) and **gitignored** (`.specrew/handover/` — local session-bridge context, never pushed).
 
 It is written **atomically**: content goes to a per-process sidecar, then promotes via `[System.IO.File]::Replace`, which swaps the file and keeps the previous version as `session-handover.md.old` in one call. That `.old` file is the crash backup the reader falls back to if the live file is missing, mid-write, or unparseable.
 

@@ -19,7 +19,7 @@ function Invoke-SpecrewSessionBootstrap {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)][AllowEmptyString()][string] $RawEvent,
-        [Parameter(Mandatory)][ValidateSet('claude', 'codex', 'copilot', 'cursor')][string] $HostName,
+        [Parameter(Mandatory)][ValidatePattern('^[A-Za-z0-9_.-]+$')][string] $HostName,
         [Parameter(Mandatory)][string] $ProjectRoot,
         # Defaults to the project-local session-state file.
         [Parameter()][string] $StatePath,
@@ -31,7 +31,7 @@ function Invoke-SpecrewSessionBootstrap {
     )
 
     $normalizedEvent = ConvertFrom-SpecrewHostHookEvent -RawEvent $RawEvent -HostName $HostName -ProjectRoot $ProjectRoot
-    $dedupeKey = if ($normalizedEvent.safe_session_id) { $normalizedEvent.safe_session_id } else { 'no-session' }
+    $dedupeKey = if ($normalizedEvent.safe_session_id) { $normalizedEvent.safe_session_id } else { New-SpecrewPerLaunchSessionToken }
     $resolvedStatePath = if ($StatePath) { $StatePath } else { Join-Path $ProjectRoot '.specrew/start-context.json' }
 
     $validity = Test-SpecrewAnchorValidity -StatePath $resolvedStatePath -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch
@@ -44,7 +44,14 @@ function Invoke-SpecrewSessionBootstrap {
     try {
         $handover = Get-SpecrewRollingHandover -HandoverDir (Join-Path $ProjectRoot '.specrew/handover') -NowUtc $NowUtc
         if ($null -ne $handover) {
-            $hv = Test-SpecrewHandoverValidity -Handover $handover -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch
+            $expectedHandoverFeature = $null
+            if ($null -ne $validity.anchor -and -not [string]::IsNullOrWhiteSpace([string]$validity.anchor.feature_ref)) {
+                $expectedHandoverFeature = [string]$validity.anchor.feature_ref
+            }
+            if ([string]::IsNullOrWhiteSpace($expectedHandoverFeature)) {
+                $expectedHandoverFeature = Resolve-SpecrewBranchFeatureRef -ProjectRoot $ProjectRoot
+            }
+            $hv = Test-SpecrewHandoverValidity -Handover $handover -ProjectRoot $ProjectRoot -BaseBranch $BaseBranch -ExpectedFeatureRef $expectedHandoverFeature
             $handoverValid = [bool]$hv.valid
             # Prop-145 round-6 (MEDIUM): a present-but-INVALID handover (stale / wrong-branch / malformed) is
             # NOT authoritative resume truth - capture WHY so the directive surfaces it (and so the stale
@@ -92,13 +99,13 @@ function Invoke-SpecrewSessionBootstrap {
     $concurrencyReason = 'none'
     try {
         $markerPath = Join-Path $ProjectRoot '.specrew/runtime/session-marker.json'
-        $cc = Test-SpecrewConcurrentSession -Marker (Get-SpecrewSessionMarker -MarkerPath $markerPath) -ProjectRoot $ProjectRoot -NowUtc $NowUtc
+        $cc = Test-SpecrewConcurrentSession -Marker (Get-SpecrewSessionMarker -MarkerPath $markerPath) -ProjectRoot $ProjectRoot -NowUtc $NowUtc -CurrentSessionId $dedupeKey
         $concurrent = [bool]$cc.concurrent
         $concurrencyReason = $cc.reason
         $branch = ''; $head = ''
         try { $branch = (& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null) } catch { $null = $_ }
         try { $head = (& git -C $ProjectRoot rev-parse --short HEAD 2>$null) } catch { $null = $_ }
-        Write-SpecrewSessionMarker -MarkerPath $markerPath -HostName $HostName -ProjectRoot $ProjectRoot -Branch $branch -HeadCommit $head -StartedAt $NowUtc | Out-Null
+        Write-SpecrewSessionMarker -MarkerPath $markerPath -HostName $HostName -ProjectRoot $ProjectRoot -Branch $branch -HeadCommit $head -SessionId $dedupeKey -StartedAt $NowUtc | Out-Null
     }
     catch { $null = $_ }
 
@@ -170,7 +177,7 @@ function Write-SpecrewLaunchContractArtifact {
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $Mode,
         [AllowNull()][pscustomobject] $SessionState,
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')][string] $HostKind = 'claude',
+        [ValidatePattern('^[A-Za-z0-9_.-]+$')][string] $HostKind = 'claude',
         [AllowNull()][string] $SpecrewVersion = $null
     )
 

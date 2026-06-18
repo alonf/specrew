@@ -31,37 +31,66 @@ function Get-BootstrapProjectRoot {
 function Get-SpecrewContractDeliveryMode {
     # T007/M1 (F-174 iter-10): the ONE seam deciding how the SessionStart launch contract reaches the agent -
     # 'inline' (the full body in the directive) or 'pointer' (the agent reads .specrew/last-start-prompt.md).
-    # Default is BEHAVIOR-PRESERVING; flipping a host is a one-line change HERE.
-    #   claude  -> pointer. DISPROVEN 2026-06-14 (iter-11 real-host, Claude Code v2.1.177): SessionStart IS plain
-    #              STDOUT, but the host caps hook STDOUT at 10,000 chars too - an oversized payload is saved to a
-    #              file and the model receives only a ~2KB preview + a file pointer. CONFIRMED live: the ~58KB
-    #              inline-contract directive was dropped, the orientation banner never rendered. The earlier
-    #              "stdout has no additionalContext cap" premise was empirically WRONG. So claude joins the pointer
-    #              arm: the directive stays lean (the banner + BOUNDED resume context inline; the full ~45KB
-    #              contract pointed-at on disk). RESIDUAL (maintainer's call): claude skims past file pointers (the
-    #              iter-6 disproof), so in pointer mode the contract's user-profile/expertise adaptation (banner
-    #              item 3) is not read - it degrades to the /specrew-user-profile fallback. That is a graceful,
-    #              integrity-SAFE degrade (governance is SCRIPT-enforced, not directive-borne); the follow-up
-    #              option is to extract+inline JUST the small user-profile block to restore item 3.
-    #   codex   -> pointer. ROLLOUT-PROVEN 2026-06-10 to silently DROP the oversized (~50KB) SessionStart
-    #              additionalContext; codex reads files, so the lean pointer lands.
-    #   copilot -> inline. UNVERIFIED drop. copilot/cursor deliver SessionStart via additionalContext /
-    #   cursor  -> inline. additional_context (the SAME mechanism codex drops). The host research matrix
-    #              (specs/171-specrew-refocus/research-matrix.md) records a 10k cap only for CLAUDE's
-    #              additionalContext - NONE is documented for copilot/cursor, and copilot rendered in-band in BOTH
-    #              the iter-8 and iter-11 dogfoods. An oversized drop is SUSPECTED (same mechanism) but UNPROVEN;
-    #              flipping on suspicion would regress a host that works, so they stay inline. TO FLIP once
-    #              confirmed on-host (both are in the dogfood loop): move the host into the pointer arm below.
-    #              Residual tracked in the T009 continuity docs. (NOTE: even inline hosts get the BOUNDED handover/
-    #              reconciliation below - that cap is mode-independent; only the 45KB contract is mode-gated.)
+    # Default is BEHAVIOR-PRESERVING through manifest data:
+    # hosts/<kind>/host.psd1 -> RefocusHookBindings.DispatcherRuntime.BootstrapDeliveryMode.
+    # The optional encoded binding is passed by deploy-refocus-hooks.ps1 so
+    # downstream deployed providers do not need the source tree beside them.
     [CmdletBinding()]
     [OutputType([string])]
-    param([Parameter(Mandatory)][string] $HostKind)
-    switch ($HostKind) {
-        'codex'  { return 'pointer' }
-        'claude' { return 'pointer' }
-        default  { return 'inline' }   # copilot / cursor / antigravity
+    param(
+        [Parameter(Mandatory)][string] $HostKind,
+        [AllowNull()][string] $HostBinding
+    )
+
+    $runtime = $null
+    if (-not [string]::IsNullOrWhiteSpace($HostBinding)) {
+        try {
+            $runtime = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($HostBinding)) | ConvertFrom-Json -ErrorAction Stop
+        }
+        catch { $runtime = $null }
     }
+
+    if ($null -eq $runtime) {
+        $manifestPath = $null
+        $cwd = $null
+        try { $cwd = (Get-Location).Path } catch { $cwd = $null }
+        foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $cwd)) {
+            if ([string]::IsNullOrWhiteSpace($start) -or -not (Test-Path -LiteralPath $start -PathType Container)) { continue }
+            $candidate = (Resolve-Path -LiteralPath $start).Path
+            while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+                $probe = Join-Path $candidate ("hosts/{0}/host.psd1" -f $HostKind)
+                if (Test-Path -LiteralPath $probe -PathType Leaf) { $manifestPath = $probe; break }
+                $parent = Split-Path -Parent $candidate
+                if ($parent -eq $candidate) { break }
+                $candidate = $parent
+            }
+            if ($manifestPath) { break }
+        }
+        if (-not $manifestPath) {
+            try {
+                $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+                    Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase ("hosts/{0}/host.psd1" -f $HostKind)) -PathType Leaf } |
+                    Select-Object -First 1
+                if ($module) { $manifestPath = Join-Path $module.ModuleBase ("hosts/{0}/host.psd1" -f $HostKind) }
+            }
+            catch { $manifestPath = $null }
+        }
+        if ($manifestPath) {
+            try {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                $runtime = $manifest.RefocusHookBindings.DispatcherRuntime
+            }
+            catch { $runtime = $null }
+        }
+    }
+
+    $mode = $null
+    if ($null -ne $runtime) {
+        if ($runtime -is [System.Collections.IDictionary] -and $runtime.Contains('BootstrapDeliveryMode')) { $mode = [string]$runtime['BootstrapDeliveryMode'] }
+        elseif ($runtime.PSObject.Properties['BootstrapDeliveryMode']) { $mode = [string]$runtime.BootstrapDeliveryMode }
+    }
+    if ($mode -in @('inline', 'pointer')) { return $mode }
+    return 'inline'
 }
 
 function Limit-SpecrewInlineBlock {
@@ -85,7 +114,7 @@ function Limit-SpecrewInlineBlock {
 }
 
 function Format-BootstrapDirective {
-    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null)
+    param($Result, [AllowNull()][string]$ContractBody = $null, [AllowNull()]$InFlight = $null, [AllowNull()]$PendingVerdict = $null, [AllowNull()][string]$SpecrewVersion = $null, [AllowNull()][string]$Branch = $null, [AllowNull()][string]$CoordinatorFragment = $null)
     $d = $Result.directive
     $reads = @($d.required_reads)
     $contractRead = if ($reads.Count -ge 1 -and -not [string]::IsNullOrWhiteSpace([string]$reads[0])) { [string]$reads[0] } else { '.specrew/last-start-prompt.md' }
@@ -93,6 +122,14 @@ function Format-BootstrapDirective {
     $lines = New-Object System.Collections.Generic.List[string]
     $lines.Add('[specrew-bootstrap] SessionStart B2 - render this as VISIBLE PROSE before any structured picker (render-first; FR-004/FR-020).')
     $lines.Add(("Bootstrap mode: {0}." -f $d.mode))
+    # F-184 iter-002 (T004, FR-013/FR-014/FR-018): FRONT-LOAD the coordinator posture + the exact anti-
+    # specify.exe guard from the SINGLE packaged source (the caller resolves it via
+    # Get-SpecrewCoordinatorFragment, so the bootstrap guard cannot drift from the instruction-file guard),
+    # ABOVE the broader banner/contract context so a weak model attends to the immediate action + guard first.
+    if (-not [string]::IsNullOrWhiteSpace($CoordinatorFragment)) {
+        $lines.Add('=== SPECREW COORDINATOR (front-loaded - the immediate posture + the anti-raw-Spec-Kit guard; read FIRST) ===')
+        $lines.Add($CoordinatorFragment.Trim())
+    }
     # FR-001 (banner fix, 2026-06-10): the orientation BANNER is mandatory on EVERY host and must render
     # FIRST. It was skipped on claude (the render instruction sat AFTER the ~45KB inline contract, so claude
     # skimmed past it to the task; copilot rendered it). Hoist the full, EXPANDED banner mandate to the TOP -
@@ -201,8 +238,9 @@ function Format-BootstrapDirective {
     # authorized. When a boundary was mechanically crossed (sync) but NOT human-authorized (no captured verdict),
     # the resume MUST surface "awaiting your verdict" and the agent MUST NOT treat the committed boundary as
     # approved, MUST NOT advance on it, and MUST NOT record an authorization itself. This is the SECOND-CHANCE
-    # re-confirm surface: on a hook host the human's re-confirmation is captured by the next hook fire; on a
-    # hookless host (antigravity) the agent relays it. Surfaced HIGH (right after the resume context) because it
+    # re-confirm surface: on a verdict-capture hook host the human's re-confirmation is captured by the next
+    # hook fire; on hosts without that capture path (including Antigravity's bounded hook slice) the agent
+    # relays it. Surfaced HIGH (right after the resume context) because it
     # is integrity-critical - a committed boundary read as approved is exactly the DF-4/DF-5 failure.
     if ($null -ne $PendingVerdict -and [bool]$PendingVerdict.HasPendingVerdict) {
         $lines.Add('')
@@ -283,13 +321,15 @@ try {
     $eventJson = ''
     $rootOverride = $null
     $hostKind = 'claude'
+    $hostBinding = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKind = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--host-binding' -and ($i + 1) -lt $args.Count) { $hostBinding = [string]$args[$i + 1] }
     }
-    # Hooks only deploy for these kinds; an unknown value fails safe to the claude default.
-    if ($hostKind -notin @('claude', 'codex', 'copilot', 'cursor')) { $hostKind = 'claude' }
+    # Hooks pass manifest folder names; malformed input fails safe to the default.
+    if ($hostKind -notmatch '^[A-Za-z0-9_.-]+$') { $hostKind = 'claude' }
 
     # B1 (compact) is unchanged - the bootstrap is B2 only (FR-011).
     $source = $null
@@ -298,17 +338,19 @@ try {
     }
     if ($source -eq 'compact') { exit 0 }
 
-    $root = if ($rootOverride) { $rootOverride } else { Get-BootstrapProjectRoot }
+    $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-BootstrapProjectRoot }
 
     # Component resolution (D-001 downstream deploy): components sit beside the provider in the
-    # self-host tree (scripts/internal/bootstrap); in a downstream project the provider deploys to
-    # the extension tree while the components ship in the installed Specrew module (FileList), so
-    # fall back to the module's scripts/internal/bootstrap. SPECREW_MODULE_PATH (the documented
-    # dev-tree override, honored by specrew.ps1) wins first so a dev/unpublished module is testable.
+    # source tree (scripts/internal/bootstrap); in a self-host dogfood the provider may execute from
+    # the deployed .specify mirror, so prefer the project-local source tree before any ambient
+    # SPECREW_MODULE_PATH/installed-module fallback. Downstream projects normally lack scripts/internal,
+    # so they still resolve through the dev-tree override or the installed module (FileList).
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
     if (-not (Test-Path -LiteralPath $bdir)) {
+        $selfHostBdir = Join-Path $root 'scripts/internal/bootstrap'
         $devBdir = if ($env:SPECREW_MODULE_PATH) { Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap' } else { $null }
-        if ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
+        if (Test-Path -LiteralPath $selfHostBdir) { $bdir = $selfHostBdir }
+        elseif ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
         else {
             # F-174 iter-11 (P1): pick the newest installed module that ACTUALLY CONTAINS scripts/internal/bootstrap,
             # not blindly the newest. Not every Specrew version ships the bootstrap components in its FileList (0.34.0
@@ -343,6 +385,10 @@ try {
     . (Join-Path $internalDir 'coordinator-prompt-surgery.ps1')
     . (Join-Path $internalDir 'user-profile.ps1')
     . (Join-Path (Join-Path $moduleRoot 'extensions/specrew-speckit/scripts') 'shared-governance.ps1')
+    # F-184 iter-002 (T004, FR-018): the single-source coordinator fragment / FR-013 guard, resolved through the
+    # SAME proven 3-tier $internalDir chain. Fail-soft (optional): a missing helper omits the front-loaded
+    # coordinator block but never kills the bootstrap.
+    try { . (Join-Path $internalDir 'instruction-file-merge.ps1') } catch { $null = $_ }
 
     # Launcher<->hook dedupe (FR-007, SC-002): if `specrew start` just bootstrapped this session,
     # stay silent so the startup yields exactly one bootstrap surface.
@@ -381,7 +427,7 @@ try {
 
     # Host delivery policy (DELIVERY only; contract FRAMING unchanged). The per-host inline-vs-pointer rule +
     # its rationale + the copilot/cursor UNVERIFIED-drop residual live in the ONE testable seam below (T007/M1).
-    $inlineContract = ((Get-SpecrewContractDeliveryMode -HostKind $hostKind) -eq 'inline')
+    $inlineContract = ((Get-SpecrewContractDeliveryMode -HostKind $hostKind -HostBinding $hostBinding) -eq 'inline')
     $directiveBody = if ($inlineContract) { $contractBody } else { '' }
 
     # F-174 T050 round-2: deterministic in-flight disk scan for the directive (the last-mile resume gap).
@@ -410,10 +456,11 @@ try {
     # source), so a recency/record-after-render scheme cannot dedupe them - both check before either records
     # and BOTH render (the dogfood saw exactly that: two render markers ~10us apart). Elect exactly ONE
     # renderer with an ATOMIC create-if-absent claim per (session, source): the winner renders, every
-    # concurrent sibling finds the claim present and exits silent. 'no-session' (no stable id - the self-host
-    # repo where codex sends none, or any Stop event) is NEVER claimed -> always renders; /clear (different
-    # source) wins its OWN claim -> re-renders. Fail-open (the claim returns $true on any non-"already-exists"
-    # error). The claim sits HERE - the last step before emit, AFTER all fallible work (Invoke, contract write,
+    # concurrent sibling finds the claim present and exits silent. Events with no usable host session id receive
+    # a per-launch fallback token before this point, so they never collapse into a global bucket; the historical
+    # 'no-session' sentinel remains fail-open for older callers. /clear (different source) wins its OWN claim
+    # -> re-renders. Fail-open (the claim returns $true on any non-"already-exists" error). The claim sits HERE
+    # - the last step before emit, AFTER all fallible work (Invoke, contract write,
     # in-flight scan) - so the winner->emit window holds only pure string building; a transient failure in one
     # fire cannot suppress the other. Invoke already ran, so the journal records BOTH fires (forensic count
     # intact); only one RENDERS. Scope: the bootstrap directive only - the refocus banner (provider order 10) +
@@ -422,7 +469,9 @@ try {
     if ($renderDedupeKey -and $renderDedupeKey -ne 'no-session') {
         if (-not (Request-SpecrewHookRenderClaim -ProjectRoot $root -DedupeKey $renderDedupeKey -Source ([string]$source) -RecordedAt $nowUtc)) { exit 0 }
     }
-    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch)
+    $coordinatorFragment = $null
+    try { $coordinatorFragment = Get-SpecrewCoordinatorFragment } catch { $coordinatorFragment = $null }
+    Write-Output (Format-BootstrapDirective -Result $result -ContractBody $directiveBody -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion $specrewVersion -Branch $branch -CoordinatorFragment $coordinatorFragment)
     exit 0
 }
 catch {

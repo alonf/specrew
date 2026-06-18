@@ -76,8 +76,8 @@ try {
     $clear = & pwsh -NoProfile -File $provider --event-json '{"source":"clear","session_id":"concurrent-dup"}' --host-kind codex --project-root $tmp 2>&1 | Out-String
     Assert-True ($clear -match 'VISIBLE PROSE') 'I2: same session under source=clear RE-RENDERS (its own claim; /clear is never suppressed)'
 
-    # I3: the 'no-session' sentinel is NEVER claimed -> two concurrent no-session fires BOTH render (the
-    # self-host-repo fail-safe: no stable id -> a missing directive must be impossible).
+    # I3: no usable host session id gets a per-launch fallback token. Two concurrent missing-id fires therefore
+    # use distinct keys, BOTH render, and no global no-session/unknown state is written.
     $nsJob = {
         param($Provider, $Root)
         (& pwsh -NoProfile -File $Provider --event-json '{"source":"startup"}' --host-kind codex --project-root $Root 2>&1 | Out-String)
@@ -88,7 +88,11 @@ try {
     $nsOuts = @(($n1 | Receive-Job), ($n2 | Receive-Job))
     $n1, $n2 | Remove-Job -Force
     $nsRenders = @($nsOuts | Where-Object { $_ -match 'VISIBLE PROSE' }).Count
-    Assert-Equal $nsRenders 2 'I3: two concurrent NO-SESSION fires BOTH render (no-session is never claimed -> never suppressed)'
+    Assert-Equal $nsRenders 2 'I3a: two concurrent missing-id fires BOTH render (per-launch fallback keys, never shared suppression)'
+    $nsRows = @(Get-Content -LiteralPath (Join-Path $tmp2 '.specrew/runtime/bootstrap-journal.jsonl') | Where-Object { $_.Trim() } | ForEach-Object { $_ | ConvertFrom-Json })
+    $nsKeys = @($nsRows | ForEach-Object { [string]$_.dedupe_key })
+    Assert-True (($nsKeys | Where-Object { $_ -match '^launch-[a-f0-9]{32}$' }).Count -eq 2) 'I3b: missing-id journal rows use per-launch fallback tokens'
+    Assert-True (-not ($nsKeys -contains 'no-session') -and -not ($nsKeys -contains 'unknown')) 'I3c: missing-id journal rows avoid no-session/unknown buckets'
 }
 finally {
     Get-Job -ErrorAction SilentlyContinue | Remove-Job -Force -ErrorAction SilentlyContinue

@@ -336,7 +336,7 @@ Options:
   -NoLaunch | --no-launch                  Generate handoff prompt/context but do not launch the host CLI
   -NewWindow | --new-window                Launch the host CLI in a new PowerShell window instead of the current terminal
   -SameWindow | --same-window              Compatibility alias for the default current-terminal launch mode
-  -AllowAll | --allow-all                  Launch the host with its tool-approval-bypass flag (Copilot --allow-all, Claude --dangerously-skip-permissions, Codex --dangerously-bypass-approvals-and-sandbox). Default for tool calls; does not bypass lifecycle boundary approval.
+  -AllowAll | --allow-all                  Launch the host with its tool-approval-bypass flag (Copilot --allow-all, Claude --dangerously-skip-permissions, Cursor --force, Codex --dangerously-bypass-approvals-and-sandbox, Antigravity --dangerously-skip-permissions). Default for tool calls; does not bypass lifecycle boundary approval.
   -PromptApprovals | --prompt-approvals    Keep the host's interactive tool-approval prompts enabled (disables --allow-all translation)
   -Autonomous | --autonomous               Specrew-side flag (independent of any host autopilot): the Crew advances through lifecycle gates without stopping for explicit approval. Use for unattended runs such as overnight execution; default is gate-respecting mode where the Crew stops at every approval boundary.
   --bypass-boundary-enforcement            Suspend boundary enforcement for this session only; requires --reason
@@ -2961,6 +2961,17 @@ if ($missingBootstrapPaths.Count -gt 0) {
     Write-Error-Message ("Missing required paths: {0}" -f ($missingBootstrapPaths -join ', '))
     Write-Error-Message "Run 'specrew init' first."
     exit 1
+}
+
+# F-184 iter-002 (T003, FR-016): heal/refresh the coordinator instruction section in each
+# supported host's InstructionsFile (idempotent backstop; init/update are the primary deploy
+# path). Fail-open + silent: never fails `specrew start`.
+try {
+    . (Join-Path $PSScriptRoot 'internal\instruction-deploy.ps1')
+    $null = @(Invoke-SpecrewInstructionDeployment -ProjectPath $resolvedProjectPath)
+}
+catch {
+    Write-Verbose ("Coordinator-instruction heal skipped: {0}" -f $_.Exception.Message)
 }
 
 # Feature 049 Iteration 003: User profile first-run check (FR-023, FR-024, FR-026)

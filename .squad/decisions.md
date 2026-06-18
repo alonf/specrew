@@ -1,3 +1,22 @@
+## 2026-06-16 — F-183 iteration-001 before-implement approval with instructions
+
+### 2026-06-16 — Decision: approve before-implement; ratify T001; authorize T003
+
+- **Decision ID**: f183-i001-before-implement-approved
+- **Type**: decision
+- **Affected Iteration**: specs\183-stability-quality-bundle\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-16T05:43:30Z
+- **Verdict**: approved for before-implement with instructions.
+- **Decision**: Ratify T001 on its merits and authorize T003, serial after T001. Condition A is accepted: host/Antigravity availability is real and correctly scoped as availability not parity.
+- **Carried instructions**:
+  1. DR-002 is a separate governance-only repair outside F-183's 20 SP scope; do not bind it to T004 or any FR/SC trace. Keep the DR-002 drift entry as the pointer. If it must land in this iteration, give it its own capacity line.
+  2. FR-007 remains in scope. At T006, surface Antigravity schema/event/output verification early and stop for a human split/defer decision the moment it exceeds the bounded `.agents/hooks.json` adapter/config/docs/test slice.
+  3. Before T009, confirm a hook-firing Antigravity host, not just `agy` CLI presence.
+  4. Stop at every human gate for an explicit verdict. One approval advances one boundary.
+  5. T002 still must clear the known-red `DirectiveDeliveryCap.Tests.ps1` before review-signoff.
+- **Disposition**: before-implement approved with instructions; implementation may proceed to T003. T001 remains done and accepted; no redo.
+
 ## 2026-06-14 — F-174 iteration-011 mid-implement SCOPE AMENDMENT: hook install/discovery hardening (3 layers)
 
 ### 2026-06-14 — Decision: fold proactive hook provisioning + a `specrew hooks` command + a degradation diagnostic INTO iter-011 (extra SP pre-approved, NO proposal)
@@ -26748,3 +26767,421 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 39c218bee40ace3d5ee6857acdea915fd47a6d2b
 - **Recorded At**: 2026-06-15T02:26:40Z
+
+## 2026-06-15T22:23:09Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7f9664929eb9a1b04440ad299478de9f0ab47f48
+- **Recorded At**: 2026-06-15T22:23:09Z
+
+## 2026-06-15T22:42:24Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: ded8e3e5f214d4e520620de0437eeaa5d3f73053
+- **Recorded At**: 2026-06-15T22:42:23Z
+
+## 2026-06-15T23:33:47Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 9a584c4c608eceb2a5364d7fdfa0ba3c753f6158
+- **Recorded At**: 2026-06-15T23:33:46Z
+
+## 2026-06-16T00:08:46Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-06-16T00:08:46Z
+- **Warning**: Expected next boundary 'tasks' but received 'plan'.
+
+## 2026-06-16T00:08:47Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: d774545f001b450d58548b8f505a89b7d3bdf5b8
+- **Recorded At**: 2026-06-16T00:08:46Z
+
+## 2026-06-16T00:25:35Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 754210c01e2397c58a93ba9d205e91adb8631163
+- **Recorded At**: 2026-06-16T00:25:35Z
+
+## 2026-06-16T00:33:49Z — Boundary enforcement: before-implement
+
+- **Feature**: 183-stability-quality-bundle
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched tasks -> before-implement.
+
+## 2026-06-16T00:36:27Z — Boundary enforcement: before-implement
+
+- **Feature**: 183-stability-quality-bundle
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-16T00:43:19Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 567f74aa05c2c41ccf73a6daf93b1854d787be91
+- **Recorded At**: 2026-06-16T00:43:18Z
+
+## 2026-06-16T16:48:36Z — Boundary enforcement: retro
+
+- **Feature**: 183-stability-quality-bundle
+- **Boundary Type**: retro
+- **Current Boundary**: review-signoff
+- **Requested Boundary**: retro
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched review-signoff -> retro.
+
+## 2026-06-16T16:53:18Z — Boundary enforcement: retro
+
+- **Feature**: 183-stability-quality-bundle
+- **Boundary Type**: retro
+- **Current Boundary**: review-signoff
+- **Requested Boundary**: retro
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-16T17:01:19Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: before-implement
+- **Recorded At**: 2026-06-16T17:01:19Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'retro'.
+
+## 2026-06-16T17:01:20Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: f20096f31623c0b24becf97fc1b39e758a3a2727
+- **Recorded At**: 2026-06-16T17:01:19Z
+
+## 2026-06-16T17:26:52Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 183-stability-quality-bundle
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-16T17:27:14Z — Boundary enforcement: iteration-closeout
+
+- **Feature**: 183-stability-quality-bundle
+- **Boundary Type**: iteration-closeout
+- **Current Boundary**: retro
+- **Requested Boundary**: iteration-closeout
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-16T17:40:23Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: a3d80fdf0b9a9c4b5fc4951348e099c2f1e92e5d
+- **Recorded At**: 2026-06-16T17:40:22Z
+
+## 2026-06-16T20:51:35Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8e9d110d14016b2d83205c7f07f6d3e5435b55d0
+- **Recorded At**: 2026-06-16T20:51:34Z
+
+## 2026-06-16T20:53:27Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 183-stability-quality-bundle
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8e9d110d14016b2d83205c7f07f6d3e5435b55d0
+- **Recorded At**: 2026-06-16T20:53:26Z
+
+## 2026-06-16T23:10:34Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 2a510cfb
+- **Recorded At**: 2026-06-16T23:10:34Z
+
+## 2026-06-16T23:28:27Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 130f68e6
+- **Recorded At**: 2026-06-16T23:28:26Z
+
+## 2026-06-16T23:45:55Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5334d266
+- **Recorded At**: 2026-06-16T23:45:55Z
+
+## 2026-06-16T23:54:39Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: ed656671
+- **Recorded At**: 2026-06-16T23:54:38Z
+
+## 2026-06-16T23:56:07Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: ed656671
+- **Recorded At**: 2026-06-16T23:56:06Z
+
+## 2026-06-17T09:47:08Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8abc3d39
+- **Recorded At**: 2026-06-17T09:47:07Z
+
+## 2026-06-17T09:55:35Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 8abc3d39
+- **Recorded At**: 2026-06-17T09:55:34Z
+
+## 2026-06-17 — F-184 iteration-001 review-signoff approval
+
+### 2026-06-17 — Decision: approve review-signoff; authorize retro only
+
+- **Decision ID**: f184-i001-review-signoff-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\184-full-antigravity-refocus\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T09:55:07Z
+- **Verdict**: approved for review-signoff.
+- **Decision**: Accept the review-signoff packet after the abstraction-leak send-back repair at commit `8abc3d39`.
+  Shared hook/bootstrap/deploy core is manifest-driven through `RefocusHookBindings.DispatcherRuntime`, and the
+  host-coupling firewall blocks shared-core `agy` or Antigravity routing literals.
+- **Carried instructions**:
+  1. Record the 26 SP F-184 capacity override during retro calibration and restore the project-global cap to 20.
+  2. Treat Antigravity B3 delivery proof as inferential because the host does not expose the injected prompt transcript.
+  3. At release, keep beta-before-stable, `MigrateLegacyTopLevelEventMap` legacy-upgrade validation, and reproducible
+     `agy` evidence or explicit machine-local labeling as release-gate obligations.
+- **Disposition**: review-signoff approved; retro boundary opened. Iteration-closeout remains unopened until a fresh human verdict.
+
+## 2026-06-17 — F-184 iteration-001 retro approval
+
+### 2026-06-17 — Decision: approve retro; authorize iteration-closeout preparation only
+
+- **Decision ID**: f184-i001-retro-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\184-full-antigravity-refocus\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T12:18:08Z
+- **Verdict**: approved for retro.
+- **Decision**: Accept the retrospective after recording the temporary 26 SP historical truth,
+  restoring the project-global cap to 20, preserving the abstraction-leak lesson, and carrying
+  release validation obligations forward.
+- **Carried instructions**:
+  1. Amend the retro during closeout to add the three manual-dogfood findings: missing persistent
+     `AGENTS.md` deployment on the hook-only path; no prominent "drive Specrew / do not run raw
+     `specify.exe workflow`" guard; and slow-on-Opus / undrivable-on-Flash time-to-workshop.
+  2. Point each dogfood finding to iteration 002 and state plainly that Antigravity "full parity"
+     is not achieved until iteration 002 lands.
+  3. Generate the iteration-closeout dashboard and append the closed-iteration index, then stop for
+     a separate iteration-closeout verdict before opening iteration 002.
+- **Disposition**: retro approved; iteration-closeout preparation opened. Iteration 002 remains unopened until a fresh human verdict.
+
+## 2026-06-17T12:19:51Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 00d2b7bd
+- **Recorded At**: 2026-06-17T12:19:51Z
+
+## 2026-06-17 — F-184 iteration-001 closeout approval and iteration-002 open
+
+### 2026-06-17 — Decision: approve iteration-closeout; authorize iteration 002 specify only
+
+- **Decision ID**: f184-i001-iteration-closeout-approved-open-i002
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\184-full-antigravity-refocus\iterations\001
+- **Next Iteration**: specs\184-full-antigravity-refocus\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T13:34:21Z
+- **Verdict**: approved for iteration-closeout.
+- **Decision**: Accept iteration 001 closeout at committed tree `abf18b99` and
+  open F-184 iteration 002 for the persistent host-instruction and workshop-speed
+  follow-up slice.
+- **Authorized iteration 002 scope**:
+  1. Deploy persistent Specrew coordinator instructions during `specrew init` to
+     each host's manifest-declared `InstructionsFile`, including `AGENTS.md` for
+     Antigravity/Codex and equivalents elsewhere.
+  2. Preserve user-owned `AGENTS.md` content by merging a Specrew-owned section,
+     not clobbering the whole file.
+  3. Put the coordinator contract and anti-raw-`specify.exe workflow` guard
+     prominently in both persistent instructions and bootstrap.
+  4. Front-load the bootstrap so the immediate Specrew action appears before
+     slower context.
+  5. Keep the host-coupling firewall green.
+  6. Validate with real-host Antigravity Opus 4.6 and Gemini Flash, preserving
+     the weak-model caveat if Flash still cannot drive the governed workshop.
+- **Non-authorization**: feature-closeout, release, beta/stable promotion, and
+  iteration 002 implementation are not authorized by this decision.
+- **Disposition**: iteration 001 closeout approved; iteration 002 specify opened.
+  Stop at the iteration 002 specify verdict before clarify, plan, tasks, or
+  implementation.
+
+## 2026-06-17 — F-184 iteration-002 specify approval
+
+### 2026-06-17 — Decision: approve specify content; require boundary commit before planning
+
+- **Decision ID**: f184-i002-specify-approved
+- **Type**: boundary-verdict
+- **Affected Iteration**: specs\184-full-antigravity-refocus\iterations\002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T14:39:12Z
+- **Verdict**: approved for specify, content-wise, conditional on committing the
+  specify boundary.
+- **Decision**: Accept the iteration 002 specify packet for persistent host
+  instruction delivery, the anti-raw-`specify.exe workflow` guard, bootstrap
+  front-loading, host-neutral manifest projection, user instruction-file
+  preservation, packaged-template/FileList readiness, human-confirmed lens
+  provenance, and dual-model Antigravity Opus/Flash validation with the
+  weak-model caveat if Flash still cannot drive the governed workshop.
+- **Required before advancing**: Commit the specify artifacts as a focused
+  `boundary(specify)` commit to avoid Shape-5 / boundary-ledger lag.
+- **Carry into plan**:
+  1. Size the cross-host instruction-delivery scope honestly against the restored
+     20 SP cap; split rather than silently overrun.
+  2. Enforce SC-014 with the host-coupling firewall, including a negative test
+     proving instruction-delivery code reads `InstructionsFile` from manifests
+     and does not branch on host names.
+  3. Put the anti-raw-Spec-Kit guard in both surfaces: persistent instruction
+     files and the front-loaded bootstrap.
+- **Non-authorization**: Implementation, feature-closeout, beta, stable, and
+  release are not authorized by this verdict.
+- **Disposition**: Specify content accepted; boundary commit required before
+  planning work begins.
+
+## 2026-06-17T15:46:25Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-17T15:46:25Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-06-17T15:46:25Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: a632a882f657b10b686151cce326695567b3d53d
+- **Recorded At**: 2026-06-17T15:46:25Z
+
+## 2026-06-17T16:21:20Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 75d454c219e01362a27b5dd64f2bb5ea8ef971ac
+- **Recorded At**: 2026-06-17T16:21:19Z
+
+## 2026-06-17T17:01:41Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fb2233e6e5221a3eed596b6c6a67f9ae4dadb296
+- **Recorded At**: 2026-06-17T17:01:40Z
+
+## 2026-06-17T22:10:50Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7d170b8ca59029ff604f3e64044f634d7314eb1c
+- **Recorded At**: 2026-06-17T22:10:50Z
+
+## 2026-06-17T22:55:23Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-06-17T22:55:23Z
+- **Warning**: Expected next boundary 'retro' but received 'iteration-closeout'.
+
+## 2026-06-17T22:55:24Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 746312fc58b75b6a50e86d955216afe8c806d831
+- **Recorded At**: 2026-06-17T22:55:24Z
+
+## 2026-06-18T07:50:15Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 184-full-antigravity-refocus
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7ac1fc888ecdfbdd785a06b12b20e516e5d1ad6b
+- **Recorded At**: 2026-06-18T07:50:14Z

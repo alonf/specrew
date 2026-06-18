@@ -6,6 +6,14 @@ Updated the replay-path proof for feature 012, descriptive references in handoff
 
 This replay slice is ready for review.
 
+## What needs your review
+
+Review the grouped task references and confirm the shared scope is still obvious.
+
+## What happens next
+
+After review, the replay-path proof can proceed with the same grouped-reference rule.
+
 ## What I need from you
 
 Next step: review the replay wording and fixture coverage.

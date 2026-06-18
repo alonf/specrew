@@ -38,11 +38,14 @@ try {
 
     # Marker write + roundtrip.
     $markerPath = Join-Path $tmp 'runtime/marker.json'
-    $m = Write-SpecrewSessionMarker -MarkerPath $markerPath -HostName claude -ProjectRoot $tmp -Branch 'b' -HeadCommit 'c' -StartedAt '2026-06-08T00:00:00Z'
+    $m = Write-SpecrewSessionMarker -MarkerPath $markerPath -HostName claude -ProjectRoot $tmp -Branch 'b' -HeadCommit 'c' -SessionId 'session-abc' -StartedAt '2026-06-08T00:00:00Z'
     Assert-Equal $m.host 'claude' 'marker host set'
+    Assert-Equal $m.session_id 'session-abc' 'marker session_id set'
     Assert-True (Test-Path -LiteralPath $markerPath) 'marker file written (dir auto-created)'
     $back = (Get-Content -LiteralPath $markerPath -Raw | ConvertFrom-Json)
     Assert-Equal $back.head_commit 'c' 'marker head_commit roundtrips'
+    $markerRoundtrip = Get-SpecrewSessionMarker -MarkerPath $markerPath
+    Assert-Equal $markerRoundtrip.session_id 'session-abc' 'marker session_id roundtrips through accessor'
 
     # Portability.
     $portable = [pscustomobject]@{ feature_path = (Join-Path $tmp 'specs/174-x') }

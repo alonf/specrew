@@ -1,0 +1,38 @@
+# Hardening Gate: Iteration 001
+
+**Schema**: v1
+**Gate ID**: `pre-implementation-hardening`
+**Feature Ref**: `specs/183-stability-quality-bundle/spec.md`
+**Iteration Ref**: `specs/183-stability-quality-bundle/iterations/001`
+**Requested Review Class**: `strongest-available`
+**Effective Review Class**: `strongest-available`
+**Overall Verdict**: `ready`
+**Approval Ref**: `—`
+**Reviewed By**: Reviewer
+**Reviewed At**: 2026-06-16T05:43:30Z
+**Post-Implementation Verification**: `recorded`
+**Verified At**: 2026-06-16T17:30:00Z
+
+## Concern Review
+
+| Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `security-surface` | `security` | `addressed` | `runtime-evidence` | `recorded` | Treat hook payloads and Antigravity hook config as untrusted input. Sanitize host session IDs before filesystem use; never write global `unknown` state for malformed IDs; preserve existing user entries in project-scoped `.agents/hooks.json`; abort hook config writes on unsafe parse/merge; do not use global Antigravity config; add no runtime dependency. | `true` | Runtime evidence is recorded through T003 session-id tests, T006 Antigravity project-hook preservation tests, T009 real Antigravity host evidence, and review packet acceptance. Relevant artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/review.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/real-host-validation.md, and file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/coverage-evidence.md. | `—` |
+| `error-handling-expectations` | `error-handling` | `addressed` | `runtime-evidence` | `recorded` | Fail open but governed: over-cap SessionStart output keeps bootstrap and drops/shrinks lower-priority refocus first; provider failure emits a non-empty under-cap governed fallback on stdout and exits 0; unsafe Antigravity config work leaves user config untouched and reports fallback guidance; closeout no-upstream paths do not instruct impossible pushes. | `true` | Runtime evidence is recorded through dispatcher cap/fallback coverage, closeout no-upstream wording tests, Antigravity fallback guidance tests, and accepted review-signoff. Relevant artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/review.md and file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/coverage-evidence.md. | `—` |
+| `retry-idempotency-requirements` | `retry-idempotency` | `addressed` | `runtime-evidence` | `recorded` | Hook provisioning must be re-runnable: Specrew-owned Antigravity entries are added or refreshed without duplication, remove/opt-out behavior is repeat-safe, and user entries are preserved. Closeout dashboard refresh is deterministic on auto-detect. No background retry loop, network retry, or new queue is introduced. | `true` | Runtime evidence is recorded through refocus deploy/status regression coverage, repeated install/remove/opt-out preservation, closeout dashboard refresh tests, and accepted review-signoff. Relevant artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/review.md and file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/coverage-evidence.md. | `—` |
+| `test-integrity-targets` | `test-integrity` | `addressed` | `runtime-evidence` | `recorded` | Tests must prove behavior, not file presence: synthetic SessionStart cap fixture, provider-failure fallback, missing/blank/malformed session IDs, dirty `.specify` classification, no-upstream wording, dashboard regeneration, #1761 scratch git isolation/module-internal assertion, Antigravity merge/remove/opt-out, and review-stage real-host pass/fail evidence. | `true` | Runtime evidence is recorded through T002's synthetic shipped SessionStart fixture, focused Pester runs, mirror parity, and T009 real-host validation. Relevant artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/coverage-evidence.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/mirror-parity.md, and file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/real-host-validation.md. | `—` |
+| `operational-resilience-concerns` | `operational` | `addressed` | `runtime-evidence` | `recorded` | User-visible fallback text says governance is still active and points to `specrew where`, `/specrew-refocus`, `specrew hooks status`, and `specrew start --host <host>` where relevant. Source and `.specify` mirror parity are checked for touched extension/runtime files. Release beta target remains dynamic until local tags, origin tags, and published state are inspected. | `true` | Runtime evidence is recorded through governed fallback behavior, mirror parity, bounded Antigravity real-host evidence, and release-readiness target selection. Release publishing validation remains a separate post-iteration carry-forward, not an iteration-closeout blocker. Relevant artifacts: file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/mirror-parity.md, file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/real-host-validation.md, and file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/quality/release-readiness.md. | `—` |
+
+## Before-Implement Conditions
+
+| Condition | Status | Evidence | Decision |
+| --- | --- | --- | --- |
+| `condition-a-host-availability` | `closed` | 2026-06-16 local checks: `pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/specrew-hooks.ps1 status --project-path .` reported `claude`, `cursor`, `codex`, and `copilot` installed; `Get-SpecrewHookCapableHosts` returned `claude`, `cursor`, `codex`, and `copilot`; `agy --version` returned `1.0.8`; file:///C:/Dev/183-stability-quality-bundle/.antigravitycli exists. | Real hook-capable host availability is present through the existing hook-capable hosts. An Antigravity environment is reachable through `agy`, so the FR-007 split guard is not tripped by host availability. T006/T009 still must prove only verified Antigravity hook events/output behavior and real-host validation before any Antigravity parity claim. |
+
+## Notes
+
+- Before-implement was approved with instructions by `f183-i001-before-implement-approved`; runtime evidence is now recorded through implementation, review-signoff, retro, and iteration-closeout evidence.
+- The quality-profile resolver still detects repository-level React signals, but this feature's approved scoped profile is `powershell-json-yaml-pester`.
+- T001 and T003 remain serial by default because they share hook runtime/bootstrap surfaces and `tests/bootstrap/**`.
+- If Antigravity verification expands beyond project-scoped `.agents/hooks.json` merge/remove/opt-out, verified event mapping, docs/status cleanup, and fallback guidance, pause for a human split/defer decision before continuing.
+- Protocol correction: before-implement is a human-judgment stop. The T001 gate slip is logged and fully resolved in file:///C:/Dev/183-stability-quality-bundle/specs/183-stability-quality-bundle/iterations/001/drift-log.md by the explicit approval `f183-i001-before-implement-approved`; this approval ratifies T001 and authorizes T003 onward.

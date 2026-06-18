@@ -15,7 +15,7 @@ function Write-Fail {
 }
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
-$validatorScript = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1'
+$validatorScript = Join-Path $repoRoot 'extensions\specrew-speckit\validators\handoff-governance-validator.ps1'
 $fixtureIteration = Join-Path $repoRoot 'tests\integration\fixtures\016-substantive-interaction-model\interaction-model-state'
 $existingPlanUri = 'file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/plan.md'
 $existingGateUri = 'file:///C:/Dev/Specrew/specs/016-substantive-interaction-model/iterations/001/quality/hardening-gate.md'
@@ -48,6 +48,15 @@ Updated FR-001 and $existingPlanUri quickly.
 ## Why I stopped
 I stopped for the next step.
 
+## What needs your review
+Review the cited plan and the missing reference warning.
+
+## What happens next
+After review, the next boundary can be prepared.
+
+## Discussion prompts
+Context: this is a deliberately thin fixture for the interaction-model validator. Should the validator preserve the warning set for thin summaries and unsafe references? Recommended default: keep the fixture violating so the warnings remain observable; changing it to compliant would stop exercising the warning path.
+
 ## What I need from you
 Check C:\Dev\Specrew\specs\016-substantive-interaction-model\iterations\001\plan.md and let me know.
 
@@ -55,10 +64,10 @@ Reference: $missingUri
 "@
 
 $warnOutput = @(
-    pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectPath $repoRoot -IterationPath $fixtureIteration -ResponseText $warnResponse 2>&1
+    pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectRoot $repoRoot -IterationPath $fixtureIteration -ResponseText $warnResponse 2>&1
 )
 if ($LASTEXITCODE -ne $expectedExitCode) {
-    Write-Fail ("validate-governance should return exit {0} for thin/bare-path handoff findings." -f $expectedExitCode)
+    Write-Fail ("handoff-governance validator should return exit {0} for thin/bare-path handoff findings." -f $expectedExitCode)
     $warnOutput | ForEach-Object { Write-Host $_ }
     exit 1
 }
@@ -85,15 +94,24 @@ I completed feature 016, substantive interaction model, across FR-001 through FR
 ## Why I stopped
 I stopped at the retro-boundary because the active iteration fixture is already at retro-boundary, and Feature 016 still requires a separate authorization before any later closeout boundary can proceed.
 
+## What needs your review
+Review $existingPlanUri and $existingGateUri, focusing on the active retro-boundary evidence and the named authorization reference.
+
+## What happens next
+If approved, the next valid action is to advance from the retro-boundary only; later closeout boundaries still require separate authorization.
+
+## Discussion prompts
+Context: the retro-boundary is the current active boundary in this fixture. Should the Crew advance only this boundary before stopping again? Recommended default: yes, because one approval advances one boundary and later closeout work needs a separate verdict.
+
 ## What I need from you
 Review $existingPlanUri and $existingGateUri, then approve or reject advancement from the retro-boundary.
 "@
 
 $passOutput = @(
-    pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectPath $repoRoot -IterationPath $fixtureIteration -ResponseText $passResponse 2>&1
+    pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectRoot $repoRoot -IterationPath $fixtureIteration -ResponseText $passResponse 2>&1
 )
 if ($LASTEXITCODE -ne 0) {
-    Write-Fail 'validate-governance should not hard-fail on compliant Feature 016 handoff input.'
+    Write-Fail 'handoff-governance validator should not hard-fail on compliant Feature 016 handoff input.'
     $passOutput | ForEach-Object { Write-Host $_ }
     exit 1
 }
@@ -119,10 +137,10 @@ foreach ($unexpected in @(
 
 $narrationResponse = 'I am still working, and the next note points at C:\Dev\Specrew\specs\016-substantive-interaction-model\spec.md while I continue the validator edits.'
 $narrationOutput = @(
-    pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectPath $repoRoot -ResponseScope narration -ResponseText $narrationResponse 2>&1
+    pwsh -NoProfile -ExecutionPolicy Bypass -File $validatorScript -ProjectRoot $repoRoot -ResponseScope narration -ResponseText $narrationResponse 2>&1
 )
 if ($LASTEXITCODE -ne 0) {
-    Write-Fail 'validate-governance should not hard-fail on narration bare-path warnings.'
+    Write-Fail 'handoff-governance validator should not hard-fail on narration bare-path warnings.'
     $narrationOutput | ForEach-Object { Write-Host $_ }
     exit 1
 }

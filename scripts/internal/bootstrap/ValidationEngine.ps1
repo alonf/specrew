@@ -66,7 +66,8 @@ function Test-SpecrewHandoverValidity {
     param(
         [Parameter()][AllowNull()]$Handover,            # from Get-SpecrewRollingHandover, or $null
         [Parameter(Mandatory)][string] $ProjectRoot,
-        [Parameter()][string] $BaseBranch = 'main'
+        [Parameter()][string] $BaseBranch = 'main',
+        [Parameter()][AllowNull()][string] $ExpectedFeatureRef
     )
     if ($null -eq $Handover) {
         return [pscustomobject]@{ valid = $false; reason = $null; findings = @('no handover present') }
@@ -77,6 +78,13 @@ function Test-SpecrewHandoverValidity {
     $feature = $Handover.active_feature
     if ([string]::IsNullOrWhiteSpace($feature)) {
         return [pscustomobject]@{ valid = $false; reason = 'no-feature'; findings = @('handover names no active feature') }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedFeatureRef) -and $feature -ne $ExpectedFeatureRef) {
+        return [pscustomobject]@{
+            valid = $false
+            reason = 'feature-mismatch'
+            findings = @("handover feature '$feature' does not match the current active feature '$ExpectedFeatureRef'; ignored the stale handover")
+        }
     }
     $res = Get-SpecrewFeatureResumable -ProjectRoot $ProjectRoot -FeatureRef $feature -BaseBranch $BaseBranch
     if (-not $res.present) {

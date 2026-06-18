@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.37.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.38.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
@@ -22,7 +22,7 @@
 curl -fsSL https://raw.githubusercontent.com/alonf/specrew/main/install.sh | sh
 mkdir hello-specrew && cd hello-specrew && git init
 specrew init
-claude   # launch your AI host (or codex / copilot / cursor) — then just say: Build a tip calculator with a web UI
+claude   # launch your AI host (or codex / copilot / cursor / agy) — then just say: Build a tip calculator with a web UI
 ```
 
 For Mac and Linux, `install.sh` does it all: it auto-installs PowerShell Core as an internal dependency if it is missing (Ubuntu/Debian via the Microsoft apt repository; macOS via Homebrew), installs Specrew from the PowerShell Gallery, and puts the native `specrew` command on your `PATH`. To try a beta instead of the stable release, append `-s -- --prerelease` to the `curl … | sh` line — see [Try the latest beta](#try-the-latest-beta).
@@ -35,12 +35,12 @@ For Mac and Linux, `install.sh` does it all: it auto-installs PowerShell Core as
 Install-Module Specrew -Scope CurrentUser -SkipPublisherCheck
 mkdir hello-specrew; cd hello-specrew; git init
 specrew init
-claude   # launch your AI host (or codex / copilot / cursor) — then just say: Build a tip calculator with a web UI
+claude   # launch your AI host (or codex / copilot / cursor / agy) — then just say: Build a tip calculator with a web UI
 ```
 
 That's it. Specrew now drives you through the spec-driven lifecycle: you'll co-author a spec with the AI, sign off on a plan, and end with working code traceable to every decision.
 
-> **`specrew init` is a one-time setup — then just launch your host.** You run `specrew init` **once per project** to deploy Specrew's session hooks; you never need to run it again in that project. From then on, every session you simply run your host CLI (`claude` / `codex` / `copilot` / `cursor`) inside the project and Specrew bootstraps you automatically — `specrew start` is **optional**. Your **first message** — "What should I do now?" or "Create a feature for …" — gets a Specrew orientation banner as the agent's first reply, and Specrew drives the governed lifecycle from there. When you stop, a rolling handover file is written, so your next launch **auto-resumes where you left off** — same host or a different one. Specrew works on **Claude, Codex, Copilot, and Cursor**; **Antigravity** has no hook surface, so there you start with `specrew start` ([see below](#starting-on-antigravity)). You can still use `specrew start` anywhere to pick or switch hosts (`--host`) or start from a script.
+> **`specrew init` is a one-time setup — then just launch your host.** You run `specrew init` **once per project** to deploy Specrew's session hooks; you never need to run it again in that project. From then on, every session you simply run your host CLI (`claude` / `codex` / `copilot` / `cursor-agent` / `agy`) inside the project and Specrew bootstraps you automatically — `specrew start` is **optional**. Your **first message** — "What should I do now?" or "Create a feature for …" — gets a Specrew orientation banner as the agent's first reply, and Specrew drives the governed lifecycle from there. When you stop, a rolling handover file is written, so your next launch **auto-resumes where you left off** — same host or a different one. Specrew works on **Claude, Codex, Copilot, Cursor, and Antigravity**; Antigravity uses project-local `.agents/hooks.json` where `PreInvocation` carries bootstrap plus B3 boundary-refocus injection and `Stop` writes the rolling handover, with `specrew start --host antigravity` as the fallback if those hooks do not fire ([see below](#starting-on-antigravity)). You can still use `specrew start` anywhere to pick or switch hosts (`--host`) or start from a script.
 
 ### Prerequisites
 
@@ -112,7 +112,7 @@ Specrew encodes that methodology as four guarantees:
 1. **Boundary discipline.** The lifecycle has explicit approval boundaries (`specify`, `clarify`, `plan`, `tasks`, `before-implement`, `review-signoff`, `retro`, `iteration-closeout`, `feature-closeout`). One human authorization advances at most one boundary. No agent prose can simulate authorization. Enforcement is moving from prose to code (see [Proposal 065](proposals/065-launch-mode-boundary-enforcement.md), shipped as Feature 039).
 2. **Substantive interaction.** Every boundary handoff is reviewable in the console with the essence of "what I just did / why I stopped / what I need from you" visible without opening files. Status pings are not enough.
 3. **Audit-trail durability.** Every verdict, decision, drift event, and bypass lives in `.squad/decisions.md` (Copilot host) or the host-native decisions ledger with timestamps, commit hashes, and recognized verdict shapes. Sessions can be reconstructed after the fact; methodology lives in artifacts, not in agent memory.
-4. **Methodology survives the host.** Specrew runs on **GitHub Copilot CLI, Claude Code, Cursor (`cursor-agent`), Codex CLI, or Antigravity (`agy`)** — on a hook-capable host you just launch the CLI directly and Specrew bootstraps you; `specrew start --host <kind>` (or the interactive menu) is the explicit way to pick or switch a host, and the way in on hookless Antigravity. VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface; canonical Crew identity lives at `.specrew/team/agents/<role>.md` and translates to each host's native subagent format on launch. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
+4. **Methodology survives the host.** Specrew runs on **GitHub Copilot CLI, Claude Code, Cursor (`cursor-agent`), Codex CLI, or Antigravity (`agy`)** — on a hook-capable host you just launch the CLI directly and Specrew bootstraps you; `specrew start --host <kind>` (or the interactive menu) is the explicit way to pick or switch a host, and the fallback path for Antigravity when project `.agents/hooks.json` support does not fire. VS Code Chat remains a roadmap item ([Proposal 071](proposals/071-vscode-copilot-chat-host.md)). Per-host flag translation keeps `--remote` / `--allow-all` / `--autopilot` uniform at the Specrew surface; canonical Crew identity lives at `.specrew/team/agents/<role>.md` and translates to each host's native subagent format on launch. The skill-level enforcement gates are host-agnostic by design — switching hosts must not weaken the methodology.
 
 ## Post-Commit Verification Protocol
 
@@ -151,7 +151,7 @@ Wednesday — copilot "continue"   (resumes at plan)
                        → plan.md committed, /speckit.tasks queued
 Thursday — claude   "continue"   (resumes at iteration scaffold)
                        → iter-001/plan.md, ready for /speckit.implement
-Friday   — specrew start --host antigravity   (Antigravity is hookless — use specrew start to recover)
+Friday   — agy       "continue"   (or `agy -c`; use `specrew start --host antigravity` if project hooks do not fire)
                        → tests + code committed, /speckit.review-signoff queued
 ```
 
@@ -168,7 +168,21 @@ The methodology is what makes this practical. Without governed boundaries + dura
 
 ## Starting on Antigravity
 
-Antigravity (Google's `agy` CLI) is a fully supported host, with one difference: it has **no session-hook surface**, so the automatic "just launch and go" bootstrap doesn't apply there. On Antigravity you open each session with `specrew start`, which hands the host the same orientation banner and drives the same governed lifecycle:
+Antigravity (Google's `agy` CLI) is a supported host with project-local hook support. After `specrew init`, the normal Antigravity entry point is the native CLI:
+
+```powershell
+agy
+# then type: Build a tip calculator with a web UI
+```
+
+To resume, either start Antigravity normally and type `continue`, or use its native resume flags:
+
+```powershell
+agy -c
+agy --conversation <conversation-id>
+```
+
+Specrew installs a Specrew-owned definition in `.agents/hooks.json`: `PreInvocation` injects the bootstrap message and B3 boundary refocus through `injectSteps[].ephemeralMessage`, and `Stop` returns the handover decision as JSON. Antigravity differs from the other hook hosts because it has no B1 compaction-refocus carrier; B2 launch/bootstrap and B3 boundary refocus both ride `PreInvocation`. If the Antigravity host in your environment does not fire those hooks, start or recover explicitly with `specrew start --host antigravity`:
 
 ```powershell
 specrew start --host antigravity
@@ -176,7 +190,17 @@ specrew start --host antigravity
 specrew start --host antigravity "Build a tip calculator with a web UI"
 ```
 
-Everything downstream is identical to the other hosts — the same decision boundaries, the same decisions ledger, the same rolling handover on disk. Because that handover is just a file, you can still hand a feature **between** Antigravity and a hook-capable host: stop in one, pick it up in the other.
+Everything downstream is identical to the other hosts — the same decision boundaries, the same decisions ledger, the same rolling handover on disk. Because that handover is just a file, you can still hand a feature **between** Antigravity and another host: stop in one, pick it up in the other. When Antigravity hooks do not fire, `specrew start --host antigravity` reads the same artifacts and re-anchors the session.
+
+To inspect, repair, or disable Specrew's Antigravity hooks without touching user-owned hook definitions:
+
+```powershell
+specrew hooks status --host antigravity
+specrew hooks install --host antigravity
+specrew hooks remove --host antigravity
+```
+
+Antigravity-native permission controls remain Antigravity-owned. Use `/permissions` inside `agy` to inspect or adjust tool permissions. Use `agy --dangerously-skip-permissions` only when you intentionally want to auto-approve tool prompts between Specrew lifecycle boundaries, and use Antigravity sandboxing (`agy --sandbox` or the `enableTerminalSandbox` setting) when you want a constrained terminal session. These controls do not bypass Specrew's human approval gates.
 
 ## Hands-off mode (auto-approve)
 
@@ -187,11 +211,14 @@ By default your host asks permission before it edits a file or runs a command. I
 | Copilot | `--allow-all` | `--allow-all` |
 | Claude | `--allow-all` | `--dangerously-skip-permissions` |
 | Cursor | `--allow-all` | `--force` |
-| Codex | `--allow-all` | `--full-auto` |
+| Codex | `--allow-all` | `--dangerously-bypass-approvals-and-sandbox` |
 | Antigravity | `--allow-all` | `--dangerously-skip-permissions` |
 
 ```powershell
 specrew start --host claude --allow-all "Build a tip calculator with a web UI"
+specrew start --host antigravity --allow-all "Build a tip calculator with a web UI"
+# If launching Antigravity directly:
+agy --dangerously-skip-permissions
 ```
 
 Auto-approve only changes how the agent does the work in between — **it does not skip Specrew's decision boundaries.** Even in full auto-approve, the lifecycle still stops at every gate (`specify`, `plan`, `tasks`, `review-signoff`, …) and waits for your verdict. It speeds up the typing; you still make the decisions.
@@ -236,8 +263,8 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 
 ## Status
 
-- **Latest stable baseline**: 0.35.0 — stable promotion of the 0.33.0–0.35.0 line (Specrew Refocus, Product & Problem Domain lens, Code & Implementation lens) after beta-before-stable validation; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: `0.37.0-beta1` (Feature 174 — hook-driven session bootstrap), in flight on this branch; the merged base now includes Feature 182 (work-kind & branch governance, `0.36.0`)
+- **Latest stable baseline**: 0.37.0 — Feature 174 (hook-driven session bootstrap), promoted after beta-before-stable validation; builds on 0.36.0 (Feature 182, work-kind & branch governance) and the 0.33.0–0.35.0 Refocus + lens line; see [CHANGELOG.md](CHANGELOG.md) for release details
+- **Active development line**: `0.38.0-beta1` (Feature 184 — Full Antigravity Refocus), in flight on this branch; builds on the `0.37.0` (Feature 174 — hook-driven session bootstrap) base
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
@@ -245,7 +272,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 ## What's working today
 
 - `specrew init` bootstraps Spec Kit + Specrew governance (and installs Squad CLI when Copilot is the chosen host) into a fresh or existing repo, and **deploys the Specrew hooks** so a hook-capable host self-bootstraps on launch
-- **Hook-driven session bootstrap + auto-resume** — on a hook-capable host (Claude, Codex, Copilot, Cursor) you just launch the CLI; the SessionStart hook renders the orientation banner + governed launch contract + any resume context, and a Stop hook keeps a crash-safe rolling handover (`.specrew/handover/session-handover.md`, atomic write + `.old` backup, gitignored) so the next session resumes where it stopped. `specrew start` is now an optional explicit driver / re-anchor (and the recovery path for hookless Antigravity)
+- **Hook-driven session bootstrap + auto-resume** — on a hook-capable host (Claude, Codex, Copilot, Cursor, and Antigravity where the host fires project `.agents/hooks.json`) you just launch the CLI; the SessionStart/PreInvocation hook renders the orientation banner + governed launch contract + any resume context, and a Stop hook keeps a crash-safe rolling handover (`.specrew/handover/session-handover.md`, atomic write + `.old` backup, gitignored) so the next session resumes where it stopped. `specrew start` is now an optional explicit driver / re-anchor, and the recovery path for Antigravity when hooks do not fire.
 - `specrew where` renders the velocity dashboard from canonical artifacts
 - The full lifecycle: `specify → clarify → plan → tasks → implement → review-signoff → retro → iteration-closeout → feature-closeout` — with gate-respecting boundary stops by default ([Proposal 066](proposals/066-gate-respecting-default.md), shipped). The last two boundaries (iteration-closeout, feature-closeout) are not decoration: they produce the per-iteration `dashboard.md` + per-feature `closeout-dashboard.md` artifacts, mark the work durably "done", and gate the next iteration / next feature from starting. Skipping them leaves the project in an in-flight state — see [docs/user-guide.md "Closing iterations + features"](docs/user-guide.md#closing-iterations--features) for what these boundaries produce and the verdict shapes that advance them.
 - The **Design Workshop** — a facilitated, lens-driven design conversation at specify-intake and again at the design-analysis stop before planning. It opens with the **product & problem domain** lens (users, pain, MVP, constraints — shipped in 0.34.0), works the nine technical lenses that apply (architecture, components, NFRs, UI/UX, data, security, integration, DevOps, observability), and closes with the **code & implementation** lens (implementation-craft rules, auto-on for any code-writing feature — shipped in 0.35.0) — plus co-designed component maps and flows, in-band diagrams, and durable workshop artifacts. The full methodology lives in [docs/methodology/design-workshop-methodology.md](docs/methodology/design-workshop-methodology.md)
@@ -255,7 +282,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - Validator memoization, parallelization, closed-iteration index, repetition detector — the v0.24.3 process-optimization bundle keeps the discipline cheap to enforce
 - Reviewer-regression routing, session-loaded file change detection, drift-log integrity
 - Pre-boundary markdown-lint auto-fix gate keeps every boundary commit lint-clean
-- **Refocus drift recovery** (`/specrew-refocus`) + automatic discipline injection: boundary syncs deliver the incoming stage's rules on every host; post-compaction and session-start hooks re-ground context on hook-capable hosts (Claude, Codex, Copilot, Cursor) — with a per-session circuit breaker and three kill-switch levels
+- **Refocus drift recovery** (`/specrew-refocus`) + automatic discipline injection: boundary syncs deliver the incoming stage's rules on every host; hook-capable hosts re-ground context through their native carriers. On Antigravity, `PreInvocation` carries launch/bootstrap and B3 boundary refocus, `Stop` carries handover, and B1 compaction refocus remains absent. The refocus machinery keeps a per-session circuit breaker and three kill-switch levels.
 - PR-review-integration soft warning surfaces missing `pr-review-resolution.md` when host has automated review available
 
 ## Lifecycle-adjacent Spec Kit commands
@@ -273,7 +300,7 @@ Specrew surfaces these lifecycle-adjacent Spec Kit commands at specific lifecycl
 - **F-039** [Launch-Mode Boundary Enforcement](proposals/065-launch-mode-boundary-enforcement.md) — mechanical refusal of agent boundary chaining (shipped v0.25.0)
 - **F-040** [Multi-Host Launch Path](proposals/069-multi-host-launch-path.md) — `specrew start --host claude|codex|copilot` (shipped v0.26.0)
 - **F-043** [Multi-Host Onboarding + Selection Flow](proposals/104-multi-host-onboarding-and-selection-flow.md) — `specrew host list/use/status` CLI surface + host-history persistence + interactive numbered menu (shipped v0.27.0)
-- **F-044** [Per-Host Architecture Refactor](specs/044-per-host-architecture-refactor/spec.md) — Open-Closed host extension (registry + 4 host packages); 5th contract function `Install-<Kind>CrewRuntime`; canonical `.specrew/team/agents/<role>.md` source-of-truth; Antigravity host graduated to supported (shipped v0.27.0)
+- **F-044** [Per-Host Architecture Refactor](specs/044-per-host-architecture-refactor/spec.md) — Open-Closed host extension (registry + host packages); 5th contract function `Install-<Kind>CrewRuntime`; canonical `.specrew/team/agents/<role>.md` source-of-truth; Antigravity host graduated to supported (shipped v0.27.0)
 - **F-041** [Cost-Aware Model Routing](proposals/068-cost-aware-model-routing.md) — discovery skill + lean cost-profile + Junior→cheap-model auto-routing (next; addresses the Copilot pricing pivot)
 - **F-042** [Token Economy MVP](proposals/070-token-economy-mvp.md) — cost.yml + dashboard COST section so per-iteration spend is measurable
 - **Substantive Intake Questioning** ([Proposal 063](proposals/063-substantive-intake-questioning.md)) — persona-driven adaptive intake at specify + clarify boundaries

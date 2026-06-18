@@ -1,0 +1,108 @@
+{
+  "schema": "v2",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "note": "Iteration 002 delta workshop. Each selected lens was discussed one at a time with the maintainer and recorded with human-confirmed/lens-question provenance before the specify verdict.",
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "integration-api",
+    "devops-operations",
+    "requirements-nfr",
+    "code-implementation"
+  ],
+  "depths": {
+    "architecture-core": "light",
+    "component-design": "medium",
+    "integration-api": "medium",
+    "devops-operations": "medium",
+    "requirements-nfr": "medium",
+    "code-implementation": "medium"
+  },
+  "skipped": {
+    "ui-ux": "No product UI; user-facing behavior is persistent instruction text and bootstrap ordering, covered by requirements-nfr.",
+    "data-storage": "No new durable domain data beyond host instruction files; file merge behavior is covered by component-design and devops-operations.",
+    "security-compliance": "No new auth, secrets, PII, or compliance surface; content preservation and shell/host safety are covered by component-design, integration-api, and requirements-nfr.",
+    "observability-resilience": "Evidence collection is limited to acceptance validation and is covered by devops-operations plus requirements-nfr for this narrow iteration."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Where should persistent host instruction delivery live?",
+        "How does this avoid becoming an Antigravity-specific path?",
+        "Should supported hosts receive the file at init or wait for host startup detection?"
+      ],
+      "decision": "Use the existing host manifest boundary as the architecture spine. Deploy persistent instruction files for all supported host manifests during specrew init, using each manifest's InstructionsFile path, because later host installation/use should still inherit durable governance and startup-hook migration may be too late. Shared core stays manifest-driven and must not encode Antigravity or agy.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/architecture-core.md -- manifest-driven init delivery and bootstrap reuse"
+    },
+    "component-design": {
+      "agenda": [
+        "Which component owns instruction-file merging?",
+        "How is user-owned instruction-file content preserved?",
+        "Should we reuse existing registry and managed-block structure or build a new host system?"
+      ],
+      "decision": "Reuse the existing host registry, InstructionsFile manifest field, managed-block merge pattern, and atomic-write helpers. Add one focused manifest-driven instruction-file deployment component that creates or updates the host-declared file by replacing only a Specrew-owned section and preserving all user content outside it. Use a packaged static pointer-based template/fragment as the content source, included in the package file list, rather than creating host-specific behavior ad hoc.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md -- instruction merge component and bootstrap text flow"
+    },
+    "integration-api": {
+      "agenda": [
+        "Is AGENTS.md sufficient as the only persistent instruction file?",
+        "Which contract owns each host-specific instruction location?",
+        "Should instruction deployment require per-host write handlers?"
+      ],
+      "decision": "Use the existing host manifest InstructionsFile field as the integration contract and project one shared Specrew coordinator template into each supported host's declared instruction surface. AGENTS.md is correct for Codex, Cursor, and Antigravity CLI, but it is not enough by itself because Claude uses CLAUDE.md and Copilot uses .github/copilot-instructions.md. Do not add a per-host handler extension point in this iteration; all known supported hosts differ only by target path. Init deploys the persistent file, update refreshes it, and start may heal it but must not be the only deployment path.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/integration-api.md -- host manifest InstructionsFile projection contract"
+    },
+    "devops-operations": {
+      "agenda": [
+        "Should instruction-file deployment run at init only, or also update/start-heal?",
+        "Which automated validation proves package and merge behavior?",
+        "Which real-host evidence is required before parity claims?"
+      ],
+      "decision": "Implement the operational path as init deployment, update refresh, and start heal/refresh. Validate first with scratch-project tests proving host-declared instruction files are created or merged, user content is preserved, repeated runs are idempotent, package FileList includes the new template/helper, and the host-coupling firewall stays green. Then run real-host Antigravity validation: Opus 4.6 must show faster time-to-workshop, and Gemini Flash must follow the workshop and avoid raw specify.exe workflow or retain an explicit weak-model caveat. No release, beta, stable, PR, or feature-closeout action is part of this iteration boundary.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/devops-operations.md -- init/update/start-heal deployment and validation lanes"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Which NFRs are design drivers for iteration 002?",
+        "Which thresholds must be measurable before review accepts claims?",
+        "Which claims remain blocked even if implementation works?"
+      ],
+      "decision": "The design-driving NFRs are durable init-time instruction deployment for every supported manifest-declared InstructionsFile, non-clobbering managed-section merge, host-neutral shared core, exact coordinator and anti-raw-specify.exe guard text in both persistent instructions and bootstrap, bootstrap front-loading of the immediate lifecycle action, package/update correctness, evidence honesty for Opus/Flash behavior, and strict boundary discipline. Requirements must be amended to cover host-specific surfaces beyond AGENTS.md, including CLAUDE.md and .github/copilot-instructions.md, and to include update refresh plus start heal/refresh. Full parity, feature-closeout, beta, stable, and release claims remain blocked.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/requirements-nfr.md -- iteration 002 NFR thresholds and blocked claims"
+    },
+    "code-implementation": {
+      "agenda": [
+        "Which existing implementation patterns must this code follow?",
+        "May the iteration add dependencies?",
+        "Which test seams prove the workshop decisions rather than only file presence?"
+      ],
+      "decision": "Implement in PowerShell using existing Specrew host-manifest, managed-block, atomic-write, package FileList, bootstrap, and Pester-style test patterns. Add no dependency by default. Prefer extracting or reusing a shared managed-block helper when practical; minimal duplication is acceptable only if extraction would create larger churn. Add one packaged static coordinator template/fragment, include it in Specrew.psd1 FileList, and verify behavior through focused tests for InstructionsFile lookup, user-content-preserving merge, AGENTS.md/CLAUDE.md/.github/copilot-instructions.md projection, update refresh, start heal, bootstrap guard/front-load ordering, and host-coupling firewall.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/code-implementation.md -- implementation posture and test seams"
+    }
+  }
+}

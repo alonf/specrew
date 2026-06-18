@@ -29,6 +29,12 @@ before-implement gate, hardening-gate sign-off, Implementation Approval evidence
 Why I stopped
 I stopped because the blocker still needs review.
 
+What needs your review
+Review the governance wording and confirm the lead should be rewritten in plain language.
+
+What happens next
+After review, the response can be rewritten with a plain-language lead before formal terms.
+
 What I need from you
 Next step: approve the pending governance items.
 '@

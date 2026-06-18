@@ -1,0 +1,20 @@
+{
+  "schema": "diagram-vocabulary/v1",
+  "note": "Per-lens diagram vocabulary (Feature 141, Amendment A5 / FR-030): each design lens maps to its native diagram type(s) and a default render form, so a lens's workshop/design discussion can be made concrete with the right diagram. Sibling to applicability-map.json; the catalog index.yml stays PURE (no vocabulary fields leak into it). Render forms: mermaid | ascii | table | svg.",
+  "lenses": {
+    "product-domain": { "diagram_type": "context map (users, stakeholders, surrounding systems, channels); stakeholder map", "render_form": "ascii" },
+    "architecture-core": { "diagram_type": "component / service / flow", "render_form": "mermaid" },
+    "component-design": { "diagram_type": "component + dependency direction", "render_form": "mermaid" },
+    "requirements-nfr": { "diagram_type": "quality-attribute priorities / comparison", "render_form": "table" },
+    "ui-ux": { "diagram_type": "UI layout/wireframe; screen-navigation flow; state", "render_form": "ascii" },
+    "security-compliance": { "diagram_type": "trust boundaries + attack surface", "render_form": "mermaid" },
+    "data-storage": { "diagram_type": "ERD (relational); NoSQL document relations (references by JSON-path of identities)", "render_form": "mermaid" },
+    "integration-api": { "diagram_type": "service interaction / contract sequence", "render_form": "mermaid" },
+    "devops-operations": { "diagram_type": "deployment topology (environments, nodes, pipelines)", "render_form": "mermaid" },
+    "observability-resilience": { "diagram_type": "request trace / failure-mode flow", "render_form": "mermaid" }
+  },
+  "cross_cutting": {
+    "flows": { "diagram_type": "user actions + system actions (sequence)", "render_form": "mermaid" },
+    "comparison": { "diagram_type": "options / trade-offs", "render_form": "table" }
+  }
+}

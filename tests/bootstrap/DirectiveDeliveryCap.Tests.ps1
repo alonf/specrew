@@ -33,6 +33,61 @@ foreach ($fn in 'Get-SpecrewContractDeliveryMode', 'Limit-SpecrewInlineBlock', '
     . ([scriptblock]::Create($m.Value))
 }
 
+function Invoke-SyntheticSessionStartComposite {
+    param(
+        [Parameter(Mandatory)][string]$BootstrapFragment,
+        [Parameter(Mandatory)][string]$RefocusFragment,
+        [string]$SessionId = 'directive-cap-synthetic'
+    )
+
+    $dispatcher = (Resolve-Path "$repoRoot/scripts/internal/specrew-hook-dispatcher.ps1").Path
+    $projectRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-directive-cap-" + [guid]::NewGuid().ToString('N'))
+    $scriptsDir = Join-Path $projectRoot '.specify/extensions/specrew-speckit/scripts'
+    New-Item -ItemType Directory -Path (Join-Path $projectRoot '.specrew/runtime') -Force | Out-Null
+    New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
+
+    $catalog = @{
+        schema_version = '1'
+        providers      = @(
+            @{ id = 'refocus'; kind = 'inject'; events = @('SessionStart'); order = 10; budget_share = 1.0; command = 'synthetic-refocus.ps1' }
+            @{ id = 'bootstrap'; kind = 'inject'; events = @('SessionStart'); order = 20; budget_share = 1.0; command = 'synthetic-bootstrap.ps1' }
+        )
+    } | ConvertTo-Json -Depth 6
+    Set-Content -LiteralPath (Join-Path $projectRoot '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
+
+    [System.IO.File]::WriteAllText((Join-Path $scriptsDir 'bootstrap.payload.txt'), $BootstrapFragment, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText((Join-Path $scriptsDir 'refocus.payload.txt'), $RefocusFragment, [System.Text.UTF8Encoding]::new($false))
+
+    $providerStub = @'
+param()
+try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catch { $null = $_ }
+$payloadName = if ($MyInvocation.MyCommand.Name -match 'bootstrap') { 'bootstrap.payload.txt' } else { 'refocus.payload.txt' }
+[Console]::Out.Write([System.IO.File]::ReadAllText((Join-Path $PSScriptRoot $payloadName), [System.Text.Encoding]::UTF8))
+exit 0
+'@
+    Set-Content -LiteralPath (Join-Path $scriptsDir 'synthetic-bootstrap.ps1') -Value $providerStub -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $scriptsDir 'synthetic-refocus.ps1') -Value $providerStub -Encoding UTF8
+
+    $eventJson = @{ session_id = $SessionId; source = 'startup'; hook_event_name = 'SessionStart' } | ConvertTo-Json -Compress
+    $stdinPath = Join-Path $projectRoot 'event.json'
+    $stdoutPath = Join-Path $projectRoot 'stdout.txt'
+    $stderrPath = Join-Path $projectRoot 'stderr.txt'
+    [System.IO.File]::WriteAllText($stdinPath, $eventJson, [System.Text.UTF8Encoding]::new($false))
+
+    $proc = Start-Process -FilePath 'pwsh' `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'SessionStart', '-HostKind', 'claude') `
+        -WorkingDirectory $projectRoot -NoNewWindow -PassThru -Wait `
+        -RedirectStandardInput $stdinPath -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+
+    return [pscustomobject]@{
+        ProjectRoot = $projectRoot
+        EventJson   = $eventJson
+        ExitCode    = $proc.ExitCode
+        StdOut      = ((Get-Content -LiteralPath $stdoutPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) ?? '')
+        StdErr      = ((Get-Content -LiteralPath $stderrPath -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) ?? '')
+    }
+}
+
 # --- 1: the delivery-mode seam - claude + codex POINTER (cap-bound hosts); copilot/cursor INLINE. ---
 Assert-True ((Get-SpecrewContractDeliveryMode -HostKind 'claude') -eq 'pointer') '1: claude is in the pointer arm (10K stdout cap disproved the inline premise)'
 Assert-True ((Get-SpecrewContractDeliveryMode -HostKind 'codex') -eq 'pointer')  '1: codex stays pointer (oversized additionalContext drop)'
@@ -96,30 +151,29 @@ $inFlight = [pscustomobject]@{
 # Render in claude's pointer mode (ContractBody = '' -> the 45KB contract is NOT inlined).
 $directive = Format-BootstrapDirective -Result $result -ContractBody '' -InFlight $inFlight -PendingVerdict $null -SpecrewVersion '0.36.0' -Branch '001-layout-corrector'
 
-# The co-resident refocus fragment shares the SessionStart payload (the dispatcher joins both provider fragments
-# with "`n`n"). Prop-145 CAP-1: do NOT freeze a stale sample (the old 2,241 constant went silently stale as
-# general.md grows). MEASURE the real refocus SessionStart fragment by running the deployed engine, so this test
-# TRACKS reality - when the refocus digest grows past the composite headroom, THIS assertion catches the breach
-# instead of flattering us. Fall back to the budget-derived ceiling only if the engine cannot run (conservative).
-$refocusEngine = (Resolve-Path "$repoRoot/.specify/extensions/specrew-speckit/scripts/refocus.ps1" -ErrorAction SilentlyContinue)
-if (-not $refocusEngine) { $refocusEngine = (Resolve-Path "$repoRoot/extensions/specrew-speckit/scripts/refocus.ps1" -ErrorAction SilentlyContinue) }
-$refocusLive = 0
-if ($refocusEngine) { try { $refocusLive = ((& pwsh -NoProfile -File $refocusEngine.Path 2>$null) -join "`n").Length } catch { $refocusLive = 0 } }
-# refocus b2 budget = 1200 tokens (refocus-scopes.json) -> the engine clips at ~1200*4 = 4,800 chars; with the
-# banner + any clip note the fragment CEILING is ~4,984. The live measure is normally far below this (general.md
-# is well under the cap today). We assert on the LIVE measure (real today, growth-tracking); we also COMPUTE the
-# budget-derived CEILING composite and surface it as the known CAP-1 architectural residual (the two fragments'
-# self-budgets do not compose under 10K at their ceilings - deferred reconciliation: dispatcher fragment-priority drop).
-$refocusCeiling = 4984
-$refocusBaseline = if ($refocusLive -gt 0) { $refocusLive } else { $refocusCeiling }
-$assembledTotal = $directive.Length + 2 + $refocusBaseline
 $cap = 10000
-$margin = 9300   # ~700 under the real cap for the realistic worst case; not a byte-tuned floor - the live-refocus assertion above is the growth-tracking regression catcher, and CAP-1 (the ceiling composition) is a surfaced deferred decision, not a static bound chased here.
-
-Write-Host ("   directive (pointer mode) = {0} chars; + refocus LIVE {1} + sep 2 = assembled {2} (cap {3}, margin {4})" -f $directive.Length, $refocusBaseline, $assembledTotal, $cap, $margin) -ForegroundColor Cyan
-Assert-True ($refocusLive -gt 0) '3: the real refocus SessionStart fragment was measured live (not a frozen constant) - the composite tracks general.md growth'
-Assert-True ($assembledTotal -lt $cap)    "3: the iter-11 worst-case assembled payload ($assembledTotal) is under the 10K host cap"
-Assert-True ($assembledTotal -lt $margin) "3: the iter-11 worst-case assembled payload ($assembledTotal) is under the $margin safety margin"
+# FR-004/SC-004: measure a hermetic shipped-composite path. The old fixture invoked the local refocus engine with
+# this repo's ambient lifecycle state, so growth in general.md/current-stage state could make the test red without
+# proving the shipped SessionStart dispatcher behavior. Here the over-cap peer fragment is synthetic, the event is a
+# synthetic startup SessionStart payload, and the real dispatcher performs the production priority/cap composition.
+$syntheticRefocus = "[specrew-refocus] trigger=b2 scope=general sources=1 tokens~3000`n" + ('R' * 12000) + "`nSYNTHETIC-REFOCUS-END"
+$rawSyntheticTotal = $directive.Length + 2 + $syntheticRefocus.Length
+Write-Host ("   directive (pointer mode) = {0} chars; + synthetic refocus {1} + sep 2 = raw {2} (cap {3})" -f $directive.Length, $syntheticRefocus.Length, $rawSyntheticTotal, $cap) -ForegroundColor Cyan
+Assert-True ($rawSyntheticTotal -gt $cap) '3: the synthetic shipped composite is genuinely over cap before dispatcher policy is applied'
+$composite = Invoke-SyntheticSessionStartComposite -BootstrapFragment $directive -RefocusFragment $syntheticRefocus
+try {
+    Assert-True ($composite.EventJson -match '"source":"startup"') '3: fixture uses a synthetic startup SessionStart event'
+    Assert-True ($composite.ExitCode -eq 0) '3: synthetic shipped SessionStart composite exits 0'
+    Assert-True ($composite.StdOut.Length -gt 0) '3: synthetic shipped SessionStart composite emits host-facing output'
+    Assert-True ($composite.StdOut.Length -le $cap) "3: synthetic shipped SessionStart composite is under the 10K host cap after dispatcher policy (got $($composite.StdOut.Length))"
+    Assert-True ($composite.StdOut -match 'MANDATORY FIRST ACTION') '3: bootstrap fragment survives dispatcher cap policy'
+    Assert-True ($composite.StdOut -match 'truncated to fit the session-start delivery cap') '3: bounded bootstrap resume context survives dispatcher cap policy'
+    Assert-True (-not ($composite.StdOut -match 'SYNTHETIC-REFOCUS-END')) '3: lower-priority synthetic refocus tail is clipped before it can overrun the cap'
+    Assert-True ($composite.StdErr -match 'PAYLOAD_CLIPPED') '3: dispatcher reports the lower-priority cap clipping'
+}
+finally {
+    Remove-Item -LiteralPath $composite.ProjectRoot -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 # --- 3b: the TRUE worst case - the integrity-critical AWAITING-VERDICT block (unbounded by design) ALSO present.
 # It sits mid-payload after the handover/reconciliation; it must NOT be bounded (a dropped verdict warning is the
@@ -129,22 +183,17 @@ Assert-True ($assembledTotal -lt $margin) "3: the iter-11 worst-case assembled p
 $realVerdictMsg = "AWAITING YOUR VERDICT: 'specify' is committed / in-progress but NOT human-authorized (last authorized: (none recorded yet)). A committed boundary is not an approved one - the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm."
 $pendingVerdict = [pscustomobject]@{ HasPendingVerdict = $true; WorkingBoundary = 'specify'; LastAuthorizedBoundary = $null; Message = $realVerdictMsg }
 $directiveWithVerdict = Format-BootstrapDirective -Result $result -ContractBody '' -InFlight $inFlight -PendingVerdict $pendingVerdict -SpecrewVersion '0.36.0' -Branch '001-layout-corrector'
-$assembledWithVerdict = $directiveWithVerdict.Length + 2 + $refocusBaseline
-Write-Host ("   + AWAITING-VERDICT worst case (real 345-char msg) = {0} chars; assembled {1} (cap {2})" -f $directiveWithVerdict.Length, $assembledWithVerdict, $cap) -ForegroundColor Cyan
 Assert-True ($directiveWithVerdict -match 'AWAITING YOUR VERDICT \(committed') '3b: the integrity-critical verdict block survives intact (unbounded)'
-Assert-True ($assembledWithVerdict -lt $cap) "3b: the in-flight + pending-verdict combined worst case ($assembledWithVerdict) is under the 10K cap"
-
-# --- 3c: CAP-1 architectural residual (SURFACED, not silently asserted-away). The bootstrap directive bounds
-# only ITSELF; the refocus fragment self-bounds to its OWN ceiling (~4,984). At BOTH ceilings the two do not
-# compose under 10K. This is a deferred reconciliation (lead option: dispatcher fragment-priority drop - keep the
-# bootstrap fragment whole, shrink/drop the lower-order refocus fragment when the join exceeds the cap). It is
-# NOT a breach today (live refocus is far below its ceiling); we MEASURE and PRINT it so the gap is visible, and
-# we do not fail on it here (the live-tracking assertion in 3 is the regression catcher for real growth).
-$ceilingComposite = $directiveWithVerdict.Length + 2 + $refocusCeiling
-if ($ceilingComposite -ge $cap) {
-    Write-Host ("   [CAP-1 RESIDUAL] at refocus's budget CEILING ({0}) the composite would be {1} >= {2} - the two fragment budgets do not compose; deferred reconciliation (dispatcher fragment-priority drop). Live headroom today: {3} chars." -f $refocusCeiling, $ceilingComposite, $cap, ($cap - $assembledWithVerdict)) -ForegroundColor Yellow
-} else {
-    Write-Host ("   [CAP-1] composite at refocus ceiling = {0} < {1}: the two fragment budgets now compose." -f $ceilingComposite, $cap) -ForegroundColor Green
+$compositeWithVerdict = Invoke-SyntheticSessionStartComposite -BootstrapFragment $directiveWithVerdict -RefocusFragment $syntheticRefocus -SessionId 'directive-cap-verdict'
+try {
+    Write-Host ("   + AWAITING-VERDICT worst case (real 345-char msg) = {0} chars; dispatcher output {1} (cap {2})" -f $directiveWithVerdict.Length, $compositeWithVerdict.StdOut.Length, $cap) -ForegroundColor Cyan
+    Assert-True ($compositeWithVerdict.ExitCode -eq 0) '3b: pending-verdict synthetic composite exits 0'
+    Assert-True ($compositeWithVerdict.StdOut.Length -le $cap) "3b: pending-verdict synthetic composite is under the 10K cap after dispatcher policy (got $($compositeWithVerdict.StdOut.Length))"
+    Assert-True ($compositeWithVerdict.StdOut -match 'AWAITING YOUR VERDICT \(committed') '3b: the integrity-critical verdict block survives the shipped composite'
+    Assert-True ($compositeWithVerdict.StdErr -match 'PAYLOAD_CLIPPED') '3b: lower-priority refocus clipping remains observable with a pending verdict'
+}
+finally {
+    Remove-Item -LiteralPath $compositeWithVerdict.ProjectRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 # --- 4: the load-bearing content survives the bound (banner + resume context + the in-flight resume instruction). ---

@@ -31,4 +31,32 @@ Assert-Equal $m3.mode 'full' 'no valid anchor, nothing cleared resolves full'
 $m4 = Resolve-SpecrewBootstrapMode -AnchorValid $false -HandoverValid $true
 Assert-Equal $m4.mode 'welcome-back' 'valid handover resolves welcome-back'
 
+# Same-session marker is not a competing same-worktree session.
+$now = '2026-06-17T00:00:00Z'
+$projectRoot = if ($IsWindows) { 'C:\work\repo' } else { '/work/repo' }
+$ownMarker = [pscustomobject]@{
+    started_at   = '2026-06-16T23:59:00Z'
+    host         = 'antigravity'
+    session_id   = 'anti-session-1'
+    project_root = $projectRoot
+    branch       = 'main'
+    head_commit  = 'abc123'
+}
+$own = Test-SpecrewConcurrentSession -Marker $ownMarker -ProjectRoot $projectRoot -NowUtc $now -CurrentSessionId 'anti-session-1'
+Assert-True (-not [bool]$own.concurrent) 'same-session marker is not concurrent'
+Assert-Equal $own.reason 'same-session' 'same-session marker reason recorded'
+
+# A different fresh marker in the same worktree still produces the advisory.
+$otherMarker = [pscustomobject]@{
+    started_at   = '2026-06-16T23:59:00Z'
+    host         = 'antigravity'
+    session_id   = 'other-session'
+    project_root = $projectRoot
+    branch       = 'main'
+    head_commit  = 'abc123'
+}
+$other = Test-SpecrewConcurrentSession -Marker $otherMarker -ProjectRoot $projectRoot -NowUtc $now -CurrentSessionId 'anti-session-1'
+Assert-True ([bool]$other.concurrent) 'different fresh marker remains concurrent'
+Assert-Equal $other.reason 'fresh-marker' 'different marker reason remains fresh-marker'
+
 Write-Host 'ClassificationEngine: all tests passed.' -ForegroundColor Green

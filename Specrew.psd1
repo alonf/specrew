@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.37.0'
+    ModuleVersion = '0.38.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -255,6 +255,8 @@
         'scripts/internal/host-flag-translation.ps1',
         'scripts/internal/host-history.ps1',
         'scripts/internal/host-runtime-inventory.ps1',
+        'scripts/internal/instruction-deploy.ps1',
+        'scripts/internal/instruction-file-merge.ps1',
         'scripts/internal/invoke-module-release.ps1',
         'scripts/internal/launch-contract.ps1',
         'scripts/internal/lens-applicability.ps1',
@@ -294,6 +296,7 @@
         'scripts/specrew.ps1',
         'Specrew.psd1',
         'Specrew.psm1',
+        'templates/coordinator-instructions.md',
         'templates/github/agents/squad.agent.md',
         'templates/github/workflows/specrew-ci.yml',
         'templates/github/workflows/specrew-confidence-lane.yml',

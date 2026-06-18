@@ -1,0 +1,34 @@
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "powershell-json-yaml-pester"
+selections:
+  - id: "code-rule.intent-revealing-names"
+    checked: true
+  - id: "code-rule.short-methods-low-nesting"
+    checked: true
+  - id: "code-rule.dependency-injection"
+    checked: true
+    decision: "Use small helper seams or parameterized paths for host config/test variation where the existing codebase already supports it; do not introduce a new DI framework."
+    enforcement: [review, tests]
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "Hook paths fail open with actionable diagnostics; provider fallback emits governed text rather than raw exceptions."
+    enforcement: [tests, review]
+  - id: "code-rule.robustness-state-boundaries"
+    checked: true
+    decision: "Sanitize host input, preserve user config on unsafe parse/merge, and keep scratch/test state isolated from real worktree state."
+    enforcement: [tests, review]
+  - id: "code-rule.shared-code-packaging"
+    checked: true
+    decision: "Touched extension/runtime files must preserve FileList readiness where new files are added and source-to-.specify mirror parity."
+    enforcement: [tests, review]
+  - id: "code-rule.public-api-reusable-design"
+    checked: true
+    decision: "Host-specific hook schema behavior should sit behind host-specific deploy/event adapter code, not global supported-host logic."
+    enforcement: [review]
+custom_rules: []
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"

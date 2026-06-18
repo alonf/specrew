@@ -75,7 +75,7 @@ When `--host` is omitted in interactive mode, Specrew shows a numbered menu of i
 | **Claude Code** | `claude` | `claude` | [docs.anthropic.com/en/docs/claude-code/installation](https://docs.anthropic.com/en/docs/claude-code/installation) | Headless `claude -p` invocation; rich subagent + hook surface (see [Proposal 105](../proposals/105-host-native-hook-deployment.md) for the hook-deployment follow-up) |
 | **Cursor** | `cursor` | `cursor-agent` | [cursor.com/cli](https://cursor.com/cli) | Interactive `cursor-agent "<prompt>" --workspace <path>` invocation; `--force` maps from `--allow-all`. No user-defined slash commands (like Codex) — skills + Crew charters deploy as `.cursor/rules/*.mdc` context; coordinator prompt via `AGENTS.md`. Menu priority 2 of 5 (between Claude and Codex). Added in F-050 |
 | **Codex CLI** | `codex` | `codex` | [developers.openai.com/codex/cli](https://developers.openai.com/codex/cli) | `codex exec --cd` invocation; no user-defined slash commands so the Crew uses pwsh-form boundary-advance instructions instead |
-| **Antigravity** | `antigravity` | `agy` | [antigravity.google](https://antigravity.google/) | `agy -i <prompt> --add-dir <path>` invocation; `--dangerously-skip-permissions` maps from `--allow-all`. Graduated from deferred to supported in v0.27.0 (F-044 iter-005) |
+| **Antigravity** | `antigravity` | `agy` | [antigravity.google](https://antigravity.google/) | Native entry point is `agy` in the project; `specrew start --host antigravity` launches `agy -i <prompt> --add-dir <path>`. `agy -c` or `agy --conversation <id>` resumes a prior Antigravity conversation. Specrew hooks use project `.agents/hooks.json`: `PreInvocation` for bootstrap + B3 refocus and `Stop` for handover. `--dangerously-skip-permissions` maps from `--allow-all`. Specrew deploys its coordinator instruction section to `AGENTS.md` (the manifest-declared `InstructionsFile`), which `agy` reads with priority over a user's `GEMINI.md`. |
 
 Reserved-but-deferred kind: `auto` (reserved for [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) first-run probe — partially implemented via the F-043 first-run menu but `auto` literal still rejected). Specrew rejects this with explicit "deferred" guidance rather than silently falling back.
 
@@ -114,14 +114,14 @@ specrew init
 
 `specrew init` installs Spec Kit (via `uv`) and Squad (via `npm`) if missing, scaffolds the `.specrew/`, `.specify/`, and `.squad/` directories, configures the multi-agent team baseline, deploys the slash-command surface to `.claude/skills/`, `.github/skills/`, and `.agents/skills/`, **deploys the Specrew session hooks**, and seeds the governance + roadmap configuration. The bootstrap is non-destructive and idempotent — safe to re-run.
 
-Because init deploys the hooks, on a **hook-capable host** (Claude, Codex, Copilot, Cursor) you just **launch your host** afterwards (`claude` / `codex` / `copilot` / `cursor`) — the SessionStart hook bootstraps you automatically, so you do **not** need `specrew start`. **Antigravity is the exception** (no hook surface): there you still start with `specrew start`.
+Because init deploys the hooks, on a **hook-capable host** (Claude, Codex, Copilot, Cursor, and Antigravity where project `.agents/hooks.json` fires) you just **launch your host** afterwards (`claude` / `codex` / `copilot` / `cursor-agent`, or `agy` when Antigravity hooks fire) — the SessionStart or equivalent hook bootstraps you automatically, so you do **not** need `specrew start`. Antigravity uses `PreInvocation` for bootstrap plus B3 boundary refocus and `Stop` for handover; if those hooks do not fire in your environment, recover with `specrew start --host antigravity`.
 
 ### 4. Start the first feature
 
 After `specrew init`, there are two equivalent ways to begin — **the SessionStart hook is the primary path, and `specrew start` is optional**:
 
-- **Just open your host in the project** (`claude`, `codex`, `copilot`, `cursor`). A **SessionStart hook** bootstraps the session — it writes the governed launch contract, renders your orientation banner, and drives the `specify → plan → implement → review → retro` lifecycle. No `specrew start` needed.
-- **Or run `specrew start`** (optional) to **pick / switch the host** (`--host <kind>`), to **start from a script** with the feature prompt in one command, or for **Antigravity**, which has no hook and is launcher-only. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Cursor → Codex → Copilot → Antigravity):
+- **Just open your host in the project** (`claude`, `codex`, `copilot`, `cursor`, or `agy` when Antigravity hooks fire). A **SessionStart or equivalent hook** bootstraps the session — it writes the governed launch contract, renders your orientation banner, and drives the `specify → plan → implement → review → retro` lifecycle. No `specrew start` needed when the hook fires.
+- **Or run `specrew start`** (optional) to **pick / switch the host** (`--host <kind>`), to **start from a script** with the feature prompt in one command, or to recover on **Antigravity** when project hooks do not fire. The non-interactive default (no flag, no TTY) is `copilot`; the interactive-menu default is the highest-priority installed host (Claude → Cursor → Codex → Copilot → Antigravity):
 
 ```powershell
 # Default: GitHub Copilot host
@@ -140,7 +140,9 @@ specrew start --host codex "Build a web based calculator with only the + - * / M
 specrew start --host antigravity "Build a web based calculator with only the + - * / MR MC M+ M- operations"
 ```
 
-> **Cursor Quickstart.** Cursor's host is the standalone **`cursor-agent`** CLI (install: [cursor.com/cli](https://cursor.com/cli); verify `cursor-agent --version`, authenticate `cursor-agent login`). `specrew start --host cursor "<feature>"` launches `cursor-agent` interactively in your project workspace with Specrew's coordinator prompt (delivered via `AGENTS.md`) and begins the lifecycle. **Caveat — no slash palette:** unlike Claude/Copilot, Cursor has no user-typed `/speckit.*` slash commands; the lifecycle is driven entirely by the `AGENTS.md` coordinator prompt plus auto-attached `.cursor/rules/*.mdc` context (Speckit skills + Crew charters deploy there as rules, not as a command palette). If `cursor-agent` is not on PATH, Specrew exits with an install link rather than launching. Use `--allow-all` to auto-approve tool calls (maps to `cursor-agent --force`).
+**Cursor Quickstart.** Cursor's host is the standalone **`cursor-agent`** CLI (install: [cursor.com/cli](https://cursor.com/cli); verify `cursor-agent --version`, authenticate `cursor-agent login`). `specrew start --host cursor "<feature>"` launches `cursor-agent` interactively in your project workspace with Specrew's coordinator prompt (delivered via `AGENTS.md`) and begins the lifecycle. **Caveat — no slash palette:** unlike Claude/Copilot, Cursor has no user-typed `/speckit.*` slash commands; the lifecycle is driven entirely by the `AGENTS.md` coordinator prompt plus auto-attached `.cursor/rules/*.mdc` context (Speckit skills + Crew charters deploy there as rules, not as a command palette). If `cursor-agent` is not on PATH, Specrew exits with an install link rather than launching. Use `--allow-all` to auto-approve tool calls (maps to `cursor-agent --force`).
+
+**Antigravity Quickstart.** Antigravity's host binary is **`agy`** (verify with `agy --version`). After `specrew init`, run `agy` from the project root and type your request or `continue`; the project `.agents/hooks.json` definition injects the Specrew bootstrap and B3 boundary refocus when that Antigravity build fires `PreInvocation`, and `Stop` records the handover decision. Native resume is `agy -c` for the latest conversation or `agy --conversation <id>` for a specific one. `specrew start --host antigravity "<feature>"` remains the explicit host-selection path and the fallback when those project hooks do not fire. Use `--allow-all` through Specrew, or `agy --dangerously-skip-permissions` when launching Antigravity directly, to auto-approve tool permission prompts between lifecycle boundaries. Use `/permissions` inside Antigravity for native permission rules, and use `agy --sandbox` or `enableTerminalSandbox` when you want Antigravity's terminal sandbox rather than auto-approval.
 
 That single command:
 
@@ -156,13 +158,14 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 > host inside a Specrew project — it writes the governed launch contract (`.specrew/last-start-prompt.md`,
 > with the user-profile/expertise adaptation + the coordinator framing), renders your orientation banner and a
 > Resume / New / Pick-feature menu as prose before any picker, and follows the governed lifecycle. So after
-> `specrew init` you do **not** need to run `specrew start` first. This works on **Claude, Codex, Copilot, and
-> Cursor**. **Antigravity has no SessionStart hook**, so there `specrew start` is the bootstrap path. (Full
+> `specrew init` you do **not** need to run `specrew start` first. This works on **Claude, Codex, Copilot, Cursor, and
+> Antigravity when `.agents/hooks.json` fires**. Antigravity uses `PreInvocation` for bootstrap plus B3 boundary refocus and `Stop`
+> for handover; B1 compaction refocus is not an Antigravity carrier, so `specrew start --host antigravity` remains the fallback when those hooks do not fire. (Full
 > cross-host story: [docs/user-guide.md "Session Continuity"](user-guide.md#session-continuity--auto-bootstrap-rolling-handover-host-switching).)
 >
 > **`specrew start` remains available — and does what only it can:** host selection / switching (`--host`),
 > a one-command scripted start with a feature prompt, uniform `--remote` / `--allow-all` / `--autopilot` flag
-> translation, and the no-hook fallback (Antigravity). Both paths share the SAME contract generator
+> translation, and the Antigravity hook-failure fallback. Both paths share the SAME contract generator
 > (`Get-StartPrompt`), so there is no drift between them; when a launcher and a hook both fire in one startup,
 > a dedupe handshake guarantees exactly one bootstrap.
 >
@@ -176,19 +179,19 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 >
 > **Two ways to start — the hook is the primary path:**
 >
-> - **Direct launch** (`claude` / `codex` / `copilot` / `cursor` in the project) — the SessionStart hook
+> - **Direct launch** (`claude` / `codex` / `copilot` / `cursor-agent`, or `agy` when Antigravity hooks fire, in the project) — the SessionStart or equivalent hook
 >   bootstraps and **drives**: it writes the governed contract and the agent renders its orientation on the
 >   **first reply**, not the splash screen (a host hook cannot paint the host's UI). Just **ask** — "What
 >   should I do now?" — or **state intent** — "Create a feature for …". The hook hands the agent the same
 >   contract `specrew start` writes, via the same generator (no drift).
 > - **`specrew start`** (optional) — host selection / switching (`--host`), a one-command scripted start,
->   uniform `--remote` / `--allow-all` / `--autopilot` flag translation, and the **only** path on
->   **Antigravity** (no hook). When both a launcher and a hook fire in one startup, a dedupe handshake yields
+>   uniform `--remote` / `--allow-all` / `--autopilot` flag translation, and the fallback path on
+>   **Antigravity** when project hooks do not fire. When both a launcher and a hook fire in one startup, a dedupe handshake yields
 >   exactly one bootstrap.
 
 **The Design Workshop.** For substantive features, the Crew also facilitates a **Design Workshop** — first at intake (it hands you a lens agenda, opens with the **product & problem domain** lens to ground users / pain / MVP / constraints, then works the technical lenses that apply) and again at the design-analysis stop before planning (to co-design the architecture with you: component map, responsibilities, flows, and trade-off options). For any code-writing feature it also runs the **code & implementation** lens, which captures implementation-craft rules (language version, patterns, per-stack conventions, dependency choices) into a per-feature `implementation-rules.yml` manifest, which the lens's implement-time guidance skill then uses to guide the coding agent while it writes code. It is a conversation, not a questionnaire — you see every diagram and agenda in-band, and every decision is recorded as a durable artifact. The full methodology is in [docs/methodology/design-workshop-methodology.md](methodology/design-workshop-methodology.md).
 
-> **Switching hosts on the same project** is supported: end the session, then **launch the other host directly** in the project (`claude` / `codex` / `copilot` / `cursor`) and type `continue` — its SessionStart hook reads the rolling handover and resumes the same feature at the same spot. `specrew start --host <other>` stays available as the optional explicit driver, and it is the way in on hookless **Antigravity**. Mid-session switching still means end-and-restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
+> **Switching hosts on the same project** is supported: end the session, then **launch the other host directly** in the project (`claude` / `codex` / `copilot` / `cursor-agent` / `agy`) and type `continue` — its SessionStart or equivalent hook reads the rolling handover and resumes the same feature at the same spot. `specrew start --host <other>` stays available as the optional explicit driver, and it is the fallback on **Antigravity** if project hooks do not fire. Mid-session switching still means end-and-restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
 
 ### 5. Close the iteration (and the feature)
 
@@ -199,7 +202,7 @@ The lifecycle does not end at `implement`. Two more boundaries finish the work:
 
 **Why this matters**: these two boundaries are what mark the work durably "done". Until you authorize them, the feature is **in flight** — `specrew where` will list it as active, and starting a new `specrew start "<other feature>"` will resume the in-flight feature instead of starting fresh. The artifacts produced at closeout (dashboard.md per iteration + closeout-dashboard.md per feature) are also the canonical input that future iterations and features read for velocity calibration. Skipping closeout silently degrades both your project's state-tracking and Specrew's own estimation accuracy.
 
-> If you only want to take a break (not finish), close your terminal — Specrew preserves session state (and a rolling handover in `.specrew/handover/session-handover.md`). On a hook host, just **relaunch your host** in the project — the SessionStart hook auto-resumes at the same boundary from that handover; you do not route resume through `specrew start` (it stays optional, and is the recovery path on hookless Antigravity). Closeout is the explicit "this is done" gate, not the "I'm pausing" gate.
+> If you only want to take a break (not finish), close your terminal — Specrew preserves session state (and a rolling handover in `.specrew/handover/session-handover.md`). On a hook host, just **relaunch your host** in the project — the SessionStart or equivalent hook auto-resumes at the same boundary from that handover; you do not route resume through `specrew start` (it stays optional, and is the recovery path on Antigravity if hooks do not fire). Closeout is the explicit "this is done" gate, not the "I'm pausing" gate.
 
 That is the full minimal flow. Everything else on this page is optional — covered in the sections below.
 
@@ -438,9 +441,9 @@ When `specrew start` runs without a feature description in an existing project, 
 
 ## Known Limitations
 
-- **Multi-host runtime**: Copilot CLI, Claude Code, Codex CLI, and Antigravity (`agy`) are all supported as of v0.27.0 via `specrew start --host <kind>` or the interactive menu when `--host` is omitted (see [docs/user-guide.md](user-guide.md) for the full per-host flag-translation matrix). `--host auto` and VS Code Chat are roadmap items per [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) and [Proposal 071](../proposals/071-vscode-copilot-chat-host.md).
-- **Antigravity host caveats** (v0.27.0): Antigravity at the Gemini Flash tier was observed during the 2026-05-25 4-host smoke test skipping the plan-approval boundary and accepting bug fixes outside the iteration lifecycle. Specrew's gate-respecting mode is **cooperative**, not runtime-enforced — weaker models can chase delivery past gates. Mitigations: (a) pair Antigravity with a higher-tier model when available, or (b) prefer Claude / Copilot for methodology-critical work, or (c) wait for [Proposal 105](../proposals/105-host-native-hook-deployment.md) (host-native PreToolUse hooks) to ship for runtime enforcement. The Antigravity launch shape (`agy -i <prompt> --add-dir <path>`) is empirically verified on WSL Linux; Windows-native smoke is pending broader user testing.
-- **Per-host coordinator overlay** (v0.27.0): Copilot users get a `.squad/coordinator-overlay.md` file materialized at init. Claude / Codex / Antigravity users get the same coordination behavior via the bootstrap prompt, but no overlay file is created (less discoverable). Functionally equivalent today; a future iteration may unify this.
+- **Multi-host runtime**: Copilot CLI, Claude Code, Cursor (`cursor-agent`), Codex CLI, and Antigravity (`agy`) are all supported via direct host launch after `specrew init`, `specrew start --host <kind>`, or the interactive menu when `--host` is omitted (see [docs/user-guide.md](user-guide.md) for the full per-host flag-translation matrix). `--host auto` and VS Code Chat are roadmap items per [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) and [Proposal 071](../proposals/071-vscode-copilot-chat-host.md).
+- **Antigravity host caveats**: Antigravity uses project-local `.agents/hooks.json`: `PreInvocation` carries bootstrap plus B3 boundary refocus, and `Stop` records handover. Antigravity does not expose a B1 compaction-refocus carrier in Specrew's support model. This support must be backed by release-specific real-host `agy` evidence before it is labeled verified or stable, and it is not a blanket guarantee for every Antigravity build or channel. If hooks do not fire or no orientation appears, recover with `specrew start --host antigravity` and keep the durable artifacts as the source of truth.
+- **Per-host coordinator overlay** (v0.27.0): Copilot users get a `.squad/coordinator-overlay.md` file materialized at init. Claude / Cursor / Codex / Antigravity users get the same coordination behavior via the bootstrap prompt and host-native instruction files, but no overlay file is created (less discoverable). Functionally equivalent today; a future iteration may unify this.
 - **Multi-developer coordination**: single-developer workflow only. [Proposal 010](../proposals/010-multi-developer-reconciliation.md) covers the eventual model.
 - **Brownfield cartography**: discovery covers the obvious surfaces (manifests, configs, docs) but JIT codebase cartography for arbitrary inherited repos is a future item ([Proposal 025](../proposals/025-jit-codebase-cartography.md)).
 - **Module signing**: Specrew modules ship **unsigned** since v0.24.1 (the OSS PowerShell Gallery norm), so `Install-Module` uses `-SkipPublisherCheck` to skip the Authenticode publisher check. CA-signed releases for corporate/enterprise consumers are tracked as future work. See [Proposal 072](../proposals/072-psgallery-unsigned-default.md) for the decision context.
@@ -453,6 +456,7 @@ When `specrew start` runs without a feature description in an existing project, 
 |---|---|
 | Windows 11 (primary) | ✅ Fully validated |
 | WSL Ubuntu | ✅ Manually validated end-to-end (specrew init + specrew start launch the host CLI; Copilot+Squad validated through F-019; Claude/Codex hosts added in v0.26.0 and parser-tested; Antigravity host added in v0.27.0) |
+| Windows native Antigravity | ✅ Manually validated with `agy` 1.0.8 direct launch, graceful exit, and resume through `agy -c` / conversation handoff |
 | Linux native (Ubuntu) | ✅ Path handling cross-platform; CI matrix configured |
 | macOS | 🔧 Path handling cross-platform; CI matrix configured; no in-house validation runs yet |
 

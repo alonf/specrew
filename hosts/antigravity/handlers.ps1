@@ -38,8 +38,10 @@ function New-AntigravityLaunchInvocation {
         [bool]$UseRemote = $false
     )
 
-    $hostCmd = Get-Command 'agy' -ErrorAction SilentlyContinue
-    $resolvedBinary = if ($null -ne $hostCmd) { $hostCmd.Source } else { 'agy' }
+    $manifest = Get-HostManifest -Kind 'antigravity'
+    $binaryName = [string]$manifest.Binary
+    $hostCmd = Get-Command $binaryName -ErrorAction SilentlyContinue
+    $resolvedBinary = if ($null -ne $hostCmd) { $hostCmd.Source } else { $binaryName }
 
     $argList = New-Object System.Collections.Generic.List[string]
     $notices = New-Object System.Collections.Generic.List[string]
@@ -77,8 +79,8 @@ function ConvertTo-AntigravityFlag {
     <#
     .SYNOPSIS
     Translate a Specrew-side flag to Antigravity CLI flag(s).
-    Translations are UNVERIFIED for Antigravity (no verified remote/allow-all/autopilot equivalents);
-    each arm warns rather than silently dropping.
+    Translations are verified for the interactive launch surface where the agy CLI exposes an equivalent.
+    Remote-control and autopilot still warn because Antigravity has no verified native equivalent for those.
     .OUTPUTS
     pscustomobject @{ Args[]; Notice; SuppressWarning }
     #>

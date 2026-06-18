@@ -56,7 +56,32 @@ foreach ($kind in $registered) {
         Write-Fail "Manifest for '$kind' is invalid: $($validation.Errors -join '; ')"
     }
 }
-Write-Pass "All 4 manifests pass Test-HostManifestValid"
+Write-Pass "All 5 manifests pass Test-HostManifestValid"
+
+# Test 2b: every hook-capable host carries dispatcher runtime policy in the manifest.
+# This keeps hook-event routing, output shape, and bootstrap pointer/inline policy out
+# of the shared dispatcher/bootstrap core.
+$validOutputShapes = @('plain-or-hookSpecificOutput', 'hookSpecificOutput', 'additionalContext', 'additional_context', 'injectSteps')
+$validDeliveryModes = @('inline', 'pointer')
+foreach ($kind in @(Get-SpecrewHookCapableHosts)) {
+    $manifest = Get-HostManifest -Kind $kind
+    $runtime = $manifest.RefocusHookBindings.DispatcherRuntime
+    if ($null -eq $runtime) {
+        Write-Fail "Hook-capable host '$kind' is missing RefocusHookBindings.DispatcherRuntime."
+    }
+    foreach ($field in @('BootstrapDeliveryEvents', 'B3DeliveryEvents', 'OutputShape', 'BootstrapDeliveryMode')) {
+        if (-not $runtime.ContainsKey($field) -or $null -eq $runtime[$field]) {
+            Write-Fail "Host '$kind' DispatcherRuntime missing '$field'."
+        }
+    }
+    if ([string]$runtime.OutputShape -notin $validOutputShapes) {
+        Write-Fail "Host '$kind' DispatcherRuntime.OutputShape '$($runtime.OutputShape)' is not valid."
+    }
+    if ([string]$runtime.BootstrapDeliveryMode -notin $validDeliveryModes) {
+        Write-Fail "Host '$kind' DispatcherRuntime.BootstrapDeliveryMode '$($runtime.BootstrapDeliveryMode)' is not valid."
+    }
+}
+Write-Pass "All hook-capable hosts declare manifest-driven dispatcher runtime policy"
 
 # Test 3: registry parity with legacy Get-SpecrewSupportedHostKinds
 $legacy = @(Get-SpecrewSupportedHostKinds | Sort-Object)
@@ -74,7 +99,7 @@ foreach ($kind in $registered) {
         Write-Fail "Binary drift for '$kind': manifest='$($manifest.Binary)' legacy='$legacyBinary'"
     }
 }
-Write-Pass "Per-host Binary field matches Get-SpecrewHostBinary across all 4 hosts"
+Write-Pass "Per-host Binary field matches Get-SpecrewHostBinary across all 5 hosts"
 
 # Test 5: per-host SkillRoot field parity with legacy lookup
 # Use the temp dir as a sacrificial project path to avoid PowerShell drive-validation noise
@@ -88,7 +113,7 @@ foreach ($kind in $registered) {
         Write-Fail "SkillRoot drift for '$kind': manifest yields '$expectedAbs' legacy yields '$legacyAbs'"
     }
 }
-Write-Pass "Per-host SkillRoot field matches Get-SpecrewHostSkillRoot across all 4 hosts"
+Write-Pass "Per-host SkillRoot field matches Get-SpecrewHostSkillRoot across all 5 hosts"
 
 # Test 6: status filter helpers work
 $supported = @(Get-SpecrewHostsByStatus -Status supported)
@@ -110,7 +135,7 @@ foreach ($kind in $registered) {
         Write-Fail "Folder/Kind drift: folder='$kind' manifest.Kind='$($manifest.Kind)'"
     }
 }
-Write-Pass "All 4 host folder names match their manifest Kind field (lowercase)"
+Write-Pass "All 5 host folder names match their manifest Kind field (lowercase)"
 
 # Test 8: unknown host throws (cursor is now a real host — use a non-existent sentinel)
 try {
@@ -139,7 +164,7 @@ foreach ($kv in $expectedFunctionNames.GetEnumerator()) {
         Write-Fail "Resolve-HostHandler drift: $($kv.Key) resolved to '$resolved' (expected '$($kv.Value)')"
     }
 }
-Write-Pass "Resolve-HostHandler returns correct per-host function names for all 4 hosts"
+Write-Pass "Resolve-HostHandler returns correct per-host function names for all 5 hosts"
 
 # Test 10: Invoke-HostHandler dispatches the right per-host launch invocation
 foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity', 'cursor')) {
@@ -152,9 +177,9 @@ foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity', 'cursor')) {
         Write-Fail "Invoke-HostHandler dispatched wrong host: returned HostKind='$($invocation.HostKind)' for Kind='$kind'"
     }
 }
-Write-Pass "Invoke-HostHandler dispatches NewLaunchInvocation for all 4 hosts"
+Write-Pass "Invoke-HostHandler dispatches NewLaunchInvocation for all 5 hosts"
 
-# Test 11: Per-host launch argv parity with legacy Get-SpecrewHostLaunchInvocation (copilot, claude, codex; antigravity is NEW)
+# Test 11: Per-host launch argv parity with legacy Get-SpecrewHostLaunchInvocation
 . (Join-Path $repoRoot 'scripts\internal\host-flag-translation.ps1')   # required by legacy
 $startScript = Join-Path $repoRoot 'scripts\specrew-start.ps1'
 # specrew-start.ps1 is too big to dot-source — extract just Get-SpecrewHostLaunchInvocation via regex
@@ -172,7 +197,7 @@ $flagPermutations = @(
     @{ AllowAll = $false; UseAutopilot = $true;  UseRemote = $false },
     @{ AllowAll = $true;  UseAutopilot = $true;  UseRemote = $true  }
 )
-foreach ($kind in @('copilot', 'claude', 'codex')) {
+foreach ($kind in @('copilot', 'claude', 'cursor', 'codex', 'antigravity')) {
     foreach ($perm in $flagPermutations) {
         $legacy = Get-SpecrewHostLaunchInvocation `
             -HostKind $kind `
@@ -197,7 +222,7 @@ foreach ($kind in @('copilot', 'claude', 'codex')) {
         }
     }
 }
-Write-Pass "Per-host launch-invocation argv matches legacy Get-SpecrewHostLaunchInvocation across 12 permutations (3 hosts × 4 flag combinations)"
+Write-Pass "Per-host launch-invocation argv matches legacy Get-SpecrewHostLaunchInvocation across 20 permutations (5 hosts x 4 flag combinations)"
 
 # Test 12: Per-host flag translation parity — Get-HostFlagTranslation shim vs registry handler
 foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity', 'cursor')) {

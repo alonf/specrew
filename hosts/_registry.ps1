@@ -213,8 +213,8 @@ function Get-SpecrewHookCapableHosts {
     A host is hook-capable IFF its manifest carries a RefocusHookBindings field. This is a CAPABILITY
     BOOLEAN ONLY — the ACTUAL events to register still come from deploy-refocus-hooks.ps1's
     Get-HostEventGroups (the manifest's RefocusHookBindings.Events list is F-171-era and is NOT the
-    F-174 event source of truth). Hookless supported hosts (e.g. antigravity — no RefocusHookBindings)
-    are correctly excluded; hook-capability is NOT derivable from Status alone.
+    F-174 event source of truth). Supported hosts without RefocusHookBindings are correctly excluded;
+    hook-capability is NOT derivable from Status alone.
     .OUTPUTS
     string[]
     #>

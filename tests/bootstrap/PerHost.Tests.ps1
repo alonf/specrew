@@ -13,8 +13,8 @@ function Assert-True {
     Write-Host "PASS: $Message" -ForegroundColor Green
 }
 
-# All four hosts normalize the snake_case (Claude-style) SessionStart event.
-foreach ($h in 'claude', 'codex', 'copilot', 'cursor') {
+# All five hosts normalize the snake_case (Claude-style) SessionStart event.
+foreach ($h in 'claude', 'codex', 'copilot', 'cursor', 'antigravity') {
     $e = ConvertFrom-SpecrewHostHookEvent -RawEvent '{"source":"startup","session_id":"abc-123","hook_event_name":"SessionStart","cwd":"C:/proj"}' -HostName $h
     Assert-Equal $e.host $h "host recorded ($h)"
     Assert-Equal $e.source 'startup' "source normalized ($h)"

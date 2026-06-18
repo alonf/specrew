@@ -1,0 +1,72 @@
+schema_version: "1.0"
+description: "Specrew design-analysis lens catalog"
+lenses:
+  - id: product-domain
+    file: product-domain.md
+    default_phase: intake-product-domain
+    categories:
+      - product-and-problem-domain
+      - users-stakeholders-and-outcomes
+  - id: architecture-core
+    file: architecture-core.md
+    default_phase: design-analysis
+    categories:
+      - scope-and-boundaries
+      - success-criteria-and-metrics
+  - id: requirements-nfr
+    file: requirements-nfr.md
+    default_phase: specify-clarify-design-analysis
+    categories:
+      - functional-requirements
+      - testing-and-quality
+      - success-criteria-and-metrics
+  - id: data-storage
+    file: data-storage.md
+    default_phase: design-analysis
+    categories:
+      - data-and-state-management
+      - migration-and-compatibility
+  - id: ui-ux
+    file: ui-ux.md
+    default_phase: specify-clarify-design-analysis
+    categories:
+      - user-personas-and-journeys
+      - ui-and-interaction-design
+  - id: devops-operations
+    file: devops-operations.md
+    default_phase: design-analysis-plan
+    categories:
+      - deployment-and-operations
+      - migration-and-compatibility
+  - id: integration-api
+    file: integration-api.md
+    default_phase: design-analysis
+    categories:
+      - integration-and-dependencies
+      - migration-and-compatibility
+  - id: security-compliance
+    file: security-compliance.md
+    default_phase: specify-clarify-design-analysis
+    categories:
+      - security-and-compliance
+      - data-and-state-management
+  - id: observability-resilience
+    file: observability-resilience.md
+    default_phase: design-analysis-plan
+    categories:
+      - deployment-and-operations
+      - performance-and-scalability
+      - testing-and-quality
+  - id: component-design
+    file: component-design.md
+    default_phase: design-analysis
+    categories:
+      - scope-and-boundaries
+      - integration-and-dependencies
+  - id: code-implementation
+    file: code-implementation.md
+    default_phase: design-analysis-plan
+    categories:
+      - code-craft-and-implementation
+      - testing-and-quality
+

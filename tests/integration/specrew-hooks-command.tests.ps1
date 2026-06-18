@@ -36,7 +36,7 @@ function Status-Line { param([string[]]$Out, [string]$HostKind) return (@($Out |
 Reset-Scratch
 $out = Invoke-Hooks @('status')
 Assert-True ($LASTEXITCODE -eq 0) 'status: exits 0 with no .specrew/config.yml present (no project-setup gate)'
-foreach ($h in @('claude', 'codex', 'copilot', 'cursor')) {
+foreach ($h in @('claude', 'codex', 'copilot', 'cursor', 'antigravity')) {
     Assert-True ((Status-Line -Out $out -HostKind $h) -match 'missing') "status (fresh): $h reported missing"
 }
 
@@ -47,10 +47,11 @@ Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.claude\settings.lo
 Assert-True (Test-Path -LiteralPath (Join-Path $fakeHome '.codex\hooks.json')) 'install: codex config written'
 Assert-True (Test-Path -LiteralPath (Join-Path $fakeHome '.copilot\hooks\specrew-refocus.json')) 'install: copilot config written'
 Assert-True (Test-Path -LiteralPath (Join-Path $fakeHome '.cursor\hooks.json')) 'install: cursor config written'
+Assert-True (Test-Path -LiteralPath (Join-Path $projectRoot '.agents\hooks.json')) 'install: antigravity config written'
 
 # --- 3. status after install: all installed ------------------------------------------------------------------
 $out = Invoke-Hooks @('status')
-foreach ($h in @('claude', 'codex', 'copilot', 'cursor')) {
+foreach ($h in @('claude', 'codex', 'copilot', 'cursor', 'antigravity')) {
     Assert-True ((Status-Line -Out $out -HostKind $h) -match 'installed') "status (post-install): $h reported installed"
 }
 
@@ -84,11 +85,20 @@ Assert-True ((Status-Line -Out $out -HostKind 'cursor') -match 'stale') 'status:
 $out = Invoke-Hooks @('status', '--host', 'codex')
 Assert-True ((Status-Line -Out $out -HostKind 'codex') -match 'failed') 'status: an unparsable config is reported failed'
 
-# --- 9. --host validation: an unknown / hookless host errors ------------------------------------------------
+# --- 9. --host validation: unknown hosts error; Antigravity is hook-capable through .agents/hooks.json --------
 $out = Invoke-Hooks @('install', '--host', 'bogus')
 Assert-True ($LASTEXITCODE -ne 0) 'install --host bogus: unknown host errors (non-zero exit)'
 $out = Invoke-Hooks @('install', '--host', 'antigravity')
-Assert-True ($LASTEXITCODE -ne 0) 'install --host antigravity: hookless host rejected (non-zero exit)'
+Assert-True ($LASTEXITCODE -eq 0) 'install --host antigravity: hook host accepted'
+$out = Invoke-Hooks @('status', '--host', 'antigravity')
+Assert-True ((Status-Line -Out $out -HostKind 'antigravity') -match 'installed') 'status --host antigravity: antigravity installed'
+$antiCfg = Join-Path $projectRoot '.agents\hooks.json'
+$legacyAnti = '{"specrew-refocus":{"enabled":true,"PreInvocation":[{"type":"command","command":"pwsh -File ./.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1 -Event PreInvocation -HostKind antigravity","timeout":30}],"Stop":[{"type":"command","command":"pwsh -File ./.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1 -Event Stop -HostKind antigravity","timeout":30}]}}'
+[System.IO.File]::WriteAllText($antiCfg, $legacyAnti, [System.Text.UTF8Encoding]::new($false))
+$out = Invoke-Hooks @('status', '--host', 'antigravity')
+Assert-True ((Status-Line -Out $out -HostKind 'antigravity') -match 'stale') 'status: legacy Antigravity relative dispatcher entry is reported stale'
+$out = Invoke-Hooks @('install', '--host', 'antigravity')
+Assert-True ($LASTEXITCODE -eq 0) 'install --host antigravity: refreshes stale legacy entry'
 
 # --- 10. (145-review P5-001): claude stale branch — dispatcher present but NOT the ${CLAUDE_PROJECT_DIR} form ---
 Reset-Scratch

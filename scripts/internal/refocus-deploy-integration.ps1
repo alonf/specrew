@@ -9,10 +9,12 @@
 #      unreadable pre-existing catalog aborts the overlay (capture returns the
 #      abort marker) and the re-apply leaves the freshly-deployed canonical file
 #      untouched rather than guessing.
-#   2. Hook deployment wiring: invoke deploy-refocus-hooks.ps1 per host — claude
-#      when the project carries .claude/, codex/copilot/cursor when the host
-#      binary is on PATH. The deploy script itself respects recorded opt-outs
-#      (no silent re-enable; the update-never-flips-disables principle).
+#   2. Hook deployment wiring: invoke deploy-refocus-hooks.ps1 per hook-capable
+#      registry host. Claude stays project-level behind .claude/ detection;
+#      user-level hosts install per-machine launchers; Antigravity writes the
+#      project .agents/hooks.json binding. The deploy script itself respects
+#      recorded opt-outs (no silent re-enable; the update-never-flips-disables
+#      principle).
 
 function Get-RefocusCatalogOverlay {
     param([Parameter(Mandatory = $true)][string]$ProjectPath)
@@ -105,10 +107,11 @@ function Invoke-RefocusHookDeployment {
     # F-174 iter-11 (FR-028 layer 1, T010, decision f174-i011-hook-deploy-hardening): PROACTIVE provisioning.
     # Provision hook configs for ALL hook-capable registry hosts, NOT only hosts detected on PATH. The old
     # PATH gate (Get-Command codex/copilot/cursor) left a SILENT degradation hole: a user who ran `specrew
-    # init`, later installed Codex/Copilot/Cursor, and launched directly got hookless behavior with no
+    # init`, later installed Codex/Copilot/Cursor/Antigravity, and launched directly got hookless behavior with no
     # warning. The user-level configs point at the per-machine launcher, which no-ops outside a Specrew
     # project, so provisioning is SAFE even when the host binary is absent (the launcher install rides this
-    # too — a later `specrew update` is all the user needs). claude is PROJECT-level
+    # too — a later `specrew update` is all the user needs). Antigravity is also project-level via
+    # `.agents/hooks.json`, which is safe to provision with the rest of the managed `.agents` surface. claude is PROJECT-level
     # (.claude/settings.local.json), provisioned only when the project carries .claude/ (the Squad runtime
     # creates it before this runs — the ordering invariant). The deploy script preserves user entries,
     # replaces only Specrew-owned entries, and RESPECTS recorded opt-outs (no silent re-enable).
@@ -116,8 +119,7 @@ function Invoke-RefocusHookDeployment {
     # Hook-capable hosts come from the registry (single source of truth: a manifest carrying
     # RefocusHookBindings — Get-SpecrewHookCapableHosts), with a fail-open ladder: (1) the function if already
     # loaded; (2) dot-source the registry from the resolved repo path; (3) a last-resort known set so a
-    # registry-load failure never silently provisions NOTHING. Antigravity (hookless — no RefocusHookBindings)
-    # is correctly excluded by the registry.
+    # registry-load failure never silently provisions NOTHING.
     $hookCapable = $null
     if (Get-Command Get-SpecrewHookCapableHosts -ErrorAction SilentlyContinue) {
         try { $hookCapable = @(Get-SpecrewHookCapableHosts) } catch { $hookCapable = $null }
@@ -129,7 +131,7 @@ function Invoke-RefocusHookDeployment {
         }
     }
     if ($null -eq $hookCapable -or $hookCapable.Count -eq 0) {
-        $hookCapable = @('claude', 'codex', 'copilot', 'cursor')   # last-resort known hook-capable set
+        $hookCapable = @('claude', 'codex', 'copilot', 'cursor', 'antigravity')   # last-resort known hook-capable set
     }
 
     $hostTargets = New-Object System.Collections.Generic.List[string]
@@ -140,8 +142,9 @@ function Invoke-RefocusHookDeployment {
             if (Test-Path -LiteralPath (Join-Path $ProjectPath '.claude') -PathType Container) { $hostTargets.Add('claude') | Out-Null }
         }
         else {
-            # USER-level config (codex/copilot/cursor) -> per-machine launcher; provisioned PROACTIVELY
-            # regardless of whether the host binary is currently on PATH (the user may install it later).
+            # USER-level config (codex/copilot/cursor) -> per-machine launcher; Antigravity -> project
+            # .agents/hooks.json. Provisioned PROACTIVELY regardless of whether the host binary is currently
+            # on PATH (the user may install it later).
             $hostTargets.Add($hostKind) | Out-Null
         }
     }
