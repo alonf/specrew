@@ -233,9 +233,32 @@ function Invoke-ContinuousCoReviewReviewerHostAdapterCommand {
 
     $readOnlyPolicy = Get-ContinuousCoReviewReadOnlyInvocationPolicy -Executable $Executable -ArgumentList $ArgumentList
     $effectiveArgumentList = @($ArgumentList) + @($readOnlyPolicy.arguments)
+    $standardInputPath = $RequestBundlePath
+    if ((Get-ContinuousCoReviewAdapterValue -Object $Request -Name 'schema_version') -eq '2.0') {
+        try {
+            if (-not (Get-Command -Name 'New-ContinuousCoReviewPrompt' -ErrorAction SilentlyContinue)) {
+                throw 'Review prompt composer is not loaded.'
+            }
+            $prompt = New-ContinuousCoReviewPrompt -Request $Request -SchemaRoot $SchemaRoot -CreatedAt $CreatedAt
+            $promptPath = Join-Path $workingDirectory 'review-prompt.md'
+            Write-ContinuousCoReviewPrompt -Prompt $prompt -Path $promptPath | Out-Null
+            $standardInputPath = $promptPath
+        }
+        catch {
+            $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $effectiveArgumentList -AttemptNumber $AttemptNumber -ExitCode $null -FailureCategory 'schema-mismatch' -CreatedAt $CreatedAt -ReadOnlyModeRequested:([bool] $readOnlyPolicy.requested) -ReadOnlyModeSupported:([bool] $readOnlyPolicy.supported) -ReadOnlyModeDetail $readOnlyPolicy.detail
+            $failure = New-ContinuousCoReviewInfrastructureFailure -RunId $Request.run_id -InvocationId $invocation.invocation_id -Category 'schema-mismatch' -Message 'ReviewRequest.v2 could not be composed into the adapter-bound ReviewPrompt.' -SafeDetails ([pscustomobject]@{ adapter_id = $AdapterId; prompt_composition = 'failed' }) -CreatedAt $CreatedAt
+            return [pscustomobject][ordered]@{
+                kind                   = 'infrastructure-failure'
+                provider_invocation    = $invocation
+                findings_result        = $null
+                infrastructure_failure = $failure
+            }
+        }
+    }
+
     $processInvoker = if ($InvokeProcess) { $InvokeProcess } else { ${function:Invoke-ContinuousCoReviewAdapterProcess} }
     try {
-        $processResult = & $processInvoker $Executable ([string[]] $effectiveArgumentList) $RequestBundlePath $timeoutSeconds $workingDirectory
+        $processResult = & $processInvoker $Executable ([string[]] $effectiveArgumentList) $standardInputPath $timeoutSeconds $workingDirectory
     }
     catch {
         $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $effectiveArgumentList -AttemptNumber $AttemptNumber -ExitCode $null -FailureCategory 'command-invocation-failure' -CreatedAt $CreatedAt -ReadOnlyModeRequested:([bool] $readOnlyPolicy.requested) -ReadOnlyModeSupported:([bool] $readOnlyPolicy.supported) -ReadOnlyModeDetail $readOnlyPolicy.detail
