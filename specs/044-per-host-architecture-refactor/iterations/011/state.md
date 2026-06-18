@@ -4,7 +4,7 @@
 **Last Completed Task**: T005 (artifacts + lint + commit + push)
 **Tasks Remaining**: (none)
 **In Progress**: (none)
-**Baseline Ref**: (pending — captured at commit time)
+**Baseline Ref**: ec658b58
 **Updated**: 2026-05-25T00:00:00Z
 **Current Phase**: iteration-closeout
 **Iteration Status**: complete
