@@ -105,4 +105,57 @@ Describe 'Proposal 197 T034 TG-011 reviewer-host-adapter-codex-exec obeys implem
         $validation.Valid | Should Be $true
         $failureJson | Should Not Match '(?i)secret|token|raw transcript|raw_stdout|raw_stderr'
     }
+
+    It 'resolves a Windows codex.ps1 shim through the default process path while preserving read-only argv summary' {
+        $runningOnWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+        if (-not $runningOnWindows) {
+            return
+        }
+
+        $shimDirectory = Join-Path $TestDrive 'shim-bin'
+        New-Item -ItemType Directory -Path $shimDirectory -Force | Out-Null
+        $expectedJsonBytes = [System.Text.Encoding]::UTF8.GetBytes((New-T034FindingsResultJson))
+        $expectedJsonBase64 = [Convert]::ToBase64String($expectedJsonBytes)
+        $shimPath = Join-Path $shimDirectory 'codex.ps1'
+        @(
+            'param([Parameter(ValueFromRemainingArguments = $true)][string[]] $ShimArgs)'
+            '$stdinText = [Console]::In.ReadToEnd()'
+            "if (-not (`$ShimArgs -contains 'exec')) { exit 41 }"
+            "if (-not (`$ShimArgs -contains '--sandbox')) { exit 42 }"
+            "if (-not (`$ShimArgs -contains 'read-only')) { exit 43 }"
+            "if (-not (`$ShimArgs -contains '--output-last-message')) { exit 44 }"
+            'if ([string]::IsNullOrWhiteSpace($stdinText)) { exit 47 }'
+            '$outputIndex = [array]::IndexOf($ShimArgs, ''--output-last-message'')'
+            'if ($outputIndex -lt 0 -or ($outputIndex + 1) -ge $ShimArgs.Count) { exit 46 }'
+            '$outputPath = $ShimArgs[$outputIndex + 1]'
+            '$outputFullPath = if ([System.IO.Path]::IsPathRooted($outputPath)) { $outputPath } else { Join-Path (Get-Location).Path $outputPath }'
+            "`$jsonBytes = [Convert]::FromBase64String('$expectedJsonBase64')"
+            'Set-Content -LiteralPath $outputFullPath -Value ([System.Text.Encoding]::UTF8.GetString($jsonBytes)) -Encoding UTF8 -NoNewline'
+            '[Console]::Out.WriteLine(''codex progress output is intentionally not FindingsResult JSON'')'
+        ) | Set-Content -LiteralPath $shimPath -Encoding UTF8
+
+        $oldPath = $env:Path
+        try {
+            $env:Path = "$shimDirectory;$oldPath"
+            $command = Get-T034Command
+            $requestPath = Join-Path $TestDrive 'request-bundle-shim.json'
+            Set-Content -LiteralPath $requestPath -Value '{}' -Encoding UTF8
+
+            $result = & $command -Request (New-T034Request) -RequestBundlePath $requestPath -SchemaRoot $script:SchemaRoot -CreatedAt $script:CreatedAt
+            $validation = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $result.findings_result
+
+            $result.kind | Should Be 'findings-result'
+            $result.provider_invocation.argv_summary[0] | Should Be 'codex'
+            ($result.provider_invocation.argv_summary -contains 'exec') | Should Be $true
+            ($result.provider_invocation.argv_summary -contains '--sandbox') | Should Be $true
+            ($result.provider_invocation.argv_summary -contains 'read-only') | Should Be $true
+            ($result.provider_invocation.argv_summary -contains '--output-last-message') | Should Be $true
+            $result.provider_invocation.readonly_mode_supported | Should Be $true
+            $result.provider_invocation.readonly_mode_detail | Should Be 'codex exec --sandbox read-only'
+            $validation.Valid | Should Be $true
+        }
+        finally {
+            $env:Path = $oldPath
+        }
+    }
 }

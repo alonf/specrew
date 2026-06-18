@@ -48,6 +48,21 @@ function Get-ContinuousCoReviewInstructionContent {
     }
 }
 
+function Get-ContinuousCoReviewFindingsResultContractContent {
+    param(
+        [string] $SchemaRoot
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($SchemaRoot)) {
+        $schemaPath = Join-Path $SchemaRoot 'findings-result.schema.json'
+        if (Test-Path -LiteralPath $schemaPath -PathType Leaf) {
+            return Get-Content -LiteralPath $schemaPath -Raw
+        }
+    }
+
+    return 'FindingsResult.v1 requires schema_version, run_id, status, findings, and created_at. Each finding must use finding_id, source_run_id, location, severity, kind, design_reference, comment, disposition, and resolution; do not emit extra properties.'
+}
+
 function New-ContinuousCoReviewPrompt {
     param(
         [Parameter(Mandatory)]
@@ -81,6 +96,7 @@ function New-ContinuousCoReviewPrompt {
     $visibilityJson = ConvertTo-ReviewerContractCanonicalJson -InputObject $visibilityPolicy
     $doPolicyJson = ConvertTo-ReviewerContractCanonicalJson -InputObject $doPolicy
     $priorFindingsJson = ConvertTo-ReviewerContractCanonicalJson -InputObject $priorFindings
+    $findingsResultContract = Get-ContinuousCoReviewFindingsResultContractContent -SchemaRoot $SchemaRoot
     $promptContent = @(
         '# Specrew Continuous Co-Review Runtime Prompt',
         '',
@@ -118,7 +134,10 @@ function New-ContinuousCoReviewPrompt {
         '## Full ReviewRequest.v2 JSON',
         $requestJson,
         '',
-        'Return only valid FindingsResult.v1 JSON.'
+        '## FindingsResult.v1 JSON Schema',
+        $findingsResultContract,
+        '',
+        'Return only valid FindingsResult.v1 JSON. Use `finding_id`, not `id`; do not emit properties absent from the schema. Return JSON only, with no Markdown or prose.'
     ) -join "`n"
 
     if ([string]::IsNullOrWhiteSpace($promptContent)) {

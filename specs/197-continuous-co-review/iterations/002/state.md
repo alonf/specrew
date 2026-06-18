@@ -5,7 +5,7 @@
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: a5f1b3ac44a41e82ca4514e266c43a637e17e1cd
-**Updated**: 2026-06-19T00:20:00Z
+**Updated**: 2026-06-19T02:37:08Z
 
 ## Execution Summary
 
@@ -18,6 +18,16 @@
 - T051 complete: remote-main sync evidence from f31e0c74b53c4652bf7a6aff575dd90cf9a89c19 accepted, with fresh status confirming HEAD equals origin/197-continuous-co-review and no drift before runtime repair.
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
 - Iteration 002 implementation is complete and ready for the implement -> review boundary stop.
+
+## Lockout-Safe Repair Evidence
+
+- Planner repair for `B-197-I002-001` completed under reviewer lockout without advancing retro or closeout. Scope stayed within the reviewer host adapter/prompt path, deterministic continuous-co-review tests, and this Iteration 002 state artifact.
+- Windows Codex live invocation now resolves `codex.ps1` through a PowerShell `-File` argv path while keeping the logical provider invocation summary as `codex exec --sandbox read-only`; non-Windows behavior remains direct process argv invocation.
+- Deterministic coverage added for a real `.ps1` shim on `PATH` using the adapter default process path, including stdin delivery, `--sandbox read-only`, Codex `--output-last-message`, and schema-valid `FindingsResult.v1` normalization.
+- The adapter-bound prompt now embeds the `FindingsResult.v1` JSON schema and explicitly prohibits extra properties so live reviewers have the concrete output contract, not only the contract name.
+- Focused validation passed: prompt composer, Codex adapter, mutation guard, prompt adapter seam, execution engine, and Claude adapter suites passed `24/24` with repo-local `TEMP`/`TMP`.
+- Live Codex adapter shim smoke passed through the implemented path: `kind=findings-result`, `FindingsResult.v1` valid, exit code `0`, argv summary `codex exec --sandbox read-only --output-last-message reviewer-last-message.json`.
+- Actual Iteration 002 live Codex smoke was attempted through the implemented execution path against baseline `e54cb30cf2d8a6b796572a82e82e3eb4258f47b2`: `kind=findings-result`, `FindingsResult.v1` valid, exit code `0`, read-only supported, mutation guard clean, changed paths `27`, diff chars `148374`. No raw transcript was persisted here.
 
 ## Notes
 

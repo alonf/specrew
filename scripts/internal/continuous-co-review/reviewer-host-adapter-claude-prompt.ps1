@@ -62,6 +62,81 @@ function Get-ContinuousCoReviewReadOnlyInvocationPolicy {
     }
 }
 
+function Test-ContinuousCoReviewWindowsPlatform {
+    return [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
+}
+
+function Get-ContinuousCoReviewCurrentPowerShellExecutable {
+    $currentProcessPath = $null
+    try {
+        $currentProcessPath = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
+    }
+    catch {
+        $currentProcessPath = $null
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($currentProcessPath) -and (Test-Path -LiteralPath $currentProcessPath -PathType Leaf)) {
+        return $currentProcessPath
+    }
+
+    foreach ($commandName in @('pwsh', 'powershell')) {
+        $command = Get-Command -Name $commandName -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Path)) {
+            return $command.Path
+        }
+    }
+
+    return 'pwsh'
+}
+
+function Resolve-ContinuousCoReviewAdapterProcessCommand {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Executable,
+
+        [string[]] $ArgumentList = @()
+    )
+
+    if (-not (Test-ContinuousCoReviewWindowsPlatform)) {
+        return [pscustomobject][ordered]@{
+            FileName     = $Executable
+            ArgumentList = @($ArgumentList)
+        }
+    }
+
+    $resolvedPath = $null
+    if ((Test-Path -LiteralPath $Executable -PathType Leaf) -and ([System.IO.Path]::GetExtension($Executable) -ieq '.ps1')) {
+        $resolvedPath = (Resolve-Path -LiteralPath $Executable).Path
+    }
+    else {
+        $command = Get-Command -Name $Executable -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace($command.Path) -and ([System.IO.Path]::GetExtension($command.Path) -ieq '.ps1')) {
+            $resolvedPath = $command.Path
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($resolvedPath)) {
+        return [pscustomobject][ordered]@{
+            FileName     = $Executable
+            ArgumentList = @($ArgumentList)
+        }
+    }
+
+    return [pscustomobject][ordered]@{
+        FileName     = Get-ContinuousCoReviewCurrentPowerShellExecutable
+        ArgumentList = @('-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', $resolvedPath) + @($ArgumentList)
+    }
+}
+
+function Test-ContinuousCoReviewCodexExecutable {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Executable
+    )
+
+    return ([System.IO.Path]::GetFileNameWithoutExtension($Executable).ToLowerInvariant() -eq 'codex')
+}
+
 function Invoke-ContinuousCoReviewAdapterProcess {
     param(
         [Parameter(Mandatory)]
@@ -77,9 +152,11 @@ function Invoke-ContinuousCoReviewAdapterProcess {
         [string] $WorkingDirectory
     )
 
+    $resolvedCommand = Resolve-ContinuousCoReviewAdapterProcessCommand -Executable $Executable -ArgumentList $ArgumentList
+
     $processStart = [System.Diagnostics.ProcessStartInfo]::new()
-    $processStart.FileName = $Executable
-    foreach ($argument in @($ArgumentList)) {
+    $processStart.FileName = $resolvedCommand.FileName
+    foreach ($argument in @($resolvedCommand.ArgumentList)) {
         [void] $processStart.ArgumentList.Add($argument)
     }
     $processStart.RedirectStandardInput = $true
@@ -234,6 +311,13 @@ function Invoke-ContinuousCoReviewReviewerHostAdapterCommand {
     $readOnlyPolicy = Get-ContinuousCoReviewReadOnlyInvocationPolicy -Executable $Executable -ArgumentList $ArgumentList
     $effectiveArgumentList = @($ArgumentList) + @($readOnlyPolicy.arguments)
     $standardInputPath = $RequestBundlePath
+    $lastMessagePath = $null
+    if (Test-ContinuousCoReviewCodexExecutable -Executable $Executable) {
+        $lastMessageRef = 'reviewer-last-message.json'
+        $lastMessagePath = Join-Path $workingDirectory $lastMessageRef
+        Remove-Item -LiteralPath $lastMessagePath -Force -ErrorAction SilentlyContinue
+        $effectiveArgumentList = @($effectiveArgumentList) + @('--output-last-message', $lastMessageRef)
+    }
     if ((Get-ContinuousCoReviewAdapterValue -Object $Request -Name 'schema_version') -eq '2.0') {
         try {
             if (-not (Get-Command -Name 'New-ContinuousCoReviewPrompt' -ErrorAction SilentlyContinue)) {
@@ -274,6 +358,12 @@ function Invoke-ContinuousCoReviewReviewerHostAdapterCommand {
     $exitCode = if ($null -eq $processResult.exit_code) { $null } else { [int] $processResult.exit_code }
     $timedOut = [bool] (Get-ContinuousCoReviewAdapterValue -Object $processResult -Name 'timed_out' -DefaultValue $false)
     $stdout = [string] (Get-ContinuousCoReviewAdapterValue -Object $processResult -Name 'stdout' -DefaultValue '')
+    if (-not [string]::IsNullOrWhiteSpace($lastMessagePath) -and (Test-Path -LiteralPath $lastMessagePath -PathType Leaf)) {
+        $lastMessage = Get-Content -LiteralPath $lastMessagePath -Raw
+        if (-not [string]::IsNullOrWhiteSpace($lastMessage)) {
+            $stdout = $lastMessage
+        }
+    }
     $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $effectiveArgumentList -AttemptNumber $AttemptNumber -ExitCode $exitCode -FailureCategory $null -CreatedAt $CreatedAt -ReadOnlyModeRequested:([bool] $readOnlyPolicy.requested) -ReadOnlyModeSupported:([bool] $readOnlyPolicy.supported) -ReadOnlyModeDetail $readOnlyPolicy.detail
 
     $normalized = ConvertTo-ContinuousCoReviewNormalizedResult -RunId $Request.run_id -InvocationId $invocation.invocation_id -ExitCode $(if ($null -eq $exitCode) { -1 } else { $exitCode }) -Stdout $stdout -TimedOut:$timedOut -SchemaRoot $SchemaRoot -CreatedAt $CreatedAt

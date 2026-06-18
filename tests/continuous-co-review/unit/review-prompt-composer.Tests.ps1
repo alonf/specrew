@@ -90,6 +90,8 @@ Describe 'Proposal 197 T053 ReviewRequest.v2 prompt composer' {
         $content | Should Match 'Visibility Policy'
         $content | Should Match 'Do Policy'
         $content | Should Match 'FindingsResult.v1'
+        $content | Should Match 'finding_id'
+        $content | Should Match 'do not emit properties absent from the schema'
     }
 
     It 'rejects empty or missing exact diff content before prompt composition' {
