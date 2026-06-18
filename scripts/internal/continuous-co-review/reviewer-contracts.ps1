@@ -624,6 +624,7 @@ function Get-ReviewerInfrastructureFailureCategoryValues {
         'malformed-durable-state'
         'fallback-exhausted'
         'cleanup-failed'
+        'workspace-mutation-invalidated'
     )
 }
 

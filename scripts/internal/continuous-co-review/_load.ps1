@@ -15,6 +15,7 @@ $proposal197ReviewerModules = @(
     'reviewer-authorization-gate.ps1'
     'reviewer-selection-policy.ps1'
     'reviewer-host-adapter-registry.ps1'
+    'workspace-mutation-guard.ps1'
     'reviewer-host-adapter-fixture.ps1'
     'reviewer-host-adapter-claude-prompt.ps1'
     'reviewer-host-adapter-codex-exec.ps1'

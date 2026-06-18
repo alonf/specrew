@@ -149,6 +149,75 @@ function Test-ContinuousCoReviewAvailabilityFallbackAllowed {
     return [bool] (Get-ContinuousCoReviewExecutionValue -Object $Candidate -Name 'exact_alternate_authorized' -DefaultValue $false)
 }
 
+
+function New-ContinuousCoReviewMutationInvalidatedAttemptResult {
+    param(
+        [Parameter(Mandatory)]
+        $Request,
+
+        [AllowNull()]
+        $ProviderInvocation,
+
+        [Parameter(Mandatory)]
+        $MutationGuard,
+
+        [datetime] $CreatedAt = [datetime]::UtcNow
+    )
+
+    $invocationId = if ($null -ne $ProviderInvocation) { $ProviderInvocation.invocation_id } else { $null }
+    $failure = New-ContinuousCoReviewInfrastructureFailure -RunId $Request.run_id -InvocationId $invocationId -Category 'workspace-mutation-invalidated' -Message 'Reviewer execution mutated source, Git, or Specrew state and was invalidated as unsafe.' -SafeDetails ([pscustomobject][ordered]@{ mutation_guard = $MutationGuard }) -CreatedAt $CreatedAt
+    return [pscustomobject][ordered]@{
+        kind                   = 'infrastructure-failure'
+        provider_invocation    = $ProviderInvocation
+        findings_result        = $null
+        infrastructure_failure = $failure
+        mutation_guard         = $MutationGuard
+    }
+}
+
+function Invoke-ContinuousCoReviewGuardedAdapterAttempt {
+    param(
+        [Parameter(Mandatory)]
+        [scriptblock] $AdapterInvoker,
+
+        [Parameter(Mandatory)]
+        $Candidate,
+
+        [Parameter(Mandatory)]
+        $Request,
+
+        [Parameter(Mandatory)]
+        $RequestBundle,
+
+        [Parameter(Mandatory)]
+        [int] $AttemptNumber,
+
+        [string] $RepoRoot,
+
+        [scriptblock] $GitCommand,
+
+        [datetime] $CreatedAt = [datetime]::UtcNow
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RepoRoot) -or -not (Get-Command -Name 'New-ContinuousCoReviewWorkspaceMutationSnapshot' -ErrorAction SilentlyContinue)) {
+        return & $AdapterInvoker $Candidate $Request $RequestBundle $AttemptNumber
+    }
+
+    $excludeRoots = @($RequestBundle.workspace_path)
+    $before = New-ContinuousCoReviewWorkspaceMutationSnapshot -RepoRoot $RepoRoot -ExcludeRoots $excludeRoots -GitCommand $GitCommand -CreatedAt $CreatedAt
+    $attemptResult = & $AdapterInvoker $Candidate $Request $RequestBundle $AttemptNumber
+    $after = New-ContinuousCoReviewWorkspaceMutationSnapshot -RepoRoot $RepoRoot -ExcludeRoots $excludeRoots -GitCommand $GitCommand -CreatedAt $CreatedAt
+    $mutationGuard = Compare-ContinuousCoReviewWorkspaceMutationSnapshot -Before $before -After $after
+    if ([bool] $mutationGuard.mutated) {
+        return New-ContinuousCoReviewMutationInvalidatedAttemptResult -Request $Request -ProviderInvocation $attemptResult.provider_invocation -MutationGuard $mutationGuard -CreatedAt $CreatedAt
+    }
+
+    if ($null -ne $attemptResult -and ($attemptResult.PSObject.Properties.Name -notcontains 'mutation_guard')) {
+        $attemptResult | Add-Member -NotePropertyName 'mutation_guard' -NotePropertyValue $mutationGuard
+    }
+    return $attemptResult
+}
+
 function Invoke-ContinuousCoReviewDefaultAdapter {
     param(
         [Parameter(Mandatory)]
@@ -220,6 +289,7 @@ function Copy-ContinuousCoReviewExecutionAttemptResult {
         attempted_candidates    = @($AttemptedCandidates)
         request_bundle          = $RequestBundle
         readonly_boundary       = 'fresh-context-request-bundle-only'
+        mutation_guard          = Get-ContinuousCoReviewExecutionValue -Object $AttemptResult -Name 'mutation_guard'
     }
 }
 
@@ -249,16 +319,14 @@ function Invoke-ContinuousCoReviewReviewerExecution {
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
-    if ($GitCommand) {
-        & $GitCommand @('status', '--short') | Out-Null
-    }
-
     $bundle = if ($null -ne $RequestBundle) {
         $RequestBundle
     }
     else {
         New-ContinuousCoReviewExecutionRequestBundle -RunRoot $RunRoot -Request $Request
     }
+
+    $guardRepoRoot = if (-not [string]::IsNullOrWhiteSpace($ReadOnlyRoot)) { (Resolve-Path -LiteralPath $ReadOnlyRoot).Path } else { (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../../..')).Path }
 
     $authorizedCandidates = @(
         foreach ($candidate in @($Candidates)) {
@@ -293,7 +361,7 @@ function Invoke-ContinuousCoReviewReviewerExecution {
     }
 
     [void] $attempted.Add($primaryCandidate)
-    $primaryResult = & $adapterInvoker $primaryCandidate $Request $bundle 1
+    $primaryResult = Invoke-ContinuousCoReviewGuardedAdapterAttempt -AdapterInvoker $adapterInvoker -Candidate $primaryCandidate -Request $Request -RequestBundle $bundle -AttemptNumber 1 -RepoRoot $guardRepoRoot -GitCommand $GitCommand -CreatedAt $CreatedAt
     if ($primaryResult.kind -eq 'findings-result') {
         return Copy-ContinuousCoReviewExecutionAttemptResult -Request $Request -AttemptResult $primaryResult -RequestBundle $bundle -FallbackUsed:$false -AttemptedCandidates @($attempted)
     }
@@ -311,6 +379,6 @@ function Invoke-ContinuousCoReviewReviewerExecution {
     }
 
     [void] $attempted.Add($fallbackCandidate)
-    $fallbackResult = & $adapterInvoker $fallbackCandidate $Request $bundle 2
+    $fallbackResult = Invoke-ContinuousCoReviewGuardedAdapterAttempt -AdapterInvoker $adapterInvoker -Candidate $fallbackCandidate -Request $Request -RequestBundle $bundle -AttemptNumber 2 -RepoRoot $guardRepoRoot -GitCommand $GitCommand -CreatedAt $CreatedAt
     return Copy-ContinuousCoReviewExecutionAttemptResult -Request $Request -AttemptResult $fallbackResult -RequestBundle $bundle -FallbackUsed:$true -AttemptedCandidates @($attempted)
 }

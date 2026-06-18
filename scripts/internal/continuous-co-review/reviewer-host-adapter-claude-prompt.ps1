@@ -35,6 +35,33 @@ function ConvertTo-ContinuousCoReviewAdapterIsoTimestamp {
     return $Timestamp.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
+
+function Get-ContinuousCoReviewReadOnlyInvocationPolicy {
+    param(
+        [Parameter(Mandatory)]
+        [string] $Executable,
+
+        [string[]] $ArgumentList = @()
+    )
+
+    $normalizedExecutable = [System.IO.Path]::GetFileNameWithoutExtension($Executable).ToLowerInvariant()
+    if ($normalizedExecutable -eq 'codex') {
+        return [pscustomobject][ordered]@{
+            requested = $true
+            supported = $true
+            detail    = 'codex exec --sandbox read-only'
+            arguments = @('--sandbox', 'read-only')
+        }
+    }
+
+    return [pscustomobject][ordered]@{
+        requested = $true
+        supported = $false
+        detail    = 'host has no supported read-only/no-write flag in Proposal 197 adapter catalog; mutation guard remains authoritative'
+        arguments = @()
+    }
+}
+
 function Invoke-ContinuousCoReviewAdapterProcess {
     param(
         [Parameter(Mandatory)]
@@ -130,7 +157,13 @@ function New-ContinuousCoReviewAdapterInvocation {
         [AllowNull()]
         [string] $FailureCategory,
 
-        [datetime] $CreatedAt = [datetime]::UtcNow
+        [datetime] $CreatedAt = [datetime]::UtcNow,
+
+        [bool] $ReadOnlyModeRequested = $true,
+
+        [bool] $ReadOnlyModeSupported = $false,
+
+        [string] $ReadOnlyModeDetail = 'not-recorded'
     )
 
     $providerRequest = Get-ContinuousCoReviewAdapterValue -Object $Request -Name 'provider_request'
@@ -153,6 +186,9 @@ function New-ContinuousCoReviewAdapterInvocation {
         actual_model           = $actualModel
         argv_summary           = @($Executable) + @($ArgumentList)
         working_directory_ref  = 'request-bundle-workspace'
+        readonly_mode_requested = [bool] $ReadOnlyModeRequested
+        readonly_mode_supported = [bool] $ReadOnlyModeSupported
+        readonly_mode_detail    = $ReadOnlyModeDetail
         timeout_seconds        = $timeoutSeconds
         stdout_capture_policy  = 'parse-json-only'
         stderr_capture_policy  = 'status-only'
@@ -195,12 +231,14 @@ function Invoke-ContinuousCoReviewReviewerHostAdapterCommand {
     $timeoutSeconds = [int] (Get-ContinuousCoReviewAdapterValue -Object $Candidate -Name 'timeout_seconds' -DefaultValue (Get-ContinuousCoReviewAdapterValue -Object $providerRequest -Name 'timeout_seconds' -DefaultValue 30))
     $workingDirectory = Split-Path -Parent $RequestBundlePath
 
+    $readOnlyPolicy = Get-ContinuousCoReviewReadOnlyInvocationPolicy -Executable $Executable -ArgumentList $ArgumentList
+    $effectiveArgumentList = @($ArgumentList) + @($readOnlyPolicy.arguments)
     $processInvoker = if ($InvokeProcess) { $InvokeProcess } else { ${function:Invoke-ContinuousCoReviewAdapterProcess} }
     try {
-        $processResult = & $processInvoker $Executable ([string[]] $ArgumentList) $RequestBundlePath $timeoutSeconds $workingDirectory
+        $processResult = & $processInvoker $Executable ([string[]] $effectiveArgumentList) $RequestBundlePath $timeoutSeconds $workingDirectory
     }
     catch {
-        $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $ArgumentList -AttemptNumber $AttemptNumber -ExitCode $null -FailureCategory 'command-invocation-failure' -CreatedAt $CreatedAt
+        $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $effectiveArgumentList -AttemptNumber $AttemptNumber -ExitCode $null -FailureCategory 'command-invocation-failure' -CreatedAt $CreatedAt -ReadOnlyModeRequested:([bool] $readOnlyPolicy.requested) -ReadOnlyModeSupported:([bool] $readOnlyPolicy.supported) -ReadOnlyModeDetail $readOnlyPolicy.detail
         $failure = New-ContinuousCoReviewInfrastructureFailure -RunId $Request.run_id -InvocationId $invocation.invocation_id -Category 'command-invocation-failure' -Message 'Reviewer adapter process could not be invoked.' -SafeDetails ([pscustomobject]@{ adapter_id = $AdapterId }) -CreatedAt $CreatedAt
         return [pscustomobject][ordered]@{
             kind                   = 'infrastructure-failure'
@@ -213,7 +251,7 @@ function Invoke-ContinuousCoReviewReviewerHostAdapterCommand {
     $exitCode = if ($null -eq $processResult.exit_code) { $null } else { [int] $processResult.exit_code }
     $timedOut = [bool] (Get-ContinuousCoReviewAdapterValue -Object $processResult -Name 'timed_out' -DefaultValue $false)
     $stdout = [string] (Get-ContinuousCoReviewAdapterValue -Object $processResult -Name 'stdout' -DefaultValue '')
-    $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $ArgumentList -AttemptNumber $AttemptNumber -ExitCode $exitCode -FailureCategory $null -CreatedAt $CreatedAt
+    $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $effectiveArgumentList -AttemptNumber $AttemptNumber -ExitCode $exitCode -FailureCategory $null -CreatedAt $CreatedAt -ReadOnlyModeRequested:([bool] $readOnlyPolicy.requested) -ReadOnlyModeSupported:([bool] $readOnlyPolicy.supported) -ReadOnlyModeDetail $readOnlyPolicy.detail
 
     $normalized = ConvertTo-ContinuousCoReviewNormalizedResult -RunId $Request.run_id -InvocationId $invocation.invocation_id -ExitCode $(if ($null -eq $exitCode) { -1 } else { $exitCode }) -Stdout $stdout -TimedOut:$timedOut -SchemaRoot $SchemaRoot -CreatedAt $CreatedAt
     if ($normalized.kind -eq 'infrastructure-failure') {

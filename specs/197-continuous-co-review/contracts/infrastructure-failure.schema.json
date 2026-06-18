@@ -23,7 +23,8 @@
         "command-invocation-failure",
         "malformed-durable-state",
         "fallback-exhausted",
-        "cleanup-failed"
+        "cleanup-failed",
+        "workspace-mutation-invalidated"
       ]
     },
     "message": { "type": "string", "minLength": 1 },
