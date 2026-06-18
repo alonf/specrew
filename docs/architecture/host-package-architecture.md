@@ -7,7 +7,7 @@
 
 ## Why this exists
 
-Specrew supports multiple agent host CLIs — currently **Copilot**, **Claude Code**, **Codex**, and **Antigravity** — so the user can pick their preferred AI runtime at launch (`specrew start --host claude`). Before this refactor, host-specific logic was sprinkled across ~28 source files in switch statements and hardcoded enums. Adding a new host (Cursor, Windsurf, Grok Code, …) required editing every one of those files.
+Specrew supports multiple agent host CLIs — currently **Copilot**, **Claude Code**, **Cursor**, **Codex**, and **Antigravity** — so the user can pick their preferred AI runtime at launch (`specrew start --host claude`) or by launching the host binary directly after `specrew init` (`claude`, `cursor-agent`, `codex`, `copilot`, or `agy`). Before this refactor, host-specific logic was sprinkled across ~28 source files in switch statements and hardcoded enums. Adding a new host (Windsurf, Grok Code, …) required editing every one of those files.
 
 This architecture moves to the **Open-Closed Principle**: host-neutral core code is **closed for modification** when adding a host; per-host packages are **open for extension** via new folders.
 
@@ -25,6 +25,7 @@ hosts/
 │   └── coordinator-rules.psd1     # Declarative coordinator-prompt surgery rules
 ├── claude/   (same shape)
 ├── codex/    (same shape)
+├── cursor/   (same shape)
 └── antigravity/   (same shape)
 ```
 
@@ -51,6 +52,7 @@ flowchart TB
         COP["copilot/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
         CLA["claude/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
         COD["codex/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
+        CUR["cursor/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
         AGY["antigravity/<br/>host.psd1<br/>handlers.ps1<br/>coordinator-rules.psd1"]
     end
 
@@ -59,6 +61,7 @@ flowchart TB
         SQUAD[".squad/agents/&lt;role&gt;/charter.md<br/><i>(Squad CLI reads)</i>"]
         CLD_NAT[".claude/agents/&lt;role&gt;.md<br/><i>(YAML frontmatter)</i>"]
         CDX_NAT[".codex/agents/&lt;role&gt;.toml<br/><i>(name/description/developer_instructions)</i>"]
+        CUR_NAT[".cursor/rules/&lt;role&gt;.mdc<br/><i>(MDC project rule)</i>"]
         AGY_NAT[".agents/agents/&lt;role&gt;.md<br/><i>(YAML frontmatter)</i>"]
     end
 
@@ -68,22 +71,26 @@ flowchart TB
     REG -->|"dispatch InstallCrewRuntime"| COP
     REG -->|"dispatch InstallCrewRuntime"| CLA
     REG -->|"dispatch InstallCrewRuntime"| COD
+    REG -->|"dispatch InstallCrewRuntime"| CUR
     REG -->|"dispatch InstallCrewRuntime"| AGY
     TEAM ==>|"read canonical"| COP
     TEAM ==>|"read canonical"| CLA
     TEAM ==>|"read canonical"| COD
+    TEAM ==>|"read canonical"| CUR
     TEAM ==>|"read canonical"| AGY
     COP -->|"write"| SQUAD
     CLA -->|"write"| CLD_NAT
     COD -->|"write"| CDX_NAT
+    CUR -->|"write"| CUR_NAT
     AGY -->|"write"| AGY_NAT
-    START -->|"3. launch host CLI"| LAUNCH[("Host CLI<br/>copilot / claude / codex / agy")]
+    START -->|"3. launch host CLI"| LAUNCH[("Host CLI<br/>copilot / claude / cursor-agent / codex / agy")]
 
     style TEAM fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
     style REG fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     style SQUAD fill:#f3e5f5,stroke:#7b1fa2
     style CLD_NAT fill:#f3e5f5,stroke:#7b1fa2
     style CDX_NAT fill:#f3e5f5,stroke:#7b1fa2
+    style CUR_NAT fill:#f3e5f5,stroke:#7b1fa2
     style AGY_NAT fill:#f3e5f5,stroke:#7b1fa2
 ```
 
@@ -136,7 +143,7 @@ PowerShell script that implements what the host DOES. Naming uses the manifest `
 | `Get-<Kind>Signals` | Detect host-set environment variables (run-time host context) | `string[]` of env-var names that are set |
 | `Install-<Kind>CrewRuntime` *(Proposal 108 Slice 9)* | Read canonical `.specrew/team/agents/<role>.md` files and write to this host's native subagent location (`.squad/agents/<role>/charter.md`, `.claude/agents/<role>.md`, `.codex/agents/<role>.toml`, `.agents/agents/<role>.md`). Idempotent; runs on every `specrew start --host <kind>`. | `pscustomobject @{ Actions[]; CrewRuntimePath; Notices[] }` |
 
-**The 5th function deserves its own architectural note.** `Install-<Kind>CrewRuntime` is the contract function that closes the user-observed gap "Claude has no team of agents like Copilot+Squad." Each host's body reads from the canonical Specrew-owned location and translates to the host's native subagent format. The translation is host-specific (Codex uses TOML with `developer_instructions =`; Claude/Antigravity use markdown with YAML frontmatter; Copilot's Squad CLI uses `.md` charter files), but the **CONTENT — the actual charters defining each role's identity, expertise, and discipline — is identical across all 4 hosts** because they all derive from the same canonical source.
+**The 5th function deserves its own architectural note.** `Install-<Kind>CrewRuntime` is the contract function that closes the user-observed gap "Claude has no team of agents like Copilot+Squad." Each host's body reads from the canonical Specrew-owned location and translates to the host's native subagent format. The translation is host-specific (Codex uses TOML with `developer_instructions =`; Claude/Antigravity use markdown with YAML frontmatter; Cursor uses MDC project rules; Copilot's Squad CLI uses `.md` charter files), but the **CONTENT — the actual charters defining each role's identity, expertise, and discipline — is identical across all 5 hosts** because they all derive from the same canonical source.
 
 ### 3. `coordinator-rules.psd1` — declarative coordinator-prompt surgery
 
@@ -222,7 +229,7 @@ The following surfaces no longer have per-host switches; they iterate the regist
 | Files with hardcoded 4-host enum tuple | 4+ in active dispatch paths | 1 (`scripts/specrew-init.ps1` — agent-enable validator + iteration-config.yml template; documented Phase D follow-up; allow-listed in firewall test) | -3 from active dispatch |
 | Files with hardcoded 3-host enum tuple | several | 1 (`tests/manual/multi-host-smoke.ps1` — intentional smoke-test fixture) + allow-listed | -several |
 | Per-host switch statements in active dispatch | ~5 clusters in specrew-start.ps1 + 12-arm in host-flag-translation.ps1 + 3-rule surgery in coordinator-prompt-surgery.ps1 + 4-arm × 4 in detect-hosts.ps1 | 0 (all registry-driven) | structurally impossible to drift |
-| Per-host launch dispatch | 80-line switch in specrew-start.ps1 with 3 hosts (Antigravity missing — latent bug) | 8-line delegate; all 4 hosts via registry | -90% + closed bug |
+| Per-host launch dispatch | 80-line switch in specrew-start.ps1 with 3 hosts (Antigravity missing — latent bug) | registry delegate; all 5 hosts via manifests | -90% + closed bug |
 | Per-host flag translation | 121-line file with 12-arm switch | 55-line shim; 4 small handler files | -55% on shim, +data-driven |
 | Coordinator-prompt surgery | 123-line file with hardcoded patterns | 130-line rules engine + 4 declarative `coordinator-rules.psd1` files | data-driven |
 | `detect-hosts.ps1` 4 lookup functions | Hardcoded switches duplicating manifest data | 1-line manifest reads via `Get-HostManifest` | -150 lines / +manifest source-of-truth |
@@ -232,7 +239,7 @@ The following surfaces no longer have per-host switches; they iterate the regist
 
 ## Test coverage
 
-- **`tests/integration/host-registry.tests.ps1`** — 14 assertions: registry discovery, manifest validation, kind/folder parity, legacy parity (registry matches `Get-SpecrewSupportedHostKinds`), per-host Binary + SkillRoot parity, status filter, unknown-host throw, contract-function resolution, dispatch correctness, launch-invocation argv parity across 12 permutations (3 hosts × 4 flag combinations), flag-translation parity across 12 cells (4 hosts × 3 flags).
+- **`tests/integration/host-registry.tests.ps1`** — registry discovery, manifest validation, kind/folder parity, legacy parity (registry matches `Get-SpecrewSupportedHostKinds`), per-host Binary + SkillRoot parity, status filter, unknown-host throw, contract-function resolution, dispatch correctness, launch-invocation argv parity, and flag-translation parity across 15 cells (5 hosts × 3 flags).
 - **`tests/integration/multi-host-launch-path.tests.ps1`** — 21 assertions: full F-040 multi-host integration suite (host enums, binary names, install guidance, deferred guidance, Antigravity Gemini-deadline warning, skill-root resolution, flag-translation matrix, coordinator-prompt-surgery FR-011/012/014 invariants, launch-shape goldens, schema-v2 back-compat).
 - **`tests/integration/host-coupling-firewall.tests.ps1`** — structural test that scans all production `.ps1` files outside `hosts/` for hardcoded host-enum patterns. Allow-list contains 9 known exceptions (this test itself, the registry, two integration tests, the 3 remaining ValidateSet sites pending registry-driven validators, and 2 pre-refactor files documented as Phase D follow-up). Plus: asserts every supported host populates the manifest `InstructionsFile` field. Catches new violations on every CI run — drift becomes a CI-blocking failure, not a quiet regression.
 

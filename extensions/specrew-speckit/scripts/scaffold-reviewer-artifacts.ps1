@@ -2653,7 +2653,7 @@ if (-not $SummaryOnly) {
     # F-028: Handle -Force flag with interactive confirmation
     if ($Force) {
         # Check if review artifacts exist
-        $existingArtifacts = @($codeMapPath, $dependencyReportPath, $coverageEvidencePath, $reviewDiagramsPath) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf }
+        $existingArtifacts = @(@($codeMapPath, $dependencyReportPath, $coverageEvidencePath, $reviewDiagramsPath) | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
         
         if ($existingArtifacts.Count -gt 0) {
             $confirmMessage = @"

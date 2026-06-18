@@ -76,6 +76,12 @@ Completed 012, 001, T003, T004, FR-008, and 070dd06.
 ## Why I stopped
 I stopped because the requested review is still pending and I cannot continue safely until it is resolved.
 
+## What needs your review
+Review the identifier wording and confirm the task scope is understandable.
+
+## What happens next
+After review, I will revise the narration wording or continue to the next approved slice.
+
 ## What I need from you
 Next step: review the wording.
 '@
@@ -100,6 +106,12 @@ Completed feature 012, descriptive references in handoffs, and iteration 001, th
 ## Why I stopped
 I stopped because the Squad startup guidance edits are a restart-trigger boundary, and I cannot finish that slice safely in this session.
 
+## What needs your review
+Review the described references and the restart-trigger boundary statement.
+
+## What happens next
+After restart, the startup guidance edits can continue from the named boundary.
+
 ## What I need from you
 Next step: restart the session before the startup guidance edits continue.
 '@
@@ -123,6 +135,12 @@ Updated the validator and contract foundation (T003 and T004), the narration pro
 
 ## Why I stopped
 This slice is complete.
+
+## What needs your review
+Review the grouped task references and confirm the shared scope remains clear.
+
+## What happens next
+After review, the next narration guidance slice can proceed.
 
 ## What I need from you
 Next step: review the wording.
@@ -151,6 +169,12 @@ Completed 012, 001, T003, T004, FR-008, and 070dd06.
 
 ## Why I stopped
 This slice is complete.
+
+## What needs your review
+Review the updated narration guidance and confirm the code-block exclusion still applies.
+
+## What happens next
+After review, the excluded-surface guidance can stay as-is or be revised.
 
 ## What I need from you
 Next step: review the wording.

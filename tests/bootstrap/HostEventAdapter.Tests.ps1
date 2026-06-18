@@ -32,5 +32,21 @@ Assert-Equal $r2.host 'claude' 'host still set on malformed JSON'
 # Explicit ProjectRoot is used when the event carries no cwd.
 $r3 = ConvertFrom-SpecrewHostHookEvent -RawEvent '' -HostName claude -ProjectRoot 'C:/x'
 Assert-Equal $r3.project_root 'C:/x' 'explicit ProjectRoot used when event empty'
+Assert-True ($r3.safe_session_id -match '^launch-[a-f0-9]{32}$') 'empty event gets a per-launch fallback session token'
+
+# Blank or malformed IDs do not collapse into a global unknown bucket.
+$r4 = ConvertFrom-SpecrewHostHookEvent -RawEvent '{"session_id":"   ","source":"startup"}' -HostName claude
+$r5 = ConvertFrom-SpecrewHostHookEvent -RawEvent '{"session_id":"!!!","source":"startup"}' -HostName claude
+Assert-True ($r4.safe_session_id -match '^launch-[a-f0-9]{32}$') 'blank session id gets a per-launch fallback token'
+Assert-True ($r5.safe_session_id -match '^launch-[a-f0-9]{32}$') 'malformed session id gets a per-launch fallback token'
+Assert-True ($r4.safe_session_id -ne $r5.safe_session_id) 'fallback tokens are per launch, not shared'
+Assert-True ($r4.safe_session_id -ne 'unknown' -and $r5.safe_session_id -ne 'unknown') 'fallback tokens never use global unknown'
+
+# Antigravity uses camelCase conversation/workspace fields in the verified hook payload.
+$anti = ConvertFrom-SpecrewHostHookEvent -RawEvent '{"conversationId":"ec33ebf9-0cba-4100-8142-c61503f6c587","workspacePaths":["C:/anti/project"],"transcriptPath":"C:/anti/transcript.jsonl"}' -HostName antigravity
+Assert-Equal $anti.host 'antigravity' 'antigravity host accepted'
+Assert-Equal $anti.session_id 'ec33ebf9-0cba-4100-8142-c61503f6c587' 'antigravity conversationId becomes session_id'
+Assert-Equal $anti.safe_session_id 'ec33ebf9-0cba-4100-8142-c61503f6c587' 'antigravity conversationId is filename-safe'
+Assert-Equal $anti.project_root 'C:/anti/project' 'antigravity workspacePaths[0] becomes project_root'
 
 Write-Host 'HostEventAdapter: all tests passed.' -ForegroundColor Green

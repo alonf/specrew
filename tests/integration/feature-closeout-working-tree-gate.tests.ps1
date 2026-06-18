@@ -40,7 +40,7 @@ foreach ($pattern in @('last-validator-summary', 'start-context', 'now\\.md', 'f
 Write-Pass 'Gate exclusion patterns cover session-state churn'
 
 # Test 5: Includes feature-implementation paths
-foreach ($pattern in @("\^scripts/", "\^extensions/", "\^tests/", "\^README", "\^CHANGELOG")) {
+foreach ($pattern in @("\^scripts/", "\^extensions/", "\^\\.specify/", "\^tests/", "\^README", "\^CHANGELOG")) {
     if ($syncBoundaryContent -notmatch $pattern) {
         Write-Fail "Gate relevance pattern '$pattern' not found"
     }
@@ -318,6 +318,157 @@ if ($docsResult -notmatch 'DOCS_GATE_THREW_AS_EXPECTED') {
 }
 Remove-Item -Recurse -Force -LiteralPath $scratchDir -ErrorAction SilentlyContinue
 Write-Pass 'Gate still fires on docs/specs/.../closeout-dashboard.md (exclusion is start-anchored)'
+
+# Test 14: `.specify/extensions/` and companion `.specify` files are classified as one
+# implementation surface, excluding only session-state churn such as `.specify/feature.json`.
+$scratchDir = Join-Path -Path $repoRoot -ChildPath '.scratch\working-tree-gate-specify-companions'
+if (Test-Path -LiteralPath $scratchDir) { Remove-Item -Recurse -Force -LiteralPath $scratchDir }
+$null = New-Item -ItemType Directory -Path (Join-Path $scratchDir '.specify\extensions\specrew-speckit') -Force
+$null = New-Item -ItemType Directory -Path (Join-Path $scratchDir '.specify\templates') -Force
+$specifyCompanionTest = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+Set-Location -LiteralPath '$scratchDir'
+git init 2>&1 | Out-Null
+git config user.email 'test@specrew.local' 2>&1 | Out-Null
+git config user.name 'Test' 2>&1 | Out-Null
+Set-Content -LiteralPath '.specify/extensions/specrew-speckit/README.md' -Value '# Extension' -Encoding UTF8
+Set-Content -LiteralPath '.specify/extensions.yml' -Value 'installed: []' -Encoding UTF8
+Set-Content -LiteralPath '.specify/templates/plan-template.md' -Value '# Plan' -Encoding UTF8
+git add . 2>&1 | Out-Null
+git commit -m 'baseline specify surfaces' 2>&1 | Out-Null
+Set-Content -LiteralPath '.specify/extensions/specrew-speckit/README.md' -Value '# Extension changed' -Encoding UTF8
+Set-Content -LiteralPath '.specify/extensions.yml' -Value 'installed:`n  - specrew-speckit' -Encoding UTF8
+Set-Content -LiteralPath '.specify/templates/plan-template.md' -Value '# Plan changed' -Encoding UTF8
+. '$syncBoundaryScript'
+try {
+    Invoke-PreFeatureCloseoutWorkingTreeGate -ProjectPath '$scratchDir' -BoundaryType 'feature-closeout'
+    Write-Host 'SPECIFY_COMPANION_GATE_DID_NOT_THROW'
+}
+catch {
+    `$message = `$_.Exception.Message
+    if (
+        `$message -match '\.specify/extensions/specrew-speckit/README\.md' -and
+        `$message -match '\.specify/extensions\.yml' -and
+        `$message -match '\.specify/templates/plan-template\.md'
+    ) {
+        Write-Host 'SPECIFY_COMPANION_GATE_THREW_AS_EXPECTED'
+    } else {
+        Write-Host "SPECIFY_COMPANION_GATE_THREW_UNEXPECTED: `$message"
+    }
+}
+"@
+$specifyCompanionResult = pwsh -NoProfile -Command $specifyCompanionTest 2>&1 | Out-String
+if ($specifyCompanionResult -notmatch 'SPECIFY_COMPANION_GATE_THREW_AS_EXPECTED') {
+    Write-Fail "Gate did not classify .specify extension companions coherently. Result:`n$specifyCompanionResult"
+}
+Remove-Item -Recurse -Force -LiteralPath $scratchDir -ErrorAction SilentlyContinue
+Write-Pass 'Gate classifies .specify/extensions and companion .specify files together'
+
+# Test 15: no-upstream branches must not be told their commit "must be pushed".
+$scratchDir = Join-Path -Path $repoRoot -ChildPath '.scratch\working-tree-gate-no-upstream'
+if (Test-Path -LiteralPath $scratchDir) { Remove-Item -Recurse -Force -LiteralPath $scratchDir }
+$null = New-Item -ItemType Directory -Path (Join-Path $scratchDir 'scripts') -Force
+$noUpstreamTest = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+Set-Location -LiteralPath '$scratchDir'
+git init 2>&1 | Out-Null
+git config user.email 'test@specrew.local' 2>&1 | Out-Null
+git config user.name 'Test' 2>&1 | Out-Null
+git commit --allow-empty -m 'initial' 2>&1 | Out-Null
+Set-Content -LiteralPath 'scripts/dirty-impl.ps1' -Value 'Write-Host hi' -Encoding UTF8
+. '$syncBoundaryScript'
+try {
+    Invoke-PreFeatureCloseoutWorkingTreeGate -ProjectPath '$scratchDir' -BoundaryType 'feature-closeout'
+    Write-Host 'NO_UPSTREAM_GATE_DID_NOT_THROW'
+}
+catch {
+    `$message = `$_.Exception.Message
+    if (`$message -match 'must be pushed|committed AND pushed|Push: git push') {
+        Write-Host "NO_UPSTREAM_PUSH_WORDING_FOUND: `$message"
+    } elseif (`$message -match 'No upstream is configured') {
+        Write-Host 'NO_UPSTREAM_WORDING_OK'
+    } else {
+        Write-Host "NO_UPSTREAM_WORDING_UNEXPECTED: `$message"
+    }
+}
+"@
+$noUpstreamResult = pwsh -NoProfile -Command $noUpstreamTest 2>&1 | Out-String
+if ($noUpstreamResult -notmatch 'NO_UPSTREAM_WORDING_OK') {
+    Write-Fail "Gate used incorrect no-upstream wording. Result:`n$noUpstreamResult"
+}
+Remove-Item -Recurse -Force -LiteralPath $scratchDir -ErrorAction SilentlyContinue
+Write-Pass 'Gate omits mandatory push wording when the branch has no upstream'
+
+# Test 16: auto-render closeout refreshes stale dashboard artifacts instead of preserving them.
+$autoRenderRoot = Join-Path -Path $repoRoot -ChildPath '.scratch\working-tree-gate-auto-dashboard-refresh'
+if (Test-Path -LiteralPath $autoRenderRoot) { Remove-Item -Recurse -Force -LiteralPath $autoRenderRoot }
+$fakeScriptsRoot = Join-Path $autoRenderRoot 'scripts'
+$fakeInternalRoot = Join-Path $fakeScriptsRoot 'internal'
+$fakeProjectRoot = Join-Path $autoRenderRoot 'project'
+$fakeDashboardDirectory = Join-Path $fakeProjectRoot 'specs\900-fixture'
+$null = New-Item -ItemType Directory -Path $fakeInternalRoot -Force
+$null = New-Item -ItemType Directory -Path $fakeDashboardDirectory -Force
+$fakeWhereScript = Join-Path $fakeScriptsRoot 'specrew-where.ps1'
+[System.IO.File]::WriteAllText($fakeWhereScript, @'
+param(
+    [string]$ProjectPath,
+    [string]$OutputPath,
+    [string]$CaptureKind,
+    [switch]$NoColor,
+    [switch]$PreserveExistingArtifact,
+    [string]$FeatureId,
+    [string]$IterationNumber
+)
+
+$argPath = Join-Path $ProjectPath 'where-args.json'
+[pscustomobject]@{
+    preserve_existing_artifact = $PreserveExistingArtifact.IsPresent
+    capture_kind               = $CaptureKind
+    feature_id                 = $FeatureId
+    iteration_number           = $IterationNumber
+} | ConvertTo-Json -Compress | Set-Content -LiteralPath $argPath -Encoding UTF8
+
+if ($PreserveExistingArtifact.IsPresent -and (Test-Path -LiteralPath $OutputPath -PathType Leaf)) {
+    exit 0
+}
+
+Set-Content -LiteralPath $OutputPath -Value ("fresh:{0}:{1}" -f $FeatureId, $CaptureKind) -Encoding UTF8
+exit 0
+'@, [System.Text.UTF8Encoding]::new($false))
+
+$autoRenderFunctionMatch = [regex]::Match($syncBoundaryContent, '(?s)function Invoke-SpecrewAutoRenderDashboard \{.*?(?=\r?\nfunction Invoke-SpecrewBoundaryStateSync)')
+if (-not $autoRenderFunctionMatch.Success) {
+    Write-Fail 'Could not extract Invoke-SpecrewAutoRenderDashboard from sync-boundary-state.ps1'
+}
+
+$fakeDashboardPath = Join-Path $fakeDashboardDirectory 'closeout-dashboard.md'
+Set-Content -LiteralPath $fakeDashboardPath -Value 'stale-dashboard' -Encoding UTF8
+$harnessPath = Join-Path $fakeInternalRoot 'auto-render-harness.ps1'
+$harnessContent = @"
+Set-StrictMode -Version Latest
+`$ErrorActionPreference = 'Stop'
+function Normalize-SpecrewIterationNumber {
+    param([AllowNull()][string]`$IterationNumber)
+    return `$IterationNumber
+}
+$($autoRenderFunctionMatch.Value)
+Invoke-SpecrewAutoRenderDashboard -ProjectRoot '$fakeProjectRoot' -OutputPath '$fakeDashboardPath' -CaptureKind 'feature-closeout' -FeatureRef '900-fixture' -IterationNumber `$null
+"@
+[System.IO.File]::WriteAllText($harnessPath, $harnessContent, [System.Text.UTF8Encoding]::new($false))
+$autoRenderResult = pwsh -NoProfile -ExecutionPolicy Bypass -File $harnessPath 2>&1 | Out-String
+if ($LASTEXITCODE -ne 0) {
+    Write-Fail "Auto-render harness failed:`n$autoRenderResult"
+}
+
+$dashboardText = (Get-Content -LiteralPath $fakeDashboardPath -Raw -Encoding UTF8).Trim()
+$whereArgs = Get-Content -LiteralPath (Join-Path $fakeProjectRoot 'where-args.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+if ($dashboardText -ne 'fresh:900-fixture:feature-closeout' -or $whereArgs.preserve_existing_artifact) {
+    Write-Fail ("Auto-render did not refresh the stale closeout dashboard. preserve_existing_artifact={0}; dashboard='{1}'; output:`n{2}" -f $whereArgs.preserve_existing_artifact, $dashboardText, $autoRenderResult)
+}
+Remove-Item -Recurse -Force -LiteralPath $autoRenderRoot -ErrorAction SilentlyContinue
+Write-Pass 'Auto-render refreshes stale feature closeout dashboards from current artifacts'
 
 Write-Host ''
 Write-Host 'Feature-closeout working-tree gate: all assertions pass'

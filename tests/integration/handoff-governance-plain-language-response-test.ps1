@@ -34,6 +34,12 @@ Completed the review guidance update and verified the affected files were update
 ## Why I stopped
 This slice is complete, and no blockers remain in the current scope.
 
+## What needs your review
+Review the updated handoff wording and confirm the phrasing is clear enough for downstream project users.
+
+## What happens next
+After confirmation, the rollout can continue from the updated guidance and validator expectations.
+
 ## What I need from you
 Review the updated handoff wording in `{0}`. Next step: confirm the wording is acceptable for rollout.
 '@ -f $specUri

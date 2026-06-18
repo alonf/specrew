@@ -11,11 +11,11 @@
 #
 # Translation table (per host coordinator-rules and verified flag matrices):
 #
-#  | Specrew-side flag | Copilot      | Claude                          | Codex                                              | Antigravity              |
-#  |-------------------|--------------|---------------------------------|----------------------------------------------------|--------------------------|
-#  | --remote          | --remote     | --remote-control                | warn-and-continue, drop                            | warn-and-continue, drop  |
-#  | --allow-all       | --allow-all  | --dangerously-skip-permissions  | --dangerously-bypass-approvals-and-sandbox         | warn (unverified)        |
-#  | --autopilot       | --autopilot  | drop with notice                | folds into --dangerously-bypass-approvals-and-sandbox | warn (no equivalent)  |
+#  | Specrew-side flag | Copilot      | Claude                         | Cursor | Codex                                      | Antigravity                    |
+#  |-------------------|--------------|--------------------------------|--------|--------------------------------------------|--------------------------------|
+#  | --remote          | --remote     | --remote-control               | warn   | warn-and-continue, drop                    | warn-and-continue, drop        |
+#  | --allow-all       | --allow-all  | --dangerously-skip-permissions | --force| --dangerously-bypass-approvals-and-sandbox | --dangerously-skip-permissions |
+#  | --autopilot       | --autopilot  | drop with notice               | no-op  | no-op when --allow-all is present          | warn (no equivalent)           |
 
 Set-StrictMode -Version Latest
 

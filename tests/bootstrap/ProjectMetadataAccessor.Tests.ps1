@@ -18,14 +18,13 @@ Assert-True (-not (Test-SpecrewFeatureLocal -SpecsRoot (Join-Path $repoRoot 'spe
 Assert-True (Test-SpecrewBranchMergedToBase -RepoRoot $repoRoot -Branch 'HEAD' -BaseBranch 'HEAD') 'HEAD is an ancestor of HEAD (merged)'
 Assert-True (-not (Test-SpecrewBranchMergedToBase -RepoRoot $repoRoot -Branch 'no-such-branch-zzz' -BaseBranch 'HEAD')) 'missing branch fails safe to not-merged'
 
-# Composed resumability.
-$active = Get-SpecrewFeatureResumable -ProjectRoot $repoRoot -FeatureRef '174-hook-driven-session-bootstrap' -BaseBranch 'main'
-Assert-True $active.present 'active feature resolves present'
-Assert-True $active.resumable 'active unmerged feature is resumable'
-
+# Composed resumability — a bogus feature is never present or resumable (real repo, durable).
 $bogus = Get-SpecrewFeatureResumable -ProjectRoot $repoRoot -FeatureRef 'zzz-not-a-feature' -BaseBranch 'main'
 Assert-True (-not $bogus.present) 'bogus feature not present'
 Assert-True (-not $bogus.resumable) 'bogus feature not resumable'
+# The present + UNMERGED-is-resumable path is exercised against the CONTROLLED temp repo below.
+# (f184: the real-repo feature this once named, 174-hook-driven-session-bootstrap, has since merged to
+# main, so it is no longer a stable "unmerged" fixture — a controlled branch is the durable guard.)
 
 # --- Resolve-SpecrewBranchFeatureRef: branch-keyed feature for the pre-specify workshop window (F-174 T050) ---
 # A controlled temp repo so we can check out arbitrary branches (the real repo's branch is fixed).
@@ -44,6 +43,14 @@ try {
     # On the feature branch with specs/<branch>/ present -> resolves the feature (the workshop window).
     git -C $tmp checkout -q -b '001-pomodoro-cli' 2>$null
     Assert-True ((Resolve-SpecrewBranchFeatureRef -ProjectRoot $tmp) -eq '001-pomodoro-cli') 'feature branch + specs dir present -> resolves the feature'
+
+    # Composed resumability (durable, controlled repo): a feature branch with work AHEAD of base (unmerged)
+    # is present + resumable - the guard the real-repo 174 reference gave before 174 merged. A commit makes
+    # the branch genuinely diverge (a fresh `checkout -b` is still an ancestor of main == counts as merged).
+    Set-Content -LiteralPath (Join-Path $tmp 'specs/001-pomodoro-cli/work.md') -Value '# wip' -Encoding UTF8
+    git -C $tmp add -A 2>$null; git -C $tmp commit -q -m 'feature work (unmerged)' 2>$null
+    $activeTmp = Get-SpecrewFeatureResumable -ProjectRoot $tmp -FeatureRef '001-pomodoro-cli' -BaseBranch 'main'
+    Assert-True ($activeTmp.present -and $activeTmp.resumable) 'unmerged feature branch (ahead of base) is present + resumable'
 
     # MULTI-FEATURE SAFETY: specs/001-pomodoro-cli/ still exists on disk, but on branch 999-* the resolver
     # keys on the BRANCH (which has no specs dir) and returns $null - never falsely the other feature. This is

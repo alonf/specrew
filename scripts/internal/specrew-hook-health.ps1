@@ -12,61 +12,134 @@
   This file is deliberately NOT one of the 3-copy-mirrored hook scripts (deploy-refocus-hooks.ps1 /
   specrew-hook-dispatcher.ps1). It does NOT dot-source the mirrored deploy script (that script has top-level
   side effects — dot-sourcing it would TRIGGER a deploy). It re-derives the per-host config path + the opt-out
-  marker (the same shapes deploy-refocus-hooks.ps1 uses) and keys staleness on the STABLE ownership tokens
-  (the dispatcher / launcher filenames + the ${CLAUDE_PROJECT_DIR} brace placeholder), which are the contract
-  and do not change with command-format tweaks. Pure I/O + string building; never throws.
+  marker (the same shapes deploy-refocus-hooks.ps1 uses) and keys staleness on manifest-declared stable
+  ownership tokens such as dispatcher / launcher filenames and any project-root placeholder. Pure I/O +
+  string building; never throws.
 #>
 
 Set-StrictMode -Version Latest
 
 $script:HookHealthScriptRoot = $PSScriptRoot
 
+function Test-ManifestKey {
+    param($Map, [string]$Key)
+    if ($null -eq $Map) { return $false }
+    if ($Map -is [System.Collections.IDictionary]) { return $Map.Contains($Key) }
+    return $null -ne $Map.PSObject.Properties[$Key]
+}
+
+function Get-ManifestValue {
+    param($Map, [string]$Key, $Default = $null)
+    if (-not (Test-ManifestKey -Map $Map -Key $Key)) { return $Default }
+    if ($Map -is [System.Collections.IDictionary]) { return $Map[$Key] }
+    return $Map.PSObject.Properties[$Key].Value
+}
+
+function Get-SpecrewHookHealthRepoRoot {
+    $candidate = $script:HookHealthScriptRoot
+    while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+        if (Test-Path -LiteralPath (Join-Path $candidate 'hosts') -PathType Container) { return $candidate }
+        $parent = Split-Path -Parent $candidate
+        if ($parent -eq $candidate) { break }
+        $candidate = $parent
+    }
+    return (Split-Path -Parent (Split-Path -Parent $script:HookHealthScriptRoot))
+}
+
+function Find-SpecrewHookHealthManifestPath {
+    param([Parameter(Mandatory)][string]$HostKind)
+    $repoRoot = Get-SpecrewHookHealthRepoRoot
+    $manifestPath = Join-Path $repoRoot ("hosts/{0}/host.psd1" -f $HostKind)
+    if (Test-Path -LiteralPath $manifestPath -PathType Leaf) { return $manifestPath }
+    return $null
+}
+
+function Get-SpecrewHookHealthManifest {
+    param([Parameter(Mandatory)][string]$HostKind)
+    try {
+        $manifestPath = Find-SpecrewHookHealthManifestPath -HostKind $HostKind
+        if ([string]::IsNullOrWhiteSpace($manifestPath)) { return $null }
+        return (Import-PowerShellDataFile -LiteralPath $manifestPath)
+    }
+    catch {
+        return $null
+    }
+}
+
+function Get-SpecrewHookHealthBindings {
+    param([Parameter(Mandatory)][string]$HostKind)
+    $manifest = Get-SpecrewHookHealthManifest -HostKind $HostKind
+    if ($null -eq $manifest -or -not (Test-ManifestKey -Map $manifest -Key 'RefocusHookBindings')) { return $null }
+    return (Get-ManifestValue -Map $manifest -Key 'RefocusHookBindings')
+}
+
+function Resolve-SpecrewHookHealthPath {
+    param(
+        [AllowNull()][string]$PathFromManifest,
+        [Parameter(Mandatory)][string]$ProjectPath,
+        [Parameter(Mandatory)][string]$UserHome
+    )
+    if ([string]::IsNullOrWhiteSpace($PathFromManifest)) { return $null }
+    if ($PathFromManifest.StartsWith('~/') -or $PathFromManifest.StartsWith('~\')) {
+        return (Join-Path $UserHome $PathFromManifest.Substring(2))
+    }
+    return (Join-Path $ProjectPath $PathFromManifest)
+}
+
 function Get-SpecrewHookHealthHostList {
     # The hook-capable host set (registry-driven, single source of truth: a manifest carrying
     # RefocusHookBindings). Fail-open ladder mirrors the deploy orchestrator: (1) the function if loaded;
-    # (2) dot-source the registry from the resolved repo path; (3) a last-resort known set.
+    # (2) dot-source the registry from the resolved repo path; (3) enumerate host manifests directly.
     if (Get-Command Get-SpecrewHookCapableHosts -ErrorAction SilentlyContinue) {
         try { $h = @(Get-SpecrewHookCapableHosts); if ($h.Count -gt 0) { return $h } } catch { $null = $_ }
     }
-    $repoRoot = Split-Path -Parent (Split-Path -Parent $script:HookHealthScriptRoot)
+    $repoRoot = Get-SpecrewHookHealthRepoRoot
     $registry = Join-Path $repoRoot 'hosts/_registry.ps1'
     if (Test-Path -LiteralPath $registry -PathType Leaf) {
         try { . $registry; $h = @(Get-SpecrewHookCapableHosts); if ($h.Count -gt 0) { return $h } } catch { $null = $_ }
     }
-    return @('claude', 'codex', 'copilot', 'cursor')
+    $hostsRoot = Join-Path $repoRoot 'hosts'
+    $hosts = New-Object System.Collections.Generic.List[string]
+    if (Test-Path -LiteralPath $hostsRoot -PathType Container) {
+        foreach ($dir in @(Get-ChildItem -LiteralPath $hostsRoot -Directory -ErrorAction SilentlyContinue)) {
+            $manifestPath = Join-Path $dir.FullName 'host.psd1'
+            if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) { continue }
+            try {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                if ((Get-ManifestValue -Map $manifest -Key 'Status') -eq 'supported' -and (Test-ManifestKey -Map $manifest -Key 'RefocusHookBindings')) {
+                    $hosts.Add([string](Get-ManifestValue -Map $manifest -Key 'Kind' -Default $dir.Name)) | Out-Null
+                }
+            }
+            catch { $null = $_ }
+        }
+    }
+    return $hosts.ToArray()
 }
 
 function Get-SpecrewHostHookConfigPath {
-    # The per-host hook-config file path — the SAME shapes deploy-refocus-hooks.ps1 writes (claude is
-    # PROJECT-level; codex/copilot/cursor are USER-level under the home root).
+    # The per-host hook-config file path — the SAME manifest-declared shape deploy-refocus-hooks.ps1 writes.
     param(
         [Parameter(Mandatory)][string]$HostKind,
         [Parameter(Mandatory)][string]$ProjectPath,
         [Parameter(Mandatory)][string]$UserHome
     )
-    switch ($HostKind) {
-        'claude' { return (Join-Path $ProjectPath '.claude/settings.local.json') }
-        'codex' { return (Join-Path $UserHome '.codex/hooks.json') }
-        'copilot' { return (Join-Path $UserHome '.copilot/hooks/specrew-refocus.json') }
-        'cursor' { return (Join-Path $UserHome '.cursor/hooks.json') }
-        default { return $null }
-    }
+    $bindings = Get-SpecrewHookHealthBindings -HostKind $HostKind
+    return (Resolve-SpecrewHookHealthPath -PathFromManifest ([string](Get-ManifestValue -Map $bindings -Key 'SettingsFile')) -ProjectPath $ProjectPath -UserHome $UserHome)
 }
 
 function Get-SpecrewHostOptOutMarkerPath {
-    # The opt-out marker path — claude has no suffix; user-level hosts are per-host (matches
-    # deploy-refocus-hooks.ps1 line 64). Lives under the PROJECT (per-machine, .gitignored runtime).
-    param([Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$ProjectPath)
-    $suffix = if ($HostKind -ne 'claude') { "-$HostKind" } else { '' }
-    return (Join-Path $ProjectPath ('.specrew/runtime/refocus-hooks-optout' + $suffix))
+    # The opt-out marker path is manifest-declared and normally lives under the project runtime directory.
+    param([Parameter(Mandatory)][string]$HostKind, [Parameter(Mandatory)][string]$ProjectPath, [string]$UserHome)
+    $bindings = Get-SpecrewHookHealthBindings -HostKind $HostKind
+    $resolvedUserHome = if (-not [string]::IsNullOrWhiteSpace($UserHome)) { $UserHome } else { [Environment]::GetFolderPath('UserProfile') }
+    return (Resolve-SpecrewHookHealthPath -PathFromManifest ([string](Get-ManifestValue -Map $bindings -Key 'OptOutMarkerFile')) -ProjectPath $ProjectPath -UserHome $resolvedUserHome)
 }
 
 function Get-SpecrewHooksStatus {
     # Per hook-capable host: installed | missing | stale | opted-out | failed. Fail-open (never throws).
     # State precedence: opted-out (marker present) > missing (no config file) > failed (config unparsable) >
-    # installed/stale/missing (by ownership token). "stale" = a Specrew entry exists but in the OLD form (the
-    # pre-ff34e776 bare/relative dispatcher entry instead of the cwd-robust ${CLAUDE_PROJECT_DIR} placeholder
-    # (claude) or the per-machine launcher (user-level)) — i.e. `specrew hooks install` would change it.
+    # installed/stale/missing (by ownership token). "stale" = a Specrew entry exists but not in the
+    # current manifest-declared command binding, i.e. `specrew hooks install` would change it.
     [OutputType([object[]])]
     param(
         [Parameter(Mandatory)][string]$ProjectPath,
@@ -76,15 +149,13 @@ function Get-SpecrewHooksStatus {
     $rows = New-Object System.Collections.Generic.List[object]
     foreach ($hostKind in (Get-SpecrewHookHealthHostList)) {
         $configPath = Get-SpecrewHostHookConfigPath -HostKind $hostKind -ProjectPath $ProjectPath -UserHome $userHome
-        $optOut = Get-SpecrewHostOptOutMarkerPath -HostKind $hostKind -ProjectPath $ProjectPath
+        $optOut = Get-SpecrewHostOptOutMarkerPath -HostKind $hostKind -ProjectPath $ProjectPath -UserHome $userHome
         $state = 'missing'; $detail = 'no Specrew hook entry'
 
-        # Defensive (145-review Q-001): Get-SpecrewHostHookConfigPath has cases for the 4 current hook-capable
-        # hosts; a FUTURE 5th host in the registry would yield a $null path. Keep the "never throws" contract
-        # real — report 'unknown' rather than passing $null to Test-Path (a binding throw that would fail-CLOSE
-        # the status surface). Not reachable today (the host list is exactly the 4 cased hosts).
-        if ($null -eq $configPath) {
-            $rows.Add([pscustomobject]@{ Host = $hostKind; State = 'unknown'; ConfigPath = $null; Detail = 'no config-path mapping for this host (add a case to Get-SpecrewHostHookConfigPath)' }) | Out-Null
+        # Defensive: a malformed future manifest could omit path fields. Keep the "never throws" contract
+        # real by reporting unknown rather than passing $null to Test-Path.
+        if ($null -eq $configPath -or $null -eq $optOut) {
+            $rows.Add([pscustomobject]@{ Host = $hostKind; State = 'unknown'; ConfigPath = $configPath; Detail = 'host manifest missing hook SettingsFile or OptOutMarkerFile' }) | Out-Null
             continue
         }
 
@@ -107,18 +178,66 @@ function Get-SpecrewHooksStatus {
                     $state = 'failed'; $detail = 'config is not valid JSON (left untouched; specrew hooks cannot repair a hand-broken file)'
                 }
                 else {
-                    $hasDispatcher = $raw.Contains('specrew-hook-dispatcher.ps1')
-                    $hasLauncher = $raw.Contains('specrew-hook-launch.ps1')
-                    $hasBraced = $raw.Contains('${CLAUDE_PROJECT_DIR}')
-                    if ($hostKind -eq 'claude') {
-                        if ($hasDispatcher -and $hasBraced) { $state = 'installed'; $detail = 'dispatcher via ${CLAUDE_PROJECT_DIR} placeholder (cwd-robust)' }
-                        elseif ($hasDispatcher) { $state = 'stale'; $detail = 'dispatcher entry present but NOT the cwd-robust ${CLAUDE_PROJECT_DIR} form (run: specrew hooks install --host claude)' }
-                        else { $state = 'missing'; $detail = 'no Specrew hook entry' }
+                    $decodedCommands = New-Object System.Collections.Generic.List[string]
+                    foreach ($match in [regex]::Matches($raw, '(?i)(?:^|\s)-EncodedCommand\s+([A-Za-z0-9+/=]+)')) {
+                        try {
+                            $decodedCommands.Add([Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($match.Groups[1].Value))) | Out-Null
+                        }
+                        catch { $null = $_ }
                     }
-                    else {
-                        if ($hasLauncher) { $state = 'installed'; $detail = 'per-machine launcher entry' }
-                        elseif ($hasDispatcher) { $state = 'stale'; $detail = ("legacy dispatcher entry (pre-launcher form; run: specrew hooks install --host {0})" -f $hostKind) }
-                        else { $state = 'missing'; $detail = 'no Specrew hook entry' }
+                    $inspectionText = $raw + "`n" + ($decodedCommands.ToArray() -join "`n")
+                    $hasDispatcher = $inspectionText.Contains('specrew-hook-dispatcher.ps1')
+                    $hasLauncher = $inspectionText.Contains('specrew-hook-launch.ps1')
+                    $bindings = Get-SpecrewHookHealthBindings -HostKind $hostKind
+                    $commandMode = [string](Get-ManifestValue -Map $bindings -Key 'CommandMode' -Default 'launcher-file')
+                    $configShape = [string](Get-ManifestValue -Map $bindings -Key 'ConfigShape' -Default 'event-map')
+                    $requiredTokens = New-Object System.Collections.Generic.List[string]
+
+                    switch ($commandMode) {
+                        'project-placeholder' {
+                            $requiredTokens.Add('specrew-hook-dispatcher.ps1') | Out-Null
+                            $placeholder = [string](Get-ManifestValue -Map $bindings -Key 'ProjectDirPlaceholder' -Default '')
+                            if (-not [string]::IsNullOrWhiteSpace($placeholder)) { $requiredTokens.Add($placeholder) | Out-Null }
+                        }
+                        'launcher-file' { $requiredTokens.Add('specrew-hook-launch.ps1') | Out-Null }
+                        'launcher-encoded' { $requiredTokens.Add('specrew-hook-launch.ps1') | Out-Null }
+                        default {
+                            $state = 'failed'
+                            $detail = ("manifest declares unsupported hook CommandMode '{0}'" -f $commandMode)
+                        }
+                    }
+
+                    if ($state -ne 'failed' -and $configShape -eq 'named-definition') {
+                        $definitionName = [string](Get-ManifestValue -Map $bindings -Key 'DefinitionName')
+                        if (-not [string]::IsNullOrWhiteSpace($definitionName)) { $requiredTokens.Add($definitionName) | Out-Null }
+                        foreach ($registration in @(Get-ManifestValue -Map $bindings -Key 'Registrations')) {
+                            $eventName = [string](Get-ManifestValue -Map $registration -Key 'Event')
+                            if (-not [string]::IsNullOrWhiteSpace($eventName)) { $requiredTokens.Add($eventName) | Out-Null }
+                        }
+                    }
+
+                    if ($state -ne 'failed') {
+                        $missingRequired = @($requiredTokens.ToArray() | Where-Object { -not $inspectionText.Contains($_) })
+                        if ($missingRequired.Count -eq 0 -and $requiredTokens.Count -gt 0) {
+                            $state = 'installed'
+                            if ($commandMode -eq 'project-placeholder') {
+                                $detail = 'dispatcher via manifest project placeholder (cwd-robust)'
+                            }
+                            elseif ($configShape -eq 'named-definition') {
+                                $detail = 'named hook definition via cwd-robust launcher'
+                            }
+                            else {
+                                $detail = 'per-machine launcher entry'
+                            }
+                        }
+                        elseif ($hasDispatcher -or $hasLauncher) {
+                            $state = 'stale'
+                            $detail = ("Specrew entry present but not the current manifest binding (run: specrew hooks install --host {0})" -f $hostKind)
+                        }
+                        else {
+                            $state = 'missing'
+                            $detail = 'no Specrew hook entry'
+                        }
                     }
                 }
             }

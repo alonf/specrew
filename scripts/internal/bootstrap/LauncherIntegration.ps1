@@ -63,9 +63,9 @@ function Test-SpecrewLauncherBootstrapRecent {
 # renders; every concurrent/later fire finds the file present and stays silent. `File.Open(..., CreateNew)`
 # (O_EXCL) is a SINGLE atomic syscall - there is NO check-then-act gap for two processes to slip through - so
 # it elects a single winner regardless of timing (10us or 7s apart). Keyed per (session, source): a different
-# session, or a /clear (different source), wins its OWN claim and renders. The caller filters the 'no-session'
-# sentinel (no stable id - a Stop event, or the self-host repo where codex sends none) -> NEVER claimed ->
-# always renders. Fail-OPEN: the claim returns $true (render) on anything that is not "the file genuinely
+# session, or a /clear (different source), wins its OWN claim and renders. Missing or malformed host session IDs
+# are normalized upstream to per-launch fallback tokens, so they do not share one claim key. Fail-OPEN: the claim
+# returns $true (render) on anything that is not "the file genuinely
 # already exists" - a duplicate render is benign, a SUPPRESSED one is the only unacceptable outcome. Per-key
 # claim files accumulate (one per session) - tiny + cosmetic; NO time-based cleanup by design (a cleanup
 # threshold below the inter-fire gap would delete the first fire's claim and re-open the double-render).

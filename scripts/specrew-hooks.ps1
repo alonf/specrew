@@ -12,7 +12,7 @@
     remove [--host h]   Remove Specrew hook entries and RECORD an opt-out (so a later `specrew update` does not
                         re-add them). Without --host, removes for every hook-capable host.
 
-  Flags (Unix-style, parsed from remaining args): --host <claude|codex|copilot|cursor>, --force,
+  Flags (Unix-style, parsed from remaining args): --host <claude|codex|copilot|cursor|antigravity>, --force,
   --project-path <path>, --user-home-override <path> (test seam).
 
   Dispatcher-only command (registered in scripts/specrew.ps1) — it does NOT gate on project setup, so `status`
@@ -59,7 +59,7 @@ $deployScript = Join-Path $PSScriptRoot 'internal/deploy-refocus-hooks.ps1'
 function Write-HooksError {
     param([string]$Message)
     Write-Host ("ERROR: {0}" -f $Message) -ForegroundColor Red
-    Write-Host "Usage: specrew hooks <status|install|remove> [--host claude|codex|copilot|cursor] [--force]" -ForegroundColor Yellow
+    Write-Host "Usage: specrew hooks <status|install|remove> [--host claude|codex|copilot|cursor|antigravity] [--force]" -ForegroundColor Yellow
     exit 1
 }
 

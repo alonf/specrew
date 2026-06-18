@@ -57,11 +57,40 @@ try {
     $r3 = Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath $s3 -BaseBranch 'main'
     Assert-Equal $r3.mode 'welcome-back' 'valid anchor resolves welcome-back'
 
+    # A fresh handover for a different feature is stale context even when specs/<old-feature> still exists.
+    # The active feature from start-context/anchor wins, so resume cannot surface the wrong "why I stopped" body.
+    New-Item -ItemType Directory -Path (Join-Path $root 'specs/feat-old') -Force | Out-Null
+    Write-SpecrewHandoverContext -HandoverDir (Join-Path $root '.specrew/handover') -FromHost codex `
+        -RecordedAt ((Get-Date).ToUniversalTime().ToString('o')) -ActiveFeature 'feat-old' -ActiveBoundary 'feature-closeout' `
+        -Sections @{ 'Recommended next-immediate-step' = 'STALE-WRONG-FEATURE-NEXT' } | Out-Null
+    $r3b = Invoke-SpecrewSessionBootstrap -RawEvent '{"session_id":"sess-1b","source":"startup","hook_event_name":"SessionStart"}' -HostName claude -ProjectRoot $root -StatePath $s3 -BaseBranch 'main'
+    Assert-Equal $r3b.mode 'welcome-back' 'wrong-feature handover does not override the valid active anchor'
+    Assert-True (-not [bool]$r3b.record.handover_valid) 'wrong-feature handover is rejected as invalid'
+    Assert-True ($null -eq $r3b.directive.handover) 'wrong-feature handover is not surfaced in the directive'
+    Assert-True ((@($r3b.directive.validation_findings) -join "`n") -match 'does not match the current active feature') 'wrong-feature rejection is explained in validation findings'
+    Remove-Item -LiteralPath (Join-Path $root '.specrew/handover') -Recurse -Force -ErrorAction SilentlyContinue
+
     # Journal record is appended when a journal path is supplied.
     $jp = Join-Path $root 'journal/records.jsonl'
     Invoke-SpecrewSessionBootstrap -RawEvent $evt -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -JournalPath $jp | Out-Null
     Assert-True (Test-Path -LiteralPath $jp) 'journal record file written'
     Assert-True ((Get-Content -LiteralPath $jp -Raw) -match '"mode":"full"') 'journal record captures the mode'
+
+    # Missing session IDs get per-launch fallback keys in the manager journal, not a shared no-session bucket.
+    $r4 = Invoke-SpecrewSessionBootstrap -RawEvent '{"source":"startup"}' -HostName claude -ProjectRoot $root -StatePath (Join-Path $root 'absent.json')
+    Assert-True ([string]$r4.record.dedupe_key -match '^launch-[a-f0-9]{32}$') 'missing session id gets per-launch dedupe key'
+    Assert-True ([string]$r4.record.dedupe_key -ne 'no-session' -and [string]$r4.record.dedupe_key -ne 'unknown') 'dedupe key avoids global fallback buckets'
+
+    # Antigravity resume with its own marker should not warn about same-worktree concurrency.
+    $antiMarkerPath = Join-Path $root '.specrew/runtime/session-marker.json'
+    Write-SpecrewSessionMarker -MarkerPath $antiMarkerPath -HostName antigravity -ProjectRoot $root -Branch 'main' -HeadCommit 'abc123' -SessionId 'anti-conv-1' -StartedAt '2026-06-17T00:00:00Z' | Out-Null
+    $antiEvent = '{"conversationId":"anti-conv-1","workspacePaths":["' + (($root -replace '\\', '/') -replace '"', '\"') + '"],"transcriptPath":"C:/temp/anti-transcript.jsonl"}'
+    $r5 = Invoke-SpecrewSessionBootstrap -RawEvent $antiEvent -HostName antigravity -ProjectRoot $root -StatePath (Join-Path $root 'absent.json') -NowUtc '2026-06-17T00:01:00Z'
+    Assert-Equal $r5.record.dedupe_key 'anti-conv-1' 'antigravity conversationId drives the bootstrap dedupe key'
+    Assert-True (-not [bool]$r5.record.concurrent_session) 'antigravity own marker is not reported concurrent'
+    Assert-Equal $r5.record.concurrency_reason 'same-session' 'antigravity own marker classified as same-session'
+    $writtenMarker = Get-SpecrewSessionMarker -MarkerPath $antiMarkerPath
+    Assert-Equal $writtenMarker.session_id 'anti-conv-1' 'antigravity marker stores the session id for subsequent turns'
 }
 finally {
     Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue

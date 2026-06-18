@@ -32,7 +32,7 @@ $allowListExact = @(
     'tests/integration/host-registry.tests.ps1',        # test asserts the expected enum
     'tests/integration/multi-host-launch-path.tests.ps1', # F-040 integration test goldens
     'tests/integration/host-coupling-firewall.tests.ps1', # this file (defines the regex literals)
-    'tests/integration/crew-bootstrap-contract.tests.ps1', # E2E test legitimately iterates all 4 hosts
+    'tests/integration/crew-bootstrap-contract.tests.ps1', # E2E test legitimately iterates all supported hosts
     # Phase D follow-up — these 3 ValidateSets are the LAST remaining intentional hardcodes;
     # they become registry-driven when Phase D's [ValidateScript({...})] refactor lands.
     'scripts/specrew-start.ps1',
@@ -92,10 +92,55 @@ if ($violations.Count -gt 0) {
     }
     Write-Host ''
     Write-Host "To resolve: replace the hardcoded enum with Get-RegisteredHostKinds (from hosts/_registry.ps1) OR add the file to the allow-list with a documented exception." -ForegroundColor Yellow
-    Write-Fail ("Found {0} hardcoded-enum violation(s) across {1} file(s)." -f $violations.Count, ($violations.File | Sort-Object -Unique).Count)
+    $violationFiles = @($violations | ForEach-Object { $_.File } | Sort-Object -Unique)
+    Write-Fail ("Found {0} hardcoded-enum violation(s) across {1} file(s)." -f $violations.Count, $violationFiles.Count)
 }
 
 Write-Pass ("No hardcoded host-enum violations across {0} scanned production .ps1 file(s) (allow-list: {1} known)." -f $scriptFiles.Count, $allowListExact.Count)
+
+# F-184 sendback guard: shared hook/bootstrap core may receive a HostKind value,
+# but host routing/output policy must come from RefocusHookBindings.DispatcherRuntime,
+# not from Antigravity/agy literals in core conditionals.
+$forbiddenCorePatterns = @(
+    "Get-Command 'agy'",
+    "Get-Command `"agy`"",
+    "TargetHost -eq 'antigravity'",
+    "HostKind -eq 'antigravity'",
+    "'antigravity' {",
+    "hostKind -notin @('claude', 'codex', 'copilot', 'cursor', 'antigravity')",
+    "antigravity' { return 'pointer'"
+)
+foreach ($coreRel in @(
+        'scripts/internal/specrew-hook-dispatcher.ps1',
+        'scripts/internal/specrew-bootstrap-provider.ps1',
+        'scripts/internal/deploy-refocus-hooks.ps1',
+        'scripts/internal/instruction-deploy.ps1',        # F-184 iter-002 (T005): host-neutral instruction-delivery core
+        'scripts/internal/instruction-file-merge.ps1'     # F-184 iter-002 (T005): single-source merge primitive
+    )) {
+    $corePath = Join-Path $repoRoot $coreRel
+    $coreText = Get-Content -LiteralPath $corePath -Raw
+    foreach ($pattern in $forbiddenCorePatterns) {
+        if ($coreText.Contains($pattern)) {
+            Write-Fail "Forbidden host abstraction leak in ${coreRel}: $pattern"
+        }
+    }
+}
+Write-Pass 'Shared hook/bootstrap core has no Antigravity/agy routing literals; it consumes manifest runtime policy'
+
+# F-184 iter-002 (T005): NEGATIVE test - prove the forbidden-core scan actually CATCHES a planted single-host
+# literal (the Shape-8 lesson: exercise the failure path, not only the happy path). Uses the SAME
+# $forbiddenCorePatterns + Contains detection the scan above runs on the guarded core files.
+$plantedLiteral = "if (`$HostKind -eq 'antigravity') { return 'pointer' }"
+$detectedOnPlant = $false
+foreach ($pattern in $forbiddenCorePatterns) { if ($plantedLiteral.Contains($pattern)) { $detectedOnPlant = $true; break } }
+if (-not $detectedOnPlant) { Write-Fail "Negative test broken: the firewall did NOT detect a planted single-host literal: $plantedLiteral" }
+Write-Pass 'Negative test: the firewall DETECTS a planted single-host literal (fails closed, not just on clean files)'
+
+$cleanContent = "if (`$kind -in (Get-RegisteredHostKinds)) { Get-HostManifest -Kind `$kind }"
+$detectedOnClean = $false
+foreach ($pattern in $forbiddenCorePatterns) { if ($cleanContent.Contains($pattern)) { $detectedOnClean = $true; break } }
+if ($detectedOnClean) { Write-Fail 'Negative test broken: the firewall flagged clean manifest-driven content' }
+Write-Pass 'Negative test: the firewall PASSES clean host-neutral (manifest-driven) content'
 
 # Bonus check: manifest-completeness — every supported host should have InstructionsFile set
 # (caught the Antigravity drift in the deep-review audit).

@@ -37,6 +37,13 @@ if ($decisionGuidance -notmatch '### 6\. Readable Reference Decision') {
     exit 1
 }
 
+foreach ($required in @('five-part context packet', 'What needs your review', 'What happens next')) {
+    if ($decisionGuidance -notmatch [regex]::Escape($required)) {
+        Write-Fail "Coordinator decision guidance is missing the five-part stop context requirement: $required"
+        exit 1
+    }
+}
+
 if ($decisionGuidance -notmatch 'Unacceptable:\s*\r?\n\r?\n> I finished 012, 001, T009, T010, and 070dd06\.' ) {
     Write-Fail 'Coordinator decision guidance is missing the unacceptable stop-message example.'
     exit 1
@@ -44,6 +51,11 @@ if ($decisionGuidance -notmatch 'Unacceptable:\s*\r?\n\r?\n> I finished 012, 001
 
 if ($checklist -notmatch 'soft-warning\.opaque-numeric-references') {
     Write-Fail 'Checklist is missing the opaque numeric reference heuristic.'
+    exit 1
+}
+
+if ($checklist -notmatch 'soft-warning\.incomplete-five-part-stop-context') {
+    Write-Fail 'Checklist is missing the incomplete five-part stop context heuristic.'
     exit 1
 }
 
@@ -69,6 +81,12 @@ Completed 012, 001, T009, T010, FR-008, and 070dd06.
 ## Why I stopped
 I stopped because the requested review is still pending and I cannot continue safely until it is resolved.
 
+## What needs your review
+Review the identifiers and the mapped task scope.
+
+## What happens next
+After review, I will revise the stop-message wording or continue to the next approved slice.
+
 ## What I need from you
 Next step: review the wording.
 '@
@@ -92,6 +110,12 @@ Completed feature 012, descriptive references in handoffs, and iteration 001, th
 
 ## Why I stopped
 I stopped because the Squad startup guidance edits are a restart-trigger boundary, and I cannot finish that slice safely in this session.
+
+## What needs your review
+Review the described references and the restart-trigger boundary statement.
+
+## What happens next
+After restart, the startup guidance edits can continue from the named boundary.
 
 ## What I need from you
 Next step: restart the session before the startup guidance edits continue.
@@ -120,6 +144,12 @@ Completed 012, 001, T009, T010, FR-008, and 070dd06.
 
 ## Why I stopped
 This slice is complete.
+
+## What needs your review
+Review the updated stop-message guidance.
+
+## What happens next
+The next slice can proceed after review.
 
 ## What I need from you
 Next step: review the wording.

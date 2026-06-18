@@ -81,11 +81,14 @@ if ('--cwd' -in $argsArray) { Write-Fail "Antigravity launch should NOT include 
 if ('--dangerously-skip-permissions' -notin $argsArray) { Write-Fail "Antigravity AllowAll=true should add --dangerously-skip-permissions. Args: $($argsArray -join ' ')" }
 Write-Pass "Antigravity launch shape correct: -i + --add-dir + --dangerously-skip-permissions (iter-005 T001)"
 
-# Test 7: Antigravity Binary is agy
-if ($invocation.Binary -notmatch 'agy') {
-    Write-Fail "Antigravity Binary should resolve to agy; got '$($invocation.Binary)'"
+# Test 7: Antigravity Binary is resolved from the host manifest Binary field.
+$antiManifest = Get-HostManifest -Kind antigravity
+$expectedAntiBinary = [string]$antiManifest.Binary
+$actualAntiBinary = [System.IO.Path]::GetFileNameWithoutExtension([string]$invocation.Binary)
+if ($actualAntiBinary -ne $expectedAntiBinary) {
+    Write-Fail "Antigravity Binary should resolve from manifest Binary='$expectedAntiBinary'; got '$($invocation.Binary)'"
 }
-Write-Pass "Antigravity Binary resolves to agy"
+Write-Pass "Antigravity Binary resolves from manifest Binary field"
 
 # Test 8 (F-050 iter-002): cursor is in the detection matrix as a supported host
 $supportedKinds = @(Get-SpecrewHostsByStatus -Status supported)

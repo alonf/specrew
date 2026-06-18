@@ -31,7 +31,14 @@ function New-ScratchProject {
     Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\internal\specrew-hook-dispatcher.ps1') -Destination $scriptsDir -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts\internal\refocus.ps1') -Destination $scriptsDir -Force
     Copy-Item -Path (Join-Path $repoRoot 'extensions\specrew-speckit\refocus\*.md') -Destination $refocusDir -Force
+    $catalogPath = Join-Path $projectRoot '.specify\extensions\specrew-speckit\refocus-scopes.json'
     Copy-Item -LiteralPath (Join-Path $repoRoot 'extensions\specrew-speckit\refocus-scopes.json') -Destination (Join-Path $projectRoot '.specify\extensions\specrew-speckit') -Force
+    $catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
+    # This fixture exercises the refocus dispatcher in isolation. Provider-fallback composition for bootstrap
+    # is covered by DispatcherSessionStartPolicy.Tests.ps1; keeping only refocus here prevents that fallback from
+    # obscuring breaker-suppression assertions.
+    $catalog.providers = @($catalog.providers | Where-Object { [string]$_.id -eq 'refocus' })
+    [System.IO.File]::WriteAllText($catalogPath, ($catalog | ConvertTo-Json -Depth 8), [System.Text.UTF8Encoding]::new($false))
     $startContext = @{ session_state = @{ boundary_type = 'implement'; feature_ref = 'dispatcher-fixture' } } | ConvertTo-Json -Depth 4
     [System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\start-context.json'), $startContext, [System.Text.UTF8Encoding]::new($false))
     return (Join-Path $scriptsDir 'specrew-hook-dispatcher.ps1')
@@ -45,10 +52,25 @@ function Invoke-Dispatcher {
     $stderrPath = Join-Path $scratchRoot 'stderr.txt'
     $stdinPath = Join-Path $scratchRoot 'stdin.json'
     [System.IO.File]::WriteAllText($stdinPath, ($StdinJson ?? ''), [System.Text.UTF8Encoding]::new($false))
+    $effectiveArgs = @($DispatcherArgs)
+    if ($effectiveArgs -notcontains '-HostBinding') {
+        $hostArgIndex = [array]::IndexOf($effectiveArgs, '-HostKind')
+        if ($hostArgIndex -ge 0 -and ($hostArgIndex + 1) -lt $effectiveArgs.Count) {
+            $manifestPath = Join-Path $repoRoot ("hosts\{0}\host.psd1" -f $effectiveArgs[$hostArgIndex + 1])
+            if (Test-Path -LiteralPath $manifestPath -PathType Leaf) {
+                $manifest = Import-PowerShellDataFile -LiteralPath $manifestPath
+                $runtime = $manifest.RefocusHookBindings.DispatcherRuntime
+                if ($null -ne $runtime) {
+                    $binding = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($runtime | ConvertTo-Json -Depth 8 -Compress)))
+                    $effectiveArgs += @('-HostBinding', $binding)
+                }
+            }
+        }
+    }
     $saved = @{}
     foreach ($key in $ExtraEnv.Keys) { $saved[$key] = [Environment]::GetEnvironmentVariable($key); [Environment]::SetEnvironmentVariable($key, $ExtraEnv[$key]) }
     try {
-        $proc = Start-Process -FilePath 'pwsh' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Dispatcher) + $DispatcherArgs) `
+        $proc = Start-Process -FilePath 'pwsh' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Dispatcher) + $effectiveArgs) `
             -WorkingDirectory $WorkingDirectory -Wait -PassThru -NoNewWindow `
             -RedirectStandardInput $stdinPath -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
         return @{
@@ -362,6 +384,65 @@ $result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 
 $json = $null
 try { $json = $result.StdOut | ConvertFrom-Json } catch { }
 Assert-True ($null -ne $json -and ([string]$json.additionalContext) -match 'trigger=b2') 'copilot camelCase sessionId parsed; additionalContext b2 payload'
+
+# 15e. antigravity: PreInvocation is the only B3 injection carrier; conversationId keys state.
+$dispatcher = New-ScratchProject
+$antiEvent = '{"conversationId":"anti-conv-1","workspacePaths":["C:/anti/project"],"transcriptPath":"C:/anti/transcript.jsonl","prompt":"SECRET_PROMPT_SHOULD_NOT_LEAK"}'
+$antiStatePath = Join-Path $projectRoot '.specrew\runtime\refocus-state-anti-conv-1.json'
+$unknownStatePath = Join-Path $projectRoot '.specrew\runtime\refocus-state-unknown.json'
+
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity PreInvocation first sight anchors silently'
+Assert-True (Test-Path -LiteralPath $antiStatePath -PathType Leaf) 'antigravity conversationId creates a per-session refocus state file'
+Assert-True (-not (Test-Path -LiteralPath $unknownStatePath)) 'antigravity conversationId never creates global unknown state'
+$antiState = Get-Content -LiteralPath $antiStatePath -Raw | ConvertFrom-Json
+Assert-True ([string]$antiState.session_id -eq 'anti-conv-1' -and [string]$antiState.last_seen_boundary -eq 'implement') 'antigravity state records session id and anchor cursor'
+
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity unchanged PreInvocation remains silent'
+
+Set-Cursor -Boundary 'review-signoff'
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
+$json = $null
+try { $json = $result.StdOut | ConvertFrom-Json } catch { }
+Assert-True ($result.ExitCode -eq 0) 'antigravity B3 crossing exits 0'
+Assert-True ($null -ne $json -and $null -ne $json.PSObject.Properties['injectSteps']) 'antigravity B3 output uses injectSteps'
+Assert-True ($null -ne $json -and ([string]$json.injectSteps[0].ephemeralMessage) -match 'trigger=b3 scope=general\+boundary\.retro') 'antigravity B3 payload carries incoming-stage refocus'
+$antiState = Get-Content -LiteralPath $antiStatePath -Raw | ConvertFrom-Json
+Assert-True ([string]$antiState.last_seen_boundary -eq 'review-signoff') 'antigravity B3 crossing updates last_seen'
+
+Set-Cursor -Boundary 'retro'
+$fingerprint = @{ boundary = 'retro'; at = '2026-06-17T00:00:00Z' } | ConvertTo-Json -Compress
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specrew\runtime\refocus-channel1.json'), $fingerprint, [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiEvent
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity channel-1 fingerprint dedupes B3 crossing'
+
+Set-Cursor -Boundary 'iteration-closeout'
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PostToolUse', '-HostKind', 'antigravity') -StdinJson $antiEvent
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity PostToolUse is not used for refocus injection'
+Assert-True (-not $result.StdOut.Contains('injectSteps')) 'antigravity PostToolUse never emits injectSteps'
+
+# 15f. antigravity fail-open diagnostics stay bounded and do not leak prompt text.
+$dispatcher = New-ScratchProject
+$antiSecretEvent = '{"conversationId":"anti-fail-1","workspacePaths":["C:/anti/project"],"transcriptPath":"C:/anti/transcript.jsonl","prompt":"SECRET_PROMPT_SHOULD_NOT_LEAK"}'
+$null = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiSecretEvent
+Set-Cursor -Boundary 'review-signoff'
+[System.IO.File]::WriteAllText((Join-Path $projectRoot '.specify\extensions\specrew-speckit\scripts\refocus.ps1'), "exit 1", [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson $antiSecretEvent
+Assert-True ($result.ExitCode -eq 0) 'antigravity provider crash fails open'
+Assert-True ($result.StdErr.Contains('WARN PROVIDER_FAILED')) 'antigravity provider crash warns PROVIDER_FAILED'
+Assert-True ($result.StdOut.Contains('degraded governed fallback') -and $result.StdOut.Contains('specrew start --host antigravity')) 'antigravity provider crash injects governed recovery fallback'
+Assert-True (-not (($result.StdErr + $result.StdOut).Contains('SECRET_PROMPT_SHOULD_NOT_LEAK'))) 'antigravity provider crash diagnostic does not leak prompt text'
+
+$dispatcher = New-ScratchProject
+$corruptAntiState = Join-Path $projectRoot '.specrew\runtime\refocus-state-anti-corrupt-1.json'
+New-Item -ItemType Directory -Path (Split-Path -Parent $corruptAntiState) -Force | Out-Null
+[System.IO.File]::WriteAllText($corruptAntiState, '{corrupt', [System.Text.UTF8Encoding]::new($false))
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'PreInvocation', '-HostKind', 'antigravity') -StdinJson '{"conversationId":"anti-corrupt-1","prompt":"SECRET_PROMPT_SHOULD_NOT_LEAK"}'
+Assert-True ($result.ExitCode -eq 0) 'antigravity corrupt state fails open'
+Assert-True ($result.StdErr.Contains('WARN STATE_UNAVAILABLE')) 'antigravity corrupt state warns STATE_UNAVAILABLE'
+Assert-True ([string]::IsNullOrWhiteSpace($result.StdOut)) 'antigravity corrupt state produces no injection'
+Assert-True (-not (($result.StdErr + $result.StdOut).Contains('SECRET_PROMPT_SHOULD_NOT_LEAK'))) 'antigravity corrupt-state diagnostic does not leak prompt text'
 
 # --- summary --------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }

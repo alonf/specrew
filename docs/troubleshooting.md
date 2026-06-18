@@ -27,7 +27,7 @@ If you run `specrew update` when the installed module itself is stale, you only 
 | On restart the agent asks "what do you want to build?" instead of resuming | No valid handover or anchor surfaced; or the deployed providers are stale | Go to [Resume starts blind instead of welcoming you back](#resume-starts-blind-instead-of-welcoming-you-back). |
 | Resume reopens "`=== AWAITING YOUR VERDICT ===`" at a boundary you thought was done | A committed boundary is not an authorized boundary | Go to [Resume re-asks for a verdict you already gave](#resume-re-asks-for-a-verdict-you-already-gave). |
 | A `HOLLOW HANDOVER` warning, or "another session may be active in this worktree" | Expected advisories: an unauthored handover body; a fresh session marker from the previous session | Go to [Handover and concurrency advisories](#handover-and-concurrency-advisories). |
-| A crash lost the last few minutes, or Antigravity shows no welcome-back banner | Expected continuity limits: a hard kill fires no stop hook; Antigravity has no hook surface | Go to [A crash lost recent conversation, or Antigravity shows no welcome-back](#a-crash-lost-recent-conversation-or-antigravity-shows-no-welcome-back). |
+| A crash lost the last few minutes, or Antigravity shows no welcome-back banner | Expected continuity limits: a hard kill fires no stop hook; Antigravity hooks may be unavailable or may not fire in that host build | Go to [A crash lost recent conversation, or Antigravity shows no welcome-back](#a-crash-lost-recent-conversation-or-antigravity-shows-no-welcome-back). |
 
 ## PSGallery side-by-side installs or stale cache
 
@@ -125,7 +125,7 @@ Do not re-add those files to git to make the state feel durable. They are host-s
 
 ## No orientation banner when you launch your host
 
-After `specrew init`, you normally just launch your host — run `claude`, `codex`, `copilot`, or `cursor` — and Specrew greets you with an orientation banner and drives the governed lifecycle. (Antigravity has no hook surface, so there you start with `specrew start` instead.)
+After `specrew init`, you normally just launch your host — run `claude`, `codex`, `copilot`, `cursor-agent`, or `agy` — and Specrew greets you with an orientation banner and drives the governed lifecycle. Antigravity uses `.agents/hooks.json` for `PreInvocation` bootstrap plus B3 boundary refocus and `Stop` handover decisions; if that host does not fire those hooks, start or recover with `specrew start --host antigravity`.
 
 If you launch your host inside an initialized project and no banner appears — the agent behaves as if the project were ungoverned — the SessionStart hook is not installed for that host, or it ran but the banner did not reach the session.
 
@@ -145,7 +145,7 @@ Here is what to do:
    specrew hooks install
    ```
 
-   Add `--host <claude|codex|copilot|cursor>` to target one host. `specrew hooks remove [--host h]` is the inverse — it removes the hook and records an opt-out so the next `specrew update` does not re-add it.
+   Add `--host <claude|codex|copilot|cursor|antigravity>` to target one host. `specrew hooks remove [--host h]` is the inverse — it removes the hook and records an opt-out so the next `specrew update` does not re-add it.
 
 3. If `specrew hooks status` shows the host installed but the banner still does not appear, re-run `specrew init` in the project root to refresh the project's hook and runtime surfaces, then relaunch.
 
@@ -214,7 +214,24 @@ Two messages around session start are advisories, not errors:
 These are the two expected continuity limits — by design, not bugs:
 
 - **A hard kill (SIGKILL, power loss, a force-closed window) loses the conversation tail since the last capture.** No hook can fire after the process is already gone, so this floor is universal and uncloseable. What you lose is bounded by the host's capture cadence: on Claude the handover refreshes every PostToolUse (seconds), so a crash loses little; on Codex / Copilot / Cursor the last capture is the previous *graceful* Stop, so an ungraceful kill loses back to there. **Durable state never goes** — every committed artifact and the working tree survive, and the next session's disk scan re-derives the position. To minimize exposure, end sessions with `/exit` (a graceful stop) rather than closing the window.
-- **Antigravity produces no orientation banner and no handover of its own** — it has no hook surface, so it can neither bootstrap on SessionStart nor capture a rolling handover. This is expected. Antigravity is still fully governed and resumable: it RECOVERS through `specrew start`, which reads the handover written by whichever host last ran and runs the same reconciliation, and its own work survives on disk for the next session. If you need conversation capture from an Antigravity stretch, run a graceful stop in a hook-capable host (Claude / Codex / Copilot / Cursor) at the next switch so a handover gets written.
+- **Antigravity produces no orientation banner, refocus injection, or handover** — its project hooks did not fire or did not deliver into the host session. Specrew supports `.agents/hooks.json` with `PreInvocation` bootstrap + B3 boundary refocus and `Stop` handover, but that is not a guarantee across every Antigravity build or channel. Antigravity is still fully governed and resumable: recover through `specrew start --host antigravity`, which reads the handover written by whichever host last ran and runs the same reconciliation, and its own work survives on disk for the next session. If you need conversation capture from an Antigravity stretch and Stop did not fire, run a graceful stop in another hook-capable host (Claude / Codex / Copilot / Cursor) at the next switch so a handover gets written.
+
+For Antigravity-specific resume checks:
+
+```powershell
+agy --version
+agy -c
+agy --conversation <conversation-id>
+```
+
+If Antigravity is asking for permission on every tool call and you intentionally want auto-approval between Specrew boundaries, either launch through Specrew with `specrew start --host antigravity --allow-all` or launch Antigravity directly with `agy --dangerously-skip-permissions`. Do not confuse that with `agy --sandbox`: sandboxing constrains terminal execution, while `--dangerously-skip-permissions` skips the interactive tool permission prompts.
+
+To inspect Antigravity-native permissions without changing Specrew hooks, run `/permissions` inside `agy`. To constrain terminal execution, use Antigravity sandboxing (`agy --sandbox` or `enableTerminalSandbox` in Antigravity settings). To disable only Specrew's Antigravity hooks while preserving user-owned `.agents/hooks.json` entries, run:
+
+```powershell
+specrew hooks remove --host antigravity
+specrew hooks status --host antigravity
+```
 
 ## Clean reinstall flow
 

@@ -32,7 +32,7 @@ It prepares the Crew handoff, launches the selected host CLI (`--host copilot|cl
 
 For new brownfield projects, the handoff includes discovery from existing code, manifests, docs, and recent git history so the Crew can reconstruct the current system baseline, seed the starting spec, and propose concrete stack/domain specialists before it asks broad intake questions. If you start without a grounded request, Specrew keeps the host out of autopilot so the Crew can ask the next intake question and wait for your answer before it invokes `speckit.specify`.
 
-Once the scope is grounded, Specrew launches from the project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message that points the host at `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and the human-readable `.specrew\start-summary.md`. Specrew defaults to **gate-respecting mode** — the Crew stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict before advancing. Specrew also defaults to `--allow-all` for tool-call approval (translated per host: Copilot `--allow-all`, Claude `--dangerously-skip-permissions`, Cursor `--force`, Codex `--full-auto`, Antigravity `--dangerously-skip-permissions`); use `--prompt-approvals` to keep each tool call interactive. The two flags are independent: `--allow-all` controls tool-call approval; `--autonomous` controls whether the Crew advances through lifecycle gates without human input. Pass `--autonomous` only for unattended runs such as overnight execution where you have already authorized the full lifecycle. Pass `--new-window` if you explicitly want a detached PowerShell window.
+Once the scope is grounded, Specrew launches from the project directory, reuses the current terminal by default, and auto-loads a compact bootstrap message that points the host at `.specrew\last-start-prompt.md`, `.specrew\start-context.json`, and the human-readable `.specrew\start-summary.md`. Specrew defaults to **gate-respecting mode** — the Crew stops at every lifecycle approval boundary (specify, clarify, plan, tasks, implement, review, retro) and waits for explicit human verdict before advancing. Specrew also defaults to `--allow-all` for tool-call approval (translated per host: Copilot `--allow-all`, Claude `--dangerously-skip-permissions`, Cursor `--force`, Codex `--dangerously-bypass-approvals-and-sandbox`, Antigravity `--dangerously-skip-permissions`); use `--prompt-approvals` to keep each tool call interactive. The two flags are independent: `--allow-all` controls tool-call approval; `--autonomous` controls whether the Crew advances through lifecycle gates without human input. Pass `--autonomous` only for unattended runs such as overnight execution where you have already authorized the full lifecycle. Pass `--new-window` if you explicitly want a detached PowerShell window.
 
 Five host runtimes are supported — Claude Code, Cursor (`cursor-agent`), Codex CLI, GitHub Copilot CLI, and Antigravity (`agy`). The interactive host-selection menu shows installed hosts in priority order (Claude → Cursor → Codex → Copilot → Antigravity); the `--host` flag non-interactive default remains `copilot` for predictability in CI/automation. Each host launches with the same Specrew bootstrap context but uses host-native CLI flags via Specrew's per-host translation layer (see the "Multi-Host Launch" section below for the per-host flag matrix). Optional delegated agents such as Claude and Codex are *also* available as additive routing choices for review-heavy and problem-solving-heavy work when enabled — that's an orthogonal concern from `--host` (which picks the launching CLI), captured in `.squad\decisions.md` as the requested agent family, effective agent family, concrete model ID, and fallback reason when routing is not honored. Specrew applies a **no-gap policy** at review/closure time: known gaps across spec, implementation, tests, docs, or observability must be fixed in the current iteration or explicitly deferred with your approval and recorded evidence before the run is claimed complete. The selected host may still ask you to trust the project directory on first launch.
 
@@ -73,9 +73,9 @@ The `--reason` flag is **mandatory**. Session-scoped (not per-boundary) — one 
 - Both: gates still fire; turns advance without input but every boundary surfaces a directive
 - `--bypass-boundary-enforcement`: suspends gates; `--autonomous` still controls turn advancement
 
-## What you'll see at every boundary
+## What you'll see at every stop
 
-Every time the Crew stops at a boundary, the console shows a **three-section handoff** in this exact shape:
+Every time the Crew stops at a boundary, the console shows a **six-section human re-entry packet** in this exact shape:
 
 ```text
 ## What I just did
@@ -88,26 +88,41 @@ Every time the Crew stops at a boundary, the console shows a **three-section han
 
 I stopped at the <boundary> boundary because <reason the next step needs you>.
 
+## What needs your review
+
+[The artifacts, decisions, risks, skipped checks, and safe-skim areas that matter for this verdict.
+ Review targets are linked via BARE `file:///` URIs (NOT markdown-link form `[name](url)`) so you
+ can Ctrl+Click through to the artifact.]
+
+## What happens next
+
+[The next lifecycle phase, artifacts that will be produced, and the next expected boundary stop.]
+
+## Discussion prompts
+
+[One to three targeted prompts, each with context, the question, the recommended/default path when
+ one exists, and the consequence of changing direction.]
+
 ## What I need from you
 
-[The single best immediate action. Review targets are linked via BARE `file:///` URIs (NOT
- markdown-link form `[name](url)`) so you can Ctrl+Click through to the artifact. Names the
- canonical verdict shape you should type.]
+[The single best immediate action. Names the canonical verdict shape you should type.]
 ```
 
-The three sections are not stylistic — they are a methodology guarantee from Feature 016 (Substantive Interaction Model, Pillar 1). The format lets you scan a handoff in seconds and decide whether to advance, even when you have been away from the session.
+When the Crew stops after substantial work outside a boundary verdict, it uses the same context minus `Discussion prompts`: `What I just did`, `Why I stopped`, `What needs your review`, `What happens next`, and `What I need from you`. This is mandatory in downstream projects and on every host, even when hooks are unavailable or failed open.
+
+These sections are not stylistic — they are a methodology guarantee from Feature 016 (Substantive Interaction Model, Pillar 1). The format lets you scan a handoff in seconds and decide whether to advance, even when you have been away from the session.
 
 **Bare `file:///` URIs, not markdown link form.** Modern PowerShell terminals (Windows Terminal, VS Code integrated terminal) auto-detect bare `file:///` URIs and make them Ctrl+Clickable. They do NOT render markdown — so if the Crew emits `[plan.md](file:///C:/foo/plan.md)`, the URL is hidden inside the parentheses and you cannot click through. If you see markdown-link form in a handoff, that is the regression: re-prompt the Crew with `please emit bare file:/// URIs, not markdown-link form`.
 
 **What to do**:
 
-1. Read all three sections. The flow is intentional: what happened → why you matter now → what to type.
-2. Ctrl+Click any bare `file:///` link the Crew shows you in `What I need from you` — those are the artifacts the verdict applies to.
+1. Read the packet sections. The flow is intentional: what happened → why it stopped → what to inspect → what happens next → what to type.
+2. Ctrl+Click any bare `file:///` link the Crew shows you — those are the artifacts the verdict applies to.
 3. Type one of the canonical verdict shapes from the "Recognized verdict shapes" section above. Ambiguous prose (`looks good`, `continue`) is rejected and re-prompted.
 
-**If you see a handoff that doesn't follow this format** — for example, a bare technical status line, a pile of tool output, or a question without context — that is a methodology regression. Re-prompt the Crew with `please use the three-section boundary handoff format` and the Crew should regenerate the handoff. If it persists across hosts (Copilot / Claude / Codex / Antigravity), open an issue — the canonical templates govern this UX promise.
+**If you see a stop that doesn't follow this format** — for example, a bare technical status line, a pile of tool output, or a question without context — that is a methodology regression. Re-prompt the Crew with `please use the Specrew stop context packet` and the Crew should regenerate the handoff. If it persists across hosts (Copilot / Claude / Cursor / Codex / Antigravity), open an issue — the canonical templates govern this UX promise.
 
-> Mid-task progress updates are NOT three-section handoffs. When the Crew is still actively working (writing a file, running a test, waiting on a background process), it uses single-line prose without the user-action section. The three-section format is reserved for boundary stops where you are the immediate blocker.
+> Mid-task progress updates are NOT stop packets. When the Crew is still actively working (writing a file, running a test, waiting on a background process), it uses single-line prose without the user-action section. The packet format is reserved for boundary stops, real human blockers, long-work pauses, and handoff-worthy stops.
 
 ## Closing iterations + features
 
@@ -315,7 +330,7 @@ The next `specrew start "<new feature description>"` now starts a fresh feature,
 - **Velocity calibration is a closeout side-effect.** `dashboard.md` from iter-001 made iter-002's estimate land more accurately. This compounds — features with many iterations get better calibration over time.
 - **Session-state preserves your place.** Closing the terminal between iter-001 and iter-002 (or in the middle of an iteration) is safe. The next `specrew start` resumes where you left off.
 
-If you want to try the walkthrough yourself, run the commands above against your own machine. The exact wording of Crew handoffs will vary by host (Copilot / Claude / Codex / Antigravity) and by model, but the boundary sequence and the artifacts produced are identical.
+If you want to try the walkthrough yourself, run the commands above against your own machine. The exact wording of Crew handoffs will vary by host (Copilot / Claude / Cursor / Codex / Antigravity) and by model, but the boundary sequence and the artifacts produced are identical.
 
 ## What's New (v0.24.3 + v0.25.0 release bundle)
 
@@ -789,14 +804,14 @@ Long sessions drift: compaction destroys methodology context, cold launches neve
 
 - **Manual recovery (every host)**: run `/specrew-refocus` any time — no-args loads the always-true core + the current stage's discipline digest; `--boundary <stage>` and `--role <name>` scope it; `--status` shows the operational truth (kill switches, breaker state, injection journal); `--compact-instructions` emits a paste-ready `/compact` preserve-list built from live lifecycle state.
 - **Boundary-cross injection (every host, mechanical)**: every boundary sync appends the INCOMING stage's digest to its own output — treat any `[specrew-refocus]` block in tool output as binding stage discipline.
-- **Hook triggers (per host, per the verified matrix)**: Claude re-injects after compaction and on session start; Codex binds the full triad (post-compaction, launch, and per-prompt boundary checks); Copilot and Cursor re-ground on session start. Hooks deploy to PER-USER config only (never shared settings — a cloned repo can never import auto-executing hooks) and respect a recorded opt-out.
+- **Hook triggers (per host, per the current matrix)**: Claude re-injects after compaction and on session start; Codex binds the full triad (post-compaction, launch, and per-prompt boundary checks); Copilot and Cursor re-ground on session start. Antigravity uses project-local `.agents/hooks.json`: `PreInvocation` injects the bootstrap message and B3 boundary refocus, while `Stop` returns the handover decision. B1 compaction refocus is not an Antigravity carrier. If those hooks do not fire, recover with `specrew start --host antigravity`. Hooks deploy to PER-USER config where the host supports it; Antigravity's hook config is project-local and merge-aware. All hosts respect a recorded opt-out.
 - **Safety**: a per-session circuit breaker trips on runaway injection (loudly once, with re-enable guidance); kill switches at three levels (`SPECREW_REFOCUS_DISABLE=1` env, per-trigger `enabled: false` in `refocus-scopes.json`, hook de-registration via `specrew hooks remove`); `specrew update` never silently flips a disable decision in either direction.
 
 ## Session Continuity — Auto-Bootstrap, Rolling Handover, Host Switching
 
 Sessions end — you `/exit`, close a window, hit a crash, or simply switch to a different AI host. Specrew treats every restart as a resume problem, so the next session starts where the last one stopped instead of asking "what do you want to build?".
 
-- **Auto-bootstrap (the way in)**: once `specrew init` has set things up, you just launch your host (run `claude`, `codex`, `copilot`, or `cursor`) inside the project. Specrew greets you with an orientation banner, reminds the agent of the governed lifecycle, and surfaces where you left off. You no longer need to run `specrew start` to get going — launching the host is the front door. (`specrew start` still works and is exactly how you get in on Antigravity, which has no auto-bootstrap.)
+- **Auto-bootstrap (the way in)**: once `specrew init` has set things up, you just launch your host (run `claude`, `codex`, `copilot`, `cursor-agent`, or `agy`) inside the project. Specrew greets you with an orientation banner, reminds the agent of the governed lifecycle, and surfaces where you left off. You no longer need to run `specrew start` to get going — launching the host is the front door. Antigravity bootstraps and refocuses through project `.agents/hooks.json` when that host fires `PreInvocation`; `specrew start --host antigravity` remains the recovery path if it does not.
 - **Rolling handover (the way out)**: as you work, Specrew keeps a single up-to-date handover file on disk that captures what the agent just did, why it stopped, where to pick up next, and the context the next session needs. It is refreshed as you go and written safely, so even an abrupt shutdown leaves a usable resume point rather than a corrupted one. This file — together with the rest of your work, which lives in files on disk — is what makes your progress durable: it follows the project, not the agent's memory.
 - **You resume right where you stopped**: on every launch Specrew reads your committed work and that handover, then tells the agent concretely where to continue — "resume the design workshop at the next remaining lens" or "the workshop is done; you're at the approval gate". Because your work lives on disk, even a hard crash can lose a little of the most recent conversation but never the work itself.
 - **Switching hosts mid-feature**: the handover is portable across hosts. Exit one host, launch a *different* one in the same project, type `continue`, and the new session picks up the same feature at the same spot — your work follows you. One behavior note: if you switch to a non-Claude host and resume right at an approval boundary, the new session may ask you to re-confirm your last approval before it moves on. That is a safety choice, not a loss of progress — your work and your place are intact.
@@ -812,7 +827,7 @@ The next release queue focuses on intake quality, expert-developer ergonomics, a
 - **Proposal 100 — Friction Dial**: three canonical modes (strict / default / autonomous) controlling verdict-parser acceptance, reconciliation posture, drift-log granularity, and compound-verdict eligibility. Composes Proposals 015 + 047 + 066 into a coherent surface. Persistence in `.specrew/config.yml`; session override via `specrew start --friction <mode>`. Source: [Proposal 100](../proposals/100-friction-dial.md).
 - **Proposal 068 — Cost-Aware Model Routing** + **Proposal 070 — Token Economy MVP**: agent-discovered model catalog routes Junior/Implementer tasks to cheap models, Senior/Reviewer tasks to strong. `cost.yml` per iteration tracks token consumption + cost estimate; `specrew where` dashboard gains a COST section. Sequenced as F-041 + F-042 (next features after F-040).
 - **Proposal 104 — Multi-Host Onboarding + Selection Flow**: first-run host probe + `.specrew/host-history.yml` for last-host default + `specrew host` command. UX layer on top of F-040. Sequenced as F-043. Source: [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md).
-- **Proposal 105 — Host-Native Hook Deployment**: elevate F-039 boundary enforcement from cooperative to runtime on hook-supporting hosts (Claude PreToolUse hooks; Antigravity later). Drafted alongside F-040 on 2026-05-23. Source: [Proposal 105](../proposals/105-host-native-hook-deployment.md).
+- **Proposal 105 — Host-Native Hook Deployment**: elevate F-039 boundary enforcement from cooperative to runtime on hook-supporting hosts. Claude, Codex, Copilot, Cursor, and Antigravity now have implemented hook slices where the host exposes the needed events; Antigravity's supported carriers are project `.agents/hooks.json` `PreInvocation` for bootstrap/B3 and `Stop` for handover, with no B1 compaction carrier. Source: [Proposal 105](../proposals/105-host-native-hook-deployment.md).
 - **Proposal 098 — Launch Posture Visibility (candidate)**: surfaces enforcement state (`[BYPASS ACTIVE]` indicator, active friction mode) at `specrew start` banner. Companion to Proposal 100 and Proposal 065.
 
 Full proposal catalog with status (Shipped / Draft / Candidate) lives at [proposals/INDEX.md](../proposals/INDEX.md).
@@ -859,8 +874,8 @@ Specrew translates user-facing Specrew flags to host-appropriate CLI flags. The 
 | Specrew flag | Copilot | Claude Code | Cursor | Codex CLI | Antigravity |
 |---|---|---|---|---|---|
 | `--remote` | `--remote` | `--remote-control` | (warn-and-continue, no remote wiring) | (warn-and-continue, no remote wiring) | (warn-and-continue, no remote wiring) |
-| `--allow-all` | `--allow-all` | `--dangerously-skip-permissions` | `--force` | `--full-auto` | `--dangerously-skip-permissions` |
-| `--autopilot` | `--autopilot` | (drop with notice — use `--autonomous` for unattended runs) | (folds into `--force`) | `--full-auto` (folds into `--allow-all`) | (drop with notice — use `--autonomous` for unattended runs) |
+| `--allow-all` | `--allow-all` | `--dangerously-skip-permissions` | `--force` | `--dangerously-bypass-approvals-and-sandbox` | `--dangerously-skip-permissions` |
+| `--autopilot` | `--autopilot` | (drop with notice — use `--autonomous` for unattended runs) | (folds into `--force`) | (folds into `--dangerously-bypass-approvals-and-sandbox`) | (drop with notice — use `--autonomous` for unattended runs) |
 | `--autonomous` | (Specrew-side only — handled by lifecycle boundary enforcement per F-039; not translated per-host) | | | | |
 
 ### Per-host launch invocation shape
@@ -871,7 +886,7 @@ The bootstrap-context handshake ("Read `.specrew/last-start-prompt.md` and `.spe
 copilot:     copilot --agent Squad --add-dir <project> -i <bootstrap-prompt> [--allow-all] [--autopilot] [--remote]
 claude:      claude -p <bootstrap-prompt> --add-dir <project> [--dangerously-skip-permissions] [--remote-control]
 cursor:      cursor-agent <bootstrap-prompt> --workspace <project> [--force]
-codex:       codex exec --cd <project> [--full-auto] <bootstrap-prompt>
+codex:       codex exec --cd <project> [--dangerously-bypass-approvals-and-sandbox] <bootstrap-prompt>
 antigravity: agy -i <bootstrap-prompt> --add-dir <project> [--dangerously-skip-permissions]
 ```
 
@@ -879,7 +894,7 @@ antigravity: agy -i <bootstrap-prompt> --add-dir <project> [--dangerously-skip-p
 
 The opening line of the coordinator prompt is universal across all hosts: `"You are the Crew team coordinator running inside a Specrew-bootstrapped repository."` This aligns with the project terminology: **"the Crew"** is the team role (Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator); **"Squad"** is the npm runtime product (one of several possible Crew runtimes).
 
-For non-Copilot hosts, Specrew additionally strips directives that reference Squad-specific runtime paths (`.squad/decisions.md`, `.squad/config.json`, `agentModelOverrides`, `sync-squad-model-overrides.ps1`) since those paths don't exist when running on Claude or Codex.
+For non-Copilot hosts, Specrew additionally strips directives that reference Squad-specific runtime paths (`.squad/decisions.md`, `.squad/config.json`, `agentModelOverrides`, `sync-squad-model-overrides.ps1`) since those paths don't exist when running outside the Copilot/Squad runtime.
 
 For **Codex and Cursor** specifically, Specrew rewrites slash-command boundary-advance references (e.g., `/speckit.specrew-speckit.sync-plan`) to direct PowerShell invocations (`pwsh -File .specify/extensions/specrew-speckit/scripts/sync-boundary-state.ps1 -BoundaryType plan`) because neither has a user-defined slash-command surface.
 
@@ -888,7 +903,8 @@ For **Codex and Cursor** specifically, Specrew rewrites slash-command boundary-a
 F-039 (Launch-Mode Boundary Enforcement) is **cooperative**, not runtime-enforced. The boundary-authorization gate fires only when the agent invokes Specrew's canonical sync path:
 
 - **Copilot, Claude**: Slash command `/speckit.specrew-speckit.sync-<boundary>` → boundary-state-sync script → authorization helper. Discoverable, mechanical.
-- **Codex**: Direct `pwsh -File ...` invocation (per FR-014 rewrite) → boundary-state-sync script → authorization helper. Less discoverable, but functionally equivalent.
+- **Codex and Cursor**: Direct `pwsh -File ...` invocation (per FR-014 rewrite) → boundary-state-sync script → authorization helper. Less discoverable, but functionally equivalent.
+- **Antigravity**: Project `.agents/hooks.json` handles bootstrap, B3 boundary refocus, and handover through `PreInvocation` and `Stop`, and the lifecycle still advances through the same boundary-state-sync script. If Antigravity hooks do not fire, `specrew start --host antigravity` re-anchors the session through the same artifacts.
 
 In all cases, if an agent writes directly to `.specrew/start-context.json` boundary_enforcement section without going through the canonical path, no gate fires. Runtime enforcement (host-layer interception of any write to boundary state) is **out of scope for F-040** and tracked as [Proposal 105](../proposals/105-host-native-hook-deployment.md). When Proposal 105 ships, Claude Code's PreToolUse hook layer can elevate F-039 from cooperative to runtime enforcement.
 
@@ -899,12 +915,12 @@ In all cases, if an agent writes directly to `.specrew/start-context.json` bound
 | Capability | Copilot | Claude | Cursor | Codex | Antigravity |
 |---|---|---|---|---|---|
 | User-defined slash commands | ✅ `.github/skills/<name>.md` | ✅ `.claude/skills/<name>/SKILL.md` | ❌ **Not supported** (skills deploy as `.cursor/rules/*.mdc` context) | ❌ **Not supported** | ✅ `.agents/skills/<name>.md` |
-| Hooks (PreToolUse, etc.) | ❌ None | ✅ Rich, configured in `.claude/settings.json` | ⚠️ Unverified at F-050 time | ⚠️ Unclear at v0.26.0 research time | ⚠️ Unclear at v0.27.0 research time |
+| Hooks (PreToolUse, etc.) | ✅ Session-start refocus/bootstrap | ✅ Rich, configured in `.claude/settings.json` | ✅ Session-start refocus/bootstrap | ✅ Full refocus triad | `PreInvocation` bootstrap + B3 boundary refocus, `Stop` handover; no B1 compaction carrier; use `specrew start --host antigravity` if hooks do not fire |
 | Subagents (multi-agent teams) | ⚠️ Via `--agent <name>` (Squad) | ✅ `.claude/agents/*.md` | ⚠️ Crew charters deploy as `.cursor/rules/*.mdc` (no native agent picker) | ✅ `.codex/agents/*.toml` | ✅ `.agents/agents/*.md` |
 | MCP server config | ⚠️ Limited (recent) | ✅ `.mcp.json` first-class | ✅ `cursor-agent mcp` + `--approve-mcps` | ✅ `.codex/mcp.toml` first-class | ⚠️ Unverified at graduation time |
 | Project memory | ⚠️ None native | ✅ `CLAUDE.md` | ✅ `AGENTS.md` | ✅ `AGENTS.md` | ⚠️ Unverified at graduation time |
 
-F-040 manages skills + slash commands (uniformly via existing F-021 multi-host deploy). F-040 explicitly defers hooks, MCP, project memory, and subagents to future proposals (Proposal 105 for hooks; Proposal 024 Slice 3 for the rest).
+F-040 managed skills + slash commands (uniformly via existing F-021 multi-host deploy) and deferred hooks, MCP, project memory, and subagents to later work. Current Specrew releases add hook-driven bootstrap/refocus where the host exposes a usable carrier; Antigravity support uses project-local `.agents/hooks.json` with `PreInvocation` for bootstrap plus B3 boundary refocus and `Stop` for handover.
 
 ### Cursor host interaction model (F-050)
 
@@ -915,8 +931,18 @@ Cursor's host is the standalone **`cursor-agent`** CLI (not the `cursor` editor 
 - **Detection.** `cursor-agent` must be on PATH (install + verify: [cursor.com/cli](https://cursor.com/cli), `cursor-agent --version`, `cursor-agent login`); otherwise `specrew start --host cursor` exits with install guidance instead of launching. Cursor sits at menu priority **1.5** (between Claude and Codex).
 - **Out of scope (v2 follow-up).** `--plugin-dir` plugin packaging — the first slice maps Speckit onto Cursor's native rules surface; richer plugin integration can follow.
 
+### Antigravity host interaction model
+
+Antigravity's host binary is **`agy`**. After `specrew init`, the primary path is to run `agy` in the project and type your feature request or `continue`; the project `.agents/hooks.json` definition injects Specrew's bootstrap and B3 boundary refocus when Antigravity fires `PreInvocation`, and `Stop` records the handover decision.
+
+- **Resume.** `agy -c` resumes the latest Antigravity conversation, and `agy --conversation <id>` resumes a specific conversation. This is native Antigravity conversation state; Specrew's durable source of truth remains the project artifacts and rolling handover.
+- **Explicit Specrew launch.** `specrew start --host antigravity "<feature>"` launches `agy -i <bootstrap-prompt> --add-dir <project>` and remains the fallback when project hooks do not fire.
+- **Auto-approve.** `--allow-all` maps to `agy --dangerously-skip-permissions`. If you launch Antigravity directly and want to skip tool permission prompts, run `agy --dangerously-skip-permissions` from the project root. This affects tool-call approval only; it does not bypass Specrew lifecycle boundaries. Use `/permissions` inside `agy` when you want to inspect or adjust Antigravity-native permission rules instead of globally auto-approving.
+- **Sandbox.** Antigravity also exposes `--sandbox` and the `enableTerminalSandbox` setting, which enable terminal restrictions. That is separate from Specrew's `--allow-all`; use sandboxing when you want a constrained Antigravity terminal session, not when you want to auto-approve tools.
+- **Hooks.** Specrew uses project-local `.agents/hooks.json` with `PreInvocation` for bootstrap plus B3 boundary refocus and `Stop` for handover. B1 compaction refocus is absent on Antigravity. If those hooks are missing, stale, opted out, or simply do not fire in a particular Antigravity build, run `specrew hooks status --host antigravity` / `specrew hooks install --host antigravity`, or recover with `specrew start --host antigravity`. To disable Specrew hooks while preserving user-owned Antigravity hook definitions, run `specrew hooks remove --host antigravity`.
+
 ### Missing-host guidance
 
 If you invoke `specrew start --host claude` but Claude Code is not installed on PATH, Specrew exits with the install URL for that host and a non-zero exit code. No CLI is launched. Same behavior for `--host codex` when Codex CLI is missing.
 
-`--host antigravity` is now supported as of v0.27.0 (F-044 iter-005). Launch shape: `agy -i <prompt> --add-dir <path> [--dangerously-skip-permissions]`. `--host auto` is still accepted by the parser but rejected with explicit "deferred to follow-up" guidance pointing to [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) (auto-selection logic). When `--host` is omitted entirely, Specrew shows an interactive numbered menu listing installed hosts first and "(not installed)" hosts with install URLs.
+`--host antigravity` is supported. Launch shape: `agy -i <prompt> --add-dir <path> [--dangerously-skip-permissions]`. If you are not using `specrew start`, run `agy` directly in the project and type your request or `continue`. `--host auto` is still accepted by the parser but rejected with explicit "deferred to follow-up" guidance pointing to [Proposal 104](../proposals/104-multi-host-onboarding-and-selection-flow.md) (auto-selection logic). When `--host` is omitted entirely, Specrew shows an interactive numbered menu listing installed hosts first and "(not installed)" hosts with install URLs.

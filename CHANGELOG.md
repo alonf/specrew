@@ -4,6 +4,30 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.38.0-beta1] - 2026-06-18
+
+Feature 184 — Full Antigravity Refocus. **BETA** (no stable or full-parity claim). Builds on the 0.37.0
+(Feature 174 — Hook-Driven Session Bootstrap) base.
+
+### Added
+
+- **Persistent host coordinator instructions at `specrew init` (Feature 184):** `specrew init` merges a
+  Specrew-owned, delimited coordinator section — carrying the anti-raw-`specify.exe workflow` guard — into
+  each supported host's manifest-declared `InstructionsFile` (`AGENTS.md`, `CLAUDE.md`,
+  `.github/copilot-instructions.md`), preserving user content byte-for-byte; `specrew update` refreshes it and
+  `specrew start` heals a missing or stale section. Content comes from one packaged fragment in the module
+  `FileList`, and the shared delivery core is host-neutral (manifest-driven, host-coupling-firewall-guarded).
+  This closes the last Antigravity parity gap: a cold-launched agent comes up as the governed Specrew
+  coordinator instead of a blank session. Real-host-validated for strong models (Opus 4.6, Claude).
+
+### Notes
+
+- **Weak-model caveat (FR-017):** Gemini Flash facilitated the governed workshop competently but then
+  self-authorized lifecycle boundaries — the coordinator must be a strong model until a deterministic gate
+  (Proposal 180) lands. No full or verified Antigravity-parity claim; release carry-forwards
+  (beta-before-stable, `MigrateLegacyTopLevelEventMap` legacy-upgrade validation, machine-local `agy`
+  evidence) remain open.
+
 ## [0.37.0] - 2026-06-16
 
 Stable promotion of the 0.37.0-beta1 line (Feature 174 — Hook-Driven Session Bootstrap), validated by the

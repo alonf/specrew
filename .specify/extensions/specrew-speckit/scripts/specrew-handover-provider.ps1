@@ -1,14 +1,14 @@
 # Specrew ROLLING-handover provider (Feature 174). Thin TRIGGER ADAPTER (iter-9.1): it resolves the project
 # root, host, and trigger source, then funnels into the ONE core save path `Update-SpecrewRollingHandover`
 # (HandoverStore). It re-implements no save logic. Registered for the per-host END-OF-TURN events (Claude
-# `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`) AND `PostToolUse` (so the handover refreshes
+# `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`, Antigravity `Stop`) AND `PostToolUse` (so the handover refreshes
 # mid-turn during picker-driven phases like the workshop, where no end-of-turn Stop fires). It is ALSO
 # invoked directly by the design-workshop skill with `--source workshop`. Portable across hosts + crash-safe
 # (the core's material-change gate keeps the per-tool-call PostToolUse cost cheap; the atomic writer keeps
 # the file safe). Fail-open: any error -> exit 0.
 #
 #   --event-json <json>     the host event payload (Stop/agentStop/PostToolUse); source derived from it
-#   --host-kind <kind>      the authoritative resolved host (claude|codex|copilot|cursor)
+#   --host-kind <kind>      the authoritative resolved host (claude|codex|copilot|cursor|antigravity)
 #   --source <label>        explicit trigger label (used by the workshop skill: `--source workshop`)
 #   --project-root <path>   optional override (testability); else resolve up to .specrew
 
@@ -57,14 +57,18 @@ try {
         elseif ($args[$i] -eq '--last-assistant-message' -and ($i + 1) -lt $args.Count) { $lastAssistantArg = [string]$args[$i + 1] }
     }
 
-    $root = if ($rootOverride) { $rootOverride } else { Get-HandoverProjectRoot }
+    $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-HandoverProjectRoot }
 
-    # Component resolution (same as the bootstrap provider, D-001): beside the provider in the self-host
-    # tree, else SPECREW_MODULE_PATH (dev-tree override) , else the installed module's scripts/internal/bootstrap.
+    # Component resolution (same as the bootstrap provider, D-001): beside the provider in the source tree;
+    # when the self-host dogfood runs the deployed .specify mirror, prefer this project source tree before
+    # ambient SPECREW_MODULE_PATH or installed-module fallbacks. Downstream projects normally lack
+    # scripts/internal, so they still resolve through the dev-tree override or installed module.
     $bdir = Join-Path $PSScriptRoot 'bootstrap'
     if (-not (Test-Path -LiteralPath $bdir)) {
+        $selfHostBdir = Join-Path $root 'scripts/internal/bootstrap'
         $devBdir = if ($env:SPECREW_MODULE_PATH) { Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap' } else { $null }
-        if ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
+        if (Test-Path -LiteralPath $selfHostBdir) { $bdir = $selfHostBdir }
+        elseif ($devBdir -and (Test-Path -LiteralPath $devBdir)) { $bdir = $devBdir }
         else {
             # F-174 iter-11 (P1): pick the newest installed module that ACTUALLY CONTAINS scripts/internal/bootstrap,
             # not blindly the newest - not every version ships the bootstrap components (0.34.0 did; 0.35.0/0.36.0

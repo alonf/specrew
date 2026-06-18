@@ -48,6 +48,25 @@ Top-level: a PowerShell hashtable consumed via `Import-PowerShellDataFile`.
 | `DeferredGuidance` | string | `$null` | REQUIRED if `Status = 'deferred'`. User-facing guidance when they try to use the host |
 | `HandlersFile` | string | `'handlers.ps1'` | Path to file containing the 5 contract functions |
 | `CoordinatorRulesFile` | string | `'coordinator-rules.psd1'` | Path to declarative surgery rules file |
+| `RefocusHookBindings` | hashtable | `$null` | Required for hook-capable hosts. Owns hook config path, opt-out marker, config shape, command mode, registrations, and any owned-file/version metadata. Core hook deploy/status code must consume this instead of branching on concrete host names. |
+
+### RefocusHookBindings fields
+
+| Field | Type | Required | Notes |
+|---|---|---|---|
+| `SettingsFile` | string | yes | Hook config file. `~/` paths resolve under user home; other paths resolve under the project. |
+| `OptOutMarkerFile` | string | yes | Project/runtime marker used by remove and status to record an explicit hook opt-out. |
+| `DispatcherPath` | string | yes | Project-relative dispatcher path used by command renderers and launcher resolution. |
+| `ConfigShape` | enum: `event-map` \| `named-definition` | yes | JSON layout written by deploy. |
+| `CommandMode` | enum: `project-placeholder` \| `launcher-file` \| `launcher-encoded` | yes | How hook commands name the dispatcher or launcher. |
+| `Registrations` | hashtable[] | yes | Ordered event rows. Each row declares `Event`, `DispatcherEvent`, `HandlerShape`, and optional timeout/matcher fields. |
+| `SettingsVersion` | int | no | Version added to config files that require it. |
+| `OwnsSettingsFile` | bool | no | True when Specrew owns the entire hook config file and may delete it on remove. |
+| `MigrateLegacyTopLevelEventMap` | bool | no | True when deploy should strip legacy top-level Specrew event entries before writing `hooks.<Event>`. |
+| `ProjectDirPlaceholder` | string | for `project-placeholder` | Host-provided project-root placeholder included in the command string. |
+| `ProjectRootEnvironmentVariables` | string[] | no | Host-exposed environment variables that directly identify the live project root. The generated launcher bakes the union from manifests into its project-resolution candidate list. |
+| `DefinitionName` | string | for `named-definition` | Managed top-level definition name. |
+| `DefinitionNameWhenOccupied` | string | no | Alternate managed name when `DefinitionName` is already occupied by a non-Specrew definition. |
 
 ## Contract functions (handlers.ps1)
 

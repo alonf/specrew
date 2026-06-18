@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param()
 
-# Crew-bootstrap E2E: deploy + verify all 4 per-host Crew runtimes from a single
+# Crew-bootstrap E2E: deploy + verify all 5 per-host Crew runtimes from a single
 # canonical .specrew/team/agents/ source. Promoted from .scratch/crew-bootstrap-e2e.ps1
 # during deep-analysis cleanup (Proposal 108 follow-up).
 
@@ -35,6 +35,7 @@ Write-Pass "Initialize-SpecrewTeamCanonical seeds 5 baseline charters under .spe
 $expectedAgentRoots = @{
     'copilot'     = (Join-Path $scratchDir '.squad\agents')
     'claude'      = (Join-Path $scratchDir '.claude\agents')
+    'cursor'      = (Join-Path $scratchDir '.cursor\rules')
     'codex'       = (Join-Path $scratchDir '.codex\agents')
     'antigravity' = (Join-Path $scratchDir '.agents\agents')
 }
@@ -44,10 +45,10 @@ foreach ($kv in $expectedAgentRoots.GetEnumerator()) {
         Write-Fail "Get-SpecrewHostAgentRoot drift for '$($kv.Key)': got '$actual', expected '$($kv.Value)'"
     }
 }
-Write-Pass "Get-SpecrewHostAgentRoot resolves manifest AgentDir for all 4 hosts"
+Write-Pass "Get-SpecrewHostAgentRoot resolves manifest AgentDir for all 5 hosts"
 
 # Test 3: Each Install-<Kind>CrewRuntime deploys to its manifest-declared AgentDir
-foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity')) {
+foreach ($kind in @('copilot', 'claude', 'cursor', 'codex', 'antigravity')) {
     $result = Invoke-HostHandler -Kind $kind -ContractFunction InstallCrewRuntime -Arguments @{ ProjectPath = $scratchDir }
     $written = @($result.Actions | Where-Object { $_.Action -eq 'written' })
     if ($written.Count -lt 5) {
@@ -84,7 +85,15 @@ foreach ($field in @('name', 'description', 'developer_instructions')) {
 }
 Write-Pass "Codex subagent TOML ships required fields (name + description + developer_instructions)"
 
-# Test 7: Antigravity YAML frontmatter present
+# Test 7: Cursor MDC frontmatter present
+$cursorRoot = Join-Path $scratchDir '.cursor\rules'
+$sampleCursor = Get-Content -LiteralPath (Join-Path $cursorRoot 'reviewer.mdc') -Raw -Encoding UTF8
+if ($sampleCursor -notmatch '(?ms)^---\s*$.+?^description:\s.+?^alwaysApply:\s.+?^---\s*$') {
+    Write-Fail "Cursor rule file missing MDC frontmatter"
+}
+Write-Pass "Cursor rule file ships valid MDC frontmatter"
+
+# Test 8: Antigravity YAML frontmatter present
 $antigravityRoot = Join-Path $scratchDir '.agents\agents'
 $sampleAnti = Get-Content -LiteralPath (Join-Path $antigravityRoot 'reviewer.md') -Raw -Encoding UTF8
 if ($sampleAnti -notmatch '(?ms)^---\s*$.+?^name:\s.+?^description:\s.+?^---\s*$') {
@@ -92,7 +101,7 @@ if ($sampleAnti -notmatch '(?ms)^---\s*$.+?^name:\s.+?^description:\s.+?^---\s*$
 }
 Write-Pass "Antigravity subagent file ships valid YAML frontmatter"
 
-# Test 8: Specrew-managed sentinel preserves user edits (W-4 enforcement)
+# Test 9: Specrew-managed sentinel preserves user edits (W-4 enforcement)
 $userEditedTarget = Join-Path $claudeRoot 'reviewer.md'
 $userBody = "# my custom reviewer charter (no Specrew-managed marker)`nThis is user content; the next deploy MUST NOT overwrite it.`n"
 [System.IO.File]::WriteAllText($userEditedTarget, $userBody, [System.Text.UTF8Encoding]::new($false))
@@ -108,7 +117,7 @@ if ($afterContent -notmatch 'my custom reviewer charter') {
 }
 Write-Pass "Sentinel enforcement preserves user-edited files without the Specrew-managed marker"
 
-# Test 9: Re-deploying still overwrites files that DO carry the marker
+# Test 10: Re-deploying still overwrites files that DO carry the marker
 $secondRedeploy = Invoke-HostHandler -Kind 'claude' -ContractFunction InstallCrewRuntime -Arguments @{ ProjectPath = $scratchDir }
 $writtenAgain = @($secondRedeploy.Actions | Where-Object { $_.Action -eq 'written' })
 if ($writtenAgain.Count -lt 4) {

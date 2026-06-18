@@ -35,16 +35,16 @@ if (($deferred -join ',') -ne ($expectedDeferred -join ',')) {
 Write-Pass 'Host-kind enums match spec (supported: antigravity,claude,codex,copilot,cursor; deferred: auto only)'
 
 # Test 3: Host binary names are correct
-foreach ($pair in @{ copilot = 'copilot'; claude = 'claude'; codex = 'codex'; antigravity = 'agy' }.GetEnumerator()) {
+foreach ($pair in @{ copilot = 'copilot'; claude = 'claude'; cursor = 'cursor-agent'; codex = 'codex'; antigravity = 'agy' }.GetEnumerator()) {
     $bin = Get-SpecrewHostBinary -HostKind $pair.Key
     if ($bin -ne $pair.Value) {
         Write-Fail "Host binary mismatch for $($pair.Key): got $bin"
     }
 }
-Write-Pass 'Get-SpecrewHostBinary returns correct binary names for all four hosts (antigravity -> agy)'
+Write-Pass 'Get-SpecrewHostBinary returns correct binary names for all five hosts (antigravity -> agy)'
 
 # Test 4: Install guidance for each host contains a URL
-foreach ($hk in 'copilot', 'claude', 'codex', 'antigravity') {
+foreach ($hk in 'copilot', 'claude', 'cursor', 'codex', 'antigravity') {
     $guidance = Get-SpecrewHostInstallGuidance -HostKind $hk
     if ($guidance -notmatch 'https?://') {
         Write-Fail "Install guidance for $hk has no URL: $guidance"
@@ -114,18 +114,24 @@ if ($codexRoot -notlike '*\.agents\skills*') { Write-Fail "Codex skill root wron
 if ($antigravityRoot -notlike '*\.agents\skills*') { Write-Fail "Antigravity skill root wrong (should be .agents/skills like Codex): $antigravityRoot" }
 Write-Pass 'Per-host skill roots resolve correctly (antigravity uses .agents/skills like Codex)'
 
-# Test 7: flag-translation matrix for all 9 cells per research.md Task 2
+# Test 7: flag-translation matrix for all 15 cells per research.md Task 2 plus Cursor/Antigravity follow-up
 . $flagTranslationScript
 $matrix = @{
     'copilot|--remote'     = @{ ExpectArgs = @('--remote'); ExpectNotice = $false }
     'claude|--remote'      = @{ ExpectArgs = @('--remote-control'); ExpectNotice = $true }
+    'cursor|--remote'      = @{ ExpectArgs = @(); ExpectNotice = $true }
     'codex|--remote'       = @{ ExpectArgs = @(); ExpectNotice = $true }
+    'antigravity|--remote' = @{ ExpectArgs = @(); ExpectNotice = $true }
     'copilot|--allow-all'  = @{ ExpectArgs = @('--allow-all'); ExpectNotice = $false }
     'claude|--allow-all'   = @{ ExpectArgs = @('--dangerously-skip-permissions'); ExpectNotice = $true }
+    'cursor|--allow-all'   = @{ ExpectArgs = @('--force'); ExpectNotice = $true }
     'codex|--allow-all'    = @{ ExpectArgs = @('--dangerously-bypass-approvals-and-sandbox'); ExpectNotice = $true }
+    'antigravity|--allow-all' = @{ ExpectArgs = @('--dangerously-skip-permissions'); ExpectNotice = $true }
     'copilot|--autopilot'  = @{ ExpectArgs = @('--autopilot'); ExpectNotice = $false }
     'claude|--autopilot'   = @{ ExpectArgs = @(); ExpectNotice = $true }
+    'cursor|--autopilot'   = @{ ExpectArgs = @(); ExpectNotice = $true }
     'codex|--autopilot'    = @{ ExpectArgs = @(); ExpectNotice = $true }
+    'antigravity|--autopilot' = @{ ExpectArgs = @(); ExpectNotice = $true }
 }
 foreach ($pair in $matrix.GetEnumerator()) {
     $parts = $pair.Key -split '\|'
@@ -141,7 +147,7 @@ foreach ($pair in $matrix.GetEnumerator()) {
         Write-Fail "Flag translation [$hk $flag] expected a notice but got none"
     }
 }
-Write-Pass 'Flag-translation matrix covers all 9 cells correctly (research.md Task 2)'
+Write-Pass 'Flag-translation matrix covers all 15 cells correctly (5 hosts x 3 flags)'
 
 # Test 8: Codex --remote produces SuppressWarning=$false (warn-and-continue)
 $codexRemote = Get-HostFlagTranslation -HostKind 'codex' -SpecrewFlag '--remote'
@@ -169,7 +175,7 @@ You are Squad running inside a Specrew-bootstrapped repository.
 
 $expectedHeader = 'You are the Crew team coordinator running inside a Specrew-bootstrapped repository.'
 
-foreach ($hk in 'copilot', 'claude', 'codex') {
+foreach ($hk in 'copilot', 'claude', 'cursor', 'codex', 'antigravity') {
     $rewritten = Invoke-SpecrewCoordinatorPromptSurgery -Prompt $samplePrompt -HostKind $hk
     if ($rewritten -notmatch [regex]::Escape($expectedHeader)) {
         Write-Fail "FR-011 universal header missing after surgery for host=$hk"
@@ -178,7 +184,7 @@ foreach ($hk in 'copilot', 'claude', 'codex') {
         Write-Fail "FR-011 original Squad header still present after surgery for host=$hk"
     }
 }
-Write-Pass 'FR-011 universal header rewrite applied to all 3 hosts'
+Write-Pass 'FR-011 universal header rewrite applied to all 5 hosts'
 
 # Test 9b: host orientation block is selected-host, version, runtime-status, and lifecycle-position accurate
 $orientationPrompt = @'
@@ -546,10 +552,12 @@ $auto = Get-SpecrewDeferredHostGuidance -HostKind 'auto'
 if ($auto -notmatch '104') {
     Write-Fail "Auto deferred guidance should mention Proposal 104: $auto"
 }
-if ($auto -notmatch 'antigravity') {
-    Write-Fail "Auto deferred guidance should now list antigravity as a valid explicit host: $auto"
+foreach ($explicitHost in 'copilot', 'claude', 'cursor', 'codex', 'antigravity') {
+    if ($auto -notmatch $explicitHost) {
+        Write-Fail "Auto deferred guidance should list $explicitHost as a valid explicit host: $auto"
+    }
 }
-Write-Pass 'Deferred-host guidance — auto-only contracts; mentions all four explicit hosts (copilot|claude|codex|antigravity)'
+Write-Pass 'Deferred-host guidance — auto-only contracts; mentions all five explicit hosts (copilot|claude|cursor|codex|antigravity)'
 
 Write-Host ''
 Write-Host 'Multi-host launch path: all assertions pass' -ForegroundColor Green

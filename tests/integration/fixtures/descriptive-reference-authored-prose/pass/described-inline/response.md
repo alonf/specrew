@@ -6,6 +6,14 @@ Completed feature 012, descriptive references in handoffs, and iteration 002, th
 
 This replay slice is ready for review.
 
+## What needs your review
+
+Review the described references and confirm the replay fixture still reads clearly.
+
+## What happens next
+
+After review, the replay-path proof can proceed with the same validator expectations.
+
 ## What I need from you
 
 Next step: review the replay wording and fixture coverage.
