@@ -20,7 +20,7 @@ Inside Specrew, these rules hold at every stage and on every host:
 6. **file:/// references.** Every artifact, file, or directory named in human-visible prose uses the full file:/// URL form.
 7. **Honest state.** state.md, task statuses, and capacity lines reflect disk truth, in canonical enums only. Count-claims must match artifacts.
 8. **Preflight every gate (two-tier model).** Before ANY boundary packet: reconstruct from artifacts, then run validator, upstream parity, dirty-state, artifact, stale-phrase, packet-consistency, and evidence checks. On failure: record, fix/classify, RERUN, then present. review-signoff gets the full structured review.
-9. **At any gate, when in doubt: stop** and render the six-section re-entry packet. At a **verdict** stop on the Claude host, invoke the `specrew-gate-stop` skill (F-165). On non-Claude hosts, render the full packet directly using that host's approved interaction path; do not invoke `specrew-gate-stop`. Workshop/clarify questions keep their normal path; never use the skill to deliver a verdict.
+9. **At any gate, when in doubt: stop** and render the full six-section re-entry packet as a message — never collapsed into a picker/menu, which hides the packet behind its short fields — then emit the verdict marker `<!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> -->` as the LAST line so the human's verdict is captured into the gate's authorization. Render and collect the verdict through your host's approved interaction path for a verdict stop: use your host's dedicated boundary-stop surface if it has one, otherwise render the packet directly. Workshop/clarify questions keep their normal path.
 
 Deep sources:
 
