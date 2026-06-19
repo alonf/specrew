@@ -5,6 +5,12 @@ This is the durable handoff for continuing feature 185. The design workshop is c
 (`C:/Dev/185-host-neutral-gate-enforcement`, branch `185-host-neutral-gate-enforcement`,
 based on origin/main `b71d3b4c`).
 
+## PROGRESS (2026-06-19)
+
+- specify + plan committed (`1f24aa29`, `1b1405f4`).
+- **Iteration 1 (cleaning) DONE + tested + committed (`84f99984`)**: FR-002/003/006. The all-host digests (`general.md` rule-9, `specify.md` step-6/traps) are harness-free + instruct every host to emit the `SPECREW-VERDICT-BOUNDARY` marker. Because the capture is transcript-gated (not Claude-gated), non-Claude transcript hosts now capture verdicts with NO `HandoverStore` change. No new skill file. Test: `tests/integration/host-neutral-gate-cleaning.tests.ps1`.
+- **Iteration 2 PENDING A MAINTAINER DECISION**: the gate provider's Claude mechanical block requires re-registering `PreToolUse`, which F-184 deliberately turned off (~920ms). Surface + measure before activating (advisor's flag) — options: (a) activate with a narrow matcher + measured cost; (b) leave out, rely on cleaning + cooperative-halt (FR-007 stays research-flagged). The non-reversal Iter-2 parts (per-host capability declaration + degraded-mode + parity/gate-detection tests) can proceed regardless.
+
 ## Lifecycle position (honest)
 
 - **Worktree:** created, synced with origin/main.
