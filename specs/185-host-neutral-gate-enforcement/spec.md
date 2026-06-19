@@ -165,3 +165,36 @@ As a Specrew maintainer, I want a parity test proving each supported host receiv
 - **Human Oversight Points**: the lifecycle gates (specify, clarify, plan, tasks, before-implement, review-signoff, retro, iteration-closeout, feature-closeout). One approval advances exactly one boundary. The maintainer pre-authorized the gates through implementation, conditional on no scope change.
 - **Split Guard**: stop for a human split/defer verdict if real enforcement requires a broad host-model rewrite.
 - **Release Discipline**: beta-before-stable; no full-parity enforcement claim without real-host evidence.
+
+## Scope Amendment (2026-06-19): Reliably Follow Specrew — Three Failure Modes
+
+### Context
+
+Maintainer dogfooding surfaced THREE distinct failure modes, of which gate-skipping (#2884, the original 185 scope) is only one:
+
+1. **Resume confusion** — on an existing Specrew project, the host asks "what do you want to build?" instead of continuing the active feature (it did not read the lifecycle state; the orientation did not reliably reach it — the F-174 delivery limit).
+2. **Gate-skip** — the host advances a human-judgment boundary without a verdict (#2884, the original scope).
+3. **Raw Spec Kit** — the host runs the raw Spec Kit SDD engine (`specify workflow` / `/speckit.specify`) instead of the governed Specrew workshop + slash-commands.
+
+The real target is **make the host reliably follow Specrew**, not just gate enforcement. All three share a root: the persistent instructions say the right thing, but a weak model does not reliably follow them, and the live-state orientation is not reliably delivered.
+
+### Design (prevention + detection, riding the init-deployed hooks/files — must work at DIRECT launch)
+
+The maintainer confirmed `specrew start` is rarely used; harnesses are launched **directly** after `specrew init`. So every lever rides the hooks + files Specrew deploys into the harness config at init (the same mechanism F-184's persistent instructions use): **prevention** = a reliable SessionStart orientation [#1] + a markdown patch of the deployed Spec Kit `specify` slash-command [#3] + the cleaned harness-free gate instruction [#2, done, Iter 1]; **detection** = one per-turn Stop-hook conformance check catching all three deviations + correcting.
+
+### Dropped: the CLI wrapper (drift-log D-001/D-002)
+
+A `specify.exe` wrapper (intercepting `specify workflow`) was validated (`specify.exe` IS Spec Kit's binary, with a `workflow` engine) then DROPPED: with direct launch the norm, it needs invasive install-time PATH placement (global PATH mod / shadowing the install) for marginal value over the detection, which catches the same invocation. No compiled binary, no new dependency.
+
+### Functional Requirements Added
+
+- **FR-009**: The SessionStart orientation MUST reliably deliver, at the first action of a resumed session, the active feature + boundary + the single next Specrew action — so the host continues the active feature rather than asking what to build (#1). Where a host truncates the payload (the F-174 limit), the orientation degrades to a lean pointer the host reads, not silence.
+- **FR-010**: `specrew init` (and update / start-heal) MUST patch the deployed Spec Kit `specify` slash-command(s) with a managed section routing the host through the Specrew design workshop before producing a spec (#3) — idempotent, user-content-preserving, healed on re-run, resilient to a Spec Kit update re-deploying its commands.
+- **FR-011**: A per-turn Stop-hook conformance check MUST detect and correct the three deviations at end-of-turn: an intake question while an active feature exists → redirect to continue it (#1); a raw Spec Kit engine invocation → redirect to the governed flow (#3); a human-judgment boundary advanced without a captured verdict → halt and require the verdict (#2). Bounded evidence; fail-open on over-correction, halt only on the un-authorized advance.
+- **FR-012**: The CLI binary wrapper is OUT of scope (dropped per drift-log D-002); the `specify workflow` path is covered by FR-011's detection + the persistent instruction, not a pre-block.
+
+### Success Criteria Added
+
+- **SC-006**: A direct-launch dogfood on an existing Specrew project shows the host continues the active feature (does not ask "what to build") — manual real-host evidence.
+- **SC-007**: A direct-launch dogfood shows the host enters the Specrew workshop rather than running raw Spec Kit — manual real-host evidence.
+- **SC-008**: The conformance check detects each of the three deviations — automated test.

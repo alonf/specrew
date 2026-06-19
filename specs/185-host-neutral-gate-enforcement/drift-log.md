@@ -12,4 +12,12 @@
 
 **Recommended pivot.** A cheap, cross-host **Stop-hook detection**: the Stop hook already runs every turn and captures verdicts (`HandoverStore.ps1`). Extend it to detect an unauthorized next-phase advance (a phase-N governance artifact written/committed without the phase-N verdict) and halt (the boundary stays un-authorized; the resume tells the next turn to revert and get the verdict). It works on Antigravity (which has a Stop hook), fires once per turn (no per-Write tax), and catches the actual bug. The Iteration-1 cleaning floor is committed regardless, so #2884 is already substantially better.
 
-**Awaiting maintainer verdict:** (a) Stop-hook detection pivot [recommended] / (b) Claude `PreToolUse` anyway / (c) both (full capability matrix: PreToolUse on Claude + Stop-hook detection on hookless hosts).
+**RESOLVED (2026-06-19):** the maintainer chose the detection pivot (a), which then generalized into the unified design — see D-002. The Claude `PreToolUse` pre-block is dropped (it taxes the host that already behaves).
+
+## D-002: Re-scoped to unified "reliably follow Specrew"; CLI wrapper considered + dropped (2026-06-19)
+
+**Decision (maintainer, in design conversation).** Dogfooding surfaced THREE failure modes, not just gate-skip: (1) on an existing project the host asks "what to build" instead of continuing (resume-orientation); (2) gate-skip (#2884); (3) the host runs raw Spec Kit instead of the Specrew workshop. Re-scoped 185 from "host-neutral gate enforcement" to **"make the host reliably follow Specrew"** (all three), via **prevention** (SessionStart orientation + a markdown patch of the deployed Spec Kit `specify` slash-command) + **detection** (a generalized Stop-hook conformance check catching all three). This generalizes D-001's detection pivot. See the spec Scope Amendment + FR-009..FR-012.
+
+**CLI wrapper considered + dropped.** A `specify.exe` shim intercepting `specify workflow` was validated (`specify.exe` IS Spec Kit's uv-tool Python binary, with a `workflow` engine — the bundled SDD runner). But the maintainer confirmed `specrew start` is rarely used — harnesses launch directly — so the wrapper cannot ride launch-env PATH control; it would need invasive install-time PATH placement (global PATH mod / shadowing `~/.local/bin/specify.exe`) for marginal value over the detection (which catches the same `specify workflow` invocation post-hoc). DROPPED (FR-012). The other three levers ride the init-deployed hooks/files → work at direct launch with zero invasiveness and no new dependency.
+
+**Empirical plan.** Implement the levers, then direct-launch dogfood to see if the three problems recur (maintainer: "test and see if we still have problems").
