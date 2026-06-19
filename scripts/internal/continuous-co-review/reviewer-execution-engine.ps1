@@ -27,6 +27,28 @@ function Get-ContinuousCoReviewExecutionValue {
     return $DefaultValue
 }
 
+function Get-ContinuousCoReviewMutationSourceRoots {
+    param(
+        [AllowNull()]
+        $Request
+    )
+
+    $changeSet = Get-ContinuousCoReviewExecutionValue -Object $Request -Name 'change_set'
+    $changedPaths = @(
+        foreach ($changedPath in @(Get-ContinuousCoReviewExecutionValue -Object $changeSet -Name 'changed_paths' -DefaultValue @())) {
+            if (-not [string]::IsNullOrWhiteSpace([string] $changedPath)) {
+                [string] $changedPath
+            }
+        }
+    )
+
+    if (@($changedPaths).Count -gt 0) {
+        return @($changedPaths)
+    }
+
+    return @('scripts/internal/continuous-co-review', 'tests/continuous-co-review')
+}
+
 function New-ContinuousCoReviewExecutionFailureResult {
     param(
         [Parameter(Mandatory)]
@@ -204,9 +226,10 @@ function Invoke-ContinuousCoReviewGuardedAdapterAttempt {
     }
 
     $excludeRoots = @($RequestBundle.workspace_path)
-    $before = New-ContinuousCoReviewWorkspaceMutationSnapshot -RepoRoot $RepoRoot -ExcludeRoots $excludeRoots -GitCommand $GitCommand -CreatedAt $CreatedAt
+    $sourceRoots = @(Get-ContinuousCoReviewMutationSourceRoots -Request $Request)
+    $before = New-ContinuousCoReviewWorkspaceMutationSnapshot -RepoRoot $RepoRoot -SourceRoots $sourceRoots -ExcludeRoots $excludeRoots -GitCommand $GitCommand -CreatedAt $CreatedAt
     $attemptResult = & $AdapterInvoker $Candidate $Request $RequestBundle $AttemptNumber
-    $after = New-ContinuousCoReviewWorkspaceMutationSnapshot -RepoRoot $RepoRoot -ExcludeRoots $excludeRoots -GitCommand $GitCommand -CreatedAt $CreatedAt
+    $after = New-ContinuousCoReviewWorkspaceMutationSnapshot -RepoRoot $RepoRoot -SourceRoots $sourceRoots -ExcludeRoots $excludeRoots -GitCommand $GitCommand -CreatedAt $CreatedAt
     $mutationGuard = Compare-ContinuousCoReviewWorkspaceMutationSnapshot -Before $before -After $after
     if ([bool] $mutationGuard.mutated) {
         return New-ContinuousCoReviewMutationInvalidatedAttemptResult -Request $Request -ProviderInvocation $attemptResult.provider_invocation -MutationGuard $mutationGuard -CreatedAt $CreatedAt

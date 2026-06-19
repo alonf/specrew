@@ -6,6 +6,39 @@ param(
     [switch]$Quiet,
     [switch]$Json,
     [switch]$Open,
+    [switch]$Live,
+    [Alias('baseline-ref')]
+    [string]$BaselineRef,
+    [Alias('checkpoint-id')]
+    [string]$CheckpointId,
+    [Alias('run-id')]
+    [string]$RunId,
+    [string]$HostName,
+    [Alias('host')]
+    [string]$ReviewerHost,
+    [string]$Model,
+    [Alias('authorization-ref')]
+    [string]$AuthorizationRef,
+    [Alias('fallback-policy')]
+    [string]$FallbackPolicy,
+    [Alias('reviewer-config')]
+    [string]$ReviewerConfigPath,
+    [Alias('schema-root')]
+    [string]$SchemaRoot,
+    [Alias('run-root')]
+    [string]$RunRoot,
+    [Alias('timeout-seconds')]
+    [int]$TimeoutSeconds = 0,
+    [Alias('design-context-ref')]
+    [string[]]$DesignContextRef,
+    [Alias('allowed-path')]
+    [string[]]$AllowedPath,
+    [Alias('forbidden-path')]
+    [string[]]$ForbiddenPath,
+    [Alias('exclude-path')]
+    [string[]]$ExcludePath,
+    [Alias('preserve-debug')]
+    [switch]$PreserveDebug,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CliArgs
@@ -28,15 +61,36 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
 
 function Show-Usage {
     @'
-specrew review - replay the persisted reviewer closeout packet
+specrew review - run live continuous co-review or replay persisted reviewer evidence
 
 Usage:
   specrew review [<iteration>] [--project-path <path>] [--feature <id>] [--quiet | --json] [--open]
+  specrew review --live --baseline-ref <ref> [--checkpoint-id <id>] [--run-id <id>]
+                 [--host <host>] [--model <model>] [--authorization-ref <ref>]
+                 [--design-context-ref <path>] [--allowed-path <path>] [--forbidden-path <path>]
+                 [--exclude-path <pattern>] [--reviewer-config <path>] [--schema-root <path>]
+                 [--run-root <path>] [--timeout-seconds <seconds>] [--quiet | --json]
 
 Options:
   --project-path <path>  Target Specrew project (default: current directory)
   --feature <id>         Restrict lookup to one feature directory under specs\
   --iteration <NNN>      Replay a specific iteration directory
+  --live                 Run the continuous co-review runtime and write .specrew\review\inline evidence
+  --baseline-ref <ref>   Git ref/SHA used as the checkpoint diff baseline for --live
+  --checkpoint-id <id>   Stable checkpoint id for live evidence (default: manual-live-review)
+  --run-id <id>          Stable run id for live evidence (default: run-<checkpoint-id>)
+  --host <host>          Requested reviewer host, such as claude, codex, copilot, cursor-agent, or antigravity
+  --model <model>        Requested reviewer model id for the host
+  --authorization-ref    Human-approved authorization reference for the requested reviewer
+  --design-context-ref   Design/spec artifact to include in the request bundle; repeatable
+  --allowed-path         Path scope the reviewer may inspect; repeatable
+  --forbidden-path       Path scope the reviewer must not inspect; repeatable
+  --exclude-path         Diff path pattern to exclude; repeatable
+  --reviewer-config      JSON host catalog override for live review
+  --schema-root          Reviewer contract schema directory override
+  --run-root             Temporary immutable request-bundle workspace root
+  --timeout-seconds      Reviewer host timeout in seconds (default: 120)
+  --preserve-debug       Keep temporary request-bundle workspaces after live review
   --quiet                Emit only the stable machine-parseable digest line
   --json                 Emit JSON summary instead of the visual reviewer summary
   --open                 Open reviewer-index.md and review-diagrams.md when present
@@ -63,13 +117,57 @@ function Convert-UnixStyleArguments {
         Quiet           = $Quiet
         Json            = $Json
         Open            = $Open
+        Live            = $Live
         Help            = $Help
+        BaselineRef     = $null
+        CheckpointId    = 'manual-live-review'
+        RunId           = $null
+        Host            = $null
+        Model           = $null
+        AuthorizationRef = $null
+        TimeoutSeconds  = 120
+        FallbackPolicy  = 'none'
+        ReviewerConfigPath = $null
+        SchemaRoot      = $null
+        RunRoot         = $null
+        PreserveDebug   = $false
+        DesignContextRefs = @()
+        AllowedPaths    = @()
+        ForbiddenPaths  = @()
+        ExcludedPathPatterns = @()
     }
 
     $CliArgs = @($CliArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
+            '^--(?<name>baseline-ref|checkpoint-id|run-id|host|model|authorization-ref|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path)(?:=(?<value>.+))?$' {
+                $name = $Matches['name']
+                $value = $Matches['value']
+                if ([string]::IsNullOrWhiteSpace($value)) {
+                    $index++
+                    if ($index -ge $CliArgs.Count) { throw "--$name requires a value." }
+                    $value = $CliArgs[$index]
+                }
+
+                switch ($name) {
+                    'baseline-ref' { $result.BaselineRef = $value }
+                    'checkpoint-id' { $result.CheckpointId = $value }
+                    'run-id' { $result.RunId = $value }
+                    'host' { $result.Host = $value }
+                    'model' { $result.Model = $value }
+                    'authorization-ref' { $result.AuthorizationRef = $value }
+                    'fallback-policy' { $result.FallbackPolicy = $value }
+                    'reviewer-config' { $result.ReviewerConfigPath = $value }
+                    'schema-root' { $result.SchemaRoot = $value }
+                    'run-root' { $result.RunRoot = $value }
+                    'timeout-seconds' { $result.TimeoutSeconds = [int]$value }
+                    'design-context-ref' { $result.DesignContextRefs = @($result.DesignContextRefs) + @($value) }
+                    'allowed-path' { $result.AllowedPaths = @($result.AllowedPaths) + @($value) }
+                    'forbidden-path' { $result.ForbiddenPaths = @($result.ForbiddenPaths) + @($value) }
+                    'exclude-path' { $result.ExcludedPathPatterns = @($result.ExcludedPathPatterns) + @($value) }
+                }
+            }
             '^--project-path(?:=(.+))?$' {
                 if ($Matches[1]) {
                     $result.ProjectPath = $Matches[1]
@@ -103,6 +201,8 @@ function Convert-UnixStyleArguments {
             '^--quiet$' { $result.Quiet = $true }
             '^--json$' { $result.Json = $true }
             '^--open$' { $result.Open = $true }
+            '^--live$' { $result.Live = $true }
+            '^--preserve-debug$' { $result.PreserveDebug = $true }
             '^(?:-h|--help)$' { $result.Help = $true }
             '^\d{3,}$' {
                 if ([string]::IsNullOrWhiteSpace($result.IterationNumber)) {
@@ -117,6 +217,244 @@ function Convert-UnixStyleArguments {
     }
 
     return [pscustomobject]$result
+}
+
+function Resolve-LiveReviewSchemaRoot {
+    param(
+        [AllowNull()][string]$SchemaRoot,
+        [AllowNull()][string]$ProjectRoot
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($SchemaRoot)) {
+        return (Resolve-Path -LiteralPath $SchemaRoot).Path
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        $deployedCandidate = Join-Path $ProjectRoot '.specrew\review\contracts'
+        if (Test-Path -LiteralPath $deployedCandidate -PathType Container) {
+            return (Resolve-Path -LiteralPath $deployedCandidate).Path
+        }
+    }
+
+    $candidate = Join-Path (Split-Path -Parent $PSScriptRoot) 'specs\197-continuous-co-review\contracts'
+    if (Test-Path -LiteralPath $candidate -PathType Container) {
+        return (Resolve-Path -LiteralPath $candidate).Path
+    }
+
+    return $null
+}
+
+function Get-LiveReviewConfiguration {
+    param(
+        [AllowNull()][string]$ReviewerConfigPath,
+        [AllowNull()][string]$HostName,
+        [AllowNull()][string]$Model,
+        [AllowNull()][string]$AuthorizationRef,
+        [int]$TimeoutSeconds,
+        [string]$FallbackPolicy
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) {
+        $resolvedPath = (Resolve-Path -LiteralPath $ReviewerConfigPath).Path
+        return (Get-Content -LiteralPath $resolvedPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100)
+    }
+
+    if ($HostName -eq 'fixture') {
+        return [pscustomobject][ordered]@{
+            schema_version = '1.0'
+            hosts          = @(
+                [pscustomobject][ordered]@{
+                    host              = 'fixture'
+                    model             = if ([string]::IsNullOrWhiteSpace($Model)) { 'fixture-reviewer' } else { $Model }
+                    adapter_id        = 'reviewer-host-adapter-fixture'
+                    allowed           = $true
+                    installed         = $true
+                    review_class_rank = 100
+                    model_source      = 'fixture'
+                    cost_class        = 'free-local-fixture'
+                    authorization_ref = if ([string]::IsNullOrWhiteSpace($AuthorizationRef)) { 'local-fixture-reviewer' } else { $AuthorizationRef }
+                    fallback_allowed  = $false
+                    timeout_seconds   = $TimeoutSeconds
+                }
+            )
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($HostName) -and [string]::IsNullOrWhiteSpace($AuthorizationRef) -and [string]::IsNullOrWhiteSpace($Model)) {
+        return $null
+    }
+
+    $configuration = New-ContinuousCoReviewDefaultReviewerHostConfig
+    $hosts = @(
+        foreach ($entry in @($configuration.hosts)) {
+            $hostMatches = [string]::IsNullOrWhiteSpace($HostName) -or $entry.host -eq $HostName
+            [pscustomobject][ordered]@{
+                host              = $entry.host
+                model             = if ($hostMatches -and -not [string]::IsNullOrWhiteSpace($Model)) { $Model } else { $entry.model }
+                adapter_id        = $entry.adapter_id
+                allowed           = if ($hostMatches -and -not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $true } else { [bool]$entry.allowed }
+                installed         = [bool]$entry.installed
+                review_class_rank = [int]$entry.review_class_rank
+                model_source      = $entry.model_source
+                cost_class        = $entry.cost_class
+                authorization_ref = if ($hostMatches -and -not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $AuthorizationRef } else { $entry.authorization_ref }
+                fallback_allowed  = if ($hostMatches -and $FallbackPolicy -ne 'none') { $true } else { [bool]$entry.fallback_allowed }
+                timeout_seconds   = $TimeoutSeconds
+            }
+        }
+    )
+
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        hosts          = @($hosts)
+    }
+}
+
+function New-LiveReviewFixtureAdapter {
+    param(
+        [Parameter(Mandatory = $true)][string]$SchemaRoot
+    )
+
+    return {
+        param($Candidate, $Request, $RequestBundle, [int]$AttemptNumber)
+
+        $findingsResult = [pscustomobject][ordered]@{
+            schema_version = '1.0'
+            run_id         = $Request.run_id
+            status         = 'no_findings'
+            reviewer       = [pscustomobject][ordered]@{
+                host       = $Candidate.host
+                model      = $Candidate.model
+                adapter_id = $Candidate.adapter_id
+            }
+            findings       = @()
+            created_at     = $Request.created_at
+        }
+
+        return [pscustomobject][ordered]@{
+            kind                   = 'findings-result'
+            provider_invocation    = [pscustomobject][ordered]@{
+                schema_version         = '1.0'
+                invocation_id          = "invocation-$($Request.run_id)-fixture-$AttemptNumber"
+                run_id                 = $Request.run_id
+                attempt_number         = $AttemptNumber
+                adapter_id             = $Candidate.adapter_id
+                requested_host         = $Request.provider_request.requested_host
+                requested_model        = $Request.provider_request.requested_model
+                actual_host            = $Candidate.host
+                actual_model           = $Candidate.model
+                argv_summary           = @('fixture-reviewer', '--stdin-request-json')
+                working_directory_ref  = '.specrew/review/inline'
+                timeout_seconds        = [int]$Request.provider_request.timeout_seconds
+                stdout_capture_policy  = 'parse-json-only'
+                stderr_capture_policy  = 'status-only'
+                exit_code              = 0
+                failure_category       = $null
+                started_at             = $Request.created_at
+                ended_at               = $Request.created_at
+            }
+            findings_result        = $findingsResult
+            infrastructure_failure = $null
+        }
+    }.GetNewClosure()
+}
+
+function Get-ObjectPropertyValue {
+    param(
+        [AllowNull()]$Object,
+        [Parameter(Mandatory = $true)][string]$Name
+    )
+
+    if ($null -eq $Object) {
+        return $null
+    }
+
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+
+    return $property.Value
+}
+
+function Invoke-LiveReview {
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [Parameter(Mandatory = $true)][object]$Arguments
+    )
+
+    if ([string]::IsNullOrWhiteSpace([string]$Arguments.BaselineRef)) {
+        throw '--baseline-ref is required when --live is used.'
+    }
+
+    $loaderPath = Join-Path $PSScriptRoot 'internal\continuous-co-review\_load.ps1'
+    if (-not (Test-Path -LiteralPath $loaderPath -PathType Leaf)) {
+        throw "Missing continuous co-review runtime loader '$loaderPath'."
+    }
+    . $loaderPath
+
+    $schemaRoot = Resolve-LiveReviewSchemaRoot -SchemaRoot $Arguments.SchemaRoot -ProjectRoot $ProjectRoot
+    $providerRequest = [pscustomobject][ordered]@{
+        requested_host    = if ([string]::IsNullOrWhiteSpace([string]$Arguments.Host)) { $null } else { [string]$Arguments.Host }
+        requested_model   = if ([string]::IsNullOrWhiteSpace([string]$Arguments.Model)) { $null } else { [string]$Arguments.Model }
+        authorization_ref = if ([string]::IsNullOrWhiteSpace([string]$Arguments.AuthorizationRef)) { $null } else { [string]$Arguments.AuthorizationRef }
+        timeout_seconds   = [int]$Arguments.TimeoutSeconds
+        fallback_policy   = [string]$Arguments.FallbackPolicy
+    }
+    $reviewerConfiguration = Get-LiveReviewConfiguration -ReviewerConfigPath $Arguments.ReviewerConfigPath -HostName $Arguments.Host -Model $Arguments.Model -AuthorizationRef $Arguments.AuthorizationRef -TimeoutSeconds ([int]$Arguments.TimeoutSeconds) -FallbackPolicy ([string]$Arguments.FallbackPolicy)
+    $runRoot = if ([string]::IsNullOrWhiteSpace([string]$Arguments.RunRoot)) { Join-Path $ProjectRoot '.specrew\review\tmp' } else { [string]$Arguments.RunRoot }
+    $adapter = if ([string]$Arguments.Host -eq 'fixture') { New-LiveReviewFixtureAdapter -SchemaRoot $schemaRoot } else { $null }
+
+    $invokeArguments = @{
+        RepoRoot              = $ProjectRoot
+        CheckpointId          = [string]$Arguments.CheckpointId
+        BaselineRef           = [string]$Arguments.BaselineRef
+        RunId                 = [string]$Arguments.RunId
+        ProviderRequest       = $providerRequest
+        DesignContextRefs     = [string[]]@($Arguments.DesignContextRefs)
+        ReviewerConfiguration = $reviewerConfiguration
+        SchemaRoot            = $schemaRoot
+        RunRoot               = $runRoot
+        ExcludedPathPatterns  = [string[]]@($Arguments.ExcludedPathPatterns)
+        AllowedPaths          = [string[]]@($Arguments.AllowedPaths)
+        ForbiddenPaths        = [string[]]@($Arguments.ForbiddenPaths)
+        PreserveDebug         = [bool]$Arguments.PreserveDebug
+    }
+    if ($null -ne $adapter) {
+        $invokeArguments.InvokeAdapter = $adapter
+    }
+
+    return Invoke-ContinuousCoReviewCheckpointReview @invokeArguments
+}
+
+function ConvertTo-LiveReviewSummary {
+    param(
+        [Parameter(Mandatory = $true)]$Result,
+        [Parameter(Mandatory = $true)][string]$ProjectRoot
+    )
+
+    $inlinePath = Join-Path $ProjectRoot (Join-Path '.specrew\review\inline' ([string]$Result.run_id))
+    $relativeInlinePath = if (Test-Path -LiteralPath $inlinePath) { Get-RelativePath -FromDirectory $ProjectRoot -ToPath $inlinePath } else { ".specrew\review\inline\$($Result.run_id)" }
+    $request = Get-ObjectPropertyValue -Object $Result -Name 'request'
+    $changeSet = Get-ObjectPropertyValue -Object $Result -Name 'change_set'
+    $gateVerdict = Get-ObjectPropertyValue -Object $Result -Name 'gate_verdict'
+    $execution = Get-ObjectPropertyValue -Object $Result -Name 'execution'
+    $infrastructureFailure = Get-ObjectPropertyValue -Object $Result -Name 'infrastructure_failure'
+    $executionInfrastructureFailure = Get-ObjectPropertyValue -Object $execution -Name 'infrastructure_failure'
+    $providerInvocation = Get-ObjectPropertyValue -Object $execution -Name 'provider_invocation'
+    return [pscustomobject][ordered]@{
+        mode                    = 'live'
+        run_id                  = $Result.run_id
+        checkpoint_id           = if ($gateVerdict) { $gateVerdict.checkpoint_id } else { $null }
+        status                  = $Result.status
+        gate_state              = if ($gateVerdict) { $gateVerdict.state } else { $null }
+        baseline_ref            = if ($request) { $request.baseline_ref } elseif ($changeSet) { $changeSet.baseline_ref } else { $null }
+        evidence_directory      = $relativeInlinePath
+        requested_host          = if ($request) { $request.provider_request.requested_host } else { $null }
+        actual_host             = if ($providerInvocation) { $providerInvocation.actual_host } else { $null }
+        infrastructure_failure  = if ($infrastructureFailure) { $infrastructureFailure.category } elseif ($executionInfrastructureFailure) { $executionInfrastructureFailure.category } else { $null }
+        blocking_finding_count  = if ($gateVerdict) { $gateVerdict.unresolved_blocking_count } else { $null }
+    }
 }
 
 function Get-MetadataValue {
@@ -306,8 +644,27 @@ $parsedArgs = Convert-UnixStyleArguments `
     -Quiet $Quiet.IsPresent `
     -Json $Json.IsPresent `
     -Open $Open.IsPresent `
+    -Live $Live.IsPresent `
     -Help $Help.IsPresent `
     -CliArgs $CliArgs
+
+if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $parsedArgs.BaselineRef = $BaselineRef }
+if (-not [string]::IsNullOrWhiteSpace($CheckpointId)) { $parsedArgs.CheckpointId = $CheckpointId }
+if (-not [string]::IsNullOrWhiteSpace($RunId)) { $parsedArgs.RunId = $RunId }
+$boundHost = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHost } else { $HostName }
+if (-not [string]::IsNullOrWhiteSpace($boundHost)) { $parsedArgs.Host = $boundHost }
+if (-not [string]::IsNullOrWhiteSpace($Model)) { $parsedArgs.Model = $Model }
+if (-not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $parsedArgs.AuthorizationRef = $AuthorizationRef }
+if (-not [string]::IsNullOrWhiteSpace($FallbackPolicy)) { $parsedArgs.FallbackPolicy = $FallbackPolicy }
+if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { $parsedArgs.ReviewerConfigPath = $ReviewerConfigPath }
+if (-not [string]::IsNullOrWhiteSpace($SchemaRoot)) { $parsedArgs.SchemaRoot = $SchemaRoot }
+if (-not [string]::IsNullOrWhiteSpace($RunRoot)) { $parsedArgs.RunRoot = $RunRoot }
+if ($TimeoutSeconds -gt 0) { $parsedArgs.TimeoutSeconds = $TimeoutSeconds }
+if (@($DesignContextRef).Count -gt 0) { $parsedArgs.DesignContextRefs = @($parsedArgs.DesignContextRefs) + @($DesignContextRef) }
+if (@($AllowedPath).Count -gt 0) { $parsedArgs.AllowedPaths = @($parsedArgs.AllowedPaths) + @($AllowedPath) }
+if (@($ForbiddenPath).Count -gt 0) { $parsedArgs.ForbiddenPaths = @($parsedArgs.ForbiddenPaths) + @($ForbiddenPath) }
+if (@($ExcludePath).Count -gt 0) { $parsedArgs.ExcludedPathPatterns = @($parsedArgs.ExcludedPathPatterns) + @($ExcludePath) }
+if ($PreserveDebug.IsPresent) { $parsedArgs.PreserveDebug = $true }
 
 $ProjectPath = $parsedArgs.ProjectPath
 $FeatureId = $parsedArgs.FeatureId
@@ -315,6 +672,7 @@ $IterationNumber = $parsedArgs.IterationNumber
 $Quiet = [bool]$parsedArgs.Quiet
 $Json = [bool]$parsedArgs.Json
 $Open = [bool]$parsedArgs.Open
+$Live = [bool]$parsedArgs.Live
 $Help = [bool]$parsedArgs.Help
 
 if ($Help) {
@@ -331,6 +689,47 @@ $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     Write-Error ("Project path does not exist: {0}" -f $resolvedProjectPath)
     exit 1
+}
+
+if ($Live) {
+    try {
+        $liveResult = Invoke-LiveReview -ProjectRoot $resolvedProjectPath -Arguments $parsedArgs
+        $summary = ConvertTo-LiveReviewSummary -Result $liveResult -ProjectRoot $resolvedProjectPath
+    }
+    catch {
+        Write-Error $_.Exception.Message
+        exit 1
+    }
+
+    if ($Json) {
+        $summary | ConvertTo-Json -Depth 8
+    }
+    elseif ($Quiet) {
+        Write-Host ("review-run run_id={0} status={1} gate={2} evidence={3}" -f $summary.run_id, $summary.status, $summary.gate_state, $summary.evidence_directory)
+    }
+    else {
+        $border = ('=' * 60)
+        Write-Host $border -ForegroundColor Green
+        Write-Host 'SPECREW LIVE REVIEW' -ForegroundColor Green
+        Write-Host $border -ForegroundColor Green
+        Write-Host ("Run: {0}" -f $summary.run_id)
+        Write-Host ("Checkpoint: {0}" -f $summary.checkpoint_id)
+        Write-Host ("Status: {0}" -f $summary.status)
+        Write-Host ("Gate: {0}" -f $summary.gate_state)
+        Write-Host ("Evidence: {0}" -f $summary.evidence_directory)
+        if (-not [string]::IsNullOrWhiteSpace([string]$summary.infrastructure_failure)) {
+            Write-Host ("Infrastructure failure: {0}" -f $summary.infrastructure_failure)
+        }
+    }
+
+    if ($Open) {
+        $evidencePath = Join-Path $resolvedProjectPath $summary.evidence_directory
+        if (-not (Try-OpenPath -Path $evidencePath)) {
+            Write-Host ("Open manually: {0}" -f $evidencePath)
+        }
+    }
+
+    exit 0
 }
 
 try {

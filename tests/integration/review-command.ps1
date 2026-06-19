@@ -44,6 +44,21 @@ function Assert-Contains {
     return $true
 }
 
+function Invoke-Git {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Repository,
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    $output = @(& git -C $Repository @Arguments 2>&1)
+    if ($LASTEXITCODE -ne 0) {
+        throw "git $($Arguments -join ' ') failed in $Repository`: $($output -join "`n")"
+    }
+    return @($output)
+}
+
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $entryScript = Join-Path $repoRoot 'scripts\specrew.ps1'
 $reviewScript = Join-Path $repoRoot 'scripts\specrew-review.ps1'
@@ -177,7 +192,56 @@ foreach ($pattern in @('"feature":\s*"001-sample"', '"iteration":\s*"001"', '"di
 }
 Write-Pass 'JSON mode emits structured reviewer summary data'
 
-Write-Host "`nTest 5: reviewer replay surfaces lockout-chain cap state when present"
+Write-Host "`nTest 5: live fixture review writes inline reviewer evidence"
+$liveProjectRoot = Join-Path $scratchRoot 'live-project'
+$liveSourcePath = Join-Path $liveProjectRoot 'src\sample.ps1'
+$liveSpecPath = Join-Path $liveProjectRoot 'specs\001-live\spec.md'
+$null = New-Item -ItemType Directory -Path (Split-Path -Parent $liveSourcePath) -Force
+$null = New-Item -ItemType Directory -Path (Split-Path -Parent $liveSpecPath) -Force
+$null = New-Item -ItemType Directory -Path (Join-Path $liveProjectRoot '.specrew') -Force
+[System.IO.File]::WriteAllText((Join-Path $liveProjectRoot '.specrew\config.yml'), "project_name: live-review`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($liveSpecPath, "# Live Review Spec`n`nA design context source for live review.`n", [System.Text.UTF8Encoding]::new($false))
+[System.IO.File]::WriteAllText($liveSourcePath, "function Get-Sample { 'before' }`n", [System.Text.UTF8Encoding]::new($false))
+Invoke-Git -Repository $liveProjectRoot -Arguments @('init', '--initial-branch=main') | Out-Null
+Invoke-Git -Repository $liveProjectRoot -Arguments @('config', 'user.email', 'specrew-test@example.invalid') | Out-Null
+Invoke-Git -Repository $liveProjectRoot -Arguments @('config', 'user.name', 'Specrew Test') | Out-Null
+Invoke-Git -Repository $liveProjectRoot -Arguments @('add', '.') | Out-Null
+Invoke-Git -Repository $liveProjectRoot -Arguments @('commit', '-m', 'baseline') | Out-Null
+$baselineRef = ([string](@(Invoke-Git -Repository $liveProjectRoot -Arguments @('rev-parse', 'HEAD'))[0])).Trim()
+Add-Content -LiteralPath $liveSourcePath -Value "function Get-SampleAfter { 'after' }" -Encoding UTF8
+
+$liveRunId = 'test-live-fixture-review'
+$liveResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
+    'review', '--project-path', $liveProjectRoot,
+    '--live', '--baseline-ref', $baselineRef,
+    '--host', 'fixture',
+    '--run-id', $liveRunId,
+    '--checkpoint-id', 'test-live-fixture-review',
+    '--design-context-ref', 'specs\001-live\spec.md',
+    '--json'
+)
+if ($liveResult.ExitCode -ne 0) {
+    Write-Fail 'specrew review --live fixture mode failed'
+    Write-Host ($liveResult.Output -join "`n") -ForegroundColor Yellow
+    exit 1
+}
+
+$liveOutput = $liveResult.Output -join "`n"
+foreach ($pattern in @('"mode":\s*"live"', '"run_id":\s*"test-live-fixture-review"', '"gate_state":\s*"pass"', '"actual_host":\s*"fixture"')) {
+    if (-not (Assert-Contains -Content $liveOutput -Pattern $pattern -FailureMessage ("Live JSON output is missing '{0}'." -f $pattern))) {
+        exit 1
+    }
+}
+$liveEvidenceRoot = Join-Path $liveProjectRoot ".specrew\review\inline\$liveRunId"
+foreach ($artifact in @('review-request.json', 'spawn-invocation.json', 'findings-result.json', 'gate-verdict.json', 'review-run.json')) {
+    if (-not (Test-Path -LiteralPath (Join-Path $liveEvidenceRoot $artifact) -PathType Leaf)) {
+        Write-Fail "Live review did not write evidence artifact: $artifact"
+        exit 1
+    }
+}
+Write-Pass 'Live fixture mode writes continuous co-review inline evidence'
+
+Write-Host "`nTest 6: reviewer replay surfaces lockout-chain cap state when present"
 $capFixturePath = Join-Path $repoRoot 'tests\integration\fixtures\lockout-chain-cap\project'
 if (-not (Test-Path -LiteralPath $capFixturePath -PathType Container)) {
     Write-Fail "Missing lockout-chain-cap fixture: $capFixturePath"

@@ -152,8 +152,8 @@ function Compare-ContinuousCoReviewMutationInventory {
     )
 
     $changes = New-Object System.Collections.ArrayList
-    $beforeNames = @($Before.PSObject.Properties.Name)
-    $afterNames = @($After.PSObject.Properties.Name)
+    $beforeNames = @($Before.PSObject.Properties | ForEach-Object { $_.Name })
+    $afterNames = @($After.PSObject.Properties | ForEach-Object { $_.Name })
     foreach ($name in @($beforeNames + $afterNames | Sort-Object -Unique)) {
         $beforeValue = if ($beforeNames -contains $name) { [string] $Before.PSObject.Properties[$name].Value } else { $null }
         $afterValue = if ($afterNames -contains $name) { [string] $After.PSObject.Properties[$name].Value } else { $null }

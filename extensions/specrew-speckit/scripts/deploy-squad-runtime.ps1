@@ -124,6 +124,31 @@ function Set-ManagedFile {
     }
 }
 
+function Copy-ManagedDirectory {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourcePath,
+
+        [Parameter(Mandatory = $true)]
+        [string]$TargetPath,
+
+        [AllowEmptyCollection()]
+        [Parameter(Mandatory = $true)]
+        [System.Collections.ArrayList]$Actions
+    )
+
+    if (-not (Test-Path -LiteralPath $SourcePath -PathType Container)) {
+        throw "Managed runtime source directory not found: $SourcePath"
+    }
+
+    Ensure-Directory -Path $TargetPath -Actions $Actions
+    foreach ($sourceFile in @(Get-ChildItem -LiteralPath $SourcePath -File -Recurse | Sort-Object FullName)) {
+        $relativePath = [System.IO.Path]::GetRelativePath((Resolve-Path -LiteralPath $SourcePath).Path, $sourceFile.FullName)
+        $targetFile = Join-Path $TargetPath $relativePath
+        Set-ManagedFile -TargetPath $targetFile -Content (Get-Content -LiteralPath $sourceFile.FullName -Raw -Encoding UTF8) -Actions $Actions
+    }
+}
+
 function Get-ManagedBlock {
     param(
         [Parameter(Mandatory = $true)]
@@ -635,6 +660,7 @@ function Test-IsManagedLegacySkillDirectory {
 
 $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 $extensionRoot = Split-Path -Parent $PSScriptRoot
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $extensionRoot)
 $templateRoot = Join-Path $extensionRoot 'squad-templates'
 $legacySkillsRoot = Join-Path $resolvedProjectPath '.copilot\skills'
 $squadRoot = Join-Path $resolvedProjectPath '.squad'
@@ -708,6 +734,14 @@ foreach ($activeSkillRoot in $activeSkillRoots) {
         Set-ManagedFile -TargetPath (Join-Path $skillDirectoryPath '.specrew-managed') -Content (Get-ManagedSkillMarkerContent -SkillDirectory $definition.Directory) -Actions $actions
     }
 }
+
+$continuousReviewRuntimeSource = Join-Path $repositoryRoot 'scripts\internal\continuous-co-review'
+$continuousReviewRuntimeTarget = Join-Path $resolvedProjectPath 'scripts\internal\continuous-co-review'
+Copy-ManagedDirectory -SourcePath $continuousReviewRuntimeSource -TargetPath $continuousReviewRuntimeTarget -Actions $actions
+
+$continuousReviewContractsSource = Join-Path $repositoryRoot 'specs\197-continuous-co-review\contracts'
+$continuousReviewContractsTarget = Join-Path $resolvedProjectPath '.specrew\review\contracts'
+Copy-ManagedDirectory -SourcePath $continuousReviewContractsSource -TargetPath $continuousReviewContractsTarget -Actions $actions
 
 $coordinatorGovernancePath = Join-Path $templateRoot 'coordinator\specrew-governance.md'
 if (-not (Test-Path -LiteralPath $coordinatorGovernancePath -PathType Leaf)) {

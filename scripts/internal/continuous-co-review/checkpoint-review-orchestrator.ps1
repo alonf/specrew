@@ -110,7 +110,7 @@ function Invoke-ContinuousCoReviewCheckpointReview {
     }
 
     $request = New-ContinuousCoReviewRequest -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -ChangeSet $changeSet -DesignContextRefs $DesignContextRefs -AllowedPaths $AllowedPaths -ForbiddenPaths $ForbiddenPaths -ProviderRequest $ProviderRequest -CreatedAt $CreatedAt -SchemaRoot $SchemaRoot
-    $execution = Invoke-ContinuousCoReviewReviewerExecution -Request $request -RunRoot $resolvedRunRoot -SchemaRoot $SchemaRoot -Candidates $resolvedCandidates -InvokeAdapter $InvokeAdapter -CreatedAt $CreatedAt
+    $execution = Invoke-ContinuousCoReviewReviewerExecution -Request $request -RunRoot $resolvedRunRoot -SchemaRoot $SchemaRoot -Candidates $resolvedCandidates -InvokeAdapter $InvokeAdapter -ReadOnlyRoot $resolvedRepoRoot -CreatedAt $CreatedAt
 
     if ($execution.kind -eq 'findings-result') {
         $blackboard = Write-ContinuousCoReviewBlackboardThread -RepoRoot $resolvedRepoRoot -CheckpointId $CheckpointId -FindingsResult $execution.findings_result -DispositionTrail $null -EscalationRef $null -SchemaRoot $SchemaRoot -CreatedAt $CreatedAt

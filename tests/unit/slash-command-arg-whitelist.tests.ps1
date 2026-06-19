@@ -99,16 +99,23 @@ $result = Invoke-Specrew -CommandArgs @('review', '--not-a-real-flag')
 Assert-True -Condition ($result.ExitCode -ne 0) -Message 'specrew review --not-a-real-flag exits non-zero'
 Assert-Contains -Text $result.Output -Substring 'WARNING:' -Message 'specrew review --not-a-real-flag emits WARNING prefix'
 
-# --- Test 7: --help is always accepted (whitelisted flag) ---
+# --- Test 7: live review args are accepted by the whitelist ---
 Write-Host ''
-Write-Host '--- Test 7: --help flag is always accepted (not rejected by whitelist) ---'
+Write-Host '--- Test 7: review accepts live-mode arguments ---'
+$result = Invoke-Specrew -CommandArgs @('review', '--live')
+Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew review --live passes whitelist check'
+Assert-Contains -Text $result.Output -Substring '--baseline-ref is required' -Message 'specrew review --live reaches live-review validation'
+
+# --- Test 8: --help is always accepted (whitelisted flag) ---
+Write-Host ''
+Write-Host '--- Test 8: --help flag is always accepted (not rejected by whitelist) ---'
 $result = Invoke-Specrew -CommandArgs @('version', '--help')
 # --help should pass through to the backend and get exit 0 with usage output
 Assert-True -Condition ($result.ExitCode -eq 0) -Message 'specrew version --help exits 0'
 
-# --- Test 8: valid update args are not rejected ---
+# --- Test 9: valid update args are not rejected ---
 Write-Host ''
-Write-Host '--- Test 8: valid update arguments are not rejected by whitelist ---'
+Write-Host '--- Test 9: valid update arguments are not rejected by whitelist ---'
 $result = Invoke-Specrew -CommandArgs @('update', '--info', '--skip-update-check')
 # --info and --skip-update-check are both in the whitelist; should not produce whitelist rejection
 Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew update --info --skip-update-check passes whitelist check'
@@ -117,9 +124,9 @@ Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -M
 $result = Invoke-Specrew -CommandArgs @('update', '--info', '--upstream-latest', '--skip-update-check')
 Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew update --info --upstream-latest passes whitelist check'
 
-# --- Test 9: help guidance includes /specrew-help reference ---
+# --- Test 10: help guidance includes /specrew-help reference ---
 Write-Host ''
-Write-Host '--- Test 9: whitelist rejection references /specrew-help catalog ---'
+Write-Host '--- Test 10: whitelist rejection references /specrew-help catalog ---'
 $result = Invoke-Specrew -CommandArgs @('update', '--totally-bogus')
 Assert-Contains -Text $result.Output -Substring '/specrew-help' -Message 'Rejection message references /specrew-help catalog'
 

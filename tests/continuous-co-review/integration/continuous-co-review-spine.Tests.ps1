@@ -37,7 +37,9 @@ Describe 'Proposal 197 T044 TG-011 continuous co-review spine obeys implementati
     function New-T044GitRepository {
         param(
             [Parameter(Mandatory)]
-            [string] $Name
+            [string] $Name,
+
+            [string] $SourceRelativePath = 'scripts/internal/continuous-co-review/reviewer-host-adapter-fixture.ps1'
         )
 
         $repository = Join-Path $TestDrive $Name
@@ -46,7 +48,7 @@ Describe 'Proposal 197 T044 TG-011 continuous co-review spine obeys implementati
         Invoke-T044Git -Repository $repository -Arguments @('config', 'user.email', 'proposal-197@example.invalid') | Out-Null
         Invoke-T044Git -Repository $repository -Arguments @('config', 'user.name', 'Proposal 197 Test') | Out-Null
 
-        $sourcePath = Join-Path $repository 'scripts/internal/continuous-co-review/reviewer-host-adapter-fixture.ps1'
+        $sourcePath = Join-Path $repository $SourceRelativePath
         New-Item -ItemType Directory -Path (Split-Path -Parent $sourcePath) -Force | Out-Null
         Set-Content -LiteralPath $sourcePath -Value "function Invoke-FixtureReview { 'initial' }" -Encoding UTF8
         Invoke-T044Git -Repository $repository -Arguments @('add', '.') | Out-Null
@@ -256,6 +258,29 @@ Describe 'Proposal 197 T044 TG-011 continuous co-review spine obeys implementati
         (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $result.execution.findings_result).Valid | Should Be $true
         (Test-ReviewerContractObject -ContractName 'ReviewThread' -SchemaRoot $script:SchemaRoot -InputObject $result.blackboard.review_thread).Valid | Should Be $true
         (Test-ReviewerContractObject -ContractName 'GateVerdict' -SchemaRoot $script:SchemaRoot -InputObject $result.gate_verdict).Valid | Should Be $true
+    }
+
+    It 'guards the reviewed project root when the runtime is invoked from another repository' {
+        $fixtureRepository = New-T044GitRepository -Name 'reviewed-project-mutation-spine' -SourceRelativePath 'src/sample.ps1'
+        Add-T044ReviewableChange -Path $fixtureRepository.source_path
+        $adapter = {
+            param($Candidate, $Request, $RequestBundle, [int] $AttemptNumber)
+            Set-Content -LiteralPath $fixtureRepository.source_path -Value "function Invoke-FixtureReview { 'mutated-by-reviewer' }" -Encoding UTF8
+            return [pscustomobject][ordered]@{
+                kind                   = 'findings-result'
+                provider_invocation    = New-T044SpawnInvocation -Request $Request -Candidate $Candidate -AttemptNumber $AttemptNumber
+                findings_result        = New-T044FindingsResult -Request $Request -Candidate $Candidate
+                infrastructure_failure = $null
+            }
+        }
+
+        $result = Invoke-T044CheckpointReview -Repository $fixtureRepository.path -BaselineRef $fixtureRepository.baseline_ref -RunId 'run-t044-reviewed-root-mutation' -InvokeAdapter $adapter
+
+        $result.status | Should Be 'infrastructure_failure'
+        $result.infrastructure_failure.category | Should Be 'workspace-mutation-invalidated'
+        $result.execution.mutation_guard.source_mutated | Should Be $true
+        $result.execution.mutation_guard.changes[0].path | Should Be 'src/sample.ps1'
+        $result.gate_verdict.state | Should Be 'unsafe'
     }
 
     It 'records a skipped run when the controlled change set has no reviewable diff' {
