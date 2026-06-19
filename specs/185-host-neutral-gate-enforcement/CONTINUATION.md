@@ -25,20 +25,21 @@ Enforce-or-halt north star: **no host silently self-advances past a human-judgme
 
 Maintainer pre-authorized the gates through implementation, **conditional on no scope change**, multiple iterations allowed, then a Proposal-145 review, then report.
 
-## Implementation plan (proposed iteration breakdown)
+## Implementation plan (UNIFIED — "reliably follow Specrew", re-scoped 2026-06-19, drift D-002)
 
-- **Iteration 1 — Cleaning + capture (most concrete, host-uniform, low-risk):**
-  - Harness-free `general.md` rule-9 + `specify.md` step/traps (FR-002) — the leak fix.
-  - Host-neutral gate-stop fallback renderer that renders the packet + emits the `SPECREW-VERDICT-BOUNDARY` marker (FR-003).
-  - Non-Claude verdict-marker capture (FR-006).
-  - SC-002 leak test + the marker-capture test (SC-005 automated half).
-- **Iteration 2 — Capability + gate provider (host-variable, the split-guard lives here):**
-  - Per-host capability declaration in `host.psd1` for all hosts (FR-004).
-  - A `kind == 'gate'` provider on the dormant dispatcher seat (Claude `PreToolUse` first) wired to 065 authorization → `deny`/`ask` an unauthorized human-judgment write (FR-007); enforce-or-halt routing (FR-005).
-  - Parity test (SC-003) + gate-detection test (SC-004).
-- **Iteration 3 — Dogfood + degraded mode:**
-  - Cross-host greenfield dogfood reproducing #2884 (SC-001, SC-005 real-host half); honest degraded-mode declarations for hookless hosts.
-- **Then:** Proposal-145 structured multi-phase review of the implementation.
+Scope evolved from "host-neutral gate enforcement" to **make the host reliably follow Specrew** — 4 failure modes: (1) resume-asks-what-to-build, (2) gate-skip [#2884], (3) raw-Spec-Kit, (4) willing-host-blocked-by-wrong-instructions [#2884 4th face, dogfood test-f197]. All levers ride the init-deployed hooks/files (work at DIRECT launch — `specrew start` is rarely used). **DROPPED:** the Claude PreToolUse pre-block (D-001 — expensive + wrong host) and the CLI wrapper (D-002 — invasive PATH for marginal value). Do NOT build those.
+
+**DONE + committed:**
+
+- **Iter 1 — Cleaning + capture** (`84f99984`): FR-002/003/006 harness-free digests + marker-emit; capture is transcript-gated (no HandoverStore change). Test `host-neutral-gate-cleaning.tests.ps1`.
+- **FR-013 part 1 — Guard precision** (`966c42cb`): coordinator instruction blesses the governed scripts, forbids only the raw `specify.exe workflow`, states the Specrew-coordinator/Spec-Kit-SDD division. Test `coordinator-guard-precision.tests.ps1`.
+
+**REMAINING (meaty, critical-path — fresh context recommended; do ONE at a time, commit, dogfood between):**
+
+- **FR-013 part 2 — Per-host command DEPLOY (the P0 centerpiece; a 0.38.0 regression):** normalize the host-native Spec Kit command surface — deploy the per-boundary speckit commands to each palette-host's command surface, **mirroring the SKILL normalization**. Add `CommandRoot` per host (mirroring `SkillRoot`); the host-neutral deploy normalizes commands per-host. Targets: Claude (`.claude/commands`), Antigravity (its surface — VERIFY) — Copilot already has them (`.github/prompts`); Cursor/Codex are `HasUserSlashCommandSurface=$false` → pwsh-form, no commands needed. ONE component decision: command source/format — (a) re-init Spec Kit per palette-host so it emits native format, or (b) Specrew reformats the canonical defs onto each CommandRoot. Architecture: extends the host-adapter skill-normalization; split-guard does NOT fire. Parity test + dogfood (test-f197 Claude proceeds).
+- **FR-011 — #2 gate-skip detection** (extend the EXISTING verdict path in `HandoverStore.ps1` after ~L782, NOT a parallel detector): if an artifact advanced beyond `last_authorized_boundary` with NO verdict-stop marker rendered and no captured verdict → emit a loud halt-correction for next turn (model the `$hollow` journal emit ~L804-822). The marker-render check distinguishes the legitimate awaiting-verdict stop (NO false positives only with that check). HALT is real (state-protected). Test SC-008(#2). **Then COMMIT + STOP for the dogfood.**
+- **FR-009 (#1 orientation) + FR-010 (#3 markdown-patch on the now-deployed commands) + FR-011 #1/#3 detection:** sized by the #2 dogfood. #1/#3 corrections are cooperative-only (the truncated channel F-174 documents) → NUDGE not halt; SC-006/007 dogfood decides them.
+- **Then:** cross-host dogfood (SC-001/006/007/009 real-host) + the Proposal-145 review.
 
 ## Code touchpoints (verified by the orientation map)
 
@@ -60,9 +61,11 @@ Maintainer pre-authorized the gates through implementation, **conditional on no 
 
 Non-Claude hosts get ONLY the textual rule-9 (which names the Claude-only `specrew-gate-stop` skill they can't act on); the verdict check (`Test-SpecrewBoundaryAuthorization`) fires only inside the sync-wrappers AFTER `plan.md` is written; the `PreToolUse` gate seat is dormant + fails open + unregistered. On Antigravity there's no gate-stop skill → no `SPECREW-VERDICT-BOUNDARY` marker → `verdict_history` stays empty → the cooperative prose is the only "enforcement," and it's the leaking Claude-referencing rule the host can't follow.
 
-## Next steps
+## Next steps (fresh-context implementation pass)
 
-1. Complete the specify artifacts (above) + run the specify preflight green; commit `boundary(specify)`; record the `specify → clarify` verdict (maintainer pre-auth).
-2. Clarify (likely minimal — workshop covered it) → plan (design-analysis; **split-guard check** at the gate-provider design) → tasks → before-implement.
-3. Implement per the iteration plan; commit `boundary(implement)` per iteration.
-4. Proposal-145 review; report.
+1. **FR-013 part 2 (command deploy)** — the P0 centerpiece. Verify Antigravity's command surface + decide the source/format mechanism; add `CommandRoot` per host; deploy commands per-host (mirror the skill deploy in `deploy-squad-runtime.ps1`); parity test; dogfood test-f197 on Claude.
+2. **FR-011 #2 detection** — extend the `HandoverStore.ps1` verdict path; commit; STOP for the dogfood.
+3. Let the #2 dogfood size **FR-009 / FR-010 / FR-011-#1/#3**.
+4. Cross-host dogfood + Proposal-145 review + report.
+
+The worktree carries everything (spec + plan + drift-log + Iter 1 + FR-013 guard precision, all committed). Start a fresh session here, "continue feature 185" → it picks up from this plan. **No workshop needed** — the design is complete (FR-013 extends the existing host-adapter skill-normalization; D-002 confirmed same-architecture).
