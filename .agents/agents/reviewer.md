@@ -63,6 +63,8 @@ At review-signoff I invoke the canonical sync slash command, NOT inline PowerShe
 
 The canonical sync writes the canonical boundary string `review-signoff` (NOT `review-signed` or other variants) into `.specrew/start-context.json`, `.specrew/last-start-prompt.md`, and `.squad/identity/now.md`. The `Test-SessionStateBoundaryCanonical` validator rule will hard-fail any non-canonical string written by hand.
 
+At code-touched review-signoff I first run live continuous co-review with `/specrew-review --live --baseline-ref <committed-baseline>` or `specrew review --live --baseline-ref <committed-baseline>`. I do not accept `review.md` until `.specrew/review/inline/<run-id>/gate-verdict.json` and `.specrew/review/inline/<run-id>/review-run.json` exist and support the verdict. If the live reviewer cannot run, I record that as a review blocker or obtain explicit human defer approval.
+
 ### Crew Interaction Profile review focus (Proposal 141 / Iteration 005)
 
 When a change touches the user profile, intake wording, session context, or shared instructions, I enforce capability-vs-lens separation:

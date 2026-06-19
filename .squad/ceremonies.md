@@ -281,7 +281,23 @@ For each task in the plan:
 
 Verdicts belong in `review.md`, not just meeting notes.
 
-### 4. Iteration verdict
+### 4. Live continuous co-review evidence
+
+When the iteration touched code, runtime scripts, prompts, workflows, or executable governance, run live continuous co-review before assigning an accepted iteration verdict:
+
+```powershell
+specrew review --live --baseline-ref <committed-baseline> `
+  --project-path . `
+  --checkpoint-id review-signoff-NNN `
+  --run-id review-signoff-NNN `
+  --design-context-ref specs\NNN-feature\spec.md
+```
+
+Use a baseline ref that represents the committed state before the reviewed implementation slice. The live run must persist `.specrew\review\inline\<run-id>\gate-verdict.json` and `.specrew\review\inline\<run-id>\review-run.json`; cite those files in `review.md` and `reviewer-index.md`.
+
+If the live reviewer reports blocking findings, route the affected tasks back to execution. If the reviewer infrastructure is unavailable or unsafe, record the failure as review evidence and stop for human defer/repair direction. Do not replace the missing live run with hand-authored acceptance prose.
+
+### 5. Iteration verdict
 
 Assign the iteration one overall verdict:
 
@@ -291,7 +307,7 @@ Assign the iteration one overall verdict:
 
 If the verdict is `needs-rework`, name the returning tasks and route them back to execution before retro starts.
 
-### 5. Output artifact
+### 6. Output artifact
 
 Write `iterations/NNN/review.md` with:
 
