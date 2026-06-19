@@ -1,0 +1,78 @@
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "powershell-json-yaml-pester"
+selections:
+  - id: "code-rule.intent-revealing-names"
+    checked: true
+  - id: "code-rule.short-functions"
+    checked: true
+  - id: "code-rule.avoid-deep-nesting"
+    checked: true
+  - id: "code-rule.dependency-injection"
+    checked: true
+    decision: "Use existing PowerShell helper seams and parameterized functions for host variation; do not introduce a DI framework."
+    enforcement: [review, tests]
+  - id: "code-rule.comments-wisely"
+    checked: true
+  - id: "code-rule.simple-trustworthy-tests"
+    checked: true
+  - id: "code-rule.docs-as-api-test"
+    checked: true
+  - id: "code-rule.language-native-constructs"
+    checked: true
+  - id: "code-rule.secure-coding-defaults"
+    checked: true
+    decision: "Do not log full prompts/transcripts; bounded evidence only; preserve fail-open on over-block but fail-closed (halt) when a human-judgment boundary cannot be enforced."
+    enforcement: [review, tests]
+  - id: "code-rule.solid-baseline"
+    checked: true
+  - id: "code-rule.strategy-state-over-repeated-conditionals"
+    checked: true
+    decision: "Route enforcement and instruction selection through per-host capability data in host.psd1 rather than shared-core host branches."
+    enforcement: [review, tests]
+  - id: "code-rule.polymorphism-mechanism"
+    checked: true
+    decision: "Prefer PowerShell functions and data-driven manifest/capability entries over class hierarchies for the host-variation work."
+    enforcement: [review]
+  - id: "code-rule.complex-code-stable"
+    checked: true
+    decision: "Keep stable gate/refocus decision logic in the existing dispatcher/provider/authorization components; add one focused host-neutral fallback renderer and one gate provider; do not scatter enforcement logic across commands."
+    enforcement: [review, tests]
+  - id: "code-rule.anti-corruption-layers"
+    checked: true
+    decision: "Normalize host-specific gate-stop surfaces through a host-neutral packet/verdict-marker contract; the all-host digests name no host or Claude-only skill/tool."
+    enforcement: [review, tests]
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "Gate/runtime failures fail open with bounded actionable warnings where over-blocking would break legit work; a host that cannot enforce a human-judgment boundary halts with an infra/process failure rather than proceeding."
+    enforcement: [tests, review]
+  - id: "code-rule.logging-traceability"
+    checked: true
+    decision: "Record event, sanitized session/host id, gate decision, and warning reason code; avoid full prompt/transcript logging."
+    enforcement: [review, tests]
+  - id: "code-rule.robustness-state-boundaries"
+    checked: true
+    decision: "SessionStateAccessor/065 own boundary_enforcement + verdict_history; the gate provider reads that authorization state and the fallback renderer emits the verdict marker; host code normalizes identity and delegates."
+    enforcement: [tests, review]
+  - id: "code-rule.testing-posture"
+    checked: true
+    decision: "Automated Pester coverage for the harness-free digest check (SC-002), the host-neutral fallback + marker emission, non-Claude verdict capture, the per-host capability/parity (SC-003), and gate-detection (SC-004); manual real-host cross-host dogfood for SC-001/SC-005."
+    enforcement: [tests, review]
+  - id: "code-rule.extension-points"
+    checked: true
+    decision: "Use the existing dormant gate seat + the host manifest/capability extension point; stop for a split/defer verdict if real enforcement requires a broad host-model rewrite."
+    enforcement: [review]
+  - id: "code-rule.public-api-reusable-design"
+    checked: true
+    decision: "Host capability/status wording must reflect implemented and verified enforcement, not planned; no full-parity enforcement claim without real-host proof."
+    enforcement: [review]
+  - id: "code-rule.shared-code-packaging"
+    checked: true
+    decision: "Preserve source-to-deployed .specify parity and FileList readiness for the new host-neutral fallback skill, the cleaned digests, the capability declarations, and the gate provider."
+    enforcement: [tests, review]
+custom_rules: []
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"

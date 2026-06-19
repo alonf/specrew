@@ -1,0 +1,129 @@
+{
+  "schema": "v2",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "note": "Technical lens agenda and per-lens records confirmed by the maintainer on 2026-06-19 in the live design workshop. Every selected lens is human-confirmed (lens-question); ui-ux and security-compliance are confirmed-skipped with reasons.",
+  "answers": {
+    "ui": false,
+    "security": false,
+    "data": true,
+    "integration": true,
+    "ops": true,
+    "perf": false
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "data-storage",
+    "integration-api",
+    "observability-resilience",
+    "devops-operations",
+    "requirements-nfr",
+    "code-implementation"
+  ],
+  "depths": {
+    "architecture-core": "full",
+    "component-design": "full",
+    "data-storage": "standard",
+    "integration-api": "full",
+    "observability-resilience": "standard",
+    "devops-operations": "standard",
+    "requirements-nfr": "standard",
+    "code-implementation": "standard"
+  },
+  "skipped": {
+    "ui-ux": "No application UI. The only user-facing surface is the boundary-stop packet, already owned by the packet contract. Maintainer confirmed n/a.",
+    "security-compliance": "No new credentials, auth model, or PII handling. The gate reads existing authorization state and adds no permission surface; hook/shell safety is covered by integration and devops."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Which structure governs cross-host enforcement?",
+        "What are the major building blocks and their responsibilities?",
+        "Which areas are volatile and should be isolated behind data/interfaces?",
+        "What is deliberately out of scope?",
+        "Which option best balances simplicity, reversibility, and honest cross-host limits?"
+      ],
+      "decision": "Capability-matrix enforce-or-halt built on the EXISTING dormant kind=='gate' dispatcher seat plus Proposal-065 authorization (start-context.json/verdict_history). Harness-free cleaning of the all-host refocus digests. Each host uses its strongest available lever: Claude PreToolUse; Antigravity PreInvocation/Stop; hookless degrades to cooperative instruction plus a mandatory halt. Split guard: stop for a maintainer split/defer verdict if real enforcement requires a broad host-model rewrite rather than a bounded gate-provider + digest + fallback change.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "component-design": {
+      "agenda": [
+        "What responsibilities belong together vs separate?",
+        "Which dependencies point inward vs outward?",
+        "Reuse or add - and at what abstraction?"
+      ],
+      "decision": "Reuse-heavy: the refocus engine, the dormant gate seat + dispatcher, 065 authorization (Test/Add-SpecrewBoundaryAuthorization), the Claude specrew-gate-stop skill, HandoverStore marker capture, and the per-host host.psd1 manifests. Four focused additions: (1) a host-neutral fallback renderer with verdict-marker emission, (2) a per-host capability declaration in host.psd1, (3) a gate provider on the dormant seat, (4) non-Claude verdict-marker capture. No parallel system.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "data-storage": {
+      "agenda": [
+        "What state does enforcement read/write and who owns it?",
+        "Is a new persistent store needed?"
+      ],
+      "decision": "Reuse .specrew/start-context.json (boundary_enforcement + verdict_history) via SessionStateAccessor. The SPECREW-VERDICT-BOUNDARY marker is the verdict-capture mechanism. Per-host capability is a static field in host.psd1. No new persistent store.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "integration-api": {
+      "agenda": [
+        "What are the contracts between the cleaned digest, the gate, and verdict capture?",
+        "How does each host plug in?"
+      ],
+      "decision": "Three contracts: (1) a host-appropriate refocus-digest render (harness-free); (2) a gate-provider decision (PreToolUse permissionDecision where available, the host's strongest lever otherwise); (3) the SPECREW-VERDICT-BOUNDARY marker as the host-neutral verdict-capture contract.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "What is the failure posture?",
+        "What evidence is recorded?"
+      ],
+      "decision": "Fail-open where over-blocking would break legitimate work, but halt/fail-closed when a human-judgment boundary genuinely cannot be enforced (the enforce-or-halt tension). Loud WARN reason codes. Bounded evidence; no full prompt/transcript logging.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "devops-operations": {
+      "agenda": [
+        "How is the new surface deployed and removed?"
+      ],
+      "decision": "Deploy via existing mechanisms: deploy-squad-runtime.ps1 host-scoping for the fallback skill, and the refocus/instruction deploy for the cleaned digests. Opt-out is respected. No new deploy surface.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "What are the binding non-functional requirements?"
+      ],
+      "decision": "The no-silent-advance guarantee (enforce-or-halt) is the core NFR. Honest cross-host degraded modes. Real-host dogfood evidence across the supported host set. The gate must stay cheap (mind the ~920ms PreToolUse spawn cost from F-184).",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "code-implementation": {
+      "agenda": [
+        "Which implementation-craft rules bind this work?"
+      ],
+      "decision": "The existing PowerShell baseline craft rules. The gate provider and fallback renderer follow the established dispatcher/provider patterns. Explicit fail-open/closed discipline. No new dependencies. Full rule manifest in implementation-rules.yml.",
+      "depth": "standard",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    }
+  }
+}
