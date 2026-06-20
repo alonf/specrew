@@ -4,9 +4,9 @@
 **Iteration**: 003
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T062 (one-time authorization confirmed) + T063 (spawn-timeout regression test)
-**Tasks Remaining**: T064 (closeout validation)
-**In Progress**: T064 (full-suite green, HOLE A/B repros block, protected-surface guard, traceability)
+**Last Completed Task**: T064 (closeout validation — full suite 173/0, HOLE A/B block, no F-184 edits)
+**Tasks Remaining**: (none — Phase A implementation complete; Proposal 145 review next, then review-signoff/retro/closeout)
+**In Progress**: Proposal 145 review of the iteration-003 re-architecture
 **Updated**: 2026-06-20
 
 ## Re-architecture progress
