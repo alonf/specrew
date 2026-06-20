@@ -2,11 +2,11 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 003
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: T064 (closeout validation — full suite 173/0, HOLE A/B block, no F-184 edits)
-**Tasks Remaining**: (none — Phase A complete; 145 review done + fixes applied; confirming re-review next, then review-signoff/retro/closeout)
-**In Progress**: confirming 145 re-review after the fix pass
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
+**Last Completed Task**: T064 + comprehensive Proposal 145 review + fix pass + confirming re-review (both APPROVE) + authorship cleanup
+**Tasks Remaining**: (none — Phase A complete and adversarially validated; awaiting maintainer review-signoff verdict, then retro -> iteration-closeout)
+**In Progress**: review-signoff verdict (review.md prepared; full suite 176/0)
 **Updated**: 2026-06-20
 
 ## Re-architecture progress
@@ -36,8 +36,18 @@ gate-keyed dispatcher, with no F-184 protected-surface edits. The live Stop-hook
 trigger (Phase B) is Iteration 004. See [plan.md](plan.md) and
 [design-analysis.md](design-analysis.md).
 
+## Review-signoff readiness (2026-06-20)
+
+- All Phase A tasks done (T058, T065-T069, T059/T060, T062, T063, T064); full
+  continuous-co-review suite **176/0**; no F-184 protected-surface edits.
+- The comprehensive Proposal 145 review (correctness + security + conformance) plus the
+  confirming re-review both returned **APPROVE** after the fix pass (the correctness +
+  F1 false-allows closed, B1/B2/B3/A1 governance fixes, the F-SEC-1 trust-boundary
+  relaxation recorded).
+- Process: the probe-pollution git-config mis-authorship was corrected (16 commits
+  re-authored to the maintainer); lesson recorded in memory.
+- review.md is the prepared review-signoff record.
+
 ## Pending Human Decisions
 
-- Plan-boundary approval for Iteration 003 (Phase A).
-- Whether to commit the spec amendment and these iteration artifacts now, or hold them
-  in the working tree.
+- **Review-signoff verdict for Iteration 003 (Phase A)** — review-signoff -> retro.
