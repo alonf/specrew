@@ -6,6 +6,7 @@ $proposal197ReviewerModules = @(
     'review-visibility-policy-builder.ps1'
     'design-context-collector.ps1'
     'checkpoint-diff-provider.ps1'
+    'reviewed-state-digest.ps1'
     'review-request-builder.ps1'
     'review-prompt-composer.ps1'
     'host-agent-mirror.ps1'
