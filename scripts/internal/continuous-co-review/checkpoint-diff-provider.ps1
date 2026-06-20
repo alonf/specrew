@@ -141,22 +141,11 @@ function Get-ContinuousCoReviewCheckpointDiff {
         }
     }
 
-    $diffResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, '--')
-    if ($diffResult.ExitCode -ne 0) {
-        return [pscustomobject][ordered]@{
-            schema_version = '1.0'
-            run_id         = $resolvedRunId
-            checkpoint_id  = $CheckpointId
-            baseline_ref   = $BaselineRef
-            status         = 'infrastructure_failure'
-            failure        = New-ContinuousCoReviewInfrastructureFailure `
-                -RunId $resolvedRunId `
-                -Category 'command-invocation-failure' `
-                -Message 'Checkpoint git diff could not be produced.' `
-                -SafeDetails ([pscustomobject]@{ baseline_ref = $BaselineRef; checkpoint_id = $CheckpointId })
-        }
-    }
-
+    # T069 (NEW-5): the gate no longer keys on diff_hash (it uses the content-addressed
+    # reviewed-state tree-id), so the former full `git diff` whose output was discarded (only
+    # its exit code probed) is removed. The name-only call below is the exit probe AND drives
+    # changed_paths; the reviewable diff further down produces diff_inline (the reviewer's
+    # context) and a provenance diff_hash.
     $nameResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('diff', '--name-only', '--no-ext-diff', $BaselineRef, '--')
     if ($nameResult.ExitCode -ne 0) {
         return [pscustomobject][ordered]@{
@@ -190,9 +179,9 @@ function Get-ContinuousCoReviewCheckpointDiff {
         }
     }
 
-    # F7 (145 review): hash the REVIEWABLE (post-exclusion) change-set, not the raw
-    # full diff, so diff_hash is keyed to exactly what the reviewer saw - an
-    # excluded-only change does not flip freshness, and a reviewable change does.
+    # Reviewable (post-exclusion) diff -> diff_inline (the reviewer's context) + a provenance
+    # diff_hash. (F7: keyed to exactly the reviewable change-set; no longer the gate freshness
+    # key - see T069 above.)
     $diffText = if ($changedPaths.Count -gt 0) {
         $reviewableDiffResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments (@('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, '--') + @($changedPaths))
         ($reviewableDiffResult.Output -join "`n")
