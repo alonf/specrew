@@ -422,7 +422,10 @@ try {
     # after the claim (the claim->emit window must stay pure string building - a git call could fail/hang).
     $branch = $null
     try { $branch = ([string](& git -C $root rev-parse --abbrev-ref HEAD 2>$null)).Trim(); if ([string]::IsNullOrWhiteSpace($branch)) { $branch = $null } } catch { $branch = $null }
-    $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor -SpecrewVersion $specrewVersion
+    # Feature 185: thread the REAL host (already in hand from --host-kind, baked per-host into the hook
+    # registration) into the contract regeneration. Without this, the writer fell back to a hardcoded
+    # 'claude' default and every direct non-claude launch (e.g. `agy`) read `Host: claude`.
+    $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor -SpecrewVersion $specrewVersion -HostKind $hostKind
     $contractBody = if ($contractPath -and (Test-Path -LiteralPath $contractPath)) { Get-Content -LiteralPath $contractPath -Raw } else { '' }
 
     # Host delivery policy (DELIVERY only; contract FRAMING unchanged). The per-host inline-vs-pointer rule +
