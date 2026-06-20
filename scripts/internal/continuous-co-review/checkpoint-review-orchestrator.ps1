@@ -48,6 +48,8 @@ function Invoke-ContinuousCoReviewCheckpointReview {
         [AllowNull()]
         [string] $Scope,
 
+        [string] $TrunkName = 'main',
+
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
@@ -64,19 +66,31 @@ function Invoke-ContinuousCoReviewCheckpointReview {
     # each checkpoint reviews only its incremental diff. The baseline advances only on a
     # pass (the resolver returns only pass/escalated runs), so a missed or blocked
     # checkpoint keeps the baseline pinned and the next review re-covers that span.
+    # T068 / FR-027 (HOLE B): a signoff-bearing run AUTO-ANCHORS its baseline so the chain
+    # the gate verifies actually reaches the trunk anchor. -RebaselineToLastPass advances the
+    # baseline to the last passing reviewed point; when there is NO prior pass on this lineage
+    # the baseline is forced to the merge-base-with-trunk anchor, so the FIRST review of a
+    # feature covers everything it added on top of shipped trunk. This makes the "baseline
+    # advances only on a pass" invariant true in production rather than trusting an
+    # operator-chosen --baseline-ref.
     if ($RebaselineToLastPass) {
         # T066: identity is git lineage (reviewed_ref ancestor of HEAD), not a scope string.
         $lastPassingState = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $resolvedRepoRoot -AncestorOfRef 'HEAD'
         if ($null -ne $lastPassingState -and -not [string]::IsNullOrWhiteSpace([string] $lastPassingState.reviewed_ref)) {
             $BaselineRef = [string] $lastPassingState.reviewed_ref
         }
+        else {
+            $anchor = Get-ContinuousCoReviewMergeBaseAnchor -RepoRoot $resolvedRepoRoot -TrunkName $TrunkName
+            if (-not [string]::IsNullOrWhiteSpace([string] $anchor)) {
+                $BaselineRef = [string] $anchor
+            }
+        }
     }
 
-    # F3 (145 review): reviewed_ref is the current HEAD as PROVENANCE; the content
-    # actually reviewed is the baseline->working-tree diff (which may include uncommitted
-    # tracked edits beyond HEAD), captured authoritatively by diff_hash. reviewed_ref
-    # advances the next incremental baseline only on a pass; because working-tree >= HEAD,
-    # the next review re-covers any uncommitted span (safe over-review, never under-review).
+    # reviewed_ref is the current HEAD (the chain link for the next rebaseline). The content
+    # actually reviewed is captured authoritatively by reviewed_tree_id (the content-addressed
+    # digest below), not by a diff; because working-tree >= HEAD, the next review re-covers any
+    # uncommitted span (safe over-review, never under-review).
     $reviewedRef = $null
     $headResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('rev-parse', 'HEAD')
     if ($headResult.ExitCode -eq 0 -and @($headResult.Output).Count -gt 0) {
@@ -85,6 +99,12 @@ function Invoke-ContinuousCoReviewCheckpointReview {
             $reviewedRef = $headCandidate
         }
     }
+
+    # T068 / FR-025: record the content-addressed reviewed-state tree-id so the gate can
+    # match the current worktree against this run. This is the authoritative reviewed-state
+    # identity (includes tracked + untracked + gitignored source minus secrets).
+    $reviewedStateDigest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $resolvedRepoRoot -ExcludedPathPatterns $ExcludedPathPatterns
+    $reviewedTreeId = if ($reviewedStateDigest.ok) { [string] $reviewedStateDigest.tree_id } else { $null }
 
     $changeSet = Get-ContinuousCoReviewCheckpointDiff -RepoRoot $resolvedRepoRoot -BaselineRef $BaselineRef -CheckpointId $CheckpointId -ExcludedPathPatterns $ExcludedPathPatterns -RunId $resolvedRunId
     if ($changeSet.status -eq 'skipped') {
@@ -148,7 +168,7 @@ function Invoke-ContinuousCoReviewCheckpointReview {
         $blackboard = Write-ContinuousCoReviewBlackboardThread -RepoRoot $resolvedRepoRoot -CheckpointId $CheckpointId -FindingsResult $execution.findings_result -DispositionTrail $null -EscalationRef $null -SchemaRoot $SchemaRoot -CreatedAt $CreatedAt
         $verdict = Invoke-ContinuousCoReviewInlineGateEvaluator -RunId $resolvedRunId -CheckpointId $CheckpointId -FindingsResult $execution.findings_result -ReviewThread $blackboard.review_thread -SkippedRun $null -SchemaRoot $SchemaRoot -CreatedAt $CreatedAt
         $cleanup = Complete-ContinuousCoReviewRunWorkspace -Workspace ([pscustomobject]@{ run_id = $resolvedRunId; path = $execution.request_bundle.workspace_path }) -PreserveDebug:$PreserveDebug -GateVerdict $verdict
-        $index = Write-ContinuousCoReviewRunIndex -RepoRoot $resolvedRepoRoot -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $changeSet.diff_hash -ReviewedRef $reviewedRef -Scope $Scope -ReviewRequest $request -RequestBundle $execution.request_bundle -SpawnInvocation $execution.provider_invocation -FindingsResult $execution.findings_result -ReviewThread $blackboard.review_thread -GateVerdict $verdict -CleanupResult $cleanup -CreatedAt $CreatedAt
+        $index = Write-ContinuousCoReviewRunIndex -RepoRoot $resolvedRepoRoot -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $changeSet.diff_hash -ReviewedRef $reviewedRef -ReviewedTreeId $reviewedTreeId -Scope $Scope -ReviewRequest $request -RequestBundle $execution.request_bundle -SpawnInvocation $execution.provider_invocation -FindingsResult $execution.findings_result -ReviewThread $blackboard.review_thread -GateVerdict $verdict -CleanupResult $cleanup -CreatedAt $CreatedAt
         return [pscustomobject][ordered]@{
             schema_version      = '1.0'
             run_id              = $resolvedRunId
@@ -166,7 +186,7 @@ function Invoke-ContinuousCoReviewCheckpointReview {
 
     $failureVerdict = New-ContinuousCoReviewGateVerdict -RunId $resolvedRunId -CheckpointId $CheckpointId -State 'unsafe' -UnsafeReasons @($execution.infrastructure_failure.category) -RoundCount 1 -CreatedAt $CreatedAt
     $failureCleanup = Complete-ContinuousCoReviewRunWorkspace -Workspace ([pscustomobject]@{ run_id = $resolvedRunId; path = $execution.request_bundle.workspace_path }) -PreserveDebug:$PreserveDebug -GateVerdict $failureVerdict
-    $failureIndex = Write-ContinuousCoReviewRunIndex -RepoRoot $resolvedRepoRoot -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $changeSet.diff_hash -ReviewedRef $reviewedRef -Scope $Scope -ReviewRequest $request -RequestBundle $execution.request_bundle -SpawnInvocation $execution.provider_invocation -InfrastructureFailure $execution.infrastructure_failure -GateVerdict $failureVerdict -CleanupResult $failureCleanup -CreatedAt $CreatedAt
+    $failureIndex = Write-ContinuousCoReviewRunIndex -RepoRoot $resolvedRepoRoot -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $changeSet.diff_hash -ReviewedRef $reviewedRef -ReviewedTreeId $reviewedTreeId -Scope $Scope -ReviewRequest $request -RequestBundle $execution.request_bundle -SpawnInvocation $execution.provider_invocation -InfrastructureFailure $execution.infrastructure_failure -GateVerdict $failureVerdict -CleanupResult $failureCleanup -CreatedAt $CreatedAt
     return [pscustomobject][ordered]@{
         schema_version          = '1.0'
         run_id                  = $resolvedRunId

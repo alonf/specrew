@@ -9,6 +9,7 @@ param(
     [switch]$Live,
     [Alias('baseline-ref')]
     [string]$BaselineRef,
+    [string]$Trunk,
     [Alias('checkpoint-id')]
     [string]$CheckpointId,
     [Alias('run-id')]
@@ -79,7 +80,10 @@ Options:
   --feature <id>         Restrict lookup to one feature directory under specs\
   --iteration <NNN>      Replay a specific iteration directory
   --live                 Run the continuous co-review runtime and write .specrew\review\inline evidence
-  --baseline-ref <ref>   Git ref/SHA used as the checkpoint diff baseline for --live
+  --baseline-ref <ref>   Optional git ref/SHA baseline. Omit for a signoff run (auto-anchors
+                         to the last pass or the merge-base with the trunk); supplying it
+                         makes the run exploratory (it does not auto-anchor).
+  --trunk <name>         Trunk branch the coverage anchor is the merge-base of (default: main)
   --checkpoint-id <id>   Stable checkpoint id for live evidence (default: manual-live-review)
   --run-id <id>          Stable run id for live evidence (default: run-<checkpoint-id>)
   --host <host>          Requested reviewer host, such as claude, codex, copilot, cursor-agent, or antigravity
@@ -125,6 +129,7 @@ function Convert-UnixStyleArguments {
         Live            = $Live
         Help            = $Help
         BaselineRef     = $null
+        TrunkName       = 'main'
         CheckpointId    = 'manual-live-review'
         RunId           = $null
         Host            = $null
@@ -148,7 +153,7 @@ function Convert-UnixStyleArguments {
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
-            '^--(?<name>baseline-ref|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path)(?:=(?<value>.+))?$' {
+            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path)(?:=(?<value>.+))?$' {
                 $name = $Matches['name']
                 $value = $Matches['value']
                 if ([string]::IsNullOrWhiteSpace($value)) {
@@ -159,6 +164,7 @@ function Convert-UnixStyleArguments {
 
                 switch ($name) {
                     'baseline-ref' { $result.BaselineRef = $value }
+                    'trunk' { $result.TrunkName = $value }
                     'checkpoint-id' { $result.CheckpointId = $value }
                     'run-id' { $result.RunId = $value }
                     'host' { $result.Host = $value }
@@ -392,15 +398,26 @@ function Invoke-LiveReview {
         [Parameter(Mandatory = $true)][object]$Arguments
     )
 
-    if ([string]::IsNullOrWhiteSpace([string]$Arguments.BaselineRef)) {
-        throw '--baseline-ref is required when --live is used.'
-    }
-
     $loaderPath = Join-Path $PSScriptRoot 'internal\continuous-co-review\_load.ps1'
     if (-not (Test-Path -LiteralPath $loaderPath -PathType Leaf)) {
         throw "Missing continuous co-review runtime loader '$loaderPath'."
     }
     . $loaderPath
+
+    # T068 (HOLE B): a signoff-bearing run AUTO-ANCHORS - when --baseline-ref is omitted the
+    # baseline is forced to the last passing reviewed point (or, for the first review, the
+    # merge-base with the trunk), so the gate's coverage chain reaches the trunk anchor. An
+    # explicit --baseline-ref is an EXPLORATORY run that does not auto-anchor; such a run is
+    # recorded but cannot satisfy the gate unless its chain independently reaches the anchor.
+    $trunkName = if ([string]::IsNullOrWhiteSpace([string]$Arguments.TrunkName)) { 'main' } else { [string]$Arguments.TrunkName }
+    $autoAnchor = [string]::IsNullOrWhiteSpace([string]$Arguments.BaselineRef)
+    $resolvedBaselineRef = if (-not $autoAnchor) {
+        [string]$Arguments.BaselineRef
+    }
+    else {
+        $anchor = Get-ContinuousCoReviewMergeBaseAnchor -RepoRoot $ProjectRoot -TrunkName $trunkName
+        if ([string]::IsNullOrWhiteSpace([string]$anchor)) { 'HEAD' } else { [string]$anchor }
+    }
 
     $schemaRoot = Resolve-LiveReviewSchemaRoot -SchemaRoot $Arguments.SchemaRoot -ProjectRoot $ProjectRoot
     $providerRequest = [pscustomobject][ordered]@{
@@ -413,13 +430,22 @@ function Invoke-LiveReview {
         fallback_policy   = [string]$Arguments.FallbackPolicy
     }
     $reviewerConfiguration = Get-LiveReviewConfiguration -ReviewerConfigPath $Arguments.ReviewerConfigPath -HostName $Arguments.Host -Model $Arguments.Model -AuthorizationRef $Arguments.AuthorizationRef -TimeoutSeconds ([int]$Arguments.TimeoutSeconds) -FallbackPolicy ([string]$Arguments.FallbackPolicy)
+
+    # A live review needs a reviewer. Refuse before computing a change-set or writing any
+    # evidence, so a bare `specrew review --live` is a clean error (not a silent auto-anchored
+    # run that pollutes .specrew/review). This replaces the former --baseline-ref-required
+    # guard (T068 made --baseline-ref optional / auto-anchoring).
+    if ($null -eq $reviewerConfiguration) {
+        throw '--host (or --reviewer-config) is required for live review: live co-review needs a reviewer host/model.'
+    }
     $runRoot = if ([string]::IsNullOrWhiteSpace([string]$Arguments.RunRoot)) { Join-Path $ProjectRoot '.specrew\review\tmp' } else { [string]$Arguments.RunRoot }
     $adapter = if ([string]$Arguments.Host -eq 'fixture') { New-LiveReviewFixtureAdapter -SchemaRoot $schemaRoot } else { $null }
 
     $invokeArguments = @{
         RepoRoot              = $ProjectRoot
         CheckpointId          = [string]$Arguments.CheckpointId
-        BaselineRef           = [string]$Arguments.BaselineRef
+        BaselineRef           = $resolvedBaselineRef
+        TrunkName             = $trunkName
         RunId                 = [string]$Arguments.RunId
         ProviderRequest       = $providerRequest
         DesignContextRefs     = [string[]]@($Arguments.DesignContextRefs)
@@ -430,6 +456,9 @@ function Invoke-LiveReview {
         AllowedPaths          = [string[]]@($Arguments.AllowedPaths)
         ForbiddenPaths        = [string[]]@($Arguments.ForbiddenPaths)
         PreserveDebug         = [bool]$Arguments.PreserveDebug
+    }
+    if ($autoAnchor) {
+        $invokeArguments.RebaselineToLastPass = $true
     }
     if ($null -ne $adapter) {
         $invokeArguments.InvokeAdapter = $adapter
@@ -660,6 +689,7 @@ $parsedArgs = Convert-UnixStyleArguments `
     -CliArgs $CliArgs
 
 if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $parsedArgs.BaselineRef = $BaselineRef }
+if (-not [string]::IsNullOrWhiteSpace($Trunk)) { $parsedArgs.TrunkName = $Trunk }
 if (-not [string]::IsNullOrWhiteSpace($CheckpointId)) { $parsedArgs.CheckpointId = $CheckpointId }
 if (-not [string]::IsNullOrWhiteSpace($RunId)) { $parsedArgs.RunId = $RunId }
 $boundHost = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHost } else { $HostName }

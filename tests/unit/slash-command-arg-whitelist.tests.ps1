@@ -104,7 +104,9 @@ Write-Host ''
 Write-Host '--- Test 7: review accepts live-mode arguments ---'
 $result = Invoke-Specrew -CommandArgs @('review', '--live')
 Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew review --live passes whitelist check'
-Assert-Contains -Text $result.Output -Substring '--baseline-ref is required' -Message 'specrew review --live reaches live-review validation'
+# T068: --baseline-ref is now optional (a bare --live auto-anchors); a live run instead
+# requires a reviewer, and is refused BEFORE any change-set/evidence write (no pollution).
+Assert-Contains -Text $result.Output -Substring 'required for live review' -Message 'specrew review --live reaches live-review validation (reviewer required, no evidence written)'
 
 # --- Test 8: --help is always accepted (whitelisted flag) ---
 Write-Host ''

@@ -490,17 +490,27 @@ function Get-ContinuousCoReviewMergeBaseAnchor {
         [string] $HeadRef = 'HEAD'
     )
 
-    $result = Invoke-ContinuousCoReviewResolverGit -RepoRoot $RepoRoot -Arguments @('merge-base', $TrunkName, $HeadRef)
-    if ($result.ExitCode -ne 0 -or @($result.Output).Count -eq 0) {
-        return $null
+    # F5 (145 review): the trunk may exist only as a remote ref on a fresh checkout, so try
+    # the local name first then `origin/<trunk>` before giving up (a $null anchor fails the
+    # gate closed). The caller may pass an already-qualified ref (e.g. 'origin/main'); we
+    # never double-prefix.
+    $trunkCandidates = New-Object System.Collections.Generic.List[string]
+    [void] $trunkCandidates.Add($TrunkName)
+    if ($TrunkName -notmatch '/') {
+        [void] $trunkCandidates.Add("origin/$TrunkName")
     }
 
-    $anchor = ([string] $result.Output[0]).Trim()
-    if ($anchor -notmatch '^[0-9a-f]{40}$') {
-        return $null
+    foreach ($trunk in $trunkCandidates) {
+        $result = Invoke-ContinuousCoReviewResolverGit -RepoRoot $RepoRoot -Arguments @('merge-base', $trunk, $HeadRef)
+        if ($result.ExitCode -eq 0 -and @($result.Output).Count -gt 0) {
+            $anchor = ([string] $result.Output[0]).Trim()
+            if ($anchor -match '^[0-9a-f]{40}$') {
+                return $anchor
+            }
+        }
     }
 
-    return $anchor
+    return $null
 }
 
 function ConvertTo-ContinuousCoReviewReviewState {

@@ -4,9 +4,9 @@
 **Iteration**: 003
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T067 (re-architected gate: tree-id freshness + chain-to-anchor + override)
-**Tasks Remaining**: T068, T069, T059, T060, T062, T063, T064
-**In Progress**: T068 (producer auto-anchor + configurable trunk) — gate adversarially re-reviewed + F1 fixed
+**Last Completed Task**: T068 (producer auto-anchor + digest recording + configurable trunk)
+**Tasks Remaining**: T069, T059, T060, T062, T063, T064
+**In Progress**: T069 (retire the diff-hash freshness path; reviewable diff kept only for the reviewer bundle)
 **Updated**: 2026-06-20
 
 ## Re-architecture progress
@@ -14,7 +14,8 @@
 - T065 content-addressed reviewed-state digest (8/8) + a self-referential-pollution fix (denied paths stripped from the final index so the gate's own .specrew/review evidence cannot perturb its digest).
 - T066 reviewed_tree_id + git-lineage/anchor resolver (6/6, incl. cross-branch isolation).
 - T067 re-architected gate (9/9): tree-id freshness + chain-to-merge-base-anchor + empty-tree guard + fail-closed + human-authorized recorded override. HOLE A blocks (gitignored drift -> stale), HOLE B blocks (coverage-gap).
-- Adversarial 145 re-review of T065-T067 (D-197-I003-006): found + FIXED a BLOCKING false-allow (F1: substring denylist over-matched source named like a secret -> stripped from the gate identity). Separated digest-identity from bundle-confidentiality; F2 regression added. Carried advisories: F3/F4 override+record trust -> deferred F-185 wiring; F5 trunk local-ref -> T068. Chain/anchor/coverage half held under attack (HOLE B genuinely closed). Repo left clean.
+- Adversarial 145 re-review of T065-T067 (D-197-I003-006): found + FIXED a BLOCKING false-allow (F1: substring denylist over-matched source named like a secret -> stripped from the gate identity). Separated digest-identity from bundle-confidentiality; F2 regression added. Chain/anchor/coverage half held under attack (HOLE B genuinely closed). Repo left clean.
+- T068 producer auto-anchor + digest recording: the orchestrator auto-anchors a signoff run's baseline to the last-pass (merge-base-with-trunk for the first review), records reviewed_tree_id, and threads a configurable trunk; F5 fixed (anchor falls back to origin/<trunk>); the live command made --baseline-ref optional (bare --live auto-anchors but is refused without a reviewer, so no evidence pollution). End-to-end producer-gate-loop test proves auto-anchor -> tree-id recorded -> gate allows -> drift blocks. CCR suite 160/0; live-command integration green.
 
 ## Execution Summary
 
