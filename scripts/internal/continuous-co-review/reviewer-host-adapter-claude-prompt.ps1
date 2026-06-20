@@ -152,6 +152,13 @@ function Invoke-ContinuousCoReviewAdapterProcess {
         [string] $WorkingDirectory
     )
 
+    # Read the stdin payload before starting the child. A missing or locked input
+    # file then fails without ever spawning an unsupervised reviewer process.
+    $requestText = Get-Content -LiteralPath $StandardInputPath -Raw
+    if ($null -eq $requestText) {
+        $requestText = ''
+    }
+
     $resolvedCommand = Resolve-ContinuousCoReviewAdapterProcessCommand -Executable $Executable -ArgumentList $ArgumentList
 
     $processStart = [System.Diagnostics.ProcessStartInfo]::new()
@@ -163,22 +170,56 @@ function Invoke-ContinuousCoReviewAdapterProcess {
     $processStart.RedirectStandardOutput = $true
     $processStart.RedirectStandardError = $true
     $processStart.UseShellExecute = $false
+    $processStart.StandardInputEncoding = [System.Text.UTF8Encoding]::new($false)
     if (-not [string]::IsNullOrWhiteSpace($WorkingDirectory)) {
         $processStart.WorkingDirectory = $WorkingDirectory
     }
 
     $process = [System.Diagnostics.Process]::new()
     $process.StartInfo = $processStart
+    $writeTask = $null
     try {
+        $deadlineMs = [Math]::Max(1, $TimeoutSeconds) * 1000
+        $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
         [void] $process.Start()
-        $requestText = Get-Content -LiteralPath $StandardInputPath -Raw
+
+        # Drain stdout/stderr concurrently so the child can never deadlock on a
+        # full output pipe while we are still feeding it stdin.
         $stdoutTask = $process.StandardOutput.ReadToEndAsync()
         $stderrTask = $process.StandardError.ReadToEndAsync()
-        $process.StandardInput.Write($requestText)
-        $process.StandardInput.Close()
-        $completed = $process.WaitForExit([Math]::Max(1, $TimeoutSeconds) * 1000)
-        if (-not $completed) {
-            $process.Kill($true)
+
+        # Feed stdin through a background write so the timeout also bounds a child
+        # that stalls before draining its input pipe. A synchronous Write here
+        # would block past the timeout once the OS pipe buffer fills and would
+        # never reach WaitForExit, hanging the parent and orphaning the child.
+        $inputBytes = [System.Text.Encoding]::UTF8.GetBytes($requestText)
+        $writeTask = $process.StandardInput.BaseStream.WriteAsync($inputBytes, 0, $inputBytes.Length)
+
+        $timedOut = $false
+        $writeSettled = $false
+        try {
+            $writeSettled = $writeTask.Wait($deadlineMs)
+        }
+        catch {
+            # A faulted write means the pipe broke because the child closed stdin
+            # or exited early; that is not a timeout, so proceed to read output.
+            $writeSettled = $true
+        }
+
+        if (-not $writeSettled) {
+            $timedOut = $true
+        }
+        else {
+            try { $process.StandardInput.Close() } catch { }
+            $remainingMs = [Math]::Max(1, $deadlineMs - [int] $stopwatch.ElapsedMilliseconds)
+            if (-not $process.WaitForExit($remainingMs)) {
+                $timedOut = $true
+            }
+        }
+
+        if ($timedOut) {
+            try { $process.Kill($true) } catch { }
             try { $process.WaitForExit() } catch { }
             return [pscustomobject][ordered]@{
                 exit_code = $null
@@ -188,10 +229,19 @@ function Invoke-ContinuousCoReviewAdapterProcess {
             }
         }
 
-        [void] $stderrTask.GetAwaiter().GetResult()
+        # The child has exited. Bound the output drain too: a grandchild that
+        # inherited the stdout handle could otherwise keep the pipe open forever.
+        $drainMs = [Math]::Max(1000, $deadlineMs - [int] $stopwatch.ElapsedMilliseconds)
+        $readTasks = [System.Threading.Tasks.Task[]]@($stdoutTask, $stderrTask)
+        if (-not [System.Threading.Tasks.Task]::WaitAll($readTasks, $drainMs)) {
+            try { $process.Kill($true) } catch { }
+            try { [void] [System.Threading.Tasks.Task]::WaitAll($readTasks, 2000) } catch { }
+        }
+
+        $stdout = if ($stdoutTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $stdoutTask.Result } else { '' }
         return [pscustomobject][ordered]@{
             exit_code = $process.ExitCode
-            stdout    = $stdoutTask.GetAwaiter().GetResult()
+            stdout    = $stdout
             stderr    = ''
             timed_out = $false
         }
@@ -206,6 +256,24 @@ function Invoke-ContinuousCoReviewAdapterProcess {
         }
     }
     finally {
+        # Never leave a child running unsupervised. The catch path and the timeout
+        # early-return both reach here, and Dispose() alone does not terminate the
+        # OS process.
+        try {
+            if (-not $process.HasExited) {
+                $process.Kill($true)
+                try { $process.WaitForExit() } catch { }
+            }
+        }
+        catch { }
+        # Observe a faulted background write so it does not resurface as an
+        # unobserved task exception during finalization.
+        try {
+            if ($null -ne $writeTask -and $writeTask.IsFaulted) {
+                $null = $writeTask.Exception
+            }
+        }
+        catch { }
         $process.Dispose()
     }
 }
