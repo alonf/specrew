@@ -219,12 +219,13 @@ secret/ambient set, then `git write-tree` -> a tree-id over tracked + untracked 
 included-gitignored content. Freshness = current worktree tree-id == a passing run's
 recorded tree-id. This structurally removes the diff-recompute, the untracked blind spot
 (it is in the tree), the empty-diff trust (the empty tree has a distinct well-known id),
-and the porcelain path-parsing. (Implementation MUST validate write-tree determinism
-across platforms/.gitattributes; a deterministic manifest of `git status --porcelain=v2
--z` object-ids plus `git hash-object` of untracked/included-ignored files is the fallback
-mechanism if write-tree proves non-deterministic. The resumed design panel is validating
-this feasibility; the choice of mechanism is an implementation detail, the content-address
-PRINCIPLE is the decision.)
+and the porcelain path-parsing. (VALIDATED empirically 2026-06-20 in an isolated repo: `write-tree` over a temp index is
+deterministic same-checkout; `add -f` includes gitignored source; the secret stays out by
+not adding it; a tracked OR gitignored-source change flips the tree-id (HOLE A closed); a
+change to an excluded secret does not affect the digest; the empty tree has the well-known
+id `4b825dc642cb6eb9a060e54bf8d69288fbee4904` for the no-content guard. Cross-platform
+determinism is a non-issue because the gate recomputes on the SAME checkout that produced
+the evidence, so the manifest-of-hashes fallback is not needed.)
 
 **2. Secret/ambient exclusion (SEC-002 + maintainer "leave .env out").** When building the
 temp index, exclude a conservative, extensible secret/ambient denylist: `.env*`, `*.key`,
@@ -282,8 +283,9 @@ Re-plan sized to the maintainer-raised **25 SP** cap (iteration extended rather 
 - History rewrite (rebase/squash) breaks ancestry -> spurious BLOCK (fail-closed,
   recoverable by re-running co-review). Acceptable.
 - Secret denylist is best-effort (maintainer-accepted).
-- write-tree cross-platform determinism MUST be validated by test (manifest-of-hashes
-  fallback identified).
+- write-tree determinism VALIDATED (same-checkout, 2026-06-20); cross-platform is a
+  non-issue because the gate recomputes on the producing checkout. Manifest fallback not
+  needed.
 
 ### Design-revision decision
 
