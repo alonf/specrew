@@ -48,6 +48,10 @@
             SuppressedRefocusEvents = @()
             OutputShape             = 'hookSpecificOutput'
             DecisionOnlyEvents      = @()
+            # FR-004 (185) stop-block lever (verified, research/stop-block-capability-matrix.md): Codex Stop
+            # decision:block creates a continuation prompt from reason (PR #14532) + built-in stop_hook_active.
+            # Firing reliability (Esc-interrupt / headless exec) is a real-host dogfood concern, not a block-capability one.
+            StopBlockShape          = 'decision-block'
             BootstrapDeliveryMode   = 'pointer'
         }
         Registrations  = @(

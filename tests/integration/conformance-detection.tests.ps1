@@ -3,14 +3,14 @@ param()
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Feature 185 FR-011 / FR-015 - SC-008 / SC-011: the conformance Stop-provider DETECTION logic.
+# Feature 185 FR-011 / FR-015 / FR-004 - SC-008 / SC-011: the conformance Stop-provider DETECTION + BLOCK-request.
 #
-# Proves the three #2884-era deviations are DETECTED at end-of-turn, against REALISTIC fixtures (real marker
-# grammar, a real >200-char six-section packet body over Get-SpecrewCapturedBoundaryPacket's MinPacketChars
-# floor, real intake phrasings, a real `specify workflow` token) - NOT a 4-line toy that matches only the
-# provider's own code (the Prop-145 "synthetic-fixture stand-in" / "negative-case" rules; the scaffold was
-# already DOA once - c6f97021). Each case DISPATCHES the real provider as a child process the way the hook
-# dispatcher does (double-dash flags, cwd = the fixture root) and asserts on its stdout (the injection fragment).
+# The provider now emits a BLOCK SENTINEL (`<<<SPECREW-STOP-BLOCK>>>` + the packet directive) when a stop owes the
+# 6-section re-entry packet and it is absent, so the dispatcher can force-continue the turn (the packet renders AT
+# the stop, not as a too-late next-turn nudge). This file tests the PROVIDER's detection + sentinel emission against
+# REALISTIC fixtures (the dispatcher's per-host envelope translation is tested in dispatcher-stop-block.tests.ps1).
+# Each case dispatches the real provider as a child process the way the hook dispatcher does (double-dash flags,
+# cwd = the fixture root) and asserts on its stdout (Prop-145 synthetic-fixture + negative-case discipline).
 
 function Write-Pass { param([string]$m) Write-Host "PASS: $m" -ForegroundColor Green }
 function Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor Red; exit 1 }
@@ -19,16 +19,9 @@ $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $provider = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\specrew-conformance-provider.ps1'
 if (-not (Test-Path -LiteralPath $provider)) { Fail "conformance provider not found at $provider" }
 
-# The provider resolves ConversationCaptureAccessor from <cwd>/scripts/internal/bootstrap, else SPECREW_MODULE_PATH,
-# else the installed module. The fixture cwd has no scripts/internal, so point SPECREW_MODULE_PATH at the repo so
-# the false-positive guard (Get-SpecrewCapturedBoundaryPacket) + the turn parser load. shared-governance loads
-# from beside the provider regardless. (This mirrors the self-host resolution the handover provider uses.)
 $priorModulePath = $env:SPECREW_MODULE_PATH
-$env:SPECREW_MODULE_PATH = $repoRoot
+$env:SPECREW_MODULE_PATH = $repoRoot  # so the provider resolves ConversationCaptureAccessor + the false-positive guard
 
-# Per-run-unique scratch under the OS temp dir (NOT a fixed repo-rooted path): the fixtures are destroyed and
-# the child pwsh Set-Locations into them, so a shared fixed root is clobbered under concurrency / by repo
-# watchers (145 TI-1). Mirrors the seam test's GetTempPath()+GUID pattern.
 $scratch = Join-Path ([System.IO.Path]::GetTempPath()) ('specrew-conf-det-' + [guid]::NewGuid().ToString('N'))
 if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
 
@@ -44,20 +37,13 @@ function New-Fixture {
         schema               = 'v2'
         feature_path         = (Join-Path $proj 'specs\050-host-neutral-gate')
         session_state        = $ss
-        boundary_enforcement = [ordered]@{
-            enabled                  = $Enabled
-            last_authorized_boundary = $LastAuth
-            pending_next_boundary    = $null
-            verdict_history          = @()
-            bypass_history           = @()
-        }
+        boundary_enforcement = [ordered]@{ enabled = $Enabled; last_authorized_boundary = $LastAuth; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
     }
     [System.IO.File]::WriteAllText((Join-Path $proj '.specrew\start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
     return $proj
 }
 
 function New-Spec {
-    # An active feature on disk (the #1 deviation needs a spec to exist).
     param([string]$Proj)
     $dir = Join-Path $Proj 'specs\050-host-neutral-gate'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -65,11 +51,12 @@ function New-Spec {
 }
 
 function New-Transcript {
-    # A realistic Claude-schema JSONL transcript (type in {user,assistant} + message.content[{type:text,text}]).
     param([string]$Proj, [object[]]$Turns)
     $dir = Join-Path $Proj '.specrew\runtime'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
-    $path = Join-Path $dir 'transcript.jsonl'
+    # Unique per call - a fixture that creates two transcripts in one project (e.g. the loop-guard reset case) must
+    # NOT have the second overwrite the first at a shared path.
+    $path = Join-Path $dir ('transcript-' + [guid]::NewGuid().ToString('N') + '.jsonl')
     $lines = foreach ($t in $Turns) {
         ([pscustomobject]@{ type = $t.role; message = [pscustomobject]@{ content = @([pscustomobject]@{ type = 'text'; text = $t.text }) } } | ConvertTo-Json -Depth 8 -Compress)
     }
@@ -78,21 +65,18 @@ function New-Transcript {
 }
 
 function Invoke-Conformance {
-    # Dispatch the provider the way the hook dispatcher does: child pwsh, double-dash flags, cwd = the fixture
-    # root (the dispatcher sets ProcessStartInfo.WorkingDirectory; we Set-Location in the child so Get-Location
-    # resolves the fixture - Push-Location in the parent does NOT sync the child's .NET working directory).
     param([string]$Proj, [AllowNull()][string]$TranscriptPath, [string]$Event = 'Stop')
     $tpArg = if ([string]::IsNullOrWhiteSpace($TranscriptPath)) { '' } else { " --transcript-path '$TranscriptPath'" }
     $cmd = "Set-Location -LiteralPath '$Proj'; & '$provider' --host-kind claude --source-event $Event$tpArg"
     $out = & pwsh -NoProfile -ExecutionPolicy Bypass -Command $cmd 2>&1
-    return [pscustomobject]@{ Out = (@($out) -join "`n"); Code = $LASTEXITCODE }
+    return [pscustomobject]@{ Out = (@($out) -join "`n"); Code = $LASTEXITCODE; Blocked = ((@($out) -join "`n") -match '<<<SPECREW-STOP-BLOCK>>>') }
 }
 
-# A real six-section boundary packet body (well over the 200-char MinPacketChars floor) carrying the verdict marker.
+# A real six-section packet body (well over the 600-char substantial floor) carrying the verdict marker.
 $realPacket = @'
 ## What I Just Did
 
-Completed the clarify phase for feature 050-host-neutral-gate and reconciled the spec clarifications. Artifacts updated under file:///fixture/specs/050-host-neutral-gate/spec.md.
+Completed the clarify phase for feature 050-host-neutral-gate and reconciled the spec clarifications, updating the artifacts under file:///fixture/specs/050-host-neutral-gate/spec.md with the locked scope and the enforce-or-halt north star agreed with the human.
 
 ## Why I Stopped
 
@@ -100,11 +84,11 @@ This is the clarify -> plan boundary. Planning converts the spec into architectu
 
 ## What Needs Your Review
 
-The clarifications section and the locked scope. High-impact: the enforce-or-halt north star.
+The clarifications section and the locked scope. High-impact: the enforce-or-halt north star and the host capability matrix.
 
 ## What Happens Next
 
-I will author plan.md with the architecture and FR-to-test mapping. No code is written at the plan boundary.
+I will author plan.md with the architecture and the FR-to-test mapping. No code is written at the plan boundary.
 
 ## Discussion Prompts
 
@@ -117,143 +101,139 @@ Approve as-is, approve with instructions, send back, or discuss prompt #N.
 <!-- SPECREW-VERDICT-BOUNDARY: clarify -> plan -->
 '@
 
+# A long (>600 char) NON-packet hand-back: substantial prose with no section headers and no verdict marker.
+$longProse = ('I went ahead and refactored the resolver and the three call sites, tightened the error handling around the cache, ' +
+    'added a couple of guard clauses, and tidied the logging so it is consistent across the module. I also looked into the ' +
+    'flaky integration path and I think it is a race in the warmup step, though I have not confirmed it yet. There are a few ' +
+    'directions we could take from here and I am not sure which you prefer, so let me know how you want to proceed and whether ' +
+    'I should keep going on the warmup race or pivot to the other items we discussed earlier this afternoon in some detail. ' +
+    'I also want to flag that the dependency bump touches two manifests and a lockfile, so we should decide whether to land ' +
+    'that separately or fold it into this change; either way I can prepare both and you can pick the one you would rather take.')
+
 try {
-    # ---- Case 1: SILENT ADVANCE FIRES (the #2884 headline). Working 'plan' is ahead of authorized 'clarify',
-    #              and the last assistant turn did NOT render a verdict packet -> a silent advance -> correction.
+    # ---- Case 1: BOUNDARY block. Working 'plan' ahead of authorized 'clarify', no packet -> emit the block sentinel
+    #              with the packet directive + the CONTIGUOUS clarify -> plan verdict marker.
     $p1 = New-Fixture -Working 'plan' -LastAuth 'clarify'
-    $t1 = New-Transcript -Proj $p1 -Turns @(
-        @{ role = 'user'; text = 'continue' },
-        @{ role = 'assistant'; text = 'I have written plan.md with the architecture and moved on to drafting tasks.' }
-    )
+    $t1 = New-Transcript -Proj $p1 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'I have written plan.md and moved on to tasks.' })
     $r1 = Invoke-Conformance -Proj $p1 -TranscriptPath $t1
     if ($r1.Code -ne 0) { Fail "Case 1: provider must exit 0 (got $($r1.Code)); out: $($r1.Out)" }
-    if ($r1.Out -notmatch 'SILENT BOUNDARY ADVANCE') { Fail "Case 1: a working boundary ahead of authorized with NO rendered packet MUST fire the silent-advance correction. Out: $($r1.Out)" }
-    if ($r1.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 1: the correction must template the contiguous clarify -> plan verdict marker. Out: $($r1.Out)" }
-    if ($r1.Out -notmatch 'six-section') { Fail "Case 1: the correction must instruct rendering the six-section packet (FR-015). Out: $($r1.Out)" }
-    Write-Pass "Case 1: silent boundary advance (working 'plan' > authorized 'clarify', no packet rendered) FIRES the correction with the contiguous marker template (#2884 headline / SC-008 #2)"
+    if (-not $r1.Blocked) { Fail "Case 1: a boundary stop (working 'plan' > authorized 'clarify') with no packet MUST emit the block sentinel. Out: $($r1.Out)" }
+    if ($r1.Out -notmatch 'What I Just Did') { Fail "Case 1: the block directive must instruct the six-section packet. Out: $($r1.Out)" }
+    if ($r1.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 1: the block directive must carry the contiguous clarify -> plan marker. Out: $($r1.Out)" }
+    Write-Pass "Case 1: a boundary silent-advance emits the block sentinel + the six-section directive + the contiguous clarify -> plan marker (#2884 / SC-008 #2)"
 
-    # ---- Case 2: FALSE-POSITIVE GUARD. SAME committed-!=-authorized state, but the agent DID render the full
-    #              six-section packet + marker this turn -> a legitimate awaiting-verdict stop -> NO correction.
+    # ---- Case 2: FALSE-POSITIVE GUARD (boundary). Same state, but the packet WAS rendered this turn (to=plan==working) -> no block.
     $p2 = New-Fixture -Working 'plan' -LastAuth 'clarify'
-    $t2 = New-Transcript -Proj $p2 -Turns @(
-        @{ role = 'user'; text = 'continue' },
-        @{ role = 'assistant'; text = $realPacket }
-    )
+    $t2 = New-Transcript -Proj $p2 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $realPacket })
     $r2 = Invoke-Conformance -Proj $p2 -TranscriptPath $t2
-    if ($r2.Code -ne 0) { Fail "Case 2: provider must exit 0 (got $($r2.Code)); out: $($r2.Out)" }
-    if ($r2.Out -match 'SILENT BOUNDARY ADVANCE') { Fail "Case 2: a rendered verdict packet this turn is a LEGITIMATE awaiting-verdict stop - it MUST NOT fire (the false-positive guard). Out: $($r2.Out)" }
-    Write-Pass "Case 2: a rendered six-section packet + marker this turn SUPPRESSES the correction (false-positive guard; no nag on a legitimate awaiting-verdict stop)"
+    if ($r2.Blocked) { Fail "Case 2: a rendered packet (to=plan==working) is a legitimate awaiting-verdict stop - MUST NOT block. Out: $($r2.Out)" }
+    Write-Pass "Case 2: a rendered six-section packet matching the working boundary SUPPRESSES the block (false-positive guard)"
 
-    # ---- Case 3: CURSOR CAUGHT UP. Working == authorized ('plan'/'plan') -> not pending -> no correction.
+    # ---- Case 3: cursor caught up. working == authorized, no spec, short msg -> not pending, not substantial -> no block.
     $p3 = New-Fixture -Working 'plan' -LastAuth 'plan'
-    $t3 = New-Transcript -Proj $p3 -Turns @(@{ role = 'assistant'; text = 'Plan approved and recorded; proceeding to author plan.md.' })
+    $t3 = New-Transcript -Proj $p3 -Turns @(@{ role = 'assistant'; text = 'Plan approved; proceeding.' })
     $r3 = Invoke-Conformance -Proj $p3 -TranscriptPath $t3
-    if ($r3.Out -match 'SILENT BOUNDARY ADVANCE') { Fail "Case 3: working == authorized is a properly-authorized boundary - MUST NOT fire. Out: $($r3.Out)" }
-    Write-Pass "Case 3: working == authorized (cursor caught up) does NOT fire (no false alarm on an authorized boundary)"
+    if ($r3.Blocked) { Fail "Case 3: working == authorized + short message MUST NOT block. Out: $($r3.Out)" }
+    Write-Pass "Case 3: working == authorized + a short reply does NOT block (no false alarm)"
 
-    # ---- Case 4: INTAKE QUESTION while an active feature exists (#1). Not pending (working==auth so #2 is quiet),
-    #              the last turn asks what to build, and a spec.md is on disk -> redirect-to-continue correction.
+    # ---- Case 4: SUBSTANTIAL non-boundary block. No pending verdict, but a spec exists (past intake) and the agent
+    #              ended the turn with a long hand-back lacking the packet -> block, packet directive, NO verdict marker.
     $p4 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p4
-    $t4 = New-Transcript -Proj $p4 -Turns @(
-        @{ role = 'user'; text = 'hi' },
-        @{ role = 'assistant'; text = "Welcome! What would you like to build today? Tell me about the feature and I'll get started." }
-    )
+    $t4 = New-Transcript -Proj $p4 -Turns @(@{ role = 'user'; text = 'go' }, @{ role = 'assistant'; text = $longProse })
     $r4 = Invoke-Conformance -Proj $p4 -TranscriptPath $t4
-    if ($r4.Out -notmatch 'INTAKE QUESTION') { Fail "Case 4: an intake 'what would you like to build' question while a spec exists MUST fire the #1 redirect. Out: $($r4.Out)" }
-    if ($r4.Out -match 'SILENT BOUNDARY ADVANCE') { Fail "Case 4: #2 must stay quiet here (working == authorized). Out: $($r4.Out)" }
-    Write-Pass "Case 4: an intake question ('what would you like to build') while an active feature exists FIRES the #1 redirect (SC-008 #1)"
+    if (-not $r4.Blocked) { Fail "Case 4: a substantial post-intake hand-back with no packet MUST block (the every-stop rule). Out: $($r4.Out)" }
+    if ($r4.Out -notmatch 'What I Just Did') { Fail "Case 4: the block directive must instruct the six-section packet. Out: $($r4.Out)" }
+    if ($r4.Out -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case 4: a non-boundary stop MUST NOT carry a verdict marker. Out: $($r4.Out)" }
+    Write-Pass "Case 4: a SUBSTANTIAL non-boundary hand-back lacking the packet blocks (six-section directive, no verdict marker) - the every-stop rule (FR-015 / SC-011)"
 
-    # ---- Case 4b: intake question but NO active feature (greenfield) -> must NOT fire #1 (asking what to build
-    #               is correct on a truly empty project).
+    # ---- Case 4b: SUBSTANTIAL but PRE-SPEC (workshop excluded). Same long message, NO spec, no pending -> NO block.
     $p4b = New-Fixture -Working 'plan' -LastAuth 'plan'
-    $t4b = New-Transcript -Proj $p4b -Turns @(@{ role = 'assistant'; text = 'What would you like to build?' })
+    $t4b = New-Transcript -Proj $p4b -Turns @(@{ role = 'assistant'; text = $longProse })
     $r4b = Invoke-Conformance -Proj $p4b -TranscriptPath $t4b
-    if ($r4b.Out -match 'INTAKE QUESTION') { Fail "Case 4b: asking what to build with NO spec on disk is legitimate greenfield intake - MUST NOT fire. Out: $($r4b.Out)" }
-    Write-Pass "Case 4b: an intake question with NO active feature (greenfield) does NOT fire #1 (no false alarm)"
+    if ($r4b.Blocked) { Fail "Case 4b: a substantial message pre-spec (intake/workshop) MUST NOT block - the workshop is excluded. Out: $($r4b.Out)" }
+    Write-Pass "Case 4b: a substantial message PRE-SPEC (the design-workshop window) does NOT block (workshop exclusion)"
 
-    # ---- Case 5: RAW SPEC KIT (#3). The last turn ran the un-governed `specify workflow` engine -> redirect.
+    # ---- Case 5: INTAKE QUESTION -> a cooperative NUDGE (not a block). Short intake question, spec exists.
     $p5 = New-Fixture -Working 'plan' -LastAuth 'plan'
-    $t5 = New-Transcript -Proj $p5 -Turns @(
-        @{ role = 'assistant'; text = "I'll scaffold the spec now by running: specify workflow --type feature. This kicks off the SDD engine." }
-    )
+    New-Spec -Proj $p5
+    $t5 = New-Transcript -Proj $p5 -Turns @(@{ role = 'assistant'; text = "Welcome! What would you like to build today?" })
     $r5 = Invoke-Conformance -Proj $p5 -TranscriptPath $t5
-    if ($r5.Out -notmatch 'RAW SPEC KIT') { Fail "Case 5: a raw 'specify workflow' invocation MUST fire the #3 redirect. Out: $($r5.Out)" }
-    Write-Pass "Case 5: a raw 'specify workflow' SDD-engine invocation FIRES the #3 redirect to the governed flow (SC-008 #3)"
+    if ($r5.Blocked) { Fail "Case 5: a short intake question is a redirect nudge, not a packet block. Out: $($r5.Out)" }
+    if ($r5.Out -notmatch 'INTAKE QUESTION') { Fail "Case 5: an intake question while a spec exists MUST fire the #1 redirect nudge. Out: $($r5.Out)" }
+    Write-Pass "Case 5: an intake question while an active feature exists fires the #1 redirect NUDGE (SC-008 #1)"
 
-    # ---- Case 6: IDEMPOTENCE. Re-dispatching the SAME silent advance does NOT re-nudge (fire-once per
-    #               (working,auth) via the conformance journal); a NEW advance DOES re-fire.
-    $p6 = New-Fixture -Working 'plan' -LastAuth 'clarify'
-    $t6 = New-Transcript -Proj $p6 -Turns @(@{ role = 'assistant'; text = 'plan.md written; continuing.' })
-    $r6a = Invoke-Conformance -Proj $p6 -TranscriptPath $t6
-    if ($r6a.Out -notmatch 'SILENT BOUNDARY ADVANCE') { Fail "Case 6: first dispatch MUST fire. Out: $($r6a.Out)" }
-    $r6b = Invoke-Conformance -Proj $p6 -TranscriptPath $t6
-    if ($r6b.Out -match 'SILENT BOUNDARY ADVANCE') { Fail "Case 6: the SAME advance MUST NOT re-nudge (fire-once idempotence). Out: $($r6b.Out)" }
-    # A NEW advance (working moves on to 'tasks') re-fires.
-    $ctxPath = Join-Path $p6 '.specrew\start-context.json'
-    $raw = Get-Content -LiteralPath $ctxPath -Raw | ConvertFrom-Json -AsHashtable -Depth 12
-    $raw['session_state']['boundary_type'] = 'tasks'
-    [System.IO.File]::WriteAllText($ctxPath, ($raw | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
-    $r6c = Invoke-Conformance -Proj $p6 -TranscriptPath $t6
-    if ($r6c.Out -notmatch 'SILENT BOUNDARY ADVANCE') { Fail "Case 6: a NEW advance (working 'tasks') MUST re-fire (fire-once is per (working,auth), not permanent). Out: $($r6c.Out)" }
-    # F2: working='tasks' with last_authorized='clarify' is a MULTI-gate gap; the contiguous crossing the cursor
-    # can authorize next is clarify -> plan (successor of last-authorized), NOT plan -> tasks (predecessor of working,
-    # which order-30 capture refuses as MARKER_CURSOR_MISMATCH).
-    if ($r6c.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 6: the multi-gate re-fire MUST template the CONTIGUOUS clarify -> plan marker (successor of last-authorized). Out: $($r6c.Out)" }
-    if ($r6c.Out -match 'SPECREW-VERDICT-BOUNDARY: plan -> tasks') { Fail "Case 6 (F2): MUST NOT template plan -> tasks - that skips the unauthorized clarify -> plan gate. Out: $($r6c.Out)" }
-    Write-Pass "Case 6: fire-once idempotence - same advance no re-nudge, new advance re-fires; the multi-gate re-fire templates the CONTIGUOUS clarify -> plan marker, not plan -> tasks (145 F2)"
+    # ---- Case 6: RAW SPEC KIT -> a cooperative NUDGE. Short message running `specify workflow`, no spec.
+    $p6 = New-Fixture -Working 'plan' -LastAuth 'plan'
+    $t6 = New-Transcript -Proj $p6 -Turns @(@{ role = 'assistant'; text = "I'll run: specify workflow --type feature." })
+    $r6 = Invoke-Conformance -Proj $p6 -TranscriptPath $t6
+    if ($r6.Out -notmatch 'RAW SPEC KIT') { Fail "Case 6: a raw 'specify workflow' invocation MUST fire the #3 redirect. Out: $($r6.Out)" }
+    Write-Pass "Case 6: a raw 'specify workflow' invocation fires the #3 redirect NUDGE (SC-008 #3)"
 
-    # ---- Case 7: ENFORCEMENT DISABLED -> never fires (the helper never fabricates a pending state).
-    $p7 = New-Fixture -Working 'plan' -LastAuth 'clarify' -Enabled $false
+    # ---- Case 7: LOOP-GUARD. Consecutive packet-less boundary stops block up to the cap, then degrade to a nudge
+    #              (never hang); a packet-present stop resets the counter so a later advance re-blocks.
+    $p7 = New-Fixture -Working 'plan' -LastAuth 'clarify'
     $t7 = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
-    $r7 = Invoke-Conformance -Proj $p7 -TranscriptPath $t7
-    if ($r7.Out -match 'SILENT BOUNDARY ADVANCE') { Fail "Case 7: enforcement disabled MUST NOT fire. Out: $($r7.Out)" }
-    Write-Pass "Case 7: enforcement disabled does NOT fire (no fabricated state; fail-open)"
+    for ($n = 1; $n -le 3; $n++) {
+        $rb = Invoke-Conformance -Proj $p7 -TranscriptPath $t7
+        if (-not $rb.Blocked) { Fail "Case 7: block #$n (within the cap of 3) MUST block. Out: $($rb.Out)" }
+    }
+    $r7cap = Invoke-Conformance -Proj $p7 -TranscriptPath $t7
+    if ($r7cap.Blocked) { Fail "Case 7: the 4th consecutive block exceeds the cap and MUST degrade (release the stop) to avoid a hang. Out: $($r7cap.Out)" }
+    if ($r7cap.Out -notmatch 'RE-ENTRY PACKET still missing') { Fail "Case 7: over the cap, degrade to a plain re-entry nudge. Out: $($r7cap.Out)" }
+    # A packet-present stop resets the counter.
+    $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = $realPacket })
+    $null = Invoke-Conformance -Proj $p7 -TranscriptPath $t7ok
+    $r7reset = Invoke-Conformance -Proj $p7 -TranscriptPath $t7
+    if (-not $r7reset.Blocked) { Fail "Case 7: after a packet-present stop reset the counter, a fresh packet-less advance MUST re-block. Out: $($r7reset.Out)" }
+    Write-Pass "Case 7: loop-guard - consecutive packet-less stops block up to the cap then degrade (no hang); a packet-present stop resets so a later advance re-blocks"
 
-    # ---- Case 8: ISOLATION at runtime - the provider NEVER mutates the gate authority state. Assert the fixture's
-    #               start-context.json (verdict_history / last_authorized_boundary) is byte-unchanged after a firing.
+    # ---- Case 8: ISOLATION. A firing leaves start-context.json (the gate authority) byte-unchanged.
     $p8 = New-Fixture -Working 'plan' -LastAuth 'clarify'
     $ctx8 = Join-Path $p8 '.specrew\start-context.json'
     $before = (Get-FileHash -LiteralPath $ctx8).Hash
     $t8 = New-Transcript -Proj $p8 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
     $null = Invoke-Conformance -Proj $p8 -TranscriptPath $t8
-    $after = (Get-FileHash -LiteralPath $ctx8).Hash
-    if ($before -ne $after) { Fail "Case 8: the provider MUST NOT mutate start-context.json (the gate authority) - it is read-only. Hash changed." }
-    Write-Pass "Case 8: a firing leaves start-context.json (verdict_history / cursor) byte-unchanged - the provider is read-only to gate state (FR-011 isolation, runtime-proven)"
+    if ((Get-FileHash -LiteralPath $ctx8).Hash -ne $before) { Fail "Case 8: the provider MUST NOT mutate start-context.json (the gate authority). Hash changed." }
+    Write-Pass "Case 8: a firing leaves start-context.json (verdict_history / cursor) byte-unchanged - the provider is read-only to gate state (runtime-proven)"
 
-    # ---- Case 9 (145 F2): MULTI-GATE-GAP marker correctness. Working 'tasks' jumped two gates past authorized
-    #      'clarify'; the correction must name the FIRST unauthorized contiguous crossing clarify -> plan, never
-    #      plan -> tasks (which order-30 capture refuses as MARKER_CURSOR_MISMATCH and would skip a gate).
+    # ---- Case 9: MULTI-GATE-GAP marker. working 'tasks' two gates past authorized 'clarify' -> the block names the
+    #              CONTIGUOUS first-unauthorized crossing clarify -> plan, never the gate-skipping plan -> tasks.
     $p9 = New-Fixture -Working 'tasks' -LastAuth 'clarify'
-    $t9 = New-Transcript -Proj $p9 -Turns @(@{ role = 'assistant'; text = 'tasks.md drafted; proceeding to implement.' })
+    $t9 = New-Transcript -Proj $p9 -Turns @(@{ role = 'assistant'; text = 'tasks.md drafted; proceeding.' })
     $r9 = Invoke-Conformance -Proj $p9 -TranscriptPath $t9
-    if ($r9.Out -notmatch 'SILENT BOUNDARY ADVANCE') { Fail "Case 9: a 2-gate jump (clarify->...->tasks) MUST fire. Out: $($r9.Out)" }
-    if ($r9.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 9 (F2): MUST template the contiguous clarify -> plan crossing (successor of last-authorized). Out: $($r9.Out)" }
-    if ($r9.Out -match 'SPECREW-VERDICT-BOUNDARY: (plan -> tasks|clarify -> tasks)') { Fail "Case 9 (F2): MUST NOT name a non-contiguous crossing (plan->tasks / clarify->tasks). Out: $($r9.Out)" }
-    Write-Pass "Case 9: a multi-gate-gap advance templates the CONTIGUOUS first-unauthorized crossing clarify -> plan, not a gate-skipping marker (145 F2)"
+    if (-not $r9.Blocked) { Fail "Case 9: a 2-gate jump MUST block. Out: $($r9.Out)" }
+    if ($r9.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 9: MUST name the contiguous clarify -> plan crossing. Out: $($r9.Out)" }
+    if ($r9.Out -match 'SPECREW-VERDICT-BOUNDARY: (plan -> tasks|clarify -> tasks)') { Fail "Case 9: MUST NOT name a non-contiguous crossing. Out: $($r9.Out)" }
+    Write-Pass "Case 9: a multi-gate-gap block names the CONTIGUOUS clarify -> plan crossing, not a gate-skipping marker (145 F2)"
 
-    # ---- Case 10 (145 TI-2/F1): STALE-PACKET must NOT suppress a genuine NEW silent advance. Working 'tasks',
-    #      authorized 'plan' (plan->tasks gate never offered), but an OLD already-consumed clarify->plan packet
-    #      still sits in the tail. ToBoundary(plan) != WorkingBoundary(tasks) -> the guard must NOT suppress -> fire.
+    # ---- Case 10: STALE-PACKET still blocks. working 'tasks', authorized 'plan', a stale clarify->plan packet (to=plan)
+    #               in the tail must NOT suppress the genuine plan->tasks advance (to != working).
     $p10 = New-Fixture -Working 'tasks' -LastAuth 'plan'
     $t10 = New-Transcript -Proj $p10 -Turns @(
-        @{ role = 'assistant'; text = $realPacket },                                  # stale clarify->plan packet (to=plan)
+        @{ role = 'assistant'; text = $realPacket },
         @{ role = 'user'; text = 'approved for plan' },
-        @{ role = 'assistant'; text = 'Plan approved. I have now written tasks.md and am starting implementation.' }
+        @{ role = 'assistant'; text = 'Plan approved. I have written tasks.md and am starting implementation now in earnest.' }
     )
     $r10 = Invoke-Conformance -Proj $p10 -TranscriptPath $t10
-    if ($r10.Out -notmatch 'SILENT BOUNDARY ADVANCE') { Fail "Case 10 (TI-2/F1): a stale clarify->plan packet (to=plan) MUST NOT suppress the genuine plan->tasks silent advance (working=tasks). Out: $($r10.Out)" }
-    if ($r10.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: plan -> tasks') { Fail "Case 10: the fired correction must template the contiguous plan -> tasks crossing. Out: $($r10.Out)" }
-    Write-Pass "Case 10: a STALE/unrelated packet in the tail does NOT suppress a genuine new silent advance - the guard matches the packet's ToBoundary to the WORKING boundary (145 TI-2/F1)"
+    if (-not $r10.Blocked) { Fail "Case 10: a stale clarify->plan packet (to=plan) MUST NOT suppress the genuine plan->tasks advance. Out: $($r10.Out)" }
+    if ($r10.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: plan -> tasks') { Fail "Case 10: the block must name the contiguous plan -> tasks crossing. Out: $($r10.Out)" }
+    Write-Pass "Case 10: a STALE/unrelated packet does NOT suppress a genuine new advance - the guard matches ToBoundary to the working boundary (145 TI-2/F1)"
 
-    # ---- Case 11 (guard precision): the RELEVANT packet (to == working) DOES suppress. Working 'tasks',
-    #      authorized 'plan', and THIS turn renders the plan->tasks packet (to=tasks) -> legitimate awaiting -> no fire.
+    # ---- Case 11: RELEVANT packet (to==working) suppresses. working 'tasks', authorized 'plan', a plan->tasks packet rendered.
     $packetTasks = $realPacket -replace 'clarify -> plan', 'plan -> tasks'
     $p11 = New-Fixture -Working 'tasks' -LastAuth 'plan'
     $t11 = New-Transcript -Proj $p11 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetTasks })
     $r11 = Invoke-Conformance -Proj $p11 -TranscriptPath $t11
-    if ($r11.Out -match 'SILENT BOUNDARY ADVANCE') { Fail "Case 11: a packet whose ToBoundary == the working boundary (plan->tasks, working=tasks) is a legitimate awaiting-verdict stop - MUST suppress. Out: $($r11.Out)" }
-    Write-Pass "Case 11: the RELEVANT packet (ToBoundary == working) correctly suppresses - the guard is precise, not just present (145 TI-2 positive side)"
+    if ($r11.Blocked) { Fail "Case 11: a packet whose ToBoundary == the working boundary is a legitimate awaiting stop - MUST suppress. Out: $($r11.Out)" }
+    Write-Pass "Case 11: the RELEVANT packet (ToBoundary == working) correctly suppresses the block (guard precision)"
+
+    # ---- Case 12: ENFORCEMENT DISABLED -> never blocks.
+    $p12 = New-Fixture -Working 'plan' -LastAuth 'clarify' -Enabled $false
+    $t12 = New-Transcript -Proj $p12 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
+    $r12 = Invoke-Conformance -Proj $p12 -TranscriptPath $t12
+    if ($r12.Blocked) { Fail "Case 12: enforcement disabled MUST NOT block. Out: $($r12.Out)" }
+    Write-Pass "Case 12: enforcement disabled does NOT block (no fabricated state; fail-open)"
 
     Write-Host "`n=== conformance-detection.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0

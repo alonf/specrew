@@ -58,6 +58,9 @@
             SuppressedRefocusEvents = @()
             OutputShape             = 'plain-or-hookSpecificOutput'
             DecisionOnlyEvents      = @()
+            # FR-004 (185) stop-block lever (verified, research/stop-block-capability-matrix.md): Claude Stop
+            # supports {"decision":"block","reason":...} + a built-in stop_hook_active / 8-block loop cap.
+            StopBlockShape          = 'decision-block'
             BootstrapDeliveryMode   = 'pointer'
         }
         Registrations       = @(

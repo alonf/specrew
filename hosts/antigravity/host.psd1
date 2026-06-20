@@ -47,6 +47,11 @@
             SuppressedRefocusEvents = @('PostToolUse', 'UserPromptSubmit')
             OutputShape             = 'injectSteps'
             DecisionOnlyEvents      = @('Stop')
+            # FR-004 (185) stop-block lever (verified, research/stop-block-capability-matrix.md): Antigravity Stop
+            # {"decision":"continue","reason":...} re-enters the loop (any other value allows the stop) - a SOFT
+            # block (the model can retry stopping next loop). NO built-in loop guard -> the provider's own
+            # consecutive-block cap is the loop guard here.
+            StopBlockShape          = 'decision-continue'
             BootstrapDeliveryMode   = 'pointer'
         }
         Registrations  = @(

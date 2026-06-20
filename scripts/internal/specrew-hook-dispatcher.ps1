@@ -189,6 +189,13 @@ function ConvertFrom-DispatcherRuntimeBinding {
         OutputShape             = [string](Get-DispatcherMapValue -Map $Runtime -Key 'OutputShape' -Default 'plain-or-hookSpecificOutput')
         DecisionOnlyEvents      = $(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $Runtime -Key 'DecisionOnlyEvents' -Default @()))
         BootstrapDeliveryMode   = [string](Get-DispatcherMapValue -Map $Runtime -Key 'BootstrapDeliveryMode' -Default 'inline')
+        # FR-004 (185): the host's STOP-BLOCK lever - how a Stop-class consumer force-continues the turn so the
+        # 6-section re-entry packet renders AT the stop (verified capability matrix, research/stop-block-capability-matrix.md):
+        #   decision-block    -> {"decision":"block","reason":...}    (claude, codex, copilot)
+        #   decision-continue -> {"decision":"continue","reason":...}  (antigravity - any non-continue value allows the stop)
+        #   followup-message  -> {"followup_message":...}              (cursor - best-effort re-triggered turn, NOT a hard same-turn block)
+        #   none              -> cannot block; degrades to the cooperative instruction only
+        StopBlockShape          = [string](Get-DispatcherMapValue -Map $Runtime -Key 'StopBlockShape' -Default 'none')
     }
 }
 
@@ -702,6 +709,26 @@ function Write-InjectionOutput {
     }
 }
 
+# The blocking StopBlockShapes (a host that force-continues the turn); 'none' is excluded (cannot block).
+$script:SpecrewStopBlockShapes = @('decision-block', 'decision-continue', 'followup-message')
+
+function Write-StopBlockOutput {
+    # FR-004/FR-005/FR-015 (185): emit the host's STOP-BLOCK envelope (to the hook's stdout) so the agent
+    # force-continues and renders the 6-section re-entry packet AT the stop (the $Reason carries the directive).
+    # Per-host shape is the verified capability matrix (research/stop-block-capability-matrix.md). Writes ONLY the
+    # envelope JSON (no return value - the caller guards $Shape against $script:SpecrewStopBlockShapes first, so a
+    # leaked return cannot corrupt the hook stdout the host parses).
+    param([string]$Shape, [string]$Reason)
+    switch ($Shape) {
+        # claude / codex / copilot: a hard deny that prevents turn-end and force-continues using reason.
+        'decision-block' { @{ decision = 'block'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+        # antigravity: decision=continue re-enters the loop; any other value allows the stop (soft block).
+        'decision-continue' { @{ decision = 'continue'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+        # cursor: no same-turn hard block; followup_message auto-submits a NEW user turn (best-effort degrade).
+        'followup-message' { @{ followup_message = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+    }
+}
+
 # ---------------------------------------------------------------------------
 # Main — every failure path inside this try lands on exit 0 (P1).
 # ---------------------------------------------------------------------------
@@ -772,6 +799,7 @@ try {
 
     $fragments = New-Object System.Collections.Generic.List[object]
     $failedSessionStartProviders = New-Object System.Collections.Generic.List[string]
+    $stopBlockReason = $null  # FR-004/FR-015: set when a Stop-class consumer requests a force-continue (the packet-at-stop block).
     foreach ($provider in $providers) {
         $kind = if ($provider.PSObject.Properties['kind']) { [string]$provider.kind } else { 'inject' }
         $providerId = [string]$provider.id
@@ -904,12 +932,20 @@ try {
             continue
         }
         if (-not [string]::IsNullOrWhiteSpace($result.StdOut)) {
-            $fragments.Add((New-DispatcherFragment -ProviderId $providerId -Text $result.StdOut.Trim() -Order $providerOrder)) | Out-Null
-            if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
-                $facts = Get-BannerFacts -Payload $result.StdOut
-                $outcome = if ($result.StdErr -match 'WARN BUDGET_EXCEEDED') { 'budget-clipped' } else { 'injected' }
-                $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope $facts.Scope -Channel 'hook' -Tokens $facts.Tokens -Outcome $outcome
-                $stateDirty = $true
+            $stdoutTrim = $result.StdOut.Trim()
+            if ($stdoutTrim.StartsWith('<<<SPECREW-STOP-BLOCK>>>')) {
+                # FR-004/FR-015: a Stop-class consumer (conformance) requests a force-continue so the re-entry
+                # packet renders AT the stop. Capture the reason; do NOT add it as a normal injection fragment.
+                $stopBlockReason = $stdoutTrim.Substring('<<<SPECREW-STOP-BLOCK>>>'.Length).Trim()
+            }
+            else {
+                $fragments.Add((New-DispatcherFragment -ProviderId $providerId -Text $stdoutTrim -Order $providerOrder)) | Out-Null
+                if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
+                    $facts = Get-BannerFacts -Payload $result.StdOut
+                    $outcome = if ($result.StdErr -match 'WARN BUDGET_EXCEEDED') { 'budget-clipped' } else { 'injected' }
+                    $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope $facts.Scope -Channel 'hook' -Tokens $facts.Tokens -Outcome $outcome
+                    $stateDirty = $true
+                }
             }
         }
         if ((Test-IsBootstrapDeliveryEvent -EventName $Event -Binding $hostRuntimeBinding) -and $providerId -in @('bootstrap', 'refocus') -and $result.StdErr -match '\bPROVIDER_FAILED\b') {
@@ -930,6 +966,22 @@ try {
         if (-not $hasBootstrap) {
             $fragments.Add((New-DispatcherFragment -ProviderId 'fallback' -Text (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders $failedSessionStartProviders.ToArray()) -Order 0)) | Out-Null
         }
+    }
+
+    # STOP-BLOCK short-circuit (FR-004/FR-005/FR-015): a Stop-class consumer asked to force-continue the turn so
+    # the 6-section re-entry packet renders AT the stop (not as a too-late next-turn nudge). Honor it via the
+    # host's declared StopBlockShape - UNLESS the host is already continuing from a prior stop-block
+    # (stop_hook_active true on claude/codex) -> then ALLOW, to respect the host's loop cap and never hang. Fully
+    # fail-open: an unknown/none shape or any miss falls through to the normal (allow/inject) path. The provider
+    # supplies its OWN consecutive-block cap for hosts lacking stop_hook_active (copilot/antigravity).
+    if (-not [string]::IsNullOrWhiteSpace($stopBlockReason)) {
+        $alreadyContinuing = [bool](Get-DispatcherMapValue -Map $hostEvent -Key 'stop_hook_active' -Default $false)
+        $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
+        if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
+            Write-StopBlockOutput -Shape $blockShape -Reason $stopBlockReason
+            exit 0
+        }
+        # else: host already continuing OR cannot block -> fall through to the normal path (cooperative degrade).
     }
 
     if ($fragments.Count -gt 0) {
