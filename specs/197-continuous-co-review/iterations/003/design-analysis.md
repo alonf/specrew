@@ -185,3 +185,109 @@ phases, because Phase A has no live hook to exercise.
   constraint is relaxed narrowly for the Stop hook (never PostToolUse/per-edit).
 - **Approval evidence commit**: pending - the spec amendment and these artifacts are
   held uncommitted in the working tree until the maintainer authorizes a commit.
+
+## Design Revision (2026-06-20) — Sound Evidence Model (supersedes the diff-from-baseline gate)
+
+### Why this revision
+
+The first Phase-A gate keyed signoff freshness on a `diff_hash` recomputed from an
+operator-chosen baseline to the working tree. Two fresh-context Proposal 145 co-reviews
+(the feature dogfooding itself) found this model has two false-allows that no localized
+patch closes:
+
+- **HOLE A — gitignored-source blindness**: `git diff <baseline>` walks tracked files
+  only, and `git status --untracked-files=all` omits ignored files, so reviewable
+  gitignored source signs off un-reviewed.
+- **HOLE B — unanchored operator baseline**: the gate proves only that the tree matches
+  the diff from an operator-chosen `--baseline-ref`; nothing verifies that baseline was
+  itself reviewed, so a tip-only review skips the middle. The "baseline advances only on
+  a pass" invariant is vacuous because no production caller threads `-RebaselineToLastPass`.
+
+Re-architected within Iteration 003 (D-197-I003-005) per maintainer decisions: gitignored
+SOURCE is in review scope with `.env`/secrets/ambient excluded; the trusted anchor is the
+merge-base with `main`; enforcement is producer auto-anchor PLUS gate chain-verification,
+with a human-authorized recorded partial-coverage override.
+
+### The sound model — four parts
+
+**1. Content-addressed reviewed-state identity (closes HOLE A, NEW-1-untracked, NEW-2,
+NEW-5, NEW-6).** A run records a digest of the EXACT worktree content it reviewed, not a
+diff. The digest is built from a temporary git index so the real index/HEAD are never
+touched: seed a temp `GIT_INDEX_FILE` from HEAD, `git add -A` (all tracked changes +
+untracked non-ignored), then `git add -f` the gitignored-SOURCE paths after removing the
+secret/ambient set, then `git write-tree` -> a tree-id over tracked + untracked +
+included-gitignored content. Freshness = current worktree tree-id == a passing run's
+recorded tree-id. This structurally removes the diff-recompute, the untracked blind spot
+(it is in the tree), the empty-diff trust (the empty tree has a distinct well-known id),
+and the porcelain path-parsing. (Implementation MUST validate write-tree determinism
+across platforms/.gitattributes; a deterministic manifest of `git status --porcelain=v2
+-z` object-ids plus `git hash-object` of untracked/included-ignored files is the fallback
+mechanism if write-tree proves non-deterministic. The resumed design panel is validating
+this feasibility; the choice of mechanism is an implementation detail, the content-address
+PRINCIPLE is the decision.)
+
+**2. Secret/ambient exclusion (SEC-002 + maintainer "leave .env out").** When building the
+temp index, exclude a conservative, extensible secret/ambient denylist: `.env*`, `*.key`,
+`*.pem`, `*secret*`, `*credential*`, token stores, `node_modules/`, `dist/`, `build/`,
+`.venv/`, and the existing Specrew runtime trees (`.git/`, `.specrew/`, `.squad/`,
+`.specify/`, `.scratch/`). Excluded content is in neither the reviewer bundle nor the
+digest. Tradeoff (accepted): the denylist is best-effort, so a secret in an undeclared
+location could enter the bundle; the maintainer chose include-by-default-minus-denylist
+over an opt-in allowlist.
+
+**3. Lineage chain anchored to merge-base with `main` (closes HOLE B + NEW-1 scope).** No
+`scope` string (it was never populated). Identity is git lineage: a passing run is a chain
+candidate iff its `reviewed_ref` is an ancestor of HEAD (`git merge-base --is-ancestor`).
+The TRUSTED ANCHOR is `git merge-base(HEAD, main)` — "co-review must cover everything the
+feature added on top of shipped main". The gate verifies the selected pass's chain reaches
+the anchor with no gap (each link's baseline is the prior pass's reviewed point, back to
+the anchor), and BLOCKS on a gap. `reviewed_ref`/`baseline_ref` already exist on the
+record, so there is no never-null field to forget.
+
+**4. Producer auto-anchoring + recorded override (makes the invariant TRUE).** The live
+command and the always-on path stop accepting an arbitrary `--baseline-ref` for
+signoff-bearing runs; the baseline is forced to the last-pass (chaining to the anchor).
+Exploratory reviews with a custom baseline are allowed but recorded as non-signoff and do
+not count. A human-authorized, RECORDED partial-coverage override ("partial coverage
+accepted by <human> with rationale") exists for edge cases — auditable, never silent.
+
+All git failures (status, write-tree, merge-base, rev-parse) fail CLOSED (block as
+infrastructure-unsafe), and path enumeration uses `-z`/NUL parsing.
+
+### Reviewer context vs gate identity
+
+- The REVIEWER is fed more context (the change under review plus gitignored-source
+  context), minus secrets — per the maintainer's HOLE-A decision.
+- The GATE keys on the absolute content-addressed tree-id of the reviewed state (not a
+  diff), anchored to merge-base with main.
+
+### Components touched (all 197-owned; wiring into boundary-sync stays deferred post-185)
+
+- `review-run-index-writer.ps1`: record `reviewed_tree_id` + `reviewed_ref`;
+  lineage-filtered + anchor-verified last-passing resolver.
+- `checkpoint-diff-provider.ps1` / a new reviewed-state-digest helper: the temp-index
+  tree-id incl. gitignored-source minus secrets.
+- `review-signoff-evidence-gate.ps1`: tree-id-equality freshness + chain-to-anchor
+  verification + fail-closed + recorded override.
+- `checkpoint-review-orchestrator.ps1` + `scripts/specrew-review.ps1`: producer
+  auto-anchor; record the digest.
+- `gate-review-dispatcher.ps1` + registry (T059/T060): unchanged in concept.
+
+### Capacity
+
+Re-plan sized to the maintainer-raised **25 SP** cap (iteration extended rather than split).
+
+### Residual risks
+
+- History rewrite (rebase/squash) breaks ancestry -> spurious BLOCK (fail-closed,
+  recoverable by re-running co-review). Acceptable.
+- Secret denylist is best-effort (maintainer-accepted).
+- write-tree cross-platform determinism MUST be validated by test (manifest-of-hashes
+  fallback identified).
+
+### Design-revision decision
+
+- **Verdict**: pending maintainer design approval (this revision) before the re-plan.
+- **Maintainer decisions captured**: gitignored-source-in / secrets-out (A);
+  merge-base-with-main anchor + auto-anchor + gate chain-verify + recorded override (B);
+  25 SP cap; re-architecture stays in Iteration 003.
