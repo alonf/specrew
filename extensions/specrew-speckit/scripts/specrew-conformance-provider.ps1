@@ -128,50 +128,8 @@ try {
     # shared-governance.ps1 ships BESIDE this provider - the canonical Get-SpecrewPendingVerdictState + boundary order.
     $sgBeside = Join-Path $PSScriptRoot 'shared-governance.ps1'
     if (Test-Path -LiteralPath $sgBeside -PathType Leaf) { try { . $sgBeside } catch { $null = $_ } }
-    # ConversationCaptureAccessor.ps1 (Get-SpecrewCapturedBoundaryPacket + Get-SpecrewConversationTurnFromLine) lives
-    # under scripts/internal/bootstrap (self-host) or the installed module.
-    $bootstrapDirs = New-Object System.Collections.Generic.List[string]
-    $bootstrapDirs.Add((Join-Path $projectRoot 'scripts/internal/bootstrap')) | Out-Null
-    if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { $bootstrapDirs.Add((Join-Path $env:SPECREW_MODULE_PATH 'scripts/internal/bootstrap')) | Out-Null }
-    try {
-        $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
-            Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1') } | Select-Object -First 1
-        if ($mod) { $bootstrapDirs.Add((Join-Path $mod.ModuleBase 'scripts/internal/bootstrap')) | Out-Null }
-    }
-    catch { $null = $_ }
-    $ccLoaded = $false
-    foreach ($bd in $bootstrapDirs) {
-        $cc = Join-Path $bd 'ConversationCaptureAccessor.ps1'
-        if (Test-Path -LiteralPath $cc -PathType Leaf) { try { . $cc; $ccLoaded = $true; break } catch { $null = $_ } }
-    }
 
-    # --- shared signals (read once) ---
-    # Last assistant message (flattened) - drives packet-presence + #1/#3.
-    $lastAssistantText = $null
-    if ($ccLoaded -and -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf) -and
-        (Get-Command Get-SpecrewConversationTurnFromLine -ErrorAction SilentlyContinue)) {
-        try {
-            $tail = @(Get-Content -LiteralPath $transcriptPathArg -Tail 200 -Encoding UTF8 -ErrorAction Stop)
-            for ($k = $tail.Count - 1; $k -ge 0; $k--) {
-                $turn = Get-SpecrewConversationTurnFromLine -Line $tail[$k]
-                if ($null -ne $turn -and [string]$turn.role -eq 'assistant' -and -not [string]::IsNullOrWhiteSpace([string]$turn.text)) { $lastAssistantText = [string]$turn.text; break }
-            }
-        }
-        catch { $lastAssistantText = $null }
-    }
-    $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
-    $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
-
-    # Any feature spec on disk -> we are PAST intake (the non-boundary trigger needs this; the pre-spec window is
-    # the design-workshop exclusion). Also used by the #1 intake redirect.
-    $anySpec = $false; $specPath = $null
-    try {
-        $specs = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'specs') -Directory -ErrorAction Stop |
-            ForEach-Object { Join-Path $_.FullName 'spec.md' } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
-        if ($specs.Count -gt 0) { $anySpec = $true; $specPath = $specs[0] }
-    }
-    catch { $anySpec = $false }
-
+    # --- CHEAP signals first (no per-line transcript parse) ---
     # Pending-verdict state (the boundary trigger) - reused canonical helper; WARN loudly if it cannot load (F4).
     $pending = $null
     if (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue) {
@@ -182,14 +140,66 @@ try {
     }
     $hasPending = ($null -ne $pending -and [bool]$pending.HasPendingVerdict)
 
-    # #1 / #3 transcript signals (this turn).
-    $intakeHit = $false; $rawHit = $false
-    if (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) {
-        $intakeRx = [regex]::new('(?i)\bwhat\b[^.?!]{0,60}\b(?:do you want|would you like|are you looking|should we|are we|can i help you)\b[^.?!]{0,40}\b(?:build|create|make|work on)\b|(?i)\bwhat\b[^.?!]{0,40}\b(?:feature|app|project|product)\b[^.?!]{0,40}\b(?:build|create|want|like)\b|(?i)\bwhat (?:do you want|would you like) to build\b')
-        if ($anySpec -and $intakeRx.IsMatch($lastAssistantText)) { $intakeHit = $true }
-        $rawRx = [regex]::new('(?i)\bspecify(?:\.exe)?\s+workflow\b')
-        if ($rawRx.IsMatch($lastAssistantText)) { $rawHit = $true }
+    # Any feature spec on disk (cheap dir check) -> PAST intake; the substantial + #1 triggers need this. The
+    # pre-spec window (no spec) is the design-workshop exclusion.
+    $anySpec = $false; $specPath = $null
+    try {
+        $specs = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'specs') -Directory -ErrorAction Stop |
+            ForEach-Object { Join-Path $_.FullName 'spec.md' } | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+        if ($specs.Count -gt 0) { $anySpec = $true; $specPath = $specs[0] }
     }
+    catch { $anySpec = $false }
+
+    # #3 RAW SPEC KIT - a CHEAP raw-text scan of the recent tail (NO per-line JSON parse), so it costs ~nothing and
+    # works even pre-spec. The expensive role-aware parse below is reserved for the packet / boundary / #1 triggers.
+    $rawHit = $false
+    if (-not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)) {
+        try {
+            $rawTail = (@(Get-Content -LiteralPath $transcriptPathArg -Tail 40 -Encoding UTF8 -ErrorAction Stop) -join "`n")
+            if ($rawTail -match '(?i)\bspecify(?:\.exe)?\s+workflow\b') { $rawHit = $true }
+        }
+        catch { $null = $_ }
+    }
+
+    # --- EXPENSIVE transcript parse ONLY when a packet-owed trigger is structurally possible (PERF: the per-line
+    # ConvertFrom-Json parse is the dominant Stop-hook cost and scales with session size; a no-trigger stop - e.g.
+    # the pre-spec design workshop, or any stop where the cursor is not ahead - skips it entirely). ---
+    $lastAssistantText = $null; $intakeHit = $false; $ccLoaded = $false
+    if ($hasPending -or $anySpec) {
+        # LAZY ConversationCaptureAccessor resolution: direct candidates (project tree, then SPECREW_MODULE_PATH)
+        # FIRST; the Get-Module -ListAvailable scan (slow over OneDrive / multi-version) runs ONLY if they miss.
+        foreach ($base in @($projectRoot, $env:SPECREW_MODULE_PATH)) {
+            if ([string]::IsNullOrWhiteSpace($base)) { continue }
+            $cc = Join-Path $base 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1'
+            if (Test-Path -LiteralPath $cc -PathType Leaf) { try { . $cc; $ccLoaded = $true; break } catch { $null = $_ } }
+        }
+        if (-not $ccLoaded) {
+            try {
+                $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+                    Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1') } | Select-Object -First 1
+                if ($mod) { try { . (Join-Path $mod.ModuleBase 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1'); $ccLoaded = $true } catch { $null = $_ } }
+            }
+            catch { $null = $_ }
+        }
+        if ($ccLoaded -and -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf) -and
+            (Get-Command Get-SpecrewConversationTurnFromLine -ErrorAction SilentlyContinue)) {
+            try {
+                $tail = @(Get-Content -LiteralPath $transcriptPathArg -Tail 200 -Encoding UTF8 -ErrorAction Stop)
+                for ($k = $tail.Count - 1; $k -ge 0; $k--) {
+                    $turn = Get-SpecrewConversationTurnFromLine -Line $tail[$k]
+                    if ($null -ne $turn -and [string]$turn.role -eq 'assistant' -and -not [string]::IsNullOrWhiteSpace([string]$turn.text)) { $lastAssistantText = [string]$turn.text; break }
+                }
+            }
+            catch { $lastAssistantText = $null }
+        }
+        # #1 intake question (needs the role-aware last assistant text + a spec on disk).
+        if ($anySpec -and -not [string]::IsNullOrWhiteSpace($lastAssistantText)) {
+            $intakeRx = [regex]::new('(?i)\bwhat\b[^.?!]{0,60}\b(?:do you want|would you like|are you looking|should we|are we|can i help you)\b[^.?!]{0,40}\b(?:build|create|make|work on)\b|(?i)\bwhat\b[^.?!]{0,40}\b(?:feature|app|project|product)\b[^.?!]{0,40}\b(?:build|create|want|like)\b|(?i)\bwhat (?:do you want|would you like) to build\b')
+            if ($intakeRx.IsMatch($lastAssistantText)) { $intakeHit = $true }
+        }
+    }
+    $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
+    $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
 
     # --- block decision: does this stop owe the packet, and is the packet absent? ---
     # BOUNDARY stops (HasPendingVerdict) owe the packet regardless of the workshop proxy - a pending verdict means a
