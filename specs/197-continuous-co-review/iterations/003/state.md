@@ -4,9 +4,9 @@
 **Iteration**: 003
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T060 (gate-review dispatcher wired to the orchestrator)
-**Tasks Remaining**: T062, T063, T064
-**In Progress**: T062 (one-time navigator authorization + blocking-finding escalation)
+**Last Completed Task**: T062 (one-time authorization confirmed) + T063 (spawn-timeout regression test)
+**Tasks Remaining**: T064 (closeout validation)
+**In Progress**: T064 (full-suite green, HOLE A/B repros block, protected-surface guard, traceability)
 **Updated**: 2026-06-20
 
 ## Re-architecture progress
