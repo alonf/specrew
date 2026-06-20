@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 3
-**Resolution rate**: 100% (3/3 resolved)
-**Specification drift**: 1 resolved (FR-025 wording); 1 plan resequence (Stop-hook critical path); 1 implementation drift (145 review: gate did not meet FR-025, fixed)
+**Total drift events**: 4
+**Resolution rate**: 75% resolved (3/4); 1 open -> carried to Iteration 004
+**Specification drift**: 1 resolved (FR-025 wording); 1 plan resequence; 1 implementation drift fixed; 1 OPEN model-soundness defect (HOLE A/B) -> Iteration 004
 
 ## Events
 
@@ -79,6 +79,23 @@
   threaded through resolver/gate/orchestrator, F3–F7); gate tests 4→8 now falsify the
   real failure modes; full continuous-co-review suite 148/0; re-review queued.
 - **State**: resolved (pending the confirming re-review).
+
+### D-197-I003-004 — Design-panel co-review found the gate model unsound (HOLE A/B); carried to Iteration 004
+
+- **Detected**: 2026-06-20, by a multi-agent design judge-panel + adversarial re-review
+  of the fixed gate (the feature dogfooding its own evidence model).
+- **Drift**: The FR-025 gate's diff-from-baseline model has two model-level false-allows
+  no localized patch closes: HOLE A (gitignored source is invisible to both gate probes)
+  and HOLE B (the operator-chosen `--baseline-ref` is never verified as itself reviewed;
+  the "baseline advances only on a pass" invariant is vacuous because no production caller
+  threads `-RebaselineToLastPass`).
+- **Citation**: FR-025 ("impossible to sign off on un-reviewed state"), FR-027.
+- **Resolution strategy**: deferred (re-architecture) — Iteration 004.
+- **Resolution**: NOT fixed in Iteration 003. The sound model (anchored chain +
+  content-addressed reviewed-state identity that includes untracked/gitignored, +
+  lineage-based identity + the agreed NEW-2/3/5/6 hardening) is the Iteration 004 scope.
+  Neither hole is live-exploitable in 003 because the gate is unwired (deferred post-185).
+- **State**: open -> Iteration 004.
 
 ### Resolution Strategies (Available)
 
