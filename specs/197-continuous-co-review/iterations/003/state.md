@@ -2,11 +2,11 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 003
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
-**Last Completed Task**: T061 (gate-floor decision logic — superseded by Iteration 004)
-**Tasks Remaining**: T059, T060, T062, T063, T064 (deferred to Iteration 004)
-**In Progress**: (none — at review-signoff, awaiting maintainer verdict)
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: T058 (+ the spawn-orphan robustness fix)
+**Tasks Remaining**: gate re-architecture (sound model — replaces T061's approach), T059, T060, T062, T063, T064
+**In Progress**: gate re-architecture design (design-analysis revision; design panel running)
 **Updated**: 2026-06-20
 
 ## Execution Summary
@@ -19,7 +19,7 @@
 - **Fresh-context Proposal 145 review run on T058/T061 (D-197-I003-003)** — found 2 BLOCKING defects + 5 advisories/nits; ALL fixed in `e8493b8a`: F1 untracked-file false-allow, F2 missing scoping, F3-F7. Full continuous-co-review suite **148/0**.
 - **Design-panel re-review (D-197-I003-004)** — found 2 NEW blocking false-allows the gate model cannot patch away: HOLE A (gitignored-source blindness, live in `e8493b8a`) and HOLE B (unanchored operator baseline; the "baseline advances only on a pass" invariant is vacuous because no caller threads `-RebaselineToLastPass`). Neither live-exploitable today (gate unwired). Drives the Iteration 004 re-architecture.
 - **Process: probe pollution cleaned** — a stray `probe`/`app.txt` commit + untracked `newsrc.txt`/`.specrew/review/` written by the adversarial reviewer sub-agents' real-command repros were reset off the branch tip (back to `e8493b8a`).
-- **Closing 003 as an honest PARTIAL / learning iteration** (see review.md): accepted = spawn robustness fix + T058 substrate; T061 gate-floor superseded; T059/T060/T062/T063/T064 + the gate re-architecture deferred to Iteration 004. Awaiting maintainer review-signoff verdict.
+- **Maintainer direction (2026-06-20, D-197-I003-005): keep the gate re-architecture INSIDE iteration 003** rather than a partial close + new iteration. 003's FR-024/025/027 scope is unchanged, so the content-addressed + anchored re-architecture is continued implementation toward 003's gate goal (a design pivot = in-iteration drift, not new-iteration scope). The premature review-signoff packet (`b14fb8fb`) is reversed and review.md removed; 003 returns to executing. Iteration 004 stays reserved for Phase B (the Stop-hook navigator). A capacity split is considered ONLY if the re-planned remaining work exceeds the 20 SP cap.
 
 ## Scope
 

@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution rate**: 75% resolved (3/4); 1 open -> carried to Iteration 004
-**Specification drift**: 1 resolved (FR-025 wording); 1 plan resequence; 1 implementation drift fixed; 1 OPEN model-soundness defect (HOLE A/B) -> Iteration 004
+**Total drift events**: 5
+**Resolution rate**: 60% resolved (3/5); 2 open -> addressed within Iteration 003
+**Specification drift**: 1 resolved (FR-025 wording); 1 plan resequence; 1 implementation drift fixed; 1 OPEN model-soundness defect (HOLE A/B); 1 process correction (premature close reversed)
 
 ## Events
 
@@ -95,7 +95,24 @@
   content-addressed reviewed-state identity that includes untracked/gitignored, +
   lineage-based identity + the agreed NEW-2/3/5/6 hardening) is the Iteration 004 scope.
   Neither hole is live-exploitable in 003 because the gate is unwired (deferred post-185).
-- **State**: open -> Iteration 004.
+- **State**: open -> addressed within Iteration 003 (gate re-architecture; see D-197-I003-005).
+
+### D-197-I003-005 — Premature review-signoff close reversed; gate re-architecture stays in Iteration 003
+
+- **Detected**: 2026-06-20, maintainer challenged the proposed partial-close-and-open-004.
+- **Drift**: The coordinator drove iteration 003 toward a review-signoff partial close and
+  a new iteration 004 for the gate re-architecture. That over-split coherent in-flight
+  work: 003's FR-024/025/027 scope and gate goal are unchanged, so the content-addressed
+  + anchored re-architecture is the correct completion of 003's existing gate, not new
+  scope. A mid-implement design pivot is in-iteration drift to be re-planned, not a new
+  iteration.
+- **Citation**: FR-024, FR-025, FR-027; Specrew iteration-scope discipline.
+- **Resolution strategy**: human-decision (process correction).
+- **Resolution**: review-signoff packet (`b14fb8fb`) reversed; review.md removed; state
+  reset to executing. The gate re-architecture (D-197-I003-004) is completed within 003.
+  Iteration 004 remains reserved for Phase B (Stop-hook). A capacity split is taken ONLY
+  if the re-planned remaining work exceeds the 20 SP cap (the F-185-style split-guard).
+- **State**: resolved.
 
 ### Resolution Strategies (Available)
 
