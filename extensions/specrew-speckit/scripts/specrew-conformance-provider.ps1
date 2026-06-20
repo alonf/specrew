@@ -29,6 +29,11 @@
 #      though a spec.md is already on disk -> redirect to continue the active feature.
 #   #3 RAW SPEC KIT: a raw `specify[.exe] workflow` SDD-engine invocation this turn -> redirect to the governed flow.
 #
+# DETECTION-SCOPE CEILING (honest; 145 CH-1): #2 fires on an advance recorded in STATE - the WORKING cursor
+# (session_state.boundary_type, moved ahead by the sync path) is ahead of last_authorized_boundary with no
+# captured verdict. An artifact HAND-WRITTEN without advancing the working cursor (never running sync) leaves
+# working == authorized -> no fire; that residual is covered by the cooperative layer + the resume re-anchor,
+# NOT this lever. A from-artifacts inference engine was deliberately rejected as itself #2884-class (FR-008).
 # DELIVERY CEILING (honest, per drift-log D-003): the deterministic ENFORCEMENT is the STATE - the cursor does
 # not advance without a captured marker, and the resume surfaces "AWAITING YOUR VERDICT". This provider's
 # stdout correction is a best-effort per-turn ACCELERATOR; its model-delivery on a Stop hook is host-variable
@@ -95,31 +100,47 @@ try {
         $pending = $null
         try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $projectRoot } catch { $pending = $null }
         if ($null -ne $pending -and [bool]$pending.HasPendingVerdict) {
-            # FALSE-POSITIVE GUARD: a rendered verdict packet this turn = the agent IS surfacing a boundary for
-            # the human (cooperative gate operation in progress / legitimate awaiting-verdict stop) -> no nudge.
+            $working = [string]$pending.WorkingBoundary
+            $lastAuth = [string]$pending.LastAuthorizedBoundary
+
+            # FALSE-POSITIVE GUARD: a verdict packet rendered THIS turn FOR THE PENDING boundary = the agent IS
+            # surfacing this exact crossing for the human (a legitimate awaiting-verdict stop) -> no nudge. Match
+            # the packet's TO boundary to the WORKING boundary: Get-SpecrewCapturedBoundaryPacket returns the LAST
+            # marker ANYWHERE in the 500-line tail, so a STALE / unrelated packet (a different, already-consumed
+            # crossing) must NOT suppress a genuine NEW silent advance (145 TI-2/F1). Both sides are normalized.
             $packetRendered = $false
             if ($ccLoaded -and -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and
                 (Get-Command Get-SpecrewCapturedBoundaryPacket -ErrorAction SilentlyContinue)) {
                 try {
                     $pkt = Get-SpecrewCapturedBoundaryPacket -TranscriptPath $transcriptPathArg
-                    if ($null -ne $pkt -and [bool]$pkt.Found) { $packetRendered = $true }
+                    if ($null -ne $pkt -and [bool]$pkt.Found) {
+                        $pktTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pkt.ToBoundary)
+                        $workNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary $working
+                        if (-not [string]::IsNullOrWhiteSpace($pktTo) -and $pktTo -eq $workNorm) { $packetRendered = $true }
+                    }
                 }
                 catch { $null = $_ }
             }
             if (-not $packetRendered) {
-                $working = [string]$pending.WorkingBoundary
-                $lastAuth = [string]$pending.LastAuthorizedBoundary
-                # The contiguous one-boundary-at-a-time crossing INTO the working boundary (its predecessor -> working).
-                $fromBoundary = $lastAuth
+                # The CONTIGUOUS one-boundary-at-a-time crossing the cursor can authorize NEXT: last_authorized ->
+                # its successor (NOT predecessor(working) -> working, which on a multi-gate gap names a LATER
+                # crossing the order-30 capture refuses as MARKER_CURSOR_MISMATCH - 145 F2). On a single-gap advance
+                # the two collapse to the same crossing. A non-canonical / absent from-boundary (no verdict recorded
+                # yet - the first gate) suppresses the explicit marker template (its <a-z-> -> <a-z-> grammar cannot
+                # carry a non-canonical token - 145 F7c); the prose still names the crossing to render.
+                $fromBoundary = $null
+                $toBoundary = $working
                 try {
                     if (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue) {
                         $order = @(Get-SpecrewBoundaryOrder)
-                        $widx = [Array]::IndexOf($order, (Normalize-SpecrewCanonicalBoundaryType -Boundary $working))
-                        if ($widx -gt 0) { $fromBoundary = $order[$widx - 1] }
+                        $authIdx = if ([string]::IsNullOrWhiteSpace($lastAuth)) { -1 } else { [Array]::IndexOf($order, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuth)) }
+                        if (($authIdx + 1) -ge 0 -and ($authIdx + 1) -lt $order.Count) {
+                            $toBoundary = $order[$authIdx + 1]
+                            if ($authIdx -ge 0) { $fromBoundary = $order[$authIdx] }
+                        }
                     }
                 }
                 catch { $null = $_ }
-                if ([string]::IsNullOrWhiteSpace($fromBoundary)) { $fromBoundary = 'the prior authorized boundary' }
 
                 # Fire-once per (working, lastAuth): re-nudge only on a NEW unauthorized advance, not every turn.
                 $alreadyNudged = $false
@@ -130,20 +151,26 @@ try {
                         $lastLine = Get-Content -LiteralPath $journalPath -Tail 1 -Encoding UTF8 -ErrorAction Stop
                         if (-not [string]::IsNullOrWhiteSpace($lastLine)) {
                             $lastRec = $lastLine | ConvertFrom-Json -ErrorAction Stop
-                            if ([string]$lastRec.key -eq $journalKey) { $alreadyNudged = $true }
+                            if (($lastRec.PSObject.Properties.Name -contains 'key') -and ([string]$lastRec.key -eq $journalKey)) { $alreadyNudged = $true }
                         }
                     }
                 }
                 catch { $null = $_ }
 
                 if (-not $alreadyNudged) {
+                    $crossingLabel = if (-not [string]::IsNullOrWhiteSpace($fromBoundary)) { ("{0} -> {1}" -f $fromBoundary, $toBoundary) } else { ("into '{0}' (the first unauthorized boundary)" -f $toBoundary) }
                     $msg = New-Object System.Text.StringBuilder
                     [void]$msg.AppendLine('[specrew-conformance] SILENT BOUNDARY ADVANCE detected (FR-011 #2 / FR-015)')
                     [void]$msg.AppendLine('')
                     [void]$msg.AppendLine([string]$pending.Message)
                     [void]$msg.AppendLine('')
-                    [void]$msg.AppendLine(("STOP advancing the lifecycle. Render the FULL six-section human re-entry packet for the {0} -> {1} crossing (What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You), then emit the verdict marker as the LAST line:" -f $fromBoundary, $working))
-                    [void]$msg.AppendLine(("    <!-- SPECREW-VERDICT-BOUNDARY: {0} -> {1} -->" -f $fromBoundary, $working))
+                    [void]$msg.AppendLine(("STOP advancing the lifecycle. Render the FULL six-section human re-entry packet for the {0} crossing (What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You), then emit the verdict marker as the LAST line:" -f $crossingLabel))
+                    if (-not [string]::IsNullOrWhiteSpace($fromBoundary)) {
+                        [void]$msg.AppendLine(("    <!-- SPECREW-VERDICT-BOUNDARY: {0} -> {1} -->" -f $fromBoundary, $toBoundary))
+                    }
+                    else {
+                        [void]$msg.AppendLine(("    (emit the contiguous verdict marker for the first unauthorized crossing into '{0}' as the LAST line)" -f $toBoundary))
+                    }
                     [void]$msg.Append('Wait for the human''s explicit verdict before producing any further next-phase artifact. Do NOT record the authorization yourself; the verdict is captured from your rendered packet + the human''s reply.')
                     $corrections.Add($msg.ToString()) | Out-Null
 
@@ -158,6 +185,12 @@ try {
                 }
             }
         }
+    }
+    else {
+        # F4 (145): the headline silent-advance detector going dark must be VISIBLE (the codebase's
+        # degrade-to-silence-but-WARN doctrine), not an undetectable no-op indistinguishable from 'all clear'.
+        # The gate STATE + the resume 'AWAITING YOUR VERDICT' surface remain the authority regardless.
+        [Console]::Error.WriteLine('[specrew-conformance] WARN CONFORMANCE_DETECTOR_UNAVAILABLE shared-governance/Get-SpecrewPendingVerdictState did not load; the silent-advance lane is dark this stop (the gate STATE + resume surface remain the authority).')
     }
 
     # ============================================================================================

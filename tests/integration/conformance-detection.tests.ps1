@@ -26,8 +26,11 @@ if (-not (Test-Path -LiteralPath $provider)) { Fail "conformance provider not fo
 $priorModulePath = $env:SPECREW_MODULE_PATH
 $env:SPECREW_MODULE_PATH = $repoRoot
 
-$scratch = Join-Path $repoRoot '.scratch\conformance-detection'
-if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
+# Per-run-unique scratch under the OS temp dir (NOT a fixed repo-rooted path): the fixtures are destroyed and
+# the child pwsh Set-Locations into them, so a shared fixed root is clobbered under concurrency / by repo
+# watchers (145 TI-1). Mirrors the seam test's GetTempPath()+GUID pattern.
+$scratch = Join-Path ([System.IO.Path]::GetTempPath()) ('specrew-conf-det-' + [guid]::NewGuid().ToString('N'))
+if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force -ErrorAction SilentlyContinue }
 
 function New-Fixture {
     param([string]$Working, [string]$LastAuth, [bool]$Enabled = $true)
@@ -193,7 +196,12 @@ try {
     [System.IO.File]::WriteAllText($ctxPath, ($raw | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
     $r6c = Invoke-Conformance -Proj $p6 -TranscriptPath $t6
     if ($r6c.Out -notmatch 'SILENT BOUNDARY ADVANCE') { Fail "Case 6: a NEW advance (working 'tasks') MUST re-fire (fire-once is per (working,auth), not permanent). Out: $($r6c.Out)" }
-    Write-Pass "Case 6: fire-once idempotence - the same advance does not re-nudge, a new advance re-fires (per-(working,auth) journal key)"
+    # F2: working='tasks' with last_authorized='clarify' is a MULTI-gate gap; the contiguous crossing the cursor
+    # can authorize next is clarify -> plan (successor of last-authorized), NOT plan -> tasks (predecessor of working,
+    # which order-30 capture refuses as MARKER_CURSOR_MISMATCH).
+    if ($r6c.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 6: the multi-gate re-fire MUST template the CONTIGUOUS clarify -> plan marker (successor of last-authorized). Out: $($r6c.Out)" }
+    if ($r6c.Out -match 'SPECREW-VERDICT-BOUNDARY: plan -> tasks') { Fail "Case 6 (F2): MUST NOT template plan -> tasks - that skips the unauthorized clarify -> plan gate. Out: $($r6c.Out)" }
+    Write-Pass "Case 6: fire-once idempotence - same advance no re-nudge, new advance re-fires; the multi-gate re-fire templates the CONTIGUOUS clarify -> plan marker, not plan -> tasks (145 F2)"
 
     # ---- Case 7: ENFORCEMENT DISABLED -> never fires (the helper never fabricates a pending state).
     $p7 = New-Fixture -Working 'plan' -LastAuth 'clarify' -Enabled $false
@@ -212,6 +220,40 @@ try {
     $after = (Get-FileHash -LiteralPath $ctx8).Hash
     if ($before -ne $after) { Fail "Case 8: the provider MUST NOT mutate start-context.json (the gate authority) - it is read-only. Hash changed." }
     Write-Pass "Case 8: a firing leaves start-context.json (verdict_history / cursor) byte-unchanged - the provider is read-only to gate state (FR-011 isolation, runtime-proven)"
+
+    # ---- Case 9 (145 F2): MULTI-GATE-GAP marker correctness. Working 'tasks' jumped two gates past authorized
+    #      'clarify'; the correction must name the FIRST unauthorized contiguous crossing clarify -> plan, never
+    #      plan -> tasks (which order-30 capture refuses as MARKER_CURSOR_MISMATCH and would skip a gate).
+    $p9 = New-Fixture -Working 'tasks' -LastAuth 'clarify'
+    $t9 = New-Transcript -Proj $p9 -Turns @(@{ role = 'assistant'; text = 'tasks.md drafted; proceeding to implement.' })
+    $r9 = Invoke-Conformance -Proj $p9 -TranscriptPath $t9
+    if ($r9.Out -notmatch 'SILENT BOUNDARY ADVANCE') { Fail "Case 9: a 2-gate jump (clarify->...->tasks) MUST fire. Out: $($r9.Out)" }
+    if ($r9.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 9 (F2): MUST template the contiguous clarify -> plan crossing (successor of last-authorized). Out: $($r9.Out)" }
+    if ($r9.Out -match 'SPECREW-VERDICT-BOUNDARY: (plan -> tasks|clarify -> tasks)') { Fail "Case 9 (F2): MUST NOT name a non-contiguous crossing (plan->tasks / clarify->tasks). Out: $($r9.Out)" }
+    Write-Pass "Case 9: a multi-gate-gap advance templates the CONTIGUOUS first-unauthorized crossing clarify -> plan, not a gate-skipping marker (145 F2)"
+
+    # ---- Case 10 (145 TI-2/F1): STALE-PACKET must NOT suppress a genuine NEW silent advance. Working 'tasks',
+    #      authorized 'plan' (plan->tasks gate never offered), but an OLD already-consumed clarify->plan packet
+    #      still sits in the tail. ToBoundary(plan) != WorkingBoundary(tasks) -> the guard must NOT suppress -> fire.
+    $p10 = New-Fixture -Working 'tasks' -LastAuth 'plan'
+    $t10 = New-Transcript -Proj $p10 -Turns @(
+        @{ role = 'assistant'; text = $realPacket },                                  # stale clarify->plan packet (to=plan)
+        @{ role = 'user'; text = 'approved for plan' },
+        @{ role = 'assistant'; text = 'Plan approved. I have now written tasks.md and am starting implementation.' }
+    )
+    $r10 = Invoke-Conformance -Proj $p10 -TranscriptPath $t10
+    if ($r10.Out -notmatch 'SILENT BOUNDARY ADVANCE') { Fail "Case 10 (TI-2/F1): a stale clarify->plan packet (to=plan) MUST NOT suppress the genuine plan->tasks silent advance (working=tasks). Out: $($r10.Out)" }
+    if ($r10.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: plan -> tasks') { Fail "Case 10: the fired correction must template the contiguous plan -> tasks crossing. Out: $($r10.Out)" }
+    Write-Pass "Case 10: a STALE/unrelated packet in the tail does NOT suppress a genuine new silent advance - the guard matches the packet's ToBoundary to the WORKING boundary (145 TI-2/F1)"
+
+    # ---- Case 11 (guard precision): the RELEVANT packet (to == working) DOES suppress. Working 'tasks',
+    #      authorized 'plan', and THIS turn renders the plan->tasks packet (to=tasks) -> legitimate awaiting -> no fire.
+    $packetTasks = $realPacket -replace 'clarify -> plan', 'plan -> tasks'
+    $p11 = New-Fixture -Working 'tasks' -LastAuth 'plan'
+    $t11 = New-Transcript -Proj $p11 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetTasks })
+    $r11 = Invoke-Conformance -Proj $p11 -TranscriptPath $t11
+    if ($r11.Out -match 'SILENT BOUNDARY ADVANCE') { Fail "Case 11: a packet whose ToBoundary == the working boundary (plan->tasks, working=tasks) is a legitimate awaiting-verdict stop - MUST suppress. Out: $($r11.Out)" }
+    Write-Pass "Case 11: the RELEVANT packet (ToBoundary == working) correctly suppresses - the guard is precise, not just present (145 TI-2 positive side)"
 
     Write-Host "`n=== conformance-detection.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
