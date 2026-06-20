@@ -52,6 +52,15 @@ function New-ContinuousCoReviewSignoffGateDecision {
 function Test-ContinuousCoReviewOverrideAuthorization {
     # A well-formed override is an object carrying a non-empty authorized_by AND rationale.
     # Anything less is ignored (the gate proceeds normally) - an override is never implicit.
+    #
+    # F3/F4 (145 adversarial review) - TRUST BOUNDARY, bound to the deferred F-185 wiring:
+    # this decision layer AUTHENTICATES nothing (it trusts the structural object) and
+    # PERSISTS nothing. The wiring owner (the boundary-sync integration) MUST (1) construct
+    # this object only from a genuinely human-authored authorization (e.g. the captured
+    # verdict / Add-SpecrewBoundaryAuthorization), never from agent-forgeable input, and
+    # (2) persist the returned decision (incl. the override) to durable gate-verdict evidence
+    # so "RECORDED, never silent" holds. The same boundary applies to the review-run.json
+    # records the chain walk trusts. A test MUST assert override persistence when wired.
     param([AllowNull()] $OverrideAuthorization)
 
     if ($null -eq $OverrideAuthorization) {

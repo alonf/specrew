@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 5
-**Resolution rate**: 60% resolved (3/5); 2 open -> addressed within Iteration 003
-**Specification drift**: 1 resolved (FR-025 wording); 1 plan resequence; 1 implementation drift fixed; 1 OPEN model-soundness defect (HOLE A/B); 1 process correction (premature close reversed)
+**Total drift events**: 6
+**Resolution rate**: 4/6 resolved; HOLE A/B re-architecture in progress (T065-T067 done); F3/F5 advisories carried
+**Specification drift**: FR-025 wording; plan resequence; impl drift fixed; HOLE A/B re-architecture (in progress); premature close reversed; gate false-allow F1 fixed
 
 ## Events
 
@@ -113,6 +113,29 @@
   Iteration 004 remains reserved for Phase B (Stop-hook). A capacity split is taken ONLY
   if the re-planned remaining work exceeds the 20 SP cap (the F-185-style split-guard).
 - **State**: resolved.
+
+### D-197-I003-006 — Adversarial review of the re-architected gate (T065-T067): F1 false-allow fixed
+
+- **Detected**: 2026-06-20, by a fresh-context Proposal 145 adversarial reviewer of the
+  re-architected gate (the feature dogfooding itself again; repo left clean).
+- **Drift**: The digest-identity denylist used substring globs `*secret*` / `*credential*`
+  that over-matched legitimate SOURCE basenames (`src/credentials.ts`,
+  `lib/secret-rotation.go`), stripping them from the gate tree-id so a post-pass edit was
+  invisible to freshness == a false-allow on un-reviewed source (F1, empirically proven).
+  My own digest test certified the over-match as desired (F2).
+- **Citation**: FR-025 ("impossible to sign off on un-reviewed state").
+- **Resolution strategy**: implementation-reverted (fix to match the spec invariant).
+- **Resolution**: separated digest-IDENTITY exclusion (near-empty: runtime/ambient dirs +
+  true secret FILES by name/extension) from reviewer-bundle CONFIDENTIALITY (the broad
+  substring globs, owned by the bundle path). Removed `*secret*`/`*credential*` from the
+  identity denylist; added the F2 regression (source named like a secret stays in the
+  tree-id and its drift flips the digest). Digest 9/9, gate 9/9.
+- **Carried (advisory, not blocking)**: F3/F4 override + run-record trust boundary -> bound
+  to the deferred F-185 wiring (authenticate + persist; binding comment added in the gate).
+  F5 trunk merge-base resolves a LOCAL ref -> address in T068 (configurable trunk + remote
+  fallback). The chain-walk/anchor/coverage half and the self-pollution strip held under
+  attack (HOLE B genuinely closed).
+- **State**: resolved (F1/F2); F3/F4 -> wiring, F5 -> T068.
 
 ### Resolution Strategies (Available)
 

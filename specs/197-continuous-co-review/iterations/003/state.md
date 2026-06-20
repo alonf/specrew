@@ -6,14 +6,15 @@
 **Iteration Status**: executing
 **Last Completed Task**: T067 (re-architected gate: tree-id freshness + chain-to-anchor + override)
 **Tasks Remaining**: T068, T069, T059, T060, T062, T063, T064
-**In Progress**: adversarial 145 re-review of the re-architected gate (T065-T067) before building on it
+**In Progress**: T068 (producer auto-anchor + configurable trunk) — gate adversarially re-reviewed + F1 fixed
 **Updated**: 2026-06-20
 
 ## Re-architecture progress
 
 - T065 content-addressed reviewed-state digest (8/8) + a self-referential-pollution fix (denied paths stripped from the final index so the gate's own .specrew/review evidence cannot perturb its digest).
 - T066 reviewed_tree_id + git-lineage/anchor resolver (6/6, incl. cross-branch isolation).
-- T067 re-architected gate (9/9): tree-id freshness + chain-to-merge-base-anchor + empty-tree guard + fail-closed + human-authorized recorded override. HOLE A blocks (gitignored drift -> stale), HOLE B blocks (coverage-gap). Full continuous-co-review suite 158/0.
+- T067 re-architected gate (9/9): tree-id freshness + chain-to-merge-base-anchor + empty-tree guard + fail-closed + human-authorized recorded override. HOLE A blocks (gitignored drift -> stale), HOLE B blocks (coverage-gap).
+- Adversarial 145 re-review of T065-T067 (D-197-I003-006): found + FIXED a BLOCKING false-allow (F1: substring denylist over-matched source named like a secret -> stripped from the gate identity). Separated digest-identity from bundle-confidentiality; F2 regression added. Carried advisories: F3/F4 override+record trust -> deferred F-185 wiring; F5 trunk local-ref -> T068. Chain/anchor/coverage half held under attack (HOLE B genuinely closed). Repo left clean.
 
 ## Execution Summary
 

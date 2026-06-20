@@ -98,10 +98,27 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         $d.is_empty | Should Be $true
     }
 
-    It 'denylist matches secrets by glob and ambient dirs by subtree' {
-        (Test-ContinuousCoReviewDigestPathDenied -Path '.env' -Denylist (Get-ContinuousCoReviewSecretAmbientDenylist)) | Should Be $true
-        (Test-ContinuousCoReviewDigestPathDenied -Path 'conf/app.key' -Denylist (Get-ContinuousCoReviewSecretAmbientDenylist)) | Should Be $true
-        (Test-ContinuousCoReviewDigestPathDenied -Path 'node_modules/left-pad/index.js' -Denylist (Get-ContinuousCoReviewSecretAmbientDenylist)) | Should Be $true
-        (Test-ContinuousCoReviewDigestPathDenied -Path 'gen/logic.py' -Denylist (Get-ContinuousCoReviewSecretAmbientDenylist)) | Should Be $false
+    It 'denylist excludes true secret FILES and ambient dirs, but NOT source named like a secret (F1)' {
+        $deny = Get-ContinuousCoReviewSecretAmbientDenylist
+        # excluded: true secret files + ambient dirs
+        (Test-ContinuousCoReviewDigestPathDenied -Path '.env' -Denylist $deny) | Should Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'conf/app.key' -Denylist $deny) | Should Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'node_modules/left-pad/index.js' -Denylist $deny) | Should Be $true
+        # F1: legitimately-named SOURCE must NOT be over-matched out of the gate identity
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'src/credentials.ts' -Denylist $deny) | Should Be $false
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'lib/secret-rotation.go' -Denylist $deny) | Should Be $false
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'app/components/CredentialForm.tsx' -Denylist $deny) | Should Be $false
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'gen/logic.py' -Denylist $deny) | Should Be $false
+    }
+
+    It 'F1 regression: source named like a secret stays in the tree-id and its drift flips the digest' {
+        $repo = New-DigestRepo 'f1-source'
+        Set-Content -LiteralPath (Join-Path $repo 'credentials.ts') -Value 'export const auth = () => ok()' -Encoding UTF8
+        Invoke-DigestGit $repo @('add', 'credentials.ts'); Invoke-DigestGit $repo @('commit', '-q', '-m', 'add source')
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        (Get-TreeNames -Root $repo -TreeId $d.tree_id) -contains 'credentials.ts' | Should Be $true   # NOT stripped
+        $before = $d.tree_id
+        Set-Content -LiteralPath (Join-Path $repo 'credentials.ts') -Value 'export const auth = () => evil()' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should Not Be $before   # drift detected
     }
 }

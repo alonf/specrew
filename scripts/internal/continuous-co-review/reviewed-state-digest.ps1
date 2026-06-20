@@ -13,12 +13,20 @@ Set-StrictMode -Version Latest
 # diff path-parsing nits. Validated empirically 2026-06-20.
 
 function Get-ContinuousCoReviewSecretAmbientDenylist {
-    # Secret + ambient patterns excluded from BOTH the reviewer bundle and the digest
-    # (SEC-002 + the maintainer "leave .env out" decision). `/**` = directory subtree;
-    # bare globs match the path and its basename.
+    # The DIGEST-IDENTITY denylist: paths kept OUT of the content-addressed tree-id.
+    #
+    # F1 (145 adversarial review): this list must exclude ONLY genuine non-source -
+    # runtime/ambient directories and true secret/credential FILES (by exact name or
+    # secret-file extension). It MUST NOT substring-match source names: a `*secret*` or
+    # `*credential*` glob strips legitimate source like `src/credentials.ts` or
+    # `lib/secret-rotation.go` from the gate identity, so a post-pass edit to that source
+    # is invisible to freshness == a false-allow on un-reviewed source (the exact FR-025
+    # defect this feature exists to prevent). Those two substring globs are intentionally
+    # ABSENT here. (Confidentiality - not showing a secret FILE to the reviewer - is a
+    # separate, broader concern owned by the reviewer-bundle path, not the gate identity.)
     return @(
-        '.env', '.env.*', '*.key', '*.pem', '*.pfx', '*.p12', '*secret*', '*credential*',
-        '*.token', 'id_rsa*', 'id_ed25519*', '.netrc', '.npmrc', '.pypirc',
+        '.env', '.env.*', '*.pem', '*.pfx', '*.p12', '*.key', '*.token',
+        'id_rsa', 'id_rsa.*', 'id_ed25519', 'id_ed25519.*', '.netrc', '.npmrc', '.pypirc',
         'node_modules/**', 'dist/**', 'build/**', 'out/**', 'target/**', 'bin/**', 'obj/**',
         '.venv/**', 'venv/**', '__pycache__/**', '.tox/**', '.gradle/**', '.next/**',
         '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**'
