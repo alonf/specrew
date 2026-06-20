@@ -102,8 +102,8 @@
 - **Detected**: 2026-06-20, maintainer challenged the proposed partial-close-and-open-004.
 - **Drift**: The coordinator drove iteration 003 toward a review-signoff partial close and
   a new iteration 004 for the gate re-architecture. That over-split coherent in-flight
-  work: 003's FR-024/025/027 scope and gate goal are unchanged, so the content-addressed
-  + anchored re-architecture is the correct completion of 003's existing gate, not new
+  work: 003's FR-024/025/027 scope and gate goal are unchanged, so the content-addressed,
+  anchored re-architecture is the correct completion of 003's existing gate, not new
   scope. A mid-implement design pivot is in-iteration drift to be re-planned, not a new
   iteration.
 - **Citation**: FR-024, FR-025, FR-027; Specrew iteration-scope discipline.
