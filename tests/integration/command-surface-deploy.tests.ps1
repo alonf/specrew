@@ -9,8 +9,9 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 
 # Feature 185 FR-013 part 2: specrew init must build the native Spec Kit command surface for the
 # PALETTE hosts (Claude, Antigravity) via `specify integration install <host> --force`, not just
-# Copilot. Verified end-to-end on 2026-06-19: a real specrew init deployed 20 .claude/skills/speckit-*
-# AND 20 .agents/skills/speckit-*, preserving Copilot's 26 prompts and Specrew's 15 skills. Guards the
+# Copilot. NOTE (145 review): this test STATICALLY guards that specrew-init.ps1 WIRES the integration
+# installs; the 20+20 skill deploy (.claude + .agents) was confirmed in a one-time fresh-init dogfood, NOT
+# by this test body, which does not run init. Guards the
 # #2884 4th face: a palette-host (Claude) was told to use /speckit.* with nothing deployed.
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path

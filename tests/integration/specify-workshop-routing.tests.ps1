@@ -12,7 +12,10 @@ function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -Foreg
 # registered before_plan / after_tasks / before_implement but NOT before_specify, so once FR-013
 # deployed the speckit commands the host ran raw speckit-specify (workshop-less spec generation) —
 # dogfood test-f185. Fix: register a before_specify hook -> a command that routes to specrew-design-workshop.
-# Verified end-to-end on 2026-06-20: a fresh init aggregates the hook into the project extensions.yml.
+# NOTE (145 review): this test STATICALLY guards the SOURCE registration (the hook in extension.yml + the
+# command file) and the deterministic gate (below). A one-time fresh-init dogfood confirmed the hook
+# aggregates into a project's consumed .specify/extensions.yml; this body does NOT run init or inspect the
+# consumed manifest - the maintainer re-test must confirm `before_specify: ...before-specify` actually lands.
 
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $ext = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/extension.yml') -Raw

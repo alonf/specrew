@@ -18,6 +18,10 @@ $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Pa
 
 $prov = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1') -Raw
 if ($prov -notmatch 'Write-SpecrewLaunchContractArtifact[^\r\n]*-HostKind \$hostKind') { Write-Fail 'provider must thread -HostKind $hostKind into Write-SpecrewLaunchContractArtifact (FR-014)' }
+# B3 (145 review): the scripts/internal twin must ALSO carry the fix - BOTH copies ship and the dispatcher
+# may resolve either. The first cut fixed only the extensions/ copy; the internal twin kept the old line.
+$provTwin = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/specrew-bootstrap-provider.ps1') -Raw
+if ($provTwin -notmatch 'Write-SpecrewLaunchContractArtifact[^\r\n]*-HostKind \$hostKind') { Write-Fail 'the scripts/internal provider twin must ALSO thread -HostKind $hostKind (FR-014, B3 parity)' }
 
 $wr = Get-Content -LiteralPath (Join-Path $repoRoot 'scripts/internal/bootstrap/SessionBootstrapManager.ps1') -Raw
 if ($wr -notmatch 'Get-SpecrewRuntimeHostFromEnv') { Write-Fail 'the contract writer must env-detect the host before defaulting (FR-014)' }
