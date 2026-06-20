@@ -165,6 +165,11 @@ function Get-ContinuousCoReviewCheckpointDiff {
     $changedPaths = [System.Collections.Generic.List[string]]::new()
     $excludedPaths = [System.Collections.Generic.List[string]]::new()
 
+    # Trust-boundary decision (maintainer, 2026-06-20): the reviewer is a TRUSTED component
+    # (SEC-001) inside Specrew's boundary and needs the FULL diff (including secret/config
+    # content) plus repo read access + inherited env to review correctly and run tests. So the
+    # change-set is NOT secret-stripped; only caller-supplied --exclude-path applies. See the
+    # SEC-002 trust-boundary clause in spec.md.
     foreach ($path in @($nameResult.Output)) {
         if ([string]::IsNullOrWhiteSpace([string] $path)) {
             continue

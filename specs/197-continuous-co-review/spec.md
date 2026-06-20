@@ -249,17 +249,28 @@ can request a structured findings response without writing to the source tree.
   intent and still MUST NOT use PostToolUse or file-edit hooks. Owner: Iteration
   Facilitator. Delivery: Iteration 003.
 - **FR-025**: A deterministic gate floor MUST refuse review-signoff unless the
-  current state is co-reviewed: a co-review run with a pass or escalated verdict
-  MUST exist whose recorded `diff_hash`, recomputed from its `baseline_ref` to the
-  current working tree, still matches (proving the working tree has not drifted
-  since it passed). Missing evidence, a stale `diff_hash`, malformed durable state,
-  or an unresolved blocking verdict MUST block. Because the co-review baseline
-  advances only on a pass, this single current-state check transitively proves
-  every prior increment was reviewed without per-increment git-history
-  archaeology. The gate floor MUST be enforced at the non-protected boundary-sync
-  chokepoint (`Invoke-SpecrewBoundaryStateSync` in
-  `scripts/internal/sync-boundary-state.ps1`, which already hosts throw-to-refuse
-  gates). Owner: Reviewer. Delivery: Iteration 003.
+  current state is co-reviewed, using a **content-addressed reviewed-state identity
+  anchored to the trunk** (the model the Iteration-003 co-reviews adopted after the
+  earlier `diff_hash`-from-operator-baseline model was found blind to gitignored
+  source — HOLE A — and unanchored — HOLE B). Concretely: (1) FRESHNESS — the
+  current reviewed-state tree-id (a content-addressed git `write-tree` digest over
+  the working tree: tracked, untracked, and gitignored source, minus only
+  genuinely-non-source runtime/dependency trees) MUST equal a pass/escalated run's
+  recorded `reviewed_tree_id`; and (2) COVERAGE — that run's chain (each link a
+  passing run whose `reviewed_ref` is the prior run's `baseline_ref`) MUST reach the
+  merge-base-with-trunk anchor with no gap, so everything the feature added on top
+  of shipped trunk was reviewed. Missing evidence, a stale tree-id (drift),
+  malformed durable state, an unresolved blocking verdict, a coverage gap, an
+  empty reviewed state, or any git/digest failure MUST block (fail-closed). A
+  human-authorized, recorded partial-coverage override is the only allowed escape.
+  The producer MUST auto-anchor signoff-bearing runs (baseline = last pass, or the
+  trunk merge-base for the first review) so the chain is gap-free by construction.
+  The gate-floor decision logic is delivered in Iteration 003; its enforcement
+  WIRING into the non-protected boundary-sync chokepoint
+  (`Invoke-SpecrewBoundaryStateSync`) is deferred to coordinate with the F-185
+  host-neutral gate-enforcement branch (see SC-019/SC-020 and the deferral
+  authorization in Governance Alignment). Owner: Reviewer. Delivery: Iteration 003
+  (decision logic); enforcement wiring with F-185.
 - **FR-026**: True per-stop always-on review MUST be triggered from the host
   Stop/turn-boundary hook so the navigator reviews each completed increment (a
   real checkpoint, routed through the FR-032 gate-review dispatcher — never on
@@ -374,7 +385,21 @@ can request a structured findings response without writing to the source tree.
 - **SEC-002 Secret and ambient-state exclusion**: Review bundles and durable
   artifacts MUST NOT deliberately include environment variables, credentials,
   access tokens, token stores, local private config, unrelated temporary files,
-  raw prompts, raw provider transcripts, or secret values.
+  raw prompts, raw provider transcripts, or secret values. **Trust-boundary
+  amendment (maintainer, 2026-06-20, Iteration 003):** the reviewer is a TRUSTED
+  component INSIDE Specrew's trust boundary (SEC-001), and Proposal 145 requires
+  the reviewer to run tests and read repository context for runtime evidence.
+  Therefore the reviewer's change-set/diff and its local `.specrew/review`
+  artifacts MAY contain repository content the diff legitimately includes —
+  including secret values in tracked config — because withholding them would break
+  the reviewer's ability to review and run tests. The reviewer runs with the
+  spawned process's INHERITED environment (so env-var secrets are available to
+  tests without bundling) and with repository read access (read-only by contract
+  plus the mutation guard) so it can read config files and run tests. This is a
+  deliberate trust-boundary relaxation, consistent with NFR-007 (no hard sandbox);
+  Specrew still MUST NOT commit secret values to shared/remote artifacts, persist
+  raw provider transcripts, or collect ambient machine state, and still redacts
+  secret values from infrastructure-failure evidence (`safe_details`).
 - **SEC-003 Mutation boundary**: The reviewer process MAY read needed repository
   context and call its authorized provider/model, but MUST NOT directly edit
   source files, stage commits, push branches, or mutate Specrew state.
@@ -872,11 +897,16 @@ can request a structured findings response without writing to the source tree.
   orchestrator/prompt-composer path and fails documentation review if it uses a
   handwritten common prompt.
 - **SC-019**: With a design violation planted at an implement checkpoint, the
-  per-checkpoint gate blocks advancement to the next checkpoint in 100% of
-  validator runs until the finding is resolved or escalated.
-- **SC-020**: Each implement checkpoint produces co-review evidence keyed to that
-  checkpoint's baseline; advancing without fresh, baseline-matched evidence is
-  blocked in 100% of validator runs.
+  gate-floor DECISION returns block in 100% of decision-logic validator runs until
+  the finding is resolved or escalated. **Advancement enforcement** (the gate
+  refusing the boundary at `Invoke-SpecrewBoundaryStateSync`) is delivered when the
+  enforcement wiring lands with F-185 (deferral authorized — Governance Alignment
+  2026-06-20); Iteration 003 proves the decision logic, not the wired advancement
+  block.
+- **SC-020**: Each co-review run records a content-addressed `reviewed_tree_id`
+  identity, and the gate-floor DECISION blocks a current state that does not match
+  a fresh, lineage-valid, anchor-covered pass in 100% of decision-logic validator
+  runs. The wired advancement enforcement is deferred with F-185 as for SC-019.
 - **SC-021**: A clean checkpoint (no unresolved blocking findings) advances after
   recording pass evidence with exactly one navigator run per checkpoint, so
   always-on review does not require human intervention on clean increments.
@@ -974,3 +1004,15 @@ can request a structured findings response without writing to the source tree.
   F-184-protected shared boundary-advance surface, satisfying the
   protected-surface and shared-governance human-oversight points for Iteration
   003 scope and planning.
+- **Gate-wiring deferral authorization (2026-06-20)**: The maintainer authorized
+  delivering the FR-025 gate floor as 197-owned DECISION LOGIC in Iteration 003 and
+  DEFERRING its advancement-enforcement WIRING into `Invoke-SpecrewBoundaryStateSync`
+  until it can be coordinated with the F-185 host-neutral gate-enforcement branch.
+  SC-019/SC-020 are therefore satisfied at the decision-logic level in Iteration
+  003; the wired advancement block is an explicit, authorized deferral, not a
+  silent gap.
+- **Trust-boundary security relaxation (2026-06-20)**: The maintainer relaxed the
+  SEC-002 secret-exclusion requirement for the reviewer bundle/diff because the
+  reviewer is a trusted in-boundary component that must read repository context and
+  run tests (Proposal 145 runtime evidence) with inherited env and repo read access.
+  See the SEC-002 trust-boundary amendment.

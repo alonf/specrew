@@ -33,6 +33,24 @@ function Get-ContinuousCoReviewSecretAmbientDenylist {
     )
 }
 
+function Get-ContinuousCoReviewDigestRuntimeStripList {
+    # The DIGEST-IDENTITY strip list: paths removed from the FINAL index (the tree-id).
+    #
+    # 145 correctness review: anything excluded from the identity is a FALSE-ALLOW vector (a
+    # post-pass edit to an excluded path leaves the tree-id unchanged -> the gate allows
+    # un-reviewed source). So this list excludes ONLY genuinely-non-source paths by anchored
+    # subtree: the tool's own runtime trees and package-manager-managed dirs. It MUST NOT
+    # contain secret-FILE/extension globs (`*.key`/`*.token`/`*.pem` strip real source like
+    # `src/keymap.key`) or ambiguous build-output dirs (`bin/`/`obj/`/`dist/` are committed
+    # source in polyglot repos). Secret CONFIDENTIALITY is the reviewer-bundle path's concern,
+    # not the gate identity. (Gitignored ambient/secret junk is kept out of the tree by the
+    # broader inclusion denylist below, applied only to the `git add -f` step.)
+    return @(
+        '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**',
+        'node_modules/**', '.venv/**', 'venv/**', '__pycache__/**', '.tox/**', '.gradle/**', '.next/**'
+    )
+}
+
 function Get-ContinuousCoReviewEmptyTreeId {
     # The well-known git SHA-1 of the empty tree; the no-content guard for the gate (NEW-2).
     return '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
@@ -118,7 +136,12 @@ function Get-ContinuousCoReviewReviewedStateDigest {
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
-    $denylist = @(Get-ContinuousCoReviewSecretAmbientDenylist) + @($ExcludedPathPatterns)
+    # Two distinct lists: the BROAD inclusion denylist decides which GITIGNORED paths to
+    # add (keeps ambient/secret junk out of the tree), while the MINIMAL strip list decides
+    # what to remove from the FINAL index (only genuinely-non-source, so no tracked source is
+    # ever stripped - the false-allow fix).
+    $inclusionDenylist = @(Get-ContinuousCoReviewSecretAmbientDenylist) + @($ExcludedPathPatterns)
+    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($ExcludedPathPatterns)
     $tempIndex = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-idx-' + [System.Guid]::NewGuid().ToString('N'))
 
     $hadPreviousIndex = Test-Path env:GIT_INDEX_FILE
@@ -142,7 +165,7 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-ls-ignored-failed'
         }
         foreach ($entry in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawIgnored)) {
-            if (Test-ContinuousCoReviewDigestPathDenied -Path $entry -Denylist $denylist) {
+            if (Test-ContinuousCoReviewDigestPathDenied -Path $entry -Denylist $inclusionDenylist) {
                 continue
             }
 
@@ -152,14 +175,15 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             }
         }
 
-        # Strip any STAGED path that matches the denylist. `git add -A` stages denied paths
-        # that are tracked or untracked-but-not-gitignored (e.g. the gate's own
-        # .specrew/review evidence, which must NEVER perturb the digest it checks). Applying
-        # the denylist to the final index makes the digest independent of how a path was staged.
+        # Strip only the genuinely-non-source runtime/dep paths from the final index (e.g. the
+        # gate's own .specrew/review evidence, which must NEVER perturb the digest it checks).
+        # This uses the MINIMAL strip list, NOT the broad denylist, so tracked SOURCE - even a
+        # file named `keymap.key` or a script in `bin/` - stays in the tree-id and its drift is
+        # detected (the 145 correctness false-allow fix).
         $rawStaged = & git ls-files -z 2>$null
         if ($LASTEXITCODE -eq 0) {
             foreach ($staged in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawStaged)) {
-                if (Test-ContinuousCoReviewDigestPathDenied -Path $staged -Denylist $denylist) {
+                if (Test-ContinuousCoReviewDigestPathDenied -Path $staged -Denylist $stripList) {
                     & git rm --cached --quiet -- $staged 2>$null | Out-Null
                 }
             }

@@ -111,6 +111,24 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Test-ContinuousCoReviewDigestPathDenied -Path 'gen/logic.py' -Denylist $deny) | Should Be $false
     }
 
+    It 'correctness: tracked source under bin/ or named *.key/*.token stays in the identity and its drift flips it (false-allow fix)' {
+        $repo = New-DigestRepo 'identity-source'
+        New-Item -ItemType Directory -Path (Join-Path $repo 'bin') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo 'bin/tool.sh') -Value 'echo ok' -Encoding UTF8
+        New-Item -ItemType Directory -Path (Join-Path $repo 'src/lexer') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo 'src/keymap.key') -Value 'KEY=A' -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $repo 'src/lexer/scan.token') -Value 'TOK=1' -Encoding UTF8
+        Invoke-DigestGit $repo @('add', '-A'); Invoke-DigestGit $repo @('commit', '-q', '-m', 'source')
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        $names = Get-TreeNames -Root $repo -TreeId $d.tree_id
+        ($names -contains 'bin/tool.sh') | Should Be $true        # script source, NOT stripped
+        ($names -contains 'src/keymap.key') | Should Be $true     # *.key source, NOT stripped
+        ($names -contains 'src/lexer/scan.token') | Should Be $true
+        $before = $d.tree_id
+        Set-Content -LiteralPath (Join-Path $repo 'bin/tool.sh') -Value 'echo evil' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should Not Be $before   # drift detected -> no false-allow
+    }
+
     It 'F1 regression: source named like a secret stays in the tree-id and its drift flips the digest' {
         $repo = New-DigestRepo 'f1-source'
         Set-Content -LiteralPath (Join-Path $repo 'credentials.ts') -Value 'export const auth = () => ok()' -Encoding UTF8

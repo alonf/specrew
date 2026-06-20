@@ -87,6 +87,33 @@ Describe 'Proposal 197 T067 re-architected co-review signoff gate (FR-025)' {
         $d.reason | Should Be 'coverage-gap'
     }
 
+    It 'A1: ALLOWS via a MULTI-HOP chain (tip pass -> mid pass -> anchor) with no gap' {
+        $f = New-FeatureRepo 'multihop'                       # main(anchor) + feature commit c1
+        $c1 = (& git -C $f.repo rev-parse HEAD).Trim()
+        Set-Content -LiteralPath (Join-Path $f.repo 'feat.txt') -Value 'feature v1' -Encoding UTF8
+        Invoke-GateGit $f.repo @('add', '-A'); Invoke-GateGit $f.repo @('commit', '-q', '-m', 'feat2')
+        $c2 = (& git -C $f.repo rev-parse HEAD).Trim()
+        $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
+        Write-PassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId 'tree-c1' -ReviewedRef $c1   # link: anchor -> c1
+        Write-PassRun -Repo $f.repo -RunId 'r2' -BaselineRef $c1 -TreeId $treeId -ReviewedRef $c2           # tip matches current; baseline = c1
+        $d = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main'
+        $d.decision | Should Be 'allow'                        # exercises the recursive chain step (r2.baseline c1 -> r1 -> anchor)
+        $d.reason | Should Be 'fresh-and-covered'
+        $d.matched_run_id | Should Be 'r2'
+    }
+
+    It 'A1: BLOCKS a multi-hop chain with a GAP in the middle (the mid link is missing)' {
+        $f = New-FeatureRepo 'multihop-gap'
+        $c1 = (& git -C $f.repo rev-parse HEAD).Trim()
+        Set-Content -LiteralPath (Join-Path $f.repo 'feat.txt') -Value 'feature v1' -Encoding UTF8
+        Invoke-GateGit $f.repo @('add', '-A'); Invoke-GateGit $f.repo @('commit', '-q', '-m', 'feat2')
+        $c2 = (& git -C $f.repo rev-parse HEAD).Trim()
+        $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
+        # The tip pass matches current, but no pass covers anchor->c1, so the chain has a gap.
+        Write-PassRun -Repo $f.repo -RunId 'r2' -BaselineRef $c1 -TreeId $treeId -ReviewedRef $c2
+        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main').reason | Should Be 'coverage-gap'
+    }
+
     It 'blocks stale when the tracked tree drifts after the pass' {
         $f = New-FeatureRepo 'stale'
         $head = (& git -C $f.repo rev-parse HEAD).Trim()

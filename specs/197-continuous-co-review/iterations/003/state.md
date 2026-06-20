@@ -5,8 +5,8 @@
 **Current Phase**: implement
 **Iteration Status**: executing
 **Last Completed Task**: T064 (closeout validation — full suite 173/0, HOLE A/B block, no F-184 edits)
-**Tasks Remaining**: (none — Phase A implementation complete; Proposal 145 review next, then review-signoff/retro/closeout)
-**In Progress**: Proposal 145 review of the iteration-003 re-architecture
+**Tasks Remaining**: (none — Phase A complete; 145 review done + fixes applied; confirming re-review next, then review-signoff/retro/closeout)
+**In Progress**: confirming 145 re-review after the fix pass
 **Updated**: 2026-06-20
 
 ## Re-architecture progress

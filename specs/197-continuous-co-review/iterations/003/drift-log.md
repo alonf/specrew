@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 6
-**Resolution rate**: 4/6 resolved; HOLE A/B re-architecture in progress (T065-T067 done); F3/F5 advisories carried
-**Specification drift**: FR-025 wording; plan resequence; impl drift fixed; HOLE A/B re-architecture (in progress); premature close reversed; gate false-allow F1 fixed
+**Total drift events**: 7
+**Resolution rate**: resolved; the 145 review's correctness false-allow + B1/B2/B3/A1 fixed; F-SEC-1 relaxed by maintainer trust-boundary decision; F3/F4 + reviewer-workspace-for-tests carried to F-185 wiring / Phase B
+**Specification drift**: FR-025 wording (twice — finally the tree-id model); plan resequence; impl drift fixed; HOLE A/B re-architecture; premature close reversed; gate false-allow F1 fixed; comprehensive 145 review fixes
 
 ## Events
 
@@ -80,7 +80,7 @@
   real failure modes; full continuous-co-review suite 148/0; re-review queued.
 - **State**: resolved (pending the confirming re-review).
 
-### D-197-I003-004 — Design-panel co-review found the gate model unsound (HOLE A/B); carried to Iteration 004
+### D-197-I003-004 — Design-panel co-review found the gate model unsound (HOLE A/B); re-architected within Iteration 003
 
 - **Detected**: 2026-06-20, by a multi-agent design judge-panel + adversarial re-review
   of the fixed gate (the feature dogfooding its own evidence model).
@@ -136,6 +136,40 @@
   fallback). The chain-walk/anchor/coverage half and the self-pollution strip held under
   attack (HOLE B genuinely closed).
 - **State**: resolved (F1/F2); F3/F4 -> wiring, F5 -> T068.
+
+### D-197-I003-007 — Comprehensive Proposal 145 review (3 dimensions): correctness false-allow + governance fixes
+
+- **Detected**: 2026-06-20, by a 3-dimension fresh-context Proposal 145 review
+  (correctness, security, conformance) of the completed re-architecture. All reviewers
+  left the repo clean.
+- **Findings + resolution**:
+  - **Correctness (blocking, false-allow, FIXED):** the digest IDENTITY strip list still
+    excluded real source (`bin/**`, `*.key`/`*.token`/`*.pem` at any depth), stripping it
+    from the tree-id -> a post-pass edit was invisible -> allow on un-reviewed source.
+    Fixed: a MINIMAL identity strip list (only genuinely-non-source runtime/dep dirs);
+    the broad list stays only for the gitignored-inclusion step. Regression added (tracked
+    `bin/tool.sh`/`*.key` source stays + drift flips). This and F-SEC-1 were two halves of
+    one root cause: conflating digest-IDENTITY with bundle-CONFIDENTIALITY.
+  - **Security F-SEC-1 (blocking as filed; RELAXED by maintainer):** the change-set/diff
+    (sent to the provider + persisted) had no secret denylist. Maintainer trust-boundary
+    decision (2026-06-20): the reviewer is a TRUSTED in-boundary component that must read
+    repo context and run tests (Proposal 145 runtime evidence) with inherited env + repo
+    read access; secret exclusion from the reviewer bundle is RELAXED. Reverted the
+    diff-strip; amended SEC-002 with the trust-boundary clause; recorded the relaxation in
+    Governance Alignment.
+  - **B1 (FIXED):** FR-025 normative text still described the abandoned `diff_hash` model
+    -> reworded to the content-addressed tree-id + anchor model.
+  - **B2 (FIXED):** SC-019/SC-020 overclaimed against the unwired gate -> downgraded to
+    decision-logic level + recorded an explicit gate-wiring deferral authorization.
+  - **B3 (FIXED):** tasks.md/plan.md task statuses + capacity figures reconciled (all
+    `[X]`/done; 24.00/25).
+  - **A1 (FIXED):** added the multi-hop chain-walk ALLOW + multi-hop-gap tests.
+  - **Carried (recorded-deferred):** F3/F4 override + run-record trust -> binding
+    obligations on the F-185 wiring PR (authenticate + persist; SEC-009 invalidation test).
+    The reviewer's working directory must become repo-rooted when the navigator runs tests
+    -> Phase-B (Iteration 004) navigator-execution requirement.
+- **State**: resolved (correctness + B1/B2/B3/A1); F-SEC-1 relaxed by maintainer decision;
+  F3/F4 + reviewer-workspace-for-tests carried to F-185 wiring / Phase B.
 
 ### Resolution Strategies (Available)
 
