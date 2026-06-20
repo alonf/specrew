@@ -144,6 +144,19 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             }
         }
 
+        # Strip any STAGED path that matches the denylist. `git add -A` stages denied paths
+        # that are tracked or untracked-but-not-gitignored (e.g. the gate's own
+        # .specrew/review evidence, which must NEVER perturb the digest it checks). Applying
+        # the denylist to the final index makes the digest independent of how a path was staged.
+        $rawStaged = & git ls-files -z 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            foreach ($staged in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawStaged)) {
+                if (Test-ContinuousCoReviewDigestPathDenied -Path $staged -Denylist $denylist) {
+                    & git rm --cached --quiet -- $staged 2>$null | Out-Null
+                }
+            }
+        }
+
         $treeOutput = & git write-tree 2>$null
         if ($LASTEXITCODE -ne 0) {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-write-tree-failed'

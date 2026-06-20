@@ -1,124 +1,128 @@
 $ErrorActionPreference = 'Stop'
 
-# Trace: T061, FR-025, FR-007, FR-027, TG-013.
-# NOTE (F4, 145 review): SC-019/SC-020 are demonstrated only by the WIRED boundary gate
-# (deferred post-185). These tests prove the DECISION LOGIC: it blocks un-reviewed state
-# (no-evidence, untracked, stale, malformed, unresolvable) and allows only a fresh match.
+# Trace: T067, FR-025, FR-027, NFR-001, TG-013.
+# These prove the re-architected gate DECISION LOGIC: it allows only a current reviewed-state
+# that matches a passing run AND whose chain reaches the trunk anchor, and blocks HOLE A
+# (gitignored drift), HOLE B (unanchored/coverage gap), stale, empty, no-evidence, and
+# fail-closed git/digest failures. SC-019/SC-020 are demonstrated by the WIRED boundary gate
+# (deferred post-185).
 # Rules: specs/197-continuous-co-review/implementation-rules.yml
-Describe 'Proposal 197 T061 co-review signoff gate-floor decision logic (FR-025)' {
+Describe 'Proposal 197 T067 re-architected co-review signoff gate (FR-025)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         Import-Module (Join-Path $script:RepoRoot 'Specrew.psd1') -Force
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
-        $script:Scope = '197/003'
     }
 
-    function Invoke-GateGit {
-        param([string] $Root, [string[]] $GitArgs)
-        Push-Location -LiteralPath $Root
-        try { & git @GitArgs 2>&1 | Out-Null } finally { Pop-Location }
-    }
+    function Invoke-GateGit { param($Root, [string[]] $GitArgs) Push-Location $Root; try { & git @GitArgs 2>&1 | Out-Null } finally { Pop-Location } }
 
-    function New-GateRepo {
+    function New-FeatureRepo {
+        # main (base) -> feature branch with one feature commit. Returns @{ repo; anchor }.
         param([string] $Name)
         $repo = Join-Path $TestDrive $Name
         New-Item -ItemType Directory -Path $repo -Force | Out-Null
-        Invoke-GateGit $repo @('init', '-q')
-        Invoke-GateGit $repo @('config', 'user.email', 't@example.com')
-        Invoke-GateGit $repo @('config', 'user.name', 'Test')
-        Set-Content -LiteralPath (Join-Path $repo 'a.txt') -Value 'a0' -Encoding UTF8
-        Invoke-GateGit $repo @('add', '-A')
-        Invoke-GateGit $repo @('commit', '-q', '-m', 'base')
-        return $repo
+        Invoke-GateGit $repo @('init', '-q'); Invoke-GateGit $repo @('config', 'user.email', 't@e.c'); Invoke-GateGit $repo @('config', 'user.name', 't')
+        Set-Content -LiteralPath (Join-Path $repo 'base.txt') -Value 'shipped' -Encoding UTF8
+        Invoke-GateGit $repo @('add', '-A'); Invoke-GateGit $repo @('commit', '-q', '-m', 'base')
+        Invoke-GateGit $repo @('branch', '-M', 'main')
+        $anchor = (& git -C $repo rev-parse HEAD).Trim()
+        Invoke-GateGit $repo @('checkout', '-q', '-b', 'feature')
+        Set-Content -LiteralPath (Join-Path $repo 'feat.txt') -Value 'feature v0' -Encoding UTF8
+        Invoke-GateGit $repo @('add', '-A'); Invoke-GateGit $repo @('commit', '-q', '-m', 'feat')
+        return @{ repo = $repo; anchor = $anchor }
     }
 
-    function New-GatePassingRun {
-        param($Root, $RunId, $BaselineRef, $DiffHash, $Scope = '197/003', $Status = 'pass')
-        $directory = Join-Path (Join-Path $Root '.specrew/review/inline') $RunId
-        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    function Write-PassRun {
+        param($Repo, $RunId, $BaselineRef, $TreeId, $ReviewedRef)
+        $dir = Join-Path (Join-Path $Repo '.specrew/review/inline') $RunId
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
         ([pscustomobject][ordered]@{
             schema_version = '1.0'; run_id = $RunId; checkpoint_id = 'cp'; baseline_ref = $BaselineRef
-            diff_hash = $DiffHash; reviewed_ref = $BaselineRef; scope = $Scope; status = $Status
+            diff_hash = 'sha256:x'; reviewed_ref = $ReviewedRef; reviewed_tree_id = $TreeId; status = 'pass'
             created_at = '2026-06-20T00:00:01Z'; updated_at = '2026-06-20T00:00:01Z'
-        } | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $directory 'review-run.json') -Encoding UTF8 -NoNewline
+        } | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $dir 'review-run.json') -Encoding UTF8 -NoNewline
     }
 
-    function Get-RealDiffHash {
-        param($Repo, $Baseline)
-        return (Get-ContinuousCoReviewCheckpointDiff -RepoRoot $Repo -BaselineRef $Baseline -CheckpointId 'probe' -RunId 'probe').diff_hash
+    It 'blocks when there is no co-review evidence' {
+        $f = New-FeatureRepo 'no-ev'
+        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main').reason | Should Be 'no-co-review-evidence'
     }
 
-    It 'blocks when there is no in-scope co-review evidence' {
-        $repo = New-GateRepo 'no-ev'
-        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $repo -Scope $script:Scope).reason | Should Be 'no-co-review-evidence'
+    It 'ALLOWS when the current tree-id matches a pass whose chain reaches the anchor' {
+        $f = New-FeatureRepo 'allow'
+        $head = (& git -C $f.repo rev-parse HEAD).Trim()
+        $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
+        Write-PassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head   # baseline = anchor -> chain reaches
+        $d = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main'
+        $d.decision | Should Be 'allow'
+        $d.reason | Should Be 'fresh-and-covered'
     }
 
-    It 'allows when a real non-empty reviewed change matches the last passing run' {
-        $repo = New-GateRepo 'fresh'
-        $b = (& git -C $repo rev-parse HEAD).Trim()
-        Set-Content -LiteralPath (Join-Path $repo 'a.txt') -Value 'a1-reviewed-change' -Encoding UTF8   # tracked, uncommitted
-        $hash = Get-RealDiffHash -Repo $repo -Baseline $b
-        $hash | Should Not Be "sha256:$([string](Get-ContinuousCoReviewSha256Hex -Text ''))"            # prove the diff is non-empty
-        New-GatePassingRun -Root $repo -RunId 'r1' -BaselineRef $b -DiffHash $hash
-
-        $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $repo -Scope $script:Scope
-        $decision.decision | Should Be 'allow'
-        $decision.reason | Should Be 'fresh-co-review-evidence'
+    It 'BLOCKS HOLE A: a gitignored-source change makes the tree-id stale' {
+        $f = New-FeatureRepo 'hole-a'
+        Set-Content -LiteralPath (Join-Path $f.repo '.gitignore') -Value "gen/`n" -Encoding UTF8
+        New-Item -ItemType Directory -Path (Join-Path $f.repo 'gen') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $f.repo 'gen/logic.py') -Value 'def s(): pass' -Encoding UTF8
+        Invoke-GateGit $f.repo @('add', '.gitignore'); Invoke-GateGit $f.repo @('commit', '-q', '-m', 'ignore')
+        $head = (& git -C $f.repo rev-parse HEAD).Trim()
+        $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
+        Write-PassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head
+        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main').decision | Should Be 'allow'   # baseline state passes
+        Set-Content -LiteralPath (Join-Path $f.repo 'gen/logic.py') -Value 'def s(): evil()' -Encoding UTF8           # gitignored drift
+        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main').reason | Should Be 'stale-co-review-evidence'
     }
 
-    It 'BLOCKS untracked reviewable content even when the tracked diff_hash matches (F1)' {
-        $repo = New-GateRepo 'untracked'
-        $b = (& git -C $repo rev-parse HEAD).Trim()
-        New-GatePassingRun -Root $repo -RunId 'r1' -BaselineRef $b -DiffHash (Get-RealDiffHash -Repo $repo -Baseline $b)  # matches clean tree
-        Set-Content -LiteralPath (Join-Path $repo 'sneaky-unreviewed.txt') -Value 'never added' -Encoding UTF8
-
-        $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $repo -Scope $script:Scope
-        $decision.decision | Should Be 'block'
-        $decision.reason | Should Be 'unreviewed-working-tree'
+    It 'BLOCKS HOLE B: a pass that does not chain to the anchor is a coverage gap' {
+        $f = New-FeatureRepo 'hole-b'
+        # Add a SECOND feature commit; the only pass baselines on HEAD~1 (mid-feature), not the anchor.
+        $mid = (& git -C $f.repo rev-parse HEAD).Trim()
+        Set-Content -LiteralPath (Join-Path $f.repo 'feat.txt') -Value 'feature v1' -Encoding UTF8
+        Invoke-GateGit $f.repo @('add', '-A'); Invoke-GateGit $f.repo @('commit', '-q', '-m', 'feat2')
+        $head = (& git -C $f.repo rev-parse HEAD).Trim()
+        $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
+        Write-PassRun -Repo $f.repo -RunId 'r1' -BaselineRef $mid -TreeId $treeId -ReviewedRef $head   # baseline = mid, NOT anchor; no prior run -> gap
+        $d = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main'
+        $d.decision | Should Be 'block'
+        $d.reason | Should Be 'coverage-gap'
     }
 
-    It 'blocks as stale when a tracked reviewable change drifts after the pass' {
-        $repo = New-GateRepo 'stale'
-        $b = (& git -C $repo rev-parse HEAD).Trim()
-        Set-Content -LiteralPath (Join-Path $repo 'a.txt') -Value 'a1' -Encoding UTF8
-        New-GatePassingRun -Root $repo -RunId 'r1' -BaselineRef $b -DiffHash (Get-RealDiffHash -Repo $repo -Baseline $b)
-        Set-Content -LiteralPath (Join-Path $repo 'a.txt') -Value 'a2-drifted' -Encoding UTF8           # drift after the pass
-
-        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $repo -Scope $script:Scope).reason | Should Be 'stale-co-review-evidence'
+    It 'blocks stale when the tracked tree drifts after the pass' {
+        $f = New-FeatureRepo 'stale'
+        $head = (& git -C $f.repo rev-parse HEAD).Trim()
+        $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
+        Write-PassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head
+        Set-Content -LiteralPath (Join-Path $f.repo 'feat.txt') -Value 'drifted' -Encoding UTF8
+        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main').reason | Should Be 'stale-co-review-evidence'
     }
 
-    It 'blocks when the latest passing run has a malformed (empty) diff_hash' {
-        $repo = New-GateRepo 'malformed'
-        $b = (& git -C $repo rev-parse HEAD).Trim()
-        New-GatePassingRun -Root $repo -RunId 'r1' -BaselineRef $b -DiffHash ''
-
-        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $repo -Scope $script:Scope).reason | Should Be 'malformed-co-review-evidence'
+    It 'blocks when the trunk anchor cannot be resolved (fail-closed)' {
+        $f = New-FeatureRepo 'no-trunk'
+        $head = (& git -C $f.repo rev-parse HEAD).Trim()
+        $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
+        Write-PassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head
+        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'nonexistent-trunk').reason | Should Be 'anchor-unresolvable'
     }
 
-    It 'blocks when the recorded baseline can no longer be resolved' {
-        $repo = New-GateRepo 'unresolvable'
-        New-GatePassingRun -Root $repo -RunId 'r1' -BaselineRef ('0' * 40) -DiffHash 'sha256:deadbeef'
-
-        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $repo -Scope $script:Scope).reason | Should Be 'baseline-unresolvable'
+    It 'allows under a well-formed human-authorized recorded override (and records it)' {
+        $f = New-FeatureRepo 'override'
+        $override = [pscustomobject]@{ authorized_by = 'alon'; rationale = 'documented partial coverage for a vendored tree' }
+        $d = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main' -OverrideAuthorization $override
+        $d.decision | Should Be 'allow'
+        $d.reason | Should Be 'human-authorized-partial-override'
+        $d.override.authorized_by | Should Be 'alon'
     }
 
-    It 'ignores a passing run from a different scope (no false allow across features)' {
-        $repo = New-GateRepo 'cross-scope'
-        $b = (& git -C $repo rev-parse HEAD).Trim()
-        New-GatePassingRun -Root $repo -RunId 'r1' -BaselineRef $b -DiffHash (Get-RealDiffHash -Repo $repo -Baseline $b) -Scope '999/001'
-
-        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $repo -Scope $script:Scope).reason | Should Be 'no-co-review-evidence'
+    It 'ignores a malformed override (no rationale) and blocks normally' {
+        $f = New-FeatureRepo 'bad-override'
+        $override = [pscustomobject]@{ authorized_by = 'alon' }   # no rationale
+        (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main' -OverrideAuthorization $override).reason | Should Be 'no-co-review-evidence'
     }
 
-    It 'Assert throws on a stale blocking decision' {
-        $repo = New-GateRepo 'assert-stale'
-        $b = (& git -C $repo rev-parse HEAD).Trim()
-        Set-Content -LiteralPath (Join-Path $repo 'a.txt') -Value 'a1' -Encoding UTF8
-        New-GatePassingRun -Root $repo -RunId 'r1' -BaselineRef $b -DiffHash (Get-RealDiffHash -Repo $repo -Baseline $b)
-        Set-Content -LiteralPath (Join-Path $repo 'a.txt') -Value 'a2-drifted' -Encoding UTF8
+    It 'Assert throws on a block' {
+        $f = New-FeatureRepo 'assert'
         $threw = $false
-        try { Assert-ContinuousCoReviewSignoffGate -RepoRoot $repo -Scope $script:Scope | Out-Null } catch { $threw = $true }
+        try { Assert-ContinuousCoReviewSignoffGate -RepoRoot $f.repo -TrunkName 'main' | Out-Null } catch { $threw = $true }
         $threw | Should Be $true
     }
 }

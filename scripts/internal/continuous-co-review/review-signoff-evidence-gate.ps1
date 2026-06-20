@@ -1,20 +1,23 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-# T061 / FR-025: the deterministic co-review gate floor decision.
+# T067 / FR-025: the deterministic co-review gate-floor decision (re-architected).
 #
-# "You cannot sign off on un-reviewed state." A pass/escalated co-review run must
-# exist whose recorded diff_hash, recomputed from its baseline_ref to the CURRENT
-# working tree, still matches — proving the working tree has not drifted since it
-# passed. Because the co-review baseline advances only on a pass
-# (Get-ContinuousCoReviewLastPassingReviewState returns only pass/escalated runs),
-# this single current-state check transitively proves every prior increment was
-# reviewed, with no per-increment git-history archaeology.
+# "You cannot sign off on un-reviewed state." The first model (diff_hash recomputed from an
+# operator-chosen baseline) was found unsound by the feature's own dogfooded co-reviews:
+# HOLE A (gitignored source invisible) and HOLE B (the operator baseline was never verified
+# as reviewed). The sound model:
+#   1. FRESHNESS - the CURRENT reviewed-state tree-id (content-addressed; includes tracked,
+#      untracked, and gitignored source minus secrets) must equal a passing run's recorded
+#      reviewed_tree_id. (Closes HOLE A + the untracked/empty/diff-parsing nits.)
+#   2. COVERAGE - that run's chain must reach the merge-base-with-trunk anchor with no gap,
+#      so everything the feature added on top of shipped trunk was reviewed. (Closes HOLE B.)
+#   3. FAIL-CLOSED on every git/digest failure; an empty reviewed state never counts as fresh.
+#   4. The only escape is a human-authorized, RECORDED partial-coverage override - never silent.
 #
-# This is the DECISION logic only. Wiring it into Invoke-SpecrewBoundaryStateSync as
-# a throw-to-refuse gate is the F-184/F-185-coordinated step deferred until the 185
-# host-neutral gate-enforcement branch merges; Assert-ContinuousCoReviewSignoffGate
-# is the thin throw-wrapper that wiring will call.
+# This is the DECISION logic only. Wiring it into Invoke-SpecrewBoundaryStateSync as a
+# throw-to-refuse gate stays deferred until the F-185 host-neutral gate-enforcement branch
+# merges; Assert-ContinuousCoReviewSignoffGate is the thin throw-wrapper that wiring will call.
 
 function New-ContinuousCoReviewSignoffGateDecision {
     param(
@@ -28,58 +31,91 @@ function New-ContinuousCoReviewSignoffGateDecision {
         [Parameter(Mandatory)]
         [string] $Message,
 
-        [AllowNull()] $LastPassingState,
-        [AllowNull()] [string] $CurrentDiffHash
+        [AllowNull()] [string] $CurrentTreeId,
+        [AllowNull()] [string] $MatchedRunId,
+        [AllowNull()] [string] $AnchorRef,
+        [AllowNull()] $OverrideAuthorization
     )
 
     return [pscustomobject][ordered]@{
-        schema_version     = '1.0'
-        decision           = $Decision
-        reason             = $Reason
-        message            = $Message
-        last_run_id        = if ($null -ne $LastPassingState) { $LastPassingState.run_id } else { $null }
-        baseline_ref       = if ($null -ne $LastPassingState) { $LastPassingState.baseline_ref } else { $null }
-        expected_diff_hash = if ($null -ne $LastPassingState) { $LastPassingState.diff_hash } else { $null }
-        current_diff_hash  = $CurrentDiffHash
+        schema_version = '1.0'
+        decision       = $Decision
+        reason         = $Reason
+        message        = $Message
+        current_tree_id = $CurrentTreeId
+        matched_run_id = $MatchedRunId
+        anchor_ref     = $AnchorRef
+        override       = $OverrideAuthorization
     }
 }
 
-function Get-ContinuousCoReviewUntrackedReviewablePaths {
-    # F1 (145 review): `git diff <commit>` only sees TRACKED files, so untracked
-    # reviewable content is invisible to both the reviewer and diff_hash. List untracked
-    # files that would be reviewable source, excluding Specrew's own runtime/state/
-    # deployed/scratch trees (the co-review writes its own evidence under .specrew/review,
-    # so those must never count as un-reviewed source).
+function Test-ContinuousCoReviewOverrideAuthorization {
+    # A well-formed override is an object carrying a non-empty authorized_by AND rationale.
+    # Anything less is ignored (the gate proceeds normally) - an override is never implicit.
+    param([AllowNull()] $OverrideAuthorization)
+
+    if ($null -eq $OverrideAuthorization) {
+        return $false
+    }
+
+    $authorizedBy = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $OverrideAuthorization -Name 'authorized_by')
+    $rationale = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $OverrideAuthorization -Name 'rationale')
+    return (-not [string]::IsNullOrWhiteSpace($authorizedBy)) -and (-not [string]::IsNullOrWhiteSpace($rationale))
+}
+
+function Get-ContinuousCoReviewChainReachesAnchor {
+    # Walk the chain from the digest-matched run back toward the anchor: each link is a
+    # passing run whose reviewed_ref equals the current run's baseline_ref. The chain reaches
+    # the anchor when a baseline is an ancestor-of-or-equal-to the anchor (so [anchor, HEAD]
+    # is fully covered); a baseline that is neither the anchor-or-earlier nor a prior pass's
+    # reviewed point is a GAP (un-reviewed span -> block).
     param(
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [string[]] $ExcludedPathPatterns = @()
+        [Parameter(Mandatory)]
+        [object[]] $PassingRuns,
+
+        [Parameter(Mandatory)]
+        $MatchedRun,
+
+        [Parameter(Mandatory)]
+        [string] $AnchorRef
     )
 
-    $statusResult = Invoke-ContinuousCoReviewGit -RepoRoot $RepoRoot -Arguments @('status', '--porcelain', '--untracked-files=all')
-    if ($statusResult.ExitCode -ne 0) {
-        return @()
+    $byReviewedRef = @{}
+    foreach ($run in @($PassingRuns)) {
+        $reviewedRef = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $run -Name 'reviewed_ref')
+        if (-not [string]::IsNullOrWhiteSpace($reviewedRef) -and -not $byReviewedRef.ContainsKey($reviewedRef)) {
+            $byReviewedRef[$reviewedRef] = $run
+        }
     }
 
-    $effectiveExclusions = @($ExcludedPathPatterns) + @('.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**')
-    $paths = New-Object System.Collections.Generic.List[string]
-    foreach ($line in @($statusResult.Output)) {
-        $statusLine = [string] $line
-        if (-not $statusLine.StartsWith('?? ')) {
-            continue
+    $current = $MatchedRun
+    $visited = New-Object System.Collections.Generic.HashSet[string]
+    for ($i = 0; $i -lt 4096; $i++) {
+        $baseline = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $current -Name 'baseline_ref')
+        if ([string]::IsNullOrWhiteSpace($baseline)) {
+            return [pscustomobject]@{ reached = $false; gap_at = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $current -Name 'run_id') }
         }
 
-        $path = $statusLine.Substring(3).Trim().Trim('"')
-        $normalized = ($path -replace '\\', '/')
-        if (Test-ContinuousCoReviewPathExcluded -Path $normalized -ExcludedPathPatterns $effectiveExclusions) {
-            continue
+        if (Get-ContinuousCoReviewGitIsAncestor -RepoRoot $RepoRoot -Ancestor $baseline -Descendant $AnchorRef) {
+            return [pscustomobject]@{ reached = $true; gap_at = $null }
         }
 
-        [void] $paths.Add($normalized)
+        $runId = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $current -Name 'run_id')
+        if (-not $visited.Add($runId)) {
+            return [pscustomobject]@{ reached = $false; gap_at = 'cycle' }
+        }
+
+        if (-not $byReviewedRef.ContainsKey($baseline)) {
+            return [pscustomobject]@{ reached = $false; gap_at = $baseline }
+        }
+
+        $current = $byReviewedRef[$baseline]
     }
 
-    return @($paths)
+    return [pscustomobject]@{ reached = $false; gap_at = 'chain-too-long' }
 }
 
 function Get-ContinuousCoReviewSignoffGateDecision {
@@ -87,39 +123,66 @@ function Get-ContinuousCoReviewSignoffGateDecision {
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [AllowNull()]
-        [string] $Scope,
+        [string] $TrunkName = 'main',
 
-        [string[]] $ExcludedPathPatterns = @()
+        [string[]] $ExcludedPathPatterns = @(),
+
+        [AllowNull()] $OverrideAuthorization
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 
-    $lastPass = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $resolvedRepoRoot -Scope $Scope
-    if ($null -eq $lastPass) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'no-co-review-evidence' -Message 'No passing or escalated continuous co-review run exists; the current state has not been co-reviewed.'
+    # A well-formed human-authorized recorded override short-circuits, with the authorization
+    # captured in the decision evidence (auditable, never silent).
+    if (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $OverrideAuthorization) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'human-authorized-partial-override' -Message 'Signoff allowed under a recorded human-authorized partial-coverage override.' -OverrideAuthorization $OverrideAuthorization
     }
 
-    if ([string]::IsNullOrWhiteSpace([string] $lastPass.baseline_ref) -or [string]::IsNullOrWhiteSpace([string] $lastPass.diff_hash)) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'malformed-co-review-evidence' -Message 'The latest passing co-review run is missing its baseline_ref or diff_hash and is unsafe to trust.' -LastPassingState $lastPass
+    # 1. Current reviewed-state digest (fail-closed on any digest/git failure).
+    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $resolvedRepoRoot -ExcludedPathPatterns $ExcludedPathPatterns
+    if (-not $digest.ok) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'digest-unresolvable' -Message "The current reviewed-state digest could not be computed ($($digest.failure_reason)); treat as unsafe."
+    }
+    if ($digest.is_empty) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'empty-reviewed-state' -Message 'The current reviewable working tree is empty; there is no reviewed content to sign off on.' -CurrentTreeId $digest.tree_id
     }
 
-    $changeSet = Get-ContinuousCoReviewCheckpointDiff -RepoRoot $resolvedRepoRoot -BaselineRef ([string] $lastPass.baseline_ref) -CheckpointId 'signoff-evidence-gate' -ExcludedPathPatterns $ExcludedPathPatterns -RunId 'signoff-evidence-gate'
-    if ($changeSet.status -eq 'infrastructure_failure') {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'baseline-unresolvable' -Message 'The last passing co-review baseline could not be resolved against the current tree; treat as unsafe.' -LastPassingState $lastPass
+    # 2. Trusted anchor = merge-base with the trunk (fail-closed if it cannot be resolved).
+    $anchor = Get-ContinuousCoReviewMergeBaseAnchor -RepoRoot $resolvedRepoRoot -TrunkName $TrunkName
+    if ([string]::IsNullOrWhiteSpace($anchor)) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'anchor-unresolvable' -Message "The trusted anchor (merge-base with '$TrunkName') could not be resolved; coverage cannot be verified." -CurrentTreeId $digest.tree_id
     }
 
-    $untrackedReviewable = Get-ContinuousCoReviewUntrackedReviewablePaths -RepoRoot $resolvedRepoRoot -ExcludedPathPatterns $ExcludedPathPatterns
-    if (@($untrackedReviewable).Count -gt 0) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'unreviewed-working-tree' -Message "Untracked reviewable content exists that no co-review has seen ($([string]::Join(', ', @($untrackedReviewable)))); add or commit it and re-run co-review before signoff." -LastPassingState $lastPass -CurrentDiffHash ([string] $changeSet.diff_hash)
+    # 3. Lineage-valid passing runs.
+    $passingRuns = @(Get-ContinuousCoReviewPassingReviewRuns -RepoRoot $resolvedRepoRoot -AncestorOfRef 'HEAD')
+    if ($passingRuns.Count -eq 0) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'no-co-review-evidence' -Message 'No passing or escalated co-review run on this lineage; the current state has not been co-reviewed.' -CurrentTreeId $digest.tree_id -AnchorRef $anchor
     }
 
-    $currentDiffHash = [string] $changeSet.diff_hash
-    if ($currentDiffHash -eq [string] $lastPass.diff_hash) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'fresh-co-review-evidence' -Message 'The current working tree matches a passing or escalated co-review run from the same baseline.' -LastPassingState $lastPass -CurrentDiffHash $currentDiffHash
+    # 4. Freshness: a passing run whose recorded reviewed_tree_id equals the current digest.
+    $matched = $null
+    $emptyTreeId = Get-ContinuousCoReviewEmptyTreeId
+    foreach ($run in $passingRuns) {
+        $recordedTreeId = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $run -Name 'reviewed_tree_id')
+        if ([string]::IsNullOrWhiteSpace($recordedTreeId) -or $recordedTreeId -eq $emptyTreeId) {
+            continue
+        }
+        if ($recordedTreeId -eq $digest.tree_id) {
+            $matched = $run
+            break
+        }
+    }
+    if ($null -eq $matched) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'stale-co-review-evidence' -Message 'The current working tree does not match any passing co-review; re-run continuous co-review before signoff.' -CurrentTreeId $digest.tree_id -AnchorRef $anchor
     }
 
-    return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'stale-co-review-evidence' -Message 'The working tree has changed since the last passing co-review; re-run continuous co-review before signoff.' -LastPassingState $lastPass -CurrentDiffHash $currentDiffHash
+    # 5. Coverage: the matched run's chain must reach the anchor with no gap.
+    $chain = Get-ContinuousCoReviewChainReachesAnchor -RepoRoot $resolvedRepoRoot -PassingRuns $passingRuns -MatchedRun $matched -AnchorRef $anchor
+    if (-not $chain.reached) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'coverage-gap' -Message "The reviewed chain does not reach the trunk anchor (gap at $($chain.gap_at)); some feature content was never co-reviewed." -CurrentTreeId $digest.tree_id -MatchedRunId ([string] (Get-ContinuousCoReviewRunIndexProperty -Object $matched -Name 'run_id')) -AnchorRef $anchor
+    }
+
+    return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'fresh-and-covered' -Message 'The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor.' -CurrentTreeId $digest.tree_id -MatchedRunId ([string] (Get-ContinuousCoReviewRunIndexProperty -Object $matched -Name 'run_id')) -AnchorRef $anchor
 }
 
 function Assert-ContinuousCoReviewSignoffGate {
@@ -127,13 +190,14 @@ function Assert-ContinuousCoReviewSignoffGate {
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [AllowNull()]
-        [string] $Scope,
+        [string] $TrunkName = 'main',
 
-        [string[]] $ExcludedPathPatterns = @()
+        [string[]] $ExcludedPathPatterns = @(),
+
+        [AllowNull()] $OverrideAuthorization
     )
 
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -Scope $Scope -ExcludedPathPatterns $ExcludedPathPatterns
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -TrunkName $TrunkName -ExcludedPathPatterns $ExcludedPathPatterns -OverrideAuthorization $OverrideAuthorization
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"
     }

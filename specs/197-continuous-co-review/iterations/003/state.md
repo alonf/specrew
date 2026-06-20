@@ -4,10 +4,16 @@
 **Iteration**: 003
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T066 (reviewed_tree_id on the record + git-lineage/anchor resolver)
-**Tasks Remaining**: T067, T068, T069, T059, T060, T062, T063, T064
-**In Progress**: T067 (re-architected gate: tree-id freshness + chain-to-anchor + override)
+**Last Completed Task**: T067 (re-architected gate: tree-id freshness + chain-to-anchor + override)
+**Tasks Remaining**: T068, T069, T059, T060, T062, T063, T064
+**In Progress**: adversarial 145 re-review of the re-architected gate (T065-T067) before building on it
 **Updated**: 2026-06-20
+
+## Re-architecture progress
+
+- T065 content-addressed reviewed-state digest (8/8) + a self-referential-pollution fix (denied paths stripped from the final index so the gate's own .specrew/review evidence cannot perturb its digest).
+- T066 reviewed_tree_id + git-lineage/anchor resolver (6/6, incl. cross-branch isolation).
+- T067 re-architected gate (9/9): tree-id freshness + chain-to-merge-base-anchor + empty-tree guard + fail-closed + human-authorized recorded override. HOLE A blocks (gitignored drift -> stale), HOLE B blocks (coverage-gap). Full continuous-co-review suite 158/0.
 
 ## Execution Summary
 
