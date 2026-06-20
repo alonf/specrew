@@ -856,7 +856,10 @@ try {
             # capture) silently never runs. Pass only the bounded clean args to handover. The transcript FILE route
             # (--transcript-path, extracted below) is the robust primary; tier-3 (last_assistant_message) stays
             # DEFERRED. Other inject providers (bootstrap needs session_id/source) still get --event-json.
-            $commandArgs = if ($providerId -eq 'handover') {
+            $commandArgs = if ($providerId -in @('handover', 'conformance')) {
+                # Both read ONLY the clean args (+ --transcript-path appended below) - never the full
+                # --event-json blob (Codex Stop carries a 10s-of-KB last_assistant_message that blows the
+                # Windows command-line limit and makes ProcessStartInfo refuse to launch). FR-011 C3.
                 @('--host-kind', $HostKind, '--source-event', $Event)
             }
             else {

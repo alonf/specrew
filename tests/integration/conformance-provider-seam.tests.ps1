@@ -26,9 +26,19 @@ if (-not (Test-Path -LiteralPath $cmd)) { Write-Fail "conformance provider comma
 $errs = $null; $null = [System.Management.Automation.Language.Parser]::ParseFile($cmd, [ref]$null, [ref]$errs)
 if ($errs) { Write-Fail "conformance provider must parse clean ($($errs.Count) errors)" }
 
-# Isolation: it is a READ-ONLY consumer - it must NEVER call the verdict-authority write path.
+# C1 (145 review): DISPATCH the provider the way the dispatcher does - DOUBLE-dash flags - and prove it exits
+# 0, emits nothing, and warns nothing. A param()/[CmdletBinding()] block binds `--event-json` as `-event-json`
+# and exits 1 on EVERY Stop (B1) while ParseFile stays green; "parses clean" is therefore NOT sufficient.
+$provOut = (& pwsh -NoProfile -ExecutionPolicy Bypass -File $cmd --event-json '{}' --host-kind claude --source-event Stop --transcript-path 'x' 2>&1)
+$provCode = $LASTEXITCODE
+if ($provCode -ne 0) { Write-Fail "conformance provider must exit 0 when dispatched with double-dash args (B1: a param() block exits 1); got exit $provCode" }
+if (@($provOut | Where-Object { $_ -match 'PROVIDER_FAILED|cannot be found that matches parameter|ParameterBinding' }).Count -gt 0) { Write-Fail 'conformance provider must NOT emit a binding / PROVIDER_FAILED error on dispatch (B1)' }
+if (@($provOut | Where-Object { $_ -match '\S' }).Count -gt 0) { Write-Fail 'conformance scaffold must be a SILENT no-op (emit nothing on dispatch); it produced output' }
+
+# Isolation: it is a READ-ONLY consumer - it must NEVER call the verdict-authority write path (M2: anchor
+# [\s(;] so a `;`- or `(`-form call is caught too, not only the space-separated idiom).
 $body = Get-Content -LiteralPath $cmd -Raw
-if ($body -match 'Add-SpecrewBoundaryAuthorization\s|Write-SpecrewRollingHandover\s') { Write-Fail 'conformance provider must NOT call the verdict-authority write path - it is a read-only consumer (FR-011 isolation)' }
+if ($body -match 'Add-SpecrewBoundaryAuthorization[\s(;]|Write-SpecrewRollingHandover[\s(;]') { Write-Fail 'conformance provider must NOT call the verdict-authority write path - it is a read-only consumer (FR-011 isolation)' }
 
 # Source/.specify mirror parity (catalog + provider).
 foreach ($pair in @(
