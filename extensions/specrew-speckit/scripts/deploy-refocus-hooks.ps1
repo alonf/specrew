@@ -136,6 +136,10 @@ function Get-HostRuntimeBindingEncoded {
         OutputShape             = [string](Get-ManifestValue -Map $runtime -Key 'OutputShape' -Default 'plain-or-hookSpecificOutput')
         DecisionOnlyEvents      = @(Get-ManifestValue -Map $runtime -Key 'DecisionOnlyEvents' -Default @())
         BootstrapDeliveryMode   = [string](Get-ManifestValue -Map $runtime -Key 'BootstrapDeliveryMode' -Default 'inline')
+        # FR-004 (185): the deployed hook bakes this binding and the dispatcher decodes it BEFORE the manifest
+        # fallback - so StopBlockShape MUST be encoded here, or every deployed project resolves it to 'none' and
+        # the entire stop-block delivery is inert in the field while the manifest-path tests stay green (145 F1/TI-1).
+        StopBlockShape          = [string](Get-ManifestValue -Map $runtime -Key 'StopBlockShape' -Default 'none')
     }
     $json = $stableRuntime | ConvertTo-Json -Depth 8 -Compress
     return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))

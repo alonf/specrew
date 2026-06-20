@@ -50,7 +50,6 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 
 $script:SpecrewReentryHeaders = @('What I Just Did', 'Why I Stopped', 'What Needs Your Review', 'What Happens Next', 'Discussion Prompts', 'What I Need From You')
 $script:SpecrewBlockCap = 3
-$script:SpecrewBlockWindowSec = 120
 $script:SpecrewSubstantialChars = 600
 
 function Test-SpecrewReentryPacketPresent {
@@ -65,17 +64,16 @@ function Test-SpecrewReentryPacketPresent {
 }
 
 function Get-SpecrewBlockCount {
-    # Consecutive-block count within the staleness window; 0 if absent/stale/unreadable (fail-open: a read miss
-    # means "not capped" -> a single block is safe and the host/agent terminates the loop).
-    param([string]$Path, [int]$WindowSec)
+    # Consecutive-block count for THIS advance ($Key = "<working>|<lastAuth>"). 0 if absent / a DIFFERENT advance /
+    # unreadable. Keyed by the advance identity (NOT a time window): the count accumulates across consecutive
+    # packet-less stops for the same advance regardless of how long each forced-continue turn takes (145 HANG-1: a
+    # time window let a >120s/turn loop reset to 0 forever and never cap). A different advance is a fresh sequence.
+    param([string]$Path, [string]$Key)
     try {
         if (Test-Path -LiteralPath $Path -PathType Leaf) {
             $rec = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
-            if (($rec.PSObject.Properties.Name -contains 'count') -and ($rec.PSObject.Properties.Name -contains 'last_block_epoch')) {
-                # Absolute epoch-seconds comparison - TZ-independent (DateTimeOffset.Parse of a 'Z' string mis-applies
-                # the local offset on a UTC+N machine, so any wall-clock/ISO parse is unreliable here).
-                $age = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$rec.last_block_epoch
-                if ($age -ge 0 -and $age -le $WindowSec) { return [int]$rec.count }
+            if (($rec.PSObject.Properties.Name -contains 'count') -and ($rec.PSObject.Properties.Name -contains 'key') -and ([string]$rec.key -eq $Key)) {
+                return [int]$rec.count
             }
         }
     }
@@ -84,14 +82,21 @@ function Get-SpecrewBlockCount {
 }
 
 function Set-SpecrewBlockCount {
-    param([string]$Path, [int]$Count)
+    # Persist the count for $Key and VERIFY it landed (read-back). Returns $true only when the increment is durably
+    # readable - the caller blocks ONLY on $true, so a persistent / non-atomic write failure can never start an
+    # uncappable block loop on a host without a built-in cap (145 HANG-2 fail-open).
+    param([string]$Path, [string]$Key, [int]$Count)
     try {
         $dir = Split-Path -Parent $Path
         if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        ([pscustomobject]@{ count = $Count; last_block_epoch = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } | ConvertTo-Json -Compress) |
-            Set-Content -LiteralPath $Path -Encoding UTF8
+        ([pscustomobject]@{ key = $Key; count = $Count } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop
+        if (Test-Path -LiteralPath $Path -PathType Leaf) {
+            $back = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+            if (($back.PSObject.Properties.Name -contains 'count') -and ([int]$back.count -eq $Count) -and ($back.PSObject.Properties.Name -contains 'key') -and ([string]$back.key -eq $Key)) { return $true }
+        }
     }
     catch { $null = $_ }
+    return $false
 }
 
 function Reset-SpecrewBlockCount {
@@ -191,7 +196,13 @@ try {
     # boundary was already crossed, so we are inherently PAST intake. The SUBSTANTIAL non-boundary trigger is gated on
     # a spec existing ($anySpec = past intake), which excludes the pre-spec design-workshop window; the design-analysis
     # lens workshop AFTER spec.md is a documented residual (dogfood-tunable).
-    $blockWarranted = (-not $packetPresent) -and ($hasPending -or ($anySpec -and $substantial))
+    # FIX C (145 F1-CC-FAIL-CLOSED): only block when we ACTUALLY READ the last assistant message - we cannot claim
+    # "the packet is absent" without reading it. If ConversationCaptureAccessor did not load (stale install) or there
+    # is no transcript, $lastAssistantText is null -> do NOT block (fail-open, matching the Get-SpecrewPendingVerdictState
+    # fail-open; never block a correctly-rendered packet we simply could not see, and never go fail-CLOSED on a missing
+    # component). This is the same failure-class -> same direction (allow) as the boundary-trigger load failure above.
+    $canAssess = -not [string]::IsNullOrWhiteSpace($lastAssistantText)
+    $blockWarranted = $canAssess -and (-not $packetPresent) -and ($hasPending -or ($anySpec -and $substantial))
 
     # Boundary false-positive guard: at a boundary, a captured packet whose ToBoundary matches the working boundary
     # is a legitimate awaiting-verdict stop (the agent surfaced THIS crossing) -> no block (145 TI-2/F1). (The
@@ -214,15 +225,21 @@ try {
     $blockReason = $null
     $corrections = New-Object System.Collections.Generic.List[string]
     $capped = $false
+    # The advance identity the consecutive-block cap keys on: a boundary advance is working|lastAuth; a non-boundary
+    # substantial stop is the constant 'substantial'. A NEW advance (different key) starts a fresh count; the agent
+    # rendering the packet (not blockWarranted) resets it. No time window (145 HANG-1).
+    $advanceKey = if ($hasPending) { ("{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary) } else { 'substantial' }
 
     if ($blockWarranted) {
-        $count = Get-SpecrewBlockCount -Path $blockStatePath -WindowSec $script:SpecrewBlockWindowSec
+        $count = Get-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey
         if ($count -ge $script:SpecrewBlockCap) {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
             [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP packet still absent after {0} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $count))
         }
-        else {
+        elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
+            # Block ONLY when the increment durably persisted (145 HANG-2): a host without a built-in cap relies on
+            # this counter, so an unverifiable write must NOT start an uncappable loop.
             # Build the packet directive. At a boundary, include the CONTIGUOUS last_authorized -> successor marker.
             $sb = New-Object System.Text.StringBuilder
             [void]$sb.AppendLine('Specrew: you ended the turn without the six-section re-entry packet, so the human cannot see the situation or what they need to do. Render it NOW as your message, then stop again:')
@@ -256,7 +273,11 @@ try {
             if ($intakeHit) { [void]$sb.AppendLine('Also: an active feature already exists - do NOT ask what to build; continue it.') }
             if ($rawHit) { [void]$sb.AppendLine('Also: do NOT run the raw `specify workflow` SDD engine - route through the governed Specrew flow.') }
             $blockReason = $sb.ToString().TrimEnd()
-            Set-SpecrewBlockCount -Path $blockStatePath -Count ($count + 1)
+        }
+        else {
+            # The counter increment could not be persisted/verified -> the cap cannot be guaranteed on a capless
+            # host -> do NOT block (fail-open, 145 HANG-2). A hang with no diagnostic is the worst outcome, so WARN.
+            [Console]::Error.WriteLine('[specrew-conformance] WARN STOP_BLOCK_COUNTER_UNWRITABLE cannot persist the loop-guard counter; releasing the stop (no block) to stay fail-open.')
         }
     }
     else {

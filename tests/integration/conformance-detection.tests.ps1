@@ -235,6 +235,36 @@ try {
     if ($r12.Blocked) { Fail "Case 12: enforcement disabled MUST NOT block. Out: $($r12.Out)" }
     Write-Pass "Case 12: enforcement disabled does NOT block (no fabricated state; fail-open)"
 
+    # ---- Case 13 (145 HANG-1): the consecutive-block count is keyed by the ADVANCE, with NO time window. A
+    #      pre-seeded count at the cap for this advance caps regardless of elapsed time (the old epoch window let a
+    #      >120s/turn loop reset to 0 forever and never cap -> an unbounded hang on a capless host).
+    $p13 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    $cf13 = Join-Path $p13 '.specrew\runtime\conformance-stop-block.json'
+    New-Item -ItemType Directory -Path (Split-Path $cf13) -Force | Out-Null
+    Set-Content -LiteralPath $cf13 -Value '{"key":"plan|clarify","count":3}' -Encoding UTF8
+    $t13 = New-Transcript -Proj $p13 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
+    $r13 = Invoke-Conformance -Proj $p13 -TranscriptPath $t13
+    if ($r13.Blocked) { Fail "Case 13: a count at the cap for this advance key MUST cap (count persists by advance, no time window). Out: $($r13.Out)" }
+    if ($r13.Out -notmatch 'RE-ENTRY PACKET still missing') { Fail "Case 13: at the cap, degrade to the plain nudge. Out: $($r13.Out)" }
+    Write-Pass "Case 13: the consecutive-block count is keyed by the advance (no time window) - a count at the cap releases regardless of elapsed time (145 HANG-1)"
+
+    # ---- Case 14 (145 HANG-2): an unpersistable counter degrades to NO block (fail-open). A directory placed at the
+    #      counter file path makes the verified write fail -> the provider must NOT start an uncappable loop on a capless host.
+    $p14 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-Item -ItemType Directory -Path (Join-Path $p14 '.specrew\runtime\conformance-stop-block.json') -Force | Out-Null
+    $t14 = New-Transcript -Proj $p14 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
+    $r14 = Invoke-Conformance -Proj $p14 -TranscriptPath $t14
+    if ($r14.Blocked) { Fail "Case 14: an unpersistable loop-guard counter MUST fail-open (no block) - a capless host could otherwise hang. Out: $($r14.Out)" }
+    Write-Pass "Case 14: an unwritable/unverifiable loop-guard counter degrades to NO block (fail-open) - never an uncappable loop (145 HANG-2)"
+
+    # ---- Case 15 (145 F1-CC-FAIL-CLOSED): an UNREADABLE last message (no transcript / ConversationCaptureAccessor
+    #      dark) degrades to NO block. We cannot claim the packet is absent without reading the message -> fail-OPEN,
+    #      matching the boundary-trigger load-failure direction (never fail-closed on a missing component).
+    $p15 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    $r15 = Invoke-Conformance -Proj $p15 -TranscriptPath $null
+    if ($r15.Blocked) { Fail "Case 15: with no readable last message the provider MUST NOT block (cannot claim the packet is absent; 145 F1-CC). Out: $($r15.Out)" }
+    Write-Pass "Case 15: an unreadable last message (no transcript / CC unresolved) degrades to NO block (fail-open, never fail-closed on a missing component; 145 F1-CC)"
+
     Write-Host "`n=== conformance-detection.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }

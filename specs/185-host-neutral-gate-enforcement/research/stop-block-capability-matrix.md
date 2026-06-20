@@ -31,8 +31,10 @@ appended packet turn), which is the declared degraded mode.
   block works: Stop does NOT fire on an Esc-interrupted turn (issue #22858) and exec/headless hook-firing is
   historically flaky (memory) — so a real interactive-host validation is load-bearing before relying on it.
 - **Copilot** — block works, but the hook is **fail-open** (a non-zero exit / dispatcher crash lets the turn end
-  WITHOUT the packet) and has **no built-in loop guard** → best-effort, not bulletproof; Specrew must gate the
-  block on its own per-session state and cap repeats via the dispatcher circuit-breaker.
+  WITHOUT the packet) and has **no built-in loop guard** → best-effort, not bulletproof. The conformance
+  Stop-block sentinel is short-circuited in the dispatcher and **never reaches the refocus circuit-breaker** (145
+  HANG-3), so the **conformance provider's OWN consecutive-block counter is the SOLE loop guard** here — it must be
+  robust on its own (per-advance key, no time window, block only when the increment durably persists; 145 HANG-1/2).
 - **Antigravity** — soft block (`decision:"continue"`); the model can retry stopping next loop, and there is no
   built-in loop guard → Specrew must add once-per-stop dedupe.
 - **Cursor** — no hard block; `followup_message` best-effort, capped at `loop_limit` (default 5) after which the
