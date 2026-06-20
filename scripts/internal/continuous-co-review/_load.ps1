@@ -27,6 +27,7 @@ $proposal197ReviewerModules = @(
     'review-blackboard-writer.ps1'
     'inline-review-gate-evaluator.ps1'
     'review-run-index-writer.ps1'
+    'review-signoff-evidence-gate.ps1'
     'checkpoint-review-orchestrator.ps1'
 )
 
