@@ -2,12 +2,12 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 003
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
-**Last Completed Task**: T064 + comprehensive Proposal 145 review + fix pass + confirming re-review (both APPROVE) + authorship cleanup
-**Tasks Remaining**: (none — Phase A complete and adversarially validated; awaiting maintainer review-signoff verdict, then retro -> iteration-closeout)
-**In Progress**: review-signoff verdict (review.md prepared; full suite 176/0)
-**Updated**: 2026-06-20
+**Current Phase**: retro
+**Iteration Status**: retro
+**Last Completed Task**: review-signoff accepted (maintainer "continue", 2026-06-21)
+**Tasks Remaining**: (none — Phase A complete; retro recorded; iteration-closeout next, then Iteration 004 Phase B)
+**In Progress**: retro -> iteration-closeout
+**Updated**: 2026-06-21
 
 ## Re-architecture progress
 
