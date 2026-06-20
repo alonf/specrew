@@ -2,11 +2,11 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 003
-**Current Phase**: retro
-**Iteration Status**: retro
-**Last Completed Task**: review-signoff accepted (maintainer "continue", 2026-06-21)
-**Tasks Remaining**: (none — Phase A complete; retro recorded; iteration-closeout next, then Iteration 004 Phase B)
-**In Progress**: retro -> iteration-closeout
+**Current Phase**: complete
+**Iteration Status**: complete
+**Last Completed Task**: iteration-closeout (Phase A banked, 2026-06-21)
+**Tasks Remaining**: (none — Phase A closed; next is Iteration 004 Phase B, gated on F-185)
+**In Progress**: (none)
 **Updated**: 2026-06-21
 
 ## Re-architecture progress
