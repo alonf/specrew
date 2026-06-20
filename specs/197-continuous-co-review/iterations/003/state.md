@@ -4,9 +4,9 @@
 **Iteration**: 003
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T065 (content-addressed reviewed-state digest helper)
-**Tasks Remaining**: T066, T067, T068, T069, T059, T060, T062, T063, T064
-**In Progress**: T066 (reviewed_tree_id on the record + lineage/anchor resolver)
+**Last Completed Task**: T066 (reviewed_tree_id on the record + git-lineage/anchor resolver)
+**Tasks Remaining**: T067, T068, T069, T059, T060, T062, T063, T064
+**In Progress**: T067 (re-architected gate: tree-id freshness + chain-to-anchor + override)
 **Updated**: 2026-06-20
 
 ## Execution Summary

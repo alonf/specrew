@@ -65,7 +65,8 @@ function Invoke-ContinuousCoReviewCheckpointReview {
     # pass (the resolver returns only pass/escalated runs), so a missed or blocked
     # checkpoint keeps the baseline pinned and the next review re-covers that span.
     if ($RebaselineToLastPass) {
-        $lastPassingState = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $resolvedRepoRoot -Scope $Scope
+        # T066: identity is git lineage (reviewed_ref ancestor of HEAD), not a scope string.
+        $lastPassingState = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $resolvedRepoRoot -AncestorOfRef 'HEAD'
         if ($null -ne $lastPassingState -and -not [string]::IsNullOrWhiteSpace([string] $lastPassingState.reviewed_ref)) {
             $BaselineRef = [string] $lastPassingState.reviewed_ref
         }
