@@ -27,6 +27,9 @@ $script:SpecrewCodeConfirmationScopes = @{
 $script:SpecrewCodeCustomProvenance = @('free-text', 'pasted-doc', 'from-guideline', 'from-example-project')
 $script:SpecrewCodeDependencyStances = @('use-existing-no-new-dependency', 'approved-new-dependencies')
 $script:SpecrewCodeDependencyFields = @('name', 'version', 'license', 'source_org', 'canonical_url', 'maintenance_signal', 'security_advisory_status', 'compatibility', 'cost_or_quota', 'coupling_weight', 'replaceability', 'test_implications')
+$script:SpecrewCodeReviewerModes = @('human-selected', 'auto-select')
+$script:SpecrewCodeReviewerSources = @('code-implementation-workshop', 'auto-selection-fallback')
+$script:SpecrewCodeReviewerFields = @('mode', 'host', 'model', 'effort', 'source', 'authorization_ref', 'rationale')
 
 function Get-SpecrewCodeManifestPath {
     param([Parameter(Mandatory = $true)][string]$FeatureDir)
@@ -119,6 +122,17 @@ function ConvertTo-SpecrewImplementationRulesYaml {
         }
     }
 
+    $reviewer = Get-SpecrewCodeMember $Manifest 'reviewer_preference'
+    if ($null -ne $reviewer) {
+        [void]$sb.AppendLine('reviewer_preference:')
+        foreach ($f in $script:SpecrewCodeReviewerFields) {
+            $val = Get-SpecrewCodeMember $reviewer $f
+            if ($f -in @('mode', 'source') -or $null -ne $val) {
+                [void]$sb.AppendLine(('  {0}: {1}' -f $f, (ConvertTo-SpecrewCodeScalar $val)))
+            }
+        }
+    }
+
     $prov = Get-SpecrewCodeMember $Manifest 'provenance'
     [void]$sb.AppendLine('provenance:')
     [void]$sb.AppendLine(('  confirmation: {0}' -f (ConvertTo-SpecrewCodeScalar (Get-SpecrewCodeMember $prov 'confirmation'))))
@@ -167,6 +181,7 @@ function ConvertFrom-SpecrewImplementationRulesYaml {
     $customs = [System.Collections.Generic.List[object]]::new()
     $depSelected = [System.Collections.Generic.List[object]]::new()
     $dep = $null
+    $reviewer = $null
     $section = 'top'
     $cur = $null
 
@@ -179,6 +194,7 @@ function ConvertFrom-SpecrewImplementationRulesYaml {
                 'selections' { $section = 'selections'; $cur = $null; continue }
                 'custom_rules' { $section = 'customs'; $cur = $null; continue }
                 'dependency_policy' { $section = 'dep'; $dep = [ordered]@{}; $cur = $null; continue }
+                'reviewer_preference' { $section = 'reviewer'; $reviewer = [ordered]@{}; $cur = $null; continue }
                 'provenance' { $section = 'provenance'; $cur = $null; continue }
                 default { $section = 'top'; $rec[$k] = ConvertFrom-SpecrewCodeScalar -Raw $v; continue }
             }
@@ -207,6 +223,9 @@ function ConvertFrom-SpecrewImplementationRulesYaml {
             }
             if ($null -ne $cur -and $line -match '^\s{6}(?<k>[a-z_]+):\s*(?<v>.*)$') { $cur[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue }
         }
+        if ($section -eq 'reviewer' -and $line -match '^\s{2}(?<k>[a-z_]+):\s*(?<v>.*)$') {
+            $reviewer[$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue
+        }
         if ($section -eq 'provenance' -and $line -match '^\s{2}(?<k>[a-z_]+):\s*(?<v>.*)$') {
             $rec['provenance'][$Matches['k']] = ConvertFrom-SpecrewCodeScalar -Raw $Matches['v']; continue
         }
@@ -215,6 +234,7 @@ function ConvertFrom-SpecrewImplementationRulesYaml {
     $rec['selections'] = $selections.ToArray()
     $rec['custom_rules'] = $customs.ToArray()
     if ($null -ne $dep) { $dep['selected'] = $depSelected.ToArray(); $rec['dependency_policy'] = $dep }
+    if ($null -ne $reviewer) { $rec['reviewer_preference'] = $reviewer }
     return $rec
 }
 
@@ -253,6 +273,19 @@ function Format-SpecrewCodeImplementationMarkdown {
         foreach ($d in @(Get-SpecrewCodeMember $dep 'selected')) {
             if ($null -ne $d) { [void]$sb.AppendLine(('- {0} {1} ({2})' -f (Get-SpecrewCodeMember $d 'name'), (Get-SpecrewCodeMember $d 'version'), (Get-SpecrewCodeMember $d 'license'))) }
         }
+    }
+    $reviewer = Get-SpecrewCodeMember $Manifest 'reviewer_preference'
+    if ($null -ne $reviewer) {
+        [void]$sb.AppendLine('')
+        [void]$sb.AppendLine('## Continuous co-review preference')
+        [void]$sb.AppendLine('')
+        [void]$sb.AppendLine(('- **Mode**: {0}' -f (Get-SpecrewCodeMember $reviewer 'mode')))
+        [void]$sb.AppendLine(('- **Host**: {0}' -f (Get-SpecrewCodeMember $reviewer 'host')))
+        [void]$sb.AppendLine(('- **Model**: {0}' -f (Get-SpecrewCodeMember $reviewer 'model')))
+        [void]$sb.AppendLine(('- **Effort**: {0}' -f (Get-SpecrewCodeMember $reviewer 'effort')))
+        [void]$sb.AppendLine(('- **Source**: {0}' -f (Get-SpecrewCodeMember $reviewer 'source')))
+        $rationale = Get-SpecrewCodeMember $reviewer 'rationale'
+        if (-not [string]::IsNullOrWhiteSpace([string]$rationale)) { [void]$sb.AppendLine(('- **Rationale**: {0}' -f $rationale)) }
     }
     [void]$sb.AppendLine('')
     $prov = Get-SpecrewCodeMember $Manifest 'provenance'
@@ -381,6 +414,21 @@ function Test-SpecrewImplementationRulesManifest {
         if ($stance -notin $script:SpecrewCodeDependencyStances) { $errors.Add(("dependency_policy.stance must be one of {0} (got '{1}')." -f ($script:SpecrewCodeDependencyStances -join ' | '), $stance)) | Out-Null }
         foreach ($d in @(Get-SpecrewCodeMember $dep 'selected')) {
             if ($null -ne $d -and [string]::IsNullOrWhiteSpace([string](Get-SpecrewCodeMember $d 'name'))) { $errors.Add('a dependency_policy.selected entry is missing its name.') | Out-Null }
+        }
+    }
+
+    $reviewer = $rec['reviewer_preference']
+    if ($null -ne $reviewer) {
+        $mode = [string](Get-SpecrewCodeMember $reviewer 'mode')
+        if ($mode -notin $script:SpecrewCodeReviewerModes) {
+            $errors.Add(("reviewer_preference.mode must be one of {0} (got '{1}')." -f ($script:SpecrewCodeReviewerModes -join ' | '), $mode)) | Out-Null
+        }
+        $source = [string](Get-SpecrewCodeMember $reviewer 'source')
+        if ($source -notin $script:SpecrewCodeReviewerSources) {
+            $errors.Add(("reviewer_preference.source must be one of {0} (got '{1}')." -f ($script:SpecrewCodeReviewerSources -join ' | '), $source)) | Out-Null
+        }
+        if ($mode -eq 'human-selected' -and [string]::IsNullOrWhiteSpace([string](Get-SpecrewCodeMember $reviewer 'host'))) {
+            $errors.Add('reviewer_preference.host is required when mode is human-selected.') | Out-Null
         }
     }
 

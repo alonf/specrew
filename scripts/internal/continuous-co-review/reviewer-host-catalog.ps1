@@ -48,9 +48,9 @@ function New-ContinuousCoReviewDefaultReviewerHostConfig {
     )
 
     $hostRows = @(
-        @{ host = 'claude'; command = 'claude'; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 80 }
-        @{ host = 'codex'; command = 'codex'; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 75 }
-        @{ host = 'copilot'; command = 'copilot'; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 85 }
+        @{ host = 'claude'; command = 'claude'; model = 'opus-4.8-1m-context'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 85 }
+        @{ host = 'codex'; command = 'codex'; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85 }
+        @{ host = 'copilot'; command = 'copilot'; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80 }
         @{ host = 'cursor-agent'; command = 'cursor-agent'; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70 }
         @{ host = 'antigravity'; command = 'antigravity'; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65 }
     )

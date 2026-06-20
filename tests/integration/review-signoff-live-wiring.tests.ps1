@@ -79,6 +79,28 @@ foreach ($source in $sourcePairs) {
     Assert-Contains -Content $content -Pattern '(?s)\.specrew[\\/]+review[\\/]+inline[\\/]+<run-id>[\\/]+review-run\.json|\.specrew\\review\\inline\\<run-id>\\review-run\.json' -FailureMessage "$($source.Name) names review-run live evidence"
 }
 
+$codeLensPairs = @(
+    @{
+        Name = 'canonical code-implementation lens'
+        Path = Join-Path $repoRoot 'extensions\specrew-speckit\knowledge\design-lenses\code-implementation.md'
+    },
+    @{
+        Name = 'deployed code-implementation lens mirror'
+        Path = Join-Path $repoRoot '.specify\extensions\specrew-speckit\knowledge\design-lenses\code-implementation.md'
+    }
+)
+
+foreach ($source in $codeLensPairs) {
+    if (-not (Test-Path -LiteralPath $source.Path -PathType Leaf)) {
+        Write-Fail "$($source.Name) exists"
+        continue
+    }
+
+    $content = Get-Content -LiteralPath $source.Path -Raw -Encoding UTF8
+    Assert-Contains -Content $content -Pattern 'which continuous co-review harness and model should review the code' -FailureMessage "$($source.Name) asks for reviewer harness and model during the code lens"
+    Assert-Contains -Content $content -Pattern '(?s)auto-select.*Codex/ChatGPT.*Claude/Opus 4\.8 1M.*rank-85.*Copilot.*rank 80' -FailureMessage "$($source.Name) documents fallback auto-selection ranking"
+}
+
 if ($script:Failures -gt 0) {
     Write-Host "review-signoff live wiring tests: $script:Failures failure(s)" -ForegroundColor Red
     exit 1

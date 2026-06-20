@@ -51,6 +51,14 @@ Surfaced via the **grouping model** (see below); the catalog holds the full rule
   **"use existing project tools / no new dependency" first** plus options; for a chosen dependency capture
   version, license, source org, canonical URL, maintenance signal, security/advisory status,
   compatibility, cost/quota (if relevant), coupling weight, replaceability, and test implications.
+- **Continuous co-review harness/model/effort** — for code-writing features, ask which continuous co-review harness, model,
+  and optional effort setting should review the implementation (for example Codex + ChatGPT, Claude + Opus 4.8 1M context, or Copilot
+  on a strong model). If the human skips the workshop or does not choose a reviewer, Specrew auto-selects:
+  Codex + ChatGPT and Claude + Opus 4.8 1M context are peer top review classes; prefer Codex when Claude wrote
+  the code and prefer Claude when Codex wrote it; Copilot on a strong model ranks next; then other harnesses.
+  If only one harness is available, use that harness with its best authorized review model. Record the answer in
+  `reviewer_preference`; dynamic model/effort discovery is future capability-adapter work, so MVP values are
+  captured as explicit host-specific labels.
 
 ## Rule grouping and consumption model
 
@@ -97,6 +105,12 @@ The code rules are mostly **product-level and stable**:
   applicability-filtered only when context applies. Never a flat wall.
 - **Dependency selection**: default-first "use existing project tools / no new dependency"; capture the
   fields for any chosen dependency into the manifest `dependency_policy`.
+- **Reviewer selection**: before closing this lens, ask the human which continuous co-review harness and model should review the code,
+  and capture any requested host-specific effort level. Record a chosen reviewer in `reviewer_preference` for implementation/review; if they
+  explicitly skip or leave it undecided, record that Specrew will auto-select using the independent-reviewer
+  ranking policy (Codex/ChatGPT and Claude/Opus 4.8 1M as rank-85 peers, Copilot strong-model as rank 80,
+  other harnesses below, single available harness uses its best authorized model). Do not claim dynamic model/effort
+  discovery exists yet; for this MVP, record the selected labels exactly as the human gives them.
 - **Capture** the selections/decisions/custom-rules/dependency-policy into `implementation-rules.yml`
   (reference-by-ID) + the human-readable `workshop/code-implementation.md`; record the lens in
   `lens-applicability.json`.
@@ -110,6 +124,7 @@ The code rules are mostly **product-level and stable**:
 - Concurrency: locks or lock-free/immutable/channels? Copy semantics? Error-handling style?
 - Protocol / pagination / cache / messaging posture? Testing/TDD posture?
 - Do repeated conditionals call for Strategy/State? Functional or inheritance polymorphism?
+- Which review harness and model should review the code, or should Specrew auto-select if no choice is made?
 - May this feature add a dependency — or can existing project tools do it? If new: version, license,
   source, maintenance, security advisories, compatibility, coupling, replaceability, test impact?
 
@@ -142,6 +157,8 @@ The code rules are mostly **product-level and stable**:
 - `specs/<feature>/implementation-rules.yml` — the per-feature manifest (reference-by-ID).
 - `specs/<feature>/workshop/code-implementation.md` — the human-readable lens record.
 - `code-rules.local.yml` (project root, optional) — the reusable overlay (ingested guideline + custom rules).
+- `reviewer_preference` in the workshop record / implementation manifest — selected reviewer harness/model/effort
+  or explicit auto-selection fallback.
 
 ## Manifest shape (hand-authored example)
 
@@ -170,6 +187,14 @@ selections:
 custom_rules: []
 dependency_policy:
   stance: "use-existing-no-new-dependency"
+reviewer_preference:
+  mode: "human-selected"
+  host: "codex"
+  model: "chatgpt"
+  effort: "max"
+  source: "code-implementation-workshop"
+  authorization_ref: null
+  rationale: "Code author is Claude, so Codex gives an independent strong review."
 provenance:
   confirmation: "human-confirmed"
   confirmation_scope: "lens-question"

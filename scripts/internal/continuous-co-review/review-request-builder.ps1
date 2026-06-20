@@ -41,10 +41,24 @@ function Copy-ContinuousCoReviewProviderRequest {
     else {
         'none'
     }
+    $codeWriterHost = if (Test-ReviewerContractPropertyExists -Object $ProviderRequest -Name 'code_writer_host') {
+        Get-ReviewerContractPropertyValue -Object $ProviderRequest -Name 'code_writer_host'
+    }
+    else {
+        $null
+    }
+    $requestedEffort = if (Test-ReviewerContractPropertyExists -Object $ProviderRequest -Name 'requested_effort') {
+        Get-ReviewerContractPropertyValue -Object $ProviderRequest -Name 'requested_effort'
+    }
+    else {
+        $null
+    }
 
     return [pscustomobject][ordered]@{
         requested_host    = Get-ReviewerContractPropertyValue -Object $ProviderRequest -Name 'requested_host'
         requested_model   = Get-ReviewerContractPropertyValue -Object $ProviderRequest -Name 'requested_model'
+        requested_effort  = if ([string]::IsNullOrWhiteSpace([string]$requestedEffort)) { $null } else { [string]$requestedEffort }
+        code_writer_host  = if ([string]::IsNullOrWhiteSpace([string]$codeWriterHost)) { $null } else { [string]$codeWriterHost }
         authorization_ref = Get-ReviewerContractPropertyValue -Object $ProviderRequest -Name 'authorization_ref'
         timeout_seconds   = [int] (Get-ReviewerContractPropertyValue -Object $ProviderRequest -Name 'timeout_seconds')
         fallback_policy   = $fallbackPolicy

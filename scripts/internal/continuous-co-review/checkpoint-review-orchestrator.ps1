@@ -91,10 +91,11 @@ function Invoke-ContinuousCoReviewCheckpointReview {
     }
     $requestedHost = Get-ContinuousCoReviewCatalogValue -Object $ProviderRequest -Name 'requested_host'
     $requestedModel = Get-ContinuousCoReviewCatalogValue -Object $ProviderRequest -Name 'requested_model'
+    $codeWriterHost = Get-ContinuousCoReviewCatalogValue -Object $ProviderRequest -Name 'code_writer_host'
     $capability = Get-ContinuousCoReviewReviewerModelCapability -Catalog $resolvedCatalog -RequestedHost $requestedHost -RequestedModel $requestedModel
     $resolvedCandidates = @($Candidates)
     if (@($resolvedCandidates).Count -eq 0) {
-        $primaryCandidate = Select-ContinuousCoReviewReviewerCandidate -Catalog $resolvedCatalog -RequestedHost $requestedHost -RequestedModel $requestedModel
+        $primaryCandidate = Select-ContinuousCoReviewReviewerCandidate -Catalog $resolvedCatalog -RequestedHost $requestedHost -RequestedModel $requestedModel -CodeWriterHost $codeWriterHost
         if ($null -ne $primaryCandidate) {
             $resolvedCandidates += $primaryCandidate
         }

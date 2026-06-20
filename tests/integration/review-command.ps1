@@ -141,7 +141,7 @@ if ($helpResult.ExitCode -ne 0) {
 }
 
 $helpOutput = $helpResult.Output -join "`n"
-foreach ($pattern in @('specrew review', '--project-path', '--iteration', '--quiet', '--json', '--open')) {
+foreach ($pattern in @('specrew review', '--project-path', '--iteration', '--quiet', '--json', '--open', '--effort')) {
     if (-not (Assert-Contains -Content $helpOutput -Pattern $pattern -FailureMessage ("Help output is missing '{0}'." -f $pattern))) {
         exit 1
     }
@@ -215,6 +215,8 @@ $liveResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'review', '--project-path', $liveProjectRoot,
     '--live', '--baseline-ref', $baselineRef,
     '--host', 'fixture',
+    '--effort', 'max',
+    '--code-writer-host', 'claude',
     '--run-id', $liveRunId,
     '--checkpoint-id', 'test-live-fixture-review',
     '--design-context-ref', 'specs\001-live\spec.md',
@@ -238,6 +240,15 @@ foreach ($artifact in @('review-request.json', 'spawn-invocation.json', 'finding
         Write-Fail "Live review did not write evidence artifact: $artifact"
         exit 1
     }
+}
+$liveReviewRequest = Get-Content -LiteralPath (Join-Path $liveEvidenceRoot 'review-request.json') -Raw | ConvertFrom-Json
+if ($liveReviewRequest.provider_request.code_writer_host -ne 'claude') {
+    Write-Fail 'Live fixture mode did not persist code_writer_host in review-request.json'
+    exit 1
+}
+if ($liveReviewRequest.provider_request.requested_effort -ne 'max') {
+    Write-Fail 'Live fixture mode did not persist requested_effort in review-request.json'
+    exit 1
 }
 Write-Pass 'Live fixture mode writes continuous co-review inline evidence'
 

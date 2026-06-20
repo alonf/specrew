@@ -12,6 +12,9 @@ function Select-ContinuousCoReviewReviewerCandidate {
         [AllowNull()]
         [string] $RequestedModel,
 
+        [AllowNull()]
+        [string] $CodeWriterHost,
+
         [switch] $FallbackOnly
     )
 
@@ -43,9 +46,30 @@ function Select-ContinuousCoReviewReviewerCandidate {
         }
     )
 
-    $selection = @($eligible | Sort-Object -Property @{ Expression = 'review_class_rank'; Descending = $true }, @{ Expression = 'host'; Descending = $false } | Select-Object -First 1)
+    $preferredReviewerHost = switch -Regex ([string]$CodeWriterHost) {
+        '^claude$' { 'codex'; break }
+        '^codex$' { 'claude'; break }
+        default { $null }
+    }
+
+    $rankedEligible = @($eligible | Sort-Object -Property @{ Expression = 'review_class_rank'; Descending = $true }, @{ Expression = 'host'; Descending = $false })
+    $selection = if ([string]::IsNullOrWhiteSpace($RequestedHost) -and -not [string]::IsNullOrWhiteSpace($preferredReviewerHost)) {
+        @($rankedEligible | Where-Object { $_.host -eq $preferredReviewerHost } | Select-Object -First 1)
+    }
+    else {
+        @()
+    }
+
+    if (@($selection).Count -eq 0) {
+        $selection = @($rankedEligible | Select-Object -First 1)
+    }
+
     if (@($selection).Count -eq 0) {
         return $null
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($preferredReviewerHost) -and $selection[0].host -eq $preferredReviewerHost) {
+        $selection[0].selection_reason = 'preferred-independent-reviewer-for-code-writer-host'
     }
 
     return $selection[0]

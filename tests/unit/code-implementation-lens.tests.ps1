@@ -63,7 +63,8 @@ function New-TempManifestDir {
     return $d
 }
 
-# Round-trip: emit -> read -> fields preserved (including nested dependency_policy + enforcement list).
+# Round-trip: emit -> read -> fields preserved (including nested dependency_policy,
+# reviewer_preference, and enforcement list).
 $manifest = [ordered]@{
     schema_version = '1.0'; context_scope = 'feature_standalone'; resolved_stack = 'csharp-dotnet'; product_id = $null; product_context_ref = $null
     selections     = @(
@@ -72,6 +73,15 @@ $manifest = [ordered]@{
     )
     custom_rules   = @( [ordered]@{ id = 'custom.no-static-singletons'; text = 'No static singletons'; provenance = 'from-example-project' } )
     dependency_policy = [ordered]@{ stance = 'approved-new-dependencies'; selected = @( [ordered]@{ name = 'Polly'; version = '8.x'; license = 'BSD-3-Clause'; coupling_weight = 'low'; replaceability = 'high' } ) }
+    reviewer_preference = [ordered]@{
+        mode = 'human-selected'
+        host = 'codex'
+        model = 'chatgpt'
+        effort = 'max'
+        source = 'code-implementation-workshop'
+        authorization_ref = 'decision-2026-06-20-reviewer'
+        rationale = 'Code author was Claude, so Codex gives an independent strong review.'
+    }
     provenance     = [ordered]@{ confirmation = 'human-confirmed'; confirmation_scope = 'lens-question' }
 }
 $yaml = ConvertTo-SpecrewImplementationRulesYaml -Manifest $manifest
@@ -79,6 +89,8 @@ $back = ConvertFrom-SpecrewImplementationRulesYaml -Text $yaml
 Assert-True (@($back.selections).Count -eq 2) 'T008: round-trip preserves selections'
 Assert-True ((@($back.selections[1].enforcement) -join '+') -eq 'plan+review') 'T008: round-trip preserves the enforcement inline list'
 Assert-True (@($back.dependency_policy.selected).Count -eq 1 -and $back.dependency_policy.selected[0].name -eq 'Polly') 'T008: round-trip preserves dependency_policy.selected'
+Assert-True ($back.reviewer_preference.host -eq 'codex' -and $back.reviewer_preference.model -eq 'chatgpt' -and $back.reviewer_preference.effort -eq 'max') 'T008: round-trip preserves reviewer_preference host/model/effort'
+Assert-True ($back.reviewer_preference.source -eq 'code-implementation-workshop' -and $back.reviewer_preference.authorization_ref -eq 'decision-2026-06-20-reviewer') 'T008: round-trip preserves reviewer_preference source/authorization'
 Assert-True ($back.custom_rules[0].provenance -eq 'from-example-project') 'T008: round-trip preserves from-example-project provenance'
 
 # Regression (F-177 deployed-module dogfood): a SINGLE-element enforcement list must round-trip as an
@@ -107,6 +119,8 @@ try {
     New-SpecrewImplementationRulesManifest -FeatureDir $pd -Manifest $manifest | Out-Null
     Assert-True (Test-Path -LiteralPath (Join-Path $pd 'implementation-rules.yml')) 'T008: writer persists implementation-rules.yml'
     Assert-True (Test-Path -LiteralPath (Join-Path $pd 'workshop\code-implementation.md')) 'T008: writer persists the human-readable record'
+    $recordRaw = Get-Content -LiteralPath (Join-Path $pd 'workshop\code-implementation.md') -Raw -Encoding UTF8
+    Assert-True ($recordRaw -match 'Continuous co-review preference' -and $recordRaw -match 'Codex|codex') 'T008: human-readable record includes reviewer preference'
     $errs = @(Test-SpecrewImplementationRulesManifest -Path (Join-Path $pd 'implementation-rules.yml') -SchemaPath $schemaPath -CatalogPath $catalogPath)
     Assert-True ($errs.Count -eq 0) "T008: a valid manifest passes validation (errors: $($errs -join '; '))"
 }
@@ -121,6 +135,21 @@ try {
     Assert-True ($errs.Count -ge 1 -and ($errs -join ' ') -match 'unknown rule id') 'T008: an unknown selection id fails validation'
 }
 finally { Remove-Item -LiteralPath $nd -Recurse -Force -ErrorAction SilentlyContinue }
+
+# Negative: a human-selected reviewer preference must name the host.
+$rd = New-TempManifestDir
+try {
+    $badReviewer = [ordered]@{
+        schema_version = '1.0'; context_scope = 'feature_standalone'; resolved_stack = 'go'
+        selections = @(); custom_rules = @()
+        reviewer_preference = [ordered]@{ mode = 'human-selected'; source = 'code-implementation-workshop'; model = 'chatgpt' }
+        provenance = [ordered]@{ confirmation = 'human-confirmed'; confirmation_scope = 'lens-question' }
+    }
+    New-SpecrewImplementationRulesManifest -FeatureDir $rd -Manifest $badReviewer | Out-Null
+    $errs = @(Test-SpecrewImplementationRulesManifest -Path (Join-Path $rd 'implementation-rules.yml') -SchemaPath $schemaPath -CatalogPath $catalogPath)
+    Assert-True (($errs -join ' ') -match 'reviewer_preference.host is required') 'T008: a human-selected reviewer without a host fails validation'
+}
+finally { Remove-Item -LiteralPath $rd -Recurse -Force -ErrorAction SilentlyContinue }
 
 # Negative: bad provenance pairing -> failure.
 $pp = New-TempManifestDir

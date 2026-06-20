@@ -119,6 +119,8 @@
       "properties": {
         "requested_host": { "type": ["string", "null"] },
         "requested_model": { "type": ["string", "null"] },
+        "requested_effort": { "type": ["string", "null"] },
+        "code_writer_host": { "type": ["string", "null"] },
         "authorization_ref": { "type": ["string", "null"] },
         "timeout_seconds": { "type": "integer", "minimum": 1 },
         "fallback_policy": { "enum": ["none", "one-authorized-availability-fallback"] }

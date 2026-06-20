@@ -19,6 +19,8 @@ param(
     [string]$Model,
     [Alias('authorization-ref')]
     [string]$AuthorizationRef,
+    [Alias('code-writer-host')]
+    [string]$CodeWriterHost,
     [Alias('fallback-policy')]
     [string]$FallbackPolicy,
     [Alias('reviewer-config')]
@@ -66,7 +68,8 @@ specrew review - run live continuous co-review or replay persisted reviewer evid
 Usage:
   specrew review [<iteration>] [--project-path <path>] [--feature <id>] [--quiet | --json] [--open]
   specrew review --live --baseline-ref <ref> [--checkpoint-id <id>] [--run-id <id>]
-                 [--host <host>] [--model <model>] [--authorization-ref <ref>]
+                 [--host <host>] [--model <model>] [--effort <effort>] [--authorization-ref <ref>]
+                 [--code-writer-host <host>]
                  [--design-context-ref <path>] [--allowed-path <path>] [--forbidden-path <path>]
                  [--exclude-path <pattern>] [--reviewer-config <path>] [--schema-root <path>]
                  [--run-root <path>] [--timeout-seconds <seconds>] [--quiet | --json]
@@ -81,7 +84,9 @@ Options:
   --run-id <id>          Stable run id for live evidence (default: run-<checkpoint-id>)
   --host <host>          Requested reviewer host, such as claude, codex, copilot, cursor-agent, or antigravity
   --model <model>        Requested reviewer model id for the host
+  --effort <effort>      Optional host-specific reviewer reasoning/effort setting to persist in evidence
   --authorization-ref    Human-approved authorization reference for the requested reviewer
+  --code-writer-host     Host that produced the implementation, used to prefer an independent reviewer
   --design-context-ref   Design/spec artifact to include in the request bundle; repeatable
   --allowed-path         Path scope the reviewer may inspect; repeatable
   --forbidden-path       Path scope the reviewer must not inspect; repeatable
@@ -124,7 +129,9 @@ function Convert-UnixStyleArguments {
         RunId           = $null
         Host            = $null
         Model           = $null
+        Effort          = $null
         AuthorizationRef = $null
+        CodeWriterHost  = $null
         TimeoutSeconds  = 120
         FallbackPolicy  = 'none'
         ReviewerConfigPath = $null
@@ -141,7 +148,7 @@ function Convert-UnixStyleArguments {
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
-            '^--(?<name>baseline-ref|checkpoint-id|run-id|host|model|authorization-ref|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path)(?:=(?<value>.+))?$' {
+            '^--(?<name>baseline-ref|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path)(?:=(?<value>.+))?$' {
                 $name = $Matches['name']
                 $value = $Matches['value']
                 if ([string]::IsNullOrWhiteSpace($value)) {
@@ -156,7 +163,9 @@ function Convert-UnixStyleArguments {
                     'run-id' { $result.RunId = $value }
                     'host' { $result.Host = $value }
                     'model' { $result.Model = $value }
+                    'effort' { $result.Effort = $value }
                     'authorization-ref' { $result.AuthorizationRef = $value }
+                    'code-writer-host' { $result.CodeWriterHost = $value }
                     'fallback-policy' { $result.FallbackPolicy = $value }
                     'reviewer-config' { $result.ReviewerConfigPath = $value }
                     'schema-root' { $result.SchemaRoot = $value }
@@ -397,6 +406,8 @@ function Invoke-LiveReview {
     $providerRequest = [pscustomobject][ordered]@{
         requested_host    = if ([string]::IsNullOrWhiteSpace([string]$Arguments.Host)) { $null } else { [string]$Arguments.Host }
         requested_model   = if ([string]::IsNullOrWhiteSpace([string]$Arguments.Model)) { $null } else { [string]$Arguments.Model }
+        requested_effort  = if ([string]::IsNullOrWhiteSpace([string]$Arguments.Effort)) { $null } else { [string]$Arguments.Effort }
+        code_writer_host  = if ([string]::IsNullOrWhiteSpace([string]$Arguments.CodeWriterHost)) { $null } else { [string]$Arguments.CodeWriterHost }
         authorization_ref = if ([string]::IsNullOrWhiteSpace([string]$Arguments.AuthorizationRef)) { $null } else { [string]$Arguments.AuthorizationRef }
         timeout_seconds   = [int]$Arguments.TimeoutSeconds
         fallback_policy   = [string]$Arguments.FallbackPolicy
@@ -655,6 +666,7 @@ $boundHost = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHo
 if (-not [string]::IsNullOrWhiteSpace($boundHost)) { $parsedArgs.Host = $boundHost }
 if (-not [string]::IsNullOrWhiteSpace($Model)) { $parsedArgs.Model = $Model }
 if (-not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $parsedArgs.AuthorizationRef = $AuthorizationRef }
+if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $parsedArgs.CodeWriterHost = $CodeWriterHost }
 if (-not [string]::IsNullOrWhiteSpace($FallbackPolicy)) { $parsedArgs.FallbackPolicy = $FallbackPolicy }
 if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { $parsedArgs.ReviewerConfigPath = $ReviewerConfigPath }
 if (-not [string]::IsNullOrWhiteSpace($SchemaRoot)) { $parsedArgs.SchemaRoot = $SchemaRoot }

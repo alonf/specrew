@@ -70,6 +70,50 @@ Describe 'Proposal 197 T031 TG-011 reviewer host catalog obeys implementation-ru
         }
     }
 
+    function New-T031IndependentReviewerConfig {
+        return [pscustomobject][ordered]@{
+            schema_version = '1.0'
+            hosts          = @(
+                [pscustomobject][ordered]@{
+                    host              = 'claude'
+                    model             = 'opus-4.8-1m-context'
+                    adapter_id        = 'reviewer-host-adapter-claude-prompt'
+                    allowed           = $true
+                    installed         = $true
+                    review_class_rank = 85
+                    model_source      = 'explicit-config'
+                    cost_class        = 'default'
+                    authorization_ref = 'authz-claude-reviewer'
+                    fallback_allowed  = $false
+                }
+                [pscustomobject][ordered]@{
+                    host              = 'codex'
+                    model             = 'chatgpt'
+                    adapter_id        = 'reviewer-host-adapter-codex-exec'
+                    allowed           = $true
+                    installed         = $true
+                    review_class_rank = 85
+                    model_source      = 'explicit-config'
+                    cost_class        = 'default'
+                    authorization_ref = 'authz-codex-reviewer'
+                    fallback_allowed  = $false
+                }
+                [pscustomobject][ordered]@{
+                    host              = 'copilot'
+                    model             = 'gpt-5.5-or-claude-4.8'
+                    adapter_id        = 'reviewer-host-adapter-copilot-prompt'
+                    allowed           = $true
+                    installed         = $true
+                    review_class_rank = 80
+                    model_source      = 'explicit-config'
+                    cost_class        = 'default'
+                    authorization_ref = 'authz-copilot-reviewer'
+                    fallback_allowed  = $false
+                }
+            )
+        }
+    }
+
     It 'declares catalog, selection, and authorization commands before reviewer host execution' {
         Get-T031Command -Name 'Get-ContinuousCoReviewReviewerHostCatalog' | Should Not BeNullOrEmpty
         Get-T031Command -Name 'Select-ContinuousCoReviewReviewerCandidate' | Should Not BeNullOrEmpty
@@ -106,6 +150,24 @@ Describe 'Proposal 197 T031 TG-011 reviewer host catalog obeys implementation-ru
         $configuredFutureModel.model_source | Should Be 'human-entered'
     }
 
+    It 'ranks Codex plus ChatGPT and Claude plus Opus 4.8 1M as peer top reviewers above Copilot and other hosts' {
+        $command = Get-T031Command -Name 'Get-ContinuousCoReviewReviewerHostCatalog'
+        $catalog = & $command -Configuration $null -CommandResolver { param([string]$CommandName) return $true }
+        $byHost = @{}
+        foreach ($entry in @($catalog.hosts)) {
+            $byHost[$entry.host] = $entry
+        }
+
+        $byHost['codex'].review_class_rank | Should Be 85
+        $byHost['codex'].model | Should Be 'chatgpt'
+        $byHost['claude'].review_class_rank | Should Be 85
+        $byHost['claude'].model | Should Be 'opus-4.8-1m-context'
+        $byHost['copilot'].review_class_rank | Should Be 80
+        $byHost['copilot'].model | Should Be 'gpt-5.5-or-claude-4.8'
+        $byHost['cursor-agent'].review_class_rank | Should BeLessThan 80
+        $byHost['antigravity'].review_class_rank | Should BeLessThan 80
+    }
+
     It 'prefers the strongest available authorized review-class model without requiring cross-host review' {
         $catalogCommand = Get-T031Command -Name 'Get-ContinuousCoReviewReviewerHostCatalog'
         $selectCommand = Get-T031Command -Name 'Select-ContinuousCoReviewReviewerCandidate'
@@ -118,6 +180,48 @@ Describe 'Proposal 197 T031 TG-011 reviewer host catalog obeys implementation-ru
         $selection.adapter_id | Should Be 'reviewer-host-adapter-copilot-prompt'
         $selection.authorization_ref | Should Be 'authz-copilot-strong'
         $selection.selection_reason | Should Match 'review-class'
+    }
+
+    It 'prefers Codex review when Claude wrote the code' {
+        $catalogCommand = Get-T031Command -Name 'Get-ContinuousCoReviewReviewerHostCatalog'
+        $selectCommand = Get-T031Command -Name 'Select-ContinuousCoReviewReviewerCandidate'
+        $catalog = & $catalogCommand -Configuration (New-T031IndependentReviewerConfig)
+
+        $selection = & $selectCommand -Catalog $catalog -RequestedHost $null -RequestedModel $null -CodeWriterHost 'claude'
+
+        $selection.host | Should Be 'codex'
+        $selection.model | Should Be 'chatgpt'
+        $selection.selection_reason | Should Be 'preferred-independent-reviewer-for-code-writer-host'
+    }
+
+    It 'prefers Claude review when Codex wrote the code' {
+        $catalogCommand = Get-T031Command -Name 'Get-ContinuousCoReviewReviewerHostCatalog'
+        $selectCommand = Get-T031Command -Name 'Select-ContinuousCoReviewReviewerCandidate'
+        $catalog = & $catalogCommand -Configuration (New-T031IndependentReviewerConfig)
+
+        $selection = & $selectCommand -Catalog $catalog -RequestedHost $null -RequestedModel $null -CodeWriterHost 'codex'
+
+        $selection.host | Should Be 'claude'
+        $selection.model | Should Be 'opus-4.8-1m-context'
+        $selection.selection_reason | Should Be 'preferred-independent-reviewer-for-code-writer-host'
+    }
+
+    It 'uses the single available harness when no independent peer reviewer is eligible' {
+        $catalogCommand = Get-T031Command -Name 'Get-ContinuousCoReviewReviewerHostCatalog'
+        $selectCommand = Get-T031Command -Name 'Select-ContinuousCoReviewReviewerCandidate'
+        $configuration = New-T031IndependentReviewerConfig
+        foreach ($entry in @($configuration.hosts)) {
+            if ($entry.host -ne 'claude') {
+                $entry.allowed = $false
+            }
+        }
+        $catalog = & $catalogCommand -Configuration $configuration
+
+        $selection = & $selectCommand -Catalog $catalog -RequestedHost $null -RequestedModel $null -CodeWriterHost 'claude'
+
+        $selection.host | Should Be 'claude'
+        $selection.model | Should Be 'opus-4.8-1m-context'
+        $selection.selection_reason | Should Be 'highest-authorized-review-class-rank'
     }
 
     It 'requires explicit authorization before paid, external, non-default, or newly added reviewer spawning' {
