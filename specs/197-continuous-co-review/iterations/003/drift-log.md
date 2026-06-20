@@ -108,7 +108,7 @@
   iteration.
 - **Citation**: FR-024, FR-025, FR-027; Specrew iteration-scope discipline.
 - **Resolution strategy**: human-decision (process correction).
-- **Resolution**: review-signoff packet (`b14fb8fb`) reversed; review.md removed; state
+- **Resolution**: review-signoff packet (`71b0d19c`) reversed; review.md removed; state
   reset to executing. The gate re-architecture (D-197-I003-004) is completed within 003.
   Iteration 004 remains reserved for Phase B (Stop-hook). A capacity split is taken ONLY
   if the re-planned remaining work exceeds the 20 SP cap (the F-185-style split-guard).
