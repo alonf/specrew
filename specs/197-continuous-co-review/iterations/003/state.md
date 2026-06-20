@@ -4,9 +4,9 @@
 **Iteration**: 003
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T068 (producer auto-anchor + digest recording + configurable trunk)
-**Tasks Remaining**: T069, T059, T060, T062, T063, T064
-**In Progress**: T069 (retire the diff-hash freshness path; reviewable diff kept only for the reviewer bundle)
+**Last Completed Task**: T060 (gate-review dispatcher wired to the orchestrator)
+**Tasks Remaining**: T062, T063, T064
+**In Progress**: T062 (one-time navigator authorization + blocking-finding escalation)
 **Updated**: 2026-06-20
 
 ## Re-architecture progress
