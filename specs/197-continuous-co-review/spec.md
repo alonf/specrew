@@ -29,6 +29,11 @@ read-only rung 2b fresh-context reviewer."
   spine and repairs reviewer-definition correctness by making Specrew's
   canonical reviewer instructions, v2 request content, prompt injection,
   mutation guard, and SC-012 manual path explicit and testable.
+- **Always-on extension**: Iteration 003 makes co-review mandatory and automatic
+  at every implement checkpoint (the pair-programming navigator reviewing each
+  increment), enforced by a deterministic per-stop gate wired into the shared
+  boundary-advance surface under human-authorized F-184 coordination, instead of
+  a single signoff-time run.
 - **Non-goals**: Rung 1, PostToolUse hook triggers, Proposal 139 heavy
   foundation work, and edits to F-184-protected host-runtime/hook/provider/
   registry/refocus/shared governance surfaces are out of scope.
@@ -237,6 +242,70 @@ can request a structured findings response without writing to the source tree.
   conflict surface MAY be split into a preparatory sync task but MUST happen
   before reviewer-definition runtime work. Owner: Iteration Facilitator.
   Delivery: Iteration 002.
+- **FR-024**: Continuous co-review MUST run automatically at every implement
+  checkpoint ("stop"), reviewing the incremental change-set since the prior
+  checkpoint, so the navigator checks each increment as it is written rather than
+  only at review-signoff. This fulfills the FR-008 checkpoint-boundary trigger
+  intent and still MUST NOT use PostToolUse or file-edit hooks. Owner: Iteration
+  Facilitator. Delivery: Iteration 003.
+- **FR-025**: A deterministic gate floor MUST refuse review-signoff unless the
+  current state is co-reviewed: a co-review run with a pass or escalated verdict
+  MUST exist whose recorded `diff_hash`, recomputed from its `baseline_ref` to the
+  current working tree, still matches (proving the working tree has not drifted
+  since it passed). Missing evidence, a stale `diff_hash`, malformed durable state,
+  or an unresolved blocking verdict MUST block. Because the co-review baseline
+  advances only on a pass, this single current-state check transitively proves
+  every prior increment was reviewed without per-increment git-history
+  archaeology. The gate floor MUST be enforced at the non-protected boundary-sync
+  chokepoint (`Invoke-SpecrewBoundaryStateSync` in
+  `scripts/internal/sync-boundary-state.ps1`, which already hosts throw-to-refuse
+  gates). Owner: Reviewer. Delivery: Iteration 003.
+- **FR-026**: True per-stop always-on review MUST be triggered from the host
+  Stop/turn-boundary hook so the navigator reviews each completed increment (a
+  real checkpoint, routed through the FR-032 gate-review dispatcher — never on
+  every casual yield) and blocks on an unresolved blocking finding. Because the
+  hook surface is F-184-protected, this trigger MUST be wired under the
+  human-authorized F-184 coordination (2026-06-20) and MUST NOT regress existing
+  hook behavior. All five supported harnesses are expected to carry the Stop hook,
+  so the navigator is the primary path on every host; the FR-025 gate floor is a
+  universal defense-in-depth backstop for a missed, crashed, or degraded hook
+  fire, never a per-host hookless downgrade. Owner: Spec Steward. Delivery:
+  Iteration 003.
+- **FR-027**: The co-review baseline MUST rebaseline per checkpoint to the prior
+  checkpoint reference so each stop reviews only its incremental diff (the
+  pair-programming increment), not the whole iteration. Owner: Implementer.
+  Delivery: Iteration 003.
+- **FR-028**: The navigator reviewer MUST be authorized once per project through
+  explicit provider/model configuration and then run at every checkpoint without
+  per-run reauthorization, satisfying the cost-authorization rule (FR-016) via
+  one-time configuration rather than blocking each automatic run. Owner: Spec
+  Steward. Delivery: Iteration 003.
+- **FR-029**: A blocking finding at an implement checkpoint MUST stop advancement
+  and surface the human re-entry packet/escalation under the existing two-round
+  convergence cap (NFR-005), rather than allowing the next checkpoint to start.
+  Owner: Reviewer. Delivery: Iteration 003.
+- **FR-030**: The Stop-hook navigator MUST reuse Specrew's existing host-neutral
+  hook/runtime abstraction (host registry, host handlers, hook dispatcher) so all
+  five supported harnesses (Claude, Codex, Copilot, Cursor, Antigravity) are
+  covered through one seam without per-host conditionals. All five are expected to
+  expose the Stop hook through the abstraction; the FR-025 gate floor is retained
+  as a universal backstop for a missed or degraded hook fire, not as a per-host
+  hookless tier. Per-host Stop-hook behavior MUST be verified empirically rather
+  than trusted from stale host-capability comments. Owner: Architect. Delivery:
+  Iteration 003.
+- **FR-031**: Iteration 003 narrowly relaxes the FR-008 "no hook trigger"
+  constraint for the Stop/turn-boundary hook only (a checkpoint-boundary trigger),
+  which remains distinct from and MUST NOT introduce PostToolUse or per-file-edit
+  triggers. Owner: Spec Steward. Delivery: Iteration 003.
+- **FR-032**: The Stop-hook trigger MUST route through a single 197-owned
+  gate-review dispatcher invoked by one host-hook call. The dispatcher MUST
+  determine whether the stop is a real checkpoint and which gate it belongs to,
+  then dispatch only to a reviewer registered for that gate through a gate-keyed
+  registry. Iteration 003 registers exactly one reviewer (code review at implement
+  checkpoints); design-lens, plan, tasks, and spec gates remain unregistered
+  no-op extension points, and casual non-checkpoint stops MUST be no-ops. Adding a
+  future per-gate reviewer MUST be a registry entry, not a hook change. Owner:
+  Architect. Delivery: Iteration 003.
 
 ### Non-Functional Requirements
 
@@ -560,6 +629,28 @@ can request a structured findings response without writing to the source tree.
   the exact injected-prompt path.
 - Latest remote `main` synchronization before implementation.
 
+**In scope for Iteration 003 always-on per-checkpoint co-review**:
+
+- Automatic navigator co-review at every implement checkpoint with a per-stop
+  incremental baseline.
+- A deterministic per-checkpoint gate floor added to the non-protected
+  boundary-sync chokepoint, including a review-signoff backstop that blocks
+  signoff unless every increment carries passing or escalated co-review evidence.
+- A Stop/turn-boundary hook navigator wired through Specrew's existing
+  host-neutral hook/runtime abstraction (under authorized F-184 coordination) so
+  all five harnesses are covered through one seam as the primary path, with the
+  gate floor retained as a universal backstop for any missed hook fire.
+- A narrow FR-008 relaxation for the Stop hook only, never PostToolUse or
+  per-file-edit triggers.
+- A 197-owned gate-review dispatcher behind one host-hook call, with a gate-keyed
+  registry holding a single registrant (code review at implement) and unregistered
+  no-op slots for future per-gate reviewers (design-lens, plan, tasks, spec).
+- One-time per-project navigator authorization so automatic runs need no per-run
+  cost reauthorization.
+- Reuse of the existing rung 2b runtime spine, request/prompt/adapter, blackboard,
+  gate evaluator, and two-round convergence cap without reopening the
+  Iteration 001/002 spine.
+
 **Out of scope for Iteration 001**:
 
 - Proposal 197 rung 1 cross-host reviewer on Proposal 139 foundation.
@@ -660,6 +751,10 @@ can request a structured findings response without writing to the source tree.
   FR-020, FR-021, FR-022, FR-023, SEC-007, SEC-008, SEC-009, INT-010,
   INT-011, INT-012, INT-013, OBS-010, OBS-011, OBS-012, IMPL-008, IMPL-009,
   IMPL-010, IMPL-011, TG-013, TG-014, and SC-013 through SC-018.
+- **Iteration 003 always-on per-checkpoint co-review** maps to FR-024, FR-025,
+  FR-026, FR-027, FR-028, FR-029, FR-030, FR-031, FR-032, and SC-019 through
+  SC-023, and builds on the Iteration 001 gate (FR-006, FR-007) and
+  checkpoint-trigger (FR-008) seams.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -776,6 +871,23 @@ can request a structured findings response without writing to the source tree.
 - **SC-018**: SC-012 manual validation invokes the implemented
   orchestrator/prompt-composer path and fails documentation review if it uses a
   handwritten common prompt.
+- **SC-019**: With a design violation planted at an implement checkpoint, the
+  per-checkpoint gate blocks advancement to the next checkpoint in 100% of
+  validator runs until the finding is resolved or escalated.
+- **SC-020**: Each implement checkpoint produces co-review evidence keyed to that
+  checkpoint's baseline; advancing without fresh, baseline-matched evidence is
+  blocked in 100% of validator runs.
+- **SC-021**: A clean checkpoint (no unresolved blocking findings) advances after
+  recording pass evidence with exactly one navigator run per checkpoint, so
+  always-on review does not require human intervention on clean increments.
+- **SC-022**: The Stop-hook navigator fires through the shared host abstraction on
+  all five supported harnesses (Claude, Codex, Copilot, Cursor, Antigravity), and
+  the deterministic gate floor backstops any missed or degraded hook fire, proven
+  across all five harness adapters in 100% of cross-host fixture runs.
+- **SC-023**: The gate-review dispatcher spawns the code reviewer only at implement
+  checkpoints; a casual non-checkpoint stop and a stop at an unregistered gate
+  (e.g., plan) each produce zero navigator spawns in 100% of dispatcher fixture
+  runs.
 
 ## Assumptions
 
@@ -857,3 +969,8 @@ can request a structured findings response without writing to the source tree.
 - **Human Oversight Points**: Human approval is required before planning, before
   any protected-surface coordination, before changing the rung default, and before
   integrating with shared governance validators.
+- **Iteration 003 authorization (2026-06-20)**: The maintainer authorized
+  always-on per-checkpoint co-review and coordinated integration with the
+  F-184-protected shared boundary-advance surface, satisfying the
+  protected-surface and shared-governance human-oversight points for Iteration
+  003 scope and planning.

@@ -14,6 +14,7 @@
 
 - Iteration 001 spine slice estimate: **19.50 story points** after restoring the full five-adapter host-neutral floor and adding manual-validation enablers.
 - Iteration 002 reviewer-definition repair estimate: **8.00 story points**. Capacity status: **8.00/20 SP is within the configured Iteration 002 cap**.
+- Iteration 003 always-on Phase A estimate: **9.50 story points**. Capacity status: **9.50/20 SP is within the configured Iteration 003 cap**. The live Stop-hook trigger (Phase B) is deferred to Iteration 004.
 - Proposal-level planning range: **13-21 story points**.
 - Capacity status: **19.50/20 SP is within the configured Iteration 001 cap**. `T035`, `T036`, `T037`, and all five real headless adapters in `T042` are restored to Iteration 001. Any added rung 1 work, hook/PostToolUse trigger, Proposal 139 foundation work, Proposal 196 provenance/audit work, automated live cross-host CI implementation, new dependency, or protected-surface coordination is additional overcommit and must be deferred or re-approved.
 
@@ -181,6 +182,24 @@
 
 ---
 
+## Phase 8: Iteration 003 - Always-On Per-Checkpoint Co-Review (Phase A)
+
+**Purpose**: Add the 197-owned deterministic gate floor and the gate-keyed dispatcher so code co-review becomes mandatory at every implement checkpoint, without editing F-184 protected surfaces and without the live Stop-hook trigger (Phase B / Iteration 004).
+
+**Capacity**: **9.50/20 SP**. Status: OK. Deferral guidance: do not start the Stop-hook wiring, host-abstraction edits, FR-008 relaxation, or cross-host hook fixtures in this iteration; those are Iteration 004 (Phase B). `scripts/internal/sync-boundary-state.ps1` is the shared but non-protected boundary-sync engine and is NOT on the F-184 protected list.
+
+- [ ] T058 [owner: Implementer] [sp: 1.50] Rebaseline each co-review to the last passing reviewed point derived from existing `.specrew/review/inline` evidence (no separate ledger) and record `reviewed_ref` plus `diff_hash` in the run index so the baseline advances only on a pass, editing `scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1`, `scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1`, and `scripts/internal/continuous-co-review/review-run-index-writer.ps1`, with coverage under `tests/continuous-co-review/` (Trace: FR-027, IMPL-009, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T059 [owner: Architect] [sp: 2.50] Implement `scripts/internal/continuous-co-review/gate-review-dispatcher.ps1` and `scripts/internal/continuous-co-review/gate-review-registry.ps1` (registered in `_load.ps1`) with real-checkpoint-vs-casual-yield detection, gate detection, and a gate-keyed registry whose sole registrant is code review at implement; add `tests/continuous-co-review/` coverage proving zero navigator spawn on casual or unregistered stops (Trace: FR-032, SC-023, IMPL-004, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T060 [owner: Implementer] [sp: 1.00] Wire the dispatcher to `scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1` so a registered implement checkpoint reviews its incremental diff and writes durable evidence under `.specrew/review/inline/<run-id>/`, with `tests/continuous-co-review/` coverage (Trace: FR-024, INT-004, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T061 [owner: Reviewer] [sp: 2.00] Add a deterministic co-review evidence gate floor (throw-to-refuse) to `Invoke-SpecrewBoundaryStateSync` in `scripts/internal/sync-boundary-state.ps1` and its `extensions/specrew-speckit/scripts/sync-boundary-state.ps1` copy so review-signoff is refused unless a pass/escalated co-review run exists whose `diff_hash`, recomputed from its `baseline_ref` to the current working tree, still matches; missing, stale, malformed, or unresolved-blocking evidence blocks, with `tests/continuous-co-review/` coverage for a planted violation and missing/stale evidence (Trace: FR-025, SC-019, SC-020, NFR-001, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T062 [owner: Spec Steward] [sp: 1.25] Confirm one-time per-project navigator authorization for automatic runs in `scripts/internal/continuous-co-review/reviewer-authorization-gate.ps1` and wire blocking-finding escalation under the two-round cap in `scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1`, with `tests/continuous-co-review/` coverage (Trace: FR-028, FR-029, SC-021, NFR-005, SEC-004, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T063 [owner: Reviewer] [sp: 0.75] Add the delayed-stdin reviewer-spawn regression test under `tests/continuous-co-review/` proving the timeout bounds a stalled large-stdin child and no child process is orphaned (Trace: NFR-001, INT-004, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [ ] T064 [owner: Reviewer] [sp: 0.50] Run Iteration 003 Phase A closeout validation: dispatcher fixtures, gate-floor blocking, traceability, and the `tests/continuous-co-review/governance/protected-surface-guard.Tests.ps1` guard proving no F-184 protected-surface edits, recording results under `specs/197-continuous-co-review/iterations/003/` (Trace: FR-025, FR-032, SC-006, SC-019, SC-020, SC-023, TG-013; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+
+**Checkpoint**: Iteration 003 ships the deterministic always-on floor and gate-keyed dispatcher in 197-owned, non-protected code; the live Stop-hook navigator and cross-host proof remain Iteration 004 (Phase B).
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
@@ -192,6 +211,7 @@
 - **Phase 5 US3 (P3)**: Depends on Phase 2 plus US1/US2 contract, thread, and gate seams; all five phase-1 real adapters must prove valid result or deterministic infrastructure failure without live-host dependence in fixture tests.
 - **Phase 6 Polish**: Depends on selected story scope completion.
 - **Phase 7 Iteration 002 repair**: Depends on completed Iteration 001 and begins with latest remote `main` synchronization (`T051`) before runtime repair tasks.
+- **Phase 8 Iteration 003 Phase A**: Depends on the completed Iteration 001/002 spine; adds the per-checkpoint baseline (`T058`), gate-keyed dispatcher (`T059`-`T060`), non-protected gate floor (`T061`), authorization/escalation (`T062`), the owed spawn regression test (`T063`), and closeout validation (`T064`). The live Stop-hook trigger is deferred to Iteration 004 (Phase B).
 
 ### User Story Dependencies
 
@@ -285,6 +305,7 @@ T037 tests/continuous-co-review/unit/reviewer-host-adapter-antigravity-prompt.Te
 - **US3**: `T031`-`T043`; maps to FR-001, FR-008, FR-009, FR-010, FR-012, FR-013, FR-015, FR-016, SC-005, SC-006, SC-010, SC-011, SC-012.
 - **Cross-cutting / foundational / polish**: `T001`-`T011`, `T044`-`T050`; maps to FR-001, FR-002, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, INT-009, OBS-003, OPS-006, TG-005, TG-009, TG-011, TG-012, SC-001, SC-005, SC-006, SC-011, SC-012.
 - **Iteration 002 reviewer-definition repair**: `T051`-`T057`; maps to FR-017, FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, SEC-007, SEC-008, SEC-009, INT-010, INT-011, INT-012, INT-013, OBS-010, OBS-011, OBS-012, IMPL-008, IMPL-009, IMPL-010, IMPL-011, TG-013, TG-014, SC-006, SC-011, SC-013, SC-014, SC-015, SC-016, SC-017, SC-018.
+- **Iteration 003 always-on Phase A**: `T058`-`T064`; maps to FR-024, FR-025, FR-027, FR-028, FR-029, FR-032, NFR-001, NFR-005, SEC-004, IMPL-004, IMPL-009, SC-006, SC-019, SC-020, SC-021, SC-023, TG-013. Deferred to Iteration 004 (Phase B): FR-026, FR-030, FR-031, SC-022.
 
 ---
 
