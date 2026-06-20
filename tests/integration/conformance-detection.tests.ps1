@@ -50,6 +50,18 @@ function New-Spec {
     Set-Content -LiteralPath (Join-Path $dir 'spec.md') -Value "# Feature Specification: Host-Neutral Gate Enforcement`n`nThe authoritative contract for the active feature." -Encoding UTF8
 }
 
+function New-LensApplicability {
+    # Write a feature-level lens-applicability.json so Get-SpecrewWorkshopProgress sees the workshop state.
+    # $Done lenses get a moved_on flag (recorded done); selected minus done = remaining (>0 == workshop in progress).
+    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @())
+    $dir = Join-Path $Proj 'specs\050-host-neutral-gate'
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $workshop = [ordered]@{}
+    foreach ($d in $Done) { $workshop[$d] = [ordered]@{ moved_on = $true } }
+    $obj = [ordered]@{ workshop_intake = $true; confirmation_required = $true; selected = $Selected; workshop = $workshop }
+    Set-Content -LiteralPath (Join-Path $dir 'lens-applicability.json') -Value ($obj | ConvertTo-Json -Depth 6) -Encoding UTF8
+}
+
 function New-Transcript {
     param([string]$Proj, [object[]]$Turns)
     $dir = Join-Path $Proj '.specrew\runtime'
@@ -264,6 +276,45 @@ try {
     $r15 = Invoke-Conformance -Proj $p15 -TranscriptPath $null
     if ($r15.Blocked) { Fail "Case 15: with no readable last message the provider MUST NOT block (cannot claim the packet is absent; 145 F1-CC). Out: $($r15.Out)" }
     Write-Pass "Case 15: an unreadable last message (no transcript / CC unresolved) degrades to NO block (fail-open, never fail-closed on a missing component; 145 F1-CC)"
+
+    # ---- Case 16 (DOGFOOD BUG / FR-015 workshop exclusion): the lens workshop CONTINUES after spec.md is scaffolded.
+    #      A substantial lens question post-scaffold (spec exists + lens-applicability with lenses REMAINING) MUST NOT
+    #      block - the design workshop is the only exclusion. (The old pre-spec proxy false-blocked exactly this.)
+    $p16 = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16
+    New-LensApplicability -Proj $p16 -Selected @('product-domain','architecture-core','component-design','ui-ux','data-storage','integration-api','requirements-nfr','code-implementation','observability-resilience') -Done @()
+    $t16 = New-Transcript -Proj $p16 -Turns @(@{ role = 'assistant'; text = $longProse })
+    $r16 = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
+    if ($r16.Blocked) { Fail "Case 16: a substantial lens question DURING the workshop (spec scaffolded, lenses remaining) MUST NOT block - the workshop is the FR-015 exclusion. Out: $($r16.Out)" }
+    Write-Pass "Case 16: a substantial lens question post-scaffold (workshop in progress) does NOT block - robust workshop exclusion (dogfood bug / FR-015)"
+
+    # ---- Case 16b: the workshop exclusion overrides even the BOUNDARY trigger - a pending verdict during the
+    #      workshop still must not block (lens questions are not boundary stops).
+    $p16b = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-Spec -Proj $p16b
+    New-LensApplicability -Proj $p16b -Selected @('product-domain','architecture-core','data-storage') -Done @()
+    $t16b = New-Transcript -Proj $p16b -Turns @(@{ role = 'assistant'; text = 'Lens 1 of 3: product domain. Who are the users?' })
+    $r16b = Invoke-Conformance -Proj $p16b -TranscriptPath $t16b
+    if ($r16b.Blocked) { Fail "Case 16b: a pending verdict DURING the workshop must still be suppressed (the workshop exclusion overrides the boundary trigger). Out: $($r16b.Out)" }
+    Write-Pass "Case 16b: the workshop exclusion overrides the boundary trigger - no block during the lens workshop even with a pending verdict"
+
+    # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) -> the exclusion CLEARS, and a real
+    #      boundary stop blocks again. Proves the exclusion is scoped to the in-progress workshop, not "forever after a spec".
+    $p17 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-Spec -Proj $p17
+    New-LensApplicability -Proj $p17 -Selected @('product-domain','data-storage') -Done @('product-domain','data-storage')
+    $t17 = New-Transcript -Proj $p17 -Turns @(@{ role = 'assistant'; text = 'spec.md written; plan.md drafted.' })
+    $r17 = Invoke-Conformance -Proj $p17 -TranscriptPath $t17
+    if (-not $r17.Blocked) { Fail "Case 17: with the workshop COMPLETE (remaining=0), a real boundary silent-advance MUST block again - the exclusion clears. Out: $($r17.Out)" }
+    Write-Pass "Case 17: the workshop exclusion CLEARS when all lenses are done (remaining=0) - a real boundary then blocks (exclusion scoped to the in-progress workshop)"
+
+    # ---- Case 18 (#3 negation guard): the contract's OWN prohibition prose ('do NOT run the raw `specify.exe
+    #      workflow`') must NOT fire the #3 redirect (no spec, no pending -> only #3 could fire).
+    $p18 = New-Fixture -Working 'plan' -LastAuth 'plan'
+    $t18 = New-Transcript -Proj $p18 -Turns @(@{ role = 'assistant'; text = 'Per the contract, I will do NOT run the raw `specify.exe workflow` automation - I will use the governed flow.' })
+    $r18 = Invoke-Conformance -Proj $p18 -TranscriptPath $t18
+    if ($r18.Out -match 'RAW SPEC KIT') { Fail "Case 18: the contract's prohibition prose ('do NOT run the raw `specify.exe workflow`') MUST NOT fire #3 (negation guard). Out: $($r18.Out)" }
+    Write-Pass "Case 18: the contract's own 'do NOT run the raw specify.exe workflow' prohibition prose does NOT false-fire #3 (negation guard; dogfood)"
 
     Write-Host "`n=== conformance-detection.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0

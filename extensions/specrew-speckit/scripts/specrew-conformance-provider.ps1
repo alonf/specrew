@@ -105,6 +105,52 @@ function Reset-SpecrewBlockCount {
     catch { $null = $_ }
 }
 
+function Resolve-SpecrewBootstrapDir {
+    # The scripts/internal/bootstrap dir (ConversationCaptureAccessor + ProjectMetadataAccessor). Direct candidates
+    # (project tree, then SPECREW_MODULE_PATH) FIRST; the Get-Module -ListAvailable scan (slow over OneDrive /
+    # multi-version) runs ONLY if they miss. $null if none resolves.
+    param([string]$ProjectRoot)
+    foreach ($base in @($ProjectRoot, $env:SPECREW_MODULE_PATH)) {
+        if ([string]::IsNullOrWhiteSpace($base)) { continue }
+        $bd = Join-Path $base 'scripts/internal/bootstrap'
+        if (Test-Path -LiteralPath (Join-Path $bd 'ConversationCaptureAccessor.ps1') -PathType Leaf) { return $bd }
+    }
+    try {
+        $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1') } | Select-Object -First 1
+        if ($mod) { return (Join-Path $mod.ModuleBase 'scripts/internal/bootstrap') }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Test-SpecrewWorkshopInProgress {
+    # FR-015: the design workshop's per-lens questions are the ONLY exclusion from the every-stop packet rule. The
+    # lens workshop CONTINUES after create-new-feature.ps1 scaffolds spec.md, so a pre-spec proxy is WRONG (the
+    # dogfood false-blocked a lens question once spec.md existed). REUSE the canonical Get-SpecrewWorkshopProgress
+    # (lens-applicability.json `selected` + workshop/*.md done records): a feature with a confirmed lens agenda
+    # (has_applicability) and lenses still REMAINING is mid-workshop. Returns $true ONLY on a positive, readable
+    # detection (a real workshop state); any miss / read error -> $false (a missing signal does not fabricate a
+    # workshop, so a genuine boundary still enforces). FR-008 reuse - not a parallel workshop-state inference.
+    param([string]$ProjectRoot, [AllowNull()][string]$BootstrapDir)
+    try {
+        if ([string]::IsNullOrWhiteSpace($BootstrapDir)) { return $false }
+        $pma = Join-Path $BootstrapDir 'ProjectMetadataAccessor.ps1'
+        if (-not (Test-Path -LiteralPath $pma -PathType Leaf)) { return $false }
+        try { . $pma } catch { return $false }
+        if (-not (Get-Command Get-SpecrewWorkshopProgress -ErrorAction SilentlyContinue)) { return $false }
+        $specsDir = Join-Path $ProjectRoot 'specs'
+        if (-not (Test-Path -LiteralPath $specsDir -PathType Container)) { return $false }
+        foreach ($d in (Get-ChildItem -LiteralPath $specsDir -Directory -ErrorAction Stop)) {
+            $wp = $null
+            try { $wp = Get-SpecrewWorkshopProgress -ProjectRoot $ProjectRoot -FeatureRef $d.Name } catch { $wp = $null }
+            if ($null -ne $wp -and [bool]$wp.has_applicability -and (@($wp.remaining).Count -gt 0)) { return $true }
+        }
+    }
+    catch { $null = $_ }
+    return $false
+}
+
 # --- manual $args parse (the double-dash contract; B1 - NO param()) ---
 $hostKindArg = $null
 $sourceEventArg = $null
@@ -140,8 +186,7 @@ try {
     }
     $hasPending = ($null -ne $pending -and [bool]$pending.HasPendingVerdict)
 
-    # Any feature spec on disk (cheap dir check) -> PAST intake; the substantial + #1 triggers need this. The
-    # pre-spec window (no spec) is the design-workshop exclusion.
+    # Any feature spec on disk (cheap dir check) -> the substantial + #1 triggers need this.
     $anySpec = $false; $specPath = $null
     try {
         $specs = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot 'specs') -Directory -ErrorAction Stop |
@@ -150,36 +195,43 @@ try {
     }
     catch { $anySpec = $false }
 
-    # #3 RAW SPEC KIT - a CHEAP raw-text scan of the recent tail (NO per-line JSON parse), so it costs ~nothing and
-    # works even pre-spec. The expensive role-aware parse below is reserved for the packet / boundary / #1 triggers.
+    # #3 RAW SPEC KIT - a CHEAP raw-text scan of the recent tail (NO per-line JSON parse). NEGATION GUARD: skip a
+    # match whose preceding context is a prohibition / quote (the contract's OWN "do NOT run the raw `specify.exe
+    # workflow`" prose) so it does not false-fire (dogfood + 145 fix-followup). Also suppressed in-workshop below.
     $rawHit = $false
     if (-not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)) {
         try {
             $rawTail = (@(Get-Content -LiteralPath $transcriptPathArg -Tail 40 -Encoding UTF8 -ErrorAction Stop) -join "`n")
-            if ($rawTail -match '(?i)\bspecify(?:\.exe)?\s+workflow\b') { $rawHit = $true }
+            foreach ($mm in ([regex]::new('(?i)\bspecify(?:\.exe)?\s+workflow\b')).Matches($rawTail)) {
+                $pre = $rawTail.Substring([Math]::Max(0, $mm.Index - 24), [Math]::Min(24, $mm.Index))
+                if ($pre.Contains([char]96) -or ($pre -match '(?i)\b(not|never|raw|un|forbidden|avoid|don)\b')) { continue }  # prohibition/quote prose, not an invocation
+                $rawHit = $true; break
+            }
         }
         catch { $null = $_ }
     }
 
-    # --- EXPENSIVE transcript parse ONLY when a packet-owed trigger is structurally possible (PERF: the per-line
-    # ConvertFrom-Json parse is the dominant Stop-hook cost and scales with session size; a no-trigger stop - e.g.
-    # the pre-spec design workshop, or any stop where the cursor is not ahead - skips it entirely). ---
+    # --- WORKSHOP EXCLUSION (FR-015): the design workshop's per-lens questions are the ONLY exclusion from the
+    # every-stop packet rule. The lens workshop CONTINUES after create-new-feature.ps1 scaffolds spec.md, so the old
+    # pre-spec proxy false-blocked a lens question once spec.md existed (dogfood). Detect the workshop ROBUSTLY (the
+    # reused Get-SpecrewWorkshopProgress: a confirmed lens agenda with lenses still remaining) and, while in it,
+    # SUPPRESS every signal (no block, no #1, no #3). ---
+    $bootstrapDir = $null; $inWorkshop = $false
+    if ($hasPending -or $anySpec -or $rawHit) {
+        $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
+        $inWorkshop = Test-SpecrewWorkshopInProgress -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir
+    }
+    if ($inWorkshop) { $rawHit = $false }  # a workshop lens question owes no packet and is not a raw-Spec-Kit deviation.
+
+    # --- EXPENSIVE transcript parse ONLY when a packet-owed trigger is structurally possible AND not in-workshop
+    # (PERF: the per-line ConvertFrom-Json parse is the dominant Stop-hook cost and scales with session size; a
+    # no-trigger / in-workshop stop skips it entirely). ---
     $lastAssistantText = $null; $intakeHit = $false; $ccLoaded = $false
-    if ($hasPending -or $anySpec) {
-        # LAZY ConversationCaptureAccessor resolution: direct candidates (project tree, then SPECREW_MODULE_PATH)
-        # FIRST; the Get-Module -ListAvailable scan (slow over OneDrive / multi-version) runs ONLY if they miss.
-        foreach ($base in @($projectRoot, $env:SPECREW_MODULE_PATH)) {
-            if ([string]::IsNullOrWhiteSpace($base)) { continue }
-            $cc = Join-Path $base 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1'
-            if (Test-Path -LiteralPath $cc -PathType Leaf) { try { . $cc; $ccLoaded = $true; break } catch { $null = $_ } }
-        }
-        if (-not $ccLoaded) {
-            try {
-                $mod = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
-                    Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1') } | Select-Object -First 1
-                if ($mod) { try { . (Join-Path $mod.ModuleBase 'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1'); $ccLoaded = $true } catch { $null = $_ } }
-            }
-            catch { $null = $_ }
+    if (($hasPending -or $anySpec) -and (-not $inWorkshop)) {
+        if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
+        if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
+            $cc = Join-Path $bootstrapDir 'ConversationCaptureAccessor.ps1'
+            if (Test-Path -LiteralPath $cc -PathType Leaf) { try { . $cc; $ccLoaded = $true } catch { $null = $_ } }
         }
         if ($ccLoaded -and -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf) -and
             (Get-Command Get-SpecrewConversationTurnFromLine -ErrorAction SilentlyContinue)) {
