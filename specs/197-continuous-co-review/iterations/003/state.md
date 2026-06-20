@@ -4,15 +4,16 @@
 **Iteration**: 003
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: (none)
-**Tasks Remaining**: T059, T060, T061, T062, T063, T064
-**In Progress**: T058
+**Last Completed Task**: T058
+**Tasks Remaining**: T059, T060, Stop-hook trigger (pulled forward, to be tasked), T061, T062, T063, T064
+**In Progress**: T059
 **Updated**: 2026-06-20
 
 ## Execution Summary
 
 - Before-implement approved 2026-06-20; green baseline confirmed (continuous-co-review suite 134/0, spawn fix zero regressions).
-- T058 in progress: the durable `review-run.json` record now carries `diff_hash` + `reviewed_ref`, and `Get-ContinuousCoReviewLastPassingReviewState` resolves the last passing review from `.specrew/review/inline` evidence (review-run-index-writer.Tests.ps1 5/5; spine regression 4/4). Remaining for T058: wire the orchestrator to rebaseline to the last passing reviewed point and populate `reviewed_ref`.
+- **T058 DONE** (FR-027): `review-run.json` carries `diff_hash` + `reviewed_ref`; `Get-ContinuousCoReviewLastPassingReviewState` resolves the last passing review from `.specrew/review/inline`; the orchestrator rebaselines each review to the last passing `reviewed_ref` (opt-in `-RebaselineToLastPass`) and records `reviewed_ref = HEAD`. Tests: rebaseline 1/1, run-index-writer 5/5, spine 4/4.
+- **Resequence approved 2026-06-20** (D-197-I003-002): critical path is now T059 dispatcher → T060 run-wiring → Stop-hook trigger (delivers automatic per-stop run) → T061 gate floor as backstop. This pulls the F-184-protected Stop hook into Iteration 003 under the authorized coordination; the Stop-hook task + the protected-surface scope/SC-006 update will be added to plan.md/tasks.md when T060 completes.
 
 ## Scope
 

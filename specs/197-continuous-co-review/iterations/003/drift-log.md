@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved)
-**Specification drift**: 1 resolved (FR-025 wording)
+**Total drift events**: 2
+**Resolution rate**: 100% (2/2 resolved)
+**Specification drift**: 1 resolved (FR-025 wording); 1 plan resequence (Stop-hook critical path)
 
 ## Events
 
@@ -44,6 +44,22 @@
   checkpoint ledger was dropped in favor of reusing `.specrew/review/inline`
   evidence. Per-increment live review remains Phase B (Iteration 004) scope, so the
   always-on intent is unchanged.
+- **State**: resolved.
+
+### D-197-I003-002 — Phase A resequenced to put the Stop-hook trigger on the critical path
+
+- **Detected**: 2026-06-20, after the maintainer set automatic per-stop reviewer
+  execution as a hard requirement.
+- **Drift**: The approved plan ordered Phase A (non-protected gate floor + dispatcher)
+  fully before Phase B (the F-184-protected Stop hook), so automatic per-stop running
+  would not land until Iteration 004. The requirement makes that ordering wrong.
+- **Citation**: FR-024, FR-026, FR-030.
+- **Resolution strategy**: human-decision (plan-updated).
+- **Resolution**: Maintainer approved resequencing — critical path becomes T059
+  dispatcher → T060 run-wiring → Stop-hook trigger → T061 gate floor as backstop. The
+  F-184-protected Stop hook is pulled into Iteration 003 under the authorized
+  coordination; the new Stop-hook task and the protected-surface scope/SC-006 update
+  will be reflected in plan.md/tasks.md when T060 completes.
 - **State**: resolved.
 
 ### Resolution Strategies (Available)
