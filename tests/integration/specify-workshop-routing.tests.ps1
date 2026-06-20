@@ -33,6 +33,19 @@ if ($srcHash -ne $mirHash) { Write-Fail 'extension.yml source/.specify mirror dr
 
 Write-Pass 'FR-010: before_specify hook registered -> before-specify command routes speckit-specify through specrew-design-workshop (lens workshop with the human); source/mirror parity holds'
 
+# FR-010 (instruction route): the design-workshop must be the SINGLE intake — first action, no self-asked
+# grounding questions, no speckit-specify until after. The before_specify hook is only a backstop inside
+# speckit-specify's soft pre-exec check; a model that skims it bypasses the workshop and pre-grounds
+# (dogfood test-f185). The coordinator instruction + specify digest are the primary route.
+$coord = Get-Content -LiteralPath (Join-Path $repoRoot 'templates/coordinator-instructions.md') -Raw
+if ($coord -notmatch 'specrew-design-workshop') { Write-Fail 'coordinator instruction must name specrew-design-workshop as the new-feature intake (FR-010)' }
+if ($coord -notmatch '(?i)do NOT ask your own') { Write-Fail 'coordinator instruction must forbid self-asked grounding questions before the workshop (FR-010)' }
+if ($coord -notmatch '(?i)until the workshop is complete') { Write-Fail 'coordinator instruction must forbid speckit-specify / spec-writing before the workshop completes (FR-010)' }
+$dig = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/refocus/specify.md') -Raw
+if ($dig -notmatch '(?i)IS the intake') { Write-Fail 'specify digest must declare the workshop is the intake, run first (FR-010)' }
+if ($dig -notmatch '(?i)do NOT pre-ground') { Write-Fail 'specify digest must forbid pre-grounding with self-asked questions (FR-010)' }
+Write-Pass 'FR-010 (instruction route): coordinator + specify digest make the design-workshop the single intake (first, no pre-grounding, no speckit-specify until after)'
+
 Write-Host ''
 Write-Host 'Specify workshop-routing (feature 185 FR-010): all assertions pass'
 exit 0
