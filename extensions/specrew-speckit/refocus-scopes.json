@@ -61,6 +61,14 @@
       "order": 30,
       "budget_share": 1.0,
       "command": "specrew-handover-provider.ps1"
+    },
+    {
+      "id": "conformance",
+      "kind": "inject",
+      "events": ["Stop", "agentStop", "stop"],
+      "order": 40,
+      "budget_share": 1.0,
+      "command": "specrew-conformance-provider.ps1"
     }
   ]
 }
