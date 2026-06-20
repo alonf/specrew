@@ -44,20 +44,58 @@ function New-ContinuousCoReviewSignoffGateDecision {
     }
 }
 
+function Get-ContinuousCoReviewUntrackedReviewablePaths {
+    # F1 (145 review): `git diff <commit>` only sees TRACKED files, so untracked
+    # reviewable content is invisible to both the reviewer and diff_hash. List untracked
+    # files that would be reviewable source, excluding Specrew's own runtime/state/
+    # deployed/scratch trees (the co-review writes its own evidence under .specrew/review,
+    # so those must never count as un-reviewed source).
+    param(
+        [Parameter(Mandatory)]
+        [string] $RepoRoot,
+
+        [string[]] $ExcludedPathPatterns = @()
+    )
+
+    $statusResult = Invoke-ContinuousCoReviewGit -RepoRoot $RepoRoot -Arguments @('status', '--porcelain', '--untracked-files=all')
+    if ($statusResult.ExitCode -ne 0) {
+        return @()
+    }
+
+    $effectiveExclusions = @($ExcludedPathPatterns) + @('.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**')
+    $paths = New-Object System.Collections.Generic.List[string]
+    foreach ($line in @($statusResult.Output)) {
+        $statusLine = [string] $line
+        if (-not $statusLine.StartsWith('?? ')) {
+            continue
+        }
+
+        $path = $statusLine.Substring(3).Trim().Trim('"')
+        $normalized = ($path -replace '\\', '/')
+        if (Test-ContinuousCoReviewPathExcluded -Path $normalized -ExcludedPathPatterns $effectiveExclusions) {
+            continue
+        }
+
+        [void] $paths.Add($normalized)
+    }
+
+    return @($paths)
+}
+
 function Get-ContinuousCoReviewSignoffGateDecision {
     param(
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
         [AllowNull()]
-        [string] $CheckpointIdPrefix,
+        [string] $Scope,
 
         [string[]] $ExcludedPathPatterns = @()
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 
-    $lastPass = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $resolvedRepoRoot -CheckpointIdPrefix $CheckpointIdPrefix
+    $lastPass = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $resolvedRepoRoot -Scope $Scope
     if ($null -eq $lastPass) {
         return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'no-co-review-evidence' -Message 'No passing or escalated continuous co-review run exists; the current state has not been co-reviewed.'
     }
@@ -69,6 +107,11 @@ function Get-ContinuousCoReviewSignoffGateDecision {
     $changeSet = Get-ContinuousCoReviewCheckpointDiff -RepoRoot $resolvedRepoRoot -BaselineRef ([string] $lastPass.baseline_ref) -CheckpointId 'signoff-evidence-gate' -ExcludedPathPatterns $ExcludedPathPatterns -RunId 'signoff-evidence-gate'
     if ($changeSet.status -eq 'infrastructure_failure') {
         return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'baseline-unresolvable' -Message 'The last passing co-review baseline could not be resolved against the current tree; treat as unsafe.' -LastPassingState $lastPass
+    }
+
+    $untrackedReviewable = Get-ContinuousCoReviewUntrackedReviewablePaths -RepoRoot $resolvedRepoRoot -ExcludedPathPatterns $ExcludedPathPatterns
+    if (@($untrackedReviewable).Count -gt 0) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'unreviewed-working-tree' -Message "Untracked reviewable content exists that no co-review has seen ($([string]::Join(', ', @($untrackedReviewable)))); add or commit it and re-run co-review before signoff." -LastPassingState $lastPass -CurrentDiffHash ([string] $changeSet.diff_hash)
     }
 
     $currentDiffHash = [string] $changeSet.diff_hash
@@ -85,12 +128,12 @@ function Assert-ContinuousCoReviewSignoffGate {
         [string] $RepoRoot,
 
         [AllowNull()]
-        [string] $CheckpointIdPrefix,
+        [string] $Scope,
 
         [string[]] $ExcludedPathPatterns = @()
     )
 
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -CheckpointIdPrefix $CheckpointIdPrefix -ExcludedPathPatterns $ExcludedPathPatterns
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -Scope $Scope -ExcludedPathPatterns $ExcludedPathPatterns
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"
     }

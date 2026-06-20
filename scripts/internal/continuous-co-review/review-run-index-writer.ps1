@@ -98,6 +98,9 @@ function New-ContinuousCoReviewRunIndexRecord {
         [AllowNull()]
         $CleanupResult,
 
+        [AllowNull()]
+        [string] $Scope,
+
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
@@ -160,6 +163,7 @@ function New-ContinuousCoReviewRunIndexRecord {
         baseline_ref              = $BaselineRef
         diff_hash                 = $resolvedDiffHash
         reviewed_ref              = $ReviewedRef
+        scope                     = $Scope
         status                    = $status
         request_ref               = 'review-request.json'
         request_hash              = $requestHash
@@ -240,6 +244,9 @@ function Write-ContinuousCoReviewRunIndex {
         [string] $ReviewedRef,
 
         [AllowNull()]
+        [string] $Scope,
+
+        [AllowNull()]
         $ReviewRequest,
 
         [AllowNull()]
@@ -308,6 +315,7 @@ function Write-ContinuousCoReviewRunIndex {
         -BaselineRef $BaselineRef `
         -DiffHash $DiffHash `
         -ReviewedRef $ReviewedRef `
+        -Scope $Scope `
         -ReviewRequest $ReviewRequest `
         -RequestBundle $RequestBundle `
         -SpawnInvocation $SpawnInvocation `
@@ -431,7 +439,7 @@ function Get-ContinuousCoReviewLastPassingReviewState {
         [string] $RepoRoot,
 
         [AllowNull()]
-        [string] $CheckpointIdPrefix
+        [string] $Scope
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -460,8 +468,13 @@ function Get-ContinuousCoReviewLastPassingReviewState {
             continue
         }
 
-        $checkpointId = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $record -Name 'checkpoint_id')
-        if (-not [string]::IsNullOrWhiteSpace($CheckpointIdPrefix) -and -not $checkpointId.StartsWith($CheckpointIdPrefix, [System.StringComparison]::Ordinal)) {
+        # F2 (145 review): scope "last passing" to the active feature/iteration so a
+        # pass from a DIFFERENT feature/iteration can never be treated as the current
+        # chain's last-passing point. A caller that supplies no scope intentionally
+        # opts into the whole-project view (fixtures only); production callers MUST
+        # pass the feature/iteration scope.
+        $recordScope = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $record -Name 'scope')
+        if (-not [string]::IsNullOrWhiteSpace($Scope) -and $recordScope -ne $Scope) {
             continue
         }
 
@@ -472,9 +485,17 @@ function Get-ContinuousCoReviewLastPassingReviewState {
         return $null
     }
 
+    # F6 (145 review): sort by parsed UTC DateTime, not the raw string, so any
+    # non-normalized/hand-written created_at cannot reorder by lexical accident.
     $latest = @(
         $candidates | Sort-Object -Property `
-            @{ Expression = { [string] (Get-ContinuousCoReviewRunIndexProperty -Object $_ -Name 'created_at') }; Descending = $true }, `
+            @{ Expression = {
+                    $createdAtValue = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $_ -Name 'created_at')
+                    $parsed = [datetime]::MinValue
+                    [void] [datetime]::TryParse($createdAtValue, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal -bor [System.Globalization.DateTimeStyles]::AdjustToUniversal, [ref] $parsed)
+                    $parsed
+                }; Descending = $true
+            }, `
             @{ Expression = { [string] (Get-ContinuousCoReviewRunIndexProperty -Object $_ -Name 'run_id') }; Descending = $true }
     )[0]
 
@@ -484,6 +505,7 @@ function Get-ContinuousCoReviewLastPassingReviewState {
         baseline_ref  = Get-ContinuousCoReviewRunIndexProperty -Object $latest -Name 'baseline_ref'
         diff_hash     = Get-ContinuousCoReviewRunIndexProperty -Object $latest -Name 'diff_hash'
         reviewed_ref  = Get-ContinuousCoReviewRunIndexProperty -Object $latest -Name 'reviewed_ref'
+        scope         = Get-ContinuousCoReviewRunIndexProperty -Object $latest -Name 'scope'
         status        = Get-ContinuousCoReviewRunIndexProperty -Object $latest -Name 'status'
     }
 }

@@ -173,8 +173,6 @@ function Get-ContinuousCoReviewCheckpointDiff {
         }
     }
 
-    $diffText = ($diffResult.Output -join "`n")
-    $diffHash = "sha256:$(Get-ContinuousCoReviewSha256Hex -Text $diffText)"
     $changedPaths = [System.Collections.Generic.List[string]]::new()
     $excludedPaths = [System.Collections.Generic.List[string]]::new()
 
@@ -191,6 +189,18 @@ function Get-ContinuousCoReviewCheckpointDiff {
             $changedPaths.Add($normalizedPath)
         }
     }
+
+    # F7 (145 review): hash the REVIEWABLE (post-exclusion) change-set, not the raw
+    # full diff, so diff_hash is keyed to exactly what the reviewer saw - an
+    # excluded-only change does not flip freshness, and a reviewable change does.
+    $diffText = if ($changedPaths.Count -gt 0) {
+        $reviewableDiffResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments (@('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, '--') + @($changedPaths))
+        ($reviewableDiffResult.Output -join "`n")
+    }
+    else {
+        ''
+    }
+    $diffHash = "sha256:$(Get-ContinuousCoReviewSha256Hex -Text $diffText)"
 
     $status = if ($changedPaths.Count -eq 0) { 'skipped' } else { 'reviewable' }
     $changeSet = [ordered]@{

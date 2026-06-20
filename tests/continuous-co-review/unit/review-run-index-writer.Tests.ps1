@@ -13,7 +13,7 @@ Describe 'Proposal 197 T058 run index records diff_hash/reviewed_ref and resolve
     }
 
     function New-T058FakeRunRecord {
-        param($Root, $RunId, $CheckpointId, $BaselineRef, $DiffHash, $ReviewedRef, $Status, $CreatedAt)
+        param($Root, $RunId, $CheckpointId, $BaselineRef, $DiffHash, $ReviewedRef, $Status, $CreatedAt, $Scope)
 
         $directory = Join-Path (Join-Path $Root '.specrew/review/inline') $RunId
         New-Item -ItemType Directory -Path $directory -Force | Out-Null
@@ -24,6 +24,7 @@ Describe 'Proposal 197 T058 run index records diff_hash/reviewed_ref and resolve
             baseline_ref   = $BaselineRef
             diff_hash      = $DiffHash
             reviewed_ref   = $ReviewedRef
+            scope          = $Scope
             status         = $Status
             created_at     = $CreatedAt
             updated_at     = $CreatedAt
@@ -80,13 +81,15 @@ Describe 'Proposal 197 T058 run index records diff_hash/reviewed_ref and resolve
         $state.status | Should Be 'escalated'
     }
 
-    It 'filters candidates by checkpoint id prefix' {
-        $root = Join-Path $TestDrive 'prefix-repo'
+    It 'scopes candidates to the active feature/iteration and ignores out-of-scope passes' {
+        # F2 (145 review): a more-recent pass from a DIFFERENT scope must NOT be selected.
+        $root = Join-Path $TestDrive 'scope-repo'
         New-Item -ItemType Directory -Path $root -Force | Out-Null
-        New-T058FakeRunRecord -Root $root -RunId 'p1' -CheckpointId 'feat-A/cp-1' -BaselineRef 'b1' -DiffHash 'h1' -ReviewedRef 'rev1' -Status 'pass' -CreatedAt '2026-06-20T00:00:05Z'
-        New-T058FakeRunRecord -Root $root -RunId 'p2' -CheckpointId 'feat-B/cp-1' -BaselineRef 'b2' -DiffHash 'h2' -ReviewedRef 'rev2' -Status 'pass' -CreatedAt '2026-06-20T00:00:06Z'
+        New-T058FakeRunRecord -Root $root -RunId 'p1' -CheckpointId 'cp-1' -BaselineRef 'b1' -DiffHash 'h1' -ReviewedRef 'rev1' -Status 'pass' -CreatedAt '2026-06-20T00:00:05Z' -Scope '197/003'
+        New-T058FakeRunRecord -Root $root -RunId 'p2' -CheckpointId 'cp-1' -BaselineRef 'b2' -DiffHash 'h2' -ReviewedRef 'rev2' -Status 'pass' -CreatedAt '2026-06-20T00:00:06Z' -Scope '999/001'
 
-        $state = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $root -CheckpointIdPrefix 'feat-A/'
+        $state = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $root -Scope '197/003'
         $state.run_id | Should Be 'p1'
+        $state.scope | Should Be '197/003'
     }
 }

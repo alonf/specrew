@@ -45,6 +45,9 @@ function Invoke-ContinuousCoReviewCheckpointReview {
 
         [switch] $RebaselineToLastPass,
 
+        [AllowNull()]
+        [string] $Scope,
+
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
@@ -62,14 +65,17 @@ function Invoke-ContinuousCoReviewCheckpointReview {
     # pass (the resolver returns only pass/escalated runs), so a missed or blocked
     # checkpoint keeps the baseline pinned and the next review re-covers that span.
     if ($RebaselineToLastPass) {
-        $lastPassingState = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $resolvedRepoRoot
+        $lastPassingState = Get-ContinuousCoReviewLastPassingReviewState -RepoRoot $resolvedRepoRoot -Scope $Scope
         if ($null -ne $lastPassingState -and -not [string]::IsNullOrWhiteSpace([string] $lastPassingState.reviewed_ref)) {
             $BaselineRef = [string] $lastPassingState.reviewed_ref
         }
     }
 
-    # The reviewed point is the current HEAD; the gate floor (FR-025) advances to it only
-    # on a pass, and the next incremental review rebaselines from it.
+    # F3 (145 review): reviewed_ref is the current HEAD as PROVENANCE; the content
+    # actually reviewed is the baseline->working-tree diff (which may include uncommitted
+    # tracked edits beyond HEAD), captured authoritatively by diff_hash. reviewed_ref
+    # advances the next incremental baseline only on a pass; because working-tree >= HEAD,
+    # the next review re-covers any uncommitted span (safe over-review, never under-review).
     $reviewedRef = $null
     $headResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('rev-parse', 'HEAD')
     if ($headResult.ExitCode -eq 0 -and @($headResult.Output).Count -gt 0) {
@@ -141,7 +147,7 @@ function Invoke-ContinuousCoReviewCheckpointReview {
         $blackboard = Write-ContinuousCoReviewBlackboardThread -RepoRoot $resolvedRepoRoot -CheckpointId $CheckpointId -FindingsResult $execution.findings_result -DispositionTrail $null -EscalationRef $null -SchemaRoot $SchemaRoot -CreatedAt $CreatedAt
         $verdict = Invoke-ContinuousCoReviewInlineGateEvaluator -RunId $resolvedRunId -CheckpointId $CheckpointId -FindingsResult $execution.findings_result -ReviewThread $blackboard.review_thread -SkippedRun $null -SchemaRoot $SchemaRoot -CreatedAt $CreatedAt
         $cleanup = Complete-ContinuousCoReviewRunWorkspace -Workspace ([pscustomobject]@{ run_id = $resolvedRunId; path = $execution.request_bundle.workspace_path }) -PreserveDebug:$PreserveDebug -GateVerdict $verdict
-        $index = Write-ContinuousCoReviewRunIndex -RepoRoot $resolvedRepoRoot -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $changeSet.diff_hash -ReviewedRef $reviewedRef -ReviewRequest $request -RequestBundle $execution.request_bundle -SpawnInvocation $execution.provider_invocation -FindingsResult $execution.findings_result -ReviewThread $blackboard.review_thread -GateVerdict $verdict -CleanupResult $cleanup -CreatedAt $CreatedAt
+        $index = Write-ContinuousCoReviewRunIndex -RepoRoot $resolvedRepoRoot -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $changeSet.diff_hash -ReviewedRef $reviewedRef -Scope $Scope -ReviewRequest $request -RequestBundle $execution.request_bundle -SpawnInvocation $execution.provider_invocation -FindingsResult $execution.findings_result -ReviewThread $blackboard.review_thread -GateVerdict $verdict -CleanupResult $cleanup -CreatedAt $CreatedAt
         return [pscustomobject][ordered]@{
             schema_version      = '1.0'
             run_id              = $resolvedRunId
@@ -159,7 +165,7 @@ function Invoke-ContinuousCoReviewCheckpointReview {
 
     $failureVerdict = New-ContinuousCoReviewGateVerdict -RunId $resolvedRunId -CheckpointId $CheckpointId -State 'unsafe' -UnsafeReasons @($execution.infrastructure_failure.category) -RoundCount 1 -CreatedAt $CreatedAt
     $failureCleanup = Complete-ContinuousCoReviewRunWorkspace -Workspace ([pscustomobject]@{ run_id = $resolvedRunId; path = $execution.request_bundle.workspace_path }) -PreserveDebug:$PreserveDebug -GateVerdict $failureVerdict
-    $failureIndex = Write-ContinuousCoReviewRunIndex -RepoRoot $resolvedRepoRoot -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $changeSet.diff_hash -ReviewedRef $reviewedRef -ReviewRequest $request -RequestBundle $execution.request_bundle -SpawnInvocation $execution.provider_invocation -InfrastructureFailure $execution.infrastructure_failure -GateVerdict $failureVerdict -CleanupResult $failureCleanup -CreatedAt $CreatedAt
+    $failureIndex = Write-ContinuousCoReviewRunIndex -RepoRoot $resolvedRepoRoot -RunId $resolvedRunId -CheckpointId $CheckpointId -BaselineRef $BaselineRef -DiffHash $changeSet.diff_hash -ReviewedRef $reviewedRef -Scope $Scope -ReviewRequest $request -RequestBundle $execution.request_bundle -SpawnInvocation $execution.provider_invocation -InfrastructureFailure $execution.infrastructure_failure -GateVerdict $failureVerdict -CleanupResult $failureCleanup -CreatedAt $CreatedAt
     return [pscustomobject][ordered]@{
         schema_version          = '1.0'
         run_id                  = $resolvedRunId

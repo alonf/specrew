@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 100% (2/2 resolved)
-**Specification drift**: 1 resolved (FR-025 wording); 1 plan resequence (Stop-hook critical path)
+**Total drift events**: 3
+**Resolution rate**: 100% (3/3 resolved)
+**Specification drift**: 1 resolved (FR-025 wording); 1 plan resequence (Stop-hook critical path); 1 implementation drift (145 review: gate did not meet FR-025, fixed)
 
 ## Events
 
@@ -61,6 +61,24 @@
   coordination; the new Stop-hook task and the protected-surface scope/SC-006 update
   will be reflected in plan.md/tasks.md when T060 completes.
 - **State**: resolved.
+
+### D-197-I003-003 — Fresh-context Proposal 145 review found the gate did not meet FR-025
+
+- **Detected**: 2026-06-20, by a fresh-context Proposal 145 reviewer sub-agent run on
+  the T058/T061 commits (the feature dogfooding itself).
+- **Drift**: The committed gate logic did not actually deliver FR-025: (F1) `git diff`
+  ignores untracked files so the gate returned `allow` on genuinely un-reviewed
+  content (proven live); (F2) the "last passing" resolver had no feature/iteration
+  scoping, so the baseline-advances-on-pass invariant was unenforced; plus advisories
+  (F3 reviewed_ref provenance, F4 trace overclaim, F5 non-falsifying tests, F6 sort,
+  F7 diff_hash over the full not reviewable diff).
+- **Citation**: FR-025, FR-007, FR-027, SC-020, the spec out-of-band-edit edge case.
+- **Resolution strategy**: implementation-reverted (fixed implementation to match the
+  spec).
+- **Resolution**: all 7 findings fixed (F1 untracked-block, F2 `scope` field + filter
+  threaded through resolver/gate/orchestrator, F3–F7); gate tests 4→8 now falsify the
+  real failure modes; full continuous-co-review suite 148/0; re-review queued.
+- **State**: resolved (pending the confirming re-review).
 
 ### Resolution Strategies (Available)
 
