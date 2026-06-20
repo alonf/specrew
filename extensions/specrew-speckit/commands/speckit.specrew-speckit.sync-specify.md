@@ -17,6 +17,14 @@ $currentBoundary = if ($contextState.Context.Contains('session_state') -and $nul
 else {
   'specify'
 }
+# Specrew governance gate (Feature 185): the design workshop is MANDATORY - the specify boundary
+# cannot advance without its lens records (lens-applicability.json with per-lens human confirmation).
+# Deterministic: a missing or unworked workshop throws here, before the spec can advance.
+$workshopRecords = Test-SpecrewWorkshopRecordsPresent -ProjectRoot .
+if (-not $workshopRecords.Present) {
+  throw ("SPECREW WORKSHOP GATE: {0} Run the specrew-design-workshop skill and work the lenses WITH the human, then retry." -f $workshopRecords.Reason)
+}
+
 $authorization = Test-SpecrewBoundaryAuthorization -ProjectRoot . -CurrentBoundary $currentBoundary -RequestedBoundary 'specify'
 if (-not $authorization.Authorized) {
   Write-Output (Write-SpecrewBoundaryAuthorizationDirective -CurrentBoundary $authorization.CurrentBoundary -RequestedBoundary $authorization.RequestedBoundary -DirectiveSentinel $authorization.DirectiveSentinel)

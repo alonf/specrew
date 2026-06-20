@@ -4598,3 +4598,49 @@ function Test-FormMeaningParity {
         Severity = $severity
     }
 }
+
+function Test-SpecrewWorkshopRecordsPresent {
+    # Feature 185: deterministic governance gate. The design workshop is MANDATORY before the specify
+    # boundary can advance. Fail-CLOSED when the workshop output is missing/unworked; fail-OPEN only on
+    # this check's own error (do not block a session on our bug).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [string]$FeatureRef
+    )
+    try {
+        $featureDir = $null
+        $featureJsonPath = Join-Path $ProjectRoot '.specify/feature.json'
+        if ([string]::IsNullOrWhiteSpace($FeatureRef) -and (Test-Path -LiteralPath $featureJsonPath)) {
+            $fj = Get-Content -LiteralPath $featureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $FeatureRef = Split-Path -Leaf ([string]$fj.feature_directory)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+            $candidate = Join-Path (Join-Path $ProjectRoot 'specs') $FeatureRef
+            if (Test-Path -LiteralPath $candidate) { $featureDir = $candidate }
+        }
+        if ($null -eq $featureDir) {
+            return [pscustomobject]@{ Present = $false; Reason = 'Cannot resolve the active feature directory to verify the design workshop ran.' }
+        }
+        $lensFile = Join-Path $featureDir 'lens-applicability.json'
+        if (-not (Test-Path -LiteralPath $lensFile)) {
+            return [pscustomobject]@{ Present = $false; Reason = "The design workshop has not run - 'lens-applicability.json' is missing under the feature directory." }
+        }
+        $lens = Get-Content -LiteralPath $lensFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        $workshop = $lens.workshop
+        if ($null -eq $workshop -or @($workshop.PSObject.Properties).Count -eq 0) {
+            return [pscustomobject]@{ Present = $false; Reason = 'lens-applicability.json has no per-lens workshop records - the workshop was not worked with the human.' }
+        }
+        foreach ($lensName in @($lens.selected)) {
+            $rec = $workshop.$lensName
+            if ($null -eq $rec -or [string]::IsNullOrWhiteSpace([string]$rec.confirmation)) {
+                return [pscustomobject]@{ Present = $false; Reason = ("Lens '{0}' has no recorded confirmation - every selected lens must be answered WITH the human in the design workshop." -f $lensName) }
+            }
+        }
+        return [pscustomobject]@{ Present = $true; Reason = 'Workshop lens records present and confirmed.' }
+    }
+    catch {
+        [Console]::Error.WriteLine("[specrew-governance] WARN WORKSHOP_RECORDS_CHECK_FAILED $($_.Exception.Message)")
+        return [pscustomobject]@{ Present = $true; Reason = 'Workshop-records check errored; failing open.' }
+    }
+}

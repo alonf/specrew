@@ -46,6 +46,17 @@ if ($dig -notmatch '(?i)IS the intake') { Write-Fail 'specify digest must declar
 if ($dig -notmatch '(?i)do NOT pre-ground') { Write-Fail 'specify digest must forbid pre-grounding with self-asked questions (FR-010)' }
 Write-Pass 'FR-010 (instruction route): coordinator + specify digest make the design-workshop the single intake (first, no pre-grounding, no speckit-specify until after)'
 
+# FR-010 (DETERMINISTIC gate — the non-probabilistic backstop): the design workshop is MANDATORY. The
+# sync-specify boundary command refuses to advance without the workshop's lens records via the
+# fail-closed Test-SpecrewWorkshopRecordsPresent check, BEFORE the authorization check. This is the
+# piece that turns "please do the workshop" into "you cannot finish specify without it."
+$gov = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1') -Raw
+if ($gov -notmatch 'function Test-SpecrewWorkshopRecordsPresent') { Write-Fail 'shared-governance must define the deterministic workshop-records gate Test-SpecrewWorkshopRecordsPresent (FR-010)' }
+$syncSpecify = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-specify.md') -Raw
+if ($syncSpecify -notmatch 'Test-SpecrewWorkshopRecordsPresent') { Write-Fail 'sync-specify must invoke the workshop-records gate before advancing (FR-010)' }
+if ($syncSpecify -notmatch 'SPECREW WORKSHOP GATE') { Write-Fail 'sync-specify must throw the workshop gate when the records are missing (FR-010)' }
+Write-Pass 'FR-010 (deterministic gate): sync-specify refuses to advance the specify boundary without the workshop lens records (Test-SpecrewWorkshopRecordsPresent, fail-closed before the authorization check)'
+
 Write-Host ''
 Write-Host 'Specify workshop-routing (feature 185 FR-010): all assertions pass'
 exit 0
