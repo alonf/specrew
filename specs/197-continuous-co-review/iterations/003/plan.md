@@ -2,8 +2,8 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
-**Capacity**: 9.50/20 story_points
+**Status**: executing
+**Capacity**: 24.00/25 story_points
 **Started**: 2026-06-20
 **Completed**:
 
@@ -22,6 +22,15 @@ Iteration 003 is Phase A of the always-on extension: the 197-owned deterministic
 floor plus the gate-keyed dispatcher, with no F-184 protected-surface edits. The live
 Stop-hook trigger (Phase B) is deferred to Iteration 004.
 
+**Re-architecture (2026-06-20, D-197-I003-004/005):** the feature's own co-reviews found
+the first gate model (diff-from-baseline) had two false-allows — HOLE A (gitignored-source
+blindness) and HOLE B (unanchored operator baseline). Per the approved design revision, the
+gate is re-architected to a **content-addressed reviewed-state tree-id** (includes
+gitignored source minus secrets; HOLE A closed, empirically validated) and a **lineage
+chain anchored to merge-base with the trunk** with producer auto-anchoring and a
+human-authorized recorded override (HOLE B closed). This stays in Iteration 003; the cap is
+raised to 25 SP rather than splitting.
+
 | Requirement | Summary | Stories |
 | ----------- | ------- | ------- |
 | FR-024 | Co-review runs at every implement checkpoint via the dispatcher, on the incremental diff. | Always-on Phase A |
@@ -35,23 +44,29 @@ Stop-hook trigger (Phase B) is deferred to Iteration 004.
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T058 | Rebaseline each co-review to the last passing reviewed point (derived from existing `.specrew/review/inline` evidence, no separate ledger) and record `reviewed_ref` + `diff_hash` so the baseline advances only on a pass. | FR-027, IMPL-009, TG-013 | Always-on Phase A | 1.50 | Implementer | `scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1`; `scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1`; `scripts/internal/continuous-co-review/review-run-index-writer.ps1`; `tests/continuous-co-review/**` | planned | | | |
-| T059 | Implement the gate-review dispatcher and gate-keyed registry, including real-checkpoint-vs-casual-yield and gate detection, with code@implement as the sole registrant. | FR-032, SC-023, IMPL-004, TG-013 | Always-on Phase A | 2.50 | Architect | `scripts/internal/continuous-co-review/gate-review-dispatcher.ps1`; `scripts/internal/continuous-co-review/gate-review-registry.ps1`; `scripts/internal/continuous-co-review/_load.ps1`; `tests/continuous-co-review/**` | planned | | | |
-| T060 | Wire the dispatcher to the existing checkpoint-review orchestrator so a registered implement checkpoint reviews its incremental diff and writes durable evidence. | FR-024, INT-004, TG-013 | Always-on Phase A | 1.00 | Implementer | `scripts/internal/continuous-co-review/gate-review-dispatcher.ps1`; `scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1`; `tests/continuous-co-review/**` | planned | | | |
-| T061 | Add the deterministic co-review evidence gate floor (throw-to-refuse) to `Invoke-SpecrewBoundaryStateSync`, refusing review-signoff unless a pass/escalated run's `diff_hash` (recomputed from its `baseline_ref` to the current working tree) still matches; missing/stale/malformed/blocking blocks. | FR-025, SC-019, SC-020, NFR-001, TG-013 | Always-on Phase A | 2.00 | Reviewer | `scripts/internal/sync-boundary-state.ps1`; `extensions/specrew-speckit/scripts/sync-boundary-state.ps1`; `tests/continuous-co-review/**` | planned | | | |
-| T062 | Confirm one-time per-project navigator authorization for automatic runs and wire blocking-finding escalation under the two-round convergence cap. | FR-028, FR-029, SC-021, NFR-005, SEC-004 | Always-on Phase A | 1.25 | Spec Steward | `scripts/internal/continuous-co-review/reviewer-authorization-gate.ps1`; `scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1`; `tests/continuous-co-review/**` | planned | | | |
-| T063 | Add the owed delayed-stdin reviewer-spawn regression test proving the timeout bounds a stalled large-stdin child and no child is orphaned. | NFR-001, INT-004 | Always-on Phase A | 0.75 | Reviewer | `tests/continuous-co-review/**` | planned | | | |
-| T064 | Run Iteration 003 Phase A closeout validation: dispatcher fixtures, gate-floor blocking, traceability, and the protected-surface guard proving no F-184 edits. | FR-025, FR-032, SC-006, SC-019, SC-020, SC-023, TG-013 | Always-on Phase A | 0.50 | Reviewer | `tests/continuous-co-review/**`; `specs/197-continuous-co-review/iterations/003/**` | planned | | | |
+| T058 | Record `reviewed_ref` and rebaseline each co-review to the last passing reviewed point. (Done; the `diff_hash` field is retained but superseded as the gate key by the T065 tree-id.) | FR-027, IMPL-009, TG-013 | Always-on Phase A | 1.50 | Implementer | `scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1`; `scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1`; `scripts/internal/continuous-co-review/review-run-index-writer.ps1` | done | Implementer | Committed `bd6ebebc`/`27343ce5`; resolver/rebaseline/spine tests green. | PASS |
+| (fix) | Reviewer-spawn timeout/orphan robustness fix (bound stdin write; kill orphaned child). | NFR-001, INT-004 | Always-on Phase A | 1.00 | Reviewer | `scripts/internal/continuous-co-review/reviewer-host-adapter-claude-prompt.ps1` | done | Reviewer | Committed `3230e9e1`; adapter tests 4/4 incl. real-process shim. | PASS |
+| T061 | First gate-floor decision logic (diff-from-baseline `diff_hash` freshness). Delivered, then INVALIDATED by the feature's own 145 co-review (HOLE A/B). Superseded by T067. | FR-025, NFR-001, TG-013 | Always-on Phase A | 2.00 | Reviewer | `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1` | needs-rework | Reviewer | Committed `717c423f`/`e8493b8a` (8/8 unit tests), then HOLE A/B found; re-architected in T067. | SUPERSEDED |
+| T065 | Reviewed-state digest helper: content-addressed tree-id via temp-index `write-tree`, including gitignored SOURCE minus the secret/ambient denylist; empty-tree no-content guard. With determinism / gitignored-in / secret-out / drift / empty tests. | FR-025, SEC-002, NFR-001, TG-013 | Always-on Phase A | 3.00 | Architect | `scripts/internal/continuous-co-review/reviewed-state-digest.ps1`; `tests/continuous-co-review/**` | planned | | | |
+| T066 | Record `reviewed_tree_id` on the run record; replace the scope filter in the last-passing resolver with lineage (`git merge-base --is-ancestor`) plus chain-to-anchor verification. | FR-025, FR-027, TG-013 | Always-on Phase A | 2.50 | Architect | `scripts/internal/continuous-co-review/review-run-index-writer.ps1`; `tests/continuous-co-review/**` | planned | | | |
+| T067 | Re-architect the gate (supersedes T061): tree-id-equality freshness + chain-to-merge-base-anchor verification + empty-tree guard + fail-closed git handling + human-authorized recorded override. Falsifying tests: HOLE A blocks, HOLE B blocks, cross-feature, empty, fail-closed. | FR-025, SC-019, SC-020, NFR-001, TG-013 | Always-on Phase A | 3.50 | Reviewer | `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1`; `tests/continuous-co-review/**` | planned | | | |
+| T068 | Producer auto-anchoring: orchestrator + `specrew-review.ps1` anchor signoff-bearing runs to the last-pass (merge-base-with-trunk fallback), record the digest, flag exploratory custom-baseline runs as non-signoff; configurable trunk name (default `main`). | FR-025, FR-027, INT-004, TG-013 | Always-on Phase A | 2.50 | Implementer | `scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1`; `scripts/specrew-review.ps1`; `tests/continuous-co-review/**` | planned | | | |
+| T069 | Retire the diff-hash freshness path as the gate key; keep the reviewable diff only for the reviewer's context bundle; remove the NEW-5 dead full-diff and reconcile the change-set provider. | FR-025, NFR-001, TG-013 | Always-on Phase A | 1.50 | Implementer | `scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1`; `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1`; `tests/continuous-co-review/**` | planned | | | |
+| T059 | Gate-review dispatcher and gate-keyed registry: real-checkpoint-vs-casual-yield and gate detection, with code@implement as the sole registrant. | FR-032, SC-023, IMPL-004, TG-013 | Always-on Phase A | 2.50 | Architect | `scripts/internal/continuous-co-review/gate-review-dispatcher.ps1`; `scripts/internal/continuous-co-review/gate-review-registry.ps1`; `scripts/internal/continuous-co-review/_load.ps1`; `tests/continuous-co-review/**` | planned | | | |
+| T060 | Wire the dispatcher to the checkpoint-review orchestrator so a registered implement checkpoint reviews its increment and writes durable evidence. | FR-024, INT-004, TG-013 | Always-on Phase A | 1.00 | Implementer | `scripts/internal/continuous-co-review/gate-review-dispatcher.ps1`; `scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1`; `tests/continuous-co-review/**` | planned | | | |
+| T062 | One-time per-project navigator authorization for automatic runs; blocking-finding escalation under the two-round convergence cap. | FR-028, FR-029, SC-021, NFR-005, SEC-004 | Always-on Phase A | 1.25 | Spec Steward | `scripts/internal/continuous-co-review/reviewer-authorization-gate.ps1`; `scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1`; `tests/continuous-co-review/**` | planned | | | |
+| T063 | Delayed-stdin reviewer-spawn regression test proving the timeout bounds a stalled large-stdin child and no child is orphaned. | NFR-001, INT-004 | Always-on Phase A | 0.75 | Reviewer | `tests/continuous-co-review/**` | planned | | | |
+| T064 | Iteration 003 closeout validation: full continuous-co-review suite green, the HOLE A and HOLE B repros now BLOCK, dispatcher fixtures, protected-surface guard (no F-184 edits), traceability. | FR-025, FR-032, SC-006, SC-019, SC-020, SC-023, TG-013 | Always-on Phase A | 1.00 | Reviewer | `tests/continuous-co-review/**`; `specs/197-continuous-co-review/iterations/003/**` | planned | | | |
 
 ## Effort Model
 
 | Setting | Value | Notes |
 | ------- | ----- | ----- |
 | Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
-| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Capacity per Iteration | 25 | Maximum planned effort; raised 20->25 (maintainer-authorized) to keep the gate re-architecture in Iteration 003 instead of splitting. |
 | Iteration Bounding | scope | `scope` keeps requirements fixed; time varies. |
 | Time Limit (hours) | n/a | Not used for this scope-bounded slice. |
-| Overcommit Threshold | 1.0 | Planned effort must stay at or below 20 story_points. |
+| Overcommit Threshold | 1.0 | Planned effort must stay at or below 25 story_points. |
 | Defer Strategy | manual | Any overcommit requires explicit human deferral. |
 | Calibration Enabled | true | Retro should compare planned and actual effort. |
 
