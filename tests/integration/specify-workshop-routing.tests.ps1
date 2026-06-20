@@ -57,6 +57,25 @@ if ($syncSpecify -notmatch 'Test-SpecrewWorkshopRecordsPresent') { Write-Fail 's
 if ($syncSpecify -notmatch 'SPECREW WORKSHOP GATE') { Write-Fail 'sync-specify must throw the workshop gate when the records are missing (FR-010)' }
 Write-Pass 'FR-010 (deterministic gate): sync-specify refuses to advance the specify boundary without the workshop lens records (Test-SpecrewWorkshopRecordsPresent, fail-closed before the authorization check)'
 
+# FR-010 (FUNCTIONAL fail-closed regression): a selected lens with NO workshop record must BLOCK
+# (Present=$false), not fail open. The first cut threw under StrictMode on the missing property and fell
+# into a fail-open catch (caught on the test-f185 live run). This guards that exact regression, and that
+# an explicit human-skipped decision still counts as coverage.
+. (Join-Path $repoRoot 'extensions/specrew-speckit/scripts/shared-governance.ps1')
+$tmpRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("f185gate-" + [System.Guid]::NewGuid().ToString('N'))
+$tmpSpecs = Join-Path $tmpRoot 'specs/001-x'
+New-Item -ItemType Directory -Path $tmpSpecs -Force | Out-Null
+try {
+    '{ "selected": ["architecture-core"], "workshop": { "product-domain": { "confirmation": "human-confirmed" } } }' | Set-Content -LiteralPath (Join-Path $tmpSpecs 'lens-applicability.json') -Encoding UTF8
+    $r1 = Test-SpecrewWorkshopRecordsPresent -ProjectRoot $tmpRoot -FeatureRef '001-x'
+    if ($r1.Present) { Write-Fail 'gate must FAIL-CLOSED when a selected lens has no workshop record (StrictMode fail-open regression)' }
+    '{ "selected": ["architecture-core"], "workshop": { "architecture-core": { "confirmation": "human-skipped" } } }' | Set-Content -LiteralPath (Join-Path $tmpSpecs 'lens-applicability.json') -Encoding UTF8
+    $r2 = Test-SpecrewWorkshopRecordsPresent -ProjectRoot $tmpRoot -FeatureRef '001-x'
+    if (-not $r2.Present) { Write-Fail 'gate must PASS when every selected lens has a recorded decision (an explicit human-skipped counts as coverage)' }
+}
+finally { Remove-Item -LiteralPath $tmpRoot -Recurse -Force -ErrorAction SilentlyContinue }
+Write-Pass 'FR-010 (functional fail-closed): a selected lens with no record BLOCKS; all-recorded (incl. explicit human-skipped) PASSES'
+
 Write-Host ''
 Write-Host 'Specify workshop-routing (feature 185 FR-010): all assertions pass'
 exit 0

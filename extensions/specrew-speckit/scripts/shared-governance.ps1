@@ -4626,21 +4626,26 @@ function Test-SpecrewWorkshopRecordsPresent {
         if (-not (Test-Path -LiteralPath $lensFile)) {
             return [pscustomobject]@{ Present = $false; Reason = "The design workshop has not run - 'lens-applicability.json' is missing under the feature directory." }
         }
-        $lens = Get-Content -LiteralPath $lensFile -Raw -Encoding UTF8 | ConvertFrom-Json
-        $workshop = $lens.workshop
-        if ($null -eq $workshop -or @($workshop.PSObject.Properties).Count -eq 0) {
+        # -AsHashtable so missing keys return $null (fail-CLOSED) instead of throwing under StrictMode.
+        # A not-yet-recorded selected lens previously threw on `$workshop.$lensName` -> hit the catch ->
+        # failed OPEN, silently waving an incomplete workshop through (caught on the test-f185 live run).
+        $lens = Get-Content -LiteralPath $lensFile -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+        $workshop = $lens['workshop']
+        if ($null -eq $workshop -or @($workshop.Keys).Count -eq 0) {
             return [pscustomobject]@{ Present = $false; Reason = 'lens-applicability.json has no per-lens workshop records - the workshop was not worked with the human.' }
         }
-        foreach ($lensName in @($lens.selected)) {
-            $rec = $workshop.$lensName
-            if ($null -eq $rec -or [string]::IsNullOrWhiteSpace([string]$rec.confirmation)) {
-                return [pscustomobject]@{ Present = $false; Reason = ("Lens '{0}' has no recorded confirmation - every selected lens must be answered WITH the human in the design workshop." -f $lensName) }
+        foreach ($lensName in @($lens['selected'])) {
+            $rec = $workshop[$lensName]
+            if ($null -eq $rec -or [string]::IsNullOrWhiteSpace([string]$rec['confirmation'])) {
+                return [pscustomobject]@{ Present = $false; Reason = ("Lens '{0}' has no recorded confirmation (or no workshop record at all) - every selected lens must be answered WITH the human in the design workshop (confirmed / delegated / skipped all count; silent omission does not)." -f $lensName) }
             }
         }
         return [pscustomobject]@{ Present = $true; Reason = 'Workshop lens records present and confirmed.' }
     }
     catch {
+        # Fail-CLOSED on an unexpected error: a force-governance gate must block + report, never silently
+        # pass. The prior fail-OPEN here is exactly what let a StrictMode property-access bug defeat the gate.
         [Console]::Error.WriteLine("[specrew-governance] WARN WORKSHOP_RECORDS_CHECK_FAILED $($_.Exception.Message)")
-        return [pscustomobject]@{ Present = $true; Reason = 'Workshop-records check errored; failing open.' }
+        return [pscustomobject]@{ Present = $false; Reason = ("Workshop-records check could not complete ({0}) - blocking; verify the workshop ran and lens-applicability.json is valid." -f $_.Exception.Message) }
     }
 }
