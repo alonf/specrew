@@ -19,8 +19,9 @@ foreach ($rel in @('extensions/specrew-speckit/refocus/general.md', '.specify/ex
     $f = Join-Path $repoRoot $rel
     if (Test-Path -LiteralPath $f) {
         $g = Get-Content -LiteralPath $f -Raw
-        if ($g -notmatch '(?i)yield the turn to the human') { Write-Fail "general.md ($rel) must scope rule 9 to every decision-yield stop (FR-015)" }
-        if ($g -notmatch '(?i)within-phase task checkpoint') { Write-Fail "general.md ($rel) must require the packet at within-phase checkpoints, not only boundaries (FR-015)" }
+        if ($g -notmatch '(?i)re-?entry packet') { Write-Fail "general.md ($rel) must carry the six-section re-entry packet rule (FR-015)" }
+        if ($g -notmatch '(?i)MATERIAL WORK') { Write-Fail "general.md ($rel) must require the packet after MATERIAL WORK (changed code / ran tests / committed), not only at boundaries (FR-015 refinement, maintainer 2026-06-21)" }
+        if ($g -notmatch '(?i)(omit the packet|answer conversationally|quick discussion)') { Write-Fail "general.md ($rel) must scope OUT a quick discussion turn - answer conversationally, no packet (FR-015 refinement: length alone is not a reason for the packet)" }
         if ($g -notmatch '(?i)clarify-stage ambiguity questions are NOT') { Write-Fail "general.md ($rel) must preserve the clarify/workshop normal path (FR-015 / F-165)" }
     }
 }
