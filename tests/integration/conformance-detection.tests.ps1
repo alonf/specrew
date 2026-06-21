@@ -370,6 +370,34 @@ try {
     if ($r22b.Blocked) { Fail "Case 22: a DUPLICATE fire for the same message MUST be idempotent (no second block). Out: $($r22b.Out)" }
     Write-Pass "Case 22: a duplicate hook fire for the same message is idempotent - blocks once, the re-fire is a no-op (maintainer 2026-06-21)"
 
+    # ---- Case 23 (145 SC-2 / IDEMP-2): the idempotency dedup FILE failing must FAIL-OPEN - a corrupt or unwritable
+    #      conformance-last-fire.json still lets a genuine boundary stop BLOCK (dedup disabled, never skip-or-hang).
+    $p23 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-Item -ItemType Directory -Path (Join-Path $p23 '.specrew\runtime') -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $p23 '.specrew\runtime\conformance-last-fire.json') -Value '{ not valid json ::' -Encoding UTF8  # corrupt read
+    $t23 = New-Transcript -Proj $p23 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
+    $r23 = Invoke-Conformance -Proj $p23 -TranscriptPath $t23
+    if (-not $r23.Blocked) { Fail "Case 23: a CORRUPT conformance-last-fire.json must fail-open (the boundary stop still blocks). Out: $($r23.Out)" }
+    $p23b = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-Item -ItemType Directory -Path (Join-Path $p23b '.specrew\runtime\conformance-last-fire.json') -Force | Out-Null  # a DIRECTORY at the file path -> unwritable
+    $t23b = New-Transcript -Proj $p23b -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
+    $r23b = Invoke-Conformance -Proj $p23b -TranscriptPath $t23b
+    if (-not $r23b.Blocked) { Fail "Case 23: an UNWRITABLE conformance-last-fire.json (directory at the path) must fail-open (still blocks). Out: $($r23b.Out)" }
+    Write-Pass "Case 23: a corrupt / unwritable idempotency dedup file fails OPEN - the boundary stop still blocks (dedup disabled, never skip-or-hang; 145 SC-2)"
+
+    # ---- Case 24 (145 IDEMP-1 regression): two genuinely-DIFFERENT boundary messages whose trailing 40+ transcript
+    #      entries are IDENTICAL (the distinguishing assistant text is >40 entries back) MUST get different identities
+    #      and both block - the identity uses the ROLE-AWARE last-assistant message, not a coarse tail-40 that collides.
+    $trail24 = @(1..45 | ForEach-Object { @{ role = 'user'; text = 'identical trailing tool/user entry' } })
+    $p24 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    $t24a = New-Transcript -Proj $p24 -Turns (@(@{ role = 'assistant'; text = 'MESSAGE A: plan.md written, no packet.' }) + $trail24)
+    $t24b = New-Transcript -Proj $p24 -Turns (@(@{ role = 'assistant'; text = 'MESSAGE B: a different summary, still no packet.' }) + $trail24)
+    $r24a = Invoke-Conformance -Proj $p24 -TranscriptPath $t24a
+    $r24b = Invoke-Conformance -Proj $p24 -TranscriptPath $t24b
+    if (-not $r24a.Blocked) { Fail "Case 24: stop A (boundary, no marker) MUST block. Out: $($r24a.Out)" }
+    if (-not $r24b.Blocked) { Fail "Case 24: stop B (a DIFFERENT boundary message with identical trailing 40+ entries) MUST also block - it must NOT be falsely deduped against A (145 IDEMP-1). Out: $($r24b.Out)" }
+    Write-Pass "Case 24: two distinct boundary messages with identical trailing 40+ entries get DIFFERENT identities and BOTH block - no false dedup via tail-40 collision (145 IDEMP-1)"
+
     Write-Host "`n=== conformance-detection.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }

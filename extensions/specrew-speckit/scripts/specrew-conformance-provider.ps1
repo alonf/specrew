@@ -243,33 +243,10 @@ try {
         catch { $null = $_ }
     }
 
-    # --- IDEMPOTENCY (duplicate-fire guard): if this exact Stop is delivered MORE THAN ONCE for the SAME observable
-    # state (same recent transcript tail + boundary cursor + source event) within a short window, process it ONCE -
-    # a re-fired hook must not re-block / re-nudge / re-journal the same message. The boundary force-continue loop is
-    # UNAFFECTED: each forced re-render is a NEW message -> a different identity -> processed normally. Best-effort:
-    # a read/write miss simply disables dedup for this stop (it never blocks the stop). ---
-    $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
-    $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-    $fireIdentity = Get-SpecrewFireIdentity -Parts @($rawTail, $idWorking, $idAuth, [string]$sourceEventArg)
-    $lastFirePath = Join-Path $projectRoot '.specrew/runtime/conformance-last-fire.json'
-    if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
-        try {
-            if (Test-Path -LiteralPath $lastFirePath -PathType Leaf) {
-                $lf = Get-Content -LiteralPath $lastFirePath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
-                if (($lf.PSObject.Properties.Name -contains 'identity') -and ([string]$lf.identity -eq $fireIdentity) -and ($lf.PSObject.Properties.Name -contains 'epoch')) {
-                    $age = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$lf.epoch
-                    if ($age -ge 0 -and $age -le $script:SpecrewFireDedupWindowSec) { return }  # duplicate fire -> idempotent no-op
-                }
-            }
-        }
-        catch { $null = $_ }
-        try {
-            $rdir = Split-Path -Parent $lastFirePath
-            if ($rdir -and -not (Test-Path -LiteralPath $rdir)) { New-Item -ItemType Directory -Path $rdir -Force | Out-Null }
-            ([pscustomobject]@{ identity = $fireIdentity; epoch = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $lastFirePath -Encoding UTF8
-        }
-        catch { $null = $_ }
-    }
+    # (IDEMPOTENCY check is performed BELOW - after the role-aware last-assistant message + the workshop/marker state
+    # are computed - so the fire-identity captures the FULL decision-relevant state. An EARLY tail-40 identity falsely
+    # deduped a genuine second boundary stop when the distinguishing message fell outside tail-40, or across a
+    # workshop-completion flip; 145 IDEMP-1 / SC-1.)
 
     # --- WORKSHOP EXCLUSION (FR-015): the design workshop's per-lens questions are the ONLY exclusion from the
     # every-stop packet rule. The lens workshop CONTINUES after create-new-feature.ps1 scaffolds spec.md, so the old
@@ -329,6 +306,36 @@ try {
     $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
     $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
 
+    # --- IDEMPOTENCY (duplicate-fire guard, 145 IDEMP-1 / SC-1): dedup a re-fired hook for the SAME observable DECISION
+    # state, processed ONCE. The identity uses the ROLE-AWARE last-assistant message (the SAME view the block decision
+    # reads - NOT a coarse tail-40 that collides when the distinguishing message is >40 entries back) PLUS the boundary
+    # cursor and the marker / workshop / pending discriminators - so two genuinely-different stops, or a
+    # workshop-completion flip, get DIFFERENT identities and are NOT falsely deduped (the dangerous missed-enforcement
+    # direction). Computed AFTER those signals exist. Best-effort + fail-open: a read/write miss just disables dedup,
+    # never blocks the stop. The force-continue loop is unaffected (each forced re-render is a NEW message).
+    $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
+    $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
+    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForWorking), ("w={0}" -f [int][bool]$inWorkshop), ("p={0}" -f [int][bool]$hasPending), [string]$sourceEventArg)
+    $lastFirePath = Join-Path $projectRoot '.specrew/runtime/conformance-last-fire.json'
+    if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
+        try {
+            if (Test-Path -LiteralPath $lastFirePath -PathType Leaf) {
+                $lf = Get-Content -LiteralPath $lastFirePath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+                if (($lf.PSObject.Properties.Name -contains 'identity') -and ([string]$lf.identity -eq $fireIdentity) -and ($lf.PSObject.Properties.Name -contains 'epoch')) {
+                    $age = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$lf.epoch
+                    if ($age -ge 0 -and $age -le $script:SpecrewFireDedupWindowSec) { return }  # duplicate fire -> idempotent no-op
+                }
+            }
+        }
+        catch { $null = $_ }
+        try {
+            $rdir = Split-Path -Parent $lastFirePath
+            if ($rdir -and -not (Test-Path -LiteralPath $rdir)) { New-Item -ItemType Directory -Path $rdir -Force | Out-Null }
+            ([pscustomobject]@{ identity = $fireIdentity; epoch = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $lastFirePath -Encoding UTF8
+        }
+        catch { $null = $_ }
+    }
+
     # --- block decision: does this stop owe the packet, and is the packet absent? ---
     # BOUNDARY stops (HasPendingVerdict) owe the packet regardless of the workshop proxy - a pending verdict means a
     # boundary was already crossed, so we are inherently PAST intake. The SUBSTANTIAL non-boundary trigger is gated on
@@ -361,7 +368,9 @@ try {
     # The advance identity the consecutive-block cap keys on: a boundary advance is working|lastAuth; a non-boundary
     # substantial stop is the constant 'substantial'. A NEW advance (different key) starts a fresh count; the agent
     # rendering the packet (not blockWarranted) resets it. No time window (145 HANG-1).
-    $advanceKey = if ($hasPending) { ("{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary) } else { 'substantial' }
+    # The if-guard also protects the $pending null-deref under the leaked StrictMode; the else value is an unused
+    # placeholder ($advanceKey is read only inside the blockWarranted branch, which implies $hasPending; 145 SC-3).
+    $advanceKey = if ($hasPending) { ("{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary) } else { 'na' }
 
     if ($blockWarranted) {
         $count = Get-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey
