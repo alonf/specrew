@@ -132,20 +132,20 @@ function Test-SpecrewWorkshopInProgress {
     # (has_applicability) and lenses still REMAINING is mid-workshop. Returns $true ONLY on a positive, readable
     # detection (a real workshop state); any miss / read error -> $false (a missing signal does not fabricate a
     # workshop, so a genuine boundary still enforces). FR-008 reuse - not a parallel workshop-state inference.
-    param([string]$ProjectRoot, [AllowNull()][string]$BootstrapDir)
+    # SCOPED TO THE ACTIVE FEATURE (145 OB-1): check ONLY $FeatureRef - a DIFFERENT (abandoned) feature whose
+    # workshop still has lenses remaining must NOT suppress the ACTIVE feature's enforcement (the old whole-project
+    # loop let one stale feature silently disable every block for the active one - the exact #2884 gate-slip). An
+    # unresolved $FeatureRef -> $false (do NOT suppress; fail toward enforcement, the safe direction).
+    param([string]$ProjectRoot, [AllowNull()][string]$BootstrapDir, [AllowNull()][string]$FeatureRef)
     try {
-        if ([string]::IsNullOrWhiteSpace($BootstrapDir)) { return $false }
+        if ([string]::IsNullOrWhiteSpace($BootstrapDir) -or [string]::IsNullOrWhiteSpace($FeatureRef)) { return $false }
         $pma = Join-Path $BootstrapDir 'ProjectMetadataAccessor.ps1'
         if (-not (Test-Path -LiteralPath $pma -PathType Leaf)) { return $false }
         try { . $pma } catch { return $false }
         if (-not (Get-Command Get-SpecrewWorkshopProgress -ErrorAction SilentlyContinue)) { return $false }
-        $specsDir = Join-Path $ProjectRoot 'specs'
-        if (-not (Test-Path -LiteralPath $specsDir -PathType Container)) { return $false }
-        foreach ($d in (Get-ChildItem -LiteralPath $specsDir -Directory -ErrorAction Stop)) {
-            $wp = $null
-            try { $wp = Get-SpecrewWorkshopProgress -ProjectRoot $ProjectRoot -FeatureRef $d.Name } catch { $wp = $null }
-            if ($null -ne $wp -and [bool]$wp.has_applicability -and (@($wp.remaining).Count -gt 0)) { return $true }
-        }
+        $wp = $null
+        try { $wp = Get-SpecrewWorkshopProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef } catch { $wp = $null }
+        if ($null -ne $wp -and [bool]$wp.has_applicability -and (@($wp.remaining).Count -gt 0)) { return $true }
     }
     catch { $null = $_ }
     return $false
@@ -195,6 +195,24 @@ try {
     }
     catch { $anySpec = $false }
 
+    # Active feature ref (145 OB-1): the workshop exclusion must scope to THIS feature, not the whole project.
+    # session_state.feature_ref is canonical; fall back to the spec dir found above; null -> the exclusion fails
+    # toward enforcement (it does not suppress a different feature's workshop onto the active one).
+    $activeFeatureRef = $null
+    try {
+        $scPath = Join-Path $projectRoot '.specrew/start-context.json'
+        if (Test-Path -LiteralPath $scPath -PathType Leaf) {
+            $sc = Get-Content -LiteralPath $scPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['feature_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$sc.session_state.feature_ref)) {
+                $activeFeatureRef = [string]$sc.session_state.feature_ref
+            }
+        }
+    }
+    catch { $null = $_ }
+    if ([string]::IsNullOrWhiteSpace($activeFeatureRef) -and -not [string]::IsNullOrWhiteSpace($specPath)) {
+        $activeFeatureRef = Split-Path (Split-Path $specPath -Parent) -Leaf
+    }
+
     # #3 RAW SPEC KIT - a CHEAP raw-text scan of the recent tail (NO per-line JSON parse). NEGATION GUARD: skip a
     # match whose preceding context is a prohibition / quote (the contract's OWN "do NOT run the raw `specify.exe
     # workflow`" prose) so it does not false-fire (dogfood + 145 fix-followup). Also suppressed in-workshop below.
@@ -219,7 +237,7 @@ try {
     $bootstrapDir = $null; $inWorkshop = $false
     if ($hasPending -or $anySpec -or $rawHit) {
         $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
-        $inWorkshop = Test-SpecrewWorkshopInProgress -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir
+        $inWorkshop = Test-SpecrewWorkshopInProgress -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -FeatureRef $activeFeatureRef
     }
     if ($inWorkshop) { $rawHit = $false }  # a workshop lens question owes no packet and is not a raw-Spec-Kit deviation.
 

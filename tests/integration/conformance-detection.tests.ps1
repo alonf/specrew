@@ -321,12 +321,40 @@ try {
     #      gate stayed un-authorized (last_authorized=none) while the header check wrongly suppressed the block. Now a
     #      headers-without-marker boundary stop MUST block (demand the marker so the verdict gets captured).
     $packetNoMarker = ($realPacket -replace '(?m)^.*SPECREW-VERDICT-BOUNDARY.*$', '')  # 6 headers, NO marker (strip the whole marker line)
+    # Guard the fixture's DISCRIMINATING properties (145 TI-1): >=4 headers preserved AND the marker stripped, so a
+    # future strip-regex drift that ate the headers cannot silently degrade this into a Case-1 (0-header) duplicate.
+    $hdrs19 = @('What I Just Did', 'Why I Stopped', 'What Needs Your Review', 'What Happens Next', 'Discussion Prompts', 'What I Need From You')
+    $h19 = (@($hdrs19) | Where-Object { $packetNoMarker -match [regex]::Escape($_) }).Count
+    if ($h19 -lt 4) { Fail "Case 19 fixture INVALID: expected >=4 section headers preserved, got $h19 (the strip-regex ate the headers - this case would silently become a Case-1 dup)" }
+    if ($packetNoMarker -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case 19 fixture INVALID: the verdict marker was NOT stripped (the case would not test the headers-without-marker path)" }
     $p19 = New-Fixture -Working 'plan' -LastAuth 'clarify'
     $t19 = New-Transcript -Proj $p19 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetNoMarker })
     $r19 = Invoke-Conformance -Proj $p19 -TranscriptPath $t19
     if (-not $r19.Blocked) { Fail "Case 19: a boundary stop with the six section HEADERS but NO verdict marker MUST block (headers don't authorize the crossing; the verdict was never captured). Out: $($r19.Out)" }
     if ($r19.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 19: the block must demand the contiguous verdict marker. Out: $($r19.Out)" }
-    Write-Pass "Case 19: a boundary packet with HEADERS but NO marker still BLOCKS - the marker (not the headers) authorizes the boundary (Antigravity dogfood gap)"
+    Write-Pass "Case 19: a boundary packet with HEADERS but NO marker still BLOCKS - the marker (not the headers) authorizes the boundary (Antigravity dogfood gap); fixture properties asserted (145 TI-1)"
+
+    # ---- Case 20 (145 OB-1): the workshop exclusion must scope to the ACTIVE feature. A DIFFERENT abandoned feature
+    #      whose lens workshop still has lenses remaining MUST NOT suppress the ACTIVE feature's boundary block (the old
+    #      whole-project scan let one stale feature silently disable enforcement for the active one - the #2884 slip).
+    $p20 = New-Fixture -Working 'plan' -LastAuth 'clarify'  # ACTIVE feature 050 at a real boundary; NO lens-applicability of its own
+    $abDir = Join-Path $p20 'specs\049-abandoned'
+    New-Item -ItemType Directory -Path $abDir -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $abDir 'spec.md') -Value '# abandoned feature' -Encoding UTF8
+    Set-Content -LiteralPath (Join-Path $abDir 'lens-applicability.json') -Value (([ordered]@{ workshop_intake = $true; confirmation_required = $true; selected = @('product-domain', 'architecture-core', 'data-storage'); workshop = [ordered]@{} }) | ConvertTo-Json -Depth 6) -Encoding UTF8
+    $t20 = New-Transcript -Proj $p20 -Turns @(@{ role = 'assistant'; text = 'plan.md written; proceeding.' })
+    $r20 = Invoke-Conformance -Proj $p20 -TranscriptPath $t20
+    if (-not $r20.Blocked) { Fail "Case 20: a DIFFERENT abandoned feature's in-progress workshop MUST NOT suppress the ACTIVE feature's boundary block (145 OB-1 cross-feature scope leak). Out: $($r20.Out)" }
+    Write-Pass "Case 20: an abandoned feature's unfinished workshop does NOT suppress the ACTIVE feature's enforcement - the exclusion is scoped to the active feature (145 OB-1)"
+
+    # ---- Case 21 (145 TI-2): a #3 raw-Spec-Kit hit concurrent with a FIRING boundary block folds the redirect INTO
+    #      the block directive (the standalone-nudge path is covered by Case 6; the fold-into-block path was not).
+    $p21 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    $t21 = New-Transcript -Proj $p21 -Turns @(@{ role = 'assistant'; text = 'I will now invoke specify workflow --type feature to scaffold the next phase.' })
+    $r21 = Invoke-Conformance -Proj $p21 -TranscriptPath $t21
+    if (-not $r21.Blocked) { Fail "Case 21: the boundary block should fire. Out: $($r21.Out)" }
+    if ($r21.Out -notmatch 'do NOT run the raw') { Fail "Case 21: a #3 hit concurrent with a firing block MUST fold the redirect into the block directive. Out: $($r21.Out)" }
+    Write-Pass "Case 21: a #3 raw-Spec-Kit hit concurrent with a firing boundary block FOLDS the redirect into the block directive (fold coverage; 145 TI-2)"
 
     Write-Host "`n=== conformance-detection.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
