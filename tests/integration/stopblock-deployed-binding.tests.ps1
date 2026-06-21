@@ -55,6 +55,32 @@ try {
     $out = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue) -replace '\s', ''
     Assert-True ($out -match '"decision":"block"') 'the DEPLOYED baked binding STILL fires the decision:block envelope (145 F1/TI-1 regression guard) - not inert'
 
+    # Codex regression: the deployed -HostBinding must also carry Stop as a decision-only event. Otherwise an
+    # ordinary non-blocking Stop nudge is shaped as hookSpecificOutput.additionalContext and Codex rejects it as
+    # invalid Stop-hook JSON.
+    & pwsh -NoProfile -ExecutionPolicy Bypass -File $deployer -ProjectPath $proj -HostKind codex -UserHomeOverride $home2 *> (Join-Path $proj 'deploy-codex.log')
+    Assert-True ($LASTEXITCODE -eq 0) 'the real deployer runs clean for codex'
+    $codexCfgPath = Join-Path $home2 '.codex/hooks.json'
+    Assert-True (Test-Path -LiteralPath $codexCfgPath) 'deployer produced codex hooks.json'
+    $codexCfg = Get-Content -LiteralPath $codexCfgPath -Raw | ConvertFrom-Json
+    $codexStopCmd = [string]$codexCfg.hooks.Stop[0].hooks[0].command
+    $codexMatch = [regex]::Match($codexStopCmd, '-HostBinding\s+(\S+)')
+    Assert-True ($codexMatch.Success) 'the deployed codex Stop command bakes a -HostBinding'
+    $codexEncoded = $codexMatch.Groups[1].Value.Trim('"', "'")
+    $codexDecoded = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($codexEncoded)) | ConvertFrom-Json
+    Assert-True (@($codexDecoded.DecisionOnlyEvents) -contains 'Stop') 'the baked codex -HostBinding marks Stop as decision-only'
+
+    Set-Content -LiteralPath (Join-Path $scriptsDir 'stub-block.ps1') -Value "Write-Output `"RAW SPEC KIT invocation detected`"; exit 0" -Encoding UTF8
+    $pCodex = Start-Process -FilePath 'pwsh' `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'Stop', '-HostKind', 'codex', '-HostBinding', $codexEncoded) `
+        -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+        -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError (Join-Path $proj 'd-codex.err')
+    Assert-True ($pCodex.ExitCode -eq 0) 'codex dispatcher exits 0 on the deployed-binding nudge path'
+    $codexOut = Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue
+    $codexOutJson = $codexOut | ConvertFrom-Json -ErrorAction Stop
+    Assert-True ([string]$codexOutJson.decision -eq 'allow') 'the deployed codex nudge path emits valid decision allow JSON'
+    Assert-True (-not ($codexOut -match 'hookSpecificOutput|RAW SPEC KIT')) 'the deployed codex nudge path suppresses injection text on Stop'
+
     Write-Host "`n=== stopblock-deployed-binding.tests.ps1: all assertions passed ===" -ForegroundColor Green
 }
 finally {

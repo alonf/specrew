@@ -24,8 +24,9 @@
 #   - BOUNDARY stop: HasPendingVerdict (working boundary ahead of last-authorized, no captured verdict - the #2884
 #     silent advance). REUSES the canonical Get-SpecrewPendingVerdictState (FR-008; not a parallel inference engine).
 #     The block directive carries the CONTIGUOUS last_authorized -> successor verdict marker (145 F2).
-#   - SUBSTANTIAL non-boundary stop (post-intake): a long hand-back lacking the packet -> the within-phase
-#     "proceed?" / checkpoint case the every-stop rule targets.
+#   - MATERIAL non-boundary stop: the current Stop handover reports changed user files or new commits, but the last
+#     assistant message lacks the five-part context packet. This uses the same rolling-handover material signal as
+#     the resume floor and deliberately does NOT block on prose length alone.
 #   FALSE-POSITIVE GUARD: if the last assistant message already surfaced the exact pending boundary crossing (the
 #   marker the capture path would accept) -> no block.
 #
@@ -39,10 +40,10 @@
 #
 # HONEST CEILINGS: (1) cursor cannot hard-block (followup_message re-triggers a NEW turn - the human may glimpse the
 #   packet-less stop); declared best-effort. (2) capability != firing reliability - codex Stop does not fire on an
-#   Esc-interrupted turn / headless exec (a real-host dogfood concern). (3) DETECTION SCOPE: the boundary trigger
-#   fires on a STATE advance (working cursor moved via sync); an artifact hand-written without advancing the cursor
-#   is the cooperative layer's residual. (4) the design-analysis lens workshop (after spec.md exists) is not
-#   excluded by the pre-spec proxy - a known residual, dogfood-tunable. Fully FAIL-OPEN: any error / uncertainty
+#   Esc-interrupted turn / headless exec (a real-host dogfood concern). (3) DETECTION SCOPE: boundary enforcement
+#   keys off gate state; material-work enforcement keys off the current rolling-handover Stop snapshot. If either
+#   signal is unavailable, the provider fails open. (4) the design-analysis lens workshop is explicitly excluded.
+#   Fully FAIL-OPEN: any error / uncertainty
 #   degrades to NO block (allow the stop) - blocking is the narrow exception, never the default.
 
 $ErrorActionPreference = 'Stop'
@@ -51,6 +52,8 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 $script:SpecrewReentryHeaders = @('What I Just Did', 'Why I Stopped', 'What Needs Your Review', 'What Happens Next', 'Discussion Prompts', 'What I Need From You')
 $script:SpecrewBlockCap = 3
 $script:SpecrewFireDedupWindowSec = 60  # idempotency: a duplicate hook fire for the SAME observable state within this window is a no-op.
+$script:SpecrewMaterialHandoverMaxAgeSec = 300  # handover provider runs immediately before conformance; older snapshots are stale.
+$script:SpecrewMaterialRetryWindowSec = 600  # after a material stop block, keep enforcing only during the forced-continue loop.
 $script:SpecrewSubstantialChars = 600
 
 function Test-SpecrewReentryPacketPresent {
@@ -82,6 +85,20 @@ function Get-SpecrewBlockCount {
     return 0
 }
 
+function Get-SpecrewBlockRecord {
+    param([string]$Path)
+    try {
+        if (Test-Path -LiteralPath $Path -PathType Leaf) {
+            $rec = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+            if (($rec.PSObject.Properties.Name -contains 'key') -and ($rec.PSObject.Properties.Name -contains 'count')) {
+                return $rec
+            }
+        }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
 function Set-SpecrewBlockCount {
     # Persist the count for $Key and VERIFY it landed (read-back). Returns $true only when the increment is durably
     # readable - the caller blocks ONLY on $true, so a persistent / non-atomic write failure can never start an
@@ -90,7 +107,7 @@ function Set-SpecrewBlockCount {
     try {
         $dir = Split-Path -Parent $Path
         if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        ([pscustomobject]@{ key = $Key; count = $Count } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop
+        ([pscustomobject]@{ key = $Key; count = $Count; epoch = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop
         if (Test-Path -LiteralPath $Path -PathType Leaf) {
             $back = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
             if (($back.PSObject.Properties.Name -contains 'count') -and ([int]$back.count -eq $Count) -and ($back.PSObject.Properties.Name -contains 'key') -and ([string]$back.key -eq $Key)) { return $true }
@@ -98,6 +115,114 @@ function Set-SpecrewBlockCount {
     }
     catch { $null = $_ }
     return $false
+}
+
+function Get-SpecrewRecentMaterialRetryKey {
+    param([AllowNull()]$Record)
+    try {
+        if ($null -eq $Record -or -not ($Record.PSObject.Properties.Name -contains 'key')) { return $null }
+        $key = [string]$Record.key
+        if ($key -notlike 'material|*') { return $null }
+        if (-not ($Record.PSObject.Properties.Name -contains 'epoch')) { return $null }
+        $age = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$Record.epoch
+        if ($age -ge 0 -and $age -le $script:SpecrewMaterialRetryWindowSec) { return $key }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Get-SpecrewMaterialSatisfiedKey {
+    param([string]$Path)
+    try {
+        if (Test-Path -LiteralPath $Path -PathType Leaf) {
+            $rec = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+            if (($rec.PSObject.Properties.Name -contains 'key') -and -not [string]::IsNullOrWhiteSpace([string]$rec.key)) {
+                return [string]$rec.key
+            }
+        }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Set-SpecrewMaterialSatisfiedKey {
+    param([string]$Path, [string]$Key)
+    if ([string]::IsNullOrWhiteSpace($Key)) { return }
+    try {
+        $dir = Split-Path -Parent $Path
+        if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        ([pscustomobject]@{ key = $Key; epoch = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop
+    }
+    catch { $null = $_ }
+}
+
+function Get-SpecrewCurrentStopMaterialSignal {
+    # Deterministic non-boundary packet trigger. The handover provider (order 30) runs before this conformance
+    # provider (order 40) and writes the latest Stop snapshot. Treat it as material ONLY when the current, fresh
+    # Stop snapshot's newest activity bullet reports changed user files or new commits. Conversation-only Stop
+    # refreshes update recorded_at but do not prepend an activity bullet, so their bullet timestamp will not match.
+    param([string]$ProjectRoot, [AllowNull()][string]$BootstrapDir)
+    $result = [pscustomobject]@{ material = $false; key = $null; reason = 'no-material-signal'; user_file_count = 0; new_commit_count = 0 }
+    try {
+        if ([string]::IsNullOrWhiteSpace($BootstrapDir)) { $result.reason = 'no-bootstrap-dir'; return $result }
+        $store = Join-Path $BootstrapDir 'HandoverStore.ps1'
+        if (-not (Test-Path -LiteralPath $store -PathType Leaf)) { $result.reason = 'no-handover-store'; return $result }
+        if (-not (Get-Command ConvertFrom-SpecrewHandoverFile -ErrorAction SilentlyContinue)) {
+            try { . $store } catch { $result.reason = 'handover-store-unloadable'; return $result }
+        }
+        if (-not (Get-Command ConvertFrom-SpecrewHandoverFile -ErrorAction SilentlyContinue)) { $result.reason = 'handover-parser-unavailable'; return $result }
+
+        $path = Join-Path $ProjectRoot '.specrew/handover/session-handover.md'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $result.reason = 'no-handover'; return $result }
+        $handover = ConvertFrom-SpecrewHandoverFile -Path $path
+        if ($null -eq $handover) { $result.reason = 'unreadable-handover'; return $result }
+
+        $source = [string]$handover.source
+        if ([string]::IsNullOrWhiteSpace($source) -or $source.ToLowerInvariant() -notin @('stop', 'agentstop')) {
+            $result.reason = 'not-stop-handover'; return $result
+        }
+
+        $recordedRaw = [string]$handover.recorded_at
+        if ([string]::IsNullOrWhiteSpace($recordedRaw)) { $result.reason = 'missing-recorded-at'; return $result }
+        $recordedAt = [datetime]::Parse($recordedRaw).ToUniversalTime()
+        $age = ([datetime]::UtcNow - $recordedAt).TotalSeconds
+        if ($age -lt -30 -or $age -gt $script:SpecrewMaterialHandoverMaxAgeSec) {
+            $result.reason = 'stale-handover'; return $result
+        }
+
+        $activityTitle = 'What I just did (last 3-5 turns or last boundary work)'
+        $activity = if ($handover.sections -and $handover.sections.Contains($activityTitle)) { [string]$handover.sections[$activityTitle] } else { '' }
+        if ([string]::IsNullOrWhiteSpace($activity)) { $result.reason = 'no-activity-section'; return $result }
+        $bullet = @($activity -split "`r?`n" | Where-Object { $_ -match '^\s*-\s+\[' } | Select-Object -First 1)
+        if ($bullet.Count -eq 0) { $result.reason = 'no-activity-bullet'; return $result }
+
+        $rx = [regex]::new('^\s*-\s+\[(?<stamp>[^\]]+)\]\s+\((?<source>[^)]+)\)\s+(?<files>\d+)\s+changed user file\(s\).*?(?:;\s+(?<commits>\d+)\s+new commit\(s\))?', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        $m = $rx.Match([string]$bullet[0])
+        if (-not $m.Success) { $result.reason = 'activity-unrecognized'; return $result }
+        if (($m.Groups['source'].Value).ToLowerInvariant() -notin @('stop', 'agentstop')) { $result.reason = 'activity-not-stop'; return $result }
+
+        $activityAt = [datetime]::Parse($m.Groups['stamp'].Value).ToUniversalTime()
+        if ([math]::Abs(($recordedAt - $activityAt).TotalSeconds) -gt 5) {
+            $result.reason = 'activity-not-current-stop'; return $result
+        }
+
+        $files = [int]$m.Groups['files'].Value
+        $commits = if ($m.Groups['commits'].Success -and -not [string]::IsNullOrWhiteSpace($m.Groups['commits'].Value)) { [int]$m.Groups['commits'].Value } else { 0 }
+        if ($files -le 0 -and $commits -le 0) { $result.reason = 'no-user-files-or-commits'; return $result }
+
+        $result.material = $true
+        $result.reason = 'current-stop-material-delta'
+        $result.user_file_count = $files
+        $result.new_commit_count = $commits
+        $stableMaterialSurface = (([string]$bullet[0]) -replace '^\s*-\s+\[[^\]]+\]\s+\([^)]+\)\s+', '').Trim()
+        $surfaceHash = Get-SpecrewFireIdentity -Parts @($stableMaterialSurface)
+        $result.key = ('material|{0}' -f $surfaceHash)
+        return $result
+    }
+    catch {
+        $result.reason = 'material-signal-unreadable'
+        return $result
+    }
 }
 
 function Reset-SpecrewBlockCount {
@@ -243,6 +368,17 @@ try {
         catch { $null = $_ }
     }
 
+    # Material-work lane (Proposal 145 follow-up): the old length-only "substantial" trigger over-blocked normal
+    # discussion, so use the deterministic rolling-handover signal written by the preceding Stop provider instead.
+    $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
+    $materialSignal = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir
+    $materialStop = ($null -ne $materialSignal -and [bool]$materialSignal.material)
+    $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
+    $materialSatisfiedPath = Join-Path $projectRoot '.specrew/runtime/conformance-material-satisfied.json'
+    $existingBlockRecord = Get-SpecrewBlockRecord -Path $blockStatePath
+    $materialRetryKey = Get-SpecrewRecentMaterialRetryKey -Record $existingBlockRecord
+    $materialSatisfiedKey = Get-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath
+
     # (IDEMPOTENCY check is performed BELOW - after the role-aware last-assistant message + the workshop/marker state
     # are computed - so the fire-identity captures the FULL decision-relevant state. An EARLY tail-40 identity falsely
     # deduped a genuine second boundary stop when the distinguishing message fell outside tail-40, or across a
@@ -253,9 +389,9 @@ try {
     # pre-spec proxy false-blocked a lens question once spec.md existed (dogfood). Detect the workshop ROBUSTLY (the
     # reused Get-SpecrewWorkshopProgress: a confirmed lens agenda with lenses still remaining) and, while in it,
     # SUPPRESS every signal (no block, no #1, no #3). ---
-    $bootstrapDir = $null; $inWorkshop = $false
-    if ($hasPending -or $anySpec -or $rawHit) {
-        $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
+    $inWorkshop = $false
+    if ($hasPending -or $anySpec -or $rawHit -or $materialStop) {
+        if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         $inWorkshop = Test-SpecrewWorkshopInProgress -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -FeatureRef $activeFeatureRef
     }
     if ($inWorkshop) { $rawHit = $false }  # a workshop lens question owes no packet and is not a raw-Spec-Kit deviation.
@@ -268,7 +404,7 @@ try {
     if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
     }
-    if (($hasPending -or $anySpec) -and (-not $inWorkshop)) {
+    if (($hasPending -or $anySpec -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $inWorkshop)) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
             $cc = Join-Path $bootstrapDir 'ConversationCaptureAccessor.ps1'
@@ -321,7 +457,7 @@ try {
     # never blocks the stop. The force-continue loop is unaffected (each forced re-render is a NEW message).
     $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
     $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("w={0}" -f [int][bool]$inWorkshop), ("p={0}" -f [int][bool]$hasPending), [string]$sourceEventArg)
+    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("w={0}" -f [int][bool]$inWorkshop), ("p={0}" -f [int][bool]$hasPending), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
     $lastFirePath = Join-Path $projectRoot '.specrew/runtime/conformance-last-fire.json'
     if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
         try {
@@ -357,43 +493,61 @@ try {
     #   headers WITHOUT it leave the gate un-authorized (the Antigravity dogfood: a packet rendered, no marker,
     #   last_authorized stayed `none`). $markerForPendingCrossing also subsumes the old false-positive guard (a
     #   captured marker for THIS crossing = a legitimate awaiting-verdict stop, 145 TI-2/F1).
-    # NON-BOUNDARY substantial hand-back: the six section headers suffice (a within-phase stop has no verdict marker).
+    # NON-BOUNDARY material hand-back: the packet headers suffice (a within-phase stop has no verdict marker).
     # FIX C (145 F1-CC): $canAssess gates both - we never claim "absent" without reading the message (fail-open).
     # Hard-block ONLY genuine DECISION-YIELD stops = a BOUNDARY (pending verdict + missing marker). The earlier
     # "substantial" (>=600-char) non-boundary trigger was DROPPED (maintainer 2026-06-21): a long but communicative
-    # DISCUSSION / status answer is not a decision-yield and must not be force-blocked into a packet. The within-phase
-    # "proceed?" packet stays a COOPERATIVE norm (general.md rule 9), not a hard block - so conversation flows normally.
+    # DISCUSSION / status answer is not a decision-yield and must not be force-blocked into a packet. The replacement
+    # hard block is deterministic material work only: the current Stop handover reports changed user files or new
+    # commits. Once a packet has been rendered for the same material surface, later quick discussion while the tree
+    # stays dirty is allowed; a changed material surface requires a fresh packet.
     $boundaryBlock = $hasPending -and (-not $markerForPendingCrossing)
-    $blockWarranted = $canAssess -and $boundaryBlock
+    $materialAlreadySatisfied = $materialStop -and (-not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) -and ([string]$materialSignal.key -eq [string]$materialSatisfiedKey)
+    $materialInitialBlock = (-not $hasPending) -and $materialStop -and (-not $packetPresent) -and (-not $materialAlreadySatisfied)
+    $materialRetryBlock = (-not $hasPending) -and (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $packetPresent)
+    $materialBlock = $materialInitialBlock -or $materialRetryBlock
+    $blockKind = if ($boundaryBlock) { 'boundary' } elseif ($materialBlock) { 'material' } else { 'none' }
+    $blockWarranted = $canAssess -and ($blockKind -ne 'none')
 
-    $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
     $journalPath = Join-Path $projectRoot '.specrew/runtime/conformance-journal.jsonl'
     $blockReason = $null
     $corrections = New-Object System.Collections.Generic.List[string]
     $capped = $false
-    # The advance identity the consecutive-block cap keys on: a boundary advance is working|lastAuth; a non-boundary
-    # substantial stop is the constant 'substantial'. A NEW advance (different key) starts a fresh count; the agent
+    $cappedKind = $null
+    # The advance identity the consecutive-block cap keys on: a boundary advance is working|lastAuth; a material
+    # non-boundary stop is keyed by the current handover snapshot. A NEW advance/snapshot starts a fresh count; the agent
     # rendering the packet (not blockWarranted) resets it. No time window (145 HANG-1).
     # The if-guard also protects the $pending null-deref under the leaked StrictMode; the else value is an unused
     # placeholder ($advanceKey is read only inside the blockWarranted branch, which implies $hasPending; 145 SC-3).
-    $advanceKey = if ($hasPending) { ("{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary) } else { 'na' }
+    $advanceKey = if ($blockKind -eq 'boundary' -and $hasPending) {
+        ("{0}|{1}" -f [string]$pending.WorkingBoundary, [string]$pending.LastAuthorizedBoundary)
+    }
+    elseif ($blockKind -eq 'material' -and $materialInitialBlock -and -not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) {
+        [string]$materialSignal.key
+    }
+    elseif ($blockKind -eq 'material' -and -not [string]::IsNullOrWhiteSpace($materialRetryKey)) {
+        [string]$materialRetryKey
+    }
+    else { 'na' }
 
     if ($blockWarranted) {
         $count = Get-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey
         if ($count -ge $script:SpecrewBlockCap) {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
-            [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP verdict marker still absent or wrong after {0} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $count))
+            $cappedKind = $blockKind
+            $capSubject = if ($blockKind -eq 'material') { 'material-work packet' } else { 'verdict marker' }
+            [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP {0} still absent or wrong after {1} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $capSubject, $count))
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
             # Block ONLY when the increment durably persisted (145 HANG-2): a host without a built-in cap relies on
             # this counter, so an unverifiable write must NOT start an uncappable loop.
             # Build the packet directive. At a boundary, include the CONTIGUOUS last_authorized -> successor marker.
             $sb = New-Object System.Text.StringBuilder
-            [void]$sb.AppendLine('Specrew: boundary state is pending, but your last message did not expose the verdict marker for the pending boundary crossing. Render the full six-section re-entry packet NOW as your message, then stop again:')
-            [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## Discussion Prompts / ## What I Need From You')
-            [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
-            if ($hasPending) {
+            if ($blockKind -eq 'boundary') {
+                [void]$sb.AppendLine('Specrew: boundary state is pending, but your last message did not expose the verdict marker for the pending boundary crossing. Render the full six-section re-entry packet NOW as your message, then stop again:')
+                [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## Discussion Prompts / ## What I Need From You')
+                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
                 $fromBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingFromMarkerBoundary } else { $null }
                 $toBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingToMarkerBoundary } else { [string]$pending.WorkingBoundary }
                 [void]$sb.AppendLine('')
@@ -405,6 +559,12 @@ try {
                     [void]$sb.AppendLine(("This is a BOUNDARY stop into '{0}' (the first unauthorized boundary); emit the contiguous verdict marker as the LAST line." -f $toBoundary))
                 }
                 [void]$sb.AppendLine('Do NOT record the authorization yourself; the verdict is captured from your rendered packet + the human''s reply.')
+            }
+            elseif ($blockKind -eq 'material') {
+                [void]$sb.AppendLine('Specrew: this Stop followed material work, but your last message did not render the required non-boundary context packet. Render the five-part context packet NOW as your message, then stop again:')
+                [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You')
+                [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
+                [void]$sb.AppendLine('This is a NON-BOUNDARY material-work stop; do NOT emit a SPECREW-VERDICT-BOUNDARY marker.')
             }
             if ($intakeHit) { [void]$sb.AppendLine('Also: an active feature already exists - do NOT ask what to build; continue it.') }
             if ($rawHit) { [void]$sb.AppendLine('Also: do NOT run the raw `specify workflow` SDD engine - route through the governed Specrew flow.') }
@@ -418,13 +578,21 @@ try {
     }
     else {
         # Packet present, or nothing owed -> the agent complied; clear the loop-guard counter.
+        if ($materialStop -and $packetPresent -and -not [string]::IsNullOrWhiteSpace([string]$materialSignal.key)) {
+            Set-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath -Key ([string]$materialSignal.key)
+        }
         Reset-SpecrewBlockCount -Path $blockStatePath
     }
 
     # If not blocking (not warranted, or capped), surface the cooperative nudges instead.
     if ([string]::IsNullOrWhiteSpace($blockReason)) {
         if ($capped) {
-            $corrections.Add('[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong (FR-011/FR-015) - render the six-section packet and emit the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.') | Out-Null
+            if ($cappedKind -eq 'material') {
+                $corrections.Add('[specrew-conformance] MATERIAL-WORK STOP packet still missing (FR-015) - render the five-part context packet with file:/// references before handing control back.') | Out-Null
+            }
+            else {
+                $corrections.Add('[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong (FR-011/FR-015) - render the six-section packet and emit the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.') | Out-Null
+            }
         }
         if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists (FR-011 #1)`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }
         if ($rawHit) { $corrections.Add("[specrew-conformance] RAW SPEC KIT invocation detected (FR-011 #3)`n`nDo NOT run the un-governed 'specify workflow' automation - route through the Specrew design workshop and the governed /speckit.* commands so the gates are honored.") | Out-Null }
@@ -438,7 +606,7 @@ try {
             $evt = if (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } else { 'nudge' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

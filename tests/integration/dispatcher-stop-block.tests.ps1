@@ -12,16 +12,28 @@ function Assert-True { param([bool]$Condition, [string]$Message) if (-not $Condi
 $dispatcher = (Resolve-Path "$PSScriptRoot/../../scripts/internal/specrew-hook-dispatcher.ps1").Path
 
 function Invoke-Dispatcher {
-    param([string]$HostKind, [string]$Event, [hashtable]$EventExtra = @{})
+    param(
+        [string]$HostKind,
+        [string]$Event,
+        [hashtable]$EventExtra = @{},
+        [ValidateSet('block', 'nudge')]
+        [string]$StubKind = 'block'
+    )
     $proj = Join-Path ([System.IO.Path]::GetTempPath()) ("sb-" + [guid]::NewGuid().ToString('N'))
     $scriptsDir = Join-Path $proj '.specify/extensions/specrew-speckit/scripts'
     New-Item -ItemType Directory -Path (Join-Path $proj '.specrew/runtime') -Force | Out-Null
     New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
     try {
-        # ONE stub provider on every stop-class event, emitting the block sentinel.
+        # ONE stub provider on every stop-class event. Most cases emit the stop-block sentinel; the Codex
+        # regression emits an ordinary nudge, which must be suppressed to decision JSON on Stop.
         $catalog = @{ schema_version = '1'; providers = @(@{ id = 'stub-block'; kind = 'inject'; events = @('Stop', 'agentStop', 'stop'); order = 40; budget_share = 1.0; command = 'stub-block.ps1' }) } | ConvertTo-Json -Depth 6
         Set-Content -LiteralPath (Join-Path $proj '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
-        $stub = "Write-Output `"<<<SPECREW-STOP-BLOCK>>>`nRENDER THE PACKET NOW`"; exit 0"
+        $stub = if ($StubKind -eq 'block') {
+            "Write-Output `"<<<SPECREW-STOP-BLOCK>>>`nRENDER THE PACKET NOW`"; exit 0"
+        }
+        else {
+            "Write-Output `"RAW SPEC KIT invocation detected`"; exit 0"
+        }
         Set-Content -LiteralPath (Join-Path $scriptsDir 'stub-block.ps1') -Value $stub -Encoding UTF8
 
         $evt = @{ session_id = 'sb1'; source = $Event }
@@ -66,5 +78,12 @@ Assert-True (-not (($rActive.Out -replace '\s', '') -match '"decision":"block"')
 # (already asserted above) - confirm the cursor path produced a NON-decision envelope (no decision:block).
 $rCursor = Invoke-Dispatcher -HostKind 'cursor' -Event 'stop'
 Assert-True (-not (($rCursor.Out -replace '\s', '') -match '"decision":"block"')) 'cursor: degrades to followup_message, NOT a hard decision:block (declared best-effort)'
+
+# Codex Stop accepts only decision-style JSON. A non-blocking provider nudge must not be emitted as
+# hookSpecificOutput.additionalContext, or Codex rejects the Stop hook output as invalid JSON for that event.
+$rCodexNudge = Invoke-Dispatcher -HostKind 'codex' -Event 'Stop' -StubKind 'nudge'
+$codexNudgeJson = $rCodexNudge.Out | ConvertFrom-Json -ErrorAction Stop
+Assert-True ([string]$codexNudgeJson.decision -eq 'allow') 'codex Stop nudge: dispatcher returns valid decision allow JSON'
+Assert-True (-not ($rCodexNudge.Out -match 'hookSpecificOutput|RAW SPEC KIT')) 'codex Stop nudge: dispatcher suppresses non-blocking injection payload on decision-only Stop'
 
 Write-Host "`n=== dispatcher-stop-block.tests.ps1: all assertions passed ===" -ForegroundColor Green

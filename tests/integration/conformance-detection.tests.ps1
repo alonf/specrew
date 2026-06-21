@@ -5,9 +5,9 @@ $ErrorActionPreference = 'Stop'
 
 # Feature 185 FR-011 / FR-015 / FR-004 - SC-008 / SC-011: the conformance Stop-provider DETECTION + BLOCK-request.
 #
-# The provider now emits a BLOCK SENTINEL (`<<<SPECREW-STOP-BLOCK>>>` + the packet directive) when a stop owes the
-# 6-section re-entry packet and it is absent, so the dispatcher can force-continue the turn (the packet renders AT
-# the stop, not as a too-late next-turn nudge). This file tests the PROVIDER's detection + sentinel emission against
+# The provider now emits a BLOCK SENTINEL (`<<<SPECREW-STOP-BLOCK>>>` + the packet directive) when a stop owes a
+# boundary re-entry packet or non-boundary material-work context packet and it is absent, so the dispatcher can
+# force-continue the turn (the packet renders AT the stop, not as a too-late next-turn nudge). This file tests the PROVIDER's detection + sentinel emission against
 # REALISTIC fixtures (the dispatcher's per-host envelope translation is tested in dispatcher-stop-block.tests.ps1).
 # Each case dispatches the real provider as a child process the way the hook dispatcher does (double-dash flags,
 # cwd = the fixture root) and asserts on its stdout (Prop-145 synthetic-fixture + negative-case discipline).
@@ -76,6 +76,72 @@ function New-Transcript {
     return $path
 }
 
+function New-HandoverSnapshot {
+    param(
+        [string]$Proj,
+        [int]$ChangedUserFiles = 0,
+        [int]$NewCommits = 0,
+        [int]$ActivityOffsetSeconds = 0,
+        [string]$Source = 'Stop',
+        [string]$FileList
+    )
+    $dir = Join-Path $Proj '.specrew\handover'
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $recordedAt = [datetime]::UtcNow
+    $activityAt = $recordedAt.AddSeconds($ActivityOffsetSeconds)
+    $stamp = $activityAt.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $commitNote = if ($NewCommits -gt 0) { ("; {0} new commit(s): abc1234 material commit" -f $NewCommits) } else { '' }
+    if ([string]::IsNullOrWhiteSpace($FileList)) {
+        $FileList = if ($ChangedUserFiles -gt 0) { 'src/provider.ps1, tests/provider.tests.ps1' } else { '(none)' }
+    }
+    $content = @"
+---
+schema: v1
+source: $Source
+from_host: codex
+recorded_at: $($recordedAt.ToUniversalTime().ToString('o'))
+from_commit: abc1234
+active_feature: 050-host-neutral-gate
+active_boundary: plan
+---
+
+# Session Handover (rolling)
+
+## What I just did (last 3-5 turns or last boundary work)
+
+- [$stamp] ($Source) $ChangedUserFiles changed user file(s) [$FileList]; HEAD abc1234 (material commit)$commitNote
+
+## Why I'm stopping (the switch trigger)
+
+Hook-captured at trigger '$Source'. Boundary: plan. Refresh reason: tracked-change.
+
+## Open questions / pending clarifications
+
+(placeholder)
+
+## Agent's working hypothesis / mental model
+
+(placeholder)
+
+## Recommended next-immediate-step
+
+Resume feature 050-host-neutral-gate at boundary plan.
+
+## Context the receiving host needs that artifacts don't carry
+
+branch 185-host-neutral-gate-enforcement, HEAD abc1234 (material commit).
+
+## Recent conversation (last few exchanges, hook-captured)
+
+(placeholder)
+
+## Authored boundary packet (captured at stop)
+
+(placeholder)
+"@
+    Set-Content -LiteralPath (Join-Path $dir 'session-handover.md') -Value $content -Encoding UTF8
+}
+
 function Invoke-Conformance {
     param([string]$Proj, [AllowNull()][string]$TranscriptPath, [string]$Event = 'Stop')
     $tpArg = if ([string]::IsNullOrWhiteSpace($TranscriptPath)) { '' } else { " --transcript-path '$TranscriptPath'" }
@@ -111,6 +177,28 @@ I will author plan.md with the architecture and the FR-to-test mapping. No code 
 Approve as-is, approve with instructions, send back, or discuss prompt #N.
 
 <!-- SPECREW-VERDICT-BOUNDARY: clarify -> plan -->
+'@
+
+$materialPacket = @'
+## What I Just Did
+
+I updated the conformance provider and the focused regression tests, with the changed files under file:///fixture.
+
+## Why I Stopped
+
+This is a non-boundary material-work stop after code and test changes.
+
+## What Needs Your Review
+
+Review the material-work Stop enforcement path and the negative conversation-only case.
+
+## What Happens Next
+
+I will run the focused Pester checks and sync the deployed provider copy.
+
+## What I Need From You
+
+Review the result and tell me whether to continue.
 '@
 
 # A long (>600 char) NON-packet hand-back: substantial prose with no section headers and no verdict marker.
@@ -165,6 +253,70 @@ try {
     $r4b = Invoke-Conformance -Proj $p4b -TranscriptPath $t4b
     if ($r4b.Blocked) { Fail "Case 4b: a substantial message pre-spec (intake/workshop) MUST NOT block - the workshop is excluded. Out: $($r4b.Out)" }
     Write-Pass "Case 4b: a substantial message PRE-SPEC (the design-workshop window) does NOT block (workshop exclusion)"
+
+    # ---- Case 4c: MATERIAL non-boundary stop. The current Stop handover reports changed user files and the last
+    #               assistant message has no packet -> emit the block sentinel with the five-part context directive.
+    $p4c = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p4c
+    New-HandoverSnapshot -Proj $p4c -ChangedUserFiles 2
+    $t4c = New-Transcript -Proj $p4c -Turns @(@{ role = 'assistant'; text = 'I updated the provider and tests. Stopping here.' })
+    $r4c = Invoke-Conformance -Proj $p4c -TranscriptPath $t4c
+    if (-not $r4c.Blocked) { Fail "Case 4c: a material non-boundary Stop with no context packet MUST block. Out: $($r4c.Out)" }
+    if ($r4c.Out -notmatch 'five-part context packet') { Fail "Case 4c: material block must demand the five-part context packet, not a boundary verdict packet. Out: $($r4c.Out)" }
+    if ($r4c.Out -notmatch 'What I Just Did' -or $r4c.Out -notmatch 'What I Need From You') { Fail "Case 4c: material block directive must name the packet headings. Out: $($r4c.Out)" }
+    if ($r4c.Out -match '<!-- SPECREW-VERDICT-BOUNDARY') { Fail "Case 4c: material block must not demand a boundary verdict marker. Out: $($r4c.Out)" }
+    Write-Pass "Case 4c: a MATERIAL non-boundary Stop without the context packet emits the stop-block sentinel + five-part directive"
+
+    # ---- Case 4d: MATERIAL non-boundary stop with the five-part context packet already rendered -> no block.
+    $p4d = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p4d
+    New-HandoverSnapshot -Proj $p4d -ChangedUserFiles 2
+    $t4d = New-Transcript -Proj $p4d -Turns @(@{ role = 'assistant'; text = $materialPacket })
+    $r4d = Invoke-Conformance -Proj $p4d -TranscriptPath $t4d
+    if ($r4d.Blocked) { Fail "Case 4d: a material Stop with the five-part context packet already rendered MUST NOT block. Out: $($r4d.Out)" }
+    Write-Pass "Case 4d: a MATERIAL non-boundary Stop with the five-part context packet does NOT block"
+
+    # ---- Case 4d2: SAME dirty surface after a packet was rendered. A later quick answer while the same files remain
+    #                uncommitted MUST NOT keep demanding the packet over and over.
+    New-HandoverSnapshot -Proj $p4d -ChangedUserFiles 2
+    $t4d2 = New-Transcript -Proj $p4d -Turns @(@{ role = 'assistant'; text = 'That is the remaining open issue list.' })
+    $r4d2 = Invoke-Conformance -Proj $p4d -TranscriptPath $t4d2
+    if ($r4d2.Blocked) { Fail "Case 4d2: once a packet was rendered for the same dirty-state surface, a later quick answer MUST NOT re-block. Out: $($r4d2.Out)" }
+    Write-Pass "Case 4d2: a quick follow-up on the SAME dirty-state surface does NOT re-block after the material packet was rendered"
+
+    # ---- Case 4d3: CHANGED dirty surface after satisfaction. A new material surface needs a fresh packet.
+    New-HandoverSnapshot -Proj $p4d -ChangedUserFiles 3 -FileList 'src/provider.ps1, tests/provider.tests.ps1, docs/new.md'
+    $t4d3 = New-Transcript -Proj $p4d -Turns @(@{ role = 'assistant'; text = 'I made one more related change.' })
+    $r4d3 = Invoke-Conformance -Proj $p4d -TranscriptPath $t4d3
+    if (-not $r4d3.Blocked) { Fail "Case 4d3: a changed dirty-state surface after a satisfied material packet MUST re-block. Out: $($r4d3.Out)" }
+    Write-Pass "Case 4d3: a CHANGED dirty-state surface after satisfaction requires a fresh material packet"
+
+    # ---- Case 4e: CONVERSATION-only stop after earlier material work. Handover recorded_at is current, but the
+    #               latest activity bullet is older, so this is a conversation refresh and MUST NOT block.
+    $p4e = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p4e
+    New-HandoverSnapshot -Proj $p4e -ChangedUserFiles 2 -ActivityOffsetSeconds -120
+    $t4e = New-Transcript -Proj $p4e -Turns @(@{ role = 'assistant'; text = $longProse })
+    $r4e = Invoke-Conformance -Proj $p4e -TranscriptPath $t4e
+    if ($r4e.Blocked) { Fail "Case 4e: a conversation-only Stop with only an older material bullet MUST NOT block. Out: $($r4e.Out)" }
+    Write-Pass "Case 4e: an end-of-turn conversation refresh after earlier material work does NOT block"
+
+    # ---- Case 4f: MATERIAL retry loop. If the forced-continue response still omits the packet, the previous
+    #               material block key keeps enforcing until the packet appears or the cap releases.
+    $p4f = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p4f
+    New-HandoverSnapshot -Proj $p4f -ChangedUserFiles 2
+    $t4f1 = New-Transcript -Proj $p4f -Turns @(@{ role = 'assistant'; text = 'I changed code and tests, stopping.' })
+    $r4f1 = Invoke-Conformance -Proj $p4f -TranscriptPath $t4f1
+    if (-not $r4f1.Blocked) { Fail "Case 4f: first material packet-less stop MUST block. Out: $($r4f1.Out)" }
+    New-HandoverSnapshot -Proj $p4f -ChangedUserFiles 2 -ActivityOffsetSeconds -120
+    $t4f2 = New-Transcript -Proj $p4f -Turns @(@{ role = 'assistant'; text = 'Still stopping without the packet.' })
+    $r4f2 = Invoke-Conformance -Proj $p4f -TranscriptPath $t4f2
+    if (-not $r4f2.Blocked) { Fail "Case 4f: a forced-continue response that still omits the packet MUST re-block against the existing material key. Out: $($r4f2.Out)" }
+    $t4f3 = New-Transcript -Proj $p4f -Turns @(@{ role = 'assistant'; text = $materialPacket })
+    $r4f3 = Invoke-Conformance -Proj $p4f -TranscriptPath $t4f3
+    if ($r4f3.Blocked) { Fail "Case 4f: rendering the material context packet must reset/release the material retry block. Out: $($r4f3.Out)" }
+    Write-Pass "Case 4f: material stop-block retries until the packet is rendered, then releases"
 
     # ---- Case 5: INTAKE QUESTION -> a cooperative NUDGE (not a block). Short intake question, spec exists.
     $p5 = New-Fixture -Working 'plan' -LastAuth 'plan'
