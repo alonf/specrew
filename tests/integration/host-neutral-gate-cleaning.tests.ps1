@@ -35,6 +35,7 @@ $general = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-spe
 $specify = Get-Content -LiteralPath (Join-Path $repoRoot 'extensions/specrew-speckit/refocus/specify.md') -Raw
 if ($general -notmatch 'SPECREW-VERDICT-BOUNDARY') { Write-Fail 'general.md rule-9 must instruct emitting the SPECREW-VERDICT-BOUNDARY marker (FR-006)' }
 if ($specify -notmatch 'SPECREW-VERDICT-BOUNDARY') { Write-Fail 'specify.md step-6 must instruct emitting the SPECREW-VERDICT-BOUNDARY marker (FR-006)' }
+if ($specify -notmatch 'SPECREW-VERDICT-BOUNDARY:\s*intake\s*->\s*specify') { Write-Fail 'specify.md step-6 must use the first-boundary marker intake -> specify so the specify verdict captures (FR-006 / dogfood D-015)' }
 Write-Pass 'FR-006: cleaned digests instruct every host to emit the verdict marker'
 
 # Regression guard: Claude keeps its dedicated boundary-stop surface (the gate-stop skill stays host-scoped to claude).

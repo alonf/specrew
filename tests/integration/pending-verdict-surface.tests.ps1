@@ -52,6 +52,7 @@ try {
     if (-not $r1.HasPendingVerdict) { Fail "working 'tasks' ahead of authorized 'plan' MUST be pending" }
     if ($r1.WorkingBoundary -ne 'tasks') { Fail "WorkingBoundary expected 'tasks', got '$($r1.WorkingBoundary)'" }
     if ($r1.LastAuthorizedBoundary -ne 'plan') { Fail "LastAuthorizedBoundary expected 'plan', got '$($r1.LastAuthorizedBoundary)'" }
+    if ($r1.PendingFromMarkerBoundary -ne 'plan' -or $r1.PendingToMarkerBoundary -ne 'tasks') { Fail "pending crossing expected plan -> tasks, got '$($r1.PendingFromMarkerBoundary)' -> '$($r1.PendingToMarkerBoundary)'" }
     if ($r1.Message -notmatch 'AWAITING YOUR VERDICT') { Fail "pending message must say AWAITING YOUR VERDICT" }
     if ($r1.Message -notmatch 'committed') { Fail "pending message must say the boundary is committed (not approved)" }
     Write-Pass "working ahead of authorized -> HasPendingVerdict + honest message ('tasks' committed, 'plan' authorized)"
@@ -66,6 +67,8 @@ try {
     $p3 = New-Proj -Working 'specify' -LastAuth ''
     $r3 = Get-SpecrewPendingVerdictState -ProjectRoot $p3
     if (-not $r3.HasPendingVerdict) { Fail "working 'specify' with NO authorized boundary MUST be pending" }
+    if ($r3.PendingFromMarkerBoundary -ne 'intake' -or $r3.PendingToMarkerBoundary -ne 'specify') { Fail "first pending crossing expected intake -> specify, got '$($r3.PendingFromMarkerBoundary)' -> '$($r3.PendingToMarkerBoundary)'" }
+    if (-not $r3.IsFirstBoundary) { Fail "first pending crossing must set IsFirstBoundary" }
     if ($r3.Message -notmatch 'none recorded yet') { Fail "no-authorized message must say '(none recorded yet)'" }
     Write-Pass "working with NO authorized boundary -> pending (committed != authorized from the start)"
 

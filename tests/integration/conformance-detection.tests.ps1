@@ -134,12 +134,13 @@ try {
     if ($r1.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 1: the block directive must carry the contiguous clarify -> plan marker. Out: $($r1.Out)" }
     Write-Pass "Case 1: a boundary silent-advance emits the block sentinel + the six-section directive + the contiguous clarify -> plan marker (#2884 / SC-008 #2)"
 
-    # ---- Case 2: FALSE-POSITIVE GUARD (boundary). Same state, but the packet WAS rendered this turn (to=plan==working) -> no block.
+    # ---- Case 2: FALSE-POSITIVE GUARD (boundary). Same state, but the packet WAS rendered this turn
+    #              (clarify -> plan == pending crossing) -> no block.
     $p2 = New-Fixture -Working 'plan' -LastAuth 'clarify'
     $t2 = New-Transcript -Proj $p2 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $realPacket })
     $r2 = Invoke-Conformance -Proj $p2 -TranscriptPath $t2
-    if ($r2.Blocked) { Fail "Case 2: a rendered packet (to=plan==working) is a legitimate awaiting-verdict stop - MUST NOT block. Out: $($r2.Out)" }
-    Write-Pass "Case 2: a rendered six-section packet matching the working boundary SUPPRESSES the block (false-positive guard)"
+    if ($r2.Blocked) { Fail "Case 2: a rendered packet (clarify -> plan == pending crossing) is a legitimate awaiting-verdict stop - MUST NOT block. Out: $($r2.Out)" }
+    Write-Pass "Case 2: a rendered six-section packet matching the pending crossing SUPPRESSES the block (false-positive guard)"
 
     # ---- Case 3: cursor caught up. working == authorized, no spec, short msg -> not pending, not substantial -> no block.
     $p3 = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -195,7 +196,7 @@ try {
     $t7cap = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written (attempt 4).' })
     $r7cap = Invoke-Conformance -Proj $p7 -TranscriptPath $t7cap
     if ($r7cap.Blocked) { Fail "Case 7: the 4th consecutive block exceeds the cap and MUST degrade (release the stop) to avoid a hang. Out: $($r7cap.Out)" }
-    if ($r7cap.Out -notmatch 'RE-ENTRY PACKET still missing') { Fail "Case 7: over the cap, degrade to a plain re-entry nudge. Out: $($r7cap.Out)" }
+    if ($r7cap.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 7: over the cap, degrade to a plain marker nudge. Out: $($r7cap.Out)" }
     # A packet-present stop resets the counter.
     $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = $realPacket })
     $null = Invoke-Conformance -Proj $p7 -TranscriptPath $t7ok
@@ -223,6 +224,24 @@ try {
     if ($r9.Out -match 'SPECREW-VERDICT-BOUNDARY: (plan -> tasks|clarify -> tasks)') { Fail "Case 9: MUST NOT name a non-contiguous crossing. Out: $($r9.Out)" }
     Write-Pass "Case 9: a multi-gate-gap block names the CONTIGUOUS clarify -> plan crossing, not a gate-skipping marker (145 F2)"
 
+    # ---- Case 9b: MULTI-GATE-GAP rendered packet. working 'tasks' two gates past authorized 'clarify', but the
+    #               rendered packet targets the FIRST unauthorized crossing clarify -> plan -> suppress and let capture bind.
+    $p9b = New-Fixture -Working 'tasks' -LastAuth 'clarify'
+    $t9b = New-Transcript -Proj $p9b -Turns @(@{ role = 'assistant'; text = $realPacket })
+    $r9b = Invoke-Conformance -Proj $p9b -TranscriptPath $t9b
+    if ($r9b.Blocked) { Fail "Case 9b: a marker for the first unauthorized crossing clarify -> plan MUST suppress even when working already jumped to tasks. Out: $($r9b.Out)" }
+    Write-Pass "Case 9b: multi-gate over-advance suppresses only when the packet names the FIRST unauthorized crossing (clarify -> plan)"
+
+    # ---- Case 9c: MULTI-GATE-GAP wrong marker. The gate-skipping plan -> tasks marker must NOT suppress; it would
+    #               let the human authorize a later crossing while clarify -> plan is still missing.
+    $packetPlanTasks = $realPacket -replace 'clarify -> plan', 'plan -> tasks'
+    $p9c = New-Fixture -Working 'tasks' -LastAuth 'clarify'
+    $t9c = New-Transcript -Proj $p9c -Turns @(@{ role = 'assistant'; text = $packetPlanTasks })
+    $r9c = Invoke-Conformance -Proj $p9c -TranscriptPath $t9c
+    if (-not $r9c.Blocked) { Fail "Case 9c: a gate-skipping plan -> tasks marker MUST NOT suppress while clarify -> plan is first unauthorized. Out: $($r9c.Out)" }
+    if ($r9c.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 9c: block must demand the first unauthorized clarify -> plan marker. Out: $($r9c.Out)" }
+    Write-Pass "Case 9c: multi-gate over-advance rejects a later marker and demands the first unauthorized crossing"
+
     # ---- Case 10: STALE-PACKET still blocks. working 'tasks', authorized 'plan', a stale clarify->plan packet (to=plan)
     #               in the tail must NOT suppress the genuine plan->tasks advance (to != working).
     $p10 = New-Fixture -Working 'tasks' -LastAuth 'plan'
@@ -234,15 +253,35 @@ try {
     $r10 = Invoke-Conformance -Proj $p10 -TranscriptPath $t10
     if (-not $r10.Blocked) { Fail "Case 10: a stale clarify->plan packet (to=plan) MUST NOT suppress the genuine plan->tasks advance. Out: $($r10.Out)" }
     if ($r10.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: plan -> tasks') { Fail "Case 10: the block must name the contiguous plan -> tasks crossing. Out: $($r10.Out)" }
-    Write-Pass "Case 10: a STALE/unrelated packet does NOT suppress a genuine new advance - the guard matches ToBoundary to the working boundary (145 TI-2/F1)"
+    Write-Pass "Case 10: a STALE/unrelated packet does NOT suppress a genuine new advance - the guard matches the exact pending crossing (145 TI-2/F1)"
 
-    # ---- Case 11: RELEVANT packet (to==working) suppresses. working 'tasks', authorized 'plan', a plan->tasks packet rendered.
+    # ---- Case 11: RELEVANT packet (matches pending crossing) suppresses. working 'tasks', authorized 'plan',
+    #                a plan->tasks packet rendered.
     $packetTasks = $realPacket -replace 'clarify -> plan', 'plan -> tasks'
     $p11 = New-Fixture -Working 'tasks' -LastAuth 'plan'
     $t11 = New-Transcript -Proj $p11 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetTasks })
     $r11 = Invoke-Conformance -Proj $p11 -TranscriptPath $t11
-    if ($r11.Blocked) { Fail "Case 11: a packet whose ToBoundary == the working boundary is a legitimate awaiting stop - MUST suppress. Out: $($r11.Out)" }
-    Write-Pass "Case 11: the RELEVANT packet (ToBoundary == working) correctly suppresses the block (guard precision)"
+    if ($r11.Blocked) { Fail "Case 11: a packet whose marker matches the pending crossing is a legitimate awaiting stop - MUST suppress. Out: $($r11.Out)" }
+    Write-Pass "Case 11: the RELEVANT packet (plan -> tasks == pending crossing) correctly suppresses the block (guard precision)"
+
+    # ---- Case 11b: FIRST boundary marker. With no authorized boundary and working already at clarify, the first
+    #                 authorizable crossing is still intake -> specify. That exact marker suppresses.
+    $packetFirst = $realPacket -replace 'clarify -> plan', 'intake -> specify'
+    $p11b = New-Fixture -Working 'clarify' -LastAuth ''
+    $t11b = New-Transcript -Proj $p11b -Turns @(@{ role = 'assistant'; text = $packetFirst })
+    $r11b = Invoke-Conformance -Proj $p11b -TranscriptPath $t11b
+    if ($r11b.Blocked) { Fail "Case 11b: first-boundary marker intake -> specify MUST suppress even when working already jumped to clarify. Out: $($r11b.Out)" }
+    Write-Pass "Case 11b: first-boundary over-advance suppresses on the marker-only intake -> specify crossing"
+
+    # ---- Case 11c: FIRST boundary wrong marker. specify -> clarify is the NEXT crossing, not the first
+    #                 authorization from an empty ledger; it must block and demand intake -> specify.
+    $packetWrongFirst = $realPacket -replace 'clarify -> plan', 'specify -> clarify'
+    $p11c = New-Fixture -Working 'clarify' -LastAuth ''
+    $t11c = New-Transcript -Proj $p11c -Turns @(@{ role = 'assistant'; text = $packetWrongFirst })
+    $r11c = Invoke-Conformance -Proj $p11c -TranscriptPath $t11c
+    if (-not $r11c.Blocked) { Fail "Case 11c: first-boundary wrong marker specify -> clarify MUST block when specify is not authorized yet. Out: $($r11c.Out)" }
+    if ($r11c.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: intake -> specify') { Fail "Case 11c: block must demand intake -> specify for the first unauthorized boundary. Out: $($r11c.Out)" }
+    Write-Pass "Case 11c: first-boundary wrong marker is rejected; the block demands intake -> specify"
 
     # ---- Case 12: ENFORCEMENT DISABLED -> never blocks.
     $p12 = New-Fixture -Working 'plan' -LastAuth 'clarify' -Enabled $false
@@ -261,7 +300,7 @@ try {
     $t13 = New-Transcript -Proj $p13 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
     $r13 = Invoke-Conformance -Proj $p13 -TranscriptPath $t13
     if ($r13.Blocked) { Fail "Case 13: a count at the cap for this advance key MUST cap (count persists by advance, no time window). Out: $($r13.Out)" }
-    if ($r13.Out -notmatch 'RE-ENTRY PACKET still missing') { Fail "Case 13: at the cap, degrade to the plain nudge. Out: $($r13.Out)" }
+    if ($r13.Out -notmatch 'BOUNDARY VERDICT MARKER still missing') { Fail "Case 13: at the cap, degrade to the plain marker nudge. Out: $($r13.Out)" }
     Write-Pass "Case 13: the consecutive-block count is keyed by the advance (no time window) - a count at the cap releases regardless of elapsed time (145 HANG-1)"
 
     # ---- Case 14 (145 HANG-2): an unpersistable counter degrades to NO block (fail-open). A directory placed at the

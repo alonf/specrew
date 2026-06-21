@@ -85,6 +85,22 @@ try {
     Assert-True ([string]$e7.last_authorized_boundary -eq 'before-implement') "7 IDEMPOTENT: gate at before-implement after two stops"
     Assert-True (@($e7.verdict_history).Count -eq 1) "7 IDEMPOTENT: exactly ONE verdict_history entry (the re-fired Stop's marker FROM no longer matches the advanced cursor) (got $(@($e7.verdict_history).Count))"
 
+    # === Case 8 — FIRST BOUNDARY: no lastAuth + marker intake->specify + approval -> AUTHORIZES specify. ===
+    $c8 = New-CaptureProject -LastAuth '' -Turns (Packet 'intake' 'specify' 'approved for specify'); $cases += $c8.Tmp
+    Invoke-StopHook -Proj $c8.Proj -Tx $c8.Transcript
+    $e8 = Read-Enforcement -Proj $c8.Proj
+    Assert-True ([string]$e8.last_authorized_boundary -eq 'specify') "8 FIRST: none + (intake->specify) + approve -> gate ADVANCES to specify (got '$($e8.last_authorized_boundary)')"
+    $v8 = @($e8.verdict_history)[-1]
+    Assert-True ([string]$v8.to_boundary -eq 'specify') "8: first verdict_history to_boundary=specify"
+    Assert-True ([string]::IsNullOrWhiteSpace([string]$v8.from_boundary)) "8: first verdict_history from_boundary is empty/null (intake is marker-only, not a canonical persisted boundary)"
+
+    # === Case 9 — FIRST BOUNDARY WRONG MARKER: no lastAuth + marker specify->clarify + approval -> does NOT authorize. ===
+    $c9 = New-CaptureProject -LastAuth '' -Turns (Packet 'specify' 'clarify' 'approved for clarify'); $cases += $c9.Tmp
+    Invoke-StopHook -Proj $c9.Proj -Tx $c9.Transcript
+    $e9 = Read-Enforcement -Proj $c9.Proj
+    Assert-True ([string]::IsNullOrWhiteSpace([string]$e9.last_authorized_boundary)) "9 FIRST-WRONG: none + (specify->clarify) + approve -> gate STAYS unauthorized until intake->specify is captured (got '$($e9.last_authorized_boundary)')"
+    Assert-True (@($e9.verdict_history).Count -eq 0) "9: no verdict_history entry written for the non-contiguous first-boundary marker"
+
     Write-Host "`n=== HookVerdictCapture.Tests.ps1: all assertions passed (the hook is the verdict authority AND advances one boundary at a time) ===" -ForegroundColor Green
 }
 finally {

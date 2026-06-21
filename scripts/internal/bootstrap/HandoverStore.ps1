@@ -757,29 +757,25 @@ function Update-SpecrewRollingHandover {
     if ($isEndOfTurn -and -not [string]::IsNullOrWhiteSpace($TranscriptPath) -and
         (Get-Command Get-SpecrewCapturedBoundaryVerdict -ErrorAction SilentlyContinue) -and
         (Get-Command Add-SpecrewBoundaryAuthorization -ErrorAction SilentlyContinue) -and
-        (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue)) {
+        (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue) -and
+        (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try {
             $captured = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath
             if ($captured.Found) {
                 $bOrder = @(Get-SpecrewBoundaryOrder)
-                $fromIdx = [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $captured.FromBoundary))
-                $toIdx = [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $captured.ToBoundary))
                 $authIdx = if ([string]::IsNullOrWhiteSpace([string]$lastAuthBoundary)) { -1 } else { [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuthBoundary)) }
-                # GATE CONTIGUITY (one-boundary-at-a-time). Forward-only ($toIdx > $authIdx) is NECESSARY but NOT
-                # SUFFICIENT: with lastAuth=plan and a marker 'tasks -> before-implement', a forward-only check would
-                # apply the human's REAL before-implement approval while the 'plan -> tasks' gate was NEVER
-                # authorized - skipping a gate. So require the capture to advance EXACTLY one gate from the cursor:
-                #   (1) the marker's FROM must EQUAL last_authorized_boundary ($fromIdx == $authIdx), and
-                #   (2) the marker's TO must be the IMMEDIATE successor of FROM ($toIdx == $fromIdx + 1).
-                # Anything else (from != cursor, or a multi-gate jump like tasks -> review-signoff) is REJECTED. We
-                # do NOT rewrite FROM to the cursor to force contiguity - that would mask the skip; we reject the
-                # capture as unsafe, leave the gate where it is (the resume surfaces awaiting-verdict so the human
-                # re-confirms the missing boundary), and journal the mismatch. This ALSO gives idempotence: once the
-                # gate has advanced, the same marker's FROM no longer equals the (now-advanced) cursor, so a re-fired
-                # Stop is a no-op.
-                if ($fromIdx -ge 0 -and $fromIdx -eq $authIdx -and $toIdx -eq ($fromIdx + 1)) {
+                $toIdx = [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $captured.ToBoundary))
+                $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $lastAuthBoundary -WorkingBoundary $captured.ToBoundary
+                $actualFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$captured.FromBoundary)
+                $actualTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$captured.ToBoundary)
+                $expectedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
+                $expectedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
+                # GATE CONTIGUITY (one-boundary-at-a-time). The expected crossing is derived once from
+                # last_authorized_boundary; the transcript marker must match that exact rendered crossing. This covers
+                # both normal gates (plan -> tasks) and the first gate's marker-only sentinel (intake -> specify).
+                if ([bool]$pendingCrossing.HasPendingVerdict -and $actualFrom -eq $expectedFrom -and $actualTo -eq $expectedTo) {
                     Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
-                        -CurrentBoundary $captured.FromBoundary -AuthorizedBoundary $captured.ToBoundary `
+                        -CurrentBoundary $pendingCrossing.PendingFromBoundary -AuthorizedBoundary $pendingCrossing.PendingToBoundary `
                         -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
                         -EvidenceSource 'hook-captured-from-transcript' | Out-Null
                 }
@@ -787,12 +783,12 @@ function Update-SpecrewRollingHandover {
                     # A CLEAR approval whose marker is forward but NON-CONTIGUOUS with the cursor: refuse to apply it
                     # (applying it would skip an earlier unauthorized gate). Record the mismatch for forensics; the
                     # gate stays put and the resume (T006) surfaces awaiting-verdict for the contiguous boundary.
-                    [Console]::Error.WriteLine(("[specrew-handover] WARN MARKER_CURSOR_MISMATCH captured '{0}->{1}' is not contiguous with the authorized cursor '{2}'; NOT authorizing (one-boundary-at-a-time)." -f $captured.FromBoundary, $captured.ToBoundary, $lastAuthBoundary))
+                    [Console]::Error.WriteLine(("[specrew-handover] WARN MARKER_CURSOR_MISMATCH captured '{0}->{1}' but expected '{2}->{3}' from authorized cursor '{4}'; NOT authorizing (one-boundary-at-a-time)." -f $captured.FromBoundary, $captured.ToBoundary, $expectedFrom, $expectedTo, $lastAuthBoundary))
                     try {
                         $mmJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
                         $mmDir = Split-Path -Parent $mmJournal
                         if ($mmDir -and -not (Test-Path -LiteralPath $mmDir)) { New-Item -ItemType Directory -Path $mmDir -Force | Out-Null }
-                        (([pscustomobject]@{ event = 'marker-cursor-mismatch'; recorded_at = $NowUtc; captured_from = $captured.FromBoundary; captured_to = $captured.ToBoundary; authorized_cursor = [string]$lastAuthBoundary; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $mmJournal -Encoding UTF8
+                        (([pscustomobject]@{ event = 'marker-cursor-mismatch'; recorded_at = $NowUtc; captured_from = $captured.FromBoundary; captured_to = $captured.ToBoundary; expected_from = $expectedFrom; expected_to = $expectedTo; authorized_cursor = [string]$lastAuthBoundary; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $mmJournal -Encoding UTF8
                     }
                     catch { $null = $_ }
                 }

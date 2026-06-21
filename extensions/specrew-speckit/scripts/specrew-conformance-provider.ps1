@@ -26,8 +26,8 @@
 #     The block directive carries the CONTIGUOUS last_authorized -> successor verdict marker (145 F2).
 #   - SUBSTANTIAL non-boundary stop (post-intake): a long hand-back lacking the packet -> the within-phase
 #     "proceed?" / checkpoint case the every-stop rule targets.
-#   FALSE-POSITIVE GUARD: if the last assistant message already RENDERED the packet (>=4 of the 6 section headers,
-#   or - at a boundary - a captured packet whose ToBoundary matches the working boundary) -> no block.
+#   FALSE-POSITIVE GUARD: if the last assistant message already surfaced the exact pending boundary crossing (the
+#   marker the capture path would accept) -> no block.
 #
 # #1 INTAKE QUESTION (asking "what to build" while a spec exists) and #3 RAW `specify[.exe] workflow`: cooperative
 #   redirects, folded into the block directive when a block fires, else emitted as a plain inject nudge.
@@ -263,7 +263,11 @@ try {
     # --- EXPENSIVE transcript parse ONLY when a packet-owed trigger is structurally possible AND not in-workshop
     # (PERF: the per-line ConvertFrom-Json parse is the dominant Stop-hook cost and scales with session size; a
     # no-trigger / in-workshop stop skips it entirely). ---
-    $lastAssistantText = $null; $intakeHit = $false; $ccLoaded = $false; $markerForWorking = $false
+    $lastAssistantText = $null; $intakeHit = $false; $ccLoaded = $false; $markerForPendingCrossing = $false
+    $pendingCrossing = $null
+    if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
+        try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
+    }
     if (($hasPending -or $anySpec) -and (-not $inWorkshop)) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
@@ -290,14 +294,16 @@ try {
         # authorize the crossing - the <!-- SPECREW-VERDICT-BOUNDARY --> marker is what captures the verdict. A weak
         # host rendered the headers but NOT the marker, so the verdict was never captured (last_authorized stayed
         # none) yet the header check suppressed the block. So at a boundary, suppress ONLY when the marker for the
-        # WORKING boundary is present (Found + To == working); headers without the marker still block.
+        # PENDING crossing is present; headers without that marker still block.
         if ($hasPending -and $ccLoaded -and (Get-Command Get-SpecrewCapturedBoundaryPacket -ErrorAction SilentlyContinue)) {
             try {
                 $pkt = Get-SpecrewCapturedBoundaryPacket -TranscriptPath $transcriptPathArg
-                if ($null -ne $pkt -and [bool]$pkt.Found) {
+                if ($null -ne $pkt -and [bool]$pkt.Found -and $null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) {
+                    $pktFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pkt.FromBoundary)
                     $pktTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pkt.ToBoundary)
-                    $workNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pending.WorkingBoundary)
-                    if (-not [string]::IsNullOrWhiteSpace($pktTo) -and $pktTo -eq $workNorm) { $markerForWorking = $true }
+                    $expectedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
+                    $expectedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
+                    if (-not [string]::IsNullOrWhiteSpace($pktTo) -and $pktFrom -eq $expectedFrom -and $pktTo -eq $expectedTo) { $markerForPendingCrossing = $true }
                 }
             }
             catch { $null = $_ }
@@ -315,7 +321,7 @@ try {
     # never blocks the stop. The force-continue loop is unaffected (each forced re-render is a NEW message).
     $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
     $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForWorking), ("w={0}" -f [int][bool]$inWorkshop), ("p={0}" -f [int][bool]$hasPending), [string]$sourceEventArg)
+    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("w={0}" -f [int][bool]$inWorkshop), ("p={0}" -f [int][bool]$hasPending), [string]$sourceEventArg)
     $lastFirePath = Join-Path $projectRoot '.specrew/runtime/conformance-last-fire.json'
     if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
         try {
@@ -349,15 +355,15 @@ try {
     $canAssess = -not [string]::IsNullOrWhiteSpace($lastAssistantText)
     # BOUNDARY stop: owes the verdict MARKER (not just the six headers) - the marker is what captures the verdict;
     #   headers WITHOUT it leave the gate un-authorized (the Antigravity dogfood: a packet rendered, no marker,
-    #   last_authorized stayed `none`). $markerForWorking also subsumes the old false-positive guard (a captured
-    #   marker for THIS crossing = a legitimate awaiting-verdict stop, 145 TI-2/F1).
+    #   last_authorized stayed `none`). $markerForPendingCrossing also subsumes the old false-positive guard (a
+    #   captured marker for THIS crossing = a legitimate awaiting-verdict stop, 145 TI-2/F1).
     # NON-BOUNDARY substantial hand-back: the six section headers suffice (a within-phase stop has no verdict marker).
     # FIX C (145 F1-CC): $canAssess gates both - we never claim "absent" without reading the message (fail-open).
     # Hard-block ONLY genuine DECISION-YIELD stops = a BOUNDARY (pending verdict + missing marker). The earlier
     # "substantial" (>=600-char) non-boundary trigger was DROPPED (maintainer 2026-06-21): a long but communicative
     # DISCUSSION / status answer is not a decision-yield and must not be force-blocked into a packet. The within-phase
     # "proceed?" packet stays a COOPERATIVE norm (general.md rule 9), not a hard block - so conversation flows normally.
-    $boundaryBlock = $hasPending -and (-not $markerForWorking)
+    $boundaryBlock = $hasPending -and (-not $markerForPendingCrossing)
     $blockWarranted = $canAssess -and $boundaryBlock
 
     $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
@@ -377,31 +383,19 @@ try {
         if ($count -ge $script:SpecrewBlockCap) {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
             $capped = $true
-            [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP packet still absent after {0} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $count))
+            [Console]::Error.WriteLine(("[specrew-conformance] WARN STOP_BLOCK_CAP verdict marker still absent or wrong after {0} consecutive blocks; releasing the stop (degrading to a nudge) to avoid a hang." -f $count))
         }
         elseif (Set-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey -Count ($count + 1)) {
             # Block ONLY when the increment durably persisted (145 HANG-2): a host without a built-in cap relies on
             # this counter, so an unverifiable write must NOT start an uncappable loop.
             # Build the packet directive. At a boundary, include the CONTIGUOUS last_authorized -> successor marker.
             $sb = New-Object System.Text.StringBuilder
-            [void]$sb.AppendLine('Specrew: you ended the turn without the six-section re-entry packet, so the human cannot see the situation or what they need to do. Render it NOW as your message, then stop again:')
+            [void]$sb.AppendLine('Specrew: boundary state is pending, but your last message did not expose the verdict marker for the pending boundary crossing. Render the full six-section re-entry packet NOW as your message, then stop again:')
             [void]$sb.AppendLine('## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## Discussion Prompts / ## What I Need From You')
             [void]$sb.AppendLine('Every artifact reference uses a bare file:/// URL.')
             if ($hasPending) {
-                $working = [string]$pending.WorkingBoundary
-                $lastAuth = [string]$pending.LastAuthorizedBoundary
-                $fromBoundary = $null; $toBoundary = $working
-                try {
-                    if (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue) {
-                        $order = @(Get-SpecrewBoundaryOrder)
-                        $authIdx = if ([string]::IsNullOrWhiteSpace($lastAuth)) { -1 } else { [Array]::IndexOf($order, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuth)) }
-                        if (($authIdx + 1) -ge 0 -and ($authIdx + 1) -lt $order.Count) {
-                            $toBoundary = $order[$authIdx + 1]
-                            if ($authIdx -ge 0) { $fromBoundary = $order[$authIdx] }
-                        }
-                    }
-                }
-                catch { $null = $_ }
+                $fromBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingFromMarkerBoundary } else { $null }
+                $toBoundary = if ($null -ne $pendingCrossing -and [bool]$pendingCrossing.HasPendingVerdict) { [string]$pendingCrossing.PendingToMarkerBoundary } else { [string]$pending.WorkingBoundary }
                 [void]$sb.AppendLine('')
                 [void]$sb.AppendLine([string]$pending.Message)
                 if (-not [string]::IsNullOrWhiteSpace($fromBoundary)) {
@@ -430,7 +424,7 @@ try {
     # If not blocking (not warranted, or capped), surface the cooperative nudges instead.
     if ([string]::IsNullOrWhiteSpace($blockReason)) {
         if ($capped) {
-            $corrections.Add('[specrew-conformance] RE-ENTRY PACKET still missing (FR-015) - render the six-section packet (What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You) so the human knows the state and the next action.') | Out-Null
+            $corrections.Add('[specrew-conformance] BOUNDARY VERDICT MARKER still missing or wrong (FR-011/FR-015) - render the six-section packet and emit the exact pending-crossing SPECREW-VERDICT-BOUNDARY marker so the human verdict can be captured.') | Out-Null
         }
         if ($intakeHit) { $corrections.Add(("[specrew-conformance] INTAKE QUESTION while an active feature exists (FR-011 #1)`n`nYou asked the human what to build, but a feature is already in flight (spec exists at {0}). Do NOT restart intake - read it and continue the active feature." -f $specPath)) | Out-Null }
         if ($rawHit) { $corrections.Add("[specrew-conformance] RAW SPEC KIT invocation detected (FR-011 #3)`n`nDo NOT run the un-governed 'specify workflow' automation - route through the Specrew design workshop and the governed /speckit.* commands so the gates are honored.") | Out-Null }
