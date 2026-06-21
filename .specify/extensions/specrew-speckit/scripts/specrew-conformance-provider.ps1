@@ -50,6 +50,7 @@ try { [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false) } catc
 
 $script:SpecrewReentryHeaders = @('What I Just Did', 'Why I Stopped', 'What Needs Your Review', 'What Happens Next', 'Discussion Prompts', 'What I Need From You')
 $script:SpecrewBlockCap = 3
+$script:SpecrewFireDedupWindowSec = 60  # idempotency: a duplicate hook fire for the SAME observable state within this window is a no-op.
 $script:SpecrewSubstantialChars = 600
 
 function Test-SpecrewReentryPacketPresent {
@@ -103,6 +104,18 @@ function Reset-SpecrewBlockCount {
     param([string]$Path)
     try { if (Test-Path -LiteralPath $Path -PathType Leaf) { Remove-Item -LiteralPath $Path -Force -ErrorAction SilentlyContinue } }
     catch { $null = $_ }
+}
+
+function Get-SpecrewFireIdentity {
+    # A stable identity for THIS Stop fire = a hash of the recent transcript tail + the boundary cursor + the source
+    # event. Two fires with the same identity are the SAME observable state (a duplicate hook delivery for the same
+    # message); the boundary force-continue loop produces a NEW message each turn -> a different identity.
+    param([string[]]$Parts)
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes(($Parts -join '|'))
+        return (-join ([System.Security.Cryptography.SHA256]::Create().ComputeHash($bytes) | ForEach-Object { $_.ToString('x2') }))
+    }
+    catch { return '' }
 }
 
 function Resolve-SpecrewBootstrapDir {
@@ -217,6 +230,7 @@ try {
     # match whose preceding context is a prohibition / quote (the contract's OWN "do NOT run the raw `specify.exe
     # workflow`" prose) so it does not false-fire (dogfood + 145 fix-followup). Also suppressed in-workshop below.
     $rawHit = $false
+    $rawTail = ''
     if (-not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)) {
         try {
             $rawTail = (@(Get-Content -LiteralPath $transcriptPathArg -Tail 40 -Encoding UTF8 -ErrorAction Stop) -join "`n")
@@ -225,6 +239,34 @@ try {
                 if ($pre.Contains([char]96) -or ($pre -match '(?i)\b(not|never|raw|un|forbidden|avoid|don)\b')) { continue }  # prohibition/quote prose, not an invocation
                 $rawHit = $true; break
             }
+        }
+        catch { $null = $_ }
+    }
+
+    # --- IDEMPOTENCY (duplicate-fire guard): if this exact Stop is delivered MORE THAN ONCE for the SAME observable
+    # state (same recent transcript tail + boundary cursor + source event) within a short window, process it ONCE -
+    # a re-fired hook must not re-block / re-nudge / re-journal the same message. The boundary force-continue loop is
+    # UNAFFECTED: each forced re-render is a NEW message -> a different identity -> processed normally. Best-effort:
+    # a read/write miss simply disables dedup for this stop (it never blocks the stop). ---
+    $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
+    $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
+    $fireIdentity = Get-SpecrewFireIdentity -Parts @($rawTail, $idWorking, $idAuth, [string]$sourceEventArg)
+    $lastFirePath = Join-Path $projectRoot '.specrew/runtime/conformance-last-fire.json'
+    if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
+        try {
+            if (Test-Path -LiteralPath $lastFirePath -PathType Leaf) {
+                $lf = Get-Content -LiteralPath $lastFirePath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+                if (($lf.PSObject.Properties.Name -contains 'identity') -and ([string]$lf.identity -eq $fireIdentity) -and ($lf.PSObject.Properties.Name -contains 'epoch')) {
+                    $age = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() - [long]$lf.epoch
+                    if ($age -ge 0 -and $age -le $script:SpecrewFireDedupWindowSec) { return }  # duplicate fire -> idempotent no-op
+                }
+            }
+        }
+        catch { $null = $_ }
+        try {
+            $rdir = Split-Path -Parent $lastFirePath
+            if ($rdir -and -not (Test-Path -LiteralPath $rdir)) { New-Item -ItemType Directory -Path $rdir -Force | Out-Null }
+            ([pscustomobject]@{ identity = $fireIdentity; epoch = [System.DateTimeOffset]::UtcNow.ToUnixTimeSeconds() } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $lastFirePath -Encoding UTF8
         }
         catch { $null = $_ }
     }
@@ -304,9 +346,12 @@ try {
     #   marker for THIS crossing = a legitimate awaiting-verdict stop, 145 TI-2/F1).
     # NON-BOUNDARY substantial hand-back: the six section headers suffice (a within-phase stop has no verdict marker).
     # FIX C (145 F1-CC): $canAssess gates both - we never claim "absent" without reading the message (fail-open).
+    # Hard-block ONLY genuine DECISION-YIELD stops = a BOUNDARY (pending verdict + missing marker). The earlier
+    # "substantial" (>=600-char) non-boundary trigger was DROPPED (maintainer 2026-06-21): a long but communicative
+    # DISCUSSION / status answer is not a decision-yield and must not be force-blocked into a packet. The within-phase
+    # "proceed?" packet stays a COOPERATIVE norm (general.md rule 9), not a hard block - so conversation flows normally.
     $boundaryBlock = $hasPending -and (-not $markerForWorking)
-    $substantialBlock = (-not $hasPending) -and $anySpec -and $substantial -and (-not $packetPresent)
-    $blockWarranted = $canAssess -and ($boundaryBlock -or $substantialBlock)
+    $blockWarranted = $canAssess -and $boundaryBlock
 
     $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
     $journalPath = Join-Path $projectRoot '.specrew/runtime/conformance-journal.jsonl'

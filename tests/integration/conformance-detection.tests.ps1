@@ -148,16 +148,15 @@ try {
     if ($r3.Blocked) { Fail "Case 3: working == authorized + short message MUST NOT block. Out: $($r3.Out)" }
     Write-Pass "Case 3: working == authorized + a short reply does NOT block (no false alarm)"
 
-    # ---- Case 4: SUBSTANTIAL non-boundary block. No pending verdict, but a spec exists (past intake) and the agent
-    #              ended the turn with a long hand-back lacking the packet -> block, packet directive, NO verdict marker.
+    # ---- Case 4: a SUBSTANTIAL non-boundary hand-back (a long but communicative DISCUSSION / status answer) MUST NOT
+    #              block. The >=600-char "substantial" trigger was DROPPED (maintainer 2026-06-21): a long answer is
+    #              not a decision-yield; only BOUNDARY stops force the packet. (This is the over-block the maintainer hit.)
     $p4 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p4
     $t4 = New-Transcript -Proj $p4 -Turns @(@{ role = 'user'; text = 'go' }, @{ role = 'assistant'; text = $longProse })
     $r4 = Invoke-Conformance -Proj $p4 -TranscriptPath $t4
-    if (-not $r4.Blocked) { Fail "Case 4: a substantial post-intake hand-back with no packet MUST block (the every-stop rule). Out: $($r4.Out)" }
-    if ($r4.Out -notmatch 'What I Just Did') { Fail "Case 4: the block directive must instruct the six-section packet. Out: $($r4.Out)" }
-    if ($r4.Out -match 'SPECREW-VERDICT-BOUNDARY') { Fail "Case 4: a non-boundary stop MUST NOT carry a verdict marker. Out: $($r4.Out)" }
-    Write-Pass "Case 4: a SUBSTANTIAL non-boundary hand-back lacking the packet blocks (six-section directive, no verdict marker) - the every-stop rule (FR-015 / SC-011)"
+    if ($r4.Blocked) { Fail "Case 4: a substantial non-boundary DISCUSSION answer MUST NOT block (the length trigger was dropped; conversation flows). Out: $($r4.Out)" }
+    Write-Pass "Case 4: a SUBSTANTIAL non-boundary hand-back (a long discussion/status answer) does NOT block - only decision-yield boundaries force the packet (maintainer 2026-06-21)"
 
     # ---- Case 4b: SUBSTANTIAL but PRE-SPEC (workshop excluded). Same long message, NO spec, no pending -> NO block.
     $p4b = New-Fixture -Working 'plan' -LastAuth 'plan'
@@ -185,18 +184,23 @@ try {
     # ---- Case 7: LOOP-GUARD. Consecutive packet-less boundary stops block up to the cap, then degrade to a nudge
     #              (never hang); a packet-present stop resets the counter so a later advance re-blocks.
     $p7 = New-Fixture -Working 'plan' -LastAuth 'clarify'
-    $t7 = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
+    # DISTINCT message per dispatch - the real loop-guard scenario is the agent re-rendering DIFFERENT no-packet
+    # messages (same advance), which the idempotency guard does NOT dedup (different identities). (A truly identical
+    # re-fire is Case 22.)
     for ($n = 1; $n -le 3; $n++) {
-        $rb = Invoke-Conformance -Proj $p7 -TranscriptPath $t7
+        $tn = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = "plan.md written (attempt $n)." })
+        $rb = Invoke-Conformance -Proj $p7 -TranscriptPath $tn
         if (-not $rb.Blocked) { Fail "Case 7: block #$n (within the cap of 3) MUST block. Out: $($rb.Out)" }
     }
-    $r7cap = Invoke-Conformance -Proj $p7 -TranscriptPath $t7
+    $t7cap = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written (attempt 4).' })
+    $r7cap = Invoke-Conformance -Proj $p7 -TranscriptPath $t7cap
     if ($r7cap.Blocked) { Fail "Case 7: the 4th consecutive block exceeds the cap and MUST degrade (release the stop) to avoid a hang. Out: $($r7cap.Out)" }
     if ($r7cap.Out -notmatch 'RE-ENTRY PACKET still missing') { Fail "Case 7: over the cap, degrade to a plain re-entry nudge. Out: $($r7cap.Out)" }
     # A packet-present stop resets the counter.
     $t7ok = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = $realPacket })
     $null = Invoke-Conformance -Proj $p7 -TranscriptPath $t7ok
-    $r7reset = Invoke-Conformance -Proj $p7 -TranscriptPath $t7
+    $t7re = New-Transcript -Proj $p7 -Turns @(@{ role = 'assistant'; text = 'plan.md written (post-reset attempt).' })
+    $r7reset = Invoke-Conformance -Proj $p7 -TranscriptPath $t7re
     if (-not $r7reset.Blocked) { Fail "Case 7: after a packet-present stop reset the counter, a fresh packet-less advance MUST re-block. Out: $($r7reset.Out)" }
     Write-Pass "Case 7: loop-guard - consecutive packet-less stops block up to the cap then degrade (no hang); a packet-present stop resets so a later advance re-blocks"
 
@@ -355,6 +359,16 @@ try {
     if (-not $r21.Blocked) { Fail "Case 21: the boundary block should fire. Out: $($r21.Out)" }
     if ($r21.Out -notmatch 'do NOT run the raw') { Fail "Case 21: a #3 hit concurrent with a firing block MUST fold the redirect into the block directive. Out: $($r21.Out)" }
     Write-Pass "Case 21: a #3 raw-Spec-Kit hit concurrent with a firing boundary block FOLDS the redirect into the block directive (fold coverage; 145 TI-2)"
+
+    # ---- Case 22 (IDEMPOTENCY): a DUPLICATE hook fire for the SAME message (identical transcript + boundary state)
+    #      within the dedup window is a no-op - the stop blocks ONCE; the re-fire does not re-block (maintainer 2026-06-21).
+    $p22 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    $t22 = New-Transcript -Proj $p22 -Turns @(@{ role = 'assistant'; text = 'plan.md written.' })
+    $r22a = Invoke-Conformance -Proj $p22 -TranscriptPath $t22
+    $r22b = Invoke-Conformance -Proj $p22 -TranscriptPath $t22  # identical re-fire (same transcript content + state)
+    if (-not $r22a.Blocked) { Fail "Case 22: the first fire of a boundary stop MUST block. Out: $($r22a.Out)" }
+    if ($r22b.Blocked) { Fail "Case 22: a DUPLICATE fire for the same message MUST be idempotent (no second block). Out: $($r22b.Out)" }
+    Write-Pass "Case 22: a duplicate hook fire for the same message is idempotent - blocks once, the re-fire is a no-op (maintainer 2026-06-21)"
 
     Write-Host "`n=== conformance-detection.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
