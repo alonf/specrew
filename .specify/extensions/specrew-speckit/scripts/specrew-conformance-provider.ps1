@@ -226,7 +226,7 @@ try {
     # --- EXPENSIVE transcript parse ONLY when a packet-owed trigger is structurally possible AND not in-workshop
     # (PERF: the per-line ConvertFrom-Json parse is the dominant Stop-hook cost and scales with session size; a
     # no-trigger / in-workshop stop skips it entirely). ---
-    $lastAssistantText = $null; $intakeHit = $false; $ccLoaded = $false
+    $lastAssistantText = $null; $intakeHit = $false; $ccLoaded = $false; $markerForWorking = $false
     if (($hasPending -or $anySpec) -and (-not $inWorkshop)) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
@@ -249,6 +249,22 @@ try {
             $intakeRx = [regex]::new('(?i)\bwhat\b[^.?!]{0,60}\b(?:do you want|would you like|are you looking|should we|are we|can i help you)\b[^.?!]{0,40}\b(?:build|create|make|work on)\b|(?i)\bwhat\b[^.?!]{0,40}\b(?:feature|app|project|product)\b[^.?!]{0,40}\b(?:build|create|want|like)\b|(?i)\bwhat (?:do you want|would you like) to build\b')
             if ($intakeRx.IsMatch($lastAssistantText)) { $intakeHit = $true }
         }
+        # BOUNDARY VERDICT MARKER (Antigravity dogfood gap): at a boundary the six-section HEADERS alone do NOT
+        # authorize the crossing - the <!-- SPECREW-VERDICT-BOUNDARY --> marker is what captures the verdict. A weak
+        # host rendered the headers but NOT the marker, so the verdict was never captured (last_authorized stayed
+        # none) yet the header check suppressed the block. So at a boundary, suppress ONLY when the marker for the
+        # WORKING boundary is present (Found + To == working); headers without the marker still block.
+        if ($hasPending -and $ccLoaded -and (Get-Command Get-SpecrewCapturedBoundaryPacket -ErrorAction SilentlyContinue)) {
+            try {
+                $pkt = Get-SpecrewCapturedBoundaryPacket -TranscriptPath $transcriptPathArg
+                if ($null -ne $pkt -and [bool]$pkt.Found) {
+                    $pktTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pkt.ToBoundary)
+                    $workNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pending.WorkingBoundary)
+                    if (-not [string]::IsNullOrWhiteSpace($pktTo) -and $pktTo -eq $workNorm) { $markerForWorking = $true }
+                }
+            }
+            catch { $null = $_ }
+        }
     }
     $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
     $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
@@ -264,23 +280,15 @@ try {
     # fail-open; never block a correctly-rendered packet we simply could not see, and never go fail-CLOSED on a missing
     # component). This is the same failure-class -> same direction (allow) as the boundary-trigger load failure above.
     $canAssess = -not [string]::IsNullOrWhiteSpace($lastAssistantText)
-    $blockWarranted = $canAssess -and (-not $packetPresent) -and ($hasPending -or ($anySpec -and $substantial))
-
-    # Boundary false-positive guard: at a boundary, a captured packet whose ToBoundary matches the working boundary
-    # is a legitimate awaiting-verdict stop (the agent surfaced THIS crossing) -> no block (145 TI-2/F1). (The
-    # header-phrase $packetPresent check above already covers the non-boundary case.)
-    if ($blockWarranted -and $hasPending -and $ccLoaded -and -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and
-        (Get-Command Get-SpecrewCapturedBoundaryPacket -ErrorAction SilentlyContinue)) {
-        try {
-            $pkt = Get-SpecrewCapturedBoundaryPacket -TranscriptPath $transcriptPathArg
-            if ($null -ne $pkt -and [bool]$pkt.Found) {
-                $pktTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pkt.ToBoundary)
-                $workNorm = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pending.WorkingBoundary)
-                if (-not [string]::IsNullOrWhiteSpace($pktTo) -and $pktTo -eq $workNorm) { $blockWarranted = $false }
-            }
-        }
-        catch { $null = $_ }
-    }
+    # BOUNDARY stop: owes the verdict MARKER (not just the six headers) - the marker is what captures the verdict;
+    #   headers WITHOUT it leave the gate un-authorized (the Antigravity dogfood: a packet rendered, no marker,
+    #   last_authorized stayed `none`). $markerForWorking also subsumes the old false-positive guard (a captured
+    #   marker for THIS crossing = a legitimate awaiting-verdict stop, 145 TI-2/F1).
+    # NON-BOUNDARY substantial hand-back: the six section headers suffice (a within-phase stop has no verdict marker).
+    # FIX C (145 F1-CC): $canAssess gates both - we never claim "absent" without reading the message (fail-open).
+    $boundaryBlock = $hasPending -and (-not $markerForWorking)
+    $substantialBlock = (-not $hasPending) -and $anySpec -and $substantial -and (-not $packetPresent)
+    $blockWarranted = $canAssess -and ($boundaryBlock -or $substantialBlock)
 
     $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
     $journalPath = Join-Path $projectRoot '.specrew/runtime/conformance-journal.jsonl'

@@ -316,6 +316,18 @@ try {
     if ($r18.Out -match 'RAW SPEC KIT') { Fail "Case 18: the contract's prohibition prose ('do NOT run the raw `specify.exe workflow`') MUST NOT fire #3 (negation guard). Out: $($r18.Out)" }
     Write-Pass "Case 18: the contract's own 'do NOT run the raw specify.exe workflow' prohibition prose does NOT false-fire #3 (negation guard; dogfood)"
 
+    # ---- Case 19 (ANTIGRAVITY DOGFOOD GAP): at a BOUNDARY, the six section HEADERS alone do NOT authorize the
+    #      crossing - the verdict MARKER captures the verdict. A weak host rendered the headers but NO marker, so the
+    #      gate stayed un-authorized (last_authorized=none) while the header check wrongly suppressed the block. Now a
+    #      headers-without-marker boundary stop MUST block (demand the marker so the verdict gets captured).
+    $packetNoMarker = ($realPacket -replace '(?m)^.*SPECREW-VERDICT-BOUNDARY.*$', '')  # 6 headers, NO marker (strip the whole marker line)
+    $p19 = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    $t19 = New-Transcript -Proj $p19 -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = $packetNoMarker })
+    $r19 = Invoke-Conformance -Proj $p19 -TranscriptPath $t19
+    if (-not $r19.Blocked) { Fail "Case 19: a boundary stop with the six section HEADERS but NO verdict marker MUST block (headers don't authorize the crossing; the verdict was never captured). Out: $($r19.Out)" }
+    if ($r19.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 19: the block must demand the contiguous verdict marker. Out: $($r19.Out)" }
+    Write-Pass "Case 19: a boundary packet with HEADERS but NO marker still BLOCKS - the marker (not the headers) authorizes the boundary (Antigravity dogfood gap)"
+
     Write-Host "`n=== conformance-detection.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }
