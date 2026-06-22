@@ -40,6 +40,88 @@ Reviewers check for:
 
 **Commit-label discipline at commit time**: every commit during a boundary's life must declare the ACTIVE boundary in the commit message (`boundary(review)`, `boundary(implement)`, `boundary(closeout)`, etc.). A commit labeled with the wrong boundary is lifecycle-state-lying in commit metadata — auditors looking at `git log --oneline` weeks later will misread the iteration's history. The active-boundary label is the boundary the iteration is currently IN at commit time, not the boundary the commit's author wishes were active. Empirical incident: an agent committed 4 changes during a review boundary all labeled `boundary(implement)`, baking false history into git. Reviewer technique: `git log --oneline <iteration-start>..HEAD` and verify each commit's `boundary(<X>)` prefix matches the boundary the iteration was actually in at that commit timestamp.
 
+## Stop And Gate Enforcement Model
+
+Specrew's gate design is: **cooperative drive, deterministic guardrails, human authority**.
+
+The agent drives the lifecycle and renders the human-facing prose, but the agent is not trusted as the gate authority. The deterministic layer writes the cursor, surfaces exact marker values, blocks non-compliant stops where it has bounded evidence, captures real human verdicts, and validates packet quality. The gate advances only when a human types a recognized verdict that is bound to the rendered verdict marker.
+
+```text
+COOPERATIVE (agent, best-effort)
+  - does phase work
+  - renders packet prose
+  - copies the verdict marker
+  - asks the human for a verdict
+          |
+          v
+HUMAN (sole gate authority)
+  - types "approved for <boundary>", "1", or "option 1" when that option is approval
+          ^
+          |
+DETERMINISTIC (scripts, hooks, artifacts)
+  - sync-boundary-state writes cursor + pending-verdict artifact
+  - conformance provider blocks missing/wrong packets when evidence is bounded
+  - handover provider captures session state at Stop
+  - verdict capture binds human reply on UserPromptSubmit or Stop to marker, or to the pending-verdict artifact fallback, and records authorization
+  - validators grade packet quality reactively
+```
+
+### Stop Processing
+
+At every host Stop event, the deployed hook path runs the Stop dispatcher. The Stop dispatcher runs only the Stop-registered providers:
+
+```text
+agent ends turn
+  -> host Stop event
+  -> specrew-hook-launch.ps1
+  -> specrew-hook-dispatcher.ps1
+       -> handover provider: writes .specrew/handover/session-handover.md silently
+       -> conformance provider: reads handover + gate state; allows, nudges, or blocks
+```
+
+The handover provider is capture for the next session. The conformance provider is enforcement for the current stop. A nudge is best-effort context; a host-native block keeps the turn open and injects the correction directive. Blocks are capped so a stubborn agent cannot hang the session.
+
+### Stop Taxonomy
+
+Not every Stop owes a packet:
+
+| Stop shape | Required output | Deterministic behavior |
+|---|---|---|
+| Workshop lens question or clarify ambiguity question | Normal question path; no packet | Workshop / question exclusions suppress packet enforcement |
+| Lifecycle gate with pending boundary verdict | Six-section packet, numbered verdict options, and final `SPECREW-VERDICT-BOUNDARY` marker | Boundary lane blocks when the exact pending marker is absent or wrong; verdict capture can still bind a real concise approval through the pending-verdict artifact fallback |
+| Non-boundary material work this turn | Five-part context packet, no marker | Material lane blocks when the packet is absent |
+| Quick discussion with no files, tests, commits, or gate | Normal conversational answer | Length alone does not trigger a packet |
+
+The packet exists to re-orient a human who stepped away or must make a decision. Quick back-and-forth does not earn a packet.
+
+### Gate Sequence
+
+One boundary, end to end:
+
+1. The agent does the phase work and commits it. This is cooperative.
+2. The agent runs `sync-boundary-state.ps1`. This is deterministic: it advances the mechanical cursor in `.specrew/start-context.json` and writes `.specrew/runtime/pending-verdict-stop.md` with the first unpaid crossing, the approval phrase, and the exact verdict marker from `Get-SpecrewPendingVerdictState`.
+3. The agent renders the six-section packet and copies the marker from the pending-verdict artifact. This is cooperative, but backed by a deterministic value.
+4. The agent stops. The Stop conformance provider checks whether the marker for the pending crossing is present. If not, it blocks and forces a re-render. If yes, the turn can end.
+5. The human reads the packet and types `approved for <boundary>`, or a concise `1` / `option 1` when option 1 is visibly the approval option. This is the sole authorization signal.
+6. The `UserPromptSubmit` verdict-capture path reads the marker plus the just-submitted human approval, then calls `Add-SpecrewBoundaryAuthorization` to update `verdict_history` before the agent continues. Stop runs the same capture as a backstop. If the transcript-capable host dropped or mis-targeted the invisible marker, verdict capture may instead bind the approval to the single pending crossing from `.specrew/runtime/pending-verdict-stop.md` / `Get-SpecrewPendingVerdictState`.
+
+The marker is still preferred and remains the best audit tie. The fallback exists for weak renderers: no pending state, vague replies (`yes`, `ok`, `continue`), rejection/discussion choices, `option 2`, or a named boundary that contradicts the pending crossing do not authorize. This preserves "one approval advances one boundary" without making the user repeat a clear approval because a model omitted an invisible comment.
+
+### Layer Ownership
+
+| Concern | Layer | Owner |
+|---|---|---|
+| Decide to stop and render packet prose | Cooperative | Agent, guided by refocus rule 9 |
+| Choose gate, approval phrase, and marker | Deterministic | `sync-boundary-state.ps1` -> `.specrew/runtime/pending-verdict-stop.md` |
+| Catch missing, wrong, or absent packet at Stop | Deterministic | Conformance provider |
+| Suppress packets during workshop and clarify questions | Deterministic | Conformance provider exclusions |
+| Grade packet quality and reference form | Deterministic, reactive | Handoff governance validator |
+| Supply the verdict | Human | The user typing `approved for <boundary>`, `1`, or `option 1` when option 1 is approval |
+| Capture verdict into state | Deterministic | `UserPromptSubmit` immediate capture, Stop backstop, marker-preferred verdict capture, pending-artifact fallback, then `Add-SpecrewBoundaryAuthorization` |
+| Advance the gate | Deterministic | Captured human verdict only; never agent-invented |
+
+This shape is intentional. Cooperative behavior is fast and flexible, but models drift. Deterministic detection coerces drift back without making prose generation itself impossible. Deterministic capture keeps state honest. The pending-verdict artifact bridges the layers twice: it turns the most failure-prone cooperative choice ("which marker?") into a value the agent copies, and it gives verdict capture a deterministic fallback when the model drops that value. The ceiling stays honest: a host can be forced to continue the turn or refused gate advancement, but no host can force exact prose.
+
 ## Spec Authority
 
 The spec is the contract. If implementation and spec disagree, the implementation is wrong unless there is a recorded human-approved spec amendment.

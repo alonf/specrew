@@ -955,6 +955,14 @@ try {
                         if ($pp -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $tpath = [string]$pp.Value; break }
                     }
                     if (-not [string]::IsNullOrWhiteSpace($tpath)) { $commandArgs += @('--transcript-path', $tpath) }
+                    if ($Event -in @('UserPromptSubmit', 'PreInvocation')) {
+                        $userPrompt = $null
+                        foreach ($k in @('prompt', 'user_prompt', 'userPrompt', 'message', 'text', 'content')) {
+                            $pp = $evtObj.PSObject.Properties[$k]
+                            if ($pp -and $pp.Value -is [string] -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $userPrompt = [string]$pp.Value; break }
+                        }
+                        if (-not [string]::IsNullOrWhiteSpace($userPrompt)) { $commandArgs += @('--last-user-message', $userPrompt) }
+                    }
                 }
                 catch { $null = $_ }
             }

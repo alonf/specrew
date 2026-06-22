@@ -27,6 +27,8 @@ try {
         'approve plan -> tasks with instructions',
         'Approved for tasks',
         '1',
+        'option 1',
+        'Option 1',
         '2',
         '2.',
         # review-signoff P7-1: a NEGATED change clause is an approval, not a send-back (the changes-clause must not misfire).
@@ -90,6 +92,13 @@ try {
     if ($vA.evidence_source -ne 'hook-captured-from-transcript') { Fail "evidence_source expected 'hook-captured-from-transcript', got '$($vA.evidence_source)'" }
     Write-Pass "evidence tag: a hook-captured authorization records evidence_source='hook-captured-from-transcript'"
 
+    $pFallbackEvidence = New-EnfProj
+    Add-SpecrewBoundaryAuthorization -ProjectRoot $pFallbackEvidence -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'Alon' -VerdictText 'approved for tasks' -AuthCommitHash 'TESTHASH' -RecordedAt '2026-01-01T00:00:00Z' -EvidenceSource 'hook-captured-from-transcript-pending-artifact' | Out-Null
+    $ctxFallbackEvidence = Get-Content -LiteralPath (Join-Path $pFallbackEvidence '.specrew\start-context.json') -Raw | ConvertFrom-Json -Depth 12
+    $vFallbackEvidence = @($ctxFallbackEvidence.boundary_enforcement.verdict_history)[-1]
+    if ($vFallbackEvidence.evidence_source -ne 'hook-captured-from-transcript-pending-artifact') { Fail "fallback evidence_source expected 'hook-captured-from-transcript-pending-artifact', got '$($vFallbackEvidence.evidence_source)'" }
+    Write-Pass "evidence tag: pending-artifact fallback authorizations can be audited distinctly"
+
     $pB = New-EnfProj
     Add-SpecrewBoundaryAuthorization -ProjectRoot $pB -CurrentBoundary 'plan' -AuthorizedBoundary 'tasks' -AuthorizingHuman 'Alon' -VerdictText 'approved for tasks' -AuthCommitHash 'TESTHASH' -RecordedAt '2026-01-01T00:00:00Z' | Out-Null
     $ctxB = Get-Content -LiteralPath (Join-Path $pB '.specrew\start-context.json') -Raw | ConvertFrom-Json -Depth 12
@@ -106,6 +115,31 @@ try {
         }
         [System.IO.File]::WriteAllText($path, ($lines -join "`n"), [System.Text.UTF8Encoding]::new($false))
         return $path
+    }
+    function New-AntigravityTranscript {
+        param([object[]]$Turns)   # each: @{ source='MODEL'|'USER_EXPLICIT'; type='...'; content='...' }
+        $path = Join-Path $scratch ("ag-" + [guid]::NewGuid().ToString('N') + ".jsonl")
+        $lines = foreach ($t in $Turns) {
+            (@{ source = $t.source; type = $t.type; content = $t.content } | ConvertTo-Json -Depth 8 -Compress)
+        }
+        [System.IO.File]::WriteAllText($path, ($lines -join "`n"), [System.Text.UTF8Encoding]::new($false))
+        return $path
+    }
+    function New-PendingProject {
+        param(
+            [AllowNull()][string]$LastAuthorizedBoundary = 'plan',
+            [AllowNull()][string]$WorkingBoundary = 'tasks'
+        )
+        $proj = Join-Path $scratch ("pending-" + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path (Join-Path $proj '.specrew') -Force | Out-Null
+        $ctx = [ordered]@{
+            schema               = 'v2'
+            feature_path         = (Join-Path $proj 'specs\046-test')
+            session_state        = [ordered]@{ active = $true; boundary_type = $WorkingBoundary; feature_ref = '046-test'; iteration_number = '001'; recorded_at = '2026-01-01T00:00:00Z' }
+            boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = $LastAuthorizedBoundary; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
+        }
+        [System.IO.File]::WriteAllText((Join-Path $proj '.specrew\start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
+        return $proj
     }
     $marker = '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->'
 
@@ -179,6 +213,90 @@ try {
     if ($c8.Found) { Fail "C8: hook_prompt must not be treated as a human approval" }
     if ($c8.Reason -ne 'awaiting-response') { Fail "C8: expected awaiting-response after ignoring hook_prompt, got '$($c8.Reason)'" }
     Write-Pass "reader: Codex hook_prompt feedback is ignored for verdict capture"
+
+    # C9: Antigravity transcript roles parse as real assistant/user turns, including USER_REQUEST wrapper removal.
+    $c9 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-AntigravityTranscript -Turns @(
+            @{ source = 'MODEL'; type = 'PLANNER_RESPONSE'; content = "packet <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> verdict?" },
+            @{ source = 'USER_EXPLICIT'; type = 'USER_INPUT'; content = "<USER_REQUEST>`napproved for tasks`n</USER_REQUEST>" }))
+    if (-not $c9.Found) { Fail "C9: Antigravity MODEL/USER_EXPLICIT transcript must capture marker + approval (reason=$($c9.Reason))" }
+    if ($c9.FromBoundary -ne 'plan' -or $c9.ToBoundary -ne 'tasks') { Fail "C9: expected plan->tasks capture, got '$($c9.FromBoundary)->$($c9.ToBoundary)'" }
+    Write-Pass "reader: Antigravity MODEL/USER_EXPLICIT transcript format is parsed for verdict capture"
+
+    $markerlessPacket = @"
+## What I Just Did
+Generated the tasks artifact.
+
+## Why I Stopped
+This is the plan -> tasks boundary.
+
+## What Needs Your Review
+Review the tasks file.
+
+## What Happens Next
+Implementation preparation follows after approval.
+
+## Discussion Prompts
+No open prompts.
+
+## What I Need From You
+• Option 1: approved for tasks
+• Option 2: Rejections or specific adjustment instructions.
+"@
+    $pendingPlanTasks = New-PendingProject -LastAuthorizedBoundary 'plan' -WorkingBoundary 'tasks'
+
+    # C10: markerless packet + concise option 1 binds to the deterministic single pending crossing.
+    $c10 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = $markerlessPacket },
+            @{ role = 'user'; text = 'option 1' }))
+    if (-not $c10.Found) { Fail "C10: markerless packet + option 1 should fall back to pending artifact (reason=$($c10.Reason))" }
+    if ($c10.FromBoundary -ne 'plan' -or $c10.ToBoundary -ne 'tasks') { Fail "C10: expected pending plan->tasks, got '$($c10.FromBoundary)->$($c10.ToBoundary)'" }
+    if ($c10.Reason -ne 'captured-pending-artifact-fallback') { Fail "C10: expected pending-artifact fallback reason, got '$($c10.Reason)'" }
+    Write-Pass "reader: markerless packet + option 1 binds to the single pending gate via pending-verdict state"
+
+    # C11: the bare "1" alias is accepted only because option 1 in the rendered packet is proven to be approval.
+    $c11 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = $markerlessPacket },
+            @{ role = 'user'; text = '1' }))
+    if (-not $c11.Found) { Fail "C11: markerless packet + bare 1 should fall back to pending artifact (reason=$($c11.Reason))" }
+    Write-Pass "reader: markerless packet + bare 1 is accepted when option 1 is an approval option"
+
+    # C12: option 2 is not treated as approval in the markerless fallback because packets often use it for changes.
+    $c12 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = $markerlessPacket },
+            @{ role = 'user'; text = 'option 2' }))
+    if ($c12.Found) { Fail "C12: markerless fallback must not authorize option 2" }
+    if ($c12.Reason -ne 'approval-option-not-authorizing-fallback') { Fail "C12: expected approval-option-not-authorizing-fallback, got '$($c12.Reason)'" }
+    Write-Pass "reader: markerless fallback rejects option 2 instead of guessing its meaning"
+
+    # C13: no pending state means a markerless packet cannot authorize even with a clear approval phrase.
+    $noPending = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'tasks'
+    $c13 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $noPending -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = $markerlessPacket },
+            @{ role = 'user'; text = 'approved for tasks' }))
+    if ($c13.Found) { Fail "C13: markerless fallback must not authorize without a pending verdict state" }
+    Write-Pass "reader: markerless fallback requires an active pending verdict state"
+
+    # C14: a named approval for a different boundary is not rebound to the pending crossing.
+    $c14 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = $markerlessPacket },
+            @{ role = 'user'; text = 'approved for clarify' }))
+    if ($c14.Found) { Fail "C14: approval naming a different boundary must not fall back to pending" }
+    if ($c14.Reason -ne 'named-boundary-contradicts-pending') { Fail "C14: expected named-boundary-contradicts-pending, got '$($c14.Reason)'" }
+    Write-Pass "reader: markerless fallback rejects a named boundary that contradicts pending state"
+
+    # C15: UserPromptSubmit can pass the current human prompt even if the transcript tail has not appended it yet.
+    $c15 = Get-SpecrewCapturedBoundaryVerdict -LastUserMessage 'approved for tasks' -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> verdict?" }))
+    if (-not $c15.Found) { Fail "C15: prompt-submit supplied user approval should capture against the prior marker (reason=$($c15.Reason))" }
+    if ($c15.FromBoundary -ne 'plan' -or $c15.ToBoundary -ne 'tasks') { Fail "C15: expected plan->tasks capture, got '$($c15.FromBoundary)->$($c15.ToBoundary)'" }
+    Write-Pass "reader: current UserPromptSubmit text can serve as the human approval before transcript append"
+
+    # C16: the prompt-submit path also supports the markerless pending-artifact fallback for concise option 1.
+    $c16 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -LastUserMessage '1' -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = $markerlessPacket }))
+    if (-not $c16.Found) { Fail "C16: prompt-submit supplied bare 1 should fall back to pending artifact (reason=$($c16.Reason))" }
+    if ($c16.Reason -ne 'captured-pending-artifact-fallback') { Fail "C16: expected pending-artifact fallback reason, got '$($c16.Reason)'" }
+    Write-Pass "reader: current UserPromptSubmit text supports markerless fallback for option 1"
 
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0

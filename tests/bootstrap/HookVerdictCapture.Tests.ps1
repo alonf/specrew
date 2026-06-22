@@ -14,7 +14,7 @@ function Assert-True { param([bool]$Condition, [string]$Message) if (-not $Condi
 $provider = (Resolve-Path "$PSScriptRoot/../../scripts/internal/specrew-handover-provider.ps1").Path
 
 function New-CaptureProject {
-    param([string]$LastAuth = 'tasks', [object[]]$Turns)
+    param([string]$LastAuth = 'tasks', [string]$WorkingBoundary = 'before-implement', [object[]]$Turns)
     $tmp = Join-Path ([System.IO.Path]::GetTempPath()) ("specrew-vcap-" + [guid]::NewGuid().ToString('N'))
     $proj = Join-Path $tmp 'proj'
     New-Item -ItemType Directory -Path (Join-Path $proj 'specs/001-feat') -Force | Out-Null
@@ -25,7 +25,7 @@ function New-CaptureProject {
     git -C $proj checkout -q -b '001-feat' 2>$null
     $ctx = [ordered]@{
         schema               = 'v2'
-        session_state        = [ordered]@{ active = $true; boundary_type = 'before-implement'; feature_ref = '001-feat'; host = 'claude'; iteration_number = '001'; recorded_at = '2026-01-01T00:00:00Z' }
+        session_state        = [ordered]@{ active = $true; boundary_type = $WorkingBoundary; feature_ref = '001-feat'; host = 'claude'; iteration_number = '001'; recorded_at = '2026-01-01T00:00:00Z' }
         boundary_enforcement = [ordered]@{ enabled = $true; last_authorized_boundary = $LastAuth; pending_next_boundary = $null; verdict_history = @(); bypass_history = @() }
     }
     [System.IO.File]::WriteAllText((Join-Path $proj '.specrew/start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
@@ -35,6 +35,8 @@ function New-CaptureProject {
     return [pscustomobject]@{ Tmp = $tmp; Proj = $proj; Transcript = $tx }
 }
 function Invoke-StopHook { param([string]$Proj, [string]$Tx) & pwsh -NoProfile -File $provider --event-json '{"hook_event_name":"Stop"}' --project-root $Proj --host-kind claude --transcript-path $Tx 2>$null | Out-Null }
+function Invoke-PromptHook { param([string]$Proj, [string]$Tx, [string]$Prompt) & pwsh -NoProfile -File $provider --project-root $Proj --host-kind claude --source-event UserPromptSubmit --transcript-path $Tx --last-user-message $Prompt 2>$null | Out-Null }
+function Invoke-PreInvocationHook { param([string]$Proj, [string]$Tx, [string]$Prompt) & pwsh -NoProfile -File $provider --project-root $Proj --host-kind antigravity --source-event PreInvocation --transcript-path $Tx --last-user-message $Prompt 2>$null | Out-Null }
 function Read-Enforcement { param([string]$Proj) return (Get-Content -LiteralPath (Join-Path $Proj '.specrew/start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12).boundary_enforcement }
 function Packet { param([string]$From, [string]$To, [string]$Resp) return @(
         @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: $From -> $To --> What's your verdict?" },
@@ -100,6 +102,24 @@ try {
     $e9 = Read-Enforcement -Proj $c9.Proj
     Assert-True ([string]::IsNullOrWhiteSpace([string]$e9.last_authorized_boundary)) "9 FIRST-WRONG: none + (specify->clarify) + approve -> gate STAYS unauthorized until intake->specify is captured (got '$($e9.last_authorized_boundary)')"
     Assert-True (@($e9.verdict_history).Count -eq 0) "9: no verdict_history entry written for the non-contiguous first-boundary marker"
+
+    # === Case 10 — PROMPT-SUBMIT: capture the human verdict immediately from the current prompt, before Stop. ===
+    $c10 = New-CaptureProject -LastAuth 'plan' -WorkingBoundary 'tasks' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> What's your verdict?" }
+    ); $cases += $c10.Tmp
+    Invoke-PromptHook -Proj $c10.Proj -Tx $c10.Transcript -Prompt 'approved for tasks'
+    $e10 = Read-Enforcement -Proj $c10.Proj
+    Assert-True ([string]$e10.last_authorized_boundary -eq 'tasks') "10 PROMPT-SUBMIT: plan + current prompt approval -> gate ADVANCES to tasks before the next Stop (got '$($e10.last_authorized_boundary)')"
+    $v10 = @($e10.verdict_history)[-1]
+    Assert-True ([string]$v10.to_boundary -eq 'tasks' -and [string]$v10.evidence_source -eq 'hook-captured-from-transcript') "10: prompt-submit verdict records the normal transcript evidence source"
+
+    # === Case 11 — PRE-INVOCATION: Antigravity's early hook captures the same prompt before model work starts. ===
+    $c11 = New-CaptureProject -LastAuth 'plan' -WorkingBoundary 'tasks' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> What's your verdict?" }
+    ); $cases += $c11.Tmp
+    Invoke-PreInvocationHook -Proj $c11.Proj -Tx $c11.Transcript -Prompt 'approved for tasks'
+    $e11 = Read-Enforcement -Proj $c11.Proj
+    Assert-True ([string]$e11.last_authorized_boundary -eq 'tasks') "11 PRE-INVOCATION: plan + current prompt approval -> gate ADVANCES to tasks before Antigravity model work (got '$($e11.last_authorized_boundary)')"
 
     Write-Host "`n=== HookVerdictCapture.Tests.ps1: all assertions passed (the hook is the verdict authority AND advances one boundary at a time) ===" -ForegroundColor Green
 }

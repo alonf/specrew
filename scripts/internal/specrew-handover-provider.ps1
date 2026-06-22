@@ -1,8 +1,9 @@
 # Specrew ROLLING-handover provider (Feature 174). Thin TRIGGER ADAPTER (iter-9.1): it resolves the project
 # root, host, and trigger source, then funnels into the ONE core save path `Update-SpecrewRollingHandover`
 # (HandoverStore). It re-implements no save logic. Registered for the per-host END-OF-TURN events (Claude
-# `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`, Antigravity `Stop`) AND `PostToolUse` (so the handover refreshes
-# mid-turn during picker-driven phases like the workshop, where no end-of-turn Stop fires). It is ALSO
+# `Stop`, Codex `Stop`, Copilot `agentStop`, Cursor `stop`, Antigravity `Stop`), `UserPromptSubmit` for immediate
+# human-verdict capture, AND `PostToolUse` (so the handover refreshes mid-turn during picker-driven phases like the
+# workshop, where no end-of-turn Stop fires). It is ALSO
 # invoked directly by the design-workshop skill with `--source workshop`. Portable across hosts + crash-safe
 # (the core's material-change gate keeps the per-tool-call PostToolUse cost cheap; the atomic writer keeps
 # the file safe). Fail-open: any error -> exit 0.
@@ -47,6 +48,7 @@ try {
     $sourceEventArg = $null
     $transcriptPathArg = $null
     $lastAssistantArg = $null
+    $lastUserArg = $null
     for ($i = 0; $i -lt $args.Count; $i++) {
         if ($args[$i] -eq '--event-json' -and ($i + 1) -lt $args.Count) { $eventJson = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--project-root' -and ($i + 1) -lt $args.Count) { $rootOverride = [string]$args[$i + 1] }
@@ -55,6 +57,7 @@ try {
         elseif ($args[$i] -eq '--source-event' -and ($i + 1) -lt $args.Count) { $sourceEventArg = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--transcript-path' -and ($i + 1) -lt $args.Count) { $transcriptPathArg = [string]$args[$i + 1] }
         elseif ($args[$i] -eq '--last-assistant-message' -and ($i + 1) -lt $args.Count) { $lastAssistantArg = [string]$args[$i + 1] }
+        elseif ($args[$i] -eq '--last-user-message' -and ($i + 1) -lt $args.Count) { $lastUserArg = [string]$args[$i + 1] }
     }
 
     $root = if ($rootOverride) { [System.IO.Path]::GetFullPath($rootOverride) } else { Get-HandoverProjectRoot }
@@ -119,6 +122,7 @@ try {
     #   3. else the Cursor CURSOR_TRANSCRIPT_PATH env var (inherited through the process tree).
     $transcriptPath = $transcriptPathArg
     $lastAssistant = $lastAssistantArg
+    $lastUser = $lastUserArg
     if (([string]::IsNullOrWhiteSpace($transcriptPath) -or [string]::IsNullOrWhiteSpace($lastAssistant)) -and -not [string]::IsNullOrWhiteSpace($eventJson)) {
         $tp = $null
         try { $tp = $eventJson | ConvertFrom-Json } catch { $tp = $null }
@@ -132,6 +136,12 @@ try {
                 $la = Get-HandoverProp $tp 'last_assistant_message'
                 if (-not [string]::IsNullOrWhiteSpace($la)) { $lastAssistant = [string]$la }
             }
+            if ([string]::IsNullOrWhiteSpace($lastUser)) {
+                foreach ($k in @('prompt', 'user_prompt', 'userPrompt', 'message', 'text', 'content')) {
+                    $up = Get-HandoverProp $tp $k
+                    if ($up -is [string] -and -not [string]::IsNullOrWhiteSpace($up)) { $lastUser = [string]$up; break }
+                }
+            }
         }
     }
     if ([string]::IsNullOrWhiteSpace($transcriptPath) -and -not [string]::IsNullOrWhiteSpace($env:CURSOR_TRANSCRIPT_PATH)) {
@@ -142,7 +152,7 @@ try {
     # funnels through the one core orchestrator. Its material-change gate makes the PostToolUse (every
     # tool call) path cheap, and the hollow-journal lives there too.
     Update-SpecrewRollingHandover -ProjectRoot $root -HostKind $hostKindArg -Source $source `
-        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant | Out-Null
+        -TranscriptPath $transcriptPath -LastAssistantMessage $lastAssistant -LastUserMessage $lastUser | Out-Null
     exit 0
 }
 catch {

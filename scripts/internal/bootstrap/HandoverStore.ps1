@@ -501,6 +501,80 @@ function Get-SpecrewRuntimeHostFromEnv {
     return $null
 }
 
+function Invoke-SpecrewBoundaryVerdictCapture {
+    # THE verdict-authority write path, shared by Stop and prompt-entry hooks. Stop is still the backstop, but
+    # UserPromptSubmit/PreInvocation captures immediately after the human types the verdict so a weak host cannot
+    # spend the next turn re-running sync/search loops before state catches up. This never authorizes from agent text: the reader
+    # requires a real user turn from transcript or the current prompt, then the pending-crossing contiguity guard
+    # below binds it to exactly one unpaid boundary.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter()][AllowNull()][string] $TranscriptPath,
+        [Parameter()][AllowNull()][string] $LastUserMessage,
+        [Parameter()][AllowNull()][string] $LastAuthorizedBoundary,
+        [Parameter()][string] $Source = 'stop',
+        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o'))
+    )
+
+    $result = [pscustomobject]@{ captured = $false; authorized = $false; reason = 'not-attempted'; source = $Source }
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath)) { $result.reason = 'no-transcript'; return $result }
+    if (-not ((Get-Command Get-SpecrewCapturedBoundaryVerdict -ErrorAction SilentlyContinue) -and
+            (Get-Command Add-SpecrewBoundaryAuthorization -ErrorAction SilentlyContinue) -and
+            (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue) -and
+            (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue) -and
+            (Get-Command Normalize-SpecrewCanonicalBoundaryType -ErrorAction SilentlyContinue))) {
+        $result.reason = 'missing-verdict-capture-components'
+        return $result
+    }
+
+    try {
+        $captured = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath -ProjectRoot $ProjectRoot -LastUserMessage $LastUserMessage
+        if (-not $captured.Found) { $result.reason = $captured.Reason; return $result }
+
+        $result.captured = $true
+        $bOrder = @(Get-SpecrewBoundaryOrder)
+        $authIdx = if ([string]::IsNullOrWhiteSpace([string]$LastAuthorizedBoundary)) { -1 } else { [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $LastAuthorizedBoundary)) }
+        $toIdx = [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $captured.ToBoundary))
+        $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $LastAuthorizedBoundary -WorkingBoundary $captured.ToBoundary
+        $actualFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$captured.FromBoundary)
+        $actualTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$captured.ToBoundary)
+        $expectedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
+        $expectedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
+
+        if ([bool]$pendingCrossing.HasPendingVerdict -and $actualFrom -eq $expectedFrom -and $actualTo -eq $expectedTo) {
+            $evidenceSource = if ([string]$captured.Reason -eq 'captured-pending-artifact-fallback') { 'hook-captured-from-transcript-pending-artifact' } else { 'hook-captured-from-transcript' }
+            Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
+                -CurrentBoundary $pendingCrossing.PendingFromBoundary -AuthorizedBoundary $pendingCrossing.PendingToBoundary `
+                -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
+                -EvidenceSource $evidenceSource | Out-Null
+            $result.authorized = $true
+            $result.reason = 'authorized'
+            return $result
+        }
+        elseif ($toIdx -gt $authIdx) {
+            [Console]::Error.WriteLine(("[specrew-handover] WARN MARKER_CURSOR_MISMATCH captured '{0}->{1}' but expected '{2}->{3}' from authorized cursor '{4}'; NOT authorizing (one-boundary-at-a-time)." -f $captured.FromBoundary, $captured.ToBoundary, $expectedFrom, $expectedTo, $LastAuthorizedBoundary))
+            try {
+                $mmJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
+                $mmDir = Split-Path -Parent $mmJournal
+                if ($mmDir -and -not (Test-Path -LiteralPath $mmDir)) { New-Item -ItemType Directory -Path $mmDir -Force | Out-Null }
+                (([pscustomobject]@{ event = 'marker-cursor-mismatch'; recorded_at = $NowUtc; captured_from = $captured.FromBoundary; captured_to = $captured.ToBoundary; expected_from = $expectedFrom; expected_to = $expectedTo; authorized_cursor = [string]$LastAuthorizedBoundary; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $mmJournal -Encoding UTF8
+            }
+            catch { $null = $_ }
+            $result.reason = 'marker-cursor-mismatch'
+            return $result
+        }
+
+        $result.reason = 'not-pending'
+        return $result
+    }
+    catch {
+        [Console]::Error.WriteLine("[specrew-handover] WARN VERDICT_CAPTURE_FAILED $($_.Exception.Message)")
+        $result.reason = 'capture-failed'
+        return $result
+    }
+}
+
 function Update-SpecrewRollingHandover {
     # F-174 iter-9.1: THE single handover-save orchestration. Every trigger source - the Stop hook, the
     # PostToolUse hook, and the design-workshop skill - calls THIS; none re-implement the save. It resolves
@@ -519,7 +593,8 @@ function Update-SpecrewRollingHandover {
         [Parameter()][string] $Source = 'stop',                       # trigger label: stop | agentStop | PostToolUse | workshop
         [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o')),
         [Parameter()][AllowNull()][string] $TranscriptPath = $null,   # F-174 iter-10 (T002): host transcript_path for conversation capture
-        [Parameter()][AllowNull()][string] $LastAssistantMessage = $null
+        [Parameter()][AllowNull()][string] $LastAssistantMessage = $null,
+        [Parameter()][AllowNull()][string] $LastUserMessage = $null
     )
 
     $getProp = {
@@ -577,6 +652,13 @@ function Update-SpecrewRollingHandover {
     }
     # The trigger passes the authoritative host; prefer it over the start-context value or the 'host' default.
     if (-not [string]::IsNullOrWhiteSpace($HostKind)) { $fromHost = $HostKind }
+
+    if ($Source -in @('UserPromptSubmit', 'userPromptSubmit', 'user-prompt-submit', 'PreInvocation', 'preInvocation', 'pre-invocation')) {
+        Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
+            -LastUserMessage $LastUserMessage -LastAuthorizedBoundary $lastAuthBoundary `
+            -Source $Source -NowUtc $NowUtc | Out-Null
+        return [pscustomobject]@{ wrote = $false; reason = 'prompt-submit-verdict-capture'; source = $Source; feature = $feature; boundary = $boundary }
+    }
 
     # T003: the workshop phase, surfaced ONLY while in-flight (the pre-specify intake window); quiet otherwise.
     # Reads the SAME deterministic disk truth the bootstrap directive uses (Get-SpecrewWorkshopProgress);
@@ -744,57 +826,20 @@ function Update-SpecrewRollingHandover {
 
     # F-174 iteration 011 (T004, FR-026 / decision f174-i011-verdict-authority-stop-hook): THE HOOK IS THE
     # VERDICT AUTHORITY. On an end-of-turn stop, read the transcript for the human's verdict on the most recently
-    # rendered boundary packet (Get-SpecrewCapturedBoundaryVerdict, tied to the packet marker) and, if it is a
-    # CLEAR approval that advances the gate FORWARD, record the authorization with the captured verdict +
-    # evidence-source 'hook-captured-from-transcript'. This is what replaces boundary-sync's DELETED fabrication
-    # (T005): the gate advances ONLY on a real, captured human verdict - never invented. Guarded: runs only when
+    # rendered boundary packet. The preferred tie is the packet marker; if a weak host drops/mis-targets that
+    # invisible marker, Get-SpecrewCapturedBoundaryVerdict may fall back to the deterministic pending-verdict state
+    # for the single unpaid crossing. In both paths, a CLEAR human approval is still required before recording an
+    # authorization. This is what replaces boundary-sync's DELETED fabrication (T005): the gate advances ONLY on a
+    # real, captured human verdict - never invented. Guarded: runs only when
     # BOTH the reader and the writer are loaded (the Stop-hook handover provider co-loads shared-governance; the
     # design-workshop-refresh / test paths do not and correctly skip the authorization). Identity is left
     # UNATTRIBUTED unless a host surface proves it (none reliably does yet) - honest over invented. CONTIGUOUS
     # one-boundary-at-a-time (the gate-contiguity guard below; the reader's contradiction/ambiguity guards already
     # gate Found); fully fail-open - a capture failure degrades to "un-authorized", surfaced by the resume (T006),
     # and NEVER blocks the stop.
-    if ($isEndOfTurn -and -not [string]::IsNullOrWhiteSpace($TranscriptPath) -and
-        (Get-Command Get-SpecrewCapturedBoundaryVerdict -ErrorAction SilentlyContinue) -and
-        (Get-Command Add-SpecrewBoundaryAuthorization -ErrorAction SilentlyContinue) -and
-        (Get-Command Get-SpecrewBoundaryOrder -ErrorAction SilentlyContinue) -and
-        (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
-        try {
-            $captured = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath $TranscriptPath
-            if ($captured.Found) {
-                $bOrder = @(Get-SpecrewBoundaryOrder)
-                $authIdx = if ([string]::IsNullOrWhiteSpace([string]$lastAuthBoundary)) { -1 } else { [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuthBoundary)) }
-                $toIdx = [Array]::IndexOf($bOrder, (Normalize-SpecrewCanonicalBoundaryType -Boundary $captured.ToBoundary))
-                $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $lastAuthBoundary -WorkingBoundary $captured.ToBoundary
-                $actualFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$captured.FromBoundary)
-                $actualTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$captured.ToBoundary)
-                $expectedFrom = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingFromMarkerBoundary)
-                $expectedTo = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToMarkerBoundary)
-                # GATE CONTIGUITY (one-boundary-at-a-time). The expected crossing is derived once from
-                # last_authorized_boundary; the transcript marker must match that exact rendered crossing. This covers
-                # both normal gates (plan -> tasks) and the first gate's marker-only sentinel (intake -> specify).
-                if ([bool]$pendingCrossing.HasPendingVerdict -and $actualFrom -eq $expectedFrom -and $actualTo -eq $expectedTo) {
-                    Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
-                        -CurrentBoundary $pendingCrossing.PendingFromBoundary -AuthorizedBoundary $pendingCrossing.PendingToBoundary `
-                        -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
-                        -EvidenceSource 'hook-captured-from-transcript' | Out-Null
-                }
-                elseif ($toIdx -gt $authIdx) {
-                    # A CLEAR approval whose marker is forward but NON-CONTIGUOUS with the cursor: refuse to apply it
-                    # (applying it would skip an earlier unauthorized gate). Record the mismatch for forensics; the
-                    # gate stays put and the resume (T006) surfaces awaiting-verdict for the contiguous boundary.
-                    [Console]::Error.WriteLine(("[specrew-handover] WARN MARKER_CURSOR_MISMATCH captured '{0}->{1}' but expected '{2}->{3}' from authorized cursor '{4}'; NOT authorizing (one-boundary-at-a-time)." -f $captured.FromBoundary, $captured.ToBoundary, $expectedFrom, $expectedTo, $lastAuthBoundary))
-                    try {
-                        $mmJournal = Join-Path $ProjectRoot '.specrew/runtime/handover-journal.jsonl'
-                        $mmDir = Split-Path -Parent $mmJournal
-                        if ($mmDir -and -not (Test-Path -LiteralPath $mmDir)) { New-Item -ItemType Directory -Path $mmDir -Force | Out-Null }
-                        (([pscustomobject]@{ event = 'marker-cursor-mismatch'; recorded_at = $NowUtc; captured_from = $captured.FromBoundary; captured_to = $captured.ToBoundary; expected_from = $expectedFrom; expected_to = $expectedTo; authorized_cursor = [string]$lastAuthBoundary; source = $Source }) | ConvertTo-Json -Compress) | Add-Content -LiteralPath $mmJournal -Encoding UTF8
-                    }
-                    catch { $null = $_ }
-                }
-            }
-        }
-        catch { [Console]::Error.WriteLine("[specrew-handover] WARN VERDICT_CAPTURE_FAILED $($_.Exception.Message)") }
+    if ($isEndOfTurn) {
+        Invoke-SpecrewBoundaryVerdictCapture -ProjectRoot $ProjectRoot -TranscriptPath $TranscriptPath `
+            -LastAuthorizedBoundary $lastAuthBoundary -Source $Source -NowUtc $NowUtc | Out-Null
     }
 
     # M2 (iter-10): hollow = the git delta GENUINELY produced nothing (git unavailable / the fail-safe empty
