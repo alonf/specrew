@@ -55,6 +55,47 @@ function Get-SpecrewConversationContentText {
     return , $parts.ToArray()
 }
 
+function Get-SpecrewTranscriptTailLines {
+    # Fast bounded tail reader for hook hot paths. Get-Content -Tail is seconds-scale on large Codex JSONL
+    # transcripts on Windows; Stop hooks call this several times, so use a backward byte window and drop the
+    # partial leading line when the window starts mid-file. Fail-open to the old reader if anything unexpected
+    # happens.
+    [OutputType([string[]])]
+    param(
+        [Parameter()][AllowNull()][string]$Path,
+        [int]$MaxLines = 500,
+        [int]$MaxBytes = 2097152
+    )
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+        try {
+            $length = $fs.Length
+            if ($length -le 0) { return @() }
+            $bytesToRead = [int64][Math]::Min($length, [int64][Math]::Max(4096, $MaxBytes))
+            [void]$fs.Seek(-$bytesToRead, [System.IO.SeekOrigin]::End)
+            $bytes = New-Object byte[] ([int]$bytesToRead)
+            $offset = 0
+            while ($offset -lt $bytesToRead) {
+                $read = $fs.Read($bytes, $offset, ([int]$bytesToRead - $offset))
+                if ($read -le 0) { break }
+                $offset += $read
+            }
+            $text = [System.Text.Encoding]::UTF8.GetString($bytes, 0, $offset)
+            $parts = @($text -split "`r?`n")
+            if ($bytesToRead -lt $length -and $parts.Count -gt 1) {
+                $parts = @($parts | Select-Object -Skip 1)
+            }
+            return @($parts | Select-Object -Last $MaxLines)
+        }
+        finally { $fs.Dispose() }
+    }
+    catch {
+        try { return @(Get-Content -LiteralPath $Path -Tail $MaxLines -Encoding UTF8 -ErrorAction Stop) }
+        catch { return @() }
+    }
+}
+
 function Test-SpecrewHumanVerdictToken {
     # F-174 iteration 011 (T004, FR-026): classify a HUMAN turn's response to a boundary VERDICT packet —
     # CONSERVATIVELY. The gate-stop packet offers: (1) Approve as-is, (2) Approve with instructions, (3) Send
@@ -127,7 +168,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript' }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     $lines = $null
-    try { $lines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop) } catch { $result.Reason = 'unreadable'; return $result }
+    try { $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
     if ($null -eq $lines -or $lines.Count -eq 0) { $result.Reason = 'empty'; return $result }
 
     $turns = New-Object System.Collections.Generic.List[object]
@@ -195,7 +236,7 @@ function Get-SpecrewCapturedBoundaryPacket {
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; PacketBody = $null; Reason = 'no-transcript' }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     $lines = $null
-    try { $lines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop) } catch { $result.Reason = 'unreadable'; return $result }
+    try { $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
     if ($null -eq $lines -or $lines.Count -eq 0) { $result.Reason = 'empty'; return $result }
 
     # Same marker grammar as the verdict reader: case-insensitive, '->' / unicode arrow / 'to', flexible spacing.
@@ -324,7 +365,7 @@ function Get-SpecrewConversationTail {
             if (Test-Path -LiteralPath $TranscriptPath -PathType Leaf) {
                 # Read only the TAIL (not the whole file) - see $MaxTailLines. On Codex this also naturally
                 # skips the giant line-1 session_meta header.
-                $fileLines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop)
+                $fileLines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines)
             }
         }
         catch { $fileLines = $null }
