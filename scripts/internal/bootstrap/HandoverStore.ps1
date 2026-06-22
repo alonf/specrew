@@ -501,6 +501,98 @@ function Get-SpecrewRuntimeHostFromEnv {
     return $null
 }
 
+function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
+    # Boundary sync writes the pending-verdict stop artifact before asking the human. The hook-owned verdict
+    # capture advances authorization after the human replies, so it must also retire or refresh that artifact.
+    # Otherwise a later resume can see a stale "awaiting verdict" file even though verdict_history already moved.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string] $ProjectRoot,
+        [Parameter()][string] $NowUtc = ((Get-Date).ToUniversalTime().ToString('o'))
+    )
+
+    if (-not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) { return }
+
+    try {
+        $root = [System.IO.Path]::GetFullPath($ProjectRoot)
+        $artifactPath = Join-Path $root '.specrew\runtime\pending-verdict-stop.md'
+        $pending = Get-SpecrewPendingVerdictState -ProjectRoot $root
+
+        if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) {
+            if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+                Remove-Item -LiteralPath $artifactPath -Force -ErrorAction Stop
+            }
+            return
+        }
+
+        $fromMarkerBoundary = [string]$pending.PendingFromMarkerBoundary
+        $toMarkerBoundary = [string]$pending.PendingToMarkerBoundary
+        if ([string]::IsNullOrWhiteSpace($fromMarkerBoundary) -or [string]::IsNullOrWhiteSpace($toMarkerBoundary)) {
+            if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+                Remove-Item -LiteralPath $artifactPath -Force -ErrorAction Stop
+            }
+            return
+        }
+
+        $contextPath = Join-Path $root '.specrew\start-context.json'
+        $featureRef = '(none)'
+        $authCommit = '(none)'
+        $workingBoundary = [string]$pending.WorkingBoundary
+        if (Test-Path -LiteralPath $contextPath -PathType Leaf) {
+            try {
+                $ctx = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                $ss = $ctx.PSObject.Properties['session_state'].Value
+                if ($ss) {
+                    $featureValue = $ss.PSObject.Properties['feature_ref'].Value
+                    $commitValue = $ss.PSObject.Properties['auth_commit_hash'].Value
+                    $boundaryValue = $ss.PSObject.Properties['boundary_type'].Value
+                    if (-not [string]::IsNullOrWhiteSpace([string]$featureValue)) { $featureRef = [string]$featureValue }
+                    if (-not [string]::IsNullOrWhiteSpace([string]$commitValue)) { $authCommit = [string]$commitValue }
+                    if ([string]::IsNullOrWhiteSpace($workingBoundary) -and -not [string]::IsNullOrWhiteSpace([string]$boundaryValue)) { $workingBoundary = [string]$boundaryValue }
+                }
+            }
+            catch { $null = $_ }
+        }
+        if ([string]::IsNullOrWhiteSpace($workingBoundary)) { $workingBoundary = '(none)' }
+
+        $boundary = ('{0} -> {1}' -f $fromMarkerBoundary, $toMarkerBoundary)
+        $approvalPhrase = ('approved for {0}' -f $toMarkerBoundary)
+        $marker = ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
+        $lastAuthorized = if ([string]::IsNullOrWhiteSpace([string]$pending.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$pending.LastAuthorizedBoundary }
+
+        $lines = @(
+            '# Specrew Pending Verdict Stop',
+            '',
+            'STOP NOW for human verdict. Render the full six-section boundary re-entry packet, using the exact values below. Do not infer the marker from the phase you are about to enter.',
+            '',
+            ('Boundary to ask for: {0}' -f $boundary),
+            ('Human approval phrase: {0}' -f $approvalPhrase),
+            ('Approval option 1: {0}' -f $approvalPhrase),
+            'Concise approval aliases: 1, option 1',
+            'Marker last line exactly:',
+            $marker,
+            '',
+            ('Working boundary: {0}' -f $workingBoundary),
+            ('Last authorized boundary: {0}' -f $lastAuthorized),
+            ('Feature: {0}' -f $featureRef),
+            ('Auth commit hash: {0}' -f $authCommit),
+            ('Multi-boundary gap: {0}' -f ([bool]$pending.IsMultiBoundaryGap).ToString().ToLowerInvariant()),
+            ('Recorded at: {0}' -f $NowUtc),
+            '',
+            'After rendering the packet, stop. Do not record authorization yourself; the Stop/UserPromptSubmit verdict capture writes authorization only after the human replies.'
+        )
+
+        $artifactDir = Split-Path -Parent $artifactPath
+        if ($artifactDir -and -not (Test-Path -LiteralPath $artifactDir -PathType Container)) {
+            New-Item -ItemType Directory -Path $artifactDir -Force | Out-Null
+        }
+        [System.IO.File]::WriteAllText($artifactPath, (($lines -join [Environment]::NewLine) + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+    }
+    catch {
+        [Console]::Error.WriteLine("[specrew-handover] WARN PENDING_VERDICT_ARTIFACT_REFRESH_FAILED $($_.Exception.Message)")
+    }
+}
+
 function Invoke-SpecrewBoundaryVerdictCapture {
     # THE verdict-authority write path, shared by Stop and prompt-entry hooks. Stop is still the backstop, but
     # UserPromptSubmit/PreInvocation captures immediately after the human types the verdict so a weak host cannot
@@ -548,6 +640,7 @@ function Invoke-SpecrewBoundaryVerdictCapture {
                 -CurrentBoundary $pendingCrossing.PendingFromBoundary -AuthorizedBoundary $pendingCrossing.PendingToBoundary `
                 -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
                 -EvidenceSource $evidenceSource | Out-Null
+            Sync-SpecrewPendingVerdictArtifactAfterAuthorization -ProjectRoot $ProjectRoot -NowUtc $NowUtc
             $result.authorized = $true
             $result.reason = 'authorized'
             return $result

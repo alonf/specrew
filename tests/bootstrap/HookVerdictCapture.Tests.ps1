@@ -41,6 +41,24 @@ function Read-Enforcement { param([string]$Proj) return (Get-Content -LiteralPat
 function Packet { param([string]$From, [string]$To, [string]$Resp) return @(
         @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: $From -> $To --> What's your verdict?" },
         @{ role = 'user'; text = $Resp }) }
+function Get-PendingArtifactPath { param([string]$Proj) return (Join-Path $Proj '.specrew/runtime/pending-verdict-stop.md') }
+function Write-PendingArtifact {
+    param(
+        [string]$Proj,
+        [string]$Boundary,
+        [string]$Approval
+    )
+    $path = Get-PendingArtifactPath -Proj $Proj
+    New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+    [System.IO.File]::WriteAllText($path, @(
+            '# Specrew Pending Verdict Stop',
+            '',
+            "Boundary to ask for: $Boundary",
+            "Human approval phrase: $Approval",
+            "Approval option 1: $Approval",
+            'Concise approval aliases: 1, option 1'
+        ) -join "`n", [System.Text.UTF8Encoding]::new($false))
+}
 
 $cases = @()
 try {
@@ -120,6 +138,32 @@ try {
     Invoke-PreInvocationHook -Proj $c11.Proj -Tx $c11.Transcript -Prompt 'approved for tasks'
     $e11 = Read-Enforcement -Proj $c11.Proj
     Assert-True ([string]$e11.last_authorized_boundary -eq 'tasks') "11 PRE-INVOCATION: plan + current prompt approval -> gate ADVANCES to tasks before Antigravity model work (got '$($e11.last_authorized_boundary)')"
+
+    # === Case 12 — PROMPT-SUBMIT: after authorizing the only pending crossing, remove the stale stop artifact. ===
+    $c12 = New-CaptureProject -LastAuth 'plan' -WorkingBoundary 'tasks' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> What's your verdict?" }
+    ); $cases += $c12.Tmp
+    Write-PendingArtifact -Proj $c12.Proj -Boundary 'plan -> tasks' -Approval 'approved for tasks'
+    Invoke-PromptHook -Proj $c12.Proj -Tx $c12.Transcript -Prompt 'approved for tasks'
+    $e12 = Read-Enforcement -Proj $c12.Proj
+    $artifact12 = Get-PendingArtifactPath -Proj $c12.Proj
+    Assert-True ([string]$e12.last_authorized_boundary -eq 'tasks') "12 PROMPT-SUBMIT: stale-artifact fixture authorized plan -> tasks"
+    Assert-True (-not (Test-Path -LiteralPath $artifact12 -PathType Leaf)) "12 PROMPT-SUBMIT: stale pending-verdict stop artifact removed after no verdict remains"
+
+    # === Case 13 — PROMPT-SUBMIT: in a multi-boundary gap, refresh the artifact to the next unpaid crossing. ===
+    $c13 = New-CaptureProject -LastAuth 'plan' -WorkingBoundary 'before-implement' -Turns @(
+        @{ role = 'assistant'; text = "boundary packet. <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> What's your verdict?" }
+    ); $cases += $c13.Tmp
+    Write-PendingArtifact -Proj $c13.Proj -Boundary 'plan -> tasks' -Approval 'approved for tasks'
+    Invoke-PromptHook -Proj $c13.Proj -Tx $c13.Transcript -Prompt 'approved for tasks'
+    $e13 = Read-Enforcement -Proj $c13.Proj
+    $artifact13 = Get-PendingArtifactPath -Proj $c13.Proj
+    Assert-True ([string]$e13.last_authorized_boundary -eq 'tasks') "13 PROMPT-SUBMIT: multi-boundary fixture authorized only the first unpaid crossing"
+    Assert-True (Test-Path -LiteralPath $artifact13 -PathType Leaf) "13 PROMPT-SUBMIT: pending-verdict stop artifact remains for the next unpaid crossing"
+    $artifact13Content = Get-Content -LiteralPath $artifact13 -Raw -Encoding UTF8
+    Assert-True ($artifact13Content -match [regex]::Escape('Boundary to ask for: tasks -> before-implement')) "13 PROMPT-SUBMIT: artifact refreshed to tasks -> before-implement"
+    Assert-True ($artifact13Content -match [regex]::Escape('Human approval phrase: approved for before-implement')) "13 PROMPT-SUBMIT: refreshed artifact uses approval phrase for the next boundary"
+    Assert-True ($artifact13Content -notmatch [regex]::Escape('Boundary to ask for: plan -> tasks')) "13 PROMPT-SUBMIT: artifact no longer shows the already-authorized crossing"
 
     Write-Host "`n=== HookVerdictCapture.Tests.ps1: all assertions passed (the hook is the verdict authority AND advances one boundary at a time) ===" -ForegroundColor Green
 }
