@@ -160,6 +160,26 @@ try {
     if ($c6.ToBoundary -ne 'before-implement') { Fail "C6: latest packet's boundary (before-implement) must win, got '$($c6.ToBoundary)'" }
     Write-Pass "reader: the MOST RECENT marker packet + its response wins (before-implement, not the earlier plan->tasks)"
 
+    # C7: A later unanswered marker must NOT hide an earlier approved marker. This is the Stop-hook timing gap:
+    # the hook records approval only at end-of-turn, so an agent can render the next boundary before the previous
+    # approval is persisted. Capture the newest marker that actually has a clear human approval.
+    $c7 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "first packet <!-- SPECREW-VERDICT-BOUNDARY: intake -> specify --> verdict?" },
+            @{ role = 'user'; text = 'approved for specify' },
+            @{ role = 'assistant'; text = "second packet <!-- SPECREW-VERDICT-BOUNDARY: clarify -> plan --> verdict?" }))
+    if (-not $c7.Found) { Fail "C7: earlier approved marker must still capture when a later marker is awaiting response (reason=$($c7.Reason))" }
+    if ($c7.FromBoundary -ne 'intake' -or $c7.ToBoundary -ne 'specify') { Fail "C7: expected intake->specify capture, got '$($c7.FromBoundary)->$($c7.ToBoundary)'" }
+    Write-Pass "reader: later unanswered marker does NOT hide an earlier approved marker (Stop timing gap)"
+
+    # C8: Codex records hook feedback as a role=user <hook_prompt> item. It can contain example approval text in
+    # the hook instruction; it is NOT a human verdict and must never authorize a boundary.
+    $c8 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: specify -> clarify --> verdict?" },
+            @{ role = 'user'; text = '<hook_prompt hook_run_id="stop:2:C:\Users\alon.HOME\.codex\hooks.json">Please reply with: approved for clarify</hook_prompt>' }))
+    if ($c8.Found) { Fail "C8: hook_prompt must not be treated as a human approval" }
+    if ($c8.Reason -ne 'awaiting-response') { Fail "C8: expected awaiting-response after ignoring hook_prompt, got '$($c8.Reason)'" }
+    Write-Pass "reader: Codex hook_prompt feedback is ignored for verdict capture"
+
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
 }
