@@ -53,8 +53,8 @@ function New-Spec {
 function New-LensApplicability {
     # Write a feature-level lens-applicability.json so Get-SpecrewWorkshopProgress sees the workshop state.
     # $Done lenses get a moved_on flag (recorded done); selected minus done = remaining (>0 == workshop in progress).
-    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @())
-    $dir = Join-Path $Proj 'specs\050-host-neutral-gate'
+    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @(), [string]$FeatureRef = '050-host-neutral-gate')
+    $dir = Join-Path $Proj (Join-Path 'specs' $FeatureRef)
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $workshop = [ordered]@{}
     foreach ($d in $Done) { $workshop[$d] = [ordered]@{ moved_on = $true } }
@@ -83,7 +83,8 @@ function New-HandoverSnapshot {
         [int]$NewCommits = 0,
         [int]$ActivityOffsetSeconds = 0,
         [string]$Source = 'Stop',
-        [string]$FileList
+        [string]$FileList,
+        [string]$ActiveFeature = '050-host-neutral-gate'
     )
     $dir = Join-Path $Proj '.specrew\handover'
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
@@ -101,7 +102,7 @@ source: $Source
 from_host: codex
 recorded_at: $($recordedAt.ToUniversalTime().ToString('o'))
 from_commit: abc1234
-active_feature: 050-host-neutral-gate
+active_feature: $ActiveFeature
 active_boundary: plan
 ---
 
@@ -125,7 +126,7 @@ Hook-captured at trigger '$Source'. Boundary: plan. Refresh reason: tracked-chan
 
 ## Recommended next-immediate-step
 
-Resume feature 050-host-neutral-gate at boundary plan.
+Resume feature $ActiveFeature at boundary plan.
 
 ## Context the receiving host needs that artifacts don't carry
 
@@ -342,6 +343,24 @@ try {
     if (-not $r4h.Blocked) { Fail "Case 4h: completed-workshop material commit MUST still block for the material packet even when start-context is pre-boundary. Out: $($r4h.Out)" }
     if ($r4h.Out -notmatch 'five-part context packet') { Fail "Case 4h: completed-workshop material block must demand the five-part context packet. Out: $($r4h.Out)" }
     Write-Pass "Case 4h: completed-workshop material commit still requires the five-part context packet"
+
+    # ---- Case 4i: MATERIAL after WORKSHOP COMPLETE in a multi-feature repo. If start-context is anchorless, the
+    #               active feature must come from the current Stop handover, not the first specs/* directory.
+    $p4i = New-Fixture -Working '' -LastAuth ''
+    $abandonedDir = Join-Path $p4i 'specs\001-abandoned-feature'
+    New-Item -ItemType Directory -Path $abandonedDir -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $abandonedDir 'spec.md') -Value "# Feature Specification: Abandoned`n" -Encoding UTF8
+    New-LensApplicability -Proj $p4i -FeatureRef '001-abandoned-feature' -Selected @('product-domain','architecture-core') -Done @('product-domain')
+    $activeDir = Join-Path $p4i 'specs\185-host-neutral-gate-enforcement'
+    New-Item -ItemType Directory -Path $activeDir -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $activeDir 'spec.md') -Value "# Feature Specification: Host-Neutral Gate Enforcement`n" -Encoding UTF8
+    New-LensApplicability -Proj $p4i -FeatureRef '185-host-neutral-gate-enforcement' -Selected @('product-domain','architecture-core') -Done @('product-domain','architecture-core')
+    New-HandoverSnapshot -Proj $p4i -NewCommits 1 -FileList '(none)' -ActiveFeature '185-host-neutral-gate-enforcement'
+    $t4i = New-Transcript -Proj $p4i -Turns @(@{ role = 'assistant'; text = 'I committed the verdict capture fix and refreshed the dogfood project.' })
+    $r4i = Invoke-Conformance -Proj $p4i -TranscriptPath $t4i
+    if (-not $r4i.Blocked) { Fail "Case 4i: handover active_feature must beat first-spec fallback; completed active feature material commit MUST block. Out: $($r4i.Out)" }
+    if ($r4i.Out -notmatch 'five-part context packet') { Fail "Case 4i: material block must demand the five-part context packet. Out: $($r4i.Out)" }
+    Write-Pass "Case 4i: handover active_feature scopes material enforcement in multi-feature pre-boundary state"
 
     # ---- Case 5: INTAKE QUESTION -> a cooperative NUDGE (not a block). Short intake question, spec exists.
     $p5 = New-Fixture -Working 'plan' -LastAuth 'plan'

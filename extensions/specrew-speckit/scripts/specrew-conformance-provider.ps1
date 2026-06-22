@@ -162,7 +162,7 @@ function Get-SpecrewCurrentStopMaterialSignal {
     # Stop snapshot's newest activity bullet reports changed user files or new commits. Conversation-only Stop
     # refreshes update recorded_at but do not prepend an activity bullet, so their bullet timestamp will not match.
     param([string]$ProjectRoot, [AllowNull()][string]$BootstrapDir)
-    $result = [pscustomobject]@{ material = $false; key = $null; reason = 'no-material-signal'; user_file_count = 0; new_commit_count = 0 }
+    $result = [pscustomobject]@{ material = $false; key = $null; reason = 'no-material-signal'; user_file_count = 0; new_commit_count = 0; active_feature = $null; active_boundary = $null }
     try {
         if ([string]::IsNullOrWhiteSpace($BootstrapDir)) { $result.reason = 'no-bootstrap-dir'; return $result }
         $store = Join-Path $BootstrapDir 'HandoverStore.ps1'
@@ -176,6 +176,8 @@ function Get-SpecrewCurrentStopMaterialSignal {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { $result.reason = 'no-handover'; return $result }
         $handover = ConvertFrom-SpecrewHandoverFile -Path $path
         if ($null -eq $handover) { $result.reason = 'unreadable-handover'; return $result }
+        $result.active_feature = [string]$handover.active_feature
+        $result.active_boundary = [string]$handover.active_boundary
 
         $source = [string]$handover.source
         if ([string]::IsNullOrWhiteSpace($source) -or $source.ToLowerInvariant() -notin @('stop', 'agentstop')) {
@@ -358,6 +360,7 @@ try {
     # session_state.feature_ref is canonical; fall back to the spec dir found above; null -> the exclusion fails
     # toward enforcement (it does not suppress a different feature's workshop onto the active one).
     $activeFeatureRef = $null
+    $activeFeatureFromSessionState = $false
     $startContextReadable = $false
     $hasActiveLifecycleBoundary = $false
     $hasBoundaryAuthorization = $false
@@ -368,6 +371,7 @@ try {
             $startContextReadable = $true
             if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['feature_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$sc.session_state.feature_ref)) {
                 $activeFeatureRef = [string]$sc.session_state.feature_ref
+                $activeFeatureFromSessionState = $true
             }
             if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['boundary_type'] -and -not [string]::IsNullOrWhiteSpace([string]$sc.session_state.boundary_type)) {
                 $hasActiveLifecycleBoundary = $true
@@ -383,10 +387,18 @@ try {
         }
     }
     catch { $null = $_ }
+    $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
+
+    # If lifecycle state is still pre-boundary / anchorless, the rolling Stop handover is the fresher scoped signal.
+    # In a multi-feature repo, falling back to the first specs/* directory can incorrectly borrow an abandoned
+    # feature's workshop state and suppress a real material-work packet for the active feature.
+    $materialSignal = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir
+    if (-not $activeFeatureFromSessionState -and $null -ne $materialSignal -and -not [string]::IsNullOrWhiteSpace([string]$materialSignal.active_feature)) {
+        $activeFeatureRef = [string]$materialSignal.active_feature
+    }
     if ([string]::IsNullOrWhiteSpace($activeFeatureRef) -and -not [string]::IsNullOrWhiteSpace($specPath)) {
         $activeFeatureRef = Split-Path (Split-Path $specPath -Parent) -Leaf
     }
-    $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
     $preBoundaryWorkshopCandidate = $startContextReadable -and (-not $hasActiveLifecycleBoundary) -and (-not $hasBoundaryAuthorization)
     $workshopComplete = $false
     if ($preBoundaryWorkshopCandidate) {
@@ -413,7 +425,6 @@ try {
 
     # Material-work lane (Proposal 145 follow-up): the old length-only "substantial" trigger over-blocked normal
     # discussion, so use the deterministic rolling-handover signal written by the preceding Stop provider instead.
-    $materialSignal = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir
     $materialStop = ($null -ne $materialSignal -and [bool]$materialSignal.material)
     $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
     $materialSatisfiedPath = Join-Path $projectRoot '.specrew/runtime/conformance-material-satisfied.json'
