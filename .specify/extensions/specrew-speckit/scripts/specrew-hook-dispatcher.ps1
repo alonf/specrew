@@ -27,10 +27,26 @@ param(
     [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$HostKind = 'claude'
 )
 
+function Write-EarlyDecisionOnlyAllowIfNeeded {
+    param([string]$EventName, [string]$EncodedBinding)
+    if ([string]::IsNullOrWhiteSpace($EncodedBinding)) { return }
+    try {
+        $runtime = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($EncodedBinding)) | ConvertFrom-Json -ErrorAction Stop
+        if (@($runtime.DecisionOnlyEvents | ForEach-Object { [string]$_ }) -contains $EventName) {
+            @{ decision = 'allow' } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+        }
+    }
+    catch { $null = $_ }
+}
+
 # KILL SWITCH FIRST (FR-008): this check must precede ANY logic that could itself
 # fail — a kill switch placed after catalog/state parsing never gets reached when
-# the bug is in catalog/state parsing.
-if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) { exit 0 }
+# the bug is in catalog/state parsing. Decision-only hosts still require an allow
+# envelope; use only the baked binding so the switch remains independent of project state.
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
+    Write-EarlyDecisionOnlyAllowIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    exit 0
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -759,6 +775,7 @@ try {
         try { $hostEvent = $rawEvent | ConvertFrom-Json }
         catch {
             Write-DispatcherWarn -Code 'EVENT_PARSE' -Message ("host event JSON unreadable for {0}; automation quiet this event (host surface changed? see the research matrix)" -f $Event)
+            Write-DecisionOnlyAllowIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
             exit 0
         }
     }

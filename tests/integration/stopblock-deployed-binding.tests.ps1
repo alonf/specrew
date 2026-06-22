@@ -81,6 +81,36 @@ try {
     Assert-True ([string]$codexOutJson.decision -eq 'allow') 'the deployed codex nudge path emits valid decision allow JSON'
     Assert-True (-not ($codexOut -match 'hookSpecificOutput|RAW SPEC KIT')) 'the deployed codex nudge path suppresses injection text on Stop'
 
+    # Dispatcher fail-open parse path: malformed host JSON must still be valid Stop JSON for decision-only hosts.
+    $badEventFile = Join-Path $proj 'bad-event.json'
+    Set-Content -LiteralPath $badEventFile -Value '{bad event json' -Encoding UTF8 -NoNewline
+    $badOut = Join-Path $proj 'bad-event.out'
+    $pBad = Start-Process -FilePath 'pwsh' `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'Stop', '-HostKind', 'codex', '-HostBinding', $codexEncoded) `
+        -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+        -RedirectStandardInput $badEventFile -RedirectStandardOutput $badOut -RedirectStandardError (Join-Path $proj 'bad-event.err')
+    Assert-True ($pBad.ExitCode -eq 0) 'codex dispatcher exits 0 on malformed Stop event JSON'
+    $badJson = (Get-Content -LiteralPath $badOut -Raw -ErrorAction SilentlyContinue) | ConvertFrom-Json -ErrorAction Stop
+    Assert-True ([string]$badJson.decision -eq 'allow') 'codex dispatcher malformed-event fail-open emits valid decision allow JSON'
+
+    # Dispatcher kill switch: the escape hatch must not turn Codex Stop into invalid empty stdout.
+    $killOut = Join-Path $proj 'dispatcher-kill.out'
+    $oldDisable = $env:SPECREW_REFOCUS_DISABLE
+    $env:SPECREW_REFOCUS_DISABLE = '1'
+    try {
+        $pKill = Start-Process -FilePath 'pwsh' `
+            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'Stop', '-HostKind', 'codex', '-HostBinding', $codexEncoded) `
+            -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+            -RedirectStandardInput $eventFile -RedirectStandardOutput $killOut -RedirectStandardError (Join-Path $proj 'dispatcher-kill.err')
+    }
+    finally {
+        if ($null -eq $oldDisable) { Remove-Item Env:\SPECREW_REFOCUS_DISABLE -ErrorAction SilentlyContinue }
+        else { $env:SPECREW_REFOCUS_DISABLE = $oldDisable }
+    }
+    Assert-True ($pKill.ExitCode -eq 0) 'codex dispatcher kill-switch exits 0'
+    $killJson = (Get-Content -LiteralPath $killOut -Raw -ErrorAction SilentlyContinue) | ConvertFrom-Json -ErrorAction Stop
+    Assert-True ([string]$killJson.decision -eq 'allow') 'codex dispatcher kill-switch emits valid decision allow JSON'
+
     # Codex production path uses the generated per-machine launcher, not the dispatcher directly. Cover that
     # wrapper too: an allowed Stop must still be exactly valid decision JSON after all providers run.
     Copy-Item -LiteralPath $dispatcher -Destination (Join-Path $scriptsDir 'specrew-hook-dispatcher.ps1') -Force
@@ -97,6 +127,24 @@ try {
     $codexLauncherJson = $codexLauncherOut | ConvertFrom-Json -ErrorAction Stop
     Assert-True ([string]$codexLauncherJson.decision -eq 'allow') 'the deployed codex launcher path emits valid decision allow JSON'
     Assert-True (-not ($codexLauncherOut -match 'hookSpecificOutput|RAW SPEC KIT')) 'the deployed codex launcher path suppresses non-JSON Stop nudges'
+
+    # Launcher kill switch: user-level Codex Stop still needs an explicit allow envelope when disabled.
+    $launcherKillOut = Join-Path $proj 'launcher-kill.out'
+    $oldDisable = $env:SPECREW_REFOCUS_DISABLE
+    $env:SPECREW_REFOCUS_DISABLE = '1'
+    try {
+        $pLauncherKill = Start-Process -FilePath 'pwsh' `
+            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcherPath, '-Event', 'Stop', '-HostKind', 'codex', '-HostBinding', $codexEncoded) `
+            -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+            -RedirectStandardInput $eventFile -RedirectStandardOutput $launcherKillOut -RedirectStandardError (Join-Path $proj 'launcher-kill.err')
+    }
+    finally {
+        if ($null -eq $oldDisable) { Remove-Item Env:\SPECREW_REFOCUS_DISABLE -ErrorAction SilentlyContinue }
+        else { $env:SPECREW_REFOCUS_DISABLE = $oldDisable }
+    }
+    Assert-True ($pLauncherKill.ExitCode -eq 0) 'codex launcher kill-switch exits 0'
+    $launcherKillJson = (Get-Content -LiteralPath $launcherKillOut -Raw -ErrorAction SilentlyContinue) | ConvertFrom-Json -ErrorAction Stop
+    Assert-True ([string]$launcherKillJson.decision -eq 'allow') 'codex launcher kill-switch emits valid decision allow JSON'
 
     # User-level hooks can fire when no Specrew project is resolvable. Codex Stop is still decision-only there:
     # empty stdout is invalid JSON, so fail-open must be an explicit allow envelope.

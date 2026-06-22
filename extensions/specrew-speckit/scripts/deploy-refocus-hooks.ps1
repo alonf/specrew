@@ -316,16 +316,6 @@ param(
     [string]$ModulePath,
     [int]$ProviderTimeoutSeconds = 20
 )
-# KILL SWITCH FIRST — before any logic that could itself fail (FR-008 doctrine).
-if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) { exit 0 }
-$ErrorActionPreference = 'Stop'
-
-# Dev-tree dogfood path: when specrew init/update ran from an imported development tree, bake that module
-# root into the launcher command so host-spawned hook children do not fall through to stale installed modules.
-if (-not [string]::IsNullOrWhiteSpace($ModulePath) -and (Test-Path -LiteralPath $ModulePath -PathType Container)) {
-    $env:SPECREW_MODULE_PATH = $ModulePath
-}
-
 function Test-LauncherDecisionOnlyEvent {
     param([string]$EventName, [string]$EncodedBinding)
     if ([string]::IsNullOrWhiteSpace($EncodedBinding)) { return $false }
@@ -341,6 +331,20 @@ function Write-LauncherDecisionAllowIfNeeded {
     if (Test-LauncherDecisionOnlyEvent -EventName $EventName -EncodedBinding $EncodedBinding) {
         @{ decision = 'allow' } | ConvertTo-Json -Compress
     }
+}
+
+# KILL SWITCH FIRST — before any logic that could itself fail (FR-008 doctrine). Decision-only hosts still
+# require an allow envelope; this helper reads only the baked binding and fails quiet.
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
+    Write-LauncherDecisionAllowIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    exit 0
+}
+$ErrorActionPreference = 'Stop'
+
+# Dev-tree dogfood path: when specrew init/update ran from an imported development tree, bake that module
+# root into the launcher command so host-spawned hook children do not fall through to stale installed modules.
+if (-not [string]::IsNullOrWhiteSpace($ModulePath) -and (Test-Path -LiteralPath $ModulePath -PathType Container)) {
+    $env:SPECREW_MODULE_PATH = $ModulePath
 }
 
 # The dispatcher's project-relative subpath — the SENTINEL we look for when walking up a candidate root. We key
