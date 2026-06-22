@@ -709,6 +709,13 @@ function Write-InjectionOutput {
     }
 }
 
+function Write-DecisionOnlyAllowIfNeeded {
+    param([string]$EventName, $Binding)
+    if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
+        Write-InjectionOutput -EventName $EventName -Payload '' -Binding $Binding
+    }
+}
+
 # The blocking StopBlockShapes (a host that force-continues the turn); 'none' is excluded (cannot block).
 $script:SpecrewStopBlockShapes = @('decision-block', 'decision-continue', 'followup-message')
 
@@ -733,9 +740,14 @@ function Write-StopBlockOutput {
 # Main — every failure path inside this try lands on exit 0 (P1).
 # ---------------------------------------------------------------------------
 try {
+    $earlyHostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $null -EncodedBinding $HostBinding
+
     # Self-gate: a stray hook firing outside a Specrew project is a silent no-op.
     $projectRoot = Get-DispatcherProjectRoot
-    if ($null -eq $projectRoot) { exit 0 }
+    if ($null -eq $projectRoot) {
+        Write-DecisionOnlyAllowIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
+        exit 0
+    }
 
     # Host event JSON: -EventJson (tests/bindings) or stdin (Claude hooks).
     $rawEvent = $EventJson
@@ -766,9 +778,12 @@ try {
     $sessionId = Get-SanitizedSessionId -RawSessionId $rawSessionId
     $source = if ($null -ne $hostEvent -and $hostEvent.PSObject.Properties['source']) { [string]$hostEvent.source } else { $null }
 
-    $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
-    if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) { exit 0 }
     $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
+    $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
+    if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) {
+        Write-DecisionOnlyAllowIfNeeded -EventName $Event -Binding $hostRuntimeBinding
+        exit 0
+    }
 
     Remove-StaleSessionState -ProjectRoot $projectRoot
 

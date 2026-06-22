@@ -81,6 +81,49 @@ try {
     Assert-True ([string]$codexOutJson.decision -eq 'allow') 'the deployed codex nudge path emits valid decision allow JSON'
     Assert-True (-not ($codexOut -match 'hookSpecificOutput|RAW SPEC KIT')) 'the deployed codex nudge path suppresses injection text on Stop'
 
+    # Codex production path uses the generated per-machine launcher, not the dispatcher directly. Cover that
+    # wrapper too: an allowed Stop must still be exactly valid decision JSON after all providers run.
+    Copy-Item -LiteralPath $dispatcher -Destination (Join-Path $scriptsDir 'specrew-hook-dispatcher.ps1') -Force
+    $launcherPath = Join-Path $home2 '.specrew/specrew-hook-launch.ps1'
+    Assert-True (Test-Path -LiteralPath $launcherPath -PathType Leaf) 'codex deployer produced the per-machine hook launcher'
+    $launcherOut = Join-Path $proj 'launcher-codex.out'
+    $launcherErr = Join-Path $proj 'launcher-codex.err'
+    $pCodexLauncher = Start-Process -FilePath 'pwsh' `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcherPath, '-Event', 'Stop', '-HostKind', 'codex', '-ModulePath', $repoRoot, '-HostBinding', $codexEncoded) `
+        -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+        -RedirectStandardInput $eventFile -RedirectStandardOutput $launcherOut -RedirectStandardError $launcherErr
+    Assert-True ($pCodexLauncher.ExitCode -eq 0) 'codex launcher exits 0 on the deployed-binding nudge path'
+    $codexLauncherOut = Get-Content -LiteralPath $launcherOut -Raw -ErrorAction SilentlyContinue
+    $codexLauncherJson = $codexLauncherOut | ConvertFrom-Json -ErrorAction Stop
+    Assert-True ([string]$codexLauncherJson.decision -eq 'allow') 'the deployed codex launcher path emits valid decision allow JSON'
+    Assert-True (-not ($codexLauncherOut -match 'hookSpecificOutput|RAW SPEC KIT')) 'the deployed codex launcher path suppresses non-JSON Stop nudges'
+
+    # User-level hooks can fire when no Specrew project is resolvable. Codex Stop is still decision-only there:
+    # empty stdout is invalid JSON, so fail-open must be an explicit allow envelope.
+    $outside = Join-Path $home2 'outside'
+    New-Item -ItemType Directory -Path $outside -Force | Out-Null
+    $outsideEvent = Join-Path $proj 'outside-event.json'
+    Set-Content -LiteralPath $outsideEvent -Value (@{ cwd = $outside; workspace_roots = @($outside); session_id = 'outside' } | ConvertTo-Json -Compress) -Encoding UTF8 -NoNewline
+    $outsideOut = Join-Path $proj 'launcher-outside.out'
+    $outsideErr = Join-Path $proj 'launcher-outside.err'
+    $oldClaudeProjectDir = $env:CLAUDE_PROJECT_DIR
+    $oldCursorProjectDir = $env:CURSOR_PROJECT_DIR
+    Remove-Item Env:\CLAUDE_PROJECT_DIR -ErrorAction SilentlyContinue
+    Remove-Item Env:\CURSOR_PROJECT_DIR -ErrorAction SilentlyContinue
+    try {
+        $pOutside = Start-Process -FilePath 'pwsh' `
+            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $launcherPath, '-Event', 'Stop', '-HostKind', 'codex', '-HostBinding', $codexEncoded) `
+            -WorkingDirectory $outside -NoNewWindow -PassThru -Wait `
+            -RedirectStandardInput $outsideEvent -RedirectStandardOutput $outsideOut -RedirectStandardError $outsideErr
+    }
+    finally {
+        if ($null -ne $oldClaudeProjectDir) { $env:CLAUDE_PROJECT_DIR = $oldClaudeProjectDir }
+        if ($null -ne $oldCursorProjectDir) { $env:CURSOR_PROJECT_DIR = $oldCursorProjectDir }
+    }
+    Assert-True ($pOutside.ExitCode -eq 0) 'codex launcher exits 0 when no Specrew project is resolvable'
+    $outsideJson = (Get-Content -LiteralPath $outsideOut -Raw -ErrorAction SilentlyContinue) | ConvertFrom-Json -ErrorAction Stop
+    Assert-True ([string]$outsideJson.decision -eq 'allow') 'codex launcher no-project fail-open emits valid decision allow JSON'
+
     Write-Host "`n=== stopblock-deployed-binding.tests.ps1: all assertions passed ===" -ForegroundColor Green
 }
 finally {

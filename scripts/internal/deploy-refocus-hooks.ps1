@@ -326,6 +326,23 @@ if (-not [string]::IsNullOrWhiteSpace($ModulePath) -and (Test-Path -LiteralPath 
     $env:SPECREW_MODULE_PATH = $ModulePath
 }
 
+function Test-LauncherDecisionOnlyEvent {
+    param([string]$EventName, [string]$EncodedBinding)
+    if ([string]::IsNullOrWhiteSpace($EncodedBinding)) { return $false }
+    try {
+        $runtime = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($EncodedBinding)) | ConvertFrom-Json -ErrorAction Stop
+        return @($runtime.DecisionOnlyEvents | ForEach-Object { [string]$_ }) -contains $EventName
+    }
+    catch { return $false }
+}
+
+function Write-LauncherDecisionAllowIfNeeded {
+    param([string]$EventName, [string]$EncodedBinding)
+    if (Test-LauncherDecisionOnlyEvent -EventName $EventName -EncodedBinding $EncodedBinding) {
+        @{ decision = 'allow' } | ConvertTo-Json -Compress
+    }
+}
+
 # The dispatcher's project-relative subpath — the SENTINEL we look for when walking up a candidate root. We key
 # on the dispatcher FILE (not a .specrew dir) so a stray ~/.specrew up the cwd tree never mis-resolves a project
 # (this launcher itself lives under ~/.specrew).
@@ -383,7 +400,10 @@ foreach ($start in $candidates) {
     $found = Find-DispatcherUpTree -Start $start -Sub $dispatcherSub
     if (-not [string]::IsNullOrWhiteSpace($found)) { $dispatcher = $found; break }
 }
-if ([string]::IsNullOrWhiteSpace($dispatcher)) { exit 0 }   # no project resolvable from any signal -> fire nothing (fail-open)
+if ([string]::IsNullOrWhiteSpace($dispatcher)) {
+    Write-LauncherDecisionAllowIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    exit 0
+}
 
 # Hand off to the project's deployed dispatcher. Pass the captured payload via -EventJson so the dispatcher does
 # not try to re-read the now-consumed stdin (only when non-empty). The dispatcher's stdout (injection output)
@@ -392,7 +412,10 @@ $dispatchArgs = @{ Event = $Event; HostKind = $HostKind; ProviderTimeoutSeconds 
 if (-not [string]::IsNullOrWhiteSpace($raw)) { $dispatchArgs['EventJson'] = $raw }
 if (-not [string]::IsNullOrWhiteSpace($HostBinding)) { $dispatchArgs['HostBinding'] = $HostBinding }
 try { & $dispatcher @dispatchArgs }
-catch { [Console]::Error.WriteLine("[specrew-refocus] WARN LAUNCH_FAILED $($_.Exception.Message)") }
+catch {
+    [Console]::Error.WriteLine("[specrew-refocus] WARN LAUNCH_FAILED $($_.Exception.Message)")
+    Write-LauncherDecisionAllowIfNeeded -EventName $Event -EncodedBinding $HostBinding
+}
 exit 0
 '@
     $launcherBody = $launcherBody.Replace('__SPECREW_PROJECT_ROOT_ENV_VARS__', $projectRootEnvVarLiteral)
