@@ -330,6 +330,19 @@ try {
     if ($r4g.Out -match 'MATERIAL-WORK STOP') { Fail "Case 4g: pre-boundary workshop scaffold material MUST NOT emit a material packet nudge. Out: $($r4g.Out)" }
     Write-Pass "Case 4g: pre-boundary workshop scaffold material does NOT force the five-part material packet"
 
+    # ---- Case 4h: MATERIAL after WORKSHOP COMPLETE, even if lifecycle state still has no active boundary/auth.
+    #               Clean/dirty is not the rule: a new commit is material. The pre-boundary scaffold suppression
+    #               must not mask post-workshop material work just because start-context has not advanced.
+    $p4h = New-Fixture -Working '' -LastAuth ''
+    New-Spec -Proj $p4h
+    New-LensApplicability -Proj $p4h -Selected @('product-domain','architecture-core') -Done @('product-domain','architecture-core')
+    New-HandoverSnapshot -Proj $p4h -NewCommits 1 -FileList '(none)'
+    $t4h = New-Transcript -Proj $p4h -Turns @(@{ role = 'assistant'; text = 'I committed the hook budget fix and the repository is clean.' })
+    $r4h = Invoke-Conformance -Proj $p4h -TranscriptPath $t4h
+    if (-not $r4h.Blocked) { Fail "Case 4h: completed-workshop material commit MUST still block for the material packet even when start-context is pre-boundary. Out: $($r4h.Out)" }
+    if ($r4h.Out -notmatch 'five-part context packet') { Fail "Case 4h: completed-workshop material block must demand the five-part context packet. Out: $($r4h.Out)" }
+    Write-Pass "Case 4h: completed-workshop material commit still requires the five-part context packet"
+
     # ---- Case 5: INTAKE QUESTION -> a cooperative NUDGE (not a block). Short intake question, spec exists.
     $p5 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p5

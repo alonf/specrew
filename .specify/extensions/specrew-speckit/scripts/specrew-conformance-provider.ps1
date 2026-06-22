@@ -196,8 +196,9 @@ function Get-SpecrewCurrentStopMaterialSignal {
         $bullet = @($activity -split "`r?`n" | Where-Object { $_ -match '^\s*-\s+\[' } | Select-Object -First 1)
         if ($bullet.Count -eq 0) { $result.reason = 'no-activity-bullet'; return $result }
 
-        $rx = [regex]::new('^\s*-\s+\[(?<stamp>[^\]]+)\]\s+\((?<source>[^)]+)\)\s+(?<files>\d+)\s+changed user file\(s\).*?(?:;\s+(?<commits>\d+)\s+new commit\(s\))?', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
-        $m = $rx.Match([string]$bullet[0])
+        $bulletText = [string]$bullet[0]
+        $rx = [regex]::new('^\s*-\s+\[(?<stamp>[^\]]+)\]\s+\((?<source>[^)]+)\)\s+(?<files>\d+)\s+changed user file\(s\)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        $m = $rx.Match($bulletText)
         if (-not $m.Success) { $result.reason = 'activity-unrecognized'; return $result }
         if (($m.Groups['source'].Value).ToLowerInvariant() -notin @('stop', 'agentstop')) { $result.reason = 'activity-not-stop'; return $result }
 
@@ -207,14 +208,15 @@ function Get-SpecrewCurrentStopMaterialSignal {
         }
 
         $files = [int]$m.Groups['files'].Value
-        $commits = if ($m.Groups['commits'].Success -and -not [string]::IsNullOrWhiteSpace($m.Groups['commits'].Value)) { [int]$m.Groups['commits'].Value } else { 0 }
+        $commitMatch = [regex]::Match($bulletText, ';\s+(?<commits>\d+)\s+new commit\(s\)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        $commits = if ($commitMatch.Success -and -not [string]::IsNullOrWhiteSpace($commitMatch.Groups['commits'].Value)) { [int]$commitMatch.Groups['commits'].Value } else { 0 }
         if ($files -le 0 -and $commits -le 0) { $result.reason = 'no-user-files-or-commits'; return $result }
 
         $result.material = $true
         $result.reason = 'current-stop-material-delta'
         $result.user_file_count = $files
         $result.new_commit_count = $commits
-        $stableMaterialSurface = (([string]$bullet[0]) -replace '^\s*-\s+\[[^\]]+\]\s+\([^)]+\)\s+', '').Trim()
+        $stableMaterialSurface = ($bulletText -replace '^\s*-\s+\[[^\]]+\]\s+\([^)]+\)\s+', '').Trim()
         $surfaceHash = Get-SpecrewFireIdentity -Parts @($stableMaterialSurface)
         $result.key = ('material|{0}' -f $surfaceHash)
         return $result
@@ -284,6 +286,25 @@ function Test-SpecrewWorkshopInProgress {
         $wp = $null
         try { $wp = Get-SpecrewWorkshopProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef } catch { $wp = $null }
         if ($null -ne $wp -and [bool]$wp.has_applicability -and (@($wp.remaining).Count -gt 0)) { return $true }
+    }
+    catch { $null = $_ }
+    return $false
+}
+
+function Test-SpecrewWorkshopComplete {
+    # Complements Test-SpecrewWorkshopInProgress for the pre-boundary scaffold suppression. A feature with no
+    # active boundary/authorization can still have completed its lens workshop; in that case material work after
+    # the workshop must not be suppressed as "initial intake".
+    param([string]$ProjectRoot, [AllowNull()][string]$BootstrapDir, [AllowNull()][string]$FeatureRef)
+    try {
+        if ([string]::IsNullOrWhiteSpace($BootstrapDir) -or [string]::IsNullOrWhiteSpace($FeatureRef)) { return $false }
+        $pma = Join-Path $BootstrapDir 'ProjectMetadataAccessor.ps1'
+        if (-not (Test-Path -LiteralPath $pma -PathType Leaf)) { return $false }
+        try { . $pma } catch { return $false }
+        if (-not (Get-Command Get-SpecrewWorkshopProgress -ErrorAction SilentlyContinue)) { return $false }
+        $wp = $null
+        try { $wp = Get-SpecrewWorkshopProgress -ProjectRoot $ProjectRoot -FeatureRef $FeatureRef } catch { $wp = $null }
+        return ($null -ne $wp -and [bool]$wp.has_applicability -and (@($wp.selected).Count -gt 0) -and (@($wp.remaining).Count -eq 0))
     }
     catch { $null = $_ }
     return $false
@@ -365,7 +386,13 @@ try {
     if ([string]::IsNullOrWhiteSpace($activeFeatureRef) -and -not [string]::IsNullOrWhiteSpace($specPath)) {
         $activeFeatureRef = Split-Path (Split-Path $specPath -Parent) -Leaf
     }
-    $preBoundaryWorkshop = $startContextReadable -and (-not $hasActiveLifecycleBoundary) -and (-not $hasBoundaryAuthorization)
+    $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
+    $preBoundaryWorkshopCandidate = $startContextReadable -and (-not $hasActiveLifecycleBoundary) -and (-not $hasBoundaryAuthorization)
+    $workshopComplete = $false
+    if ($preBoundaryWorkshopCandidate) {
+        $workshopComplete = Test-SpecrewWorkshopComplete -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir -FeatureRef $activeFeatureRef
+    }
+    $preBoundaryWorkshop = $preBoundaryWorkshopCandidate -and (-not $workshopComplete)
 
     # #3 RAW SPEC KIT - a CHEAP raw-text scan of the recent tail (NO per-line JSON parse). NEGATION GUARD: skip a
     # match whose preceding context is a prohibition / quote (the contract's OWN "do NOT run the raw `specify.exe
@@ -386,7 +413,6 @@ try {
 
     # Material-work lane (Proposal 145 follow-up): the old length-only "substantial" trigger over-blocked normal
     # discussion, so use the deterministic rolling-handover signal written by the preceding Stop provider instead.
-    $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
     $materialSignal = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bootstrapDir
     $materialStop = ($null -ne $materialSignal -and [bool]$materialSignal.material)
     $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
