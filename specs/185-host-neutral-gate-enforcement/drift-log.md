@@ -181,3 +181,11 @@ Live Codex dogfood in `C:/Temp/test-f185` exposed two separate issues after D-01
 - **Workshop material false-block.** The live feature scaffold changed `AGENTS.md`, `CLAUDE.md`, and `specs/001-multi-ai-arena-ui/spec.md` before `session_state` or `lens-applicability.json` existed. The robust workshop detector therefore missed the initial pre-boundary lens intake and the material lane forced the five-part packet on a product-domain question. FIX: when `start-context.json` is readable, no lifecycle boundary is active, and no boundary authorization exists yet, material packet enforcement and material retry are suppressed. This is still workshop intake, not a within-phase material hand-back. Regression Case 4g covers this exact scaffold-before-lens-records shape.
 
 The core remains host-neutral: Codex-specific behavior is manifest data (`DecisionOnlyEvents`, `StopBlockShape`), while the dispatcher emits a generic no-op JSON object for decision-only no-op paths. The provider remains read-only to gate state and only narrows the material lane; boundary silent-advance enforcement is unchanged.
+
+## D-019: dogfood bug - Stop provider timeouts could exceed the host timeout (2026-06-22)
+
+Live Codex dogfood exposed a third Stop failure after D-018: the hook no longer returned invalid JSON, but Codex killed it with `hook timed out after 30s`.
+
+**Root cause.** The dispatcher applied `ProviderTimeoutSeconds` per provider. Stop currently runs at least `handover` and `conformance` sequentially, so the default 20s provider timeout could become 40s of child-provider budget under a slow transcript/handover path. Codex's outer hook timeout is 30s, so the host could terminate the dispatcher before it emitted its fail-open `{}`.
+
+**Fix.** Provider execution now shares one dispatcher budget derived from `ProviderTimeoutSeconds`; before each provider launch the dispatcher computes remaining time and skips later providers once the budget is exhausted. This keeps fail-open under dispatcher control instead of letting the host timeout be the first failure surface. A regression in `dispatcher-stop-block.tests.ps1` uses two slow Codex Stop providers and asserts the later provider is skipped by `PROVIDER_BUDGET` while stdout remains valid no-op JSON.

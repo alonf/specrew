@@ -828,6 +828,11 @@ try {
     # Providers for THIS event, deterministic order (the host runs parallel hooks
     # unordered; Specrew owns ordering internally — the lens-2 dispatcher decision).
     $providers = @($catalog.providers | Where-Object { @($_.events) -contains $Event } | Sort-Object { [int]$_.order })
+    # The host owns the outer hook timeout. Provider timeouts must therefore be a
+    # shared dispatcher budget, not a per-provider multiplier; otherwise two slow
+    # Stop providers can exceed Codex's 30s ceiling before we can fail open.
+    $providerBudget = [System.Diagnostics.Stopwatch]::StartNew()
+    $providerBudgetMs = [Math]::Max(1000, ($ProviderTimeoutSeconds * 1000))
 
     $fragments = New-Object System.Collections.Generic.List[object]
     $failedSessionStartProviders = New-Object System.Collections.Generic.List[string]
@@ -851,7 +856,15 @@ try {
             # PreToolUse, receive tool_input, return allow/deny permissionDecision.
             # No gate provider ships in F-171; this path is fixture-tested only.
             if ($Event -ne 'PreToolUse') { continue }
-            $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs @('--gate') -WorkingDirectory $projectRoot -TimeoutSeconds $ProviderTimeoutSeconds
+            $remainingMs = $providerBudgetMs - [int]$providerBudget.ElapsedMilliseconds
+            if ($remainingMs -le 0) {
+                Write-DispatcherWarn -Code 'PROVIDER_BUDGET' -Message ("provider budget exhausted before '{0}'; skipped" -f $providerId)
+                @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; permissionDecision = 'allow'; permissionDecisionReason = "specrew gate provider '$providerId' skipped after dispatcher budget exhausted" } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
+                continue
+            }
+            $providerTimeoutForCall = [Math]::Max(1, [int][Math]::Ceiling($remainingMs / 1000.0))
+            $providerTimeoutForCall = [Math]::Min($ProviderTimeoutSeconds, $providerTimeoutForCall)
+            $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs @('--gate') -WorkingDirectory $projectRoot -TimeoutSeconds $providerTimeoutForCall
             if ($result.TimedOut -or $result.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($result.StdOut)) {
                 # Gates fail OPEN to allow — a broken gate never blocks a session.
                 Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("gate provider '{0}' failed; failing OPEN to allow" -f $providerId)
@@ -948,7 +961,14 @@ try {
         }
         if ($null -eq $commandArgs) { continue }
 
-        $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs $commandArgs -WorkingDirectory $projectRoot -TimeoutSeconds $ProviderTimeoutSeconds
+        $remainingMs = $providerBudgetMs - [int]$providerBudget.ElapsedMilliseconds
+        if ($remainingMs -le 0) {
+            Write-DispatcherWarn -Code 'PROVIDER_BUDGET' -Message ("provider budget exhausted before '{0}'; skipped" -f $providerId)
+            continue
+        }
+        $providerTimeoutForCall = [Math]::Max(1, [int][Math]::Ceiling($remainingMs / 1000.0))
+        $providerTimeoutForCall = [Math]::Min($ProviderTimeoutSeconds, $providerTimeoutForCall)
+        $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs $commandArgs -WorkingDirectory $projectRoot -TimeoutSeconds $providerTimeoutForCall
         if ($result.TimedOut -or $result.ExitCode -ne 0) {
             $why = if ($result.TimedOut) { 'timed out' }
             elseif ($result.LaunchFailed) { "failed to launch: $($result.StdErr)" }

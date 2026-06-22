@@ -16,8 +16,10 @@ function Invoke-Dispatcher {
         [string]$HostKind,
         [string]$Event,
         [hashtable]$EventExtra = @{},
-        [ValidateSet('block', 'nudge')]
-        [string]$StubKind = 'block'
+        [ValidateSet('block', 'nudge', 'slow')]
+        [string]$StubKind = 'block',
+        [int]$ProviderCount = 1,
+        [int]$ProviderTimeoutSeconds = 0
     )
     $proj = Join-Path ([System.IO.Path]::GetTempPath()) ("sb-" + [guid]::NewGuid().ToString('N'))
     $scriptsDir = Join-Path $proj '.specify/extensions/specrew-speckit/scripts'
@@ -26,15 +28,23 @@ function Invoke-Dispatcher {
     try {
         # ONE stub provider on every stop-class event. Most cases emit the stop-block sentinel; the Codex
         # regression emits an ordinary nudge, which must be suppressed to no-op JSON on Stop.
-        $catalog = @{ schema_version = '1'; providers = @(@{ id = 'stub-block'; kind = 'inject'; events = @('Stop', 'agentStop', 'stop'); order = 40; budget_share = 1.0; command = 'stub-block.ps1' }) } | ConvertTo-Json -Depth 6
+        $providerRows = for ($idx = 1; $idx -le $ProviderCount; $idx++) {
+            @{ id = "stub-$idx"; kind = 'inject'; events = @('Stop', 'agentStop', 'stop'); order = (40 + $idx); budget_share = 1.0; command = "stub-$idx.ps1" }
+        }
+        $catalog = @{ schema_version = '1'; providers = @($providerRows) } | ConvertTo-Json -Depth 6
         Set-Content -LiteralPath (Join-Path $proj '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
-        $stub = if ($StubKind -eq 'block') {
+        $stub = if ($StubKind -eq 'slow') {
+            'Start-Sleep -Seconds 30; Write-Output "late nudge"; exit 0'
+        }
+        elseif ($StubKind -eq 'block') {
             "Write-Output `"<<<SPECREW-STOP-BLOCK>>>`nRENDER THE PACKET NOW`"; exit 0"
         }
         else {
             "Write-Output `"RAW SPEC KIT invocation detected`"; exit 0"
         }
-        Set-Content -LiteralPath (Join-Path $scriptsDir 'stub-block.ps1') -Value $stub -Encoding UTF8
+        for ($idx = 1; $idx -le $ProviderCount; $idx++) {
+            Set-Content -LiteralPath (Join-Path $scriptsDir "stub-$idx.ps1") -Value $stub -Encoding UTF8
+        }
 
         $evt = @{ session_id = 'sb1'; source = $Event }
         foreach ($k in $EventExtra.Keys) { $evt[$k] = $EventExtra[$k] }
@@ -42,11 +52,17 @@ function Invoke-Dispatcher {
         Set-Content -LiteralPath $eventFile -Value ($evt | ConvertTo-Json -Compress) -Encoding UTF8 -NoNewline
 
         $outFile = Join-Path $proj 'd.out'; $errFile = Join-Path $proj 'd.err'
+        $dispatcherArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', $Event, '-HostKind', $HostKind)
+        if ($ProviderTimeoutSeconds -gt 0) { $dispatcherArgs += @('-ProviderTimeoutSeconds', ([string]$ProviderTimeoutSeconds)) }
         $p = Start-Process -FilePath 'pwsh' `
-            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', $Event, '-HostKind', $HostKind) `
+            -ArgumentList $dispatcherArgs `
             -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
             -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile
-        return [pscustomobject]@{ ExitCode = $p.ExitCode; Out = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue) }
+        return [pscustomobject]@{
+            ExitCode = $p.ExitCode
+            Out      = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue)
+            Err      = (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue)
+        }
     }
     finally { Remove-Item -LiteralPath $proj -Recurse -Force -ErrorAction SilentlyContinue }
 }
@@ -85,5 +101,13 @@ $rCodexNudge = Invoke-Dispatcher -HostKind 'codex' -Event 'Stop' -StubKind 'nudg
 $codexNudgeJson = $rCodexNudge.Out | ConvertFrom-Json -ErrorAction Stop
 Assert-True (-not ($codexNudgeJson.PSObject.Properties.Name -contains 'decision')) 'codex Stop nudge: dispatcher returns valid no-op JSON, not invalid decision:allow'
 Assert-True (-not ($rCodexNudge.Out -match 'hookSpecificOutput|RAW SPEC KIT')) 'codex Stop nudge: dispatcher suppresses non-blocking injection payload on decision-only Stop'
+
+# The host timeout is outside the dispatcher. Stop has multiple providers; their timeouts must share one budget
+# so a slow first provider cannot let later providers push Codex past the outer 30s hook ceiling.
+$rBudget = Invoke-Dispatcher -HostKind 'codex' -Event 'Stop' -StubKind 'slow' -ProviderCount 2 -ProviderTimeoutSeconds 1
+$budgetJson = $rBudget.Out | ConvertFrom-Json -ErrorAction Stop
+Assert-True ($rBudget.ExitCode -eq 0) 'codex Stop shared-budget path exits 0'
+Assert-True (-not ($budgetJson.PSObject.Properties.Name -contains 'decision')) 'codex Stop shared-budget path still emits valid no-op JSON'
+Assert-True ($rBudget.Err -match 'PROVIDER_BUDGET') 'codex Stop shared-budget path skips later providers before the host timeout can kill the hook'
 
 Write-Host "`n=== dispatcher-stop-block.tests.ps1: all assertions passed ===" -ForegroundColor Green
