@@ -110,7 +110,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event SessionStart -HostKind claude"
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event SessionStart -HostKind claude -HostBinding \"eyJCb290c3RyYXBEZWxpdmVyeUV2ZW50cyI6WyJTZXNzaW9uU3RhcnQiXSwiQjNEZWxpdmVyeUV2ZW50cyI6WyJQb3N0VG9vbFVzZSIsIlVzZXJQcm9tcHRTdWJtaXQiXSwiUmVmb2N1c1RyaWdnZXJCeUV2ZW50Ijp7IlBvc3RUb29sVXNlIjoiYjMiLCJVc2VyUHJvbXB0U3VibWl0IjoiYjMifSwiU3VwcHJlc3NlZFJlZm9jdXNFdmVudHMiOltdLCJPdXRwdXRTaGFwZSI6InBsYWluLW9yLWhvb2tTcGVjaWZpY091dHB1dCIsIkRlY2lzaW9uT25seUV2ZW50cyI6W10sIkJvb3RzdHJhcERlbGl2ZXJ5TW9kZSI6InBvaW50ZXIifQ==\""
           }
         ]
       }
@@ -120,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event Stop -HostKind claude"
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event Stop -HostKind claude -HostBinding \"eyJCb290c3RyYXBEZWxpdmVyeUV2ZW50cyI6WyJTZXNzaW9uU3RhcnQiXSwiQjNEZWxpdmVyeUV2ZW50cyI6WyJQb3N0VG9vbFVzZSIsIlVzZXJQcm9tcHRTdWJtaXQiXSwiUmVmb2N1c1RyaWdnZXJCeUV2ZW50Ijp7IlBvc3RUb29sVXNlIjoiYjMiLCJVc2VyUHJvbXB0U3VibWl0IjoiYjMifSwiU3VwcHJlc3NlZFJlZm9jdXNFdmVudHMiOltdLCJPdXRwdXRTaGFwZSI6InBsYWluLW9yLWhvb2tTcGVjaWZpY091dHB1dCIsIkRlY2lzaW9uT25seUV2ZW50cyI6W10sIkJvb3RzdHJhcERlbGl2ZXJ5TW9kZSI6InBvaW50ZXIifQ==\""
           }
         ]
       }
@@ -130,7 +130,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event PostToolUse -HostKind claude"
+            "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PROJECT_DIR}/.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1\" -Event PostToolUse -HostKind claude -HostBinding \"eyJCb290c3RyYXBEZWxpdmVyeUV2ZW50cyI6WyJTZXNzaW9uU3RhcnQiXSwiQjNEZWxpdmVyeUV2ZW50cyI6WyJQb3N0VG9vbFVzZSIsIlVzZXJQcm9tcHRTdWJtaXQiXSwiUmVmb2N1c1RyaWdnZXJCeUV2ZW50Ijp7IlBvc3RUb29sVXNlIjoiYjMiLCJVc2VyUHJvbXB0U3VibWl0IjoiYjMifSwiU3VwcHJlc3NlZFJlZm9jdXNFdmVudHMiOltdLCJPdXRwdXRTaGFwZSI6InBsYWluLW9yLWhvb2tTcGVjaWZpY091dHB1dCIsIkRlY2lzaW9uT25seUV2ZW50cyI6W10sIkJvb3RzdHJhcERlbGl2ZXJ5TW9kZSI6InBvaW50ZXIifQ==\""
           }
         ]
       }
