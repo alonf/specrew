@@ -326,17 +326,17 @@ function Test-LauncherDecisionOnlyEvent {
     catch { return $false }
 }
 
-function Write-LauncherDecisionAllowIfNeeded {
+function Write-LauncherDecisionNoopIfNeeded {
     param([string]$EventName, [string]$EncodedBinding)
     if (Test-LauncherDecisionOnlyEvent -EventName $EventName -EncodedBinding $EncodedBinding) {
-        @{ decision = 'allow' } | ConvertTo-Json -Compress
+        @{} | ConvertTo-Json -Compress
     }
 }
 
 # KILL SWITCH FIRST — before any logic that could itself fail (FR-008 doctrine). Decision-only hosts still
-# require an allow envelope; this helper reads only the baked binding and fails quiet.
+# require no-op JSON; this helper reads only the baked binding and fails quiet.
 if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
-    Write-LauncherDecisionAllowIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    Write-LauncherDecisionNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
     exit 0
 }
 $ErrorActionPreference = 'Stop'
@@ -405,7 +405,7 @@ foreach ($start in $candidates) {
     if (-not [string]::IsNullOrWhiteSpace($found)) { $dispatcher = $found; break }
 }
 if ([string]::IsNullOrWhiteSpace($dispatcher)) {
-    Write-LauncherDecisionAllowIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    Write-LauncherDecisionNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
     exit 0
 }
 
@@ -418,7 +418,7 @@ if (-not [string]::IsNullOrWhiteSpace($HostBinding)) { $dispatchArgs['HostBindin
 try { & $dispatcher @dispatchArgs }
 catch {
     [Console]::Error.WriteLine("[specrew-refocus] WARN LAUNCH_FAILED $($_.Exception.Message)")
-    Write-LauncherDecisionAllowIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    Write-LauncherDecisionNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
 }
 exit 0
 '@

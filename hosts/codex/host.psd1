@@ -47,8 +47,8 @@
             RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }
             SuppressedRefocusEvents = @()
             OutputShape             = 'hookSpecificOutput'
-            # Codex Stop accepts decision-style JSON only. Non-blocking Stop nudges must be suppressed as
-            # {"decision":"allow"}; real stop-blocks still short-circuit through StopBlockShape below.
+            # Codex Stop expects JSON and only permits decision:"block"; non-blocking Stop nudges must be
+            # suppressed as `{}` while real stop-blocks short-circuit through StopBlockShape below.
             DecisionOnlyEvents      = @('Stop')
             # FR-004 (185) stop-block lever (verified, research/stop-block-capability-matrix.md): Codex Stop
             # decision:block creates a continuation prompt from reason (PR #14532) + built-in stop_hook_active.

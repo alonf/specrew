@@ -25,7 +25,7 @@ function Invoke-Dispatcher {
     New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
     try {
         # ONE stub provider on every stop-class event. Most cases emit the stop-block sentinel; the Codex
-        # regression emits an ordinary nudge, which must be suppressed to decision JSON on Stop.
+        # regression emits an ordinary nudge, which must be suppressed to no-op JSON on Stop.
         $catalog = @{ schema_version = '1'; providers = @(@{ id = 'stub-block'; kind = 'inject'; events = @('Stop', 'agentStop', 'stop'); order = 40; budget_share = 1.0; command = 'stub-block.ps1' }) } | ConvertTo-Json -Depth 6
         Set-Content -LiteralPath (Join-Path $proj '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
         $stub = if ($StubKind -eq 'block') {
@@ -79,11 +79,11 @@ Assert-True (-not (($rActive.Out -replace '\s', '') -match '"decision":"block"')
 $rCursor = Invoke-Dispatcher -HostKind 'cursor' -Event 'stop'
 Assert-True (-not (($rCursor.Out -replace '\s', '') -match '"decision":"block"')) 'cursor: degrades to followup_message, NOT a hard decision:block (declared best-effort)'
 
-# Codex Stop accepts only decision-style JSON. A non-blocking provider nudge must not be emitted as
-# hookSpecificOutput.additionalContext, or Codex rejects the Stop hook output as invalid JSON for that event.
+# Codex Stop accepts JSON but only permits decision:"block"; decision:"allow" is invalid. A non-blocking
+# provider nudge must be emitted as `{}` rather than hookSpecificOutput.additionalContext.
 $rCodexNudge = Invoke-Dispatcher -HostKind 'codex' -Event 'Stop' -StubKind 'nudge'
 $codexNudgeJson = $rCodexNudge.Out | ConvertFrom-Json -ErrorAction Stop
-Assert-True ([string]$codexNudgeJson.decision -eq 'allow') 'codex Stop nudge: dispatcher returns valid decision allow JSON'
+Assert-True (-not ($codexNudgeJson.PSObject.Properties.Name -contains 'decision')) 'codex Stop nudge: dispatcher returns valid no-op JSON, not invalid decision:allow'
 Assert-True (-not ($rCodexNudge.Out -match 'hookSpecificOutput|RAW SPEC KIT')) 'codex Stop nudge: dispatcher suppresses non-blocking injection payload on decision-only Stop'
 
 Write-Host "`n=== dispatcher-stop-block.tests.ps1: all assertions passed ===" -ForegroundColor Green

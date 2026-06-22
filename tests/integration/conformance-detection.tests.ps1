@@ -318,6 +318,18 @@ try {
     if ($r4f3.Blocked) { Fail "Case 4f: rendering the material context packet must reset/release the material retry block. Out: $($r4f3.Out)" }
     Write-Pass "Case 4f: material stop-block retries until the packet is rendered, then releases"
 
+    # ---- Case 4g: MATERIAL but PRE-BOUNDARY WORKSHOP. A fresh governed-feature scaffold can change files before
+    #               lens-applicability/session_state exists. That is still initial workshop intake, so it must not
+    #               force the five-part material-work packet on a product-domain question.
+    $p4g = New-Fixture -Working '' -LastAuth ''
+    New-Spec -Proj $p4g
+    New-HandoverSnapshot -Proj $p4g -ChangedUserFiles 3 -FileList 'AGENTS.md, CLAUDE.md, specs/001-multi-ai-arena-ui/spec.md'
+    $t4g = New-Transcript -Proj $p4g -Turns @(@{ role = 'assistant'; text = 'Product-domain first pass. Who are the users, what pain should this mock solve, and should this be static or a working prototype?' })
+    $r4g = Invoke-Conformance -Proj $p4g -TranscriptPath $t4g
+    if ($r4g.Blocked) { Fail "Case 4g: pre-boundary workshop scaffold material MUST NOT block for the material packet. Out: $($r4g.Out)" }
+    if ($r4g.Out -match 'MATERIAL-WORK STOP') { Fail "Case 4g: pre-boundary workshop scaffold material MUST NOT emit a material packet nudge. Out: $($r4g.Out)" }
+    Write-Pass "Case 4g: pre-boundary workshop scaffold material does NOT force the five-part material packet"
+
     # ---- Case 5: INTAKE QUESTION -> a cooperative NUDGE (not a block). Short intake question, spec exists.
     $p5 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p5

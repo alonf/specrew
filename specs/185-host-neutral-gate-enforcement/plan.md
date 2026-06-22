@@ -40,8 +40,8 @@ The current design remains bounded:
 
 - **Post-hoc ceiling**: Stop-hook enforcement protects boundary state and turn-end behavior; it is not a per-tool pre-block.
 - **Transcript-gated ceiling**: no transcript or unreadable state means the provider fails open and records degraded evidence rather than guessing.
-- **Cursor/Codex host variation**: host manifests declare blocking shape; Codex Stop is decision-only except for real stop-block short-circuiting.
-- **Material-signal coupling**: material-work enforcement reads the rolling handover activity bullet produced by `HandoverStore.ps1`; if that textual shape drifts, enforcement fails open. This is a maintenance coupling, not a second material inference engine.
+- **Cursor/Codex host variation**: host manifests declare blocking shape; Codex Stop is JSON-only and permits `decision:"block"` for continuation; non-blocking Stop output is `{}` rather than `decision:"allow"`.
+- **Material-signal coupling**: material-work enforcement reads the rolling handover activity bullet produced by `HandoverStore.ps1`; if that textual shape drifts, enforcement fails open. This is a maintenance coupling, not a second material inference engine. Initial pre-boundary workshop scaffolds are excluded until a lifecycle boundary exists.
 - **Source-vs-mirror**: provider changes must stay source/mirror parity-clean between `extensions/...` and `.specify/extensions/...`.
 
 ## Next

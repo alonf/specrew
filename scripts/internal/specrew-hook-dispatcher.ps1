@@ -27,13 +27,13 @@ param(
     [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$HostKind = 'claude'
 )
 
-function Write-EarlyDecisionOnlyAllowIfNeeded {
+function Write-EarlyDecisionOnlyNoopIfNeeded {
     param([string]$EventName, [string]$EncodedBinding)
     if ([string]::IsNullOrWhiteSpace($EncodedBinding)) { return }
     try {
         $runtime = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($EncodedBinding)) | ConvertFrom-Json -ErrorAction Stop
         if (@($runtime.DecisionOnlyEvents | ForEach-Object { [string]$_ }) -contains $EventName) {
-            @{ decision = 'allow' } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+            @{} | ConvertTo-Json -Depth 3 -Compress | Write-Output
         }
     }
     catch { $null = $_ }
@@ -41,10 +41,10 @@ function Write-EarlyDecisionOnlyAllowIfNeeded {
 
 # KILL SWITCH FIRST (FR-008): this check must precede ANY logic that could itself
 # fail — a kill switch placed after catalog/state parsing never gets reached when
-# the bug is in catalog/state parsing. Decision-only hosts still require an allow
-# envelope; use only the baked binding so the switch remains independent of project state.
+# the bug is in catalog/state parsing. Decision-only hosts still require no-op
+# JSON; use only the baked binding so the switch remains independent of project state.
 if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
-    Write-EarlyDecisionOnlyAllowIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    Write-EarlyDecisionOnlyNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
     exit 0
 }
 
@@ -691,7 +691,7 @@ function Write-InjectionOutput {
     # knows generic envelope strategies; adding or changing a host updates the
     # manifest, not this core switch.
     if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
-        @{ decision = 'allow' } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+        @{} | ConvertTo-Json -Depth 3 -Compress | Write-Output
         return
     }
 
@@ -725,7 +725,7 @@ function Write-InjectionOutput {
     }
 }
 
-function Write-DecisionOnlyAllowIfNeeded {
+function Write-DecisionOnlyNoopIfNeeded {
     param([string]$EventName, $Binding)
     if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
         Write-InjectionOutput -EventName $EventName -Payload '' -Binding $Binding
@@ -761,7 +761,7 @@ try {
     # Self-gate: a stray hook firing outside a Specrew project is a silent no-op.
     $projectRoot = Get-DispatcherProjectRoot
     if ($null -eq $projectRoot) {
-        Write-DecisionOnlyAllowIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
+        Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
         exit 0
     }
 
@@ -775,7 +775,7 @@ try {
         try { $hostEvent = $rawEvent | ConvertFrom-Json }
         catch {
             Write-DispatcherWarn -Code 'EVENT_PARSE' -Message ("host event JSON unreadable for {0}; automation quiet this event (host surface changed? see the research matrix)" -f $Event)
-            Write-DecisionOnlyAllowIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
+            Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
             exit 0
         }
     }
@@ -798,7 +798,7 @@ try {
     $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
     $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
     if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) {
-        Write-DecisionOnlyAllowIfNeeded -EventName $Event -Binding $hostRuntimeBinding
+        Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $hostRuntimeBinding
         exit 0
     }
 

@@ -337,12 +337,27 @@ try {
     # session_state.feature_ref is canonical; fall back to the spec dir found above; null -> the exclusion fails
     # toward enforcement (it does not suppress a different feature's workshop onto the active one).
     $activeFeatureRef = $null
+    $startContextReadable = $false
+    $hasActiveLifecycleBoundary = $false
+    $hasBoundaryAuthorization = $false
     try {
         $scPath = Join-Path $projectRoot '.specrew/start-context.json'
         if (Test-Path -LiteralPath $scPath -PathType Leaf) {
             $sc = Get-Content -LiteralPath $scPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $startContextReadable = $true
             if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['feature_ref'] -and -not [string]::IsNullOrWhiteSpace([string]$sc.session_state.feature_ref)) {
                 $activeFeatureRef = [string]$sc.session_state.feature_ref
+            }
+            if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['boundary_type'] -and -not [string]::IsNullOrWhiteSpace([string]$sc.session_state.boundary_type)) {
+                $hasActiveLifecycleBoundary = $true
+            }
+            if ($sc.PSObject.Properties['boundary_enforcement'] -and $null -ne $sc.boundary_enforcement) {
+                if ($sc.boundary_enforcement.PSObject.Properties['last_authorized_boundary'] -and -not [string]::IsNullOrWhiteSpace([string]$sc.boundary_enforcement.last_authorized_boundary)) {
+                    $hasBoundaryAuthorization = $true
+                }
+                if ($sc.boundary_enforcement.PSObject.Properties['verdict_history'] -and @($sc.boundary_enforcement.verdict_history).Count -gt 0) {
+                    $hasBoundaryAuthorization = $true
+                }
             }
         }
     }
@@ -350,6 +365,7 @@ try {
     if ([string]::IsNullOrWhiteSpace($activeFeatureRef) -and -not [string]::IsNullOrWhiteSpace($specPath)) {
         $activeFeatureRef = Split-Path (Split-Path $specPath -Parent) -Leaf
     }
+    $preBoundaryWorkshop = $startContextReadable -and (-not $hasActiveLifecycleBoundary) -and (-not $hasBoundaryAuthorization)
 
     # #3 RAW SPEC KIT - a CHEAP raw-text scan of the recent tail (NO per-line JSON parse). NEGATION GUARD: skip a
     # match whose preceding context is a prohibition / quote (the contract's OWN "do NOT run the raw `specify.exe
@@ -378,6 +394,11 @@ try {
     $existingBlockRecord = Get-SpecrewBlockRecord -Path $blockStatePath
     $materialRetryKey = Get-SpecrewRecentMaterialRetryKey -Record $existingBlockRecord
     $materialSatisfiedKey = Get-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath
+    if ($preBoundaryWorkshop) {
+        # Feature scaffolding during initial lens intake is workshop material, not a within-phase hand-back.
+        $materialStop = $false
+        $materialRetryKey = $null
+    }
 
     # (IDEMPOTENCY check is performed BELOW - after the role-aware last-assistant message + the workshop/marker state
     # are computed - so the fire-identity captures the FULL decision-relevant state. An EARLY tail-40 identity falsely
@@ -457,7 +478,7 @@ try {
     # never blocks the stop. The force-continue loop is unaffected (each forced re-render is a NEW message).
     $idWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
     $idAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("w={0}" -f [int][bool]$inWorkshop), ("p={0}" -f [int][bool]$hasPending), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
+    $fireIdentity = Get-SpecrewFireIdentity -Parts @([string]$lastAssistantText, $idWorking, $idAuth, ("m={0}" -f [int][bool]$markerForPendingCrossing), ("w={0}" -f [int][bool]$inWorkshop), ("pbw={0}" -f [int][bool]$preBoundaryWorkshop), ("p={0}" -f [int][bool]$hasPending), ("mat={0}" -f [string]$materialSignal.key), ("mr={0}" -f [string]$materialRetryKey), [string]$sourceEventArg)
     $lastFirePath = Join-Path $projectRoot '.specrew/runtime/conformance-last-fire.json'
     if (-not [string]::IsNullOrWhiteSpace($fireIdentity)) {
         try {
