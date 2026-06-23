@@ -1,0 +1,98 @@
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "powershell7-psd1-yaml-json-github-actions"
+selections:
+  - id: "code-rule.intent-revealing-names"
+    checked: true
+  - id: "code-rule.short-functions"
+    checked: true
+  - id: "code-rule.avoid-deep-nesting"
+    checked: true
+  - id: "code-rule.dependency-injection"
+    checked: true
+    decision: "Use existing PowerShell function parameters, dot-sourced helpers, and manifest data as seams; do not introduce an IoC framework."
+    enforcement: [review, tests]
+  - id: "code-rule.comments-wisely"
+    checked: true
+  - id: "code-rule.no-magic-numbers"
+    checked: true
+  - id: "code-rule.normalize-state"
+    checked: true
+    decision: "The host manifest and hosts/_registry.ps1 are canonical. Generated FileList entries and the managed iteration-config agents block are derived projections, not independent host catalogs."
+    enforcement: [review, tests]
+  - id: "code-rule.simple-trustworthy-tests"
+    checked: true
+  - id: "code-rule.docs-as-api-test"
+    checked: true
+  - id: "code-rule.language-native-constructs"
+    checked: true
+    decision: "Prefer PowerShell functions and hashtable manifests over class hierarchies for host variation."
+    enforcement: [review]
+  - id: "code-rule.secure-coding-defaults"
+    checked: true
+    decision: "Preserve user-owned hook and instruction content, keep transcript/export data local and bounded, redact conversation bodies and credentials, and never overwrite unreadable user configuration."
+    enforcement: [review, tests]
+  - id: "code-rule.solid-baseline"
+    checked: true
+  - id: "code-rule.strategy-state-over-repeated-conditionals"
+    checked: true
+    decision: "Replace repeated host-name branching and host enums with registry queries, manifest capabilities, and handler dispatch. Devin-specific branching belongs only inside hosts/devin/."
+    enforcement: [review, tests]
+  - id: "code-rule.polymorphism-mechanism"
+    checked: true
+    decision: "Use the existing manifest plus five-handler functional host contract; do not add host classes or a second dispatch mechanism."
+    enforcement: [review]
+  - id: "code-rule.complex-code-stable"
+    checked: true
+    decision: "Extend the existing owning components for validation, packaging, hook deployment, iteration-config migration, and CI. Add only the generic direct-event-map shape and coordinator capability required by the confirmed design."
+    enforcement: [review, tests]
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "Reject unknown host input with actionable registered-host guidance; fail safely without rewriting unreadable user files; surface transcript contract drift as a bounded degraded-handover reason unless boundary enforcement itself fails."
+    enforcement: [review, tests]
+  - id: "code-rule.careful-retries"
+    checked: true
+    decision: "Deterministic generation, migration, and shape validation do not retry. A real-host canary may retry one transient provider or network failure; payload or export shape drift never retries."
+    enforcement: [review, tests]
+  - id: "code-rule.logging-traceability"
+    checked: true
+    decision: "Evidence records tested Devin build, OS, event, hook path, selected handover mechanism, result, and bounded reason code without prompts, full transcripts, or credentials."
+    enforcement: [review, tests]
+  - id: "code-rule.robustness-state-boundaries"
+    checked: true
+    decision: "Keep host metadata canonical in host manifests, project choices in the managed iteration-config projection, and transcript parsing in the unchanged shared accessor. Degrade handover rather than crossing the deferred parser boundary."
+    enforcement: [review, tests]
+  - id: "code-rule.testing-posture"
+    checked: true
+    decision: "Use deterministic PowerShell integration tests for registry validation, launch translation, hook merge/config shape, generated FileList parity, firewall purity, migration/idempotency, and existing-host compatibility; require a prerelease real-host Devin canary for lifecycle and handover evidence."
+    enforcement: [tests, review]
+  - id: "code-rule.extension-points"
+    checked: true
+    decision: "A future host is added through its hosts/<kind>/ package and manifest capabilities. Shared consumers query the registry and generated projections; adding a host must not require a new shared-core literal."
+    enforcement: [review, tests]
+  - id: "code-rule.validation-boundaries"
+    checked: true
+    decision: "Validate host values against the live registry at CLI boundaries, validate manifests on discovery, validate generated package parity before publish, and validate user hook JSON before merge."
+    enforcement: [review, tests]
+  - id: "code-rule.shared-code-packaging"
+    checked: true
+    decision: "Derive host-package FileList membership deterministically from hosts/* and verify source/package parity. Do not maintain hand-authored per-host package entries."
+    enforcement: [tests, review]
+  - id: "code-rule.public-api-reusable-design"
+    checked: true
+    decision: "Treat registry queries, manifest fields, handler names, hook config shapes, and managed iteration-config projection rules as compatibility contracts for all hosts."
+    enforcement: [review, tests]
+custom_rules:
+  - id: "custom-rule.feature-200-collision-boundary"
+    text: "Do not edit scripts/internal/bootstrap/ConversationCaptureAccessor.ps1. A transcript shape that the unchanged parser cannot consume is deferred to Slice B after Feature 197 merges."
+    scope: "feature-200"
+    provenance: "free-text"
+  - id: "custom-rule.feature-200-folder-only-proof"
+    text: "Outside hosts/devin/, changes are generic abstractions, generated artifacts, tests, or documentation; production shared core contains no hand-authored Devin literal."
+    scope: "feature-200"
+    provenance: "free-text"
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"

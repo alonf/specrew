@@ -1,0 +1,175 @@
+{
+  "schema": "v2",
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "note": "Technical lens agenda confirmed by the maintainer on 2026-06-24. Each selected lens still requires its own workshop confirmation. ui-ux is skipped because Feature 200 introduces no application UI.",
+  "answers": {
+    "ui": false,
+    "security": true,
+    "data": true,
+    "integration": true,
+    "ops": true,
+    "perf": true
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "data-storage",
+    "security-compliance",
+    "integration-api",
+    "devops-operations",
+    "observability-resilience",
+    "code-implementation"
+  ],
+  "depths": {
+    "architecture-core": "full",
+    "component-design": "full",
+    "requirements-nfr": "full",
+    "data-storage": "medium",
+    "security-compliance": "medium",
+    "integration-api": "full",
+    "devops-operations": "medium",
+    "observability-resilience": "medium",
+    "code-implementation": "medium"
+  },
+  "skipped": {
+    "ui-ux": "No graphical or interactive application UI is introduced. User-facing CLI and boundary behavior are covered by integration, requirements/NFR, and observability-resilience."
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Does Feature 200 need a new architecture or only completion of the existing host-package architecture?",
+        "What is the single runtime discovery authority for registered hosts and their capabilities?",
+        "How should build-time package generation relate to runtime discovery?",
+        "Which shared-core changes are allowed and which transcript changes are forbidden or deferred?",
+        "What is the smallest slice that proves clean extensibility?"
+      ],
+      "decision": "Preserve and complete the existing modular host-package architecture; do not introduce a parallel catalog or new architectural layer. hosts/_registry.ps1 is the single runtime discovery authority: it scans installed host packages and exposes registration, manifest status/capabilities, coordinator eligibility, paths/configuration, and handler dispatch to generic consumers. Core consumers must not maintain independent host lists. Build-time packaging separately derives deterministic FileList entries from the same hosts/* package folders and parity-checks the generated output. Add hosts/devin/ as the only Devin-specific implementation. Close the remaining generic leaks: three validation enums, coordinator eligibility/config slots, generated package entries, and firewall purity. Handover must use an existing payload/parser contract or degrade; ConversationCaptureAccessor.ps1 remains unchanged and new transcript shapes stay deferred to Slice B.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/architecture-core.md — registry-centered runtime discovery and build-time package derivation"
+    },
+    "component-design": {
+      "agenda": [
+        "Which responsibilities map to existing components and which require new generic code?",
+        "Should registry-backed validation be a new module or direct reuse at the three callsites?",
+        "Where should FileList generation, coordinator eligibility, iteration-config projection, and purity enforcement live?",
+        "How is conditional Devin transcript normalization prevented from becoming an undeclared host-specific seam?"
+      ],
+      "decision": "Treat the component map as responsibilities, not a mandate for new modules. Reuse hosts/_registry.ps1 as the runtime catalog; extend existing manifest validation and coordinator-selection/config-writing code; replace the three ValidateSet callsites with direct registry-backed validation rather than introducing a HostInputValidator module; compose host-package FileList generation with the existing generation/parity machinery; and extend the existing firewall with the purity invariant. The only new generic mechanisms are deterministic host-package FileList derivation, the CanCoordinate manifest capability plus registry query, registry-driven iteration-config host entry generation/migration, and the purity assertion. New Devin-only files are host.psd1, handlers.ps1, and coordinator-rules.psd1. Transcript normalization is included only if the spike finds a legitimate existing or generic declared seam that feeds an already-supported parser shape; otherwise it is deferred rather than hidden as an undeclared sixth handler.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/component-design.md — responsibility-to-existing-component map and minimal new mechanisms"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Which quality attributes are binding and what measurable thresholds prove them?",
+        "What compatibility guarantees apply to the five existing hosts and the unchanged transcript parser?",
+        "What must specrew update do for existing projects when a new host ships?",
+        "How must the transcript spike control full versus degraded handover scope?",
+        "How does Devin join future volatile-runtime dependency and transcript-drift monitoring?"
+      ],
+      "decision": "P0 requirements are ownership safety, clean extensibility, compatibility, and honest handover. ConversationCaptureAccessor.ps1 is untouched; shared core contains no Devin-specific branch; the registry remains the sole runtime host catalog; the five production firewall exceptions in scope are removed with no new exception; existing five hosts and unchanged transcript parser goldens remain green. The early real-host spike gates handover: outcomes 1 or 2 require real handover evidence, while outcome 3 ships visibly degraded handover and defers Slice B. P1 requirements are deterministic FileList generation, idempotent iteration-config migration, tested Devin behavior on pinned build 2026.7.23, and minimal changes to existing owning components. specrew update must discover newly shipped supported/coordinator-capable hosts through the registry, migrate the managed agents block while preserving existing project choices, refresh generic hook/instruction surfaces, and avoid any independent hardcoded host fallback. Feature 200 must amend Proposal 194 (or its implementation if it lands first) to include Devin's version, hooks, Stop payload, export/ATIF, and handover canary; the future monitoring inventory should derive hosts and monitor metadata from registry/manifests rather than a hardcoded host list. Implementing the complete Proposal 187/194 daily monitor remains out of Feature 200 scope.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/requirements-nfr.md — prioritized measurable quality requirements"
+    },
+    "data-storage": {
+      "agenda": [
+        "Which data belongs in host manifests versus project iteration configuration?",
+        "How is coordinator eligibility and routing metadata projected into the managed agents block?",
+        "Where should host tested-build and volatile-monitor metadata live?",
+        "Which legacy agents-block shapes must Feature 200 migrate directly?",
+        "Is general arbitrary multi-version upgrade convergence in Feature 200 scope?"
+      ],
+      "decision": "Host manifests are the canonical source for host identity, status, runtime capabilities, CanCoordinate, coordinator defaults, tested-build metadata, and future volatile-monitor declarations. .specrew/iteration-config.yml is a per-project managed projection containing coordinator-capable host keys and mutable project choices such as enabled, access_path, availability, and strength_rank. Init/update regenerate only the managed agents block, preserve existing values by host key, add newly eligible hosts using manifest defaults, remove no-longer-eligible managed entries, preserve unrelated configuration, and remain idempotent. Devin is coordinator-capable, uses host_process access, and is disabled by default unless selected as the launch host. Feature 200 supports direct one-run migration for its known inputs: absent block, legacy three-host block, partial block, and registry-derived block. General validation and convergence across arbitrary historical Specrew versions is explicitly deferred to a new proposal authored in a separate PR; Feature 200 will record that follow-up but will not create or implement it.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/data-storage.md — manifest source-of-truth, project projection, and migration ownership"
+    },
+    "security-compliance": {
+      "agenda": [
+        "Does Devin require new security architecture or reuse existing host controls?",
+        "How should Specrew permission modes map to Devin permission modes?",
+        "How are user-owned hook, instruction, and agent files preserved?",
+        "How is transcript/export data bounded and protected?",
+        "What must real-host and future CI canaries avoid persisting?"
+      ],
+      "decision": "Reuse the existing cross-host security model; no new authentication, authorization, or compliance subsystem is introduced. Devin owns service authentication. The Devin handler maps normal launch to auto, Specrew autopilot to smart, and allow-all to dangerous, with dangerous taking precedence and an explicit notice. Existing hook deployment must merge only Specrew-owned entries in .devin/hooks.v1.json and must not claim the whole user file. Existing instruction merge preserves user content, and Crew-runtime deployment overwrites only files carrying Specrew-managed markers. Dispatcher path validation and bounded capture remain shared controls. Transcript/export data is sensitive local session content: capture is bounded, credentials and full conversations are excluded from CI artifacts, temporary exports use controlled runtime paths and cleanup, and failure evidence reports structural differences without publishing conversation bodies. Real-host and future scheduled canaries use secret stores and never persist tokens. Devin-specific security work is verification of permission translation and hook merge behavior against pinned build 2026.7.23.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/security-compliance.md — reused cross-host trust boundaries and Devin-specific verification"
+    },
+    "integration-api": {
+      "agenda": [
+        "Should normal Specrew launch use Devin interactive mode or devin -p?",
+        "How does the standalone root-level .devin/hooks.v1.json event map fit the generic hook deployer?",
+        "Which hook events, project-root signal, and Stop-block output contract are required?",
+        "How are instructions, skills, subagents, Spec Kit, export/ATIF, and transcript fallback integrated?",
+        "Should host-session resume flags extend the existing launch contract now?"
+      ],
+      "decision": "specrew start remains a supported backward-compatible launch surface and must support Devin. Normal launch uses Devin's interactive positional prompt so a session can traverse multiple lifecycle boundaries; devin -p is reserved for bounded smoke and scheduled canary automation. Add a generic manifest-driven direct-event-map hook ConfigShape because .devin/hooks.v1.json stores lifecycle events at the file root rather than under a hooks wrapper. Devin declares SessionStart, UserPromptSubmit, and Stop, uses DEVIN_PROJECT_DIR for project resolution, and uses the existing decision-block Stop envelope. The real-host spike verifies SessionStart/UserPromptSubmit context delivery and whether Stop carries an undocumented assistant message. Instructions are AGENTS.md, skills use .devin/skills with documented shared .agents/skills support, subagents use .devin/agents/<name>/AGENT.md, and optional export is ATIF. SpeckitAiFlag is devin while version-aware --ai/--integration selection remains generic Proposal 198 ownership. Host-session --continue/--resume support is deferred because the existing launch-handler contract has no resume-session input. Legacy .windsurf/rules output from the installed CLI is not adopted; current documented AGENTS.md/.devin contracts govern.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/integration-api.md — interactive launch, direct event-map hooks, and transcript decision sequence"
+    },
+    "devops-operations": {
+      "agenda": [
+        "Which deterministic host checks must become explicit CI gates?",
+        "How is generated host-package FileList membership validated before publish?",
+        "Which migration fixtures and operating systems require coverage?",
+        "What prerelease evidence promotes Devin from experimental to supported?",
+        "Which documentation, proposal, and workflow surfaces are in Feature 200 scope?"
+      ],
+      "decision": "Add host registry/manifest, multi-host launch, host-coupling firewall, generated FileList parity, and managed-agent migration/idempotency checks explicitly to the GitHub CI workflow. Extend the existing prepublish FileList-faithful harness for generated host packages. Cover absent, legacy, partial, and current agents-block migrations; validate Windows plus at least one Unix environment for generic path and argument behavior. Ship Devin as experimental and promote to supported only after prerelease real-host evidence proves interactive specrew start, SessionStart bootstrap, boundary Stop, and the spike-determined handover outcome. Rollback is manifest-driven by returning the host to experimental/deferred, never by adding a core conditional. Update README, user/host docs, architecture/add-host guidance, changelog/release notes, Proposal 194, and relevant test docs. Do not implement a scheduled monitor now; amend Proposal 194 so future monitoring is registry-driven and includes Devin. Record the general multi-version upgrade/convergence proposal as a closeout follow-up for a separate PR, but do not author it in Feature 200.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/devops-operations.md — CI, prerelease promotion, packaging, and documentation flow"
+    },
+    "observability-resilience": {
+      "agenda": [
+        "Which existing diagnostics should carry Devin behavior?",
+        "What evidence identifies the tested runtime and selected handover mechanism?",
+        "Which failures degrade visibly versus block release?",
+        "What retry policy applies to transient provider failures versus contract drift?",
+        "What sensitive data must never enter logs or artifacts?"
+      ],
+      "decision": "Reuse the existing dispatcher warning, hook journal/health, handover floor, and specrew hooks status surfaces; do not add a Devin-specific logging subsystem. Real-host evidence records the pinned Devin build, OS, event, hook source path, selected handover mechanism, pass/degraded/fail result, and bounded reason code. Standard reason codes cover payload-message success, export normalization, deferred handover, payload drift, and export-shape drift. Bootstrap and handover enrichment failures degrade visibly while git/artifact/handover truth remains authoritative. Boundary Stop failure is release-blocking because lifecycle enforcement is claimed. Unreadable user hook configuration fails safely without overwrite. Generation, parity, and migration drift block CI/release. Configuration mutation and migration are deterministic with no retries; live canaries may retry one transient provider/network failure, while contract-shape mismatches never retry and report drift. specrew hooks status discovers Devin through the registry. Logs and artifacts exclude prompts, full transcripts, and credentials.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/observability-resilience.md — event success, drift, degradation, and release-block flow"
+    },
+    "code-implementation": {
+      "agenda": [
+        "Which existing coding guideline or example project defines the implementation style?",
+        "What language, runtime, data-format, test, and CI stack is binding?",
+        "Which baseline craft rules or exceptions apply to this feature?",
+        "How should host variation, validation, error handling, diagnostics, packaging, and tests be implemented?",
+        "May Feature 200 add a dependency?"
+      ],
+      "decision": "Use this repository's existing host packages, adjacent PowerShell scripts, and PowerShell integration tests as the implementation-style source. Bind PowerShell 7 with PSD1 manifests, YAML/JSON managed data, and GitHub Actions. Preserve the existing manifest plus five-handler functional host contract, use registry queries and manifest capabilities instead of host-name branches, derive package/config projections from canonical manifests, preserve user-owned files, keep diagnostics bounded and redacted, and require deterministic integration tests plus prerelease real-host evidence. Do not edit ConversationCaptureAccessor.ps1; unsupported transcript shapes remain deferred Slice B work. Use existing project tools and add no dependency.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "specs/200-devin-cli-host/workshop/code-implementation.md — repository baseline flowing through code rules into folder-only implementation proof"
+    }
+  }
+}
