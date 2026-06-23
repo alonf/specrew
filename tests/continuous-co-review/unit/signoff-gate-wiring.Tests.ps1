@@ -128,6 +128,28 @@ Describe 'Proposal 197 T073/T074 opt-in co-review signoff-gate wiring (FR-025/SC
         }
     }
 
+    Context 'Get-ContinuousCoReviewTrunkName (145 carry T080, default main)' {
+        It 'defaults to main when the config file is missing' {
+            $f = New-WiringFeatureRepo 'trunk-nofile'
+            Get-ContinuousCoReviewTrunkName -ProjectRoot $f.repo | Should Be 'main'
+        }
+        It 'defaults to main when co_review_trunk is absent' {
+            $f = New-WiringFeatureRepo 'trunk-missingkey'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine $null
+            Get-ContinuousCoReviewTrunkName -ProjectRoot $f.repo | Should Be 'main'
+        }
+        It 'reads a configured non-main trunk (master)' {
+            $f = New-WiringFeatureRepo 'trunk-master'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_trunk: "master"'
+            Get-ContinuousCoReviewTrunkName -ProjectRoot $f.repo | Should Be 'master'
+        }
+        It 'reads a single-quoted trunk WITH an inline comment' {
+            $f = New-WiringFeatureRepo 'trunk-develop'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine "co_review_trunk: 'develop'  # our default branch"
+            Get-ContinuousCoReviewTrunkName -ProjectRoot $f.repo | Should Be 'develop'
+        }
+    }
+
     Context 'Invoke-ContinuousCoReviewSignoffGateIfEnabled (the conditional-Assert seam)' {
         It '(a) flag ON + review-signoff + NO passing co-review run -> THROWS (refused) [SC-019]' {
             $f = New-WiringFeatureRepo 'on-noevidence'

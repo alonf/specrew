@@ -55,6 +55,30 @@ function Get-ContinuousCoReviewGateEnforcementEnabled {
     return $false
 }
 
+function Get-ContinuousCoReviewTrunkName {
+    <#
+    .SYNOPSIS
+        Return the trunk branch name from .specrew/config.yml (`co_review_trunk`), default 'main'.
+        145 carry (T080): the gate's merge-base anchor resolves `<trunk>`/`origin/<trunk>`, so a
+        non-`main` trunk (master/develop) otherwise fails CLOSED (anchor-unresolvable -> block).
+        Making it configurable lets those repos opt into enforcement. Same value grammar as the
+        enforcement reader (quote-strip + inline-comment tolerant).
+    #>
+    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    $configPath = Join-Path $ProjectRoot '.specrew/config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) {
+        return 'main'
+    }
+    foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
+        if ($line -match '^\s*co_review_trunk:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
+            $value = $Matches['value'].Trim()
+            if (-not [string]::IsNullOrWhiteSpace($value)) { return $value }
+        }
+    }
+    return 'main'
+}
+
 function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     <#
     .SYNOPSIS
@@ -93,6 +117,8 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     }
 
     # The throw on a `block` decision propagates verbatim (fail-closed). The allow-path return
-    # value is voided so it never leaks into the boundary-sync result pipeline.
-    [void](Assert-ContinuousCoReviewSignoffGate -RepoRoot $ProjectRoot)
+    # value is voided so it never leaks into the boundary-sync result pipeline. TrunkName is read
+    # from config so non-`main`-trunk repos do not fail closed (145 carry T080).
+    $trunk = Get-ContinuousCoReviewTrunkName -ProjectRoot $ProjectRoot
+    [void](Assert-ContinuousCoReviewSignoffGate -RepoRoot $ProjectRoot -TrunkName $trunk)
 }
