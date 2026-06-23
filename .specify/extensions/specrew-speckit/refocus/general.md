@@ -12,15 +12,15 @@ reviewed_at: 2026-06-08
 
 Inside Specrew, these rules hold at every stage and on every host:
 
-1. **Boundary discipline.** Every boundary requires explicit HUMAN authorization. One approval advances at most ONE boundary. Discussion is not approval.
-2. **The spec is authoritative.** Drift between spec, plan, tasks, and implementation is first-class: record it in drift-log.md with a requirement citation. Never silently reconcile.
-3. **Verdict shapes.** Recognized verdicts read "approved for <boundary>". Instruction-bearing verdicts carry the human's text. If ambiguous, ask.
-4. **Evidence over form.** Claims need runtime evidence (test, journal, live behavior), not file existence. Verify the committed tree, not the working copy.
-5. **Boundary commits.** Every artifact write that closes a boundary gets a focused commit: `boundary(<stage>): ...`. Push per project discipline.
-6. **file:/// references.** Every artifact, file, or directory named in human-visible prose uses the full file:/// URL form.
-7. **Honest state.** state.md, task statuses, and capacity lines reflect disk truth, in canonical enums only. Count-claims must match artifacts.
-8. **Preflight every gate (two-tier model).** Before ANY boundary packet: reconstruct from artifacts, then run validator, upstream parity, dirty-state, artifact, stale-phrase, packet-consistency, and evidence checks. On failure: record, fix/classify, RERUN, then present. review-signoff gets the full structured review.
-9. **At any gate, when in doubt: stop** and render the six-section re-entry packet. At a **verdict** stop on the Claude host, invoke the `specrew-gate-stop` skill (F-165). On non-Claude hosts, render the full packet directly using that host's approved interaction path; do not invoke `specrew-gate-stop`. Workshop/clarify questions keep their normal path; never use the skill to deliver a verdict.
+1. **Boundaries.** Every boundary needs explicit HUMAN authorization. One approval advances at most ONE boundary; discussion is not approval.
+2. **Spec truth.** The spec is authoritative. Drift between spec, plan, tasks, and code is first-class: record it in drift-log.md with a requirement citation.
+3. **Verdicts.** Recognized verdicts read "approved for <boundary>". Instruction-bearing verdicts carry the human's text. Ask if ambiguous.
+4. **Evidence.** Claims need runtime evidence (test, journal, live behavior), not file existence. Verify the committed tree.
+5. **Boundary commits.** Every artifact write that closes a boundary gets a focused `boundary(<stage>): ...` commit.
+6. **file:/// references.** Every artifact, file, or directory named in human-visible prose uses full bare file:/// URL form.
+7. **Honest state.** state.md, task statuses, and capacity lines reflect disk truth in canonical enums; count-claims must match artifacts.
+8. **Gate preflight.** Before any boundary packet, reconstruct from artifacts, run validator/parity/dirty-state/artifact/stale-phrase/packet/evidence checks, fix or classify failures, rerun, then present. review-signoff gets the full structured review.
+9. **Re-entry packets.** Render the six-section packet (What I Just Did / Why I Stopped / What Needs Your Review / What Happens Next / Discussion Prompts / What I Need From You) when at a boundary gate, after material work, or after a long/disconnected work turn. Quick discussion with no code, tests, files, commits, or gate stays conversational; length alone does not count. Never collapse the packet into a picker/menu. Boundary stops include numbered verdict options and the final `SPECREW-VERDICT-BOUNDARY` marker. After `sync-boundary-state.ps1`, `.specrew/runtime/pending-verdict-stop.md` is authoritative for the boundary, approval phrase, and marker; use its exact values and do not infer the marker from the next phase. Use your host's approved interaction path for verdict stops, or render directly when no dedicated surface exists. Within-phase checkpoints have no verdict options/marker. Workshop and clarify questions keep their normal picker/question path.
 
 Deep sources:
 

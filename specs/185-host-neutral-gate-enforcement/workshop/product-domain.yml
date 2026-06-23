@@ -1,0 +1,40 @@
+schema_version: "1.0"
+depth: "standard"
+depth_reason: "P0 cross-host governance gap (#2884) with portability impact and host-variable enforcement capability that must be handled honestly."
+context_scope: "feature_standalone"
+product_id: null
+product_context_ref: null
+areas:
+  users_stakeholders: "Downstream Specrew users on every host, especially hookless/non-Claude hosts (Antigravity, Copilot, Cursor) where boundary enforcement is weakest, plus Specrew maintainers validating cross-host parity. Harmed parties: any user whose host silently self-advances past a human-judgment boundary, defeating the portability of the governance guarantee."
+  pain_job: "A host can self-authorize past a human-judgment boundary. In #2884, Antigravity wrote plan.md with no captured verdict despite boundary_enforcement.enabled and all classes human-judgment-required. Non-Claude hosts receive only a textual refocus rule naming the Claude-only specrew-gate-stop skill they cannot act on, and nothing mechanically blocks the next-phase write."
+  current_workaround: "Cooperative textual instruction only; it fails on hosts that cannot act on the Claude-specific wording, which is exactly the #2884 failure."
+  existing_system: "Reuse the existing Specrew refocus engine, the dormant kind=='gate' dispatcher seat, Proposal-065 authorization (Test/Add-SpecrewBoundaryAuthorization over start-context.json/verdict_history), the Claude specrew-gate-stop skill, and HandoverStore SPECREW-VERDICT-BOUNDARY marker capture."
+  constraints: "Reuse existing machinery; edit refocus SOURCE under extensions/specrew-speckit/, never the .specify synced mirror; no new dependency; honest cross-host degraded modes with no promise of mechanical prevention everywhere; stop for a human split/defer verdict if real enforcement requires a broad host-model rewrite."
+  outcomes: "No host silently self-advances past a human-judgment boundary; each host enforces with its strongest available lever or halts; the all-host instruction digests are harness-free; non-Claude verdict capture works and records into verdict_history; parity and gate-detection are mechanically tested."
+  mvp: "Harness-free cleaning of the all-host refocus digests; a host-neutral gate-stop fallback that renders the packet and emits the verdict marker; per-host capability declaration with strongest-lever routing; a degraded-mode halt when a host cannot enforce; parity and gate-detection tests; a cross-host greenfield dogfood."
+  out_of_scope: "The hard uniform mechanical write-block on every host (host-variable, research-flagged); the full Proposal-188 capability matrix; any broad host-model rewrite."
+  alternatives: "Cooperative-only enforcement is rejected because it failed in #2884. A parallel Antigravity-specific enforcement system is rejected in favor of reusing the existing gate seat. A single uniform PreToolUse gate everywhere is rejected because it is host-variable: Antigravity's PreInvocation/Stop model has no per-tool-call permission surface to deny a write."
+  adoption_rollout: "Develop in iterations: cleaning + fallback + capture first, capability + gate provider next, cross-host dogfood last. Validate with a real-host cross-host dogfood before any full-parity enforcement claim; beta-before-stable."
+statements:
+  - text: "The all-host refocus digest naming a Claude-only skill is half the #2884 causal chain; a non-Claude host cannot act on it."
+    area: "pain_job"
+    evidence: "known"
+  - text: "Nothing mechanically blocks a direct next-phase write today: the gate seat is dormant, fails open, and no host registers it; the verdict check fires only inside the sync-wrappers after the artifact is written."
+    area: "existing_system"
+    evidence: "known"
+  - text: "The achievable cross-host guarantee is enforce-or-halt, not a uniform mechanical write-block."
+    area: "outcomes"
+    evidence: "known"
+  - text: "The dormant gate seat can be activated as a real deny/ask provider on Claude PreToolUse without a broad host-model change."
+    area: "constraints"
+    evidence: "research-needed"
+    load_bearing: true
+  - text: "Each non-Claude host has some interaction path to render a packet and capture a verdict marker; a truly hookless host degrades to cooperative instruction plus a mandatory halt."
+    area: "alternatives"
+    evidence: "assumed"
+skipped: []
+follow_up_research:
+  - "Confirm per-host the strongest available enforcement lever before a human-judgment write (Claude PreToolUse; Antigravity PreInvocation/Stop; Copilot/Cursor)."
+  - "Confirm the dormant gate seat can be activated as a real deny/ask provider without a broad host-model change (split-guard if not)."
+confirmation: "human-confirmed"
+confirmation_scope: "lens-question"

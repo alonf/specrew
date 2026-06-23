@@ -648,6 +648,27 @@ if ($shouldInitializeSpecify) {
         }
 
         Add-Action -Actions $actions -Step 'specify-init' -Outcome 'initialized .specify'
+
+        # FR-013 (feature 185): `specify init` builds the native command surface for ONE integration
+        # (copilot, the default). Palette-hosts that declare a slash-command surface (Claude,
+        # Antigravity) need their OWN native surface, or they are told to use commands they do not
+        # have (#2884 4th face — Claude got CLAUDE.md telling it to use /speckit.* with nothing
+        # deployed). Spec Kit's claude integration deploys `.claude/skills/speckit-*`; install it
+        # (and agy) alongside copilot via `integration install --force` (copilot is not
+        # multi-install-safe, so --force is required). Non-fatal: a failed install leaves the host on
+        # the governed-scripts fallback the coordinator guard already blesses.
+        foreach ($paletteIntegration in @('claude', 'agy')) {
+            Write-Step ("Installing Spec Kit native commands for {0}" -f $paletteIntegration)
+            $integResult = Invoke-NativeCommandForOutput -FilePath 'specify' -ArgumentList @('integration', 'install', $paletteIntegration, '--force') -WorkingDirectory $resolvedProjectPath
+            if ($integResult.ExitCode -eq 0) {
+                Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("installed native commands: {0}" -f $paletteIntegration)
+            }
+            else {
+                $integFailure = Get-FirstNonEmptyOutputLine -OutputLines $integResult.Output
+                Write-Host ("[warn] specify integration install {0} failed (non-fatal; host uses the governed-scripts fallback): {1}" -f $paletteIntegration, $integFailure) -ForegroundColor Yellow
+                Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("install {0} failed (non-fatal)" -f $paletteIntegration)
+            }
+        }
     }
 }
 else {

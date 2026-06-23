@@ -68,11 +68,12 @@ foreach ($file in Get-ChildItem -LiteralPath $digestDir -Filter '*.md' -File) {
 $generalParts = Read-DigestParts -Path (Join-Path $digestDir 'general.md')
 $generalTokens = Get-TokenEstimate -Text $generalParts.Body
 Assert-True ($generalTokens -le 600) "general.md body is <= 600 tokens (got ~$generalTokens)"
-Assert-True ($generalParts.Body -match 'verdict\*\* stop on the Claude host, invoke the `specrew-gate-stop` skill') 'general.md scopes specrew-gate-stop verdict routing to Claude'
-Assert-True ($generalParts.Body -match 'On non-Claude hosts, render the full packet directly') 'general.md gives non-Claude hosts a direct-render fallback'
+Assert-True ($generalParts.Body -match 'pending-verdict-stop\.md') 'general.md names the deterministic pending-verdict stop artifact'
+Assert-True ($generalParts.Body -match 'do not infer the marker from the next phase') 'general.md forbids inferring the marker from the next phase'
+Assert-True ($generalParts.Body -match 'host''s approved interaction path') 'general.md gives every host an approved verdict interaction path'
 Assert-True (-not ($generalParts.Body -match 'At a \*\*verdict\*\* stop invoke the `specrew-gate-stop` skill')) 'general.md does not tell every host to invoke specrew-gate-stop'
 $specifyParts = Read-DigestParts -Path (Join-Path $digestDir 'specify.md')
-Assert-True ($specifyParts.Body -match 'On Claude, invoke `specrew-gate-stop`; on non-Claude hosts, render directly') 'specify.md scopes specrew-gate-stop verdict routing by host'
+Assert-True ($specifyParts.Body -match 'pending-verdict-stop\.md' -and $specifyParts.Body -match 'intake -> specify') 'specify.md uses the pending-verdict artifact for the first specify marker'
 Assert-True (-not ($specifyParts.Body -match 'at the verdict stop invoke the `specrew-gate-stop` skill')) 'specify.md does not tell every host to invoke specrew-gate-stop'
 foreach ($stage in $expectedStages) {
     $parts = Read-DigestParts -Path (Join-Path $digestDir "$stage.md")

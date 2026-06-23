@@ -926,6 +926,65 @@ function Get-SpecrewBoundaryOrder {
     return @(Get-SpecrewCanonicalBoundaryTypes)
 }
 
+function Get-SpecrewPendingBoundaryCrossing {
+    # Derive the ONE boundary crossing the human can authorize next from the authoritative cursor state.
+    # `intake` is marker-only: it names the pre-specify side of the first rendered verdict marker, but it is not
+    # persisted as a canonical lifecycle boundary.
+    [OutputType([pscustomobject])]
+    param(
+        [AllowNull()]
+        [string]$LastAuthorizedBoundary,
+
+        [AllowNull()]
+        [string]$WorkingBoundary
+    )
+
+    $result = [pscustomobject]@{
+        HasPendingVerdict         = $false
+        LastAuthorizedBoundary    = $null
+        WorkingBoundary           = $null
+        PendingFromBoundary       = $null
+        PendingToBoundary         = $null
+        PendingFromMarkerBoundary = $null
+        PendingToMarkerBoundary   = $null
+        IsFirstBoundary           = $false
+        IsMultiBoundaryGap        = $false
+    }
+
+    try {
+        if ([string]::IsNullOrWhiteSpace($WorkingBoundary)) { return $result }
+
+        $order = @(Get-SpecrewBoundaryOrder)
+        $workingCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $WorkingBoundary
+        $lastAuthCanonical = if ([string]::IsNullOrWhiteSpace($LastAuthorizedBoundary)) { $null } else { Normalize-SpecrewCanonicalBoundaryType -Boundary $LastAuthorizedBoundary }
+
+        $result.WorkingBoundary = $workingCanonical
+        $result.LastAuthorizedBoundary = $lastAuthCanonical
+
+        $workingIdx = [Array]::IndexOf($order, $workingCanonical)
+        $authIdx = if ([string]::IsNullOrWhiteSpace($lastAuthCanonical)) { -1 } else { [Array]::IndexOf($order, $lastAuthCanonical) }
+        if ($workingIdx -lt 0 -or $workingIdx -le $authIdx) { return $result }
+
+        $toIdx = $authIdx + 1
+        if ($toIdx -lt 0 -or $toIdx -ge $order.Count) { return $result }
+
+        $fromBoundary = if ($authIdx -ge 0) { $order[$authIdx] } else { $null }
+        $fromMarkerBoundary = if ($authIdx -ge 0) { $order[$authIdx] } else { 'intake' }
+        $toBoundary = $order[$toIdx]
+
+        $result.HasPendingVerdict = $true
+        $result.PendingFromBoundary = $fromBoundary
+        $result.PendingToBoundary = $toBoundary
+        $result.PendingFromMarkerBoundary = $fromMarkerBoundary
+        $result.PendingToMarkerBoundary = $toBoundary
+        $result.IsFirstBoundary = ($authIdx -lt 0)
+        $result.IsMultiBoundaryGap = (($workingIdx - $authIdx) -gt 1)
+    }
+    catch { $null = $_ }
+
+    return $result
+}
+
 function Normalize-SpecrewCanonicalBoundaryType {
     param([AllowNull()][string]$Boundary)
 
@@ -1279,6 +1338,12 @@ function Get-SpecrewPendingVerdictState {
         HasPendingVerdict      = $false
         WorkingBoundary        = $null
         LastAuthorizedBoundary = $null
+        PendingFromBoundary    = $null
+        PendingToBoundary      = $null
+        PendingFromMarkerBoundary = $null
+        PendingToMarkerBoundary   = $null
+        IsFirstBoundary        = $false
+        IsMultiBoundaryGap     = $false
         Message                = $null
     }
     try {
@@ -1292,19 +1357,21 @@ function Get-SpecrewPendingVerdictState {
             $ss = $ctx['session_state']
             if ($ss.Contains('boundary_type')) { $working = [string]$ss['boundary_type'] }
         }
-        $result.LastAuthorizedBoundary = $lastAuth
-        $result.WorkingBoundary = $working
+        $crossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary $lastAuth -WorkingBoundary $working
+        $result.LastAuthorizedBoundary = $crossing.LastAuthorizedBoundary
+        $result.WorkingBoundary = $crossing.WorkingBoundary
+        $result.PendingFromBoundary = $crossing.PendingFromBoundary
+        $result.PendingToBoundary = $crossing.PendingToBoundary
+        $result.PendingFromMarkerBoundary = $crossing.PendingFromMarkerBoundary
+        $result.PendingToMarkerBoundary = $crossing.PendingToMarkerBoundary
+        $result.IsFirstBoundary = [bool]$crossing.IsFirstBoundary
+        $result.IsMultiBoundaryGap = [bool]$crossing.IsMultiBoundaryGap
         if ([string]::IsNullOrWhiteSpace($working)) { return $result }
 
-        $order = @(Get-SpecrewBoundaryOrder)
-        $workingCanonical = Normalize-SpecrewCanonicalBoundaryType -Boundary $working
-        $workingIdx = [Array]::IndexOf($order, $workingCanonical)
-        $authIdx = if ([string]::IsNullOrWhiteSpace($lastAuth)) { -1 } else { [Array]::IndexOf($order, (Normalize-SpecrewCanonicalBoundaryType -Boundary $lastAuth)) }
-
-        if ($workingIdx -ge 0 -and $workingIdx -gt $authIdx) {
+        if ([bool]$crossing.HasPendingVerdict) {
             $result.HasPendingVerdict = $true
-            $authLabel = if ($authIdx -lt 0) { '(none recorded yet)' } else { $lastAuth }
-            $result.Message = ("AWAITING YOUR VERDICT: '{0}' is committed / in-progress but NOT human-authorized (last authorized: {1}). A committed boundary is not an approved one — the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm." -f $workingCanonical, $authLabel)
+            $authLabel = if ([string]::IsNullOrWhiteSpace([string]$crossing.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$crossing.LastAuthorizedBoundary }
+            $result.Message = ("AWAITING YOUR VERDICT: '{0}' is committed / in-progress but NOT human-authorized (last authorized: {1}). A committed boundary is not an approved one — the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm." -f $crossing.WorkingBoundary, $authLabel)
         }
     }
     catch { $null = $_ }
@@ -1720,6 +1787,8 @@ function Add-SpecrewBoundaryAuthorization {
         [string]$ProjectRoot,
 
         [Parameter(Mandatory = $true)]
+        [AllowNull()]
+        [AllowEmptyString()]
         [string]$CurrentBoundary,
 
         [Parameter(Mandatory = $true)]
@@ -1746,10 +1815,10 @@ function Add-SpecrewBoundaryAuthorization {
         [string]$EvidenceSource
     )
 
-    $currentCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary'
+    $currentCanonical = if ([string]::IsNullOrWhiteSpace($CurrentBoundary)) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary' }
     $authorizedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $AuthorizedBoundary -ParameterName 'AuthorizedBoundary'
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
-    $currentIndex = [Array]::IndexOf($boundaryOrder, $currentCanonical)
+    $currentIndex = if ([string]::IsNullOrWhiteSpace($currentCanonical)) { -1 } else { [Array]::IndexOf($boundaryOrder, $currentCanonical) }
     $authorizedIndex = [Array]::IndexOf($boundaryOrder, $authorizedCanonical)
     if ($authorizedIndex -lt $currentIndex) {
         throw "Cannot authorize '$authorizedCanonical' from '$currentCanonical' because it moves backward in the canonical order."
@@ -4596,5 +4665,56 @@ function Test-FormMeaningParity {
         Observed = $Observed
         Gap = $gap
         Severity = $severity
+    }
+}
+
+function Test-SpecrewWorkshopRecordsPresent {
+    # Feature 185: deterministic governance gate. The design workshop is MANDATORY before the specify
+    # boundary can advance. Fail-CLOSED when the workshop output is missing/unworked; fail-OPEN only on
+    # this check's own error (do not block a session on our bug).
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)][string]$ProjectRoot,
+        [string]$FeatureRef
+    )
+    try {
+        $featureDir = $null
+        $featureJsonPath = Join-Path $ProjectRoot '.specify/feature.json'
+        if ([string]::IsNullOrWhiteSpace($FeatureRef) -and (Test-Path -LiteralPath $featureJsonPath)) {
+            $fj = Get-Content -LiteralPath $featureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $FeatureRef = Split-Path -Leaf ([string]$fj.feature_directory)
+        }
+        if (-not [string]::IsNullOrWhiteSpace($FeatureRef)) {
+            $candidate = Join-Path (Join-Path $ProjectRoot 'specs') $FeatureRef
+            if (Test-Path -LiteralPath $candidate) { $featureDir = $candidate }
+        }
+        if ($null -eq $featureDir) {
+            return [pscustomobject]@{ Present = $false; Reason = 'Cannot resolve the active feature directory to verify the design workshop ran.' }
+        }
+        $lensFile = Join-Path $featureDir 'lens-applicability.json'
+        if (-not (Test-Path -LiteralPath $lensFile)) {
+            return [pscustomobject]@{ Present = $false; Reason = "The design workshop has not run - 'lens-applicability.json' is missing under the feature directory." }
+        }
+        # -AsHashtable so missing keys return $null (fail-CLOSED) instead of throwing under StrictMode.
+        # A not-yet-recorded selected lens previously threw on `$workshop.$lensName` -> hit the catch ->
+        # failed OPEN, silently waving an incomplete workshop through (caught on the test-f185 live run).
+        $lens = Get-Content -LiteralPath $lensFile -Raw -Encoding UTF8 | ConvertFrom-Json -AsHashtable
+        $workshop = $lens['workshop']
+        if ($null -eq $workshop -or @($workshop.Keys).Count -eq 0) {
+            return [pscustomobject]@{ Present = $false; Reason = 'lens-applicability.json has no per-lens workshop records - the workshop was not worked with the human.' }
+        }
+        foreach ($lensName in @($lens['selected'])) {
+            $rec = $workshop[$lensName]
+            if ($null -eq $rec -or [string]::IsNullOrWhiteSpace([string]$rec['confirmation'])) {
+                return [pscustomobject]@{ Present = $false; Reason = ("Lens '{0}' has no recorded confirmation (or no workshop record at all) - every selected lens must be answered WITH the human in the design workshop (confirmed / delegated / skipped all count; silent omission does not)." -f $lensName) }
+            }
+        }
+        return [pscustomobject]@{ Present = $true; Reason = 'Workshop lens records present and confirmed.' }
+    }
+    catch {
+        # Fail-CLOSED on an unexpected error: a force-governance gate must block + report, never silently
+        # pass. The prior fail-OPEN here is exactly what let a StrictMode property-access bug defeat the gate.
+        [Console]::Error.WriteLine("[specrew-governance] WARN WORKSHOP_RECORDS_CHECK_FAILED $($_.Exception.Message)")
+        return [pscustomobject]@{ Present = $false; Reason = ("Workshop-records check could not complete ({0}) - blocking; verify the workshop ran and lens-applicability.json is valid." -f $_.Exception.Message) }
     }
 }

@@ -16,6 +16,23 @@
 #      recorded opt-outs (no silent re-enable; the update-never-flips-disables
 #      principle).
 
+function Get-CanonicalRefocusProviderIds {
+    $fallback = @('refocus', 'bootstrap', 'handover', 'conformance')
+    try {
+        $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        $canonicalPath = Join-Path $repoRoot 'extensions/specrew-speckit/refocus-scopes.json'
+        if (Test-Path -LiteralPath $canonicalPath -PathType Leaf) {
+            $canonical = Get-Content -LiteralPath $canonicalPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($canonical.PSObject.Properties['providers'] -and $null -ne $canonical.providers) {
+                $ids = @($canonical.providers | ForEach-Object { [string]$_.id } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+                if ($ids.Count -gt 0) { return $ids }
+            }
+        }
+    }
+    catch { $null = $_ }
+    return $fallback
+}
+
 function Get-RefocusCatalogOverlay {
     param([Parameter(Mandatory = $true)][string]$ProjectPath)
     $catalogPath = Join-Path $ProjectPath '.specify/extensions/specrew-speckit/refocus-scopes.json'
@@ -38,9 +55,9 @@ function Get-RefocusCatalogOverlay {
             }
         }
     }
-    # Canonical Specrew provider ids (module-shipped): refocus (F-171) + bootstrap + handover
-    # (F-174). Everything else in the project catalog is a user overlay row to capture + re-apply.
-    $canonicalProviderIds = @('refocus', 'bootstrap', 'handover')
+    # Canonical Specrew provider ids come from the module-shipped catalog. Everything else in the project catalog
+    # is a user overlay row to capture + re-apply.
+    $canonicalProviderIds = @(Get-CanonicalRefocusProviderIds)
     $userProviders = @()
     if ($catalog.PSObject.Properties['providers'] -and $null -ne $catalog.providers) {
         $userProviders = @($catalog.providers | Where-Object { $canonicalProviderIds -notcontains [string]$_.id })

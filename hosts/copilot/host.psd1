@@ -49,6 +49,11 @@
             SuppressedRefocusEvents = @()
             OutputShape             = 'additionalContext'
             DecisionOnlyEvents      = @()
+            # FR-004 (185) stop-block lever (verified, research/stop-block-capability-matrix.md): Copilot agentStop
+            # {"decision":"block","reason":...} forces another agent turn. CAVEATS: fail-open (a non-zero exit lets
+            # the turn end packet-less -> best-effort, not bulletproof) and NO built-in loop guard -> the provider's
+            # own consecutive-block cap is the loop guard here.
+            StopBlockShape          = 'decision-block'
             BootstrapDeliveryMode   = 'inline'
         }
         Registrations  = @(

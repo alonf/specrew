@@ -55,6 +55,47 @@ function Get-SpecrewConversationContentText {
     return , $parts.ToArray()
 }
 
+function Get-SpecrewTranscriptTailLines {
+    # Fast bounded tail reader for hook hot paths. Get-Content -Tail is seconds-scale on large Codex JSONL
+    # transcripts on Windows; Stop hooks call this several times, so use a backward byte window and drop the
+    # partial leading line when the window starts mid-file. Fail-open to the old reader if anything unexpected
+    # happens.
+    [OutputType([string[]])]
+    param(
+        [Parameter()][AllowNull()][string]$Path,
+        [int]$MaxLines = 500,
+        [int]$MaxBytes = 2097152
+    )
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return @() }
+    try {
+        $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, ([System.IO.FileShare]::ReadWrite -bor [System.IO.FileShare]::Delete))
+        try {
+            $length = $fs.Length
+            if ($length -le 0) { return @() }
+            $bytesToRead = [int64][Math]::Min($length, [int64][Math]::Max(4096, $MaxBytes))
+            [void]$fs.Seek(-$bytesToRead, [System.IO.SeekOrigin]::End)
+            $bytes = New-Object byte[] ([int]$bytesToRead)
+            $offset = 0
+            while ($offset -lt $bytesToRead) {
+                $read = $fs.Read($bytes, $offset, ([int]$bytesToRead - $offset))
+                if ($read -le 0) { break }
+                $offset += $read
+            }
+            $text = [System.Text.Encoding]::UTF8.GetString($bytes, 0, $offset)
+            $parts = @($text -split "`r?`n")
+            if ($bytesToRead -lt $length -and $parts.Count -gt 1) {
+                $parts = @($parts | Select-Object -Skip 1)
+            }
+            return @($parts | Select-Object -Last $MaxLines)
+        }
+        finally { $fs.Dispose() }
+    }
+    catch {
+        try { return @(Get-Content -LiteralPath $Path -Tail $MaxLines -Encoding UTF8 -ErrorAction Stop) }
+        catch { return @() }
+    }
+}
+
 function Test-SpecrewHumanVerdictToken {
     # F-174 iteration 011 (T004, FR-026): classify a HUMAN turn's response to a boundary VERDICT packet —
     # CONSERVATIVELY. The gate-stop packet offers: (1) Approve as-is, (2) Approve with instructions, (3) Send
@@ -66,7 +107,7 @@ function Test-SpecrewHumanVerdictToken {
     [OutputType([pscustomobject])]
     param([Parameter()][AllowNull()][string]$Text)
 
-    $r = [pscustomobject]@{ Action = 'none'; IsApproval = $false; IsSendBack = $false; IsDiscuss = $false; NamedBoundaries = @() }
+    $r = [pscustomobject]@{ Action = 'none'; IsApproval = $false; IsSendBack = $false; IsDiscuss = $false; NamedBoundaries = @(); ApprovalOption = $null }
     if ([string]::IsNullOrWhiteSpace($Text)) { return $r }
     $t = ($Text -replace '\s+', ' ').Trim()
     $lower = $t.ToLowerInvariant()
@@ -104,72 +145,266 @@ function Test-SpecrewHumanVerdictToken {
     # 1/2 where the WHOLE turn is just that number. Deliberately NARROW — "start"/"proceed"/"continue"/"ok"/"yes"
     # are NOT treated as boundary approvals (too ambiguous against the safety rule); they fall to pending so the
     # human re-confirms rather than risk an invented approval.
-    if ($lower -match '\bapprove(d|s)?\b' -or $lower -match '^\s*[12]\s*[.):]?\s*$') {
+    $optionOnly = [regex]::Match($lower, '^\s*(?:option\s*)?([12])\s*[.):]?\s*$')
+    if ($lower -match '\bapprove(d|s)?\b' -or $optionOnly.Success) {
+        if ($optionOnly.Success) { $r.ApprovalOption = [int]$optionOnly.Groups[1].Value }
         $r.IsApproval = $true; $r.Action = 'approve'; return $r
     }
     return $r
 }
 
+function Test-SpecrewBoundaryPacketLikeText {
+    # Markerless fallback is allowed only when the preceding assistant turn looks like the re-entry packet the
+    # human was approving. This is intentionally structural and bounded, not a full prose validator.
+    [OutputType([bool])]
+    param(
+        [Parameter()][AllowNull()][string]$Text,
+        [Parameter()][AllowNull()][string]$ApprovalPhrase
+    )
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    $headers = @(
+        'What I Just Did',
+        'Why I Stopped',
+        'What Needs Your Review',
+        'What Happens Next',
+        'Discussion Prompts',
+        'What I Need From You'
+    )
+    $score = 0
+    foreach ($h in $headers) {
+        if ($Text -match ('(?im)^\s*#{1,6}\s*' + [regex]::Escape($h) + '\b')) { $score++ }
+    }
+    if ($score -ge 4) { return $true }
+    if (-not [string]::IsNullOrWhiteSpace($ApprovalPhrase) -and
+        $Text -match '(?i)\bWhat\s+I\s+Need\s+From\s+You\b' -and
+        $Text -match [regex]::Escape($ApprovalPhrase)) {
+        return $true
+    }
+    return $false
+}
+
+function Test-SpecrewAssistantApprovalOption {
+    # For concise "1" / "option 1" fallback approvals, prove option 1 in the rendered packet was actually an
+    # approval option. This avoids treating "option 2" rejection/modification choices as authorization.
+    [OutputType([bool])]
+    param(
+        [Parameter()][AllowNull()][string]$AssistantText,
+        [Parameter(Mandatory)][int]$OptionNumber,
+        [Parameter()][AllowNull()][string]$ApprovalPhrase
+    )
+    if ([string]::IsNullOrWhiteSpace($AssistantText)) { return $false }
+    $optionPattern = '(?is)(?:^|[\r\n]|[•\-\*]\s*)\s*(?:option\s*)?' + [regex]::Escape([string]$OptionNumber) + '\s*(?:[.):\-]|-)\s*(.{0,220})'
+    foreach ($m in [regex]::Matches($AssistantText, $optionPattern)) {
+        $body = [string]$m.Groups[1].Value
+        if ($body -match '(?i)\bapprov') { return $true }
+        if (-not [string]::IsNullOrWhiteSpace($ApprovalPhrase) -and $body -match [regex]::Escape($ApprovalPhrase)) { return $true }
+    }
+    return $false
+}
+
+function Get-SpecrewPendingVerdictFallbackCapture {
+    # Preferred capture is marker-bound. This fallback covers weak hosts/models that rendered a boundary packet but
+    # dropped/mis-targeted the invisible marker. It still requires a real human approval and binds only to the single
+    # pending crossing computed from start-context.json; the agent never supplies the boundary being authorized.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()][object[]]$Turns,
+        [Parameter()][AllowNull()][string]$ProjectRoot
+    )
+
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-pending-state' }
+    if ($null -eq $Turns -or @($Turns).Count -eq 0) { $result.Reason = 'no-turns'; return $result }
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or -not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) { return $result }
+
+    $pending = $null
+    try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pending = $null }
+    if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { return $result }
+
+    $pendingFromMarker = [string]$pending.PendingFromMarkerBoundary
+    $pendingToMarker = [string]$pending.PendingToMarkerBoundary
+    $pendingFrom = [string]$pending.PendingFromBoundary
+    $pendingTo = [string]$pending.PendingToBoundary
+    if ([string]::IsNullOrWhiteSpace($pendingFromMarker) -or [string]::IsNullOrWhiteSpace($pendingToMarker) -or [string]::IsNullOrWhiteSpace($pendingTo)) {
+        $result.Reason = 'pending-state-incomplete'
+        return $result
+    }
+
+    $approvalPhrase = ('approved for {0}' -f $pendingToMarker)
+    $pendingSet = @($pendingFromMarker, $pendingToMarker, $pendingFrom, $pendingTo) | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | Select-Object -Unique
+
+    for ($i = @($Turns).Count - 1; $i -ge 0; $i--) {
+        $turn = $Turns[$i]
+        if ([string]$turn.role -ne 'user') { continue }
+        $humanText = [string]$turn.text
+        $verdict = Test-SpecrewHumanVerdictToken -Text $humanText
+        if (-not $verdict.IsApproval) {
+            if ($verdict.IsSendBack) { $result.Reason = 'not-approval:send-back'; return $result }
+            if ($verdict.IsDiscuss) { $result.Reason = 'not-approval:discuss'; return $result }
+            continue
+        }
+
+        $named = @($verdict.NamedBoundaries)
+        $approveForMatches = @([regex]::Matches($humanText.ToLowerInvariant(), '\bapprov\w*\s+for\s+(specify|clarify|plan|tasks|before-implement|implement|review-signoff|review|retro|iteration-closeout|feature-closeout)\b') | ForEach-Object {
+                Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$_.Groups[1].Value)
+            } | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
+        if ($approveForMatches.Count -gt 0 -and ($approveForMatches -notcontains $pendingToMarker)) {
+            $result.Reason = 'named-boundary-contradicts-pending'
+            return $result
+        }
+        if ($named.Count -gt 0 -and @($named | Where-Object { $pendingSet -contains $_ }).Count -eq 0) {
+            $result.Reason = 'named-boundary-contradicts-pending'
+            return $result
+        }
+
+        $priorAssistant = $null
+        for ($j = $i - 1; $j -ge 0; $j--) {
+            if ([string]$Turns[$j].role -eq 'assistant') { $priorAssistant = [string]$Turns[$j].text; break }
+        }
+        $packetLike = Test-SpecrewBoundaryPacketLikeText -Text $priorAssistant -ApprovalPhrase $approvalPhrase
+        $exactNamedApproval = ($approveForMatches -contains $pendingToMarker) -or ($humanText.ToLowerInvariant() -match [regex]::Escape($approvalPhrase))
+
+        if ($null -ne $verdict.ApprovalOption) {
+            if ([int]$verdict.ApprovalOption -ne 1) {
+                $result.Reason = 'approval-option-not-authorizing-fallback'
+                return $result
+            }
+            if (-not (Test-SpecrewAssistantApprovalOption -AssistantText $priorAssistant -OptionNumber 1 -ApprovalPhrase $approvalPhrase)) {
+                $result.Reason = 'approval-option-not-proven'
+                return $result
+            }
+        }
+        elseif (-not $exactNamedApproval -and -not $packetLike) {
+            $result.Reason = 'no-boundary-packet-context'
+            continue
+        }
+
+        $result.Found = $true
+        $result.FromBoundary = $pendingFromMarker
+        $result.ToBoundary = $pendingToMarker
+        $result.VerdictText = $approvalPhrase
+        $result.HumanText = $humanText
+        $result.Reason = 'captured-pending-artifact-fallback'
+        return $result
+    }
+
+    $result.Reason = 'no-clear-human-approval'
+    return $result
+}
+
 function Get-SpecrewCapturedBoundaryVerdict {
-    # F-174 iteration 011 (T004, FR-026): read the host transcript for the human's verdict on the MOST RECENTLY
-    # rendered boundary VERDICT packet. The verdict is tied to a boundary ONLY via the packet's stable machine
-    # marker <!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> --> (T002 / the gate-stop skill emits it; it is an HTML
+    # F-174 iteration 011 (T004, FR-026): read the host transcript for the human's verdict on a rendered boundary
+    # VERDICT packet. The verdict is tied to a boundary ONLY via the packet's stable machine marker
+    # <!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> --> (T002 / the gate-stop skill emits it; it is an HTML
     # comment, invisible in the rendered markdown, present in the transcript). NO marker -> NO capture (the human
-    # re-confirms via the pending surface). Finds the last marker-bearing ASSISTANT turn, then the FIRST human
-    # turn after it, and classifies that turn with Test-SpecrewHumanVerdictToken. Returns captured verdict
-    # evidence ONLY on a CLEAR approval whose human-named boundary (if any) does not CONTRADICT the marker;
-    # otherwise Found=$false so the caller records the crossing un-authorized. Pure read; fail-open (never throws).
+    # re-confirms via the pending surface). Newer marker/response pairs normally win, but a newer packet with no
+    # response yet must NOT hide an earlier approved packet: the Stop hook records approvals only at end-of-turn,
+    # so an agent can mistakenly render the next boundary before the previous approval is persisted. Scan backward
+    # for the newest marker that has a subsequent CLEAR approval. Pure read; fail-open (never throws).
     [OutputType([pscustomobject])]
     param(
         [Parameter()][AllowNull()][string]$TranscriptPath,
+        [Parameter()][AllowNull()][string]$ProjectRoot,
+        [Parameter()][AllowNull()][string]$LastUserMessage,
         [int]$MaxTailLines = 500
     )
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript' }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     $lines = $null
-    try { $lines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop) } catch { $result.Reason = 'unreadable'; return $result }
+    try { $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
     if ($null -eq $lines -or $lines.Count -eq 0) { $result.Reason = 'empty'; return $result }
 
     $turns = New-Object System.Collections.Generic.List[object]
-    foreach ($l in $lines) { $tn = Get-SpecrewConversationTurnFromLine -Line $l; if ($null -ne $tn) { $turns.Add($tn) | Out-Null } }
+    foreach ($l in $lines) { $tn = Get-SpecrewConversationTurnFromLine -Line $l -Raw; if ($null -ne $tn) { $turns.Add($tn) | Out-Null } }
+    if (-not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
+        $syntheticUser = ([string]$LastUserMessage).Trim()
+        $syntheticUser = $syntheticUser -replace '(?is)^\s*<USER_REQUEST>\s*', '' -replace '(?is)\s*</USER_REQUEST>\s*$', ''
+        $syntheticUser = $syntheticUser.Trim()
+        $lastTurn = if ($turns.Count -gt 0) { $turns[$turns.Count - 1] } else { $null }
+        $lastIsSameUser = ($null -ne $lastTurn -and [string]$lastTurn.role -eq 'user' -and [string]$lastTurn.text -eq $syntheticUser)
+        if (-not $lastIsSameUser) { $turns.Add([pscustomobject]@{ role = 'user'; text = $syntheticUser }) | Out-Null }
+    }
     if ($turns.Count -eq 0) { $result.Reason = 'no-turns'; return $result }
 
     # The packet marker: case-insensitive, tolerate '->' / unicode arrow / 'to' and flexible spacing.
     $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
-    # The LAST assistant turn that carries a marker (the most recently gated boundary).
-    $markerIdx = -1; $mFrom = $null; $mTo = $null
+    # Newest marker/response pair with a CLEAR approval wins. A newer marker with no response yet is just awaiting
+    # the next user turn and must not mask an earlier approved marker that the hook has not had a chance to record.
+    $sawMarker = $false
+    $sawAwaiting = $false
     for ($i = 0; $i -lt $turns.Count; $i++) {
+        # Loop retained for no-marker detection only; the actual selection scans backward below.
         if ([string]$turns[$i].role -ne 'assistant') { continue }
         $mm = $markerRx.Match([string]$turns[$i].text)
-        if ($mm.Success) { $markerIdx = $i; $mFrom = $mm.Groups[1].Value.ToLowerInvariant(); $mTo = $mm.Groups[2].Value.ToLowerInvariant() }
+        if ($mm.Success) { $sawMarker = $true; break }
     }
-    if ($markerIdx -lt 0) { $result.Reason = 'no-marker'; return $result }
-
-    # The FIRST human turn AFTER that packet (the response to it; before it = the request, not the verdict).
-    $humanText = $null
-    for ($j = $markerIdx + 1; $j -lt $turns.Count; $j++) {
-        if ([string]$turns[$j].role -eq 'user') { $humanText = [string]$turns[$j].text; break }
-    }
-    if ([string]::IsNullOrWhiteSpace($humanText)) { $result.Reason = 'awaiting-response'; return $result }
-
-    $verdict = Test-SpecrewHumanVerdictToken -Text $humanText
-    if (-not $verdict.IsApproval) { $result.Reason = ("not-approval:{0}" -f $verdict.Action); return $result }
-
-    # Contradiction cross-check: if the human NAMED boundaries, at least one must match the marker's from/to;
-    # a human who named a DIFFERENT boundary makes the tie ambiguous -> un-authorized (safety rule).
-    $named = @($verdict.NamedBoundaries)
-    if ($named.Count -gt 0) {
-        $markerSet = @($mFrom, $mTo)
-        if (@($named | Where-Object { $markerSet -contains $_ }).Count -eq 0) { $result.Reason = 'named-boundary-contradicts-marker'; return $result }
+    if (-not $sawMarker) {
+        $fallback = Get-SpecrewPendingVerdictFallbackCapture -Turns ($turns.ToArray()) -ProjectRoot $ProjectRoot
+        if ($fallback.Found) { return $fallback }
+        $result.Reason = if ($fallback.Reason -ne 'no-pending-state') { $fallback.Reason } else { 'no-marker' }
+        return $result
     }
 
-    $result.Found = $true
-    $result.FromBoundary = $mFrom
-    $result.ToBoundary = $mTo
-    $result.VerdictText = "approved for $mTo"
-    $result.HumanText = $humanText
-    $result.Reason = 'captured'
+    for ($i = $turns.Count - 1; $i -ge 0; $i--) {
+        if ([string]$turns[$i].role -ne 'assistant') { continue }
+        $mm = $markerRx.Match([string]$turns[$i].text)
+        if (-not $mm.Success) { continue }
+
+        $mFrom = $mm.Groups[1].Value.ToLowerInvariant()
+        $mTo = $mm.Groups[2].Value.ToLowerInvariant()
+
+        # The FIRST human turn AFTER that packet (the response to it; before it = the request, not the verdict).
+        $humanText = $null
+        for ($j = $i + 1; $j -lt $turns.Count; $j++) {
+            if ([string]$turns[$j].role -eq 'user') { $humanText = [string]$turns[$j].text; break }
+        }
+        if ([string]::IsNullOrWhiteSpace($humanText)) { $sawAwaiting = $true; continue }
+
+        $verdict = Test-SpecrewHumanVerdictToken -Text $humanText
+        if (-not $verdict.IsApproval) {
+            if ([string]::IsNullOrWhiteSpace($result.Reason) -or $result.Reason -eq 'no-transcript') { $result.Reason = ("not-approval:{0}" -f $verdict.Action) }
+            continue
+        }
+
+        # Contradiction cross-check: if the human NAMED boundaries, at least one must match the marker's from/to;
+        # a human who named a DIFFERENT boundary makes the tie ambiguous -> un-authorized (safety rule).
+        $named = @($verdict.NamedBoundaries)
+        if ($named.Count -gt 0) {
+            $markerSet = @($mFrom, $mTo)
+            if (@($named | Where-Object { $markerSet -contains $_ }).Count -eq 0) {
+                if ([string]::IsNullOrWhiteSpace($result.Reason) -or $result.Reason -eq 'no-transcript') { $result.Reason = 'named-boundary-contradicts-marker' }
+                continue
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($ProjectRoot) -and (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) {
+            $pendingForMarker = $null
+            try { $pendingForMarker = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pendingForMarker = $null }
+            if ($null -ne $pendingForMarker -and [bool]$pendingForMarker.HasPendingVerdict) {
+                $expectedFrom = [string]$pendingForMarker.PendingFromMarkerBoundary
+                $expectedTo = [string]$pendingForMarker.PendingToMarkerBoundary
+                if ($mFrom -ne $expectedFrom -or $mTo -ne $expectedTo) {
+                    if ([string]::IsNullOrWhiteSpace($result.Reason) -or $result.Reason -eq 'no-transcript') { $result.Reason = 'marker-pending-mismatch' }
+                    continue
+                }
+            }
+        }
+
+        $result.Found = $true
+        $result.FromBoundary = $mFrom
+        $result.ToBoundary = $mTo
+        $result.VerdictText = "approved for $mTo"
+        $result.HumanText = $humanText
+        $result.Reason = 'captured'
+        return $result
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($ProjectRoot)) {
+        $fallback = Get-SpecrewPendingVerdictFallbackCapture -Turns ($turns.ToArray()) -ProjectRoot $ProjectRoot
+        if ($fallback.Found) { return $fallback }
+        if ($result.Reason -eq 'no-transcript') { $result.Reason = $fallback.Reason }
+    }
+    if ($sawAwaiting -and ($result.Reason -eq 'no-transcript')) { $result.Reason = 'awaiting-response' }
     return $result
 }
 
@@ -195,7 +430,7 @@ function Get-SpecrewCapturedBoundaryPacket {
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; PacketBody = $null; Reason = 'no-transcript' }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     $lines = $null
-    try { $lines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop) } catch { $result.Reason = 'unreadable'; return $result }
+    try { $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
     if ($null -eq $lines -or $lines.Count -eq 0) { $result.Reason = 'empty'; return $result }
 
     # Same marker grammar as the verdict reader: case-insensitive, '->' / unicode arrow / 'to', flexible spacing.
@@ -245,6 +480,7 @@ function Get-SpecrewConversationTurnFromLine {
     $msg = Get-SpecrewConversationProp $o 'message'
     $payload = Get-SpecrewConversationProp $o 'payload'
     $data = Get-SpecrewConversationProp $o 'data'
+    $sourceVal = [string](Get-SpecrewConversationProp $o 'source')
 
     if (-not [string]::IsNullOrWhiteSpace([string]$topRole) -and $null -ne $msg) {
         # Cursor: top-level role + message.content[]
@@ -266,6 +502,19 @@ function Get-SpecrewConversationTurnFromLine {
         $role = $matches[1]
         $parts = Get-SpecrewConversationContentText (Get-SpecrewConversationProp $data 'content')
     }
+    elseif ($sourceVal -eq 'USER_EXPLICIT' -and $typeVal -eq 'USER_INPUT') {
+        # Antigravity: explicit human turns are top-level content wrapped in <USER_REQUEST>...</USER_REQUEST>.
+        $role = 'user'
+        $content = [string](Get-SpecrewConversationProp $o 'content')
+        $m = [regex]::Match($content, '<USER_REQUEST>\s*([\s\S]*?)\s*</USER_REQUEST>', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        if ($m.Success) { $content = [string]$m.Groups[1].Value }
+        $parts = Get-SpecrewConversationContentText $content
+    }
+    elseif ($sourceVal -eq 'MODEL' -and $typeVal -eq 'PLANNER_RESPONSE') {
+        # Antigravity: assistant planner response is top-level content.
+        $role = 'assistant'
+        $parts = Get-SpecrewConversationContentText (Get-SpecrewConversationProp $o 'content')
+    }
     else { return $null }
 
     if ($role -notin @('user', 'assistant')) { return $null }   # drop developer/system/tool roles
@@ -279,6 +528,7 @@ function Get-SpecrewConversationTurnFromLine {
     # -Raw preserves internal whitespace (newlines + the markdown structure the packet round-trip needs); the
     # default flattens it for the bounded tail. Both trim the outer edges.
     $text = if ($Raw) { $text.Trim() } else { ($text -replace '\s+', ' ').Trim() }
+    if ($role -eq 'user' -and $text -match '^\s*<hook_prompt\b[\s\S]*</hook_prompt>\s*$') { return $null }
     if ([string]::IsNullOrWhiteSpace($text)) { return $null }
     return [pscustomobject]@{ role = $role; text = $text }
 }
@@ -324,7 +574,7 @@ function Get-SpecrewConversationTail {
             if (Test-Path -LiteralPath $TranscriptPath -PathType Leaf) {
                 # Read only the TAIL (not the whole file) - see $MaxTailLines. On Codex this also naturally
                 # skips the giant line-1 session_meta header.
-                $fileLines = @(Get-Content -LiteralPath $TranscriptPath -Tail $MaxTailLines -Encoding UTF8 -ErrorAction Stop)
+                $fileLines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines)
             }
         }
         catch { $fileLines = $null }

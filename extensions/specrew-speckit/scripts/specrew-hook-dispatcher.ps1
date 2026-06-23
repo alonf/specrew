@@ -27,10 +27,26 @@ param(
     [ValidatePattern('^[A-Za-z0-9_.-]+$')][string]$HostKind = 'claude'
 )
 
+function Write-EarlyDecisionOnlyNoopIfNeeded {
+    param([string]$EventName, [string]$EncodedBinding)
+    if ([string]::IsNullOrWhiteSpace($EncodedBinding)) { return }
+    try {
+        $runtime = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($EncodedBinding)) | ConvertFrom-Json -ErrorAction Stop
+        if (@($runtime.DecisionOnlyEvents | ForEach-Object { [string]$_ }) -contains $EventName) {
+            @{} | ConvertTo-Json -Depth 3 -Compress | Write-Output
+        }
+    }
+    catch { $null = $_ }
+}
+
 # KILL SWITCH FIRST (FR-008): this check must precede ANY logic that could itself
 # fail — a kill switch placed after catalog/state parsing never gets reached when
-# the bug is in catalog/state parsing.
-if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) { exit 0 }
+# the bug is in catalog/state parsing. Decision-only hosts still require no-op
+# JSON; use only the baked binding so the switch remains independent of project state.
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
+    Write-EarlyDecisionOnlyNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    exit 0
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -189,6 +205,13 @@ function ConvertFrom-DispatcherRuntimeBinding {
         OutputShape             = [string](Get-DispatcherMapValue -Map $Runtime -Key 'OutputShape' -Default 'plain-or-hookSpecificOutput')
         DecisionOnlyEvents      = $(ConvertTo-DispatcherStringArray (Get-DispatcherMapValue -Map $Runtime -Key 'DecisionOnlyEvents' -Default @()))
         BootstrapDeliveryMode   = [string](Get-DispatcherMapValue -Map $Runtime -Key 'BootstrapDeliveryMode' -Default 'inline')
+        # FR-004 (185): the host's STOP-BLOCK lever - how a Stop-class consumer force-continues the turn so the
+        # 6-section re-entry packet renders AT the stop (verified capability matrix, research/stop-block-capability-matrix.md):
+        #   decision-block    -> {"decision":"block","reason":...}    (claude, codex, copilot)
+        #   decision-continue -> {"decision":"continue","reason":...}  (antigravity - any non-continue value allows the stop)
+        #   followup-message  -> {"followup_message":...}              (cursor - best-effort re-triggered turn, NOT a hard same-turn block)
+        #   none              -> cannot block; degrades to the cooperative instruction only
+        StopBlockShape          = [string](Get-DispatcherMapValue -Map $Runtime -Key 'StopBlockShape' -Default 'none')
     }
 }
 
@@ -668,7 +691,7 @@ function Write-InjectionOutput {
     # knows generic envelope strategies; adding or changing a host updates the
     # manifest, not this core switch.
     if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
-        @{ decision = 'allow' } | ConvertTo-Json -Depth 3 -Compress | Write-Output
+        @{} | ConvertTo-Json -Depth 3 -Compress | Write-Output
         return
     }
 
@@ -702,13 +725,45 @@ function Write-InjectionOutput {
     }
 }
 
+function Write-DecisionOnlyNoopIfNeeded {
+    param([string]$EventName, $Binding)
+    if (Test-DispatcherEventInList -EventName $EventName -Events @(Get-DispatcherMapValue -Map $Binding -Key 'DecisionOnlyEvents' -Default @())) {
+        Write-InjectionOutput -EventName $EventName -Payload '' -Binding $Binding
+    }
+}
+
+# The blocking StopBlockShapes (a host that force-continues the turn); 'none' is excluded (cannot block).
+$script:SpecrewStopBlockShapes = @('decision-block', 'decision-continue', 'followup-message')
+
+function Write-StopBlockOutput {
+    # FR-004/FR-005/FR-015 (185): emit the host's STOP-BLOCK envelope (to the hook's stdout) so the agent
+    # force-continues and renders the 6-section re-entry packet AT the stop (the $Reason carries the directive).
+    # Per-host shape is the verified capability matrix (research/stop-block-capability-matrix.md). Writes ONLY the
+    # envelope JSON (no return value - the caller guards $Shape against $script:SpecrewStopBlockShapes first, so a
+    # leaked return cannot corrupt the hook stdout the host parses).
+    param([string]$Shape, [string]$Reason)
+    switch ($Shape) {
+        # claude / codex / copilot: a hard deny that prevents turn-end and force-continues using reason.
+        'decision-block' { @{ decision = 'block'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+        # antigravity: decision=continue re-enters the loop; any other value allows the stop (soft block).
+        'decision-continue' { @{ decision = 'continue'; reason = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+        # cursor: no same-turn hard block; followup_message auto-submits a NEW user turn (best-effort degrade).
+        'followup-message' { @{ followup_message = $Reason } | ConvertTo-Json -Depth 4 -Compress | Write-Output }
+    }
+}
+
 # ---------------------------------------------------------------------------
 # Main — every failure path inside this try lands on exit 0 (P1).
 # ---------------------------------------------------------------------------
 try {
+    $earlyHostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $null -EncodedBinding $HostBinding
+
     # Self-gate: a stray hook firing outside a Specrew project is a silent no-op.
     $projectRoot = Get-DispatcherProjectRoot
-    if ($null -eq $projectRoot) { exit 0 }
+    if ($null -eq $projectRoot) {
+        Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
+        exit 0
+    }
 
     # Host event JSON: -EventJson (tests/bindings) or stdin (Claude hooks).
     $rawEvent = $EventJson
@@ -720,6 +775,7 @@ try {
         try { $hostEvent = $rawEvent | ConvertFrom-Json }
         catch {
             Write-DispatcherWarn -Code 'EVENT_PARSE' -Message ("host event JSON unreadable for {0}; automation quiet this event (host surface changed? see the research matrix)" -f $Event)
+            Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
             exit 0
         }
     }
@@ -739,9 +795,12 @@ try {
     $sessionId = Get-SanitizedSessionId -RawSessionId $rawSessionId
     $source = if ($null -ne $hostEvent -and $hostEvent.PSObject.Properties['source']) { [string]$hostEvent.source } else { $null }
 
-    $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
-    if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) { exit 0 }
     $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
+    $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
+    if ($null -eq $catalog -or -not $catalog.PSObject.Properties['providers']) {
+        Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $hostRuntimeBinding
+        exit 0
+    }
 
     Remove-StaleSessionState -ProjectRoot $projectRoot
 
@@ -769,9 +828,15 @@ try {
     # Providers for THIS event, deterministic order (the host runs parallel hooks
     # unordered; Specrew owns ordering internally — the lens-2 dispatcher decision).
     $providers = @($catalog.providers | Where-Object { @($_.events) -contains $Event } | Sort-Object { [int]$_.order })
+    # The host owns the outer hook timeout. Provider timeouts must therefore be a
+    # shared dispatcher budget, not a per-provider multiplier; otherwise two slow
+    # Stop providers can exceed Codex's 30s ceiling before we can fail open.
+    $providerBudget = [System.Diagnostics.Stopwatch]::StartNew()
+    $providerBudgetMs = [Math]::Max(1000, ($ProviderTimeoutSeconds * 1000))
 
     $fragments = New-Object System.Collections.Generic.List[object]
     $failedSessionStartProviders = New-Object System.Collections.Generic.List[string]
+    $stopBlockReason = $null  # FR-004/FR-015: set when a Stop-class consumer requests a force-continue (the packet-at-stop block).
     foreach ($provider in $providers) {
         $kind = if ($provider.PSObject.Properties['kind']) { [string]$provider.kind } else { 'inject' }
         $providerId = [string]$provider.id
@@ -791,7 +856,15 @@ try {
             # PreToolUse, receive tool_input, return allow/deny permissionDecision.
             # No gate provider ships in F-171; this path is fixture-tested only.
             if ($Event -ne 'PreToolUse') { continue }
-            $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs @('--gate') -WorkingDirectory $projectRoot -TimeoutSeconds $ProviderTimeoutSeconds
+            $remainingMs = $providerBudgetMs - [int]$providerBudget.ElapsedMilliseconds
+            if ($remainingMs -le 0) {
+                Write-DispatcherWarn -Code 'PROVIDER_BUDGET' -Message ("provider budget exhausted before '{0}'; skipped" -f $providerId)
+                @{ hookSpecificOutput = @{ hookEventName = 'PreToolUse'; permissionDecision = 'allow'; permissionDecisionReason = "specrew gate provider '$providerId' skipped after dispatcher budget exhausted" } } | ConvertTo-Json -Depth 4 -Compress | Write-Output
+                continue
+            }
+            $providerTimeoutForCall = [Math]::Max(1, [int][Math]::Ceiling($remainingMs / 1000.0))
+            $providerTimeoutForCall = [Math]::Min($ProviderTimeoutSeconds, $providerTimeoutForCall)
+            $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs @('--gate') -WorkingDirectory $projectRoot -TimeoutSeconds $providerTimeoutForCall
             if ($result.TimedOut -or $result.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($result.StdOut)) {
                 # Gates fail OPEN to allow — a broken gate never blocks a session.
                 Write-DispatcherWarn -Code 'PROVIDER_FAILED' -Message ("gate provider '{0}' failed; failing OPEN to allow" -f $providerId)
@@ -856,7 +929,10 @@ try {
             # capture) silently never runs. Pass only the bounded clean args to handover. The transcript FILE route
             # (--transcript-path, extracted below) is the robust primary; tier-3 (last_assistant_message) stays
             # DEFERRED. Other inject providers (bootstrap needs session_id/source) still get --event-json.
-            $commandArgs = if ($providerId -eq 'handover') {
+            $commandArgs = if ($providerId -in @('handover', 'conformance')) {
+                # Both read ONLY the clean args (+ --transcript-path appended below) - never the full
+                # --event-json blob (Codex Stop carries a 10s-of-KB last_assistant_message that blows the
+                # Windows command-line limit and makes ProcessStartInfo refuse to launch). FR-011 C3.
                 @('--host-kind', $HostKind, '--source-event', $Event)
             }
             else {
@@ -879,13 +955,28 @@ try {
                         if ($pp -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $tpath = [string]$pp.Value; break }
                     }
                     if (-not [string]::IsNullOrWhiteSpace($tpath)) { $commandArgs += @('--transcript-path', $tpath) }
+                    if ($Event -in @('UserPromptSubmit', 'PreInvocation')) {
+                        $userPrompt = $null
+                        foreach ($k in @('prompt', 'user_prompt', 'userPrompt', 'message', 'text', 'content')) {
+                            $pp = $evtObj.PSObject.Properties[$k]
+                            if ($pp -and $pp.Value -is [string] -and -not [string]::IsNullOrWhiteSpace([string]$pp.Value)) { $userPrompt = [string]$pp.Value; break }
+                        }
+                        if (-not [string]::IsNullOrWhiteSpace($userPrompt)) { $commandArgs += @('--last-user-message', $userPrompt) }
+                    }
                 }
                 catch { $null = $_ }
             }
         }
         if ($null -eq $commandArgs) { continue }
 
-        $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs $commandArgs -WorkingDirectory $projectRoot -TimeoutSeconds $ProviderTimeoutSeconds
+        $remainingMs = $providerBudgetMs - [int]$providerBudget.ElapsedMilliseconds
+        if ($remainingMs -le 0) {
+            Write-DispatcherWarn -Code 'PROVIDER_BUDGET' -Message ("provider budget exhausted before '{0}'; skipped" -f $providerId)
+            continue
+        }
+        $providerTimeoutForCall = [Math]::Max(1, [int][Math]::Ceiling($remainingMs / 1000.0))
+        $providerTimeoutForCall = [Math]::Min($ProviderTimeoutSeconds, $providerTimeoutForCall)
+        $result = Invoke-ProviderProcess -CommandPath $commandPath -CommandArgs $commandArgs -WorkingDirectory $projectRoot -TimeoutSeconds $providerTimeoutForCall
         if ($result.TimedOut -or $result.ExitCode -ne 0) {
             $why = if ($result.TimedOut) { 'timed out' }
             elseif ($result.LaunchFailed) { "failed to launch: $($result.StdErr)" }
@@ -901,12 +992,20 @@ try {
             continue
         }
         if (-not [string]::IsNullOrWhiteSpace($result.StdOut)) {
-            $fragments.Add((New-DispatcherFragment -ProviderId $providerId -Text $result.StdOut.Trim() -Order $providerOrder)) | Out-Null
-            if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
-                $facts = Get-BannerFacts -Payload $result.StdOut
-                $outcome = if ($result.StdErr -match 'WARN BUDGET_EXCEEDED') { 'budget-clipped' } else { 'injected' }
-                $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope $facts.Scope -Channel 'hook' -Tokens $facts.Tokens -Outcome $outcome
-                $stateDirty = $true
+            $stdoutTrim = $result.StdOut.Trim()
+            if ($stdoutTrim.StartsWith('<<<SPECREW-STOP-BLOCK>>>')) {
+                # FR-004/FR-015: a Stop-class consumer (conformance) requests a force-continue so the re-entry
+                # packet renders AT the stop. Capture the reason; do NOT add it as a normal injection fragment.
+                $stopBlockReason = $stdoutTrim.Substring('<<<SPECREW-STOP-BLOCK>>>'.Length).Trim()
+            }
+            else {
+                $fragments.Add((New-DispatcherFragment -ProviderId $providerId -Text $stdoutTrim -Order $providerOrder)) | Out-Null
+                if ($providerId -eq 'refocus' -and $null -ne $sessionState -and -not $stateCorrupt) {
+                    $facts = Get-BannerFacts -Payload $result.StdOut
+                    $outcome = if ($result.StdErr -match 'WARN BUDGET_EXCEEDED') { 'budget-clipped' } else { 'injected' }
+                    $sessionState = Add-JournalEntry -State $sessionState -Trigger $eventTrigger -Scope $facts.Scope -Channel 'hook' -Tokens $facts.Tokens -Outcome $outcome
+                    $stateDirty = $true
+                }
             }
         }
         if ((Test-IsBootstrapDeliveryEvent -EventName $Event -Binding $hostRuntimeBinding) -and $providerId -in @('bootstrap', 'refocus') -and $result.StdErr -match '\bPROVIDER_FAILED\b') {
@@ -927,6 +1026,22 @@ try {
         if (-not $hasBootstrap) {
             $fragments.Add((New-DispatcherFragment -ProviderId 'fallback' -Text (New-GovernedProviderFailureFallback -HostKind $HostKind -FailedProviders $failedSessionStartProviders.ToArray()) -Order 0)) | Out-Null
         }
+    }
+
+    # STOP-BLOCK short-circuit (FR-004/FR-005/FR-015): a Stop-class consumer asked to force-continue the turn so
+    # the 6-section re-entry packet renders AT the stop (not as a too-late next-turn nudge). Honor it via the
+    # host's declared StopBlockShape - UNLESS the host is already continuing from a prior stop-block
+    # (stop_hook_active true on claude/codex) -> then ALLOW, to respect the host's loop cap and never hang. Fully
+    # fail-open: an unknown/none shape or any miss falls through to the normal (allow/inject) path. The provider
+    # supplies its OWN consecutive-block cap for hosts lacking stop_hook_active (copilot/antigravity).
+    if (-not [string]::IsNullOrWhiteSpace($stopBlockReason)) {
+        $alreadyContinuing = [bool](Get-DispatcherMapValue -Map $hostEvent -Key 'stop_hook_active' -Default $false)
+        $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
+        if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
+            Write-StopBlockOutput -Shape $blockShape -Reason $stopBlockReason
+            exit 0
+        }
+        # else: host already continuing OR cannot block -> fall through to the normal path (cooperative degrade).
     }
 
     if ($fragments.Count -gt 0) {

@@ -59,7 +59,9 @@ boundary:
 <!-- SPECREW-VERDICT-BOUNDARY: <from> -> <to> -->
 ```
 
-Replace `<from> -> <to>` with the **canonical** boundary you are gating (the from→to for this stop — e.g.
+If `.specrew/runtime/pending-verdict-stop.md` exists, copy its `Marker last line exactly` value; that artifact
+wins over phase inference, especially after a multi-boundary over-advance. Otherwise replace `<from> -> <to>`
+with the **canonical** boundary you are gating (the from→to for this stop — e.g.
 `tasks -> before-implement`, `plan -> tasks`, `review-signoff -> retro`). This marker is how the hook records
 the human's ACTUAL typed verdict as the authorization (evidence-source `hook-captured-from-transcript`),
 instead of anything inventing one. Without it the gate stays un-authorized and the next session surfaces the

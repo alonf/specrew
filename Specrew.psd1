@@ -1,6 +1,6 @@
 @{
     RootModule = 'Specrew.psm1'
-    ModuleVersion = '0.38.0'
+    ModuleVersion = '0.39.0'
     GUID = '8ad5b7b5-c4c6-4df4-b9bd-700a8533dcc4'
     Author = 'Alon Fliess'
     Description = 'Specrew: specification-driven development workflow for AI-augmented teams'
@@ -51,6 +51,7 @@
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.after-tasks.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.before-implement.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.before-plan.md',
+        'extensions/specrew-speckit/commands/speckit.specrew-speckit.before-specify.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-clarify.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-feature-closeout.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-iteration-closeout.md',
@@ -137,6 +138,7 @@
         'extensions/specrew-speckit/scripts/scaffold-reviewer-artifacts.ps1',
         'extensions/specrew-speckit/scripts/shared-governance.ps1',
         'extensions/specrew-speckit/scripts/specrew-bootstrap-provider.ps1',
+        'extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1',
         'extensions/specrew-speckit/scripts/specrew-handover-provider.ps1',
         'extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1',
         'extensions/specrew-speckit/scripts/sync-boundary-state.ps1',

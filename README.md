@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.38.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.39.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
@@ -228,7 +228,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 ## Status
 
 - **Latest stable baseline**: 0.37.0 — Feature 174 (hook-driven session bootstrap), promoted after beta-before-stable validation; builds on 0.36.0 (Feature 182, work-kind & branch governance) and the 0.33.0–0.35.0 Refocus + lens line; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: `0.38.0-beta1` (Feature 184 — Full Antigravity Refocus), in flight on this branch; builds on the `0.37.0` (Feature 174 — hook-driven session bootstrap) base
+- **Active development line**: `0.39.0-beta1` (Feature 185 — Host-Neutral Lifecycle Gate Enforcement), in flight on this branch; builds on the `0.38.0-beta1` (Feature 184 — Full Antigravity Refocus) base
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
