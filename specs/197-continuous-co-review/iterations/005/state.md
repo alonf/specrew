@@ -4,10 +4,10 @@
 **Iteration**: 005
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T076 spike (detached self-limiting spawn — PROVEN CROSS-PLATFORM)
-**Tasks Remaining**: T077, T078, T079, T080, T081
-**In Progress**: T077 (the general isolated-task launcher)
-**Updated**: 2026-06-23
+**Last Completed Task**: T077 (isolated-task launcher — verified cross-platform)
+**Tasks Remaining**: T078, T079, T080, T081
+**In Progress**: T078 (the co-review navigator provider + registration)
+**Updated**: 2026-06-24
 
 ## Execution
 
@@ -28,6 +28,15 @@
 - Other lesson: `Start-Process -Wait` waits for the whole process TREE, so the provider fires-and-
   returns (no `-Wait`); the launcher owns the timeout/kill loop in plain PowerShell (cross-platform),
   not OS process-group flags. Spike scripts: `.scratch/spike/` (throwaway, gitignored).
+- T077 DONE (isolated-task launcher, the 139 foundation): `Start-SpecrewIsolatedTask` (review path
+  built; `read-write`/`merge`/`preserve` throw with documented seam comments) + a detached
+  `isolated-task-supervisor.ps1` + `Stop-SpecrewIsolatedTask` reaper, in the general
+  `scripts/internal/agent-tasks/`. Stdio-redirect at both hops + no `-Wait` + the supervisor timeout
+  loop. Two build findings folded in: `git archive | tar` corrupts binary through a pwsh pipe (fixed:
+  `--output <tar>` then `tar -xf`); `pwsh -Command <string>` loses embedded quotes on Linux (fixed:
+  write `harness.ps1`, run `pwsh -File`). Verified independently: Windows Pester 4/0; Linux (WSL)
+  end-to-end probe — FIRE returns 0.11s, reviewer ran in the materialized tree, worktree in `/tmp`
+  discarded, terminal status `done`/no-orphan. No F-184.
 
 ## Scope (Phase B part 2 — the always-on async navigator)
 
