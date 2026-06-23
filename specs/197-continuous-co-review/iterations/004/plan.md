@@ -2,8 +2,8 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
-**Capacity**: 12.00/20 story_points
+**Status**: executing
+**Capacity**: 10.50/20 story_points
 **Started**: 2026-06-23
 **Completed**:
 
@@ -32,7 +32,7 @@ capture accessor, and the providers are all non-protected).
 | Task | Title | Requirement | Effort | Owner | Owner File Globs | Status |
 | ---- | ----- | ----------- | ------ | ----- | ---------------- | ------ |
 | T070 | Parse-once-and-share: parse the transcript tail ONCE at the top of `Update-SpecrewRollingHandover` and pass the shared parsed turns to the verdict/packet/conversation-tail consumers (each keeps its own raw/flattened + synthetic-user-turn transform on a COPY). | #2885 | 3.00 | Implementer | `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`; `scripts/internal/bootstrap/HandoverStore.ps1` | planned |
-| T071 | Conformance-provider memo: a module-scope `(path, mtime)` cache so the conformance provider's intra-process re-reads parse once. | #2885 | 1.50 | Implementer | `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`; `.specify/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1` | planned |
+| T071 | Conformance-provider memo. SUBSUMED (measured, 2026-06-23): the conformance provider does NOT redundantly re-parse — its last-assistant read is a backward early-exit (`10 ms`, parses ~a few lines not 200), its packet read is gated by `$hasPending` AND already memoized by T070, and the whole expensive block is skipped on no-trigger/in-workshop stops (185's PERF gate). A forced memo would REGRESS the common case (full-500 parse vs 10 ms early-exit). No code warranted. | #2885 | 0.00 | Implementer | (none — subsumed) | deferred |
 | T072 | Add the missing unit tests for the bootstrap parse functions: parse-once correctness (the 3 consumers' outputs are unchanged vs the per-consumer parse) + a timing/regression guard so the latency cannot silently return. | #2885 | 2.00 | Reviewer | `tests/**` | planned |
 | T073 | Gate enforcement wiring: call `Assert-ContinuousCoReviewSignoffGate` in `Invoke-SpecrewBoundaryStateSync` at the review-signoff boundary, gated by an opt-in config flag (default OFF); mirror to the extensions copy. | FR-025, SC-019, SC-020 | 2.50 | Reviewer | `scripts/internal/sync-boundary-state.ps1`; `extensions/specrew-speckit/scripts/sync-boundary-state.ps1` | planned |
 | T074 | Gate-wiring tests: with the flag ON, review-signoff is refused without fresh co-review evidence and allowed with it; with the flag OFF, no-op; the boundary-sync integration path. | FR-025, SC-019, SC-020 | 2.00 | Reviewer | `tests/continuous-co-review/**` | planned |
@@ -52,7 +52,9 @@ capture accessor, and the providers are all non-protected).
 
 - In-scope: #2885 (Stop-hook latency) + FR-025 (gate enforcement wiring, opt-in).
 - Deferred: B async navigator (FR-026/030/031) -> Iteration 005; D reviewer-execution dropped.
-- Capacity status: PASS, 12.00/20 story_points.
+- Subsumed: T071 (conformance memo) -> measured unwarranted (see the task row); -1.50 SP.
+- Capacity status: PASS, 10.50/20 story_points.
+- #2885 measured win (2026-06-23, 2000-line transcript): handover 3-consumer parse 1,400 ms -> 342 ms (75.5% / 1,057 ms saved per stop); conformance early-exit 10 ms.
 
 ## Notes
 
