@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: complete
 **Capacity**: 10.50/20 story_points
 **Started**: 2026-06-23
-**Completed**:
+**Completed**: 2026-06-23
 
 <!--
   Validator schema (canonical):
@@ -36,7 +36,7 @@ capture accessor, and the providers are all non-protected).
 | T072 | Add the missing unit tests for the bootstrap parse functions: parse-once correctness (the 3 consumers' outputs are unchanged vs the per-consumer parse) + a timing/regression guard so the latency cannot silently return. | #2885 | 2.00 | Reviewer | `tests/continuous-co-review/unit/transcript-parse-once.Tests.ps1` | done |
 | T073 | Gate enforcement wiring: call `Assert-ContinuousCoReviewSignoffGate` in `Invoke-SpecrewBoundaryStateSync` at the review-signoff boundary, gated by an opt-in config flag (default OFF). (Extensions copy is a thin dispatcher — no logic mirror needed; logic lives in a testable seam.) | FR-025, SC-019, SC-020 | 2.50 | Reviewer | `scripts/internal/sync-boundary-state.ps1`; `scripts/internal/continuous-co-review/signoff-gate-wiring.ps1` | done |
 | T074 | Gate-wiring tests: with the flag ON, review-signoff is refused without fresh co-review evidence and allowed with it; with the flag OFF, no-op; the boundary-sync integration path. | FR-025, SC-019, SC-020 | 2.00 | Reviewer | `tests/continuous-co-review/unit/signoff-gate-wiring.Tests.ps1` | done |
-| T075 | Iteration 004 closeout validation: full suite green, #2885 before/after latency measured + recorded, gate enforcement proven, protected-surface guard (no F-184 edits), Proposal 145 review. | #2885, FR-025, SC-006 | 1.00 | Reviewer | `tests/**`; `specs/197-continuous-co-review/iterations/004/**` | in-progress |
+| T075 | Iteration 004 closeout validation: full suite green, #2885 before/after latency measured + recorded, gate enforcement proven, protected-surface guard (no F-184 edits), Proposal 145 review. | #2885, FR-025, SC-006 | 1.00 | Reviewer | `tests/**`; `specs/197-continuous-co-review/iterations/004/**` | done |
 
 ## Effort Model
 
