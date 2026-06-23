@@ -110,4 +110,50 @@ Assert-True ($rBudget.ExitCode -eq 0) 'codex Stop shared-budget path exits 0'
 Assert-True (-not ($budgetJson.PSObject.Properties.Name -contains 'decision')) 'codex Stop shared-budget path still emits valid no-op JSON'
 Assert-True ($rBudget.Err -match 'PROVIDER_BUDGET') 'codex Stop shared-budget path skips later providers before the host timeout can kill the hook'
 
+# F-197 (maintainer-authorized 2026-06-24): stop-block reasons from ALL providers in one Stop run are MERGED, not
+# last-writer-wins. Two Stop-class providers (conformance order 40, navigator order 50) each emit a distinct
+# `<<<SPECREW-STOP-BLOCK>>>` directive in the same run; the force-continue envelope must carry BOTH (the navigator
+# at order 50 used to OVERWRITE conformance at order 40, dropping the conformance directive). A single blocking
+# provider is unchanged (covered by the per-host loop above). This drives the REAL dispatcher with two distinct
+# block-emitting stubs and asserts both reasons survive in the host envelope.
+function Invoke-DispatcherTwoBlocks {
+    param([string]$HostKind, [string]$Event)
+    $proj = Join-Path ([System.IO.Path]::GetTempPath()) ("sb2-" + [guid]::NewGuid().ToString('N'))
+    $scriptsDir = Join-Path $proj '.specify/extensions/specrew-speckit/scripts'
+    New-Item -ItemType Directory -Path (Join-Path $proj '.specrew/runtime') -Force | Out-Null
+    New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
+    try {
+        # Two providers, distinct ids/orders, each emitting a DISTINCT stop-block reason (conformance order 40,
+        # navigator order 50 - the real co-occurring pair). Use marker tokens we can assert independently.
+        $providerRows = @(
+            @{ id = 'conformance'; kind = 'inject'; events = @('Stop', 'agentStop', 'stop'); order = 40; budget_share = 1.0; command = 'conf-stub.ps1' },
+            @{ id = 'co-review-navigator'; kind = 'inject'; events = @('Stop', 'agentStop', 'stop'); order = 50; budget_share = 1.0; command = 'nav-stub.ps1' }
+        )
+        $catalog = @{ schema_version = '1'; providers = @($providerRows) } | ConvertTo-Json -Depth 6
+        Set-Content -LiteralPath (Join-Path $proj '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $scriptsDir 'conf-stub.ps1') -Value "Write-Output `"<<<SPECREW-STOP-BLOCK>>>`nCONFORMANCE_DIRECTIVE_AAA render the boundary verdict packet`"; exit 0" -Encoding UTF8
+        Set-Content -LiteralPath (Join-Path $scriptsDir 'nav-stub.ps1') -Value "Write-Output `"<<<SPECREW-STOP-BLOCK>>>`nNAVIGATOR_DIRECTIVE_BBB a co-review finding awaits your attention`"; exit 0" -Encoding UTF8
+
+        $evt = @{ session_id = 'sb2'; source = $Event }
+        $eventFile = Join-Path $proj 'event.json'
+        Set-Content -LiteralPath $eventFile -Value ($evt | ConvertTo-Json -Compress) -Encoding UTF8 -NoNewline
+        $outFile = Join-Path $proj 'd.out'; $errFile = Join-Path $proj 'd.err'
+        $p = Start-Process -FilePath 'pwsh' `
+            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', $Event, '-HostKind', $HostKind) `
+            -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+            -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+        return [pscustomobject]@{
+            ExitCode = $p.ExitCode
+            Out      = (Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue)
+        }
+    }
+    finally { Remove-Item -LiteralPath $proj -Recurse -Force -ErrorAction SilentlyContinue }
+}
+
+$rMerge = Invoke-DispatcherTwoBlocks -HostKind 'claude' -Event 'Stop'
+Assert-True ($rMerge.ExitCode -eq 0) 'merge: dispatcher exits 0 with two blocking providers'
+Assert-True (($rMerge.Out -replace '\s', '') -match '"decision":"block"') 'merge: two stop-blocks still produce the host force-continue envelope (decision:block)'
+Assert-True ($rMerge.Out -match 'CONFORMANCE_DIRECTIVE_AAA') 'merge: the conformance (order 40) directive survives in the merged envelope (not overwritten by the later navigator)'
+Assert-True ($rMerge.Out -match 'NAVIGATOR_DIRECTIVE_BBB') 'merge: the navigator (order 50) directive is also present in the merged envelope - BOTH directives surface'
+
 Write-Host "`n=== dispatcher-stop-block.tests.ps1: all assertions passed ===" -ForegroundColor Green
