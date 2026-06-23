@@ -4,20 +4,30 @@
 **Iteration**: 005
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T076 spike (detached self-limiting spawn — PROVEN)
+**Last Completed Task**: T076 spike (detached self-limiting spawn — PROVEN CROSS-PLATFORM)
 **Tasks Remaining**: T077, T078, T079, T080, T081
 **In Progress**: T077 (the general isolated-task launcher)
 **Updated**: 2026-06-23
 
 ## Execution
 
-- T076 SPIKE PASSED (Windows): `Start-Process -PassThru` fire + a launcher with its own
-  timeout loop -> provider exits 1.4s, launcher runs DETACHED to 10.7s, SELF-LIMITS (kills the
-  child on timeout), NO orphan (child_still_alive=False), cleans up. VERDICT detached+fast=True.
-  **Implementation notes (load-bearing):** (1) `Start-Process -Wait` waits for the whole process
-  TREE, so the provider MUST fire-and-return (no `-Wait`); a test harness must observe PIDs
-  independently, not via `-Wait`. (2) The launcher owns the timeout/kill loop in plain PowerShell
-  (cross-platform), not OS process-group flags. Spike scripts: `.scratch/spike/` (throwaway).
+- T076 SPIKE PASSED CROSS-PLATFORM — Windows 10 AND WSL Ubuntu 24.04 (pwsh 7.6.1), the SAME
+  scripts on both: provider exits ~1.7s, launcher runs DETACHED (outlives its parent), SELF-LIMITS
+  (kills the child on timeout), NO orphan (child_still_alive=False). VERDICT detached+fast=True on
+  both.
+- **CRITICAL cross-platform defect caught (a Windows-only spike MISSED it):** on Linux the provider
+  initially BLOCKED 18.2s (not 1.7s) because the spawned child inherits the parent's stdout/stderr
+  PIPES and the parent cannot exit until the whole tree releases them. Windows detaches by default,
+  so the bug was invisible there — shipping on the Windows-only result would have HUNG the Stop
+  hook on Linux/macOS.
+- **FIX (load-bearing for T077):** the spawn MUST redirect stdio
+  (`-RedirectStandardOutput`/`-RedirectStandardError` to files) at BOTH hops (provider->launcher,
+  launcher->reviewer). With it, the provider exits ~1.7s on Linux too.
+- **macOS inferred** (same Unix/.NET CoreCLR stdio model + the same fix); a CI/Mac run is the final
+  confirmation, tracked for T081.
+- Other lesson: `Start-Process -Wait` waits for the whole process TREE, so the provider fires-and-
+  returns (no `-Wait`); the launcher owns the timeout/kill loop in plain PowerShell (cross-platform),
+  not OS process-group flags. Spike scripts: `.scratch/spike/` (throwaway, gitignored).
 
 ## Scope (Phase B part 2 — the always-on async navigator)
 

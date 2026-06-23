@@ -32,6 +32,11 @@ under `continuous-co-review/`, to signal it is shared infrastructure.
 
 1. **Spawn** a harness process in an **isolated git worktree** materialized from a target
    tree-id, supervised with a timeout (the old "watchdog" role — kill on timeout, write status).
+   The spawn MUST **redirect the child's stdio to files** at every hop — cross-platform
+   detachment: the T076 spike proved that without it the provider BLOCKS ~18s on Unix (the child
+   inherits the parent's stdout/stderr pipes and the parent cannot exit until the tree releases
+   them); Windows detaches by default so the bug is invisible there. And the provider must
+   fire-and-return (NO `Start-Process -Wait`, which waits for the whole process tree).
 2. **`access` mode** — `read-only` (review) | `read-write` (implementation). RO also launches the
    host in its native read-only mode (`--permission-mode plan` / `--sandbox read-only`) as
    belt-and-suspenders.
