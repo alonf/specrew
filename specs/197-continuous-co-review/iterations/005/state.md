@@ -4,10 +4,21 @@
 **Iteration**: 005
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T078 + T079 (navigator provider + reaper) + T080 (TrunkName carry)
-**Tasks Remaining**: T081 (tests + closeout + 145 review + the flagged gaps) + the dogfood
-**In Progress**: dogfood prep (wire a real reviewer command; run the mechanism on iter-005's code)
+**Last Completed Task**: DOGFOOD (mechanism validated end-to-end on iter-005's own code; 2 bugs caught + fixed)
+**Tasks Remaining**: T081 (closeout: 4 reviewer findings + 3 flagged gaps + formal tests + 145 review)
+**In Progress**: T081 closeout (pending maintainer pace decision after the dogfood checkpoint)
 **Updated**: 2026-06-24
+
+## Dogfood outcome (full detail: dogfood-result.md)
+
+Ran the navigator on its OWN code with a real `claude -p` reviewer: FIRED -> materialized the live
+tree in a `$TEMP` worktree -> a real 51s claude review -> substantive verdict (4 findings) -> reap.
+The mechanism works end-to-end. The dogfood CAUGHT + FIXED 2 production bugs the unit tests missed:
+(1) `& git` throws in the redirected-provider context (non-console UTF-8 `[Console]::OutputEncoding`)
+-> `Invoke-ContinuousCoReviewGit` rewritten to an explicit `System.Diagnostics.Process`; (2) the
+reviewable git-diff passed all changed paths as args -> command-line limit on a real repo -> batched
+(`git diff` has no `--pathspec-from-file`). Both validated: diff-provider 6/0, digest 10/0, gate 11/0,
+navigator 8/0; full reap re-run clean. F-184: none.
 
 ## Open gaps flagged by the T078/T079 implementer (tracked for T081/closeout)
 

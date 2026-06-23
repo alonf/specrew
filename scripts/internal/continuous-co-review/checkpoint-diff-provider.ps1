@@ -49,14 +49,40 @@ function Invoke-ContinuousCoReviewGit {
         [string[]] $Arguments
     )
 
-    Push-Location -LiteralPath $RepoRoot
-    try {
-        $output = @(& git @Arguments 2>&1)
-        $exitCode = $LASTEXITCODE
+    # Robust git invocation IMMUNE to the ambient [Console]::OutputEncoding state. PowerShell's `& git`
+    # throws "StandardOutputEncoding is only supported when standard output is redirected" in the hook
+    # provider context (the dispatcher's providers set a non-console UTF-8 [Console]::OutputEncoding and
+    # the provider's stdout is itself redirected). A dedicated Process with EXPLICIT redirect + UTF-8
+    # output encoding dodges that entirely. Caught by the F-197 iter-005 navigator dogfood; same lesson
+    # as the launcher's spawn. (Contract preserved: ExitCode + Output = lines, stdout then stderr.)
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = 'git'
+    foreach ($a in $Arguments) { [void]$psi.ArgumentList.Add([string]$a) }
+    $psi.WorkingDirectory = $RepoRoot
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    $psi.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
+
+    $proc = [System.Diagnostics.Process]::new()
+    $proc.StartInfo = $psi
+    [void]$proc.Start()
+    $stdout = $proc.StandardOutput.ReadToEnd()
+    $stderr = $proc.StandardError.ReadToEnd()
+    $proc.WaitForExit()
+    $exitCode = $proc.ExitCode
+    $proc.Dispose()
+
+    $toLines = {
+        param($s)
+        if ([string]::IsNullOrEmpty($s)) { return @() }
+        $l = @(($s -replace "`r`n", "`n") -split "`n")
+        if ($l.Count -gt 0 -and $l[-1] -eq '') { $l = @($l[0..($l.Count - 2)]) }
+        return $l
     }
-    finally {
-        Pop-Location
-    }
+    $output = @(& $toLines $stdout) + @(& $toLines $stderr)
 
     return [pscustomobject]@{
         ExitCode = $exitCode
@@ -188,8 +214,26 @@ function Get-ContinuousCoReviewCheckpointDiff {
     # diff_hash. (F7: keyed to exactly the reviewable change-set; no longer the gate freshness
     # key - see T069 above.)
     $diffText = if ($changedPaths.Count -gt 0) {
-        $reviewableDiffResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments (@('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, '--') + @($changedPaths))
-        ($reviewableDiffResult.Output -join "`n")
+        # Batch the post-exclusion paths so a real repo's large change-set does not blow the OS
+        # command-line limit ("filename or extension is too long"). git diff has NO --pathspec-from-file,
+        # so we chunk the explicit `-- <paths>` form. A small set (the common case) is ONE batch =
+        # the original single command (byte-identical output + hash); larger sets concatenate batches
+        # deterministically. (Caught by the F-197 iter-005 navigator dogfood on the real repo.)
+        $batches = New-Object System.Collections.Generic.List[object]
+        $cur = New-Object System.Collections.Generic.List[string]
+        $curLen = 0
+        foreach ($p in $changedPaths) {
+            if ($cur.Count -gt 0 -and ($curLen + $p.Length + 1) -gt 20000) {
+                $batches.Add(@($cur.ToArray())); $cur = New-Object System.Collections.Generic.List[string]; $curLen = 0
+            }
+            $cur.Add([string]$p); $curLen += $p.Length + 1
+        }
+        if ($cur.Count -gt 0) { $batches.Add(@($cur.ToArray())) }
+        $parts = foreach ($batch in $batches) {
+            $r = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments (@('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, '--') + @($batch))
+            ($r.Output -join "`n")
+        }
+        (@($parts) -join "`n")
     }
     else {
         ''
