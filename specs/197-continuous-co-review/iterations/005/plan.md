@@ -23,7 +23,7 @@ Phase B part 2: the async co-review navigator (FR-026/030/031), built on a NEW g
 `read-write`/non-code contracts are interface + comments only (the merge path delegates to the
 future merge-agent, Proposals 010/134/149). No F-184 protected-surface edits.
 
-| Requirement / Issue | Summary | 
+| Requirement / Issue | Summary |
 | ------------------- | ------- |
 | FR-026/030/031 | Auto-fire co-review at every real implement checkpoint, host-neutral, non-blocking. |
 | SC-019/020/021/022 | The auto-fire half (Iteration 004 delivered the gate-floor half). |
