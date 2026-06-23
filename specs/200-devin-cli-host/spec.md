@@ -257,6 +257,16 @@ As a maintainer, I want Devin's tested build and fragile integration surfaces do
 - A genuinely new host capability dimension may require a future generic contract extension; this does not weaken the prohibition on host-specific shared-core routing.
 - General arbitrary-version upgrade convergence is not currently proven and remains separate work.
 
+## Clarifications
+
+### Session 2026-06-24
+
+- No additional clarification questions are required before planning. The interactive product-domain and nine-lens design workshop resolved the material scope, behavior, compatibility, security, migration, packaging, documentation, monitoring, and implementation decisions.
+- The transcript/handover uncertainty is not an unresolved specification ambiguity. FR-011 defines an empirical gating task with three explicit outcomes, and FR-012 defines the collision-safe degraded outcome when a new parser shape would be required.
+- The current delivery scope is Slices A, C, and D. Slice B and any edit to `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1` remain deferred until Feature 197 merges.
+- One-run update convergence is required only for the known Feature 200 managed-agent input shapes. Arbitrary historical-version convergence remains separate proposal/PR work.
+- `specrew start` remains a supported backward-compatible launch surface and must support Devin.
+
 ## Governance Alignment
 
 - **Spec Steward**: Maintains scope and ensures workshop decisions, Proposal 200, and implementation remain reconciled.
