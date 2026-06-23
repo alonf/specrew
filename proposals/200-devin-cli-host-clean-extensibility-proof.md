@@ -65,6 +65,10 @@ These are the only places Devin would force a non-folder change today. Each beco
 
 `SpeckitAiFlag` is already a manifest slot; setting `'devin'` is in-folder. The non-folder work is reconciling Spec-Kit's `--ai` (≤0.9.x) vs `--integration` (≥0.10) flag — a host-neutral fix that belongs with Proposal 198 (self-host currency) / `supported-versions.yml`, not a devin literal.
 
+### Leak 5 — `Specrew.psd1` FileList hardcodes host package paths
+
+The host contract requires `Specrew.psd1`'s `FileList` to list every host's `host.psd1`, `handlers.ps1`, and `coordinator-rules.psd1`, and today each path is **hardcoded per host**. So `hosts/devin/` would force a hand edit to `Specrew.psd1`, and if SC-001/FR-010 were followed literally the files would be omitted — Devin discoverable in the dev tree but **failing FileList/package validation** on install. (Raised by the codex reviewer on this very PR — a live demonstration of the leak.) **Fix (R2):** **generate** the host-package `FileList` entries from `hosts/*/{host.psd1,handlers.ps1,coordinator-rules.psd1}`, composing with Proposal 198's deterministic generation + the existing FileList-parity CI gate. The generated entries do contain the host path string, but they are **machine-derived from `hosts/` and parity-gated**, not a hand-authored coupling — so FR-010's purity scan exempts generated/derived files. Adding a folder then auto-packages with zero hand edits.
+
 ### Verified already-clean (no work needed — proof points for the additive claim)
 
 The audit confirmed these surfaces already handle a new host generically, so Devin uses them as-is:
@@ -84,12 +88,13 @@ The audit confirmed these surfaces already handle a new host generically, so Dev
 - **FR-007 (abstraction)** — Transcript-turn-shape contract slot added; `ConversationCaptureAccessor` iterates registered per-host matchers; the 5 existing host shapes migrated into their packages; **no host-specific turn shape remains in shared core**.
 - **FR-008 (abstraction)** — Coordinator-eligibility becomes a manifest field; `agent-detection.ps1`/`specrew-init.ps1` consume the registry; `iteration-config.yml` schema migrated; **2 allow-list entries removed**.
 - **FR-009 (abstraction)** — The 3 `[ValidateSet]` callsites become registry-driven `[ValidateScript]`; **3 allow-list entries removed**.
-- **FR-010 (proof)** — The firewall test gains a **host-addition purity assertion** as a *steady-state invariant* (a static tree scan, like the existing forbidden-core scan — not a diff check, so it also catches future drift): no production file outside `hosts/devin/` contains a `devin`/`windsurf` literal, and `$allowListExact.Count` is **≤ pre-proposal count** (must not grow; shrinks by FR-008/009). SC-001's `git diff` review is the complementary human check.
+- **FR-010 (proof)** — The firewall test gains a **host-addition purity assertion** as a *steady-state invariant* (a static tree scan, like the existing forbidden-core scan — not a diff check, so it also catches future drift): no production file outside `hosts/devin/` contains a `devin`/`windsurf` literal, and `$allowListExact.Count` is **≤ pre-proposal count** (must not grow; shrinks by FR-008/009). The scan targets **hand-authored** source; machine-generated/derived artifacts (the `Specrew.psd1` FileList, regenerated from `hosts/` and covered by the FileList-parity gate per FR-012) are exempt. SC-001's `git diff` review is the complementary human check.
 - **FR-011** — Transcript acquisition resolved: Devin has no confirmed always-on transcript file, so either launch with `--export <runtime path>` consumed by the Stop-hook providers, or fall back to the existing event-payload last-message tier (the parser's Codex-style Tier-3). Decided by an early spike.
+- **FR-012 (abstraction)** — `Specrew.psd1` host-package `FileList` entries are **generated** from `hosts/*/{host.psd1,handlers.ps1,coordinator-rules.psd1}` (no hand-authored per-host path), so adding `hosts/devin/` auto-packages with no hand edit. Composes with Proposal 198's deterministic generation + the existing FileList-parity CI gate. (Surfaced by the codex PR reviewer.)
 
 ## Success criteria
 
-- **SC-001** — `git diff` for the host-enabling commit shows changes **only under `hosts/devin/`**; all other commits in the feature are generic abstraction edits with **zero `devin` literals**.
+- **SC-001** — `git diff` for the host-enabling commit shows hand edits **only under `hosts/devin/`**; everything else is either a generic abstraction edit with **zero hand-authored `devin` literals** or a **regenerated artifact** (e.g., the `Specrew.psd1` FileList produced by FR-012's generator, reproducible from `hosts/`).
 - **SC-002** — Firewall allow-list count **decreases** (5 production entries retired: 3 ValidateSet + 2 coordinator-tier); **no new entry** added for Devin.
 - **SC-003** — Real-host validation on the `devin` CLI: SessionStart bootstrap surfaces, a boundary gate-stop fires, and a handover is captured from the transcript (the SC-012-class manual check, per the dogfood-confound discipline — artifact + behavior on the actual host).
 - **SC-004** — A fixture host exercising the **same capability dimensions as the existing five** (launch / flags / detection / hooks / instructions / transcript / crew) can be added with **only a new folder** and zero abstraction edits — proven by the FR-010 steady-state invariant. The guarantee is "no host-*specific* edits"; a host needing a genuinely *new* capability dimension still extends the contract generically (a core edit, never an `if ($HostKind -eq ...)` branch).
@@ -109,7 +114,7 @@ The audit confirmed these surfaces already handle a new host generically, so Dev
 - **024 / 058 / 069 (multi-host runtime/distribution/launch)** — the foundation this builds on.
 - **139 (subagent orchestration)** — `Install-DevinCrewRuntime` + `.devin/agents/`.
 - **187 (volatile dependency monitoring)** — Devin's high churn is a monitoring case.
-- **198 (self-host currency)** — owns the Spec-Kit `--ai`/`--integration` reconciliation.
+- **198 (self-host currency)** — owns the Spec-Kit `--ai`/`--integration` reconciliation **and the deterministic FileList generation + parity gate that FR-012 builds on**.
 - **127 (git-host adapter)** — same data-driven-adapter pattern, a different (git-host) dimension.
 - `hosts/_contract.md` and `tests/integration/host-coupling-firewall.tests.ps1` — the contract and proof surface this extends.
 
@@ -117,7 +122,7 @@ The audit confirmed these surfaces already handle a new host generically, so Dev
 
 Per R1–R3 the cleanups are *prerequisites* so Devin's addition is provably additive:
 
-1. **Slice A — Phase-D `[ValidateScript]` + firewall purity assertion** (~3-4 SP). Retire the 3 ValidateSet allow-list entries; add the FR-010 host-addition purity check (no host yet — it must already pass for the existing 5).
+1. **Slice A — Phase-D `[ValidateScript]` + FileList generation + firewall purity assertion** (~4-6 SP). Retire the 3 ValidateSet allow-list entries; generate the host-package FileList (FR-012); add the FR-010 host-addition purity check (no host yet — it must already pass for the existing 5).
 2. **Slice B — Transcript-turn-shape contract slot + migrate 5 hosts** (~6-8 SP). The big abstraction; goldens prove zero behavior change.
 3. **Slice C — Devin package, worker-only** (~4-6 SP). `hosts/devin/` only; FR-001–006, FR-011; SC-001/SC-005; real-host validation (SC-003).
 4. **Slice D — Coordinator-eligibility manifest field + `iteration-config.yml` migration** (~4-6 SP). Retire the last 2 allow-list entries; promote Devin to coordinator-eligible if desired.
