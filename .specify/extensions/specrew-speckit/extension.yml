@@ -4,7 +4,7 @@ schema: "v1"
 extension:
   id: specrew-speckit
   name: "Specrew Spec Kit Extension"
-  version: "0.38.0"
+  version: "0.39.0"
   description: "Spec Kit extension providing governance artifacts, templates, and validation for Specrew"
 
 requires:
@@ -12,6 +12,9 @@ requires:
 
 provides:
   commands:
+    - name: speckit.specrew-speckit.before-specify
+      file: commands/speckit.specrew-speckit.before-specify.md
+      description: "Run the Specrew design workshop before producing a spec"
     - name: speckit.specrew-speckit.before-plan
       file: commands/speckit.specrew-speckit.before-plan.md
       description: "Validate requirement readiness before planning"
@@ -66,6 +69,10 @@ provides:
       surface_summary: "Known but deferred for Feature 054. Not part of the default lifecycle in this slice."
 
 hooks:
+  before_specify:
+    command: speckit.specrew-speckit.before-specify
+    optional: false
+    description: "Route the specify entry through the Specrew design workshop"
   before_plan:
     command: speckit.specrew-speckit.before-plan
     optional: false

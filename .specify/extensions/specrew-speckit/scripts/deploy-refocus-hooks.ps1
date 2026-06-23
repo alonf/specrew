@@ -136,6 +136,10 @@ function Get-HostRuntimeBindingEncoded {
         OutputShape             = [string](Get-ManifestValue -Map $runtime -Key 'OutputShape' -Default 'plain-or-hookSpecificOutput')
         DecisionOnlyEvents      = @(Get-ManifestValue -Map $runtime -Key 'DecisionOnlyEvents' -Default @())
         BootstrapDeliveryMode   = [string](Get-ManifestValue -Map $runtime -Key 'BootstrapDeliveryMode' -Default 'inline')
+        # FR-004 (185): the deployed hook bakes this binding and the dispatcher decodes it BEFORE the manifest
+        # fallback - so StopBlockShape MUST be encoded here, or every deployed project resolves it to 'none' and
+        # the entire stop-block delivery is inert in the field while the manifest-path tests stay green (145 F1/TI-1).
+        StopBlockShape          = [string](Get-ManifestValue -Map $runtime -Key 'StopBlockShape' -Default 'none')
     }
     $json = $stableRuntime | ConvertTo-Json -Depth 8 -Compress
     return [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json))
@@ -312,8 +316,29 @@ param(
     [string]$ModulePath,
     [int]$ProviderTimeoutSeconds = 20
 )
-# KILL SWITCH FIRST — before any logic that could itself fail (FR-008 doctrine).
-if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) { exit 0 }
+function Test-LauncherDecisionOnlyEvent {
+    param([string]$EventName, [string]$EncodedBinding)
+    if ([string]::IsNullOrWhiteSpace($EncodedBinding)) { return $false }
+    try {
+        $runtime = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($EncodedBinding)) | ConvertFrom-Json -ErrorAction Stop
+        return @($runtime.DecisionOnlyEvents | ForEach-Object { [string]$_ }) -contains $EventName
+    }
+    catch { return $false }
+}
+
+function Write-LauncherDecisionNoopIfNeeded {
+    param([string]$EventName, [string]$EncodedBinding)
+    if (Test-LauncherDecisionOnlyEvent -EventName $EventName -EncodedBinding $EncodedBinding) {
+        @{} | ConvertTo-Json -Compress
+    }
+}
+
+# KILL SWITCH FIRST — before any logic that could itself fail (FR-008 doctrine). Decision-only hosts still
+# require no-op JSON; this helper reads only the baked binding and fails quiet.
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
+    Write-LauncherDecisionNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    exit 0
+}
 $ErrorActionPreference = 'Stop'
 
 # Dev-tree dogfood path: when specrew init/update ran from an imported development tree, bake that module
@@ -379,7 +404,10 @@ foreach ($start in $candidates) {
     $found = Find-DispatcherUpTree -Start $start -Sub $dispatcherSub
     if (-not [string]::IsNullOrWhiteSpace($found)) { $dispatcher = $found; break }
 }
-if ([string]::IsNullOrWhiteSpace($dispatcher)) { exit 0 }   # no project resolvable from any signal -> fire nothing (fail-open)
+if ([string]::IsNullOrWhiteSpace($dispatcher)) {
+    Write-LauncherDecisionNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
+    exit 0
+}
 
 # Hand off to the project's deployed dispatcher. Pass the captured payload via -EventJson so the dispatcher does
 # not try to re-read the now-consumed stdin (only when non-empty). The dispatcher's stdout (injection output)
@@ -388,7 +416,10 @@ $dispatchArgs = @{ Event = $Event; HostKind = $HostKind; ProviderTimeoutSeconds 
 if (-not [string]::IsNullOrWhiteSpace($raw)) { $dispatchArgs['EventJson'] = $raw }
 if (-not [string]::IsNullOrWhiteSpace($HostBinding)) { $dispatchArgs['HostBinding'] = $HostBinding }
 try { & $dispatcher @dispatchArgs }
-catch { [Console]::Error.WriteLine("[specrew-refocus] WARN LAUNCH_FAILED $($_.Exception.Message)") }
+catch {
+    [Console]::Error.WriteLine("[specrew-refocus] WARN LAUNCH_FAILED $($_.Exception.Message)")
+    Write-LauncherDecisionNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
+}
 exit 0
 '@
     $launcherBody = $launcherBody.Replace('__SPECREW_PROJECT_ROOT_ENV_VARS__', $projectRootEnvVarLiteral)

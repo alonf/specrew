@@ -4,6 +4,42 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.39.0-beta1] - 2026-06-23
+
+Feature 185 — Host-Neutral Lifecycle Gate Enforcement. **BETA** (no stable or full-parity claim). Builds on
+the 0.38.0-beta1 (Feature 184 — Full Antigravity Refocus) base.
+
+### Added
+
+- **Host-neutral lifecycle gate enforcement:** cleaned all-host refocus/coordinator instructions so non-Claude
+  hosts receive a harness-free boundary-stop contract instead of Claude-only `specrew-gate-stop` /
+  `AskUserQuestion` directives.
+- **Pending-verdict stop artifact:** boundary sync writes `.specrew/runtime/pending-verdict-stop.md` with the
+  exact unpaid crossing, approval phrase, approval aliases, and `SPECREW-VERDICT-BOUNDARY` marker so hosts can
+  render the correct packet without inference.
+- **Stop-hook conformance provider:** added host-neutral detection for unauthorized boundary advancement,
+  raw Spec Kit routing, resume confusion, and deterministic material-work packet omissions, translated through
+  host-declared stop-block shapes.
+- **Direct-launch host parity surfaces:** added host command-surface deployment, host identity threading, and
+  regression coverage for Codex, Copilot, Cursor, Claude, and Antigravity direct-launch paths.
+
+### Fixed
+
+- Captures markerless `1` / `option 1` approvals against the single pending verdict artifact on
+  transcript-capable hosts while rejecting vague, contradictory, or wrong-option responses.
+- Prevents stale pending-verdict artifacts after hook authorization and keeps boundary sync from surfacing a
+  later boundary when an earlier unpaid crossing still exists.
+- Bounds Stop-provider transcript reads and no-op output shapes so Codex and other JSON-sensitive Stop hooks do
+  not fail on ordinary non-blocking turns.
+
+### Notes
+
+- Dogfood evidence includes a full Codex Win32 Button subclass lifecycle in `C:\Temp\test-f185_3` and earlier
+  Antigravity/Copilot/Codex traces. Follow-up issues #2888-#2897 track non-blocking rough edges surfaced during
+  beta readiness review.
+- This prerelease intentionally remains beta-before-stable. Stable promotion requires the normal clean
+  prerelease install validation and human PASS verdict.
+
 ## [0.38.0-beta1] - 2026-06-18
 
 Feature 184 — Full Antigravity Refocus. **BETA** (no stable or full-parity claim). Builds on the 0.37.0

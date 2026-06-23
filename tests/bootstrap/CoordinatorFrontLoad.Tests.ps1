@@ -9,7 +9,7 @@ function Assert-True { param([bool]$Condition, [string]$Message) if (-not $Condi
 
 $repoRoot = (Resolve-Path "$PSScriptRoot/../..").Path
 $provider = (Resolve-Path "$repoRoot/scripts/internal/specrew-bootstrap-provider.ps1").Path
-$guard = 'Do NOT run the raw specify.exe workflow / bundled SDD engine - it bypasses the governed boundary gates.'
+$guard = 'The only thing never to run is the raw, un-governed `specify.exe workflow` / bundled SDD automation that bypasses the boundary gates - the Specrew-governed scripts and commands above are NOT that.'
 
 # 1/3: extract Format-BootstrapDirective (its body must NOT run) + read the REAL single-source fragment.
 $provSrc = Get-Content -LiteralPath $provider -Raw

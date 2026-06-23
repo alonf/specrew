@@ -135,7 +135,7 @@ function Format-BootstrapDirective {
     # skimmed past it to the task; copilot rendered it). Hoist the full, EXPANDED banner mandate to the TOP -
     # before the contract - and name the "how we work" + user-profile/expertise content the human expects.
     $lines.Add('=== MANDATORY FIRST ACTION - render before anything else, on EVERY host ===')
-    $lines.Add('On your VERY FIRST response - BEFORE anything else and REGARDLESS of the user''s first message (even a task like "create a feature ...") - render the Specrew ORIENTATION BANNER as visible prose, THEN act on the request. The banner is mandatory on every host; never skip it. Render, in order:')
+    $lines.Add('On your VERY FIRST response - BEFORE anything else and REGARDLESS of the user''s first message (even a task like "create a feature ...") - render the Specrew ORIENTATION BANNER as visible prose, THEN act on the request. The banner is mandatory on every host; never skip it. Render it ONCE, only as the opening of THIS session''s first response: if you RE-READ this contract later in the same session (e.g. to re-check the lifecycle state), do NOT render the banner again - you have already oriented; just continue the work. Render, in order:')
     $lines.Add('  (1) Specrew is governing this session, and HOW we work: a spec-driven lifecycle with human-authorized boundaries - you DRIVE the gates and do NOT free-run the SDLC.')
     $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
     $lines.Add('  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can (FR-025).')
@@ -422,7 +422,10 @@ try {
     # after the claim (the claim->emit window must stay pure string building - a git call could fail/hang).
     $branch = $null
     try { $branch = ([string](& git -C $root rev-parse --abbrev-ref HEAD 2>$null)).Trim(); if ([string]::IsNullOrWhiteSpace($branch)) { $branch = $null } } catch { $branch = $null }
-    $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor -SpecrewVersion $specrewVersion
+    # Feature 185: thread the REAL host (already in hand from --host-kind, baked per-host into the hook
+    # registration) into the contract regeneration. Without this, the writer fell back to a hardcoded
+    # 'claude' default and every direct non-claude launch (e.g. `agy`) read `Host: claude`.
+    $contractPath = Write-SpecrewLaunchContractArtifact -ProjectRoot $root -Mode $result.mode -SessionState $result.validity.anchor -SpecrewVersion $specrewVersion -HostKind $hostKind
     $contractBody = if ($contractPath -and (Test-Path -LiteralPath $contractPath)) { Get-Content -LiteralPath $contractPath -Raw } else { '' }
 
     # Host delivery policy (DELIVERY only; contract FRAMING unchanged). The per-host inline-vs-pointer rule +

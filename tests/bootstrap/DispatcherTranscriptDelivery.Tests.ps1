@@ -19,10 +19,10 @@ $scriptsDir = Join-Path $proj '.specify/extensions/specrew-speckit/scripts'
 New-Item -ItemType Directory -Path (Join-Path $proj '.specrew/runtime') -Force | Out-Null
 New-Item -ItemType Directory -Path $scriptsDir -Force | Out-Null
 try {
-    # Minimal catalog: ONE stub inject provider on Stop (the real dispatcher resolves it under the deployed tree).
+    # Minimal catalog: ONE stub inject provider on Stop/UserPromptSubmit (the real dispatcher resolves it under the deployed tree).
     $catalog = @{
         schema_version = '1'
-        providers      = @(@{ id = 'stub'; kind = 'inject'; events = @('Stop'); order = 30; budget_share = 1.0; command = 'stub-capture.ps1' })
+        providers      = @(@{ id = 'stub'; kind = 'inject'; events = @('Stop', 'UserPromptSubmit', 'PreInvocation'); order = 30; budget_share = 1.0; command = 'stub-capture.ps1' })
     } | ConvertTo-Json -Depth 6
     Set-Content -LiteralPath (Join-Path $proj '.specify/extensions/specrew-speckit/refocus-scopes.json') -Value $catalog -Encoding UTF8
 
@@ -60,6 +60,32 @@ exit 0
     Assert-True ($si -ge 0 -and $captured[$si + 1] -eq 'Stop') 'F4b: the neutral --source-event Stop is delivered (clean arg)'
     $hi = [array]::IndexOf($captured, '--host-kind')
     Assert-True ($hi -ge 0 -and $captured[$hi + 1] -eq 'claude') 'F4b: --host-kind claude is delivered'
+
+    $prompt = 'approved for tasks'
+    $promptEvent = @{ session_id = 'abc123'; hook_event_name = 'UserPromptSubmit'; transcript_path = $spaced; prompt = $prompt } | ConvertTo-Json -Compress
+    Set-Content -LiteralPath $eventFile -Value $promptEvent -Encoding UTF8 -NoNewline
+    Remove-Item -LiteralPath $argsPath -Force -ErrorAction SilentlyContinue
+    $p = Start-Process -FilePath 'pwsh' `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'UserPromptSubmit', '-HostKind', 'claude') `
+        -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+        -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+    Assert-True ($p.ExitCode -eq 0) 'dispatcher exits 0 for UserPromptSubmit'
+    $captured = @(Get-Content -LiteralPath $argsPath -Raw | ConvertFrom-Json)
+    $ui = [array]::IndexOf($captured, '--last-user-message')
+    Assert-True ($ui -ge 0) 'UserPromptSubmit: the dispatcher passed --last-user-message as a CLEAN arg'
+    Assert-True ($captured[$ui + 1] -eq $prompt) 'UserPromptSubmit: the current human prompt survived clean-arg delivery'
+
+    Set-Content -LiteralPath $eventFile -Value $promptEvent -Encoding UTF8 -NoNewline
+    Remove-Item -LiteralPath $argsPath -Force -ErrorAction SilentlyContinue
+    $p = Start-Process -FilePath 'pwsh' `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', 'PreInvocation', '-HostKind', 'antigravity') `
+        -WorkingDirectory $proj -NoNewWindow -PassThru -Wait `
+        -RedirectStandardInput $eventFile -RedirectStandardOutput $outFile -RedirectStandardError $errFile
+    Assert-True ($p.ExitCode -eq 0) 'dispatcher exits 0 for PreInvocation'
+    $captured = @(Get-Content -LiteralPath $argsPath -Raw | ConvertFrom-Json)
+    $pi = [array]::IndexOf($captured, '--last-user-message')
+    Assert-True ($pi -ge 0) 'PreInvocation: the dispatcher passed --last-user-message as a CLEAN arg'
+    Assert-True ($captured[$pi + 1] -eq $prompt) 'PreInvocation: the current human prompt survived clean-arg delivery'
 
     Write-Host "`n=== DispatcherTranscriptDelivery.Tests.ps1: all assertions passed ===" -ForegroundColor Green
 }

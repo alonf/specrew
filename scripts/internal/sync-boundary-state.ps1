@@ -529,6 +529,89 @@ function Write-FileAtomically {
     }
 }
 
+function Get-SpecrewPendingVerdictStopPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    return Join-Path (Resolve-ProjectPath -Path $ProjectRoot) '.specrew\runtime\pending-verdict-stop.md'
+}
+
+function Sync-SpecrewPendingVerdictStopArtifact {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$SessionState
+    )
+
+    $artifactPath = Get-SpecrewPendingVerdictStopPath -ProjectRoot $ProjectRoot
+    $pendingState = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot
+    $result = [pscustomobject]@{
+        HasPendingVerdict = $false
+        Path              = $artifactPath
+        Boundary          = $null
+        ApprovalPhrase    = $null
+        Marker            = $null
+    }
+
+    if ($null -eq $pendingState -or -not [bool]$pendingState.HasPendingVerdict) {
+        if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+            Remove-Item -LiteralPath $artifactPath -Force -ErrorAction Stop
+        }
+        return $result
+    }
+
+    $fromMarkerBoundary = [string]$pendingState.PendingFromMarkerBoundary
+    $toMarkerBoundary = [string]$pendingState.PendingToMarkerBoundary
+    if ([string]::IsNullOrWhiteSpace($fromMarkerBoundary) -or [string]::IsNullOrWhiteSpace($toMarkerBoundary)) {
+        if (Test-Path -LiteralPath $artifactPath -PathType Leaf) {
+            Remove-Item -LiteralPath $artifactPath -Force -ErrorAction Stop
+        }
+        return $result
+    }
+
+    $boundary = ('{0} -> {1}' -f $fromMarkerBoundary, $toMarkerBoundary)
+    $approvalPhrase = ('approved for {0}' -f $toMarkerBoundary)
+    $marker = ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
+    $lastAuthorized = if ([string]::IsNullOrWhiteSpace([string]$pendingState.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$pendingState.LastAuthorizedBoundary }
+    $featureRef = if ([string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) { '(none)' } else { [string]$SessionState.feature_ref }
+    $authCommit = if ([string]::IsNullOrWhiteSpace([string]$SessionState.auth_commit_hash)) { '(none)' } else { [string]$SessionState.auth_commit_hash }
+    $workingBoundary = if ([string]::IsNullOrWhiteSpace([string]$pendingState.WorkingBoundary)) { [string]$SessionState.boundary_type } else { [string]$pendingState.WorkingBoundary }
+    $recordedAt = if ([string]::IsNullOrWhiteSpace([string]$SessionState.recorded_at)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { [string]$SessionState.recorded_at }
+
+    $lines = New-Object System.Collections.Generic.List[string]
+    $lines.Add('# Specrew Pending Verdict Stop') | Out-Null
+    $lines.Add('') | Out-Null
+    $lines.Add('STOP NOW for human verdict. Render the full six-section boundary re-entry packet, using the exact values below. Do not infer the marker from the phase you are about to enter.') | Out-Null
+    $lines.Add('') | Out-Null
+    $lines.Add(('Boundary to ask for: {0}' -f $boundary)) | Out-Null
+    $lines.Add(('Human approval phrase: {0}' -f $approvalPhrase)) | Out-Null
+    $lines.Add('Approval option 1: {0}' -f $approvalPhrase) | Out-Null
+    $lines.Add('Concise approval aliases: 1, option 1') | Out-Null
+    $lines.Add('Marker last line exactly:') | Out-Null
+    $lines.Add($marker) | Out-Null
+    $lines.Add('') | Out-Null
+    $lines.Add(('Working boundary: {0}' -f $workingBoundary)) | Out-Null
+    $lines.Add(('Last authorized boundary: {0}' -f $lastAuthorized)) | Out-Null
+    $lines.Add(('Feature: {0}' -f $featureRef)) | Out-Null
+    $lines.Add(('Auth commit hash: {0}' -f $authCommit)) | Out-Null
+    $lines.Add(('Multi-boundary gap: {0}' -f ([bool]$pendingState.IsMultiBoundaryGap).ToString().ToLowerInvariant())) | Out-Null
+    $lines.Add(('Recorded at: {0}' -f $recordedAt)) | Out-Null
+    $lines.Add('') | Out-Null
+    $lines.Add('After rendering the packet, stop. Do not record authorization yourself; the Stop/UserPromptSubmit verdict capture writes authorization only after the human replies.') | Out-Null
+
+    Write-FileAtomically -Path $artifactPath -Content (($lines -join [Environment]::NewLine) + [Environment]::NewLine)
+
+    $result.HasPendingVerdict = $true
+    $result.Boundary = $boundary
+    $result.ApprovalPhrase = $approvalPhrase
+    $result.Marker = $marker
+    return $result
+}
+
 function Get-SpecrewMarkdownMetadataValue {
     param(
         [Parameter(Mandatory = $true)]
@@ -1511,6 +1594,20 @@ function Invoke-SpecrewBoundaryStateSync {
     # (the human re-confirms once) over inventing, inferring, or carrying forward an unproven one.
 
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
+    $pendingVerdictStop = $null
+    try {
+        $pendingVerdictStop = Sync-SpecrewPendingVerdictStopArtifact -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
+    }
+    catch {
+        Write-Warning ("Boundary sync '{0}' could not write the pending-verdict stop artifact: {1}" -f $BoundaryType, $_.Exception.Message)
+        $pendingVerdictStop = [pscustomobject]@{
+            HasPendingVerdict = $false
+            Path              = Get-SpecrewPendingVerdictStopPath -ProjectRoot $paths.ProjectRoot
+            Boundary          = $null
+            ApprovalPhrase    = $null
+            Marker            = $null
+        }
+    }
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
 
     Add-SpecrewBoundarySyncLedgerEntry -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
@@ -1631,5 +1728,10 @@ function Invoke-SpecrewBoundaryStateSync {
         identity_path    = $paths.IdentityPath
         decisions_path   = $paths.DecisionsPath
         auth_commit_hash = $sessionState.auth_commit_hash
+        pending_verdict_stop_path = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.Path } else { $null }
+        pending_verdict_has_pending = if ($null -ne $pendingVerdictStop) { [bool]$pendingVerdictStop.HasPendingVerdict } else { $false }
+        pending_verdict_boundary = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.Boundary } else { $null }
+        pending_verdict_approval_phrase = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.ApprovalPhrase } else { $null }
+        pending_verdict_marker = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.Marker } else { $null }
     }
 }

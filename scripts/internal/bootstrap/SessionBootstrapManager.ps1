@@ -177,9 +177,18 @@ function Write-SpecrewLaunchContractArtifact {
         [Parameter(Mandatory)][string] $ProjectRoot,
         [Parameter(Mandatory)][string] $Mode,
         [AllowNull()][pscustomobject] $SessionState,
-        [ValidatePattern('^[A-Za-z0-9_.-]+$')][string] $HostKind = 'claude',
+        [string] $HostKind = '',
         [AllowNull()][string] $SpecrewVersion = $null
     )
+
+    # Feature 185: resolve the real host. Callers normally pass the per-host-baked $HostKind; when one omits
+    # it, detect from the live environment (CLAUDECODE / ANTIGRAVITY_SESSION_ID / CURSOR_AGENT / CODEX_SESSION_ID
+    # / COPILOT_CLI) BEFORE the 'claude' last resort. The prior bare `= 'claude'` default is what mislabeled
+    # every direct non-claude launch. Mirrors the explicit -> env -> sentinel precedence Update-SpecrewRollingHandover uses.
+    if ([string]::IsNullOrWhiteSpace($HostKind)) {
+        try { $HostKind = [string](Get-SpecrewRuntimeHostFromEnv) } catch { $HostKind = $null }
+        if ([string]::IsNullOrWhiteSpace($HostKind)) { $HostKind = 'claude' }
+    }
 
     # The hook's anchor (Get-SpecrewSessionAnchor) and the generator's resume block use DIFFERENT field
     # names: the anchor carries `boundary`/`iteration` (and no `task_id`), while Get-StartPrompt's resume

@@ -72,6 +72,10 @@ foreach ($row in $providers) {
 $refocusRow = $providers | Where-Object { [string]$_.id -eq 'refocus' } | Select-Object -First 1
 Assert-True ($null -ne $refocusRow) "registry row #1 'refocus' exists"
 Assert-True ([string]$refocusRow.kind -eq 'inject') 'refocus provider is kind=inject'
+$handoverRow = $providers | Where-Object { [string]$_.id -eq 'handover' } | Select-Object -First 1
+Assert-True ($null -ne $handoverRow) "registry row 'handover' exists"
+Assert-True (@($handoverRow.events) -contains 'UserPromptSubmit') 'handover provider handles UserPromptSubmit for immediate verdict capture'
+Assert-True (@($handoverRow.events) -contains 'PreInvocation') 'handover provider handles PreInvocation for Antigravity immediate verdict capture'
 # F-165 dormant-seat invariant: NO gate provider ships in F-171, and therefore no
 # provider may claim PreToolUse (the registration stays dormant until the first
 # gate row exists).

@@ -47,6 +47,11 @@
             SuppressedRefocusEvents = @()
             OutputShape             = 'additional_context'
             DecisionOnlyEvents      = @()
+            # FR-004 (185) stop-block lever (verified, research/stop-block-capability-matrix.md): Cursor's 'stop'
+            # hook is observational - NO same-turn hard block. Strongest lever is followup_message, which auto-submits
+            # a NEW user turn (the human may glimpse the packet-less stop first), capped by loop_limit (default 5).
+            # DECLARED degraded mode: best-effort re-triggered turn, NOT a hard block.
+            StopBlockShape          = 'followup-message'
             BootstrapDeliveryMode   = 'inline'
         }
         Registrations  = @(
