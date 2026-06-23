@@ -61,8 +61,14 @@ On a representative 2000-line transcript, the handover 3-consumer parse:
 ## Proposal 145 review
 
 Two adversarial read-only reviewers (T070 parse-once correctness/leak/mtime; T073 gate
-bypass/fail-open/pipeline-guard). Findings + dispositions recorded in
-[review.md](review.md).
+bypass/fail-open/pipeline-guard). Outcome: the security-critical surface was probed and found
+CLEAN (no alias bypass, fail-closed, pipeline-guard holds, override unreachable), but Reviewer B
+caught **one MAJOR** — the opt-in flag parser silently dropped standard YAML idioms (inline
+comment / single quotes), a fail-open-to-operator-intent regression against the repo's sibling
+parser. FIXED (sibling regex + 4 parse-edge tests; re-verified 16/0). T070's 2 minors (a
+diagnostic-only `'empty'` Reason delta + a contrived mtime collision) fixed as honesty/doc
+corrections. Full findings + dispositions: [review.md](review.md). Post-fix: all blocker/major
+resolved -> review-signoff ready.
 
 ## Deferred / next
 

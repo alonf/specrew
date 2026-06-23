@@ -41,8 +41,12 @@ function Get-ContinuousCoReviewGateEnforcementEnabled {
         return $false
     }
 
+    # Value grammar matches the sibling specrew_version reader in sync-boundary-state.ps1: strip an
+    # optional single OR double quote, stop the value at a '#', and tolerate a trailing inline comment.
+    # (The earlier `"?...[^"#]...` form silently dropped `true # comment` and `'true'` -> a governance
+    # gate the operator believed was ON would stay OFF. 145 F1.)
     foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
-        if ($line -match '^\s*co_review_gate_enforcement:\s*"?(?<value>[^"#]+?)"?\s*$') {
+        if ($line -match '^\s*co_review_gate_enforcement:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
             $value = $Matches['value'].Trim().ToLowerInvariant()
             return ($value -eq 'true' -or $value -eq 'on' -or $value -eq 'enabled')
         }

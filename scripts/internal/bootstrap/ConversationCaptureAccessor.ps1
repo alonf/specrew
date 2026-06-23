@@ -311,7 +311,9 @@ function Get-SpecrewCapturedBoundaryVerdict {
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
     # F-197 iter-004 (T070, #2885): one shared memoized parse (path,mtime,MaxLines); finalize with -Raw here.
     # The shared extract holds only user/assistant message turns; a tail with no message turns falls through to
-    # the existing $turns.Count==0 -> 'no-turns' guard below (same as the pre-refactor per-line parse path).
+    # the existing $turns.Count==0 -> 'no-turns' guard below. (Diagnostic-only delta vs the pre-refactor path: a
+    # ZERO-BYTE file now reports Reason='no-turns' where the old per-line path reported 'empty'; both give
+    # Found=$false and 'empty' is consumed by no branch, so capture/authorization behavior is unchanged. 145 T070.)
     $shared = $null
     try { $shared = @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
 
@@ -585,6 +587,11 @@ function Get-SpecrewTranscriptParsedTurns {
     # or another consumer. The {role; parts} entries are read-only on the finalize path (Format-... only reads),
     # so a shallow array copy is sufficient; no deep clone needed. Single entry keyed by mtime => unbounded growth
     # is impossible and a rewritten transcript invalidates correctly. Fail-open: an unreadable file -> empty array.
+    # mtime-resolution assumption (145 T070): the key trusts the filesystem last-write tick to advance on a real
+    # rewrite. A stale hit needs DIFFERENT content at the SAME path with an IDENTICAL tick - which the hot path
+    # cannot produce: the three intended hits are one in-process burst (ms apart, identical content), and two
+    # distinct Stop crossings are a full agent turn apart (seconds), so the tick always advances between contents.
+    # A same-tick rewrite only occurs if a writer deliberately pins the prior timestamp - not a real Stop pattern.
     [OutputType([pscustomobject[]])]
     param([Parameter()][AllowNull()][string]$TranscriptPath, [int]$MaxLines = 500)
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return @() }

@@ -83,9 +83,34 @@ Describe 'Proposal 197 T073/T074 opt-in co-review signoff-gate wiring (FR-025/SC
             Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should Be $true
         }
 
+        # 145 F1 (MAJOR) regression coverage: standard YAML idioms must enable, not silently stay OFF.
+        It 'is TRUE for an enabling value with a trailing inline comment (145 F1)' {
+            $f = New-WiringFeatureRepo 'enabled-comment'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: true  # turn the gate on'
+            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should Be $true
+        }
+
+        It 'is TRUE for a SINGLE-quoted enabling value (145 F1)' {
+            $f = New-WiringFeatureRepo 'enabled-singlequote'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine "co_review_gate_enforcement: 'true'"
+            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should Be $true
+        }
+
+        It 'is TRUE for a quoted enabling value WITH an inline comment (145 F1)' {
+            $f = New-WiringFeatureRepo 'enabled-quoted-comment'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: "true" # on'
+            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should Be $true
+        }
+
         It 'is FALSE for co_review_gate_enforcement: false' {
             $f = New-WiringFeatureRepo 'disabled-false'
             Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: "false"'
+            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should Be $false
+        }
+
+        It 'is FALSE for false WITH an inline comment (the comment must not flip it on) (145 F1)' {
+            $f = New-WiringFeatureRepo 'disabled-false-comment'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: false  # still off'
             Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should Be $false
         }
 
