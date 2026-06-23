@@ -73,11 +73,21 @@ iteration's cap. Candidate split: **004a** = #2885 fix (A) + reviewer-execution 
 (both unblock + de-risk, independently shippable); **004b** = the async navigator (B) + gate
 wiring (C) (the always-on auto-fire). To be set at plan time per the maintainer's scope call.
 
-## Key decisions (pending maintainer input)
+## Decision (maintainer, 2026-06-23)
 
-1. **#2885 scope**: do the full parse-once-and-share (A, ~11s) + conformance memo (~4s) +
-   the new unit tests — yes/no.
-2. **Async surfacing**: fire-at-checkpoint, surface-verdict-at-next-stop (+ STOP-BLOCK on
-   blocking) AND gate-enforces-at-signoff — confirm the shape.
-3. **Reviewer-execution**: live repo + source-scoped mutation guard (recommended) vs checkout.
-4. **Iteration scope**: one big iteration vs the 004a/004b split.
+F-183/184/185 are all merged and done; no concurrent crews to coordinate with. Approved
+scope split:
+
+- **Iteration 004 = A (#2885 latency fix) + C (gate enforcement wiring, opt-in flag).**
+  Delivers a fast Stop hook + MANDATORY co-review at signoff (manually run until the auto-fire
+  lands). Lower risk, ships value. C works without B.
+- **Iteration 005 = B (the async Stop-hook navigator).** Deferred to its own focused slice
+  because the async reviewer-process tracking/control across all hosts is the highest-risk
+  piece (the orphan/timeout concern). Approved DESIGN for when it is built:
+  **self-limiting watchdog reviewer (never orphans by construction) + a
+  `.specrew/review/pending/<run-id>.json` registry + a reaper (next-stop + SessionStart sweep)
+  that collects results, surfaces verdicts via 185's `STOP-BLOCK`, and kills zombies** — all
+  host-agnostic via 185's host-neutral dispatcher.
+- **D (reviewer-runs-in-repo) is DROPPED.** The navigator reviews the diff against the design
+  contract statically; it does not need to run tests, so the isolated-bundle model is fine.
+  Revisit only if a test-running review mode is later wanted.

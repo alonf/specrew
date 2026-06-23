@@ -2,11 +2,11 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 004
-**Current Phase**: planning (design-analysis)
+**Current Phase**: tasks
 **Iteration Status**: planning
-**Last Completed Task**: (none — just opened on the post-185-merge base)
-**Tasks Remaining**: (TBD — design-analysis in progress)
-**In Progress**: design-analysis grounding (185 hook seam + #2885 latency internals)
+**Last Completed Task**: design-analysis approved (maintainer, 2026-06-23): 004 = A (#2885) + C (gate wiring); B -> Iteration 005; D dropped
+**Tasks Remaining**: T070, T071, T072, T073, T074, T075
+**In Progress**: awaiting before-implement approval
 **Updated**: 2026-06-23
 
 ## Scope (Phase B — Always-On, now unblocked by the F-185 merge)
