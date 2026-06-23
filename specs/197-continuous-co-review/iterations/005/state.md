@@ -2,11 +2,11 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 005
-**Current Phase**: planning (design-analysis)
+**Current Phase**: tasks
 **Iteration Status**: planning
-**Last Completed Task**: (none — opened on the Iteration 004 close)
-**Tasks Remaining**: (TBD — design-analysis pending maintainer approval)
-**In Progress**: design-analysis (the async Stop-hook navigator)
+**Last Completed Task**: design-analysis (async navigator + general isolated-task launcher; maintainer-shaped 2026-06-23)
+**Tasks Remaining**: T076, T077, T078, T079, T080, T081
+**In Progress**: awaiting before-implement approval
 **Updated**: 2026-06-23
 
 ## Scope (Phase B part 2 — the always-on async navigator)
