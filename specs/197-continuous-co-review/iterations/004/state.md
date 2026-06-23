@@ -2,12 +2,16 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 004
-**Current Phase**: tasks
-**Iteration Status**: planning
-**Last Completed Task**: design-analysis approved (maintainer, 2026-06-23): 004 = A (#2885) + C (gate wiring); B -> Iteration 005; D dropped
-**Tasks Remaining**: T070, T071, T072, T073, T074, T075
-**In Progress**: awaiting before-implement approval
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: T070 + T072 (#2885 parse-once-and-share; verified clean)
+**Tasks Remaining**: T071, T073, T074, T075
+**In Progress**: T071 (conformance-provider memo — assessing whether T070's shared memo already covers it)
 **Updated**: 2026-06-23
+
+## Execution
+
+- T070+T072 DONE (#2885): the three Stop-hook handover consumers (verdict/packet/conversation-tail) now share ONE memoized transcript parse per stop (`Get-SpecrewTranscriptParsedTurns`, single-entry keyed by path+mtime+maxlines, returns a fresh array so the verdict reader's synthetic-user append can't leak). Independently verified: verdict-capture-blocks 22/22, conformance-detection 39/39, ConversationCapture + ConversationOnlyCapture all pass, transcript-parse-once 28/28 (byte-identical goldens + leak-guard + non-vacuous parse-once 3->1). No F-184 surfaces.
 
 ## Scope (Phase B — Always-On, now unblocked by the F-185 merge)
 
