@@ -4,10 +4,26 @@
 **Iteration**: 005
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T077 (isolated-task launcher — verified cross-platform)
-**Tasks Remaining**: T078, T079, T080, T081
-**In Progress**: T078 (the co-review navigator provider + registration)
+**Last Completed Task**: T078 + T079 (navigator provider + reaper) + T080 (TrunkName carry)
+**Tasks Remaining**: T081 (tests + closeout + 145 review + the flagged gaps) + the dogfood
+**In Progress**: dogfood prep (wire a real reviewer command; run the mechanism on iter-005's code)
 **Updated**: 2026-06-24
+
+## Open gaps flagged by the T078/T079 implementer (tracked for T081/closeout)
+
+1. **FileList (closeout blocker):** `tests/integration/filelist-completeness.tests.ps1` is RED — 37
+   deployable files missing from `Specrew.psd1` (all of `continuous-co-review/**` + `agent-tasks/**`;
+   the already-shipped `specrew review` depends on the unshipped `_load.ps1`). Fix before ship.
+2. **Stop-block collision (dispatcher/F-184):** `$stopBlockReason` is last-writer-wins; navigator (50)
+   after conformance (40) overwrites a co-occurring conformance block. Needs a dispatcher merge/priority
+   policy. Defer to a planner/proposal decision.
+3. **`--event-json` codex gap (dispatcher/F-184):** the navigator falls to the dispatcher else-branch and
+   gets `--event-json`, which on codex Stop blows the Windows cmdline limit -> the provider silently never
+   launches. Fix = add `co-review-navigator` to the clean-args allow-list (`specrew-hook-dispatcher.ps1`
+   ~L932). Blocks the codex host-neutral claim; NOT the Claude dogfood.
+4. **PASS->runs/ promotion DEFERRED (by design this cut):** the reap deletes the pending run dir; auto-fired
+   PASS verdicts do NOT yet feed the Iteration-004 signoff gate. Navigator = pair-programming feedback; the
+   deterministic gate floor remains the authority. Connecting them (promote PASS to runs/) is a follow-on.
 
 ## Execution
 
