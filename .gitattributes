@@ -15,3 +15,7 @@ bin/* text eol=lf
 install.sh text eol=lf
 tests/integration/*.sh text eol=lf
 tests/fixtures/install-sh/** text eol=lf
+
+# feature 197: byte-identical transcript-parse goldens MUST stay LF (the -Raw packet preserves \n);
+# a CRLF flip on a fresh checkout would silently break the #2885 parse-once regression guard (T072).
+tests/continuous-co-review/unit/fixtures/**/*.golden.txt text eol=lf
