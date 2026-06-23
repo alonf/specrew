@@ -2,12 +2,22 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 005
-**Current Phase**: tasks
-**Iteration Status**: planning
-**Last Completed Task**: design-analysis (async navigator + general isolated-task launcher; maintainer-shaped 2026-06-23)
-**Tasks Remaining**: T076, T077, T078, T079, T080, T081
-**In Progress**: awaiting before-implement approval
+**Current Phase**: implement
+**Iteration Status**: executing
+**Last Completed Task**: T076 spike (detached self-limiting spawn — PROVEN)
+**Tasks Remaining**: T077, T078, T079, T080, T081
+**In Progress**: T077 (the general isolated-task launcher)
 **Updated**: 2026-06-23
+
+## Execution
+
+- T076 SPIKE PASSED (Windows): `Start-Process -PassThru` fire + a launcher with its own
+  timeout loop -> provider exits 1.4s, launcher runs DETACHED to 10.7s, SELF-LIMITS (kills the
+  child on timeout), NO orphan (child_still_alive=False), cleans up. VERDICT detached+fast=True.
+  **Implementation notes (load-bearing):** (1) `Start-Process -Wait` waits for the whole process
+  TREE, so the provider MUST fire-and-return (no `-Wait`); a test harness must observe PIDs
+  independently, not via `-Wait`. (2) The launcher owns the timeout/kill loop in plain PowerShell
+  (cross-platform), not OS process-group flags. Spike scripts: `.scratch/spike/` (throwaway).
 
 ## Scope (Phase B part 2 — the always-on async navigator)
 
