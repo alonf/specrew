@@ -40,7 +40,7 @@ function Get-HostFlagTranslation {
     #>
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
+        [ValidateScript({ Test-SpecrewRegisteredHostKind -Kind $_ })]
         [string]$HostKind,
 
         [Parameter(Mandatory = $true)]

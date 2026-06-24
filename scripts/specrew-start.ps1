@@ -2725,12 +2725,12 @@ function Get-SpecrewHostLaunchInvocation {
 
     .DESCRIPTION
     Delegates to hosts/<kind>/handlers.ps1 New-<Kind>LaunchInvocation via Invoke-HostHandler.
-    Adding a new host = creating hosts/<kind>/ — no edits to this function. The ValidateSet
-    accepts every registered host kind; the legacy 3-host limitation is removed.
+    Adding a new host = creating hosts/<kind>/ — no edits to this function. The
+    registry-backed validator accepts every registered host kind.
     #>
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
+        [ValidateScript({ Test-SpecrewRegisteredHostKind -Kind $_ })]
         [string]$HostKind,
 
         [Parameter(Mandatory = $true)]

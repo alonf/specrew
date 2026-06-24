@@ -95,6 +95,30 @@ function Get-RegisteredHostKinds {
     return @($cache.Keys)
 }
 
+function Test-SpecrewRegisteredHostKind {
+    <#
+    .SYNOPSIS
+    Validates a host-kind input against the live package registry.
+    .DESCRIPTION
+    Intended for ValidateScript attributes at public input boundaries. The
+    comparison is case-insensitive, while the error names the current
+    registered catalog so callers never need to maintain a second host enum.
+    #>
+    param(
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$Kind
+    )
+
+    $registered = @(Get-RegisteredHostKinds)
+    if (-not [string]::IsNullOrWhiteSpace($Kind) -and $registered -icontains $Kind.Trim()) {
+        return $true
+    }
+
+    $displayKind = if ([string]::IsNullOrWhiteSpace($Kind)) { '(empty)' } else { $Kind }
+    throw "Unknown host kind '$displayKind'. Registered hosts: $($registered -join ', ')."
+}
+
 function Get-HostManifest {
     <#
     .SYNOPSIS

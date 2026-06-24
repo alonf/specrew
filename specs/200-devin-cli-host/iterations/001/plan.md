@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 14/20 story_points
 **Started**: 2026-06-24
 
@@ -23,7 +23,7 @@
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | ---: | --- |
 | T001 | Empirical Devin Stop/export/normalization spike | FR-011, FR-012, SC-008 | US4 | 3 | Planner, Reviewer | specs/200-devin-cli-host/iterations/001/research/**; .scratch/** | done | codex | 3 | pass |
-| T002 | Registry-driven validation at three production boundaries | FR-001, SC-002 | US2 | 2 | Implementer | hosts/_registry.ps1; scripts/specrew-start.ps1; scripts/internal/host-flag-translation.ps1; scripts/internal/coordinator-prompt-surgery.ps1; tests/integration/** | planned | codex |  |  |
+| T002 | Registry-driven validation at three production boundaries | FR-001, SC-002 | US2 | 2 | Implementer | hosts/_registry.ps1; scripts/specrew-start.ps1; scripts/internal/host-flag-translation.ps1; scripts/internal/coordinator-prompt-surgery.ps1; tests/integration/** | done | codex | 2 | pass |
 | T003 | Deterministic host-package FileList generator and parity gate | FR-002, SC-004 | US2 | 3 | Implementer | hosts/_contract.md; hosts/_registry.ps1; scripts/internal/**; Specrew.psd1; tests/integration/**; tests/unit/** | planned | codex |  |  |
 | T004 | Host-addition purity assertion and three-entry allow-list shrink | FR-003, FR-004, SC-002, SC-003 | US2 | 3 | Implementer, Reviewer | tests/integration/host-coupling-firewall.tests.ps1; tests/integration/fixtures/** | planned | codex |  |  |
 | T005 | Slice A CI and FileList-faithful prepublish wiring | FR-019, SC-010 | US2, US5 | 2 | Implementer, Reviewer | .github/workflows/**; scripts/internal/test-publish-harness.ps1; tests/integration/** | planned | codex |  |  |

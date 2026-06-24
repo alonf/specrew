@@ -66,7 +66,7 @@ function Get-SpecrewHostOrientationBlock {
     #>
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
+        [ValidateScript({ Test-SpecrewRegisteredHostKind -Kind $_ })]
         [string]$HostKind,
 
         [string]$CrewRuntimeStatus = 'bootstrap_only',
@@ -177,7 +177,7 @@ and drafting the spec">.
 function Get-SpecrewHostInteractionGuidanceBlock {
     param(
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
+        [ValidateScript({ Test-SpecrewRegisteredHostKind -Kind $_ })]
         [string]$HostKind
     )
 
@@ -294,7 +294,7 @@ function Invoke-SpecrewCoordinatorPromptSurgery {
         [string]$Prompt,
 
         [Parameter(Mandatory = $true)]
-        [ValidateSet('copilot', 'claude', 'codex', 'antigravity', 'cursor')]
+        [ValidateScript({ Test-SpecrewRegisteredHostKind -Kind $_ })]
         [string]$HostKind,
 
         [string]$CrewRuntimeStatus = 'bootstrap_only',

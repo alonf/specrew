@@ -149,6 +149,26 @@ catch {
 }
 Write-Pass "Get-HostManifest -Kind <unknown> throws with clear error"
 
+# Test 8b: registry-backed public input validation is case-insensitive and
+# returns actionable live-catalog guidance without a second host enum.
+if (-not (Test-SpecrewRegisteredHostKind -Kind 'CLAUDE')) {
+    Write-Fail 'Test-SpecrewRegisteredHostKind rejected differently-cased registered host CLAUDE'
+}
+$validationMessage = ''
+try {
+    Test-SpecrewRegisteredHostKind -Kind 'nonexistenthost' | Out-Null
+    Write-Fail 'Test-SpecrewRegisteredHostKind should throw on an unknown host'
+}
+catch {
+    $validationMessage = $_.Exception.Message
+}
+foreach ($expectedFragment in @('Unknown host kind', 'Registered hosts:', 'claude', 'cursor', 'codex', 'copilot', 'antigravity')) {
+    if (-not $validationMessage.Contains($expectedFragment)) {
+        Write-Fail "Registry validation guidance is missing '$expectedFragment': $validationMessage"
+    }
+}
+Write-Pass 'Registry-backed host validation accepts case-insensitive input and reports the live catalog'
+
 # Test 9: Resolve-HostHandler returns the right per-host function name
 $expectedFunctionNames = @{
     'copilot|NewLaunchInvocation'     = 'New-CopilotLaunchInvocation'
@@ -190,6 +210,22 @@ if (-not $match.Success) {
 }
 # Dot-source the extracted function into current scope
 Invoke-Expression $match.Value
+
+$upperLaunch = Get-SpecrewHostLaunchInvocation -HostKind 'CODEX' -ResolvedProjectPath 'C:\proj' -BootstrapPrompt 'BOOT' -Agent 'Squad'
+if ($upperLaunch.HostKind -ne 'codex') {
+    Write-Fail "specrew-start boundary did not accept differently-cased CODEX input (got '$($upperLaunch.HostKind)')"
+}
+$unknownLaunchMessage = ''
+try {
+    Get-SpecrewHostLaunchInvocation -HostKind 'nonexistenthost' -ResolvedProjectPath 'C:\proj' -BootstrapPrompt 'BOOT' -Agent 'Squad' | Out-Null
+}
+catch {
+    $unknownLaunchMessage = $_.Exception.Message
+}
+if ($unknownLaunchMessage -notmatch 'Registered hosts:') {
+    Write-Fail "specrew-start unknown-host guidance did not name the live registry: $unknownLaunchMessage"
+}
+Write-Pass 'specrew-start host boundary uses case-insensitive registry validation with actionable rejection'
 
 $flagPermutations = @(
     @{ AllowAll = $false; UseAutopilot = $false; UseRemote = $false },
@@ -238,6 +274,56 @@ foreach ($kind in @('copilot', 'claude', 'codex', 'antigravity', 'cursor')) {
     }
 }
 Write-Pass "Per-host flag-translation matches Get-HostFlagTranslation across 15 cells (5 hosts × 3 flags)"
+
+$upperFlag = Get-HostFlagTranslation -HostKind 'CURSOR' -SpecrewFlag '--autopilot'
+if ($upperFlag.Args.Count -ne 0) {
+    Write-Fail 'host-flag boundary accepted CURSOR but returned unexpected autopilot arguments'
+}
+$unknownFlagMessage = ''
+try {
+    Get-HostFlagTranslation -HostKind 'nonexistenthost' -SpecrewFlag '--autopilot' | Out-Null
+}
+catch {
+    $unknownFlagMessage = $_.Exception.Message
+}
+if ($unknownFlagMessage -notmatch 'Registered hosts:') {
+    Write-Fail "host-flag unknown-host guidance did not name the live registry: $unknownFlagMessage"
+}
+Write-Pass 'host-flag boundary uses case-insensitive registry validation with actionable rejection'
+
+# Test 12b: coordinator-prompt public inputs use the same live registry.
+. (Join-Path $repoRoot 'scripts\internal\coordinator-prompt-surgery.ps1')
+$upperOrientation = Get-SpecrewHostOrientationBlock -HostKind 'COPILOT'
+if ($upperOrientation -notmatch 'Host: copilot') {
+    Write-Fail 'coordinator-prompt boundary did not accept differently-cased COPILOT input'
+}
+$unknownCoordinatorMessage = ''
+try {
+    Get-SpecrewHostInteractionGuidanceBlock -HostKind 'nonexistenthost' | Out-Null
+}
+catch {
+    $unknownCoordinatorMessage = $_.Exception.Message
+}
+if ($unknownCoordinatorMessage -notmatch 'Registered hosts:') {
+    Write-Fail "coordinator-prompt unknown-host guidance did not name the live registry: $unknownCoordinatorMessage"
+}
+Write-Pass 'coordinator-prompt boundaries use case-insensitive registry validation with actionable rejection'
+
+$validatorSources = @(
+    'scripts/specrew-start.ps1',
+    'scripts/internal/host-flag-translation.ps1',
+    'scripts/internal/coordinator-prompt-surgery.ps1'
+)
+foreach ($relativePath in $validatorSources) {
+    $sourceText = Get-Content -LiteralPath (Join-Path $repoRoot $relativePath) -Raw
+    if ($sourceText -match "ValidateSet\s*\(\s*'copilot'\s*,\s*'claude'\s*,\s*'codex'") {
+        Write-Fail "Hardcoded host ValidateSet remains in $relativePath"
+    }
+    if ($sourceText -notmatch 'ValidateScript\s*\(\s*\{\s*Test-SpecrewRegisteredHostKind') {
+        Write-Fail "Registry-backed host ValidateScript missing from $relativePath"
+    }
+}
+Write-Pass 'All three production host-validation files use the shared registry validator'
 
 # Test 13: Unknown contract function throws
 try {
