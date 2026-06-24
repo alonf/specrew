@@ -69,6 +69,39 @@
 | Expected rework | 1 | Bounded repair reserve. |
 | **Total** | **14** | Within the 20-SP cap. |
 
+## Required Quality Gates
+
+| Required Quality Gate | Category | Evidence Source |
+| --- | --- | --- |
+| registry-input-validation | mechanical | Unknown/differently-cased host tests at all three production boundaries. |
+| host-filelist-generation | mechanical | Generate/check parity, missing-file failure, deterministic Windows/Unix path tests. |
+| host-purity-firewall | mechanical | Clean-tree pass, planted Devin/Windsurf literal failure, and committed allow-list count. |
+| test-integrity | manual-evidence | Negative tests exercise the same scanner/generator/validator paths used in production. |
+| prepublish-package | tooling | FileList-faithful publish harness includes every generated host package file. |
+
+## Phase 2 Hardening and Specialist Review Planning
+
+**Phase 2 Slice Scope**: Iteration 001 registry validation, generated
+host-package FileList, purity firewall, and CI/prepublish readiness.
+
+**Hardening Gate Artifact**: `specs/200-devin-cli-host/iterations/001/quality/hardening-gate.md`
+
+**Known-Traps Corpus Location**: `.specrew/quality/known-traps.md`
+
+**Trap Reapplication Artifact**: `specs/200-devin-cli-host/iterations/001/quality/trap-reapplication.md`
+
+**Quality Evidence Artifact**: `specs/200-devin-cli-host/iterations/001/quality/quality-evidence.md`
+
+**Required Lenses**: `quality/lenses/security-baseline.md`,
+`quality/lenses/robustness-baseline.md`, and
+`quality/lenses/test-integrity.md`.
+
+- Iteration 001 implementation remains blocked until the tasks boundary and
+  before-implement verdicts are separately approved.
+- The later hook-adapter task must repeat two acceptance conditions at its own
+  Iteration 002 hardening gate: a planted host-specific literal on the seam
+  fails, and packages with no adapter preserve exact pre-feature behavior.
+
 ## Traceability Summary
 
 - Requirement scope: FR-001, FR-002, FR-003, FR-004, FR-011, FR-012, FR-019.

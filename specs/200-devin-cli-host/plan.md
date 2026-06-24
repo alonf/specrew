@@ -208,7 +208,7 @@ without a new human split/defer decision.
 | SC-002–SC-006, SC-008–SC-010 | Deterministic automated gates and fixtures. |
 | SC-011–SC-012 | Documentation review and final production-diff classification. |
 
-## Quality Planning
+## Phase 1 Quality Planning
 
 **Quality profile**: bounded custom composition
 `powershell-psd1-yaml-json-github-actions`.
@@ -232,6 +232,54 @@ real-host evidence.
 Retry is limited to one explicitly recorded transient real-host canary retry.
 Deterministic generation, migration, and merge operations do not retry; they
 fail safely and preserve source/user files.
+
+## Phase 2 Hardening and Specialist Review Planning
+
+**Phase 2 Slice Scope**: Iteration 001 registry validation, generated package
+membership, purity enforcement, and CI/prepublish wiring; later iteration
+controls remain explicit but do not authorize their implementation.
+
+**Hardening Gate Artifact**:
+`specs/200-devin-cli-host/iterations/001/quality/hardening-gate.md`
+
+**Known-Traps Corpus Location**: `.specrew/quality/known-traps.md`
+
+**Trap Reapplication Artifact**:
+`specs/200-devin-cli-host/iterations/001/quality/trap-reapplication.md`
+
+### Hardening Focus Areas
+
+| Focus Area | Why It Matters | Planned Evidence | Status |
+| --- | --- | --- | --- |
+| Security surface analysis | Registry inputs, manifests, generated paths, hook configuration, and transcript files cross trust/ownership boundaries. | Hardening gate plus focused malformed-input and path-containment tests. | required |
+| Error handling and failure semantics | Unknown hosts, invalid packages, unreadable user files, failed normalization, and unavailable hook runners must fail safely and visibly. | Hardening gate plus negative-path tests and bounded reason codes. | required |
+| Retry and idempotency | Generation/migration/merge must be deterministic; real-host canaries permit only one recorded transient retry. | Generate-check parity, second-run no-diff, hook redeploy tests, evidence record. | required |
+| Test integrity | The folder-only claim needs planted violations, no-adapter regression proof, FileList-faithful packaging, and real-host evidence. | Firewall negative tests, compatibility suite, prepublish harness, prerelease evidence. | required |
+
+### Lens Activation Plan
+
+| Lens | Activation | Rationale | Planned Evidence |
+| --- | --- | --- | --- |
+| `security-baseline@v1.0.0` | required | User files, executable hooks, and transcript data require explicit ownership and redaction controls. | `iterations/001/quality/lenses/security-baseline.md` |
+| `robustness-baseline@v1.0.0` | required | Registry, generation, adapters, migration, and degraded host behavior require fail-safe semantics. | `iterations/001/quality/lenses/robustness-baseline.md` |
+| `test-integrity@v1.0.0` | required | Architectural proof depends on tests that exercise failure paths rather than inspect file presence only. | `iterations/001/quality/lenses/test-integrity.md` |
+
+### Routing Policy
+
+Required hardening lenses request the strongest available review class. Any
+downgrade requires explicit human approval and a recorded rationale. Effective
+execution class is recorded when review runs.
+
+### Explicit Later Deferrals
+
+- Runtime proof remains pending until the owning implementation/review
+  iteration; planning-time controls do not claim execution.
+- Known-traps corpus additions require separate review and are not created
+  automatically.
+- Quality-drift and reference-implementation comparison are out of scope.
+- The hook-adapter seam cannot implement until its Iteration 002 hardening gate
+  repeats the host-neutrality, planted-literal, and no-adapter compatibility
+  conditions defined in the task backlog.
 
 ## Constitution Check
 

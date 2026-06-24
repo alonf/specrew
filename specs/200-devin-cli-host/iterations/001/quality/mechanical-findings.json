@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/200-devin-cli-host/spec.md",
+  "iterationRef": "specs/200-devin-cli-host/iterations/001",
+  "generatedAt": "2026-06-24T08:12:13Z",
+  "generator": {
+    "name": "specrew-iteration-scaffold",
+    "version": "1.0.0"
+  },
+  "findings": []
+}
