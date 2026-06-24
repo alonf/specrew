@@ -21,17 +21,18 @@ if (-not (Test-Path -LiteralPath $detectHostsScript)) {
 . $registryScript
 . $detectHostsScript
 
-# Test 1: registry discovers 5 host packages (cursor added F-050)
+# Test 1: registry discovers 6 host packages (cursor added F-050; devin added F-200 T007).
+# devin is experimental and declares NO MenuPriority by design, so it sorts last (registry default 999).
 Reset-HostManifestCache
 $registered = @(Get-RegisteredHostKinds)
-if ($registered.Count -ne 5) {
-    Write-Fail "Expected 5 registered hosts; got $($registered.Count): $($registered -join ',')"
+if ($registered.Count -ne 6) {
+    Write-Fail "Expected 6 registered hosts; got $($registered.Count): $($registered -join ',')"
 }
-$expectedKinds = @('claude', 'cursor', 'codex', 'copilot', 'antigravity')   # priority-sorted (MenuPriority 1, 1.5, 2, 3, 4)
+$expectedKinds = @('claude', 'cursor', 'codex', 'copilot', 'antigravity', 'devin')   # priority-sorted (1, 1.5, 2, 3, 4, then devin=999)
 if (($registered -join ',') -ne ($expectedKinds -join ',')) {
     Write-Fail "Registered host kinds drift. Got: $($registered -join ','). Expected: $($expectedKinds -join ',')"
 }
-Write-Pass "Registry discovers all 5 host packages in MenuPriority order (claude, cursor, codex, copilot, antigravity)"
+Write-Pass "Registry discovers all 6 host packages in MenuPriority order (claude, cursor, codex, copilot, antigravity, devin)"
 
 # Test 1b (iter-011 + F-050): every supported host declares a MenuPriority field.
 # Compare as [double] so fractional priorities (cursor=1.5) are validated exactly — an [int]
@@ -56,7 +57,7 @@ foreach ($kind in $registered) {
         Write-Fail "Manifest for '$kind' is invalid: $($validation.Errors -join '; ')"
     }
 }
-Write-Pass "All 5 manifests pass Test-HostManifestValid"
+Write-Pass "All 6 manifests pass Test-HostManifestValid"
 
 # Test 2b: every hook-capable host carries dispatcher runtime policy in the manifest.
 # This keeps hook-event routing, output shape, and bootstrap pointer/inline policy out
@@ -83,13 +84,16 @@ foreach ($kind in @(Get-SpecrewHookCapableHosts)) {
 }
 Write-Pass "All hook-capable hosts declare manifest-driven dispatcher runtime policy"
 
-# Test 3: registry parity with legacy Get-SpecrewSupportedHostKinds
+# Test 3: registry parity with legacy Get-SpecrewSupportedHostKinds.
+# Get-SpecrewSupportedHostKinds is registry-driven but filters to Status='supported'. With the
+# experimental devin host added (F-200 T007), the full registry is a superset of the supported set,
+# so parity is asserted against the SUPPORTED-status registry view — not every registered host.
 $legacy = @(Get-SpecrewSupportedHostKinds | Sort-Object)
-$registry = @(Get-RegisteredHostKinds | Sort-Object)
-if (($legacy -join ',') -ne ($registry -join ',')) {
-    Write-Fail "Parity drift: legacy=$($legacy -join ',') vs registry=$($registry -join ',')"
+$registrySupported = @(Get-SpecrewHostsByStatus -Status supported | Sort-Object)
+if (($legacy -join ',') -ne ($registrySupported -join ',')) {
+    Write-Fail "Parity drift: legacy=$($legacy -join ',') vs registry-supported=$($registrySupported -join ',')"
 }
-Write-Pass "Registry matches legacy Get-SpecrewSupportedHostKinds (parity OK)"
+Write-Pass "Registry (supported-status view) matches legacy Get-SpecrewSupportedHostKinds (parity OK)"
 
 # Test 4: per-host manifest field parity with legacy lookup functions
 foreach ($kind in $registered) {
@@ -99,7 +103,7 @@ foreach ($kind in $registered) {
         Write-Fail "Binary drift for '$kind': manifest='$($manifest.Binary)' legacy='$legacyBinary'"
     }
 }
-Write-Pass "Per-host Binary field matches Get-SpecrewHostBinary across all 5 hosts"
+Write-Pass "Per-host Binary field matches Get-SpecrewHostBinary across all 6 hosts"
 
 # Test 5: per-host SkillRoot field parity with legacy lookup
 # Use the temp dir as a sacrificial project path to avoid PowerShell drive-validation noise
@@ -113,20 +117,27 @@ foreach ($kind in $registered) {
         Write-Fail "SkillRoot drift for '$kind': manifest yields '$expectedAbs' legacy yields '$legacyAbs'"
     }
 }
-Write-Pass "Per-host SkillRoot field matches Get-SpecrewHostSkillRoot across all 5 hosts"
+Write-Pass "Per-host SkillRoot field matches Get-SpecrewHostSkillRoot across all 6 hosts"
 
 # Test 6: status filter helpers work
 $supported = @(Get-SpecrewHostsByStatus -Status supported)
 if ($supported.Count -ne 5) {
-    Write-Fail "Expected 5 supported hosts (cursor added F-050); got $($supported.Count): $($supported -join ',')"
+    Write-Fail "Expected 5 supported hosts (cursor added F-050; devin is experimental, not supported); got $($supported.Count): $($supported -join ',')"
 }
-Write-Pass "Get-SpecrewHostsByStatus -Status supported returns all 5 (cursor added)"
+Write-Pass "Get-SpecrewHostsByStatus -Status supported returns all 5 (devin remains experimental)"
 
 $deferred = @(Get-SpecrewHostsByStatus -Status deferred)
 if ($deferred.Count -ne 0) {
     Write-Fail "Expected 0 deferred hosts; got $($deferred.Count): $($deferred -join ',')"
 }
 Write-Pass "Get-SpecrewHostsByStatus -Status deferred returns empty (no host currently deferred)"
+
+# Test 6b (F-200 T007): devin is discoverable as the sole experimental host.
+$experimental = @(Get-SpecrewHostsByStatus -Status experimental)
+if (($experimental -join ',') -ne 'devin') {
+    Write-Fail "Expected exactly the experimental host 'devin'; got: $($experimental -join ',')"
+}
+Write-Pass "Get-SpecrewHostsByStatus -Status experimental returns exactly 'devin' (F-200 T007)"
 
 # Test 7: contract folder-name vs Kind parity
 foreach ($kind in $registered) {
@@ -135,7 +146,7 @@ foreach ($kind in $registered) {
         Write-Fail "Folder/Kind drift: folder='$kind' manifest.Kind='$($manifest.Kind)'"
     }
 }
-Write-Pass "All 5 host folder names match their manifest Kind field (lowercase)"
+Write-Pass "All 6 host folder names match their manifest Kind field (lowercase)"
 
 # Test 8: unknown host throws (cursor is now a real host — use a non-existent sentinel)
 try {
@@ -162,7 +173,7 @@ try {
 catch {
     $validationMessage = $_.Exception.Message
 }
-foreach ($expectedFragment in @('Unknown host kind', 'Registered hosts:', 'claude', 'cursor', 'codex', 'copilot', 'antigravity')) {
+foreach ($expectedFragment in @('Unknown host kind', 'Registered hosts:', 'claude', 'cursor', 'codex', 'copilot', 'antigravity', 'devin')) {
     if (-not $validationMessage.Contains($expectedFragment)) {
         Write-Fail "Registry validation guidance is missing '$expectedFragment': $validationMessage"
     }

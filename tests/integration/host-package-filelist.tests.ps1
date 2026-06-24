@@ -13,8 +13,10 @@ $generator = Join-Path $repoRoot 'scripts\internal\update-host-package-filelist.
 
 # Real tree must already be the deterministic generated projection.
 $real = Update-SpecrewHostPackageFileList -ProjectRoot $repoRoot -Check
-if ($real.HostEntryCount -ne 15) {
-    Write-Fail "Expected 15 generated host package entries for five three-file packages; got $($real.HostEntryCount)."
+# F-200 T007: five three-file packages (15) + the devin package's four files
+# (host.psd1, handlers.ps1, coordinator-rules.psd1, handover-adapter.ps1) = 19.
+if ($real.HostEntryCount -ne 19) {
+    Write-Fail "Expected 19 generated host package entries (five three-file packages + the four-file devin package); got $($real.HostEntryCount)."
 }
 Write-Pass 'Real Specrew.psd1 host-package projection is generation-clean'
 
