@@ -1,21 +1,23 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: (populate from plan.md)
+**Last Completed Task**: T001
+**Tasks Remaining**: T002, T003, T004, T005, T006
 **In Progress**: (none)
 **Baseline Ref**: 7266978a3b6e0cf620d104ba3c6734451667f959
 **Updated**: 2026-06-23T23:53:54Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- The planning/discovery spike T001 is complete.
+- Implementation has not started; T002 is the first post-approval task.
 
 ## Notes
 
 - Update this file after each task completes.
 - Keep task identifiers aligned to plan.md.
+- T001 was authorized planning research and does not constitute pre-gate
+  implementation.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
