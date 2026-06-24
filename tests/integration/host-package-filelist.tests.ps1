@@ -18,7 +18,7 @@ if ($real.HostEntryCount -ne 15) {
 }
 Write-Pass 'Real Specrew.psd1 host-package projection is generation-clean'
 
-$scratch = Join-Path $repoRoot ('.scratch\host-package-filelist-' + [guid]::NewGuid().ToString('N'))
+$scratch = Join-Path $repoRoot ('.scratch\host package filelist-' + [guid]::NewGuid().ToString('N'))
 try {
     New-Item -ItemType Directory -Path (Join-Path $scratch 'hosts\alpha') -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $scratch 'hosts\beta') -Force | Out-Null

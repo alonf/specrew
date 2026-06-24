@@ -14,7 +14,8 @@
 [CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)]
-    [string]$CandidatePath
+    [string]$CandidatePath,
+    [switch]$PackageOnly
 )
 
 Set-StrictMode -Version Latest
@@ -74,6 +75,43 @@ Write-Pass "Successfully parsed Specrew.psd1"
 
 $candidateVersion = $manifest.ModuleVersion
 Write-Host "Candidate version: $candidateVersion" -ForegroundColor Cyan
+
+# Verify the package projection from the candidate's installed host folders,
+# then validate every discovered manifest through the production registry.
+$hostProjectionScript = Join-Path -Path $CandidatePath -ChildPath 'scripts/internal/update-host-package-filelist.ps1'
+if (-not (Test-Path -LiteralPath $hostProjectionScript -PathType Leaf)) {
+    Write-Fail 'Generated host-package FileList checker is missing from the candidate.' "Expected: $hostProjectionScript"
+    exit 1
+}
+try {
+    . $hostProjectionScript
+    $hostProjection = Update-SpecrewHostPackageFileList -ProjectRoot $CandidatePath -Check
+}
+catch {
+    Write-Fail 'Generated host-package FileList projection is stale or invalid.' $_.Exception.Message
+    exit 1
+}
+Write-Pass "Generated host-package FileList projection is current ($($hostProjection.HostEntryCount) package files)."
+
+$hostRegistryScript = Join-Path -Path $CandidatePath -ChildPath 'hosts/_registry.ps1'
+if (-not (Test-Path -LiteralPath $hostRegistryScript -PathType Leaf)) {
+    Write-Fail 'Host registry is missing from the candidate.' "Expected: $hostRegistryScript"
+    exit 1
+}
+. $hostRegistryScript
+$registeredHosts = @(Get-RegisteredHostKinds)
+$invalidHosts = [System.Collections.Generic.List[string]]::new()
+foreach ($hostKind in $registeredHosts) {
+    $validation = Test-HostManifestValid -Manifest (Get-HostManifest -Kind $hostKind)
+    if (-not $validation.IsValid) {
+        $invalidHosts.Add(("{0}: {1}" -f $hostKind, ($validation.Errors -join '; '))) | Out-Null
+    }
+}
+if ($invalidHosts.Count -gt 0) {
+    Write-Fail 'Registered host manifest validation failed.' ($invalidHosts -join ' | ')
+    exit 1
+}
+Write-Pass "Registry discovered and validated $($registeredHosts.Count) host package(s)."
 
 # -----------------------------------------------------------------------------
 # Phase 2: FileList Integrity Check (FR-003)
@@ -142,6 +180,12 @@ if ($configVersion -ne $candidateVersion) {
 }
 
 Write-Pass "Version pin check PASSED. Config and manifest are synchronized at version $candidateVersion"
+
+if ($PackageOnly) {
+    Write-Section 'Package-Only Validation Summary'
+    Write-Pass "Candidate package structure, generated host projection, registry manifests, FileList, and version pin are valid."
+    exit 0
+}
 
 # -----------------------------------------------------------------------------
 # Phase 4: Test Project Initialization (FR-003)

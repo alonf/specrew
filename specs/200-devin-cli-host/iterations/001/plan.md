@@ -26,7 +26,7 @@
 | T002 | Registry-driven validation at three production boundaries | FR-001, SC-002 | US2 | 2 | Implementer | hosts/_registry.ps1; scripts/specrew-start.ps1; scripts/internal/host-flag-translation.ps1; scripts/internal/coordinator-prompt-surgery.ps1; tests/integration/** | done | codex | 2 | pass |
 | T003 | Deterministic host-package FileList generator and parity gate | FR-002, SC-004 | US2 | 3 | Implementer | hosts/_contract.md; hosts/_registry.ps1; scripts/internal/**; Specrew.psd1; tests/integration/**; tests/unit/** | done | codex | 3 | pass |
 | T004 | Host-addition purity assertion and three-entry allow-list shrink | FR-003, FR-004, SC-002, SC-003 | US2 | 3 | Implementer, Reviewer | tests/integration/host-coupling-firewall.tests.ps1; tests/integration/fixtures/** | done | codex | 3 | pass |
-| T005 | Slice A CI and FileList-faithful prepublish wiring | FR-019, SC-010 | US2, US5 | 2 | Implementer, Reviewer | .github/workflows/**; scripts/internal/test-publish-harness.ps1; tests/integration/** | planned | codex |  |  |
+| T005 | Slice A CI and FileList-faithful prepublish wiring | FR-019, SC-010 | US2, US5 | 2 | Implementer, Reviewer | .github/workflows/**; scripts/internal/test-publish-harness.ps1; tests/integration/** | done | codex | 2 | pass |
 | T006 | Iteration review, traceability, and expected rework reserve | SC-012 | US2, US4 | 1 | Reviewer, Spec Steward | specs/200-devin-cli-host/**; tests/** | planned | codex |  |  |
 
 ## Effort Model

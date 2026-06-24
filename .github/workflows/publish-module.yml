@@ -47,6 +47,14 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
+      - name: Validate host registry and generated package projection
+        shell: pwsh
+        run: |
+          ./scripts/internal/update-host-package-filelist.ps1 -ProjectRoot (Get-Location).Path -Check
+          ./tests/integration/host-package-filelist.tests.ps1
+          ./tests/integration/host-registry.tests.ps1
+          ./tests/integration/host-coupling-firewall.tests.ps1
+
       - name: Pre-publish Docker harness validation
         shell: pwsh
         run: |

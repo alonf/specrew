@@ -1,11 +1,11 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T004
-**Tasks Remaining**: T005, T006
+**Last Completed Task**: T005
+**Tasks Remaining**: T006
 **In Progress**: (none)
 **Baseline Ref**: 7266978a3b6e0cf620d104ba3c6734451667f959
-**Updated**: 2026-06-24T09:21:54Z
+**Updated**: 2026-06-24T09:25:58Z
 
 ## Execution Summary
 
@@ -18,6 +18,9 @@
 - T004 added the permanent production purity scanner with same-path planted and
   clean fixtures, reduced the enum allow-list from 11 to 8, and made delegated
   agent discovery consume the configured agent lookup.
+- T005 wired registry, launch, generated package, and purity checks into regular,
+  Windows/Unix, and prepublish CI; the production publish harness now validates
+  the generated projection and registry before FileList-faithful publication.
 
 ## Notes
 

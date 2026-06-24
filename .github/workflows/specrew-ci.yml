@@ -213,6 +213,22 @@ jobs:
         shell: pwsh
         run: ./tests/integration/filelist-completeness.tests.ps1
 
+      - name: Integration - generated host-package FileList parity
+        shell: pwsh
+        run: |
+          ./scripts/internal/update-host-package-filelist.ps1 -ProjectRoot (Get-Location).Path -Check
+          ./tests/integration/host-package-filelist.tests.ps1
+
+      - name: Integration - host registry and multi-host launch contracts
+        shell: pwsh
+        run: |
+          ./tests/integration/host-registry.tests.ps1
+          ./tests/integration/multi-host-launch-path.tests.ps1
+
+      - name: Integration - host-coupling firewall
+        shell: pwsh
+        run: ./tests/integration/host-coupling-firewall.tests.ps1
+
       - name: Integration - bootstrap resolver guard (F-174 P1)
         shell: pwsh
         run: ./tests/integration/bootstrap-resolver-guard.tests.ps1

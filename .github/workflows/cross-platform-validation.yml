@@ -13,6 +13,28 @@ on:
   workflow_dispatch:
 
 jobs:
+  host-package-contract:
+    name: Host package contract (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Validate registry, generated package paths, launch arguments, and purity
+        shell: pwsh
+        run: |
+          ./scripts/internal/update-host-package-filelist.ps1 -ProjectRoot (Get-Location).Path -Check
+          ./tests/integration/host-package-filelist.tests.ps1
+          ./tests/integration/host-registry.tests.ps1
+          ./tests/integration/multi-host-launch-path.tests.ps1
+          ./tests/integration/host-coupling-firewall.tests.ps1
+
   validate-ubuntu:
     name: Ubuntu Validation
     runs-on: ubuntu-latest

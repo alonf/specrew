@@ -47,7 +47,7 @@ $fileList = @($manifest.FileList | ForEach-Object { [string]$_ })
 $missingFiles = @()
 
 foreach ($relativePath in $fileList) {
-    $normalizedPath = $relativePath -replace '/', '\'
+    $normalizedPath = $relativePath -replace '\\', '/'
     $fullPath = Join-Path -Path $repoRoot -ChildPath $normalizedPath
     if (-not (Test-Path -LiteralPath $fullPath)) {
         $missingFiles += $relativePath
@@ -104,7 +104,26 @@ if ($harnessContent -notmatch 'version|drift|pin') {
 }
 Write-Pass "test-publish-harness.ps1 contains version pin drift assertions."
 
-# Test 7: publish-module.yml must wire the Docker harness (T006)
+# Test 7: candidate harness validates the generated host projection and registry.
+if ($harnessContent -notmatch 'Update-SpecrewHostPackageFileList\s+-ProjectRoot\s+\$CandidatePath\s+-Check') {
+    Write-Fail 'test-publish-harness.ps1 does not check generated host-package FileList parity.'
+    exit 1
+}
+if ($harnessContent -notmatch 'Get-RegisteredHostKinds' -or $harnessContent -notmatch 'Test-HostManifestValid') {
+    Write-Fail 'test-publish-harness.ps1 does not validate candidate host manifests through the registry.'
+    exit 1
+}
+Write-Pass 'test-publish-harness.ps1 validates generated host-package parity and registry manifests.'
+
+# Test 8: exercise the production harness package-validation path.
+$packageOnlyOutput = & pwsh -NoProfile -File $testHarnessScript -CandidatePath $repoRoot -PackageOnly 2>&1 | Out-String
+if ($LASTEXITCODE -ne 0 -or $packageOnlyOutput -notmatch 'Package-Only Validation Summary') {
+    Write-Fail "Production publish harness package-only validation failed:`n$packageOnlyOutput"
+    exit 1
+}
+Write-Pass 'Production publish harness validates the current candidate package without entering init/update phases.'
+
+# Test 9: publish-module.yml must wire the Docker harness and prepublish host gates.
 $publishWorkflowPath = Join-Path -Path $repoRoot -ChildPath '.github\workflows\publish-module.yml'
 $workflowContent = Get-Content -LiteralPath $publishWorkflowPath -Raw -Encoding UTF8
 
@@ -114,6 +133,53 @@ if ($workflowContent -notmatch 'Dockerfile\.publish-test|test-publish-harness') 
     exit 1
 }
 Write-Pass "publish-module.yml wires the Docker harness."
+
+foreach ($requiredInvocation in @(
+        'update-host-package-filelist.ps1',
+        'host-package-filelist.tests.ps1',
+        'host-registry.tests.ps1',
+        'host-coupling-firewall.tests.ps1'
+    )) {
+    if ($workflowContent -notmatch [regex]::Escape($requiredInvocation)) {
+        Write-Fail "publish-module.yml is missing prepublish host gate '$requiredInvocation'."
+        exit 1
+    }
+}
+Write-Pass 'publish-module.yml runs generated package, registry, and purity gates before Docker publication validation.'
+
+# Test 10: regular and cross-platform CI explicitly run the same production gates.
+$ciWorkflowContent = Get-Content -LiteralPath (Join-Path $repoRoot '.github\workflows\specrew-ci.yml') -Raw -Encoding UTF8
+foreach ($requiredInvocation in @(
+        'update-host-package-filelist.ps1',
+        'host-package-filelist.tests.ps1',
+        'host-registry.tests.ps1',
+        'multi-host-launch-path.tests.ps1',
+        'host-coupling-firewall.tests.ps1'
+    )) {
+    if ($ciWorkflowContent -notmatch [regex]::Escape($requiredInvocation)) {
+        Write-Fail "specrew-ci.yml is missing host contract gate '$requiredInvocation'."
+        exit 1
+    }
+}
+
+$crossPlatformWorkflowContent = Get-Content -LiteralPath (Join-Path $repoRoot '.github\workflows\cross-platform-validation.yml') -Raw -Encoding UTF8
+if ($crossPlatformWorkflowContent -notmatch 'os:\s*\[ubuntu-latest,\s*windows-latest\]') {
+    Write-Fail 'cross-platform-validation.yml does not run host package contracts on both Unix and Windows.'
+    exit 1
+}
+foreach ($requiredInvocation in @(
+        'update-host-package-filelist.ps1',
+        'host-package-filelist.tests.ps1',
+        'host-registry.tests.ps1',
+        'multi-host-launch-path.tests.ps1',
+        'host-coupling-firewall.tests.ps1'
+    )) {
+    if ($crossPlatformWorkflowContent -notmatch [regex]::Escape($requiredInvocation)) {
+        Write-Fail "cross-platform-validation.yml is missing host contract gate '$requiredInvocation'."
+        exit 1
+    }
+}
+Write-Pass 'Regular and Windows/Unix CI explicitly run registry, launch, generation, and purity gates.'
 
 Write-Host ''
 Write-Host 'All publish-module harness assertions passed!' -ForegroundColor Green
