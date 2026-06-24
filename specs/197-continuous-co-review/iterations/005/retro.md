@@ -41,7 +41,7 @@
    `iteration_number` frozen at `001` made every test-run touch iter-001's state. Worked around by
    hand-driving the closeout targeting 005 explicitly. -> #2784 (out of 197's scope) tracks the fix.
 
-## Effort calibration
+## Estimation Accuracy
 
 Planned 18.00 -> raised to 28.00/30 (informed maintainer "implement all, fix all" expansion). The
 overrun was real-issue-driven: the dogfood + the adversarial 145 surfaced work that did not exist at
@@ -49,10 +49,27 @@ plan time (2 dogfood bugs, the affirmative-pass soundness fix, the catalog MAJOR
 closeout headroom for dogfood + adversarial-review findings on integration-heavy iterations — they
 reliably surface real, plannable-only-in-hindsight work.**
 
-## Action items
+## Drift Summary
+
+No specification drift was detected during iteration 005 (`drift-log.md`: 0 events, 100% resolution).
+The capacity EXPANSION (18.00 -> 28.00/30) was a maintainer-directed scope/capacity decision, NOT spec
+drift — the in-scope requirements (FR-026/030/031 and the SC-019..022 auto-fire half) stayed fixed
+throughout; only the closeout EFFORT grew (the dogfood + the two 145 findings).
+
+## Improvement Actions
 
 - [x] `refocus-scopes.json` catalog-parity guard (ProviderMirrorParity) — done this iteration (`938731eb`).
 - [ ] File the deploy-mechanism proposal (`refocus-scopes.json` not synced on `specrew update`),
   COORDINATED with Proposal 198 (self-host currency; same class as the Devin `extensions.yml` drift).
 - [ ] Iteration 006: real reviewer + durable full-findings reporting surfaced via the 197 blackboard.
 - [ ] Document the 4 pre-existing `probe`-authored main commits as an accepted cosmetic blemish (no rewrite).
+
+## Process Notes
+
+- Reviews ran as fresh-context ADVERSARIAL agents (Proposal 145), which out-performed the green test
+  suite on soundness — see "What went well" / "What hurt" above for the two real findings green tests missed.
+- The closeout was HAND-DRIVEN (targeting iteration 005 explicitly) to work around the stale session
+  anchor (#2784) that froze `iteration_number` at `001`; boundary commits (review-signoff / retro /
+  iteration-closeout) carried the gate authorizations.
+- Sub-agent footprint was verified clean (no git-identity leak, no stray commits) per the 2026-06-20
+  review-subagent discipline.

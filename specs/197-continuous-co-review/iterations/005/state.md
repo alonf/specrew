@@ -2,11 +2,13 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 005
+**Schema**: v1
 **Current Phase**: iteration-closeout
 **Iteration Status**: complete
 **Last Completed Task**: iteration-closeout — iteration 005 CLOSED (review-signoff approved + retro done)
 **Tasks Remaining**: (none — iteration 005 complete) -> next: plan Iteration 006 (real reviewer + full-findings reporting)
 **In Progress**: (none)
+**Baseline Ref**: cdc9d7f8
 **Updated**: 2026-06-24
 
 ## Review-signoff verdict — APPROVED (2026-06-24)

@@ -31,14 +31,14 @@ future merge-agent, Proposals 010/134/149). No F-184 protected-surface edits.
 
 ## Tasks
 
-| Task | Title | Requirement | Effort | Owner | Owner File Globs | Status |
-| ---- | ----- | ----------- | ------ | ----- | ---------------- | ------ |
-| T076 | SPIKE (de-risk first): prove the detached, self-limiting cross-platform spawn — `Start-Process -PassThru` launches a launcher that SURVIVES the parent exiting and SELF-times-out (kills its child + writes status), on Windows; document the mac/linux path. Throwaway; gates the build. | FR-031 | 2.00 | Implementer | `.scratch/**`; `specs/197-continuous-co-review/iterations/005/**` | done |
-| T077 | The general **isolated-task launcher** (`Start-SpecrewIsolatedTask`) in `scripts/internal/agent-tasks/`: materialize a worktree from a target tree-id, supervised spawn (timeout/kill = the watchdog role), `disposition: discard` built, `access: read-only` built (+ host read-only mode), artifact+contract param (`code` built). `merge`/`preserve`/`read-write`/non-code = interface + DEFERRED comments. | FR-026, FR-031 | 5.00 | Implementer | `scripts/internal/agent-tasks/**` | done |
-| T078 | The co-review-navigator provider + `refocus-scopes.json` registration: a FAST reap-then-fire dispatcher (reuse the Phase A `Invoke-ContinuousCoReviewGateDispatch` real-checkpoint detection) with dedup-by-reviewed-tree-id; fires the launcher `{read-only, discard, code-review}`; returns immediately (respects the ~20s budget / #2885). | FR-026, FR-030 | 3.00 | Implementer | `scripts/internal/continuous-co-review/**`; `extensions/specrew-speckit/refocus-scopes.json` | done |
-| T079 | The pending-task registry (`.specrew/review/pending/`, gitignored + digest-stripped) + the reaper: next-stop reap (collect verdict, force-continue via 185 `STOP-BLOCK` if blocking) + a SessionStart sweep for cross-session orphans; kills zombie processes AND orphaned worktrees. | FR-030, FR-031 | 4.00 | Reviewer | `scripts/internal/continuous-co-review/**`; `scripts/internal/agent-tasks/**` | done |
-| T080 | Iteration-004 145 carries: thread `TrunkName` through `Invoke-ContinuousCoReviewSignoffGateIfEnabled` -> the gate (non-`main`-trunk repos stop failing closed); note the F2 nested-key fail-safe. | FR-025 | 1.00 | Reviewer | `scripts/internal/continuous-co-review/signoff-gate-wiring.ps1` | done |
-| T081 | Tests + closeout-validation + Proposal 145 review: fire/reap/orphan-kill/cross-session-sweep/dedup/disposition-discard/worktree-cleanup; the spawn seam per host; protected-surface guard. | FR-026, FR-030, FR-031, SC-006 | 3.00 | Reviewer | `tests/**`; `specs/197-continuous-co-review/iterations/005/**` | done |
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ |
+| T076 | SPIKE (de-risk first): prove the detached, self-limiting cross-platform spawn — `Start-Process -PassThru` launches a launcher that SURVIVES the parent exiting and SELF-times-out (kills its child + writes status), on Windows; document the mac/linux path. Throwaway; gates the build. | FR-031 | Spawn spike | 2.00 | Implementer | `.scratch/**`; `specs/197-continuous-co-review/iterations/005/**` | done |
+| T077 | The general **isolated-task launcher** (`Start-SpecrewIsolatedTask`) in `scripts/internal/agent-tasks/`: materialize a worktree from a target tree-id, supervised spawn (timeout/kill = the watchdog role), `disposition: discard` built, `access: read-only` built (+ host read-only mode), artifact+contract param (`code` built). `merge`/`preserve`/`read-write`/non-code = interface + DEFERRED comments. | FR-026, FR-031 | Isolated-task launcher | 5.00 | Implementer | `scripts/internal/agent-tasks/**` | done |
+| T078 | The co-review-navigator provider + `refocus-scopes.json` registration: a FAST reap-then-fire dispatcher (reuse the Phase A `Invoke-ContinuousCoReviewGateDispatch` real-checkpoint detection) with dedup-by-reviewed-tree-id; fires the launcher `{read-only, discard, code-review}`; returns immediately (respects the ~20s budget / #2885). | FR-026, FR-030 | Async navigator | 3.00 | Implementer | `scripts/internal/continuous-co-review/**`; `extensions/specrew-speckit/refocus-scopes.json` | done |
+| T079 | The pending-task registry (`.specrew/review/pending/`, gitignored + digest-stripped) + the reaper: next-stop reap (collect verdict, force-continue via 185 `STOP-BLOCK` if blocking) + a SessionStart sweep for cross-session orphans; kills zombie processes AND orphaned worktrees. | FR-030, FR-031 | Async navigator | 4.00 | Reviewer | `scripts/internal/continuous-co-review/**`; `scripts/internal/agent-tasks/**` | done |
+| T080 | Iteration-004 145 carries: thread `TrunkName` through `Invoke-ContinuousCoReviewSignoffGateIfEnabled` -> the gate (non-`main`-trunk repos stop failing closed); note the F2 nested-key fail-safe. | FR-025 | Gate wiring | 1.00 | Reviewer | `scripts/internal/continuous-co-review/signoff-gate-wiring.ps1` | done |
+| T081 | Tests + closeout-validation + Proposal 145 review: fire/reap/orphan-kill/cross-session-sweep/dedup/disposition-discard/worktree-cleanup; the spawn seam per host; protected-surface guard. | FR-026, FR-030, FR-031, SC-006 | Closeout validation | 3.00 | Reviewer | `tests/**`; `specs/197-continuous-co-review/iterations/005/**` | done |
 
 ## Effort Model
 
@@ -47,7 +47,9 @@ future merge-agent, Proposals 010/134/149). No F-184 protected-surface edits.
 | Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
 | Capacity per Iteration | 30 | Maximum planned effort before overcommit guidance applies (raised 20->30, informed maintainer "implement all, fix all" expansion). |
 | Iteration Bounding | scope | `scope` keeps requirements fixed; time varies. |
+| Time Limit (hours) | n/a | Not used for this scope-bounded iteration. |
 | Overcommit Threshold | 1.0 | Planned effort must stay at or below 30 story_points. |
+| Defer Strategy | manual | Any overcommit requires explicit human deferral. |
 | Calibration Enabled | true | Retro compares planned and actual effort. |
 
 ## Traceability Summary

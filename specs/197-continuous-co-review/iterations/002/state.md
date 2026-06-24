@@ -1,6 +1,8 @@
 # Iteration State: 002
 
 **Schema**: v1
+**Current Phase**: abandoned
+**Iteration Status**: abandoned
 **Last Completed Task**: T057
 **Tasks Remaining**: (none)
 **In Progress**: (none)
@@ -18,6 +20,18 @@
 - T051 complete: remote-main sync evidence from f31e0c74b53c4652bf7a6aff575dd90cf9a89c19 accepted, with fresh status confirming HEAD equals origin/197-continuous-co-review and no drift before runtime repair.
 - This artifact was scaffolded before task execution so resume state can be updated after each task.
 - Iteration 002 implementation is complete and ready for the implement -> review boundary stop.
+
+## Abandonment Reason
+
+- **Status set to `abandoned` (2026-06-24).** Iteration 002 reached the implement -> review boundary
+  (implementation complete) but the review was NEVER completed: no review-signoff verdict was recorded,
+  no Task Verdicts table was produced, and the iteration never advanced to retro or iteration-closeout
+  (see "Lockout-Safe Repair Evidence" above — the repair finished "without advancing retro or
+  closeout"). The maintainer ruled 002 closed. It is recorded as `abandoned` (closed/superseded without
+  completing the review ceremony) rather than `complete` BECAUSE the review verdict, Task Verdicts, and
+  retro were never recorded — authoring them now would fabricate governance that never happened
+  (2026-06-24 anti-fabrication-outranks-green-baseline ruling). The implemented work itself was carried
+  forward by the later iterations on this feature.
 
 ## Lockout-Safe Repair Evidence
 

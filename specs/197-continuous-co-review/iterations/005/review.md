@@ -6,6 +6,7 @@
 **Reviewers**: two adversarial, read-only, fresh-context reviewers (gate-integrity; dispatcher F-184),
 each told to BREAK the work; both confirmed **zero repo footprint** (no git-identity leak, no stray
 commits — the F-197 incident axes specifically checked).
+**Overall Verdict**: accepted
 
 ## Reviewer A — gate-integrity + stub-exclusion: PASS for scope; 1 real finding FIXED
 
@@ -58,6 +59,22 @@ copies are byte-identical (`2f977ec6`). dispatcher-stop-block 27, conformance 40
   without rewriting **protected main history**. Maintainer ruling (2026-06-24): accept as a pre-existing
   cosmetic blemish and document it; do NOT rewrite protected main for 4 author labels. (The 2026-06-20
   git-identity sandbox discipline still binds FUTURE fan-outs — this iteration's were clean.)
+
+## Task Verdicts
+
+| Task | Verdict | Evidence |
+| ---- | ------- | -------- |
+| T076 | pass | Cross-platform detached self-limiting spawn spike proven on Windows + WSL; the Linux stdio-inheritance blocking defect caught and fixed. |
+| T077 | pass | The isolated-task launcher (Proposal 139 foundation); Windows Pester 4/0 plus a Linux/WSL end-to-end probe (fire 0.11s, no orphan). |
+| T078 | pass | The co-review-navigator provider plus `refocus-scopes.json` registration; fast reap-then-fire within the Stop budget. |
+| T079 | pass | The pending-task registry plus reaper plus SessionStart sweep; reviewed under Proposal 145. |
+| T080 | pass | `TrunkName` threaded through the signoff gate (non-`main`-trunk repos no longer fail closed). |
+| T081 | pass | Full CCR plus key integration 216/0; closeout-validation; two adversarial 145 reviews both PASS, the two findings fixed (`d31f4cb8`, `938731eb`). |
+
+## Gap Ledger
+
+- G-197-I005-01 (promotion on absence-of-blocking could launder a non-pass verdict to a gate pass): fixed-now, commit d31f4cb8 (affirmative-pass allow-list plus stub-exclusion guard test).
+- Catalog-row-drift MAJOR (the co-review-navigator row missing from the `.specify` catalog left the navigator inert on live dispatch while fixtures stayed green): fixed-now, commit 938731eb (row synced byte-identical plus a refocus-scopes catalog-parity guard).
 
 ## Disposition
 

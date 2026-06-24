@@ -2,11 +2,13 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 004
+**Schema**: v1
 **Current Phase**: complete
 **Iteration Status**: complete
 **Last Completed Task**: iteration-closeout (Phase B part 1 banked, 2026-06-23)
 **Tasks Remaining**: (none)
 **In Progress**: (none)
+**Baseline Ref**: 6c502c20
 **Updated**: 2026-06-23
 
 ## Execution

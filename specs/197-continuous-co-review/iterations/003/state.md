@@ -2,11 +2,13 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 003
+**Schema**: v1
 **Current Phase**: complete
 **Iteration Status**: complete
 **Last Completed Task**: iteration-closeout (Phase A banked, 2026-06-21)
 **Tasks Remaining**: (none — Phase A closed; next is Iteration 004 Phase B, gated on F-185)
 **In Progress**: (none)
+**Baseline Ref**: a8647528
 **Updated**: 2026-06-21
 
 ## Re-architecture progress
