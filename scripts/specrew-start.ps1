@@ -1027,7 +1027,7 @@ function Get-DelegatedRoutingPlan {
     $resolvedHost = if ([string]::IsNullOrWhiteSpace($SelectedHost)) { 'copilot' } else { $SelectedHost.Trim().ToLowerInvariant() }
 
     $enabledAgents = @(
-        foreach ($agentName in @('copilot', 'claude', 'codex')) {
+        foreach ($agentName in @($AgentLookup.Keys | Sort-Object)) {
             if ($AgentLookup.Contains($agentName) -and $AgentLookup[$agentName].enabled -and $AgentLookup[$agentName].availability -eq 'available') {
                 $agentName
             }

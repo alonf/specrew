@@ -1,11 +1,11 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T003
-**Tasks Remaining**: T004, T005, T006
+**Last Completed Task**: T004
+**Tasks Remaining**: T005, T006
 **In Progress**: (none)
 **Baseline Ref**: 7266978a3b6e0cf620d104ba3c6734451667f959
-**Updated**: 2026-06-24T09:14:40Z
+**Updated**: 2026-06-24T09:21:54Z
 
 ## Execution Summary
 
@@ -15,6 +15,9 @@
 - T003 added deterministic host-package FileList generation/check behavior,
   including stale, duplicate, escaping-link, missing-file, folder/Kind, and
   folder-only fixture coverage.
+- T004 added the permanent production purity scanner with same-path planted and
+  clean fixtures, reduced the enum allow-list from 11 to 8, and made delegated
+  agent discovery consume the configured agent lookup.
 
 ## Notes
 
