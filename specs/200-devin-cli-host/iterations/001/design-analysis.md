@@ -415,4 +415,4 @@ specrew start --host devin
     routing.
   - Keep the 20-story-point per-iteration cap.
 - **Design-analysis draft commit**: bbd218ea49cd183d41e463be62edf8221e2b32b7
-- **Decision recorded in commit**: pending
+- **Decision recorded in commit**: 0cf182f931b7875a53541078a5e971a1e6f38cee
