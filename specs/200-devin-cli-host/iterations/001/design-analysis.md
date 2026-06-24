@@ -391,11 +391,28 @@ specrew start --host devin
 
 ## Human Decision
 
-Pending the design-option verdict.
-
-- **Decision verdict**: pending
-- **Chosen option**: pending
-- **Reason**: pending
-- **Modifications**: pending
-- **Design-analysis draft commit**: pending
+- **Decision verdict**: approved for plan with Option B
+- **Chosen option**: Option B
+- **Reason**: Option B is the correct clean-extensibility architecture. Option
+  A undermines the feature's proof by leaving the generic seams embedded in
+  existing procedural owners, while Option C builds a second host subsystem
+  beyond the demonstrated need.
+- **Modifications**:
+  - Accept the full 45 story points across three capped iterations. The
+    difference from Proposal 200's 18–26 estimate is driven by the real host
+    package, the empirically required ATIF normalizer, registry refactoring,
+    coordinator migration, full real-host validation, and proof tests. This is
+    newly evidenced implementation work within A/C/D, not scope creep.
+  - Remove all five in-scope allow-list entries, including both coordinator
+    entries; the full shrink is part of this feature's proof value.
+  - Treat the `spec.md` change in `bbd218ea` as narrowing FR-011 to empirically
+    proven outcome 2, not weakening the handover requirement. Full handover
+    remains in scope.
+  - Keep `sh.exe` as a documented experimental Windows constraint and include a
+    host-neutral fix attempt that invokes `pwsh` directly so Windows users do
+    not require Git Bash. If Devin's runner cannot support that generic path,
+    retain the explicit constraint rather than adding Devin-specific core
+    routing.
+  - Keep the 20-story-point per-iteration cap.
+- **Design-analysis draft commit**: bbd218ea49cd183d41e463be62edf8221e2b32b7
 - **Decision recorded in commit**: pending
