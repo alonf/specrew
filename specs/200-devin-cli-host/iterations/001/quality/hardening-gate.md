@@ -53,6 +53,23 @@
 | `purity-proof` | `closed` | T004 acceptance uses the production scanner for clean and planted content and removes three exceptions. | No new exception is permitted. |
 | `future-adapter-contract` | `closed` | T009 carries the explicit planted-literal and no-adapter regression criteria requested at plan approval. | Must be repeated in Iteration 002's gate. |
 
+## Readiness Check
+
+**Result**: `ready-for-human-verdict`
+
+| Check | Status | Evidence |
+| --- | --- | --- |
+| Tasks approval | pass | The persisted lifecycle state records `tasks` as the last authorized boundary. |
+| Execution authorization | pending-human-verdict | `Test-SpecrewBoundaryAuthorization` correctly returns blocked for `tasks -> before-implement`; no implementation authorization has been inferred. |
+| Scope and capacity | pass | Iteration 001 is T002–T006 at 14/20 SP; the full feature remains 14/15/16 and 45 SP. |
+| Bidirectional traceability | pass | 34/34 FR/SC items covered; 17/17 tasks have valid authority and metadata. |
+| Cross-artifact consistency | pass | The approved Option B, unchanged-parser boundary, five-entry allow-list shrink, and three-iteration split agree across spec, plan, tasks, and hardening controls. |
+| Hardening concern contract | pass | Five canonical concern rows plus the adapter-seam concern are addressed with concrete controls and pending runtime evidence. |
+| Drift and collision guards | pass | No unresolved drift event; no diff to `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`; no Iteration 002/003 artifacts were scaffolded. |
+| Quality profile | pass-with-documented-override | The repository-level React detection is rejected for this slice; the effective profile is PowerShell/PSD1/YAML/JSON/GitHub Actions. |
+| Team and ownership | pass | Baseline Spec Steward, Planner, Implementer, Reviewer, and Retro Facilitator roles are sufficient; no new specialist is required before T002. |
+| Pre-change runtime baseline | pass | `host-registry.tests.ps1`, `host-coupling-firewall.tests.ps1`, `filelist-completeness.tests.ps1`, and `ConversationCapture.Tests.ps1` pass. The firewall baseline is 11 known exceptions; Iteration 001 must remove three and add none. |
+
 ## Notes
 
 - Runtime evidence, test counts, and mechanical findings remain
