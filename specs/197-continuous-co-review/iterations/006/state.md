@@ -4,10 +4,45 @@
 **Iteration**: 006
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T086 — persisted human-authorization seam (the navigator can now select a REAL host); 234/0 CCR
-**Tasks Remaining**: T085 — the LIVE-dispatcher multi-severity e2e (the meaningful acceptance, now UNBLOCKED) + finalize
-**In Progress**: T085 (the live e2e)
+**Last Completed Task**: T085 live-dispatcher e2e — PASSED (all 6 conditions); 3 first-run failures FIXED
+**Tasks Remaining**: review-signoff (+ a lingering-child watch-item for the maintainer's real-host e2e)
+**In Progress**: — (e2e complete)
 **Updated**: 2026-06-24
+
+## T085 live-dispatcher e2e — PASSED; 3 first-run failures FIXED (2026-06-24)
+
+The scoped synthetic live e2e (codex, `C:\temp\specrewTrials\f197-e2e`, tiered `payment.py`) ran the
+navigator through the LIVE dispatcher (`-Event Stop -HostKind claude`) and PROVED the full path — after
+surfacing and fixing THREE real first-live-run failures that every mocked test hid:
+
+1. **_load load-order (FIXED, 289addba):** the provider dot-sources only the navigator; its checkpoint
+   detection needs the CCR engine (in `_load`) it never loaded, so it no-op'd on every live Stop. Fix: the
+   navigator top dot-sources `_load`. Locked by a fresh-process load test.
+2. **composer schema-root (FIXED, 289addba):** the detached harness composes the prompt with NO SchemaRoot;
+   the composer only embedded the full schema for an explicit one, falling back to weak prose, so codex
+   0.142/gpt-5.5 emitted string location/resolution and an out-of-enum "must_fix" disposition ->
+   FindingsResult schema-mismatch -> a real review silently lost. Fix: resolve the default contract root.
+   Locked by a no-SchemaRoot composer test.
+3. **digest perf (FIXED, 97b4eb91):** the dedup digest ran a git subprocess PER path -> ~24s on a deployed
+   `.specify` (172 files) -> the navigator blew the dispatcher's ~20s budget and NEVER fired in any real
+   project. Fix: batched git calls (24s -> 1.5s, identity-preserving). Locked by a >ChunkSize identity test.
+
+PROVEN end-to-end through the LIVE dispatcher, all 6 maintainer conditions held: (1) codex fired via the
+dispatcher; (2) 6 findings at TWO severities (blocking and advisory), conformant shape, LANDED in
+`inline/<run-id>/findings-result.json` AND SURFACED as the stop-block (every finding, the durable-thread
+pointer, the honest-SKIP note); (3) codex selected independent of the claude code-writer; (4)
+`src/payment.py` UNMUTATED and the surface note states "nothing was changed in your tree" (honest SKIP);
+(5) the three first-run failures fixed; (6) synthetic project deleted.
+
+WATCH ITEM (NOT a confirmed bug — an advisor-caught confound): a lingering-child WARN. codex's detached
+supervisor inherits the navigator provider's stdout handle, so under FILE-REDIRECT capture the parent
+waits ~codex's review time. The SURFACE and DEDUP are NOT affected — proven clean once the e2e logs were
+moved OUTSIDE the watched project (root-level logs had been polluting the reviewed-state tree-id, which is
+what produced the apparent re-fire and cutoff). Whether the REAL Claude host's hook-stdout read blocks is
+for the maintainer's manual e2e; if it does, a fully-detached spawn (e.g. WMI `Win32_Process.Create`) is
+the candidate fix.
+
+## T086 — persisted human-authorization seam (the iter-002-class gap the LIVE e2e found, 2026-06-24)
 
 ## T086 — persisted human-authorization seam (the iter-002-class gap the LIVE e2e found, 2026-06-24)
 
