@@ -14,6 +14,11 @@ Each `hosts/<kind>/` directory defines a host package. To register a new host, c
 | `docs/install.md` | Per-host install guidance prose | Optional |
 | `docs/deferred.md` | Required when `Status = 'deferred'`; explains why + follow-up pointer | Only if `Status = 'deferred'` |
 
+Every file beneath a registered host package is generated into the module
+`FileList` after the three required contract files validate. This lets
+package-private adapters and host documentation ship with a folder-only
+addition; hand-authored per-host `FileList` rows are not the source of truth.
+
 ## Manifest schema (`host.psd1`)
 
 Top-level: a PowerShell hashtable consumed via `Import-PowerShellDataFile`.
@@ -121,5 +126,8 @@ To add a new contract slot (e.g., `Get-<Kind>CostCatalogUrl` for F-041), add one
 - `Kind` matches the folder name (lowercase)
 - `Status = 'deferred'` requires `DeferredReason` AND `DeferredGuidance` to be set
 - `Status = 'supported'` requires `AgentDir` to be set (so the Crew runtime can deploy)
-- `Specrew.psd1` `FileList` includes every `hosts/<kind>/host.psd1`, `handlers.ps1`, and `coordinator-rules.psd1`
+- Generated `Specrew.psd1` `FileList` membership includes every file beneath
+  each valid host package. Generation fails when any required contract file is
+  missing, the manifest `Kind` differs from the folder, or a package path
+  escapes through a reparse point.
 - The structural firewall test (`tests/integration/host-coupling-firewall.tests.ps1`) ensures no production `.ps1` outside `hosts/` hardcodes a host-enum tuple (allow-list documented in the test itself)

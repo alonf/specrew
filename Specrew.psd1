@@ -278,6 +278,7 @@
         'scripts/internal/sync-boundary-state.ps1',
         'scripts/internal/task-progress.ps1',
         'scripts/internal/test-publish-harness.ps1',
+        'scripts/internal/update-host-package-filelist.ps1',
         'scripts/internal/user-profile.ps1',
         'scripts/internal/version-check.ps1',
         'scripts/internal/worktree-awareness.ps1',

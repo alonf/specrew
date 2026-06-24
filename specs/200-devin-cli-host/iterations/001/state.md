@@ -1,17 +1,20 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T002
-**Tasks Remaining**: T003, T004, T005, T006
+**Last Completed Task**: T003
+**Tasks Remaining**: T004, T005, T006
 **In Progress**: (none)
 **Baseline Ref**: 7266978a3b6e0cf620d104ba3c6734451667f959
-**Updated**: 2026-06-24T09:10:00Z
+**Updated**: 2026-06-24T09:14:40Z
 
 ## Execution Summary
 
 - The planning/discovery spike T001 is complete.
 - T002 implemented registry-driven validation at all three production input
   files with case-insensitive and actionable rejection coverage.
+- T003 added deterministic host-package FileList generation/check behavior,
+  including stale, duplicate, escaping-link, missing-file, folder/Kind, and
+  folder-only fixture coverage.
 
 ## Notes
 
