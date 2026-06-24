@@ -16,8 +16,17 @@
 # autopilot->smart / allow-all->dangerous with dangerous precedence + an explicit notice (FR-007),
 # and Crew runtime deploys nested .devin/agents/<name>/AGENT.md (FR-008).
 #
-# Devin launch shape (FR-007 / spike): interactive launch uses a positional prompt; `devin -p` is
-# reserved for bounded smoke/canary automation and is NOT used for the normal governed session.
+# Devin launch shape (FR-007, verified against the pinned CLI `devin 2026.7.23 (3bd47f77)`):
+# `devin [OPTIONS] [-- <PROMPT>...]` — interactive launch with the bootstrap prompt POSITIONAL after
+# a `--` option-terminator. There is NO --cwd flag; Devin operates on the process working directory
+# (set by the launcher via Start-Process -WorkingDirectory). `devin -p` is reserved for bounded
+# smoke/canary automation and is NOT used for the normal governed session.
+#
+# Bootstrap-prompt delivery (design call): the prompt is passed POSITIONALLY (after `--`) to match
+# the established claude/codex positional-prompt convention, keeping the launch shape uniform across
+# hosts. Devin's `--prompt-file <FILE>` is the documented fallback should bootstrap-prompt length
+# become a launch problem (Specrew bootstrap payloads can run tens of KB); switching to it is a
+# folder-only, in-package change to New-DevinLaunchInvocation and is deferred until measured need.
 
 Set-StrictMode -Version Latest
 
@@ -89,9 +98,10 @@ function New-DevinLaunchInvocation {
     $argList = New-Object System.Collections.Generic.List[string]
     $notices = New-Object System.Collections.Generic.List[string]
 
-    # Project directory is positional/working-dir input for Devin's interactive launch.
-    $argList.Add('--cwd') | Out-Null
-    $argList.Add($ProjectPath) | Out-Null
+    # Devin has NO --cwd flag (verified `devin --help`, build 2026.7.23). Devin operates on the
+    # process working directory; the launcher in scripts/specrew-start.ps1 sets that via
+    # Start-Process -WorkingDirectory $ResolvedProjectPath. $ProjectPath is therefore accepted
+    # (Invoke-HostHandler splats it by name) but NOT injected as an argument — same as $Agent.
 
     # Permission-mode selection with dangerous precedence (FR-007).
     if ($AllowAll) {
@@ -119,7 +129,11 @@ function New-DevinLaunchInvocation {
         if (-not [string]::IsNullOrWhiteSpace($t.Notice)) { $notices.Add($t.Notice) | Out-Null }
     }
 
-    # Positional prompt is LAST (interactive launch; `devin -p` headless is reserved for canary only).
+    # Verified launch shape `devin [OPTIONS] [-- <PROMPT>...]` (build 2026.7.23): the bootstrap
+    # prompt is POSITIONAL after a `--` separator that ends option parsing. `--` starts with `-`,
+    # so the manual-command quoter in specrew-start.ps1 leaves it unquoted and it survives
+    # copy-paste intact. `devin -p` headless is reserved for bounded smoke/canary only (FR-007).
+    $argList.Add('--') | Out-Null
     $argList.Add($Prompt) | Out-Null
 
     return [pscustomobject]@{
