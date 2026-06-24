@@ -27272,3 +27272,69 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: T006
 - **Auth Commit Hash**: 6b2d89b46a68cd4b1e4f65af5bdc181db2f2c73e
 - **Recorded At**: 2026-06-24T09:48:03Z
+
+## 2026-06-24T11:00:11Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d70fff3e
+- **Recorded At**: 2026-06-24T11:00:10Z
+
+## 2026-06-24T11:22:42Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d70fff3e
+- **Recorded At**: 2026-06-24T11:22:41Z
+
+## 2026-06-24T11:26:53Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-24T11:26:53Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-06-24T11:26:54Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d70fff3e
+- **Recorded At**: 2026-06-24T11:26:54Z
+
+## 2026-06-24T11:27:20Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-24T11:27:20Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-06-24T11:27:20Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d70fff3e
+- **Recorded At**: 2026-06-24T11:27:20Z
+
+## 2026-06-24T11:27:51Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-24T11:27:51Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-06-24T11:27:52Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d70fff3e
+- **Recorded At**: 2026-06-24T11:27:52Z
