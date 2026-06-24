@@ -512,6 +512,29 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'PART 2 (non-pass NOT promoted): a non-blocking but NON-pass verdict is advisory-only and does NOT promote (145 G-197-I005-01)' {
+        # The promotion must require an AFFIRMATIVE pass disposition, not mere absence-of-blocking - else
+        # a needs-work/partial/unparseable verdict would launder to a gate 'pass'.
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            script:Add-NavigatorIncrement -Root $root -Content 'changed-for-nonpass-no-promote'
+            $cmd = @'
+$v = [ordered]@{ schema_version='1.0'; status='findings'; disposition='needs-work'; blocking=$false; findings=@(@{ id='F1'; severity='minor'; comment='nit'; disposition='needs-work' }) }
+[Console]::Out.Write(($v | ConvertTo-Json -Depth 6 -Compress))
+'@
+            $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
+            $fire.action | Should Be 'fired'
+            $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
+            $st.status | Should Be 'done'
+            $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
+            @($reap.promoted_run_ids).Count | Should Be 0
+            ($reap.inject_notes -join "`n") | Should Match 'non-pass verdict'
+            $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -TrunkName 'main'
+            $gate.decision | Should Not Be 'allow'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'PART 2 (blocking NOT promoted): a reaped BLOCKING verdict writes NO durable runs record and the gate still BLOCKS' {
         $root = script:New-NavigatorProject -FileContent 'base'
         try {

@@ -230,7 +230,7 @@ function ConvertFrom-ContinuousCoReviewNavigatorVerdict {
     # is_stub: the default placeholder reviewer (Build-...ReviewerCommand) marks itself reviewer='stub'.
     # It ALWAYS emits pass without actually reviewing, so it must never become gate evidence (else the
     # signoff gate is auto-satisfiable by plumbing). A real reviewer omits the marker. (closeout / flag 2)
-    $isStub = ($verdict.PSObject.Properties.Name -contains 'reviewer') -and ([string]$verdict.reviewer -eq 'stub')
+    $isStub = ($verdict.PSObject.Properties.Name -contains 'reviewer') -and (([string]$verdict.reviewer).Trim() -eq 'stub')
     $out | Add-Member -NotePropertyName is_stub -NotePropertyValue ([bool]$isStub) -Force
 
     # A short human summary line (finding count + first comment), for the inject/STOP-BLOCK directive.
@@ -325,13 +325,19 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         # until the real reviewer is wired (the post-closeout fast-follow). (closeout / flag 2)
                         $result.inject_notes.Add(("[co-review] checkpoint navigator fired (run {0}) - plumbing OK, but the real reviewer is not wired yet, so this is NOT counted as gate evidence." -f $runId)) | Out-Null
                     }
-                    else {
+                    elseif ((-not [string]::IsNullOrWhiteSpace([string]$verdict.disposition)) -and ([string]$verdict.disposition -match '(?i)^\s*(pass|approved|clean|no.?findings)\s*$')) {
                         $result.inject_notes.Add(("[co-review] checkpoint review PASSED (run {0}): {1}" -f $runId, $verdict.summary)) | Out-Null
-                        # PROMOTE the non-blocking PASS to durable gate evidence so this auto-fired
-                        # checkpoint becomes fresh evidence the signoff gate accepts. Blocking/failed are
-                        # NOT promoted (only a clean PASS advances the reviewed baseline); a stub is excluded above.
+                        # PROMOTE only on an AFFIRMATIVE pass disposition (pass/approved/clean/no-findings) -
+                        # NEVER on mere absence-of-blocking, else a 'needs-work'/'partial'/unparseable verdict
+                        # would launder to a gate 'pass'. The stub is excluded above; this makes the promotion
+                        # adversarially sound for the real reviewer too. (145 G-197-I005-01)
                         $promotedId = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $RepoRoot -RunId $runId -TreeId $treeId -TrunkName $TrunkName -Now $Now
                         if (-not [string]::IsNullOrWhiteSpace($promotedId)) { $result.promoted_run_ids.Add($promotedId) | Out-Null }
+                    }
+                    else {
+                        # Non-blocking but NOT an affirmative pass (needs-work / partial / no parseable pass
+                        # disposition): advisory only, NEVER gate evidence. (145 G-197-I005-01)
+                        $result.inject_notes.Add(("[co-review] checkpoint review run {0} returned a non-blocking, non-pass verdict ('{1}') - advisory only, NOT counted as gate evidence." -f $runId, ([string]$verdict.disposition))) | Out-Null
                     }
                 }
                 elseif ($status -eq 'done' -and -not $verdict.ok) {
