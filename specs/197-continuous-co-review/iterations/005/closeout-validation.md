@@ -83,6 +83,7 @@ the delivered scope, both zero-footprint. Each surfaced ONE real finding, both F
   dispatch while fixtures stayed green. FIXED `938731eb` — row synced + a catalog-parity guard added.
 
 Carried (pre-existing, not blockers, recorded in [review.md](review.md)): the deploy mechanism does not
-re-sync `refocus-scopes.json` on `specrew update` (-> proposal + beta validation); a dormant guard
-exception; the 4 `probe`-authored F-185 commits needing author-rewrite before main. Full detail +
-dispositions: [review.md](review.md).
+re-sync `refocus-scopes.json` on `specrew update` (-> file a proposal, COORDINATE with Proposal 198 —
+same self-host-currency class as the `extensions.yml` drift just fixed on the Devin worktree); a dormant
+guard exception; the 4 `probe`-authored F-185 commits are ALREADY on protected `origin/main` (accept +
+document, do NOT rewrite protected history). Full detail + dispositions: [review.md](review.md).

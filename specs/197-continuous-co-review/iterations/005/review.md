@@ -46,12 +46,18 @@ copies are byte-identical (`2f977ec6`). dispatcher-stop-block 27, conformance 40
 - **SECONDARY (deploy mechanism, pre-existing, all providers):** `specrew update` + the manual deploy
   fallback do not sync `refocus-scopes.json` into an existing `.specify` (only fresh-init's full-tree
   copy does). So a downstream project that UPDATES may not receive a new provider row. -> File a
-  proposal; verify at beta validation. Out of 197's scope.
+  proposal; **COORDINATE with Proposal 198 (self-host + dependency currency)** — this is the same
+  self-host-currency class as the `extensions.yml` drift just fixed on the Devin worktree; verify at
+  beta validation. Out of 197's scope.
 - **MINOR:** the `F197AuthorizedSurfaceExceptions` guard exception is dormant (the guard keys on the
   working-tree diff; a committed edit shows a clean tree). Harmless; remove the exception once landed
   on main.
-- **Branch hygiene (known, on record):** 4 commits authored `probe <a@b.c>` (Jun 20, F-185 work) — the
-  2026-06-20 git-identity incident; author-rewrite before this branch reaches main.
+- **Pre-existing main blemish (ACCEPT + DOCUMENT — do NOT rewrite):** 4 commits authored `probe <a@b.c>`
+  (`79d98d52`/`e2bc975a`/`27c25b13`/`ce3b2f88`, Jun 20, F-185 work) are **already on `origin/main`**
+  (merged via F-185), NOT 197-only — so they cannot be author-rewritten "before this branch merges"
+  without rewriting **protected main history**. Maintainer ruling (2026-06-24): accept as a pre-existing
+  cosmetic blemish and document it; do NOT rewrite protected main for 4 author labels. (The 2026-06-20
+  git-identity sandbox discipline still binds FUTURE fan-outs — this iteration's were clean.)
 
 ## Disposition
 

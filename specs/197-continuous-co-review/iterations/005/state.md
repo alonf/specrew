@@ -2,12 +2,30 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 005
-**Current Phase**: implement
-**Iteration Status**: executing
-**Last Completed Task**: closeout build — all "implement all, fix all" items done + verified
-**Tasks Remaining**: T081 (the Proposal 145 review is running) -> then ready-for-closeout signal
-**In Progress**: T081 (145 review in flight; closeout-validation written)
+**Current Phase**: review-signoff
+**Iteration Status**: reviewing
+**Last Completed Task**: review-signoff — APPROVED by maintainer (2026-06-24), independently verified
+**Tasks Remaining**: retro -> iteration-closeout (close 005); then plan Iteration 006
+**In Progress**: iteration-005 closeout (retro + iteration-closeout)
 **Updated**: 2026-06-24
+
+## Review-signoff verdict — APPROVED (2026-06-24)
+
+Maintainer APPROVED for review-signoff (iteration-005), independently verified: navigator 17/0 (own
+run), 197's own commits all-Alon/zero-probe, both 145 reviews real (affirmative-pass soundness + the
+catalog-drift MAJOR). Honest residual accepted. Decision: **close 005 -> retro -> iteration-closeout,
+then plan Iteration 006**. Two maintainer corrections recorded:
+
+- The 4 `probe` commits are ALREADY on protected `origin/main` (F-185), not 197-only -> accept +
+  document as a pre-existing cosmetic blemish; do NOT rewrite protected main. (review.md fixed.)
+- The deploy-mechanism carry (`refocus-scopes.json` not synced on `specrew update`) -> file it but
+  COORDINATE with Proposal 198 (self-host currency; same class as the Devin `extensions.yml` drift).
+
+**Iteration 006 scope (maintainer-set):** the real reviewer + FULL-FINDINGS REPORTING (the payoff).
+Persist a per-run full report (all findings, all severities) DURABLY — STOP deleting it on reap
+(`Clear-...Entry` `Remove-Item`) — and point the inject note at it, using Proposal 197's
+blackboard/discussion file as the surface. Summary-only is acceptable ONLY while the reviewer is the
+no-findings stub. e2e: the meaningful e2e (real findings surfaced) runs at the END of 006.
 
 ## Closeout build (maintainer "implement all, fix all", 2026-06-24)
 
