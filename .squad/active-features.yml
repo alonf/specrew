@@ -29,3 +29,8 @@ claims:
     claim_start_time: "2026-06-16T23:10:34Z"
     last_refresh_time: "2026-06-17T22:55:24Z"
     branch_name: "184-full-antigravity-refocus"
+  - feature_id: "200-devin-cli-host"
+    claimed_by: "alon@HOMEALON11"
+    claim_start_time: "2026-06-23T23:37:23Z"
+    last_refresh_time: "2026-06-24T09:48:03Z"
+    branch_name: "200-devin-cli-host"

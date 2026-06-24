@@ -1,0 +1,41 @@
+schema: "v1"
+feature: "200-devin-cli-host"
+iteration: "001"
+updated_at: "2026-06-24T10:23:02.2620011Z"
+tasks:
+  T001:
+    title: "Empirical Devin Stop/export/normalization spike"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-06-24T10:23:02.2470674Z"
+    blocked_reason: ""
+  T002:
+    title: "Registry-driven validation at three production boundaries"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-06-24T10:23:02.2489858Z"
+    blocked_reason: ""
+  T003:
+    title: "Deterministic host-package FileList generator and parity gate"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-06-24T10:23:02.2493558Z"
+    blocked_reason: ""
+  T004:
+    title: "Host-addition purity assertion and three-entry allow-list shrink"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-06-24T10:23:02.2500047Z"
+    blocked_reason: ""
+  T005:
+    title: "Slice A CI and FileList-faithful prepublish wiring"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-06-24T10:23:02.2506811Z"
+    blocked_reason: ""
+  T006:
+    title: "Iteration review, traceability, and expected rework reserve"
+    status: "done"
+    started_at: ""
+    completed_at: "2026-06-24T10:23:02.2512753Z"
+    blocked_reason: ""

@@ -1,16 +1,16 @@
 ---
-focus_area: "F-184 iteration-closeout verdict"
-active_issues: "awaiting human iteration-closeout verdict; do not open feature-closeout or iteration 002 without approval"
+focus_area: "Iteration 001 review-signoff"
+active_issues: "Awaiting human review-signoff; later Devin package tasks unauthorized"
 schema: v1
-updated_at: 2026-06-18T07:50:14Z
-session_state_active: false
-session_state_boundary: feature-closeout
-session_state_feature: 184-full-antigravity-refocus
-session_state_feature_path: "C:\Dev\183-stability-quality-bundle\specs\184-full-antigravity-refocus"
-session_state_iteration: "(none)"
-session_state_task: "(none)"
-session_state_auth_commit: 7ac1fc888ecdfbdd785a06b12b20e516e5d1ad6b
-session_state_recorded_at: 2026-06-18T07:50:14Z
+updated_at: 2026-06-24T09:48:03Z
+session_state_active: true
+session_state_boundary: review-signoff
+session_state_feature: 200-devin-cli-host
+session_state_feature_path: "C:\Dev\200-devin-cli-host\specs\200-devin-cli-host"
+session_state_iteration: 001
+session_state_task: T006
+session_state_auth_commit: 6b2d89b46a68cd4b1e4f65af5bdc181db2f2c73e
+session_state_recorded_at: 2026-06-24T09:48:03Z
 ---
 
 # What We're Focused On

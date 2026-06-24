@@ -27185,3 +27185,90 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 7ac1fc888ecdfbdd785a06b12b20e516e5d1ad6b
 - **Recorded At**: 2026-06-18T07:50:14Z
+
+## 2026-06-23T23:37:24Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: d3d9dd3a9d17f3f3d9cc4fe32ce44863ed04d3c2
+- **Recorded At**: 2026-06-23T23:37:23Z
+
+## 2026-06-23T23:48:00Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 7266978a3b6e0cf620d104ba3c6734451667f959
+- **Recorded At**: 2026-06-23T23:47:59Z
+
+## 2026-06-24T08:00:20Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 655048f1e6fa55d9a47e74a426a546ba167b2b81
+- **Recorded At**: 2026-06-24T08:00:19Z
+
+## 2026-06-24T08:20:09Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: d2fd7cd232cedd99b5d658e44e7b5ac0946f7142
+- **Recorded At**: 2026-06-24T08:20:09Z
+
+## 2026-06-24T08:33:45Z — Boundary enforcement: before-implement
+
+- **Feature**: 200-devin-cli-host
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched tasks -> before-implement.
+
+## 2026-06-24T08:36:10Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 30a9a510bbc5d026815db9d0f2d8cc7a79bac4d8
+- **Recorded At**: 2026-06-24T08:36:09Z
+
+## 2026-06-24T08:36:31Z — Boundary enforcement: before-implement
+
+- **Feature**: 200-devin-cli-host
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched tasks -> before-implement.
+
+## 2026-06-24T09:04:25Z — Boundary enforcement: before-implement
+
+- **Feature**: 200-devin-cli-host
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-24T09:48:04Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: 001
+- **Task ID**: T006
+- **Auth Commit Hash**: 6b2d89b46a68cd4b1e4f65af5bdc181db2f2c73e
+- **Recorded At**: 2026-06-24T09:48:03Z
