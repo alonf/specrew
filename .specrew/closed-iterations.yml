@@ -4,280 +4,364 @@
 closed:
   - feature: 001-specrew-product
     iteration: 000
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 001-specrew-product
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 005-stack-aware-quality-bar
     iteration: 003
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 005-stack-aware-quality-bar
     iteration: 004
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 007-user-facing-progress-handoff
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 008-reviewer-escalation-symmetry
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 008-reviewer-escalation-symmetry
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 008-reviewer-escalation-symmetry
     iteration: 003
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 008-reviewer-escalation-symmetry
     iteration: 004
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 008-reviewer-escalation-symmetry
     iteration: 005
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 009-project-path-resolution
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 011-specrew-start-conditional-pause
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 011-specrew-start-conditional-pause
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 012-descriptive-id-handoffs
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 012-descriptive-id-handoffs
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 013-validator-hardening
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 013-validator-hardening
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 014-handoff-format-scoping
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 015-public-readiness-pass
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 015-public-readiness-pass
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 016-substantive-interaction-model
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 016-substantive-interaction-model
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 017-velocity-dashboard
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 017-velocity-dashboard
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 018-velocity-dashboard-visual-richness
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 019-specrew-distribution-module
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 019-specrew-distribution-module
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 020-session-state-durability
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 020-session-state-durability
     iteration: 002
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 021-specrew-slash-commands
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 022-hotfix-schema-tests
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 023-legacy-state-read-tolerance
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 024-slash-command-multi-host-correctness
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 028-review-evidence-integrity
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 029-baseline-hygiene
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 030-validator-speedup
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 031-commit-push-discipline
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 032-closeout-lifecycle-sync
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 033-markdown-lint-pre-boundary
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 034-validator-memoization
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 035-validator-iteration-parallelization
     iteration: 001
-    closed_at: 2026-05-22T09:26:25Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 036-closed-iteration-index
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 037-validator-repetition-detector
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 038-pr-review-integration
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 039-launch-mode-boundary-enforcement
     iteration: 001
-    closed_at: 2026-05-22T17:54:25Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 043-multi-host-onboarding
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 002
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 003
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 004
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 005
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 006
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 007
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 008
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 009
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 011
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 044-per-host-architecture-refactor
+    iteration: 012
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 045-v0271-bugfix-bundle
     iteration: 001
-    closed_at: 2026-05-25T16:18:45Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 045-v0271-bugfix-bundle
+    iteration: 002
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 046-046-bug-bash
     iteration: 001
-    closed_at: 2026-05-25T21:36:04Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 047-bug-bash-trust-hardening
     iteration: 001
-    closed_at: 2026-05-26T10:45:46Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 049-pipeline-hardening-intake
     iteration: 001
-    closed_at: 2026-05-27T00:30:35Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 049-pipeline-hardening-intake
     iteration: 002
-    closed_at: 2026-05-27T09:20:01Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 049-pipeline-hardening-intake
     iteration: 003
-    closed_at: 2026-05-27T23:54:40Z
-  - feature: 049-pipeline-hardening-intake
-    iteration: 005
-    closed_at: 2026-05-28T22:08:57Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 049-pipeline-hardening-intake
     iteration: 004
-    closed_at: 2026-05-29T00:25:08Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 049-pipeline-hardening-intake
+    iteration: 005
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 050-cursor-host-support
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 050-cursor-host-support
+    iteration: 002
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 050-cursor-host-support
+    iteration: 003
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 051-multi-session-foundation
     iteration: 001
-    closed_at: 2026-05-31T15:24:14Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 051-multi-session-foundation
-    iteration: "002"
-    closed_at: 2026-05-31T20:54:00Z
+    iteration: 002
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 051-multi-session-foundation
     iteration: 003
-    closed_at: 2026-05-31T23:35:07Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 054-activate-spec-surfaces
     iteration: 001
-    closed_at: 2026-05-31T11:05:37Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 139-boundary-authorization-prompt-truth
     iteration: 001
-    closed_at: 2026-06-01T13:09:51Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 140-design-analysis-gate
     iteration: 001
-    closed_at: 2026-06-02T06:59:33Z
-  - feature: 141-design-gate-runtime-hardening
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 140-unix-native-install
     iteration: 001
-    closed_at: 2026-06-02T18:33:32Z
-  - feature: 141-design-gate-runtime-hardening
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 140-unix-native-install
     iteration: 002
-    closed_at: 2026-06-03T00:40:46Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 003
-    closed_at: 2026-06-03T12:57:38Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 004
-    closed_at: 2026-06-03T16:25:20Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 140-unix-native-install
     iteration: 003
-    closed_at: 2026-06-03T13:42:55Z
-  - feature: 168-post-ship-proposal-amendment-discipline
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
     iteration: 001
-    closed_at: 2026-06-06T15:03:31Z
-  - feature: 161-managed-skill-preserving-guard
-    iteration: 001
-    closed_at: 2026-06-06T13:39:55Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 002
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 003
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 004
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 005
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 006
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 007
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 008
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 009
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 010
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 011
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 141-design-gate-runtime-hardening
+    iteration: 012
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 159-update-ux-small-fixes
     iteration: 001
-    closed_at: 2026-06-06T10:18:30Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 005
-    closed_at: 2026-06-03T21:17:49Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 010
-    closed_at: 2026-06-05T22:00:00Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 006
-    closed_at: 2026-06-04T10:00:00Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 007
-    closed_at: 2026-06-04T13:35:00Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 008
-    closed_at: 2026-06-05T08:00:00Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 009
-    closed_at: 2026-06-05T16:00:00Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 011
-    closed_at: 2026-06-05T23:59:00Z
-  - feature: 141-design-gate-runtime-hardening
-    iteration: 012
-    closed_at: 2026-06-06T02:10:00Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 160-unix-resolver-sidecar-hardening
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 161-managed-skill-preserving-guard
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 168-post-ship-proposal-amendment-discipline
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 170-retire-evaluation-surface
     iteration: 001
-    closed_at: 2026-06-06T20:23:13Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 171-specrew-refocus
     iteration: 001
-    closed_at: 2026-06-07T01:50:49Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 171-specrew-refocus
     iteration: 002
-    closed_at: 2026-06-07T20:05:49Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 172-profile-setup-ux-copy
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 001
-    closed_at: 2026-06-08T18:40:27Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 002
-    closed_at: 2026-06-08T20:17:19Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 003
-    closed_at: 2026-06-08T22:56:21Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 004
-    closed_at: 2026-06-09T12:22:42Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 005
-    closed_at: 2026-06-09T16:31:00Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 006
-    closed_at: 2026-06-10T18:00:00Z
-  - feature: 174-hook-driven-session-bootstrap
-    iteration: 008
-    closed_at: 2026-06-11T00:00:00Z
-  - feature: 174-hook-driven-session-bootstrap
-    iteration: 009
-    closed_at: 2026-06-11T18:00:00Z
-  - feature: 176-product-domain-lens
-    iteration: 001
-    closed_at: 2026-06-09T21:24:12Z
-  - feature: 177-software-development-rules-lens
-    iteration: 001
-    closed_at: 2026-06-10T12:40:44Z
-  - feature: 177-software-development-rules-lens
-    iteration: 002
-    closed_at: 2026-06-10T17:50:16Z
-  - feature: 174-hook-driven-session-bootstrap
-    iteration: 010
-    closed_at: 2026-06-13T16:49:56Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 007
-    closed_at: 2026-06-14T17:24:46Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 008
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 009
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 174-hook-driven-session-bootstrap
+    iteration: 010
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 011
-    closed_at: 2026-06-14T17:24:46Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 174-hook-driven-session-bootstrap
     iteration: 012
-    closed_at: 2026-06-15T02:06:13Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 176-product-domain-lens
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 177-software-development-rules-lens
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 177-software-development-rules-lens
+    iteration: 002
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 182-work-kind-branch-governance
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 182-work-kind-branch-governance
+    iteration: 002
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 182-work-kind-branch-governance
+    iteration: 003
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 182-work-kind-branch-governance
+    iteration: 004
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 183-stability-quality-bundle
     iteration: 001
-    closed_at: 2026-06-16T17:40:24Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 184-full-antigravity-refocus
     iteration: 001
-    closed_at: 2026-06-17T12:19:52Z
+    closed_at: 2026-06-24T14:04:56Z
   - feature: 184-full-antigravity-refocus
     iteration: 002
-    closed_at: 2026-06-17T22:55:26Z
+    closed_at: 2026-06-24T14:04:56Z
+  - feature: 200-devin-cli-host
+    iteration: 001
+    closed_at: 2026-06-24T14:04:56Z

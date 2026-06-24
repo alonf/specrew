@@ -12,7 +12,7 @@
 
 ```text
 SPECREW VELOCITY DASHBOARD
-Summary: → F-200 Devin CLI Host — Clean-Extensibility Proof | In Review · review-signoff | 12.21 SP/day (10 closed iterations, high)
+Summary: → F-200 Devin CLI Host — Clean-Extensibility Proof | Iteration 001 (Slice A) closed · iteration-closeout | 12.21 SP/day (10 closed iterations, high)
 Today 2026-06-24 | Repo 200-devin-cli-host
 Rendering rich
 ACTIVE

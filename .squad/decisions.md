@@ -27338,3 +27338,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: d70fff3e
 - **Recorded At**: 2026-06-24T11:27:52Z
+
+## 2026-06-24T14:03:50Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-06-24T14:03:50Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-06-24T14:03:50Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 200-devin-cli-host
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 0dc70aca
+- **Recorded At**: 2026-06-24T14:03:50Z
