@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: executing
+**Status**: reviewing
 **Capacity**: 28.00/30 story_points
 **Started**: 2026-06-23
 **Completed**:
@@ -38,16 +38,16 @@ future merge-agent, Proposals 010/134/149). No F-184 protected-surface edits.
 | T078 | The co-review-navigator provider + `refocus-scopes.json` registration: a FAST reap-then-fire dispatcher (reuse the Phase A `Invoke-ContinuousCoReviewGateDispatch` real-checkpoint detection) with dedup-by-reviewed-tree-id; fires the launcher `{read-only, discard, code-review}`; returns immediately (respects the ~20s budget / #2885). | FR-026, FR-030 | 3.00 | Implementer | `scripts/internal/continuous-co-review/**`; `extensions/specrew-speckit/refocus-scopes.json` | done |
 | T079 | The pending-task registry (`.specrew/review/pending/`, gitignored + digest-stripped) + the reaper: next-stop reap (collect verdict, force-continue via 185 `STOP-BLOCK` if blocking) + a SessionStart sweep for cross-session orphans; kills zombie processes AND orphaned worktrees. | FR-030, FR-031 | 4.00 | Reviewer | `scripts/internal/continuous-co-review/**`; `scripts/internal/agent-tasks/**` | done |
 | T080 | Iteration-004 145 carries: thread `TrunkName` through `Invoke-ContinuousCoReviewSignoffGateIfEnabled` -> the gate (non-`main`-trunk repos stop failing closed); note the F2 nested-key fail-safe. | FR-025 | 1.00 | Reviewer | `scripts/internal/continuous-co-review/signoff-gate-wiring.ps1` | done |
-| T081 | Tests + closeout-validation + Proposal 145 review: fire/reap/orphan-kill/cross-session-sweep/dedup/disposition-discard/worktree-cleanup; the spawn seam per host; protected-surface guard. | FR-026, FR-030, FR-031, SC-006 | 3.00 | Reviewer | `tests/**`; `specs/197-continuous-co-review/iterations/005/**` | planned |
+| T081 | Tests + closeout-validation + Proposal 145 review: fire/reap/orphan-kill/cross-session-sweep/dedup/disposition-discard/worktree-cleanup; the spawn seam per host; protected-surface guard. | FR-026, FR-030, FR-031, SC-006 | 3.00 | Reviewer | `tests/**`; `specs/197-continuous-co-review/iterations/005/**` | done |
 
 ## Effort Model
 
 | Setting | Value | Notes |
 | ------- | ----- | ----- |
 | Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
-| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Capacity per Iteration | 30 | Maximum planned effort before overcommit guidance applies (raised 20->30, informed maintainer "implement all, fix all" expansion). |
 | Iteration Bounding | scope | `scope` keeps requirements fixed; time varies. |
-| Overcommit Threshold | 1.0 | Planned effort must stay at or below 20 story_points. |
+| Overcommit Threshold | 1.0 | Planned effort must stay at or below 30 story_points. |
 | Calibration Enabled | true | Retro compares planned and actual effort. |
 
 ## Traceability Summary
