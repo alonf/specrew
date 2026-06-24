@@ -1,0 +1,13 @@
+{
+  "atif_version": "1.7",
+  "steps": [
+    {
+      "source": "user",
+      "message": "Reply with exactly: SPECREW_DEVIN_STOP_CANARY_200_WITH_SH"
+    },
+    {
+      "source": "agent",
+      "message": "SPECREW_DEVIN_STOP_CANARY_200_WITH_SH"
+    }
+  ]
+}
