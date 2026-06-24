@@ -2,11 +2,11 @@
 
 **Feature**: 197-continuous-co-review
 **Iteration**: 005
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
-**Last Completed Task**: review-signoff — APPROVED by maintainer (2026-06-24), independently verified
-**Tasks Remaining**: retro -> iteration-closeout (close 005); then plan Iteration 006
-**In Progress**: iteration-005 closeout (retro + iteration-closeout)
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: iteration-closeout — iteration 005 CLOSED (review-signoff approved + retro done)
+**Tasks Remaining**: (none — iteration 005 complete) -> next: plan Iteration 006 (real reviewer + full-findings reporting)
+**In Progress**: (none)
 **Updated**: 2026-06-24
 
 ## Review-signoff verdict — APPROVED (2026-06-24)
