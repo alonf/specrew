@@ -4,9 +4,9 @@
 **Iteration**: 006
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T082 — real reviewer wiring (host-neutral select, honest mutation-guard SKIP, timeout 300; 229/0 CCR + 12 wiring tests)
-**Tasks Remaining**: T083, T084, T085
-**In Progress**: T083 + T084 (findings -> durable blackboard + inject-note surfacing)
+**Last Completed Task**: T083+T084 — full findings -> durable blackboard + inject-note/STOP-BLOCK surfacing (232/0 CCR + 3 reporting tests)
+**Tasks Remaining**: T085
+**In Progress**: T085 (tests + closeout-validation + 145 + the LIVE-dispatcher multi-severity e2e)
 **Updated**: 2026-06-24
 
 ## Before-implement verdict — APPROVED (2026-06-24)

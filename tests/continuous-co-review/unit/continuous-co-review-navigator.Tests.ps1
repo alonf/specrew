@@ -615,6 +615,70 @@ $v = [ordered]@{ schema_version='1.0'; status='findings'; disposition='needs-wor
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'PART 3 (T083/T084 findings reporting): a real PASS with advisory findings writes ALL findings to the durable blackboard, run_id normalized, and the inject note points the developer at the thread' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            script:Add-NavigatorIncrement -Root $root -Content 'changed-for-findings-reporting'
+            $cmd = @'
+$v = [ordered]@{ schema_version='1.0'; run_id='reviewer-local-id'; status='findings'; disposition='pass'; blocking=$false; findings=@(@{ id='F1'; severity='advisory'; location='a.txt'; comment='nit one'; disposition='advisory' }, @{ id='F2'; severity='nit'; location='b.txt'; comment='suggestion two'; disposition='advisory' }) }
+[Console]::Out.Write(($v | ConvertTo-Json -Depth 6 -Compress))
+'@
+            $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
+            $fire.action | Should Be 'fired'
+            $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
+            $st.status | Should Be 'done'
+            $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
+            # T083: the durable blackboard thread under inline/<REGISTRY-run-id>/ carries ALL findings.
+            $findingsPath = Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/findings-result.json"
+            Test-Path -LiteralPath $findingsPath | Should Be $true
+            $fr = Get-Content -LiteralPath $findingsPath -Raw | ConvertFrom-Json
+            @($fr.findings).Count | Should Be 2
+            $fr.run_id | Should Be $fire.fired_run_id   # run_id NORMALIZED to the registry id (co-located with the gate record)
+            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/review-thread.json") | Should Be $true
+            # T084: the inject note points at the durable thread (not just a one-line summary).
+            ($reap.inject_notes -join "`n") | Should Match 'Full findings'
+            ($reap.inject_notes -join "`n") | Should Match 'inline/'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'PART 3 (stub excluded): a stub verdict writes NO blackboard thread' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            script:Add-NavigatorIncrement -Root $root -Content 'changed-for-stub-no-blackboard'
+            $cmd = @'
+$v = [ordered]@{ schema_version='1.0'; run_id='r'; status='no_findings'; disposition='pass'; blocking=$false; findings=@(); reviewer='stub' }
+[Console]::Out.Write(($v | ConvertTo-Json -Depth 6 -Compress))
+'@
+            $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
+            $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
+            $st.status | Should Be 'done'
+            $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
+            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/findings-result.json") | Should Be $false
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'PART 3 (fail-open): a blackboard-write failure degrades to the summary note and NEVER throws' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            script:Add-NavigatorIncrement -Root $root -Content 'changed-for-blackboard-failopen'
+            $cmd = @'
+$v = [ordered]@{ schema_version='1.0'; run_id='r'; status='findings'; disposition='pass'; blocking=$false; findings=@(@{ id='F1'; severity='advisory'; comment='nit'; disposition='advisory' }) }
+[Console]::Out.Write(($v | ConvertTo-Json -Depth 6 -Compress))
+'@
+            $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
+            $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
+            $st.status | Should Be 'done'
+            Mock Write-ContinuousCoReviewBlackboardThread { throw 'simulated blackboard failure' }
+            $script:failOpenReap = $null
+            { $script:failOpenReap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd } | Should Not Throw
+            ($script:failOpenReap.inject_notes -join "`n") | Should Match 'PASSED'   # still surfaces the verdict
+            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/findings-result.json") | Should Be $false
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'FINDING 1 (supersede only when firing): a launcher-unavailable stop does NOT kill a prior running review' {
         # The supersede (Stop the prior running review) must run AFTER the launcher-availability check,
         # so a stop that CANNOT fire a replacement leaves the prior review intact (the old order killed

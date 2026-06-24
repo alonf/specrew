@@ -384,6 +384,38 @@ function Clear-ContinuousCoReviewNavigatorEntry {
     catch { $null = $_ }
 }
 
+function Write-ContinuousCoReviewNavigatorBlackboard {
+    # T083: route a REAL reviewer's COMPLETE FindingsResult (all severities) to the durable blackboard
+    # thread under .specrew/review/inline/<run-id>/ (findings-result.json + review-thread.json), run_id
+    # NORMALIZED to the registry run-id so the full findings co-locate with the gate record. The reap's
+    # Clear-...Entry deletes only pending/<run-id>/ (a SEPARATE dir); inline/ survives -> NO reap-ordering
+    # change. EXCLUDES the stub (no real findings). FAIL-OPEN: any error/miss returns $null and the caller
+    # degrades to the one-line summary note; the navigator never throws to the dispatcher. (T083)
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)]$Verdict,
+        [datetime]$Now = [datetime]::UtcNow
+    )
+    if (($Verdict.PSObject.Properties.Name -contains 'is_stub') -and $Verdict.is_stub) { return $null }
+    if ($null -eq $Verdict.raw) { return $null }
+    # The blackboard writer lives in review-blackboard-writer.ps1; the provider path dot-sources only the
+    # navigator + launcher, so lazy-load _load (the same in-scope pattern as Add-...PassRunRecord).
+    if (-not (Get-Command -Name 'Write-ContinuousCoReviewBlackboardThread' -ErrorAction SilentlyContinue)) {
+        try { $loadPath = Join-Path $PSScriptRoot '_load.ps1'; if (Test-Path -LiteralPath $loadPath -PathType Leaf) { . $loadPath } } catch { $null = $_ }
+        if (-not (Get-Command -Name 'Write-ContinuousCoReviewBlackboardThread' -ErrorAction SilentlyContinue)) { return $null }
+    }
+    try {
+        $findings = $Verdict.raw
+        # NORMALIZE run_id to the registry run-id (co-locate with the gate record under inline/<run-id>/).
+        if ($findings.PSObject.Properties.Name -contains 'run_id') { $findings.run_id = $RunId }
+        else { $findings | Add-Member -NotePropertyName run_id -NotePropertyValue $RunId -Force }
+        Write-ContinuousCoReviewBlackboardThread -RepoRoot $RepoRoot -CheckpointId ("nav-$RunId") -FindingsResult $findings -CreatedAt $Now | Out-Null
+        return ".specrew/review/inline/$RunId/"
+    }
+    catch { return $null }
+}
+
 function Invoke-ContinuousCoReviewNavigatorReap {
     # T079 REAP (runs at the top of every navigator Stop, AND - via -CrossSession - as the SessionStart
     # sweep). Walks every pending registry entry and classifies it:
@@ -434,9 +466,13 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                 # Surface the verdict (done runs carry one at result_path; others did not finish cleanly).
                 $verdict = ConvertFrom-ContinuousCoReviewNavigatorVerdict -ResultPath $resultPath
                 if ($status -eq 'done' -and $verdict.ok) {
+                    # T083: route the REAL reviewer's full findings (all severities) to the durable
+                    # blackboard (fail-open -> $null; the stub is excluded inside). T084: surface the thread.
+                    $threadRef = Write-ContinuousCoReviewNavigatorBlackboard -RepoRoot $RepoRoot -RunId $runId -Verdict $verdict -Now $Now
+                    $threadSuffix = if ($threadRef) { " Full findings (all severities): $threadRef" } else { '' }
                     if ($verdict.blocking) {
                         if ($null -eq $result.stop_block) {
-                            $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId)
+                            $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId -BlackboardRef $threadRef)
                         }
                     }
                     elseif (($verdict.PSObject.Properties.Name -contains 'is_stub') -and $verdict.is_stub) {
@@ -447,7 +483,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         $result.inject_notes.Add(("[co-review] checkpoint navigator fired (run {0}) - plumbing OK, but the real reviewer is not wired yet, so this is NOT counted as gate evidence." -f $runId)) | Out-Null
                     }
                     elseif ((-not [string]::IsNullOrWhiteSpace([string]$verdict.disposition)) -and ([string]$verdict.disposition -match '(?i)^\s*(pass|approved|clean|no.?findings)\s*$')) {
-                        $result.inject_notes.Add(("[co-review] checkpoint review PASSED (run {0}): {1}" -f $runId, $verdict.summary)) | Out-Null
+                        $result.inject_notes.Add(("[co-review] checkpoint review PASSED (run {0}): {1}.{2}" -f $runId, $verdict.summary, $threadSuffix)) | Out-Null
                         # PROMOTE only on an AFFIRMATIVE pass disposition (pass/approved/clean/no-findings) -
                         # NEVER on mere absence-of-blocking, else a 'needs-work'/'partial'/unparseable verdict
                         # would launder to a gate 'pass'. The stub is excluded above; this makes the promotion
@@ -458,7 +494,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     else {
                         # Non-blocking but NOT an affirmative pass (needs-work / partial / no parseable pass
                         # disposition): advisory only, NEVER gate evidence. (145 G-197-I005-01)
-                        $result.inject_notes.Add(("[co-review] checkpoint review run {0} returned a non-blocking, non-pass verdict ('{1}') - advisory only, NOT counted as gate evidence." -f $runId, ([string]$verdict.disposition))) | Out-Null
+                        $result.inject_notes.Add(("[co-review] checkpoint review run {0} returned a non-blocking, non-pass verdict ('{1}') - advisory only, NOT counted as gate evidence.{2}" -f $runId, ([string]$verdict.disposition), $threadSuffix)) | Out-Null
                     }
                 }
                 elseif ($status -eq 'done' -and -not $verdict.ok) {
@@ -631,7 +667,7 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
 function Build-ContinuousCoReviewNavigatorStopBlock {
     # The directive body a blocking co-review verdict force-continues the turn with (the dispatcher
     # wraps it in the host's stop-block envelope). Names the finding so the human/agent acts on it.
-    param([Parameter(Mandatory)]$Verdict, [AllowNull()][string]$RunId)
+    param([Parameter(Mandatory)]$Verdict, [AllowNull()][string]$RunId, [AllowNull()][string]$BlackboardRef)
     $sb = New-Object System.Text.StringBuilder
     [void]$sb.AppendLine('Specrew co-review (navigator): the fresh-context checkpoint review of your latest increment returned a BLOCKING finding. Address it before continuing, then re-stop:')
     [void]$sb.AppendLine(("- run {0}: {1}" -f $RunId, $Verdict.summary))
@@ -645,6 +681,9 @@ function Build-ContinuousCoReviewNavigatorStopBlock {
                 [void]$sb.AppendLine(("  BLOCKING {0}{1}" -f ($(if ($loc) { "[$loc] " } else { '' })), $cmt))
             }
         }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($BlackboardRef)) {
+        [void]$sb.AppendLine(("Full findings (all severities) - the durable review thread: {0}" -f $BlackboardRef))
     }
     [void]$sb.AppendLine('This is a co-review navigator block (not a boundary verdict); do NOT emit a SPECREW-VERDICT-BOUNDARY marker. The review ran in an isolated read-only worktree; nothing was changed in your tree.')
     return $sb.ToString().TrimEnd()
