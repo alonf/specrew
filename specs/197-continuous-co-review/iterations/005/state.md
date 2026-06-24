@@ -4,10 +4,23 @@
 **Iteration**: 005
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: DOGFOOD (mechanism validated end-to-end on iter-005's own code; 2 bugs caught + fixed)
-**Tasks Remaining**: T081 (closeout: 4 reviewer findings + 3 flagged gaps + formal tests + 145 review)
-**In Progress**: T081 closeout (pending maintainer pace decision after the dogfood checkpoint)
+**Last Completed Task**: closeout build — all "implement all, fix all" items done + verified
+**Tasks Remaining**: T081 (the Proposal 145 review is running) -> then ready-for-closeout signal
+**In Progress**: T081 (145 review in flight; closeout-validation written)
 **Updated**: 2026-06-24
+
+## Closeout build (maintainer "implement all, fix all", 2026-06-24)
+
+- Navigator hardening (4 findings) + PASS->gate promotion to `.specrew/review/inline/` + the STUB
+  EXCLUSION (a stub never promotes -> the gate is not auto-satisfiable by plumbing; guard test). `bc729b67`.
+- Dispatcher F-184 (maintainer-authorized): codex clean-args + stop-block merge, 3 copies byte-identical,
+  scoped protected-surface-guard exception. `4f02a6c0`.
+- FileList: 37 missing continuous-co-review/** + agent-tasks/** files added to Specrew.psd1. `212b33d6`.
+- Dogfood fixes (caught by the navigator-on-its-own-code dogfood): `& git` encoding -> Process; huge
+  diff arg -> batched. `c2cf8a38`.
+- VERIFIED: full CCR + key integration 216/0; navigator 16/0; dogfood mechanism end-to-end; cross-platform.
+- RESIDUAL (fast-follow, not a blocker): wire the REAL reviewer (the navigator fires a stub today; the
+  manual `specrew review --live` path produces real gate evidence). See closeout-validation.md.
 
 ## Dogfood outcome (full detail: dogfood-result.md)
 

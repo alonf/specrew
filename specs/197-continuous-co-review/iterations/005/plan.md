@@ -2,8 +2,8 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: planning
-**Capacity**: 18.00/20 story_points
+**Status**: executing
+**Capacity**: 28.00/30 story_points
 **Started**: 2026-06-23
 **Completed**:
 
@@ -56,11 +56,17 @@ future merge-agent, Proposals 010/134/149). No F-184 protected-surface edits.
 - Built: review path only (`read-only` / `discard` / `code` contract).
 - Designed + DEFERRED (interface + comments): `merge` disposition (-> merge-agent 010/134/149),
   `preserve`, `read-write` access, non-code review contracts, multi-task orchestration (139).
-- Capacity status: PASS, 18.00/20 story_points.
+- Capacity status: PASS, 28.00/30 story_points (informed expansion below).
 
 ## Notes
 
 - **Spike gates the build (T076 first).** If the cross-platform detached self-limiting spawn does
   not hold, the design changes before any production code lands.
-- No F-184 protected-surface edits (a `refocus-scopes.json` row + non-protected scripts; the
-  launcher lives in a general `scripts/internal/agent-tasks/` location as shared 139 infrastructure).
+- **Scope expansion (maintainer "implement all, fix all", 2026-06-24; cap 20 -> 30 informed override):**
+  the dogfood + the 145/dogfood findings added: navigator hardening (4 findings) + PASS->gate
+  promotion + stub-exclusion, the 2 dogfood-caught bugs (git encoding + huge-arg), the FileList
+  packaging blocker, and the 2 F-184 dispatcher gaps. See closeout-validation.md.
+- **F-184:** the launcher + navigator + registry touch NO protected surface (a `refocus-scopes.json`
+  row + non-protected scripts in the general `scripts/internal/agent-tasks/`). The 2 DISPATCHER fixes
+  DO edit the F-184-protected `specrew-hook-dispatcher.ps1` — maintainer-authorized 2026-06-24, with a
+  SCOPED `protected-surface-guard` exception (to be removed once landed on main).
