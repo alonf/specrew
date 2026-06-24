@@ -94,6 +94,20 @@ Describe 'Proposal 197 T053 ReviewRequest.v2 prompt composer' {
         $content | Should Match 'do not emit properties absent from the schema'
     }
 
+    It 'embeds the FULL FindingsResult.v1 JSON schema even when NO SchemaRoot is passed (the detached navigator path)' {
+        # iter-006 live-e2e fix: the detached reviewer harness composes the prompt WITHOUT an explicit
+        # SchemaRoot. The composer MUST resolve the DEFAULT contract root so the AUTHORITATIVE JSON schema
+        # is embedded - not the prose summary that let codex 0.142/gpt-5.5 guess location/resolution as
+        # strings and disposition as the out-of-enum "must_fix" -> FindingsResult schema-mismatch -> a real
+        # review SILENTLY LOST. These markers exist ONLY in the schema file, never in the prose fallback.
+        $request = New-T053Request
+        $prompt = New-ContinuousCoReviewPrompt -Request $request -CreatedAt $script:CreatedAt   # NO -SchemaRoot
+        $content = $prompt.prompt_content
+        $content | Should Match 'draft/2020-12'          # the JSON Schema $schema dialect - schema FILE, not prose
+        $content | Should Match 'line_start'             # location is an OBJECT {path,line_start,line_end}, not a string
+        $content | Should Match 'accepted_fix_pending'   # disposition is the closed lifecycle enum, not "must_fix"
+    }
+
     It 'rejects empty or missing exact diff content before prompt composition' {
         $request = New-T053Request
         $request.change_set.diff_content = ''

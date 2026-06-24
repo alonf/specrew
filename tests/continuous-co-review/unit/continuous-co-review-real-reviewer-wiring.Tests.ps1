@@ -465,4 +465,17 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }
+
+    # iter-006 live-e2e fix (the _load load-order bug): the F-185 provider dot-sources ONLY
+    # continuous-co-review-navigator.ps1, and its CHECKPOINT detection (Get-...CheckpointDiff /
+    # Get-...MergeBaseAnchor, in _load) runs BEFORE New-...ReviewerPlan's own lazy-load - so without _load
+    # at the navigator top the navigator NO-OPS on EVERY live Stop (the dispatcher fires, nothing happens).
+    Context 'navigator self-loads the CCR engine (provider dot-sources only the navigator)' {
+        It 'a fresh process dot-sourcing ONLY the navigator still has the checkpoint-detection engine' {
+            $navPath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1'
+            $probe = ". `"$navPath`"; [bool](Get-Command Get-ContinuousCoReviewCheckpointDiff -ErrorAction SilentlyContinue)"
+            $out = & pwsh -NoProfile -NonInteractive -Command $probe 2>&1
+            ($out -join "`n") | Should Match 'True'
+        }
+    }
 }

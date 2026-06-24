@@ -50,6 +50,20 @@ if (-not (Get-Command -Name 'Start-SpecrewIsolatedTask' -ErrorAction SilentlyCon
     }
 }
 
+# --- the CCR engine (single source) --------------------------------------------------------------
+# FIRST-LIVE-RUN FIX (iter-006 e2e): the navigator's CHECKPOINT DETECTION (the Phase A gate-dispatch
+# reuse + Get-...MergeBaseAnchor + Get-...CheckpointDiff) and the reviewer plan / promotion / blackboard
+# all need the CCR engine (_load.ps1: checkpoint-diff-provider, gate-review-dispatcher, the request
+# builder, the catalog/selection/authorization, the blackboard writer). The dispatcher-facing provider
+# dot-sources ONLY this file, and the checkpoint detection runs BEFORE New-...ReviewerPlan's own
+# lazy-load - so without _load here the navigator NO-OPS on EVERY live Stop (the checkpoint functions are
+# undefined). Dot-source it if absent (a _load function gates it; _load does NOT load this navigator, so
+# no circular). Best-effort: a miss leaves the navigator at its fail-open no-op.
+if (-not (Get-Command -Name 'Get-ContinuousCoReviewCheckpointDiff' -ErrorAction SilentlyContinue)) {
+    $script:NavigatorEngineLoad = Join-Path $PSScriptRoot '_load.ps1'
+    if (Test-Path -LiteralPath $script:NavigatorEngineLoad -PathType Leaf) { . $script:NavigatorEngineLoad }
+}
+
 function Get-ContinuousCoReviewNavigatorModuleBase {
     # T082 HAZARD A: the detached reviewer pwsh runs with cwd = the materialized read-only WORKTREE,
     # which contains NO Specrew scripts (it is a `git archive` content export of the reviewed project).

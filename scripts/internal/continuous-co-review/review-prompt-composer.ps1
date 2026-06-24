@@ -53,14 +53,27 @@ function Get-ContinuousCoReviewFindingsResultContractContent {
         [string] $SchemaRoot
     )
 
-    if (-not [string]::IsNullOrWhiteSpace($SchemaRoot)) {
-        $schemaPath = Join-Path $SchemaRoot 'findings-result.schema.json'
-        if (Test-Path -LiteralPath $schemaPath -PathType Leaf) {
-            return Get-Content -LiteralPath $schemaPath -Raw
+    # Resolve the contract root via the CANONICAL resolver (an explicit SchemaRoot wins; otherwise the
+    # module-base contracts dir) so the AUTHORITATIVE full JSON schema is embedded even when the caller
+    # passed NO SchemaRoot - e.g. the DETACHED navigator reviewer path, whose harness calls the execution
+    # engine without one. The old code only loaded the schema for an EXPLICIT SchemaRoot, so that path fell
+    # back to the prose summary below -> codex 0.142/gpt-5.5 guessed the field SHAPES wrong (string
+    # location/resolution; an out-of-enum "must_fix" disposition) -> FindingsResult schema-mismatch -> a
+    # real review SILENTLY LOST (the iter-006 live-e2e first-run failure).
+    try {
+        $contractRoot = Get-ContinuousCoReviewContractRoot -SchemaRoot $SchemaRoot
+        if ($contractRoot) {
+            $schemaPath = Join-Path $contractRoot 'findings-result.schema.json'
+            if (Test-Path -LiteralPath $schemaPath -PathType Leaf) {
+                return Get-Content -LiteralPath $schemaPath -Raw
+            }
         }
     }
+    catch { $null = $_ }
 
-    return 'FindingsResult.v1 requires schema_version, run_id, status, findings, and created_at. Each finding must use finding_id, source_run_id, location, severity, kind, design_reference, comment, disposition, and resolution; do not emit extra properties.'
+    # Defense-in-depth prose (only reached if the schema file is unreachable): name the exact field SHAPES,
+    # the closed enums, and a NEW finding's values, so a host given only this still emits conformant JSON.
+    return 'FindingsResult.v1 - emit ONLY these properties (additionalProperties is false at every level). Top level: schema_version "1.0", run_id, status ("findings" or "no_findings"), findings (array), created_at. Each finding: finding_id, source_run_id, location (an OBJECT {path, line_start (int|null), line_end (int|null)} - NOT a string), severity ("blocking"|"advisory"|"nit"), kind, design_reference, comment, disposition ("open"|"accepted_fix_pending"|"resolved"|"rejected_with_rationale"|"escalated_to_human" - a NEW finding is "open", NOT "must_fix"), resolution (an OBJECT {state ("unresolved"|"resolved"|"rejected"|"escalated"), fix_evidence_ref (string|null), rationale (string|null)} - a NEW finding is {state:"unresolved"} - NOT a string).'
 }
 
 function New-ContinuousCoReviewPrompt {
