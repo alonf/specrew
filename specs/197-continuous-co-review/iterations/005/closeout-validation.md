@@ -60,6 +60,16 @@ concrete iteration. Until then: the gate is NOT auto-satisfied (the stub does no
 `specrew review --live` path (Phase A, fully wired) produces real gate evidence. The maintainer's e2e
 test exercises the navigator plumbing + the manual real-review gate path.
 
+**Findings-reporting surface (must ship WITH the real reviewer, not after):** today the navigator
+surfaces only a SUMMARY — a one-line `N finding(s): <first comment>` for a pass, and blocking-severity
+findings only for a block (`continuous-co-review-navigator.ps1:516-526`) — and `Clear-...Entry` DELETES
+the full verdict run dir after the reap (`:258-260`); the durable `inline/` record is gate evidence
+(tree-id/status/refs), NOT the findings. With the stub (no real findings) this loses nothing, but the
+dogfood's real reviewer emitted 4 non-blocking findings — through the navigator the user would see only
+`4 finding(s): <first>` and lose the other 3. So the real-reviewer wiring MUST also persist a per-run
+full-findings report (all findings, all severities) durably and point the inject note at it; surfacing
+only a summary is acceptable ONLY while the reviewer is the no-findings stub.
+
 ## Proposal 145 review
 
 Two adversarial read-only reviewers (gate-integrity/stub-exclusion; dispatcher F-184), both PASS for
