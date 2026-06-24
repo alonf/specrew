@@ -4,9 +4,9 @@
 **Iteration**: 006
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: before-implement APPROVED by maintainer (2026-06-24), artifact-level verified
-**Tasks Remaining**: T082, T083, T084, T085
-**In Progress**: T082 (wire the real reviewer)
+**Last Completed Task**: T082 — real reviewer wiring (host-neutral select, honest mutation-guard SKIP, timeout 300; 229/0 CCR + 12 wiring tests)
+**Tasks Remaining**: T083, T084, T085
+**In Progress**: T083 + T084 (findings -> durable blackboard + inject-note surfacing)
 **Updated**: 2026-06-24
 
 ## Before-implement verdict — APPROVED (2026-06-24)

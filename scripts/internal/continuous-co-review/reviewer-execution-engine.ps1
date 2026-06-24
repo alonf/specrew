@@ -197,6 +197,27 @@ function New-ContinuousCoReviewMutationInvalidatedAttemptResult {
     }
 }
 
+function Add-ContinuousCoReviewSkippedMutationGuardMarker {
+    # T082 / condition-b: stamp the EXPLICIT skip posture onto an attempt result so the skipped guard
+    # is an AUDITABLE, non-silent absence (never a claimed-but-inert control). `mutated=$false` keeps
+    # downstream "was it mutated?" reads correct; `posture` + `reason` make the skip self-documenting in
+    # the persisted run record. Idempotent: an existing mutation_guard (the guard actually ran) is left
+    # untouched - the marker is only added when none is present.
+    param([AllowNull()] $AttemptResult)
+    if ($null -eq $AttemptResult) { return $AttemptResult }
+    if ($AttemptResult.PSObject.Properties.Name -contains 'mutation_guard' -and $null -ne $AttemptResult.mutation_guard) {
+        return $AttemptResult
+    }
+    $marker = [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        mutated        = $false
+        posture        = 'skipped-isolated-worktree'
+        reason         = 'reviewer ran in an isolated read-only `git archive` worktree (no .git, no real .specrew/); the export itself is the primary read-only control, so the in-repo mutation guard (Specrew-own roots + git status) is intentionally skipped rather than run inert or against the live repo.'
+    }
+    $AttemptResult | Add-Member -NotePropertyName 'mutation_guard' -NotePropertyValue $marker -Force
+    return $AttemptResult
+}
+
 function Invoke-ContinuousCoReviewGuardedAdapterAttempt {
     param(
         [Parameter(Mandatory)]
@@ -339,6 +360,27 @@ function Invoke-ContinuousCoReviewReviewerExecution {
 
         [scriptblock] $GitCommand,
 
+        # ISOLATED-WORKTREE PATH (T082 / condition-b): an HONEST skip of the in-repo mutation guard.
+        # The async navigator runs this engine DETACHED, inside a `git archive` content export with no
+        # `.git` and no real `.specrew/` (New-SpecrewIsolatedTaskWorktree). On that path the in-repo
+        # mutation guard cannot function and must not be faked-green:
+        #   - The guard (workspace-mutation-guard.ps1) hashes FIXED Specrew-OWN roots
+        #     (scripts/internal/continuous-co-review, tests/continuous-co-review,
+        #     specs/197-continuous-co-review, .specrew) and reads `git status`. NONE of those exist in
+        #     the reviewed-project export, so re-aiming -ReadOnlyRoot at the worktree makes the guard
+        #     compare empty-vs-empty: it NEVER trips, but it also protects NOTHING (a green-but-inert
+        #     trap - the exact failure class condition-b forbids).
+        #   - Leaving the guard at the Specrew repo root (the default below) would, on the detached
+        #     path, watch the LIVE Specrew repo and could FALSE-TRIP on a concurrent human edit during
+        #     the ~300s review (the reviewed worktree is unrelated to that edit).
+        # So the PRIMARY control on this path is the read-only export ITSELF (the reviewer physically
+        # cannot reach real repo/.specrew state - nothing to mutate), and -SkipMutationGuard records
+        # that decision EXPLICITLY rather than running an inert or false-tripping guard. The skip is
+        # STAMPED on the result (posture='skipped-isolated-worktree'), so it is an auditable,
+        # non-silent absence - never a claimed-but-inert control. On the synchronous in-repo
+        # `specrew review --live` path this switch is OFF and the guard stays authoritative.
+        [switch] $SkipMutationGuard,
+
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
@@ -349,7 +391,19 @@ function Invoke-ContinuousCoReviewReviewerExecution {
         New-ContinuousCoReviewExecutionRequestBundle -RunRoot $RunRoot -Request $Request
     }
 
-    $guardRepoRoot = if (-not [string]::IsNullOrWhiteSpace($ReadOnlyRoot)) { (Resolve-Path -LiteralPath $ReadOnlyRoot).Path } else { (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../../..')).Path }
+    # When the guard is skipped (isolated-worktree path) thread an EMPTY guard root through to the
+    # guarded-attempt: an empty RepoRoot fires its first-line skip branch (it returns the raw adapter
+    # result without snapshotting), so no Specrew-own roots are hashed and no `git status` is read. The
+    # explicit posture marker is stamped onto the attempt result below.
+    $guardRepoRoot = if ($SkipMutationGuard) {
+        ''
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($ReadOnlyRoot)) {
+        (Resolve-Path -LiteralPath $ReadOnlyRoot).Path
+    }
+    else {
+        (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../../..')).Path
+    }
 
     $authorizedCandidates = @(
         foreach ($candidate in @($Candidates)) {
@@ -385,6 +439,7 @@ function Invoke-ContinuousCoReviewReviewerExecution {
 
     [void] $attempted.Add($primaryCandidate)
     $primaryResult = Invoke-ContinuousCoReviewGuardedAdapterAttempt -AdapterInvoker $adapterInvoker -Candidate $primaryCandidate -Request $Request -RequestBundle $bundle -AttemptNumber 1 -RepoRoot $guardRepoRoot -GitCommand $GitCommand -CreatedAt $CreatedAt
+    if ($SkipMutationGuard) { $primaryResult = Add-ContinuousCoReviewSkippedMutationGuardMarker -AttemptResult $primaryResult }
     if ($primaryResult.kind -eq 'findings-result') {
         return Copy-ContinuousCoReviewExecutionAttemptResult -Request $Request -AttemptResult $primaryResult -RequestBundle $bundle -FallbackUsed:$false -AttemptedCandidates @($attempted)
     }
@@ -403,5 +458,6 @@ function Invoke-ContinuousCoReviewReviewerExecution {
 
     [void] $attempted.Add($fallbackCandidate)
     $fallbackResult = Invoke-ContinuousCoReviewGuardedAdapterAttempt -AdapterInvoker $adapterInvoker -Candidate $fallbackCandidate -Request $Request -RequestBundle $bundle -AttemptNumber 2 -RepoRoot $guardRepoRoot -GitCommand $GitCommand -CreatedAt $CreatedAt
+    if ($SkipMutationGuard) { $fallbackResult = Add-ContinuousCoReviewSkippedMutationGuardMarker -AttemptResult $fallbackResult }
     return Copy-ContinuousCoReviewExecutionAttemptResult -Request $Request -AttemptResult $fallbackResult -RequestBundle $bundle -FallbackUsed:$true -AttemptedCandidates @($attempted)
 }
