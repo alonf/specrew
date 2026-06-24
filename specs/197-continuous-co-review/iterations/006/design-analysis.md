@@ -272,8 +272,8 @@ which is a design recommendation, not a human runtime authorization):**
   then eligible and the policy picks it (independent of the code-writer). Absent / unreadable / no
   authorized host -> the default catalog -> `$null` candidate -> FAIL-OPEN (never a stub). The navigator
   NEVER writes the file.
-- **Mandatory non-mocked test (condition d):** a REAL `.specrew/reviewer-hosts.json` (codex `allowed=$true`
-  + `authorization_ref`) drives an UN-MOCKED `Select-...ReviewerCandidate` to pick codex; an
-  empty/unauthorized config fails open. The test that proves selection does NOT mock selection.
+- **Mandatory non-mocked test (condition d):** a REAL `.specrew/reviewer-hosts.json` (codex
+  `allowed=$true` plus `authorization_ref`) drives an UN-MOCKED `Select-...ReviewerCandidate` to pick
+  codex; an empty/unauthorized config fails open. The test that proves selection does NOT mock selection.
 - **Trace:** completes FR-026/030/031 (the navigator now actually fires a real, human-authorized,
   code-writer-independent reviewer). 5 SP; capacity 14 -> 19/20 (in-cap).
