@@ -248,3 +248,32 @@ feature-specific Expected Controls for this boundary.
 - **Timeout config name/default** — raise the existing co-review timeout scalar (mirror
   `co_review_gate_enforcement`) to a safe default that clears a real codex run (>=300s), configurable
   per project; do not hard-code 300.
+
+## T086 — the persisted human-authorization seam (the iter-002-class gap the live e2e found)
+
+The live-NOT-mocked e2e setup uncovered that T082's "real reviewer" cannot select a host in production:
+the default catalog ships every host `allowed=$false` (`reviewer-host-catalog.ps1:66`),
+`New-...ReviewerPlan` calls `Get-...ReviewerHostCatalog` with NO configuration, and nothing persists a
+runtime authorization — so `Select-...ReviewerCandidate` returns `$null` and the navigator FAILS OPEN to
+no review. T082's deterministic tests (and the 145 accept) MOCKED the selection, so the gap was invisible.
+This is the honest completion of T082.
+
+**Design (Option A — maintainer ruling 2026-06-24; REJECT the `a8647528` implementation-rules preference,
+which is a design recommendation, not a human runtime authorization):**
+
+- **Provenance: a HUMAN authorizes once via the EXISTING path.** `specrew review --host <h>
+  --authorization-ref <ref>` already builds a catalog config with `allowed=$true` + `authorization_ref`
+  for the named host (`specrew-review.ps1:302-325`). T086 PERSISTS that built config to
+  `.specrew/reviewer-hosts.json` (the catalog shape). The `authorization_ref` is the provenance anchor —
+  it records that a HUMAN authorized this host. No agent silently self-authorizes (the Proposal 190 hole):
+  the persist happens ONLY on the human's `--authorization-ref` invocation, and the navigator is read-only.
+- **The navigator LOADS it read-only.** `New-...ReviewerPlan` reads `.specrew/reviewer-hosts.json` (if
+  present + parseable) and passes it to `Get-...ReviewerHostCatalog -Configuration`; an authorized codex is
+  then eligible and the policy picks it (independent of the code-writer). Absent / unreadable / no
+  authorized host -> the default catalog -> `$null` candidate -> FAIL-OPEN (never a stub). The navigator
+  NEVER writes the file.
+- **Mandatory non-mocked test (condition d):** a REAL `.specrew/reviewer-hosts.json` (codex `allowed=$true`
+  + `authorization_ref`) drives an UN-MOCKED `Select-...ReviewerCandidate` to pick codex; an
+  empty/unauthorized config fails open. The test that proves selection does NOT mock selection.
+- **Trace:** completes FR-026/030/031 (the navigator now actually fires a real, human-authorized,
+  code-writer-independent reviewer). 5 SP; capacity 14 -> 19/20 (in-cap).

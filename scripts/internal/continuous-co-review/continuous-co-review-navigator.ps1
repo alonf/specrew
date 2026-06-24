@@ -774,7 +774,18 @@ function New-ContinuousCoReviewNavigatorReviewerPlan {
             if (-not [string]::IsNullOrWhiteSpace($val)) { $resolvedCodeWriterHost = $val; break }
         }
     }
-    $catalog = Get-ContinuousCoReviewReviewerHostCatalog
+    # T086 (145 iter-006): LOAD the persisted HUMAN-authorized reviewer config (.specrew/reviewer-hosts.json)
+    # READ-ONLY. The default catalog ships every host allowed=$false, so without a project authorization
+    # there is NO eligible host -> $null candidate -> fail-open (no review, never a stub). A human authorizes
+    # once via `specrew review --host <h> --authorization-ref <ref>` (which persists this file); the navigator
+    # only READS it - it NEVER writes or self-authorizes (the authorization_ref is the human-provenance
+    # anchor; the Proposal 190 self-authorization hole). Absent/unparseable -> $null -> the default -> fail-open.
+    $reviewerConfig = $null
+    $reviewerHostsPath = Join-Path $RepoRoot '.specrew/reviewer-hosts.json'
+    if (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf) {
+        try { $reviewerConfig = (Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100) } catch { $reviewerConfig = $null }
+    }
+    $catalog = Get-ContinuousCoReviewReviewerHostCatalog -Configuration $reviewerConfig
     $candidate = Select-ContinuousCoReviewReviewerCandidate -Catalog $catalog -CodeWriterHost $resolvedCodeWriterHost
     if ($null -eq $candidate) { return $null }   # no authorized independent host installed -> no review.
 
@@ -809,7 +820,7 @@ function New-ContinuousCoReviewNavigatorReviewerPlan {
         $providerRequest = [pscustomobject][ordered]@{
             requested_host    = $null
             requested_model   = $null
-            code_writer_host  = $codeWriterHost
+            code_writer_host  = $resolvedCodeWriterHost
             authorization_ref = $candidate.authorization_ref
             timeout_seconds   = [int]$ReviewerTimeoutSec
             fallback_policy   = 'none'

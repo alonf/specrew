@@ -437,4 +437,32 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }
+
+    # T086 lives in its OWN Context: the prior tests Mock Select-...ReviewerCandidate, and a Pester 3.4
+    # mock LEAKS to later Its in the same Context - which would silently mock the very selection this test
+    # must prove un-mocked. A sibling Context starts with no leaked mocks (condition d).
+    Context 'T086 - persisted human-authorization (NON-MOCKED selection, isolated)' {
+        It 'T086 (NON-MOCKED selection): a REAL persisted .specrew/reviewer-hosts.json authorizes codex -> the UN-MOCKED policy selects it; absent config -> fail-open' {
+            # condition (d): the test that PROVES selection does NOT mock selection. The default catalog ships
+            # every host allowed=$false, so a real review needs a persisted HUMAN authorization the navigator
+            # LOADS read-only. NO Mock on Select-...ReviewerCandidate - the REAL policy runs against the REAL catalog.
+            $proj = script:New-FeatureProject
+            $root = $proj.Root
+            try {
+                script:Add-Increment -Root $root -Content 'changed-for-t086'
+                # 1) ABSENT config -> the default catalog (every host allowed=$false) -> no eligible host -> FAIL-OPEN.
+                $planNone = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId 't086-none' -RunDir (Join-Path $root '.specrew/review/pending/t086-none') -CodeWriterHost 'claude' -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
+                $planNone | Should BeNullOrEmpty
+                # 2) A REAL human-authorized config (codex allowed=$true + authorization_ref) -> the UN-MOCKED policy selects codex.
+                $cfg = [ordered]@{ schema_version = '1.0'; hosts = @([ordered]@{ host = 'codex'; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; allowed = $true; installed = $true; review_class_rank = 85; model_source = 'human-entered'; cost_class = 'non-default'; authorization_ref = 'human-e2e-2026-06-24'; fallback_allowed = $false }) }
+                $null = New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force
+                ($cfg | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $root '.specrew/reviewer-hosts.json') -Encoding UTF8
+                $planReal = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId 't086-real' -RunDir (Join-Path $root '.specrew/review/pending/t086-real') -CodeWriterHost 'claude' -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
+                $planReal | Should Not BeNullOrEmpty
+                [string]$planReal.candidate.host | Should Be 'codex'                                 # the UN-MOCKED policy picked the human-authorized host
+                [string]$planReal.candidate.authorization_ref | Should Be 'human-e2e-2026-06-24'      # the human-provenance anchor carried through
+            }
+            finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
 }

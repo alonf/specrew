@@ -4,10 +4,25 @@
 **Iteration**: 006
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T085 145 review (NEEDS-WORK) + M1/M2 fixes — independence wired end-to-end, test hermetic; 233/0 CCR
-**Tasks Remaining**: T085 — the LIVE-dispatcher multi-severity e2e (the meaningful acceptance) + review.md/closeout finalize
+**Last Completed Task**: T086 — persisted human-authorization seam (the navigator can now select a REAL host); 234/0 CCR
+**Tasks Remaining**: T085 — the LIVE-dispatcher multi-severity e2e (the meaningful acceptance, now UNBLOCKED) + finalize
 **In Progress**: T085 (the live e2e)
 **Updated**: 2026-06-24
+
+## T086 — persisted human-authorization seam (the iter-002-class gap the LIVE e2e found, 2026-06-24)
+
+Setting up the live-NOT-mocked e2e uncovered that T082's "real reviewer" could NEVER select a host in
+production: the default catalog ships every host `allowed=$false`, the plan-builder called the catalog
+with NO config, and nothing persisted a runtime authorization -> fail-open, no review. T082's 12
+deterministic tests (and the 145 accept) had MOCKED `Select-...ReviewerCandidate`, hiding it. Maintainer
+ruling: FIX IN 006 (the honest completion of T082), Option A, all conditions held. FIX: (1)
+`specrew review --host/--authorization-ref` (the HUMAN path) now PERSISTS its built catalog to
+`.specrew/reviewer-hosts.json` (`allowed=$true` + `authorization_ref` = the human-provenance anchor);
+(2) `New-...ReviewerPlan` LOADS it READ-ONLY -> the catalog (absent -> default -> fail-open, never a
+stub; the navigator never writes/self-authorizes). NON-MOCKED test (condition d): a real config -> the
+UN-MOCKED policy selects codex; absent -> fail-open. Also fixed a dangling `$codeWriterHost` ref from the
+M1 rename. 234/0 CCR; provider copies in sync. The Pester-3.4 mock-leak that masked the test was caught
+and isolated (T086 in its own Context).
 
 ## T085 145 review + M1/M2 fixes (2026-06-24)
 

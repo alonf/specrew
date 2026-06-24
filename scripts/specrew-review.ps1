@@ -438,6 +438,20 @@ function Invoke-LiveReview {
     if ($null -eq $reviewerConfiguration) {
         throw '--host (or --reviewer-config) is required for live review: live co-review needs a reviewer host/model.'
     }
+
+    # T086 (145 iter-006): PERSIST the HUMAN authorization so the async navigator (auto-fire, no human in
+    # the loop) can later select this host. ONLY on an explicit --host + --authorization-ref (the
+    # human-provenance anchor) - never auto-persist, never agent self-authorize (the Proposal 190 hole).
+    # Writes the built catalog config to .specrew/reviewer-hosts.json; the navigator reads it READ-ONLY.
+    if ((-not [string]::IsNullOrWhiteSpace([string]$Arguments.Host)) -and (-not [string]::IsNullOrWhiteSpace([string]$Arguments.AuthorizationRef))) {
+        try {
+            $reviewerHostsPath = Join-Path $ProjectRoot '.specrew\reviewer-hosts.json'
+            $reviewerHostsDir = Split-Path -Parent $reviewerHostsPath
+            if (-not (Test-Path -LiteralPath $reviewerHostsDir)) { New-Item -ItemType Directory -Path $reviewerHostsDir -Force | Out-Null }
+            ($reviewerConfiguration | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
+        }
+        catch { $null = $_ }   # best-effort persistence; the live review itself still proceeds.
+    }
     $runRoot = if ([string]::IsNullOrWhiteSpace([string]$Arguments.RunRoot)) { Join-Path $ProjectRoot '.specrew\review\tmp' } else { [string]$Arguments.RunRoot }
     $adapter = if ([string]$Arguments.Host -eq 'fixture') { New-LiveReviewFixtureAdapter -SchemaRoot $schemaRoot } else { $null }
 
