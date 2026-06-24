@@ -734,6 +734,7 @@ function New-ContinuousCoReviewNavigatorReviewerPlan {
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)][string]$RunDir,
         [AllowNull()][string]$BaselineRef,
+        [AllowNull()][string]$CodeWriterHost,
         [int]$ReviewerTimeoutSec = 300,
         [string]$TrunkName = 'main',
         [datetime]$Now = [datetime]::UtcNow
@@ -761,13 +762,20 @@ function New-ContinuousCoReviewNavigatorReviewerPlan {
     # CURRENT host (the one that just stopped); the policy maps claude->codex, codex->claude. NO
     # host-name literal enters this logic - the policy owns the mapping. install/allowed/authorization
     # are repo/host facts resolved HERE, in-repo.
-    $codeWriterHost = $null
-    foreach ($var in 'SPECREW_HOST', 'SPECREW_ACTIVE_HOST') {
-        $val = [System.Environment]::GetEnvironmentVariable($var)
-        if (-not [string]::IsNullOrWhiteSpace($val)) { $codeWriterHost = $val; break }
+    # M1 fix (145 iter-006): the code-writer host is threaded as -CodeWriterHost from the dispatcher's
+    # --host-kind (the provider passes it). SPECREW_HOST/SPECREW_ACTIVE_HOST are the FALLBACK only -
+    # Specrew does not set them in a hook child, so WITHOUT the threaded host the policy would tiebreak
+    # alphabetically and could pick the code-writer's OWN host (not independent). Authorization config
+    # contains the blast radius today, but the independence is now real-by-logic, not config-incidental.
+    $resolvedCodeWriterHost = $CodeWriterHost
+    if ([string]::IsNullOrWhiteSpace($resolvedCodeWriterHost)) {
+        foreach ($var in 'SPECREW_HOST', 'SPECREW_ACTIVE_HOST') {
+            $val = [System.Environment]::GetEnvironmentVariable($var)
+            if (-not [string]::IsNullOrWhiteSpace($val)) { $resolvedCodeWriterHost = $val; break }
+        }
     }
     $catalog = Get-ContinuousCoReviewReviewerHostCatalog
-    $candidate = Select-ContinuousCoReviewReviewerCandidate -Catalog $catalog -CodeWriterHost $codeWriterHost
+    $candidate = Select-ContinuousCoReviewReviewerCandidate -Catalog $catalog -CodeWriterHost $resolvedCodeWriterHost
     if ($null -eq $candidate) { return $null }   # no authorized independent host installed -> no review.
 
     # CANDIDATE TIMEOUT (condition-c, the SECOND timeout): the adapter kills the reviewer subprocess at
@@ -961,6 +969,12 @@ function Invoke-ContinuousCoReviewNavigator {
         # The trunk the checkpoint baseline merge-bases against (threaded like the rest of the gate).
         [string]$TrunkName = 'main',
 
+        # M1 fix (145 iter-006): the CODE-WRITER host (the host that just stopped), threaded from the
+        # dispatcher's --host-kind by the provider, so reviewer selection is code-writer-INDEPENDENT by
+        # logic (not merely by authorization config). Empty -> the plan falls back to
+        # SPECREW_HOST/SPECREW_ACTIVE_HOST (unset in a hook child today), then the policy rank/tiebreak.
+        [AllowNull()][string]$CodeWriterHost,
+
         # Test/real-reviewer seam: override the default verdict-emitting stub -Command.
         [AllowNull()][string]$ReviewerCommandOverride,
 
@@ -1105,7 +1119,7 @@ function Invoke-ContinuousCoReviewNavigator {
     $plan = $null
     if ([string]::IsNullOrWhiteSpace($ReviewerCommandOverride)) {
         $plan = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $RepoRoot -TreeId $treeId -RunId $runId -RunDir $runDir `
-            -BaselineRef $baselineRef -ReviewerTimeoutSec $resolvedReviewerTimeout -TrunkName $TrunkName -Now $Now
+            -BaselineRef $baselineRef -CodeWriterHost $CodeWriterHost -ReviewerTimeoutSec $resolvedReviewerTimeout -TrunkName $TrunkName -Now $Now
     }
     $command = Build-ContinuousCoReviewNavigatorReviewerCommand -RepoRoot $RepoRoot -TreeId $treeId -ReviewerCommandOverride $ReviewerCommandOverride -Plan $plan
 

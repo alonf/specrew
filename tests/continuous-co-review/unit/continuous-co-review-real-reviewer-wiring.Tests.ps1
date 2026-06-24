@@ -205,7 +205,18 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             # output shape of a guard that ACTUALLY RAN (its compare emits source_mutated / git_mutated /
             # before_captured_at, and NO 'posture' field) proves it was not skipped. The fixture adapter
             # mutated nothing, so mutated is false - the guard ran and correctly found no mutation.
-            $result = Invoke-ContinuousCoReviewReviewerExecution -Request $req -RunRoot (Join-Path $TestDrive 'guarded-runs') -Candidates @($cand) -InvokeAdapter $adapter -ReadOnlyRoot $script:RepoRoot -CreatedAt $script:CreatedAt
+            # M2 fix (145 iter-006): snapshot a HERMETIC temp git repo, NOT the live Specrew repo. The guard
+            # hashes Specrew-own roots + reads `git status`, so concurrent LIVE-repo activity (other tests,
+            # .specrew/runtime churn, a docs write) between the before/after snapshots flips 'mutated' true
+            # (the iter-005 hermeticity lesson). A throwaway repo has no concurrent writer.
+            $hermeticRoot = Join-Path $TestDrive ('guard-hermetic-' + [guid]::NewGuid().ToString('N'))
+            $null = New-Item -ItemType Directory -Path (Join-Path $hermeticRoot '.specrew') -Force
+            $null = New-Item -ItemType Directory -Path (Join-Path $hermeticRoot 'specs/197-continuous-co-review') -Force
+            Set-Content -LiteralPath (Join-Path $hermeticRoot 'specs/197-continuous-co-review/spec.md') -Value 'hermetic' -Encoding UTF8
+            & git -C $hermeticRoot -c init.defaultBranch=main init --quiet *> $null
+            & git -C $hermeticRoot -c user.name=hermetic -c user.email=h@example.com add -A *> $null
+            & git -C $hermeticRoot -c user.name=hermetic -c user.email=h@example.com commit -m base --quiet *> $null
+            $result = Invoke-ContinuousCoReviewReviewerExecution -Request $req -RunRoot (Join-Path $TestDrive 'guarded-runs') -Candidates @($cand) -InvokeAdapter $adapter -ReadOnlyRoot $hermeticRoot -CreatedAt $script:CreatedAt
             $result.kind | Should Be 'findings-result'
             $result.mutation_guard | Should Not BeNullOrEmpty
             # The real Compare-... output (the guard RAN); NOT the skip marker.
@@ -313,6 +324,33 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             }
             finally {
                 $env:SPECREW_HOST = $null
+                Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        It 'M1 (145 iter-006): -CodeWriterHost (the dispatcher --host-kind path) drives independence WITHOUT the never-set env var' {
+            # Production reality: SPECREW_HOST/SPECREW_ACTIVE_HOST are UNSET in a hook child, so the prior
+            # test's env-var path never fires in production. The dispatcher passes --host-kind; the provider
+            # threads it as -CodeWriterHost. Prove the PARAM alone (env unset) reaches the policy, so
+            # independence is by LOGIC, not config-incidental (the M1 fix).
+            $proj = script:New-FeatureProject
+            $root = $proj.Root
+            $savedHost = $env:SPECREW_HOST; $savedActive = $env:SPECREW_ACTIVE_HOST
+            try {
+                $env:SPECREW_HOST = $null; $env:SPECREW_ACTIVE_HOST = $null   # the production hook-child reality
+                script:Add-Increment -Root $root -Content 'changed-m1-param'
+                Mock Start-SpecrewIsolatedTask { return [pscustomobject]@{ run_id = 'r'; supervisor_pid = $PID; status = 'running'; registry_path = (Join-Path $RunDir 'reg.json'); result_path = (Join-Path $RunDir 'result.out') } }
+                $script:SeenCodeWriterHost = '__unset__'
+                Mock Select-ContinuousCoReviewReviewerCandidate {
+                    $script:SeenCodeWriterHost = $CodeWriterHost
+                    return (script:New-FakeCandidate -HostName 'codex' -ModelId 'chatgpt' -AdapterId 'reviewer-host-adapter-codex-exec')
+                }
+                $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TrunkName 'main' -CodeWriterHost 'claude'
+                $dec.action | Should Be 'fired'
+                $script:SeenCodeWriterHost | Should Be 'claude'   # the param reached the policy with env UNSET
+            }
+            finally {
+                $env:SPECREW_HOST = $savedHost; $env:SPECREW_ACTIVE_HOST = $savedActive
                 Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
             }
         }

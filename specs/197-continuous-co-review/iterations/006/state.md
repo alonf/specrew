@@ -4,10 +4,22 @@
 **Iteration**: 006
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T083+T084 — full findings -> durable blackboard + inject-note/STOP-BLOCK surfacing (232/0 CCR + 3 reporting tests)
-**Tasks Remaining**: T085
-**In Progress**: T085 (tests + closeout-validation + 145 + the LIVE-dispatcher multi-severity e2e)
+**Last Completed Task**: T085 145 review (NEEDS-WORK) + M1/M2 fixes — independence wired end-to-end, test hermetic; 233/0 CCR
+**Tasks Remaining**: T085 — the LIVE-dispatcher multi-severity e2e (the meaningful acceptance) + review.md/closeout finalize
+**In Progress**: T085 (the live e2e)
 **Updated**: 2026-06-24
+
+## T085 145 review + M1/M2 fixes (2026-06-24)
+
+One adversarial 145 reviewer: NEEDS-WORK, 1 MAJOR + 2 minor; everything else probed clean (incl. a 21/21
+no-mocks durability+surfacing harness confirming the core). M1 (MAJOR, maintainer chose fix-it): the
+code-writer-INDEPENDENT selection was not wired end-to-end — the provider received `--host-kind` but
+discarded it, and Specrew never sets `SPECREW_HOST`, so production fell to an alphabetical tiebreak that
+could pick the code-writer's own host. FIXED: the provider threads `--host-kind` -> the navigator's new
+`-CodeWriterHost` param -> the policy (env vars are fallback-only now); independence is real-by-logic, not
+config-incidental. Param-path test added (proves it with the env UNSET). M2 (minor): the real-guard CONTROL
+test snapshotted the LIVE repo -> flaked on concurrent writes; FIXED to a hermetic temp repo. M3 (the probe
+commits) is the known pre-existing main blemish. 233/0 CCR; provider copies in sync.
 
 ## Before-implement verdict — APPROVED (2026-06-24)
 
