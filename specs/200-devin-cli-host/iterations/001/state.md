@@ -1,11 +1,13 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: T005
-**Tasks Remaining**: T006
+**Current Phase**: before-implement
+**Iteration Status**: ready-for-review
+**Last Completed Task**: T006
+**Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 7266978a3b6e0cf620d104ba3c6734451667f959
-**Updated**: 2026-06-24T09:25:58Z
+**Updated**: 2026-06-24T09:31:18Z
 
 ## Execution Summary
 
@@ -21,6 +23,9 @@
 - T005 wired registry, launch, generated package, and purity checks into regular,
   Windows/Unix, and prepublish CI; the production publish harness now validates
   the generated projection and registry before FileList-faithful publication.
+- T006 recorded requirement, hardening, drift, traceability, diff, Windows/Linux,
+  and full-repository validator evidence. All implementation tasks are complete;
+  review-signoff is next and remains separately authorized.
 
 ## Notes
 

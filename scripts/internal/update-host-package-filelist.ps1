@@ -123,6 +123,7 @@ function Update-SpecrewHostPackageFileList {
     }
 
     $content = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8
+    $lineEnding = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
     $blockPattern = "(?ms)(?<prefix>^\s*FileList\s*=\s*@\(\r?\n)(?<body>.*?)(?<suffix>^\s*\)\r?\n\s*PrivateData\s*=)"
     $block = [regex]::Match($content, $blockPattern)
     if (-not $block.Success) {
@@ -158,7 +159,7 @@ function Update-SpecrewHostPackageFileList {
         $comma = if ($index -lt ($combined.Count - 1)) { ',' } else { '' }
         $renderedLines.Add(("        '{0}'{1}" -f $combined[$index], $comma)) | Out-Null
     }
-    $newBody = ($renderedLines -join [Environment]::NewLine) + [Environment]::NewLine
+    $newBody = ($renderedLines -join $lineEnding) + $lineEnding
     $updated = $content.Substring(0, $block.Groups['body'].Index) + $newBody + $content.Substring($block.Groups['suffix'].Index)
     $changed = $updated -cne $content
 

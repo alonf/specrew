@@ -30,6 +30,17 @@
 
 No specification drift detected during Iteration 001 execution to date.
 
+### T006 Review Checkpoint
+
+- Compared T001-T006 output against FR-001-FR-004, FR-011-FR-012, FR-019,
+  SC-002-SC-004, SC-008, SC-010, and SC-012.
+- No required behavior was omitted, no unauthorized capability was added, and
+  no documented deferral was contradicted.
+- Review-time line-ending and cross-platform fixture repairs were required to
+  satisfy FR-002 and FR-019; they are requirement-conforming rework, not drift.
+- T007 and later tasks remain unauthorized and absent from the implementation
+  diff.
+
 ### Resolution Strategies (Unused)
 
 The following resolution strategies remain available if drift is detected later in execution:

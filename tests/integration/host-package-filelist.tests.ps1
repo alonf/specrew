@@ -75,6 +75,15 @@ try {
 
     $manifestPath = Join-Path $scratch 'Specrew.psd1'
     $manifestContent = Get-Content -LiteralPath $manifestPath -Raw
+    $lfManifestContent = $manifestContent.Replace("`r`n", "`n")
+    [System.IO.File]::WriteAllText($manifestPath, $lfManifestContent, [System.Text.UTF8Encoding]::new($false))
+    $lfCheck = Update-SpecrewHostPackageFileList -ProjectRoot $scratch -Check
+    if ($lfCheck.Changed) { Write-Fail 'Check mode must preserve an existing LF manifest on every platform.' }
+    if ((Get-Content -LiteralPath $manifestPath -Raw).Contains("`r`n")) {
+        Write-Fail 'LF manifest was rewritten with platform-specific line endings.'
+    }
+    Write-Pass 'Generation preserves the manifest line-ending convention across platforms'
+
     $duplicateContent = $manifestContent.Replace(
         "        'scripts/keep.ps1'",
         "        'scripts/keep.ps1',`r`n        'scripts/keep.ps1'"

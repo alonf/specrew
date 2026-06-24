@@ -10,6 +10,8 @@
 **Approval Ref**: `—`
 **Reviewed By**: Reviewer
 **Reviewed At**: 2026-06-24T08:12:01Z
+**Post-Implementation Verification**: `recorded`
+**Verified At**: 2026-06-24T09:31:18Z
 
 <!--
   Concern Review schema (validator-enforced):
@@ -29,12 +31,12 @@
 
 | Concern | Category | Status | Evidence Basis | Runtime Evidence Status | Expected Controls | Blocking | Rationale | Approval |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `security-surface` | `security` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Validate host input only through the registry; normalize case without accepting unknown values; contain every generated package path under its registered host folder; reject missing, duplicate, stale, or escaping paths before writing; keep the generator free of command evaluation; use synthetic package fixtures; preserve the accessor collision boundary. | `true` | Iteration 001 accepts command-line host input and imports PSD1 manifests to generate a publish manifest. A malicious/invalid kind or path must not become code execution, path traversal, or an incomplete package. No user hook/config file is modified in this slice. | `—` |
-| `error-handling-expectations` | `robustness` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | Unknown host input returns actionable live-catalog guidance; invalid manifests or missing contract files fail before FileList mutation/publish; check mode is non-mutating; generator output is written only after full validation; firewall and parity checks fail closed with file/reason details; current manifest remains intact on failure. | `true` | The main failure risks are parameter-binding ambiguity, partial generated output, and a false-green purity test. Each has one explicit failure path and positive plus negative test coverage. | `—` |
-| `retry-idempotency-requirements` | `resilience` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | FileList generation is deterministic and byte-idempotent; generate then check must report no drift; deterministic validation/firewall operations never retry; CI reruns consume the same inputs; only later real-host canaries may use one explicitly recorded transient retry. | `true` | The slice mutates a generated manifest segment and runs publish gates repeatedly. Idempotency is required even though there is no network retry loop or transactional database. | `—` |
-| `test-integrity-targets` | `verification` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | T002 tests registered/case/unknown input at all three boundaries; T003 uses the production generator for clean, missing, stale, duplicate, escaping, and cross-platform-order fixtures; T004 invokes the production scanner against planted and clean content; T005 packs exactly from FileList; T006 verifies the committed accessor diff is empty. | `true` | The clean-extensibility claim is architectural and can pass falsely if tests inspect only authored files. Tests must exercise the same validator, generator, scanner, and packaging paths used by production/CI. | `—` |
-| `operational-resilience-concerns` | `operability` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | CI exposes distinct registry, generation, firewall, and prepublish failures; Windows and Unix runners exercise path/argument handling; generated drift blocks publish; diagnostics identify the owning path and repair action; no scheduled live monitor or automatic CLI upgrade is introduced. | `true` | FileList omission can produce a package that works in the dev tree and fails after installation. Explicit CI/prepublish gates are the operational containment for this iteration. | `—` |
-| `host-adapter-seam-purity-and-compatibility` | `architecture` | `addressed` | `planning-time-analysis` | `pending-post-implementation` | T009 defines the sole generic shared hook integration seam; shared code contains no Devin/Windsurf literal; the firewall scans the seam and detects a planted host-specific literal; a no-adapter fixture proves exact pre-feature argv/output behavior; Iteration 002 must repeat these conditions in its own hardening gate before implementation. | `true` | The seam is not implemented in Iteration 001, but its acceptance contract must be fixed now so later Devin work cannot weaken folder-only purity or regress hosts that do not opt into an adapter. This row is planning authority, not Iteration 002 implementation authorization. | `—` |
+| `security-surface` | `security` | `addressed` | `runtime-evidence` | `recorded` | Validate host input only through the registry; normalize case without accepting unknown values; contain every generated package path under its registered host folder; reject missing, duplicate, stale, or escaping paths before writing; keep the generator free of command evaluation; use synthetic package fixtures; preserve the accessor collision boundary. | `true` | Runtime verification passed actionable unknown-host rejection, exact folder/Kind checks, duplicate and escaping-link failures, and package containment. The accessor has no diff and no user hook/config file was modified. | `—` |
+| `error-handling-expectations` | `robustness` | `addressed` | `runtime-evidence` | `recorded` | Unknown host input returns actionable live-catalog guidance; invalid manifests or missing contract files fail before FileList mutation/publish; check mode is non-mutating; generator output is written only after full validation; firewall and parity checks fail closed with file/reason details; current manifest remains intact on failure. | `true` | Runtime tests passed unknown-host, missing-file, folder/Kind, stale, duplicate, escaping-link, planted-literal, and stale-projection failure paths. The full validator exposed real state-schema failures and passed only after repair. | `—` |
+| `retry-idempotency-requirements` | `resilience` | `addressed` | `runtime-evidence` | `recorded` | FileList generation is deterministic and byte-idempotent; generate then check must report no drift; deterministic validation/firewall operations never retry; CI reruns consume the same inputs; only later real-host canaries may use one explicitly recorded transient retry. | `true` | Repeated generation returned unchanged bytes, check mode passed, and LF/CRLF manifests remained stable on Windows and Linux. No retry was used to hide deterministic failure. | `—` |
+| `test-integrity-targets` | `verification` | `addressed` | `runtime-evidence` | `recorded` | T002 tests registered/case/unknown input at all three boundaries; T003 uses the production generator for clean, missing, stale, duplicate, escaping, and cross-platform-order fixtures; T004 invokes the production scanner against planted and clean content; T005 packs exactly from FileList; T006 verifies the committed accessor diff is empty. | `true` | Tests exercised the production validator, generator, scanner, launch path, package-only publish harness, and conversation capture path. The same scanner detected planted runtime literals and passed clean registry-driven content. | `—` |
+| `operational-resilience-concerns` | `operability` | `addressed` | `runtime-evidence` | `recorded` | CI exposes distinct registry, generation, firewall, and prepublish failures; Windows and Unix runners exercise path/argument handling; generated drift blocks publish; diagnostics identify the owning path and repair action; no scheduled live monitor or automatic CLI upgrade is introduced. | `true` | Regular, matrix, and prepublish workflows now expose distinct gates. The focused lane passed on Windows and Linux, the package-only harness validated 314 entries, and the uncached full validator passed after two visible repairs. | `—` |
+| `host-adapter-seam-purity-and-compatibility` | `architecture` | `not-applicable` | `not-applicable` | `not-needed` | `—` | `false` | Iteration 001 does not implement the adapter seam. Its binding purity, planted-literal, and no-adapter equivalence criteria remain in T009 and require a new Iteration 002 hardening gate and authorization. | `—` |
 
 ## Lens Activation (Planning Baseline)
 
@@ -72,11 +74,24 @@
 
 ## Notes
 
-- Runtime evidence, test counts, and mechanical findings remain
-  `pending-post-implementation`; `ready` means the planning controls are
-  sufficient for a human implementation verdict.
+- Runtime evidence for every Iteration 001 concern is recorded. The future
+  adapter-seam concern is not applicable to this slice and remains governed by
+  T009 plus a separate Iteration 002 hardening gate.
 - The auto-resolved React profile is rejected for this feature. The effective
   bounded profile is PowerShell 7, PSD1, YAML/JSON, PowerShell tests, and GitHub
   Actions.
 - No hardening row grants implementation authority. The tasks-to-before-
   implement crossing still requires the separate human verdict.
+
+## Post-Implementation Evidence Notes
+
+- The registry, package generator, firewall, launch path, FileList completeness,
+  publish harness, and conversation-capture suites passed.
+- Windows and Linux execution exposed and closed two cross-platform issues:
+  line-ending preservation and a Windows-only fake path in a test fixture.
+- The final artifact tree passed the uncached full-repository validator in
+  26.99 seconds after two earlier canonical state metadata failures were
+  repaired visibly.
+- The enum allow-list is 8 versus the pre-feature baseline of 11; no new
+  exception exists.
+- T007 and later remain unauthorized and absent from the implementation diff.

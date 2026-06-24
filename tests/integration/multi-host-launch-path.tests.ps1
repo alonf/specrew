@@ -103,15 +103,19 @@ finally {
 Write-Pass 'Antigravity Gemini-deadline warning fires correctly (silent before 2026-06-01; warns near and after 2026-06-18)'
 
 # Test 6: Get-SpecrewHostSkillRoot returns correct paths per host
-$projectRoot = 'C:\fake\project'
+$projectRoot = Join-Path ([System.IO.Path]::GetTempPath()) 'specrew-fake-project'
 $copilotRoot = Get-SpecrewHostSkillRoot -HostKind 'copilot' -ProjectPath $projectRoot
 $claudeRoot = Get-SpecrewHostSkillRoot -HostKind 'claude' -ProjectPath $projectRoot
 $codexRoot = Get-SpecrewHostSkillRoot -HostKind 'codex' -ProjectPath $projectRoot
 $antigravityRoot = Get-SpecrewHostSkillRoot -HostKind 'antigravity' -ProjectPath $projectRoot
-if ($copilotRoot -notlike '*\.github\skills*') { Write-Fail "Copilot skill root wrong: $copilotRoot" }
-if ($claudeRoot -notlike '*\.claude\skills*') { Write-Fail "Claude skill root wrong: $claudeRoot" }
-if ($codexRoot -notlike '*\.agents\skills*') { Write-Fail "Codex skill root wrong: $codexRoot" }
-if ($antigravityRoot -notlike '*\.agents\skills*') { Write-Fail "Antigravity skill root wrong (should be .agents/skills like Codex): $antigravityRoot" }
+$normalizedCopilotRoot = $copilotRoot.Replace('\', '/')
+$normalizedClaudeRoot = $claudeRoot.Replace('\', '/')
+$normalizedCodexRoot = $codexRoot.Replace('\', '/')
+$normalizedAntigravityRoot = $antigravityRoot.Replace('\', '/')
+if ($normalizedCopilotRoot -notlike '*/.github/skills') { Write-Fail "Copilot skill root wrong: $copilotRoot" }
+if ($normalizedClaudeRoot -notlike '*/.claude/skills') { Write-Fail "Claude skill root wrong: $claudeRoot" }
+if ($normalizedCodexRoot -notlike '*/.agents/skills') { Write-Fail "Codex skill root wrong: $codexRoot" }
+if ($normalizedAntigravityRoot -notlike '*/.agents/skills') { Write-Fail "Antigravity skill root wrong (should be .agents/skills like Codex): $antigravityRoot" }
 Write-Pass 'Per-host skill roots resolve correctly (antigravity uses .agents/skills like Codex)'
 
 # Test 7: flag-translation matrix for all 15 cells per research.md Task 2 plus Cursor/Antigravity follow-up
