@@ -127,6 +127,30 @@ function ConvertFrom-ContinuousCoReviewNulList {
     return @($text -split "`0" | Where-Object { $_ -ne '' })
 }
 
+function Invoke-ContinuousCoReviewGitPathBatch {
+    # Run `git <GitArgs> -- <paths>` in CHUNKS from the CURRENT location (+ the ambient GIT_INDEX_FILE).
+    # Replaces an O(files) subprocess-PER-PATH fan-out: the reviewed-state digest staged/stripped one
+    # path per git call, which was ~24s on a real .specify-deployed tree (172 files) -> the navigator
+    # blew the dispatcher's ~20s provider budget and NEVER fired (the iter-006 live-e2e third first-run
+    # failure). Identity-preserving: the SAME paths reach the index, so git write-tree yields the SAME
+    # tree-id. Chunked to stay under the OS command-line length limit.
+    param(
+        [Parameter(Mandatory)]
+        [string[]] $GitArgs,
+
+        [string[]] $Paths = @(),
+
+        [int] $ChunkSize = 200
+    )
+
+    if ($null -eq $Paths -or $Paths.Count -eq 0) { return }
+    for ($i = 0; $i -lt $Paths.Count; $i += $ChunkSize) {
+        $end = [Math]::Min($i + $ChunkSize, $Paths.Count) - 1
+        $chunk = @($Paths[$i..$end])
+        & git @GitArgs -- @chunk 2>$null | Out-Null
+    }
+}
+
 function Get-ContinuousCoReviewReviewedStateDigest {
     param(
         [Parameter(Mandatory)]
@@ -159,21 +183,20 @@ function Get-ContinuousCoReviewReviewedStateDigest {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-add-all-failed'
         }
 
-        $included = 0
         $rawIgnored = & git ls-files -z --others --ignored --exclude-standard --directory 2>$null
         if ($LASTEXITCODE -ne 0) {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-ls-ignored-failed'
         }
+        # Collect the non-denied gitignored SOURCE, then force-add it in BATCHED git calls (NOT one
+        # subprocess per entry - see Invoke-ContinuousCoReviewGitPathBatch).
+        $toInclude = @()
         foreach ($entry in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawIgnored)) {
-            if (Test-ContinuousCoReviewDigestPathDenied -Path $entry -Denylist $inclusionDenylist) {
-                continue
-            }
-
-            & git add -f -- $entry 2>$null | Out-Null
-            if ($LASTEXITCODE -eq 0) {
-                $included++
+            if (-not (Test-ContinuousCoReviewDigestPathDenied -Path $entry -Denylist $inclusionDenylist)) {
+                $toInclude += $entry
             }
         }
+        $included = $toInclude.Count
+        Invoke-ContinuousCoReviewGitPathBatch -GitArgs @('add', '-f') -Paths $toInclude
 
         # Strip only the genuinely-non-source runtime/dep paths from the final index (e.g. the
         # gate's own .specrew/review evidence, which must NEVER perturb the digest it checks).
@@ -182,11 +205,15 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         # detected (the 145 correctness false-allow fix).
         $rawStaged = & git ls-files -z 2>$null
         if ($LASTEXITCODE -eq 0) {
+            # Collect the genuinely-non-source staged paths, then drop them from the index in BATCHED
+            # git calls (NOT one `git rm --cached` per path - the ~24s O(files) fan-out on .specify).
+            $toStrip = @()
             foreach ($staged in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawStaged)) {
                 if (Test-ContinuousCoReviewDigestPathDenied -Path $staged -Denylist $stripList) {
-                    & git rm --cached --quiet -- $staged 2>$null | Out-Null
+                    $toStrip += $staged
                 }
             }
+            Invoke-ContinuousCoReviewGitPathBatch -GitArgs @('rm', '--cached', '--quiet') -Paths $toStrip
         }
 
         $treeOutput = & git write-tree 2>$null

@@ -129,6 +129,25 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should Not Be $before   # drift detected -> no false-allow
     }
 
+    It 'strips a LARGE .specify subtree via CHUNKED batched git (identity-preserving at >ChunkSize)' {
+        # iter-006 live-e2e PERF fix: the strip step ran one `git rm --cached` PER path -> ~24s on a
+        # deployed .specify (172 files) -> the navigator blew the dispatcher's ~20s budget and NEVER fired
+        # in any real project. Now batched + chunked (ChunkSize 200). Adding a 250-file .specify subtree
+        # (TWO chunks) must leave the tree-id UNCHANGED - the chunked strip removes EXACTLY .specify and
+        # nothing else (identity-preserving).
+        $repo = New-DigestRepo 'large-specify'
+        $before = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $specDir = Join-Path $repo '.specify/extensions'
+        New-Item -ItemType Directory -Path $specDir -Force | Out-Null
+        1..250 | ForEach-Object { Set-Content -LiteralPath (Join-Path $specDir ("f$_.md")) -Value "gov $_" -Encoding UTF8 }
+        Invoke-DigestGit $repo @('add', '-A'); Invoke-DigestGit $repo @('commit', '-q', '-m', '250 .specify files')
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        $d.ok | Should Be $true
+        $names = Get-TreeNames -Root $repo -TreeId $d.tree_id
+        @($names | Where-Object { $_ -like '.specify/*' }).Count | Should Be 0   # ALL 250 stripped (chunked)
+        $d.tree_id | Should Be $before                                          # identity-preserving at scale
+    }
+
     It 'F1 regression: source named like a secret stays in the tree-id and its drift flips the digest' {
         $repo = New-DigestRepo 'f1-source'
         Set-Content -LiteralPath (Join-Path $repo 'credentials.ts') -Value 'export const auth = () => ok()' -Encoding UTF8
