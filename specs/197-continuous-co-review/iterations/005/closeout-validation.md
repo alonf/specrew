@@ -62,5 +62,17 @@ test exercises the navigator plumbing + the manual real-review gate path.
 
 ## Proposal 145 review
 
-Two adversarial read-only reviewers (gate-integrity/stub-exclusion; dispatcher F-184). Findings +
-dispositions recorded in [review.md](review.md).
+Two adversarial read-only reviewers (gate-integrity/stub-exclusion; dispatcher F-184), both PASS for
+the delivered scope, both zero-footprint. Each surfaced ONE real finding, both FIXED (not deferred):
+
+- **G-197-I005-01** (gate soundness): the promotion fired on mere absence-of-blocking, so a
+  non-blocking non-pass verdict could launder to a gate `pass`. FIXED `d31f4cb8` — promote only on an
+  affirmative pass disposition allow-list. Guard test added.
+- **MAJOR catalog drift** (file-presence != runtime): the `co-review-navigator` row was missing from
+  `.specify/extensions/.../refocus-scopes.json` (loaded first), so the navigator was INERT on live
+  dispatch while fixtures stayed green. FIXED `938731eb` — row synced + a catalog-parity guard added.
+
+Carried (pre-existing, not blockers, recorded in [review.md](review.md)): the deploy mechanism does not
+re-sync `refocus-scopes.json` on `specrew update` (-> proposal + beta validation); a dormant guard
+exception; the 4 `probe`-authored F-185 commits needing author-rewrite before main. Full detail +
+dispositions: [review.md](review.md).
