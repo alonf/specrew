@@ -1,0 +1,24 @@
+{
+  "schema": "v2",
+  "co_design": true,
+  "note": "Design-analysis reuses the human-confirmed feature workshop selection. UI remains excluded; code-implementation remains binding even though it is conduct-driven rather than selected by the legacy questionnaire.",
+  "answers": {
+    "ui": false,
+    "security": true,
+    "data": true,
+    "integration": true,
+    "ops": true,
+    "perf": true
+  },
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "data-storage",
+    "security-compliance",
+    "integration-api",
+    "devops-operations",
+    "observability-resilience",
+    "code-implementation"
+  ]
+}

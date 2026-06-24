@@ -34,25 +34,21 @@ statements:
   - text: "Official documentation describes the Stop payload with stop_hook_active but does not document last_assistant_message; Tier-3 must therefore be tested empirically rather than assumed."
     area: "constraints"
     evidence: "known"
-  - text: "The empirical Devin Stop-payload spike is load-bearing because it decides whether full handover is part of the current MVP or deferred to Slice B."
+  - text: "The empirical Devin Stop-payload spike selected outcome 2: the live Stop payload contains only hook_event_name and stop_hook_active, while --export writes ATIF before Stop and a Devin-local normalization to an existing JSONL shape is consumed by the unchanged parser."
     area: "mvp"
-    evidence: "research-needed"
-    load_bearing: true
-  - text: "If the live payload carries the assistant message, the existing Tier-3 path can provide handover without parser changes."
+    evidence: "known"
+  - text: "The live Devin Stop payload does not carry an assistant-message field, so the existing Tier-3 event-payload fallback cannot provide Devin handover on tested build 2026.7.23."
     area: "mvp"
-    evidence: "research-needed"
-    load_bearing: true
-  - text: "If --export output can be normalized inside hosts/devin/ to an existing JSONL shape, the unchanged parser can provide full handover while preserving folder-only host logic."
+    evidence: "known"
+  - text: "ATIF export can be normalized inside hosts/devin/ to the existing Claude-like JSONL turn shape; the unchanged parser captured the synthetic user and assistant canary turns."
     area: "mvp"
-    evidence: "research-needed"
-    load_bearing: true
+    evidence: "known"
   - text: "If handover needs a genuinely new parser shape, full transcript handover is deferred until Slice B after Feature 197; Devin ships with explicitly degraded handover rather than forcing a shared-parser edit."
     area: "out_of_scope"
     evidence: "known"
 skipped: []
 follow_up_research:
-  - "Run a real Devin Stop hook and capture the complete stdin payload to determine whether an undocumented assistant-message field exists."
-  - "If Tier-3 is unavailable, run Devin with --export and determine whether hosts/devin/ can normalize ATIF into an existing JSONL shape consumed by the unchanged parser."
-  - "Record the spike verdict before planning handover implementation: outcome 1 or 2 keeps full handover in scope; outcome 3 defers it to Slice B."
+  - "Re-run the bounded Stop/export/normalization canary during prerelease promotion on the packaged host."
+  - "Track the tested Windows hook-runner defect: Claude-format hooks require sh.exe on PATH even though Devin's general Windows non-interactive shell is PowerShell."
 confirmation: "human-confirmed"
 confirmation_scope: "lens-question"

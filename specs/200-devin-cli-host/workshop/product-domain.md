@@ -32,18 +32,22 @@ new host risks expanding coupling instead of proving extensibility.
 
 ## Transcript and Handover Gate
 
-The early real-host spike resolves handover in this order:
+The early real-host spike selected outcome 2:
 
-1. Use the existing Tier-3 path if the live Devin Stop payload carries the assistant
-   message despite the narrower documented payload.
-2. Otherwise use `--export` only if logic inside `hosts/devin/` can normalize ATIF to an
-   existing JSONL shape that the unchanged parser already reads.
-3. If a genuinely new parser shape is required, defer full transcript handover to Slice B
-   after Feature 197. Ship the host with explicitly degraded handover and do not modify
-   `scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`.
+1. The live Stop payload was exactly the documented narrow shape:
+   `hook_event_name=Stop` plus `stop_hook_active=false`. It carried no assistant message,
+   so Tier-3 is unavailable.
+2. `--export` wrote ATIF before the Stop hook fired.
+3. A scratch Devin-local normalizer converted ATIF user/agent steps to the existing
+   Claude-like JSONL turn shape. The unchanged parser captured both synthetic canary turns.
 
-The spike is load-bearing: outcomes 1 or 2 keep full handover in the current MVP; outcome 3
-defers it.
+Full handover therefore remains in the MVP without any edit to
+`scripts/internal/bootstrap/ConversationCaptureAccessor.ps1`.
+
+The spike also found a pinned-build Windows constraint: Claude-format hook commands failed
+with `program not found` until Git's `sh.exe` was added to `PATH`, although Devin's general
+Windows non-interactive shell is PowerShell. Devin remains experimental while this
+compatibility requirement is handled and revalidated.
 
 ## Non-Goals and Constraints
 
