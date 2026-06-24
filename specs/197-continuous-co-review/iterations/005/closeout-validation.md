@@ -40,8 +40,8 @@ hook on Linux/macOS. macOS inferred (same Unix/.NET model); a CI/Mac leg is the 
 
 Full continuous-co-review suite + key integration: **216/0** across 41 CCR files. Navigator 16/0
 (incl. the stub-NOT-promoted guard), gate 11/0, run-index 6/0, launcher 4/4, diff-provider 6/0,
-dispatcher-stop-block + conformance-detection 40 + DispatcherLargeEvent + protected-surface-guard 1/0
-+ ProviderMirrorParity (3 dispatcher copies byte-identical), filelist-completeness green (350 entries).
+dispatcher-stop-block, conformance-detection 40, DispatcherLargeEvent, protected-surface-guard 1/0,
+ProviderMirrorParity (3 dispatcher copies byte-identical), filelist-completeness green (350 entries).
 No F-184 surface touched by the navigator/launcher; the dispatcher edits are maintainer-authorized with
 a SCOPED `protected-surface-guard` exception (removed once on main).
 

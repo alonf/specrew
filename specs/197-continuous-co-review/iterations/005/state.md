@@ -15,7 +15,7 @@
   EXCLUSION (a stub never promotes -> the gate is not auto-satisfiable by plumbing; guard test). `bc729b67`.
 - Dispatcher F-184 (maintainer-authorized): codex clean-args + stop-block merge, 3 copies byte-identical,
   scoped protected-surface-guard exception. `4f02a6c0`.
-- FileList: 37 missing continuous-co-review/** + agent-tasks/** files added to Specrew.psd1. `212b33d6`.
+- FileList: 37 missing `continuous-co-review` + `agent-tasks` deployable files added to Specrew.psd1. `212b33d6`.
 - Dogfood fixes (caught by the navigator-on-its-own-code dogfood): `& git` encoding -> Process; huge
   diff arg -> batched. `c2cf8a38`.
 - VERIFIED: full CCR + key integration 216/0; navigator 16/0; dogfood mechanism end-to-end; cross-platform.
