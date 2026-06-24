@@ -13,6 +13,7 @@ $proposal197ReviewerModules = @(
     'review-run-workspace-manager.ps1'
     'review-result-normalizer.ps1'
     'reviewer-host-catalog.ps1'
+    'reviewer-authorization-sync.ps1'
     'reviewer-model-capability.ps1'
     'reviewer-authorization-gate.ps1'
     'reviewer-selection-policy.ps1'

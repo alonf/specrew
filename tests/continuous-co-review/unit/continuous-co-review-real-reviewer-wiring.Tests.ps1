@@ -478,4 +478,58 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             ($out -join "`n") | Should Match 'True'
         }
     }
+
+    # iter-007 INT-006 bridge: the code-implementation lens ALREADY asks the human which reviewer host should
+    # review and records it in the feature's implementation-rules.yml `reviewer_preference` - but nothing
+    # connected that to the navigator's authorization catalog (.specrew/reviewer-hosts.json, T086), so the
+    # choice was captured yet never authorized -> silent fail-open. The bridge syncs a HUMAN-SELECTED host
+    # into the catalog. NON-MOCKED: a real manifest -> New-...ReviewerPlan -> the un-mocked policy selects it.
+    Context 'INT-006 bridge - the code-lens reviewer choice authorizes the navigator (NON-MOCKED)' {
+        It 'a human-selected reviewer_preference (no reviewer-hosts.json) is synced + the navigator selects that host' {
+            $proj = script:New-FeatureProject
+            $root = $proj.Root
+            try {
+                script:Add-Increment -Root $root -Content 'changed-for-int006-bridge'
+                # The human chose codex in the code-implementation lens; recorded in the feature manifest.
+                $featRoot = Join-Path $root $proj.FeatureRel
+                (@(
+                    'schema_version: "1.0"'
+                    'reviewer_preference:'
+                    '  mode: "human-selected"'
+                    '  host: "codex"'
+                    '  model: "chatgpt"'
+                    '  source: "code-implementation-workshop"'
+                    '  authorization_ref: null'
+                ) -join "`n") | Set-Content -LiteralPath (Join-Path $featRoot 'implementation-rules.yml') -Encoding UTF8
+                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should Be $false   # nothing authorized yet
+                $plan = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId 'int006-run' -RunDir (Join-Path $root '.specrew/review/pending/int006-run') -CodeWriterHost 'claude' -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
+                # The bridge synced the human choice -> the navigator authorized + selected codex (un-mocked).
+                $plan | Should Not BeNullOrEmpty
+                [string]$plan.candidate.host | Should Be 'codex'
+                [string]$plan.candidate.authorization_ref | Should Be 'code-implementation-workshop'   # the workshop provenance
+                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should Be $true          # persisted to the catalog
+            }
+            finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'auto-select (no human host) does NOT authorize - fail-open, never silently authorize a paid set (SEC-004)' {
+            $proj = script:New-FeatureProject
+            $root = $proj.Root
+            try {
+                script:Add-Increment -Root $root -Content 'changed-for-int006-autoselect'
+                $featRoot = Join-Path $root $proj.FeatureRel
+                (@(
+                    'schema_version: "1.0"'
+                    'reviewer_preference:'
+                    '  mode: "auto-select"'
+                    '  host: null'
+                    '  source: "auto-selection-fallback"'
+                ) -join "`n") | Set-Content -LiteralPath (Join-Path $featRoot 'implementation-rules.yml') -Encoding UTF8
+                $plan = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId 'int006-auto' -RunDir (Join-Path $root '.specrew/review/pending/int006-auto') -CodeWriterHost 'claude' -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
+                $plan | Should BeNullOrEmpty                                                   # auto-select did NOT authorize -> fail-open
+                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should Be $false
+            }
+            finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
 }

@@ -794,8 +794,18 @@ function New-ContinuousCoReviewNavigatorReviewerPlan {
     # once via `specrew review --host <h> --authorization-ref <ref>` (which persists this file); the navigator
     # only READS it - it NEVER writes or self-authorizes (the authorization_ref is the human-provenance
     # anchor; the Proposal 190 self-authorization hole). Absent/unparseable -> $null -> the default -> fail-open.
-    $reviewerConfig = $null
     $reviewerHostsPath = Join-Path $RepoRoot '.specrew/reviewer-hosts.json'
+    # INT-006 bridge (iter-007): if no authorization is persisted yet, sync it from the code-implementation
+    # lens's HUMAN reviewer choice (the feature's implementation-rules.yml reviewer_preference). The lens
+    # already ASKS the question and records the answer there, but nothing connected it to this catalog -> the
+    # human-selected reviewer was captured yet never authorized -> silent fail-open. The bridge authorizes
+    # ONLY a human-selected host (never auto-authorizes - SEC-004 / Proposal 190). Deterministic + idempotent.
+    if (-not (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf)) {
+        if (Get-Command -Name 'Sync-ContinuousCoReviewReviewerAuthorizationFromWorkshop' -ErrorAction SilentlyContinue) {
+            try { $null = Sync-ContinuousCoReviewReviewerAuthorizationFromWorkshop -RepoRoot $RepoRoot } catch { $null = $_ }
+        }
+    }
+    $reviewerConfig = $null
     if (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf) {
         try { $reviewerConfig = (Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100) } catch { $reviewerConfig = $null }
     }
