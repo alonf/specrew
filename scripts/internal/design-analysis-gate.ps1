@@ -215,14 +215,40 @@ function Test-SpecrewDesignAnalysisGateRequired {
     if ($null -eq $version -or $version -lt $script:SpecrewDesignAnalysisGateMinimumVersion) { return $false }
 
     $context = Get-SpecrewDesignAnalysisStartContext -ProjectRoot $ProjectRoot
-    if ($null -eq $context -or $null -eq $context.session_state) { return $false }
-    if (-not [bool]$context.session_state.active) { return $false }
+    if ($null -eq $context) { return $false }
+    $ss = if ($context.PSObject.Properties['session_state']) { $context.session_state } else { $null }
+    $be = if ($context.PSObject.Properties['boundary_enforcement']) { $context.boundary_enforcement } else { $null }
 
-    $contextFeature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef ([string]$context.session_state.feature_ref)
-    if ($contextFeature -ne $feature) { return $false }
-
-    $currentBoundary = [string]$context.session_state.boundary_type
-    $lastAuthorized = if ($null -ne $context.boundary_enforcement) { [string]$context.boundary_enforcement.last_authorized_boundary } else { '' }
+    # v2 schema migration: a v2 start-context has NO session_state (the active feature lives in
+    # .specify/feature.json, the boundary in boundary_enforcement). The old `session_state -eq null ->
+    # return false` bail silently DISABLED this gate on EVERY v2 project (the session_state-drop broke
+    # more than the boundary readers - Proposal-145 review, iter-007). v1 keeps the full session_state
+    # cross-check (active + feature-match + boundary); v2 resolves the active feature from feature.json
+    # (the schema-independent active-feature source the boundary-sync itself uses) and requires a v2
+    # boundary state - the pre-plan check below already reads boundary_enforcement.last_authorized_boundary.
+    $currentBoundary = ''
+    if ($null -ne $ss) {
+        if (-not [bool]$ss.active) { return $false }
+        $contextFeature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef ([string]$ss.feature_ref)
+        if ($contextFeature -ne $feature) { return $false }
+        $currentBoundary = [string]$ss.boundary_type
+    }
+    else {
+        if ($null -eq $be) { return $false }   # no session_state AND no boundary_enforcement -> no active governed feature
+        $featureJsonPath = Join-Path $ProjectRoot '.specify/feature.json'
+        $activeFeature = ''
+        if (Test-Path -LiteralPath $featureJsonPath -PathType Leaf) {
+            try {
+                $fj = Get-Content -LiteralPath $featureJsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($fj.PSObject.Properties['feature_directory'] -and -not [string]::IsNullOrWhiteSpace([string]$fj.feature_directory)) {
+                    $activeFeature = Normalize-SpecrewDesignAnalysisFeatureRef -FeatureRef (Split-Path -Leaf ([string]$fj.feature_directory))
+                }
+            }
+            catch { return $false }
+        }
+        if ([string]::IsNullOrWhiteSpace($activeFeature) -or $activeFeature -ne $feature) { return $false }
+    }
+    $lastAuthorized = if ($null -ne $be) { [string]$be.last_authorized_boundary } else { '' }
     $isPrePlanActiveBoundary = @('specify', 'clarify', 'before-plan') -contains $currentBoundary -or @('specify', 'clarify', 'before-plan') -contains $lastAuthorized
     if (-not $isPrePlanActiveBoundary) { return $false }
 
