@@ -558,9 +558,22 @@ function Invoke-ContinuousCoReviewNavigatorReap {
             }
             Clear-ContinuousCoReviewNavigatorEntry -RepoRoot $RepoRoot -RegistryPath $regPath -Registry $reg
             $result.reaped_run_ids.Add($runId) | Out-Null
+            # HUMAN-GATED STATUS - ONLY on a normal Stop reap, NEVER on the cross-session SessionStart sweep
+            # (that cleans PRIOR-session orphans and must stay silent - it is cleanup, not current status).
+            if ($reason -eq 'crashed' -and -not $CrossSession) {
+                # A DEAD reviewer (supervisor gone, no terminal verdict) is INCONCLUSIVE. Say so rather than
+                # reaping it silently, so the human reruns instead of assuming a pass - the gate never
+                # advances on an inconclusive run (no passing evidence was collected).
+                $result.inject_notes.Add(("[co-review] run {0} did not finish - the reviewer process is gone with no verdict, so this checkpoint is INCONCLUSIVE (not a pass). A fresh review fires on the next changed checkpoint; rerun if you need it now." -f $runId)) | Out-Null
+            }
         }
-        # else: within deadline AND (present OR presence-unknown). Leave it PENDING - a transient
-        # 'unknown' probe failure on a still-running review is re-checked on the next reap (finding 2).
+        elseif (-not $CrossSession) {
+            # HUMAN-GATED STATUS: a genuinely-running review is left PENDING (correct) - but SAY SO. It was
+            # silent before, so 'continue' was a blind guess. Now each Stop/continue reports it is still in
+            # flight; the verdict is surfaced the moment it finishes. The human drives the poll by continuing
+            # (the host-neutral "wake" - every host has a human + a Stop, none has a portable auto-wake).
+            $result.inject_notes.Add(("[co-review] run {0} is still reviewing in the background - say 'continue' to check again, or keep working; its verdict is surfaced here as soon as it finishes." -f $runId)) | Out-Null
+        }
     }
     return $result
 }
@@ -1177,6 +1190,12 @@ function Invoke-ContinuousCoReviewNavigator {
             $decision.reason = 'registered-checkpoint'
             $decision.fired_run_id = [string]$run.run_id
             $decision.fired_tree_id = $treeId
+            # HUMAN-GATED STATUS PROTOCOL (the host-neutral join): the review runs ASYNC in an ISOLATED
+            # process, so tell the human it is in flight + how to drive the check. The "wake" is the human
+            # typing 'continue' (no host has a portable auto-wake; every host has a human + a Stop). The
+            # status is reported on each subsequent Stop by the reap (running / passed / inconclusive), and
+            # review-signoff fail-closed refuses to advance until a passing review is collected.
+            $decision.inject_notes = @(@($decision.inject_notes) + ("[co-review] fired (run {0}) - an independent reviewer is reviewing this checkpoint in the background. Keep working or say 'continue' to check; the verdict is surfaced here the moment it is ready, and review-signoff will not advance until a passing review is collected." -f [string]$run.run_id))
             # Observability (tests + diagnostics): whether the REAL policy reviewer was wired this fire, the
             # host-call budget threaded onto it, and the supervisor budget. NOT load-bearing for the contract.
             $decision | Add-Member -NotePropertyName reviewer_wired -NotePropertyValue ([bool]($null -ne $plan)) -Force
