@@ -105,12 +105,16 @@ The code rules are mostly **product-level and stable**:
   applicability-filtered only when context applies. Never a flat wall.
 - **Dependency selection**: default-first "use existing project tools / no new dependency"; capture the
   fields for any chosen dependency into the manifest `dependency_policy`.
-- **Reviewer selection**: before closing this lens, ask the human which continuous co-review harness and model should review the code,
-  and capture any requested host-specific effort level. Record a chosen reviewer in `reviewer_preference` for implementation/review; if they
-  explicitly skip or leave it undecided, record that Specrew will auto-select using the independent-reviewer
-  ranking policy (Codex/ChatGPT and Claude/Opus 4.8 1M as rank-85 peers, Copilot strong-model as rank 80,
-  other harnesses below, single available harness uses its best authorized model). Do not claim dynamic model/effort
-  discovery exists yet; for this MVP, record the selected labels exactly as the human gives them.
+- **Reviewer selection (INT-006 - present the list, do NOT ask blind)**: before closing this lens, RUN
+  `specrew review --list-hosts --code-writer-host <the host you are running as>` and PRESENT its output to
+  the human verbatim - the SELECTABLE hosts (recommended independent first, then their own code-writer shown
+  as also-selectable, then any unavailable host shown with its reason) and the DEFAULT. Do NOT present from
+  memory or from the examples above; the command reflects what is actually installed on the human's PATH.
+  Then capture their pick into `reviewer_preference` as `mode=human-selected` with the chosen `host`. A human
+  MAY pick their own code-writer - only they know each host's quota/token status; independence is the
+  recommendation, not a rule. If they make no choice, record the DEFAULT the command marked (still
+  `mode=human-selected`). Do NOT show or pin a model - Specrew uses the host's own default model (no dynamic
+  model discovery exists yet).
 - **Capture** the selections/decisions/custom-rules/dependency-policy into `implementation-rules.yml`
   (reference-by-ID) + the human-readable `workshop/code-implementation.md`; record the lens in
   `lens-applicability.json`.

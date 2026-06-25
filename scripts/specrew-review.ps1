@@ -42,6 +42,8 @@ param(
     [string[]]$ExcludePath,
     [Alias('preserve-debug')]
     [switch]$PreserveDebug,
+    [Alias('list-hosts')]
+    [switch]$ListHosts,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CliArgs
@@ -61,6 +63,23 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
     throw "Missing boundary-state helper '$boundaryStateHelperPath'."
 }
 . $boundaryStateHelperPath
+
+# INT-006 (iter-007): `specrew review --list-hosts` DISCOVERS + PRESENTS the available reviewer hosts (with
+# the recommended independent default) and exits - lightweight, no review, no project-setup gate. This is
+# the deterministic list the code-implementation lens renders so the human chooses from real options
+# instead of being asked blind. Best-effort PATH detection; reflects this shell's env.
+if ($ListHosts) {
+    $ccrLoadPath = Join-Path $PSScriptRoot 'internal\continuous-co-review\_load.ps1'
+    if (Test-Path -LiteralPath $ccrLoadPath -PathType Leaf) {
+        . $ccrLoadPath
+        $cwHostForList = if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $CodeWriterHost } elseif (-not [string]::IsNullOrWhiteSpace($env:SPECREW_HOST)) { $env:SPECREW_HOST } else { $env:SPECREW_ACTIVE_HOST }
+        Write-Host (Format-ContinuousCoReviewReviewerHostChoices -CodeWriterHost $cwHostForList).text
+    }
+    else {
+        Write-Host 'Reviewer-host discovery is unavailable (continuous-co-review module not found under this Specrew install).'
+    }
+    return
+}
 
 function Show-Usage {
     @'
