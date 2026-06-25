@@ -106,6 +106,15 @@ function New-SpecrewIsolatedTaskWorktree {
         through .NET text decode/encode and CORRUPTS it (verified). The file hop is byte-exact and
         identical on bsdtar (Win11 System32) + GNU tar (Linux).
 
+        CRITICAL (iter-007 real-host dogfood): on Windows, bare `tar` on PATH is typically
+        Git-for-Windows' MSYS tar (C:\Program Files\Git\usr\bin\tar.exe), which is FIRST on PATH on
+        essentially every dev machine. MSYS tar parses the absolute archive path `C:\...\<id>.tar` as
+        an rcp-style REMOTE `host:path` ("tar: Cannot connect to C: resolve failed", exit 128) and
+        cannot extract. THAT is why the navigator reached FIRE but never materialized the review
+        worktree on the real host (the 12 navigator + 2 launcher unit failures shared this one root
+        cause). So pin Windows to System32 bsdtar (ships on Win10/11; handles C:\ paths natively).
+        Unix is unchanged (bare `tar` = GNU/BSD tar, correct on POSIX paths).
+
         The `read-write` future path needs a real `git worktree add` branched from base so the
         supervisor can merge changes back on `merge` disposition - DEFERRED (see Start-...'s throw).
     #>
@@ -138,12 +147,21 @@ function New-SpecrewIsolatedTaskWorktree {
         throw "git archive failed for tree-id '$TreeId' (exit $LASTEXITCODE)"
     }
 
-    & tar -xf $tarPath -C $worktreeDir 2>&1 | Out-Null
+    # Pin the tar executable (see the function header): Windows -> System32 bsdtar so an absolute
+    # C:\ archive path is not misread as a remote host:path by Git-for-Windows MSYS tar; Unix -> the
+    # default tar. Fall back to bare `tar` only if System32 tar is somehow absent. Keep stderr (no
+    # `| Out-Null`) so a future failure surfaces its reason in the throw instead of a bare exit code.
+    $tarExe = if ($IsWindows) {
+        $sys32Tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+        if (Test-Path -LiteralPath $sys32Tar -PathType Leaf) { $sys32Tar } else { 'tar' }
+    }
+    else { 'tar' }
+    $tarOut = & $tarExe -xf $tarPath -C $worktreeDir 2>&1
     $tarExit = $LASTEXITCODE
     Remove-Item -LiteralPath $tarPath -Force -ErrorAction SilentlyContinue
     if ($tarExit -ne 0) {
         Remove-Item -LiteralPath $worktreeDir -Recurse -Force -ErrorAction SilentlyContinue
-        throw "tar extract failed for tree-id '$TreeId' (exit $tarExit)"
+        throw ("tar extract failed for tree-id '{0}' via '{1}' (exit {2}): {3}" -f $TreeId, $tarExe, $tarExit, (($tarOut | Out-String).Trim()))
     }
 
     return $worktreeDir
