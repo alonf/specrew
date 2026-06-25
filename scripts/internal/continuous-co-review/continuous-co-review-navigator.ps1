@@ -719,6 +719,15 @@ function Get-ContinuousCoReviewNavigatorImplementStage {
         if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state -and $sc.session_state.PSObject.Properties['boundary_type']) {
             $boundary = [string]$sc.session_state.boundary_type
         }
+        # start-context schema v2 has NO session_state cursor; the boundary lives under boundary_enforcement.
+        # last_authorized_boundary normalizes to 'before-implement' during active implementation - exactly the
+        # value the old session_state.boundary_type cursor carried at that point (see the comment above and the
+        # firing window: the navigator only fires DURING implement) - so the implement-stage check below is
+        # behavior-preserving; this only reads the migrated field. The iter-007 real-host dogfood proved the
+        # navigator was reading the dead old field on a v2 project and silently no-opping every checkpoint.
+        if ([string]::IsNullOrWhiteSpace($boundary) -and $sc.PSObject.Properties['boundary_enforcement'] -and $null -ne $sc.boundary_enforcement -and $sc.boundary_enforcement.PSObject.Properties['last_authorized_boundary']) {
+            $boundary = [string]$sc.boundary_enforcement.last_authorized_boundary
+        }
         if ([string]::IsNullOrWhiteSpace($boundary)) { return $null }
         if (Get-Command -Name 'Normalize-SpecrewCanonicalBoundaryType' -ErrorAction SilentlyContinue) {
             $norm = Normalize-SpecrewCanonicalBoundaryType -Boundary $boundary

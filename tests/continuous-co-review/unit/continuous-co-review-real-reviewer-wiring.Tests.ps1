@@ -532,4 +532,30 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }
+
+    # iter-007 schema-migration fix (real-host dogfood root cause): the implement-stage gate read ONLY the
+    # pre-v2 cursor session_state.boundary_type. On a v2 start-context (boundary_enforcement.last_authorized_
+    # boundary, NO session_state) that read null -> the navigator silently no-op'd at EVERY implement
+    # checkpoint, so no review ever fired on a real (v2) project. Now it reads both schemas.
+    Context 'navigator implement-stage detection across start-context schemas' {
+        function script:New-NavStageContext {
+            param([string]$Json)
+            $r = Join-Path $env:TEMP ('navstage-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+            New-Item -ItemType Directory -Path (Join-Path $r '.specrew') -Force | Out-Null
+            $Json | Set-Content -LiteralPath (Join-Path $r '.specrew/start-context.json') -Encoding UTF8
+            return $r
+        }
+        It 'v2 schema (boundary_enforcement.last_authorized_boundary=before-implement) -> implement' {
+            $r = script:New-NavStageContext '{"schema":"v2","boundary_enforcement":{"last_authorized_boundary":"before-implement"}}'
+            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should Be 'implement' } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        It 'old schema (session_state.boundary_type=before-implement) -> implement (no regression)' {
+            $r = script:New-NavStageContext '{"session_state":{"boundary_type":"before-implement"}}'
+            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should Be 'implement' } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+        It 'v2 non-implement boundary (review-signoff) -> empty (must NOT over-fire reviews)' {
+            $r = script:New-NavStageContext '{"schema":"v2","boundary_enforcement":{"last_authorized_boundary":"review-signoff"}}'
+            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should BeNullOrEmpty } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
 }
