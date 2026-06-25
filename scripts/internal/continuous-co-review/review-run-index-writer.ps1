@@ -500,6 +500,20 @@ function Get-ContinuousCoReviewMergeBaseAnchor {
         [void] $trunkCandidates.Add("origin/$TrunkName")
     }
 
+    # iter-007 real-host dogfood fix: the trunk is NOT always 'main'. A real repo's default branch was 'dev'
+    # (origin/HEAD -> origin/dev), so 'main' + 'origin/main' BOTH failed to resolve -> $null anchor ->
+    # 'no-reviewable-checkpoint' -> the navigator silently no-op'd at EVERY implement checkpoint (no review
+    # ever fired). Detect the repo's CONFIGURED default branch and try it before giving up.
+    $detectedHead = Invoke-ContinuousCoReviewResolverGit -RepoRoot $RepoRoot -Arguments @('symbolic-ref', '--short', 'refs/remotes/origin/HEAD')
+    if ($detectedHead.ExitCode -eq 0 -and @($detectedHead.Output).Count -gt 0) {
+        $detectedTrunk = ([string] $detectedHead.Output[0]).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($detectedTrunk)) {
+            if (-not $trunkCandidates.Contains($detectedTrunk)) { [void] $trunkCandidates.Add($detectedTrunk) }
+            $bareTrunk = $detectedTrunk -replace '^origin/', ''
+            if ($bareTrunk -ne $detectedTrunk -and -not $trunkCandidates.Contains($bareTrunk)) { [void] $trunkCandidates.Add($bareTrunk) }
+        }
+    }
+
     foreach ($trunk in $trunkCandidates) {
         $result = Invoke-ContinuousCoReviewResolverGit -RepoRoot $RepoRoot -Arguments @('merge-base', $trunk, $HeadRef)
         if ($result.ExitCode -eq 0 -and @($result.Output).Count -gt 0) {

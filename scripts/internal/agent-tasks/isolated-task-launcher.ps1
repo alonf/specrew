@@ -115,7 +115,17 @@ function New-SpecrewIsolatedTaskWorktree {
         [Parameter(Mandatory)][string]$EphemeralRoot
     )
 
-    $gitDir = Join-Path $RepoRoot '.git'
+    # Resolve the REAL git dir. The governance root may be a SUBDIR of the git repo (a Specrew project
+    # nested in a larger monorepo), where .git is NOT at $RepoRoot. Ask git for the absolute git dir and
+    # fall back to $RepoRoot/.git only if git cannot resolve it. (iter-007 real-host dogfood: the project
+    # WAS a subdir, so $RepoRoot/.git did not exist and `git --git-dir=... archive` failed exit 128 at the
+    # fire step - the navigator reached FIRE but could not materialize the read-only review worktree.)
+    $gitDir = $null
+    $resolvedGitDir = (& git -C $RepoRoot rev-parse --absolute-git-dir 2>$null)
+    if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($resolvedGitDir)) {
+        $gitDir = ([string]$resolvedGitDir).Trim()
+    }
+    if ([string]::IsNullOrWhiteSpace($gitDir)) { $gitDir = Join-Path $RepoRoot '.git' }
     $worktreeDir = Join-Path $EphemeralRoot ('specrew-itask-' + [guid]::NewGuid().ToString('N'))
     $tarPath = "$worktreeDir.tar"
     New-Item -ItemType Directory -Path $worktreeDir -Force | Out-Null
