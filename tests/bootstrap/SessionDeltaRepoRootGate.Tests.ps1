@@ -4,8 +4,11 @@ $ErrorActionPreference = 'Stop'
 # PARENT repo when the project root is not its own repo root". The temp dir the reviewer ran in lives under a
 # HOME that is itself a git worktree, so `git status --untracked-files=all` from a NON-repo-root walks the whole
 # parent tree (unbounded -> the hook hangs) AND reports the parent's files as this project's delta. The fix is
-# Test-SpecrewIsGitRepoRoot (git rev-parse --show-prefix): a non-empty prefix == nested -> skip the scan, return
-# the empty shape. This test pins the gate with a HERMETIC repo (its own root) so it never touches the parent.
+# Test-SpecrewIsGitRepoRoot (git rev-parse --show-prefix) is the predicate; iter-007 Fix 2 then changed the
+# CALLERS from skip-when-nested to SCAN-SCOPED-when-nested (Get-SpecrewGitScanScope + a `-- .` pathspec + a
+# --show-prefix strip), so a project nested in a monorepo gets its OWN subtree delta without ever scanning the
+# parent (the prior skip hollowed EnglishIntake's handover). This test pins BOTH the predicate AND the
+# scoped-scan behavior with a HERMETIC nested repo.
 
 $base = "$PSScriptRoot/../../scripts/internal/bootstrap"
 . "$base/ProjectMetadataAccessor.ps1"
@@ -40,17 +43,16 @@ try {
     }
     else { Write-Host 'SKIP: worktree-root case (git worktree add unavailable)' -ForegroundColor Yellow }
 
-    # --- Get-SpecrewSessionDelta: gate fires on the nested root -> empty shape, NO parent scan. ---
+    # --- iter-007 Fix 2: a NESTED root is now SCANNED, SCOPED to its own subtree (not skipped). A change INSIDE
+    # the subtree surfaces, project-relative (the --show-prefix is stripped); the parent's dirty-at-root.txt is
+    # scoped OUT (no parent scan); the scan actually RAN (branch populated, unlike the old skip). ---
+    Set-Content -LiteralPath (Join-Path $nested 'nested-work.txt') -Value 'work' -Encoding UTF8
     $deltaNested = Get-SpecrewSessionDelta -ProjectRoot $nested
-    Assert-Equal $deltaNested.uncommitted_count 0 'NESTED root -> empty delta (the parent dirty-at-root.txt is NOT scanned)'
-    Assert-Equal $deltaNested.has_uncommitted $false 'NESTED root -> has_uncommitted is false'
-    Assert-Equal $deltaNested.branch '' 'NESTED root -> branch is blank (no git ran)'
-    Assert-Equal $deltaNested.user_file_count 0 'NESTED root -> zero user files'
-
-    # The empty shape is structurally identical to Get-SpecrewEmptySessionDelta (single source of truth).
-    $empty = Get-SpecrewEmptySessionDelta
-    Assert-Equal ($deltaNested.uncommitted_files.Count) ($empty.uncommitted_files.Count) 'NESTED delta matches the canonical empty shape (uncommitted_files)'
-    Assert-Equal ($deltaNested.new_commit_count) ($empty.new_commit_count) 'NESTED delta matches the canonical empty shape (new_commit_count)'
+    Assert-True (@($deltaNested.uncommitted_files) -contains 'nested-work.txt') 'NESTED root -> the subtree change surfaces, PROJECT-relative (show-prefix stripped)'
+    Assert-True (-not (@($deltaNested.uncommitted_files) -contains 'sub/deeper/nested-work.txt')) 'NESTED root -> the path is NOT repo-root-relative (the prefix was stripped)'
+    Assert-True (-not (@($deltaNested.uncommitted_files) -contains 'dirty-at-root.txt')) 'NESTED root -> the PARENT dirty-at-root.txt is scoped OUT (the parent tree is never scanned)'
+    Assert-True (-not [string]::IsNullOrWhiteSpace($deltaNested.branch)) 'NESTED root -> the scoped scan RAN (branch populated); the project is no longer skipped'
+    Assert-True ($deltaNested.has_uncommitted) 'NESTED root -> has_uncommitted is true (the subtree change was seen)'
 
     # --- the POSITIVE branch still works: from the repo root the real scan runs and sees dirty-at-root.txt. ---
     $deltaRoot = Get-SpecrewSessionDelta -ProjectRoot $repo

@@ -788,8 +788,12 @@ function Update-SpecrewRollingHandover {
     # worktree, an ungated `git status` walks the whole parent tree (unbounded -> hangs the hook; try/catch
     # cannot bound a hung process) AND would report the PARENT'S dirty files as this project's change. Not a
     # repo root -> no tracked change to detect here (consistent with the empty Get-SpecrewSessionDelta below).
-    if (Test-SpecrewIsGitRepoRoot -ProjectRoot $ProjectRoot) {
-        try { $st = (& git -C $ProjectRoot status --porcelain 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
+    # iter-007 fix: subtree-scoped material-change detection (was gated on is-repo-ROOT, so a project NESTED in a
+    # larger repo always saw "no change" -> the hollow handover / no re-orientation). InWorkTree keeps the
+    # parent-scan fail-safe; `-- .` confines this (hotter, per-PostToolUse) status to $ProjectRoot's subtree.
+    $changeScope = Get-SpecrewGitScanScope -ProjectRoot $ProjectRoot
+    if ($changeScope.InWorkTree) {
+        try { $st = (& git -C $ProjectRoot status --porcelain -- . 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
     }
     $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
     # Prop-145 round-4 (HIGH): a conversation-only turn (clean tree, same boundary) is NOT a git/boundary "material
