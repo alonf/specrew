@@ -409,6 +409,27 @@ function Test-SpecrewLensWorkshopRecords {
             $errors.Add(("workshop record for selected lens '{0}' is incomplete (SC-021): missing or placeholder {1}." -f $id, ($missing -join ', '))) | Out-Null
         }
 
+        # #2904 (iter-007 real-host dogfood): the 'code-implementation' lens's moved_on is HOLLOW unless its
+        # lens ARTIFACT (the implementation-rules.yml manifest) actually exists on disk. The completion signal
+        # (moved_on) was DECOUPLED from the artifact: a host marked the lens moved_on:true / human-confirmed
+        # having written NO manifest and without asking the reviewer question, and this gate trusted the
+        # checkbox and authorized. Assert the artifact's PRESENCE here. Its SCHEMA/provenance is the lens's own
+        # Test-SpecrewImplementationRulesManifest + Proposal-196 (event-backed provenance) territory - a COUPLED
+        # follow-up, deliberately NOT this gate, which must not fail-closed on a partial-but-legitimate manifest.
+        # Scoped to code-implementation (the only lens with a required on-disk manifest) + gated on moved_on
+        # truthy, so it is grandfather-safe exactly like the rest of this floor (a pre-A4 artifact never reaches
+        # here; a lens that is not moved_on already fails above). Resolved INLINE: the gate is dot-sourced by
+        # sync-boundary-state.ps1, which does NOT load code-implementation-lens.ps1, so calling
+        # Get-SpecrewCodeManifestPath here would throw command-not-found under StrictMode. 'implementation-rules.yml'
+        # is that helper's stable filename contract; the regression test pins gate-literal == helper-contract.
+        if ($id -eq 'code-implementation' -and $null -ne $movedOn -and [bool]$movedOn) {
+            $featureDir = Split-Path -Parent $ArtifactPath
+            $manifestPath = if (-not [string]::IsNullOrWhiteSpace($featureDir)) { Join-Path $featureDir 'implementation-rules.yml' } else { '' }
+            if ([string]::IsNullOrWhiteSpace($manifestPath) -or -not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+                $errors.Add(("the 'code-implementation' lens is marked moved_on but its required artifact is missing (#2904): expected the implementation-rules.yml manifest beside lens-applicability.json at '{0}'. A code-writing lens cannot self-certify complete with no manifest - run the code-implementation workshop and persist implementation-rules.yml before sync-specify." -f $manifestPath)) | Out-Null
+            }
+        }
+
         if ($confirmationRequired) {
             $confirmation = if ($rec.PSObject.Properties['confirmation']) { [string]$rec.confirmation } else { '' }
             if ($confirmation -notin $validProvenance) {
