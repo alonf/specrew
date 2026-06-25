@@ -545,10 +545,14 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
                 if ($ss) {
                     $featureValue = $ss.PSObject.Properties['feature_ref'].Value
                     $commitValue = $ss.PSObject.Properties['auth_commit_hash'].Value
-                    $boundaryValue = $ss.PSObject.Properties['boundary_type'].Value
                     if (-not [string]::IsNullOrWhiteSpace([string]$featureValue)) { $featureRef = [string]$featureValue }
                     if (-not [string]::IsNullOrWhiteSpace([string]$commitValue)) { $authCommit = [string]$commitValue }
-                    if ([string]::IsNullOrWhiteSpace($workingBoundary) -and -not [string]::IsNullOrWhiteSpace([string]$boundaryValue)) { $workingBoundary = [string]$boundaryValue }
+                }
+                # working boundary via the CANONICAL v1/v2-tolerant reader (was session_state.boundary_type only,
+                # which read $null on a v2 start-context). $pending.WorkingBoundary still takes precedence above.
+                if ([string]::IsNullOrWhiteSpace($workingBoundary)) {
+                    $bv = Get-SpecrewStartContextBoundary -StartContext $ctx
+                    if (-not [string]::IsNullOrWhiteSpace([string]$bv)) { $workingBoundary = [string]$bv }
                 }
             }
             catch { $null = $_ }
@@ -707,7 +711,9 @@ function Update-SpecrewRollingHandover {
             $ctx = Get-Content -LiteralPath $ctxPath -Raw | ConvertFrom-Json
             $ss = & $getProp $ctx 'session_state'
             $feature = & $getProp $ss 'feature_ref'
-            $boundary = & $getProp $ss 'boundary_type'
+            # working boundary via the CANONICAL v1/v2-tolerant reader (was session_state.boundary_type only ->
+            # $null on a v2 start-context; the boundary:null half of the hollow-handover symptom).
+            $boundary = Get-SpecrewStartContextBoundary -StartContext $ctx
             $h = & $getProp $ss 'host'; if ([string]::IsNullOrWhiteSpace($h)) { $h = & $getProp $ctx 'host' }
             if (-not [string]::IsNullOrWhiteSpace($h)) { $fromHost = [string]$h }
             # T003: the AUTHORIZED gate (deterministic governance state, not agent behavior) - DISTINCT from

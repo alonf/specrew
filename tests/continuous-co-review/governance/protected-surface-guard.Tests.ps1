@@ -41,6 +41,19 @@ Describe 'Proposal 197 protected surface guard' {
         # the change lands on main and the authorization is consumed.
         $script:F197AuthorizedSurfaceExceptions = @(
             'scripts/internal/specrew-hook-dispatcher.ps1'
+            # iter-007 (2026-06-25) maintainer-authorized: Fix 1 routes every Stop-time boundary reader through
+            # ONE canonical v1/v2-tolerant reader. The start-context v1->v2 schema migration had stranded four
+            # readers on the dead v1 field (session_state.boundary_type) -> the navigator never fired AND the
+            # handover hollowed on a v2 project. The canonical (Get-SpecrewStartContextBoundary) lives in the
+            # protected shared-governance.ps1; the self-contained refocus provider carries a pinned mirror
+            # (boundary-reader-conformance.Tests.ps1 fails if they drift). These surfaces (+ their .specify
+            # mirrors) are edited for THAT authorized change; they STAY guarded for every OTHER change. Remove
+            # these once iter-007 lands on main and the authorization is consumed.
+            'scripts/internal/refocus.ps1'
+            'extensions/specrew-speckit/scripts/refocus.ps1'
+            'extensions/specrew-speckit/scripts/shared-governance.ps1'
+            '.specify/extensions/specrew-speckit/scripts/refocus.ps1'
+            '.specify/extensions/specrew-speckit/scripts/shared-governance.ps1'
         )
     }
 

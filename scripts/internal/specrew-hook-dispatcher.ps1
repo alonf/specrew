@@ -483,9 +483,17 @@ function Get-BoundaryCursor {
     $mtime = (Get-Item -LiteralPath $path).LastWriteTimeUtc.ToString('o')
     try {
         $ctx = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+        # dispatcher-local v2-tolerant boundary read = the hook-dispatcher mirror of Get-SpecrewStartContextBoundary.
+        # The dispatcher is self-contained (loads NO shared-governance), so the logic is mirrored here and pinned
+        # identical to the canonical by the boundary-reader conformance test. v1: session_state.boundary_type;
+        # v2 (no session_state): boundary_enforcement.last_authorized_boundary. Previously v1-only -> a v2
+        # start-context read $null -> B3 boundary-cross watch never saw a cursor and could not fire.
         $cursor = $null
         if ($ctx.PSObject.Properties['session_state'] -and $null -ne $ctx.session_state -and $ctx.session_state.PSObject.Properties['boundary_type']) {
             $cursor = [string]$ctx.session_state.boundary_type
+        }
+        if ([string]::IsNullOrWhiteSpace($cursor) -and $ctx.PSObject.Properties['boundary_enforcement'] -and $null -ne $ctx.boundary_enforcement -and $ctx.boundary_enforcement.PSObject.Properties['last_authorized_boundary']) {
+            $cursor = [string]$ctx.boundary_enforcement.last_authorized_boundary
         }
         return @{ Cursor = $cursor; MTime = $mtime }
     }

@@ -161,13 +161,17 @@ function Get-RefocusStartContext {
 }
 
 function Get-RefocusCurrentBoundary {
+    # refocus-local MIRROR of Get-SpecrewStartContextBoundary (refocus is self-contained and loads no
+    # shared-governance). Pinned identical to the canonical by the boundary-reader conformance test - which
+    # caught this reader's StrictMode-fragility on an empty boundary_enforcement, hence the property-exists
+    # guards below (matching the canonical's defensive reads).
     param($StartContext)
     if ($null -eq $StartContext) { return $null }
-    if ($StartContext.PSObject.Properties['session_state'] -and $null -ne $StartContext.session_state) {
+    if ($StartContext.PSObject.Properties['session_state'] -and $null -ne $StartContext.session_state -and $StartContext.session_state.PSObject.Properties['boundary_type']) {
         $boundary = [string]$StartContext.session_state.boundary_type
         if (-not [string]::IsNullOrWhiteSpace($boundary)) { return $boundary }
     }
-    if ($StartContext.PSObject.Properties['boundary_enforcement'] -and $null -ne $StartContext.boundary_enforcement) {
+    if ($StartContext.PSObject.Properties['boundary_enforcement'] -and $null -ne $StartContext.boundary_enforcement -and $StartContext.boundary_enforcement.PSObject.Properties['last_authorized_boundary']) {
         $boundary = [string]$StartContext.boundary_enforcement.last_authorized_boundary
         if (-not [string]::IsNullOrWhiteSpace($boundary)) { return $boundary }
     }
@@ -339,10 +343,13 @@ function Invoke-RefocusCompactInstructions {
         return '/compact preserve: the active Specrew feature, current lifecycle boundary, active role, pending verdicts, and binding constraints; artifacts live under specs/<feature>/'
     }
     $feature = ''
-    $boundary = ''
+    # boundary via the refocus-local v2-tolerant reader (Get-RefocusCurrentBoundary = the refocus mirror of
+    # Get-SpecrewStartContextBoundary; pinned identical by the boundary-reader conformance test). Previously an
+    # inline session_state.boundary_type read that went $null on a v2 start-context -> '<current boundary>'.
+    # (feature_ref remains session_state-only; that is a separate v1-only read, tracked but out of this fix.)
+    $boundary = [string](Get-RefocusCurrentBoundary -StartContext $ctx)
     if ($ctx.PSObject.Properties['session_state'] -and $null -ne $ctx.session_state) {
         $feature = [string]$ctx.session_state.feature_ref
-        $boundary = [string]$ctx.session_state.boundary_type
     }
     if ([string]::IsNullOrWhiteSpace($feature)) { $feature = '<active feature>' }
     if ([string]::IsNullOrWhiteSpace($boundary)) { $boundary = '<current boundary>' }
