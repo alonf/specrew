@@ -151,6 +151,23 @@ function Get-ContinuousCoReviewCheckpointDiff {
         $RunId
     }
 
+    # SUBDIR FIX (Proposal-145 review, iter-007 / subtree-scoping un-deferred): the change-set MUST be
+    # computed from the git TOPLEVEL, scoped to the governance SUBTREE, with consistent repo-root-relative
+    # paths. A governance root that is a SUBDIR of a larger repo (a Specrew project NESTED in a monorepo,
+    # e.g. EnglishIntake under iTeach-Avatar) broke this TWO ways: (1) UNSCOPED `git diff --name-only -- `
+    # returned the WHOLE monorepo's divergence (727 files), not the project's 706; (2) `git diff` run from
+    # the subdir cwd emits REPO-ROOT-relative paths, but the batched `git diff -- <those paths>` ALSO run
+    # from the subdir reinterpreted them as subdir-relative pathspecs -> Tools/EnglishIntake/Tools/
+    # EnglishIntake/... -> ZERO matches (only a path existing at BOTH levels survived -> the reviewer saw
+    # 1 of 706 files, none the actual work). Running from the TOPLEVEL + scoping to the prefix makes
+    # name-only and the batched diff share one repo-root-relative frame. Own-repo projects (toplevel ==
+    # governance root, empty prefix) are unaffected: $gitCwd == $resolvedRepoRoot, scope = whole repo.
+    $topLevelResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('rev-parse', '--show-toplevel')
+    $gitCwd = if ($topLevelResult.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace(($topLevelResult.Output -join ''))) { ([string]($topLevelResult.Output -join '')).Trim() } else { $resolvedRepoRoot }
+    $prefixResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('rev-parse', '--show-prefix')
+    $subtreePrefix = if ($prefixResult.ExitCode -eq 0) { ([string]($prefixResult.Output -join '')).Trim().TrimEnd('/') } else { '' }
+    $subtreeScope = if ([string]::IsNullOrWhiteSpace($subtreePrefix)) { @() } else { @("$subtreePrefix/") }
+
     $baselineCheck = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('rev-parse', '--verify', "$BaselineRef^{commit}")
     if ($baselineCheck.ExitCode -ne 0) {
         return [pscustomobject][ordered]@{
@@ -172,7 +189,7 @@ function Get-ContinuousCoReviewCheckpointDiff {
     # its exit code probed) is removed. The name-only call below is the exit probe AND drives
     # changed_paths; the reviewable diff further down produces diff_inline (the reviewer's
     # context) and a provenance diff_hash.
-    $nameResult = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments @('diff', '--name-only', '--no-ext-diff', $BaselineRef, '--')
+    $nameResult = Invoke-ContinuousCoReviewGit -RepoRoot $gitCwd -Arguments (@('diff', '--name-only', '--no-ext-diff', $BaselineRef, '--') + $subtreeScope)
     if ($nameResult.ExitCode -ne 0) {
         return [pscustomobject][ordered]@{
             schema_version = '1.0'
@@ -230,7 +247,7 @@ function Get-ContinuousCoReviewCheckpointDiff {
         }
         if ($cur.Count -gt 0) { $batches.Add(@($cur.ToArray())) }
         $parts = foreach ($batch in $batches) {
-            $r = Invoke-ContinuousCoReviewGit -RepoRoot $resolvedRepoRoot -Arguments (@('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, '--') + @($batch))
+            $r = Invoke-ContinuousCoReviewGit -RepoRoot $gitCwd -Arguments (@('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, '--') + @($batch))
             ($r.Output -join "`n")
         }
         (@($parts) -join "`n")
