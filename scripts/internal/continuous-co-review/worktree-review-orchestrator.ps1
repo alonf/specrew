@@ -51,6 +51,16 @@ function Resolve-ContinuousCoReviewWorktreeDesignContext {
             [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, (Join-Path $latest[0].FullName 'design-analysis.md')).Replace('\', '/')))
         }
     }
+    # Surface the FORMAL contracts (JSON Schema / OpenAPI / proto / Avro / GraphQL) - the AUTHORITY for machine
+    # formats (casing, field names, types, enums). spec.md + design-analysis are PROSE and describe intent
+    # informally; without the contract the reviewer would rule conformance from the narrative and can confidently
+    # contradict the real schema (the curation-steers-the-reviewer failure the worktree pivot was meant to escape).
+    $contractsDir = Join-Path $RepoRoot (Join-Path $featureDir 'contracts')
+    if (Test-Path -LiteralPath $contractsDir -PathType Container) {
+        foreach ($cf in @(Get-ChildItem -LiteralPath $contractsDir -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '(?i)^\.(json|ya?ml|proto|graphql|avsc|xsd)$' })) {
+            [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, $cf.FullName)).Replace('\', '/'))
+        }
+    }
     return @($out)
 }
 

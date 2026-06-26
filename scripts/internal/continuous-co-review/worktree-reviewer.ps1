@@ -167,7 +167,11 @@ function New-ContinuousCoReviewStrippedWorktree {
     $changed = @((& git -C $gitRoot diff --name-only $BaselineRef HEAD -- @diffPathspec 2>$null) | Where-Object { $_ })
     foreach ($d in @($DesignContextFiles)) {
         $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $resolved $d }
-        if (Test-Path -LiteralPath $full -PathType Leaf) { Copy-Item -LiteralPath $full -Destination (Join-Path $reviewDir 'design') -Force }
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
+        # Formal contracts go under design/contracts/ (grouped + obviously the AUTHORITY); prose goes flat in design/.
+        $destDir = if ($d -match '(^|/)contracts/') { Join-Path $reviewDir 'design/contracts' } else { Join-Path $reviewDir 'design' }
+        if (-not (Test-Path -LiteralPath $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
+        Copy-Item -LiteralPath $full -Destination $destDir -Force
     }
 
     # Curated process/progress context (distilled from the real project; the raw .specrew is stripped).
@@ -195,10 +199,22 @@ command (tests, build, lint, search) you need to verify the change — but you a
 NOT modify, fix, or patch any file. Your job is to find issues, not fix them.
 
 1. Read .review/changes.diff — this is the change-set under review (what changed).
-2. Read .review/design/ — the spec + design-analysis the change must conform to.
+2. Read .review/design/ — the spec + design-analysis (PROSE intent) the change must conform to, AND
+   .review/design/contracts/ — the FORMAL contracts (JSON Schema / OpenAPI / proto) that are the AUTHORITY for
+   machine formats. The prose and the contract MAY differ on machine details; see the AUTHORITY RULE below.
 3. Read .review/process/ — the curated process/progress context (active task, phase, tasks-progress, drift-log,
    plan/tasks). The full plan/tasks/spec also live under specs/ in your worktree.
 4. Browse the real project files around the changes for context; run tests/build if it helps you verify.
+
+AUTHORITY RULE (apply before judging ANY format/conformance question): A formal contract/schema — in
+.review/design/contracts/, or any schema / proto / OpenAPI / typed-interface / enum table you can browse in the
+project — is AUTHORITATIVE over prose. The spec + design narrative describe intent INFORMALLY and may differ from
+the contract on machine details (casing, field names, types, allowed values, required-ness). Before raising ANY
+conformance / format / casing / field-name / type / enum finding, CONSULT the formal contract. If the code matches
+the contract but not the prose, the CODE IS CORRECT and the prose is loose — do not raise a blocking code finding
+(at most a low-severity spec-prose-drift nit against the narrative). NEVER rule a machine-format question from the
+narrative spec alone.
+
 5. Judge the change on BOTH axes, citing the strongest reference for each finding:
    - DESIGN conformance: requirement/SC trace, architecture/boundaries, security, test confidence, operations.
    - PROCESS/PROGRESS conformance: does it implement the claimed task (trace to tasks.md), stay consistent with
