@@ -11,20 +11,25 @@ Set-StrictMode -Version Latest
 . (Join-Path $PSScriptRoot 'co-review-service.ps1')   # brings the legacy navigator (reap/stage/dedup) + the service (fire/identity)
 
 function Invoke-ContinuousCoReviewWorktreeNavigator {
+    # Param shape MATCHES the legacy Invoke-ContinuousCoReviewNavigator so the provider config-selects between
+    # the two by name with the SAME @navParams. -SessionStart = the cross-session sweep. -CodeWriterHost is
+    # accepted for parity (reviewer-host SELECTION for the worktree engine is a tracked follow-up; today the
+    # worktree reviewer runs on claude).
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [string]$TrunkName = 'main',
-        [switch]$CrossSession,
+        [switch]$SessionStart,
+        [string]$CodeWriterHost,
         [int]$TimeoutSeconds = 900
     )
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $decision = [pscustomobject]@{ action = 'no-op'; reason = ''; engine = 'worktree'; fired_run_id = $null; fired_tree_id = $null; stop_block = $null; inject_notes = @() }
 
     # REAP (reuse) — surfaces any completed verdict (incl. the worktree engine's result.out) + cleans orphans.
-    $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $resolved -TrunkName $TrunkName -CrossSession:$CrossSession
+    $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $resolved -TrunkName $TrunkName -CrossSession:$SessionStart
     $decision.stop_block = $reap.stop_block
     $decision.inject_notes = @($reap.inject_notes)
-    if ($CrossSession) { $decision.reason = 'cross-session-sweep'; return $decision }
+    if ($SessionStart) { $decision.reason = 'cross-session-sweep'; return $decision }
 
     # IMPLEMENT-stage gate (reuse).
     $stage = Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $resolved
