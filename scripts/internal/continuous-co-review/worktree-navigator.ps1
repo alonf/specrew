@@ -43,7 +43,7 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
 
     # FIRE via the host-neutral service (detached; all heavy work off the Stop budget).
     try {
-        $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolved -TreeId $treeId -TimeoutSeconds $TimeoutSeconds -Detached
+        $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolved -TreeId $treeId -CodeWriterHost $CodeWriterHost -TimeoutSeconds $TimeoutSeconds -Detached
         Set-ContinuousCoReviewNavigatorLastFiredTreeId -RepoRoot $resolved -TreeId $treeId -RunId $run.run_id
         $decision.action = 'fired'; $decision.reason = 'registered-checkpoint'; $decision.fired_run_id = $run.run_id
     }

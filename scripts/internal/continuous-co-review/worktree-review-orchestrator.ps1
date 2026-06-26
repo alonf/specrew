@@ -54,6 +54,34 @@ function Resolve-ContinuousCoReviewWorktreeDesignContext {
     return @($out)
 }
 
+function Resolve-ContinuousCoReviewReviewerHost {
+    # Select the reviewer host: code-writer-INDEPENDENT + AUTHORIZED (reviewer-hosts.json), via the legacy policy
+    # (reused, NOT reinvented). Returns @{ host; model } or $null (no authorized host -> the caller fails-soft with
+    # a stated reason). Lazy-loads the CCR engine (_load) if the catalog/policy aren't in scope (the detached path
+    # dot-sources only the orchestrator). This is what makes the worktree reviewer host-NEUTRAL + authorized, not
+    # claude-pinned.
+    param([Parameter(Mandatory)][string]$RepoRoot, [string]$CodeWriterHost)
+    if (-not (Get-Command 'Select-ContinuousCoReviewReviewerCandidate' -ErrorAction SilentlyContinue)) {
+        $loadPath = Join-Path $PSScriptRoot '_load.ps1'
+        if (Test-Path -LiteralPath $loadPath -PathType Leaf) { try { . $loadPath } catch { $null = $_ } }
+    }
+    if (-not (Get-Command 'Get-ContinuousCoReviewReviewerHostCatalog' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Select-ContinuousCoReviewReviewerCandidate' -ErrorAction SilentlyContinue)) { return $null }
+    try {
+        # Same load path as the legacy navigator (continuous-co-review-navigator.ps1:849-865): the persisted
+        # human-authorized config -> catalog -> independent+authorized candidate.
+        $reviewerConfig = $null
+        $reviewerHostsPath = Join-Path $RepoRoot '.specrew/reviewer-hosts.json'
+        if (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf) {
+            try { $reviewerConfig = (Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100) } catch { $reviewerConfig = $null }
+        }
+        $catalog = Get-ContinuousCoReviewReviewerHostCatalog -Configuration $reviewerConfig
+        $cand = Select-ContinuousCoReviewReviewerCandidate -Catalog $catalog -CodeWriterHost $CodeWriterHost
+        if ($null -eq $cand -or [string]::IsNullOrWhiteSpace([string]$cand.host)) { return $null }
+        return [pscustomobject]@{ host = [string]$cand.host; model = [string]$cand.model }
+    }
+    catch { return $null }
+}
+
 function Invoke-ContinuousCoReviewWorktreeReviewRun {
     # The full detached run: auto-resolve → materialize stripped worktree + .review/ → agentic review → write a
     # reap-consumable result under $RunDir, then dispose. Returns the terminal status object.
@@ -63,6 +91,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         [Parameter(Mandatory)][string]$RunId,
         [string]$BaselineRef,
         [string[]]$DesignContextFiles,
+        [string]$CodeWriterHost,
         [int]$TimeoutSeconds = 900
     )
     New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
@@ -79,16 +108,20 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         if ([string]::IsNullOrWhiteSpace($BaselineRef)) { & $writeStatus 'failed' @{ failure_reason = 'baseline-unresolved' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
         if (-not $DesignContextFiles -or @($DesignContextFiles).Count -eq 0) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
 
+        # SELECT the reviewer host: independent of the code-writer + authorized. Fail-soft (stated reason) if none.
+        $reviewerHost = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $RepoRoot -CodeWriterHost $CodeWriterHost
+        if ($null -eq $reviewerHost) { & $writeStatus 'failed' @{ failure_reason = 'no-authorized-reviewer-host' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
+
         $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles
         try {
-            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -TimeoutSeconds $TimeoutSeconds
+            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -TimeoutSeconds $TimeoutSeconds
             $raw = [string]$r.stdout
             $s = $raw.IndexOf('{'); $e = $raw.LastIndexOf('}')
             if ($s -ge 0 -and $e -gt $s) {
                 $json = $raw.Substring($s, $e - $s + 1)
                 $null = $json | ConvertFrom-Json -Depth 100   # validate it parses before declaring done
                 [System.IO.File]::WriteAllText($resultOut, $json)
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewer_host = $reviewerHost.host }
             }
             else {
                 [System.IO.File]::WriteAllText($resultOut, '')

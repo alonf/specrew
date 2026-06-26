@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$RunId,
     [Parameter(Mandatory)][string]$RegistryPath,
     [string]$BaselineRef,
+    [string]$CodeWriterHost,
     [int]$TimeoutSeconds = 900
 )
 # iter-008 — the DETACHED entry the worktree-navigator spawns (non-blocking). Runs the orchestrator (which writes
@@ -33,6 +34,7 @@ function Update-WorktreeRunRegistryStatus {
 try {
     $params = @{ RepoRoot = $RepoRoot; RunDir = $RunDir; RunId = $RunId; TimeoutSeconds = $TimeoutSeconds }
     if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $params.BaselineRef = $BaselineRef }
+    if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $params.CodeWriterHost = $CodeWriterHost }
     $st = Invoke-ContinuousCoReviewWorktreeReviewRun @params
     $term = if ($null -ne $st -and ($st.PSObject.Properties.Name -contains 'status')) { [string]$st.status } else { 'failed' }
     $extra = @{}

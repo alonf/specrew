@@ -47,6 +47,7 @@ function Start-ContinuousCoReviewServiceRun {
         [string]$RunId,
         [string]$TreeId,
         [string]$BaselineRef,
+        [string]$CodeWriterHost,
         [int]$TimeoutSeconds = 900,
         [switch]$Detached
     )
@@ -56,7 +57,7 @@ function Start-ContinuousCoReviewServiceRun {
     if (-not (Test-Path -LiteralPath $runDir)) { New-Item -ItemType Directory -Path $runDir -Force | Out-Null }
 
     if (-not $Detached) {
-        $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $resolved -RunDir $runDir -RunId $RunId -BaselineRef $BaselineRef -TimeoutSeconds $TimeoutSeconds
+        $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $resolved -RunDir $runDir -RunId $RunId -BaselineRef $BaselineRef -CodeWriterHost $CodeWriterHost -TimeoutSeconds $TimeoutSeconds
         return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = ([string]$st.status); detached = $false; tree_id = ($st.PSObject.Properties['tree_id'].Value) }
     }
 
@@ -79,6 +80,7 @@ function Start-ContinuousCoReviewServiceRun {
     $entry = Join-Path $PSScriptRoot 'worktree-review-detached-entry.ps1'
     $spawnArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $entry, '-RepoRoot', $resolved, '-RunDir', $runDir, '-RunId', $RunId, '-RegistryPath', $regPath, '-TimeoutSeconds', $TimeoutSeconds)
     if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $spawnArgs += @('-BaselineRef', $BaselineRef) }
+    if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $spawnArgs += @('-CodeWriterHost', $CodeWriterHost) }
     $proc = Start-Process -FilePath (Get-Command pwsh).Source -ArgumentList $spawnArgs -PassThru -WindowStyle Hidden `
         -RedirectStandardOutput (Join-Path $runDir 'entry.out.log') -RedirectStandardError (Join-Path $runDir 'entry.err.log')
     & $writeReg $proc.Id 'running'
@@ -148,17 +150,20 @@ function Invoke-ContinuousCoReviewServiceAsk {
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)][string]$Question,
         [string]$BaselineRef,
+        [string]$CodeWriterHost,
         [int]$TimeoutSeconds = 300
     )
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $prior = Get-ContinuousCoReviewServiceFindings -RepoRoot $resolved -RunId $RunId
     if ([string]::IsNullOrWhiteSpace($BaselineRef)) { $BaselineRef = Resolve-ContinuousCoReviewWorktreeBaseline -RepoRoot $resolved }
     $design = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $resolved)
+    $reviewerHost = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $resolved -CodeWriterHost $CodeWriterHost
+    $askHost = if ($reviewerHost) { $reviewerHost.host } else { 'claude' }
     $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $resolved -BaselineRef $BaselineRef -DesignContextFiles $design
     try {
         $prompt = Get-ContinuousCoReviewAskPrompt -Question $Question -PriorFindings $prior
-        $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $wt.worktree_path -Prompt $prompt -TimeoutSeconds $TimeoutSeconds
-        return [pscustomobject]@{ ok = ($r.exit_code -eq 0); answer = ([string]$r.stdout).Trim() }
+        $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $wt.worktree_path -Prompt $prompt -HostName $askHost -TimeoutSeconds $TimeoutSeconds
+        return [pscustomobject]@{ ok = ($r.exit_code -eq 0); answer = ([string]$r.stdout).Trim(); reviewer_host = $askHost }
     }
     finally {
         Remove-Item -LiteralPath $wt.worktree_path -Recurse -Force -ErrorAction SilentlyContinue

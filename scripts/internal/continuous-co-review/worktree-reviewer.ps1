@@ -208,20 +208,34 @@ Output ONLY one JSON object satisfying FindingsResult.v1 (no markdown, no prose 
 "@
 }
 
+function Get-ContinuousCoReviewAgentCommand {
+    # Per-host AGENTIC invocation for the worktree reviewer (read + RUN in the cwd; read-only on the real source —
+    # the worktree is ephemeral so a write-capable sandbox is safe). The reviewer-host SELECTION (which host,
+    # authorized, code-writer-independent) is the policy's job; THIS only maps the chosen host to its agentic CLI.
+    # Host-NEUTRAL by construction (the whole point of the MCP direction) - not pinned to claude.
+    param([Parameter(Mandatory)][string]$HostName)
+    switch (([string]$HostName).ToLowerInvariant()) {
+        'claude' { return [pscustomobject]@{ file = 'claude'; pre_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true } }
+        'codex' { return [pscustomobject]@{ file = 'codex'; pre_args = @('exec', '--sandbox', 'workspace-write', '--skip-git-repo-check'); prompt_via_stdin = $false } }
+        default { return [pscustomobject]@{ file = 'claude'; pre_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true } }
+    }
+}
+
 function Invoke-ContinuousCoReviewAgentInWorktree {
-    # Run the agentic host (claude) in the worktree cwd with a GIVEN prompt (read + run; read-only on source).
+    # Run the SELECTED agentic host in the worktree cwd with a GIVEN prompt (read + run; read-only on source).
     # SHARED by the REVIEW path (slim review prompt) AND the ASK path (follow-up-question prompt), so a future
     # MCP `ask_reviewer` tool reuses the EXACT same trusted agent invocation. Returns @{ exit_code; stdout; stderr }.
     param(
         [Parameter(Mandatory)][string]$WorktreePath,
         [Parameter(Mandatory)][string]$Prompt,
+        [string]$HostName = 'claude',
         [int]$TimeoutSeconds = 600
     )
+    $cmd = Get-ContinuousCoReviewAgentCommand -HostName $HostName
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName = 'claude'
-    # bypassPermissions: the agentic reviewer may read + RUN (tests/build) without prompts. "Cannot fix" is
-    # structural (the worktree is ephemeral + discarded; the real repo is never touched), not a permission lock.
-    foreach ($a in @('-p', '--permission-mode', 'bypassPermissions')) { [void]$psi.ArgumentList.Add($a) }
+    $psi.FileName = $cmd.file
+    foreach ($a in @($cmd.pre_args)) { [void]$psi.ArgumentList.Add($a) }
+    if (-not $cmd.prompt_via_stdin) { [void]$psi.ArgumentList.Add($Prompt) }   # codex exec takes the prompt as a positional arg
     $psi.WorkingDirectory = $WorktreePath
     $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
     $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
@@ -229,7 +243,8 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
     [void]$proc.Start()
     $outTask = $proc.StandardOutput.ReadToEndAsync(); $errTask = $proc.StandardError.ReadToEndAsync()
-    $proc.StandardInput.Write($Prompt); $proc.StandardInput.Close()
+    if ($cmd.prompt_via_stdin) { $proc.StandardInput.Write($Prompt) }
+    $proc.StandardInput.Close()
     if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) { try { $proc.Kill($true) } catch { }; return [pscustomobject]@{ exit_code = $null; stdout = ''; stderr = 'timeout' } }
     $out = if ($outTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $outTask.Result } else { '' }
     $err = if ($errTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $errTask.Result } else { '' }
@@ -238,7 +253,8 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
 }
 
 function Invoke-ContinuousCoReviewWorktreeReviewer {
-    # The REVIEW invocation: the slim design+process-review prompt, via the shared agent-in-worktree.
-    param([Parameter(Mandatory)][string]$WorktreePath, [Parameter(Mandatory)][string]$RunId, [int]$TimeoutSeconds = 600)
-    return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt (Get-ContinuousCoReviewSlimPrompt -RunId $RunId) -TimeoutSeconds $TimeoutSeconds)
+    # The REVIEW invocation: the slim design+process-review prompt, via the shared agent-in-worktree, on the
+    # SELECTED (independent, authorized) reviewer host.
+    param([Parameter(Mandatory)][string]$WorktreePath, [Parameter(Mandatory)][string]$RunId, [string]$HostName = 'claude', [int]$TimeoutSeconds = 600)
+    return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt (Get-ContinuousCoReviewSlimPrompt -RunId $RunId) -HostName $HostName -TimeoutSeconds $TimeoutSeconds)
 }
