@@ -82,6 +82,48 @@ function Resolve-ContinuousCoReviewReviewerHost {
     catch { return $null }
 }
 
+function Get-ContinuousCoReviewMaxRounds {
+    # co_review_max_rounds (config, default 2). The review->fix->re-review ceiling before escalation.
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $cfg = Join-Path $RepoRoot '.specrew/config.yml'
+    if (Test-Path -LiteralPath $cfg -PathType Leaf) {
+        foreach ($line in (Get-Content -LiteralPath $cfg -Encoding UTF8)) {
+            if ($line -match '^\s*co_review_max_rounds\s*:\s*(\d+)') { $n = [int]$Matches[1]; if ($n -ge 1) { return $n } }
+        }
+    }
+    return 2
+}
+
+function Get-ContinuousCoReviewRoundStatePath { param([Parameter(Mandatory)][string]$RepoRoot) return (Join-Path $RepoRoot '.specrew/runtime/co-review-round-state.json') }
+
+function Get-ContinuousCoReviewRoundState {
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $RepoRoot
+    if (Test-Path -LiteralPath $p -PathType Leaf) { try { return (Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null } }
+    return $null
+}
+
+function Set-ContinuousCoReviewRoundState {
+    param([Parameter(Mandatory)][string]$RepoRoot, [string[]]$ChangedPaths, [int]$Round, [bool]$Blocking, [string]$Findings)
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $RepoRoot
+    try {
+        $dir = Split-Path -Parent $p; if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        ([pscustomobject]@{ changed_paths = @($ChangedPaths); round = $Round; blocking = $Blocking; findings = $Findings } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    }
+    catch { $null = $_ }
+}
+
+function Test-ContinuousCoReviewPathLineageOverlap {
+    # Same review LINEAGE = the current change-set overlaps the prior round's (a fix attempt on the SAME area) -
+    # NOT merely "the prior was blocking" (which conflates unrelated checkpoints -> spurious escalation + irrelevant
+    # prior findings). Overlap -> increment + thread prior findings; no overlap -> a new checkpoint (round 1).
+    param([string[]]$Current, [string[]]$Prior)
+    if (-not $Current -or -not $Prior -or @($Current).Count -eq 0 -or @($Prior).Count -eq 0) { return $false }
+    $set = [System.Collections.Generic.HashSet[string]]::new([string[]]@($Prior), [System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($c in @($Current)) { if ($set.Contains([string]$c)) { return $true } }
+    return $false
+}
+
 function Invoke-ContinuousCoReviewWorktreeReviewRun {
     # The full detached run: auto-resolve → materialize stripped worktree + .review/ → agentic review → write a
     # reap-consumable result under $RunDir, then dispose. Returns the terminal status object.
@@ -113,15 +155,29 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         if ($null -eq $reviewerHost) { & $writeStatus 'failed' @{ failure_reason = 'no-authorized-reviewer-host' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
 
         $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles
+        # ROUND: same lineage (change-set overlaps the prior round's) + the prior was blocking -> this is a fix
+        # re-review (round+1, thread the prior findings); else a new checkpoint (round 1, no prior). The reviewer
+        # escalates at the final round (the counter is the safety ceiling).
+        $maxRounds = Get-ContinuousCoReviewMaxRounds -RepoRoot $RepoRoot
+        $prior = Get-ContinuousCoReviewRoundState -RepoRoot $RepoRoot
+        $round = 1; $priorFindings = $null
+        if ($null -ne $prior -and ([bool]$prior.blocking) -and (Test-ContinuousCoReviewPathLineageOverlap -Current @($wt.changed_paths) -Prior @($prior.changed_paths))) {
+            $round = [int]$prior.round + 1
+            $priorFindings = [string]$prior.findings
+        }
         try {
-            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -TimeoutSeconds $TimeoutSeconds
+            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds
             $raw = [string]$r.stdout
             $s = $raw.IndexOf('{'); $e = $raw.LastIndexOf('}')
             if ($s -ge 0 -and $e -gt $s) {
                 $json = $raw.Substring($s, $e - $s + 1)
                 $null = $json | ConvertFrom-Json -Depth 100   # validate it parses before declaring done
                 [System.IO.File]::WriteAllText($resultOut, $json)
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewer_host = $reviewerHost.host }
+                # detect a blocking finding -> feed the next round's lineage decision
+                $blocking = $false
+                try { foreach ($f in @(($json | ConvertFrom-Json -Depth 100).findings)) { if (([string]$f.severity) -match '(?i)block') { $blocking = $true; break } } } catch { $null = $_ }
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $blocking -Findings $json
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewer_host = $reviewerHost.host; round = $round; blocking = $blocking }
             }
             else {
                 [System.IO.File]::WriteAllText($resultOut, '')

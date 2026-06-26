@@ -173,12 +173,20 @@ function New-ContinuousCoReviewStrippedWorktree {
     # Curated process/progress context (distilled from the real project; the raw .specrew is stripped).
     Write-ContinuousCoReviewProcessContext -RepoRoot $resolved -ReviewDir $reviewDir
 
-    return [pscustomobject]@{ worktree_path = $worktree; tree_id = $treeId; changed_count = $changed.Count }
+    return [pscustomobject]@{ worktree_path = $worktree; tree_id = $treeId; changed_count = $changed.Count; changed_paths = @($changed) }
 }
 
 function Get-ContinuousCoReviewSlimPrompt {
     # The SLIM prompt (a few KB) — the reviewer reads the diff + design + browses/runs the project itself.
-    param([Parameter(Mandatory)][string]$RunId)
+    # Round-aware: round 1 reviews; later rounds verify the prior findings are resolved; at the FINAL round the
+    # reviewer escalates (the counter is a safety ceiling, the reviewer's judgement is the brains).
+    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings)
+    $roundBlock = if ($RoundNumber -gt 1 -and -not [string]::IsNullOrWhiteSpace($PriorFindings)) {
+        "This is review round $RoundNumber of at most $MaxRounds. The PRIOR round produced these findings - verify each is RESOLVED in this change (a prior blocking finding still present is a failed fix):`n$PriorFindings`n`nIf this is the FINAL round ($RoundNumber of $MaxRounds) and a prior BLOCKING finding is STILL unresolved, return ONE finding with kind 'escalation' + severity 'blocking' calling for a HUMAN decision (stop the autonomous review->fix loop) - do not merely repeat the unresolved finding."
+    }
+    else {
+        "This is review round $RoundNumber of at most $MaxRounds (initial review of this change)."
+    }
     return @"
 You are the Specrew continuous co-reviewer (a fresh-context, design- AND process-conformance reviewer).
 
@@ -196,6 +204,9 @@ NOT modify, fix, or patch any file. Your job is to find issues, not fix them.
    - PROCESS/PROGRESS conformance: does it implement the claimed task (trace to tasks.md), stay consistent with
      plan.md (no unplanned scope / absorbed deferred work), record drift in drift-log.md where it diverged, keep
      tasks-progress/state HONEST (nothing marked done that is not actually done/tested), and fit the current phase?
+
+## Review round
+$roundBlock
 
 Output ONLY one JSON object satisfying FindingsResult.v1 (no markdown, no prose around it):
 { "schema_version":"1.0", "run_id":"$RunId", "status":"findings"|"no_findings",
@@ -253,8 +264,13 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
 }
 
 function Invoke-ContinuousCoReviewWorktreeReviewer {
-    # The REVIEW invocation: the slim design+process-review prompt, via the shared agent-in-worktree, on the
-    # SELECTED (independent, authorized) reviewer host.
-    param([Parameter(Mandatory)][string]$WorktreePath, [Parameter(Mandatory)][string]$RunId, [string]$HostName = 'claude', [int]$TimeoutSeconds = 600)
-    return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt (Get-ContinuousCoReviewSlimPrompt -RunId $RunId) -HostName $HostName -TimeoutSeconds $TimeoutSeconds)
+    # The REVIEW invocation: the slim design+process-review prompt (round-aware), via the shared agent-in-worktree,
+    # on the SELECTED (independent, authorized) reviewer host.
+    param(
+        [Parameter(Mandatory)][string]$WorktreePath, [Parameter(Mandatory)][string]$RunId,
+        [string]$HostName = 'claude', [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings,
+        [int]$TimeoutSeconds = 600
+    )
+    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings
+    return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds)
 }
