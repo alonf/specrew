@@ -115,6 +115,12 @@ The code rules are mostly **product-level and stable**:
   recommendation, not a rule. If they make no choice, record the DEFAULT the command marked (still
   `mode=human-selected`). Do NOT show or pin a model - Specrew uses the host's own default model (no dynamic
   model discovery exists yet).
+  - **AUTHORIZE the pick (bridge to the navigator)**: capturing `reviewer_preference` alone is NOT enough - the
+    async navigator selects from `.specrew/reviewer-hosts.json`, NOT from the workshop manifest. After the human
+    picks, RUN `specrew review --host <chosen> --authorization-ref workshop-<feature>` to persist the
+    human-provenance authorization to `reviewer-hosts.json` (the navigator reads it READ-ONLY). The HUMAN chose it,
+    so this records their provenance - it is NOT agent self-authorization (the Proposal-190 hole). WITHOUT this the
+    auto-fired co-review has no authorized host and stays dark.
 - **Capture** the selections/decisions/custom-rules/dependency-policy into `implementation-rules.yml`
   (reference-by-ID) + the human-readable `workshop/code-implementation.md`; record the lens in
   `lens-applicability.json`.
