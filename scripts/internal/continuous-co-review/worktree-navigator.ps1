@@ -12,9 +12,8 @@ Set-StrictMode -Version Latest
 
 function Invoke-ContinuousCoReviewWorktreeNavigator {
     # Param shape MATCHES the legacy Invoke-ContinuousCoReviewNavigator so the provider config-selects between
-    # the two by name with the SAME @navParams. -SessionStart = the cross-session sweep. -CodeWriterHost is
-    # accepted for parity (reviewer-host SELECTION for the worktree engine is a tracked follow-up; today the
-    # worktree reviewer runs on claude).
+    # the two by name with the SAME @navParams. -SessionStart = the cross-session sweep. -CodeWriterHost threads
+    # through the service to the orchestrator's reviewer-host SELECTION (independent + authorized).
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [string]$TrunkName = 'main',
