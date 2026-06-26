@@ -770,8 +770,9 @@ if ($Live) {
     # iter-008 (G1/G2/G3/G4/G6): when co_review_engine=worktree, the MANUAL door drives the SAME pipeline as the
     # navigator via the host-neutral co-review SERVICE - it AUTO-RESOLVES baseline/design-context/host (no
     # required --host/--design-context-ref), runs in a read-only worktree (not in-place), and shares the
-    # deploy-aware resolver. DEFAULT = worktree; co_review_engine=legacy is the explicit opt-OUT to the original.
-    $coReviewEngine = 'worktree'
+    # deploy-aware resolver. DEFAULT = legacy; co_review_engine=worktree opts into the worktree pipeline (becomes
+    # the default at cutover, after correctness is proven).
+    $coReviewEngine = 'legacy'
     try {
         $cfgPath = Join-Path $resolvedProjectPath '.specrew/config.yml'
         if (Test-Path -LiteralPath $cfgPath -PathType Leaf) {
