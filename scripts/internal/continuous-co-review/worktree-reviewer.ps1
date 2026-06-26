@@ -208,14 +208,15 @@ Output ONLY one JSON object satisfying FindingsResult.v1 (no markdown, no prose 
 "@
 }
 
-function Invoke-ContinuousCoReviewWorktreeReviewer {
-    # Run the agentic reviewer (claude) in the worktree cwd with the slim prompt. Returns the raw stdout.
+function Invoke-ContinuousCoReviewAgentInWorktree {
+    # Run the agentic host (claude) in the worktree cwd with a GIVEN prompt (read + run; read-only on source).
+    # SHARED by the REVIEW path (slim review prompt) AND the ASK path (follow-up-question prompt), so a future
+    # MCP `ask_reviewer` tool reuses the EXACT same trusted agent invocation. Returns @{ exit_code; stdout; stderr }.
     param(
         [Parameter(Mandatory)][string]$WorktreePath,
-        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][string]$Prompt,
         [int]$TimeoutSeconds = 600
     )
-    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = 'claude'
     # bypassPermissions: the agentic reviewer may read + RUN (tests/build) without prompts. "Cannot fix" is
@@ -228,10 +229,16 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
     $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
     [void]$proc.Start()
     $outTask = $proc.StandardOutput.ReadToEndAsync(); $errTask = $proc.StandardError.ReadToEndAsync()
-    $proc.StandardInput.Write($prompt); $proc.StandardInput.Close()
+    $proc.StandardInput.Write($Prompt); $proc.StandardInput.Close()
     if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) { try { $proc.Kill($true) } catch { }; return [pscustomobject]@{ exit_code = $null; stdout = ''; stderr = 'timeout' } }
     $out = if ($outTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $outTask.Result } else { '' }
     $err = if ($errTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $errTask.Result } else { '' }
     $code = $proc.ExitCode; $proc.Dispose()
     return [pscustomobject]@{ exit_code = $code; stdout = $out; stderr = $err }
+}
+
+function Invoke-ContinuousCoReviewWorktreeReviewer {
+    # The REVIEW invocation: the slim design+process-review prompt, via the shared agent-in-worktree.
+    param([Parameter(Mandatory)][string]$WorktreePath, [Parameter(Mandatory)][string]$RunId, [int]$TimeoutSeconds = 600)
+    return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt (Get-ContinuousCoReviewSlimPrompt -RunId $RunId) -TimeoutSeconds $TimeoutSeconds)
 }

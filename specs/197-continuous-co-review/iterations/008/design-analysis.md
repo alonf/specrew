@@ -57,6 +57,22 @@ tasks-progress/drift/state — distilled from `specs/` + the `.specrew` boundary
 worktree); only the runtime bookkeeping is stripped. Runtime-governance POLICING (was the boundary authorized,
 gate freshness) stays the GATES' job, not the reviewer's.
 
+**MCP-readiness (host-neutral service — added, human-requested).** The co-review capabilities are NOT
+Claude-Stop-hook-bound: they live in a HOST-NEUTRAL SERVICE (`co-review-service.ps1`) with TWO peer consumers —
+the Claude Stop-hook navigator (today) and a future MCP server (any MCP host, tomorrow). The Stop-hook navigator
+is just the FIRST consumer, not the architecture. The service surface (each returns structured data; the host
+integration — stop-block / inject-note / an MCP tool result — is the consumer's job):
+- `Start-ContinuousCoReviewServiceRun` (trigger a review of the committed state; `-Detached`) → MCP `trigger_review`
+- `Get-ContinuousCoReviewServiceStatus` (a run's lifecycle status, or all pending) → MCP `get_review_status`
+- `Get-ContinuousCoReviewServiceFindings` (a run's FindingsResult — the durable inline thread) → MCP `get_review_findings`
+- `Invoke-ContinuousCoReviewServiceAsk` (a follow-up question — re-materialize the worktree + re-invoke the
+  agentic host with the prior findings, via the SHARED `Invoke-ContinuousCoReviewAgentInWorktree`) → MCP `ask_reviewer`
+
+The reviewer's durable data (`.specrew/review/inline/<run-id>/`) is the MCP resource. The MCP server is then a
+THIN wrapper (a small process mapping the 4 functions to MCP tools + the inline dir to a resource). The SMALL
+REFACTOR done now — extract the facade + the shared agent-in-worktree invocation (reused by review AND ask) — is
+what makes building the MCP later easy; nothing in the pipeline assumes the Claude host.
+
 Human-agreed: lens-by-lens confirmation recorded in `iterations/008/lens-applicability.json`.
 
 ## Gaps this iteration must close (trace targets)
