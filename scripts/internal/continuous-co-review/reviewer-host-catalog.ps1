@@ -42,18 +42,39 @@ function Test-ContinuousCoReviewReviewerHostInstalled {
     return ($null -ne (Get-Command -Name $CommandName -ErrorAction SilentlyContinue))
 }
 
+function Get-ContinuousCoReviewReviewerHostRows {
+    # The canonical reviewer-host catalog (DATA, the ONE place a host is defined). Each row carries the host's
+    # identity + review-class rank AND its AGENTIC invocation for the worktree reviewer: the executable (`command`),
+    # the headless-run args (`agentic_args`), and how the slim prompt is passed (`prompt_via_stdin`). Adding or
+    # changing a reviewer host is a ROW edit here - never an edit to the invocation core (worktree-reviewer.ps1).
+    # Hosts with an empty agentic_args have no headless agentic CLI yet (the worktree model needs one); they remain
+    # selectable/authorizable but are not agentically invokable until their command is filled in.
+    return @(
+        @{ host = 'claude'; command = 'claude'; agentic_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true; model = 'opus-4.8-1m-context'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 85 }
+        @{ host = 'codex'; command = 'codex'; agentic_args = @('exec', '--sandbox', 'workspace-write', '--skip-git-repo-check'); prompt_via_stdin = $false; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85 }
+        @{ host = 'copilot'; command = 'copilot'; agentic_args = @(); prompt_via_stdin = $false; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80 }
+        @{ host = 'cursor-agent'; command = 'cursor-agent'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70 }
+        @{ host = 'antigravity'; command = 'antigravity'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65 }
+    )
+}
+
+function Get-ContinuousCoReviewHostAgenticCommand {
+    # The agentic invocation for a reviewer host, looked up from the catalog DATA above (host-NEUTRAL: the invocation
+    # core calls this instead of switching on host names). Returns @{ file; pre_args; prompt_via_stdin } or $null
+    # (host not in the catalog, or no agentic command defined). Adding a host's command is a catalog-row edit.
+    param([Parameter(Mandatory)][string]$HostName)
+    $needle = ([string]$HostName).ToLowerInvariant()
+    $row = @(Get-ContinuousCoReviewReviewerHostRows) | Where-Object { $_.host -eq $needle } | Select-Object -First 1
+    if ($null -eq $row -or @($row.agentic_args).Count -eq 0) { return $null }
+    return [pscustomobject]@{ file = [string]$row.command; pre_args = @($row.agentic_args); prompt_via_stdin = [bool]$row.prompt_via_stdin }
+}
+
 function New-ContinuousCoReviewDefaultReviewerHostConfig {
     param(
         [scriptblock] $CommandResolver
     )
 
-    $hostRows = @(
-        @{ host = 'claude'; command = 'claude'; model = 'opus-4.8-1m-context'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 85 }
-        @{ host = 'codex'; command = 'codex'; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85 }
-        @{ host = 'copilot'; command = 'copilot'; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80 }
-        @{ host = 'cursor-agent'; command = 'cursor-agent'; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70 }
-        @{ host = 'antigravity'; command = 'antigravity'; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65 }
-    )
+    $hostRows = Get-ContinuousCoReviewReviewerHostRows
 
     return [pscustomobject][ordered]@{
         schema_version = '1.0'

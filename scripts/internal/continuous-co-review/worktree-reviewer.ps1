@@ -237,15 +237,17 @@ Output ONLY one JSON object satisfying FindingsResult.v1 (no markdown, no prose 
 
 function Get-ContinuousCoReviewAgentCommand {
     # Per-host AGENTIC invocation for the worktree reviewer (read + RUN in the cwd; read-only on the real source —
-    # the worktree is ephemeral so a write-capable sandbox is safe). The reviewer-host SELECTION (which host,
-    # authorized, code-writer-independent) is the policy's job; THIS only maps the chosen host to its agentic CLI.
-    # Host-NEUTRAL by construction (the whole point of the MCP direction) - not pinned to claude.
+    # the worktree is ephemeral so a write-capable sandbox is safe). LOOKED UP from the host CATALOG
+    # (Get-ContinuousCoReviewHostAgenticCommand, data in reviewer-host-catalog.ps1) — this core is host-NEUTRAL, so
+    # adding a reviewer host is a catalog-ROW edit, never a change here. The reviewer-host SELECTION (which host,
+    # authorized, code-writer-independent) is the policy's job. Falls back to a safe claude default ONLY if the
+    # catalog is unreachable (e.g. not yet dot-sourced in this scope).
     param([Parameter(Mandatory)][string]$HostName)
-    switch (([string]$HostName).ToLowerInvariant()) {
-        'claude' { return [pscustomobject]@{ file = 'claude'; pre_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true } }
-        'codex' { return [pscustomobject]@{ file = 'codex'; pre_args = @('exec', '--sandbox', 'workspace-write', '--skip-git-repo-check'); prompt_via_stdin = $false } }
-        default { return [pscustomobject]@{ file = 'claude'; pre_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true } }
+    if (Get-Command -Name 'Get-ContinuousCoReviewHostAgenticCommand' -ErrorAction SilentlyContinue) {
+        $cmd = Get-ContinuousCoReviewHostAgenticCommand -HostName $HostName
+        if ($null -ne $cmd -and -not [string]::IsNullOrWhiteSpace([string]$cmd.file)) { return $cmd }
     }
+    return [pscustomobject]@{ file = 'claude'; pre_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true }
 }
 
 function Invoke-ContinuousCoReviewAgentInWorktree {
