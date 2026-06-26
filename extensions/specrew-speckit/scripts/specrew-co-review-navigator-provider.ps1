@@ -98,34 +98,12 @@ try {
     $isStop = ($evt -in @('stop', 'agentstop'))
     if (-not $isSessionStart -and -not $isStop) { exit 0 }
 
-    # iter-008: config-select the review ENGINE. DEFAULT = legacy (the proven in-place path). co_review_engine=worktree
-    # OPTS INTO the new pipeline (fast trigger + detached orchestrator + the host-neutral co-review service). The
-    # worktree engine becomes the default at CUTOVER - after its correctness is proven by a contract-bearing e2e, not
-    # before (the default selector is a 1-line change + a unit test; it does not change reviewed behavior). Read
-    # best-effort from .specrew/config.yml BEFORE loading (it decides WHICH navigator to load).
-    $engine = 'legacy'
-    try {
-        $cfgPath = Join-Path $projectRoot '.specrew/config.yml'
-        if (Test-Path -LiteralPath $cfgPath -PathType Leaf) {
-            foreach ($line in (Get-Content -LiteralPath $cfgPath -Encoding UTF8)) {
-                if ($line -match '^\s*co_review_engine\s*:\s*([^#\r\n]+)') { $engine = ($Matches[1].Trim().Trim('"').Trim("'")).ToLowerInvariant(); break }
-            }
-        }
-    }
-    catch { $null = $_ }
-    $rel = if ($engine -eq 'worktree') { 'scripts/internal/continuous-co-review/worktree-navigator.ps1' } else { 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1' }
-    $navFn = if ($engine -eq 'worktree') { 'Invoke-ContinuousCoReviewWorktreeNavigator' } else { 'Invoke-ContinuousCoReviewNavigator' }
+    # iter-008: the worktree co-review engine is the ONE method. The diff-cramming first cut of this (never-released)
+    # feature is being removed - there is no "legacy" to select. Always load the worktree navigator.
+    $rel = 'scripts/internal/continuous-co-review/worktree-navigator.ps1'
+    $navFn = 'Invoke-ContinuousCoReviewWorktreeNavigator'
 
     $logicPath = Resolve-CoReviewNavigatorLogicPath -ProjectRoot $projectRoot -Rel $rel
-    if ([string]::IsNullOrWhiteSpace($logicPath) -and $engine -eq 'worktree') {
-        # worktree was opted into (co_review_engine=worktree) but its scripts are not deployed here (e.g. a
-        # provider-only update on an older deploy). Fall back to the legacy navigator rather than go dark, and WARN
-        # so the partial deploy is diagnosable.
-        [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_WORKTREE_FALLBACK_LEGACY worktree engine is the default but worktree-navigator.ps1 did not resolve; falling back to the legacy navigator (re-deploy to get the worktree engine).")
-        $rel = 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1'
-        $navFn = 'Invoke-ContinuousCoReviewNavigator'
-        $logicPath = Resolve-CoReviewNavigatorLogicPath -ProjectRoot $projectRoot -Rel $rel
-    }
     if ([string]::IsNullOrWhiteSpace($logicPath)) {
         # Diagnosable degrade (NOT a silent dead provider): mirror conformance's *_UNAVAILABLE WARN.
         [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_UNAVAILABLE the in-glob navigator logic ($rel) did not resolve under the project tree, SPECREW_MODULE_PATH, or the installed Specrew module; the co-review navigator is dark this event (the deterministic signoff gate floor remains the authority).")
