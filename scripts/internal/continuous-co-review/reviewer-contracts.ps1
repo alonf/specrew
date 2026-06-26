@@ -3,15 +3,29 @@ Set-StrictMode -Version Latest
 
 function Get-ContinuousCoReviewContractRoot {
     param(
-        [string] $SchemaRoot
+        [string] $SchemaRoot,
+        [string] $RepoRoot
     )
 
     if ($SchemaRoot) {
         return (Resolve-Path -LiteralPath $SchemaRoot).Path
     }
 
-    $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../../..')).Path
-    return (Join-Path $repoRoot 'specs/197-continuous-co-review/contracts')
+    # DEPLOY-AWARE resolution. In the Specrew SOURCE repo the contracts live at
+    # specs/197-continuous-co-review/contracts; in a DEPLOYED project (where the detached reviewer actually
+    # runs) they are deployed to .specrew/review/contracts. Resolve relative to the project root (3 parents up
+    # from this file = the module base, threaded as moduleBase on the detached path) and try the source layout
+    # first, then the deployed layout. Without this the reviewer throws "schema not found" on every deployed
+    # project (it only ever worked in-source) - the iter-007 deployed-reviewer gap. -RepoRoot overrides the
+    # derived root (tests inject a temp root to exercise both layouts).
+    $root = if ($RepoRoot) { (Resolve-Path -LiteralPath $RepoRoot).Path } else { (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '../../..')).Path }
+    foreach ($rel in @('specs/197-continuous-co-review/contracts', '.specrew/review/contracts')) {
+        $candidate = Join-Path $root $rel
+        if (Test-Path -LiteralPath $candidate -PathType Container) {
+            return (Resolve-Path -LiteralPath $candidate).Path
+        }
+    }
+    return (Join-Path $root 'specs/197-continuous-co-review/contracts')
 }
 
 function Get-ReviewerContractNames {

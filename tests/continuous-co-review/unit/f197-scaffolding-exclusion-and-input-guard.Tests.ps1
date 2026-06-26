@@ -212,4 +212,29 @@ Describe 'F-197 scaffolding exclusion + large-diff cap + input-size guard' {
             (Get-ContinuousCoReviewNavigatorFailureReason -RepoRoot $TestDrive -Registry $reg) | Should -BeNullOrEmpty
         }
     }
+
+    Context 'contract-root resolution is deploy-aware' {
+        It 'resolves the DEPLOYED layout (.specrew/review/contracts) when the source layout is absent' {
+            $root = Join-Path $TestDrive 'deployed-proj'
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew/review/contracts') -Force | Out-Null
+            $resolved = Get-ContinuousCoReviewContractRoot -RepoRoot $root
+            $resolved | Should -Be (Resolve-Path -LiteralPath (Join-Path $root '.specrew/review/contracts')).Path
+        }
+
+        It 'prefers the SOURCE layout (specs/197) when both layouts exist' {
+            $root = Join-Path $TestDrive 'source-proj'
+            New-Item -ItemType Directory -Path (Join-Path $root 'specs/197-continuous-co-review/contracts') -Force | Out-Null
+            New-Item -ItemType Directory -Path (Join-Path $root '.specrew/review/contracts') -Force | Out-Null
+            $resolved = Get-ContinuousCoReviewContractRoot -RepoRoot $root
+            $resolved | Should -Be (Resolve-Path -LiteralPath (Join-Path $root 'specs/197-continuous-co-review/contracts')).Path
+        }
+
+        It 'an explicit SchemaRoot always wins over the derived root' {
+            $root = Join-Path $TestDrive 'explicit-proj'
+            $explicit = Join-Path $root 'custom/contracts'
+            New-Item -ItemType Directory -Path $explicit -Force | Out-Null
+            $resolved = Get-ContinuousCoReviewContractRoot -SchemaRoot $explicit -RepoRoot $root
+            $resolved | Should -Be (Resolve-Path -LiteralPath $explicit).Path
+        }
+    }
 }
