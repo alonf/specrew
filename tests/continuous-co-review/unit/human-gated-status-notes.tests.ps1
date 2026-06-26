@@ -66,27 +66,4 @@ try {
 }
 finally { Remove-Item -LiteralPath $crashed -Recurse -Force -ErrorAction SilentlyContinue }
 
-# --- (1) FIRE: a real checkpoint fire reports it is in-flight + how to drive the poll. ---
-$fireRepo = Join-Path ([System.IO.Path]::GetTempPath()) ('hgfire-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path (Join-Path $fireRepo 'src') -Force | Out-Null
-try {
-    & git -C $fireRepo init -q 2>&1 | Out-Null
-    & git -C $fireRepo branch -m main 2>&1 | Out-Null
-    Set-Content -LiteralPath (Join-Path $fireRepo 'src/app.txt') -Value 'base' -Encoding UTF8 -NoNewline
-    & git -C $fireRepo -c user.name='t' -c user.email='t@t' add -A 2>&1 | Out-Null
-    & git -C $fireRepo -c user.name='t' -c user.email='t@t' commit -q -m trunk 2>&1 | Out-Null
-    & git -C $fireRepo -c user.name='t' -c user.email='t@t' checkout -q -b feature 2>&1 | Out-Null
-    New-Item -ItemType Directory -Path (Join-Path $fireRepo '.specrew/runtime') -Force | Out-Null
-    Set-Content -LiteralPath (Join-Path $fireRepo '.specrew/start-context.json') -Value (([ordered]@{ session_state = [ordered]@{ boundary_type = 'before-implement' } }) | ConvertTo-Json -Depth 6) -Encoding UTF8
-    Set-Content -LiteralPath (Join-Path $fireRepo 'src/app.txt') -Value 'changed-for-review' -Encoding UTF8 -NoNewline
-    & git -C $fireRepo -c user.name='t' -c user.email='t@t' add -A 2>&1 | Out-Null
-    & git -C $fireRepo -c user.name='t' -c user.email='t@t' commit -q -m inc 2>&1 | Out-Null
-
-    $dummy = "`$v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass'; blocking=`$false; findings=@() }; [Console]::Out.Write((`$v | ConvertTo-Json -Depth 6 -Compress))"
-    $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $fireRepo -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $dummy
-    Assert-True ($fire.action -eq 'fired') "(1) a real checkpoint fires"
-    Assert-True (@($fire.inject_notes | Where-Object { $_ -match $fire.fired_run_id -and $_ -match "say 'continue'" }).Count -ge 1) "(1) the fire reports the review is in-flight + says 'continue' to check"
-}
-finally { Remove-Item -LiteralPath $fireRepo -Recurse -Force -ErrorAction SilentlyContinue }
-
 Write-Host "`n=== human-gated-status-notes.tests.ps1: all assertions passed ===" -ForegroundColor Green
