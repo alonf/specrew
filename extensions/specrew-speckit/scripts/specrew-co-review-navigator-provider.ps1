@@ -19,7 +19,7 @@
 #
 # The provider itself does almost NOTHING - it locates + dot-sources the in-glob navigator LOGIC
 # (scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1, which dot-sources the
-# launcher + _load.ps1) via the module-base candidate ladder, then calls Invoke-ContinuousCoReviewNavigator
+# launcher + _load.ps1) via the module-base candidate ladder, then calls Invoke-ContinuousCoReviewWorktreeNavigator
 # and translates the returned decision into the dispatcher's stdout contract:
 #   - decision.stop_block set       -> print '<<<SPECREW-STOP-BLOCK>>>' + the directive (the dispatcher
 #                                       force-continues the turn via the host's stop-block envelope).

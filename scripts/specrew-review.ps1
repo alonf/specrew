@@ -710,6 +710,37 @@ function Get-ReviewBoundarySyncWarning {
     return ($warnings.ToArray() -join [Environment]::NewLine)
 }
 
+# iter-008: ENGINE- and FEATURE-independent host AUTHORIZATION. `specrew review --host X --authorization-ref Y`
+# persists the HUMAN authorization to .specrew/reviewer-hosts.json as a PROJECT-level operation - authorizing a
+# reviewer is setup (often before the first feature), so it must NOT require a resolvable feature/checkpoint, and
+# it must run regardless of the review engine. Done HERE, before the review arg + feature resolution, so it
+# survives both the worktree-engine cutover (the write used to live in the now-bypassed legacy --live) and a
+# no-feature project. ONLY on explicit --host + --authorization-ref (the human-provenance anchor).
+$authHostName = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHost } elseif (-not [string]::IsNullOrWhiteSpace($HostName)) { $HostName } else { '' }
+$authRefValue = $AuthorizationRef; $authModelValue = $Model
+$cliArgList = @($CliArgs)
+for ($ai = 0; $ai -lt $cliArgList.Count; $ai++) {
+    switch ([string]$cliArgList[$ai]) {
+        '--host' { if (($ai + 1) -lt $cliArgList.Count) { $authHostName = [string]$cliArgList[$ai + 1] } }
+        '--authorization-ref' { if (($ai + 1) -lt $cliArgList.Count) { $authRefValue = [string]$cliArgList[$ai + 1] } }
+        '--model' { if (($ai + 1) -lt $cliArgList.Count) { $authModelValue = [string]$cliArgList[$ai + 1] } }
+    }
+}
+if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNullOrWhiteSpace($authRefValue))) {
+    try {
+        $authProjectPath = if ([string]::IsNullOrWhiteSpace($ProjectPath)) { (Get-Location).Path } else { (Resolve-Path -LiteralPath $ProjectPath -ErrorAction Stop).Path }
+        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')   # for New-ContinuousCoReviewDefaultReviewerHostConfig
+        $authConfig = Get-LiveReviewConfiguration -HostName $authHostName -Model $authModelValue -AuthorizationRef $authRefValue -TimeoutSeconds 0 -FallbackPolicy 'none'
+        if ($null -ne $authConfig) {
+            $reviewerHostsPath = Join-Path $authProjectPath '.specrew/reviewer-hosts.json'
+            $rhDir = Split-Path -Parent $reviewerHostsPath
+            if (-not (Test-Path -LiteralPath $rhDir)) { New-Item -ItemType Directory -Path $rhDir -Force | Out-Null }
+            ($authConfig | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
+        }
+    }
+    catch { $null = $_ }
+}
+
 $parsedArgs = Convert-UnixStyleArguments `
     -ProjectPath $ProjectPath `
     -FeatureId $FeatureId `
