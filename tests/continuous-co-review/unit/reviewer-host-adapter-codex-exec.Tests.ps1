@@ -14,56 +14,66 @@ Describe 'Proposal 197 T034 TG-011 reviewer-host-adapter-codex-exec obeys implem
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         $script:SchemaRoot = Join-Path $script:RepoRoot 'specs/197-continuous-co-review/contracts'
         $script:CreatedAt = [datetime] '2026-06-18T00:34:00Z'
-    }
+    
 
-    function Get-T034Command {
-        $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerHostAdapterCodexExec' -ErrorAction SilentlyContinue
-        $null = ($command | Should Not BeNullOrEmpty)
-        return $command
-    }
-
-    function New-T034Request {
-        return [pscustomobject][ordered]@{
-            schema_version   = '1.0'
-            run_id           = 'run-t034'
-            checkpoint_id    = 'checkpoint-t034'
-            created_at       = '2026-06-18T00:34:00Z'
-            provider_request = [pscustomobject][ordered]@{
-                requested_host    = 'codex'
-                requested_model   = 'codex-review-fixture'
-                authorization_ref = 'authz-codex-review-fixture'
-                timeout_seconds   = 30
-                fallback_policy   = 'none'
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function Get-T034Command {
+                $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerHostAdapterCodexExec' -ErrorAction SilentlyContinue
+                $null = ($command | Should -Not -BeNullOrEmpty)
+                return $command
             }
-        }
-    }
 
-    function New-T034FindingsResultJson {
-        $result = [pscustomobject][ordered]@{
-            schema_version = '1.0'
-            run_id         = 'run-t034'
-            status         = 'no_findings'
-            reviewer       = [pscustomobject][ordered]@{
-                host       = 'codex'
-                model      = 'codex-review-fixture'
-                adapter_id = 'reviewer-host-adapter-codex-exec'
+        function New-T034Request {
+                return [pscustomobject][ordered]@{
+                    schema_version   = '1.0'
+                    run_id           = 'run-t034'
+                    checkpoint_id    = 'checkpoint-t034'
+                    created_at       = '2026-06-18T00:34:00Z'
+                    provider_request = [pscustomobject][ordered]@{
+                        requested_host    = 'codex'
+                        requested_model   = 'codex-review-fixture'
+                        authorization_ref = 'authz-codex-review-fixture'
+                        timeout_seconds   = 30
+                        fallback_policy   = 'none'
+                    }
+                }
             }
-            findings       = @()
-            created_at     = '2026-06-18T00:34:00Z'
-        }
-        return ($result | ConvertTo-Json -Depth 100)
-    }
 
-    function Invoke-T034Adapter {
-        param([scriptblock] $InvokeProcess)
-        $command = Get-T034Command
-        $requestPath = Join-Path $TestDrive 'request-bundle.json'
-        Set-Content -LiteralPath $requestPath -Value '{}' -Encoding UTF8
-        return & $command -Request (New-T034Request) -RequestBundlePath $requestPath -SchemaRoot $script:SchemaRoot -InvokeProcess $InvokeProcess -CreatedAt $script:CreatedAt
-    }
+        function New-T034FindingsResultJson {
+                $result = [pscustomobject][ordered]@{
+                    schema_version = '1.0'
+                    run_id         = 'run-t034'
+                    status         = 'no_findings'
+                    reviewer       = [pscustomobject][ordered]@{
+                        host       = 'codex'
+                        model      = 'codex-review-fixture'
+                        adapter_id = 'reviewer-host-adapter-codex-exec'
+                    }
+                    findings       = @()
+                    created_at     = '2026-06-18T00:34:00Z'
+                }
+                return ($result | ConvertTo-Json -Depth 100)
+            }
+
+        function Invoke-T034Adapter {
+                param([scriptblock] $InvokeProcess)
+                $command = Get-T034Command
+                $requestPath = Join-Path $TestDrive 'request-bundle.json'
+                Set-Content -LiteralPath $requestPath -Value '{}' -Encoding UTF8
+                return & $command -Request (New-T034Request) -RequestBundlePath $requestPath -SchemaRoot $script:SchemaRoot -InvokeProcess $InvokeProcess -CreatedAt $script:CreatedAt
+            }
+}
+
+    
+
+    
+
+    
+
+    
 
     It 'declares the Codex exec adapter command before real host implementation' {
-        Get-T034Command | Should Not BeNullOrEmpty
+        Get-T034Command | Should -Not -BeNullOrEmpty
     }
 
     It 'invokes codex exec through argv/equivalent tokens and normalizes valid FindingsResult JSON' {
@@ -79,13 +89,13 @@ Describe 'Proposal 197 T034 TG-011 reviewer-host-adapter-codex-exec obeys implem
         $validation = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $result.findings_result
         $invocationJson = $result.provider_invocation | ConvertTo-Json -Depth 100
 
-        $captured.Executable | Should Be 'codex'
-        ($captured.ArgumentList -contains 'exec') | Should Be $true
-        $result.provider_invocation.adapter_id | Should Be 'reviewer-host-adapter-codex-exec'
-        @($result.provider_invocation.argv_summary).Count | Should BeGreaterThan 1
-        $invocationJson | Should Not Match '(?i)shell_command|command_line|joined_command|raw_stdout|raw_stderr|transcript'
-        $result.kind | Should Be 'findings-result'
-        $validation.Valid | Should Be $true
+        $captured.Executable | Should -Be 'codex'
+        ($captured.ArgumentList -contains 'exec') | Should -Be $true
+        $result.provider_invocation.adapter_id | Should -Be 'reviewer-host-adapter-codex-exec'
+        @($result.provider_invocation.argv_summary).Count | Should -BeGreaterThan 1
+        $invocationJson | Should -Not -Match '(?i)shell_command|command_line|joined_command|raw_stdout|raw_stderr|transcript'
+        $result.kind | Should -Be 'findings-result'
+        $validation.Valid | Should -Be $true
     }
 
     It 'returns deterministic InfrastructureFailure when codex exec cannot produce valid FindingsResult' {
@@ -99,11 +109,11 @@ Describe 'Proposal 197 T034 TG-011 reviewer-host-adapter-codex-exec obeys implem
         $validation = Test-ReviewerContractObject -ContractName 'InfrastructureFailure' -SchemaRoot $script:SchemaRoot -InputObject $first.infrastructure_failure
         $failureJson = $first.infrastructure_failure | ConvertTo-Json -Depth 100
 
-        $first.kind | Should Be 'infrastructure-failure'
-        $first.infrastructure_failure.category | Should Be 'nonzero-exit'
-        $first.infrastructure_failure.failure_id | Should Be $second.infrastructure_failure.failure_id
-        $validation.Valid | Should Be $true
-        $failureJson | Should Not Match '(?i)secret|token|raw transcript|raw_stdout|raw_stderr'
+        $first.kind | Should -Be 'infrastructure-failure'
+        $first.infrastructure_failure.category | Should -Be 'nonzero-exit'
+        $first.infrastructure_failure.failure_id | Should -Be $second.infrastructure_failure.failure_id
+        $validation.Valid | Should -Be $true
+        $failureJson | Should -Not -Match '(?i)secret|token|raw transcript|raw_stdout|raw_stderr'
     }
 
     It 'resolves a Windows codex.ps1 shim through the default process path while preserving read-only argv summary' {
@@ -144,15 +154,15 @@ Describe 'Proposal 197 T034 TG-011 reviewer-host-adapter-codex-exec obeys implem
             $result = & $command -Request (New-T034Request) -RequestBundlePath $requestPath -SchemaRoot $script:SchemaRoot -CreatedAt $script:CreatedAt
             $validation = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $result.findings_result
 
-            $result.kind | Should Be 'findings-result'
-            $result.provider_invocation.argv_summary[0] | Should Be 'codex'
-            ($result.provider_invocation.argv_summary -contains 'exec') | Should Be $true
-            ($result.provider_invocation.argv_summary -contains '--sandbox') | Should Be $true
-            ($result.provider_invocation.argv_summary -contains 'read-only') | Should Be $true
-            ($result.provider_invocation.argv_summary -contains '--output-last-message') | Should Be $true
-            $result.provider_invocation.readonly_mode_supported | Should Be $true
-            $result.provider_invocation.readonly_mode_detail | Should Be 'codex exec --sandbox read-only'
-            $validation.Valid | Should Be $true
+            $result.kind | Should -Be 'findings-result'
+            $result.provider_invocation.argv_summary[0] | Should -Be 'codex'
+            ($result.provider_invocation.argv_summary -contains 'exec') | Should -Be $true
+            ($result.provider_invocation.argv_summary -contains '--sandbox') | Should -Be $true
+            ($result.provider_invocation.argv_summary -contains 'read-only') | Should -Be $true
+            ($result.provider_invocation.argv_summary -contains '--output-last-message') | Should -Be $true
+            $result.provider_invocation.readonly_mode_supported | Should -Be $true
+            $result.provider_invocation.readonly_mode_detail | Should -Be 'codex exec --sandbox read-only'
+            $validation.Valid | Should -Be $true
         }
         finally {
             $env:Path = $oldPath

@@ -103,7 +103,7 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
         Push-Location $script:RepoRoot
         try {
             $userCfg = @(& git config --local --get-regexp '^user\.' 2>$null)
-            $userCfg.Count | Should Be 0
+            $userCfg.Count | Should -Be 0
         }
         finally { Pop-Location }
     }
@@ -114,15 +114,15 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
     Context 'HAZARD A module-base resolution' {
         It 'resolves a base that CONTAINS scripts/internal/continuous-co-review/_load.ps1 (from this file location)' {
             $base = Get-ContinuousCoReviewNavigatorModuleBase
-            $base | Should Not BeNullOrEmpty
-            Test-Path -LiteralPath (Join-Path $base 'scripts/internal/continuous-co-review/_load.ps1') | Should Be $true
+            $base | Should -Not -BeNullOrEmpty
+            Test-Path -LiteralPath (Join-Path $base 'scripts/internal/continuous-co-review/_load.ps1') | Should -Be $true
         }
 
         It 'falls back to SPECREW_MODULE_PATH when that is the only path with _load.ps1' {
             # SPECREW_MODULE_PATH is the repo root in this suite; the $PSScriptRoot-relative resolve ALSO
             # finds it, so this asserts the resolved base is the real repo either way (both legs agree).
             $base = Get-ContinuousCoReviewNavigatorModuleBase
-            (Resolve-Path -LiteralPath $base).Path | Should Be $script:RepoRoot
+            (Resolve-Path -LiteralPath $base).Path | Should -Be $script:RepoRoot
         }
     }
 
@@ -134,7 +134,7 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             $root = Join-Path ([System.IO.Path]::GetTempPath()) ('t082-to-' + [guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $root -Force | Out-Null
             try {
-                Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $root | Should Be 300
+                Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $root | Should -Be 300
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -144,7 +144,7 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
             try {
                 Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Value "co_review_timeout_seconds: 450 # bumped for a slow host" -Encoding UTF8
-                Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $root | Should Be 450
+                Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $root | Should -Be 450
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -154,7 +154,7 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
             try {
                 Set-Content -LiteralPath (Join-Path $root '.specrew/config.yml') -Value "co_review_timeout_seconds: not-a-number" -Encoding UTF8
-                Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $root | Should Be 300
+                Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $root | Should -Be 300
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -184,11 +184,11 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             Mock New-ContinuousCoReviewWorkspaceMutationSnapshot { throw 'snapshot must NOT be taken on the skip path' }
 
             $result = Invoke-ContinuousCoReviewReviewerExecution -Request $req -RunRoot (Join-Path $TestDrive 'skip-runs') -Candidates @($cand) -InvokeAdapter $adapter -SkipMutationGuard -CreatedAt $script:CreatedAt
-            $result.kind | Should Be 'findings-result'
+            $result.kind | Should -Be 'findings-result'
             Assert-MockCalled New-ContinuousCoReviewWorkspaceMutationSnapshot -Times 0 -Scope It
-            $result.mutation_guard | Should Not BeNullOrEmpty
-            $result.mutation_guard.posture | Should Be 'skipped-isolated-worktree'
-            [bool]$result.mutation_guard.mutated | Should Be $false
+            $result.mutation_guard | Should -Not -BeNullOrEmpty
+            $result.mutation_guard.posture | Should -Be 'skipped-isolated-worktree'
+            [bool]$result.mutation_guard.mutated | Should -Be $false
         }
     }
 
@@ -217,13 +217,13 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             & git -C $hermeticRoot -c user.name=hermetic -c user.email=h@example.com add -A *> $null
             & git -C $hermeticRoot -c user.name=hermetic -c user.email=h@example.com commit -m base --quiet *> $null
             $result = Invoke-ContinuousCoReviewReviewerExecution -Request $req -RunRoot (Join-Path $TestDrive 'guarded-runs') -Candidates @($cand) -InvokeAdapter $adapter -ReadOnlyRoot $hermeticRoot -CreatedAt $script:CreatedAt
-            $result.kind | Should Be 'findings-result'
-            $result.mutation_guard | Should Not BeNullOrEmpty
+            $result.kind | Should -Be 'findings-result'
+            $result.mutation_guard | Should -Not -BeNullOrEmpty
             # The real Compare-... output (the guard RAN); NOT the skip marker.
-            ($result.mutation_guard.PSObject.Properties.Name -contains 'posture') | Should Be $false
-            ($result.mutation_guard.PSObject.Properties.Name -contains 'source_mutated') | Should Be $true
-            ($result.mutation_guard.PSObject.Properties.Name -contains 'before_captured_at') | Should Be $true
-            [bool]$result.mutation_guard.mutated | Should Be $false
+            ($result.mutation_guard.PSObject.Properties.Name -contains 'posture') | Should -Be $false
+            ($result.mutation_guard.PSObject.Properties.Name -contains 'source_mutated') | Should -Be $true
+            ($result.mutation_guard.PSObject.Properties.Name -contains 'before_captured_at') | Should -Be $true
+            [bool]$result.mutation_guard.mutated | Should -Be $false
         }
     }
 
@@ -268,33 +268,33 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                 Mock Select-ContinuousCoReviewReviewerCandidate { return (script:New-FakeCandidate -HostName 'codex' -ModelId 'chatgpt' -AdapterId 'reviewer-host-adapter-codex-exec' -TimeoutSeconds 30) }
 
                 $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TrunkName 'main' -ReviewerTimeoutSec 420
-                $dec.action | Should Be 'fired'
-                $dec.reviewer_wired | Should Be $true
+                $dec.action | Should -Be 'fired'
+                $dec.reviewer_wired | Should -Be $true
                 # The supervisor budget sits ABOVE the host-call budget (420 + 60 buffer).
-                $dec.reviewer_timeout_seconds | Should Be 420
-                $dec.supervisor_timeout_seconds | Should Be 480
-                $script:CapturedTimeout | Should Be 480
+                $dec.reviewer_timeout_seconds | Should -Be 420
+                $dec.supervisor_timeout_seconds | Should -Be 480
+                $script:CapturedTimeout | Should -Be 480
 
                 # HAZARD A: the emitted -Command dot-sources _load.ps1 from the REAL module base (absolute).
                 $base = Get-ContinuousCoReviewNavigatorModuleBase
-                $script:CapturedCommand | Should Match '_load\.ps1'
-                $script:CapturedCommand | Should Match ([regex]::Escape($base))
+                $script:CapturedCommand | Should -Match '_load\.ps1'
+                $script:CapturedCommand | Should -Match ([regex]::Escape($base))
                 # condition-b: the detached execute skips the guard.
-                $script:CapturedCommand | Should Match '-SkipMutationGuard'
-                $script:CapturedCommand | Should Match 'Invoke-ContinuousCoReviewReviewerExecution'
+                $script:CapturedCommand | Should -Match '-SkipMutationGuard'
+                $script:CapturedCommand | Should -Match 'Invoke-ContinuousCoReviewReviewerExecution'
 
                 # HAZARD B: the candidate is threaded as a single-quoted run-dir json path (NOT interpolated
                 # host/model code). The candidate file exists in the run dir and carries the RAISED host-call
                 # timeout (420), not the policy default 30.
                 $candFile = Join-Path $script:CapturedRunDir 'reviewer-candidate.json'
-                Test-Path -LiteralPath $candFile | Should Be $true
-                $script:CapturedCommand | Should Match ([regex]::Escape($candFile.Replace('\', '\')))
+                Test-Path -LiteralPath $candFile | Should -Be $true
+                $script:CapturedCommand | Should -Match ([regex]::Escape($candFile.Replace('\', '\')))
                 $cand = Get-Content -LiteralPath $candFile -Raw | ConvertFrom-Json
-                [int]$cand.timeout_seconds | Should Be 420
+                [int]$cand.timeout_seconds | Should -Be 420
 
                 # The pre-built request also landed in the run dir (the engine re-serializes it INTO the
                 # worktree at execute time; it is an INPUT here, not a durable record).
-                Test-Path -LiteralPath (Join-Path $script:CapturedRunDir 'reviewer-request.json') | Should Be $true
+                Test-Path -LiteralPath (Join-Path $script:CapturedRunDir 'reviewer-request.json') | Should -Be $true
             }
             finally {
                 $env:SPECREW_HOST = $null
@@ -318,9 +318,9 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                 }
                 $env:SPECREW_HOST = 'claude'
                 $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TrunkName 'main'
-                $dec.action | Should Be 'fired'
+                $dec.action | Should -Be 'fired'
                 # The code-writer host reached the policy verbatim (the policy maps claude->codex itself).
-                $script:SeenCodeWriterHost | Should Be 'claude'
+                $script:SeenCodeWriterHost | Should -Be 'claude'
             }
             finally {
                 $env:SPECREW_HOST = $null
@@ -346,8 +346,8 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                     return (script:New-FakeCandidate -HostName 'codex' -ModelId 'chatgpt' -AdapterId 'reviewer-host-adapter-codex-exec')
                 }
                 $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TrunkName 'main' -CodeWriterHost 'claude'
-                $dec.action | Should Be 'fired'
-                $script:SeenCodeWriterHost | Should Be 'claude'   # the param reached the policy with env UNSET
+                $dec.action | Should -Be 'fired'
+                $script:SeenCodeWriterHost | Should -Be 'claude'   # the param reached the policy with env UNSET
             }
             finally {
                 $env:SPECREW_HOST = $savedHost; $env:SPECREW_ACTIVE_HOST = $savedActive
@@ -380,11 +380,11 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                 $script:CapturedCommand2 = $null
                 Mock Start-SpecrewIsolatedTask { $script:CapturedCommand2 = $Command; return [pscustomobject]@{ run_id = 'r'; supervisor_pid = $PID; status = 'running'; registry_path = (Join-Path $RunDir 'reg.json'); result_path = (Join-Path $RunDir 'result.out') } }
                 $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TrunkName 'main'
-                $dec.action | Should Be 'fired'
-                $dec.reviewer_wired | Should Be $false
+                $dec.action | Should -Be 'fired'
+                $dec.reviewer_wired | Should -Be $false
                 # The emitted command is the stub (reviewer='stub'), never the real-execute path.
-                $script:CapturedCommand2 | Should Match "reviewer\s*=\s*'stub'"
-                $script:CapturedCommand2 | Should Not Match 'Invoke-ContinuousCoReviewReviewerExecution'
+                $script:CapturedCommand2 | Should -Match "reviewer\s*=\s*'stub'"
+                $script:CapturedCommand2 | Should -Not -Match 'Invoke-ContinuousCoReviewReviewerExecution'
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -406,19 +406,19 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                 $runId = 'plan-run-1'
                 $runDir = Join-Path $root (".specrew/review/pending/$runId")
                 $plan = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId $runId -RunDir $runDir -ReviewerTimeoutSec 333 -TrunkName 'main' -Now $script:CreatedAt
-                $plan | Should Not BeNullOrEmpty
+                $plan | Should -Not -BeNullOrEmpty
                 # The selected candidate carries the RAISED host-call timeout (not the policy default 30).
-                [int]$plan.candidate.timeout_seconds | Should Be 333
+                [int]$plan.candidate.timeout_seconds | Should -Be 333
                 # The request resolved a design-context ref from the generic feature dir (spec.md at least).
-                ($plan.design_refs -join ',') | Should Match 'spec\.md'
+                ($plan.design_refs -join ',') | Should -Match 'spec\.md'
                 # The request is a real ReviewRequest.v2 with the change-set diff content.
-                $plan.request.schema_version | Should Be '2.0'
-                [string]$plan.request.change_set.diff_content | Should Not BeNullOrEmpty
+                $plan.request.schema_version | Should -Be '2.0'
+                [string]$plan.request.change_set.diff_content | Should -Not -BeNullOrEmpty
                 # Both inputs serialized to the in-repo run dir for the detached command to read.
-                Test-Path -LiteralPath $plan.request_path | Should Be $true
-                Test-Path -LiteralPath $plan.candidate_path | Should Be $true
+                Test-Path -LiteralPath $plan.request_path | Should -Be $true
+                Test-Path -LiteralPath $plan.candidate_path | Should -Be $true
                 # The module base is the real repo (HAZARD A resolution).
-                Test-Path -LiteralPath (Join-Path $plan.module_base 'scripts/internal/continuous-co-review/_load.ps1') | Should Be $true
+                Test-Path -LiteralPath (Join-Path $plan.module_base 'scripts/internal/continuous-co-review/_load.ps1') | Should -Be $true
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -432,7 +432,7 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                 $runId = 'plan-run-2'
                 $runDir = Join-Path $root (".specrew/review/pending/$runId")
                 $plan = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId $runId -RunDir $runDir -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
-                $plan | Should BeNullOrEmpty
+                $plan | Should -BeNullOrEmpty
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -452,15 +452,15 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                 script:Add-Increment -Root $root -Content 'changed-for-t086'
                 # 1) ABSENT config -> the default catalog (every host allowed=$false) -> no eligible host -> FAIL-OPEN.
                 $planNone = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId 't086-none' -RunDir (Join-Path $root '.specrew/review/pending/t086-none') -CodeWriterHost 'claude' -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
-                $planNone | Should BeNullOrEmpty
+                $planNone | Should -BeNullOrEmpty
                 # 2) A REAL human-authorized config (codex allowed=$true + authorization_ref) -> the UN-MOCKED policy selects codex.
                 $cfg = [ordered]@{ schema_version = '1.0'; hosts = @([ordered]@{ host = 'codex'; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; allowed = $true; installed = $true; review_class_rank = 85; model_source = 'human-entered'; cost_class = 'non-default'; authorization_ref = 'human-e2e-2026-06-24'; fallback_allowed = $false }) }
                 $null = New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force
                 ($cfg | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $root '.specrew/reviewer-hosts.json') -Encoding UTF8
                 $planReal = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId 't086-real' -RunDir (Join-Path $root '.specrew/review/pending/t086-real') -CodeWriterHost 'claude' -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
-                $planReal | Should Not BeNullOrEmpty
-                [string]$planReal.candidate.host | Should Be 'codex'                                 # the UN-MOCKED policy picked the human-authorized host
-                [string]$planReal.candidate.authorization_ref | Should Be 'human-e2e-2026-06-24'      # the human-provenance anchor carried through
+                $planReal | Should -Not -BeNullOrEmpty
+                [string]$planReal.candidate.host | Should -Be 'codex'                                 # the UN-MOCKED policy picked the human-authorized host
+                [string]$planReal.candidate.authorization_ref | Should -Be 'human-e2e-2026-06-24'      # the human-provenance anchor carried through
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -475,7 +475,7 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
             $navPath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1'
             $probe = ". `"$navPath`"; [bool](Get-Command Get-ContinuousCoReviewCheckpointDiff -ErrorAction SilentlyContinue)"
             $out = & pwsh -NoProfile -NonInteractive -Command $probe 2>&1
-            ($out -join "`n") | Should Match 'True'
+            ($out -join "`n") | Should -Match 'True'
         }
     }
 
@@ -501,13 +501,13 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                     '  source: "code-implementation-workshop"'
                     '  authorization_ref: null'
                 ) -join "`n") | Set-Content -LiteralPath (Join-Path $featRoot 'implementation-rules.yml') -Encoding UTF8
-                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should Be $false   # nothing authorized yet
+                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should -Be $false   # nothing authorized yet
                 $plan = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId 'int006-run' -RunDir (Join-Path $root '.specrew/review/pending/int006-run') -CodeWriterHost 'claude' -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
                 # The bridge synced the human choice -> the navigator authorized + selected codex (un-mocked).
-                $plan | Should Not BeNullOrEmpty
-                [string]$plan.candidate.host | Should Be 'codex'
-                [string]$plan.candidate.authorization_ref | Should Be 'code-implementation-workshop'   # the workshop provenance
-                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should Be $true          # persisted to the catalog
+                $plan | Should -Not -BeNullOrEmpty
+                [string]$plan.candidate.host | Should -Be 'codex'
+                [string]$plan.candidate.authorization_ref | Should -Be 'code-implementation-workshop'   # the workshop provenance
+                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should -Be $true          # persisted to the catalog
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -526,8 +526,8 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
                     '  source: "auto-selection-fallback"'
                 ) -join "`n") | Set-Content -LiteralPath (Join-Path $featRoot 'implementation-rules.yml') -Encoding UTF8
                 $plan = New-ContinuousCoReviewNavigatorReviewerPlan -RepoRoot $root -TreeId 'deadbeef' -RunId 'int006-auto' -RunDir (Join-Path $root '.specrew/review/pending/int006-auto') -CodeWriterHost 'claude' -ReviewerTimeoutSec 300 -TrunkName 'main' -Now $script:CreatedAt
-                $plan | Should BeNullOrEmpty                                                   # auto-select did NOT authorize -> fail-open
-                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should Be $false
+                $plan | Should -BeNullOrEmpty                                                   # auto-select did NOT authorize -> fail-open
+                (Test-Path (Join-Path $root '.specrew/reviewer-hosts.json')) | Should -Be $false
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }
@@ -538,24 +538,27 @@ Describe 'T082 real reviewer wiring (select-at-fire + detached execute + skip-gu
     # boundary, NO session_state) that read null -> the navigator silently no-op'd at EVERY implement
     # checkpoint, so no review ever fired on a real (v2) project. Now it reads both schemas.
     Context 'navigator implement-stage detection across start-context schemas' {
-        function script:New-NavStageContext {
-            param([string]$Json)
-            $r = Join-Path $env:TEMP ('navstage-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
-            New-Item -ItemType Directory -Path (Join-Path $r '.specrew') -Force | Out-Null
-            $Json | Set-Content -LiteralPath (Join-Path $r '.specrew/start-context.json') -Encoding UTF8
-            return $r
+        BeforeAll {
+            function script:New-NavStageContext {
+                        param([string]$Json)
+                        $r = Join-Path $env:TEMP ('navstage-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+                        New-Item -ItemType Directory -Path (Join-Path $r '.specrew') -Force | Out-Null
+                        $Json | Set-Content -LiteralPath (Join-Path $r '.specrew/start-context.json') -Encoding UTF8
+                        return $r
+                    }
         }
-        It 'v2 schema (boundary_enforcement.last_authorized_boundary=before-implement) -> implement' {
+
+                It 'v2 schema (boundary_enforcement.last_authorized_boundary=before-implement) -> implement' {
             $r = script:New-NavStageContext '{"schema":"v2","boundary_enforcement":{"last_authorized_boundary":"before-implement"}}'
-            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should Be 'implement' } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
+            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should -Be 'implement' } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
         }
         It 'old schema (session_state.boundary_type=before-implement) -> implement (no regression)' {
             $r = script:New-NavStageContext '{"session_state":{"boundary_type":"before-implement"}}'
-            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should Be 'implement' } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
+            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should -Be 'implement' } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
         }
         It 'v2 non-implement boundary (review-signoff) -> empty (must NOT over-fire reviews)' {
             $r = script:New-NavStageContext '{"schema":"v2","boundary_enforcement":{"last_authorized_boundary":"review-signoff"}}'
-            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should BeNullOrEmpty } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
+            try { Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $r | Should -BeNullOrEmpty } finally { Remove-Item $r -Recurse -Force -ErrorAction SilentlyContinue }
         }
     }
 }

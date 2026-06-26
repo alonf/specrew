@@ -101,47 +101,47 @@ Set-Content -LiteralPath '$($proof -replace "'","''")' -Value (`$PWD.Path) -Enco
         $sw.Stop()
 
         # FAST + detached: the provider must return well under the ~18s Unix bug (the whole point).
-        $sw.Elapsed.TotalSeconds | Should BeLessThan 8
-        $run.run_id | Should Not BeNullOrEmpty
-        $run.supervisor_pid | Should Not BeNullOrEmpty
-        $run.status | Should Be 'running'
+        $sw.Elapsed.TotalSeconds | Should -BeLessThan 8
+        $run.run_id | Should -Not -BeNullOrEmpty
+        $run.supervisor_pid | Should -Not -BeNullOrEmpty
+        $run.status | Should -Be 'running'
         # Worktree is OUTSIDE the repo (ephemeral $TEMP), never inside it.
-        $run.worktree_path.StartsWith($src.Repo) | Should Be $false
+        $run.worktree_path.StartsWith($src.Repo) | Should -Be $false
 
         # Registry entry exists immediately (the fire->reap signaling file), status running.
-        Test-Path -LiteralPath $run.registry_path | Should Be $true
+        Test-Path -LiteralPath $run.registry_path | Should -Be $true
         $reg0 = Get-Content -LiteralPath $run.registry_path -Raw | ConvertFrom-Json
-        $reg0.tree_id | Should Be $src.TreeId
-        $reg0.task_kind | Should Be 'code-review'
-        $reg0.access | Should Be 'read-only'
+        $reg0.tree_id | Should -Be $src.TreeId
+        $reg0.task_kind | Should -Be 'code-review'
+        $reg0.access | Should -Be 'read-only'
 
         # BARRIER: wait until the detached supervisor has FULLY finished (process exited + registry
         # terminal). This is the synchronization point - all post-run assertions follow it, and it
         # guarantees this test leaks no live subprocess into the next test.
         $regEnd = script:Wait-SupervisorTerminal -Run $run
-        $regEnd | Should Not BeNullOrEmpty
-        $regEnd.status | Should Be 'done'
-        $regEnd.worktree_gone | Should Be $true
+        $regEnd | Should -Not -BeNullOrEmpty
+        $regEnd.status | Should -Be 'done'
+        $regEnd.worktree_gone | Should -Be $true
 
         # Terminal status.json (the reviewer's result is at result.out, captured by the redirect).
-        Test-Path -LiteralPath $run.status_path | Should Be $true
+        Test-Path -LiteralPath $run.status_path | Should -Be $true
         $status = Get-Content -LiteralPath $run.status_path -Raw | ConvertFrom-Json
-        $status.status | Should Be 'done'
-        $status.timed_out | Should Be $false
-        $status.child_exit | Should Be 0
+        $status.status | Should -Be 'done'
+        $status.timed_out | Should -Be $false
+        $status.child_exit | Should -Be 0
 
         # The worktree MATERIALIZED the tree-id content: the harness ran inside it and read MARKER.
-        Test-Path -LiteralPath $proof | Should Be $true
+        Test-Path -LiteralPath $proof | Should -Be $true
         $cwdSeen = (Get-Content -LiteralPath $proof -Raw).Trim()
-        $cwdSeen | Should Be $run.worktree_path
+        $cwdSeen | Should -Be $run.worktree_path
 
         # The child's stdout IS the reviewer result, captured to a file.
-        Test-Path -LiteralPath $run.result_path | Should Be $true
+        Test-Path -LiteralPath $run.result_path | Should -Be $true
         $result = Get-Content -LiteralPath $run.result_path -Raw
-        $result.Trim() | Should Be "REVIEW_RESULT:$marker"
+        $result.Trim() | Should -Be "REVIEW_RESULT:$marker"
 
         # discard: the ephemeral worktree is GONE after completion (no orphan).
-        Test-Path -LiteralPath $run.worktree_path | Should Be $false
+        Test-Path -LiteralPath $run.worktree_path | Should -Be $false
 
         Remove-Item -LiteralPath $src.Repo -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $runDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -169,14 +169,14 @@ Start-Sleep -Seconds 60
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
         $regEnd = script:Wait-SupervisorTerminal -Run $run
         $sw.Stop()
-        $regEnd | Should Not BeNullOrEmpty
-        $sw.Elapsed.TotalSeconds | Should BeLessThan 35   # timed out, not slept-to-completion (60s)
-        $regEnd.status | Should Be 'timed-out'
+        $regEnd | Should -Not -BeNullOrEmpty
+        $sw.Elapsed.TotalSeconds | Should -BeLessThan 35   # timed out, not slept-to-completion (60s)
+        $regEnd.status | Should -Be 'timed-out'
 
-        Test-Path -LiteralPath $run.status_path | Should Be $true
+        Test-Path -LiteralPath $run.status_path | Should -Be $true
         $status = Get-Content -LiteralPath $run.status_path -Raw | ConvertFrom-Json
-        $status.status | Should Be 'timed-out'
-        $status.timed_out | Should Be $true
+        $status.status | Should -Be 'timed-out'
+        $status.timed_out | Should -Be $true
 
         # NO orphan: the harness child the supervisor launched is gone.
         if (Test-Path -LiteralPath $childPidFile) {
@@ -184,12 +184,12 @@ Start-Sleep -Seconds 60
             if ($cpid -match '^\d+$') {
                 $alive = $null
                 try { $alive = Get-Process -Id ([int]$cpid) -ErrorAction Stop } catch { $alive = $null }
-                $alive | Should Be $null
+                $alive | Should -Be $null
             }
         }
 
         # discard ran in the finally even though the run was killed: worktree GONE.
-        Test-Path -LiteralPath $run.worktree_path | Should Be $false
+        Test-Path -LiteralPath $run.worktree_path | Should -Be $false
 
         Remove-Item -LiteralPath $src.Repo -Recurse -Force -ErrorAction SilentlyContinue
         Remove-Item -LiteralPath $runDir -Recurse -Force -ErrorAction SilentlyContinue
@@ -201,17 +201,17 @@ Start-Sleep -Seconds 60
         $repo = $src.Repo
         $tree = $src.TreeId
 
-        # NOTE on assertion style: `Should Throw` does NOT register thrown exceptions in THIS harness
-        # (Pester 3.4 on PowerShell 7.x here) - even a bare `{ throw 'boom' } | Should Throw` fails to
+        # NOTE on assertion style: `Should -Throw` does NOT register thrown exceptions in THIS harness
+        # (Pester 3.4 on PowerShell 7.x here) - even a bare `{ throw 'boom' } | Should -Throw` fails to
         # register. So we use explicit try/catch asserting the SPECIFIC message. This is strictly
-        # stronger than `Should Throw` (it only passes if the EXACT guard fires), and verifies each
+        # stronger than `Should -Throw` (it only passes if the EXACT guard fires), and verifies each
         # deferred seam distinctly. (The function throws correctly - confirmed independently.)
         function script:Assert-SeamThrows {
             param([scriptblock]$Call, [string]$Match)
             $threw = $false; $msg = $null
             try { & $Call } catch { $threw = $true; $msg = $_.Exception.Message }
-            $threw | Should Be $true
-            $msg | Should Match $Match
+            $threw | Should -Be $true
+            $msg | Should -Match $Match
         }
 
         script:Assert-SeamThrows -Match 'read-write' -Call {
@@ -249,16 +249,16 @@ Start-Sleep -Seconds 60
 
         $reap = Stop-SpecrewIsolatedTask -RegistryPath $regPath -Reason 'reaped'
 
-        $reap.worktree_gone | Should Be $true
-        Test-Path -LiteralPath $fakeWt | Should Be $false
+        $reap.worktree_gone | Should -Be $true
+        Test-Path -LiteralPath $fakeWt | Should -Be $false
         # The supervisor process was killed.
         Start-Sleep -Milliseconds 400
         $alive = $null
         try { $alive = Get-Process -Id $sleeper.Id -ErrorAction Stop } catch { $alive = $null }
-        $alive | Should Be $null
+        $alive | Should -Be $null
         # Registry marked terminal.
         $reg = Get-Content -LiteralPath $regPath -Raw | ConvertFrom-Json
-        $reg.status | Should Be 'reaped'
+        $reg.status | Should -Be 'reaped'
 
         Remove-Item -LiteralPath $runDir -Recurse -Force -ErrorAction SilentlyContinue
     }

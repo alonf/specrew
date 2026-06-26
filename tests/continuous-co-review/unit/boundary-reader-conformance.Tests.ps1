@@ -52,10 +52,10 @@ Describe 'boundary-reader conformance: canonical == every self-contained-provide
             $expectStage = [string]$c.stage
             Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue
 
-            It 'canonical reads the expected boundary' { $canonical | Should Be $expect }
-            It 'refocus mirror == canonical' { $refocus | Should Be $canonical }
-            It 'dispatcher mirror == canonical' { $disp | Should Be $canonical }
-            It 'navigator stage maps from the same boundary' { $nav | Should Be $expectStage }
+            It 'canonical reads the expected boundary' { $canonical | Should -Be $expect }
+            It 'refocus mirror == canonical' { $refocus | Should -Be $canonical }
+            It 'dispatcher mirror == canonical' { $disp | Should -Be $canonical }
+            It 'navigator stage maps from the same boundary' { $nav | Should -Be $expectStage }
         }
     }
 }

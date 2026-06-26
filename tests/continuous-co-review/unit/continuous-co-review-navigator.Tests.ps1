@@ -128,7 +128,7 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         Push-Location $script:RepoRoot
         try {
             $userCfg = @(& git config --local --get-regexp '^user\.' 2>$null)
-            $userCfg.Count | Should Be 0
+            $userCfg.Count | Should -Be 0
         }
         finally { Pop-Location }
     }
@@ -141,54 +141,54 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
 
             # FIRE: a Stop in the implement window at a real checkpoint.
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            $fire.action | Should Be 'fired'
-            $fire.reason | Should Be 'registered-checkpoint'
-            $fire.fired_run_id | Should Not BeNullOrEmpty
-            $fire.fired_tree_id | Should Not BeNullOrEmpty
+            $fire.action | Should -Be 'fired'
+            $fire.reason | Should -Be 'registered-checkpoint'
+            $fire.fired_run_id | Should -Not -BeNullOrEmpty
+            $fire.fired_tree_id | Should -Not -BeNullOrEmpty
             # A pending registry entry exists immediately (the fire->reap signaling file).
             $regPath = Join-Path $root (".specrew/review/pending/$($fire.fired_run_id).json")
-            Test-Path -LiteralPath $regPath | Should Be $true
+            Test-Path -LiteralPath $regPath | Should -Be $true
 
             # Let the detached supervisor finish (verdict written to result.out, worktree discarded).
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
-            $st | Should Not BeNullOrEmpty
-            $st.status | Should Be 'done'
+            $st | Should -Not -BeNullOrEmpty
+            $st.status | Should -Be 'done'
 
             # REAP on the next stop: the navigator surfaces the PASS verdict as an inject note and retires
             # the entry. No new fire (the tree-id is unchanged -> dedup), so action is no-op.
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            ($reap.inject_notes -join "`n") | Should Match 'PASSED'
-            $reap.stop_block | Should BeNullOrEmpty
-            $reap.reaped_run_ids -contains $fire.fired_run_id | Should Be $true
+            ($reap.inject_notes -join "`n") | Should -Match 'PASSED'
+            $reap.stop_block | Should -BeNullOrEmpty
+            $reap.reaped_run_ids -contains $fire.fired_run_id | Should -Be $true
             # The pending entry is retired (deleted).
-            Test-Path -LiteralPath $regPath | Should Be $false
+            Test-Path -LiteralPath $regPath | Should -Be $false
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'a BLOCKING verdict surfaces as the 185 <<<SPECREW-STOP-BLOCK>>> sentinel from the navigator PROVIDER' {
+    It 'a BLOCKING verdict surfaces as the 185 SPECREW-STOP-BLOCK sentinel from the navigator PROVIDER' {
         $root = script:New-NavigatorProject -FileContent 'base'
         try {
             script:Add-NavigatorIncrement -Root $root -Content 'changed-blocking'
             $cmd = script:New-DummyReviewerCommand -Blocking
 
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            $fire.action | Should Be 'fired'
+            $fire.action | Should -Be 'fired'
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
-            $st.status | Should Be 'done'
+            $st.status | Should -Be 'done'
 
             # REAP via the decision object: a blocking done-verdict yields a stop_block directive.
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            $reap.stop_block | Should Not BeNullOrEmpty
-            $reap.stop_block | Should Match 'BLOCKING'
-            $reap.stop_block | Should Match 'dummy blocking finding'
+            $reap.stop_block | Should -Not -BeNullOrEmpty
+            $reap.stop_block | Should -Match 'BLOCKING'
+            $reap.stop_block | Should -Match 'dummy blocking finding'
 
             # And end-to-end through the PROVIDER script: the dispatcher contract is the literal sentinel
             # on stdout. Re-fire a fresh blocking review (the prior was reaped), let it finish, then run
             # the provider as the dispatcher would (cwd = project, --source-event stop) and assert stdout.
             script:Add-NavigatorIncrement -Root $root -Content 'changed-blocking-2'
             $fire2 = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            $fire2.action | Should Be 'fired'
+            $fire2.action | Should -Be 'fired'
             $null = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire2.fired_run_id
 
             $provider = Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1'
@@ -197,7 +197,7 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
                 $stdout = & pwsh -NoProfile -NonInteractive -File $provider --host-kind claude --source-event stop 2>$null
             }
             finally { Pop-Location }
-            ($stdout -join "`n") | Should Match '<<<SPECREW-STOP-BLOCK>>>'
+            ($stdout -join "`n") | Should -Match '<<<SPECREW-STOP-BLOCK>>>'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -215,15 +215,15 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             script:Add-NavigatorIncrement -Root $root -Content 'changed-collision'   # material surface = changed files
             $cmd = script:New-DummyReviewerCommand -Blocking
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            $fire.action | Should Be 'fired'
+            $fire.action | Should -Be 'fired'
             $null = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
 
             # The navigator decision yields a stop_block (its blocking verdict), irrespective of conformance.
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            $reap.stop_block | Should Not BeNullOrEmpty
-            $reap.stop_block | Should Match 'co-review navigator block'
+            $reap.stop_block | Should -Not -BeNullOrEmpty
+            $reap.stop_block | Should -Match 'co-review navigator block'
             # It is the navigator's OWN block (not a boundary marker) - the comment's invariant.
-            $reap.stop_block | Should Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
+            $reap.stop_block | Should -Match 'do NOT emit a SPECREW-VERDICT-BOUNDARY marker'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -235,20 +235,20 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             $cmd = script:New-DummyReviewerCommand
 
             $first = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            $first.action | Should Be 'fired'
+            $first.action | Should -Be 'fired'
             $null = script:Wait-NavigatorRunTerminal -Root $root -RunId $first.fired_run_id
             # Reap+retire the first so only the dedup gate can stop the second.
             $null = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
 
             # SAME tree-id (no new increment) -> the dedup gate blocks a second fire.
             $second = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            $second.action | Should Be 'no-op'
-            $second.reason | Should Be 'dedup-unchanged-tree-id'
+            $second.action | Should -Be 'no-op'
+            $second.reason | Should -Be 'dedup-unchanged-tree-id'
 
             # A NEW increment changes the tree-id -> a fresh fire is allowed again.
             script:Add-NavigatorIncrement -Root $root -Content 'changed-twice'
             $third = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
-            $third.action | Should Be 'fired'
+            $third.action | Should -Be 'fired'
             $null = script:Wait-NavigatorRunTerminal -Root $root -RunId $third.fired_run_id
             $null = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride $cmd
         }
@@ -281,16 +281,16 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
 
             # A Stop reap: the past-deadline + alive entry is Stopped (kill + clean) and retired.
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30
-            $reap.reaped_run_ids -contains $runId | Should Be $true
+            $reap.reaped_run_ids -contains $runId | Should -Be $true
 
             Start-Sleep -Milliseconds 500
             # supervisor killed.
             $alive = $null
             try { $alive = Get-Process -Id $sleeper.Id -ErrorAction Stop } catch { $alive = $null }
-            $alive | Should Be $null
+            $alive | Should -Be $null
             # worktree cleaned + entry retired.
-            Test-Path -LiteralPath $fakeWt | Should Be $false
-            Test-Path -LiteralPath $regPath | Should Be $false
+            Test-Path -LiteralPath $fakeWt | Should -Be $false
+            Test-Path -LiteralPath $regPath | Should -Be $false
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -324,14 +324,14 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
                 } | ConvertTo-Json) | Set-Content -LiteralPath $regPath -Encoding UTF8
 
             $sweep = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -SessionStart
-            $sweep.mode | Should Be 'sweep'
-            $sweep.reaped_run_ids -contains $runId | Should Be $true
+            $sweep.mode | Should -Be 'sweep'
+            $sweep.reaped_run_ids -contains $runId | Should -Be $true
             # No verdict surfacing on a cross-session sweep.
-            $sweep.stop_block | Should BeNullOrEmpty
-            @($sweep.inject_notes).Count | Should Be 0
+            $sweep.stop_block | Should -BeNullOrEmpty
+            @($sweep.inject_notes).Count | Should -Be 0
             # worktree cleaned + entry retired.
-            Test-Path -LiteralPath $fakeWt | Should Be $false
-            Test-Path -LiteralPath $regPath | Should Be $false
+            Test-Path -LiteralPath $fakeWt | Should -Be $false
+            Test-Path -LiteralPath $regPath | Should -Be $false
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -342,10 +342,10 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             # In the implement window, but NO increment beyond trunk -> merge-base diff is empty -> casual
             # yield (no-op). And the PROVIDER must emit NOTHING to stdout.
             $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30
-            $dec.action | Should Be 'no-op'
-            @('no-reviewable-checkpoint', 'dedup-unchanged-tree-id', 'digest-failed') -contains $dec.reason | Should Be $true
-            $dec.stop_block | Should BeNullOrEmpty
-            @($dec.inject_notes).Count | Should Be 0
+            $dec.action | Should -Be 'no-op'
+            @('no-reviewable-checkpoint', 'dedup-unchanged-tree-id', 'digest-failed') -contains $dec.reason | Should -Be $true
+            $dec.stop_block | Should -BeNullOrEmpty
+            @($dec.inject_notes).Count | Should -Be 0
 
             $provider = Join-Path $script:RepoRoot 'extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1'
             Push-Location $root
@@ -353,7 +353,7 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
                 $stdout = & pwsh -NoProfile -NonInteractive -File $provider --host-kind claude --source-event stop 2>$null
             }
             finally { Pop-Location }
-            ([string]::Join('', @($stdout))).Trim() | Should Be ''
+            ([string]::Join('', @($stdout))).Trim() | Should -Be ''
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -363,8 +363,8 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         try {
             script:Add-NavigatorIncrement -Root $root -Content 'changed-but-not-implementing'
             $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30
-            $dec.action | Should Be 'no-op'
-            $dec.reason | Should Be 'not-in-implement-stage'
+            $dec.action | Should -Be 'no-op'
+            $dec.reason | Should -Be 'not-in-implement-stage'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -404,9 +404,9 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
 
             $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
             # NOT reaped: the entry survives + its worktree is untouched.
-            $reap.reaped_run_ids -contains $runId | Should Be $false
-            Test-Path -LiteralPath $regPath | Should Be $true
-            Test-Path -LiteralPath $fakeWt | Should Be $true
+            $reap.reaped_run_ids -contains $runId | Should -Be $false
+            Test-Path -LiteralPath $regPath | Should -Be $true
+            Test-Path -LiteralPath $fakeWt | Should -Be $true
         }
         finally {
             # The fake worktree lives OUTSIDE $root (ephemeral-worktree semantics) and is intentionally
@@ -441,9 +441,9 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
                 } | ConvertTo-Json) | Set-Content -LiteralPath $regPath -Encoding UTF8
 
             $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
-            $reap.reaped_run_ids -contains $runId | Should Be $true
-            Test-Path -LiteralPath $regPath | Should Be $false
-            Test-Path -LiteralPath $fakeWt | Should Be $false
+            $reap.reaped_run_ids -contains $runId | Should -Be $true
+            Test-Path -LiteralPath $regPath | Should -Be $false
+            Test-Path -LiteralPath $fakeWt | Should -Be $false
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -458,33 +458,33 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             $cmd = script:New-DummyReviewerCommand   # non-blocking PASS
 
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            $fire.action | Should Be 'fired'
+            $fire.action | Should -Be 'fired'
             $firedTreeId = $fire.fired_tree_id
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
-            $st.status | Should Be 'done'
+            $st.status | Should -Be 'done'
 
             # REAP -> surfaces the PASS AND promotes it to durable evidence.
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            ($reap.inject_notes -join "`n") | Should Match 'PASSED'
-            $reap.stop_block | Should BeNullOrEmpty
-            @($reap.promoted_run_ids).Count | Should Be 1
+            ($reap.inject_notes -join "`n") | Should -Match 'PASSED'
+            $reap.stop_block | Should -BeNullOrEmpty
+            @($reap.promoted_run_ids).Count | Should -Be 1
             $promotedId = @($reap.promoted_run_ids)[0]
 
             # The durable run record exists at the path the gate reader walks (inline/), with the fired
             # tree-id and status=pass.
             $runRecPath = Join-Path $root ".specrew/review/inline/$promotedId/review-run.json"
-            Test-Path -LiteralPath $runRecPath | Should Be $true
+            Test-Path -LiteralPath $runRecPath | Should -Be $true
             $rec = Get-Content -LiteralPath $runRecPath -Raw | ConvertFrom-Json
-            $rec.reviewed_tree_id | Should Be $firedTreeId
-            $rec.status | Should Be 'pass'
-            $rec.reviewed_ref | Should Match '^[0-9a-f]{40}$'
-            $rec.baseline_ref | Should Match '^[0-9a-f]{40}$'
+            $rec.reviewed_tree_id | Should -Be $firedTreeId
+            $rec.status | Should -Be 'pass'
+            $rec.reviewed_ref | Should -Match '^[0-9a-f]{40}$'
+            $rec.baseline_ref | Should -Match '^[0-9a-f]{40}$'
 
             # THE REQUIREMENT: the signoff gate now ALLOWS this state (fresh + covered).
             $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -TrunkName 'main'
-            $gate.decision | Should Be 'allow'
-            $gate.reason | Should Be 'fresh-and-covered'
-            $gate.matched_run_id | Should Be $promotedId
+            $gate.decision | Should -Be 'allow'
+            $gate.reason | Should -Be 'fresh-and-covered'
+            $gate.matched_run_id | Should -Be $promotedId
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -498,16 +498,16 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
             script:Add-NavigatorIncrement -Root $root -Content 'changed-for-stub-no-promote'
             # NO -ReviewerCommandOverride -> the default reviewer stub fires.
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main'
-            $fire.action | Should Be 'fired'
+            $fire.action | Should -Be 'fired'
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
-            $st.status | Should Be 'done'
+            $st.status | Should -Be 'done'
 
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main'
             # Advisory only: NOT promoted, and the signoff gate stays unsatisfied (no evidence written).
-            @($reap.promoted_run_ids).Count | Should Be 0
-            ($reap.inject_notes -join "`n") | Should Match 'real reviewer is not wired'
+            @($reap.promoted_run_ids).Count | Should -Be 0
+            ($reap.inject_notes -join "`n") | Should -Match 'real reviewer is not wired'
             $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -TrunkName 'main'
-            $gate.decision | Should Not Be 'allow'
+            $gate.decision | Should -Not -Be 'allow'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -523,14 +523,14 @@ $v = [ordered]@{ schema_version='1.0'; status='findings'; disposition='needs-wor
 [Console]::Out.Write(($v | ConvertTo-Json -Depth 6 -Compress))
 '@
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            $fire.action | Should Be 'fired'
+            $fire.action | Should -Be 'fired'
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
-            $st.status | Should Be 'done'
+            $st.status | Should -Be 'done'
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            @($reap.promoted_run_ids).Count | Should Be 0
-            ($reap.inject_notes -join "`n") | Should Match 'non-pass verdict'
+            @($reap.promoted_run_ids).Count | Should -Be 0
+            ($reap.inject_notes -join "`n") | Should -Match 'non-pass verdict'
             $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -TrunkName 'main'
-            $gate.decision | Should Not Be 'allow'
+            $gate.decision | Should -Not -Be 'allow'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -542,13 +542,13 @@ $v = [ordered]@{ schema_version='1.0'; status='findings'; disposition='needs-wor
             $cmd = script:New-DummyReviewerCommand -Blocking
 
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            $fire.action | Should Be 'fired'
+            $fire.action | Should -Be 'fired'
             $firedRunId = $fire.fired_run_id
             $null = script:Wait-NavigatorRunTerminal -Root $root -RunId $firedRunId
 
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            $reap.stop_block | Should Not BeNullOrEmpty   # a blocking verdict still surfaces
-            @($reap.promoted_run_ids).Count | Should Be 0  # but is NOT promoted
+            $reap.stop_block | Should -Not -BeNullOrEmpty   # a blocking verdict still surfaces
+            @($reap.promoted_run_ids).Count | Should -Be 0  # but is NOT promoted
 
             # No durable inline record was written for the fired run.
             $inlineDir = Join-Path $root '.specrew/review/inline'
@@ -558,11 +558,11 @@ $v = [ordered]@{ schema_version='1.0'; status='findings'; disposition='needs-wor
                     if (Test-Path -LiteralPath (Join-Path $d.FullName 'review-run.json') -PathType Leaf) { $hasRecord = $true; break }
                 }
             }
-            $hasRecord | Should Be $false
+            $hasRecord | Should -Be $false
 
             # The signoff gate has no passing evidence -> it BLOCKS.
             $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -TrunkName 'main'
-            $gate.decision | Should Be 'block'
+            $gate.decision | Should -Be 'block'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -582,11 +582,11 @@ $v = [ordered]@{ schema_version='1.0'; status='findings'; disposition='needs-wor
 
             # FIRE in-process, then let the detached supervisor finish (verdict at result.out).
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            $fire.action | Should Be 'fired'
+            $fire.action | Should -Be 'fired'
             $firedTreeId = $fire.fired_tree_id
             $firedRunId = $fire.fired_run_id
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $firedRunId
-            $st.status | Should Be 'done'
+            $st.status | Should -Be 'done'
 
             # REAP + PROMOTE via the PROVIDER child (the production entry-point). cwd = the project; the
             # provider dedups (same tree-id, already fired) so it does NOT re-fire - it only reaps+promotes.
@@ -597,20 +597,20 @@ $v = [ordered]@{ schema_version='1.0'; status='findings'; disposition='needs-wor
             }
             finally { Pop-Location }
             # A PASS surfaces as an inject note (no stop-block); the provider prints it.
-            ([string]::Join("`n", @($stdout))) | Should Match 'PASSED'
+            ([string]::Join("`n", @($stdout))) | Should -Match 'PASSED'
 
             # The durable record was written BY THE CHILD (production scope) - the lazy load worked.
             $runRecPath = Join-Path $root ".specrew/review/inline/$firedRunId/review-run.json"
-            Test-Path -LiteralPath $runRecPath | Should Be $true
+            Test-Path -LiteralPath $runRecPath | Should -Be $true
             $rec = Get-Content -LiteralPath $runRecPath -Raw | ConvertFrom-Json
-            $rec.reviewed_tree_id | Should Be $firedTreeId
-            $rec.status | Should Be 'pass'
+            $rec.reviewed_tree_id | Should -Be $firedTreeId
+            $rec.status | Should -Be 'pass'
 
             # THE REQUIREMENT, end-to-end through the real provider: the signoff gate ALLOWS.
             $gate = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $root -TrunkName 'main'
-            $gate.decision | Should Be 'allow'
-            $gate.reason | Should Be 'fresh-and-covered'
-            $gate.matched_run_id | Should Be $firedRunId
+            $gate.decision | Should -Be 'allow'
+            $gate.reason | Should -Be 'fresh-and-covered'
+            $gate.matched_run_id | Should -Be $firedRunId
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -624,20 +624,20 @@ $v = [ordered]@{ schema_version='1.0'; run_id='reviewer-local-id'; status='findi
 [Console]::Out.Write(($v | ConvertTo-Json -Depth 6 -Compress))
 '@
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            $fire.action | Should Be 'fired'
+            $fire.action | Should -Be 'fired'
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
-            $st.status | Should Be 'done'
+            $st.status | Should -Be 'done'
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
             # T083: the durable blackboard thread under inline/<REGISTRY-run-id>/ carries ALL findings.
             $findingsPath = Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/findings-result.json"
-            Test-Path -LiteralPath $findingsPath | Should Be $true
+            Test-Path -LiteralPath $findingsPath | Should -Be $true
             $fr = Get-Content -LiteralPath $findingsPath -Raw | ConvertFrom-Json
-            @($fr.findings).Count | Should Be 2
-            $fr.run_id | Should Be $fire.fired_run_id   # run_id NORMALIZED to the registry id (co-located with the gate record)
-            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/review-thread.json") | Should Be $true
+            @($fr.findings).Count | Should -Be 2
+            $fr.run_id | Should -Be $fire.fired_run_id   # run_id NORMALIZED to the registry id (co-located with the gate record)
+            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/review-thread.json") | Should -Be $true
             # T084: the inject note points at the durable thread (not just a one-line summary).
-            ($reap.inject_notes -join "`n") | Should Match 'Full findings'
-            ($reap.inject_notes -join "`n") | Should Match 'inline/'
+            ($reap.inject_notes -join "`n") | Should -Match 'Full findings'
+            ($reap.inject_notes -join "`n") | Should -Match 'inline/'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -652,9 +652,9 @@ $v = [ordered]@{ schema_version='1.0'; run_id='r'; status='no_findings'; disposi
 '@
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
-            $st.status | Should Be 'done'
+            $st.status | Should -Be 'done'
             $reap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
-            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/findings-result.json") | Should Be $false
+            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/findings-result.json") | Should -Be $false
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -669,12 +669,12 @@ $v = [ordered]@{ schema_version='1.0'; run_id='r'; status='findings'; dispositio
 '@
             $fire = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd
             $st = script:Wait-NavigatorRunTerminal -Root $root -RunId $fire.fired_run_id
-            $st.status | Should Be 'done'
+            $st.status | Should -Be 'done'
             Mock Write-ContinuousCoReviewBlackboardThread { throw 'simulated blackboard failure' }
             $script:failOpenReap = $null
-            { $script:failOpenReap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd } | Should Not Throw
-            ($script:failOpenReap.inject_notes -join "`n") | Should Match 'PASSED'   # still surfaces the verdict
-            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/findings-result.json") | Should Be $false
+            { $script:failOpenReap = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -TrunkName 'main' -ReviewerCommandOverride $cmd } | Should -Not -Throw
+            ($script:failOpenReap.inject_notes -join "`n") | Should -Match 'PASSED'   # still surfaces the verdict
+            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$($fire.fired_run_id)/findings-result.json") | Should -Be $false
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
@@ -714,15 +714,15 @@ $v = [ordered]@{ schema_version='1.0'; run_id='r'; status='findings'; dispositio
             }
 
             $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 -ReviewerCommandOverride (script:New-DummyReviewerCommand)
-            $dec.action | Should Be 'no-op'
-            $dec.reason | Should Be 'launcher-unavailable'
+            $dec.action | Should -Be 'no-op'
+            $dec.reason | Should -Be 'launcher-unavailable'
             # The prior running entry was NOT superseded (still on disk) and NOT reaped.
-            Test-Path -LiteralPath $regPath | Should Be $true
-            $dec.reaped_run_ids -contains $runId | Should Be $false
+            Test-Path -LiteralPath $regPath | Should -Be $true
+            $dec.reaped_run_ids -contains $runId | Should -Be $false
             # The sleeper (its supervisor) is untouched.
             $alive = $null
             try { $alive = Get-Process -Id $sleeper.Id -ErrorAction Stop } catch { $alive = $null }
-            ($null -ne $alive) | Should Be $true
+            ($null -ne $alive) | Should -Be $true
         }
         finally {
             if ($sleeper) { try { Stop-Process -Id $sleeper.Id -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
@@ -749,15 +749,15 @@ $v = [ordered]@{ schema_version='1.0'; run_id='r'; status='findings'; dispositio
                 try { $dec = Invoke-ContinuousCoReviewNavigator -RepoRoot $root -TimeoutSec 30 }
                 catch { $threw = $true }
 
-                $threw | Should Be $false   # the navigator must NOT throw to the caller
-                $dec | Should Not BeNullOrEmpty
-                $dec.action | Should Be 'no-op'
-                $dec.reason | Should Match 'navigator-error'
-                $dec.reason | Should Match 'simulated-internal-failure'
+                $threw | Should -Be $false   # the navigator must NOT throw to the caller
+                $dec | Should -Not -BeNullOrEmpty
+                $dec.action | Should -Be 'no-op'
+                $dec.reason | Should -Match 'navigator-error'
+                $dec.reason | Should -Match 'simulated-internal-failure'
                 # Shape preserved (no partial/strict-mode-broken object): the merged result fields exist.
-                $dec.stop_block | Should BeNullOrEmpty
-                @($dec.inject_notes).Count | Should Be 0
-                $dec.fired_run_id | Should BeNullOrEmpty
+                $dec.stop_block | Should -BeNullOrEmpty
+                @($dec.inject_notes).Count | Should -Be 0
+                $dec.fired_run_id | Should -BeNullOrEmpty
             }
             finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
         }

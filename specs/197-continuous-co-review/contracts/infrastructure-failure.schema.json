@@ -24,7 +24,8 @@
         "malformed-durable-state",
         "fallback-exhausted",
         "cleanup-failed",
-        "workspace-mutation-invalidated"
+        "workspace-mutation-invalidated",
+        "input-too-large"
       ]
     },
     "message": { "type": "string", "minLength": 1 },

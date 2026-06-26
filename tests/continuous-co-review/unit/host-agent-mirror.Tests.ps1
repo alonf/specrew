@@ -14,7 +14,48 @@ Describe 'Proposal 197 T055 host agent mirror support' {
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         $script:SchemaRoot = Join-Path $script:RepoRoot 'specs/197-continuous-co-review/contracts'
         $script:CreatedAt = [datetime] '2026-06-19T01:55:00Z'
-    }
+    
+
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function New-T055ProviderRequest {
+                return [pscustomobject][ordered]@{
+                    requested_host    = 'fixture'
+                    requested_model   = 'fixture-reviewer'
+                    authorization_ref = 'local-fixture-only'
+                    timeout_seconds   = 60
+                    fallback_policy   = 'none'
+                }
+            }
+
+        function New-T055ChangeSet {
+                return [pscustomobject][ordered]@{
+                    baseline_ref          = 'baseline-t055'
+                    diff_ref              = 'diffs/run-t055.diff'
+                    diff_inline           = "diff --git a/scripts/internal/continuous-co-review/host-agent-mirror.ps1 b/scripts/internal/continuous-co-review/host-agent-mirror.ps1`n+best effort mirror`n"
+                    diff_content          = "diff --git a/scripts/internal/continuous-co-review/host-agent-mirror.ps1 b/scripts/internal/continuous-co-review/host-agent-mirror.ps1`n+best effort mirror`n"
+                    diff_hash             = 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
+                    changed_paths         = @('scripts/internal/continuous-co-review/host-agent-mirror.ps1')
+                    reviewable_path_count = 1
+                    excluded_paths        = @()
+                }
+            }
+
+        function New-T055Request {
+                return New-ContinuousCoReviewRequest `
+                    -RunId 'run-t055' `
+                    -CheckpointId 'checkpoint-t055' `
+                    -BaselineRef 'baseline-t055' `
+                    -ChangeSet (New-T055ChangeSet) `
+                    -DesignContextRefs @('specs/197-continuous-co-review/spec.md', 'specs/197-continuous-co-review/implementation-rules.yml') `
+                    -AllowedPaths @('scripts/internal/continuous-co-review/', 'tests/continuous-co-review/') `
+                    -ForbiddenPaths @('hosts/', 'extensions/specrew-speckit/scripts/provider-adapter.ps1') `
+                    -ProviderRequest (New-T055ProviderRequest) `
+                    -RoundNumber 1 `
+                    -PriorFindings @() `
+                    -SchemaRoot $script:SchemaRoot `
+                    -CreatedAt $script:CreatedAt
+            }
+}
 
     BeforeEach {
         $script:MirrorRoot = Join-Path $script:RepoRoot '.scratch/t055-host-agent-mirror'
@@ -27,57 +68,24 @@ Describe 'Proposal 197 T055 host agent mirror support' {
         if (Test-Path -LiteralPath $script:MirrorRoot) { Remove-Item -LiteralPath $script:MirrorRoot -Recurse -Force }
     }
 
-    function New-T055ProviderRequest {
-        return [pscustomobject][ordered]@{
-            requested_host    = 'fixture'
-            requested_model   = 'fixture-reviewer'
-            authorization_ref = 'local-fixture-only'
-            timeout_seconds   = 60
-            fallback_policy   = 'none'
-        }
-    }
+    
 
-    function New-T055ChangeSet {
-        return [pscustomobject][ordered]@{
-            baseline_ref          = 'baseline-t055'
-            diff_ref              = 'diffs/run-t055.diff'
-            diff_inline           = "diff --git a/scripts/internal/continuous-co-review/host-agent-mirror.ps1 b/scripts/internal/continuous-co-review/host-agent-mirror.ps1`n+best effort mirror`n"
-            diff_content          = "diff --git a/scripts/internal/continuous-co-review/host-agent-mirror.ps1 b/scripts/internal/continuous-co-review/host-agent-mirror.ps1`n+best effort mirror`n"
-            diff_hash             = 'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc'
-            changed_paths         = @('scripts/internal/continuous-co-review/host-agent-mirror.ps1')
-            reviewable_path_count = 1
-            excluded_paths        = @()
-        }
-    }
+    
 
-    function New-T055Request {
-        return New-ContinuousCoReviewRequest `
-            -RunId 'run-t055' `
-            -CheckpointId 'checkpoint-t055' `
-            -BaselineRef 'baseline-t055' `
-            -ChangeSet (New-T055ChangeSet) `
-            -DesignContextRefs @('specs/197-continuous-co-review/spec.md', 'specs/197-continuous-co-review/implementation-rules.yml') `
-            -AllowedPaths @('scripts/internal/continuous-co-review/', 'tests/continuous-co-review/') `
-            -ForbiddenPaths @('hosts/', 'extensions/specrew-speckit/scripts/provider-adapter.ps1') `
-            -ProviderRequest (New-T055ProviderRequest) `
-            -RoundNumber 1 `
-            -PriorFindings @() `
-            -SchemaRoot $script:SchemaRoot `
-            -CreatedAt $script:CreatedAt
-    }
+    
 
     It 'plans native host agent mirrors as non-authoritative and not runtime-required' {
         $plan = New-ContinuousCoReviewHostAgentMirrorPlan -RepoRoot $script:MirrorRoot -Hosts @('claude', 'github-copilot', 'generic-agents')
 
-        $plan.runtime_authority | Should Be 'composed-prompt'
-        $plan.mirror_authority | Should Be $false
-        $plan.canonical_path | Should Be 'scripts/internal/continuous-co-review/code-review-agent.md'
-        $plan.canonical_hash | Should Match '^sha256:[0-9a-f]{64}$'
-        @($plan.targets).Count | Should Be 3
+        $plan.runtime_authority | Should -Be 'composed-prompt'
+        $plan.mirror_authority | Should -Be $false
+        $plan.canonical_path | Should -Be 'scripts/internal/continuous-co-review/code-review-agent.md'
+        $plan.canonical_hash | Should -Match '^sha256:[0-9a-f]{64}$'
+        @($plan.targets).Count | Should -Be 3
         foreach ($target in @($plan.targets)) {
-            $target.authoritative | Should Be $false
-            $target.runtime_required | Should Be $false
-            $target.mirror_semantics | Should Be 'best-effort-native-copy-only'
+            $target.authoritative | Should -Be $false
+            $target.runtime_required | Should -Be $false
+            $target.mirror_semantics | Should -Be 'best-effort-native-copy-only'
         }
     }
 
@@ -86,14 +94,14 @@ Describe 'Proposal 197 T055 host agent mirror support' {
         $mirrorPath = Join-Path $script:MirrorRoot '.claude/agents/specrew-code-review-agent.md'
         $mirrorContent = Get-Content -LiteralPath $mirrorPath -Raw
 
-        $result.runtime_authority | Should Be 'composed-prompt'
-        $result.mirror_authority | Should Be $false
-        @($result.written).Count | Should Be 1
-        $mirrorContent | Should Match 'best-effort native host mirror'
-        $mirrorContent | Should Match 'Runtime authority remains the injected composed prompt'
-        $mirrorContent | Should Match 'Canonical source: scripts/internal/continuous-co-review/code-review-agent.md'
-        $mirrorContent | Should Match 'Canonical hash: sha256:[0-9a-f]{64}'
-        $mirrorContent | Should Match 'Proposal 145 Rubric Phases'
+        $result.runtime_authority | Should -Be 'composed-prompt'
+        $result.mirror_authority | Should -Be $false
+        @($result.written).Count | Should -Be 1
+        $mirrorContent | Should -Match 'best-effort native host mirror'
+        $mirrorContent | Should -Match 'Runtime authority remains the injected composed prompt'
+        $mirrorContent | Should -Match 'Canonical source: scripts/internal/continuous-co-review/code-review-agent.md'
+        $mirrorContent | Should -Match 'Canonical hash: sha256:[0-9a-f]{64}'
+        $mirrorContent | Should -Match 'Proposal 145 Rubric Phases'
     }
 
     It 'keeps runtime prompt composition authoritative when native mirrors are absent or stale' {
@@ -103,9 +111,9 @@ Describe 'Proposal 197 T055 host agent mirror support' {
         $request = New-T055Request
         $prompt = New-ContinuousCoReviewPrompt -Request $request -SchemaRoot $script:SchemaRoot -CreatedAt $script:CreatedAt
 
-        $prompt.prompt_content | Should Match 'Proposal 145 Rubric Phases'
-        $prompt.prompt_content | Should Match 'best effort mirror'
-        $prompt.prompt_content | Should Not Match 'STALE MIRROR SHOULD NOT BE USED'
-        $prompt.reviewer_instruction_hash | Should Be $request.reviewer_instruction.content_hash
+        $prompt.prompt_content | Should -Match 'Proposal 145 Rubric Phases'
+        $prompt.prompt_content | Should -Match 'best effort mirror'
+        $prompt.prompt_content | Should -Not -Match 'STALE MIRROR SHOULD NOT BE USED'
+        $prompt.reviewer_instruction_hash | Should -Be $request.reviewer_instruction.content_hash
     }
 }

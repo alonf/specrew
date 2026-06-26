@@ -625,6 +625,12 @@ function Get-ReviewerInfrastructureFailureCategoryValues {
         'fallback-exhausted'
         'cleanup-failed'
         'workspace-mutation-invalidated'
+        # The composed reviewer prompt exceeds the host's input limit (e.g. claude -p's hard 10 MB piped
+        # stdin), detected BEFORE invoking the host so an oversize input fails EXPLICITLY with its sizes
+        # instead of surfacing as a contentless empty stdout. Deterministic in the input size, so NOT
+        # retryable and NOT fallback-allowed (the diff cap / scaffolding exclusion / config override is the
+        # fix, not a retry against the same oversized prompt).
+        'input-too-large'
     )
 }
 

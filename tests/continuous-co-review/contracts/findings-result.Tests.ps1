@@ -8,23 +8,29 @@ Describe 'Proposal 197 forced findings result contract' {
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         $script:SchemaRoot = Join-Path $script:RepoRoot 'specs/197-continuous-co-review/contracts'
         $script:FixtureRoot = Join-Path $script:RepoRoot 'tests/continuous-co-review/fixtures/contracts'
-    }
+    
 
-    function Copy-FindingsResultFixture {
-        $fixturePath = Join-Path $script:FixtureRoot 'findings-result.producer.valid.json'
-        return Read-ReviewerContractJson -Path $fixturePath
-    }
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function Copy-FindingsResultFixture {
+                $fixturePath = Join-Path $script:FixtureRoot 'findings-result.producer.valid.json'
+                return Read-ReviewerContractJson -Path $fixturePath
+            }
 
-    function Get-FindingSchemaRequiredFields {
-        $schema = Get-ReviewerContractSchema -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot
-        return @($schema.properties.findings.items.required)
-    }
+        function Get-FindingSchemaRequiredFields {
+                $schema = Get-ReviewerContractSchema -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot
+                return @($schema.properties.findings.items.required)
+            }
+}
+
+    
+
+    
 
     It 'forces every finding to carry traceable metadata required by FR-002 and NFR-003' {
         $requiredFields = Get-FindingSchemaRequiredFields
 
         foreach ($fieldName in @('finding_id', 'location', 'severity', 'kind', 'design_reference', 'comment', 'disposition', 'resolution')) {
-            ($requiredFields -contains $fieldName) | Should Be $true
+            ($requiredFields -contains $fieldName) | Should -Be $true
         }
     }
 
@@ -35,8 +41,8 @@ Describe 'Proposal 197 forced findings result contract' {
 
             $result = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto
 
-            $result.Valid | Should Be $false
-            ($result.Errors -join "`n") | Should Match "$fieldName is required"
+            $result.Valid | Should -Be $false
+            ($result.Errors -join "`n") | Should -Match "$fieldName is required"
         }
     }
 
@@ -45,21 +51,21 @@ Describe 'Proposal 197 forced findings result contract' {
         $severityValues = @($schema.properties.findings.items.properties.severity.enum)
         $dispositionValues = Get-ContinuousCoReviewFindingDispositionValues
 
-        ($severityValues -join ',') | Should Be 'blocking,advisory,nit'
-        ($dispositionValues -join ',') | Should Be 'open,accepted_fix_pending,resolved,rejected_with_rationale,escalated_to_human'
+        ($severityValues -join ',') | Should -Be 'blocking,advisory,nit'
+        ($dispositionValues -join ',') | Should -Be 'open,accepted_fix_pending,resolved,rejected_with_rationale,escalated_to_human'
 
         $dto = Copy-FindingsResultFixture
         $dto.findings[0].severity = 'informational'
-        (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto).Valid | Should Be $false
+        (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto).Valid | Should -Be $false
 
         $dto = Copy-FindingsResultFixture
         $dto.findings[0].disposition = 'silently_ignored'
-        (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto).Valid | Should Be $false
+        (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto).Valid | Should -Be $false
     }
 
     It 'accepts only supported resolution states and preserves resolution evidence fields' {
         $resolutionStates = Get-ContinuousCoReviewFindingResolutionStates
-        ($resolutionStates -join ',') | Should Be 'unresolved,resolved,rejected,escalated'
+        ($resolutionStates -join ',') | Should -Be 'unresolved,resolved,rejected,escalated'
 
         $dto = Copy-FindingsResultFixture
         $dto.findings[0].resolution.state = 'resolved'
@@ -68,11 +74,11 @@ Describe 'Proposal 197 forced findings result contract' {
 
         $result = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto
 
-        $result.Valid | Should Be $true
-        @($result.Errors).Count | Should Be 0
+        $result.Valid | Should -Be $true
+        @($result.Errors).Count | Should -Be 0
 
         $dto.findings[0].resolution.state = 'text_only_fixed'
-        (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto).Valid | Should Be $false
+        (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto).Valid | Should -Be $false
     }
 
     It 'derives a stable finding fingerprint from finding metadata rather than object property order' {
@@ -93,11 +99,11 @@ Describe 'Proposal 197 forced findings result contract' {
         $firstFingerprint = New-ContinuousCoReviewFindingFingerprint -Finding $finding
         $secondFingerprint = New-ContinuousCoReviewFindingFingerprint -Finding $reorderedFinding
 
-        $firstFingerprint | Should Match '^sha256:[0-9a-f]{64}$'
-        $secondFingerprint | Should Be $firstFingerprint
+        $firstFingerprint | Should -Match '^sha256:[0-9a-f]{64}$'
+        $secondFingerprint | Should -Be $firstFingerprint
 
         $changedFinding = $finding | Select-Object *
         $changedFinding.comment = 'A materially different reviewer comment.'
-        (New-ContinuousCoReviewFindingFingerprint -Finding $changedFinding) | Should Not Be $firstFingerprint
+        (New-ContinuousCoReviewFindingFingerprint -Finding $changedFinding) | Should -Not -Be $firstFingerprint
     }
 }

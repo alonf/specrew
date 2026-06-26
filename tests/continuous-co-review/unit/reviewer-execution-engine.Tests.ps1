@@ -14,102 +14,116 @@ Describe 'Proposal 197 T038 TG-011 reviewer execution engine obeys implementatio
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         $script:SchemaRoot = Join-Path $script:RepoRoot 'specs/197-continuous-co-review/contracts'
         $script:CreatedAt = [datetime] '2026-06-18T00:38:00Z'
-    }
+    
 
-    function Get-T038Command {
-        $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerExecution' -ErrorAction SilentlyContinue
-        $null = ($command | Should Not BeNullOrEmpty)
-        return $command
-    }
-
-    function New-T038Request {
-        param(
-            [string] $RunId = 'run-t038',
-            [string] $RequestedHost = 'claude',
-            [string] $RequestedModel = 'claude-review-fixture',
-            [string] $FallbackPolicy = 'one-authorized-availability-fallback'
-        )
-
-        return [pscustomobject][ordered]@{
-            schema_version   = '1.0'
-            run_id           = $RunId
-            checkpoint_id    = 'checkpoint-t038'
-            created_at       = '2026-06-18T00:38:00Z'
-            provider_request = [pscustomobject][ordered]@{
-                requested_host    = $RequestedHost
-                requested_model   = $RequestedModel
-                authorization_ref = "authz-$RequestedHost-$RequestedModel"
-                timeout_seconds   = 30
-                fallback_policy   = $FallbackPolicy
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function Get-T038Command {
+                $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerExecution' -ErrorAction SilentlyContinue
+                $null = ($command | Should -Not -BeNullOrEmpty)
+                return $command
             }
-        }
-    }
 
-    function New-T038Candidate {
-        param(
-            [string] $HostName,
-            [string] $ModelId,
-            [string] $AdapterId,
-            [bool] $Authorized = $true,
-            [bool] $ExactAlternateAuthorized = $false
-        )
+        function New-T038Request {
+                param(
+                    [string] $RunId = 'run-t038',
+                    [string] $RequestedHost = 'claude',
+                    [string] $RequestedModel = 'claude-review-fixture',
+                    [string] $FallbackPolicy = 'one-authorized-availability-fallback'
+                )
 
-        return [pscustomobject][ordered]@{
-            host                       = $HostName
-            model                      = $ModelId
-            adapter_id                 = $AdapterId
-            authorization_ref          = if ($Authorized) { "authz-$HostName-$ModelId" } else { $null }
-            authorized                 = $Authorized
-            exact_alternate_authorized = $ExactAlternateAuthorized
-            timeout_seconds            = 30
-        }
-    }
-
-    function New-T038FindingsResult {
-        param(
-            [string] $RunId,
-            [string] $HostName,
-            [string] $ModelId,
-            [string] $AdapterId
-        )
-
-        return [pscustomobject][ordered]@{
-            schema_version = '1.0'
-            run_id         = $RunId
-            status         = 'no_findings'
-            reviewer       = [pscustomobject][ordered]@{
-                host       = $HostName
-                model      = $ModelId
-                adapter_id = $AdapterId
+                return [pscustomobject][ordered]@{
+                    schema_version   = '1.0'
+                    run_id           = $RunId
+                    checkpoint_id    = 'checkpoint-t038'
+                    created_at       = '2026-06-18T00:38:00Z'
+                    provider_request = [pscustomobject][ordered]@{
+                        requested_host    = $RequestedHost
+                        requested_model   = $RequestedModel
+                        authorization_ref = "authz-$RequestedHost-$RequestedModel"
+                        timeout_seconds   = 30
+                        fallback_policy   = $FallbackPolicy
+                    }
+                }
             }
-            findings       = @()
-            created_at     = '2026-06-18T00:38:00Z'
-        }
-    }
 
-    function New-T038Failure {
-        param(
-            [string] $RunId,
-            [string] $Category,
-            [string] $InvocationId = "invocation-$RunId-failure"
-        )
+        function New-T038Candidate {
+                param(
+                    [string] $HostName,
+                    [string] $ModelId,
+                    [string] $AdapterId,
+                    [bool] $Authorized = $true,
+                    [bool] $ExactAlternateAuthorized = $false
+                )
 
-        return New-ContinuousCoReviewInfrastructureFailure -RunId $RunId -InvocationId $InvocationId -Category $Category -Message "Fixture $Category" -SafeDetails ([pscustomobject]@{ category = $Category }) -CreatedAt $script:CreatedAt
-    }
+                return [pscustomobject][ordered]@{
+                    host                       = $HostName
+                    model                      = $ModelId
+                    adapter_id                 = $AdapterId
+                    authorization_ref          = if ($Authorized) { "authz-$HostName-$ModelId" } else { $null }
+                    authorized                 = $Authorized
+                    exact_alternate_authorized = $ExactAlternateAuthorized
+                    timeout_seconds            = 30
+                }
+            }
 
-    function Invoke-T038Engine {
-        param(
-            $Request = (New-T038Request),
-            [object[]] $Candidates,
-            [scriptblock] $InvokeAdapter
-        )
+        function New-T038FindingsResult {
+                param(
+                    [string] $RunId,
+                    [string] $HostName,
+                    [string] $ModelId,
+                    [string] $AdapterId
+                )
 
-        $command = Get-T038Command
-        return & $command -Request $Request -RunRoot (Join-Path $TestDrive 'runs') -SchemaRoot $script:SchemaRoot -Candidates $Candidates -InvokeAdapter $InvokeAdapter -CreatedAt $script:CreatedAt
-    }
+                return [pscustomobject][ordered]@{
+                    schema_version = '1.0'
+                    run_id         = $RunId
+                    status         = 'no_findings'
+                    reviewer       = [pscustomobject][ordered]@{
+                        host       = $HostName
+                        model      = $ModelId
+                        adapter_id = $AdapterId
+                    }
+                    findings       = @()
+                    created_at     = '2026-06-18T00:38:00Z'
+                }
+            }
+
+        function New-T038Failure {
+                param(
+                    [string] $RunId,
+                    [string] $Category,
+                    [string] $InvocationId = "invocation-$RunId-failure"
+                )
+
+                return New-ContinuousCoReviewInfrastructureFailure -RunId $RunId -InvocationId $InvocationId -Category $Category -Message "Fixture $Category" -SafeDetails ([pscustomobject]@{ category = $Category }) -CreatedAt $script:CreatedAt
+            }
+
+        function Invoke-T038Engine {
+                param(
+                    $Request = (New-T038Request),
+                    [object[]] $Candidates,
+                    [scriptblock] $InvokeAdapter
+                )
+
+                $command = Get-T038Command
+                return & $command -Request $Request -RunRoot (Join-Path $TestDrive 'runs') -SchemaRoot $script:SchemaRoot -Candidates $Candidates -InvokeAdapter $InvokeAdapter -CreatedAt $script:CreatedAt
+            }
+}
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
 
     It 'declares the reviewer execution engine command before orchestrator wiring' {
-        Get-T038Command | Should Not BeNullOrEmpty
+        Get-T038Command | Should -Not -BeNullOrEmpty
     }
 
     It 'runs synchronously with one bounded fresh-context adapter attempt when primary succeeds' {
@@ -139,10 +153,10 @@ Describe 'Proposal 197 T038 TG-011 reviewer execution engine obeys implementatio
 
         $result = Invoke-T038Engine -Request $request -Candidates $candidates -InvokeAdapter $adapter
 
-        $calls.Count | Should Be 1
-        $result.findings_result.status | Should Be 'no_findings'
-        $result.provider_invocation.timeout_seconds | Should Be 30
-        $result.fallback_used | Should Be $false
+        $calls.Count | Should -Be 1
+        $result.findings_result.status | Should -Be 'no_findings'
+        $result.provider_invocation.timeout_seconds | Should -Be 30
+        $result.fallback_used | Should -Be $false
     }
 
     It 'maps a timeout attempt to deterministic InfrastructureFailure instead of no findings' {
@@ -161,9 +175,9 @@ Describe 'Proposal 197 T038 TG-011 reviewer execution engine obeys implementatio
         $result = Invoke-T038Engine -Request $request -Candidates $candidates -InvokeAdapter $adapter
         $validation = Test-ReviewerContractObject -ContractName 'InfrastructureFailure' -SchemaRoot $script:SchemaRoot -InputObject $result.infrastructure_failure
 
-        $result.infrastructure_failure.category | Should Be 'timeout'
-        $validation.Valid | Should Be $true
-        $result.findings_result | Should Be $null
+        $result.infrastructure_failure.category | Should -Be 'timeout'
+        $validation.Valid | Should -Be $true
+        $result.findings_result | Should -Be $null
     }
 
     It 'uses at most one pre-authorized availability fallback and records requested/actual provenance' {
@@ -195,12 +209,12 @@ Describe 'Proposal 197 T038 TG-011 reviewer execution engine obeys implementatio
 
         $result = Invoke-T038Engine -Request $request -Candidates $candidates -InvokeAdapter $adapter
 
-        $calls.Count | Should Be 2
-        $result.fallback_used | Should Be $true
-        $result.provider_invocation.requested_host | Should Be 'claude'
-        $result.provider_invocation.requested_model | Should Be 'claude-review-fixture'
-        $result.provider_invocation.actual_host | Should Be 'copilot'
-        $result.provider_invocation.actual_model | Should Be 'copilot-review-fixture'
+        $calls.Count | Should -Be 2
+        $result.fallback_used | Should -Be $true
+        $result.provider_invocation.requested_host | Should -Be 'claude'
+        $result.provider_invocation.requested_model | Should -Be 'claude-review-fixture'
+        $result.provider_invocation.actual_host | Should -Be 'copilot'
+        $result.provider_invocation.actual_model | Should -Be 'copilot-review-fixture'
     }
 
     It 'hard-blocks an unavailable specifically requested model without exact alternate authorization' {
@@ -223,9 +237,9 @@ Describe 'Proposal 197 T038 TG-011 reviewer execution engine obeys implementatio
 
         $result = Invoke-T038Engine -Request $request -Candidates $candidates -InvokeAdapter $adapter
 
-        $calls.Count | Should Be 1
-        $result.infrastructure_failure.category | Should Be 'unavailable-requested-model'
-        $result.fallback_used | Should Be $false
+        $calls.Count | Should -Be 1
+        $result.infrastructure_failure.category | Should -Be 'unavailable-requested-model'
+        $result.fallback_used | Should -Be $false
     }
 
     It 'blocks silent downgrade when actual host/model differs without explicit authorized fallback provenance' {
@@ -243,8 +257,8 @@ Describe 'Proposal 197 T038 TG-011 reviewer execution engine obeys implementatio
 
         $result = Invoke-T038Engine -Request $request -Candidates $candidates -InvokeAdapter $adapter
 
-        $result.findings_result | Should Be $null
-        $result.infrastructure_failure.category | Should Match 'unauthorized-provider|unavailable-requested-model|fallback-exhausted'
-        $result.fallback_used | Should Be $false
+        $result.findings_result | Should -Be $null
+        $result.infrastructure_failure.category | Should -Match 'unauthorized-provider|unavailable-requested-model|fallback-exhausted'
+        $result.fallback_used | Should -Be $false
     }
 }

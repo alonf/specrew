@@ -239,10 +239,15 @@ function Invoke-ContinuousCoReviewAdapterProcess {
         }
 
         $stdout = if ($stdoutTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $stdoutTask.Result } else { '' }
+        # Capture stderr (a bounded tail) instead of dropping it. The host's own failure reason lives here
+        # (e.g. claude's "piped stdin input exceeds 10MB"); hardcoding stderr='' meant a nonzero-exit
+        # surfaced as a contentless empty stdout and the human never saw why. The cap bounds a chatty host.
+        $stderr = if ($stderrTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { [string] $stderrTask.Result } else { '' }
+        if ($stderr.Length -gt 4000) { $stderr = $stderr.Substring($stderr.Length - 4000) }
         return [pscustomobject][ordered]@{
             exit_code = $process.ExitCode
             stdout    = $stdout
-            stderr    = ''
+            stderr    = $stderr
             timed_out = $false
         }
     }
@@ -369,6 +374,11 @@ function Invoke-ContinuousCoReviewReviewerHostAdapterCommand {
 
         [int] $AttemptNumber = 1,
 
+        # Host input-size limit (bytes) for the piped stdin. <=0 disables the guard. The claude adapter sets
+        # it to just under claude -p's hard 10 MB stdin cap so an oversize prompt fails EXPLICITLY, before
+        # the host is invoked, instead of as a contentless empty stdout.
+        [int] $StdinByteLimit = 0,
+
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
@@ -399,6 +409,28 @@ function Invoke-ContinuousCoReviewReviewerHostAdapterCommand {
         catch {
             $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $effectiveArgumentList -AttemptNumber $AttemptNumber -ExitCode $null -FailureCategory 'schema-mismatch' -CreatedAt $CreatedAt -ReadOnlyModeRequested:([bool] $readOnlyPolicy.requested) -ReadOnlyModeSupported:([bool] $readOnlyPolicy.supported) -ReadOnlyModeDetail $readOnlyPolicy.detail
             $failure = New-ContinuousCoReviewInfrastructureFailure -RunId $Request.run_id -InvocationId $invocation.invocation_id -Category 'schema-mismatch' -Message 'ReviewRequest.v2 could not be composed into the adapter-bound ReviewPrompt.' -SafeDetails ([pscustomobject]@{ adapter_id = $AdapterId; prompt_composition = 'failed' }) -CreatedAt $CreatedAt
+            return [pscustomobject][ordered]@{
+                kind                   = 'infrastructure-failure'
+                provider_invocation    = $invocation
+                findings_result        = $null
+                infrastructure_failure = $failure
+            }
+        }
+    }
+
+    # INPUT-SIZE GUARD (host-accurate, by construction): the reviewer host caps its piped stdin (claude -p:
+    # a hard 10 MB). A prompt over that makes the host exit 1 with EMPTY stdout - the SILENT unparseable that
+    # cost the EnglishIntake dogfood a whole review. Measure the ACTUAL stdin payload (the composed v2 prompt,
+    # else the request bundle) and fail EXPLICITLY before spawning, so the reason is the safe category
+    # 'input-too-large' + the byte sizes, never an empty result. SafeDetails carry sizes ONLY (the durable
+    # record is scrubbed of prompt/stderr content by Test-ReviewerInfrastructureSafeDetailName by design - the
+    # size + category ARE the human-facing reason). -StdinByteLimit <=0 disables; the diff cap keeps the
+    # common case under it so reviews still run, this is the backstop for the prompt's non-diff terms.
+    if ($StdinByteLimit -gt 0 -and (-not [string]::IsNullOrWhiteSpace($standardInputPath)) -and (Test-Path -LiteralPath $standardInputPath -PathType Leaf)) {
+        $stdinByteCount = (Get-Item -LiteralPath $standardInputPath).Length
+        if ($stdinByteCount -gt $StdinByteLimit) {
+            $invocation = New-ContinuousCoReviewAdapterInvocation -Request $Request -Candidate $Candidate -AdapterId $AdapterId -Executable $Executable -ArgumentList $effectiveArgumentList -AttemptNumber $AttemptNumber -ExitCode $null -FailureCategory 'input-too-large' -CreatedAt $CreatedAt -ReadOnlyModeRequested:([bool] $readOnlyPolicy.requested) -ReadOnlyModeSupported:([bool] $readOnlyPolicy.supported) -ReadOnlyModeDetail $readOnlyPolicy.detail
+            $failure = New-ContinuousCoReviewInfrastructureFailure -RunId $Request.run_id -InvocationId $invocation.invocation_id -Category 'input-too-large' -Message 'Composed reviewer prompt exceeds the host input limit; the reviewer was not invoked. Reduce the change-set (scaffolding exclusion / diff cap) or raise the budget.' -SafeDetails ([pscustomobject][ordered]@{ adapter_id = $AdapterId; stdin_byte_count = $stdinByteCount; stdin_byte_limit = $StdinByteLimit }) -CreatedAt $CreatedAt
             return [pscustomobject][ordered]@{
                 kind                   = 'infrastructure-failure'
                 provider_invocation    = $invocation
@@ -467,5 +499,7 @@ function Invoke-ContinuousCoReviewReviewerHostAdapterClaudePrompt {
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
-    return Invoke-ContinuousCoReviewReviewerHostAdapterCommand -Request $Request -RequestBundlePath $RequestBundlePath -AdapterId 'reviewer-host-adapter-claude-prompt' -Executable 'claude' -ArgumentList @('-p') -SchemaRoot $SchemaRoot -InvokeProcess $InvokeProcess -Candidate $Candidate -AttemptNumber $AttemptNumber -CreatedAt $CreatedAt
+    # StdinByteLimit: just under claude -p's hard 10 MB piped-stdin cap (0.5 MB margin), so an oversize
+    # composed prompt fails as an explicit 'input-too-large' before claude is invoked, not as empty stdout.
+    return Invoke-ContinuousCoReviewReviewerHostAdapterCommand -Request $Request -RequestBundlePath $RequestBundlePath -AdapterId 'reviewer-host-adapter-claude-prompt' -Executable 'claude' -ArgumentList @('-p') -SchemaRoot $SchemaRoot -InvokeProcess $InvokeProcess -Candidate $Candidate -AttemptNumber $AttemptNumber -StdinByteLimit 9500000 -CreatedAt $CreatedAt
 }

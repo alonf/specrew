@@ -48,11 +48,11 @@ Describe 'iter-007 worktree materialize uses a tar that handles absolute Windows
         try {
             # Before the fix this THROWS "tar extract failed ... (exit 128)"; after, it returns the worktree.
             $worktree = New-SpecrewIsolatedTaskWorktree -RepoRoot $src.Repo -TreeId $src.TreeId -EphemeralRoot $ephemeral
-            $worktree | Should Not BeNullOrEmpty
-            Test-Path -LiteralPath $worktree -PathType Container | Should Be $true
+            $worktree | Should -Not -BeNullOrEmpty
+            Test-Path -LiteralPath $worktree -PathType Container | Should -Be $true
             $markerPath = Join-Path $worktree 'MARKER.txt'
-            Test-Path -LiteralPath $markerPath -PathType Leaf | Should Be $true
-            (Get-Content -LiteralPath $markerPath -Raw).Trim() | Should Be $marker
+            Test-Path -LiteralPath $markerPath -PathType Leaf | Should -Be $true
+            (Get-Content -LiteralPath $markerPath -Raw).Trim() | Should -Be $marker
         }
         finally {
             Remove-Item -LiteralPath $ephemeral -Recurse -Force -ErrorAction SilentlyContinue

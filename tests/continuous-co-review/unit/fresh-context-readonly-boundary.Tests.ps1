@@ -14,103 +14,119 @@ Describe 'Proposal 197 T039 TG-011 fresh-context readonly boundary obeys impleme
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         $script:SchemaRoot = Join-Path $script:RepoRoot 'specs/197-continuous-co-review/contracts'
         $script:CreatedAt = [datetime] '2026-06-18T00:39:00Z'
-    }
+    
 
-    function Get-T039ExecutionCommand {
-        $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerExecution' -ErrorAction SilentlyContinue
-        $null = ($command | Should Not BeNullOrEmpty)
-        return $command
-    }
-
-    function New-T039Request {
-        return [pscustomobject][ordered]@{
-            schema_version   = '1.0'
-            run_id           = 'run-t039'
-            checkpoint_id    = 'checkpoint-t039'
-            created_at       = '2026-06-18T00:39:00Z'
-            provider_request = [pscustomobject][ordered]@{
-                requested_host    = 'fixture'
-                requested_model   = 'fixture-reviewer'
-                authorization_ref = 'local-fixture-only'
-                timeout_seconds   = 30
-                fallback_policy   = 'none'
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function Get-T039ExecutionCommand {
+                $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerExecution' -ErrorAction SilentlyContinue
+                $null = ($command | Should -Not -BeNullOrEmpty)
+                return $command
             }
-        }
-    }
 
-    function New-T039Candidate {
-        return [pscustomobject][ordered]@{
-            host              = 'fixture'
-            model             = 'fixture-reviewer'
-            adapter_id        = 'reviewer-host-adapter-fixture'
-            authorization_ref = 'local-fixture-only'
-            authorized        = $true
-            timeout_seconds   = 30
-        }
-    }
-
-    function New-T039FindingsResult {
-        return [pscustomobject][ordered]@{
-            schema_version = '1.0'
-            run_id         = 'run-t039'
-            status         = 'no_findings'
-            reviewer       = [pscustomobject][ordered]@{
-                host       = 'fixture'
-                model      = 'fixture-reviewer'
-                adapter_id = 'reviewer-host-adapter-fixture'
+        function New-T039Request {
+                return [pscustomobject][ordered]@{
+                    schema_version   = '1.0'
+                    run_id           = 'run-t039'
+                    checkpoint_id    = 'checkpoint-t039'
+                    created_at       = '2026-06-18T00:39:00Z'
+                    provider_request = [pscustomobject][ordered]@{
+                        requested_host    = 'fixture'
+                        requested_model   = 'fixture-reviewer'
+                        authorization_ref = 'local-fixture-only'
+                        timeout_seconds   = 30
+                        fallback_policy   = 'none'
+                    }
+                }
             }
-            findings       = @()
-            created_at     = '2026-06-18T00:39:00Z'
-        }
-    }
 
-    function New-T039Sandbox {
-        $sandboxRoot = Join-Path $TestDrive 'readonly-sandbox'
-        $sourceRoot = Join-Path $sandboxRoot 'src'
-        $stateRoot = Join-Path $sandboxRoot '.specrew'
-        New-Item -ItemType Directory -Path $sourceRoot -Force | Out-Null
-        New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
-        Set-Content -LiteralPath (Join-Path $sourceRoot 'sentinel.ps1') -Value '$value = "unchanged"' -Encoding UTF8
-        Set-Content -LiteralPath (Join-Path $stateRoot 'start-context.json') -Value '{"boundary":"before-implement"}' -Encoding UTF8
-        return $sandboxRoot
-    }
+        function New-T039Candidate {
+                return [pscustomobject][ordered]@{
+                    host              = 'fixture'
+                    model             = 'fixture-reviewer'
+                    adapter_id        = 'reviewer-host-adapter-fixture'
+                    authorization_ref = 'local-fixture-only'
+                    authorized        = $true
+                    timeout_seconds   = 30
+                }
+            }
 
-    function Get-T039FileHashMap {
-        param(
-            [Parameter(Mandatory)]
-            [string] $Root
-        )
+        function New-T039FindingsResult {
+                return [pscustomobject][ordered]@{
+                    schema_version = '1.0'
+                    run_id         = 'run-t039'
+                    status         = 'no_findings'
+                    reviewer       = [pscustomobject][ordered]@{
+                        host       = 'fixture'
+                        model      = 'fixture-reviewer'
+                        adapter_id = 'reviewer-host-adapter-fixture'
+                    }
+                    findings       = @()
+                    created_at     = '2026-06-18T00:39:00Z'
+                }
+            }
 
-        $hashes = @{}
-        Get-ChildItem -LiteralPath $Root -File -Recurse | ForEach-Object {
-            $relative = $_.FullName.Substring($Root.Length).TrimStart('\', '/')
-            $hashes[$relative] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
-        }
-        return $hashes
-    }
+        function New-T039Sandbox {
+                $sandboxRoot = Join-Path $TestDrive 'readonly-sandbox'
+                $sourceRoot = Join-Path $sandboxRoot 'src'
+                $stateRoot = Join-Path $sandboxRoot '.specrew'
+                New-Item -ItemType Directory -Path $sourceRoot -Force | Out-Null
+                New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $sourceRoot 'sentinel.ps1') -Value '$value = "unchanged"' -Encoding UTF8
+                Set-Content -LiteralPath (Join-Path $stateRoot 'start-context.json') -Value '{"boundary":"before-implement"}' -Encoding UTF8
+                return $sandboxRoot
+            }
 
-    function Invoke-T039Execution {
-        param(
-            [string] $SandboxRoot,
-            [scriptblock] $InvokeAdapter
-        )
+        function Get-T039FileHashMap {
+                param(
+                    [Parameter(Mandatory)]
+                    [string] $Root
+                )
 
-        $command = Get-T039ExecutionCommand
-        $workspace = New-ContinuousCoReviewRunWorkspace -RootPath (Join-Path $TestDrive 'workspace') -RunId 'run-t039'
-        $requestBundle = Write-ContinuousCoReviewRequestBundle -Workspace $workspace -Request (New-T039Request)
-        return & $command `
-            -Request (New-T039Request) `
-            -RequestBundle $requestBundle `
-            -RunRoot (Join-Path $TestDrive 'runs') `
-            -SchemaRoot $script:SchemaRoot `
-            -Candidates @(New-T039Candidate) `
-            -InvokeAdapter $InvokeAdapter `
-            -ReadOnlyRoot $SandboxRoot `
-            -CreatedAt $script:CreatedAt
-    }
+                $hashes = @{}
+                Get-ChildItem -LiteralPath $Root -File -Recurse | ForEach-Object {
+                    $relative = $_.FullName.Substring($Root.Length).TrimStart('\', '/')
+                    $hashes[$relative] = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash
+                }
+                return $hashes
+            }
+
+        function Invoke-T039Execution {
+                param(
+                    [string] $SandboxRoot,
+                    [scriptblock] $InvokeAdapter
+                )
+
+                $command = Get-T039ExecutionCommand
+                $workspace = New-ContinuousCoReviewRunWorkspace -RootPath (Join-Path $TestDrive 'workspace') -RunId 'run-t039'
+                $requestBundle = Write-ContinuousCoReviewRequestBundle -Workspace $workspace -Request (New-T039Request)
+                return & $command `
+                    -Request (New-T039Request) `
+                    -RequestBundle $requestBundle `
+                    -RunRoot (Join-Path $TestDrive 'runs') `
+                    -SchemaRoot $script:SchemaRoot `
+                    -Candidates @(New-T039Candidate) `
+                    -InvokeAdapter $InvokeAdapter `
+                    -ReadOnlyRoot $SandboxRoot `
+                    -CreatedAt $script:CreatedAt
+            }
+}
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
+
+    
 
     It 'declares the fresh-context execution command before readonly boundary checks' {
-        Get-T039ExecutionCommand | Should Not BeNullOrEmpty
+        Get-T039ExecutionCommand | Should -Not -BeNullOrEmpty
     }
 
     It 'passes an immutable request bundle to the reviewer adapter instead of mutable source state' {
@@ -129,9 +145,9 @@ Describe 'Proposal 197 T039 TG-011 fresh-context readonly boundary obeys impleme
 
         $result = Invoke-T039Execution -SandboxRoot $sandboxRoot -InvokeAdapter $adapter
 
-        $capture.Bundle.immutable | Should Be $true
-        (Test-Path -LiteralPath $capture.Bundle.request_path -PathType Leaf) | Should Be $true
-        $result.findings_result.status | Should Be 'no_findings'
+        $capture.Bundle.immutable | Should -Be $true
+        (Test-Path -LiteralPath $capture.Bundle.request_path -PathType Leaf) | Should -Be $true
+        $result.findings_result.status | Should -Be 'no_findings'
     }
 
     It 'does not edit source files or mutate Specrew state while running the readonly reviewer boundary' {
@@ -150,9 +166,9 @@ Describe 'Proposal 197 T039 TG-011 fresh-context readonly boundary obeys impleme
         Invoke-T039Execution -SandboxRoot $sandboxRoot -InvokeAdapter $adapter | Out-Null
         $after = Get-T039FileHashMap -Root $sandboxRoot
 
-        ($after.Keys | Sort-Object) -join ',' | Should Be (($before.Keys | Sort-Object) -join ',')
+        ($after.Keys | Sort-Object) -join ',' | Should -Be (($before.Keys | Sort-Object) -join ',')
         foreach ($key in $before.Keys) {
-            $after[$key] | Should Be $before[$key]
+            $after[$key] | Should -Be $before[$key]
         }
     }
 
@@ -180,7 +196,7 @@ Describe 'Proposal 197 T039 TG-011 fresh-context readonly boundary obeys impleme
             }
         } -CreatedAt $script:CreatedAt | Out-Null
 
-        ($gitCalls -join "`n") | Should Not Match '(?m)\b(add|commit|push)\b'
+        ($gitCalls -join "`n") | Should -Not -Match '(?m)\b(add|commit|push)\b'
     }
 
     It 'does not persist raw prompts, transcripts, full stdout, full stderr, environment, credentials, or tokens by default' {
@@ -218,8 +234,8 @@ Describe 'Proposal 197 T039 TG-011 fresh-context readonly boundary obeys impleme
                 ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }
         ) -join "`n"
 
-        $resultJson | Should Not Match $rawSecret
-        $persistedText | Should Not Match $rawSecret
-        $resultJson | Should Not Match '(?i)raw_prompt|raw_transcript|raw_stdout|raw_stderr|environment|credential|token'
+        $resultJson | Should -Not -Match $rawSecret
+        $persistedText | Should -Not -Match $rawSecret
+        $resultJson | Should -Not -Match '(?i)raw_prompt|raw_transcript|raw_stdout|raw_stderr|environment|credential|token'
     }
 }

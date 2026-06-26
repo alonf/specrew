@@ -40,6 +40,91 @@ function Test-ContinuousCoReviewPathExcluded {
     return $false
 }
 
+function Get-ContinuousCoReviewProviderConfigScalar {
+    # Read a single scalar value from .specrew/config.yml (quote-strip + inline-comment-tolerant grammar,
+    # mirroring Get-ContinuousCoReviewNavigatorTimeoutSeconds). Returns $null when the key is absent or the
+    # config is unreadable (fail-open to the caller's default). Used for the co-review exclusion override +
+    # the diff byte budget, so a project can tune both without code changes.
+    param(
+        [Parameter(Mandatory)] [string] $RepoRoot,
+        [Parameter(Mandatory)] [string] $Key
+    )
+    $configPath = Join-Path $RepoRoot '.specrew/config.yml'
+    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) { return $null }
+    try {
+        foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
+            if ($line -match ("^\s*" + [regex]::Escape($Key) + ":\s*[''""]?(?<value>[^''""#]*?)[''""]?\s*(?:#.*)?$")) {
+                return ([string]$Matches['value']).Trim()
+            }
+        }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Get-ContinuousCoReviewDefaultExcludedPathPatterns {
+    # The PRINCIPLED default exclusion for the auto-fired co-review: paths that SPECREW OR A HOST DEPLOYS
+    # into a governed project (scaffolding / tool config / governance tooling) rather than the project's own
+    # work. Without this the navigator reviewed the WHOLE deployed tree - on a real dogfood (EnglishIntake)
+    # 706 files / 5.1 MB, ~690 of it deployed scaffolding, which blew the reviewer host's input limit and
+    # yielded an unparseable verdict. Patterns are PROJECT-RELATIVE (matched against the subtree-relative
+    # path, so they are nesting-agnostic and behave identically for an own-repo or a nested governance root).
+    #
+    # CONFIG OVERRIDE (the safety valve, NOT polish - SEC/green-but-inert guard): the generic default is
+    # provably wrong for two real cases - `scripts/internal/continuous-co-review/**` is PRODUCT SOURCE in the
+    # Specrew repo itself (self-host co-review would go blind on exactly this code), and `.github/**` is
+    # commonly USER-OWNED CI elsewhere. So a project tunes the list via .specrew/config.yml:
+    #   co_review_excluded_paths_add:    "extra/**, more/**"      (added to the default)
+    #   co_review_excluded_paths_remove: "scripts/internal/continuous-co-review/**, .github/**"  (dropped)
+    # The `scripts/internal` pattern is NARROW (only the deployed co-review copy, the one EnglishIntake
+    # actually carries) not all of scripts/internal/**, so the self-host collision is shrunk to one dir a
+    # remove-override clears.
+    param([Parameter(Mandatory)] [string] $RepoRoot)
+
+    $defaults = @(
+        '.specify/**', '.squad/**', '.github/**', '.claude/**', '.agents/**', '.specrew/**',
+        '.cursor/**', '.copilot/**', '.vscode/**', '.antigravity/**', '.gemini/**',
+        'scripts/internal/continuous-co-review/**',
+        'CLAUDE.md', 'AGENTS.md', 'GEMINI.md', '.markdownlint.json'
+    )
+
+    $splitList = {
+        param($raw)
+        if ([string]::IsNullOrWhiteSpace([string]$raw)) { return @() }
+        @(([string]$raw) -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    }
+    $add = & $splitList (Get-ContinuousCoReviewProviderConfigScalar -RepoRoot $RepoRoot -Key 'co_review_excluded_paths_add')
+    $remove = & $splitList (Get-ContinuousCoReviewProviderConfigScalar -RepoRoot $RepoRoot -Key 'co_review_excluded_paths_remove')
+
+    $removeSet = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($r in @($remove)) { [void]$removeSet.Add(([string]$r).Replace('\', '/').Trim()) }
+
+    $merged = New-Object System.Collections.Generic.List[string]
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($p in (@($defaults) + @($add))) {
+        $norm = ([string]$p).Replace('\', '/').Trim()
+        if ([string]::IsNullOrWhiteSpace($norm)) { continue }
+        if ($removeSet.Contains($norm)) { continue }
+        if ($seen.Add($norm)) { [void]$merged.Add($norm) }
+    }
+    return @($merged.ToArray())
+}
+
+function Get-ContinuousCoReviewDiffByteBudget {
+    # The per-review diff_inline byte budget. The reviewer host caps its piped input (claude -p: a hard
+    # 10 MB stdin limit) and the composed prompt embeds the diff ~3x (raw + JSON-escaped in the request),
+    # so an unbounded diff blows the limit -> the reviewer exits without a verdict. This bounds the COMMON
+    # case under the host guard so reviews actually run; the adapter's prompt-size guard is the hard,
+    # host-accurate bound. Default 2 MB (-> ~6 MB prompt contribution, comfortably under 10 MB); override
+    # via .specrew/config.yml co_review_diff_byte_budget. <= 0 disables the cap.
+    param([Parameter(Mandatory)] [string] $RepoRoot, [int] $Default = 2000000)
+    $raw = Get-ContinuousCoReviewProviderConfigScalar -RepoRoot $RepoRoot -Key 'co_review_diff_byte_budget'
+    if ([string]::IsNullOrWhiteSpace([string]$raw)) { return $Default }
+    $parsed = 0
+    if ([int]::TryParse(([string]$raw).Trim(), [ref]$parsed)) { return $parsed }
+    return $Default
+}
+
 function Invoke-ContinuousCoReviewGit {
     param(
         [Parameter(Mandatory)]
@@ -219,7 +304,16 @@ function Get-ContinuousCoReviewCheckpointDiff {
         }
 
         $normalizedPath = ConvertTo-ContinuousCoReviewRelativePath -Path ([string] $path)
-        if (Test-ContinuousCoReviewPathExcluded -Path $normalizedPath -ExcludedPathPatterns $ExcludedPathPatterns) {
+        # Exclusion is tested against the PROJECT-RELATIVE path (the subtree prefix stripped) so patterns
+        # are nesting-agnostic - `.specrew/**` matches whether the governance root is the git root (empty
+        # prefix -> no-op strip) or a subdir (e.g. Tools/EnglishIntake/.specrew/...). changed_paths /
+        # excluded_paths keep the TOPLEVEL-relative path: the batched `git diff -- <paths>` below runs from
+        # the toplevel and needs repo-root-relative pathspecs (the 81b7070e subtree frame).
+        $projectRelativePath = $normalizedPath
+        if (-not [string]::IsNullOrWhiteSpace($subtreePrefix) -and $normalizedPath.StartsWith("$subtreePrefix/")) {
+            $projectRelativePath = $normalizedPath.Substring($subtreePrefix.Length + 1)
+        }
+        if (Test-ContinuousCoReviewPathExcluded -Path $projectRelativePath -ExcludedPathPatterns $ExcludedPathPatterns) {
             $excludedPaths.Add($normalizedPath)
         }
         else {
@@ -255,6 +349,31 @@ function Get-ContinuousCoReviewCheckpointDiff {
     else {
         ''
     }
+
+    # LARGE-DIFF GRACEFUL CAP (independent of the exclusion above): bound diff_inline so the composed
+    # reviewer prompt cannot blow the host's input limit and SILENTLY yield no verdict (the EnglishIntake
+    # dogfood: a 14.9 MB prompt made `claude -p` exit 1 with empty stdout - "piped stdin input exceeds
+    # 10MB"). When over budget, truncate on a BYTE boundary at a newline (0x0A) and append an explicit
+    # marker; the FULL changed-paths list stays in the change-set, so the reviewer sees every changed file
+    # + the shown diff + a stated reason -> a parseable verdict with HONEST partial coverage, never a silent
+    # unparseable. Byte-accurate truncation is load-bearing: the reviewed tree carries multi-byte UTF-8
+    # (Hebrew), so a char-index cut at a byte budget could overshoot; cutting at a 0x0A byte also never
+    # splits a multi-byte sequence. The adapter prompt-size guard is the hard host-accurate bound; this keeps
+    # the common case under it so reviews still run. <=0 budget disables.
+    $diffBudget = Get-ContinuousCoReviewDiffByteBudget -RepoRoot $resolvedRepoRoot
+    $diffBytes = [System.Text.Encoding]::UTF8.GetBytes($diffText)
+    $diffFullBytes = $diffBytes.Length
+    $diffTruncated = $false
+    if ($diffBudget -gt 0 -and $diffFullBytes -gt $diffBudget) {
+        $cutBytes = $diffBudget
+        for ($i = [Math]::Min($diffBudget, $diffFullBytes) - 1; $i -ge 0; $i--) {
+            if ($diffBytes[$i] -eq 10) { $cutBytes = $i; break }
+        }
+        $shown = [System.Text.Encoding]::UTF8.GetString($diffBytes, 0, $cutBytes)
+        $marker = "`n`n[specrew co-review: diff truncated at $cutBytes of $diffFullBytes bytes to fit the reviewer input budget ($diffBudget bytes). The FULL list of $($changedPaths.Count) changed file(s) is in change_set.changed_paths - review the shown diff plus that file list and record PARTIAL coverage in your verdict.]`n"
+        $diffText = $shown + $marker
+        $diffTruncated = $true
+    }
     $diffHash = "sha256:$(Get-ContinuousCoReviewSha256Hex -Text $diffText)"
 
     $status = if ($changedPaths.Count -eq 0) { 'skipped' } else { 'reviewable' }
@@ -267,6 +386,9 @@ function Get-ContinuousCoReviewCheckpointDiff {
         review_kind            = 'code-change-set'
         diff_inline            = $diffText
         diff_hash              = $diffHash
+        diff_truncated         = $diffTruncated
+        diff_full_bytes        = $diffFullBytes
+        diff_budget_bytes      = $diffBudget
         changed_paths          = @($changedPaths)
         reviewable_path_count  = $changedPaths.Count
         excluded_paths         = @($excludedPaths)

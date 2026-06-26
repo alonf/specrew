@@ -35,8 +35,8 @@ Describe 'Proposal 197 T063 reviewer-spawn timeout bounds a stalled large-stdin 
         Remove-Item env:CCR_T063_PIDFILE -ErrorAction SilentlyContinue
 
         # The configured timeout (3s) must fire long before the child's 60s sleep.
-        $sw.Elapsed.TotalSeconds | Should BeLessThan 40
-        $result.timed_out | Should Be $true
+        $sw.Elapsed.TotalSeconds | Should -BeLessThan 40
+        $result.timed_out | Should -Be $true
 
         # No orphan: the child process the spawn launched must be gone after the call.
         if (Test-Path -LiteralPath $pidFile) {
@@ -44,7 +44,7 @@ Describe 'Proposal 197 T063 reviewer-spawn timeout bounds a stalled large-stdin 
             if ($childPid -match '^\d+$') {
                 $alive = $null
                 try { $alive = Get-Process -Id ([int]$childPid) -ErrorAction Stop } catch { $alive = $null }
-                $alive | Should Be $null
+                $alive | Should -Be $null
             }
         }
     }
@@ -59,8 +59,8 @@ Describe 'Proposal 197 T063 reviewer-spawn timeout bounds a stalled large-stdin 
         Set-Content -LiteralPath $input -Value 'hello' -Encoding UTF8
 
         $result = Invoke-ContinuousCoReviewAdapterProcess -Executable $childScript -StandardInputPath $input -TimeoutSeconds 30
-        $result.timed_out | Should Be $false
-        $result.exit_code | Should Be 0
-        $result.stdout.Trim() | Should Be '{}'
+        $result.timed_out | Should -Be $false
+        $result.exit_code | Should -Be 0
+        $result.stdout.Trim() | Should -Be '{}'
     }
 }

@@ -430,6 +430,30 @@ function Write-ContinuousCoReviewNavigatorBlackboard {
     catch { return $null }
 }
 
+function Get-ContinuousCoReviewNavigatorFailureReason {
+    # Read the detached reviewer's SAFE failure sidecar (review-failure.json, written by the reviewer
+    # -Command on a non-findings-result) and format a one-line reason for the reap's advisory note, so a
+    # checkpoint that produced no verdict SAYS WHY (input-too-large / timeout / schema-mismatch / nonzero-exit
+    # / ...) instead of a bare "no parseable verdict". The sidecar carries only the contract-scrubbed
+    # category + message (no stdout/stderr/prompt content). Missing/unreadable -> $null (the caller falls back
+    # to the generic note). Read BEFORE Clear-...Entry retires the run dir.
+    param([Parameter(Mandatory)][string]$RepoRoot, [AllowNull()]$Registry)
+    try {
+        $runDir = if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'run_dir')) { [string]$Registry.run_dir } else { $null }
+        if ([string]::IsNullOrWhiteSpace($runDir)) { return $null }
+        $sidecar = Join-Path $runDir 'review-failure.json'
+        if (-not (Test-Path -LiteralPath $sidecar -PathType Leaf)) { return $null }
+        $rec = Get-Content -LiteralPath $sidecar -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+        $cat = if ($rec.PSObject.Properties.Name -contains 'category') { [string]$rec.category } else { '' }
+        $msg = if ($rec.PSObject.Properties.Name -contains 'message') { [string]$rec.message } else { '' }
+        if ([string]::IsNullOrWhiteSpace($cat) -and [string]::IsNullOrWhiteSpace($msg)) { return $null }
+        if ([string]::IsNullOrWhiteSpace($msg)) { return $cat }
+        if ([string]::IsNullOrWhiteSpace($cat)) { return $msg }
+        return ("{0} - {1}" -f $cat, $msg)
+    }
+    catch { return $null }
+}
+
 function Invoke-ContinuousCoReviewNavigatorReap {
     # T079 REAP (runs at the top of every navigator Stop, AND - via -CrossSession - as the SessionStart
     # sweep). Walks every pending registry entry and classifies it:
@@ -512,7 +536,13 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     }
                 }
                 elseif ($status -eq 'done' -and -not $verdict.ok) {
-                    $result.inject_notes.Add(("[co-review] checkpoint review completed (run {0}) but emitted no parseable verdict; treat as advisory." -f $runId)) | Out-Null
+                    # STATE THE REASON: a done run with no parseable verdict used to be a bare "no verdict"
+                    # note (the EnglishIntake unparseable case - the human never learned it was an oversize
+                    # input). Surface the SAFE failure category/message from the sidecar so the checkpoint
+                    # says WHY; advisory only, never gate evidence.
+                    $failReason = Get-ContinuousCoReviewNavigatorFailureReason -RepoRoot $RepoRoot -Registry $reg
+                    $reasonSuffix = if (-not [string]::IsNullOrWhiteSpace($failReason)) { (" Reason: {0}." -f $failReason) } else { '' }
+                    $result.inject_notes.Add(("[co-review] checkpoint review run {0} completed but produced no parseable verdict (advisory only, NOT gate evidence).{1}" -f $runId, $reasonSuffix)) | Out-Null
                 }
                 else {
                     $result.inject_notes.Add(("[co-review] checkpoint review run {0} ended '{1}' without a verdict (no blocking signal); a re-review fires on the next changed checkpoint." -f $runId, $status)) | Out-Null
@@ -860,7 +890,15 @@ function New-ContinuousCoReviewNavigatorReviewerPlan {
     # changed paths) or a build throw -> no real review (fail-open).
     $checkpointId = "nav-$RunId"
     try {
-        $changeSet = Get-ContinuousCoReviewCheckpointDiff -RepoRoot $RepoRoot -BaselineRef $resolvedBaseline -CheckpointId $checkpointId -RunId $RunId
+        # SCAFFOLDING EXCLUSION (the noise fix): the auto-fired review covers USER-AUTHORED code only, not
+        # the Specrew/host-DEPLOYED scaffolding the project carries (dotdirs, the shadowed co-review copy,
+        # CLAUDE.md/AGENTS.md). On the EnglishIntake dogfood that was 706 files / 5.1 MB -> ~34 files /
+        # 340 KB - the difference between a reviewer-host-input-overflow (unparseable) and a real review.
+        # The default is principled + project-configurable (Get-...DefaultExcludedPathPatterns); the
+        # provider's own param default stays @() so every OTHER caller (gate dispatch, signoff coverage,
+        # digest) is unchanged.
+        $excludedPatterns = @(Get-ContinuousCoReviewDefaultExcludedPathPatterns -RepoRoot $RepoRoot)
+        $changeSet = Get-ContinuousCoReviewCheckpointDiff -RepoRoot $RepoRoot -BaselineRef $resolvedBaseline -CheckpointId $checkpointId -ExcludedPathPatterns $excludedPatterns -RunId $RunId
         if ($null -eq $changeSet -or ([string]$changeSet.status) -ne 'reviewable') { return $null }
 
         $providerRequest = [pscustomobject][ordered]@{
@@ -969,9 +1007,19 @@ if (`$null -ne `$execution -and ([string]`$execution.kind) -eq 'findings-result'
     [Console]::Out.Write((`$execution.findings_result | ConvertTo-Json -Depth 100 -Compress))
 }
 else {
-    # Infrastructure-failure (timeout / unauthorized / missing adapter / unparseable host output): emit
-    # NOTHING so the reaper degrades to the advisory "ended without a verdict" note (NFR-001), never a
-    # malformed verdict and never a false PASS.
+    # STATE THE REASON (NFR-001): the host produced no findings-result (timeout / nonzero-exit /
+    # input-too-large / schema-mismatch / unauthorized). result.out stays EMPTY so the reaper never reads a
+    # malformed verdict or a false PASS - but persist the SAFE failure category + message to a sidecar in the
+    # run dir, so the reaper surfaces WHY instead of a bare "no parseable verdict". Best-effort (a write miss
+    # just falls back to the generic advisory). The category/message are already secret-scrubbed by the
+    # contract; no stdout/stderr/prompt content is written here.
+    try {
+        `$failCat = if (`$null -ne `$execution -and `$null -ne `$execution.infrastructure_failure) { [string]`$execution.infrastructure_failure.category } else { 'no-findings-result' }
+        `$failMsg = if (`$null -ne `$execution -and `$null -ne `$execution.infrastructure_failure) { [string]`$execution.infrastructure_failure.message } else { 'Reviewer produced no parseable findings-result.' }
+        `$failPath = Join-Path (Split-Path -Parent $requestLit) 'review-failure.json'
+        ([pscustomobject][ordered]@{ schema_version = '1.0'; status = 'infrastructure-failure'; category = `$failCat; message = `$failMsg } | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath `$failPath -Encoding UTF8
+    }
+    catch { `$null = `$_ }
 }
 "@
     }

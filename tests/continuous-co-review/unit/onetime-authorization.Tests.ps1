@@ -18,16 +18,16 @@ Describe 'Proposal 197 T062 one-time navigator authorization + blocking escalati
         # Three automatic runs in a row -> deterministically authorized, no state, no prompt.
         foreach ($run in 1..3) {
             $a = Test-ContinuousCoReviewReviewerAuthorization -Candidate $candidate
-            $a.authorized | Should Be $true
-            $a.authorization_ref | Should Be 'human-approved-once-2026-06-20'
+            $a.authorized | Should -Be $true
+            $a.authorization_ref | Should -Be 'human-approved-once-2026-06-20'
         }
     }
 
     It 'SEC-004: a candidate with NO recorded authorization is unauthorized (must be authorized before spawning)' {
         $candidate = [pscustomobject][ordered]@{ host = 'codex'; model = 'gpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; cost_class = 'paid'; model_source = 'human-entered'; authorization_ref = $null }
         $a = Test-ContinuousCoReviewReviewerAuthorization -Candidate $candidate
-        $a.authorized | Should Be $false
-        $a.category | Should Be 'unauthorized-provider'
+        $a.authorized | Should -Be $false
+        $a.category | Should -Be 'unauthorized-provider'
     }
 
     It 'FR-029/NFR-005: an unresolved blocking finding escalates after the two-round cap' {
@@ -46,7 +46,7 @@ Describe 'Proposal 197 T062 one-time navigator authorization + blocking escalati
         $prior = [pscustomobject][ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'changes_requested'; reviewer = $findingsResult.reviewer; findings = @($blockingFinding); created_at = '2026-06-20T00:00:00Z' }
 
         $verdict = Invoke-ContinuousCoReviewInlineGateEvaluator -RunId $runId -CheckpointId $checkpointId -FindingsResult $findingsResult -ReviewThread $thread -PriorFindingsResult $prior -MaxReviewRounds 2
-        $verdict.state | Should Be 'escalated'
-        $verdict.escalation_ref | Should Not BeNullOrEmpty
+        $verdict.state | Should -Be 'escalated'
+        $verdict.escalation_ref | Should -Not -BeNullOrEmpty
     }
 }

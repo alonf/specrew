@@ -19,8 +19,8 @@ Describe 'Proposal 197 reviewer contracts' {
     It 'loads every contract schema from the feature contract directory' {
         foreach ($contract in $script:Contracts) {
             $schema = Get-ReviewerContractSchema -ContractName $contract.Name -SchemaRoot $script:SchemaRoot
-            $schema.title | Should Be $contract.Name
-            ($schema.required.Count -gt 0) | Should Be $true
+            $schema.title | Should -Be $contract.Name
+            ($schema.required.Count -gt 0) | Should -Be $true
         }
     }
 
@@ -30,8 +30,8 @@ Describe 'Proposal 197 reviewer contracts' {
                 $fixturePath = Join-Path $script:FixtureRoot "$($contract.Prefix).$role.valid.json"
                 $result = Test-ReviewerContractJson -ContractName $contract.Name -SchemaRoot $script:SchemaRoot -Json (Get-Content -LiteralPath $fixturePath -Raw)
 
-                $result.Valid | Should Be $true
-                @($result.Errors).Count | Should Be 0
+                $result.Valid | Should -Be $true
+                @($result.Errors).Count | Should -Be 0
             }
         }
     }
@@ -43,8 +43,8 @@ Describe 'Proposal 197 reviewer contracts' {
 
         $result = Test-ReviewerContractObject -ContractName 'ReviewRequest' -SchemaRoot $script:SchemaRoot -InputObject $dto
 
-        $result.Valid | Should Be $false
-        ($result.Errors -join "`n") | Should Match 'Unknown schema major version'
+        $result.Valid | Should -Be $false
+        ($result.Errors -join "`n") | Should -Match 'Unknown schema major version'
     }
 
     It 'rejects missing required contract fields' {
@@ -54,8 +54,8 @@ Describe 'Proposal 197 reviewer contracts' {
 
         $result = Test-ReviewerContractObject -ContractName 'ReviewRequest' -SchemaRoot $script:SchemaRoot -InputObject $dto
 
-        $result.Valid | Should Be $false
-        ($result.Errors -join "`n") | Should Match '\$\.run_id is required'
+        $result.Valid | Should -Be $false
+        ($result.Errors -join "`n") | Should -Match '\$\.run_id is required'
     }
 
     It 'rejects missing forced findings fields' {
@@ -65,8 +65,8 @@ Describe 'Proposal 197 reviewer contracts' {
 
         $result = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto
 
-        $result.Valid | Should Be $false
-        ($result.Errors -join "`n") | Should Match 'design_reference is required'
+        $result.Valid | Should -Be $false
+        ($result.Errors -join "`n") | Should -Match 'design_reference is required'
     }
 
     It 'rejects array contract fields supplied as scalar objects' {
@@ -76,8 +76,8 @@ Describe 'Proposal 197 reviewer contracts' {
 
         $result = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $dto
 
-        $result.Valid | Should Be $false
-        ($result.Errors -join "`n") | Should Match '\$\.findings has the wrong JSON type'
+        $result.Valid | Should -Be $false
+        ($result.Errors -join "`n") | Should -Match '\$\.findings has the wrong JSON type'
     }
 
     It 'does not introduce dependency imports or protected-surface dot-sourcing' {
@@ -88,12 +88,12 @@ Describe 'Proposal 197 reviewer contracts' {
 
         $combined = (($scriptPaths | ForEach-Object { Get-Content -LiteralPath $_ -Raw }) -join "`n")
 
-        $combined | Should Not Match '(?im)^\s*#requires\s+-modules'
-        $combined | Should Not Match '(?im)^\s*Import-Module\b'
-        $combined | Should Not Match '(?im)\bInstall-Module\b'
-        $combined | Should Not Match 'hosts/'
-        $combined | Should Not Match 'validate-governance\.ps1'
-        $combined | Should Not Match 'provider-adapter\.ps1'
-        $combined | Should Not Match 'shared-governance\.ps1'
+        $combined | Should -Not -Match '(?im)^\s*#requires\s+-modules'
+        $combined | Should -Not -Match '(?im)^\s*Import-Module\b'
+        $combined | Should -Not -Match '(?im)\bInstall-Module\b'
+        $combined | Should -Not -Match 'hosts/'
+        $combined | Should -Not -Match 'validate-governance\.ps1'
+        $combined | Should -Not -Match 'provider-adapter\.ps1'
+        $combined | Should -Not -Match 'shared-governance\.ps1'
     }
 }

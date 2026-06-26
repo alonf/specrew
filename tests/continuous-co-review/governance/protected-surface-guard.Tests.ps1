@@ -67,7 +67,7 @@ Describe 'Proposal 197 protected surface guard' {
             Pop-Location
         }
 
-        $gitExitCode | Should Be 0
+        $gitExitCode | Should -Be 0
 
         $normalizedChangedPaths = @(
             $changedPaths |
@@ -88,6 +88,6 @@ Describe 'Proposal 197 protected surface guard' {
             }
         ) | Select-Object -Unique
 
-        ($violations -join "`n") | Should Be ''
+        ($violations -join "`n") | Should -Be ''
     }
 }

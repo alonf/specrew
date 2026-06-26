@@ -14,7 +14,25 @@ $script:validatorScripts = @(
 )
 
 Describe 'validate-governance reader-tolerance rule' {
-    function New-TestWorkspace {
+    
+
+    
+
+    BeforeAll {
+        # v5: top-level $script: vars run only at Discovery (kept there for -TestCases); re-establish the
+        # run-phase paths in BeforeAll so BeforeAll/It/AfterAll see them during Run.
+        $script:repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+        $script:fixtureRoot = Join-Path $script:repoRoot 'tests\unit\fixtures\015-public-readiness-pass'
+        $script:scratchRoot = Join-Path $script:repoRoot '.scratch\validate-governance-reader-tolerance'
+        if (Test-Path -LiteralPath $script:scratchRoot) {
+            Remove-Item -LiteralPath $script:scratchRoot -Recurse -Force
+        }
+
+        $null = New-Item -ItemType Directory -Path $script:scratchRoot -Force
+    
+
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function New-TestWorkspace {
         param(
             [Parameter(Mandatory = $true)][string]$FixtureName,
             [Parameter(Mandatory = $true)][string]$WorkspaceName,
@@ -55,7 +73,7 @@ function Get-WorktreeFeatureRef {
         return $destination
     }
 
-    function Invoke-ValidatorScript {
+function Invoke-ValidatorScript {
         param(
             [Parameter(Mandatory = $true)][string]$ScriptPath,
             [Parameter(Mandatory = $true)][string]$ProjectPath
@@ -78,14 +96,7 @@ function Get-WorktreeFeatureRef {
             Summary  = $summary
         }
     }
-
-    BeforeAll {
-        if (Test-Path -LiteralPath $script:scratchRoot) {
-            Remove-Item -LiteralPath $script:scratchRoot -Recurse -Force
-        }
-
-        $null = New-Item -ItemType Directory -Path $script:scratchRoot -Force
-    }
+}
 
     AfterAll {
         if (Test-Path -LiteralPath $script:scratchRoot) {
@@ -99,10 +110,10 @@ function Get-WorktreeFeatureRef {
         $workspace = New-TestWorkspace -FixtureName 'public-readiness-clean' -WorkspaceName ("compliant-{0}" -f $Name) -UseHashtable $true
         $result = Invoke-ValidatorScript -ScriptPath $ScriptPath -ProjectPath $workspace
 
-        $result.ExitCode | Should Be 0
-        $result.Text | Should Not Match 'category=reader-tolerance'
-        $result.Summary['schema'] | Should Be 'v1'
-        $result.Summary['warnings']['hard'] | Should Be 0
+        $result.ExitCode | Should -Be 0
+        $result.Text | Should -Not -Match 'category=reader-tolerance'
+        $result.Summary['schema'] | Should -Be 'v1'
+        $result.Summary['warnings']['hard'] | Should -Be 0
     }
 
     It 'fails readers that omit -AsHashtable and records hard warnings for <Name>' -TestCases $script:validatorScripts {
@@ -111,10 +122,10 @@ function Get-WorktreeFeatureRef {
         $workspace = New-TestWorkspace -FixtureName 'public-readiness-clean' -WorkspaceName ("violating-{0}" -f $Name) -UseHashtable $false
         $result = Invoke-ValidatorScript -ScriptPath $ScriptPath -ProjectPath $workspace
 
-        $result.ExitCode | Should Be 1
-        $result.Text | Should Match 'category=reader-tolerance'
-        $result.Text | Should Match 'Get-WorktreeFeatureRef'
-        $result.Summary['schema'] | Should Be 'v1'
-        $result.Summary['warnings']['hard'] | Should BeGreaterThan 0
+        $result.ExitCode | Should -Be 1
+        $result.Text | Should -Match 'category=reader-tolerance'
+        $result.Text | Should -Match 'Get-WorktreeFeatureRef'
+        $result.Summary['schema'] | Should -Be 'v1'
+        $result.Summary['warnings']['hard'] | Should -BeGreaterThan 0
     }
 }

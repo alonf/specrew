@@ -14,56 +14,66 @@ Describe 'Proposal 197 T035 TG-011 reviewer-host-adapter-copilot-prompt obeys im
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         $script:SchemaRoot = Join-Path $script:RepoRoot 'specs/197-continuous-co-review/contracts'
         $script:CreatedAt = [datetime] '2026-06-18T00:35:00Z'
-    }
+    
 
-    function Get-T035Command {
-        $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerHostAdapterCopilotPrompt' -ErrorAction SilentlyContinue
-        $null = ($command | Should Not BeNullOrEmpty)
-        return $command
-    }
-
-    function New-T035Request {
-        return [pscustomobject][ordered]@{
-            schema_version   = '1.0'
-            run_id           = 'run-t035'
-            checkpoint_id    = 'checkpoint-t035'
-            created_at       = '2026-06-18T00:35:00Z'
-            provider_request = [pscustomobject][ordered]@{
-                requested_host    = 'copilot'
-                requested_model   = 'copilot-review-fixture'
-                authorization_ref = 'authz-copilot-review-fixture'
-                timeout_seconds   = 30
-                fallback_policy   = 'none'
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function Get-T035Command {
+                $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerHostAdapterCopilotPrompt' -ErrorAction SilentlyContinue
+                $null = ($command | Should -Not -BeNullOrEmpty)
+                return $command
             }
-        }
-    }
 
-    function New-T035FindingsResultJson {
-        $result = [pscustomobject][ordered]@{
-            schema_version = '1.0'
-            run_id         = 'run-t035'
-            status         = 'no_findings'
-            reviewer       = [pscustomobject][ordered]@{
-                host       = 'copilot'
-                model      = 'copilot-review-fixture'
-                adapter_id = 'reviewer-host-adapter-copilot-prompt'
+        function New-T035Request {
+                return [pscustomobject][ordered]@{
+                    schema_version   = '1.0'
+                    run_id           = 'run-t035'
+                    checkpoint_id    = 'checkpoint-t035'
+                    created_at       = '2026-06-18T00:35:00Z'
+                    provider_request = [pscustomobject][ordered]@{
+                        requested_host    = 'copilot'
+                        requested_model   = 'copilot-review-fixture'
+                        authorization_ref = 'authz-copilot-review-fixture'
+                        timeout_seconds   = 30
+                        fallback_policy   = 'none'
+                    }
+                }
             }
-            findings       = @()
-            created_at     = '2026-06-18T00:35:00Z'
-        }
-        return ($result | ConvertTo-Json -Depth 100)
-    }
 
-    function Invoke-T035Adapter {
-        param([scriptblock] $InvokeProcess)
-        $command = Get-T035Command
-        $requestPath = Join-Path $TestDrive 'request-bundle.json'
-        Set-Content -LiteralPath $requestPath -Value '{}' -Encoding UTF8
-        return & $command -Request (New-T035Request) -RequestBundlePath $requestPath -SchemaRoot $script:SchemaRoot -InvokeProcess $InvokeProcess -CreatedAt $script:CreatedAt
-    }
+        function New-T035FindingsResultJson {
+                $result = [pscustomobject][ordered]@{
+                    schema_version = '1.0'
+                    run_id         = 'run-t035'
+                    status         = 'no_findings'
+                    reviewer       = [pscustomobject][ordered]@{
+                        host       = 'copilot'
+                        model      = 'copilot-review-fixture'
+                        adapter_id = 'reviewer-host-adapter-copilot-prompt'
+                    }
+                    findings       = @()
+                    created_at     = '2026-06-18T00:35:00Z'
+                }
+                return ($result | ConvertTo-Json -Depth 100)
+            }
+
+        function Invoke-T035Adapter {
+                param([scriptblock] $InvokeProcess)
+                $command = Get-T035Command
+                $requestPath = Join-Path $TestDrive 'request-bundle.json'
+                Set-Content -LiteralPath $requestPath -Value '{}' -Encoding UTF8
+                return & $command -Request (New-T035Request) -RequestBundlePath $requestPath -SchemaRoot $script:SchemaRoot -InvokeProcess $InvokeProcess -CreatedAt $script:CreatedAt
+            }
+}
+
+    
+
+    
+
+    
+
+    
 
     It 'declares the Copilot prompt adapter command before real host implementation' {
-        Get-T035Command | Should Not BeNullOrEmpty
+        Get-T035Command | Should -Not -BeNullOrEmpty
     }
 
     It 'invokes copilot -p through argv/equivalent tokens and normalizes valid FindingsResult JSON' {
@@ -79,13 +89,13 @@ Describe 'Proposal 197 T035 TG-011 reviewer-host-adapter-copilot-prompt obeys im
         $validation = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $result.findings_result
         $invocationJson = $result.provider_invocation | ConvertTo-Json -Depth 100
 
-        $captured.Executable | Should Be 'copilot'
-        ($captured.ArgumentList -contains '-p') | Should Be $true
-        $result.provider_invocation.adapter_id | Should Be 'reviewer-host-adapter-copilot-prompt'
-        @($result.provider_invocation.argv_summary).Count | Should BeGreaterThan 1
-        $invocationJson | Should Not Match '(?i)shell_command|command_line|joined_command|raw_stdout|raw_stderr|transcript'
-        $result.kind | Should Be 'findings-result'
-        $validation.Valid | Should Be $true
+        $captured.Executable | Should -Be 'copilot'
+        ($captured.ArgumentList -contains '-p') | Should -Be $true
+        $result.provider_invocation.adapter_id | Should -Be 'reviewer-host-adapter-copilot-prompt'
+        @($result.provider_invocation.argv_summary).Count | Should -BeGreaterThan 1
+        $invocationJson | Should -Not -Match '(?i)shell_command|command_line|joined_command|raw_stdout|raw_stderr|transcript'
+        $result.kind | Should -Be 'findings-result'
+        $validation.Valid | Should -Be $true
     }
 
     It 'returns deterministic InfrastructureFailure when copilot -p cannot produce valid FindingsResult' {
@@ -99,10 +109,10 @@ Describe 'Proposal 197 T035 TG-011 reviewer-host-adapter-copilot-prompt obeys im
         $validation = Test-ReviewerContractObject -ContractName 'InfrastructureFailure' -SchemaRoot $script:SchemaRoot -InputObject $first.infrastructure_failure
         $failureJson = $first.infrastructure_failure | ConvertTo-Json -Depth 100
 
-        $first.kind | Should Be 'infrastructure-failure'
-        $first.infrastructure_failure.category | Should Be 'empty-stdout'
-        $first.infrastructure_failure.failure_id | Should Be $second.infrastructure_failure.failure_id
-        $validation.Valid | Should Be $true
-        $failureJson | Should Not Match '(?i)secret|token|raw transcript|raw_stdout|raw_stderr'
+        $first.kind | Should -Be 'infrastructure-failure'
+        $first.infrastructure_failure.category | Should -Be 'empty-stdout'
+        $first.infrastructure_failure.failure_id | Should -Be $second.infrastructure_failure.failure_id
+        $validation.Valid | Should -Be $true
+        $failureJson | Should -Not -Match '(?i)secret|token|raw transcript|raw_stdout|raw_stderr'
     }
 }

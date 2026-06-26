@@ -6,22 +6,20 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 
 Describe 'validate-governance public-readiness warnings' {
-    $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
-    $fixtureRoot = Join-Path $repoRoot 'tests\unit\fixtures\015-public-readiness-pass'
-    $scratchRoot = Join-Path $repoRoot '.scratch\validate-governance-public-readiness'
-    $validatorScripts = @(
-        @{ Name = 'extension'; ScriptPath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1' },
-        @{ Name = 'specify'; ScriptPath = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\validate-governance.ps1' }
-    )
-
-    function New-TestWorkspace {
+        BeforeAll {
+        # v5: the Describe-scope path vars run only at Discovery (kept there for -TestCases); set $script:
+        # versions in BeforeAll so the run-phase helpers below see them.
+        $script:repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+        $script:fixtureRoot = Join-Path $script:repoRoot 'tests\unit\fixtures\015-public-readiness-pass'
+        $script:scratchRoot = Join-Path $script:repoRoot '.scratch\validate-governance-public-readiness'
+        function New-TestWorkspace {
         param(
             [Parameter(Mandatory = $true)][string]$FixtureName,
             [Parameter(Mandatory = $true)][string]$WorkspaceName
         )
 
-        $source = Join-Path $fixtureRoot $FixtureName
-        $destination = Join-Path $scratchRoot $WorkspaceName
+        $source = Join-Path $script:fixtureRoot $FixtureName
+        $destination = Join-Path $script:scratchRoot $WorkspaceName
         if (Test-Path -LiteralPath $destination) {
             Remove-Item -LiteralPath $destination -Recurse -Force
         }
@@ -34,7 +32,7 @@ Describe 'validate-governance public-readiness warnings' {
         return $destination
     }
 
-    function Invoke-ValidatorScript {
+function Invoke-ValidatorScript {
         param(
             [Parameter(Mandatory = $true)][string]$ScriptPath,
             [Parameter(Mandatory = $true)][string]$ProjectPath
@@ -48,6 +46,19 @@ Describe 'validate-governance public-readiness warnings' {
             Text     = ($output -join "`n")
         }
     }
+        }
+
+    $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
+    $fixtureRoot = Join-Path $repoRoot 'tests\unit\fixtures\015-public-readiness-pass'
+    $scratchRoot = Join-Path $repoRoot '.scratch\validate-governance-public-readiness'
+    $validatorScripts = @(
+        @{ Name = 'extension'; ScriptPath = Join-Path $repoRoot 'extensions\specrew-speckit\scripts\validate-governance.ps1' },
+        @{ Name = 'specify'; ScriptPath = Join-Path $repoRoot '.specify\extensions\specrew-speckit\scripts\validate-governance.ps1' }
+    )
+
+    
+
+    
 
     It 'keeps clean fixtures warning-free for <Name>' -TestCases $validatorScripts {
         param($Name, $ScriptPath)
@@ -55,9 +66,9 @@ Describe 'validate-governance public-readiness warnings' {
         $workspace = New-TestWorkspace -FixtureName 'public-readiness-clean' -WorkspaceName ("clean-{0}" -f $Name)
         $result = Invoke-ValidatorScript -ScriptPath $ScriptPath -ProjectPath $workspace
 
-        $result.ExitCode | Should Be 0
-        $result.Text | Should Not Match 'WARN \[public-readiness\]'
-        $result.Text | Should Match 'PASS '
+        $result.ExitCode | Should -Be 0
+        $result.Text | Should -Not -Match 'WARN \[public-readiness\]'
+        $result.Text | Should -Match 'PASS '
     }
 
     It 'emits additive soft warnings for drifted fixtures in <Name>' -TestCases $validatorScripts {
@@ -67,14 +78,14 @@ Describe 'validate-governance public-readiness warnings' {
         $result = Invoke-ValidatorScript -ScriptPath $ScriptPath -ProjectPath $workspace
         $warningLines = @($result.Output | Where-Object { [string]$_ -match 'WARN \[public-readiness\]' })
 
-        $result.ExitCode | Should Be 0
-        $warningLines.Count | Should Be 5
-        $result.Text | Should Match 'WARN \[public-readiness\] missing-artifact: LICENSE'
-        $result.Text | Should Match 'WARN \[public-readiness\] missing-artifact: NOTICE\.md'
-        $result.Text | Should Match 'WARN \[public-readiness\] missing-artifact: CHANGELOG\.md'
-        $result.Text | Should Match 'WARN \[public-readiness\] missing-artifact: docs/versioning\.md'
-        $result.Text | Should Match 'WARN \[public-readiness\] stale-version-in-readme: README\.md does not contain declared version 0\.14\.0'
-        $result.Text | Should Not Match 'FAIL validate-governance'
+        $result.ExitCode | Should -Be 0
+        $warningLines.Count | Should -Be 5
+        $result.Text | Should -Match 'WARN \[public-readiness\] missing-artifact: LICENSE'
+        $result.Text | Should -Match 'WARN \[public-readiness\] missing-artifact: NOTICE\.md'
+        $result.Text | Should -Match 'WARN \[public-readiness\] missing-artifact: CHANGELOG\.md'
+        $result.Text | Should -Match 'WARN \[public-readiness\] missing-artifact: docs/versioning\.md'
+        $result.Text | Should -Match 'WARN \[public-readiness\] stale-version-in-readme: README\.md does not contain declared version 0\.14\.0'
+        $result.Text | Should -Not -Match 'FAIL validate-governance'
     }
 
     It 'preserves existing hard-fail exit behavior for <Name>' -TestCases $validatorScripts {
@@ -85,8 +96,8 @@ Describe 'validate-governance public-readiness warnings' {
 
         $result = Invoke-ValidatorScript -ScriptPath $ScriptPath -ProjectPath $workspace
 
-        $result.ExitCode | Should Be 1
-        $result.Text | Should Match 'Missing required artifact: plan\.md'
-        $result.Text | Should Not Match 'WARN \[public-readiness\]'
+        $result.ExitCode | Should -Be 1
+        $result.Text | Should -Match 'Missing required artifact: plan\.md'
+        $result.Text | Should -Not -Match 'WARN \[public-readiness\]'
     }
 }

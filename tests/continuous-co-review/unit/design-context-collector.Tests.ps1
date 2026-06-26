@@ -10,15 +10,16 @@ Describe 'Proposal 197 T013 TG-011 design context collector obeys implementation
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         Import-Module (Join-Path $script:RepoRoot 'Specrew.psd1') -Force
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
-    }
+    
 
-    function Get-T013DesignContextCommand {
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function Get-T013DesignContextCommand {
         $command = Get-Command -Name 'Get-ContinuousCoReviewDesignContext' -ErrorAction SilentlyContinue
-        $null = ($command | Should Not BeNullOrEmpty)
+        $null = ($command | Should -Not -BeNullOrEmpty)
         return $command
     }
 
-    function New-T013FeatureWorkspace {
+function New-T013FeatureWorkspace {
         $repoPath = Join-Path $TestDrive 'design-context-repo'
         $featureRoot = Join-Path $repoPath 'specs/197-continuous-co-review'
         New-Item -ItemType Directory -Path (Join-Path $featureRoot 'workshop') -Force | Out-Null
@@ -52,9 +53,14 @@ selections:
             AbsoluteFeatureRoot = $featureRoot
         }
     }
+}
+
+    
+
+    
 
     It 'declares the T013 design context collector command before bounded context is consumed' {
-        Get-T013DesignContextCommand | Should Not BeNullOrEmpty
+        Get-T013DesignContextCommand | Should -Not -BeNullOrEmpty
     }
 
     It 'includes spec, workshop, design-analysis, and quality-rule references required by FR-011' {
@@ -63,13 +69,13 @@ selections:
         $command = Get-T013DesignContextCommand
         $context = & $command -RepoRoot $workspace.RepoRoot -FeatureRoot $workspace.FeatureRoot -CheckpointId 'checkpoint-t013-includes'
 
-        ($context.design_context_refs -contains 'specs/197-continuous-co-review/spec.md') | Should Be $true
-        ($context.design_context_refs -contains 'specs/197-continuous-co-review/workshop/product-domain.md') | Should Be $true
-        ($context.design_context_refs -contains 'specs/197-continuous-co-review/iterations/001/design-analysis.md') | Should Be $true
-        ($context.design_context_refs -contains 'specs/197-continuous-co-review/implementation-rules.yml') | Should Be $true
-        ($context.quality_rule_refs -contains 'code-rule.secure-coding-defaults') | Should Be $true
-        ($context.quality_rule_refs -contains 'code-rule.simple-trustworthy-tests') | Should Be $true
-        ($context.quality_rule_refs -contains 'code-rule.testing-posture') | Should Be $true
+        ($context.design_context_refs -contains 'specs/197-continuous-co-review/spec.md') | Should -Be $true
+        ($context.design_context_refs -contains 'specs/197-continuous-co-review/workshop/product-domain.md') | Should -Be $true
+        ($context.design_context_refs -contains 'specs/197-continuous-co-review/iterations/001/design-analysis.md') | Should -Be $true
+        ($context.design_context_refs -contains 'specs/197-continuous-co-review/implementation-rules.yml') | Should -Be $true
+        ($context.quality_rule_refs -contains 'code-rule.secure-coding-defaults') | Should -Be $true
+        ($context.quality_rule_refs -contains 'code-rule.simple-trustworthy-tests') | Should -Be $true
+        ($context.quality_rule_refs -contains 'code-rule.testing-posture') | Should -Be $true
     }
 
     It 'excludes secrets, raw prompts, raw transcripts, token stores, temp files, and unrelated ambient state from context refs' {
@@ -82,14 +88,14 @@ selections:
         $allRefs = (@($context.design_context_refs) + @($context.excluded_refs)) -join "`n"
         $contextJson = $context | ConvertTo-Json -Depth 100
 
-        $allRefs | Should Not Match '(?i)\.env'
-        $allRefs | Should Not Match '(?i)raw-prompt'
-        $allRefs | Should Not Match '(?i)transcript'
-        $allRefs | Should Not Match '(?i)\.local/tokens'
-        $allRefs | Should Not Match '(?i)\.scratch/tmp/unrelated'
-        $allRefs | Should Not Match '(?i)ambient-machine-state'
-        $contextJson | Should Not Match 'TOP_SECRET_VALUE'
-        $contextJson | Should Not Match 'ENVIRONMENT_SECRET_VALUE'
+        $allRefs | Should -Not -Match '(?i)\.env'
+        $allRefs | Should -Not -Match '(?i)raw-prompt'
+        $allRefs | Should -Not -Match '(?i)transcript'
+        $allRefs | Should -Not -Match '(?i)\.local/tokens'
+        $allRefs | Should -Not -Match '(?i)\.scratch/tmp/unrelated'
+        $allRefs | Should -Not -Match '(?i)ambient-machine-state'
+        $contextJson | Should -Not -Match 'TOP_SECRET_VALUE'
+        $contextJson | Should -Not -Match 'ENVIRONMENT_SECRET_VALUE'
     }
 
     It 'records the redaction boundary as structured evidence without persisting ambient machine state' {
@@ -100,11 +106,11 @@ selections:
         $propertyNames = @($context.PSObject.Properties.Name)
         $contextJson = $context | ConvertTo-Json -Depth 100
 
-        ($propertyNames -contains 'redaction_policy') | Should Be $true
-        $context.redaction_policy.omits_raw_prompts | Should Be $true
-        $context.redaction_policy.omits_raw_transcripts | Should Be $true
-        $context.redaction_policy.omits_environment_variables | Should Be $true
-        $context.redaction_policy.omits_token_stores | Should Be $true
-        $contextJson | Should Not Match '(?i)computername|hostname|userprofile|ambient-host'
+        ($propertyNames -contains 'redaction_policy') | Should -Be $true
+        $context.redaction_policy.omits_raw_prompts | Should -Be $true
+        $context.redaction_policy.omits_raw_transcripts | Should -Be $true
+        $context.redaction_policy.omits_environment_variables | Should -Be $true
+        $context.redaction_policy.omits_token_stores | Should -Be $true
+        $contextJson | Should -Not -Match '(?i)computername|hostname|userprofile|ambient-host'
     }
 }

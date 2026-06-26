@@ -14,59 +14,69 @@ Describe 'Proposal 197 T033 TG-011 reviewer-host-adapter-claude-prompt obeys imp
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         $script:SchemaRoot = Join-Path $script:RepoRoot 'specs/197-continuous-co-review/contracts'
         $script:CreatedAt = [datetime] '2026-06-18T00:33:00Z'
-    }
+    
 
-    function Get-T033Command {
-        $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerHostAdapterClaudePrompt' -ErrorAction SilentlyContinue
-        $null = ($command | Should Not BeNullOrEmpty)
-        return $command
-    }
-
-    function New-T033Request {
-        return [pscustomobject][ordered]@{
-            schema_version    = '1.0'
-            run_id            = 'run-t033'
-            checkpoint_id     = 'checkpoint-t033'
-            created_at        = '2026-06-18T00:33:00Z'
-            provider_request  = [pscustomobject][ordered]@{
-                requested_host    = 'claude'
-                requested_model   = 'claude-review-fixture'
-                authorization_ref = 'authz-claude-review-fixture'
-                timeout_seconds   = 30
-                fallback_policy   = 'none'
+        # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
+        function Get-T033Command {
+                $command = Get-Command -Name 'Invoke-ContinuousCoReviewReviewerHostAdapterClaudePrompt' -ErrorAction SilentlyContinue
+                $null = ($command | Should -Not -BeNullOrEmpty)
+                return $command
             }
-        }
-    }
 
-    function New-T033FindingsResultJson {
-        $result = [pscustomobject][ordered]@{
-            schema_version = '1.0'
-            run_id         = 'run-t033'
-            status         = 'no_findings'
-            reviewer       = [pscustomobject][ordered]@{
-                host       = 'claude'
-                model      = 'claude-review-fixture'
-                adapter_id = 'reviewer-host-adapter-claude-prompt'
+        function New-T033Request {
+                return [pscustomobject][ordered]@{
+                    schema_version    = '1.0'
+                    run_id            = 'run-t033'
+                    checkpoint_id     = 'checkpoint-t033'
+                    created_at        = '2026-06-18T00:33:00Z'
+                    provider_request  = [pscustomobject][ordered]@{
+                        requested_host    = 'claude'
+                        requested_model   = 'claude-review-fixture'
+                        authorization_ref = 'authz-claude-review-fixture'
+                        timeout_seconds   = 30
+                        fallback_policy   = 'none'
+                    }
+                }
             }
-            findings       = @()
-            created_at     = '2026-06-18T00:33:00Z'
-        }
-        return ($result | ConvertTo-Json -Depth 100)
-    }
 
-    function Invoke-T033Adapter {
-        param(
-            [scriptblock] $InvokeProcess
-        )
+        function New-T033FindingsResultJson {
+                $result = [pscustomobject][ordered]@{
+                    schema_version = '1.0'
+                    run_id         = 'run-t033'
+                    status         = 'no_findings'
+                    reviewer       = [pscustomobject][ordered]@{
+                        host       = 'claude'
+                        model      = 'claude-review-fixture'
+                        adapter_id = 'reviewer-host-adapter-claude-prompt'
+                    }
+                    findings       = @()
+                    created_at     = '2026-06-18T00:33:00Z'
+                }
+                return ($result | ConvertTo-Json -Depth 100)
+            }
 
-        $command = Get-T033Command
-        $requestPath = Join-Path $TestDrive 'request-bundle.json'
-        Set-Content -LiteralPath $requestPath -Value '{}' -Encoding UTF8
-        return & $command -Request (New-T033Request) -RequestBundlePath $requestPath -SchemaRoot $script:SchemaRoot -InvokeProcess $InvokeProcess -CreatedAt $script:CreatedAt
-    }
+        function Invoke-T033Adapter {
+                param(
+                    [scriptblock] $InvokeProcess
+                )
+
+                $command = Get-T033Command
+                $requestPath = Join-Path $TestDrive 'request-bundle.json'
+                Set-Content -LiteralPath $requestPath -Value '{}' -Encoding UTF8
+                return & $command -Request (New-T033Request) -RequestBundlePath $requestPath -SchemaRoot $script:SchemaRoot -InvokeProcess $InvokeProcess -CreatedAt $script:CreatedAt
+            }
+}
+
+    
+
+    
+
+    
+
+    
 
     It 'declares the Claude prompt adapter command before real host implementation' {
-        Get-T033Command | Should Not BeNullOrEmpty
+        Get-T033Command | Should -Not -BeNullOrEmpty
     }
 
     It 'invokes claude -p through argv/equivalent tokens and normalizes valid FindingsResult JSON' {
@@ -85,13 +95,13 @@ Describe 'Proposal 197 T033 TG-011 reviewer-host-adapter-claude-prompt obeys imp
         $validation = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $result.findings_result
         $invocationJson = $result.provider_invocation | ConvertTo-Json -Depth 100
 
-        $captured.Executable | Should Be 'claude'
-        ($captured.ArgumentList -contains '-p') | Should Be $true
-        $result.provider_invocation.adapter_id | Should Be 'reviewer-host-adapter-claude-prompt'
-        @($result.provider_invocation.argv_summary).Count | Should BeGreaterThan 1
-        $invocationJson | Should Not Match '(?i)shell_command|command_line|joined_command|raw_stdout|raw_stderr|transcript'
-        $result.kind | Should Be 'findings-result'
-        $validation.Valid | Should Be $true
+        $captured.Executable | Should -Be 'claude'
+        ($captured.ArgumentList -contains '-p') | Should -Be $true
+        $result.provider_invocation.adapter_id | Should -Be 'reviewer-host-adapter-claude-prompt'
+        @($result.provider_invocation.argv_summary).Count | Should -BeGreaterThan 1
+        $invocationJson | Should -Not -Match '(?i)shell_command|command_line|joined_command|raw_stdout|raw_stderr|transcript'
+        $result.kind | Should -Be 'findings-result'
+        $validation.Valid | Should -Be $true
     }
 
     It 'returns deterministic InfrastructureFailure when claude -p cannot produce valid FindingsResult' {
@@ -105,10 +115,10 @@ Describe 'Proposal 197 T033 TG-011 reviewer-host-adapter-claude-prompt obeys imp
         $validation = Test-ReviewerContractObject -ContractName 'InfrastructureFailure' -SchemaRoot $script:SchemaRoot -InputObject $first.infrastructure_failure
         $failureJson = $first.infrastructure_failure | ConvertTo-Json -Depth 100
 
-        $first.kind | Should Be 'infrastructure-failure'
-        $first.infrastructure_failure.category | Should Be 'invalid-json'
-        $first.infrastructure_failure.failure_id | Should Be $second.infrastructure_failure.failure_id
-        $validation.Valid | Should Be $true
-        $failureJson | Should Not Match '(?i)secret|token|raw transcript|raw_stdout|raw_stderr'
+        $first.kind | Should -Be 'infrastructure-failure'
+        $first.infrastructure_failure.category | Should -Be 'invalid-json'
+        $first.infrastructure_failure.failure_id | Should -Be $second.infrastructure_failure.failure_id
+        $validation.Valid | Should -Be $true
+        $failureJson | Should -Not -Match '(?i)secret|token|raw transcript|raw_stdout|raw_stderr'
     }
 }
