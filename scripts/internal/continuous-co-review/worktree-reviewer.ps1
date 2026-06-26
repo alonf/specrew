@@ -137,8 +137,20 @@ function New-ContinuousCoReviewStrippedWorktree {
     & git -C $gitRoot archive --format=tar --output $tarPath $treeId 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { Remove-Item -LiteralPath $worktree -Recurse -Force -EA SilentlyContinue; throw "git archive failed for tree $treeId" }
     $tarExe = if ($IsWindows) { $s = Join-Path $env:SystemRoot 'System32\tar.exe'; if (Test-Path $s) { $s } else { 'tar' } } else { 'tar' }
-    & $tarExe -xf $tarPath -C $worktree 2>&1 | Out-Null
+    $tarOut = (& $tarExe -xf $tarPath -C $worktree 2>&1)
+    $tarExit = $LASTEXITCODE
     Remove-Item -LiteralPath $tarPath -Force -EA SilentlyContinue
+    # The extract MUST be exit-checked + the worktree non-empty: a failed/partial extract (e.g. the iter-007 MSYS-tar
+    # class) would otherwise leave a HOLLOW worktree the agentic reviewer 'browses', and the run would report
+    # done/no_findings INDISTINGUISHABLE from a real clean pass. Fail loudly instead of green-lighting un-reviewed code.
+    if ($tarExit -ne 0) {
+        Remove-Item -LiteralPath $worktree -Recurse -Force -EA SilentlyContinue
+        throw "tar extract failed (exit $tarExit) materializing tree ${treeId}: $($tarOut -join ' ')"
+    }
+    if (-not (@(Get-ChildItem -LiteralPath $worktree -Force -ErrorAction SilentlyContinue)).Count) {
+        Remove-Item -LiteralPath $worktree -Recurse -Force -EA SilentlyContinue
+        throw "materialized worktree is empty after extracting tree ${treeId} (refusing to review a hollow worktree)"
+    }
 
     # Strip the methodology machinery (the single-source set, computed ONCE from the real project: core dirs +
     # marker-detected host-mirror dirs). Reused below for the diff-exclude.
@@ -240,13 +252,22 @@ function Get-ContinuousCoReviewAgentCommand {
     # the worktree is ephemeral so a write-capable sandbox is safe). LOOKED UP from the host CATALOG
     # (Get-ContinuousCoReviewHostAgenticCommand, data in reviewer-host-catalog.ps1) — this core is host-NEUTRAL, so
     # adding a reviewer host is a catalog-ROW edit, never a change here. The reviewer-host SELECTION (which host,
-    # authorized, code-writer-independent) is the policy's job. Falls back to a safe claude default ONLY if the
-    # catalog is unreachable (e.g. not yet dot-sourced in this scope).
+    # authorized, code-writer-independent) is the policy's job.
     param([Parameter(Mandatory)][string]$HostName)
+    # The DETACHED pipeline dot-sources _load.ps1 only INSIDE Resolve-...ReviewerHost's function scope, so the
+    # catalog is gone by the time this runs — without this lazy-load, a SELECTED codex reviewer would silently fall
+    # through to the claude default below (wrong binary + flags, and status.json would mislabel it as codex).
+    # Dot-source _load into THIS scope and use the catalog immediately (the host-NEUTRALity is intact: data is in
+    # the catalog, this just reaches it).
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewHostAgenticCommand' -ErrorAction SilentlyContinue)) {
+        $loadPath = Join-Path $PSScriptRoot '_load.ps1'
+        if (Test-Path -LiteralPath $loadPath -PathType Leaf) { try { . $loadPath } catch { $null = $_ } }
+    }
     if (Get-Command -Name 'Get-ContinuousCoReviewHostAgenticCommand' -ErrorAction SilentlyContinue) {
         $cmd = Get-ContinuousCoReviewHostAgenticCommand -HostName $HostName
         if ($null -ne $cmd -and -not [string]::IsNullOrWhiteSpace([string]$cmd.file)) { return $cmd }
     }
+    # Last-resort fallback ONLY if the catalog is genuinely unreachable.
     return [pscustomobject]@{ file = 'claude'; pre_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true }
 }
 

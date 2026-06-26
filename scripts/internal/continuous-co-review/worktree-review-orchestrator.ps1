@@ -134,6 +134,35 @@ function Test-ContinuousCoReviewPathLineageOverlap {
     return $false
 }
 
+function Get-ContinuousCoReviewFindingsJson {
+    # Robustly extract the FindingsResult JSON from a free-form agentic reviewer's stdout. The reviewer is told to
+    # output ONLY the JSON, but a non-deterministic agent may narrate AROUND it with prose containing braces
+    # (`if (x) { ... }`), so a naive first-brace..last-brace span can capture non-JSON and false-fail the run. Try,
+    # in order: a ```json fence, the whole span, then balanced {...} objects scanned from the END (the prompt asks
+    # for the JSON last). Accept the first candidate that PARSES and carries a `findings` property (the contract
+    # marker). Returns the JSON string, or $null if no valid FindingsResult is present.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Raw)
+    if ([string]::IsNullOrWhiteSpace($Raw)) { return $null }
+    $candidates = New-Object System.Collections.Generic.List[string]
+    $fence = [regex]::Match($Raw, '(?s)```(?:json)?\s*(\{.*\})\s*```')
+    if ($fence.Success) { [void]$candidates.Add($fence.Groups[1].Value) }
+    $s = $Raw.IndexOf('{'); $e = $Raw.LastIndexOf('}')
+    if ($s -ge 0 -and $e -gt $s) { [void]$candidates.Add($Raw.Substring($s, $e - $s + 1)) }
+    for ($i = $Raw.Length - 1; $i -ge 0 -and $candidates.Count -lt 8; $i--) {
+        if ($Raw[$i] -ne '}') { continue }
+        $depth = 0
+        for ($j = $i; $j -ge 0; $j--) {
+            if ($Raw[$j] -eq '}') { $depth++ }
+            elseif ($Raw[$j] -eq '{') { $depth--; if ($depth -eq 0) { [void]$candidates.Add($Raw.Substring($j, $i - $j + 1)); break } }
+        }
+    }
+    foreach ($cand in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($cand)) { continue }
+        try { $o = $cand | ConvertFrom-Json -Depth 100; if ($null -ne $o -and $o.PSObject.Properties['findings']) { return $cand } } catch { $null = $_ }
+    }
+    return $null
+}
+
 function Invoke-ContinuousCoReviewWorktreeReviewRun {
     # The full detached run: auto-resolve → materialize stripped worktree + .review/ → agentic review → write a
     # reap-consumable result under $RunDir, then dispose. Returns the terminal status object.
@@ -178,10 +207,8 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         try {
             $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds
             $raw = [string]$r.stdout
-            $s = $raw.IndexOf('{'); $e = $raw.LastIndexOf('}')
-            if ($s -ge 0 -and $e -gt $s) {
-                $json = $raw.Substring($s, $e - $s + 1)
-                $null = $json | ConvertFrom-Json -Depth 100   # validate it parses before declaring done
+            $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
+            if (-not [string]::IsNullOrWhiteSpace($json)) {
                 [System.IO.File]::WriteAllText($resultOut, $json)
                 # detect a blocking finding -> feed the next round's lineage decision
                 $blocking = $false
@@ -191,7 +218,10 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             }
             else {
                 [System.IO.File]::WriteAllText($resultOut, '')
-                & $writeStatus 'failed' @{ failure_reason = 'no-findings-json'; exit_code = $r.exit_code }
+                # STATE the reason: capture exit code + a stderr tail so an unparseable/empty verdict is diagnosable
+                # (the agent invocation otherwise drops stderr and the failure is invisible).
+                $stderrTail = if (-not [string]::IsNullOrWhiteSpace([string]$r.stderr)) { (([string]$r.stderr) -split "`n" | Where-Object { $_ } | Select-Object -Last 3) -join ' | ' } else { '' }
+                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; exit_code = $r.exit_code; stderr_tail = $stderrTail }
             }
         }
         finally {

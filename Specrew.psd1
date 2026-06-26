@@ -261,6 +261,7 @@
         'scripts/internal/continuous-co-review/reviewer-authorization-gate.ps1',
         'scripts/internal/continuous-co-review/reviewer-contracts.ps1',
         'scripts/internal/continuous-co-review/reviewer-host-catalog.ps1',
+        'scripts/internal/continuous-co-review/reviewer-host-presentation.ps1',
         'scripts/internal/continuous-co-review/reviewer-selection-policy.ps1',
         'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1',
         'scripts/internal/continuous-co-review/worktree-navigator.ps1',
