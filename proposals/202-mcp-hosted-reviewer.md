@@ -15,7 +15,7 @@ The continuous co-reviewer (Feature 197) is **asynchronous and long-running** �
 
 Today that loop rides **host-specific hook + stdin plumbing**, and that plumbing has been the single largest source of fragility:
 
-- **codex 0.141+ hash-keyed hook-trust** silently filters un-trusted hooks out of execution (source-confirmed; the trust hash is over the hook command, so it churns on re-deploy) — a silent-governance-void class.
+- **codex 0.141+ hash-keyed hook-trust** silently filters untrusted hooks out of execution (source-confirmed; the trust hash is over the hook command, so it churns on re-deploy) — a silent-governance-void class.
 - **claude `-p` 10 MB piped-stdin cap** rejected an oversized review prompt (exit 1, empty stdout) — the original "unparseable verdict."
 - **codex SessionStart** drops oversized `additionalContext`.
 
