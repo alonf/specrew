@@ -767,6 +767,49 @@ if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
 }
 
 if ($Live) {
+    # iter-008 (G1/G2/G3/G4/G6): when co_review_engine=worktree, the MANUAL door drives the SAME pipeline as the
+    # navigator via the host-neutral co-review SERVICE - it AUTO-RESOLVES baseline/design-context/host (no
+    # required --host/--design-context-ref), runs in a read-only worktree (not in-place), and shares the
+    # deploy-aware resolver. Else the legacy in-place path runs unchanged.
+    $coReviewEngine = 'legacy'
+    try {
+        $cfgPath = Join-Path $resolvedProjectPath '.specrew/config.yml'
+        if (Test-Path -LiteralPath $cfgPath -PathType Leaf) {
+            foreach ($line in (Get-Content -LiteralPath $cfgPath -Encoding UTF8)) {
+                if ($line -match '^\s*co_review_engine\s*:\s*([^#\r\n]+)') { $coReviewEngine = ($Matches[1].Trim().Trim([char]34).Trim([char]39)).ToLowerInvariant(); break }
+            }
+        }
+    }
+    catch { $null = $_ }
+
+    if ($coReviewEngine -eq 'worktree') {
+        try {
+            . (Join-Path $PSScriptRoot 'internal/continuous-co-review/co-review-service.ps1')
+            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { 900 }
+            $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.RunId) -BaselineRef ([string]$parsedArgs.BaselineRef) -CodeWriterHost ([string]$parsedArgs.CodeWriterHost) -TimeoutSeconds $tos
+            $findings = Get-ContinuousCoReviewServiceFindings -RepoRoot $resolvedProjectPath -RunId $run.run_id
+            $fc = if ($findings) { @($findings.findings).Count } else { 0 }
+            $fstatus = if ($findings) { [string]$findings.status } else { '' }
+            if ($Json) {
+                [pscustomobject]@{ run_id = $run.run_id; engine = 'worktree'; status = $run.status; findings_status = $fstatus; findings_count = $fc; run_dir = $run.run_dir } | ConvertTo-Json -Depth 8
+            }
+            elseif ($Quiet) {
+                Write-Host ("review-run run_id={0} engine=worktree status={1} findings={2}" -f $run.run_id, $run.status, $fc)
+            }
+            else {
+                $border = ('=' * 60)
+                Write-Host $border -ForegroundColor Green
+                Write-Host 'SPECREW LIVE REVIEW (worktree engine)' -ForegroundColor Green
+                Write-Host $border -ForegroundColor Green
+                Write-Host ("Run: {0}" -f $run.run_id)
+                Write-Host ("Status: {0}  Findings: {1} ({2})" -f $run.status, $fc, $fstatus)
+                if ($findings -and $fc -gt 0) { foreach ($f in @($findings.findings)) { Write-Host ("  [{0}] {1} - {2}" -f $f.severity, $f.location.path, ([string]$f.comment)) } }
+            }
+        }
+        catch { Write-Error $_.Exception.Message; exit 1 }
+        exit 0
+    }
+
     try {
         $liveResult = Invoke-LiveReview -ProjectRoot $resolvedProjectPath -Arguments $parsedArgs
         $summary = ConvertTo-LiveReviewSummary -Result $liveResult -ProjectRoot $resolvedProjectPath
