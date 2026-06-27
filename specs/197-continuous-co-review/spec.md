@@ -318,6 +318,47 @@ can request a structured findings response without writing to the source tree.
   future per-gate reviewer MUST be a registry entry, not a hook change. Owner:
   Architect. Delivery: Iteration 003.
 
+- **FR-033 (Iteration 009 — R1)**: On a reviewer timeout or incomplete run, the
+  system MUST harvest the partial findings the reviewer already emitted and surface
+  them as actionable, and MUST NOT discard a cut-short run as "no parseable verdict".
+  The reviewer instruction contract MUST emit each finding incrementally (one
+  structured object per line to a findings file) so a kill leaves a clean prefix; a
+  prose-salvage floor applies for a host that does not honour incremental emission.
+  Owner: Implementer. Delivery: Iteration 009.
+- **FR-034 (Iteration 009 — R2)**: Reviewer time-budget extension MUST be
+  human-gated — on approaching or exceeding the budget the system surfaces the choice
+  to the human (not silent auto-extend, not silent hard-fail), with a pre-flight
+  generous-budget heuristic for large diffs. Owner: Implementer. Delivery: Iteration 009.
+- **FR-035 (Iteration 009 — R3)**: When no independent authorized reviewer host is
+  available (the reviewer would equal the code-writer host), the system MUST ask the
+  human to choose or authorize another host rather than silently substituting the same
+  host; the same-host review MAY fire immediately as a CLEARLY LABELLED fallback so
+  nothing blocks, and the human's answer upgrades the next run. A requested `--host`
+  MUST be honoured or the substitution surfaced — never silent. Owner: Architect.
+  Delivery: Iteration 009.
+- **FR-036 (Iteration 009 — R4)**: The review-signoff gate MUST accept
+  degraded-but-honestly-labelled evidence and MUST NOT hard-deadlock. Each run carries
+  a label across completeness (`full` | `partial`), independence (`independent` |
+  `same-host`), and budget (`normal` | `time-extended`). A `full`+`independent` run
+  auto-allows at any budget; a `partial` OR `same-host` run allows only with an explicit
+  human acknowledgement recorded as a first-class verdict in the evidence trail. Owner:
+  Reviewer. Delivery: Iteration 009.
+- **FR-037 (Iteration 009 — R5)**: A configured reviewer timeout MUST be a hard wall
+  that terminates the reviewer process TREE (not only the immediate child) via an
+  independent watchdog, with reviewer stdio redirected (never inherited), using a
+  graceful SIGTERM-then-SIGKILL window so the in-flight finding flushes. The mechanism
+  MUST be validated on WSL (Unix), not Windows-only. Owner: Implementer. Delivery:
+  Iteration 009.
+- **FR-038 (Iteration 009 — R6)**: On any review problem (timeout, no independent host,
+  or a degraded/blocking result) the system MUST surface a single human remediation menu
+  at the next stop — give more time, choose another host, narrow the review scope
+  (code-only, process-only, a specific file, or a specific function/symbol), accept the
+  partial result, or override a degraded-review block with a recorded reason — and MUST
+  carry the chosen remediation into the re-run. Scope-narrowing MUST honour the
+  human-directed subset. A blocking finding from any review surfaces and stops
+  advancement; a degraded-review block is overridable with a recorded rationale. Owner:
+  Implementer. Delivery: Iteration 009.
+
 ### Non-Functional Requirements
 
 - **NFR-001 Deterministic failure handling**: Timeout, nonzero exit, empty
@@ -918,6 +959,12 @@ can request a structured findings response without writing to the source tree.
   checkpoints; a casual non-checkpoint stop and a stop at an unregistered gate
   (e.g., plan) each produce zero navigator spawns in 100% of dispatcher fixture
   runs.
+- **SC-024 (Iteration 009)**: A reviewer run that hits its hard timeout on a large
+  change-set (a) is terminated within the graceful window with no orphaned child
+  process (WSL-validated), (b) yields at least the partial findings emitted before
+  termination, and (c) surfaces the remediation menu — so the review-signoff gate
+  NEVER blocks on "no parseable verdict" in 100% of degraded-path fixture runs; a
+  `partial` or `same-host` signoff records a first-class human ack verdict.
 
 ## Assumptions
 
