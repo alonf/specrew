@@ -39,6 +39,9 @@ This ledger was reconciled against git ground-truth (commit subjects + file mtim
 - [ ] T093 [owner: Architect] [R3] **Human-gated independence fallback** — when no independent authorized reviewer host exists (reviewer would equal the code-writer host), ask the user to choose/authorize another host instead of silently substituting; honour-or-fail the requested `--host` (Trace: FR-016, FR-028, SEC-004)
 - [ ] T094 [owner: Reviewer] [R4] **Gate accepts degraded-but-honest evidence** — partial / same-host-with-consent / time-extended-with-consent count as review evidence, honestly labelled; the signoff gate never blocks forever (Trace: FR-025, SC-019, SC-020)
 - [ ] T095 [owner: Spec Steward] [cleanup] **Resolve the T083–T085 collision** — renumber the iter-008 Dogfood Repair Addendum to T087–T089 (iter-006's commit-cited T083–T086 stay canonical) (Trace: governance)
+- [ ] T096 [owner: Implementer] [R6] **Human-directed review remediation menu** — on a review problem (timeout / no-independent-host / degraded-or-blocking), surface ONE menu at the next Stop (more time / different host / narrow scope: code · process · file · function / accept partial / override block), carried via `co-review-round-state.json` to the re-run; extend the reviewer's existing user-code/subtree scoping to honour a human-directed scope (Trace: FR-024, FR-025, SC-019, SC-020)
+
+**Design-analysis (2026-06-28):** R1–R6 co-designed and agreed one-by-one with the maintainer; record at file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/009/design-analysis.md. Decisions D1–D5 + R6 + the component→responsibility map are captured there; `co_design: true` set in iterations/009/lens-applicability.json.
 
 ---
 
