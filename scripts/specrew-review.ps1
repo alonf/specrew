@@ -661,6 +661,22 @@ if ($Live) {
                 Write-Host ("Status: {0}  Findings: {1} ({2})" -f $run.status, $fc, $fstatus)
                 if ($findings -and $fc -gt 0) { foreach ($f in @($findings.findings)) { Write-Host ("  [{0}] {1} - {2}" -f $f.severity, $f.location.path, ([string]$f.comment)) } }
             }
+            # HOST-NEUTRAL gate evidence: the detached reap promotes on a host whose Stop hook fires, but a
+            # straight-through host (Copilot) never fires it - so THIS inline door (the F3 checkpoint) promotes through
+            # the SAME canonical producer (Add-...PassRunRecord with the DIGEST), gated on the SAME affirmative-pass
+            # decision the reap uses. Idempotent + fail-open: a later reap promotion of the same run is a no-op, and any
+            # failure leaves the gate to block safely. Advisory-only (no promotion) on a non-affirmative verdict.
+            try {
+                $verdict = ConvertFrom-ContinuousCoReviewNavigatorVerdict -ResultPath (Join-Path $run.run_dir 'result.out')
+                if (Test-ContinuousCoReviewVerdictIsPromotablePass -Verdict $verdict) {
+                    $digestId = if ($run.PSObject.Properties['reviewed_digest_tree_id']) { [string]$run.reviewed_digest_tree_id } else { '' }
+                    if (-not [string]::IsNullOrWhiteSpace($digestId)) {
+                        $promoted = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $resolvedProjectPath -RunId $run.run_id -TreeId $digestId -Now ([datetime]::UtcNow)
+                        if ((-not [string]::IsNullOrWhiteSpace([string]$promoted)) -and (-not $Quiet) -and (-not $Json)) { Write-Host ("  promoted as co-review gate evidence (run {0})" -f $run.run_id) -ForegroundColor Green }
+                    }
+                }
+            }
+            catch { $null = $_ }
         }
         catch { Write-Error $_.Exception.Message; exit 1 }
         exit 0

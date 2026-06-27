@@ -641,6 +641,23 @@ function Invoke-ContinuousCoReviewNavigatorInlineReap {
     catch { $null = $_ }
 }
 
+function Test-ContinuousCoReviewVerdictIsPromotablePass {
+    # The CANONICAL "is this an affirmative pass that may promote to durable gate evidence?" decision, used by BOTH
+    # producers: the navigator reap (detached path) and the /specrew-review inline door (the host-neutral F3
+    # checkpoint, for a straight-through host whose Stop hook never fires the reap). Promote ONLY on an affirmative
+    # disposition (pass/approved/clean/no-findings) - NEVER on mere absence-of-blocking (a needs-work / partial /
+    # unparseable verdict must not launder to a gate pass), and NEVER on the placeholder stub. Mirrors the reap's
+    # inline elseif-chain so the two producers agree by construction.
+    param([AllowNull()]$Verdict)
+    if ($null -eq $Verdict) { return $false }
+    $ok = ($Verdict.PSObject.Properties['ok']) -and [bool]$Verdict.ok
+    if (-not $ok) { return $false }
+    if (($Verdict.PSObject.Properties['blocking']) -and [bool]$Verdict.blocking) { return $false }
+    if (($Verdict.PSObject.Properties['is_stub']) -and [bool]$Verdict.is_stub) { return $false }
+    $disp = if ($Verdict.PSObject.Properties['disposition']) { [string]$Verdict.disposition } else { '' }
+    return ($disp -match '(?i)^\s*(pass|approved|clean|no.?findings)\s*$')
+}
+
 function Add-ContinuousCoReviewNavigatorPassRunRecord {
     # PART 2 (FR-024 gate wiring): promote a reaped NON-BLOCKING PASS to a DURABLE passing-run record
     # the signoff gate (Get-ContinuousCoReviewSignoffGateDecision) accepts. The gate checks THREE

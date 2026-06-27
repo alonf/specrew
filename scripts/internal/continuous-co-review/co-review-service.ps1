@@ -63,7 +63,8 @@ function Start-ContinuousCoReviewServiceRun {
         # instead of a clean, actionable status (the door relies on this to fail loud rather than silently).
         $failReason = if ($st.PSObject.Properties['failure_reason']) { [string]$st.failure_reason } else { '' }
         $treeIdVal = if ($st.PSObject.Properties['tree_id']) { $st.PSObject.Properties['tree_id'].Value } else { $null }
-        return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = ([string]$st.status); failure_reason = $failReason; detached = $false; tree_id = $treeIdVal }
+        $digestVal = if ($st.PSObject.Properties['reviewed_digest_tree_id']) { [string]$st.reviewed_digest_tree_id } else { '' }
+        return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = ([string]$st.status); failure_reason = $failReason; reviewed_digest_tree_id = $digestVal; detached = $false; tree_id = $treeIdVal }
     }
 
     if ([string]::IsNullOrWhiteSpace($TreeId)) { $TreeId = Get-ContinuousCoReviewWorktreeIdentity -RepoRoot $resolved }
