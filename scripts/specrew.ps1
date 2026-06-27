@@ -32,6 +32,23 @@ if ($VersionRequested.IsPresent) {
     $Command = 'version'
 }
 
+# CLI side-by-side dev testing: when SPECREW_MODULE_PATH points to a Specrew DEV tree, run the CLI from THERE - the
+# SAME env var the runtime (navigator, hook-dispatcher, bootstrap/handover providers) already honors. This closes the
+# asymmetry where a trial could redirect the hooks but NOT `specrew init`/`review`, forcing a destructive overwrite of
+# the installed module to test a branch. Recursion-guarded on the resolved path (the dev tree's own copy sees
+# $PSCommandPath == $devSpecrew and runs normally); a strict no-op when the env var is unset or points elsewhere.
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) {
+    $devSpecrew = Join-Path $env:SPECREW_MODULE_PATH 'scripts/specrew.ps1'
+    if ((Test-Path -LiteralPath $devSpecrew -PathType Leaf) -and
+        ((Resolve-Path -LiteralPath $devSpecrew).Path -ne (Resolve-Path -LiteralPath $PSCommandPath).Path)) {
+        $forward = @()
+        if (-not [string]::IsNullOrWhiteSpace($Command)) { $forward += $Command }
+        $forward += @($Arguments)
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $devSpecrew @forward
+        exit $LASTEXITCODE
+    }
+}
+
 function Show-Usage {
     @'
 specrew - Spec-governed AI crew operating model
