@@ -1,21 +1,23 @@
 # Iteration State: 008
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: (populate from plan.md)
+**Last Completed Task**: T085
+**Tasks Remaining**: none for the dogfood hard-gate repair slice (T083-T085)
 **In Progress**: (none)
 **Baseline Ref**: 49f887174c4a668ece3aaede6ca0910741e085c3
-**Updated**: 2026-06-26T09:43:59Z
+**Updated**: 2026-06-27T21:15:17Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- T083 completed: review-signoff gate is default-on in the 197-owned co-review wiring, and explicit false config is informational rather than a bypass.
+- T084 completed: Specrew self-review keeps `scripts/internal/continuous-co-review/**` visible as product source while downstream project reviews still strip deployed methodology runtime.
+- T085 completed: reviewer-runtime telemetry, smart budget guidance, artifact paths, phase timings, and reviewer invocation metadata are persisted for long-running co-review runs.
+- Validation: `Invoke-Pester -Path tests/continuous-co-review -Output Detailed` passed with 148 tests on 2026-06-27.
 
 ## Notes
 
-- Update this file after each task completes.
-- Keep task identifiers aligned to plan.md.
+- This state reflects the ratified dogfood repair recorded in `drift-log.md` as D-197-I008-001.
+- Parallel reviewer fan-out remains deferred unless it becomes a simple separate-output-directory seam.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation

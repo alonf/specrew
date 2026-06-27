@@ -300,6 +300,31 @@ function ConvertTo-ContinuousCoReviewReviewerIsoTimestamp {
     return $Timestamp.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
+function New-ContinuousCoReviewReviewerInvocationTelemetry {
+    param(
+        [Parameter(Mandatory)][string]$HostName,
+        [Parameter(Mandatory)]$Command,
+        [Parameter(Mandatory)][datetime]$StartedAt,
+        [Parameter(Mandatory)]$Stopwatch,
+        [Parameter(Mandatory)][int]$TimeoutSeconds,
+        [bool]$TimedOut = $false,
+        [bool]$Running = $false
+    )
+
+    return [pscustomobject][ordered]@{
+        reviewer_host    = $HostName
+        command_file     = [string]$Command.file
+        command_args     = @($Command.pre_args)
+        prompt_via_stdin = [bool]$Command.prompt_via_stdin
+        timeout_seconds  = $TimeoutSeconds
+        started_at       = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp -Timestamp $StartedAt
+        updated_at       = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp
+        elapsed_seconds  = [math]::Round($Stopwatch.Elapsed.TotalSeconds, 3)
+        running          = $Running
+        timed_out        = $TimedOut
+    }
+}
+
 function Invoke-ContinuousCoReviewAgentInWorktree {
     # Run the SELECTED agentic host in the worktree cwd with a GIVEN prompt (read + run; read-only on source).
     # SHARED by the REVIEW path (slim review prompt) AND the ASK path (follow-up-question prompt), so a future
@@ -308,7 +333,8 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
         [Parameter(Mandatory)][string]$WorktreePath,
         [Parameter(Mandatory)][string]$Prompt,
         [string]$HostName = 'claude',
-        [int]$TimeoutSeconds = 600
+        [int]$TimeoutSeconds = 600,
+        [scriptblock]$Heartbeat
     )
     $cmd = Get-ContinuousCoReviewAgentCommand -HostName $HostName
     $startedAt = [datetime]::UtcNow
@@ -326,24 +352,27 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     $outTask = $proc.StandardOutput.ReadToEndAsync(); $errTask = $proc.StandardError.ReadToEndAsync()
     if ($cmd.prompt_via_stdin) { $proc.StandardInput.Write($Prompt) }
     $proc.StandardInput.Close()
-    if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+    $exited = $false
+    while (-not $exited) {
+        $remainingMs = [int][math]::Ceiling(($TimeoutSeconds * 1000) - $sw.ElapsedMilliseconds)
+        if ($remainingMs -le 0) { break }
+        $sliceMs = [math]::Min(5000, $remainingMs)
+        $exited = $proc.WaitForExit($sliceMs)
+        if (-not $exited -and $Heartbeat) {
+            try {
+                & $Heartbeat (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Running $true)
+            }
+            catch { $null = $_ }
+        }
+    }
+    if (-not $exited) {
         try { $proc.Kill($true) } catch { }
         $sw.Stop()
         return [pscustomobject]@{
             exit_code        = $null
             stdout           = ''
             stderr           = 'timeout'
-            telemetry        = [pscustomobject][ordered]@{
-                reviewer_host    = $HostName
-                command_file     = [string]$cmd.file
-                command_args     = @($cmd.pre_args)
-                prompt_via_stdin = [bool]$cmd.prompt_via_stdin
-                timeout_seconds  = $TimeoutSeconds
-                started_at       = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp -Timestamp $startedAt
-                completed_at     = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp
-                elapsed_seconds  = [math]::Round($sw.Elapsed.TotalSeconds, 3)
-                timed_out        = $true
-            }
+            telemetry        = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -TimedOut $true)
         }
     }
     $out = if ($outTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $outTask.Result } else { '' }
@@ -354,17 +383,7 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
         exit_code = $code
         stdout    = $out
         stderr    = $err
-        telemetry = [pscustomobject][ordered]@{
-            reviewer_host    = $HostName
-            command_file     = [string]$cmd.file
-            command_args     = @($cmd.pre_args)
-            prompt_via_stdin = [bool]$cmd.prompt_via_stdin
-            timeout_seconds  = $TimeoutSeconds
-            started_at       = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp -Timestamp $startedAt
-            completed_at     = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp
-            elapsed_seconds  = [math]::Round($sw.Elapsed.TotalSeconds, 3)
-            timed_out        = $false
-        }
+        telemetry = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds)
     }
 }
 
@@ -374,8 +393,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
     param(
         [Parameter(Mandatory)][string]$WorktreePath, [Parameter(Mandatory)][string]$RunId,
         [string]$HostName = 'claude', [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings,
-        [int]$TimeoutSeconds = 600
+        [int]$TimeoutSeconds = 600,
+        [scriptblock]$Heartbeat
     )
     $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings
-    return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds)
+    return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat)
 }

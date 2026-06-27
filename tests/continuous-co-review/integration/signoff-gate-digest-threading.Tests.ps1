@@ -35,7 +35,21 @@ Describe 'the orchestrator produces + threads a non-empty digest (real detached-
         $fx = New-ThreadFx
         # Stub the slow agentic reviewer -> the WHOLE orchestrator runs real (materialize + DIGEST + status + return).
         Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
-            param($WorktreePath, $RunId, $HostName, $RoundNumber, $MaxRounds, $PriorFindings, $TimeoutSeconds)
+            param($WorktreePath, $RunId, $HostName, $RoundNumber, $MaxRounds, $PriorFindings, $TimeoutSeconds, $Heartbeat)
+            if ($Heartbeat) {
+                & $Heartbeat ([pscustomobject][ordered]@{
+                        reviewer_host    = $HostName
+                        command_file     = 'stub-reviewer'
+                        command_args     = @('--stub')
+                        prompt_via_stdin = $true
+                        timeout_seconds  = $TimeoutSeconds
+                        started_at       = '2026-06-27T00:00:00Z'
+                        updated_at       = '2026-06-27T00:00:00Z'
+                        elapsed_seconds  = 0.5
+                        running          = $true
+                        timed_out        = $false
+                    })
+            }
             [pscustomobject]@{
                 exit_code = 0
                 stdout    = '{"schema_version":"1.0","run_id":"r","status":"no_findings","findings":[]}'
@@ -47,8 +61,9 @@ Describe 'the orchestrator produces + threads a non-empty digest (real detached-
                     prompt_via_stdin = $true
                     timeout_seconds  = $TimeoutSeconds
                     started_at       = '2026-06-27T00:00:00Z'
-                    completed_at     = '2026-06-27T00:00:01Z'
+                    updated_at       = '2026-06-27T00:00:01Z'
                     elapsed_seconds  = 1.0
+                    running          = $false
                     timed_out        = $false
                 }
             }
