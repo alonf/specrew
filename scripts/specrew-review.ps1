@@ -516,6 +516,9 @@ for ($ai = 0; $ai -lt $cliArgList.Count; $ai++) {
     }
 }
 if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNullOrWhiteSpace($authRefValue))) {
+    $authWritten = $false
+    $authError = $null
+    $reviewerHostsPath = $null
     try {
         $authProjectPath = if ([string]::IsNullOrWhiteSpace($ProjectPath)) { (Get-Location).Path } else { (Resolve-Path -LiteralPath $ProjectPath -ErrorAction Stop).Path }
         . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')   # for New-ContinuousCoReviewDefaultReviewerHostConfig
@@ -525,9 +528,28 @@ if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNu
             $rhDir = Split-Path -Parent $reviewerHostsPath
             if (-not (Test-Path -LiteralPath $rhDir)) { New-Item -ItemType Directory -Path $rhDir -Force | Out-Null }
             ($authConfig | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
+            $authWritten = $true
         }
+        else { $authError = "Get-LiveReviewConfiguration returned no config for host '$authHostName'." }
     }
-    catch { $null = $_ }
+    catch { $authError = $_.Exception.Message }
+    # A PURE authorize (--host + --authorization-ref, no --live review) is a project-SETUP op (often pre-first-feature,
+    # at the code-implementation lens). Report the outcome HONESTLY and EXIT here - do NOT fall through to the replay
+    # path (Resolve-IterationDirectory below), which throws at workshop time when no iteration folder exists yet (the
+    # "wrote the selection, then looked for the iteration folder" failure). Detect --live from BOTH the -Live switch
+    # AND --live in $CliArgs (this block runs BEFORE arg-parse), so an authorize+review combo still runs the review.
+    # Honest exit code: never report success on a write that did not happen (else a failed authorize reads as authorized
+    # and the navigator silently finds no host).
+    $liveRequested = $Live.IsPresent -or (@($cliArgList) -contains '--live')
+    if (-not $liveRequested) {
+        if ($authWritten) {
+            Write-Host ("Authorized reviewer host '{0}' (ref: {1}) -> {2}" -f $authHostName, $authRefValue, $reviewerHostsPath)
+            exit 0
+        }
+        $authReason = if ([string]::IsNullOrWhiteSpace($authError)) { 'unknown error' } else { $authError }
+        Write-Error ("Reviewer host authorization FAILED for '{0}': {1}" -f $authHostName, $authReason)
+        exit 1
+    }
 }
 
 $parsedArgs = Convert-UnixStyleArguments `
@@ -600,6 +622,30 @@ if ($Live) {
             $findings = Get-ContinuousCoReviewServiceFindings -RepoRoot $resolvedProjectPath -RunId $run.run_id
             $fc = if ($findings) { @($findings.findings).Count } else { 0 }
             $fstatus = if ($findings) { [string]$findings.status } else { '' }
+            # FAIL LOUD: the inline run returns status='done' ONLY when the co-review actually ran. Any other status
+            # (notably 'failed' / no-authorized-reviewer-host) is NOT a clean review - surface the reason + remediation
+            # and exit NON-ZERO, so a caller cannot read an empty result as "reviewed, no findings" and substitute its
+            # own review (the failure mode that let an unauthorized run get accepted on the Copilot dogfood).
+            if ([string]$run.status -ne 'done') {
+                $reason = if (($run.PSObject.Properties['failure_reason']) -and (-not [string]::IsNullOrWhiteSpace([string]$run.failure_reason))) { [string]$run.failure_reason } else { [string]$run.status }
+                if ($Json) {
+                    [pscustomobject]@{ run_id = $run.run_id; engine = 'worktree'; status = $run.status; failure_reason = $reason; ok = $false; run_dir = $run.run_dir } | ConvertTo-Json -Depth 8
+                }
+                else {
+                    $rb = ('=' * 60)
+                    Write-Host $rb -ForegroundColor Red
+                    Write-Host 'SPECREW CO-REVIEW DID NOT RUN' -ForegroundColor Red
+                    Write-Host $rb -ForegroundColor Red
+                    Write-Host ("Run: {0}   Reason: {1}" -f $run.run_id, $reason)
+                    if ($reason -match 'no-authorized-reviewer-host') {
+                        Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
+                        Write-Host '    specrew review --host <claude|codex|...> --authorization-ref <ref>'
+                    }
+                    else { Write-Host ("Inspect: {0}" -f $run.run_dir) }
+                    Write-Host 'Do NOT substitute another review for this - the co-review must run to produce gate evidence.' -ForegroundColor Yellow
+                }
+                exit 1
+            }
             if ($Json) {
                 [pscustomobject]@{ run_id = $run.run_id; engine = 'worktree'; status = $run.status; findings_status = $fstatus; findings_count = $fc; run_dir = $run.run_dir } | ConvertTo-Json -Depth 8
             }

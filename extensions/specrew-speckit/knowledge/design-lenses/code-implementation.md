@@ -119,8 +119,12 @@ The code rules are mostly **product-level and stable**:
     async navigator selects from `.specrew/reviewer-hosts.json`, NOT from the workshop manifest. After the human
     picks, RUN `specrew review --host <chosen> --authorization-ref workshop-<feature>` to persist the
     human-provenance authorization to `reviewer-hosts.json` (the navigator reads it READ-ONLY). The HUMAN chose it,
-    so this records their provenance - it is NOT agent self-authorization (the Proposal-190 hole). WITHOUT this the
-    auto-fired co-review has no authorized host and stays dark.
+    so this records their provenance - it is NOT agent self-authorization (the Proposal-190 hole). Do NOT hand-write
+    `reviewer-hosts.json` yourself: the command writes the EXACT `hosts[]` catalog schema the navigator READS; a
+    hand-authored file (e.g. an `authorizations[]` array) is INERT - the co-review silently finds no host and a
+    different agent fills the vacuum with its own review that the lifecycle then accepts. If the command ERRORS,
+    surface the error to the human and STOP; never fall back to writing the file by hand. WITHOUT a command-written
+    authorization the auto-fired co-review has no host and stays dark.
 - **Capture** the selections/decisions/custom-rules/dependency-policy into `implementation-rules.yml`
   (reference-by-ID) + the human-readable `workshop/code-implementation.md`; record the lens in
   `lens-applicability.json`.

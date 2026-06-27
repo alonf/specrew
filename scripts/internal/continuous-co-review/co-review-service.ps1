@@ -58,7 +58,12 @@ function Start-ContinuousCoReviewServiceRun {
 
     if (-not $Detached) {
         $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $resolved -RunDir $runDir -RunId $RunId -BaselineRef $BaselineRef -CodeWriterHost $CodeWriterHost -TimeoutSeconds $TimeoutSeconds
-        return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = ([string]$st.status); detached = $false; tree_id = ($st.PSObject.Properties['tree_id'].Value) }
+        # Pass the failure_reason through, and read tree_id null-safely - a FAILED run (e.g. no-authorized-reviewer-host)
+        # writes no tree_id, and a bare `.Value` on the missing property would crash the caller into a messy stack
+        # instead of a clean, actionable status (the door relies on this to fail loud rather than silently).
+        $failReason = if ($st.PSObject.Properties['failure_reason']) { [string]$st.failure_reason } else { '' }
+        $treeIdVal = if ($st.PSObject.Properties['tree_id']) { $st.PSObject.Properties['tree_id'].Value } else { $null }
+        return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = ([string]$st.status); failure_reason = $failReason; detached = $false; tree_id = $treeIdVal }
     }
 
     if ([string]::IsNullOrWhiteSpace($TreeId)) { $TreeId = Get-ContinuousCoReviewWorktreeIdentity -RepoRoot $resolved }
