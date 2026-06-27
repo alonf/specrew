@@ -73,23 +73,33 @@ function Start-ContinuousCoReviewServiceRun {
     $now = [datetime]::UtcNow
     $deadline = $now.AddSeconds($TimeoutSeconds + 120).ToString('o')
     $writeReg = {
-        param([AllowNull()]$SupPid, [string]$Status)
-        $json = ([pscustomobject][ordered]@{
+        param([AllowNull()]$SupPid, [string]$Status, [hashtable]$Extra)
+        $record = [ordered]@{
                 schema_version = '1.0'; run_id = $RunId; engine = 'worktree'; status = $Status
                 run_dir = $runDir; result_path = $resultPath; tree_id = $TreeId
                 supervisor_pid = $SupPid; created_at = $now.ToString('o'); deadline = $deadline
-            } | ConvertTo-Json -Depth 8)
+            }
+        if ($Extra) {
+            foreach ($key in $Extra.Keys) { $record[$key] = $Extra[$key] }
+        }
+        $json = ([pscustomobject]$record | ConvertTo-Json -Depth 8)
         if (Get-Command -Name 'Write-SpecrewFileAtomic' -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $regPath -Content $json } else { [System.IO.File]::WriteAllText($regPath, $json) }
     }
-    & $writeReg $null 'running'
+    & $writeReg $null 'running' $null
     # Spawn detached, stdio redirected to files (an un-redirected child inherits our pipes and BLOCKS on Unix).
     $entry = Join-Path $PSScriptRoot 'worktree-review-detached-entry.ps1'
     $spawnArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $entry, '-RepoRoot', $resolved, '-RunDir', $runDir, '-RunId', $RunId, '-RegistryPath', $regPath, '-TimeoutSeconds', $TimeoutSeconds)
     if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $spawnArgs += @('-BaselineRef', $BaselineRef) }
     if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $spawnArgs += @('-CodeWriterHost', $CodeWriterHost) }
-    $proc = Start-Process -FilePath (Get-Command pwsh).Source -ArgumentList $spawnArgs -PassThru -WindowStyle Hidden `
-        -RedirectStandardOutput (Join-Path $runDir 'entry.out.log') -RedirectStandardError (Join-Path $runDir 'entry.err.log')
-    & $writeReg $proc.Id 'running'
+    try {
+        $proc = Start-Process -FilePath (Get-Command pwsh).Source -ArgumentList $spawnArgs -PassThru -WindowStyle Hidden `
+            -RedirectStandardOutput (Join-Path $runDir 'entry.out.log') -RedirectStandardError (Join-Path $runDir 'entry.err.log')
+    }
+    catch {
+        & $writeReg $null 'failed' @{ failure_reason = ('detached-spawn-failed: ' + $_.Exception.Message) }
+        throw
+    }
+    & $writeReg $proc.Id 'running' $null
     return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = 'running'; supervisor_pid = $proc.Id; tree_id = $TreeId; detached = $true }
 }
 

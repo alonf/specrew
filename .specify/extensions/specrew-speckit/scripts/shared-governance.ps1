@@ -1658,6 +1658,22 @@ function Parse-SpecrewBoundaryVerdict {
 
     if ($lowerVerdict -match '^approved\s+for\s+(.+)$') {
         $payload = $Matches[1].Trim()
+        $waiverMatch = [regex]::Match($payload, '^(?<boundary>[^;,]+?)\s*[;,]\s*co-review\s+(?:waived|waiver)\s*:\s*(?<rationale>.+)$', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        if ($waiverMatch.Success) {
+            $boundary = Normalize-SpecrewCanonicalBoundaryType -Boundary $waiverMatch.Groups['boundary'].Value.Trim()
+            $rationale = $waiverMatch.Groups['rationale'].Value.Trim()
+            if ($boundary -in $CanonicalBoundaries -and -not [string]::IsNullOrWhiteSpace($rationale)) {
+                return [pscustomobject]@{
+                    Authorized        = $true
+                    Action            = 'approved'
+                    Boundaries        = @($boundary)
+                    NormalizedVerdict = "approved for $boundary-boundary entry"
+                    DirectiveSentinel = 'SPECREW_BOUNDARY_AUTHORIZED'
+                    FailureReason     = $null
+                }
+            }
+        }
+
         if ($payload -match '\band\b') {
             $parts = @($payload -split '\s+and\s+' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
             $normalizedParts = New-Object System.Collections.Generic.List[string]

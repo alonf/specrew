@@ -1,16 +1,17 @@
 $ErrorActionPreference = 'Stop'
 
 # Trace: T073, T074, FR-025, SC-019, SC-020.
-# These prove the OPT-IN boundary-sync wiring SEAM (not the whole 1500-line sync):
-#   - Get-ContinuousCoReviewGateEnforcementEnabled reads co_review_gate_enforcement from
-#     .specrew/config.yml and is TRUE only for an explicit enabling value (default OFF).
+# These prove the review-signoff hard-gate boundary-sync wiring SEAM (not the whole
+# 1500-line sync):
+#   - Get-ContinuousCoReviewGateEnforcementEnabled is TRUE by default. The old
+#     co_review_gate_enforcement scalar no longer bypasses review-signoff.
 #   - Invoke-ContinuousCoReviewSignoffGateIfEnabled is a no-op off the review-signoff boundary
-#     and a no-op when OFF, and at review-signoff with the flag ON it REFUSES (throws) without
-#     fresh anchor-covered co-review evidence (SC-019) and ALLOWS with it (SC-020).
+#     and at review-signoff it REFUSES (throws) without fresh anchor-covered co-review
+#     evidence (SC-019) and ALLOWS with it (SC-020) or a trusted human waiver.
 # The gate decision logic itself is proven in review-signoff-evidence-gate.Tests.ps1; this file
 # exercises only the flag-check + boundary-filter + conditional-Assert seam.
 # Rules: specs/197-continuous-co-review/implementation-rules.yml
-Describe 'Proposal 197 T073/T074 opt-in co-review signoff-gate wiring (FR-025/SC-019/SC-020)' {
+Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-019/SC-020)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
@@ -63,6 +64,39 @@ Describe 'Proposal 197 T073/T074 opt-in co-review signoff-gate wiring (FR-025/SC
                 if (-not [string]::IsNullOrEmpty($EnforcementLine)) { $lines += $EnforcementLine }
                 Set-Content -LiteralPath (Join-Path $configDir 'config.yml') -Value ($lines -join "`n") -Encoding UTF8
             }
+
+        function Write-WiringStartContext {
+                param(
+                    $Repo,
+                    [string] $VerdictText,
+                    [string] $EvidenceSource = 'hook-captured-from-transcript',
+                    [string] $AuthorizingHuman = 'Alon Fliess'
+                )
+                $dir = Join-Path $Repo '.specrew'
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+                $context = [ordered]@{
+                    schema = 'v2'
+                    session_state = [ordered]@{ active = $true; boundary_type = 'review-signoff'; feature_ref = 'fixture'; iteration_number = '001' }
+                    boundary_enforcement = [ordered]@{
+                        enabled = $true
+                        last_authorized_boundary = 'review-signoff'
+                        pending_next_boundary = $null
+                        verdict_history = @(
+                            [ordered]@{
+                                from_boundary = 'before-implement'
+                                to_boundary = 'review-signoff'
+                                verdict_text = $VerdictText
+                                authorizing_human = $AuthorizingHuman
+                                recorded_at = '2026-06-27T00:00:00Z'
+                                auth_commit_hash = 'abc123'
+                                evidence_source = $EvidenceSource
+                            }
+                        )
+                        bypass_history = @()
+                    }
+                }
+                ($context | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath (Join-Path $dir 'start-context.json') -Encoding UTF8 -NoNewline
+            }
 }
 
     # Per-invocation git identity (the real repo's git config is never touched; TestDrive is a
@@ -71,7 +105,7 @@ Describe 'Proposal 197 T073/T074 opt-in co-review signoff-gate wiring (FR-025/SC
     
     
     
-    Context 'Get-ContinuousCoReviewGateEnforcementEnabled (FR-025 opt-in, default OFF)' {
+    Context 'Get-ContinuousCoReviewGateEnforcementEnabled (FR-025 hard gate, default ON)' {
         It 'is TRUE for co_review_gate_enforcement: true' {
             $f = New-WiringFeatureRepo 'enabled-true'
             Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: "true"'
@@ -109,29 +143,29 @@ Describe 'Proposal 197 T073/T074 opt-in co-review signoff-gate wiring (FR-025/SC
             Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $true
         }
 
-        It 'is FALSE for co_review_gate_enforcement: false' {
+        It 'stays TRUE for co_review_gate_enforcement: false (config cannot bypass review-signoff)' {
             $f = New-WiringFeatureRepo 'disabled-false'
             Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: "false"'
-            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $false
+            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $true
         }
 
-        It 'is FALSE for false WITH an inline comment (the comment must not flip it on) (145 F1)' {
+        It 'stays TRUE for false WITH an inline comment (config cannot bypass review-signoff)' {
             $f = New-WiringFeatureRepo 'disabled-false-comment'
             Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: false  # still off'
-            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $false
+            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $true
         }
 
-        It 'is FALSE when the key is missing from an existing config' {
+        It 'is TRUE when the key is missing from an existing config' {
             $f = New-WiringFeatureRepo 'disabled-missingkey'
             Set-WiringConfig -Repo $f.repo -EnforcementLine $null
-            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $false
+            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $true
         }
 
-        It 'is FALSE when the config file is missing entirely' {
+        It 'is TRUE when the config file is missing entirely' {
             $f = New-WiringFeatureRepo 'disabled-nofile'
             # No .specrew/config.yml on disk for this repo's worktree root.
             Test-Path -LiteralPath (Join-Path $f.repo '.specrew/config.yml') | Should -Be $false
-            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $false
+            Get-ContinuousCoReviewGateEnforcementEnabled -ProjectRoot $f.repo | Should -Be $true
         }
     }
 
@@ -158,31 +192,36 @@ Describe 'Proposal 197 T073/T074 opt-in co-review signoff-gate wiring (FR-025/SC
     }
 
     Context 'Invoke-ContinuousCoReviewSignoffGateIfEnabled (the conditional-Assert seam)' {
-        It '(a) flag ON + review-signoff + NO passing co-review run -> THROWS (refused) [SC-019]' {
+        It '(a) review-signoff + NO passing co-review run -> THROWS and persists the block [SC-019]' {
             $f = New-WiringFeatureRepo 'on-noevidence'
-            Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: "true"'
             $threw = $false; $msg = $null
             try {
                 Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff'
             } catch { $threw = $true; $msg = $_.Exception.Message }
             $threw | Should -Be $true
             $msg | Should -Match 'review-signoff refused'
+            $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
+            $latest.decision.decision | Should -Be 'block'
+            $latest.decision.reason | Should -Be 'no-co-review-evidence'
         }
 
-        It '(b) flag ON + review-signoff + a fresh PASSING run matching the current tree -> does NOT throw [SC-020]' {
+        It '(b) review-signoff + a fresh PASSING run matching the current tree -> does NOT throw [SC-020]' {
             $f = New-WiringFeatureRepo 'on-fresh'
-            Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: "true"'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine $null
             $head = (& git -C $f.repo rev-parse HEAD).Trim()
             # Compute the expected tree-id AFTER writing config so its (excluded) bytes are settled;
             # .specrew/** is stripped from the digest, so the config + run record never perturb it.
             $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
             Write-WiringPassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head  # baseline = anchor -> chain reaches
             { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Not -Throw
+            $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
+            $latest.decision.decision | Should -Be 'allow'
+            $latest.decision.reason | Should -Be 'fresh-and-covered'
         }
 
         It '(b2) the allow path returns NOTHING (so it cannot corrupt the boundary-sync result pipeline)' {
             $f = New-WiringFeatureRepo 'on-fresh-silent'
-            Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: "true"'
+            Set-WiringConfig -Repo $f.repo -EnforcementLine $null
             $head = (& git -C $f.repo rev-parse HEAD).Trim()
             $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
             Write-WiringPassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head
@@ -190,16 +229,31 @@ Describe 'Proposal 197 T073/T074 opt-in co-review signoff-gate wiring (FR-025/SC
             $out | Should -BeNullOrEmpty
         }
 
-        It '(c) flag OFF -> no-op even with NO co-review evidence' {
-            $f = New-WiringFeatureRepo 'off-noop'
+        It '(c) explicit false config still blocks without co-review evidence' {
+            $f = New-WiringFeatureRepo 'false-still-blocks'
             Set-WiringConfig -Repo $f.repo -EnforcementLine 'co_review_gate_enforcement: "false"'
-            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Not -Throw
+            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Throw
         }
 
-        It '(c2) flag-key absent (default OFF) -> no-op even with NO co-review evidence' {
-            $f = New-WiringFeatureRepo 'default-off-noop'
+        It '(c2) flag-key absent (default ON) blocks with NO co-review evidence' {
+            $f = New-WiringFeatureRepo 'default-on-blocks'
             Set-WiringConfig -Repo $f.repo -EnforcementLine $null
+            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Throw
+        }
+
+        It '(c3) trusted human verdict-history waiver allows and records the override' {
+            $f = New-WiringFeatureRepo 'trusted-waiver'
+            Write-WiringStartContext -Repo $f.repo -VerdictText 'approved for review-signoff; co-review waived: detached reviewer failed on host, human accepts risk for this signoff'
             { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Not -Throw
+            $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
+            $latest.decision.reason | Should -Be 'human-authorized-partial-override'
+            $latest.decision.override.rationale | Should -Match 'detached reviewer failed'
+        }
+
+        It '(c4) waiver text with untrusted provenance is ignored and still blocks' {
+            $f = New-WiringFeatureRepo 'untrusted-waiver'
+            Write-WiringStartContext -Repo $f.repo -VerdictText 'approved for review-signoff; co-review waived: agent says okay' -EvidenceSource 'unspecified'
+            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Throw
         }
 
         It '(d) BoundaryType = plan + flag ON -> no-op (the gate only governs review-signoff)' {
