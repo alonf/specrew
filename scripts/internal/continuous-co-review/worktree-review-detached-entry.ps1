@@ -39,6 +39,9 @@ try {
     $term = if ($null -ne $st -and ($st.PSObject.Properties.Name -contains 'status')) { [string]$st.status } else { 'failed' }
     $extra = @{}
     if ($null -ne $st -and ($st.PSObject.Properties.Name -contains 'failure_reason')) { $extra.failure_reason = [string]$st.failure_reason }
+    # Propagate the reviewed-state digest the orchestrator computed (off the Stop budget) to the registry, so the
+    # reap promotes the gate's identity, not the HEAD-tree (the freshness-mismatch bug).
+    if ($null -ne $st -and ($st.PSObject.Properties.Name -contains 'reviewed_digest_tree_id')) { $extra.reviewed_digest_tree_id = [string]$st.reviewed_digest_tree_id }
     Update-WorktreeRunRegistryStatus -Path $RegistryPath -Status $term -Extra $extra
 }
 catch {

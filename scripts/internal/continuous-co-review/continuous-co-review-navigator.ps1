@@ -492,7 +492,10 @@ function Invoke-ContinuousCoReviewNavigatorReap {
         $status = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'status')) { [string]$reg.status } else { '' }
         $runId = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'run_id')) { [string]$reg.run_id } else { '' }
         $resultPath = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'result_path')) { [string]$reg.result_path } else { $null }
-        $treeId = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'tree_id')) { [string]$reg.tree_id } else { $null }
+        # Promote the reviewed-state DIGEST (the gate's identity, computed off the Stop budget by the orchestrator and
+        # propagated to the registry), falling back to the HEAD-tree only for older records. Promoting the HEAD-tree
+        # never matched the gate's working-tree digest -> every promoted pass read 'stale' (P-145 identity divergence).
+        $treeId = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewed_digest_tree_id') -and -not [string]::IsNullOrWhiteSpace([string]$reg.reviewed_digest_tree_id)) { [string]$reg.reviewed_digest_tree_id } elseif ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'tree_id')) { [string]$reg.tree_id } else { $null }
 
         $isTerminal = ($status -in $terminalStatuses)
         # TRI-STATE presence (finding 2): 'present' / 'absent' (definite) / 'unknown' (transient error).
