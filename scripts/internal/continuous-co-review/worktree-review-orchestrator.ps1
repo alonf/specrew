@@ -26,9 +26,16 @@ function Resolve-ContinuousCoReviewWorktreeBaseline {
     $gitRoot = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null).Trim()
     if ([string]::IsNullOrWhiteSpace($gitRoot)) { return $null }
     if (-not $Trunk) { $Trunk = Resolve-ContinuousCoReviewTrunkName -GitRoot $gitRoot }
-    if (-not $Trunk) { return $null }
-    $mb = (& git -C $gitRoot merge-base HEAD $Trunk 2>$null)
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($mb)) { return $null }
+    $mb = $null
+    if ($Trunk) { $mb = (& git -C $gitRoot merge-base HEAD $Trunk 2>$null); if ($LASTEXITCODE -ne 0) { $mb = $null } }
+    if ([string]::IsNullOrWhiteSpace($mb)) {
+        # No trunk (a GREENFIELD: `specrew init` creates ONLY the feature branch - no main/master/remote) OR no
+        # merge-base (unrelated histories): fall back to the EMPTY TREE so the co-review reviews the whole feature's
+        # source instead of failing 'baseline-unresolved' and never running. This was the root cause of the first real
+        # e2e producing zero co-review evidence. The strip/digest list still excludes .specrew/.specify machinery from
+        # what the reviewer sees, so the empty-tree baseline reviews source only, not scaffolding.
+        return '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+    }
     return ([string]$mb).Trim()
 }
 
