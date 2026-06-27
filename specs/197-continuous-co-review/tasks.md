@@ -1,5 +1,47 @@
 # Tasks: Continuous Co-Review
 
+<!-- ============================================================ -->
+<!-- RECONCILED 2026-06-28 against git ground-truth — READ FIRST  -->
+<!-- ============================================================ -->
+
+## 🔄 Reconciliation banner (2026-06-28) — current truth
+
+This ledger was reconciled against git ground-truth (commit subjects + file mtimes) on 2026-06-28. The original **Phase 1–8 task body below is the original-design ledger** for the *diff-cramming* reviewer architecture, which was **superseded by the iteration-008 worktree cutover** (`c66e5df6` deleted the diff-cramming engine; the reviewer now runs in an ephemeral read-only `git archive` worktree). The Phase 1–8 body is retained as historical record; the active architecture's truth is the table below + the per-iteration artifacts.
+
+### True iteration status (from git)
+
+| Iter | Delivered | Status | Closeout |
+|---|---|---|---|
+| 001 | Co-review spine `T001–T050` | **complete** | review-accepted; not formally closed |
+| 002 | Reviewer-definition repair `T051–T057` | **abandoned** (maintainer-ratified) | — |
+| 003 | Always-on gate + content-addressed digest `T058–T069` | **complete** | formally closed (`2ac079b2`) |
+| 004 | #2885 latency fix + opt-in gate `T070–T075` | **complete** | formally closed (`cdc9d7f8`) |
+| 005 | Async Stop-hook navigator `T076–T081` | **complete** | formally closed (`14f03b4c`) |
+| 006 | Real reviewer wired in `T082–T086` | **complete** | not formally closed (superseded by 007) |
+| 007 | Real-reviewer hardening + deploy-completeness | **complete** | closed via chore (`32604b86`) |
+| 008 | **Worktree-reviewer cutover + dogfood hard-gate** | **in-progress (active)** | open |
+
+### Task-ID reconciliation
+
+- The real ledger spans **T001–T086**. This feature file covers `T001–T069` + an iter-008 addendum; **`T070–T082`** (iter-004/005) and **`T086`** (iter-006) were tracked only in the per-iteration `iterations/00N/plan.md` files.
+- **Collision:** the iter-008 "Dogfood Repair Addendum" reuses **`T083/T084/T085`**, which iter-006 already used (`18557e80`, `6a24838b` — commit-cited = authoritative). Read the addendum as **`T087/T088/T089`**; a clean renumber is an iteration-009 cleanup task.
+- iter-001's `T001–T050` are shown unchecked in the Phase 1–6 body below; they were **completed in iteration 001 then superseded** by the iter-008 cutover (the code they describe was deleted). Treat the status table above as authoritative, not the Phase 1–6 checkboxes.
+
+---
+
+## Iteration 009 — Reviewer robustness (graceful degradation) — PLANNED
+
+**Why:** live downstream dogfood (EnglishIntake) proved the reviewer is field-unstable on real change-sets — a large diff times out → "no parseable findings" → the review-signoff gate deadlocks; `--host` is silently overridden to the code-writer host (independence defeated); the configured timeout is not enforced. Maintainer ruling 2026-06-28: **"make it a robust feature — any review is better than nothing; the gate must never hard-deadlock."** Formal `specify` open pending human authorization; recorded here as forward plan.
+
+- [ ] T090 [owner: Implementer] [R1] **Harvest partial findings on timeout/incomplete** — capture whatever findings the reviewer produced, surface them as actionable, never discard as "no parseable verdict"; the implementer fixes and reruns (Trace: FR-025, SC-019, SC-020, NFR-001)
+- [ ] T091 [owner: Implementer] [R5] **Enforce the timeout as a hard wall** — a configured timeout must actually kill the reviewer process (live proof it does not: EnglishIntake r4 `--timeout-seconds 1200` ran 1h12m+) (Trace: NFR-001)
+- [ ] T092 [owner: Implementer] [R2] **Human-gated time extension** — on approaching/hitting the budget, ask the human to allow more time rather than silent auto-extend or hard-fail (Trace: NFR-001, NFR-002)
+- [ ] T093 [owner: Architect] [R3] **Human-gated independence fallback** — when no independent authorized reviewer host exists (reviewer would equal the code-writer host), ask the user to choose/authorize another host instead of silently substituting; honour-or-fail the requested `--host` (Trace: FR-016, FR-028, SEC-004)
+- [ ] T094 [owner: Reviewer] [R4] **Gate accepts degraded-but-honest evidence** — partial / same-host-with-consent / time-extended-with-consent count as review evidence, honestly labelled; the signoff gate never blocks forever (Trace: FR-025, SC-019, SC-020)
+- [ ] T095 [owner: Spec Steward] [cleanup] **Resolve the T083–T085 collision** — renumber the iter-008 Dogfood Repair Addendum to T087–T089 (iter-006's commit-cited T083–T086 stay canonical) (Trace: governance)
+
+---
+
 **Input**: Design documents from `/specs/197-continuous-co-review/`
 **Prerequisites**: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `quickstart.md`, `implementation-rules.yml`, `iterations/001/design-analysis.md`, and `contracts/`
 **Requested by**: Alon Fliess
