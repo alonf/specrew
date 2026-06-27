@@ -236,7 +236,11 @@ NOT modify, fix, or patch any file. Your job is to find issues, not fix them.
    machine formats. The prose and the contract MAY differ on machine details; see the AUTHORITY RULE below.
 3. Read .review/process/ — the curated process/progress context (active task, phase, tasks-progress, drift-log,
    plan/tasks). The full plan/tasks/spec also live under specs/ in your worktree.
-4. Browse the real project files around the changes for context; run tests/build if it helps you verify.
+4. Browse the real project files around the changes for context. Prefer the implementer's recorded validation
+   evidence when it is present and coherent (commands, exit codes, logs, durations). Run tests/build only when
+   the evidence is absent, suspicious, too narrow for the risk, or a targeted rerun would materially change your
+   confidence. Do not spend broad-suite time on low-value questions, but do spend time on important correctness,
+   security, governance, or boundary risks.
 
 AUTHORITY RULE (apply before judging ANY format/conformance question): A formal contract/schema — in
 .review/design/contracts/, or any schema / proto / OpenAPI / typed-interface / enum table you can browse in the
@@ -291,6 +295,11 @@ function Get-ContinuousCoReviewAgentCommand {
     return [pscustomobject]@{ file = 'claude'; pre_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true }
 }
 
+function ConvertTo-ContinuousCoReviewReviewerIsoTimestamp {
+    param([datetime]$Timestamp = [datetime]::UtcNow)
+    return $Timestamp.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+}
+
 function Invoke-ContinuousCoReviewAgentInWorktree {
     # Run the SELECTED agentic host in the worktree cwd with a GIVEN prompt (read + run; read-only on source).
     # SHARED by the REVIEW path (slim review prompt) AND the ASK path (follow-up-question prompt), so a future
@@ -302,6 +311,8 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
         [int]$TimeoutSeconds = 600
     )
     $cmd = Get-ContinuousCoReviewAgentCommand -HostName $HostName
+    $startedAt = [datetime]::UtcNow
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $cmd.file
     foreach ($a in @($cmd.pre_args)) { [void]$psi.ArgumentList.Add($a) }
@@ -315,11 +326,46 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     $outTask = $proc.StandardOutput.ReadToEndAsync(); $errTask = $proc.StandardError.ReadToEndAsync()
     if ($cmd.prompt_via_stdin) { $proc.StandardInput.Write($Prompt) }
     $proc.StandardInput.Close()
-    if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) { try { $proc.Kill($true) } catch { }; return [pscustomobject]@{ exit_code = $null; stdout = ''; stderr = 'timeout' } }
+    if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+        try { $proc.Kill($true) } catch { }
+        $sw.Stop()
+        return [pscustomobject]@{
+            exit_code        = $null
+            stdout           = ''
+            stderr           = 'timeout'
+            telemetry        = [pscustomobject][ordered]@{
+                reviewer_host    = $HostName
+                command_file     = [string]$cmd.file
+                command_args     = @($cmd.pre_args)
+                prompt_via_stdin = [bool]$cmd.prompt_via_stdin
+                timeout_seconds  = $TimeoutSeconds
+                started_at       = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp -Timestamp $startedAt
+                completed_at     = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp
+                elapsed_seconds  = [math]::Round($sw.Elapsed.TotalSeconds, 3)
+                timed_out        = $true
+            }
+        }
+    }
     $out = if ($outTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $outTask.Result } else { '' }
     $err = if ($errTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $errTask.Result } else { '' }
     $code = $proc.ExitCode; $proc.Dispose()
-    return [pscustomobject]@{ exit_code = $code; stdout = $out; stderr = $err }
+    $sw.Stop()
+    return [pscustomobject]@{
+        exit_code = $code
+        stdout    = $out
+        stderr    = $err
+        telemetry = [pscustomobject][ordered]@{
+            reviewer_host    = $HostName
+            command_file     = [string]$cmd.file
+            command_args     = @($cmd.pre_args)
+            prompt_via_stdin = [bool]$cmd.prompt_via_stdin
+            timeout_seconds  = $TimeoutSeconds
+            started_at       = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp -Timestamp $startedAt
+            completed_at     = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp
+            elapsed_seconds  = [math]::Round($sw.Elapsed.TotalSeconds, 3)
+            timed_out        = $false
+        }
+    }
 }
 
 function Invoke-ContinuousCoReviewWorktreeReviewer {

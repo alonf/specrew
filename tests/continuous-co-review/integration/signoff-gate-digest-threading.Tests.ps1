@@ -34,13 +34,44 @@ Describe 'the orchestrator produces + threads a non-empty digest (real detached-
     It 'a full stubbed run threads a non-empty digest that equals the gate digest and promotes to allow' {
         $fx = New-ThreadFx
         # Stub the slow agentic reviewer -> the WHOLE orchestrator runs real (materialize + DIGEST + status + return).
-        function global:Invoke-ContinuousCoReviewWorktreeReviewer { param($WorktreePath, $RunId, $HostName, $RoundNumber, $MaxRounds, $PriorFindings, $TimeoutSeconds) [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"r","status":"no_findings","findings":[]}'; stderr = '' } }
+        Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+            param($WorktreePath, $RunId, $HostName, $RoundNumber, $MaxRounds, $PriorFindings, $TimeoutSeconds)
+            [pscustomobject]@{
+                exit_code = 0
+                stdout    = '{"schema_version":"1.0","run_id":"r","status":"no_findings","findings":[]}'
+                stderr    = ''
+                telemetry = [pscustomobject][ordered]@{
+                    reviewer_host    = $HostName
+                    command_file     = 'stub-reviewer'
+                    command_args     = @('--stub')
+                    prompt_via_stdin = $true
+                    timeout_seconds  = $TimeoutSeconds
+                    started_at       = '2026-06-27T00:00:00Z'
+                    completed_at     = '2026-06-27T00:00:01Z'
+                    elapsed_seconds  = 1.0
+                    timed_out        = $false
+                }
+            }
+        }
         try {
             $run = Start-ContinuousCoReviewServiceRun -RepoRoot $fx -RunId 'thread1' -CodeWriterHost 'copilot'
             $run.status | Should -Be 'done'
             $run.reviewed_digest_tree_id | Should -Not -BeNullOrEmpty
+            $run.elapsed_seconds | Should -Not -BeNullOrEmpty
+            $run.timeout_seconds | Should -Be 900
             $status = Get-Content (Join-Path $run.run_dir 'status.json') -Raw | ConvertFrom-Json
             $status.reviewed_digest_tree_id | Should -Not -BeNullOrEmpty
+            $status.started_at | Should -Not -BeNullOrEmpty
+            $status.updated_at | Should -Not -BeNullOrEmpty
+            $status.elapsed_seconds | Should -Not -BeNullOrEmpty
+            $status.timeout_seconds | Should -Be 900
+            $status.soft_budget_seconds | Should -BeGreaterThan 0
+            $status.budget_policy | Should -Match 'implementer validation evidence'
+            $status.artifacts.run_dir | Should -Be $run.run_dir
+            $status.artifacts.result_out | Should -Be (Join-Path $run.run_dir 'result.out')
+            $status.phase_durations_seconds.'reviewer-execution' | Should -Not -BeNullOrEmpty
+            $status.reviewer_telemetry.command_file | Should -Be 'stub-reviewer'
+            $status.reviewer_telemetry.elapsed_seconds | Should -Be 1.0
 
             # the threaded digest MUST equal what the gate computes (load _load now, for the gate + digest)
             . (Join-Path $script:ccr '_load.ps1')

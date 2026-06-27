@@ -216,8 +216,9 @@ content-addressed + anchored re-architecture; T059/T060/T062/T063 carry; T064 is
 
 - [X] T083 [owner: Implementer] [sp: 1.00] Make `scripts/internal/continuous-co-review/signoff-gate-wiring.ps1` enforce review-signoff by default and persist the gate decision on both allow and block paths; a present `co_review_gate_enforcement: false` config key is informational and cannot bypass the signoff backstop (Trace: FR-025, SC-019, SC-020, NFR-001; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 - [X] T084 [owner: Reviewer] [sp: 0.50] Make `scripts/internal/continuous-co-review/worktree-reviewer.ps1` Specrew-source-aware so self-review includes `scripts/internal/continuous-co-review/**` as product source, while downstream project reviews still strip that deployed methodology runtime from the review worktree and diff (Trace: FR-025, FR-030, FR-031, SC-019, SC-020; Rules: specs/197-continuous-co-review/implementation-rules.yml)
+- [X] T085 [owner: Implementer] [sp: 0.75] Add reviewer-runtime telemetry and smart budget guidance in `scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1`, `scripts/internal/continuous-co-review/worktree-reviewer.ps1`, `scripts/internal/continuous-co-review/co-review-service.ps1`, and `scripts/specrew-review.ps1`: intermediate `status.json` updates, elapsed/phase timing, artifact paths, reviewer invocation metadata, implementer-validation-first guidance, and a soft budget signal that does not restrict reviewer tool access (Trace: NFR-001, NFR-002, NFR-011, OBS-002, OBS-005, SC-005; Rules: specs/197-continuous-co-review/implementation-rules.yml)
 
-**Checkpoint**: Dogfood repair keeps the hard gate in 197-owned co-review wiring, preserves F-184 protected shared-governance surfaces, and gives the reviewer visibility into the actual co-review implementation when Specrew reviews itself.
+**Checkpoint**: Dogfood repair keeps the hard gate in 197-owned co-review wiring, preserves F-184 protected shared-governance surfaces, gives the reviewer visibility into the actual co-review implementation when Specrew reviews itself, and makes long reviewer runs diagnosable without forcing a shallow/restricted review mode.
 
 ---
 
@@ -327,7 +328,7 @@ T037 tests/continuous-co-review/unit/reviewer-host-adapter-antigravity-prompt.Te
 - **Cross-cutting / foundational / polish**: `T001`-`T011`, `T044`-`T050`; maps to FR-001, FR-002, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, INT-009, OBS-003, OPS-006, TG-005, TG-009, TG-011, TG-012, SC-001, SC-005, SC-006, SC-011, SC-012.
 - **Iteration 002 reviewer-definition repair**: `T051`-`T057`; maps to FR-017, FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, SEC-007, SEC-008, SEC-009, INT-010, INT-011, INT-012, INT-013, OBS-010, OBS-011, OBS-012, IMPL-008, IMPL-009, IMPL-010, IMPL-011, TG-013, TG-014, SC-006, SC-011, SC-013, SC-014, SC-015, SC-016, SC-017, SC-018.
 - **Iteration 003 always-on Phase A**: `T058`-`T064`; maps to FR-024, FR-025, FR-027, FR-028, FR-029, FR-032, NFR-001, NFR-005, SEC-004, IMPL-004, IMPL-009, SC-006, SC-019, SC-020, SC-021, SC-023, TG-013. Deferred to Iteration 004 (Phase B): FR-026, FR-030, FR-031, SC-022.
-- **Dogfood hard-gate repair**: `T083`-`T084`; maps to FR-025, FR-030, FR-031, NFR-001, SC-019, and SC-020. The implementation stays inside 197-owned continuous-co-review runtime and does not edit F-184 protected shared-governance or mirrored `.specify/extensions/specrew-speckit/scripts/` surfaces.
+- **Dogfood hard-gate repair**: `T083`-`T085`; maps to FR-025, FR-030, FR-031, NFR-001, NFR-002, NFR-011, OBS-002, OBS-005, SC-005, SC-019, and SC-020. The implementation stays inside 197-owned continuous-co-review runtime and does not edit F-184 protected shared-governance or mirrored `.specify/extensions/specrew-speckit/scripts/` surfaces.
 
 ---
 

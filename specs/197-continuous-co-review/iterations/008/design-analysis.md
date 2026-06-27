@@ -122,6 +122,12 @@ skip** (the digest's gitignored force-add) and the **worktree-cleanup debris**.
   decisions every time it fires. Human-waiver capture is not implemented by widening the protected
   `shared-governance.ps1` verdict parser in this iteration; any future waiver capture must either receive
   explicit F-184 authorization or stay within a 197-owned, human-provenance-preserving capture path.
+- **Dogfood repair: reviewer depth stays allowed, but runtime becomes observable and budget-aware.** The reviewer
+  remains trusted and may use web/tools when that materially improves review quality. Full-suite validation is
+  implementer-owned evidence by default; the reviewer should inspect that evidence first and rerun targeted checks
+  when evidence is absent, suspicious, or risk-justified. `status.json` records intermediate phase, elapsed time,
+  soft/hard budget, phase timings, artifact paths, and reviewer invocation metadata so a long run is diagnosable.
+  Multi-reviewer fan-out remains deferred unless a simple, separate-output-dir seam appears later.
 
 ## Build order (advisor): NEW alongside OLD; first STOP = one real verdict
 

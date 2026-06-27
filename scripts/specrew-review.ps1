@@ -659,6 +659,9 @@ if ($Live) {
                 Write-Host $border -ForegroundColor Green
                 Write-Host ("Run: {0}" -f $run.run_id)
                 Write-Host ("Status: {0}  Findings: {1} ({2})" -f $run.status, $fc, $fstatus)
+                if ($run.PSObject.Properties['elapsed_seconds'] -and $null -ne $run.elapsed_seconds) {
+                    Write-Host ("Elapsed: {0}s  Timeout: {1}s" -f $run.elapsed_seconds, $run.timeout_seconds)
+                }
                 if ($findings -and $fc -gt 0) { foreach ($f in @($findings.findings)) { Write-Host ("  [{0}] {1} - {2}" -f $f.severity, $f.location.path, ([string]$f.comment)) } }
             }
             # HOST-NEUTRAL gate evidence: the detached reap promotes on a host whose Stop hook fires, but a

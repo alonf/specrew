@@ -9,6 +9,11 @@ Set-StrictMode -Version Latest
 
 . (Join-Path $PSScriptRoot 'worktree-reviewer.ps1')
 
+function ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp {
+    param([datetime]$Timestamp = [datetime]::UtcNow)
+    return $Timestamp.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+}
+
 function Resolve-ContinuousCoReviewTrunkName {
     param([Parameter(Mandatory)][string]$GitRoot)
     $head = (& git -C $GitRoot symbolic-ref --quiet refs/remotes/origin/HEAD 2>$null)
@@ -185,22 +190,74 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
     New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
     $resultOut = Join-Path $RunDir 'result.out'
     $statusPath = Join-Path $RunDir 'status.json'
+    $startedAt = [datetime]::UtcNow
+    $runTimer = [System.Diagnostics.Stopwatch]::StartNew()
+    $phaseTimings = [ordered]@{}
+    $phaseTimers = @{}
+    $currentPhase = 'initializing'
+    $softBudgetSeconds = [math]::Max(60, [math]::Min([int]($TimeoutSeconds * 0.35), 300))
+    $budgetPolicy = 'Use implementer validation evidence first. Spend reviewer runtime where it materially changes confidence; targeted reruns are preferred over broad suites unless broad verification is justified by risk.'
+    $recordPhaseStart = {
+        param([string]$Name)
+        if ([string]::IsNullOrWhiteSpace($Name)) { return }
+        $phaseTimers[$Name] = [System.Diagnostics.Stopwatch]::StartNew()
+    }
+    $recordPhaseEnd = {
+        param([string]$Name)
+        if ([string]::IsNullOrWhiteSpace($Name)) { return }
+        if ($phaseTimers.Contains($Name)) {
+            $phaseTimers[$Name].Stop()
+            $phaseTimings[$Name] = [math]::Round($phaseTimers[$Name].Elapsed.TotalSeconds, 3)
+            $phaseTimers.Remove($Name)
+        }
+    }
     $writeStatus = {
         param([string]$St, [hashtable]$Extra)
-        $obj = [ordered]@{ schema_version = '1.0'; run_id = $RunId; status = $St }
+        $obj = [ordered]@{
+            schema_version = '1.0'
+            run_id         = $RunId
+            status         = $St
+            phase          = $currentPhase
+            started_at     = ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp -Timestamp $startedAt
+            updated_at     = ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp
+            elapsed_seconds = [math]::Round($runTimer.Elapsed.TotalSeconds, 3)
+            timeout_seconds = $TimeoutSeconds
+            soft_budget_seconds = $softBudgetSeconds
+            budget_policy = $budgetPolicy
+            artifacts = [ordered]@{
+                run_dir     = $RunDir
+                result_out  = $resultOut
+                status_json = $statusPath
+            }
+            phase_durations_seconds = [pscustomobject]$phaseTimings
+        }
         if ($Extra) { foreach ($k in $Extra.Keys) { $obj[$k] = $Extra[$k] } }
         [System.IO.File]::WriteAllText($statusPath, (([pscustomobject]$obj) | ConvertTo-Json -Depth 8))
     }
     try {
+        & $writeStatus 'running' @{ phase = 'initializing' }
+        $currentPhase = 'baseline-resolution'
+        & $recordPhaseStart $currentPhase
         if ([string]::IsNullOrWhiteSpace($BaselineRef)) { $BaselineRef = Resolve-ContinuousCoReviewWorktreeBaseline -RepoRoot $RepoRoot }
+        & $recordPhaseEnd 'baseline-resolution'
         if ([string]::IsNullOrWhiteSpace($BaselineRef)) { & $writeStatus 'failed' @{ failure_reason = 'baseline-unresolved' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
+        $currentPhase = 'design-context-resolution'
+        & $recordPhaseStart $currentPhase
         if (-not $DesignContextFiles -or @($DesignContextFiles).Count -eq 0) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
+        & $recordPhaseEnd 'design-context-resolution'
 
         # SELECT the reviewer host: independent of the code-writer + authorized. Fail-soft (stated reason) if none.
+        $currentPhase = 'reviewer-host-selection'
+        & $recordPhaseStart $currentPhase
         $reviewerHost = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $RepoRoot -CodeWriterHost $CodeWriterHost
+        & $recordPhaseEnd 'reviewer-host-selection'
         if ($null -eq $reviewerHost) { & $writeStatus 'failed' @{ failure_reason = 'no-authorized-reviewer-host' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
 
+        $currentPhase = 'worktree-materialization'
+        & $recordPhaseStart $currentPhase
+        & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host }
         $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles
+        & $recordPhaseEnd 'worktree-materialization'
         # The reviewed-state DIGEST = the gate's identity. Get-...SignoffGateDecision compares ITS current digest to a
         # passing run's recorded reviewed_tree_id; recording the worktree HEAD-tree instead (the old bug) NEVER matched
         # the gate's working-tree digest, so every promoted pass read 'stale'. Compute it HERE, off the Stop budget,
@@ -211,11 +268,16 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         }
         # SURFACE a digest failure (do not swallow it to ''): an empty digest makes the gate's freshness loop skip the
         # record -> a genuinely clean review blocks as 'stale' with no visible cause. Carry the reason in the status.
+        $currentPhase = 'reviewed-state-digest'
+        & $recordPhaseStart $currentPhase
         $reviewedDigestId = ''; $reviewedDigestErr = ''
         try { $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot; if ($null -ne $dg -and $dg.ok) { $reviewedDigestId = [string]$dg.tree_id } else { $reviewedDigestErr = if ($null -ne $dg) { [string]$dg.failure_reason } else { 'digest-unavailable' } } } catch { $reviewedDigestErr = $_.Exception.Message }
+        & $recordPhaseEnd 'reviewed-state-digest'
         # ROUND: same lineage (change-set overlaps the prior round's) + the prior was blocking -> this is a fix
         # re-review (round+1, thread the prior findings); else a new checkpoint (round 1, no prior). The reviewer
         # escalates at the final round (the counter is the safety ceiling).
+        $currentPhase = 'round-state-resolution'
+        & $recordPhaseStart $currentPhase
         $maxRounds = Get-ContinuousCoReviewMaxRounds -RepoRoot $RepoRoot
         $prior = Get-ContinuousCoReviewRoundState -RepoRoot $RepoRoot
         $round = 1; $priorFindings = $null
@@ -223,31 +285,52 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             $round = [int]$prior.round + 1
             $priorFindings = [string]$prior.findings
         }
+        & $recordPhaseEnd 'round-state-resolution'
         try {
+            $currentPhase = 'reviewer-execution'
+            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $null }
+            & $recordPhaseStart $currentPhase
             $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds
+            & $recordPhaseEnd 'reviewer-execution'
+            $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout
             $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
             if (-not [string]::IsNullOrWhiteSpace($json)) {
+                $currentPhase = 'write-result'
+                & $recordPhaseStart $currentPhase
                 [System.IO.File]::WriteAllText($resultOut, $json)
                 # detect a blocking finding -> feed the next round's lineage decision
                 $blocking = $false
                 try { foreach ($f in @(($json | ConvertFrom-Json -Depth 100).findings)) { if (([string]$f.severity) -match '(?i)block') { $blocking = $true; break } } } catch { $null = $_ }
                 Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $blocking -Findings $json
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; blocking = $blocking }
+                & $recordPhaseEnd 'write-result'
+                $currentPhase = 'complete'
+                $runTimer.Stop()
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $blocking; reviewer_telemetry = $reviewerTelemetry }
             }
             else {
+                $currentPhase = 'write-failure'
+                & $recordPhaseStart $currentPhase
                 [System.IO.File]::WriteAllText($resultOut, '')
                 # STATE the reason: capture exit code + a stderr tail so an unparseable/empty verdict is diagnosable
                 # (the agent invocation otherwise drops stderr and the failure is invisible).
                 $stderrTail = if (-not [string]::IsNullOrWhiteSpace([string]$r.stderr)) { (([string]$r.stderr) -split "`n" | Where-Object { $_ } | Select-Object -Last 3) -join ' | ' } else { '' }
-                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; exit_code = $r.exit_code; stderr_tail = $stderrTail }
+                & $recordPhaseEnd 'write-failure'
+                $currentPhase = 'failed'
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_telemetry = $reviewerTelemetry }
             }
         }
         finally {
+            $currentPhase = 'cleanup'
+            & $recordPhaseStart $currentPhase
             Remove-Item -LiteralPath $wt.worktree_path -Recurse -Force -ErrorAction SilentlyContinue
+            & $recordPhaseEnd 'cleanup'
         }
     }
     catch {
+        $currentPhase = 'failed'
+        $runTimer.Stop()
         & $writeStatus 'failed' @{ failure_reason = 'orchestrator-exception'; message = ([string]$_.Exception.Message) }
     }
     if (Test-Path -LiteralPath $statusPath) { return (Get-Content $statusPath -Raw | ConvertFrom-Json) }

@@ -64,7 +64,9 @@ function Start-ContinuousCoReviewServiceRun {
         $failReason = if ($st.PSObject.Properties['failure_reason']) { [string]$st.failure_reason } else { '' }
         $treeIdVal = if ($st.PSObject.Properties['tree_id']) { $st.PSObject.Properties['tree_id'].Value } else { $null }
         $digestVal = if ($st.PSObject.Properties['reviewed_digest_tree_id']) { [string]$st.reviewed_digest_tree_id } else { '' }
-        return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = ([string]$st.status); failure_reason = $failReason; reviewed_digest_tree_id = $digestVal; detached = $false; tree_id = $treeIdVal }
+        $elapsedVal = if ($st.PSObject.Properties['elapsed_seconds']) { $st.PSObject.Properties['elapsed_seconds'].Value } else { $null }
+        $timeoutVal = if ($st.PSObject.Properties['timeout_seconds']) { $st.PSObject.Properties['timeout_seconds'].Value } else { $TimeoutSeconds }
+        return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = ([string]$st.status); failure_reason = $failReason; reviewed_digest_tree_id = $digestVal; detached = $false; tree_id = $treeIdVal; elapsed_seconds = $elapsedVal; timeout_seconds = $timeoutVal }
     }
 
     if ([string]::IsNullOrWhiteSpace($TreeId)) { $TreeId = Get-ContinuousCoReviewWorktreeIdentity -RepoRoot $resolved }

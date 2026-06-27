@@ -33,12 +33,13 @@
 **Status**: resolved
 **Detected by**: live co-review `codex-hard-gate-20260627`
 **Authorized by**: maintainer instruction on 2026-06-27 to make the co-review mechanism robust after the AISharedMemoryMCP host-switch dogfood failure
+**Ratified by**: maintainer response "OK, do it" on 2026-06-27, confirming option B from `codex-hard-gate-rerun-20260627`: keep this drift event in Iteration 008 and keep Iteration 001 at zero drift events.
 
 **Drift**: The implementation changed the review-signoff gate from an opt-in configuration key to a default-on backstop and changed the worktree reviewer visibility policy for Specrew self-review. Iteration 008 design previously treated the signoff evidence gate as surviving unchanged and the strip set as downstream methodology machinery; dogfooding proved those assumptions insufficient for the host-switch/compaction failure mode.
 
-**Resolution**: Recorded T083/T084 in `specs/197-continuous-co-review/tasks.md`, added the dogfood repair decisions to `specs/197-continuous-co-review/iterations/008/design-analysis.md`, kept the implementation inside `scripts/internal/continuous-co-review/`, and removed the unapproved waiver parser change from protected `shared-governance.ps1` mirrors.
+**Resolution**: Recorded T083/T084/T085 in `specs/197-continuous-co-review/tasks.md`, added the dogfood repair decisions to `specs/197-continuous-co-review/iterations/008/design-analysis.md`, kept the implementation inside `scripts/internal/continuous-co-review/`, removed the unapproved waiver parser change from protected `shared-governance.ps1` mirrors, added reviewer-runtime telemetry and smart budget guidance without restricting reviewer tool access, and deferred multi-reviewer fan-out unless it becomes a simple separate-output-dir seam.
 
-**Trace**: FR-025, FR-030, FR-031, NFR-001, SC-019, SC-020.
+**Trace**: FR-025, FR-030, FR-031, NFR-001, NFR-002, NFR-011, OBS-002, OBS-005, SC-005, SC-019, SC-020.
 
 ### Resolution Strategies (Unused)
 
