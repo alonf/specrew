@@ -111,6 +111,17 @@ skip** (the digest's gitignored force-add) and the **worktree-cleanup debris**.
     (user code + design + the user's own project config). **The DURABLE single-source is to fix the deploy to
     mark ALL deployed content with `.specrew-managed`** — then (b) alone suffices and (c) retires. Tracked as a
     broader-implementation deploy sub-task.
+- **Dogfood repair: Specrew self-review is product-source review, not downstream runtime review.** The deployed
+  `scripts/internal/continuous-co-review/**` runtime remains methodology machinery for downstream projects and
+  is stripped there, but when `RepoRoot` is the Specrew source repo (`Specrew.psd1` plus the co-review loader are
+  present) that directory is the product under review. The worktree reviewer therefore includes it for Specrew
+  self-review so hard-gate and reviewer-runtime changes are visible to the reviewer.
+- **Dogfood repair: review-signoff backstop is default-on in 197-owned wiring.** Real host-switch/compaction
+  evidence showed an opt-in signoff gate is inert in the failure mode it is meant to catch. The boundary-sync
+  wiring now treats `co_review_gate_enforcement` as informational at review-signoff and persists allow/block
+  decisions every time it fires. Human-waiver capture is not implemented by widening the protected
+  `shared-governance.ps1` verdict parser in this iteration; any future waiver capture must either receive
+  explicit F-184 authorization or stay within a 197-owned, human-provenance-preserving capture path.
 
 ## Build order (advisor): NEW alongside OLD; first STOP = one real verdict
 

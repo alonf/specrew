@@ -7,6 +7,23 @@ Set-StrictMode -Version Latest
 # .review/changes.diff as its entry point, browses + runs to verify, and emits a FindingsResult. It CANNOT fix
 # the source (the worktree is discarded). See specs/197-continuous-co-review/iterations/008/design-analysis.md.
 
+function Test-ContinuousCoReviewSpecrewSourceRepo {
+    param([AllowNull()][string]$RepoRoot)
+
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $false }
+    try {
+        $resolved = (Resolve-Path -LiteralPath $RepoRoot -ErrorAction Stop).Path
+    }
+    catch {
+        return $false
+    }
+
+    return (
+        (Test-Path -LiteralPath (Join-Path $resolved 'Specrew.psd1') -PathType Leaf) -and
+        (Test-Path -LiteralPath (Join-Path $resolved 'scripts/internal/continuous-co-review/_load.ps1') -PathType Leaf)
+    )
+}
+
 function Get-ContinuousCoReviewMachineryPaths {
     # SINGLE SOURCE of "the methodology's deployed machinery" (the de-fragilization point — one function,
     # consumed by BOTH the worktree-strip AND the diff-exclude). Two parts, both authoritative-by-construction,
@@ -21,9 +38,12 @@ function Get-ContinuousCoReviewMachineryPaths {
     param([string]$RepoRoot)
     $core = @(
         '.specrew', '.specify', '.squad', '.agents', '.git',
-        'scripts/internal/continuous-co-review', 'scripts/internal/agent-tasks', 'scripts/internal/atomic-write.ps1',
+        'scripts/internal/agent-tasks', 'scripts/internal/atomic-write.ps1',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
     )
+    if (-not (Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $RepoRoot)) {
+        $core += 'scripts/internal/continuous-co-review'
+    }
     if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $core }
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $marked = @(Get-ChildItem -LiteralPath $resolved -Recurse -Force -File -Filter '.specrew-managed' -ErrorAction SilentlyContinue |

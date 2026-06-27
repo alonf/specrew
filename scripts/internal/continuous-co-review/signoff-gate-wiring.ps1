@@ -11,13 +11,11 @@ Set-StrictMode -Version Latest
 #   1. Get-ContinuousCoReviewGateEnforcementEnabled - returns TRUE by default. The old opt-in
 #      scalar made the review-signoff backstop inert in exactly the host-switch/compaction case
 #      it is supposed to catch. A present co_review_gate_enforcement key is now informational:
-#      false/off/disabled no longer bypass review-signoff. The human waiver path below is the
-#      only supported escape from a missing or failed co-review.
+#      false/off/disabled no longer bypass review-signoff.
 #
 #   2. Invoke-ContinuousCoReviewSignoffGateIfEnabled - the boundary-sync entry point. It is a
 #      no-op for every boundary except review-signoff. At review-signoff it dot-sources the
-#      gate module, builds a human-only waiver from persisted verdict_history when present,
-#      writes durable gate-decision evidence, and throws on any `block` decision.
+#      gate module, writes durable gate-decision evidence, and throws on any `block` decision.
 #      Only a MISSING-gate-infrastructure failure (the _load.ps1 dot-source itself failing) is
 #      re-wrapped as a clear error; a real block-refusal is NEVER disguised as infrastructure.
 #
@@ -49,93 +47,6 @@ function Get-ContinuousCoReviewGateEnforcementEnabled {
     }
 
     return $true
-}
-
-function Get-ContinuousCoReviewObjectPropertyValue {
-    param(
-        [AllowNull()] $Object,
-        [Parameter(Mandatory = $true)][string]$Name
-    )
-
-    if ($null -eq $Object) { return $null }
-    if ($Object -is [System.Collections.IDictionary]) {
-        if ($Object.Contains($Name)) { return $Object[$Name] }
-        return $null
-    }
-    if ($Object.PSObject.Properties.Name -contains $Name) {
-        return $Object.PSObject.Properties[$Name].Value
-    }
-    return $null
-}
-
-function Get-ContinuousCoReviewSignoffWaiverRationale {
-    param([AllowNull()][string]$VerdictText)
-
-    if ([string]::IsNullOrWhiteSpace($VerdictText)) { return $null }
-    $match = [regex]::Match($VerdictText, '(?is)\bco-review\s+(?:waived|waiver)\s*:\s*(?<rationale>.+?)\s*$')
-    if (-not $match.Success) { return $null }
-    $rationale = $match.Groups['rationale'].Value.Trim()
-    if ([string]::IsNullOrWhiteSpace($rationale)) { return $null }
-    return $rationale
-}
-
-function Get-ContinuousCoReviewSignoffWaiverAuthorization {
-    <#
-    .SYNOPSIS
-        Build the gate override only from persisted human verdict evidence.
-    .DESCRIPTION
-        The agent cannot pass arbitrary waiver text to the gate. A waiver is trusted only when
-        it appears inside boundary_enforcement.verdict_history for review-signoff, because that
-        row is written by the verdict-capture/Add-SpecrewBoundaryAuthorization path.
-    #>
-    param([Parameter(Mandatory = $true)][string]$ProjectRoot)
-
-    $contextPath = Join-Path $ProjectRoot '.specrew/start-context.json'
-    if (-not (Test-Path -LiteralPath $contextPath -PathType Leaf)) { return $null }
-
-    try {
-        $context = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    }
-    catch {
-        return $null
-    }
-
-    $boundaryEnforcement = Get-ContinuousCoReviewObjectPropertyValue -Object $context -Name 'boundary_enforcement'
-    $history = @(Get-ContinuousCoReviewObjectPropertyValue -Object $boundaryEnforcement -Name 'verdict_history')
-    if ($history.Count -eq 0) { return $null }
-
-    $trustedEvidenceSources = @(
-        'hook-captured-from-transcript',
-        'hook-captured-from-transcript-pending-artifact',
-        'human-confirmed-at-resume'
-    )
-
-    for ($i = $history.Count - 1; $i -ge 0; $i--) {
-        $entry = $history[$i]
-        $toBoundary = [string](Get-ContinuousCoReviewObjectPropertyValue -Object $entry -Name 'to_boundary')
-        if ($toBoundary -ne 'review-signoff') { continue }
-
-        $verdictText = [string](Get-ContinuousCoReviewObjectPropertyValue -Object $entry -Name 'verdict_text')
-        $rationale = Get-ContinuousCoReviewSignoffWaiverRationale -VerdictText $verdictText
-        if ([string]::IsNullOrWhiteSpace($rationale)) { continue }
-
-        $evidenceSource = [string](Get-ContinuousCoReviewObjectPropertyValue -Object $entry -Name 'evidence_source')
-        if ($trustedEvidenceSources -notcontains $evidenceSource) { continue }
-
-        $authorizedBy = [string](Get-ContinuousCoReviewObjectPropertyValue -Object $entry -Name 'authorizing_human')
-        if ([string]::IsNullOrWhiteSpace($authorizedBy)) { continue }
-
-        return [pscustomobject][ordered]@{
-            authorized_by    = $authorizedBy
-            rationale        = $rationale
-            verdict_text     = $verdictText
-            evidence_source  = $evidenceSource
-            recorded_at      = [string](Get-ContinuousCoReviewObjectPropertyValue -Object $entry -Name 'recorded_at')
-            auth_commit_hash = [string](Get-ContinuousCoReviewObjectPropertyValue -Object $entry -Name 'auth_commit_hash')
-        }
-    }
-
-    return $null
 }
 
 function Write-ContinuousCoReviewSignoffGateDecisionEvidence {
@@ -198,8 +109,8 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     <#
     .SYNOPSIS
         At the review-signoff boundary, refuse signoff unless the current reviewed-state
-        matches fresh, anchor-covered co-review evidence (FR-025), or a human-authored
-        verdict_history waiver is present. A no-op for any other boundary.
+        matches fresh, anchor-covered co-review evidence (FR-025). A no-op for any
+        other boundary.
     .DESCRIPTION
         Lets the gate's block-refusal throw propagate (fail-closed). Wraps ONLY the gate-module
         dot-source failure in a clear infrastructure error so a missing gate is never silently
@@ -235,8 +146,7 @@ function Invoke-ContinuousCoReviewSignoffGateIfEnabled {
     # config so non-`main`-trunk repos do not fail closed (145 carry T080). The decision is
     # persisted before either throw/allow so a failed signoff leaves inspectable evidence.
     $trunk = Get-ContinuousCoReviewTrunkName -ProjectRoot $ProjectRoot
-    $override = Get-ContinuousCoReviewSignoffWaiverAuthorization -ProjectRoot $ProjectRoot
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -TrunkName $trunk -OverrideAuthorization $override
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $ProjectRoot -TrunkName $trunk
     Write-ContinuousCoReviewSignoffGateDecisionEvidence -ProjectRoot $ProjectRoot -BoundaryType $BoundaryType -Decision $decision
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"

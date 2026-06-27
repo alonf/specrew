@@ -7,7 +7,7 @@ $ErrorActionPreference = 'Stop'
 #     co_review_gate_enforcement scalar no longer bypasses review-signoff.
 #   - Invoke-ContinuousCoReviewSignoffGateIfEnabled is a no-op off the review-signoff boundary
 #     and at review-signoff it REFUSES (throws) without fresh anchor-covered co-review
-#     evidence (SC-019) and ALLOWS with it (SC-020) or a trusted human waiver.
+#     evidence (SC-019) and ALLOWS with it (SC-020).
 # The gate decision logic itself is proven in review-signoff-evidence-gate.Tests.ps1; this file
 # exercises only the flag-check + boundary-filter + conditional-Assert seam.
 # Rules: specs/197-continuous-co-review/implementation-rules.yml
@@ -65,38 +65,6 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
                 Set-Content -LiteralPath (Join-Path $configDir 'config.yml') -Value ($lines -join "`n") -Encoding UTF8
             }
 
-        function Write-WiringStartContext {
-                param(
-                    $Repo,
-                    [string] $VerdictText,
-                    [string] $EvidenceSource = 'hook-captured-from-transcript',
-                    [string] $AuthorizingHuman = 'Alon Fliess'
-                )
-                $dir = Join-Path $Repo '.specrew'
-                New-Item -ItemType Directory -Path $dir -Force | Out-Null
-                $context = [ordered]@{
-                    schema = 'v2'
-                    session_state = [ordered]@{ active = $true; boundary_type = 'review-signoff'; feature_ref = 'fixture'; iteration_number = '001' }
-                    boundary_enforcement = [ordered]@{
-                        enabled = $true
-                        last_authorized_boundary = 'review-signoff'
-                        pending_next_boundary = $null
-                        verdict_history = @(
-                            [ordered]@{
-                                from_boundary = 'before-implement'
-                                to_boundary = 'review-signoff'
-                                verdict_text = $VerdictText
-                                authorizing_human = $AuthorizingHuman
-                                recorded_at = '2026-06-27T00:00:00Z'
-                                auth_commit_hash = 'abc123'
-                                evidence_source = $EvidenceSource
-                            }
-                        )
-                        bypass_history = @()
-                    }
-                }
-                ($context | ConvertTo-Json -Depth 20) | Set-Content -LiteralPath (Join-Path $dir 'start-context.json') -Encoding UTF8 -NoNewline
-            }
 }
 
     # Per-invocation git identity (the real repo's git config is never touched; TestDrive is a
@@ -238,21 +206,6 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
         It '(c2) flag-key absent (default ON) blocks with NO co-review evidence' {
             $f = New-WiringFeatureRepo 'default-on-blocks'
             Set-WiringConfig -Repo $f.repo -EnforcementLine $null
-            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Throw
-        }
-
-        It '(c3) trusted human verdict-history waiver allows and records the override' {
-            $f = New-WiringFeatureRepo 'trusted-waiver'
-            Write-WiringStartContext -Repo $f.repo -VerdictText 'approved for review-signoff; co-review waived: detached reviewer failed on host, human accepts risk for this signoff'
-            { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Not -Throw
-            $latest = Get-Content -LiteralPath (Join-Path $f.repo '.specrew/review/signoff-gate/latest.json') -Raw | ConvertFrom-Json
-            $latest.decision.reason | Should -Be 'human-authorized-partial-override'
-            $latest.decision.override.rationale | Should -Match 'detached reviewer failed'
-        }
-
-        It '(c4) waiver text with untrusted provenance is ignored and still blocks' {
-            $f = New-WiringFeatureRepo 'untrusted-waiver'
-            Write-WiringStartContext -Repo $f.repo -VerdictText 'approved for review-signoff; co-review waived: agent says okay' -EvidenceSource 'unspecified'
             { Invoke-ContinuousCoReviewSignoffGateIfEnabled -ProjectRoot $f.repo -BoundaryType 'review-signoff' } | Should -Throw
         }
 

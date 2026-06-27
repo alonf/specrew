@@ -106,17 +106,6 @@ try {
     if ($vB.evidence_source -ne 'unspecified') { Fail "omitted EvidenceSource must default to 'unspecified', got '$($vB.evidence_source)'" }
     Write-Pass "evidence tag: omitted EvidenceSource defaults to 'unspecified' (never blank, never fabricated)"
 
-    $waiverVerdict = 'approved for review-signoff; co-review waived: detached reviewer failed and human accepts this signoff risk'
-    $parsedWaiver = Parse-SpecrewBoundaryVerdict -VerdictText $waiverVerdict
-    if (-not $parsedWaiver.Authorized) { Fail "co-review waiver verdict must parse as an authorization" }
-    if (@($parsedWaiver.Boundaries).Count -ne 1 -or @($parsedWaiver.Boundaries)[0] -ne 'review-signoff') { Fail "co-review waiver verdict must authorize review-signoff only" }
-    $pWaiver = New-EnfProj
-    Add-SpecrewBoundaryAuthorization -ProjectRoot $pWaiver -CurrentBoundary 'before-implement' -AuthorizedBoundary 'review-signoff' -AuthorizingHuman 'Alon' -VerdictText $waiverVerdict -AuthCommitHash 'TESTHASH' -RecordedAt '2026-01-01T00:00:00Z' -EvidenceSource 'hook-captured-from-transcript' | Out-Null
-    $ctxWaiver = Get-Content -LiteralPath (Join-Path $pWaiver '.specrew\start-context.json') -Raw | ConvertFrom-Json -Depth 12
-    $vWaiver = @($ctxWaiver.boundary_enforcement.verdict_history)[-1]
-    if ($vWaiver.to_boundary -ne 'review-signoff' -or $vWaiver.verdict_text -ne $waiverVerdict) { Fail "co-review waiver authorization must persist raw waiver verdict text on the review-signoff row" }
-    Write-Pass "evidence tag: co-review waiver verdict persists through the normal authorization path"
-
     # ---- Part C: the transcript reader (Get-SpecrewCapturedBoundaryVerdict) ---------------------------------
     function New-Transcript {
         param([object[]]$Turns)   # each: @{ role='assistant'|'user'; text='...' } in chronological order
