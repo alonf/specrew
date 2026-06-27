@@ -7,23 +7,13 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved)
-**Specification drift**: One authorized dogfood repair is recorded: the review-signoff hard gate is default-on in 197-owned wiring and Specrew self-review includes the co-review runtime under test. The stale lifecycle-state evidence mismatch identified by review was governance-artifact drift, not requirement or implementation drift, and is repaired in the current review-position artifacts.
+**Total drift events**: 0
+**Resolution rate**: 100% (0/0 resolved)
+**Specification drift**: None detected through implementation and Proposal 145 review-signoff; the latest scope-change verdict remains reconciled into spec, plan, tasks, iteration state, and review evidence. The stale lifecycle-state evidence mismatch identified by review was governance-artifact drift, not requirement or implementation drift, and is repaired in the current review-position artifacts.
 
 ## Events
 
-### D-197-I001-001 - Dogfood hard-gate repair after co-review evidence gap
-
-**Status**: resolved
-**Detected by**: live co-review `codex-hard-gate-20260627`
-**Authorized by**: maintainer instruction on 2026-06-27 to make the co-review mechanism robust after the AISharedMemoryMCP host-switch dogfood failure
-
-**Drift**: The implementation changed the review-signoff gate from an opt-in configuration key to a default-on backstop and changed the worktree reviewer visibility policy for Specrew self-review. Iteration 008 design previously treated the signoff evidence gate as surviving unchanged and the strip set as downstream methodology machinery; dogfooding proved those assumptions insufficient for the host-switch/compaction failure mode.
-
-**Resolution**: Recorded T083/T084 in `specs/197-continuous-co-review/tasks.md`, added the dogfood repair decisions to `specs/197-continuous-co-review/iterations/008/design-analysis.md`, kept the implementation inside `scripts/internal/continuous-co-review/`, and removed the unapproved waiver parser change from protected `shared-governance.ps1` mirrors.
-
-**Trace**: FR-025, FR-030, FR-031, NFR-001, SC-019, SC-020.
+No implementation drift has been detected. Implementation of T001-T050 is complete, Proposal 145 review-signoff evidence records all task verdicts as pass, and the only prior blocker was stale lifecycle/governance evidence (`plan.md` status and state positioning) after `review.md` existed.
 
 ## Watch Items
 
