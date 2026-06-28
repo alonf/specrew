@@ -73,6 +73,23 @@ function Resolve-CoReviewNavigatorLogicPath {
     return $null
 }
 
+function Write-CoReviewNavigatorTrace {
+    # D-197-I009-001 observability: the navigator was DARK + SILENT for days (stderr WARN only, masked by
+    # manual --live). Record EVERY outcome (fired | deduped | not-implement-stage | identity-unresolved |
+    # dark | failed | no-op) to a bounded journal so a non-fire is OBSERVABLE, not invisible. Fail-safe -
+    # the provider is fail-open, so a journal error must never throw.
+    param([string]$ProjectRoot, [string]$Action, [string]$Reason)
+    try {
+        $dir = Join-Path $ProjectRoot '.specrew/runtime'
+        if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return }
+        $path = Join-Path $dir 'co-review-navigator-journal.jsonl'
+        $entry = ([pscustomobject]@{ recorded_at = ([datetime]::UtcNow.ToString('o')); action = [string]$Action; reason = [string]$Reason } | ConvertTo-Json -Compress)
+        $existing = if (Test-Path -LiteralPath $path -PathType Leaf) { @(Get-Content -LiteralPath $path -ErrorAction SilentlyContinue) } else { @() }
+        Set-Content -LiteralPath $path -Value ((@($existing | Select-Object -Last 49) + $entry) -join "`n") -Encoding UTF8
+    }
+    catch { $null = $_ }
+}
+
 # --- manual $args parse (the double-dash contract; NO param()) ---
 $sourceEventArg = $null
 $hostKindArg = $null
@@ -105,13 +122,19 @@ try {
 
     $logicPath = Resolve-CoReviewNavigatorLogicPath -ProjectRoot $projectRoot -Rel $rel
     if ([string]::IsNullOrWhiteSpace($logicPath)) {
-        # Diagnosable degrade (NOT a silent dead provider): mirror conformance's *_UNAVAILABLE WARN.
+        # Diagnosable degrade (NOT a silent dead provider): WARN (diagnostic) + a VISIBLE note + a durable
+        # trace, so a dark navigator is OBSERVABLE this time (D-197-I009-001: it was stderr-silent for days).
+        Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'dark' -Reason 'navigator-logic-unresolved'
         [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_UNAVAILABLE the in-glob navigator logic ($rel) did not resolve under the project tree, SPECREW_MODULE_PATH, or the installed Specrew module; the co-review navigator is dark this event (the deterministic signoff gate floor remains the authority).")
+        Write-Output '[co-review] navigator is DARK — continuous co-review is NOT running (navigator logic did not load). The signoff-gate floor still applies; deploy/re-sync the co-review runtime to restore auto-review.'
         exit 0
     }
     . $logicPath
     if (-not (Get-Command -Name $navFn -ErrorAction SilentlyContinue)) {
+        # This is exactly the D-197-I009-001 failure mode (deployed provider drifted to a legacy fn name).
+        Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'dark' -Reason "$navFn-undefined"
         [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_UNAVAILABLE the navigator logic loaded but $navFn is undefined; co-review navigator dark this event.")
+        Write-Output "[co-review] navigator is DARK — continuous co-review is NOT running ($navFn undefined; the deployed provider likely drifted from source). The signoff-gate floor still applies; re-sync the deployed mirror to restore auto-review."
         exit 0
     }
 
@@ -126,10 +149,13 @@ try {
     $decision = $null
     try { $decision = & $navFn @navParams }
     catch {
+        Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'failed' -Reason ([string]$_.Exception.Message)
         [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_FAILED $($_.Exception.Message)")
         exit 0
     }
-    if ($null -eq $decision) { exit 0 }
+    if ($null -eq $decision) { Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action 'no-op' -Reason 'null-decision'; exit 0 }
+    # Durable trace of the REAL outcome (fired | deduped | not-implement-stage | identity-unresolved | cross-session-sweep).
+    Write-CoReviewNavigatorTrace -ProjectRoot $projectRoot -Action ([string]$decision.action) -Reason ([string]$decision.reason)
 
     # Translate the decision into the dispatcher's stdout contract. STOP-BLOCK wins (force-continue);
     # else any inject notes; else NOTHING.
