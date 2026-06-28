@@ -7,13 +7,28 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 ## Summary
 
-**Total drift events**: 0
-**Resolution rate**: 100% (0/0 resolved)
-**Specification drift**: None detected — implementation has not started (this file is scaffolded at the before-implement boundary so drift can be logged the moment it is detected).
+**Total drift events**: 1
+**Resolution rate**: 100% (1/1 resolved)
+**Specification drift**: One DEPLOY-DRIFT defect found + fixed: the deployed co-review navigator provider was stale (pre-iter-008), so the AUTO co-review had been dark on every Stop — the feature silently not running. This is deployment/mirror drift, not requirement or source-implementation drift.
 
 ## Events
 
-No drift detected yet. Iteration 009 implements R1-R6 (FR-033..FR-038 + SC-024) at named seams in the existing worktree pipeline (no new architecture).
+### D-197-I009-001 - The auto co-review navigator was DARK (stale deployed mirror, never re-synced after the iter-008 cutover)
+
+**Status**: resolved
+**Detected by**: maintainer question 2026-06-28 ("how come the co-reviewer is not running on this branch") -> empirical trace (ran the navigator decision + the deployed provider directly, per advisor guidance, after two wrong static guesses).
+
+**Drift**: The DEPLOYED navigator provider `file:///C:/Dev/197-continuous-co-review/.specify/extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1` was the pre-iter-008 version — it loads `continuous-co-review-navigator.ps1` and calls `Invoke-ContinuousCoReviewNavigator` (both LEGACY), while the SOURCE provider was updated in the iter-008 worktree cutover to load `worktree-navigator.ps1` and call `Invoke-ContinuousCoReviewWorktreeNavigator`. The cutover updated source but **never re-synced the `.specify` deployed mirror**, so at every Stop the deployed provider emitted `WARN CO_REVIEW_NAVIGATOR_UNAVAILABLE ... Invoke-ContinuousCoReviewNavigator is undefined; co-review navigator dark this event` (to stderr — silent in practice) and exited fail-open. The auto co-review had NOT fired since 2026-06-23 (`co-review-navigator-state.json`); the 35+ pending runs were MANUAL `specrew review --live` invocations, which masked the dead auto-path.
+
+**Evidence the source logic was fine** (so the bug was purely deploy-drift): the navigator's own decision, run on this checkout's live state, returned stage=implement + a fresh tree-id + not-deduped = WOULD-FIRE.
+
+**Resolution**: re-synced the deployed provider to source (mirror parity restored). **PROVEN**: re-running the deployed provider fired a fresh review — new run `20260628T015643287-e4cb96e3`, `last_fired_tree_id` updated to the current tree-id (`f1bfe721…`), a new `.specrew/review/pending/` dir created.
+
+**Trace**: FR-026, FR-030, FR-031 (the always-on auto-fire the deploy-drift silently broke), SC-022.
+
+**Durable follow-ups (the bugs behind the bug — owed)**: (1) the mirror-parity validator did NOT catch the deployed-vs-source provider drift — a parity-coverage gap; (2) "navigator dark" is emitted only to stderr, invisible to the human, so it failed silently for days — needs a surfaced signal; (3) the 35-run stale pending backlog chokes the reap (~2 min) — needs a backlog cap + cleanup so the fire path stays inside the Stop budget.
+
+### Watch carry-over (from scaffolding)
 
 ## Watch Items
 

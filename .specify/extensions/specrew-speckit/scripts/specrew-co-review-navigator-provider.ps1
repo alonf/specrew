@@ -19,7 +19,7 @@
 #
 # The provider itself does almost NOTHING - it locates + dot-sources the in-glob navigator LOGIC
 # (scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1, which dot-sources the
-# launcher + _load.ps1) via the module-base candidate ladder, then calls Invoke-ContinuousCoReviewNavigator
+# launcher + _load.ps1) via the module-base candidate ladder, then calls Invoke-ContinuousCoReviewWorktreeNavigator
 # and translates the returned decision into the dispatcher's stdout contract:
 #   - decision.stop_block set       -> print '<<<SPECREW-STOP-BLOCK>>>' + the directive (the dispatcher
 #                                       force-continues the turn via the host's stop-block envelope).
@@ -45,8 +45,8 @@ function Resolve-CoReviewNavigatorLogicPath {
     # the self-host repo) -> $env:SPECREW_MODULE_PATH -> the installed Specrew ModuleBase. $null if none
     # resolves (the caller WARNs once + no-ops; downstream this is the FileList-gap symptom - the CCR
     # tree is currently NOT in the .psd1 FileList, a feature-wide packaging gap flagged for closeout).
-    param([string]$ProjectRoot)
-    $rel = 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1'
+    param([string]$ProjectRoot, [string]$Rel = 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+    $rel = $Rel
 
     # When this provider is the DEPLOYED copy under <project>/.specify/extensions/specrew-speckit/scripts,
     # the CCR logic is NOT beside it - it ships (once the FileList is fixed) under the installed
@@ -98,16 +98,20 @@ try {
     $isStop = ($evt -in @('stop', 'agentstop'))
     if (-not $isSessionStart -and -not $isStop) { exit 0 }
 
-    $logicPath = Resolve-CoReviewNavigatorLogicPath -ProjectRoot $projectRoot
+    # iter-008: the worktree co-review engine is the ONE method. The diff-cramming first cut of this (never-released)
+    # feature is being removed - there is no "legacy" to select. Always load the worktree navigator.
+    $rel = 'scripts/internal/continuous-co-review/worktree-navigator.ps1'
+    $navFn = 'Invoke-ContinuousCoReviewWorktreeNavigator'
+
+    $logicPath = Resolve-CoReviewNavigatorLogicPath -ProjectRoot $projectRoot -Rel $rel
     if ([string]::IsNullOrWhiteSpace($logicPath)) {
-        # Diagnosable degrade (NOT a silent dead provider): mirror conformance's *_UNAVAILABLE WARN. This
-        # is the downstream FileList-gap symptom until scripts/internal/continuous-co-review/** ships.
-        [Console]::Error.WriteLine('[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_UNAVAILABLE the in-glob navigator logic (scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1) did not resolve under the project tree, SPECREW_MODULE_PATH, or the installed Specrew module; the co-review navigator is dark this event (the deterministic signoff gate floor remains the authority).')
+        # Diagnosable degrade (NOT a silent dead provider): mirror conformance's *_UNAVAILABLE WARN.
+        [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_UNAVAILABLE the in-glob navigator logic ($rel) did not resolve under the project tree, SPECREW_MODULE_PATH, or the installed Specrew module; the co-review navigator is dark this event (the deterministic signoff gate floor remains the authority).")
         exit 0
     }
     . $logicPath
-    if (-not (Get-Command -Name 'Invoke-ContinuousCoReviewNavigator' -ErrorAction SilentlyContinue)) {
-        [Console]::Error.WriteLine('[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_UNAVAILABLE the navigator logic loaded but Invoke-ContinuousCoReviewNavigator is undefined; co-review navigator dark this event.')
+    if (-not (Get-Command -Name $navFn -ErrorAction SilentlyContinue)) {
+        [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_UNAVAILABLE the navigator logic loaded but $navFn is undefined; co-review navigator dark this event.")
         exit 0
     }
 
@@ -120,7 +124,7 @@ try {
     if (-not [string]::IsNullOrWhiteSpace($hostKindArg)) { $navParams['CodeWriterHost'] = $hostKindArg }
 
     $decision = $null
-    try { $decision = Invoke-ContinuousCoReviewNavigator @navParams }
+    try { $decision = & $navFn @navParams }
     catch {
         [Console]::Error.WriteLine("[specrew-co-review-navigator] WARN CO_REVIEW_NAVIGATOR_FAILED $($_.Exception.Message)")
         exit 0
