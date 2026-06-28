@@ -196,6 +196,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
     $phaseTimers = @{}
     $currentPhase = 'initializing'
     $softBudgetSeconds = [math]::Max(60, [math]::Min([int]($TimeoutSeconds * 0.35), 300))
+    # T092/R2 (FR-034): the generous-budget bump is computed AFTER worktree materialization (once the diff size is
+    # known). Tracked here so every status write records the default vs the effective (possibly bumped) budget.
+    $budgetDefaultSeconds = $TimeoutSeconds; $budgetBumped = $false
     $budgetPolicy = 'Use implementer validation evidence first. Spend reviewer runtime where it materially changes confidence; targeted reruns are preferred over broad suites unless broad verification is justified by risk.'
     $recordPhaseStart = {
         param([string]$Name)
@@ -224,6 +227,8 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             timeout_seconds = $TimeoutSeconds
             soft_budget_seconds = $softBudgetSeconds
             budget_policy = $budgetPolicy
+            budget_default_seconds = $budgetDefaultSeconds
+            budget_bumped = $budgetBumped
             artifacts = [ordered]@{
                 run_dir     = $RunDir
                 result_out  = $resultOut
@@ -258,6 +263,19 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host }
         $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles
         & $recordPhaseEnd 'worktree-materialization'
+        # T092/R2 (FR-034): PRE-FLIGHT generous budget. Now that the change-set size is known, give a LARGE diff
+        # (the EnglishIntake 72-min class) more HARD headroom so it is less likely to be killed mid-read. Bump ONLY
+        # the DEFAULT budget - an explicit co_review_timeout_seconds is human intent, respected unchanged (FR-034:
+        # not a silent auto-extend). The default + bump flag are in status.json (observable). The SOFT budget is
+        # recomputed but stays at its 300s cap: we raise the WALL, not the pacing target.
+        if (-not (Test-ContinuousCoReviewExplicitTimeoutConfigured -RepoRoot $RepoRoot)) {
+            $generous = Get-ContinuousCoReviewGenerousBudget -DiffBytes ([int]$wt.diff_bytes) -ChangedCount ([int]$wt.changed_count) -DefaultSeconds $budgetDefaultSeconds
+            if ($generous -gt $TimeoutSeconds) {
+                $TimeoutSeconds = $generous
+                $softBudgetSeconds = [math]::Max(60, [math]::Min([int]($TimeoutSeconds * 0.35), 300))
+                $budgetBumped = $true
+            }
+        }
         # The reviewed-state DIGEST = the gate's identity. Get-...SignoffGateDecision compares ITS current digest to a
         # passing run's recorded reviewed_tree_id; recording the worktree HEAD-tree instead (the old bug) NEVER matched
         # the gate's working-tree digest, so every promoted pass read 'stale'. Compute it HERE, off the Stop budget,

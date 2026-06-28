@@ -42,7 +42,7 @@ This ledger was reconciled against git ground-truth (commit subjects + file mtim
 
 - [ ] T096 [owner: Implementer] [sp: 3.0] [R6] **Remediation menu** — on a review problem, surface ONE menu at the next Stop (more time / different host / narrow scope: code · process · file · function / accept partial / override block), carried via `co-review-round-state.json` to the re-run; honour the human-directed scope (extends user-code/subtree scoping) (Trace: FR-038, FR-024, FR-025; owns: `continuous-co-review-navigator.ps1` + `specrew-co-review-navigator-provider.ps1` + round-state)
 - [ ] T093 [owner: Architect] [sp: 1.5] [R3] **Host-independence fallback** — pre-flight independence check; fire labelled same-host fallback immediately (never block); the answer upgrades the next run; honour-or-surface `--host` (Trace: FR-035, FR-016, SEC-004; owns: `reviewer-selection-policy.ps1` + `reviewer-authorization-gate.ps1`)
-- [ ] T092 [owner: Implementer] [sp: 1.5] [R2] **Time-extension gate** — post-hoc "more time" menu option + pre-flight generous-budget heuristic for large diffs (Trace: FR-034, NFR-002; owns: orchestrator budget seam + navigator menu)
+- [x] T092 [owner: Implementer] [sp: 1.5] [R2] **Time-extension gate** — post-hoc "more time" menu option + pre-flight generous-budget heuristic for large diffs (Trace: FR-034, NFR-002; owns: orchestrator budget seam + navigator menu)
 
 ### Phase 3 — the honest gate
 

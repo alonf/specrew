@@ -220,7 +220,36 @@ function New-ContinuousCoReviewStrippedWorktree {
     # Curated process/progress context (distilled from the real project; the raw .specrew is stripped).
     Write-ContinuousCoReviewProcessContext -RepoRoot $resolved -ReviewDir $reviewDir
 
-    return [pscustomobject]@{ worktree_path = $worktree; tree_id = $treeId; changed_count = $changed.Count; changed_paths = @($changed) }
+    return [pscustomobject]@{ worktree_path = $worktree; tree_id = $treeId; changed_count = $changed.Count; changed_paths = @($changed); diff_bytes = [int]$diff.Length }
+}
+
+function Test-ContinuousCoReviewExplicitTimeoutConfigured {
+    # T092/R2 (FR-034): was co_review_timeout_seconds EXPLICITLY set in .specrew/config.yml? An explicit budget is
+    # human intent and MUST NOT be silently overridden by the generous-budget heuristic (FR-034: not a silent
+    # auto-extend). Mirrors the navigator's config read.
+    param([string]$RepoRoot)
+    if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $false }
+    $cfg = Join-Path $RepoRoot '.specrew/config.yml'
+    if (-not (Test-Path -LiteralPath $cfg -PathType Leaf)) { return $false }
+    try {
+        foreach ($line in (Get-Content -LiteralPath $cfg -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+            if ($line -match '^\s*co_review_timeout_seconds:\s*[''"]?[^''"#\s]') { return $true }
+        }
+    }
+    catch { $null = $_ }
+    return $false
+}
+
+function Get-ContinuousCoReviewGenerousBudget {
+    # T092/R2 (FR-034): a threshold-based GENEROUS budget for a large change-set, so a big diff (the EnglishIntake
+    # 72-min case) is less likely to be killed mid-read. Scales the DEFAULT up in tiers to a hard cap. A small or
+    # medium change-set keeps the default unchanged. Pure (diff size -> budget) so it is unit-testable.
+    param([int]$DiffBytes, [int]$ChangedCount, [Parameter(Mandatory)][int]$DefaultSeconds, [int]$CapSeconds = 1800)
+    $factor = 1.0
+    if ($DiffBytes -ge 200000 -or $ChangedCount -ge 40) { $factor = 1.5 }
+    if ($DiffBytes -ge 500000 -or $ChangedCount -ge 100) { $factor = 2.0 }
+    if ($DiffBytes -ge 1000000 -or $ChangedCount -ge 200) { $factor = 3.0 }
+    return [math]::Min([int]($DefaultSeconds * $factor), $CapSeconds)
 }
 
 function Get-ContinuousCoReviewSlimPrompt {

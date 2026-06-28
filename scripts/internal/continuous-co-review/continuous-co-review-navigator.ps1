@@ -506,6 +506,21 @@ function Invoke-ContinuousCoReviewNavigatorReap {
             if (-not $CrossSession) {
                 # Surface the verdict (done runs carry one at result_path; others did not finish cleanly).
                 $verdict = ConvertFrom-ContinuousCoReviewNavigatorVerdict -ResultPath $resultPath
+                # T092/R2 (FR-034): if this run reached its time budget (a PARTIAL review), offer the human-gated
+                # "more time" choice. The findings are real (T090 harvest) but incomplete; a fresh run at a larger
+                # budget completes it. Additive ("here are partial findings; extend to finish"), not "retry a fail".
+                $moreTimeNote = ''
+                try {
+                    $stPath = Join-Path (Split-Path -Parent $resultPath) 'status.json'
+                    if (Test-Path -LiteralPath $stPath -PathType Leaf) {
+                        $stObj = Get-Content -LiteralPath $stPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                        if (($stObj.PSObject.Properties.Name -contains 'completeness') -and ([string]$stObj.completeness -eq 'partial')) {
+                            $sugg = 1800; try { $cur = [int]$stObj.timeout_seconds; if ($cur -gt 0) { $sugg = [int]($cur * 2) } } catch { $null = $_ }
+                            $moreTimeNote = (" NOTE: this was a PARTIAL review - it reached its time budget, so the findings above may be incomplete. To complete it, give it MORE TIME: re-run with a larger budget, e.g. ``specrew review --live --timeout-seconds {0}``." -f $sugg)
+                        }
+                    }
+                }
+                catch { $null = $_ }
                 if ($status -eq 'done' -and $verdict.ok) {
                     # T083: route the REAL reviewer's full findings (all severities) to the durable
                     # blackboard (fail-open -> $null; the stub is excluded inside). T084: surface the thread.
@@ -515,6 +530,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         if ($null -eq $result.stop_block) {
                             $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId -BlackboardRef $threadRef)
                         }
+                        if (-not [string]::IsNullOrWhiteSpace($moreTimeNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $moreTimeNote)) | Out-Null }
                     }
                     elseif (($verdict.PSObject.Properties.Name -contains 'is_stub') -and $verdict.is_stub) {
                         # The default PLACEHOLDER stub always emits pass without reviewing. Surface it as
@@ -535,7 +551,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     else {
                         # Non-blocking but NOT an affirmative pass (needs-work / partial / no parseable pass
                         # disposition): advisory only, NEVER gate evidence. (145 G-197-I005-01)
-                        $result.inject_notes.Add(("[co-review] checkpoint review run {0} returned a non-blocking, non-pass verdict ('{1}') - advisory only, NOT counted as gate evidence.{2}" -f $runId, ([string]$verdict.disposition), $threadSuffix)) | Out-Null
+                        $result.inject_notes.Add(("[co-review] checkpoint review run {0} returned a non-blocking, non-pass verdict ('{1}') - advisory only, NOT counted as gate evidence.{2}{3}" -f $runId, ([string]$verdict.disposition), $threadSuffix, $moreTimeNote)) | Out-Null
                     }
                 }
                 elseif ($status -eq 'done' -and -not $verdict.ok) {
@@ -545,7 +561,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     # says WHY; advisory only, never gate evidence.
                     $failReason = Get-ContinuousCoReviewNavigatorFailureReason -RepoRoot $RepoRoot -Registry $reg
                     $reasonSuffix = if (-not [string]::IsNullOrWhiteSpace($failReason)) { (" Reason: {0}." -f $failReason) } else { '' }
-                    $result.inject_notes.Add(("[co-review] checkpoint review run {0} completed but produced no parseable verdict (advisory only, NOT gate evidence).{1}" -f $runId, $reasonSuffix)) | Out-Null
+                    $result.inject_notes.Add(("[co-review] checkpoint review run {0} completed but produced no parseable verdict (advisory only, NOT gate evidence).{1}{2}" -f $runId, $reasonSuffix, $moreTimeNote)) | Out-Null
                 }
                 else {
                     $result.inject_notes.Add(("[co-review] checkpoint review run {0} ended '{1}' without a verdict (no blocking signal); a re-review fires on the next changed checkpoint." -f $runId, $status)) | Out-Null

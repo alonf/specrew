@@ -3,8 +3,8 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T090
-**Tasks Remaining**: T092, T093, T094, T095, T096
+**Last Completed Task**: T092
+**Tasks Remaining**: T093, T094, T095, T096
 **In Progress**: (none)
 **Baseline Ref**: ac99be4c
 **Updated**: 2026-06-28
@@ -42,5 +42,6 @@ Iteration 009 is in the **implement** phase (before-implement approved 2026-06-2
 - **T091 (R5 hard timeout) DONE + WSL-validated.** (1) The supervisor's Unix kill orphaned the reviewer grandchild (`Stop-Process` on the single harness pid); fixed to a descendant-tree kill. (2) **Consolidated**: one shared `scripts/internal/agent-tasks/process-tree.ps1` (FileList-registered), dot-sourced by BOTH the supervisor AND the inline `worktree-reviewer.ps1` path (which **demoted** its divergent `$proc.Kill($true)` to a SURFACED fallback — WARN-on-use, f2 — for when the shared helper does not load; it was not silently dropped). (3) **Race-hardened**: the first descendant snapshot can miss a grandchild spawning near the deadline, and a dead root orphans it out of `pgrep` reach — so the Unix kill now SIGTERM-flushes, then RE-enumerates while the root is alive and SIGKILLs, then kills the root last. WSL hard gate: **6/6 PASS** (was flaky 1-in-3 before the race fix); Windows Pester PASS. Test: file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/unit/isolated-task-tree-kill.Tests.ps1.
 - **T090 (R1 partial harvest) DONE.** The reviewer prompt now instructs incremental emission to `.review/findings.jsonl` (one finding per line, as the reviewer confirms each); on a cut-short/unparseable run the orchestrator harvests the clean jsonl prefix (skipping a truncated trailing line) or PROSE-SALVAGES the reviewer's reasoning, recording the run's `completeness:'partial'` on **status.json** (NOT the FindingsResult — its schema is `additionalProperties:false`, the f1 co-review finding; the gate reads completeness from status.json), status stays `findings`. The harvested result is **schema-validated** in the unit tests. Real-host incremental-emission behaviour is maintainer-validation (like SC-012).
 - **Follow-up (not the kill)**: the EnglishIntake 72-minute escape needs real-host phase-telemetry to localize — the trace proved the timeout IS correctly plumbed (CLI -> service -> orchestrator -> reviewer) and the inline kill is a correct .NET tree-kill, so the 72min is materialization/rounds/host-edge, not the wall. Maintainer real-host re-run owed.
-- Task progress: 2 complete (T090, T091), 0 in-progress, 5 pending, 0 blocked.
+- **T092 (R2 time-extension gate) DONE.** FR-034 human-gated time budget. (a) PRE-FLIGHT: a tiered generous-budget heuristic (`Get-ContinuousCoReviewGenerousBudget`) gives a LARGE diff more HARD headroom (1.5x/2x/3x to an 1800s cap) so it is less likely to be killed mid-read - but bumps ONLY the DEFAULT; an explicit `co_review_timeout_seconds` is respected unchanged (not a silent auto-extend, FR-034), and the bump is recorded in status.json. (b) POST-HOC: when the navigator reaps a `completeness:'partial'` (timed-out) run, it surfaces a "give it MORE TIME" note alongside the real partial findings (additive, not "retry a fail"). 10 unit tests (budget tiers + explicit-config guard + navigator partial-note) + full co-review suite **164/0**. Owns: orchestrator budget seam + navigator menu.
+- Task progress: 3 complete (T090, T091, T092), 0 in-progress, 4 pending, 0 blocked.
 - Latest completed task: T090 (partial-findings harvest + prose-salvage; completeness label).
