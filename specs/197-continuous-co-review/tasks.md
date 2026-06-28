@@ -35,7 +35,7 @@ This ledger was reconciled against git ground-truth (commit subjects + file mtim
 
 ### Phase 1 — relieve the deadlock
 
-- [ ] T091 [owner: Implementer] [sp: 3.0] [R5] **Hard timeout = a real wall** — independent watchdog + process-group/job-object **tree-kill** + stdio-redirect + 5s SIGTERM→SIGKILL graceful flush in `scripts/internal/continuous-co-review/worktree-reviewer.ps1`; WSL-validated (hard gate) (Trace: FR-037, SC-024, NFR-001; owns: `worktree-reviewer.ps1`)
+- [ ] T091 [owner: Implementer] [sp: 3.0] [R5] **Hard timeout = a real wall** — **consolidate** the inline reviewer spawn onto the existing iter-005 isolated-task supervisor (one cross-platform watchdog: deadline poll + `Stop-Process -Force` + process-tree kill); **instrument the live escape first**; remove worktree-reviewer.ps1's duplicate inline `$proc.Kill($true)`; stdio-redirect; WSL-validated (hard gate) (Trace: FR-037, SC-024, NFR-001; owns: `worktree-reviewer.ps1`, `agent-tasks/isolated-task-supervisor.ps1`, `agent-tasks/isolated-task-launcher.ps1`)
 - [ ] T090 [owner: Implementer] [sp: 2.5] [R1] **Harvest partial findings** — reviewer instruction contract emits each finding incrementally (one JSON object per line to a findings file); harvest the clean prefix on kill; prose-salvage floor (Trace: FR-033, SC-024, NFR-001; owns: reviewer instruction contract + `worktree-review-orchestrator.ps1` harvest path)
 
 ### Phase 2 — the human remediation surface

@@ -36,6 +36,12 @@ The reviewer instruction contract changes to append each finding (one JSON objec
 
 Root cause: the wait kills only the immediate child and/or blocks on inherited stdout (so the watchdog never fires). Fix: redirect reviewer stdio to files (never inherit pipes); an independent watchdog fires at the deadline; kill the whole process **tree** (Unix: own process group via `setsid` + `kill -- -PGID`; Windows: Job Object / `taskkill /T /F`); SIGTERM -> **5s grace** (flush the in-flight finding from D2) -> SIGKILL. **WSL-validation is a hard acceptance gate** (standing rule: spawn/detach work is Unix-validated, not Windows-only).
 
+### D3 refinement (2026-06-28, before-implement gate) — consolidate on the existing isolated-task supervisor
+
+Investigation at the before-implement gate found the original iter-005 (T077) process manager is intact and IS the watchdog: `scripts/internal/agent-tasks/isolated-task-supervisor.ps1` polls `$child.HasExited` against a deadline and on timeout does `Stop-Process -Force` + an explicit process-TREE kill (cross-platform-validated by the T076 spike); the async navigator fires/reaps through `Start/Stop-SpecrewIsolatedTask`. But there is a SECOND, divergent kill: `worktree-reviewer.ps1`'s inline `Invoke-ContinuousCoReviewAgentInWorktree` runs its OWN `WaitForExit` loop + `$proc.Kill($true)` (line 369, swallowed by a bare `catch {}`). The EnglishIntake 1h12m hang was on the MANUAL `specrew review --live` path, which uses that inline kill — NOT the supervisor.
+
+**Decision (maintainer, 2026-06-28): T091 consolidates on the supervisor.** Route the inline/manual reviewer invocation through the same launcher/supervisor process manager the async path uses, so there is ONE hardened cross-platform tree-kill, not two divergent ones. First step: **instrument the live escape** (the exact failure — un-plumbed timeout vs. swallowed `Kill` exception vs. agent-waiting-on-an-already-killed-run — is not yet proven), then unify on the supervisor and remove `worktree-reviewer.ps1`'s duplicate inline kill.
+
 ### D4 — degraded-evidence gate policy -> Option C (tiered by actual assurance)
 
 Label every run across 3 independent dimensions: completeness (`full` | `partial`), independence (`independent` | `same-host`), budget (`normal` | `time-extended`). `full`+`independent` (any budget) -> auto-allow. `partial` OR `same-host` -> allow only with an explicit human ack, recorded as a **first-class verdict** in the evidence trail. Never deadlocks (worst case: ack). `time-extended` is NOT reduced assurance -> auto-allows.
