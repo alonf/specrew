@@ -47,6 +47,19 @@ if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
     Write-EarlyDecisionOnlyNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
     exit 0
 }
+# Per-event kill-switch (recovery lever): SPECREW_DISABLE_EVENTS is a comma/semicolon-separated list of hook
+# events to no-op for THIS process - e.g. `SPECREW_DISABLE_EVENTS=Stop` runs a shell whose Stop hook fires NOTHING
+# (no co-review / conformance / handover-on-Stop) while SessionStart + PostToolUse stay live. A SURGICAL
+# alternative to SPECREW_REFOCUS_DISABLE (which silences every event), so a misbehaving / blocking Stop provider
+# can be bypassed in a fresh shell without losing the rest of the hook surface. Case-insensitive; the early
+# decision-only no-op keeps the host's hook contract satisfied.
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_DISABLE_EVENTS)) {
+    $disabledEvents = @($env:SPECREW_DISABLE_EVENTS -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($disabledEvents -contains $Event) {
+        Write-EarlyDecisionOnlyNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
+        exit 0
+    }
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
