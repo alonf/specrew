@@ -694,10 +694,10 @@ try {
             # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.
             $diagLat = [string]$lastAssistantText
             $diagHits = 0; foreach ($dh in $script:SpecrewReentryHeaders) { if (-not [string]::IsNullOrEmpty($diagLat) -and $diagLat -match [regex]::Escape($dh)) { $diagHits++ } }
-            # dx_lat_head = the first 60 chars of WHAT the extraction actually read - so a false-negative block
-            # shows whether it read a stale/prior message (flush-race), nothing (extraction fail), or the packet.
-            $diagHead = if (-not [string]::IsNullOrEmpty($diagLat)) { $c = ($diagLat -replace '\s+', ' '); $c.Substring(0, [Math]::Min(60, $c.Length)) } else { '' }
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_lat_head = $diagHead; dx_packet_present = $packetPresent; dx_reread_caught = $rereadCaught; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
+            # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
+            # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
+            # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_reread_caught = $rereadCaught; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

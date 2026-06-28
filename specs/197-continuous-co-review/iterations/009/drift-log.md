@@ -7,9 +7,9 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 100% (2/2 resolved)
-**Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 and returned a blocking finding; its f1 (a schema-violating FindingsResult), f2 (a silent kill-fallback), and f3 (this iteration's own state drift) are all fixed. Both are implementation/deploy/state defects, not requirement drift.
+**Total drift events**: 4
+**Resolution**: 3 resolved + 1 mitigation-applied-pending-live-verification
+**Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. All are implementation/deploy/state defects, not requirement drift.
 
 ## Events
 
@@ -42,6 +42,25 @@ Tracks divergences between the approved specification, plan, task table, and imp
 **Plus (maintainer UX finding, fixed):** the navigator's STOP-BLOCK message duplicated the full finding text (summary line + BLOCKING line) and rendered location as `@{path=...}` — an unreadable wall. `Build-ContinuousCoReviewNavigatorStopBlock` now renders each finding ONCE, with a clean `[path:line]` location.
 
 **Trace**: f1 -> FR-033 / the FindingsResult contract; f2 -> FR-037 / NFR-001; f3 -> honest-state discipline.
+
+### D-197-I009-003 - The conformance stop-block intermittently false-negatived a valid context packet (flush/read race)
+
+**Status**: mitigation applied, **pending live verification**
+**Detected by**: maintainer 2026-06-28 ("not so nice UI") - a turn that DID render a packet was re-prompted for a packet (the double-render).
+
+**Drift + diagnosis (by elimination, honestly incomplete)**: NOT the parser (a simulation showed it reads every packet post-hoc) and NOT a deployed-mirror drift (deployed == source). The packet is present post-hoc yet `packetPresent=false` at the stop -> the just-rendered final message is read STALE = a flush/read race. Intermittent: one instrumented stop passed cleanly. I retracted an earlier wrong "flush refuted" claim (the transcript `timestamp` is message-creation time, not disk-flush time).
+
+**Mitigation (b, maintainer-chosen)**: file:///C:/Dev/197-continuous-co-review/extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1 now RE-READS the transcript tail up to 4x (<=0.6s, ONLY on the would-block path) before committing to a material block, and records `dx_*` forensic fields so a false-negative is never silent (the navigator-dark lesson). No conversation text is recorded (privacy). `conformance-detection` 24/24. Committed `90ef3ad1`. **Owed**: a captured `dx_reread_caught`/false-negative `dx_` record confirming (or refuting) the flush-race root.
+
+### D-197-I009-004 - A second co-review self-review caught two structural holes in the co-review machinery
+
+**Status**: resolved
+**Detected by**: the co-review navigator (now firing + with the readable block format) self-reviewing iteration 009 - run `20260628T091126869-14b18167`, 2 blocking findings, both correct.
+
+- **Finding 1 (fixed):** `Get-ContinuousCoReviewMachineryPaths` stripped `scripts/internal/agent-tasks/**` + `atomic-write.ps1` UNCONDITIONALLY (the T084 self-source un-strip covered only `continuous-co-review/**`). So every Specrew self-review was BLIND to T091's central, security-critical tree-kill/supervisor - the gate could record a PASS on a run that never saw them. Same hole class as D-197-I009-001 + T084. **Fix:** un-strip `agent-tasks/**` + `atomic-write.ps1` when `Test-ContinuousCoReviewSpecrewSourceRepo` is true.
+- **Finding 2 (fixed):** `Invoke-ContinuousCoReviewAgentInWorktree` returned `stdout=''` on a TIMEOUT (discarding the async `$outTask` that holds the reviewer output captured before the kill), so T090's prose-salvage floor was INERT on the exact failure (timeout) the iteration was built for - every timeout recorded `no-parseable-findings-json` (the SC-024/R1 outcome it was created to eliminate). `partial-harvest.Tests.ps1` masked it by feeding `RawStdout` directly. **Fix:** await `$outTask` (bounded) on timeout + return the partial stdout; new integration test through the REAL timeout path (file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/integration/timeout-partial-stdout.Tests.ps1, proven 12s kill-not-30s-sleep). Co-review suite 154/0.
+
+**Trace**: f1 -> the change-set-completeness invariant the auto-gate depends on (FR-026/FR-030); f2 -> FR-033 (R1 partial harvest) / SC-024 (never-deadlock).
 
 ### Watch carry-over (from scaffolding)
 

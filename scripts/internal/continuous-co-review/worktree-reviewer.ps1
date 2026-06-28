@@ -43,11 +43,17 @@ function Get-ContinuousCoReviewMachineryPaths {
     param([string]$RepoRoot)
     $core = @(
         '.specrew', '.specify', '.squad', '.agents', '.git',
-        'scripts/internal/agent-tasks', 'scripts/internal/atomic-write.ps1',
         'CLAUDE.md', 'AGENTS.md', 'GEMINI.md'
     )
     if (-not (Test-ContinuousCoReviewSpecrewSourceRepo -RepoRoot $RepoRoot)) {
+        # In a DEPLOYED project these are inert deployed machinery to strip. In the Specrew SOURCE repo they ARE
+        # the feature under review: continuous-co-review/** AND the iter-009 tree-kill/supervisor that live under
+        # agent-tasks/** + atomic-write.ps1. Stripping them unconditionally made every self-review BLIND to T091's
+        # central (security-critical) implementation - the gate could PASS a run that never saw the tree-kill.
+        # Same hole class as the navigator-dark deploy-drift (D-197-I009-001) + the T084 continuous-co-review fix.
         $core += 'scripts/internal/continuous-co-review'
+        $core += 'scripts/internal/agent-tasks'
+        $core += 'scripts/internal/atomic-write.ps1'
     }
     if ([string]::IsNullOrWhiteSpace($RepoRoot)) { return $core }
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -446,9 +452,16 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
             try { $proc.Kill($true) } catch { $null = $_ }
         }
         $sw.Stop()
+        # BLOCKING co-review finding (T090/R1): the reviewer's stdout captured BEFORE the kill (including anything
+        # flushed during the graceful window) lives in $outTask. Return it as the partial result so prose-salvage
+        # has the in-pipe reasoning to fall back on. WITHOUT this, every timeout returned stdout='' and the salvage
+        # floor was inert on the EXACT failure (timeout) the iteration was built for. The pipe closes when the
+        # killed process exits, so the bounded await resolves promptly.
+        $partialOut = ''
+        try { if ($outTask.Wait(3000)) { $partialOut = [string]$outTask.Result } } catch { $null = $_ }
         return [pscustomobject]@{
             exit_code        = $null
-            stdout           = ''
+            stdout           = $partialOut
             stderr           = 'timeout'
             telemetry        = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -TimedOut $true)
         }
