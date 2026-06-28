@@ -52,6 +52,15 @@ This ledger was reconciled against git ground-truth (commit subjects + file mtim
 
 - [ ] T095 [owner: Spec Steward] [sp: 0.5] [governance — non-requirement] **Resolve the T083–T085 collision** — renumber the iter-008 Dogfood Repair Addendum to T087–T089 (iter-006's commit-cited T083–T086 stay canonical) (Trace: governance hygiene — not requirement-driven; explicitly exempt from FR/SC traceability)
 
+### Iteration 009 — R7/R8 process-lifecycle + Stop-performance (dogfood scope-expansion, maintainer-authorized 2026-06-28)
+
+The 35-minute Stop incident (drift-log D-197-I009-005) surfaced two requirements beyond R1–R6: **R7** detached process lifecycle (FR-039) and **R8** Stop-hook performance (FR-040). Added with the maintainer's explicit authorization to continue in iteration 009.
+
+- [x] T097 [owner: Implementer] [sp: 2.0] [R7] **Detach leak fix + auto-budget revert** — clear `HANDLE_FLAG_INHERIT` on stdout/stderr before the detached spawn so the review cannot inherit the dispatcher's pipe (Windows; Unix verified clean 2.8s), fail-open + WARN; revert T092's AUTO generous-budget bump (auto uses the default; generous is manual-`--live` only) (Trace: FR-039, FR-040, SC-025; owns: `co-review-service.ps1`, `worktree-review-orchestrator.ps1`, `tests/continuous-co-review/integration/detached-spawn-no-block.Tests.ps1`)
+- [x] T098 [owner: Implementer] [sp: 1.0] [R8] **Revert the conformance re-read** — remove the unconfirmed flush-race re-read (4× tail-200 parse, ~17s on a large transcript) that taxed every material stop + starved the navigator's Stop budget (Trace: FR-040, SC-025; owns: `specrew-conformance-provider.ps1` + its `.specify` mirror)
+- [ ] T099 [owner: Implementer] [sp: 1.5] [R8] **Gate the conformance parse** — a Stop on a no-material turn must NOT run the transcript parse just because a spec exists (`$anySpec`); parse only on a real packet-owed trigger (Trace: FR-040, SC-025; owns: `specrew-conformance-provider.ps1`)
+- [ ] T100 [owner: Implementer] [sp: 4.0] [R7] **Robust supervisor (Phase 2)** — activity-watchdog (kill on 1–2 min inactivity via CPU/IO sampling; write `terminal_reason` BEFORE killing); Job object (Windows) / cgroup-or-process-group (Unix) atomic kill; session-scoped launcher tracking (session-id + start-time); Stop kills a stale OWN-session launcher, never a broad pattern (Trace: FR-039, SC-025; owns: `co-review-service.ps1`, `agent-tasks/isolated-task-supervisor.ps1`, `continuous-co-review-navigator.ps1`, tests)
+
 **Capacity**: 14.5 / 20 SP — within cap. ~5.5 SP headroom held (iter-009 stays tight on robustness per the plan-boundary default; deferred governance items not pulled in).
 
 ### Bidirectional traceability (tasks ↔ requirements)

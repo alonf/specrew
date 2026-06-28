@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T092
-**Tasks Remaining**: T093, T094, T095, T096
+**Last Completed Task**: T098
+**Tasks Remaining**: T093, T094, T095, T096, T099, T100
 **In Progress**: (none)
 **Baseline Ref**: ac99be4c
-**Updated**: 2026-06-28
+**Updated**: 2026-06-28T11:52:55.2359298Z
 
 ## Planning Summary
 
@@ -20,7 +20,7 @@ Iteration 009 is the ~14.5/20 SP reviewer-robustness slice (graceful degradation
 
 ## Next Action
 
-Iteration 009 is in the **implement** phase (before-implement approved 2026-06-28; last-authorized boundary `before-implement` IS the implement window). T091 + T090 are DONE. The deployed co-review navigator dark defect (D-197-I009-001) was found + fixed and both parity/observability follow-ups closed, so co-review now fires at checkpoints — it self-reviewed this work and its findings f1 (T090 harvest schema-violation), f2 (kill-fallback honesty), f3 (this state drift) are being addressed now. Remaining tasks: T092, T093, T094, T095, T096.
+Iteration 009 is in the **implement** phase (before-implement approved 2026-06-28; last-authorized boundary `before-implement` IS the implement window). DONE: T090, T091, T092 (R1/R5/R2) + T097, T098 (R7/R8). The co-review navigator was un-darked (D-197-I009-001) so it self-reviews this work. The 35-minute-Stop incident (D-197-I009-005) added R7/R8 and is Phase-1-fixed (detach leak fix + auto-budget revert + conformance re-read revert). Remaining: T093 (host fallback), T094 (degraded gate), T095 (collision cleanup), T096 (remediation menu), T099 (gate the conformance parse — cheaper conversational stops), T100 (Phase 2 robust supervisor — activity-watchdog + Job/cgroup atomic kill + session-scoped launcher).
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
@@ -39,9 +39,8 @@ Iteration 009 is in the **implement** phase (before-implement approved 2026-06-2
 
 ## Execution Summary
 
-- **T091 (R5 hard timeout) DONE + WSL-validated.** (1) The supervisor's Unix kill orphaned the reviewer grandchild (`Stop-Process` on the single harness pid); fixed to a descendant-tree kill. (2) **Consolidated**: one shared `scripts/internal/agent-tasks/process-tree.ps1` (FileList-registered), dot-sourced by BOTH the supervisor AND the inline `worktree-reviewer.ps1` path (which **demoted** its divergent `$proc.Kill($true)` to a SURFACED fallback — WARN-on-use, f2 — for when the shared helper does not load; it was not silently dropped). (3) **Race-hardened**: the first descendant snapshot can miss a grandchild spawning near the deadline, and a dead root orphans it out of `pgrep` reach — so the Unix kill now SIGTERM-flushes, then RE-enumerates while the root is alive and SIGKILLs, then kills the root last. WSL hard gate: **6/6 PASS** (was flaky 1-in-3 before the race fix); Windows Pester PASS. Test: file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/unit/isolated-task-tree-kill.Tests.ps1.
-- **T090 (R1 partial harvest) DONE.** The reviewer prompt now instructs incremental emission to `.review/findings.jsonl` (one finding per line, as the reviewer confirms each); on a cut-short/unparseable run the orchestrator harvests the clean jsonl prefix (skipping a truncated trailing line) or PROSE-SALVAGES the reviewer's reasoning, recording the run's `completeness:'partial'` on **status.json** (NOT the FindingsResult — its schema is `additionalProperties:false`, the f1 co-review finding; the gate reads completeness from status.json), status stays `findings`. The harvested result is **schema-validated** in the unit tests. Real-host incremental-emission behaviour is maintainer-validation (like SC-012).
-- **Follow-up (not the kill)**: the EnglishIntake 72-minute escape needs real-host phase-telemetry to localize — the trace proved the timeout IS correctly plumbed (CLI -> service -> orchestrator -> reviewer) and the inline kill is a correct .NET tree-kill, so the 72min is materialization/rounds/host-edge, not the wall. Maintainer real-host re-run owed.
-- **T092 (R2 time-extension gate) DONE.** FR-034 human-gated time budget. (a) PRE-FLIGHT: a tiered generous-budget heuristic (`Get-ContinuousCoReviewGenerousBudget`) gives a LARGE diff more HARD headroom (1.5x/2x/3x to an 1800s cap) so it is less likely to be killed mid-read - but bumps ONLY the DEFAULT; an explicit `co_review_timeout_seconds` is respected unchanged (not a silent auto-extend, FR-034), and the bump is recorded in status.json. (b) POST-HOC: when the navigator reaps a `completeness:'partial'` (timed-out) run, it surfaces a "give it MORE TIME" note alongside the real partial findings (additive, not "retry a fail"). 10 unit tests (budget tiers + explicit-config guard + navigator partial-note) + full co-review suite **164/0**. Owns: orchestrator budget seam + navigator menu.
-- Task progress: 3 complete (T090, T091, T092), 0 in-progress, 4 pending, 0 blocked.
-- Latest completed task: T090 (partial-findings harvest + prose-salvage; completeness label).
+- **R1–R6 slice:** T090 (partial harvest), T091 (hard-timeout/kill, WSL-validated), T092 (time-extension gate) complete.
+- **R7/R8 scope-expansion (the 35-minute-Stop dogfood, drift-log D-197-I009-005):** T097 (detach leak fix — clear HANDLE_FLAG_INHERIT before the detached spawn so the review can't inherit the dispatcher's pipe; harness-proven 11.4s→1.8s, Linux verified clean 2.8s; + revert T092's AUTO budget bump) and T098 (revert the unconfirmed ~17s conformance re-read that starved the navigator's Stop budget) complete. Tests: detached-spawn-no-block.Tests.ps1 (1/1), conformance-detection 24/24, co-review suite 164/0.
+- **Honesty correction:** I earlier told the maintainer the Stop hook was "disabled" — WRONG; it fires (D-005). And this state.md header was re-scaffolded to `not-started` at the 11:52 resume (frozen-pointer drift, Proposal 142/193) and reconciled here.
+- Task progress: 5 complete (T090, T091, T092, T097, T098), 0 in-progress, 6 pending (T093, T094, T095, T096, T099, T100), 0 blocked.
+- Latest completed task: T098 (revert the conformance re-read) — with T097 (the detach leak fix that ended the 35-minute Stop).

@@ -504,31 +504,11 @@ try {
         }
     }
     $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
-
-    # FLUSH/READ-RACE mitigation (b, D-197-I009): the host can finalize the agent's last packet message a moment
-    # before it lands in the transcript file the Stop hook reads, so a material stop can read a STALE prior message
-    # and material-block a turn that DID render a packet (the conformance false-negative; intermittent). When we are
-    # ABOUT TO material-block (packet absent on a material stop), RE-READ the tail a few times before committing -
-    # if the packet lands, the race is caught and we do not spuriously block. Bounded (<=~0.6s) and ONLY on the
-    # would-block path, so the happy path pays nothing and a genuine no-packet turn just re-confirms the absence.
-    $rereadCaught = $false
-    if ((-not $packetPresent) -and $materialStop -and (-not $hasPending) -and $ccLoaded -and `
-            -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf) -and `
-            (Get-Command Get-SpecrewConversationTurnFromLine -ErrorAction SilentlyContinue)) {
-        for ($rr = 0; ($rr -lt 4) -and (-not $packetPresent); $rr++) {
-            Start-Sleep -Milliseconds 150
-            try {
-                $rrTail = @(Get-Content -LiteralPath $transcriptPathArg -Tail 200 -Encoding UTF8 -ErrorAction Stop)
-                for ($rk = $rrTail.Count - 1; $rk -ge 0; $rk--) {
-                    $rrTurn = Get-SpecrewConversationTurnFromLine -Line $rrTail[$rk]
-                    if ($null -ne $rrTurn -and [string]$rrTurn.role -eq 'assistant' -and -not [string]::IsNullOrWhiteSpace([string]$rrTurn.text)) { $lastAssistantText = [string]$rrTurn.text; break }
-                }
-                $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
-                if ($packetPresent) { $rereadCaught = $true }
-            }
-            catch { $null = $_ }
-        }
-    }
+    # ISSUE-2 PERF REVERT: the flush/read-race RE-READ (4x tail-200 parse, ~17s on a large transcript) is REMOVED.
+    # It was an UNCONFIRMED mitigation (the instrumented false-negative never reproduced) and it taxed every
+    # material stop AND starved the navigator (order 50) of the shared 20s Stop budget, so co-review stopped firing.
+    # If the flush-race double-render ever reproduces WITH a captured dx_ record, re-add a CHEAP variant (a tiny
+    # last-line re-read, not a full 200-line parse). The dx_* journal keeps the decision observable in the meantime.
     $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
 
     # --- IDEMPOTENCY (duplicate-fire guard, 145 IDEMP-1 / SC-1): dedup a re-fired hook for the SAME observable DECISION
@@ -697,7 +677,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_reread_caught = $rereadCaught; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

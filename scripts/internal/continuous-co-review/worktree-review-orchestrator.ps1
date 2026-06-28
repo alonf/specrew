@@ -263,19 +263,13 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host }
         $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles
         & $recordPhaseEnd 'worktree-materialization'
-        # T092/R2 (FR-034): PRE-FLIGHT generous budget. Now that the change-set size is known, give a LARGE diff
-        # (the EnglishIntake 72-min class) more HARD headroom so it is less likely to be killed mid-read. Bump ONLY
-        # the DEFAULT budget - an explicit co_review_timeout_seconds is human intent, respected unchanged (FR-034:
-        # not a silent auto-extend). The default + bump flag are in status.json (observable). The SOFT budget is
-        # recomputed but stays at its 300s cap: we raise the WALL, not the pacing target.
-        if (-not (Test-ContinuousCoReviewExplicitTimeoutConfigured -RepoRoot $RepoRoot)) {
-            $generous = Get-ContinuousCoReviewGenerousBudget -DiffBytes ([int]$wt.diff_bytes) -ChangedCount ([int]$wt.changed_count) -DefaultSeconds $budgetDefaultSeconds
-            if ($generous -gt $TimeoutSeconds) {
-                $TimeoutSeconds = $generous
-                $softBudgetSeconds = [math]::Max(60, [math]::Min([int]($TimeoutSeconds * 0.35), 300))
-                $budgetBumped = $true
-            }
-        }
+        # T092 pre-flight generous-budget bump REVERTED (Issue 1): a 30-min AUTO checkpoint review is wrong - the
+        # navigator fires one on every checkpoint, and even fully detached it should be SHORT. The auto path now
+        # uses the passed-in budget (the navigator default). The generous budget belongs to manual
+        # `specrew review --live` (where the human explicitly waits) and, for the auto path, is superseded by the
+        # Phase-2 activity watchdog (kill on inactivity, not a fixed wall). The helpers
+        # (Get-ContinuousCoReviewGenerousBudget / Test-ContinuousCoReviewExplicitTimeoutConfigured) + $wt.diff_bytes
+        # are retained (unit-tested) for manual-path / Phase-2 reuse.
         # The reviewed-state DIGEST = the gate's identity. Get-...SignoffGateDecision compares ITS current digest to a
         # passing run's recorded reviewed_tree_id; recording the worktree HEAD-tree instead (the old bug) NEVER matched
         # the gate's working-tree digest, so every promoted pass read 'stale'. Compute it HERE, off the Stop budget,

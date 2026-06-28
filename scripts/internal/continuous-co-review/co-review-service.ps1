@@ -88,11 +88,31 @@ function Start-ContinuousCoReviewServiceRun {
         if (Get-Command -Name 'Write-SpecrewFileAtomic' -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $regPath -Content $json } else { [System.IO.File]::WriteAllText($regPath, $json) }
     }
     & $writeReg $null 'running' $null
-    # Spawn detached, stdio redirected to files (an un-redirected child inherits our pipes and BLOCKS on Unix).
+    # Spawn detached, stdio redirected to files. An un-redirected child inherits our pipes and BLOCKS the parent.
     $entry = Join-Path $PSScriptRoot 'worktree-review-detached-entry.ps1'
     $spawnArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $entry, '-RepoRoot', $resolved, '-RunDir', $runDir, '-RunId', $RunId, '-RegistryPath', $regPath, '-TimeoutSeconds', $TimeoutSeconds)
     if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $spawnArgs += @('-BaselineRef', $BaselineRef) }
     if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $spawnArgs += @('-CodeWriterHost', $CodeWriterHost) }
+    # ISSUE-1 LEAK FIX: clear HANDLE_FLAG_INHERIT on OUR stdout/stderr BEFORE the spawn, so the detached review
+    # cannot inherit the dispatcher's stdout PIPE. Without this, the dispatcher's read of THIS provider blocks
+    # until the REVIEW exits (the 35-min Stop; T092's budget bump stretched it to ~30 min) - because Start-Process
+    # forces bInheritHandles=true, so -Redirect* below redirects the child's OWN stdio but does NOT stop it
+    # inheriting our pipe. Windows-only (Unix detaches via -Redirect*, validated WSL). Proven in a harness: a 10s
+    # detached child blocked the parent 11.4s without this, 1.8s with it. Fail-open: any P/Invoke error falls
+    # through to the existing (functional) spawn. (Phase 2 replaces this with a Job-object / cgroup for atomic kill.)
+    if ($IsWindows) {
+        try {
+            if (-not ('SpecrewCoReview.HandleHelper' -as [type])) {
+                Add-Type -Name HandleHelper -Namespace SpecrewCoReview -MemberDefinition '[DllImport("kernel32.dll", SetLastError=true)] public static extern IntPtr GetStdHandle(int n); [DllImport("kernel32.dll", SetLastError=true)] public static extern bool SetHandleInformation(IntPtr h, uint mask, uint flags);'
+            }
+            foreach ($std in @(-11, -12)) { [void][SpecrewCoReview.HandleHelper]::SetHandleInformation([SpecrewCoReview.HandleHelper]::GetStdHandle($std), 1, 0) }
+        }
+        catch {
+            # Fail-open, but NOT silent (navigator-dark lesson): if the clear fails the spawn still runs, but the
+            # dispatcher may block until the review exits - say so rather than hide it.
+            [Console]::Error.WriteLine("[co-review] WARN HANDLE_INHERIT_CLEAR_FAILED ($($_.Exception.Message)); the detached review spawn may block the Stop hook until the review exits.")
+        }
+    }
     try {
         $proc = Start-Process -FilePath (Get-Command pwsh).Source -ArgumentList $spawnArgs -PassThru -WindowStyle Hidden `
             -RedirectStandardOutput (Join-Path $runDir 'entry.out.log') -RedirectStandardError (Join-Path $runDir 'entry.err.log')

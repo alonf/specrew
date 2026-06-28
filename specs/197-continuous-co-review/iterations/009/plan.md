@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 14.50/20 story_points
+**Capacity**: 17.50/20 story_points
 **Started**: 2026-06-28
 
 <!--
@@ -38,6 +38,8 @@ Reviewer robustness (graceful degradation). Live EnglishIntake field evidence sh
 | T092 | Time-extension gate: post-hoc "more time" menu option + pre-flight generous-budget heuristic for large diffs. | FR-034, NFR-002 | Time extension | 1.50 | Implementer | `scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1`; `scripts/internal/continuous-co-review/worktree-reviewer.ps1`; `scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1`; `tests/continuous-co-review/**` | done |
 | T094 | Tiered degraded-evidence gate: 3-dimension label (completeness/independence/budget); full+independent auto; partial/same-host need a recorded first-class ack verdict; never deadlock; degraded-block override with recorded reason. | FR-036, SC-019, SC-020, SC-024 | Degraded gate | 2.50 | Reviewer | `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1`; `scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1`; `tests/continuous-co-review/**` | planned |
 | T095 | Resolve the T083-T085 collision: renumber the iter-008 Dogfood Repair Addendum to T087-T089 (iter-006's commit-cited T083-T086 stay canonical). Governance hygiene; non-requirement. | governance | Collision cleanup | 0.50 | Spec Steward | `specs/197-continuous-co-review/iterations/008/**`; `specs/197-continuous-co-review/tasks.md` | planned |
+| T097 | R7/Phase-1 detach leak fix: clear HANDLE_FLAG_INHERIT on stdout/stderr before the detached spawn (Windows; Unix verified clean 2.8s) so the review cannot inherit the dispatcher's pipe; fail-open + WARN; revert T092's AUTO generous-budget bump (generous stays manual-`--live`). | FR-039, FR-040, SC-025 | Detach leak fix | 2.00 | Implementer | `co-review-service.ps1`; `worktree-review-orchestrator.ps1`; `tests/continuous-co-review/integration/detached-spawn-no-block.Tests.ps1` | done |
+| T098 | R8 revert the unconfirmed flush-race conformance re-read (4x tail-200 parse, ~17s on a large transcript) that taxed every material stop + starved the navigator's Stop budget. | FR-040, SC-025 | Re-read revert | 1.00 | Implementer | `specrew-conformance-provider.ps1` + `.specify` mirror | done |
 
 ## Effort Model
 
@@ -53,9 +55,10 @@ Reviewer robustness (graceful degradation). Live EnglishIntake field evidence sh
 
 ## Traceability Summary
 
-- In-scope: FR-033..FR-038 (R1-R6) + SC-024 (never-deadlock acceptance).
-- Bidirectional: every FR-033..FR-038 + SC-024 has a covering task; every requirement-driven task (T090-T094, T096) traces to at least one FR/SC. T095 is governance hygiene (non-requirement). PASS.
-- Capacity status: PASS, 14.50/20 story_points.
+- In-scope: FR-033..FR-038 (R1-R6) + SC-024 (never-deadlock acceptance). PLUS the R7/R8 scope-expansion (dogfood D-197-I009-005, maintainer-authorized 2026-06-28): FR-039 (detached process lifecycle) + FR-040 (Stop-hook performance) + SC-025.
+- Bidirectional: every FR-033..FR-040 + SC-024/SC-025 has a covering task; every requirement-driven task (T090-T094, T096, T097, T098) traces to at least one FR/SC. T095 is governance hygiene (non-requirement). PASS.
+- R7/R8 SCOPING FLAG: Phase-1 fixes T097 + T098 are in iter-009 (within cap). The remainder — T099 (gate the conformance parse, 1.5 SP) + T100 (Phase-2 robust supervisor: activity-watchdog + Job/cgroup atomic kill + session-scoped launcher, 4.0 SP) — is flagged for a fresh **iter-010**: folding it into iter-009 overcommits it to 23/20. Maintainer scoping decision pending.
+- Capacity status: PASS, 17.50/20 story_points.
 
 ## Acceptance gates
 

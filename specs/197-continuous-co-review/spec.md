@@ -358,6 +358,24 @@ can request a structured findings response without writing to the source tree.
   human-directed subset. A blocking finding from any review surfaces and stops
   advancement; a degraded-review block is overridable with a recorded rationale. Owner:
   Implementer. Delivery: Iteration 009.
+- **FR-039 (Iteration 009 — R7, detached process lifecycle)**: The auto-fired checkpoint
+  review MUST run truly detached so the Stop hook NEVER blocks on it — the spawned launcher
+  MUST NOT inherit the host/dispatcher's stdio handles (the inherited-pipe leak that caused a
+  35-minute Stop). The launcher (supervisor) MUST bound the reviewer by ACTIVITY — sample its
+  CPU/IO/memory and kill it after sustained inactivity (1–2 min), not only at a fixed deadline —
+  and MUST record its terminal decision (`terminal_reason`) to the run's files BEFORE killing,
+  so a crash mid-kill still leaves a truthful record. The reviewer process tree MUST be killable
+  ATOMICALLY (a Job object on Windows, a cgroup or process-group on Unix). Each launcher MUST be
+  attributable to its originating session (session-id + start-time), so a Stop can identify and
+  kill a stale OWN-session launcher (never by a broad process-name pattern). Owner: Implementer.
+  Delivery: Iteration 009 (Phase 1: the detach leak fix; Phase 2: the activity watchdog + atomic
+  kill + session-scoped launcher).
+- **FR-040 (Iteration 009 — R8, Stop-hook performance)**: A Stop on a turn with NO material
+  change MUST do only CHEAP work — surface a pending review verdict if one is ready, else return —
+  and MUST NOT run the expensive transcript parse/re-read when no packet-owed trigger exists. The
+  AUTO checkpoint-review time budget MUST be modest; generous time budgets are for the human-driven
+  manual `specrew review --live` path only, never the auto fire. Owner: Implementer. Delivery:
+  Iteration 009.
 
 ### Non-Functional Requirements
 
@@ -965,6 +983,13 @@ can request a structured findings response without writing to the source tree.
   termination, and (c) surfaces the remediation menu — so the review-signoff gate
   NEVER blocks on "no parseable verdict" in 100% of degraded-path fixture runs; a
   `partial` or `same-host` signoff records a first-class human ack verdict.
+- **SC-025 (Iteration 009 — R7/R8)**: The auto-review fire returns the Stop hook
+  promptly regardless of how long the review runs (the review is detached, off the
+  Stop budget) — a detached child NEVER blocks the dispatcher's read of its provider
+  (harness-pinned: the parent's piped read returns when the provider exits, not when
+  the detached child exits); a Stop on a no-material turn does no transcript parse; a
+  reviewer with no activity for 1–2 min is killed with a recorded `terminal_reason`,
+  and its process tree dies atomically with no orphan.
 
 ## Assumptions
 

@@ -7,8 +7,8 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 ## Summary
 
-**Total drift events**: 4
-**Resolution**: 3 resolved + 1 mitigation-applied-pending-live-verification
+**Total drift events**: 5
+**Resolution**: 4 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion)
 **Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. All are implementation/deploy/state defects, not requirement drift.
 
 ## Events
@@ -61,6 +61,23 @@ Tracks divergences between the approved specification, plan, task table, and imp
 - **Finding 2 (fixed):** `Invoke-ContinuousCoReviewAgentInWorktree` returned `stdout=''` on a TIMEOUT (discarding the async `$outTask` that holds the reviewer output captured before the kill), so T090's prose-salvage floor was INERT on the exact failure (timeout) the iteration was built for - every timeout recorded `no-parseable-findings-json` (the SC-024/R1 outcome it was created to eliminate). `partial-harvest.Tests.ps1` masked it by feeding `RawStdout` directly. **Fix:** await `$outTask` (bounded) on timeout + return the partial stdout; new integration test through the REAL timeout path (file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/integration/timeout-partial-stdout.Tests.ps1, proven 12s kill-not-30s-sleep). Co-review suite 154/0.
 
 **Trace**: f1 -> the change-set-completeness invariant the auto-gate depends on (FR-026/FR-030); f2 -> FR-033 (R1 partial harvest) / SC-024 (never-deadlock).
+
+### D-197-I009-005 - The 35-minute Stop: the auto-review's detached spawn LEAKED the dispatcher's stdout handle, and the conformance re-read taxed every stop
+
+**Status**: Phase 1 + Issue-2(a) resolved; Phase 2 + Issue-2(b) owed (scope-expansion, maintainer-authorized 2026-06-28).
+**Detected by**: maintainer 2026-06-28 ("the stop hook took 35 minutes and I stopped it in the middle").
+
+**Root 1 - the BLOCK (Issue 1):** the auto-review fires "detached" via `Start-Process -RedirectStandardOutput` in `co-review-service.ps1`, but Start-Process forces `bInheritHandles=true`, so the detached review INHERITS the navigator-provider's stdout PIPE - and the dispatcher's read of that provider then blocks until the REVIEW exits, not when the provider exits. T092's budget bump (1800s) stretched the block to ~30 min. **PROVEN** in a harness: a 10s detached child blocked the parent **11.4s** without the fix, **1.8s** with it (Windows); Linux is clean (**2.8s** baseline on WSL - the `-Redirect*` detaches there).
+
+**Root 2 - the SLOW stops (Issue 2):** the conformance flush-race RE-READ (4x `Get-Content -Tail 200` + full parse, **~17s** on the 7.6MB transcript) - an UNCONFIRMED mitigation (the instrumented false-negative never reproduced) - taxed every material stop AND starved the navigator (order 50) of the shared 20s Stop budget, so co-review stopped firing.
+
+**Fixes (Phase 1 + Issue-2 part a):** (a) clear `HANDLE_FLAG_INHERIT` on stdout/stderr before the detached spawn (Windows; Unix verified clean), fail-open with a WARN; (b) reverted T092's AUTO budget bump (auto-review uses the default; generous budget is for manual `specrew review --live` only); (c) reverted the conformance re-read. **Tests:** file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/integration/detached-spawn-no-block.Tests.ps1 (1/1); conformance-detection 24/24; co-review suite 164/0.
+
+**Correction recorded (honesty):** I earlier told the maintainer the Stop hook had been "disabled" - WRONG. The hook fires (it blocked for a packet mid-fix). Stop events looked dark because (a) the host was down during the restart, (b) my investigation turns were non-material (conformance only journals material stops), and (c) co-review deduped (the tree-id is the COMMITTED HEAD-subtree; uncommitted edits don't change it) + the re-read budget-starvation.
+
+**Owed (T098(b) + T099 / Phase 2):** gate the conformance parse off `$anySpec` (cheaper conversational stops); the robust supervisor - activity-watchdog (kill on 1-2 min inactivity via CPU/IO sampling, write `terminal_reason` BEFORE killing for crash-safety), Job-object (Windows) / cgroup-or-process-group (Linux) for atomic kill, session-scoped launcher tracking, and the Stop killing a stale OWN-session launcher (never a broad pattern - the host-kill incident, now a saved rule).
+
+**Trace**: FR-039 (R7 detached process lifecycle), FR-040 (R8 Stop-hook performance), SC-025.
 
 ### Watch carry-over (from scaffolding)
 
