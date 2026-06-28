@@ -745,24 +745,39 @@ function Build-ContinuousCoReviewNavigatorStopBlock {
     # The directive body a blocking co-review verdict force-continues the turn with (the dispatcher
     # wraps it in the host's stop-block envelope). Names the finding so the human/agent acts on it.
     param([Parameter(Mandatory)]$Verdict, [AllowNull()][string]$RunId, [AllowNull()][string]$BlackboardRef)
-    $sb = New-Object System.Text.StringBuilder
-    [void]$sb.AppendLine('Specrew co-review (navigator): the fresh-context checkpoint review of your latest increment returned a BLOCKING finding. Address it before continuing, then re-stop:')
-    [void]$sb.AppendLine(("- run {0}: {1}" -f $RunId, $Verdict.summary))
+    # Collect the blocking findings ONCE and render them cleanly. The old format dumped the full finding text
+    # TWICE (the summary line + the BLOCKING line) and stringified location as "@{path=...}" - an unreadable wall
+    # for the human (maintainer feedback 2026-06-28). Render: one header, a run+count line, then each finding as
+    # a bullet with a clean [path:line] location and its comment, indented, exactly once.
+    $blocking = New-Object System.Collections.Generic.List[object]
     if ($null -ne $Verdict.raw -and ($Verdict.raw.PSObject.Properties.Name -contains 'findings') -and $null -ne $Verdict.raw.findings) {
         foreach ($f in @($Verdict.raw.findings)) {
             $sev = if ($null -ne $f -and ($f.PSObject.Properties.Name -contains 'severity')) { [string]$f.severity } else { '' }
             $disp = if ($null -ne $f -and ($f.PSObject.Properties.Name -contains 'disposition')) { [string]$f.disposition } else { '' }
-            if ($sev -match '(?i)^(blocking|block|critical|high)$' -or $disp -match '(?i)^block') {
-                $loc = if ($f.PSObject.Properties.Name -contains 'location') { [string]$f.location } else { '' }
-                $cmt = if ($f.PSObject.Properties.Name -contains 'comment') { [string]$f.comment } else { '' }
-                [void]$sb.AppendLine(("  BLOCKING {0}{1}" -f ($(if ($loc) { "[$loc] " } else { '' })), $cmt))
-            }
+            if ($sev -match '(?i)^(blocking|block|critical|high)$' -or $disp -match '(?i)^block') { [void]$blocking.Add($f) }
         }
     }
-    if (-not [string]::IsNullOrWhiteSpace($BlackboardRef)) {
-        [void]$sb.AppendLine(("Full findings (all severities) - the durable review thread: {0}" -f $BlackboardRef))
+    $sb = New-Object System.Text.StringBuilder
+    [void]$sb.AppendLine('Specrew co-review — BLOCKING. The fresh-context review of your latest increment found an issue to address before you continue. Fix it, then re-stop so co-review can re-check.')
+    [void]$sb.AppendLine('')
+    [void]$sb.AppendLine(("Run {0}  -  {1} blocking finding(s):" -f $RunId, $blocking.Count))
+    foreach ($f in $blocking) {
+        $loc = $null
+        if (($f.PSObject.Properties.Name -contains 'location') -and $null -ne $f.location) {
+            $p = if ($f.location.PSObject.Properties.Name -contains 'path') { [string]$f.location.path } else { '' }
+            $ls = if ($f.location.PSObject.Properties.Name -contains 'line_start') { $f.location.line_start } else { $null }
+            if (-not [string]::IsNullOrWhiteSpace($p)) { $loc = if ($null -ne $ls) { ("{0}:{1}" -f $p, $ls) } else { $p } }
+        }
+        $cmt = if ($f.PSObject.Properties.Name -contains 'comment') { [string]$f.comment } else { '' }
+        [void]$sb.AppendLine('')
+        [void]$sb.AppendLine(("  - {0}" -f ($(if ($loc) { "[$loc]" } else { '(no location)' }))))
+        [void]$sb.AppendLine(("    {0}" -f $cmt))
     }
-    [void]$sb.AppendLine('This is a co-review navigator block (not a boundary verdict); do NOT emit a SPECREW-VERDICT-BOUNDARY marker. The review ran in an isolated read-only worktree; nothing was changed in your tree.')
+    [void]$sb.AppendLine('')
+    if (-not [string]::IsNullOrWhiteSpace($BlackboardRef)) {
+        [void]$sb.AppendLine(("Full findings (all severities): {0}" -f $BlackboardRef))
+    }
+    [void]$sb.AppendLine('(Co-review navigator block, not a boundary verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker. Reviewed in an isolated read-only worktree; your tree is unchanged.)')
     return $sb.ToString().TrimEnd()
 }
 

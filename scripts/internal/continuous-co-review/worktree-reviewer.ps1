@@ -288,9 +288,10 @@ function Get-ContinuousCoReviewHarvestedPartialResult {
     #   1. the incremental .review/findings.jsonl (one JSON finding per line) - take the clean prefix, skip a
     #      truncated trailing line;
     #   2. PROSE-SALVAGE floor - if nothing structured, surface the reviewer's raw reasoning tail as ONE advisory note.
-    # Returns a FindingsResult JSON string tagged `completeness:'partial'` (status stays 'findings' so the existing
-    # blackboard/gate pipeline still surfaces it; the gate consumes `completeness` for the degraded-ack policy, R4),
-    # or $null if there is genuinely nothing to harvest.
+    # Returns a SCHEMA-CONFORMANT FindingsResult JSON string (status 'findings'), or $null if there is genuinely
+    # nothing to harvest. The run's completeness=partial is recorded by the orchestrator on status.json (the
+    # FindingsResult schema is additionalProperties:false, so it must not carry a completeness field); the gate
+    # (R4) reads completeness from status.json.
     param(
         [Parameter(Mandatory)][string]$WorktreePath,
         [AllowNull()][string]$RawStdout,
@@ -316,20 +317,21 @@ function Get-ContinuousCoReviewHarvestedPartialResult {
         $findings.Add([pscustomobject]@{
                 finding_id      = 'partial-1'
                 source_run_id   = $RunId
-                location        = [pscustomobject]@{ path = $null; line_start = $null; line_end = $null }
+                location        = [pscustomobject]@{ line_start = $null; line_end = $null }   # f1: path OMITTED (schema types it string, not null)
                 severity        = 'advisory'
                 kind            = 'partial-unverified-notes'
-                design_reference = $null
+                design_reference = 'partial-review-salvage'   # f1: schema requires a non-empty string, not null
                 comment         = ('Review was cut short before a structured verdict; UNVERIFIED reviewer notes salvaged: ' + $tail)
                 disposition     = 'open'
                 resolution      = [pscustomobject]@{ state = 'unresolved'; fix_evidence_ref = $null; rationale = $null }
             })
     }
+    # f1: the FindingsResult schema is additionalProperties:false, so `completeness` does NOT belong here -
+    # the run's completeness=partial is recorded on status.json by the orchestrator (where the gate reads it).
     $result = [pscustomobject]@{
         schema_version = '1.0'
         run_id         = $RunId
         status         = 'findings'
-        completeness   = 'partial'
         findings       = $findings.ToArray()
         created_at     = (ConvertTo-ContinuousCoReviewReviewerIsoTimestamp)
     }
@@ -437,6 +439,10 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
             Stop-SpecrewProcessTree -RootPid $proc.Id -GraceSeconds 5
         }
         else {
+            # f2: the shared graceful tree-kill is NOT dropped — it is the primary path; this is a defensive
+            # fallback for when process-tree.ps1 did not load (a deploy gap). SURFACE it (no graceful flush,
+            # not the validated path) instead of degrading silently.
+            [Console]::Error.WriteLine('[co-review] WARN Stop-SpecrewProcessTree unavailable - using the $proc.Kill($true) fallback (no graceful flush); check the process-tree helper deploy.')
             try { $proc.Kill($true) } catch { $null = $_ }
         }
         $sw.Stop()
