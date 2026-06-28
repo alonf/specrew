@@ -1,11 +1,11 @@
 # Iteration State: 009
 
 **Schema**: v1
-**Current Phase**: tasks
-**Iteration Status**: not-started
+**Current Phase**: implement
+**Iteration Status**: executing
 **Last Completed Task**: (none)
 **Tasks Remaining**: T090, T091, T092, T093, T094, T095, T096
-**In Progress**: (none)
+**In Progress**: T091 (R5 hard timeout — consolidate on the supervisor + Unix tree-kill)
 **Baseline Ref**: ac99be4c
 **Updated**: 2026-06-28
 
@@ -39,6 +39,7 @@ Iteration 009 is at the tasks -> before-implement boundary, awaiting the human i
 
 ## Execution Summary
 
-- Execution has not started yet (awaiting before-implement approval).
-- Task progress: 0 complete, 0 in-progress, 7 pending, 0 blocked.
+- **T091 (R5 hard timeout) in progress.** The isolated-task supervisor's Unix tree-kill is fixed + **WSL-validated**: it previously orphaned the reviewer grandchild (`Stop-Process` on the single harness pid); it now snapshots the descendant tree (`pgrep -P`) and does graceful SIGTERM -> 5s flush -> SIGKILL across platforms. Test: file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/unit/isolated-task-tree-kill.Tests.ps1 (Windows PASS; WSL PASS — the hard gate).
+- **Remaining in T091**: consolidate the manual/inline `specrew review --live` path onto the supervisor + remove worktree-reviewer.ps1's duplicate inline `$proc.Kill($true)`; the 72-minute escape needs real-host phase-telemetry to localize (the trace confirmed the timeout IS correctly plumbed CLI -> service -> orchestrator -> reviewer, so it is not a static bug).
+- Task progress: 0 complete, 1 in-progress (T091), 6 pending, 0 blocked.
 - Latest completed task: (none)
