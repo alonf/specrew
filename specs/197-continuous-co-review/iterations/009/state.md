@@ -3,8 +3,8 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T098
-**Tasks Remaining**: T093, T094, T095, T096
+**Last Completed Task**: T095
+**Tasks Remaining**: T093, T094, T096 (+ T091 needs-rework — R5)
 **In Progress**: (none)
 **Baseline Ref**: ac99be4c
 **Updated**: 2026-06-28T13:44:18.4800867Z
@@ -40,5 +40,5 @@ Iteration 009 is in the **implement** phase (before-implement approved 2026-06-2
 ## Execution Summary
 
 - Execution is underway (implement phase).
-- Task progress: 5 complete, 0 in-progress, 4 pending, 0 blocked.
-- Latest completed task: T098 (revert the conformance re-read). The T097 detach fix ultimately landed as `Win32_Process.Create` (zero handle inheritance + reparented) after the `-11/-12` handle-clear proved insufficient at the real host->dispatcher boundary — see drift-log D-197-I009-005.
+- Task progress: 5 complete (T090, T092, T095, T097, T098), 1 needs-rework (T091 — R5 WSL gate unevidenced), 3 pending (T093, T094, T096).
+- Latest completed task: T095 (resolve the T083-T085 collision — renumber the iter-008 Dogfood Repair Addendum to T087-T089). T097/T098 (R7/R8) also complete: the T097 detach fix ultimately landed as `Win32_Process.Create` (zero handle inheritance + reparented) after the `-11/-12` handle-clear proved insufficient at the real host->dispatcher boundary — see drift-log D-197-I009-005. T091 (R5) demoted to needs-rework (WSL hard-gate unevidenced); R5/FR-037 closure deferred to iter-010 per D-197-I009-006.

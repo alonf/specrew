@@ -7,8 +7,8 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 ## Summary
 
-**Total drift events**: 5
-**Resolution**: 4 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion)
+**Total drift events**: 6
+**Resolution**: 5 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion)
 **Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. All are implementation/deploy/state defects, not requirement drift.
 
 ## Events
@@ -78,6 +78,15 @@ Tracks divergences between the approved specification, plan, task table, and imp
 **Owed (T098(b) + T099 / Phase 2):** gate the conformance parse off `$anySpec` (cheaper conversational stops); the robust supervisor - activity-watchdog (kill on 1-2 min inactivity via CPU/IO sampling, write `terminal_reason` BEFORE killing for crash-safety), Job-object (Windows) / cgroup-or-process-group (Linux) for atomic kill, session-scoped launcher tracking, and the Stop killing a stale OWN-session launcher (never a broad pattern - the host-kill incident, now a saved rule).
 
 **Trace**: FR-039 (R7 detached process lifecycle), FR-040 (R8 Stop-hook performance), SC-025.
+
+### D-197-I009-006 — Co-review caught T091 (R5 hard-kill) marked done without its hard WSL-validation gate; human ruling = defer R5 to iter-010
+
+**Status**: resolved (human decision, option c)
+**Detected by**: the co-review navigator (run 20260628T162905826-ac8293b7, full completeness), which ESCALATED to a human after the same blocking finding survived 3 rounds (the autonomous review→fix loop did not converge).
+**Finding**: T091 was marked done while its self-declared HARD acceptance gate (plan.md: the hard timeout + process-tree kill PROVEN on WSL; a configured timeout kills the reviewer tree with no orphaned children) and the Watch Item ("do NOT mark T091 done on Windows-only evidence") were unsatisfied — NO WSL artifact exists. Corroborating gaps: (1) no WSL run-log / closeout-validation for the tree-kill; the Unix kill path (process-tree.ps1 pgrep-BFS + 3-pass SIGTERM/SIGKILL) is exercised by no recorded run; (2) the LIVE INLINE path's orphan-elimination is untested (its timeout test spawns no grandchild; the grandchild test drives the SUPERVISOR, which the live path does not use); (3) the consolidation was PARTIAL — only the kill-helper is shared; the inline watchdog loop + inline `$proc.Kill($true)` persist, so T091's title over-claimed; (4) process-tree.ps1 is pgrep-only (silent empty if pgrep absent); (5) the ledgers disagreed (tasks-progress.yml pending vs state.md done).
+**Human decision (option c)**: demote T091 → needs-rework; DEFER R5/FR-037 closure (the WSL validation + the live-path orphan-kill proof + a genuine consolidation-or-reword) to iteration 010, alongside T099/T100; reconcile all four ledgers to honest state. Options (a) produce-the-WSL-run and (b) route-the-live-spawn-through-the-WSL-validated-supervisor are the real R5 work, deferred to fresh context (end-of-session fatigue + the dogfood verification confound: the gate under change is the gate that reviews the change).
+**Dogfood note**: this is the co-review feature working as designed — it caught a real governance self-violation the author walked past during the multi-minute-Stop firefight, and routed it to the human instead of looping a third automated pass.
+**Trace**: governance / R5 (FR-037) acceptance-gate integrity; iter-010 carry.
 
 ### Watch carry-over (from scaffolding)
 
