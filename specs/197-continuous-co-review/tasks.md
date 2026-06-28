@@ -29,19 +29,54 @@ This ledger was reconciled against git ground-truth (commit subjects + file mtim
 
 ---
 
-## Iteration 009 — Reviewer robustness (graceful degradation) — PLANNED
+## Iteration 009 — Reviewer robustness (graceful degradation) — TASKS (approved for tasks, 2026-06-28)
 
-**Why:** live downstream dogfood (EnglishIntake) proved the reviewer is field-unstable on real change-sets — a large diff times out → "no parseable findings" → the review-signoff gate deadlocks; `--host` is silently overridden to the code-writer host (independence defeated); the configured timeout is not enforced. Maintainer ruling 2026-06-28: **"make it a robust feature — any review is better than nothing; the gate must never hard-deadlock."** Formal `specify` open pending human authorization; recorded here as forward plan.
+**Why:** live downstream dogfood (EnglishIntake) proved the reviewer is field-unstable on real change-sets — a large diff times out → "no parseable findings" → the review-signoff gate deadlocks; `--host` is silently overridden; the configured timeout is not enforced. Maintainer ruling 2026-06-28: **"make it a robust feature — any review is better than nothing; the gate must never hard-deadlock."** Design-analysis → plan → tasks approved (2026-06-28). Requirements **R1–R6 = FR-033…FR-038 + SC-024**. Sequenced in 4 phases by leverage (R5 first).
 
-- [ ] T090 [owner: Implementer] [R1] **Harvest partial findings on timeout/incomplete** — capture whatever findings the reviewer produced, surface them as actionable, never discard as "no parseable verdict"; the implementer fixes and reruns (Trace: FR-025, SC-019, SC-020, NFR-001)
-- [ ] T091 [owner: Implementer] [R5] **Enforce the timeout as a hard wall** — a configured timeout must actually kill the reviewer process (live proof it does not: EnglishIntake r4 `--timeout-seconds 1200` ran 1h12m+) (Trace: NFR-001)
-- [ ] T092 [owner: Implementer] [R2] **Human-gated time extension** — on approaching/hitting the budget, ask the human to allow more time rather than silent auto-extend or hard-fail (Trace: NFR-001, NFR-002)
-- [ ] T093 [owner: Architect] [R3] **Human-gated independence fallback** — when no independent authorized reviewer host exists (reviewer would equal the code-writer host), ask the user to choose/authorize another host instead of silently substituting; honour-or-fail the requested `--host` (Trace: FR-016, FR-028, SEC-004)
-- [ ] T094 [owner: Reviewer] [R4] **Gate accepts degraded-but-honest evidence** — partial / same-host-with-consent / time-extended-with-consent count as review evidence, honestly labelled; the signoff gate never blocks forever (Trace: FR-025, SC-019, SC-020)
-- [ ] T095 [owner: Spec Steward] [cleanup] **Resolve the T083–T085 collision** — renumber the iter-008 Dogfood Repair Addendum to T087–T089 (iter-006's commit-cited T083–T086 stay canonical) (Trace: governance)
-- [ ] T096 [owner: Implementer] [R6] **Human-directed review remediation menu** — on a review problem (timeout / no-independent-host / degraded-or-blocking), surface ONE menu at the next Stop (more time / different host / narrow scope: code · process · file · function / accept partial / override block), carried via `co-review-round-state.json` to the re-run; extend the reviewer's existing user-code/subtree scoping to honour a human-directed scope (Trace: FR-024, FR-025, SC-019, SC-020)
+### Phase 1 — relieve the deadlock
 
-**Design-analysis (2026-06-28):** R1–R6 co-designed and agreed one-by-one with the maintainer; record at file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/009/design-analysis.md. Decisions D1–D5 + R6 + the component→responsibility map are captured there; `co_design: true` set in iterations/009/lens-applicability.json.
+- [ ] T091 [owner: Implementer] [sp: 3.0] [R5] **Hard timeout = a real wall** — independent watchdog + process-group/job-object **tree-kill** + stdio-redirect + 5s SIGTERM→SIGKILL graceful flush in `scripts/internal/continuous-co-review/worktree-reviewer.ps1`; WSL-validated (hard gate) (Trace: FR-037, SC-024, NFR-001; owns: `worktree-reviewer.ps1`)
+- [ ] T090 [owner: Implementer] [sp: 2.5] [R1] **Harvest partial findings** — reviewer instruction contract emits each finding incrementally (one JSON object per line to a findings file); harvest the clean prefix on kill; prose-salvage floor (Trace: FR-033, SC-024, NFR-001; owns: reviewer instruction contract + `worktree-review-orchestrator.ps1` harvest path)
+
+### Phase 2 — the human remediation surface
+
+- [ ] T096 [owner: Implementer] [sp: 3.0] [R6] **Remediation menu** — on a review problem, surface ONE menu at the next Stop (more time / different host / narrow scope: code · process · file · function / accept partial / override block), carried via `co-review-round-state.json` to the re-run; honour the human-directed scope (extends user-code/subtree scoping) (Trace: FR-038, FR-024, FR-025; owns: `continuous-co-review-navigator.ps1` + `specrew-co-review-navigator-provider.ps1` + round-state)
+- [ ] T093 [owner: Architect] [sp: 1.5] [R3] **Host-independence fallback** — pre-flight independence check; fire labelled same-host fallback immediately (never block); the answer upgrades the next run; honour-or-surface `--host` (Trace: FR-035, FR-016, SEC-004; owns: `reviewer-selection-policy.ps1` + `reviewer-authorization-gate.ps1`)
+- [ ] T092 [owner: Implementer] [sp: 1.5] [R2] **Time-extension gate** — post-hoc "more time" menu option + pre-flight generous-budget heuristic for large diffs (Trace: FR-034, NFR-002; owns: orchestrator budget seam + navigator menu)
+
+### Phase 3 — the honest gate
+
+- [ ] T094 [owner: Reviewer] [sp: 2.5] [R4+D5] **Tiered degraded-evidence gate** — 3-dimension label (completeness/independence/budget); `full`+`independent` auto-allows; `partial` OR `same-host` needs a recorded first-class ack verdict; never deadlock; degraded-review blocking-finding override with recorded reason (Trace: FR-036, SC-019, SC-020, SC-024; owns: `review-signoff-evidence-gate.ps1` + `inline-review-gate-evaluator.ps1`)
+
+### Phase 4 — cleanup
+
+- [ ] T095 [owner: Spec Steward] [sp: 0.5] [governance — non-requirement] **Resolve the T083–T085 collision** — renumber the iter-008 Dogfood Repair Addendum to T087–T089 (iter-006's commit-cited T083–T086 stay canonical) (Trace: governance hygiene — not requirement-driven; explicitly exempt from FR/SC traceability)
+
+**Capacity**: 14.5 / 20 SP — within cap. ~5.5 SP headroom held (iter-009 stays tight on robustness per the plan-boundary default; deferred governance items not pulled in).
+
+### Bidirectional traceability (tasks ↔ requirements)
+
+| Requirement | Covering task(s) |
+|---|---|
+| FR-033 (R1 partial harvest) | T090 |
+| FR-034 (R2 time extension) | T092 |
+| FR-035 (R3 host fallback) | T093 |
+| FR-036 (R4 degraded gate) | T094 |
+| FR-037 (R5 hard timeout) | T091 |
+| FR-038 (R6 remediation menu) | T096 |
+| SC-024 (never-deadlock acceptance) | T091, T090, T094 |
+
+Forward: every requirement-driven task (T090–T094, T096) traces to ≥1 FR/SC. Reverse: every iter-009 requirement (FR-033…FR-038, SC-024) has ≥1 covering task. T095 is governance hygiene (non-requirement), explicitly noted, not an orphan. **Bidirectional traceability: PASS.**
+
+### Dependencies & parallel safety
+
+- **T091 ∥ T090** (Phase 1) — different files (`worktree-reviewer.ps1` vs the orchestrator harvest path + reviewer contract) → parallel-safe.
+- **T096** depends on T090 (harvested partials feed "accept partial") and T091 (the kill produces the timeout that triggers the menu).
+- **T093, T092** supply the menu's host/time options → land before or with T096.
+- **T094** depends on T090's labels + T093's same-host label → Phase 3 after Phases 1–2.
+- **T095** independent (governance) → any time.
+
+**Design-analysis (2026-06-28):** R1–R6 co-designed and agreed one-by-one with the maintainer; record at file:///C:/Dev/197-continuous-co-review/specs/197-continuous-co-review/iterations/009/design-analysis.md. `co_design: true` set in iterations/009/lens-applicability.json.
 
 ---
 

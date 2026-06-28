@@ -1,55 +1,71 @@
-# Implementation Plan — Feature 197 Iteration 009: Reviewer Robustness
+# Iteration Plan: 009
 
-**Branch**: `197-continuous-co-review` | **Date**: 2026-06-28 | **Spec**: [spec.md](../../spec.md)
-**Design-analysis**: [design-analysis.md](./design-analysis.md) (`co_design: true`; R1-R6 agreed with the maintainer)
-**Stage**: plan (approved design-analysis -> plan, 2026-06-28)
+**Schema**: v1
+**Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
+**Capacity**: 14.50/20 story_points
+**Started**: 2026-06-28
 
-## Summary
+<!--
+  Validator schema (canonical):
+  - Iteration Status: planning | executing | reviewing | retro | complete | abandoned
+  - Capacity: `<consumed>/<cap> <unit>` with NO trailing prose.
+  - Task Status: planned | in-progress | done | needs-rework | deferred | blocked
+-->
 
-Iteration 009 hardens the worktree co-reviewer's **degraded paths** after live EnglishIntake field evidence showed it is field-unstable on real change-sets (large diff -> timeout -> "no parseable findings" -> signoff-gate deadlock; silent `--host` override; unenforced timeout that ran 1h12m on a 1200s budget). Guiding principle (maintainer ruling 2026-06-28): **any review is better than nothing; the gate must never hard-deadlock.** No new architecture — R1-R6 extend the existing pipeline at named seams (the design-analysis component map).
+## Scope Summary
 
-## Approach
+Reviewer robustness (graceful degradation). Live EnglishIntake field evidence showed the worktree co-reviewer is field-unstable on real change-sets: a large diff times out -> "no parseable findings" -> the review-signoff gate deadlocks; `--host` is silently overridden; the configured timeout is unenforced (1200s ran 1h12m). Maintainer ruling 2026-06-28: **any review is better than nothing; the gate must never hard-deadlock.** R1-R6 = FR-033..FR-038 + SC-024 extend the existing worktree pipeline at named seams (no new architecture). Sequenced in 4 phases by leverage (R5 hard-timeout first).
 
-Extend named seams in `scripts/internal/continuous-co-review/`; a reviewer-instruction-contract change for incremental emission; cross-platform process control for the hard timeout. PowerShell 7.x, Pester 5.5, **no new dependencies**. Acceptance bar = deployed-and-fires + the degraded-path behaviours proven, not unit-green. No F-184 protected-surface edits.
+| Requirement / Issue | Summary |
+| ------------------- | ------- |
+| FR-037 (R5) | Hard timeout = a real wall (watchdog + process-tree kill + stdio-redirect + graceful flush; WSL-validated). |
+| FR-033 (R1) | Harvest partial findings on timeout (incremental emission + prose-salvage floor). |
+| FR-038 (R6) | Human remediation menu (more time / host / narrow scope / accept / override). |
+| FR-035 (R3) | Human-gated host-independence fallback (labelled same-host fallback; never block). |
+| FR-034 (R2) | Human-gated time extension (post-hoc + pre-flight budget heuristic). |
+| FR-036 (R4) | Tiered degraded-evidence gate (full+independent auto; partial/same-host need recorded ack; never deadlock). |
+| SC-024 | Never-deadlock acceptance: a timed-out run yields partial findings + menu; gate never blocks on "no parseable verdict". |
 
-## Task sequence (phased by leverage)
+## Tasks
 
-**Phase 1 — relieve the live deadlock (highest leverage):**
+| Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status |
+| ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ |
+| T091 | Hard timeout = a real wall: independent watchdog + process-group/job-object tree-kill + stdio-redirect + 5s SIGTERM->SIGKILL graceful flush; WSL-validated (hard gate). | FR-037, SC-024, NFR-001 | Hard timeout | 3.00 | Implementer | `scripts/internal/continuous-co-review/worktree-reviewer.ps1`; `tests/continuous-co-review/**` | planned |
+| T090 | Harvest partial findings: reviewer instruction contract emits each finding incrementally (one JSON object per line to a findings file); harvest the clean prefix on kill; prose-salvage floor. | FR-033, SC-024, NFR-001 | Partial harvest | 2.50 | Implementer | `scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1`; `tests/continuous-co-review/**` | planned |
+| T096 | Remediation menu at the next Stop (more time / different host / narrow scope code-process-file-function / accept partial / override); carry the choice via co-review-round-state.json; honour the human-directed scope. | FR-038, FR-024, FR-025 | Remediation menu | 3.00 | Implementer | `scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1`; `extensions/specrew-speckit/scripts/specrew-co-review-navigator-provider.ps1`; `tests/continuous-co-review/**` | planned |
+| T093 | Host-independence fallback: pre-flight independence check; fire labelled same-host fallback immediately (never block); the answer upgrades the next run; honour-or-surface --host. | FR-035, FR-016, SEC-004 | Host fallback | 1.50 | Architect | `scripts/internal/continuous-co-review/reviewer-selection-policy.ps1`; `scripts/internal/continuous-co-review/reviewer-authorization-gate.ps1`; `tests/continuous-co-review/**` | planned |
+| T092 | Time-extension gate: post-hoc "more time" menu option + pre-flight generous-budget heuristic for large diffs. | FR-034, NFR-002 | Time extension | 1.50 | Implementer | `scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1`; `tests/continuous-co-review/**` | planned |
+| T094 | Tiered degraded-evidence gate: 3-dimension label (completeness/independence/budget); full+independent auto; partial/same-host need a recorded first-class ack verdict; never deadlock; degraded-block override with recorded reason. | FR-036, SC-019, SC-020, SC-024 | Degraded gate | 2.50 | Reviewer | `scripts/internal/continuous-co-review/review-signoff-evidence-gate.ps1`; `scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1`; `tests/continuous-co-review/**` | planned |
+| T095 | Resolve the T083-T085 collision: renumber the iter-008 Dogfood Repair Addendum to T087-T089 (iter-006's commit-cited T083-T086 stay canonical). Governance hygiene; non-requirement. | governance | Collision cleanup | 0.50 | Spec Steward | `specs/197-continuous-co-review/iterations/008/**`; `specs/197-continuous-co-review/tasks.md` | planned |
 
-- **T091 [R5]** hard timeout: independent watchdog + process-group/job-object **tree-kill** + stdio-redirect + 5s SIGTERM->SIGKILL graceful flush. **WSL-validated (hard acceptance gate).** ~3.0 SP
-- **T090 [R1]** incremental finding-emission (reviewer instruction contract: one JSON object per line to a findings file) + harvest-the-clean-prefix on kill + prose-salvage floor. ~2.5 SP
+## Effort Model
 
-**Phase 2 — the human remediation surface:**
+| Setting | Value | Notes |
+| ------- | ----- | ----- |
+| Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
+| Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
+| Iteration Bounding | scope | `scope` keeps requirements fixed; time varies. |
+| Time Limit (hours) | n/a | Not used for this scope-bounded iteration. |
+| Overcommit Threshold | 1.0 | Planned effort must stay at or below 20 story_points. |
+| Defer Strategy | manual | Any overcommit requires explicit human deferral. |
+| Calibration Enabled | true | Retro compares planned and actual effort. |
 
-- **T096 [R6]** remediation menu at the next Stop (more time / different host / narrow scope: code-process-file-function / accept partial / override), choice carried via `co-review-round-state.json` to the re-run; scope-narrowing extends the existing user-code/subtree scoping. ~3.0 SP
-- **T093 [R3]** pre-flight independence check + labelled same-host fallback (fire immediately, never block; the answer upgrades the next run). ~1.5 SP
-- **T092 [R2]** post-hoc time-extension option + a pre-flight generous-budget heuristic for large diffs. ~1.5 SP
+## Traceability Summary
 
-**Phase 3 — the honest gate:**
-
-- **T094 [R4 + D5]** 3-dimension evidence label (completeness / independence / budget); tiered allow (full+independent auto; partial OR same-host need a recorded first-class ack verdict); never-deadlock; degraded-review blocking-finding override with a recorded reason. ~2.5 SP
-
-**Phase 4 — cleanup:**
-
-- **T095** resolve the T083-T085 collision (renumber the iter-008 addendum -> T087-T089). ~0.5 SP
-
-**Capacity**: ~14.5 / 20 SP. Within cap.
+- In-scope: FR-033..FR-038 (R1-R6) + SC-024 (never-deadlock acceptance).
+- Bidirectional: every FR-033..FR-038 + SC-024 has a covering task; every requirement-driven task (T090-T094, T096) traces to at least one FR/SC. T095 is governance hygiene (non-requirement). PASS.
+- Capacity status: PASS, 14.50/20 story_points.
 
 ## Acceptance gates
 
-- **R5 WSL-validation (hard gate)**: the hard timeout + process-tree kill proven on WSL (`wsl -e bash -c "pwsh -File ..."`), not Windows-only — a configured timeout actually kills the reviewer tree with no orphaned children. The live failure being fixed: `--timeout-seconds 1200` ran 1h12m.
-- **Never-deadlock acceptance**: a timed-out review yields harvestable partial findings + the remediation menu; the signoff gate never blocks on "no parseable verdict".
-- **Deploy-completeness smoke**: the degraded paths fire in a deployed consumer project (EnglishIntake-class), not only self-host unit tests.
-- **Degraded-evidence honesty**: a `partial` / `same-host` signoff records a first-class human ack verdict in the durable evidence trail.
+- **R5 WSL-validation (hard gate)**: the hard timeout + process-tree kill proven on WSL, not Windows-only; a configured timeout actually kills the reviewer tree with no orphaned children.
+- **Never-deadlock**: a timed-out review yields harvestable partial findings + the remediation menu; the signoff gate never blocks on "no parseable verdict".
+- **Deploy-completeness smoke**: the degraded paths fire in a deployed consumer project, not only self-host unit tests.
+- **Degraded-evidence honesty**: a `partial` / `same-host` signoff records a first-class human ack verdict in the evidence trail.
 
-## Quality gates
+## Notes
 
-Pester 5.5 unit/integration for: watchdog-kills-the-tree (cross-platform), incremental-harvest-on-kill, prose-salvage fallback, the remediation-menu choice round-trip via round-state, tiered gate allow/ack, degraded-block override. Protected-surface guard (no F-184 host/hook/provider/registry/refocus/shared-governance edits). Markdownlint before boundary commits.
-
-## Out of scope / deferrals
-
-- Automated live cross-host CI (Proposals 181/194) — unchanged deferral.
-- The lifecycle-pointer / state-truth durable fix (Proposals 142/193) — a SEPARATE feature after F-197.
-- Formal iteration-closeout of the never-closed iters 001/006/007 (anti-fabrication ruling).
-- iter-008 plan.md backfill + closed-index rebuild (deferred governance hygiene).
+- No new architecture; R1-R6 extend the existing worktree pipeline at named seams (the design-analysis component map).
+- No new dependencies; PowerShell 7.x + Pester 5.5. No F-184 protected-surface edits.
+- Deferred: automated live cross-host CI (Proposals 181/194); the lifecycle-pointer / state-truth durable fix (Proposals 142/193, a separate feature after F-197); the iter-008 plan.md backfill + closed-index rebuild.
