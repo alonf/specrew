@@ -48,6 +48,12 @@ function Test-ContinuousCoReviewEscalationHumanClosed {
     # CONSERVATIVE matching, safety-biased.
     $authPattern = '(?i)\b(authoris|authoriz|approv|accept|defer|proceed|go ahead|sounds good|do it)'
     $negPattern = "(?i)(\bdo not\b|\bdon'?t\b|\bcannot\b|\bcan'?t\b|\bnot\b|\bno\b|\breject|\brefus|\bdeny\b|\bdisapprov|\bhold off\b|\bwait\b|\bstop\b)"
+    # Machine-injected turns (Stop-hook feedback, system-reminders, tool results, interrupts) carry role='user'
+    # but are NOT human decisions — and they routinely QUOTE the co-review block text (which contains
+    # 'authorization'/'escalation'). Excluding them is a hard safety requirement: otherwise the hook's OWN block
+    # text, echoed back as a 'user' turn, could self-close the escalation. A genuine human authorization never
+    # contains these markers.
+    $machinePattern = '(?i)(stop hook feedback:|<system-reminder>|\[request interrupted|this Stop followed material work|SPECREW-(VERDICT|STOP-BLOCK)|Specrew co-review|co-review navigator block)'
 
     foreach ($turn in @($ConversationTurns)) {
         if ($null -eq $turn) { continue }
@@ -59,6 +65,7 @@ function Test-ContinuousCoReviewEscalationHumanClosed {
 
         $text = [string](Get-ContinuousCoReviewTurnField -Turn $turn -Name 'text')
         if ([string]::IsNullOrWhiteSpace($text)) { continue }
+        if ($text -match $machinePattern) { continue }   # machine-injected user turn (hook feedback / reminder), NOT a human decision
         if ($text -match $negPattern) { continue }   # any refusal/hesitation -> keep blocking
         if ($text -match $authPattern) { return $true }
     }
@@ -87,4 +94,50 @@ function Test-ContinuousCoReviewEscalationStopBlockClosed {
         if (([string](Get-ContinuousCoReviewTurnField -Turn $f -Name 'kind')) -ne 'escalation') { return $false }
     }
     return (Test-ContinuousCoReviewEscalationHumanClosed -SurfacedAtUtc $SurfacedAtUtc -ConversationTurns $ConversationTurns)
+}
+
+function Get-ContinuousCoReviewTranscriptTurns {
+    # Parse the transcript tail into {role, text, timestamp} turns for the latch. Reuses the TESTED
+    # ConversationCaptureAccessor helpers (schema variance across claude/codex/cursor/copilot), lazy-loading them
+    # if the navigator's context did not. Fail-open to @() -> the latch then default-denies (keeps blocking), so a
+    # transcript-format surprise can only ever leave the block intact, never silence one.
+    param([string]$TranscriptPath, [int]$MaxLines = 400)
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath)) { return @() }
+    if (-not (Get-Command -Name 'Get-SpecrewTranscriptTailLines' -ErrorAction SilentlyContinue)) {
+        try {
+            $acc = Join-Path (Split-Path $PSScriptRoot -Parent) (Join-Path 'bootstrap' 'ConversationCaptureAccessor.ps1')
+            if (Test-Path -LiteralPath $acc -PathType Leaf) { . $acc }
+        }
+        catch { $null = $_ }
+    }
+    if (-not (Get-Command -Name 'Get-SpecrewTranscriptTailLines' -ErrorAction SilentlyContinue)) { return @() }
+    $lines = @()
+    try { $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxLines) } catch { return @() }
+    $out = [System.Collections.ArrayList]::new()
+    foreach ($line in $lines) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        try {
+            $obj = $line | ConvertFrom-Json -ErrorAction Stop
+            $msg = Get-SpecrewConversationProp -Object $obj -Name 'message'
+            $role = [string](Get-SpecrewConversationProp -Object $obj -Name 'role')
+            if ([string]::IsNullOrWhiteSpace($role)) { $role = [string](Get-SpecrewConversationProp -Object $obj -Name 'type') }
+            if ([string]::IsNullOrWhiteSpace($role) -and $null -ne $msg) { $role = [string](Get-SpecrewConversationProp -Object $msg -Name 'role') }
+            $content = Get-SpecrewConversationProp -Object $obj -Name 'content'
+            if ($null -eq $content -and $null -ne $msg) { $content = Get-SpecrewConversationProp -Object $msg -Name 'content' }
+            $text = ''
+            if ($content -is [string]) { $text = $content }
+            elseif ($null -ne $content) {
+                $text = (@(foreach ($blk in @($content)) {
+                            if ($blk -is [string]) { $blk }
+                            elseif ($null -ne $blk) { $bt = [string](Get-SpecrewConversationProp -Object $blk -Name 'text'); if (-not [string]::IsNullOrWhiteSpace($bt)) { $bt } }
+                        }) -join ' ')
+            }
+            $text = $text.Trim()
+            $tsRaw = Get-SpecrewConversationProp -Object $obj -Name 'timestamp'
+            $ts = if ($tsRaw -is [datetime]) { ([datetimeoffset]$tsRaw).ToUniversalTime().ToString('o') } elseif ($tsRaw -is [datetimeoffset]) { $tsRaw.ToUniversalTime().ToString('o') } else { [string]$tsRaw }
+            [void]$out.Add([pscustomobject]@{ role = $role; text = $text; timestamp = $ts })
+        }
+        catch { continue }
+    }
+    return @($out)
 }

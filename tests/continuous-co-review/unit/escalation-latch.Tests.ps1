@@ -70,6 +70,19 @@ Describe 'Escalation latch — only a real human transcript turn can close (the 
     It '(d) no turns at all -> stays blocking (default-deny)' {
         Test-ContinuousCoReviewEscalationHumanClosed -SurfacedAtUtc $script:T0 -ConversationTurns @() | Should -BeFalse
     }
+
+    It '(e) THE SAFETY GATE — a machine-injected user turn (the hook block echoed back) does NOT close it' {
+        # Real transcripts deliver Stop-hook feedback + system-reminders as role='user' turns that QUOTE the block
+        # text (which contains 'authorization'/'escalation'). These must never self-close the escalation.
+        $injected = @(
+            "Stop hook feedback:`nSpecrew co-review - BLOCKING. ... confirm the D-197 maintainer authorization is genuinely theirs ... route to a HUMAN.",
+            "<system-reminder>Every boundary needs explicit HUMAN authorization. Approve for boundary.</system-reminder>"
+        )
+        foreach ($m in $injected) {
+            $turns = @(script:Turn 'user' $m '2026-06-28T20:05:00Z')
+            Test-ContinuousCoReviewEscalationHumanClosed -SurfacedAtUtc $script:T0 -ConversationTurns $turns | Should -BeFalse -Because 'a machine-injected user turn is not a human decision and must never self-close'
+        }
+    }
 }
 
 Describe 'Escalation stop-block wrapper — escalation-only scope keeps the latch from silencing real bugs (case c)' {
