@@ -12,11 +12,14 @@ Describe 'Continuous co-review service detached launch failure evidence' {
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/co-review-service.ps1')
     }
 
-    It 'persists a failed pending registry entry when Start-Process throws' {
+    It 'persists a failed pending registry entry when the detached spawn throws' {
         $repo = Join-Path $TestDrive 'spawn-fails'
         New-Item -ItemType Directory -Path $repo -Force | Out-Null
 
-        Mock -CommandName Start-Process -MockWith { throw 'fixture spawn failure' }
+        # The detached spawn is Win32_Process.Create (Invoke-CimMethod) on Windows, Start-Process on Unix (Issue-1
+        # root fix: zero handle inheritance so the review can't hold the host's stdout pipe). Mock the one in use.
+        if ($IsWindows) { Mock -CommandName Invoke-CimMethod -MockWith { throw 'fixture spawn failure' } }
+        else { Mock -CommandName Start-Process -MockWith { throw 'fixture spawn failure' } }
 
         {
             Start-ContinuousCoReviewServiceRun `

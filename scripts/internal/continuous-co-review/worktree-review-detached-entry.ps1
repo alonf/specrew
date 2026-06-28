@@ -15,6 +15,12 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# Win32_Process.Create (the Windows detached spawn in co-review-service.ps1) gives THIS process NO inherited stdio
+# - the parent deliberately inherits NOTHING so it cannot hold the host's stdout pipe open (the 20-min Stop). So
+# self-redirect the PS streams to entry.out.log here, so a dot-source/load/run error is still diagnosable. Best-
+# effort: a transcript failure must never abort the review (the orchestrator's status.json is the reliable record).
+try { Start-Transcript -LiteralPath (Join-Path $RunDir 'entry.out.log') -Force -ErrorAction Stop | Out-Null } catch { $null = $_ }
+
 . (Join-Path $PSScriptRoot 'worktree-review-orchestrator.ps1')
 
 function Update-WorktreeRunRegistryStatus {
@@ -47,3 +53,4 @@ try {
 catch {
     Update-WorktreeRunRegistryStatus -Path $RegistryPath -Status 'failed' -Extra @{ failure_reason = ('detached-entry-exception: ' + $_.Exception.Message) }
 }
+try { Stop-Transcript -ErrorAction SilentlyContinue | Out-Null } catch { $null = $_ }
