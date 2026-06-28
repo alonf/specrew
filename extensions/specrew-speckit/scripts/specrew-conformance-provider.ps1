@@ -504,6 +504,31 @@ try {
         }
     }
     $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
+
+    # FLUSH/READ-RACE mitigation (b, D-197-I009): the host can finalize the agent's last packet message a moment
+    # before it lands in the transcript file the Stop hook reads, so a material stop can read a STALE prior message
+    # and material-block a turn that DID render a packet (the conformance false-negative; intermittent). When we are
+    # ABOUT TO material-block (packet absent on a material stop), RE-READ the tail a few times before committing -
+    # if the packet lands, the race is caught and we do not spuriously block. Bounded (<=~0.6s) and ONLY on the
+    # would-block path, so the happy path pays nothing and a genuine no-packet turn just re-confirms the absence.
+    $rereadCaught = $false
+    if ((-not $packetPresent) -and $materialStop -and (-not $hasPending) -and $ccLoaded -and `
+            -not [string]::IsNullOrWhiteSpace($transcriptPathArg) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf) -and `
+            (Get-Command Get-SpecrewConversationTurnFromLine -ErrorAction SilentlyContinue)) {
+        for ($rr = 0; ($rr -lt 4) -and (-not $packetPresent); $rr++) {
+            Start-Sleep -Milliseconds 150
+            try {
+                $rrTail = @(Get-Content -LiteralPath $transcriptPathArg -Tail 200 -Encoding UTF8 -ErrorAction Stop)
+                for ($rk = $rrTail.Count - 1; $rk -ge 0; $rk--) {
+                    $rrTurn = Get-SpecrewConversationTurnFromLine -Line $rrTail[$rk]
+                    if ($null -ne $rrTurn -and [string]$rrTurn.role -eq 'assistant' -and -not [string]::IsNullOrWhiteSpace([string]$rrTurn.text)) { $lastAssistantText = [string]$rrTurn.text; break }
+                }
+                $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
+                if ($packetPresent) { $rereadCaught = $true }
+            }
+            catch { $null = $_ }
+        }
+    }
     $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
 
     # --- IDEMPOTENCY (duplicate-fire guard, 145 IDEMP-1 / SC-1): dedup a re-fired hook for the SAME observable DECISION
@@ -657,14 +682,22 @@ try {
     }
 
     # --- forensic journal (diagnostics only - never gate state) ---
-    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit) {
+    # Also record EVERY material stop (not only blocks) so a spurious material block is diagnosable against the
+    # passing case (D-197-I009 conformance false-negative: a valid packet on disk still evaluated packetPresent=false).
+    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit -or $materialStop) {
         try {
             $jdir = Split-Path -Parent $journalPath
             if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
-            $evt = if (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } else { 'nudge' }
+            $evt = if (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg }
+            # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.
+            $diagLat = [string]$lastAssistantText
+            $diagHits = 0; foreach ($dh in $script:SpecrewReentryHeaders) { if (-not [string]::IsNullOrEmpty($diagLat) -and $diagLat -match [regex]::Escape($dh)) { $diagHits++ } }
+            # dx_lat_head = the first 60 chars of WHAT the extraction actually read - so a false-negative block
+            # shows whether it read a stale/prior message (flush-race), nothing (extraction fail), or the packet.
+            $diagHead = if (-not [string]::IsNullOrEmpty($diagLat)) { $c = ($diagLat -replace '\s+', ' '); $c.Substring(0, [Math]::Min(60, $c.Length)) } else { '' }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_lat_head = $diagHead; dx_packet_present = $packetPresent; dx_reread_caught = $rereadCaught; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }
