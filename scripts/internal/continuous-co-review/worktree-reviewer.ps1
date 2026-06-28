@@ -1,6 +1,11 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+# T091/FR-037: the shared cross-platform graceful process-tree kill - ONE watchdog kill for both the inline
+# reviewer spawn here AND the detached supervisor. Loaded best-effort; the kill site falls back if absent.
+$specrewProcessTreeHelper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
+if (Test-Path -LiteralPath $specrewProcessTreeHelper -PathType Leaf) { . $specrewProcessTreeHelper }
+
 # iter-008 — the worktree-based, agentic, see-all/run-all reviewer (NEW, built alongside the old curated-diff
 # path; the old path keeps working until this is proven + cut over). The reviewer runs in an ephemeral,
 # read-only-source git-tree worktree of the project with the methodology machinery stripped, reads
@@ -366,7 +371,14 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
         }
     }
     if (-not $exited) {
-        try { $proc.Kill($true) } catch { }
+        # T091/FR-037: graceful tree-kill via the shared helper (a flush window for the in-flight finding),
+        # falling back to the .NET tree-kill if the helper is unavailable.
+        if (Get-Command -Name 'Stop-SpecrewProcessTree' -ErrorAction SilentlyContinue) {
+            Stop-SpecrewProcessTree -RootPid $proc.Id -GraceSeconds 5
+        }
+        else {
+            try { $proc.Kill($true) } catch { $null = $_ }
+        }
         $sw.Stop()
         return [pscustomobject]@{
             exit_code        = $null

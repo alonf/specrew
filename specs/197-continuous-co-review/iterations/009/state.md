@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: (none)
-**Tasks Remaining**: T090, T091, T092, T093, T094, T095, T096
-**In Progress**: T091 (R5 hard timeout — consolidate on the supervisor + Unix tree-kill)
+**Last Completed Task**: T091
+**Tasks Remaining**: T090, T092, T093, T094, T095, T096
+**In Progress**: (none)
 **Baseline Ref**: ac99be4c
 **Updated**: 2026-06-28
 
@@ -39,7 +39,7 @@ Iteration 009 is at the tasks -> before-implement boundary, awaiting the human i
 
 ## Execution Summary
 
-- **T091 (R5 hard timeout) in progress.** The isolated-task supervisor's Unix tree-kill is fixed + **WSL-validated**: it previously orphaned the reviewer grandchild (`Stop-Process` on the single harness pid); it now snapshots the descendant tree (`pgrep -P`) and does graceful SIGTERM -> 5s flush -> SIGKILL across platforms. Test: file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/unit/isolated-task-tree-kill.Tests.ps1 (Windows PASS; WSL PASS — the hard gate).
-- **Remaining in T091**: consolidate the manual/inline `specrew review --live` path onto the supervisor + remove worktree-reviewer.ps1's duplicate inline `$proc.Kill($true)`; the 72-minute escape needs real-host phase-telemetry to localize (the trace confirmed the timeout IS correctly plumbed CLI -> service -> orchestrator -> reviewer, so it is not a static bug).
-- Task progress: 0 complete, 1 in-progress (T091), 6 pending, 0 blocked.
-- Latest completed task: (none)
+- **T091 (R5 hard timeout) DONE + WSL-validated.** (1) The supervisor's Unix kill orphaned the reviewer grandchild (`Stop-Process` on the single harness pid); fixed to a descendant-tree kill. (2) **Consolidated**: one shared `scripts/internal/agent-tasks/process-tree.ps1` (FileList-registered), dot-sourced by BOTH the supervisor AND the inline `worktree-reviewer.ps1` path (which dropped its divergent `$proc.Kill($true)`). (3) **Race-hardened**: the first descendant snapshot can miss a grandchild spawning near the deadline, and a dead root orphans it out of `pgrep` reach — so the Unix kill now SIGTERM-flushes, then RE-enumerates while the root is alive and SIGKILLs, then kills the root last. WSL hard gate: **6/6 PASS** (was flaky 1-in-3 before the race fix); Windows Pester PASS. Test: file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/unit/isolated-task-tree-kill.Tests.ps1.
+- **Follow-up (not the kill)**: the EnglishIntake 72-minute escape needs real-host phase-telemetry to localize — the trace proved the timeout IS correctly plumbed (CLI -> service -> orchestrator -> reviewer) and the inline kill is a correct .NET tree-kill, so the 72min is materialization/rounds/host-edge, not the wall. Maintainer real-host re-run owed.
+- Task progress: 1 complete (T091), 0 in-progress, 6 pending, 0 blocked.
+- Latest completed task: T091 (hard-timeout tree-kill, consolidated + race-hardened, WSL 6/6).

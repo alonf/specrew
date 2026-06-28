@@ -33,7 +33,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-# --- helpers (self-contained; the supervisor must not depend on a dot-sourced module) ------------
+# --- helpers (self-contained, except the co-located process-tree.ps1 sibling dot-sourced below) ---
 function Write-SupervisorJson {
     param([string]$Path, $Object)
     $tmp = '{0}.{1}.tmp' -f $Path, ([guid]::NewGuid().ToString('N'))
@@ -54,53 +54,15 @@ function Update-SupervisorRegistryStatus {
     catch { $null = $_ }
 }
 
-function Get-IsolatedTaskDescendantPids {
-    # Snapshot the full descendant tree (BFS via `pgrep -P`) BEFORE any kill - so a grandchild that the
-    # kill would re-parent is still in the snapshot. Returns descendants only (NOT $RootPid), deepest-first.
-    param([Parameter(Mandatory)][int]$RootPid)
-    $ordered = [System.Collections.Generic.List[int]]::new()
-    $frontier = @($RootPid)
-    while ($frontier.Count -gt 0) {
-        $next = [System.Collections.Generic.List[int]]::new()
-        foreach ($p in $frontier) {
-            $kids = @()
-            try {
-                $raw = & pgrep -P $p 2>$null
-                $kids = @($raw | ForEach-Object { $i = 0; if ([int]::TryParse(($_.ToString().Trim()), [ref]$i)) { $i } } | Where-Object { $_ -gt 0 })
-            }
-            catch { $kids = @() }
-            foreach ($k in $kids) { if (-not $ordered.Contains($k)) { $ordered.Add($k); $next.Add($k) } }
-        }
-        $frontier = $next.ToArray()
-    }
-    $ordered.Reverse()
-    return , ($ordered.ToArray())
+# --- co-located process-tree kill helper (T091/FR-037, the ONE watchdog kill) --------------------
+# The supervisor stays standalone (never dot-SOURCED itself, so the launcher can dot-source its own
+# functions without running this loop), but it MAY dot-source this co-located sibling - the FileList
+# always co-deploys process-tree.ps1 in this dir. Require it (throw, don't silently degrade the kill).
+$processTreeHelper = Join-Path $PSScriptRoot 'process-tree.ps1'
+if (-not (Test-Path -LiteralPath $processTreeHelper -PathType Leaf)) {
+    throw "isolated-task-supervisor: missing co-located process-tree helper '$processTreeHelper'."
 }
-
-function Stop-IsolatedTaskTree {
-    # Kill the harness AND its reviewer grandchild(ren). The reviewer (claude -p / codex exec) is a
-    # GRANDCHILD of the harness pwsh, so a single-pid kill ORPHANS it (the bug T091/FR-037 fixes,
-    # WSL-gated). Graceful: SIGTERM the tree, let the in-flight finding flush, then SIGKILL survivors.
-    param([Parameter(Mandatory)][int]$RootPid, [int]$GraceSeconds = 5)
-    if ($IsWindows) {
-        try { & taskkill /PID $RootPid /T 2>&1 | Out-Null } catch { $null = $_ }          # graceful close
-        Start-Sleep -Seconds $GraceSeconds
-        try { & taskkill /PID $RootPid /T /F 2>&1 | Out-Null } catch { $null = $_ }        # force the tree
-        return
-    }
-    # Unix: snapshot deepest-first (grandchild before harness), TERM, grace-flush, then KILL survivors.
-    # `kill` is a Stop-Process ALIAS in PowerShell, so resolve the Application binary explicitly.
-    $tree = @(Get-IsolatedTaskDescendantPids -RootPid $RootPid) + @($RootPid)
-    $killBin = Get-Command -Name 'kill' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($killBin) {
-        foreach ($p in $tree) { try { & $killBin.Source -TERM $p 2>$null } catch { $null = $_ } }
-        Start-Sleep -Seconds $GraceSeconds
-        foreach ($p in $tree) { try { & $killBin.Source -KILL $p 2>$null } catch { $null = $_ } }
-    }
-    else {
-        foreach ($p in $tree) { try { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
-    }
-}
+. $processTreeHelper
 
 # --- load the job spec ---------------------------------------------------------------------------
 $job = Get-Content -LiteralPath $JobPath -Raw | ConvertFrom-Json
@@ -155,7 +117,7 @@ try {
             # Kill the child PROCESS TREE. The reviewer (claude -p / codex exec) is a GRANDCHILD of the
             # harness pwsh, so a single-pid kill ORPHANS it (T091/FR-037, WSL-gated). Stop-IsolatedTaskTree
             # snapshots the descendant tree and does graceful SIGTERM -> flush -> SIGKILL across platforms.
-            Stop-IsolatedTaskTree -RootPid $child.Id -GraceSeconds 5
+            Stop-SpecrewProcessTree -RootPid $child.Id -GraceSeconds 5
             $timedOut = $true
             break
         }

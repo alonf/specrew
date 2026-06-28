@@ -235,6 +235,7 @@
         'scripts/init/template-deploy.ps1',
         'scripts/internal/agent-tasks/isolated-task-launcher.ps1',
         'scripts/internal/agent-tasks/isolated-task-supervisor.ps1',
+        'scripts/internal/agent-tasks/process-tree.ps1',
         'scripts/internal/atomic-write.ps1',
         'scripts/internal/bootstrap/ClassificationEngine.ps1',
         'scripts/internal/bootstrap/ConversationCaptureAccessor.ps1',
