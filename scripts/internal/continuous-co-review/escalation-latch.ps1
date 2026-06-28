@@ -64,3 +64,27 @@ function Test-ContinuousCoReviewEscalationHumanClosed {
     }
     return $false
 }
+
+function Test-ContinuousCoReviewEscalationStopBlockClosed {
+    # The WIRING-SAFE wrapper the navigator calls. Suppresses a co-review stop-block ONLY when it is safe to:
+    #   1. there is at least one blocking finding, AND
+    #   2. EVERY blocking finding is a loop-state escalation (kind='escalation') — a single non-escalation blocking
+    #      finding (a real bug) keeps the block, so the latch can NEVER silence a bug, only the human-decision
+    #      escalation it is scoped to (the advisor's case (c)), AND
+    #   3. a real human user-turn closed it (Test-...HumanClosed — the (b) forgery gate).
+    # Any failure of any clause -> KEEP BLOCKING. Default-deny.
+    [CmdletBinding()]
+    param(
+        [AllowNull()]$BlockingFindings,
+        [Parameter(Mandatory)][string]$SurfacedAtUtc,
+        [AllowNull()]$ConversationTurns
+    )
+    $blocking = @(@($BlockingFindings) | Where-Object {
+            $null -ne $_ -and ([string](Get-ContinuousCoReviewTurnField -Turn $_ -Name 'severity')) -eq 'blocking'
+        })
+    if ($blocking.Count -eq 0) { return $false }
+    foreach ($f in $blocking) {
+        if (([string](Get-ContinuousCoReviewTurnField -Turn $f -Name 'kind')) -ne 'escalation') { return $false }
+    }
+    return (Test-ContinuousCoReviewEscalationHumanClosed -SurfacedAtUtc $SurfacedAtUtc -ConversationTurns $ConversationTurns)
+}

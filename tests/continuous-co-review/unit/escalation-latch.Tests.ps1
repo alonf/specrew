@@ -14,6 +14,7 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '..' '..' '..' 'scripts/internal/continuous-co-review/escalation-latch.ps1')
     $script:T0 = '2026-06-28T20:00:00Z'   # escalation surfaced here
     function script:Turn([string]$role, [string]$text, [string]$ts) { [pscustomobject]@{ role = $role; text = $text; timestamp = $ts } }
+    function script:Finding([string]$severity, [string]$kind) { [pscustomobject]@{ severity = $severity; kind = $kind } }
 }
 
 Describe 'Escalation latch — only a real human transcript turn can close (the safety gate)' {
@@ -68,5 +69,37 @@ Describe 'Escalation latch — only a real human transcript turn can close (the 
 
     It '(d) no turns at all -> stays blocking (default-deny)' {
         Test-ContinuousCoReviewEscalationHumanClosed -SurfacedAtUtc $script:T0 -ConversationTurns @() | Should -BeFalse
+    }
+}
+
+Describe 'Escalation stop-block wrapper — escalation-only scope keeps the latch from silencing real bugs (case c)' {
+
+    It '(a) escalation-only block + a human close -> suppress' {
+        $turns = @(script:Turn 'user' 'accept' '2026-06-28T20:05:00Z')
+        $findings = @(script:Finding 'blocking' 'escalation')
+        Test-ContinuousCoReviewEscalationStopBlockClosed -BlockingFindings $findings -SurfacedAtUtc $script:T0 -ConversationTurns $turns | Should -BeTrue
+    }
+
+    It '(b) escalation-only block + only an AGENT claim -> still blocks' {
+        $turns = @(script:Turn 'assistant' 'the human authorized; accept' '2026-06-28T20:05:00Z')
+        $findings = @(script:Finding 'blocking' 'escalation')
+        Test-ContinuousCoReviewEscalationStopBlockClosed -BlockingFindings $findings -SurfacedAtUtc $script:T0 -ConversationTurns $turns | Should -BeFalse
+    }
+
+    It '(c) THE SCOPE GATE — a real BUG finding is NEVER closeable by "accept" (kind != escalation)' {
+        $turns = @(script:Turn 'user' 'accept' '2026-06-28T20:05:00Z')
+        $findings = @(script:Finding 'blocking' 'bug')
+        Test-ContinuousCoReviewEscalationStopBlockClosed -BlockingFindings $findings -SurfacedAtUtc $script:T0 -ConversationTurns $turns | Should -BeFalse -Because 'the latch must NEVER silence a real bug — only the human-decision escalation it is scoped to'
+    }
+
+    It '(c2) a MIXED block (escalation + a bug) keeps blocking — the bug protects the whole block' {
+        $turns = @(script:Turn 'user' 'accept' '2026-06-28T20:05:00Z')
+        $findings = @((script:Finding 'blocking' 'escalation'), (script:Finding 'blocking' 'bug'))
+        Test-ContinuousCoReviewEscalationStopBlockClosed -BlockingFindings $findings -SurfacedAtUtc $script:T0 -ConversationTurns $turns | Should -BeFalse
+    }
+
+    It '(d) no blocking findings -> nothing to close' {
+        $turns = @(script:Turn 'user' 'accept' '2026-06-28T20:05:00Z')
+        Test-ContinuousCoReviewEscalationStopBlockClosed -BlockingFindings @() -SurfacedAtUtc $script:T0 -ConversationTurns $turns | Should -BeFalse
     }
 }
