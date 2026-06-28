@@ -4,10 +4,10 @@
 **Current Phase**: implement
 **Iteration Status**: executing
 **Last Completed Task**: T095
-**Tasks Remaining**: T093, T094, T096 (+ T091 needs-rework — R5)
+**Tasks Remaining**: T093, T094, T096 (+ T091 needs-rework — R5 deferred to iter-010)
 **In Progress**: (none)
 **Baseline Ref**: ac99be4c
-**Updated**: 2026-06-28T13:44:18.4800867Z
+**Updated**: 2026-06-28T19:28:44Z
 
 ## Planning Summary
 
@@ -20,7 +20,7 @@ Iteration 009 is the ~14.5/20 SP reviewer-robustness slice (graceful degradation
 
 ## Next Action
 
-Iteration 009 is in the **implement** phase (before-implement approved 2026-06-28; last-authorized boundary `before-implement` IS the implement window). DONE: T090, T091, T092 (R1/R5/R2) + T097, T098 (R7/R8). The co-review navigator was un-darked (D-197-I009-001) so it self-reviews this work. The 35-minute-Stop incident (D-197-I009-005) added R7/R8 and is Phase-1-fixed (detach leak fix + auto-budget revert + conformance re-read revert). Remaining: T093 (host fallback), T094 (degraded gate), T095 (collision cleanup), T096 (remediation menu), T099 (gate the conformance parse — cheaper conversational stops), T100 (Phase 2 robust supervisor — activity-watchdog + Job/cgroup atomic kill + session-scoped launcher).
+Iteration 009 is in the **implement** phase (before-implement approved 2026-06-28; last-authorized boundary `before-implement` IS the implement window). DONE: T090, T092 (R1/R2) + T095 (collision cleanup) + T097, T098 (R7/R8). **T091 (R5) is needs-rework**: its hard WSL-validation gate is unevidenced, so R5/FR-037 closure is **deferred to iter-010** (maintainer-authorized 2026-06-28, drift-log D-197-I009-006). The co-review navigator was un-darked (D-197-I009-001) and caught exactly this T091 over-claim (D-197-I009-006). Remaining (iter-009): T093 (host fallback), T094 (degraded gate), T096 (remediation menu). Carried to iter-010: T091/R5 WSL validation + T099 (cheaper conversational stops) + T100 (Phase 2 robust supervisor) + the co-review escalation-latch (smooth-UX, surfaced by D-006's own loop).
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
@@ -39,6 +39,6 @@ Iteration 009 is in the **implement** phase (before-implement approved 2026-06-2
 
 ## Execution Summary
 
-- Execution is underway (implement phase).
-- Task progress: 5 complete (T090, T092, T095, T097, T098), 1 needs-rework (T091 — R5 WSL gate unevidenced), 3 pending (T093, T094, T096).
-- Latest completed task: T095 (resolve the T083-T085 collision — renumber the iter-008 Dogfood Repair Addendum to T087-T089). T097/T098 (R7/R8) also complete: the T097 detach fix ultimately landed as `Win32_Process.Create` (zero handle inheritance + reparented) after the `-11/-12` handle-clear proved insufficient at the real host->dispatcher boundary — see drift-log D-197-I009-005. T091 (R5) demoted to needs-rework (WSL hard-gate unevidenced); R5/FR-037 closure deferred to iter-010 per D-197-I009-006.
+- Execution is in progress (implement phase).
+- Task progress: 5 complete (T090, T092, T095, T097, T098), 1 needs-rework (T091 — R5 WSL gate unevidenced, deferred to iter-010 per maintainer-authorized D-197-I009-006), 3 pending (T093, T094, T096).
+- Latest completed task: T095 (the T083-T085 collision renumber).
