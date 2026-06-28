@@ -26,7 +26,8 @@ Start-Process -FilePath '$pwsh' -ArgumentList @('-NoProfile','-File','$review') 
 Write-Output 'A-DONE'
 "@
         Set-Content -LiteralPath (Join-Path $script:tmp 'provB.ps1') -Value @"
-`$null = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ('\"' + '$pwsh' + '\" -NoProfile -File \"' + '$review' + '\"') }
+`$startup = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ ShowWindow = [uint16]0 }
+`$null = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ('\"' + '$pwsh' + '\" -NoProfile -File \"' + '$review' + '\"'); ProcessStartupInformation = `$startup }
 Write-Output 'B-DONE'
 "@
         Set-Content -LiteralPath (Join-Path $script:tmp 'disp.ps1') -Value @'

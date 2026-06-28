@@ -107,7 +107,10 @@ function Start-ContinuousCoReviewServiceRun {
     if ($IsWindows) {
         try {
             $quoted = @('"' + (Get-Command pwsh).Source + '"') + @($spawnArgs | ForEach-Object { '"' + (([string]$_) -replace '"', '\"') + '"' })
-            $spawn = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ($quoted -join ' ') } -ErrorAction Stop
+            # ShowWindow=SW_HIDE(0): Win32_Process.Create has no -WindowStyle Hidden equivalent, so without this the
+            # detached pwsh pops a blank console window at EVERY checkpoint (Start-Process used -WindowStyle Hidden).
+            $startup = New-CimInstance -ClassName Win32_ProcessStartup -ClientOnly -Property @{ ShowWindow = [uint16]0 }
+            $spawn = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ($quoted -join ' '); ProcessStartupInformation = $startup } -ErrorAction Stop
         }
         catch {
             & $writeReg $null 'failed' @{ failure_reason = ('detached-spawn-failed: ' + $_.Exception.Message) }
