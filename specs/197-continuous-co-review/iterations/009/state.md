@@ -4,10 +4,10 @@
 **Current Phase**: implement
 **Iteration Status**: executing
 **Last Completed Task**: T098
-**Tasks Remaining**: T093, T094, T095, T096, T099, T100
+**Tasks Remaining**: T093, T094, T095, T096
 **In Progress**: (none)
 **Baseline Ref**: ac99be4c
-**Updated**: 2026-06-28T11:52:55.2359298Z
+**Updated**: 2026-06-28T13:44:18.4800867Z
 
 ## Planning Summary
 
@@ -39,8 +39,6 @@ Iteration 009 is in the **implement** phase (before-implement approved 2026-06-2
 
 ## Execution Summary
 
-- **R1–R6 slice:** T090 (partial harvest), T091 (hard-timeout/kill, WSL-validated), T092 (time-extension gate) complete.
-- **R7/R8 scope-expansion (the 35-minute-Stop dogfood, drift-log D-197-I009-005):** T097 (detach leak fix — clear HANDLE_FLAG_INHERIT before the detached spawn so the review can't inherit the dispatcher's pipe; harness-proven 11.4s→1.8s, Linux verified clean 2.8s; + revert T092's AUTO budget bump) and T098 (revert the unconfirmed ~17s conformance re-read that starved the navigator's Stop budget) complete. Tests: detached-spawn-no-block.Tests.ps1 (1/1), conformance-detection 24/24, co-review suite 164/0.
-- **Honesty correction:** I earlier told the maintainer the Stop hook was "disabled" — WRONG; it fires (D-005). And this state.md header was re-scaffolded to `not-started` at the 11:52 resume (frozen-pointer drift, Proposal 142/193) and reconciled here.
-- Task progress: 5 complete (T090, T091, T092, T097, T098), 0 in-progress, 6 pending (T093, T094, T095, T096, T099, T100), 0 blocked.
-- Latest completed task: T098 (revert the conformance re-read) — with T097 (the detach leak fix that ended the 35-minute Stop).
+- Execution is underway (implement phase).
+- Task progress: 5 complete, 0 in-progress, 4 pending, 0 blocked.
+- Latest completed task: T098 (revert the conformance re-read). The T097 detach fix ultimately landed as `Win32_Process.Create` (zero handle inheritance + reparented) after the `-11/-12` handle-clear proved insufficient at the real host->dispatcher boundary — see drift-log D-197-I009-005.
