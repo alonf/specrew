@@ -299,6 +299,14 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout
             $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
+            $completeness = 'full'
+            if ([string]::IsNullOrWhiteSpace($json)) {
+                # T090/R1: the final blob is empty/unparseable (a timeout / cut-short run). HARVEST the incremental
+                # .review/findings.jsonl prefix (or prose-salvage) so a degraded review still surfaces findings
+                # (any review > nothing), instead of discarding the whole run as 'no-parseable-findings-json'.
+                $json = Get-ContinuousCoReviewHarvestedPartialResult -WorktreePath $wt.worktree_path -RawStdout $raw -RunId $RunId
+                if (-not [string]::IsNullOrWhiteSpace($json)) { $completeness = 'partial' }
+            }
             if (-not [string]::IsNullOrWhiteSpace($json)) {
                 $currentPhase = 'write-result'
                 & $recordPhaseStart $currentPhase
@@ -310,7 +318,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $recordPhaseEnd 'write-result'
                 $currentPhase = 'complete'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $blocking; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; reviewer_telemetry = $reviewerTelemetry }
             }
             else {
                 $currentPhase = 'write-failure'

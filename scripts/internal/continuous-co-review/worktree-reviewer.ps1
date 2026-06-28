@@ -265,7 +265,13 @@ narrative spec alone.
 ## Review round
 $roundBlock
 
-Output ONLY one JSON object satisfying FindingsResult.v1 (no markdown, no prose around it):
+INCREMENTAL EMISSION (so a review cut short by a timeout still surfaces what you found): the MOMENT you confirm a
+finding, APPEND it as a single-line JSON object (one finding per line, the per-finding shape shown below) to
+.review/findings.jsonl in your working directory — before you move on. This is IN ADDITION to the final object
+below. If your review is interrupted, the harvested .review/findings.jsonl is what the implementer sees, so emit
+findings there as you go, not only at the end.
+
+Then, at the end, output ONLY one JSON object satisfying FindingsResult.v1 (no markdown, no prose around it):
 { "schema_version":"1.0", "run_id":"$RunId", "status":"findings"|"no_findings",
   "findings":[ { "finding_id":"f1", "source_run_id":"$RunId",
     "location":{"path":"relative/path","line_start":<int|null>,"line_end":<int|null>},
@@ -274,6 +280,60 @@ Output ONLY one JSON object satisfying FindingsResult.v1 (no markdown, no prose 
     "resolution":{"state":"unresolved","fix_evidence_ref":null,"rationale":null} } ],
   "created_at":"<iso8601>" }
 "@
+}
+
+function Get-ContinuousCoReviewHarvestedPartialResult {
+    # T090/R1: when the final FindingsResult blob is empty/unparseable (a timeout / cut-short run), HARVEST what
+    # the reviewer DID produce rather than discarding the run as "no-parseable-findings-json" (any review > nothing):
+    #   1. the incremental .review/findings.jsonl (one JSON finding per line) - take the clean prefix, skip a
+    #      truncated trailing line;
+    #   2. PROSE-SALVAGE floor - if nothing structured, surface the reviewer's raw reasoning tail as ONE advisory note.
+    # Returns a FindingsResult JSON string tagged `completeness:'partial'` (status stays 'findings' so the existing
+    # blackboard/gate pipeline still surfaces it; the gate consumes `completeness` for the degraded-ack policy, R4),
+    # or $null if there is genuinely nothing to harvest.
+    param(
+        [Parameter(Mandatory)][string]$WorktreePath,
+        [AllowNull()][string]$RawStdout,
+        [Parameter(Mandatory)][string]$RunId
+    )
+    $findings = [System.Collections.Generic.List[object]]::new()
+    $jsonlPath = Join-Path $WorktreePath '.review/findings.jsonl'
+    if (Test-Path -LiteralPath $jsonlPath -PathType Leaf) {
+        foreach ($line in @(Get-Content -LiteralPath $jsonlPath -ErrorAction SilentlyContinue)) {
+            $t = ([string]$line).Trim()
+            if ([string]::IsNullOrWhiteSpace($t)) { continue }
+            try {
+                $obj = $t | ConvertFrom-Json -ErrorAction Stop
+                if ($null -ne $obj -and $null -ne $obj.PSObject.Properties['comment']) { $findings.Add($obj) }
+            }
+            catch { $null = $_ }   # a truncated / garbled trailing line is expected on a killed run - skip it
+        }
+    }
+    if ($findings.Count -eq 0) {
+        $prose = if ($null -ne $RawStdout) { $RawStdout.Trim() } else { '' }
+        if ([string]::IsNullOrWhiteSpace($prose)) { return $null }
+        $tail = if ($prose.Length -gt 2000) { $prose.Substring($prose.Length - 2000) } else { $prose }
+        $findings.Add([pscustomobject]@{
+                finding_id      = 'partial-1'
+                source_run_id   = $RunId
+                location        = [pscustomobject]@{ path = $null; line_start = $null; line_end = $null }
+                severity        = 'advisory'
+                kind            = 'partial-unverified-notes'
+                design_reference = $null
+                comment         = ('Review was cut short before a structured verdict; UNVERIFIED reviewer notes salvaged: ' + $tail)
+                disposition     = 'open'
+                resolution      = [pscustomobject]@{ state = 'unresolved'; fix_evidence_ref = $null; rationale = $null }
+            })
+    }
+    $result = [pscustomobject]@{
+        schema_version = '1.0'
+        run_id         = $RunId
+        status         = 'findings'
+        completeness   = 'partial'
+        findings       = $findings.ToArray()
+        created_at     = (ConvertTo-ContinuousCoReviewReviewerIsoTimestamp)
+    }
+    return ($result | ConvertTo-Json -Depth 100 -Compress)
 }
 
 function Get-ContinuousCoReviewAgentCommand {
