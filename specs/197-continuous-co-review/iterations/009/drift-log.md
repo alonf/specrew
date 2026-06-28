@@ -26,7 +26,7 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 **Trace**: FR-026, FR-030, FR-031 (the always-on auto-fire the deploy-drift silently broke), SC-022.
 
-**Durable follow-ups (the bugs behind the bug — owed)**: (1) the mirror-parity validator did NOT catch the deployed-vs-source provider drift — a parity-coverage gap; (2) "navigator dark" is emitted only to stderr, invisible to the human, so it failed silently for days — needs a surfaced signal; (3) the 35-run stale pending backlog chokes the reap (~2 min) — needs a backlog cap + cleanup so the fire path stays inside the Stop budget.
+**Durable follow-ups (the bugs behind the bug)**: (1) **[ADDRESSED 2026-06-28]** the parity-coverage gap is closed by file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/governance/deployed-mirror-parity.Tests.ps1 — it asserts the F-197-owned deployed extension files are content-identical to source, PROVEN to catch drift (fails on an injected change, passes in parity); the deploy-completeness test only validated a fresh deploy, never the committed mirror. (2) **[NEXT]** "navigator dark" is emitted only to stderr (invisible), so it failed silently for days — being surfaced now (the second follow-up). (3) the 35-run stale pending backlog chokes the reap (~2 min) — cleared this session (37 -> 2); a durable backlog cap remains owed.
 
 ### Watch carry-over (from scaffolding)
 
