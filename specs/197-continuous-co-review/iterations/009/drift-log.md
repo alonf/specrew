@@ -7,9 +7,9 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 ## Summary
 
-**Total drift events**: 6
-**Resolution**: 5 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion)
-**Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. All are implementation/deploy/state defects, not requirement drift.
+**Total drift events**: 7
+**Resolution**: 6 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion)
+**Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. (5) the F-197 dev-trial dogfood surfaced a false-INCOMPATIBLE — the version probe ignored the SPECREW_MODULE_PATH override (F-044) and nearly parked a testbed coordinator on a non-existent review block — fixed. All are implementation/deploy/state defects, not requirement drift.
 
 ## Events
 
@@ -88,6 +88,19 @@ Tracks divergences between the approved specification, plan, task table, and imp
 **Human decision (option c)**: demote T091 → needs-rework; DEFER R5/FR-037 closure (the WSL validation + the live-path orphan-kill proof + a genuine consolidation-or-reword) to iteration 010, alongside T099/T100; reconcile all four ledgers to honest state. Options (a) produce-the-WSL-run and (b) route-the-live-spawn-through-the-WSL-validated-supervisor are the real R5 work, deferred to fresh context (end-of-session fatigue + the dogfood verification confound: the gate under change is the gate that reviews the change).
 **Dogfood note**: this is the co-review feature working as designed — it caught a real governance self-violation the author walked past during the multi-minute-Stop firefight, and routed it to the human instead of looping a third automated pass.
 **Trace**: governance / R5 (FR-037) acceptance-gate integrity; iter-010 carry.
+
+### D-197-I009-007 — `specrew version` falsely reports INCOMPATIBLE in every dev-trial (the version probe ignored the SPECREW_MODULE_PATH override)
+
+**Status**: resolved
+**Detected by**: the F-197 dev-trial dogfood (2026-06-29/30). A fresh testbed project (`C:\Dev\specrew-coreview-testbed`) pinned to this unpublished branch (0.39.0) ran `specrew start`; its coordinator hit `specrew version` = INCOMPATIBLE (installed 0.38.0 ≠ baseline 0.39.0) and FALSELY concluded `specrew review` would refuse — nearly parking reviewer-host selection on a non-existent block plus a wrong `Update-Module Specrew` workaround (which would have pulled the Gallery's 0.38.0 and silently dropped the very fix under test).
+
+**Drift + root cause**: `Get-SpecrewInstalledVersion` / `Get-SpecrewInstalledVersionInfo` (file:///C:/Dev/197-continuous-co-review/scripts/internal/version-check.ps1) resolved the "installed version" via `Get-Module -ListAvailable`, which enumerates PSModulePath (the Gallery install, 0.38.0) and is blind to a module imported by explicit path. But the F-044 dev-trial mechanism repoints CLI dispatch via `SPECREW_MODULE_PATH` (Specrew.psm1) — so the version PROBE reported a version that was NOT the one actually running. Every dev-trial of an unpublished branch therefore shows a false INCOMPATIBLE. (`specrew review` itself has NO version-compatibility refusal — verified by reproducing `specrew review --list-hosts` under the override; the coordinator's "refuses to run" was an inference from the cosmetic banner, not a real gate.)
+
+**Fix**: both probes gained a Step 0 — when `SPECREW_MODULE_PATH` names a VALID Specrew tree (Specrew.psd1 + scripts/specrew.ps1, the same marker the dispatcher uses), read THAT manifest as the installed version/prerelease; otherwise fall through to the existing `Get-Module -ListAvailable` resolution unchanged. Blast radius is exactly the dev-trial case (env unset → byte-identical to prior behavior); it also corrects `Get-PSGalleryUpdateWarning`, which compared against the wrong baseline. **Proven**: file:///C:/Dev/197-continuous-co-review/tests/integration/version-info-states.tests.ps1 Test 10 (valid override honored; invalid/bogus override ignored → falls through), 10/10; and the live testbed now reports Installed 0.39.0-beta1 / baseline 0.39.0 / **COMPATIBLE**.
+
+**Scope**: an F-044 dev-trial-mechanism fix surfaced while dogfooding F-197; non-requirement (no FR-033..FR-040 trace) — recorded as iter-009 infra hygiene (the T095 governance-hygiene precedent).
+
+**Trace**: governance / F-044 dev-trial override parity (no F-197 requirement).
 
 ### Watch carry-over (from scaffolding)
 

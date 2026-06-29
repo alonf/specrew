@@ -30,8 +30,40 @@ function Get-SpecrewVersionConfigValue {
     return $null
 }
 
+function Get-SpecrewModulePathOverrideManifestPath {
+    # F-044 dev-trial parity. When SPECREW_MODULE_PATH names a VALID Specrew tree, the CLI is dispatching from
+    # THERE (Specrew.psm1), so that tree's manifest IS the version actually running -- not whatever stale copy
+    # Get-Module -ListAvailable surfaces from PSModulePath. Validity uses the SAME marker the dispatcher uses
+    # (Specrew.psd1 + scripts/specrew.ps1), so a bogus override path is ignored and resolution falls through.
+    # Returns the override manifest path, or $null when the env var is unset/invalid.
+    if ([string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) { return $null }
+    $overrideRoot = $env:SPECREW_MODULE_PATH
+    $overrideManifest = Join-Path $overrideRoot 'Specrew.psd1'
+    $overrideCli = Join-Path $overrideRoot 'scripts/specrew.ps1'
+    if ((Test-Path -LiteralPath $overrideManifest -PathType Leaf) -and (Test-Path -LiteralPath $overrideCli -PathType Leaf)) {
+        return $overrideManifest
+    }
+    return $null
+}
+
 function Get-SpecrewInstalledVersion {
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
+
+    # Step 0 (F-044 dev-trial parity): an active SPECREW_MODULE_PATH override is the version actually running;
+    # honor it before Get-Module -ListAvailable, which would otherwise report a stale Gallery copy and produce a
+    # misleading INCOMPATIBLE banner in every dev-trial of an unpublished branch.
+    $overrideManifestPath = Get-SpecrewModulePathOverrideManifestPath
+    if ($overrideManifestPath) {
+        try {
+            $overrideManifest = Import-PowerShellDataFile -LiteralPath $overrideManifestPath
+            if ($overrideManifest -and $overrideManifest.ContainsKey('ModuleVersion')) {
+                return [string]$overrideManifest.ModuleVersion
+            }
+        }
+        catch {
+            # Unreadable override manifest -> fall through to the normal resolution.
+        }
+    }
 
     # Step 1: Get-Module -ListAvailable. SilentlyContinue + try/catch because on Linux,
     # PSModulePath often contains directories with malformed modules or permission
@@ -148,21 +180,25 @@ function Get-SpecrewInstalledVersionInfo {
     #>
     param([Parameter(Mandatory = $true)][string]$ProjectRoot)
 
-    $manifestPath = $null
+    # Step 0 (F-044 dev-trial parity): prefer an active SPECREW_MODULE_PATH override manifest, so the version
+    # report (base + prerelease label) reflects the tree actually dispatching, not a stale Gallery copy.
+    $manifestPath = Get-SpecrewModulePathOverrideManifestPath
 
-    try {
-        $module = @(Get-Module -Name Specrew -ListAvailable -ErrorAction SilentlyContinue |
-            Sort-Object Version -Descending |
-            Select-Object -First 1)
-        if ($module.Count -gt 0 -and $module[0].ModuleBase) {
-            $candidate = Join-Path $module[0].ModuleBase 'Specrew.psd1'
-            if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-                $manifestPath = $candidate
+    if (-not $manifestPath) {
+        try {
+            $module = @(Get-Module -Name Specrew -ListAvailable -ErrorAction SilentlyContinue |
+                Sort-Object Version -Descending |
+                Select-Object -First 1)
+            if ($module.Count -gt 0 -and $module[0].ModuleBase) {
+                $candidate = Join-Path $module[0].ModuleBase 'Specrew.psd1'
+                if (Test-Path -LiteralPath $candidate -PathType Leaf) {
+                    $manifestPath = $candidate
+                }
             }
         }
-    }
-    catch {
-        # Fall through to the manifest path search.
+        catch {
+            # Fall through to the manifest path search.
+        }
     }
 
     if (-not $manifestPath) {

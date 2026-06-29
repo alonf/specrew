@@ -30,6 +30,18 @@ function Assert-Null {
     Write-Pass $Message
 }
 
+function Assert-NotEqual {
+    param(
+        [Parameter(Mandatory = $true)] $Unexpected,
+        [AllowNull()] $Actual,
+        [Parameter(Mandatory = $true)][string] $Message
+    )
+    if ($Unexpected -eq $Actual) {
+        Write-Fail ("{0} (expected NOT '{1}', but got it)" -f $Message, $Unexpected)
+    }
+    Write-Pass $Message
+}
+
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $versionCheckScript = Join-Path $repoRoot 'scripts\internal\version-check.ps1'
 if (-not (Test-Path -LiteralPath $versionCheckScript -PathType Leaf)) {
@@ -176,6 +188,37 @@ squad:
     Assert-Equal -Expected '0.29.0' -Actual (Get-SpecrewVersionInfoFromManifest -ManifestPath $noPsData).Display -Message "manifest without PSData: Display is base version"
 
     Assert-Null -Actual (Get-SpecrewVersionInfoFromManifest -ManifestPath (Join-Path $scratchDir 'does-not-exist.psd1')) -Message "missing manifest returns null"
+
+    Write-Host ""
+    Write-Host "Test 10: SPECREW_MODULE_PATH dev-trial override is honored as the installed version (F-044 parity)"
+    # The dev-trial dispatcher (Specrew.psm1) runs the override tree's code, so the version probe must report
+    # THAT tree's version -- not a stale Gallery copy on PSModulePath -- or every unpublished-branch dev-trial
+    # shows a false INCOMPATIBLE. The override is honored ONLY for a valid tree (Specrew.psd1 + scripts/specrew.ps1).
+    $originalModulePath = [Environment]::GetEnvironmentVariable('SPECREW_MODULE_PATH', 'Process')
+    $overrideTree = Join-Path $scratchDir 'override-tree'
+    $overrideScripts = Join-Path $overrideTree 'scripts'
+    $null = New-Item -ItemType Directory -Path $overrideScripts -Force
+    Set-Content -LiteralPath (Join-Path $overrideTree 'Specrew.psd1') -Encoding UTF8 -Value "@{ ModuleVersion = '9.99.0'; PrivateData = @{ PSData = @{ Prerelease = 'devtrial' } } }"
+    Set-Content -LiteralPath (Join-Path $overrideScripts 'specrew.ps1') -Encoding UTF8 -Value "# stub CLI entry (validity marker the dispatcher checks)"
+    try {
+        [Environment]::SetEnvironmentVariable('SPECREW_MODULE_PATH', $overrideTree, 'Process')
+        Assert-Equal -Expected '9.99.0' -Actual (Get-SpecrewInstalledVersion -ProjectRoot $repoRoot) -Message "valid override tree: Get-SpecrewInstalledVersion returns the override version"
+        Assert-Equal -Expected '9.99.0-devtrial' -Actual (Get-SpecrewInstalledVersionInfo -ProjectRoot $repoRoot).Display -Message "valid override tree: Get-SpecrewInstalledVersionInfo surfaces override Display + prerelease"
+
+        # Manifest present but NO scripts/specrew.ps1 marker -> not a real dispatch tree -> ignored, falls through.
+        $invalidTree = Join-Path $scratchDir 'override-invalid'
+        $null = New-Item -ItemType Directory -Path $invalidTree -Force
+        Set-Content -LiteralPath (Join-Path $invalidTree 'Specrew.psd1') -Encoding UTF8 -Value "@{ ModuleVersion = '9.99.0'; PrivateData = @{ PSData = @{ Prerelease = 'devtrial' } } }"
+        [Environment]::SetEnvironmentVariable('SPECREW_MODULE_PATH', $invalidTree, 'Process')
+        Assert-NotEqual -Unexpected '9.99.0' -Actual (Get-SpecrewInstalledVersion -ProjectRoot $repoRoot) -Message "override tree missing scripts/specrew.ps1 is ignored (falls through to normal resolution)"
+
+        # Nonexistent override path -> ignored.
+        [Environment]::SetEnvironmentVariable('SPECREW_MODULE_PATH', (Join-Path $scratchDir 'override-does-not-exist'), 'Process')
+        Assert-NotEqual -Unexpected '9.99.0' -Actual (Get-SpecrewInstalledVersion -ProjectRoot $repoRoot) -Message "nonexistent override path is ignored (falls through)"
+    }
+    finally {
+        [Environment]::SetEnvironmentVariable('SPECREW_MODULE_PATH', $originalModulePath, 'Process')
+    }
 }
 finally {
     [Environment]::SetEnvironmentVariable('SPECREW_SUPPORTED_MAX_SPECKIT', $originalSpeckitMax, 'Process')
