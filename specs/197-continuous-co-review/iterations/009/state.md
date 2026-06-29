@@ -3,11 +3,11 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T095
-**Tasks Remaining**: T093, T094, T096 (+ T091 needs-rework — R5 deferred to iter-010)
+**Last Completed Task**: T098
+**Tasks Remaining**: T091, T096, T093, T094
 **In Progress**: (none)
 **Baseline Ref**: ac99be4c
-**Updated**: 2026-06-28T19:28:44Z
+**Updated**: 2026-06-28T21:14:41.2098873Z
 
 ## Planning Summary
 
@@ -39,6 +39,6 @@ Iteration 009 is in the **implement** phase (before-implement approved 2026-06-2
 
 ## Execution Summary
 
-- Execution is in progress (implement phase).
-- Task progress: 5 complete (T090, T092, T095, T097, T098), 1 needs-rework (T091 — R5 WSL gate unevidenced, deferred to iter-010 per maintainer-authorized D-197-I009-006), 3 pending (T093, T094, T096).
-- Latest completed task: T095 (the T083-T085 collision renumber).
+- Execution is in progress.
+- Task progress: 5 complete, 0 in-progress, 4 pending, 0 blocked.
+- Latest completed task: T098
