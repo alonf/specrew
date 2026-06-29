@@ -7,9 +7,9 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 ## Summary
 
-**Total drift events**: 7
-**Resolution**: 6 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion)
-**Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. (5) the F-197 dev-trial dogfood surfaced a false-INCOMPATIBLE — the version probe ignored the SPECREW_MODULE_PATH override (F-044) and nearly parked a testbed coordinator on a non-existent review block — fixed. All are implementation/deploy/state defects, not requirement drift.
+**Total drift events**: 8
+**Resolution**: 6 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion) + 1 deferred (D-008 cross-machine co-review-dark → iter-010 navigator-stage fallback + Proposals 142/193)
+**Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. (5) the F-197 dev-trial dogfood surfaced a false-INCOMPATIBLE — the version probe ignored the SPECREW_MODULE_PATH override (F-044) and nearly parked a testbed coordinator on a non-existent review block — fixed. (6) a cross-machine dogfood — the gitignored session cursor did not travel desktop→laptop, so the auto co-review silently no-op'd (`not-implement-stage`) on a fresh empty cursor while the committed state.md said implement; diagnosed, durable fix deferred (iter-010 navigator-stage fallback + Proposals 142/193). All are implementation/deploy/state defects, not requirement drift.
 
 ## Events
 
@@ -101,6 +101,30 @@ Tracks divergences between the approved specification, plan, task table, and imp
 **Scope**: an F-044 dev-trial-mechanism fix surfaced while dogfooding F-197; non-requirement (no FR-033..FR-040 trace) — recorded as iter-009 infra hygiene (the T095 governance-hygiene precedent).
 
 **Trace**: governance / F-044 dev-trial override parity (no F-197 requirement).
+
+### D-197-I009-008 — Auto co-review went dark across a machine switch: the gitignored session cursor did not travel, so the navigator no-op'd on an empty cursor
+
+**Status**: diagnosed + locally worked-around-then-reverted; durable fix deferred to iter-010 (the F-197 navigator-stage fallback below) + Proposals 142/193
+**Detected by**: maintainer 2026-06-29/30 ("how come we do not see stop hook and how come you didn't spawn a co-reviewer"), on a desktop→laptop continuation of F-197.
+
+**Drift + root cause**: the work was committed+pushed on the desktop and pulled on the laptop, but `.specrew/start-context.json` (the boundary cursor + verdict_history) and `.specrew/runtime/` (the navigator journal + last-fired tree-id) are gitignored per-machine (`.gitignore:30,61` — "regenerated each session, never pushed"). So the laptop's `specrew start` minted a FRESH EMPTY cursor (`last_authorized_boundary: null`, `verdict_history: []`). `Get-ContinuousCoReviewNavigatorImplementStage` (`continuous-co-review-navigator.ps1:815-851`) gates the auto co-review on that cursor ALONE — so it resolved stage `''` and journaled `no-op / not-implement-stage ()` at every Stop (7 entries, 2026-06-29T21:18→23:20 UTC) even though the COMMITTED `iterations/009/state.md` said `Current Phase: implement`. This is NOT the D-001 "dark" mode (there the provider couldn't load the function): here the hook fired and journaled every Stop — it correctly read an honest-but-empty LOCAL cursor.
+
+**Compounding finding**: a `sync-boundary-state.ps1 -BoundaryType before-implement` repair attempt (to make the navigator fire) set `session_state.boundary_type=before-implement` while `last_authorized_boundary` stayed null — which then drove the Stop hook to demand a SPURIOUS `intake -> specify` verdict, because the empty `verdict_history` made the pending-verdict detector conclude nothing was ever authorized. The cursor was reverted from a backup and the spurious `pending-verdict-stop.md` deleted. Net: a fresh-machine empty cursor breaks BOTH the navigator stage gate (silent no-op) AND the pending-verdict detector (false early-boundary demand).
+
+**Reconciliation — two layers**:
+
+- **(a) iter-010 F-197 task (in-domain, cheap):** the navigator stage gate must tolerate an empty/missing cursor by falling back to the committed `iterations/<N>/state.md` "Current Phase" (corroborated by the `boundary(...)` commit trail). This alone would have fired the co-review on the laptop with zero cursor surgery — iter-009's "any review beats nothing; never gate dark on missing local state" thesis applied to the stage gate. Concrete task spec below.
+- **(b) durable, cross-feature:** Proposals 142 + 193, amended 2026-06-30 with the cross-machine facet — make the lifecycle position git-carried/reconstructable so the cursor is a derived cache rebuilt on bootstrap, not a per-machine single point of failure.
+
+**Concrete iter-010 F-197 task (candidate T101):**
+
+- **Title**: Navigator stage gate — committed-`state.md` fallback when the session cursor is empty/missing (cross-machine robustness).
+- **Requirement trace**: FR-026 / FR-030 / FR-031 (the always-on auto-fire) + SC-022; robustness sibling of SC-024.
+- **Behaviour**: when `Get-ContinuousCoReviewNavigatorImplementStage` reads a blank `session_state.boundary_type` AND blank `boundary_enforcement.last_authorized_boundary`, fall back to the active iteration's committed `state.md` "Current Phase" (`implement` → return `implement`), optionally corroborated by the `boundary(before-implement|implement): ...` commit trail. Empty cursor + committed-implement ⇒ fire (subject to dedup). Cursor present ⇒ behaviour unchanged.
+- **Acceptance**: on a fresh clone / machine switch (empty cursor) with a committed `state.md` at implement, the decision journal records `fired` (not `not-implement-stage`); a unit test drives the empty-cursor + committed-implement path; zero regression when the cursor IS populated.
+- **Owner**: Implementer (F-197-owned navigator seam; NOT an F-184 protected surface — confirm via the protected-surface guard before committing).
+
+**Trace**: F-197 co-review robustness (auto-fire survivability across machines) + governance / lifecycle-pointer portability (Proposals 142/193).
 
 ### Watch carry-over (from scaffolding)
 
