@@ -421,6 +421,21 @@ function Write-ContinuousCoReviewNavigatorBlackboard {
     }
     try {
         $findings = $Verdict.raw
+        # Option A (park-and-inform): an escalation IS, by definition, escalated to a human. Record that disposition
+        # on the finding so the signoff gate treats it as not-unresolved (Get-...UnresolvedBlockingFindingInfo skips
+        # disposition_state='escalated_to_human') instead of deadlocking on an 'open' blocking escalation. Scoped to
+        # kind='escalation' so a REAL bug (any other kind) stays 'open' and keeps blocking — the latch never silences
+        # a bug, only the human-decision escalation it is scoped to. Does NOT suppress the stop-block surfacing
+        # (that is severity-based; the round-ceiling bounds it). (F-197 iter-009)
+        if ($null -ne $findings -and ($findings.PSObject.Properties.Name -contains 'findings')) {
+            foreach ($f in @($findings.findings)) {
+                if ($null -eq $f) { continue }
+                $kindProp = $f.PSObject.Properties['kind']
+                if ($null -eq $kindProp -or ([string]$kindProp.Value) -ne 'escalation') { continue }
+                if ($f.PSObject.Properties.Name -contains 'disposition') { $f.disposition = 'escalated_to_human' }
+                else { $f | Add-Member -NotePropertyName disposition -NotePropertyValue 'escalated_to_human' -Force }
+            }
+        }
         # NORMALIZE run_id to the registry run-id (co-locate with the gate record under inline/<run-id>/).
         if ($findings.PSObject.Properties.Name -contains 'run_id') { $findings.run_id = $RunId }
         else { $findings | Add-Member -NotePropertyName run_id -NotePropertyValue $RunId -Force }
