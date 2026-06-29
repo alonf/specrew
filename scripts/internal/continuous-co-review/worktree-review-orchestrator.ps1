@@ -299,6 +299,24 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         }
         & $recordPhaseEnd 'round-state-resolution'
         try {
+            if ($round -gt $maxRounds) {
+                # CEILING REACHED — do NOT fire another review round. The deterministic spin-stop (the round-9
+                # fix): round 9 proved the counter climbs monotonically while the change-set overlaps, so a
+                # round>maxRounds guard provably halts it. Write an EMPTY result (the no-findings branch below
+                # already writes '' and the reap tolerates it) so the reap consumes it and emits NO stop-block;
+                # persist a STICKY round-state (blocking=true at the ceiling round) so further OVERLAPPING
+                # checkpoints stay above the ceiling and co-review stays quiet for THIS path-set (it resets when
+                # the change-set no longer overlaps). The inner 'finally' still runs on return -> worktree cleaned.
+                # (F-197 iter-009, Option A #2)
+                $currentPhase = 'ceiling-halt'
+                & $recordPhaseStart $currentPhase
+                [System.IO.File]::WriteAllText($resultOut, '')
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $true -Findings $priorFindings
+                & $recordPhaseEnd 'ceiling-halt'
+                $runTimer.Stop()
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
             $currentPhase = 'reviewer-execution'
             & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $null }
             & $recordPhaseStart $currentPhase
