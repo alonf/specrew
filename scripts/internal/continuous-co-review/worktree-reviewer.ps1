@@ -373,6 +373,47 @@ function Get-ContinuousCoReviewHarvestedPartialResult {
     return ($result | ConvertTo-Json -Depth 100 -Compress)
 }
 
+function New-ContinuousCoReviewCeilingEscalationResult {
+    # D-197-I009-010 (false-green hardening): the round CEILING halts the auto-loop to stop the spin (the round-9
+    # fix) — but a halt is NOT a clean pass. The old ceiling wrote an EMPTY result, so the run read as
+    # 'done / 0 findings / clean' and SILENTLY passed an UNREVIEWED increment (the false-green that fooled a dogfood
+    # coordinator into signing off code the reviewer never saw). Instead, emit a VISIBLE escalation finding so the
+    # run can NEVER be read as clean: kind='escalation' (Option A keeps it parked as escalated_to_human, so the
+    # signoff gate does NOT deadlock on it) + severity 'blocking' (so the navigator surfaces a NOT-REVIEWED stop-
+    # block) + a plain-words comment. Schema-conformant FindingsResult (findings-result.schema.json). Returns JSON.
+    param(
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][int]$Round,
+        [Parameter(Mandatory)][int]$MaxRounds
+    )
+    $comment = (
+        ("CO-REVIEW CEILING REACHED (round {0} > max_rounds {1}) with an unresolved blocking finding still open from a " -f $Round, $MaxRounds) +
+        'prior round. This increment was NOT REVIEWED -- the auto-loop stopped here to avoid spinning. This is an ' +
+        'ESCALATION, not a clean pass: resolve the open blocking finding, or raise co_review_max_rounds / reset the ' +
+        "co-review round state, so review resumes. Reading this run as '0 findings / clean' is a FALSE-GREEN."
+    )
+    $result = [pscustomobject]@{
+        schema_version = '1.0'
+        run_id         = $RunId
+        status         = 'findings'
+        findings       = @(
+            [pscustomobject]@{
+                finding_id       = 'co-review-ceiling-escalation'
+                source_run_id    = $RunId
+                location         = [pscustomobject]@{ path = '.review/changes.diff' }
+                severity         = 'blocking'
+                kind             = 'escalation'
+                design_reference = 'co-review round ceiling (co_review_max_rounds)'
+                comment          = $comment
+                disposition      = 'escalated_to_human'
+                resolution       = [pscustomobject]@{ state = 'escalated'; fix_evidence_ref = $null; rationale = $null }
+            }
+        )
+        created_at     = (ConvertTo-ContinuousCoReviewReviewerIsoTimestamp)
+    }
+    return ($result | ConvertTo-Json -Depth 100 -Compress)
+}
+
 function Get-ContinuousCoReviewAgentCommand {
     # Per-host AGENTIC invocation for the worktree reviewer (read + RUN in the cwd; read-only on the real source —
     # the worktree is ephemeral so a write-capable sandbox is safe). LOOKED UP from the host CATALOG

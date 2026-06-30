@@ -300,21 +300,24 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         & $recordPhaseEnd 'round-state-resolution'
         try {
             if ($round -gt $maxRounds) {
-                # CEILING REACHED — do NOT fire another review round. The deterministic spin-stop (the round-9
-                # fix): round 9 proved the counter climbs monotonically while the change-set overlaps, so a
-                # round>maxRounds guard provably halts it. Write an EMPTY result (the no-findings branch below
-                # already writes '' and the reap tolerates it) so the reap consumes it and emits NO stop-block;
-                # persist a STICKY round-state (blocking=true at the ceiling round) so further OVERLAPPING
-                # checkpoints stay above the ceiling and co-review stays quiet for THIS path-set (it resets when
-                # the change-set no longer overlaps). The inner 'finally' still runs on return -> worktree cleaned.
-                # (F-197 iter-009, Option A #2)
+                # CEILING REACHED — do NOT fire another review round (the deterministic spin-stop / round-9 fix: a
+                # round>maxRounds guard provably halts the monotonic climb while the change-set overlaps). BUT a halt
+                # is NOT a clean pass. The old code wrote an EMPTY result here, so the run read as
+                # 'done / 0 findings / clean' and SILENTLY passed an UNREVIEWED increment — the false-green
+                # (D-197-I009-010) that fooled a dogfood coordinator into signing off code the reviewer never saw.
+                # Instead emit a VISIBLE escalation finding so the run can NEVER be read as clean: kind='escalation'
+                # -> Option A parks it as escalated_to_human (the gate does NOT deadlock); severity 'blocking' -> the
+                # navigator surfaces a NOT-REVIEWED stop-block. Persist a STICKY round-state (blocking=true) so
+                # overlapping checkpoints stay above the ceiling and review stays bounded for THIS path-set (resets
+                # when the change-set no longer overlaps). status carries reviewed=false so any consumer reading
+                # status.json knows the increment was NOT reviewed. (F-197 iter-009 Option A #2 + D-010 hardening.)
                 $currentPhase = 'ceiling-halt'
                 & $recordPhaseStart $currentPhase
-                [System.IO.File]::WriteAllText($resultOut, '')
+                [System.IO.File]::WriteAllText($resultOut, (New-ContinuousCoReviewCeilingEscalationResult -RunId $RunId -Round $round -MaxRounds $maxRounds))
                 Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $true -Findings $priorFindings
                 & $recordPhaseEnd 'ceiling-halt'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
             $currentPhase = 'reviewer-execution'

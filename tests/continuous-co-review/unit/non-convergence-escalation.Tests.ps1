@@ -10,6 +10,7 @@ Describe 'Proposal 197 T026 TG-011 non-convergence escalation obeys implementati
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         Import-Module (Join-Path $script:RepoRoot 'Specrew.psd1') -Force
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')   # brings New-ContinuousCoReviewCeilingEscalationResult (D-010)
         $script:SchemaRoot = Join-Path $script:RepoRoot 'specs/197-continuous-co-review/contracts'
         $script:CreatedAt = [datetime] '2026-06-17T22:26:00Z'
     
@@ -197,5 +198,22 @@ Describe 'Proposal 197 T026 TG-011 non-convergence escalation obeys implementati
         $verdict.escalation_ref | Should -Match 'human'
         $verdict.escalation_ref | Should -Match 'finding-t026-stable-blocker'
         (Test-ReviewerContractObject -ContractName 'GateVerdict' -SchemaRoot $script:SchemaRoot -InputObject $verdict).Valid | Should -Be $true
+    }
+
+    It 'a ceiling-halt emits a VISIBLE escalation finding (never a 0-findings clean pass) — false-green guard D-197-I009-010' {
+        $json = New-ContinuousCoReviewCeilingEscalationResult -RunId 'run-ceiling-1' -Round 3 -MaxRounds 2
+        $json | Should -Not -BeNullOrEmpty
+        $obj = $json | ConvertFrom-Json
+        # the whole point: a halt is NOT zero findings / clean — it carries exactly one VISIBLE escalation
+        @($obj.findings).Count | Should -Be 1
+        $f = @($obj.findings)[0]
+        $f.severity | Should -Be 'blocking'
+        $f.kind | Should -Be 'escalation'
+        $f.disposition | Should -Be 'escalated_to_human'   # parked -> gate does not deadlock, but it IS surfaced
+        $f.comment | Should -Match '(?i)not reviewed'
+        $f.comment | Should -Match '(?i)ceiling'
+        $f.comment | Should -Match '(?i)false-green'
+        # schema-conformant (no D-002-style additionalProperties violation)
+        (Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $obj).Valid | Should -Be $true
     }
 }
