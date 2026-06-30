@@ -250,6 +250,20 @@ Describe 'Proposal 197 T031 TG-011 reviewer host catalog obeys implementation-ru
         ($authorization | ConvertTo-Json -Depth 20) | Should -Not -Match '(?i)token|secret|credential'
     }
 
+    It 'invokes the codex reviewer with sandbox bypass (the worktree IS the external sandbox), never the inner workspace-write sandbox' {
+        # D-197-I009-009 / T102: codex's inner restricted-token sandbox hangs on per-run worktree trust + needs its
+        # helper resolvable; the ephemeral worktree already isolates, so the codex row bypasses it. This locks that in.
+        $cmd = Get-T031Command -Name 'Get-ContinuousCoReviewHostAgenticCommand'
+        $codex = & $cmd -HostName 'codex'
+        $codex.file | Should -Be 'codex'
+        @($codex.pre_args) | Should -Contain '--dangerously-bypass-approvals-and-sandbox'
+        @($codex.pre_args) | Should -Not -Contain 'workspace-write'
+        @($codex.pre_args) | Should -Not -Contain '--sandbox'
+        # claude reviewer keeps its own permission-bypass invocation (unchanged by this fix)
+        $claude = & $cmd -HostName 'claude'
+        @($claude.pre_args) | Should -Contain 'bypassPermissions'
+    }
+
     It 'does not depend on live web search for runtime reviewer catalog discovery' {
         $sourcePath = Join-Path $script:ReviewerModuleRoot 'reviewer-host-catalog.ps1'
         (Test-Path -LiteralPath $sourcePath -PathType Leaf) | Should -Be $true

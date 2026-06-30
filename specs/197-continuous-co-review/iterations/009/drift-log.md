@@ -7,9 +7,9 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 ## Summary
 
-**Total drift events**: 8
-**Resolution**: 6 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion) + 1 deferred (D-008 cross-machine co-review-dark → iter-010 navigator-stage fallback + Proposals 142/193)
-**Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. (5) the F-197 dev-trial dogfood surfaced a false-INCOMPATIBLE — the version probe ignored the SPECREW_MODULE_PATH override (F-044) and nearly parked a testbed coordinator on a non-existent review block — fixed. (6) a cross-machine dogfood — the gitignored session cursor did not travel desktop→laptop, so the auto co-review silently no-op'd (`not-implement-stage`) on a fresh empty cursor while the committed state.md said implement; diagnosed, durable fix deferred (iter-010 navigator-stage fallback + Proposals 142/193). All are implementation/deploy/state defects, not requirement drift.
+**Total drift events**: 9
+**Resolution**: 7 resolved + 1 partial (D-005 Phase 1 + Issue-2a landed; Phase 2 + Issue-2b owed, maintainer-authorized scope-expansion) + 1 deferred (D-008 cross-machine co-review-dark → iter-010 navigator-stage fallback + Proposals 142/193). D-009 codex-worktree-sandbox: codex RESOLVED this iter via sandbox-bypass; the general per-run worktree-allow framework + capability preflight → iter-010 T102.
+**Specification drift**: (1) a DEPLOY-DRIFT defect — the deployed co-review navigator provider was stale, so the AUTO co-review was dark on every Stop. (2) the now-firing co-review SELF-REVIEWED T090/T091 (f1 schema-violating FindingsResult, f2 silent kill-fallback, f3 state drift — all fixed). (3) the conformance stop-block intermittently false-negatived a valid packet (flush/read race; mitigation + instrumentation applied, live verification pending). (4) a SECOND co-review self-review caught two structural holes in the co-review machinery itself (agent-tasks/** blind-spot; timeout prose-salvage inert) — both fixed. (5) the F-197 dev-trial dogfood surfaced a false-INCOMPATIBLE — the version probe ignored the SPECREW_MODULE_PATH override (F-044) and nearly parked a testbed coordinator on a non-existent review block — fixed. (6) a cross-machine dogfood — the gitignored session cursor did not travel desktop→laptop, so the auto co-review silently no-op'd (`not-implement-stage`) on a fresh empty cursor while the committed state.md said implement; diagnosed, durable fix deferred (iter-010 navigator-stage fallback + Proposals 142/193). (7) the codex reviewer could not operate in the ephemeral co-review worktree (helper-resolution + per-run project-trust), both papered over by manual non-durable band-aids — resolved for codex this iteration by running `codex exec --dangerously-bypass-approvals-and-sandbox` (the worktree is already an isolated external sandbox); the general framework is deferred to T102. All are implementation/deploy/state defects, not requirement drift.
 
 ## Events
 
@@ -125,6 +125,32 @@ Tracks divergences between the approved specification, plan, task table, and imp
 - **Owner**: Implementer (F-197-owned navigator seam; NOT an F-184 protected surface — confirm via the protected-surface guard before committing).
 
 **Trace**: F-197 co-review robustness (auto-fire survivability across machines) + governance / lifecycle-pointer portability (Proposals 142/193).
+
+### D-197-I009-009 — Codex reviewer could not operate in the ephemeral co-review worktree (helper-resolution + per-run project-trust); fixed for codex via sandbox-bypass, framework deferred to T102
+
+**Status**: codex RESOLVED this iteration (sandbox-bypass catalog edit + test); the general per-run worktree-allow framework + capability preflight + untrusted-code trust-mode → iter-010 **T102**
+**Detected by**: F-197 desktop dogfood 2026-06-30 — the first live co-review (run `20260630T001001266-afffba9e`) returned a blocking `review-blocked`: codex could not inspect the change-set.
+
+**Drift + root cause (two codex-on-Windows failures, both at the ephemeral worktree boundary)**:
+
+1. **Helper resolution** — codex spawns `codex-windows-sandbox-setup.exe` + `codex-command-runner.exe` by bare name; they live under `.codex\packages\…\codex-resources\` but the launcher (`AppData\…\bin\codex.exe`) is detached from that dir, and the reviewer runs codex with cwd = the ephemeral temp worktree, so neither resolved → "program not found" → `CreateProcessWithLogonW failed: 2`. Session band-aid: copied both helpers into the on-PATH `bin` dir.
+2. **Per-run project trust** — codex `exec --sandbox workspace-write` will not operate in an UNTRUSTED folder; the unique per-run worktree (`%TEMP%\ccr-worktree-<guid>`) is never trusted. Testbed-crew band-aid: added `[projects.'<worktree>']` entries to global `~/.codex/config.toml`.
+
+**Why the band-aids are non-durable**: the helper copy is wiped by a `codex update`; the config-trust entries name a UNIQUE per-run temp dir, so they cover only the runs that already happened — the next co-review mints a new `ccr-worktree-<guid>` that isn't trusted → `review-blocked` again, and the config accretes a dead entry per run (2 stale already: `52fae8…`, `f3f8c7…`).
+
+**Verification (2026-06-30)**: `codex exec --cd <fresh-untrusted-worktree>` HANGS (codex waits for a headless folder-trust it cannot grant) → `--cd` ruled out. Project-trust IS proven (the substantive review run `20260630T071535462-3f444301` succeeded with the worktree trusted in config). `codex exec --dangerously-bypass-approvals-and-sandbox` is the reliable, hang-free path.
+
+**Fix landed THIS iteration (resolves codex)**: the codex catalog row in file:///C:/Dev/197-continuous-co-review/scripts/internal/continuous-co-review/reviewer-host-catalog.ps1 now invokes `codex exec --dangerously-bypass-approvals-and-sandbox --skip-git-repo-check`. **Architect decision (Alon Fliess, 2026-06-30, verbatim "yes, bypass")**: the worktree reviewer already runs in an ephemeral, isolated, read-only-source worktree — precisely the "externally sandboxed environment" the flag is documented for — so codex's inner restricted-token sandbox is redundant AND the source of both failure modes; bypass removes both with zero per-run / per-machine config. A host-neutral catalog DATA edit (the architecture's intent). Proven: `Get-ContinuousCoReviewHostAgenticCommand -HostName codex` now yields the bypass invocation (no `--sandbox`/`workspace-write`); unit test added in file:///C:/Dev/197-continuous-co-review/tests/continuous-co-review/unit/reviewer-host-catalog.Tests.ps1; claude reviewer untouched. The helper-copy band-aid becomes moot (bypass skips sandbox setup); the stale config-trust entries can be pruned.
+
+**Deferred to iter-010 — task T102** (the general framework the bypass made unnecessary for self-review but which untrusted-code review needs):
+
+- **Per-run worktree-allow injection framework**: a catalog `worktree_sandbox_args` template with a `{WORKTREE}` placeholder + core substitution in file:///C:/Dev/197-continuous-co-review/scripts/internal/continuous-co-review/worktree-reviewer.ps1, so a host needing per-run path injection (a trust-injection mode for reviewing UNTRUSTED third-party code, where bypass is too permissive) gets the worktree path host-neutrally.
+- **Sandbox-capability preflight**: extend host availability beyond "CLI on PATH" with a sandbox smoke-test at selection; on failure mark the host degraded + auto-fall-back — turning a silent runtime `review-blocked` into a pre-flight signal (covers the helper-resolution class too).
+- **Cleanup**: prune the stale `[projects.'…ccr-worktree-…']` entries from `~/.codex/config.toml`.
+- **Owner**: Implementer (F-197-owned reviewer adapter; not an F-184 protected surface).
+- **Acceptance**: bypass — a fresh clone / new machine runs a co-review and codex inspects the worktree with NO manual config + NO helper copy; framework — an untrusted-code-review run using trust-injection without bypass.
+
+**Trace**: F-197 reviewer robustness (auto-review works out-of-the-box across hosts/machines) + SC-024 (never gate dark on infra); governance / reviewer-host capability detection.
 
 ### Watch carry-over (from scaffolding)
 

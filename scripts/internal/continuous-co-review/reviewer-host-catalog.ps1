@@ -51,7 +51,14 @@ function Get-ContinuousCoReviewReviewerHostRows {
     # selectable/authorizable but are not agentically invokable until their command is filled in.
     return @(
         @{ host = 'claude'; command = 'claude'; agentic_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true; model = 'opus-4.8-1m-context'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 85 }
-        @{ host = 'codex'; command = 'codex'; agentic_args = @('exec', '--sandbox', 'workspace-write', '--skip-git-repo-check'); prompt_via_stdin = $false; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85 }
+        # codex runs with --dangerously-bypass-approvals-and-sandbox BY DESIGN: the worktree reviewer already runs in an
+        # EPHEMERAL, isolated, read-only-source git-tree worktree (precisely the "externally sandboxed environment" that
+        # flag is documented for). codex's INNER Windows restricted-token sandbox is therefore redundant AND fragile
+        # here — it needs the unique per-run temp worktree registered as a trusted project (codex HANGS headlessly
+        # waiting for that trust) plus its sandbox-setup helper resolvable next to the launcher. Bypassing removes BOTH
+        # failure modes with zero per-run / per-machine config. (F-197 reviewer robustness; drift D-197-I009-009 / T102.
+        # NOTE: reviewing UNTRUSTED third-party code should use the per-run trust-injection mode instead — see T102.)
+        @{ host = 'codex'; command = 'codex'; agentic_args = @('exec', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check'); prompt_via_stdin = $false; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85 }
         @{ host = 'copilot'; command = 'copilot'; agentic_args = @(); prompt_via_stdin = $false; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80 }
         @{ host = 'cursor-agent'; command = 'cursor-agent'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70 }
         @{ host = 'antigravity'; command = 'antigravity'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65 }
