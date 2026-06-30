@@ -654,12 +654,16 @@ if ($shouldInitializeSpecify) {
         # Antigravity) need their OWN native surface, or they are told to use commands they do not
         # have (#2884 4th face — Claude got CLAUDE.md telling it to use /speckit.* with nothing
         # deployed). Spec Kit's claude integration deploys `.claude/skills/speckit-*`; install it
-        # (and agy) alongside copilot via `integration install --force` (copilot is not
-        # multi-install-safe, so --force is required). Non-fatal: a failed install leaves the host on
-        # the governed-scripts fallback the coordinator guard already blesses.
+        # (and agy) alongside copilot via `integration install <key>`. NOTE (D-197-I009-011): Spec Kit 0.8.4 (the
+        # pinned + min-supported version) `integration install` takes only [--script | --integration-options] KEY --
+        # there is NO --force flag, and passing one makes Spec Kit reject the WHOLE call with a usage error (so the
+        # native command surface silently never installed). The claude/agy integrations install their OWN surfaces
+        # (e.g. .claude/skills/speckit-*) which do not collide with the copilot surface, so --force was never needed
+        # here anyway. Non-fatal: a failed install leaves the host on the governed-scripts fallback the coordinator
+        # guard already blesses.
         foreach ($paletteIntegration in @('claude', 'agy')) {
             Write-Step ("Installing Spec Kit native commands for {0}" -f $paletteIntegration)
-            $integResult = Invoke-NativeCommandForOutput -FilePath 'specify' -ArgumentList @('integration', 'install', $paletteIntegration, '--force') -WorkingDirectory $resolvedProjectPath
+            $integResult = Invoke-NativeCommandForOutput -FilePath 'specify' -ArgumentList @('integration', 'install', $paletteIntegration) -WorkingDirectory $resolvedProjectPath
             if ($integResult.ExitCode -eq 0) {
                 Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("installed native commands: {0}" -f $paletteIntegration)
             }
