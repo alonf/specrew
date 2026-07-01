@@ -579,7 +579,19 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     $result.inject_notes.Add(("[co-review] checkpoint review run {0} completed but produced no parseable verdict (advisory only, NOT gate evidence).{1}{2}" -f $runId, $reasonSuffix, $moreTimeNote)) | Out-Null
                 }
                 else {
-                    $result.inject_notes.Add(("[co-review] checkpoint review run {0} ended '{1}' without a verdict (no blocking signal); a re-review fires on the next changed checkpoint." -f $runId, $status)) | Out-Null
+                    # Co-review setup clarity (2026-07-01 / auto-select-no-authorization finding): a FAILED run whose
+                    # reason is no-authorized-reviewer-host means the checkpoint FIRED but no reviewer host was
+                    # enabled+authorized, so NO review ran. The recommended 'auto-select' preference does NOT
+                    # auto-authorize (authorization is a human cost/independence consent), so on a fresh project the
+                    # first checkpoint fires into what was a SILENT dead-end. Make it ACTIONABLE: tell the human
+                    # exactly how to authorize an independent reviewer ONCE, so the next checkpoint produces a review.
+                    $failReasonNav = Get-ContinuousCoReviewNavigatorFailureReason -RepoRoot $RepoRoot -Registry $reg
+                    if ((-not [string]::IsNullOrWhiteSpace($failReasonNav)) -and ($failReasonNav -match '(?i)no-authorized-reviewer-host')) {
+                        $result.inject_notes.Add(("[co-review] checkpoint FIRED (run {0}) but NO reviewer host is authorized, so NO review ran. The 'auto-select' default does not auto-authorize - authorize an INDEPENDENT reviewer ONCE: ``specrew review --host codex --authorization-ref <ref>`` (or claude/copilot). It then reviews automatically at the next changed checkpoint." -f $runId)) | Out-Null
+                    }
+                    else {
+                        $result.inject_notes.Add(("[co-review] checkpoint review run {0} ended '{1}' without a verdict (no blocking signal); a re-review fires on the next changed checkpoint." -f $runId, $status)) | Out-Null
+                    }
                 }
             }
             # Retire the terminal entry (its worktree was already disposed by the supervisor's finally).
