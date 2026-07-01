@@ -113,3 +113,15 @@ The maintainer real-host validation across the supported harnesses (the long-sta
 - **Reason**: the 2026-07-01 "finish it perfectly" decision — complete iteration 009's robustness charter and the deferred Phase-2 supervisor in one iteration and close the feature as 0.40.0.
 - **Modifications / defaults carried**: (a) raise the iteration-010 capacity cap to **26 story_points** (explicit maintainer decision; the `manual` defer-strategy is the backstop if a slice must drop); (b) SC-012/SC-022 validates the **installed + authorized** hosts (claude, codex today) and honestly records the rest as unavailable rather than claiming all five; (c) N7 closes D-197-I009-003 as **refuted-with-evidence** if the forensic test finds no race, otherwise adds a cheaper mitigation.
 - **Approval evidence commit**: this boundary commit (the commit that records this Human Decision) is the authorization for the `plan` boundary; `plan.md` is authored only after the boundary sync's at-sync plan gate passes against this artifact + decision.
+
+## Reviewer Round Model — session-resume considered & REJECTED (2026-07-02)
+
+The maintainer raised whether the co-reviewer should **resume its prior session** (a host `--resume`/resume flag) to carry context across rounds, instead of spawning fresh-context each round. **Decision: rejected — keep the fresh-context + injected-prior-findings model** (the round-aware slim prompt passes prior findings as text; continuity lives in an artifact we control, per FR-009). Rationale:
+
+- **Host-neutrality (dealbreaker)**: not all five harnesses expose a resume primitive (claude/codex do; copilot/cursor-agent/antigravity don't). Resume-as-default forces per-host branching or abandons SC-022 neutrality.
+- **Session-not-found is the norm, not an edge case**: expiry / GC / cross-machine loss is exactly the D-197-I009-008 class — a fresh-context fallback is required anyway, so resume means maintaining two paths where the resume one is the fragile one.
+- **Tracking burden**: a per-checkpoint session id to persist + lifecycle-manage — more state-truth surface, the feature's recent pain.
+- **Auditability (NFR-002)**: today the reviewer's context IS the injected artifacts (reconstructable); a resumed session is opaque hidden state.
+- **Independence (FR-009)**: fresh-context is the point — resume entrenches a prior (possibly wrong) judgment, working against the falsification/adversarial stance the N5 fold strengthens.
+
+**If continuity is ever wanted**, enrich the injected prior-findings artifact (findings + locations + fix-evidence + a one-line prior rationale) — host-neutral + auditable — rather than resume; the cost/latency worry on large diffs is served by T096 scope-narrowing + the generous-budget heuristic. If resume is ever pursued it must be **opt-in, host-gated (claude/codex), with a mandatory fresh-context fallback + run-index session tracking — never the default.** Maintainer agreed 2026-07-02.
