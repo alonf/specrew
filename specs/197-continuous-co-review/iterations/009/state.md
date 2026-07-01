@@ -1,14 +1,15 @@
 # Iteration State: 009
 
 **Schema**: v1
-**Current Phase**: implement
-**Iteration Status**: executing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T098
 **Tasks Remaining**: (none in iter-009 scope; T091/T093/T094/T096 deferred to iter-010)
 **In Progress**: (none)
 **Baseline Ref**: ac99be4c
-**Updated**: 2026-07-01T10:00:00Z
-**Reconciled**: 2026-07-01 — the 2026-06-28 snapshot was overrun by a full work-cycle + a beta release; this record now reflects disk-truth (delivered work recorded below; the 4 unfinished robustness tasks carried to iter-010 per the full-robustness decision). Current Phase intentionally left at `implement` — review-signoff is a gated boundary crossed in Phase 3, not by this record-repair.
+**Updated**: 2026-07-02
+**Reconciled**: 2026-07-01 — the 2026-06-28 snapshot was overrun by a full work-cycle + a beta release; this record now reflects disk-truth (delivered work recorded below; the 4 unfinished robustness tasks carried to iter-010 per the full-robustness decision).
+**Closeout (2026-07-02)**: review.md + retro.md authored (reconstructed from the delivered scope + drift-log; review verdict `accepted`). Status advanced implement → retro. Awaiting the iteration-closeout verdict to reach `complete` — which grandfathers iter-009 at the 20-SP cap and unblocks the iter-010 cap raise to 26.
 
 ## Planning Summary
 
