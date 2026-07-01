@@ -1,11 +1,13 @@
 # Security-Compliance Lens — iter-008 reviewer-context redesign
 
 ## Lens
+
 security-compliance (medium). Reuses + STRENGTHENS F-197's reviewer trust boundary
 (workshop/security-compliance.md line 42: "the reviewer is a trusted component, not an adversary; the boundary
 is not 'hide repo context', it is 'do not package/persist ambient secrets and do not allow mutation'").
 
 ## Trust boundary (agreed)
+
 ```text
   REAL PROJECT REPO   (never touched — read-only source of truth)
         │  git archive of the project tree
@@ -22,6 +24,7 @@ is not 'hide repo context', it is 'do not package/persist ambient secrets and do
 ```
 
 ## Decisions (human-confirmed)
+
 1. **Reviewer is a fully-trusted component: SEES ALL + RUNS ALL.** No confidentiality blinding within the
    project; the reviewer is an AGENT that may execute (run tests, build, explore) in the ephemeral worktree to
    verify the change — a strengthening of F-197 (which was read-only). This is the headline capability gain.

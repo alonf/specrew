@@ -28,6 +28,7 @@ refactored into a *second door into the same detached worktree pipeline* (compon
   removed by the shared pipeline.*
 
 ## Side-findings
+
 - ~75 leftover `specrew-itask-*` worktree dirs + `.tar` under `$TEMP` — the worktree cleanup leaves DEBRIS;
   the redesign's worktree lifecycle must dispose reliably (relevant to component-design's worktree-materialize).
 - On a self-host repo the scaffolding-exclusion heuristic blinds the review to its own product source (another

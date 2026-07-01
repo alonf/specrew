@@ -15,6 +15,7 @@ async process. The fragile exclusion heuristics + diff cap are removed.
 reviewer per run. (architecture-core)
 
 **Component map (agreed change-impact):**
+
 - SURVIVES: reap, review-blackboard-writer, review-signoff-evidence-gate, reviewer-host adapters,
   reviewer-host-catalog + authorization.
 - CHANGES: continuous-co-review-navigator (Stop-path → trigger only), isolated-task worktree-materialize
@@ -27,6 +28,7 @@ reviewer per run. (architecture-core)
   input-size guard.
 
 **Agreed flow (two doors, one pipeline, with rounds + result-delivery):**
+
 ```text
   [auto Stop-trigger]  OR  [/specrew-review]      (both → the SAME detached pipeline)
         ▼
@@ -62,6 +64,7 @@ Claude-Stop-hook-bound: they live in a HOST-NEUTRAL SERVICE (`co-review-service.
 the Claude Stop-hook navigator (today) and a future MCP server (any MCP host, tomorrow). The Stop-hook navigator
 is just the FIRST consumer, not the architecture. The service surface (each returns structured data; the host
 integration — stop-block / inject-note / an MCP tool result — is the consumer's job):
+
 - `Start-ContinuousCoReviewServiceRun` (trigger a review of the committed state; `-Detached`) → MCP `trigger_review`
 - `Get-ContinuousCoReviewServiceStatus` (a run's lifecycle status, or all pending) → MCP `get_review_status`
 - `Get-ContinuousCoReviewServiceFindings` (a run's FindingsResult — the durable inline thread) → MCP `get_review_findings`

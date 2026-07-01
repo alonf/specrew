@@ -1,11 +1,13 @@
 # Architecture Core Lens — iter-008 reviewer-context redesign
 
 ## Lens
+
 architecture-core (full). Reuses F-197's modular contract-and-gate CCR architecture + one bounded
 fresh-context read-only reviewer per run; reopens F-197 decision-agenda line 13 ("how is the review context
 packaged and bounded?").
 
 ## Decision agenda (raised)
+
 - Context-delivery model: curated-diff-in-prompt vs worktree-the-reviewer-reads.
 - Worktree contents: what is stripped vs kept.
 - Reviewed-state identity + the dispatcher's 20s Stop budget.
@@ -31,6 +33,7 @@ real files; the change-set is the entry point, not the review payload.
 ```
 
 **Decisions:**
+
 1. **Context-delivery = worktree-based.** Reviewer reads real files; `.review/changes.diff` is the entry point;
    design context written as files under `.review/design/`; the prompt is slim (instruction + pointers).
 2. **Worktree strip = the methodology's KNOWN deployed machinery only** (deploy-manifest-derived, NOT a
