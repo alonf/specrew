@@ -743,6 +743,20 @@ $continuousReviewContractsSource = Join-Path $repositoryRoot 'specs\197-continuo
 $continuousReviewContractsTarget = Join-Path $resolvedProjectPath '.specrew\review\contracts'
 Copy-ManagedDirectory -SourcePath $continuousReviewContractsSource -TargetPath $continuousReviewContractsTarget -Actions $actions
 
+# The co-review FIRE path also needs the isolated-task launcher (Proposal 139 foundation) + its
+# atomic-write dependency. The deploy shipped continuous-co-review/ + the contracts but NOT these, so on
+# every deployed project the navigator reached fire and fail-opened to a SILENT no-op (launcher-unavailable
+# / Write-SpecrewFileAtomic undefined) - the reason co-review was inert on real projects. (Tactical patch;
+# the systemic fix is deriving the deployed runtime set from Specrew.psd1 FileList - which already lists all
+# three - per Proposal 198.)
+$agentTasksRuntimeSource = Join-Path $repositoryRoot 'scripts\internal\agent-tasks'
+$agentTasksRuntimeTarget = Join-Path $resolvedProjectPath 'scripts\internal\agent-tasks'
+Copy-ManagedDirectory -SourcePath $agentTasksRuntimeSource -TargetPath $agentTasksRuntimeTarget -Actions $actions
+
+$atomicWriteRuntimeSource = Join-Path $repositoryRoot 'scripts\internal\atomic-write.ps1'
+$atomicWriteRuntimeTarget = Join-Path $resolvedProjectPath 'scripts\internal\atomic-write.ps1'
+Set-ManagedFile -TargetPath $atomicWriteRuntimeTarget -Content (Get-Content -LiteralPath $atomicWriteRuntimeSource -Raw -Encoding UTF8) -Actions $actions
+
 $coordinatorGovernancePath = Join-Path $templateRoot 'coordinator\specrew-governance.md'
 if (-not (Test-Path -LiteralPath $coordinatorGovernancePath -PathType Leaf)) {
     throw "Missing coordinator governance template: $coordinatorGovernancePath"

@@ -527,6 +527,29 @@ if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNu
             $reviewerHostsPath = Join-Path $authProjectPath '.specrew/reviewer-hosts.json'
             $rhDir = Split-Path -Parent $reviewerHostsPath
             if (-not (Test-Path -LiteralPath $rhDir)) { New-Item -ItemType Directory -Path $rhDir -Force | Out-Null }
+            # Preserve EXISTING human authorizations: a fresh --host authorize must NOT drop a previously-authorized
+            # host/fallback (Codex review P2). Re-apply any prior allowed+authorization_ref onto the fresh catalog
+            # (the newly-authorized host is already set in $authConfig). Fail-safe: an unreadable prior file just
+            # writes the fresh catalog rather than blocking the authorize.
+            if (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf) {
+                try {
+                    $existingRh = Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
+                    $priorAuth = @{}
+                    foreach ($eh in @($existingRh.hosts)) {
+                        if ([bool]$eh.allowed -and -not [string]::IsNullOrWhiteSpace([string]$eh.authorization_ref)) { $priorAuth[[string]$eh.host] = $eh }
+                    }
+                    foreach ($nh in @($authConfig.hosts)) {
+                        $nhName = [string]$nh.host
+                        if (($nhName -ne $authHostName) -and $priorAuth.ContainsKey($nhName)) {
+                            $prev = $priorAuth[$nhName]
+                            $nh.allowed = $true
+                            $nh.authorization_ref = [string]$prev.authorization_ref
+                            if (-not [string]::IsNullOrWhiteSpace([string]$prev.model)) { $nh.model = [string]$prev.model }
+                        }
+                    }
+                }
+                catch { $null = $_ }
+            }
             ($authConfig | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
             $authWritten = $true
         }
@@ -670,13 +693,23 @@ if ($Live) {
             # decision the reap uses. Idempotent + fail-open: a later reap promotion of the same run is a no-op, and any
             # failure leaves the gate to block safely. Advisory-only (no promotion) on a non-affirmative verdict.
             try {
+                # P1 (Codex review): a SCOPED live review (explicit --baseline-ref) is exploratory and must NOT
+                # auto-anchor signoff evidence - the --live help says an explicit baseline does not auto-anchor.
+                # Promoting it records the merge-base digest as if the whole feature were reviewed, letting a narrow
+                # `--baseline-ref HEAD~1` satisfy review-signoff for earlier changes that were never co-reviewed.
+                # Promote ONLY a signoff run (baseline OMITTED -> auto-anchored to the feature merge-base).
+                $scopedExploratoryReview = -not [string]::IsNullOrWhiteSpace([string]$parsedArgs.BaselineRef)
                 $verdict = ConvertFrom-ContinuousCoReviewNavigatorVerdict -ResultPath (Join-Path $run.run_dir 'result.out')
-                if (Test-ContinuousCoReviewVerdictIsPromotablePass -Verdict $verdict) {
+                $isPromotablePass = Test-ContinuousCoReviewVerdictIsPromotablePass -Verdict $verdict
+                if ($isPromotablePass -and (-not $scopedExploratoryReview)) {
                     $digestId = if ($run.PSObject.Properties['reviewed_digest_tree_id']) { [string]$run.reviewed_digest_tree_id } else { '' }
                     if (-not [string]::IsNullOrWhiteSpace($digestId)) {
                         $promoted = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $resolvedProjectPath -RunId $run.run_id -TreeId $digestId -Now ([datetime]::UtcNow)
                         if ((-not [string]::IsNullOrWhiteSpace([string]$promoted)) -and (-not $Quiet) -and (-not $Json)) { Write-Host ("  promoted as co-review gate evidence (run {0})" -f $run.run_id) -ForegroundColor Green }
                     }
+                }
+                elseif ($isPromotablePass -and $scopedExploratoryReview -and (-not $Quiet) -and (-not $Json)) {
+                    Write-Host ("  scoped review (--baseline-ref {0}) is exploratory - NOT promoted as signoff gate evidence." -f $parsedArgs.BaselineRef) -ForegroundColor Yellow
                 }
             }
             catch { $null = $_ }

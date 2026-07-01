@@ -145,6 +145,23 @@ try {
     # M1 fix (145 iter-006): thread the code-writer host (the dispatcher's --host-kind) so reviewer
     # selection is independent-by-logic, not config-incidental.
     if (-not [string]::IsNullOrWhiteSpace($hostKindArg)) { $navParams['CodeWriterHost'] = $hostKindArg }
+    # Honor the project's configured co_review_timeout_seconds on the AUTO path (Codex review P2): without this the
+    # navigator always fell back to its default, ignoring an explicit per-project policy. Best-effort inline read
+    # (same grammar as Get-ContinuousCoReviewNavigatorTimeoutSeconds); left UNSET when the key is absent so the
+    # navigator's own default still applies.
+    try {
+        $ccrCfgPath = Join-Path $projectRoot '.specrew/config.yml'
+        if (Test-Path -LiteralPath $ccrCfgPath -PathType Leaf) {
+            foreach ($cfgLine in Get-Content -LiteralPath $ccrCfgPath -Encoding UTF8) {
+                if ($cfgLine -match '^\s*co_review_timeout_seconds:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
+                    $ccrTimeout = 0
+                    if ([int]::TryParse(($Matches['value'].Trim()), [ref]$ccrTimeout) -and $ccrTimeout -gt 0) { $navParams['TimeoutSeconds'] = $ccrTimeout }
+                    break
+                }
+            }
+        }
+    }
+    catch { $null = $_ }
 
     $decision = $null
     try { $decision = & $navFn @navParams }

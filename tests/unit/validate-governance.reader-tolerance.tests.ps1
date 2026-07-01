@@ -32,7 +32,8 @@ Describe 'validate-governance reader-tolerance rule' {
     
 
         # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
-        function New-TestWorkspace {
+        # script: scope is required so the functions are reliably callable from It blocks (Copilot review).
+        function script:New-TestWorkspace {
         param(
             [Parameter(Mandatory = $true)][string]$FixtureName,
             [Parameter(Mandatory = $true)][string]$WorkspaceName,
@@ -73,7 +74,7 @@ function Get-WorktreeFeatureRef {
         return $destination
     }
 
-function Invoke-ValidatorScript {
+function script:Invoke-ValidatorScript {
         param(
             [Parameter(Mandatory = $true)][string]$ScriptPath,
             [Parameter(Mandatory = $true)][string]$ProjectPath

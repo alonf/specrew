@@ -11,7 +11,10 @@ $ScriptRoot = $PSScriptRoot
 # the env var is unset or invalid, so normal installs are unaffected.
 $cliRoot = $ScriptRoot
 if ((-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) -and
-    (Test-Path -LiteralPath (Join-Path $env:SPECREW_MODULE_PATH 'scripts/specrew.ps1') -PathType Leaf)) {
+    (Test-Path -LiteralPath (Join-Path $env:SPECREW_MODULE_PATH 'scripts/specrew.ps1') -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $env:SPECREW_MODULE_PATH 'Specrew.psd1') -PathType Leaf)) {
+    # Require BOTH the manifest AND the CLI entry so a partial/incorrect directory is not accepted as a valid
+    # Specrew tree (aligns with Get-SpecrewModulePathOverrideManifestPath; Copilot review).
     $cliRoot = (Resolve-Path -LiteralPath $env:SPECREW_MODULE_PATH).Path
 }
 
