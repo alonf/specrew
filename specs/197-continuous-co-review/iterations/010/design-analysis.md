@@ -105,3 +105,11 @@ The maintainer real-host validation across the supported harnesses (the long-sta
 ## Crew recommendation
 
 **Approve for plan with Option A** — complete the robustness charter (T091-R5/T093/T094/T096 per iter-009's standing design) + the OS-native atomic supervisor (N2/T100) + the material-turn conformance gate (N3/T099) + escalation-latch wiring (N4) + the code-review-agent.md preservation fold (N5) + the codex retry-once reliability fix (N6) + the flush-race forensic close (N7) + the SC-012/022 cross-host validation (N8), at a maintainer-raised 26-SP cap, shipping as 0.40.0. Option A is the co-designed package above; the meaningfully-distinct alternatives were the T100 containment strength (Options B/C, rejected) and deferring T099/T100 (rejected by the D2 full-scope decision).
+
+## Human Decision
+
+- **Decision verdict**: **approved for plan with Option A** (maintainer verdict "ok" at the design-analysis → plan boundary, 2026-07-01; Stop-hook-captured against the `design-analysis -> plan` marker).
+- **Chosen option**: Option A — the co-designed full-scope package (T091-R5, T093, T094, T096, escalation-latch wiring, the code-review-agent.md fold, T099, T100, D-197-I009-003/-015, SC-012/022), with T100 as **OS-native atomic containment** (maintainer "OS base").
+- **Reason**: the 2026-07-01 "finish it perfectly" decision — complete iteration 009's robustness charter and the deferred Phase-2 supervisor in one iteration and close the feature as 0.40.0.
+- **Modifications / defaults carried**: (a) raise the iteration-010 capacity cap to **26 story_points** (explicit maintainer decision; the `manual` defer-strategy is the backstop if a slice must drop); (b) SC-012/SC-022 validates the **installed + authorized** hosts (claude, codex today) and honestly records the rest as unavailable rather than claiming all five; (c) N7 closes D-197-I009-003 as **refuted-with-evidence** if the forensic test finds no race, otherwise adds a cheaper mitigation.
+- **Approval evidence commit**: this boundary commit (the commit that records this Human Decision) is the authorization for the `plan` boundary; `plan.md` is authored only after the boundary sync's at-sync plan gate passes against this artifact + decision.
