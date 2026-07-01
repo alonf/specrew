@@ -1,7 +1,9 @@
 # Iteration 006 State
 
+**Schema**: v1
 **Feature**: 197-continuous-co-review
 **Iteration**: 006
+**Baseline Ref**: 7333f2b5
 **Current Phase**: implement
 **Iteration Status**: executing
 **Last Completed Task**: T085 live-dispatcher e2e — PASSED (all 6 conditions); 3 first-run failures FIXED

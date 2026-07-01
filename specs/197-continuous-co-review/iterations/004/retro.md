@@ -14,12 +14,12 @@ enforcement wiring** (`Assert-…SignoffGate` into the boundary chokepoint behin
 default-OFF `co_review_gate_enforcement` flag). Full continuous-co-review suite **192/0**, no
 F-184-protected surface touched, zero repo pollution.
 
-## Capacity calibration
+## Estimation Accuracy
 
 - Planned: 12.00 SP. Actual: **10.50 SP** (T071 conformance memo subsumed -1.50 after
   measurement proved it unwarranted). Variance: honest scope reduction, not under-delivery.
 
-## What went well
+## What Went Well
 
 - **Test-first delegation for the delicate refactor (T070):** the implementer locked
   behavior by dot-sourcing the PRE-refactor function from git and proving byte-identical
@@ -33,7 +33,7 @@ F-184-protected surface touched, zero repo pollution.
 - **Robustness catch:** pinned the byte-identical goldens to LF so a CRLF checkout can't
   silently kill the regression guard on CI.
 
-## What was hard / lessons
+## What Didn't Go Well
 
 - **The Workflow tool stream-idle-timed-out again** (the T073 implementer's final report was
   lost to the timeout, though all its work landed and verified). Reinforces the standing
@@ -48,7 +48,15 @@ F-184-protected surface touched, zero repo pollution.
   decided by `SPECREW_MODULE_PATH` propagation to the host process, NOT by the config version
   (the dev tree and the published build can share a version number). Pin the env, not the version.
 
-## Action items (carried)
+## Drift Summary
+
+Drift for this iteration is tracked in the iteration drift-log. The self-corrected items were a
+latency mis-attribution (twice blamed #2885 for a slowdown that measurement proved was model
+call time, corrected by isolating the variable) and the dev-tree-vs-installed resolution
+ambiguity (`SPECREW_MODULE_PATH` propagation, not the config version, decides which code a host
+runs). No spec/plan/code drift went unrecorded.
+
+## Improvement Actions
 
 - **Iteration 005 = the async Stop-hook navigator (B):** the approved self-limiting-watchdog
   reviewer + `.specrew/review/pending/<run-id>.json` registry + reaper (next-stop + SessionStart

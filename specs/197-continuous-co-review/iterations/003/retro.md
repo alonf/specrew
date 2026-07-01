@@ -12,7 +12,7 @@ gate floor, the producer that auto-anchors it, and the gate-keyed dispatcher —
 no F-184 protected-surface edits, full suite 176/0. The iteration's centerpiece was
 re-architected mid-flight after its own co-review found it unsound, twice.
 
-## Capacity calibration
+## Estimation Accuracy
 
 - Planned (re-architecture re-plan): 24.00/25 SP.
 - Actual: meaningfully higher than 24 SP once the review/fix cycles are counted (one full
@@ -21,7 +21,7 @@ re-architected mid-flight after its own co-review found it unsound, twice.
   review-and-rework loops that the dogfooding generated. Calibration note: when the iteration's
   own design is the thing under co-review, budget explicit review/rework capacity, not just build.
 
-## What went well
+## What Went Well
 
 - **The dogfood loop worked — repeatedly, and that is the headline.** Continuous co-review
   caught its OWN gate model unsound twice before it could ship: first HOLE A (gitignored
@@ -35,7 +35,7 @@ re-architected mid-flight after its own co-review found it unsound, twice.
   before-implement drift-log, the premature partial-close, the stale capacity figures, and the
   probe git pollution were all surfaced and corrected rather than papered over.
 
-## What was hard / lessons
+## What Didn't Go Well
 
 - **The denylist conflated two concerns and caused two false-allows.** The gate IDENTITY
   (what's in the tree-id — must be minimal, or anything excluded becomes a false-allow vector)
@@ -54,7 +54,14 @@ re-architected mid-flight after its own co-review found it unsound, twice.
 - **The FR-025 spec text lagged the design twice** (diff_hash -> tree-id) — a reminder to
   re-reconcile the normative requirement, not just the design-analysis, after a pivot.
 
-## Action items (carried)
+## Drift Summary
+
+Drift for this iteration is tracked in the iteration drift-log. The honest-state corrections
+surfaced and fixed in-flight — rather than silently absorbed — were: a missing before-implement
+drift-log, a premature partial-close, stale capacity figures, and probe-induced git-identity
+pollution (16 mis-authored commits, since sandboxed). No spec/plan/code drift went unrecorded.
+
+## Improvement Actions
 
 - Phase B (Iteration 004): live Stop-hook navigator + gate enforcement WIRING; the
   reviewer-runs-in-repo-for-tests execution model (so the 145 "run tests" works on the real

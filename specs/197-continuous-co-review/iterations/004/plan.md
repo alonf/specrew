@@ -45,7 +45,9 @@ capture accessor, and the providers are all non-protected).
 | Effort Unit | story_points | Unit used in task effort, capacity, and retro variance. |
 | Capacity per Iteration | 20 | Maximum planned effort before overcommit guidance applies. |
 | Iteration Bounding | scope | `scope` keeps requirements fixed; time varies. |
+| Time Limit (hours) | n/a | Not used for this scope-bounded slice. |
 | Overcommit Threshold | 1.0 | Planned effort must stay at or below 20 story_points. |
+| Defer Strategy | manual | Any overcommit requires explicit human deferral. |
 | Calibration Enabled | true | Retro compares planned and actual effort. |
 
 ## Traceability Summary
