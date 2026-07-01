@@ -585,8 +585,28 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     # auto-authorize (authorization is a human cost/independence consent), so on a fresh project the
                     # first checkpoint fires into what was a SILENT dead-end. Make it ACTIONABLE: tell the human
                     # exactly how to authorize an independent reviewer ONCE, so the next checkpoint produces a review.
-                    $failReasonNav = Get-ContinuousCoReviewNavigatorFailureReason -RepoRoot $RepoRoot -Registry $reg
-                    if ((-not [string]::IsNullOrWhiteSpace($failReasonNav)) -and ($failReasonNav -match '(?i)no-authorized-reviewer-host')) {
+                    # The failure_reason (e.g. no-authorized-reviewer-host, written to status.json by
+                    # worktree-review-orchestrator.ps1:259 and copied onto the pending registry by the detached
+                    # entry) lives on the registry entry $reg; fall back to the run's status.json via run_dir
+                    # (result_path can be null on a host-selection failure, so do NOT derive the path from it).
+                    # Do NOT use Get-ContinuousCoReviewNavigatorFailureReason here - it reads the review-failure.json
+                    # SIDECAR, which a host-selection failure never writes, so it returns null and this branch stays
+                    # INERT. (That inert first version was caught by the co-review run on this very fix - D-014.)
+                    $navFailReason = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'failure_reason')) { [string]$reg.failure_reason } else { '' }
+                    if ([string]::IsNullOrWhiteSpace($navFailReason)) {
+                        try {
+                            $navRunDir = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'run_dir')) { [string]$reg.run_dir } else { '' }
+                            if (-not [string]::IsNullOrWhiteSpace($navRunDir)) {
+                                $navStatusPath = Join-Path $navRunDir 'status.json'
+                                if (Test-Path -LiteralPath $navStatusPath -PathType Leaf) {
+                                    $navStatusObj = Get-Content -LiteralPath $navStatusPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                                    if ($navStatusObj.PSObject.Properties.Name -contains 'failure_reason') { $navFailReason = [string]$navStatusObj.failure_reason }
+                                }
+                            }
+                        }
+                        catch { $navFailReason = '' }
+                    }
+                    if ($navFailReason -match '(?i)no-authorized-reviewer-host') {
                         $result.inject_notes.Add(("[co-review] checkpoint FIRED (run {0}) but NO reviewer host is authorized, so NO review ran. The 'auto-select' default does not auto-authorize - authorize an INDEPENDENT reviewer ONCE: ``specrew review --host codex --authorization-ref <ref>`` (or claude/copilot). It then reviews automatically at the next changed checkpoint." -f $runId)) | Out-Null
                     }
                     else {
