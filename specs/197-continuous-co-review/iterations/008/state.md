@@ -1,11 +1,17 @@
 # Iteration State: 008
 
 **Schema**: v1
+**Current Phase**: abandoned
+**Iteration Status**: abandoned
 **Last Completed Task**: T089
 **Tasks Remaining**: none for the dogfood hard-gate repair slice (T087-T089)
 **In Progress**: (none)
 **Baseline Ref**: 49f887174c4a668ece3aaede6ca0910741e085c3
 **Updated**: 2026-06-27T21:15:17Z
+
+## Abandonment Reason
+
+- **Status set to `abandoned`** (per plan.md; canonical `Current Phase` / `Iteration Status` fields added 2026-07-01 for governance completeness). Iteration 008 delivered the dogfood hard-gate repair slice (T087–T089, validated 148 tests on 2026-06-27) and the worktree-reviewer cutover exploration, then **pivoted to iteration 009 before running its own review/retro/signoff cycle** — so no review-signoff verdict, Task Verdicts table, or retro were recorded. It is `abandoned` (its cycle did not complete) rather than `complete` because authoring those now would fabricate governance that never happened; the delivered fixes and the worktree cutover are live and were carried into iteration 009.
 
 ## Execution Summary
 

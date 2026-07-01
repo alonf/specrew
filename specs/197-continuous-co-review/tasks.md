@@ -21,8 +21,8 @@ This ledger was first reconciled against git ground-truth (commit subjects + fil
 | 004 | #2885 latency fix + opt-in gate `T070–T075` | **complete** | formally closed (`cdc9d7f8`) |
 | 005 | Async Stop-hook navigator `T076–T081` | **complete** | formally closed (`14f03b4c`) |
 | 006 | Real reviewer wired in `T082–T086` | **complete** | not formally closed (superseded by 007) |
-| 007 | Real-reviewer hardening + deploy-completeness | **complete** | closed via chore (`32604b86`); review/retro backfill pending (Phase 1) |
-| 008 | **Worktree-reviewer cutover (`c66e5df6`) + dogfood hard-gate `T087–T089`** | **complete (delivered); own cycle pivoted to 009** | review/retro backfill pending (Phase 1) |
+| 007 | Real-reviewer wiring + deploy-completeness (`81b7070e`/`85c12930`/`49f88717`) | **abandoned** (delivered fixes carried forward; own cycle pivoted to 008) | canonical state.md fields added 2026-07-01; no review/retro owed (anti-fabrication); T091–T095 ID collision flagged |
+| 008 | **Worktree-reviewer cutover (`c66e5df6`) + dogfood hard-gate `T087–T089`** | **abandoned** (delivered fixes carried forward; own cycle pivoted to 009) | canonical state.md fields added 2026-07-01; no review/retro owed (anti-fabrication) |
 | 009 | **Graceful-degradation slice `T090/T092/T095/T097/T098` + Option-A + round-ceiling + escalation-latch (staged) + D-197-I009-007…015 + 0.39.0-beta1** | **delivered scope complete; T091/T093/T094/T096 → iter-010** | review/retro backfill + review-signoff/retro/closeout gates pending (Phase 1/3) |
 | 010 | **(planning) Completes the robustness charter — T091-R5, T093, T094, T096, escalation-latch wiring, `code-review-agent.md` fold, D-197-I009-003/-015, SC-012/022** | **planning** (scaffolded at its own plan boundary) | — |
 

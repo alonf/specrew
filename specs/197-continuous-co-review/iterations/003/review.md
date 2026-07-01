@@ -4,7 +4,7 @@
 **Iteration**: 003
 **Reviewed**: 2026-06-20
 **Boundary**: review-signoff -> retro
-**Overall Verdict**: Accepted (recommended; awaiting maintainer review-signoff verdict)
+**Overall Verdict**: accepted
 
 ## Scope reviewed
 
@@ -93,6 +93,36 @@ caught its own gate model unsound — twice — before it could ship.
   protected-surface diff.
 - NOT claimed: wired advancement enforcement (deferred, decision-logic only); hard secret
   sandboxing (relaxed by trust-boundary decision); the live Stop-hook (Phase B).
+
+## Task Verdicts
+
+Reconstructed 2026-07-01 from git; each row is grounded in the iteration-003 commit(s) and
+the per-task record in this iteration's `plan.md`. The iteration was formally closed by the
+closeout commit `2ac079b2`.
+
+| Task | Verdict | Evidence |
+| ---- | ------- | -------- |
+| T058 | pass | `bd6ebebc` (record `diff_hash`/`reviewed_ref` + last-passing-state resolver) and `27343ce5` (orchestrator rebaseline, FR-027); resolver/rebaseline/spine tests green. |
+| (fix) | pass | `3230e9e1` bounds the reviewer-spawn stdin write and reaps the orphaned child (NFR-001/INT-004); adapter tests 4/4 incl. real-process shim. |
+| T061 | pass | Original diff-from-baseline `diff_hash` gate-floor (`717c423f`, 8/8 unit) was INVALIDATED by the feature's own Proposal 145 co-review (HOLE A/B, `e8493b8a`) and SUPERSEDED by the T067 re-architecture (`c51cc44b`); the task objective (a sound freshness gate) was delivered via T067, so the verdict is `pass` = objective met via supersession, not a standalone deliverable. |
+| T065 | pass | `cd475364` content-addressed reviewed-state digest helper (temp-index `write-tree`, gitignored-source-in / secret-out, empty-tree guard, FR-025/SEC-002) with determinism/gitignored/secret/drift/empty tests. |
+| T066 | pass | `62128509` records `reviewed_tree_id` on the run record and replaces the scope filter with git lineage (`merge-base --is-ancestor`) + chain-to-anchor verification (FR-025/FR-027); tests green. |
+| T067 | pass | `c51cc44b` re-architects the gate to tree-id-equality freshness + chain-to-merge-base-anchor + empty-tree guard + fail-closed git handling (supersedes T061); false-allow F1 closed in `36a7c7bf`; HOLE A/HOLE B falsifying tests block. |
+| T068 | pass | `a140c8ec` producer auto-anchoring in the orchestrator + `specrew-review.ps1` (merge-base-with-trunk fallback, records the digest, flags exploratory runs non-signoff, configurable trunk, FR-025/FR-027); tests green. |
+| T069 | pass | `5d47f773` retires the diff-hash freshness path as the gate key (diff_hash kept as provenance only, NEW-5 dead full-diff removed, change-set provider reconciled, FR-025/NFR-001); tests green. |
+| T059 | pass | `2fa35d3c` gate-review dispatcher + gate-keyed registry with `code@implement` as sole registrant (FR-032/SC-023/IMPL-004); dispatcher unit + gate-dispatch integration suites green. |
+| T060 | pass | `2fa35d3c` wires the dispatcher to the checkpoint-review orchestrator so a registered implement checkpoint reviews its increment and writes durable evidence (FR-024/INT-004). |
+| T062 | pass | `ff529c29` one-time per-project navigator authorization + two-round-cap blocking-finding escalation (FR-028/FR-029/SC-021); onetime-authorization tests green. |
+| T063 | pass | `ff529c29` delayed-stdin reviewer-spawn regression proving the timeout bounds a stalled large-stdin child with no orphan (NFR-001/INT-004); reviewer-spawn-timeout tests green. |
+| T064 | pass | `53e45537` closeout validation (full CCR suite 173/0, HOLE A/B repros BLOCK, protected-surface guard shows no F-184 edits, traceability), with the comprehensive Proposal 145 review addressed in `4212e61e`; final suite 176/0 (Runtime evidence, above). |
+
+## Gap Ledger
+
+- HOLE A (gitignored source invisible to the `diff_hash` gate): fixed-now, re-architected to a content-addressed reviewed-state tree-id (`c51cc44b`); a falsifying gitignored-drift test blocks.
+- HOLE B (operator baseline never verified as reviewed): fixed-now, chain-to-merge-base anchor verification (`62128509`/`c51cc44b`); a coverage-gap test blocks a non-chaining pass.
+- F1 false-allow (secret denylist over-matched real source named like a secret): fixed-now (`36a7c7bf`); regression test blocks.
+- Identity-strip false-allow (the digest identity excluded real `bin/**` / `*.key` / `*.token` / `*.pem` source): fixed-now, digest identity corrected (`cd475364` + fix); drift regression blocks.
+- B1/B2/B3/A1 conformance/traceability gaps: fixed-now (FR-025 reworded to the tree-id/anchor model; SC-019/SC-020 honestly scoped with a recorded deferral authorization; task statuses + capacity reconciled; multi-hop anchor tests added).
 
 ## Recommended verdict
 
