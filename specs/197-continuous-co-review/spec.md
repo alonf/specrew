@@ -52,6 +52,21 @@ No critical ambiguities detected worth formal clarification; specify approvals
 and Proposal 197 guardrails are already represented in the requirements, scope
 boundaries, assumptions, and success criteria.
 
+## Architecture Reconciliation (2026-07-01)
+
+The iteration-008 worktree cutover (`c66e5df6`) replaced the original diff-cramming
+reviewer (a `ReviewRequest.v2` object composed and injected by a prompt-composer, with
+a workspace-mutation-guard) with an **ephemeral read-only `git archive` worktree + a
+`.review/` directory contract + a self-contained slim prompt** in which the reviewer
+browses and runs the real project. Some iteration-002 requirements (FR-017…023,
+SEC-007…009, SC-013…018) describe the superseded machinery, and NFR-004/007/009,
+FR-026, and SC-022 were untraced or deferred. The per-requirement disposition of record
+— SUPERSEDED / SATISFIED / OWED — and the `code-review-agent.md` preservation manifest
+are maintained in
+file:///C:/Dev/specrew-197-continuous-co-review/specs/197-continuous-co-review/requirement-reconciliation.md.
+The requirement text below is retained as the historical record; where it conflicts with
+the reconciliation, the reconciliation is authoritative for the shipped architecture.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Review each checkpoint against the design contract (Priority: P1)

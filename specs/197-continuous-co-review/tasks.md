@@ -1,12 +1,15 @@
 # Tasks: Continuous Co-Review
 
 <!-- ============================================================ -->
-<!-- RECONCILED 2026-06-28 against git ground-truth — READ FIRST  -->
+<!-- RE-RECONCILED 2026-07-01 against git ground-truth — READ FIRST -->
+<!-- (supersedes the 2026-06-28 reconciliation, retained below)     -->
 <!-- ============================================================ -->
 
-## 🔄 Reconciliation banner (2026-06-28) — current truth
+## 🔄 Reconciliation banner — current truth
 
-This ledger was reconciled against git ground-truth (commit subjects + file mtimes) on 2026-06-28. The original **Phase 1–8 task body below is the original-design ledger** for the *diff-cramming* reviewer architecture, which was **superseded by the iteration-008 worktree cutover** (`c66e5df6` deleted the diff-cramming engine; the reviewer now runs in an ephemeral read-only `git archive` worktree). The Phase 1–8 body is retained as historical record; the active architecture's truth is the table below + the per-iteration artifacts.
+**Re-reconciled 2026-07-01:** the 2026-06-28 reconciliation was itself overrun — a full work-cycle (Option-A escalation parking, the round-ceiling, the committed-but-orphaned escalation-latch, dogfood D-197-I009-007…015) plus the **0.39.0-beta1 release** landed after it, none recorded until now. The iteration table below is updated: iter-008 → complete, iter-009 delivered-scope recorded (4 robustness tasks carried to iter-010), and iter-010 opened. The per-requirement disposition of the iter-002 "abandoned" cluster + the untraced requirements lives in file:///C:/Dev/specrew-197-continuous-co-review/specs/197-continuous-co-review/requirement-reconciliation.md.
+
+This ledger was first reconciled against git ground-truth (commit subjects + file mtimes) on 2026-06-28. The original **Phase 1–8 task body below is the original-design ledger** for the *diff-cramming* reviewer architecture, which was **superseded by the iteration-008 worktree cutover** (`c66e5df6` deleted the diff-cramming engine; the reviewer now runs in an ephemeral read-only `git archive` worktree). The Phase 1–8 body is retained as historical record; the active architecture's truth is the table below + the per-iteration artifacts.
 
 ### True iteration status (from git)
 
@@ -18,8 +21,10 @@ This ledger was reconciled against git ground-truth (commit subjects + file mtim
 | 004 | #2885 latency fix + opt-in gate `T070–T075` | **complete** | formally closed (`cdc9d7f8`) |
 | 005 | Async Stop-hook navigator `T076–T081` | **complete** | formally closed (`14f03b4c`) |
 | 006 | Real reviewer wired in `T082–T086` | **complete** | not formally closed (superseded by 007) |
-| 007 | Real-reviewer hardening + deploy-completeness | **complete** | closed via chore (`32604b86`) |
-| 008 | **Worktree-reviewer cutover + dogfood hard-gate** | **in-progress (active)** | open |
+| 007 | Real-reviewer hardening + deploy-completeness | **complete** | closed via chore (`32604b86`); review/retro backfill pending (Phase 1) |
+| 008 | **Worktree-reviewer cutover (`c66e5df6`) + dogfood hard-gate `T087–T089`** | **complete (delivered); own cycle pivoted to 009** | review/retro backfill pending (Phase 1) |
+| 009 | **Graceful-degradation slice `T090/T092/T095/T097/T098` + Option-A + round-ceiling + escalation-latch (staged) + D-197-I009-007…015 + 0.39.0-beta1** | **delivered scope complete; T091/T093/T094/T096 → iter-010** | review/retro backfill + review-signoff/retro/closeout gates pending (Phase 1/3) |
+| 010 | **(planning) Completes the robustness charter — T091-R5, T093, T094, T096, escalation-latch wiring, `code-review-agent.md` fold, D-197-I009-003/-015, SC-012/022** | **planning** (scaffolded at its own plan boundary) | — |
 
 ### Task-ID reconciliation
 
@@ -35,18 +40,18 @@ This ledger was reconciled against git ground-truth (commit subjects + file mtim
 
 ### Phase 1 — relieve the deadlock
 
-- [ ] T091 [owner: Implementer] [sp: 3.0] [R5] **Hard timeout = a real wall** — **consolidate** the inline reviewer spawn onto the existing iter-005 isolated-task supervisor (one cross-platform watchdog: deadline poll + `Stop-Process -Force` + process-tree kill); **instrument the live escape first**; remove worktree-reviewer.ps1's duplicate inline `$proc.Kill($true)`; stdio-redirect; WSL-validated (hard gate) (Trace: FR-037, SC-024, NFR-001; owns: `worktree-reviewer.ps1`, `agent-tasks/isolated-task-supervisor.ps1`, `agent-tasks/isolated-task-launcher.ps1`) **[needs-rework 2026-06-28: R5 WSL hard-gate UNEVIDENCED (co-review run 20260628T162905826 f1); R5/FR-037 closure deferred to iter-010 per drift-log D-197-I009-006. Consolidation was PARTIAL — only the Stop-SpecrewProcessTree kill-HELPER is shared; the inline watchdog loop (worktree-reviewer.ps1:458-469) + inline `$proc.Kill($true)` (line 481) were RETAINED, so the "consolidate / remove the duplicate inline kill" claim over-stated the work]**
+- [ ] T091 [owner: Implementer] [sp: 3.0] [R5] **Hard timeout = a real wall** — **consolidate** the inline reviewer spawn onto the existing iter-005 isolated-task supervisor (one cross-platform watchdog: deadline poll + `Stop-Process -Force` + process-tree kill); **instrument the live escape first**; remove worktree-reviewer.ps1's duplicate inline `$proc.Kill($true)`; stdio-redirect; WSL-validated (hard gate) (Trace: FR-037, SC-024, NFR-001; owns: `worktree-reviewer.ps1`, `agent-tasks/isolated-task-supervisor.ps1`, `agent-tasks/isolated-task-launcher.ps1`) **[needs-rework 2026-06-28: R5 WSL hard-gate UNEVIDENCED (co-review run 20260628T162905826 f1); R5/FR-037 closure deferred to iter-010 per drift-log D-197-I009-006. Consolidation was PARTIAL — only the Stop-SpecrewProcessTree kill-HELPER is shared; the inline watchdog loop (worktree-reviewer.ps1:458-469) + inline `$proc.Kill($true)` (line 481) were RETAINED, so the "consolidate / remove the duplicate inline kill" claim over-stated the work]** **[deferred → iter-010, 2026-07-01: full-robustness decision — R5 WSL validation + genuine consolidation owed there]**
 - [x] T090 [owner: Implementer] [sp: 2.5] [R1] **Harvest partial findings** — reviewer instruction contract emits each finding incrementally (one JSON object per line to a findings file); harvest the clean prefix on kill; prose-salvage floor (Trace: FR-033, SC-024, NFR-001; owns: reviewer instruction contract + `worktree-review-orchestrator.ps1` harvest path)
 
 ### Phase 2 — the human remediation surface
 
-- [ ] T096 [owner: Implementer] [sp: 3.0] [R6] **Remediation menu** — on a review problem, surface ONE menu at the next Stop (more time / different host / narrow scope: code · process · file · function / accept partial / override block), carried via `co-review-round-state.json` to the re-run; honour the human-directed scope (extends user-code/subtree scoping) (Trace: FR-038, FR-024, FR-025; owns: `continuous-co-review-navigator.ps1` + `specrew-co-review-navigator-provider.ps1` + round-state)
-- [ ] T093 [owner: Architect] [sp: 1.5] [R3] **Host-independence fallback** — pre-flight independence check; fire labelled same-host fallback immediately (never block); the answer upgrades the next run; honour-or-surface `--host` (Trace: FR-035, FR-016, SEC-004; owns: `reviewer-selection-policy.ps1` + `reviewer-authorization-gate.ps1`)
+- [ ] T096 [owner: Implementer] [sp: 3.0] [R6] **Remediation menu** — on a review problem, surface ONE menu at the next Stop (more time / different host / narrow scope: code · process · file · function / accept partial / override block), carried via `co-review-round-state.json` to the re-run; honour the human-directed scope (extends user-code/subtree scoping) (Trace: FR-038, FR-024, FR-025; owns: `continuous-co-review-navigator.ps1` + `specrew-co-review-navigator-provider.ps1` + round-state) **[deferred → iter-010, 2026-07-01: not-in-code as of iter-009]**
+- [ ] T093 [owner: Architect] [sp: 1.5] [R3] **Host-independence fallback** — pre-flight independence check; fire labelled same-host fallback immediately (never block); the answer upgrades the next run; honour-or-surface `--host` (Trace: FR-035, FR-016, SEC-004; owns: `reviewer-selection-policy.ps1` + `reviewer-authorization-gate.ps1`) **[deferred → iter-010, 2026-07-01: not-in-code as of iter-009]**
 - [x] T092 [owner: Implementer] [sp: 1.5] [R2] **Time-extension gate** — post-hoc "more time" menu option + pre-flight generous-budget heuristic for large diffs (Trace: FR-034, NFR-002; owns: orchestrator budget seam + navigator menu)
 
 ### Phase 3 — the honest gate
 
-- [ ] T094 [owner: Reviewer] [sp: 2.5] [R4+D5] **Tiered degraded-evidence gate** — 3-dimension label (completeness/independence/budget); `full`+`independent` auto-allows; `partial` OR `same-host` needs a recorded first-class ack verdict; never deadlock; degraded-review blocking-finding override with recorded reason (Trace: FR-036, SC-019, SC-020, SC-024; owns: `review-signoff-evidence-gate.ps1` + `inline-review-gate-evaluator.ps1`)
+- [ ] T094 [owner: Reviewer] [sp: 2.5] [R4+D5] **Tiered degraded-evidence gate** — 3-dimension label (completeness/independence/budget); `full`+`independent` auto-allows; `partial` OR `same-host` needs a recorded first-class ack verdict; never deadlock; degraded-review blocking-finding override with recorded reason (Trace: FR-036, SC-019, SC-020, SC-024; owns: `review-signoff-evidence-gate.ps1` + `inline-review-gate-evaluator.ps1`) **[deferred → iter-010, 2026-07-01: not-in-code as of iter-009]**
 
 ### Phase 4 — cleanup
 

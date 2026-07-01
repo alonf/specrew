@@ -232,6 +232,28 @@ Tracks divergences between the approved specification, plan, task table, and imp
 
 **Trace**: reviewer robustness / SC-024's blind spot (the any-review-beats-nothing floor has nothing to harvest when the reviewer emits nothing); a real F-197 finding.
 
+### D-197-I009-016 — The canonical reviewer instruction (`code-review-agent.md`) is ORPHANED: validated by its test but wired into nothing; the live reviewer uses the self-contained slim prompt
+
+**Status**: OPEN → resolution DECIDED (fold), carried to iter-010. The `code-review-agent.md` fold + file retirement + test re-point is an iter-010 implementation task.
+**Detected by**: Phase-0 D1 audit 2026-07-01. `code-review-agent.md` is referenced only by itself and by `tests/continuous-co-review/contracts/reviewer-instruction.Tests.ps1`; no script wires it in. The worktree reviewer's actual instruction is `Get-ContinuousCoReviewSlimPrompt` (`worktree-reviewer.ps1`), which does not inject the canonical file. Same orphan class as the escalation-latch (D-197-I009-006 carry).
+
+**Impact**: FR-017/FR-018/FR-021/SEC-007/SC-013/SC-014 describe a canonical, hash-integrity-injected reviewer instruction that the live reviewer does not receive. Two concrete risks: (a) the slim prompt is missing the canonical **report-falsification / adversarial stance**, the structured **P145 6-phase rubric**, **per-lens validation**, and **workshop-conformance** bindings; (b) parts of `code-review-agent.md` are now STALE/contradictory to the worktree model — it instructs "read only the content included in the composed prompt" and is built around `ReviewRequest.v2` + a prompt composer, the OPPOSITE of the browse-and-run worktree reviewer.
+
+**Resolution (maintainer-approved 2026-07-01, "fold; do not lose any critical instruction")**: fold the load-bearing canonical bindings into `Get-ContinuousCoReviewSlimPrompt` (falsification policy + P145 phase structure + per-lens naming + workshop-conformance), DROP the stale `ReviewRequest.v2` / "read only the composed prompt" language, retire `code-review-agent.md` to a reference doc, and re-point `reviewer-instruction.Tests.ps1` at the actual outbound slim prompt. A per-element **preservation manifest** (every instruction element marked already-in-slim / to-fold / intentionally-dropped) governs the fold so nothing critical is lost — see file:///C:/Dev/specrew-197-continuous-co-review/specs/197-continuous-co-review/requirement-reconciliation.md.
+
+**Trace**: FR-017/FR-018/FR-021/SEC-007/SC-013/SC-014 (iter-002 cluster); reviewer-quality risk; a real F-197 finding surfaced by the co-review methodology's own gap class.
+
+### D-197-I009-017 — The iter-002 "abandoned" cluster + 5 untraced requirements: spec-vs-implementation drift reconciled against the worktree architecture
+
+**Status**: RESOLVED (reconciled 2026-07-01, maintainer-approved). Disposition of record: file:///C:/Dev/specrew-197-continuous-co-review/specs/197-continuous-co-review/requirement-reconciliation.md.
+**Detected by**: Phase-0 coverage + state-truth surveys 2026-07-01. `tasks.md` marked T051–T057 `[X]` (16 requirements: FR-017…023, SEC-007…009, SC-013…018) while iteration 002 is maintainer-ratified **abandoned** and the iter-008 cutover (`c66e5df6`) DELETED their mechanism files (`review-prompt-composer.ps1`, `review-request-builder.ps1`, `workspace-mutation-guard.ps1`). Additionally NFR-004/NFR-007/NFR-009 had zero covering tasks, and FR-026/SC-022 were deferred to an iter-004 not tracked in `tasks.md`.
+
+**Impact**: the ledger claimed delivered work that no longer exists in the tree — the exact spec/implementation drift F-197 exists to catch. Left unreconciled it inflates apparent coverage and hides the real owed items (SC-012/SC-022 cross-host validation) and the one live decision (D-197-I009-016).
+
+**Resolution**: per-requirement disposition recorded — ~11 SUPERSEDED by the ephemeral read-only worktree + `.review/` directory contract (ReviewRequest-v2 / composer / mutation-guard machinery); ~5 SATISFIED (4 needing only a trace line: NFR-004 round-review re-check, NFR-007 honest least-privilege, NFR-009 auth-gated spawn, FR-026 async Stop-hook navigator); SC-012/SC-022 cross-host validation OWED (carried to iter-010 / feature-closeout); the 6 canonical-instruction requirements handled by D-197-I009-016's fold.
+
+**Trace**: spec-authority reconciliation; FR-017…023, SEC-007…009, SC-012…018, SC-022, NFR-004/007/009, FR-026; a real F-197 governance finding.
+
 ### Watch carry-over (from scaffolding)
 
 ## Watch Items
