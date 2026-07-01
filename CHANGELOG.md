@@ -4,13 +4,20 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
-## [0.39.0-beta1] - 2026-06-23
+## [0.39.0-beta1] - 2026-07-01
 
-Feature 185 — Host-Neutral Lifecycle Gate Enforcement. **BETA** (no stable or full-parity claim). Builds on
-the 0.38.0-beta1 (Feature 184 — Full Antigravity Refocus) base.
+Features 197 (Continuous Co-Review) + 185 (Host-Neutral Lifecycle Gate Enforcement). **BETA** (no stable or
+full-parity claim). Builds on the 0.38.0-beta1 (Feature 184 — Full Antigravity Refocus) base.
 
 ### Added
 
+- **Continuous Co-Review (Feature 197):** a Stop-hook navigator fires an independent reviewer (codex / a second
+  Claude / copilot) in an ephemeral read-only git worktree at each implement checkpoint, producing a
+  schema-conformant findings verdict. The reviewer is host-neutral and code-writer-INDEPENDENT + human-authorized
+  (`specrew review --host <h> --authorization-ref <ref>`); the review-signoff gate fails closed until real
+  co-review evidence exists, so a self-review cannot satisfy it. A round ceiling bounds non-convergence and a
+  ceiling-halt emits a VISIBLE escalation (never a 0-findings false-green). `specrew review --live` runs an
+  on-demand review of the working change-set.
 - **Host-neutral lifecycle gate enforcement:** cleaned all-host refocus/coordinator instructions so non-Claude
   hosts receive a harness-free boundary-stop contract instead of Claude-only `specrew-gate-stop` /
   `AskUserQuestion` directives.
@@ -39,6 +46,14 @@ the 0.38.0-beta1 (Feature 184 — Full Antigravity Refocus) base.
   beta readiness review.
 - This prerelease intentionally remains beta-before-stable. Stable promotion requires the normal clean
   prerelease install validation and human PASS verdict.
+- **Continuous co-review setup + reliability (beta, Feature 197):** a reviewer host must be human-authorized
+  once per project — `specrew review --host codex --authorization-ref <ref>` — before the Stop-hook auto-fire
+  can produce a review; the recommended `auto-select` preference does NOT auto-authorize, and an unauthorized
+  first checkpoint now surfaces an actionable "authorize a reviewer" message rather than failing silently. The
+  codex reviewer is intermittently unreliable (occasional empty exit-0 output → no review produced; re-fire to
+  retry) — this always fails loudly (`status=failed`), never as a false pass. See iteration drift-log
+  D-013..D-015 for the dev-trial version-split, the auto-select authorization gap, and the codex-reliability
+  characteristic.
 
 ## [0.38.0-beta1] - 2026-06-18
 
