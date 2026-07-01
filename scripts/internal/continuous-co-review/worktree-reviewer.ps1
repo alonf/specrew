@@ -101,6 +101,7 @@ function Write-ContinuousCoReviewProcessContext {
     }
 
     $copied = New-Object System.Collections.Generic.List[string]
+    $iterPhase = $null
     if (-not [string]::IsNullOrWhiteSpace($featureDir)) {
         $featureFull = Join-Path $RepoRoot $featureDir
         $latestIter = $null
@@ -109,7 +110,15 @@ function Write-ContinuousCoReviewProcessContext {
             $latestIter = @(Get-ChildItem -LiteralPath $iterRoot -Directory -EA SilentlyContinue | Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } -Descending | Select-Object -First 1)
         }
         $progressFiles = @((Join-Path $featureFull 'tasks.md'), (Join-Path $featureFull 'plan.md'))
-        if ($latestIter) { foreach ($n in @('tasks-progress.yml', 'drift-log.md', 'state.md')) { $progressFiles += (Join-Path $latestIter[0].FullName $n) } }
+        if ($latestIter) {
+            foreach ($n in @('tasks-progress.yml', 'drift-log.md', 'state.md')) { $progressFiles += (Join-Path $latestIter[0].FullName $n) }
+            $iterPlanPath = Join-Path $latestIter[0].FullName 'plan.md'
+            if (Test-Path -LiteralPath $iterPlanPath -PathType Leaf) {
+                foreach ($ln in (Get-Content -LiteralPath $iterPlanPath -Encoding UTF8)) {
+                    if ($ln -match '^\s*\*\*Status\*\*\s*:\s*(?<s>[A-Za-z-]+)') { $iterPhase = $Matches['s']; break }
+                }
+            }
+        }
         foreach ($pf in $progressFiles) {
             if (Test-Path -LiteralPath $pf -PathType Leaf) { Copy-Item -LiteralPath $pf -Destination $procDir -Force; [void]$copied.Add((Split-Path $pf -Leaf)) }
         }
@@ -119,7 +128,15 @@ function Write-ContinuousCoReviewProcessContext {
     [void]$lines.Add('# Process / progress context (curated)')
     [void]$lines.Add('')
     [void]$lines.Add("Active feature: $featureDir")
-    [void]$lines.Add("Current phase / last-authorized boundary: $phase")
+    [void]$lines.Add("Last human-authorized boundary: $phase")
+    if (-not [string]::IsNullOrWhiteSpace($iterPhase)) { [void]$lines.Add("Current iteration phase (from iteration plan.md Status): $iterPhase") }
+    [void]$lines.Add('')
+    [void]$lines.Add('Lifecycle note: the human-authorized boundary gates the START of the next work, not its end. The')
+    [void]$lines.Add('implementation AND its review artifacts are produced AFTER the before-implement gate and BEFORE the')
+    [void]$lines.Add('review-signoff gate, so an increment that implements the feature and updates review/iteration state')
+    [void]$lines.Add('while the last authorized boundary is before-implement is EXPECTED and in-scope -- not a phase')
+    [void]$lines.Add('violation. Flag only genuine scope creep beyond plan.md, or dishonest status (work marked done/tested')
+    [void]$lines.Add('that is not actually done/tested).')
     [void]$lines.Add('')
     [void]$lines.Add('Snapshots of the real project process state (read these for progress review):')
     foreach ($c in $copied) { [void]$lines.Add("- .review/process/$c") }
@@ -131,7 +148,7 @@ function Write-ContinuousCoReviewProcessContext {
     [void]$lines.Add('- Is it consistent with plan.md (no unplanned scope, no deferred work absorbed)?')
     [void]$lines.Add('- Is drift recorded in drift-log.md where the implementation diverged from spec/plan?')
     [void]$lines.Add('- Is tasks-progress / state HONEST (nothing marked done that is not actually done/tested)?')
-    [void]$lines.Add('- Does the work fit the current phase/boundary?')
+    [void]$lines.Add('- Does the work stay within planned scope for this lifecycle position (see the lifecycle note)?')
     [System.IO.File]::WriteAllText((Join-Path $procDir 'process-context.md'), ($lines -join "`n"))
 }
 
