@@ -1,0 +1,35 @@
+diff --git a/scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1 b/scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/scripts/internal/continuous-co-review/checkpoint-review-orchestrator.ps1
+@@
++function Invoke-CheckpointReview {
++    param(
++        [Parameter(Mandatory = $true)]
++        [string] $HostKind,
++
++        [Parameter(Mandatory = $true)]
++        [hashtable] $ReviewRequest
++    )
++
++    # PLANTED DESIGN VIOLATION:
++    # The accepted design requires reviewer host behavior to be reached through
++    # reviewer-host-adapter-* files and the registry seam. Direct host-condition
++    # branching in the orchestrator bypasses that seam and must be blocked.
++    if ($HostKind -eq 'claude') {
++        return & claude -p ($ReviewRequest | ConvertTo-Json -Depth 20)
++    }
++
++    if ($HostKind -eq 'codex') {
++        return & codex exec ($ReviewRequest | ConvertTo-Json -Depth 20)
++    }
++}
+
+Expected blocking finding:
+
+- Severity: `blocking`
+- Kind: `design-contract-violation`
+- Design reference: `implementation-rules.yml` / TG-011
+- Violated design decision: reviewer host behavior must be reached through the `reviewer-host-adapter-*` interface and registry seam, not direct host-condition branching in the orchestrator.
+- Hermetic CI expectation: this fixture is static and requires no network, model invocation, authentication, paid host, or token-bearing environment capture.

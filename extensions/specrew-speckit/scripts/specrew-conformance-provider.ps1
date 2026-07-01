@@ -504,6 +504,11 @@ try {
         }
     }
     $packetPresent = Test-SpecrewReentryPacketPresent -Text $lastAssistantText
+    # ISSUE-2 PERF REVERT: the flush/read-race RE-READ (4x tail-200 parse, ~17s on a large transcript) is REMOVED.
+    # It was an UNCONFIRMED mitigation (the instrumented false-negative never reproduced) and it taxed every
+    # material stop AND starved the navigator (order 50) of the shared 20s Stop budget, so co-review stopped firing.
+    # If the flush-race double-render ever reproduces WITH a captured dx_ record, re-add a CHEAP variant (a tiny
+    # last-line re-read, not a full 200-line parse). The dx_* journal keeps the decision observable in the meantime.
     $substantial = (-not [string]::IsNullOrWhiteSpace($lastAssistantText)) -and ($lastAssistantText.Length -ge $script:SpecrewSubstantialChars)
 
     # --- IDEMPOTENCY (duplicate-fire guard, 145 IDEMP-1 / SC-1): dedup a re-fired hook for the SAME observable DECISION
@@ -657,14 +662,22 @@ try {
     }
 
     # --- forensic journal (diagnostics only - never gate state) ---
-    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit) {
+    # Also record EVERY material stop (not only blocks) so a spurious material block is diagnosable against the
+    # passing case (D-197-I009 conformance false-negative: a valid packet on disk still evaluated packetPresent=false).
+    if (-not [string]::IsNullOrWhiteSpace($blockReason) -or $capped -or $intakeHit -or $rawHit -or $materialStop) {
         try {
             $jdir = Split-Path -Parent $journalPath
             if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
-            $evt = if (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } else { 'nudge' }
+            $evt = if (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg }
+            # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.
+            $diagLat = [string]$lastAssistantText
+            $diagHits = 0; foreach ($dh in $script:SpecrewReentryHeaders) { if (-not [string]::IsNullOrEmpty($diagLat) -and $diagLat -match [regex]::Escape($dh)) { $diagHits++ } }
+            # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
+            # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
+            # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

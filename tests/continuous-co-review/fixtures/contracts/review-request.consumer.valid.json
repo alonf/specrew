@@ -1,0 +1,82 @@
+{
+  "schema_version": "2.0",
+  "run_id": "run-197-fixture-consumer-001",
+  "checkpoint_id": "checkpoint-001",
+  "baseline_ref": "0d428bfb69d1f54ecc81ea79925a13a26a55ec11",
+  "review_kind": "code-change-set",
+  "change_set": {
+    "baseline_ref": "0d428bfb69d1f54ecc81ea79925a13a26a55ec11",
+    "diff_ref": "diffs/run-197-fixture-001.diff",
+    "diff_inline": "diff --git a/scripts/internal/continuous-co-review/reviewer-contracts.ps1 b/scripts/internal/continuous-co-review/reviewer-contracts.ps1\n+ReviewRequest.v2 fixture diff\n",
+    "diff_content": "diff --git a/scripts/internal/continuous-co-review/reviewer-contracts.ps1 b/scripts/internal/continuous-co-review/reviewer-contracts.ps1\n+ReviewRequest.v2 fixture diff\n",
+    "diff_hash": "sha256:review-request-producer",
+    "changed_paths": [
+      "scripts/internal/continuous-co-review/reviewer-contracts.ps1"
+    ],
+    "reviewable_path_count": 1,
+    "excluded_paths": []
+  },
+  "design_context": {
+    "content": "FR-019 requires ReviewRequest.v2 to carry design-context content and sources. SC-015 requires exact request fields to be present.",
+    "sources": [
+      {
+        "path": "specs/197-continuous-co-review/spec.md",
+        "content_hash": "sha256:spec-fixture",
+        "section": "FR-019"
+      },
+      {
+        "path": "specs/197-continuous-co-review/implementation-rules.yml",
+        "content_hash": "sha256:rules-fixture"
+      }
+    ]
+  },
+  "reviewer_instruction": {
+    "schema_version": "reviewer-instruction.v1",
+    "canonical_path": "scripts/internal/continuous-co-review/code-review-agent.md",
+    "content_hash": "sha256:3f037e17a29ab5fe7639e4a79b43fad334f883195bfb15fff1f71d892109676d",
+    "mirror_refs": []
+  },
+  "round_number": 1,
+  "prior_findings": [],
+  "visibility_policy": {
+    "policy_id": "proposal-197-review-visibility.v1",
+    "allowed_context": [
+      "ReviewRequest.v2 design_context",
+      "exact change_set diff_content"
+    ],
+    "excluded_context": [
+      "secrets",
+      "raw transcripts",
+      "environment variables"
+    ]
+  },
+  "do_policy": {
+    "policy_id": "proposal-197-review-do-policy.v1",
+    "allowed_actions": [
+      "read supplied prompt context",
+      "return FindingsResult.v1 JSON"
+    ],
+    "forbidden_actions": [
+      "modify source files",
+      "modify Git state",
+      "modify Specrew state"
+    ]
+  },
+  "allowed_paths": [
+    "scripts/internal/continuous-co-review/"
+  ],
+  "forbidden_paths": [
+    "hosts/",
+    "extensions/specrew-speckit/scripts/provider-adapter.ps1"
+  ],
+  "provider_request": {
+    "requested_host": "fixture",
+    "requested_model": "fixture-reviewer",
+    "authorization_ref": "local-fixture-only",
+    "timeout_seconds": 60,
+    "fallback_policy": "none"
+  },
+  "output_contract": "FindingsResult.v1",
+  "request_hash": "sha256:request-consumer",
+  "created_at": "2026-06-17T21:00:00Z"
+}

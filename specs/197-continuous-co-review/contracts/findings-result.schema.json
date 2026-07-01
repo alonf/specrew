@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specrew.local/contracts/continuous-co-review/findings-result.schema.json",
+  "title": "FindingsResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "status", "findings", "created_at"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "run_id": { "type": "string", "minLength": 1 },
+    "status": { "enum": ["findings", "no_findings"] },
+    "reviewer": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "host": { "type": "string" },
+        "model": { "type": "string" },
+        "adapter_id": { "type": "string" }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding_id", "source_run_id", "location", "severity", "kind", "design_reference", "comment", "disposition", "resolution"],
+        "properties": {
+          "finding_id": { "type": "string", "minLength": 1 },
+          "source_run_id": { "type": "string", "minLength": 1 },
+          "fingerprint": { "type": "string" },
+          "location": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "path": { "type": "string" },
+              "line_start": { "type": ["integer", "null"], "minimum": 1 },
+              "line_end": { "type": ["integer", "null"], "minimum": 1 }
+            }
+          },
+          "severity": { "enum": ["blocking", "advisory", "nit"] },
+          "kind": { "type": "string", "minLength": 1 },
+          "design_reference": { "type": "string", "minLength": 1 },
+          "comment": { "type": "string", "minLength": 1 },
+          "disposition": { "enum": ["open", "accepted_fix_pending", "resolved", "rejected_with_rationale", "escalated_to_human"] },
+          "resolution": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "state": { "enum": ["unresolved", "resolved", "rejected", "escalated"] },
+              "fix_evidence_ref": { "type": ["string", "null"] },
+              "rationale": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "result_hash": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

@@ -1117,6 +1117,36 @@ function Get-SpecrewStartContextState {
     }
 }
 
+function Get-SpecrewStartContextBoundary {
+    # THE CANONICAL v1/v2-tolerant reader for the ACTIVE boundary in start-context.json. v1 stored it at
+    # session_state.boundary_type; the v2 schema migration moved it to boundary_enforcement.last_authorized_
+    # boundary (a v2 file has NO session_state). Reading only v1 -> $null on a v2 project -> silent no-op
+    # (iter-007 real-host dogfood: the navigator never fired + the handover hollowed). This is the ONE home
+    # for that logic. The self-contained hot-path providers (refocus / hook-dispatcher / navigator) cannot
+    # load shared-governance, so each carries a THIN local mirror; all are pinned identical to this function
+    # by tests/continuous-co-review/unit/boundary-reader-conformance.Tests.ps1 (drift fails CI).
+    # Accepts a parsed context (PSCustomObject OR hashtable) or a path. Returns $null when absent/unreadable.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)][AllowNull()] $StartContext)
+    if ($null -eq $StartContext) { return $null }
+    $ctx = $StartContext
+    if ($StartContext -is [string]) {
+        if (-not (Test-Path -LiteralPath $StartContext -PathType Leaf)) { return $null }
+        try { $ctx = Get-Content -LiteralPath $StartContext -Raw -Encoding UTF8 | ConvertFrom-Json } catch { return $null }
+    }
+    $getp = {
+        param($o, $n)
+        if ($null -eq $o) { return $null }
+        if ($o -is [System.Collections.IDictionary]) { if ($o.Contains($n)) { return $o[$n] } else { return $null } }
+        $p = $o.PSObject.Properties[$n]; if ($p) { return $p.Value } else { return $null }
+    }
+    $b = [string](& $getp (& $getp $ctx 'session_state') 'boundary_type')          # v1
+    if (-not [string]::IsNullOrWhiteSpace($b)) { return $b }
+    $b = [string](& $getp (& $getp $ctx 'boundary_enforcement') 'last_authorized_boundary')  # v2
+    if (-not [string]::IsNullOrWhiteSpace($b)) { return $b }
+    return $null
+}
+
 function New-SpecrewBoundaryEnforcementState {
     param(
         [AllowNull()]

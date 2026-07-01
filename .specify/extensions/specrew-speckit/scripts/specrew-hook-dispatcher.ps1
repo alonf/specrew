@@ -47,6 +47,19 @@ if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE)) {
     Write-EarlyDecisionOnlyNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
     exit 0
 }
+# Per-event kill-switch (recovery lever): SPECREW_DISABLE_EVENTS is a comma/semicolon-separated list of hook
+# events to no-op for THIS process - e.g. `SPECREW_DISABLE_EVENTS=Stop` runs a shell whose Stop hook fires NOTHING
+# (no co-review / conformance / handover-on-Stop) while SessionStart + PostToolUse stay live. A SURGICAL
+# alternative to SPECREW_REFOCUS_DISABLE (which silences every event), so a misbehaving / blocking Stop provider
+# can be bypassed in a fresh shell without losing the rest of the hook surface. Case-insensitive; the early
+# decision-only no-op keeps the host's hook contract satisfied.
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_DISABLE_EVENTS)) {
+    $disabledEvents = @($env:SPECREW_DISABLE_EVENTS -split '[,;]' | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+    if ($disabledEvents -contains $Event) {
+        Write-EarlyDecisionOnlyNoopIfNeeded -EventName $Event -EncodedBinding $HostBinding
+        exit 0
+    }
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -836,7 +849,13 @@ try {
 
     $fragments = New-Object System.Collections.Generic.List[object]
     $failedSessionStartProviders = New-Object System.Collections.Generic.List[string]
-    $stopBlockReason = $null  # FR-004/FR-015: set when a Stop-class consumer requests a force-continue (the packet-at-stop block).
+    # FR-004/FR-015: stop-block reasons requested by Stop-class consumers (the packet-at-stop force-continue).
+    # F-197 (maintainer-authorized 2026-06-24): ACCUMULATE across ALL providers in one Stop run rather than
+    # last-writer-wins. The navigator (order 50) runs after conformance (order 40); if both emit a stop-block in
+    # the same run, a single $stopBlockReason variable let the navigator's reason OVERWRITE conformance's,
+    # dropping one directive. Collect distinct reasons here and MERGE them below so BOTH survive. A single
+    # blocking provider collapses to a 1-element list = identical output to the old single-reason path.
+    $stopBlockReasons = New-Object System.Collections.Generic.List[string]
     foreach ($provider in $providers) {
         $kind = if ($provider.PSObject.Properties['kind']) { [string]$provider.kind } else { 'inject' }
         $providerId = [string]$provider.id
@@ -929,8 +948,14 @@ try {
             # capture) silently never runs. Pass only the bounded clean args to handover. The transcript FILE route
             # (--transcript-path, extracted below) is the robust primary; tier-3 (last_assistant_message) stays
             # DEFERRED. Other inject providers (bootstrap needs session_id/source) still get --event-json.
-            $commandArgs = if ($providerId -in @('handover', 'conformance')) {
-                # Both read ONLY the clean args (+ --transcript-path appended below) - never the full
+            # F-197 (maintainer-authorized 2026-06-24): co-review-navigator joins the clean-args allow-list. It
+            # binds Stop-class AND SessionStart, and on Codex Stop the same 10s-of-KB last_assistant_message in
+            # --event-json blew the Windows command-line limit, so the navigator silently never launched. It
+            # reads ONLY --source-event (and accepts-but-ignores --host-kind/--transcript-path) on EVERY event
+            # incl. SessionStart - it works off git state + the registry, never the event payload/session_id -
+            # so the provider-keyed strip is safe on SessionStart too (no session_id dependence to break).
+            $commandArgs = if ($providerId -in @('handover', 'conformance', 'co-review-navigator')) {
+                # All read ONLY the clean args (+ --transcript-path appended below) - never the full
                 # --event-json blob (Codex Stop carries a 10s-of-KB last_assistant_message that blows the
                 # Windows command-line limit and makes ProcessStartInfo refuse to launch). FR-011 C3.
                 @('--host-kind', $HostKind, '--source-event', $Event)
@@ -994,9 +1019,14 @@ try {
         if (-not [string]::IsNullOrWhiteSpace($result.StdOut)) {
             $stdoutTrim = $result.StdOut.Trim()
             if ($stdoutTrim.StartsWith('<<<SPECREW-STOP-BLOCK>>>')) {
-                # FR-004/FR-015: a Stop-class consumer (conformance) requests a force-continue so the re-entry
-                # packet renders AT the stop. Capture the reason; do NOT add it as a normal injection fragment.
-                $stopBlockReason = $stdoutTrim.Substring('<<<SPECREW-STOP-BLOCK>>>'.Length).Trim()
+                # FR-004/FR-015: a Stop-class consumer (conformance, navigator) requests a force-continue so the
+                # re-entry packet renders AT the stop. Accumulate the reason (do NOT add it as a normal injection
+                # fragment); F-197 merges all providers' reasons below so a later provider can't clobber an
+                # earlier one. Skip blanks and exact duplicates so the merge stays clean.
+                $thisReason = $stdoutTrim.Substring('<<<SPECREW-STOP-BLOCK>>>'.Length).Trim()
+                if ((-not [string]::IsNullOrWhiteSpace($thisReason)) -and (-not $stopBlockReasons.Contains($thisReason))) {
+                    $stopBlockReasons.Add($thisReason) | Out-Null
+                }
             }
             else {
                 $fragments.Add((New-DispatcherFragment -ProviderId $providerId -Text $stdoutTrim -Order $providerOrder)) | Out-Null
@@ -1034,11 +1064,21 @@ try {
     # (stop_hook_active true on claude/codex) -> then ALLOW, to respect the host's loop cap and never hang. Fully
     # fail-open: an unknown/none shape or any miss falls through to the normal (allow/inject) path. The provider
     # supplies its OWN consecutive-block cap for hosts lacking stop_hook_active (copilot/antigravity).
-    if (-not [string]::IsNullOrWhiteSpace($stopBlockReason)) {
+    if ($stopBlockReasons.Count -gt 0) {
+        # F-197: MERGE every blocking provider's reason this run so a co-occurring conformance + navigator
+        # stop-block surfaces BOTH directives (the navigator at order 50 used to overwrite conformance at
+        # order 40). One blocking provider = a 1-element join = byte-identical to the prior single-reason path.
+        # The separator is a clear, parseable divider so the agent sees each directive distinctly.
+        $mergedStopBlockReason = if ($stopBlockReasons.Count -eq 1) {
+            $stopBlockReasons[0]
+        }
+        else {
+            ($stopBlockReasons -join "`n`n----- AND ALSO -----`n`n")
+        }
         $alreadyContinuing = [bool](Get-DispatcherMapValue -Map $hostEvent -Key 'stop_hook_active' -Default $false)
         $blockShape = [string](Get-DispatcherMapValue -Map $hostRuntimeBinding -Key 'StopBlockShape' -Default 'none')
         if ((-not $alreadyContinuing) -and ($blockShape -in $script:SpecrewStopBlockShapes)) {
-            Write-StopBlockOutput -Shape $blockShape -Reason $stopBlockReason
+            Write-StopBlockOutput -Shape $blockShape -Reason $mergedStopBlockReason
             exit 0
         }
         # else: host already continuing OR cannot block -> fall through to the normal path (cooperative degrade).

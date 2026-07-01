@@ -2,14 +2,29 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $ScriptRoot = $PSScriptRoot
-$scriptsPath = Join-Path -Path $ScriptRoot -ChildPath 'scripts'
+
+# Side-by-side dev testing: if SPECREW_MODULE_PATH ALREADY points to a DIFFERENT valid Specrew tree, the operator is
+# running a deliberate dev trial - dispatch the ENTIRE module (the CLI script map, the dashboard renderer, AND the
+# child-process announcement below) from THAT tree, not this installed copy. Without this the module unconditionally
+# reset SPECREW_MODULE_PATH back to its own path on load, silently clobbering the trial and forcing a destructive
+# overwrite of the installed module to test a branch (the exact asymmetry this closes). Falls back to this tree when
+# the env var is unset or invalid, so normal installs are unaffected.
+$cliRoot = $ScriptRoot
+if ((-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) -and
+    (Test-Path -LiteralPath (Join-Path $env:SPECREW_MODULE_PATH 'scripts/specrew.ps1') -PathType Leaf) -and
+    (Test-Path -LiteralPath (Join-Path $env:SPECREW_MODULE_PATH 'Specrew.psd1') -PathType Leaf)) {
+    # Require BOTH the manifest AND the CLI entry so a partial/incorrect directory is not accepted as a valid
+    # Specrew tree (aligns with Get-SpecrewModulePathOverrideManifestPath; Copilot review).
+    $cliRoot = (Resolve-Path -LiteralPath $env:SPECREW_MODULE_PATH).Path
+}
+
+$scriptsPath = Join-Path -Path $cliRoot -ChildPath 'scripts'
 $internalScriptsPath = Join-Path -Path $scriptsPath -ChildPath 'internal'
 
-# F-044 iter-006 T001: announce this Specrew tree to child PowerShell processes
-# so agent-spawned shells (e.g., `powershell -File .specify/.../sync-boundary-state.ps1`)
-# dispatch here instead of a stale PSGallery install. Env vars inherit across child
-# processes automatically.
-$env:SPECREW_MODULE_PATH = $ScriptRoot
+# F-044 iter-006 T001: announce the (possibly dev-overridden) Specrew tree to child PowerShell processes so
+# agent-spawned shells (e.g. `pwsh -File .specify/.../sync-boundary-state.ps1`) dispatch THERE instead of a stale
+# PSGallery install. Env vars inherit across child processes automatically.
+$env:SPECREW_MODULE_PATH = $cliRoot
 
 . (Join-Path -Path $internalScriptsPath -ChildPath 'dashboard-renderer.ps1')
 

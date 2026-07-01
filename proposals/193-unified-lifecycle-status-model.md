@@ -99,3 +99,55 @@ of the split brain still maintained by hand.
   deterministically propagated.
 - Related to Proposal 028 (lifecycle hardening and index auto-generation): the closed-index and the proposal
   INDEX are instances of the same "derive, do not hand-maintain" principle.
+
+## Amendment 2026-06-30 — the cross-MACHINE dimension (the cursor is per-machine; the canonical must travel or reconstruct)
+
+A fresh empirical instance extends this proposal from cross-ARTIFACT drift (one machine) to cross-MACHINE
+continuity. During F-197's desktop→laptop dogfood (2026-06-29/30), everything committed travelled via git — the
+spec/plan/tasks, `iterations/009/state.md` at `Current Phase: implement`, and the `boundary(...)` commit trail.
+But `.specrew/start-context.json` (the live boundary cursor + `verdict_history`) and `.specrew/runtime/` are
+gitignored per-machine, so the laptop's `specrew start` minted an EMPTY cursor. Consumers that key off that
+cursor then misbehaved: the F-197 co-review navigator's stage gate read a blank boundary and silently no-op'd
+every Stop (`not-implement-stage`), and a `sync-boundary-state` repair attempt drove the Stop hook to demand a
+spurious `intake -> specify` verdict because the empty `verdict_history` made it conclude nothing was ever
+authorized. (Recorded in `specs/197-continuous-co-review/iterations/009/drift-log.md` D-197-I009-008.)
+
+This is the same split-brain this proposal already targets, from a new angle: the cursor is a **derived cache**,
+not a source of truth, and today it is neither git-carried nor reconstructed — so on any new machine (or fresh
+clone) it is empty and the consumers that trust it break. The canonical lifecycle position already exists in
+git: `iterations/<N>/state.md` "Current Phase" + the `boundary(<stage>): ...` commit trail + the downstream
+phase commits (you do not get N iterations of implement work past an unauthorized gate). The fix is squarely
+this proposal's thesis — derive the redundant from the canonical — applied across machines:
+
+- **Canonical = committed git state** (state.md phase + boundary-commit trail). The per-machine
+  `start-context.json` cursor and `.specrew/runtime/` stay gitignored and ephemeral by design.
+- **Reconstruct-on-bootstrap**: when `specrew start` finds the cursor empty/missing but the artifacts indicate
+  an active in-flight iteration, the deterministic primitive proposed above (`Set-SpecrewIterationStatus` /
+  `Advance-SpecrewBoundary` family) gains a RECONSTRUCT mode that rebuilds the cursor — `last_authorized_boundary`,
+  `verdict_history` with commit refs — from the committed trail, and announces it ("resuming iter-009 at
+  implement, before-implement authorized at &lt;commit&gt;"). No file-sync; works from a bare clone.
+- **Consumer tolerance (defense-in-depth)**: cursor-reading consumers (the co-review navigator stage gate; the
+  pending-verdict detector) must not hard-depend on the cursor — they fall back to the committed `state.md`
+  phase when the cursor is blank, rather than no-opping dark or demanding a spurious early-boundary verdict. The
+  F-197 navigator-stage fallback (iter-010 task, drift D-197-I009-008) is the first concrete instance of this
+  tolerance and can ship ahead of the full model.
+
+Explicitly **rejected**: syncing the gitignored cursor/runtime via OneDrive/Google Drive. A file-syncer over a
+git repo corrupts `.git` (async piecemeal upload of a transactional object store), spawns conflict-copies of
+the append-only journals, and is redundant with git. The canonical already lives in git; the cursor should be
+rebuilt from it, not shipped around it.
+
+This amendment adds the cross-machine reconstruct-on-bootstrap obligation to the design deliverables (step 3,
+the deterministic primitive, gains a "reconstruct from the committed canonical when the cursor is absent/empty"
+mode) and to the analysis (step 1 must include the cross-machine empty-cursor drift mode). It composes with
+Proposal 142 FR-009/FR-010, which guard the resume write-path against a STALE cursor (pointing at a CLOSED
+iteration); this amendment covers the complementary EMPTY-cursor case (fresh machine), which Proposal 142
+FR-011 should detect/reconstruct rather than no-op. Sizing folds into the existing 13–21 SP envelope; the F-197
+navigator-stage fallback is a separate ~1–2 SP iter-010 task that delivers the consumer-tolerance slice early.
+
+## Status history
+
+- 2026-06-12: status `candidate`. Drafted after the Feature 174 iter-10 lifecycle-status reconciliation session.
+- 2026-06-30: amended with the cross-MACHINE continuity dimension (reconstruct-on-bootstrap + consumer
+  tolerance), surfaced by the F-197 desktop→laptop dogfood (drift D-197-I009-008). Composes with Proposal 142
+  FR-011 (empty-cursor detection/reconstruction). Status stays `candidate`; scope clarified, sizing unchanged.

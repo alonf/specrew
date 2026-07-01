@@ -309,12 +309,16 @@ function Get-SpecrewCapturedBoundaryVerdict {
     )
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-transcript' }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
-    $lines = $null
-    try { $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
-    if ($null -eq $lines -or $lines.Count -eq 0) { $result.Reason = 'empty'; return $result }
+    # F-197 iter-004 (T070, #2885): one shared memoized parse (path,mtime,MaxLines); finalize with -Raw here.
+    # The shared extract holds only user/assistant message turns; a tail with no message turns falls through to
+    # the existing $turns.Count==0 -> 'no-turns' guard below. (Diagnostic-only delta vs the pre-refactor path: a
+    # ZERO-BYTE file now reports Reason='no-turns' where the old per-line path reported 'empty'; both give
+    # Found=$false and 'empty' is consumed by no branch, so capture/authorization behavior is unchanged. 145 T070.)
+    $shared = $null
+    try { $shared = @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
 
     $turns = New-Object System.Collections.Generic.List[object]
-    foreach ($l in $lines) { $tn = Get-SpecrewConversationTurnFromLine -Line $l -Raw; if ($null -ne $tn) { $turns.Add($tn) | Out-Null } }
+    foreach ($rp in $shared) { $tn = Format-SpecrewConversationTurnText -Turn $rp -Raw; if ($null -ne $tn) { $turns.Add($tn) | Out-Null } }
     if (-not [string]::IsNullOrWhiteSpace($LastUserMessage)) {
         $syntheticUser = ([string]$LastUserMessage).Trim()
         $syntheticUser = $syntheticUser -replace '(?is)^\s*<USER_REQUEST>\s*', '' -replace '(?is)\s*</USER_REQUEST>\s*$', ''
@@ -429,17 +433,18 @@ function Get-SpecrewCapturedBoundaryPacket {
     )
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; PacketBody = $null; Reason = 'no-transcript' }
     if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
-    $lines = $null
-    try { $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
-    if ($null -eq $lines -or $lines.Count -eq 0) { $result.Reason = 'empty'; return $result }
+    # F-197 iter-004 (T070, #2885): the SAME shared memoized parse the verdict reader used (cache hit here);
+    # finalize with -Raw so the six '## ' headers + newline structure round-trip verbatim.
+    $shared = $null
+    try { $shared = @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath -MaxLines $MaxTailLines) } catch { $result.Reason = 'unreadable'; return $result }
 
     # Same marker grammar as the verdict reader: case-insensitive, '->' / unicode arrow / 'to', flexible spacing.
     $markerRx = [regex]::new('SPECREW-VERDICT-BOUNDARY:\s*([a-z-]+)\s*(?:->|→|to)\s*([a-z-]+)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
 
     # The LAST assistant turn carrying a marker (the most recently rendered packet), read VERBATIM (-Raw).
     $found = $null
-    foreach ($l in $lines) {
-        $tn = Get-SpecrewConversationTurnFromLine -Line $l -Raw
+    foreach ($rp in $shared) {
+        $tn = Format-SpecrewConversationTurnText -Turn $rp -Raw
         if ($null -eq $tn -or [string]$tn.role -ne 'assistant') { continue }
         $mm = $markerRx.Match([string]$tn.text)
         if ($mm.Success) {
@@ -459,20 +464,44 @@ function Get-SpecrewCapturedBoundaryPacket {
     return $result
 }
 
-function Get-SpecrewConversationTurnFromLine {
-    # Best-effort (role,text) from one transcript JSONL line across the 4 host schemas. Returns $null for a
-    # non-message line (session meta / tool / system / developer / parse failure) -> skipped by the caller.
-    # F-174 iter-11 (T002): -Raw preserves the message text VERBATIM (newlines + '## ' structure intact) for the
-    # boundary-packet capture, which must round-trip the six-section markdown. The DEFAULT (no -Raw) collapses all
-    # whitespace to single spaces for the bounded conversation TAIL, where structure is noise. Raw still strips the
-    # system-injected wrappers (targeted removals that do not touch packet structure) and joins multiple content
-    # parts with a newline (a part boundary is a block boundary), but never collapses internal whitespace.
+# F-197 iter-004 (T070, #2885): single-entry transcript-parse memo + a parse counter.
+# THE LATENCY FIX. Pre-refactor, the three Stop-hook consumers (verdict / packet / conversation-tail) each
+# read the transcript tail AND ran `ConvertFrom-Json -Depth 40` + role/parts extraction over EVERY line
+# INDEPENDENTLY - three full parses of the same tail per stop (the ~11s of #2885's ~16s). They all run in
+# ONE process inside Update-SpecrewRollingHandover, so a single-entry memo keyed by (path, mtime, MaxLines)
+# collapses the three parses to one; the per-consumer -Raw/flatten join + the verdict's synthetic-user append
+# stay per-consumer (they operate on a COPY of the shared {role; parts} extract, never on the cache).
+$script:SpecrewTranscriptParseMemo = $null         # single entry: @{ Key; Turns = {role;parts}[] }
+$script:SpecrewTranscriptParseCount = 0            # number of lines ConvertFrom-Json'd on cache MISSES (parse-once witness)
+
+function Reset-SpecrewTranscriptParseCount {
+    # Test/diagnostic seam (T072): zero the parse-once witness so a single "stop" can be measured in isolation.
+    $script:SpecrewTranscriptParseCount = 0
+}
+
+function Clear-SpecrewTranscriptParseMemo {
+    # Test/diagnostic seam (T072): drop the single memo entry so the NEXT parse is a guaranteed cache MISS. Used
+    # only to measure a single stop COLD in isolation; the production hot path never needs to clear (mtime keys it).
+    $script:SpecrewTranscriptParseMemo = $null
+}
+
+function Get-SpecrewTranscriptParseCount {
+    # Test/diagnostic seam (T072): the number of transcript lines parsed since the last reset. One stop that
+    # shares the memo across all three consumers must equal a SINGLE consumer's count (parse-once), not 3x.
+    [OutputType([int])]
+    param()
+    return [int]$script:SpecrewTranscriptParseCount
+}
+
+function Get-SpecrewConversationTurnRolePartsFromObject {
+    # The pure role/parts EXTRACTION across the host schemas - the part of the per-line parse that is IDENTICAL
+    # regardless of -Raw (only the later text-join differs). Takes the already-deserialized JSON object; returns
+    # @{ role; parts = string[] } for a user/assistant message line, or $null for a non-message line (session
+    # meta / tool / system / developer / unrecognized). No ConvertFrom-Json here - the cost is paid once upstream.
     [OutputType([pscustomobject])]
-    param([Parameter()][AllowNull()][string]$Line, [switch]$Raw)
-    if ([string]::IsNullOrWhiteSpace($Line)) { return $null }
-    $o = $null
-    try { $o = $Line | ConvertFrom-Json -Depth 40 -ErrorAction Stop } catch { return $null }
-    if ($null -eq $o) { return $null }
+    param([Parameter()][AllowNull()]$Object)
+    if ($null -eq $Object) { return $null }
+    $o = $Object
 
     $role = $null; $parts = @()
     $typeVal = [string](Get-SpecrewConversationProp $o 'type')
@@ -518,6 +547,22 @@ function Get-SpecrewConversationTurnFromLine {
     else { return $null }
 
     if ($role -notin @('user', 'assistant')) { return $null }   # drop developer/system/tool roles
+    return [pscustomobject]@{ role = $role; parts = @($parts) }
+}
+
+function Format-SpecrewConversationTurnText {
+    # The FINALIZE step: turn a shared {role; parts} extract into the final {role; text} a consumer needs, with
+    # its OWN -Raw flag. -Raw (T002) preserves the message text VERBATIM (newlines + '## ' structure intact) for
+    # the boundary-packet capture, which must round-trip the six-section markdown. The DEFAULT (no -Raw) collapses
+    # all whitespace to single spaces for the bounded conversation TAIL, where structure is noise. Both paths strip
+    # the system-injected wrappers (targeted removals that do not touch packet structure). Returns $null for a
+    # whitespace-only result or a pure hook-prompt user turn (dropped by the caller). Does NOT mutate the input.
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()]$Turn, [switch]$Raw)
+    if ($null -eq $Turn) { return $null }
+    $role = [string]$Turn.role
+    $parts = @($Turn.parts)
+    if ($role -notin @('user', 'assistant')) { return $null }
     # -Raw (T002): join parts with a newline to keep block boundaries; DEFAULT joins with a space for the flat tail.
     $text = if ($Raw) { (@($parts) -join "`n") } else { (@($parts) -join ' ') }
     # strip query/redaction wrappers + the most obvious system-injected blocks (keep a short marker so the
@@ -531,6 +576,68 @@ function Get-SpecrewConversationTurnFromLine {
     if ($role -eq 'user' -and $text -match '^\s*<hook_prompt\b[\s\S]*</hook_prompt>\s*$') { return $null }
     if ([string]::IsNullOrWhiteSpace($text)) { return $null }
     return [pscustomobject]@{ role = $role; text = $text }
+}
+
+function Get-SpecrewTranscriptParsedTurns {
+    # F-197 iter-004 (T070, #2885): read the transcript tail + ConvertFrom-Json + role/parts EXTRACT exactly ONCE
+    # per (TranscriptPath, file-mtime, MaxLines), MEMOIZED to a SINGLE entry. The three Stop-hook consumers call
+    # this with the same key in one process, so the expensive parse runs once and the other two are cache hits.
+    # Returns a FRESH array of the shared {role; parts} turns (a COPY of the outer list) so a consumer's own
+    # transform - the verdict reader's synthetic-user append, or any list mutation - can NEVER leak into the cache
+    # or another consumer. The {role; parts} entries are read-only on the finalize path (Format-... only reads),
+    # so a shallow array copy is sufficient; no deep clone needed. Single entry keyed by mtime => unbounded growth
+    # is impossible and a rewritten transcript invalidates correctly. Fail-open: an unreadable file -> empty array.
+    # mtime-resolution assumption (145 T070): the key trusts the filesystem last-write tick to advance on a real
+    # rewrite. A stale hit needs DIFFERENT content at the SAME path with an IDENTICAL tick - which the hot path
+    # cannot produce: the three intended hits are one in-process burst (ms apart, identical content), and two
+    # distinct Stop crossings are a full agent turn apart (seconds), so the tick always advances between contents.
+    # A same-tick rewrite only occurs if a writer deliberately pins the prior timestamp - not a real Stop pattern.
+    [OutputType([pscustomobject[]])]
+    param([Parameter()][AllowNull()][string]$TranscriptPath, [int]$MaxLines = 500)
+    if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return @() }
+
+    $mtime = $null
+    try { $mtime = ([System.IO.File]::GetLastWriteTimeUtc($TranscriptPath)).Ticks } catch { $mtime = $null }
+    $key = ('{0}|{1}|{2}' -f $TranscriptPath, [string]$mtime, [int]$MaxLines)
+
+    $memo = $script:SpecrewTranscriptParseMemo
+    if ($null -ne $memo -and [string]$memo.Key -eq $key) {
+        # Cache HIT - hand back a fresh outer array so the caller can append/mutate its own list safely.
+        return @($memo.Turns)
+    }
+
+    # Cache MISS - the one true parse for this key.
+    $lines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxLines)
+    $turns = New-Object System.Collections.Generic.List[object]
+    foreach ($l in $lines) {
+        if ([string]::IsNullOrWhiteSpace($l)) { continue }
+        $o = $null
+        try { $o = $l | ConvertFrom-Json -Depth 40 -ErrorAction Stop } catch { $o = $null }
+        $script:SpecrewTranscriptParseCount = [int]$script:SpecrewTranscriptParseCount + 1   # parse-once witness (one count per ConvertFrom-Json)
+        if ($null -eq $o) { continue }
+        $rp = Get-SpecrewConversationTurnRolePartsFromObject -Object $o
+        if ($null -ne $rp) { $turns.Add($rp) | Out-Null }
+    }
+    $arr = @($turns.ToArray())
+    $script:SpecrewTranscriptParseMemo = [pscustomobject]@{ Key = $key; Turns = $arr }
+    return @($arr)
+}
+
+function Get-SpecrewConversationTurnFromLine {
+    # Best-effort (role,text) from one transcript JSONL line across the 4 host schemas. Returns $null for a
+    # non-message line (session meta / tool / system / developer / parse failure) -> skipped by the caller.
+    # F-197 iter-004 (T070): now COMPOSES the split helpers - ConvertFrom-Json -> role/parts extract -> finalize -
+    # so other callers that parse a single line ad hoc keep working with IDENTICAL behavior to the pre-refactor
+    # monolith. (The Stop-hook hot path goes through the memoized Get-SpecrewTranscriptParsedTurns instead.)
+    [OutputType([pscustomobject])]
+    param([Parameter()][AllowNull()][string]$Line, [switch]$Raw)
+    if ([string]::IsNullOrWhiteSpace($Line)) { return $null }
+    $o = $null
+    try { $o = $Line | ConvertFrom-Json -Depth 40 -ErrorAction Stop } catch { return $null }
+    if ($null -eq $o) { return $null }
+    $rp = Get-SpecrewConversationTurnRolePartsFromObject -Object $o
+    if ($null -eq $rp) { return $null }
+    return (Format-SpecrewConversationTurnText -Turn $rp -Raw:$Raw)
 }
 
 function Format-SpecrewConversationBullets {
@@ -568,18 +675,6 @@ function Get-SpecrewConversationTail {
     $hostLabel = if ([string]::IsNullOrWhiteSpace($HostKind)) { 'this host' } else { $HostKind }
     $pointer = if (-not [string]::IsNullOrWhiteSpace($TranscriptPath)) { ('Full transcript (read on-demand for depth): {0}' -f $TranscriptPath) } else { $null }
 
-    $fileLines = $null
-    if (-not [string]::IsNullOrWhiteSpace($TranscriptPath)) {
-        try {
-            if (Test-Path -LiteralPath $TranscriptPath -PathType Leaf) {
-                # Read only the TAIL (not the whole file) - see $MaxTailLines. On Codex this also naturally
-                # skips the giant line-1 session_meta header.
-                $fileLines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines)
-            }
-        }
-        catch { $fileLines = $null }
-    }
-
     $join = {
         param($Bullets, $Note)
         $sb = New-Object System.Collections.Generic.List[string]
@@ -589,21 +684,44 @@ function Get-SpecrewConversationTail {
         return (($sb -join "`n").Trim())
     }
 
-    if ($null -ne $fileLines -and $fileLines.Count -gt 0) {
-        # Tier 1: structured per-host parse.
-        $turns = New-Object System.Collections.Generic.List[object]
-        foreach ($l in $fileLines) { $t = Get-SpecrewConversationTurnFromLine -Line $l; if ($null -ne $t) { $turns.Add($t) | Out-Null } }
-        if ($turns.Count -gt 0) {
-            $bullets = Format-SpecrewConversationBullets -Turns ($turns.ToArray()) -MaxTurns $MaxTurns -MaxChars $MaxChars -PerTurn $PerTurn
-            return (& $join $bullets $null)
+    # Tier 1: structured per-host parse. F-197 iter-004 (T070, #2885): the EXPENSIVE ConvertFrom-Json + role/parts
+    # extract comes from the SHARED memoized parse (a cache hit when the verdict/packet readers ran first this
+    # stop; the one true parse if this consumer runs first). It reads the tail + parses internally, so on the
+    # common Tier-1 path this consumer does NOT separately byte-read the tail; the raw $fileLines below is read
+    # LAZILY only when the structured parse yields nothing (the Tier-2 drift fallback). Finalize with DEFAULT
+    # (non-Raw) flatten.
+    if (-not [string]::IsNullOrWhiteSpace($TranscriptPath)) {
+        $shared = @(Get-SpecrewTranscriptParsedTurns -TranscriptPath $TranscriptPath -MaxLines $MaxTailLines)
+        if ($shared.Count -gt 0) {
+            $turns = New-Object System.Collections.Generic.List[object]
+            foreach ($rp in $shared) { $t = Format-SpecrewConversationTurnText -Turn $rp; if ($null -ne $t) { $turns.Add($t) | Out-Null } }
+            if ($turns.Count -gt 0) {
+                $bullets = Format-SpecrewConversationBullets -Turns ($turns.ToArray()) -MaxTurns $MaxTurns -MaxChars $MaxChars -PerTurn $PerTurn
+                return (& $join $bullets $null)
+            }
         }
-        # Tier 2: present but unrecognized schema -> raw bounded tail + VISIBLE degradation note.
-        $nonEmpty = @($fileLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-        if ($nonEmpty.Count -gt 0) {
-            $rawTurns = @($nonEmpty | Select-Object -Last $MaxTurns | ForEach-Object { [pscustomobject]@{ role = 'raw'; text = (([string]$_ -replace '\s+', ' ').Trim()) } })
-            $bullets = @(Format-SpecrewConversationBullets -Turns $rawTurns -MaxTurns $MaxTurns -MaxChars $MaxChars -PerTurn $PerTurn) | ForEach-Object { $_ -replace '^\- \*\*raw:\*\* ', '- ' }
-            $note = ('(transcript present but its format was not recognized - showing a raw tail; the structured parser for {0} may need updating)' -f $hostLabel)
-            return (& $join $bullets $note)
+
+        # No structured turns -> read the raw byte tail to decide Tier 2 (present-but-unrecognized schema) vs
+        # fall through to Tier 3 / Floor (absent or empty file). This byte read only happens off the happy path.
+        $fileLines = $null
+        try {
+            if (Test-Path -LiteralPath $TranscriptPath -PathType Leaf) {
+                # Read only the TAIL (not the whole file) - see $MaxTailLines. On Codex this also naturally
+                # skips the giant line-1 session_meta header.
+                $fileLines = @(Get-SpecrewTranscriptTailLines -Path $TranscriptPath -MaxLines $MaxTailLines)
+            }
+        }
+        catch { $fileLines = $null }
+
+        if ($null -ne $fileLines -and $fileLines.Count -gt 0) {
+            # Tier 2: present but unrecognized schema -> raw bounded tail + VISIBLE degradation note.
+            $nonEmpty = @($fileLines | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if ($nonEmpty.Count -gt 0) {
+                $rawTurns = @($nonEmpty | Select-Object -Last $MaxTurns | ForEach-Object { [pscustomobject]@{ role = 'raw'; text = (([string]$_ -replace '\s+', ' ').Trim()) } })
+                $bullets = @(Format-SpecrewConversationBullets -Turns $rawTurns -MaxTurns $MaxTurns -MaxChars $MaxChars -PerTurn $PerTurn) | ForEach-Object { $_ -replace '^\- \*\*raw:\*\* ', '- ' }
+                $note = ('(transcript present but its format was not recognized - showing a raw tail; the structured parser for {0} may need updating)' -f $hostLabel)
+                return (& $join $bullets $note)
+            }
         }
     }
 

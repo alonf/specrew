@@ -6,6 +6,44 @@ param(
     [switch]$Quiet,
     [switch]$Json,
     [switch]$Open,
+    [switch]$Live,
+    [Alias('baseline-ref')]
+    [string]$BaselineRef,
+    [string]$Trunk,
+    [Alias('checkpoint-id')]
+    [string]$CheckpointId,
+    [Alias('run-id')]
+    [string]$RunId,
+    [string]$HostName,
+    [Alias('host')]
+    [string]$ReviewerHost,
+    [string]$Model,
+    [Alias('authorization-ref')]
+    [string]$AuthorizationRef,
+    [Alias('code-writer-host')]
+    [string]$CodeWriterHost,
+    [Alias('fallback-policy')]
+    [string]$FallbackPolicy,
+    [Alias('reviewer-config')]
+    [string]$ReviewerConfigPath,
+    [Alias('schema-root')]
+    [string]$SchemaRoot,
+    [Alias('run-root')]
+    [string]$RunRoot,
+    [Alias('timeout-seconds')]
+    [int]$TimeoutSeconds = 0,
+    [Alias('design-context-ref')]
+    [string[]]$DesignContextRef,
+    [Alias('allowed-path')]
+    [string[]]$AllowedPath,
+    [Alias('forbidden-path')]
+    [string[]]$ForbiddenPath,
+    [Alias('exclude-path')]
+    [string[]]$ExcludePath,
+    [Alias('preserve-debug')]
+    [switch]$PreserveDebug,
+    [Alias('list-hosts')]
+    [switch]$ListHosts,
     [switch]$Help,
     [Parameter(ValueFromRemainingArguments = $true)]
     [string[]]$CliArgs
@@ -26,17 +64,61 @@ if (-not (Test-Path -LiteralPath $boundaryStateHelperPath -PathType Leaf)) {
 }
 . $boundaryStateHelperPath
 
+# INT-006 (iter-007): `specrew review --list-hosts` DISCOVERS + PRESENTS the available reviewer hosts (with
+# the recommended independent default) and exits - lightweight, no review, no project-setup gate. This is
+# the deterministic list the code-implementation lens renders so the human chooses from real options
+# instead of being asked blind. Best-effort PATH detection; reflects this shell's env.
+if ($ListHosts) {
+    $ccrLoadPath = Join-Path $PSScriptRoot 'internal\continuous-co-review\_load.ps1'
+    if (Test-Path -LiteralPath $ccrLoadPath -PathType Leaf) {
+        . $ccrLoadPath
+        $cwHostForList = if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $CodeWriterHost } elseif (-not [string]::IsNullOrWhiteSpace($env:SPECREW_HOST)) { $env:SPECREW_HOST } else { $env:SPECREW_ACTIVE_HOST }
+        Write-Host (Format-ContinuousCoReviewReviewerHostChoices -CodeWriterHost $cwHostForList).text
+    }
+    else {
+        Write-Host 'Reviewer-host discovery is unavailable (continuous-co-review module not found under this Specrew install).'
+    }
+    return
+}
+
 function Show-Usage {
     @'
-specrew review - replay the persisted reviewer closeout packet
+specrew review - run live continuous co-review or replay persisted reviewer evidence
 
 Usage:
   specrew review [<iteration>] [--project-path <path>] [--feature <id>] [--quiet | --json] [--open]
+  specrew review --live --baseline-ref <ref> [--checkpoint-id <id>] [--run-id <id>]
+                 [--host <host>] [--model <model>] [--effort <effort>] [--authorization-ref <ref>]
+                 [--code-writer-host <host>]
+                 [--design-context-ref <path>] [--allowed-path <path>] [--forbidden-path <path>]
+                 [--exclude-path <pattern>] [--reviewer-config <path>] [--schema-root <path>]
+                 [--run-root <path>] [--timeout-seconds <seconds>] [--quiet | --json]
 
 Options:
   --project-path <path>  Target Specrew project (default: current directory)
   --feature <id>         Restrict lookup to one feature directory under specs\
   --iteration <NNN>      Replay a specific iteration directory
+  --live                 Run the continuous co-review runtime and write .specrew\review\inline evidence
+  --baseline-ref <ref>   Optional git ref/SHA baseline. Omit for a signoff run (auto-anchors
+                         to the last pass or the merge-base with the trunk); supplying it
+                         makes the run exploratory (it does not auto-anchor).
+  --trunk <name>         Trunk branch the coverage anchor is the merge-base of (default: main)
+  --checkpoint-id <id>   Stable checkpoint id for live evidence (default: manual-live-review)
+  --run-id <id>          Stable run id for live evidence (default: run-<checkpoint-id>)
+  --host <host>          Requested reviewer host, such as claude, codex, copilot, cursor-agent, or antigravity
+  --model <model>        Requested reviewer model id for the host
+  --effort <effort>      Optional host-specific reviewer reasoning/effort setting to persist in evidence
+  --authorization-ref    Human-approved authorization reference for the requested reviewer
+  --code-writer-host     Host that produced the implementation, used to prefer an independent reviewer
+  --design-context-ref   Design/spec artifact to include in the request bundle; repeatable
+  --allowed-path         Path scope the reviewer may inspect; repeatable
+  --forbidden-path       Path scope the reviewer must not inspect; repeatable
+  --exclude-path         Diff path pattern to exclude; repeatable
+  --reviewer-config      JSON host catalog override for live review
+  --schema-root          Reviewer contract schema directory override
+  --run-root             Temporary immutable request-bundle workspace root
+  --timeout-seconds      Reviewer host timeout in seconds (default: 120)
+  --preserve-debug       Keep temporary request-bundle workspaces after live review
   --quiet                Emit only the stable machine-parseable digest line
   --json                 Emit JSON summary instead of the visual reviewer summary
   --open                 Open reviewer-index.md and review-diagrams.md when present
@@ -63,13 +145,63 @@ function Convert-UnixStyleArguments {
         Quiet           = $Quiet
         Json            = $Json
         Open            = $Open
+        Live            = $Live
         Help            = $Help
+        BaselineRef     = $null
+        TrunkName       = 'main'
+        CheckpointId    = 'manual-live-review'
+        RunId           = $null
+        Host            = $null
+        Model           = $null
+        Effort          = $null
+        AuthorizationRef = $null
+        CodeWriterHost  = $null
+        TimeoutSeconds  = 120
+        FallbackPolicy  = 'none'
+        ReviewerConfigPath = $null
+        SchemaRoot      = $null
+        RunRoot         = $null
+        PreserveDebug   = $false
+        DesignContextRefs = @()
+        AllowedPaths    = @()
+        ForbiddenPaths  = @()
+        ExcludedPathPatterns = @()
     }
 
     $CliArgs = @($CliArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
+            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path)(?:=(?<value>.+))?$' {
+                $name = $Matches['name']
+                $value = $Matches['value']
+                if ([string]::IsNullOrWhiteSpace($value)) {
+                    $index++
+                    if ($index -ge $CliArgs.Count) { throw "--$name requires a value." }
+                    $value = $CliArgs[$index]
+                }
+
+                switch ($name) {
+                    'baseline-ref' { $result.BaselineRef = $value }
+                    'trunk' { $result.TrunkName = $value }
+                    'checkpoint-id' { $result.CheckpointId = $value }
+                    'run-id' { $result.RunId = $value }
+                    'host' { $result.Host = $value }
+                    'model' { $result.Model = $value }
+                    'effort' { $result.Effort = $value }
+                    'authorization-ref' { $result.AuthorizationRef = $value }
+                    'code-writer-host' { $result.CodeWriterHost = $value }
+                    'fallback-policy' { $result.FallbackPolicy = $value }
+                    'reviewer-config' { $result.ReviewerConfigPath = $value }
+                    'schema-root' { $result.SchemaRoot = $value }
+                    'run-root' { $result.RunRoot = $value }
+                    'timeout-seconds' { $result.TimeoutSeconds = [int]$value }
+                    'design-context-ref' { $result.DesignContextRefs = @($result.DesignContextRefs) + @($value) }
+                    'allowed-path' { $result.AllowedPaths = @($result.AllowedPaths) + @($value) }
+                    'forbidden-path' { $result.ForbiddenPaths = @($result.ForbiddenPaths) + @($value) }
+                    'exclude-path' { $result.ExcludedPathPatterns = @($result.ExcludedPathPatterns) + @($value) }
+                }
+            }
             '^--project-path(?:=(.+))?$' {
                 if ($Matches[1]) {
                     $result.ProjectPath = $Matches[1]
@@ -103,6 +235,8 @@ function Convert-UnixStyleArguments {
             '^--quiet$' { $result.Quiet = $true }
             '^--json$' { $result.Json = $true }
             '^--open$' { $result.Open = $true }
+            '^--live$' { $result.Live = $true }
+            '^--preserve-debug$' { $result.PreserveDebug = $true }
             '^(?:-h|--help)$' { $result.Help = $true }
             '^\d{3,}$' {
                 if ([string]::IsNullOrWhiteSpace($result.IterationNumber)) {
@@ -117,6 +251,72 @@ function Convert-UnixStyleArguments {
     }
 
     return [pscustomobject]$result
+}
+
+function Get-LiveReviewConfiguration {
+    param(
+        [AllowNull()][string]$ReviewerConfigPath,
+        [AllowNull()][string]$HostName,
+        [AllowNull()][string]$Model,
+        [AllowNull()][string]$AuthorizationRef,
+        [int]$TimeoutSeconds,
+        [string]$FallbackPolicy
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) {
+        $resolvedPath = (Resolve-Path -LiteralPath $ReviewerConfigPath).Path
+        return (Get-Content -LiteralPath $resolvedPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100)
+    }
+
+    if ($HostName -eq 'fixture') {
+        return [pscustomobject][ordered]@{
+            schema_version = '1.0'
+            hosts          = @(
+                [pscustomobject][ordered]@{
+                    host              = 'fixture'
+                    model             = if ([string]::IsNullOrWhiteSpace($Model)) { 'fixture-reviewer' } else { $Model }
+                    adapter_id        = 'reviewer-host-adapter-fixture'
+                    allowed           = $true
+                    installed         = $true
+                    review_class_rank = 100
+                    model_source      = 'fixture'
+                    cost_class        = 'free-local-fixture'
+                    authorization_ref = if ([string]::IsNullOrWhiteSpace($AuthorizationRef)) { 'local-fixture-reviewer' } else { $AuthorizationRef }
+                    fallback_allowed  = $false
+                    timeout_seconds   = $TimeoutSeconds
+                }
+            )
+        }
+    }
+
+    if ([string]::IsNullOrWhiteSpace($HostName) -and [string]::IsNullOrWhiteSpace($AuthorizationRef) -and [string]::IsNullOrWhiteSpace($Model)) {
+        return $null
+    }
+
+    $configuration = New-ContinuousCoReviewDefaultReviewerHostConfig
+    $hosts = @(
+        foreach ($entry in @($configuration.hosts)) {
+            $hostMatches = [string]::IsNullOrWhiteSpace($HostName) -or $entry.host -eq $HostName
+            [pscustomobject][ordered]@{
+                host              = $entry.host
+                model             = if ($hostMatches -and -not [string]::IsNullOrWhiteSpace($Model)) { $Model } else { $entry.model }
+                adapter_id        = $entry.adapter_id
+                allowed           = if ($hostMatches -and -not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $true } else { [bool]$entry.allowed }
+                installed         = [bool]$entry.installed
+                review_class_rank = [int]$entry.review_class_rank
+                model_source      = $entry.model_source
+                cost_class        = $entry.cost_class
+                authorization_ref = if ($hostMatches -and -not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $AuthorizationRef } else { $entry.authorization_ref }
+                fallback_allowed  = if ($hostMatches -and $FallbackPolicy -ne 'none') { $true } else { [bool]$entry.fallback_allowed }
+                timeout_seconds   = $TimeoutSeconds
+            }
+        }
+    )
+
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        hosts          = @($hosts)
+    }
 }
 
 function Get-MetadataValue {
@@ -299,6 +499,82 @@ function Get-ReviewBoundarySyncWarning {
     return ($warnings.ToArray() -join [Environment]::NewLine)
 }
 
+# iter-008: ENGINE- and FEATURE-independent host AUTHORIZATION. `specrew review --host X --authorization-ref Y`
+# persists the HUMAN authorization to .specrew/reviewer-hosts.json as a PROJECT-level operation - authorizing a
+# reviewer is setup (often before the first feature), so it must NOT require a resolvable feature/checkpoint, and
+# it must run regardless of the review engine. Done HERE, before the review arg + feature resolution, so it
+# survives both the worktree-engine cutover (the write used to live in the now-bypassed legacy --live) and a
+# no-feature project. ONLY on explicit --host + --authorization-ref (the human-provenance anchor).
+$authHostName = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHost } elseif (-not [string]::IsNullOrWhiteSpace($HostName)) { $HostName } else { '' }
+$authRefValue = $AuthorizationRef; $authModelValue = $Model
+$cliArgList = @($CliArgs)
+for ($ai = 0; $ai -lt $cliArgList.Count; $ai++) {
+    switch ([string]$cliArgList[$ai]) {
+        '--host' { if (($ai + 1) -lt $cliArgList.Count) { $authHostName = [string]$cliArgList[$ai + 1] } }
+        '--authorization-ref' { if (($ai + 1) -lt $cliArgList.Count) { $authRefValue = [string]$cliArgList[$ai + 1] } }
+        '--model' { if (($ai + 1) -lt $cliArgList.Count) { $authModelValue = [string]$cliArgList[$ai + 1] } }
+    }
+}
+if ((-not [string]::IsNullOrWhiteSpace($authHostName)) -and (-not [string]::IsNullOrWhiteSpace($authRefValue))) {
+    $authWritten = $false
+    $authError = $null
+    $reviewerHostsPath = $null
+    try {
+        $authProjectPath = if ([string]::IsNullOrWhiteSpace($ProjectPath)) { (Get-Location).Path } else { (Resolve-Path -LiteralPath $ProjectPath -ErrorAction Stop).Path }
+        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')   # for New-ContinuousCoReviewDefaultReviewerHostConfig
+        $authConfig = Get-LiveReviewConfiguration -HostName $authHostName -Model $authModelValue -AuthorizationRef $authRefValue -TimeoutSeconds 0 -FallbackPolicy 'none'
+        if ($null -ne $authConfig) {
+            $reviewerHostsPath = Join-Path $authProjectPath '.specrew/reviewer-hosts.json'
+            $rhDir = Split-Path -Parent $reviewerHostsPath
+            if (-not (Test-Path -LiteralPath $rhDir)) { New-Item -ItemType Directory -Path $rhDir -Force | Out-Null }
+            # Preserve EXISTING human authorizations: a fresh --host authorize must NOT drop a previously-authorized
+            # host/fallback (Codex review P2). Re-apply any prior allowed+authorization_ref onto the fresh catalog
+            # (the newly-authorized host is already set in $authConfig). Fail-safe: an unreadable prior file just
+            # writes the fresh catalog rather than blocking the authorize.
+            if (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf) {
+                try {
+                    $existingRh = Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100
+                    $priorAuth = @{}
+                    foreach ($eh in @($existingRh.hosts)) {
+                        if ([bool]$eh.allowed -and -not [string]::IsNullOrWhiteSpace([string]$eh.authorization_ref)) { $priorAuth[[string]$eh.host] = $eh }
+                    }
+                    foreach ($nh in @($authConfig.hosts)) {
+                        $nhName = [string]$nh.host
+                        if (($nhName -ne $authHostName) -and $priorAuth.ContainsKey($nhName)) {
+                            $prev = $priorAuth[$nhName]
+                            $nh.allowed = $true
+                            $nh.authorization_ref = [string]$prev.authorization_ref
+                            if (-not [string]::IsNullOrWhiteSpace([string]$prev.model)) { $nh.model = [string]$prev.model }
+                        }
+                    }
+                }
+                catch { $null = $_ }
+            }
+            ($authConfig | ConvertTo-Json -Depth 100) | Set-Content -LiteralPath $reviewerHostsPath -Encoding UTF8
+            $authWritten = $true
+        }
+        else { $authError = "Get-LiveReviewConfiguration returned no config for host '$authHostName'." }
+    }
+    catch { $authError = $_.Exception.Message }
+    # A PURE authorize (--host + --authorization-ref, no --live review) is a project-SETUP op (often pre-first-feature,
+    # at the code-implementation lens). Report the outcome HONESTLY and EXIT here - do NOT fall through to the replay
+    # path (Resolve-IterationDirectory below), which throws at workshop time when no iteration folder exists yet (the
+    # "wrote the selection, then looked for the iteration folder" failure). Detect --live from BOTH the -Live switch
+    # AND --live in $CliArgs (this block runs BEFORE arg-parse), so an authorize+review combo still runs the review.
+    # Honest exit code: never report success on a write that did not happen (else a failed authorize reads as authorized
+    # and the navigator silently finds no host).
+    $liveRequested = $Live.IsPresent -or (@($cliArgList) -contains '--live')
+    if (-not $liveRequested) {
+        if ($authWritten) {
+            Write-Host ("Authorized reviewer host '{0}' (ref: {1}) -> {2}" -f $authHostName, $authRefValue, $reviewerHostsPath)
+            exit 0
+        }
+        $authReason = if ([string]::IsNullOrWhiteSpace($authError)) { 'unknown error' } else { $authError }
+        Write-Error ("Reviewer host authorization FAILED for '{0}': {1}" -f $authHostName, $authReason)
+        exit 1
+    }
+}
+
 $parsedArgs = Convert-UnixStyleArguments `
     -ProjectPath $ProjectPath `
     -FeatureId $FeatureId `
@@ -306,8 +582,29 @@ $parsedArgs = Convert-UnixStyleArguments `
     -Quiet $Quiet.IsPresent `
     -Json $Json.IsPresent `
     -Open $Open.IsPresent `
+    -Live $Live.IsPresent `
     -Help $Help.IsPresent `
     -CliArgs $CliArgs
+
+if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $parsedArgs.BaselineRef = $BaselineRef }
+if (-not [string]::IsNullOrWhiteSpace($Trunk)) { $parsedArgs.TrunkName = $Trunk }
+if (-not [string]::IsNullOrWhiteSpace($CheckpointId)) { $parsedArgs.CheckpointId = $CheckpointId }
+if (-not [string]::IsNullOrWhiteSpace($RunId)) { $parsedArgs.RunId = $RunId }
+$boundHost = if (-not [string]::IsNullOrWhiteSpace($ReviewerHost)) { $ReviewerHost } else { $HostName }
+if (-not [string]::IsNullOrWhiteSpace($boundHost)) { $parsedArgs.Host = $boundHost }
+if (-not [string]::IsNullOrWhiteSpace($Model)) { $parsedArgs.Model = $Model }
+if (-not [string]::IsNullOrWhiteSpace($AuthorizationRef)) { $parsedArgs.AuthorizationRef = $AuthorizationRef }
+if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $parsedArgs.CodeWriterHost = $CodeWriterHost }
+if (-not [string]::IsNullOrWhiteSpace($FallbackPolicy)) { $parsedArgs.FallbackPolicy = $FallbackPolicy }
+if (-not [string]::IsNullOrWhiteSpace($ReviewerConfigPath)) { $parsedArgs.ReviewerConfigPath = $ReviewerConfigPath }
+if (-not [string]::IsNullOrWhiteSpace($SchemaRoot)) { $parsedArgs.SchemaRoot = $SchemaRoot }
+if (-not [string]::IsNullOrWhiteSpace($RunRoot)) { $parsedArgs.RunRoot = $RunRoot }
+if ($TimeoutSeconds -gt 0) { $parsedArgs.TimeoutSeconds = $TimeoutSeconds }
+if (@($DesignContextRef).Count -gt 0) { $parsedArgs.DesignContextRefs = @($parsedArgs.DesignContextRefs) + @($DesignContextRef) }
+if (@($AllowedPath).Count -gt 0) { $parsedArgs.AllowedPaths = @($parsedArgs.AllowedPaths) + @($AllowedPath) }
+if (@($ForbiddenPath).Count -gt 0) { $parsedArgs.ForbiddenPaths = @($parsedArgs.ForbiddenPaths) + @($ForbiddenPath) }
+if (@($ExcludePath).Count -gt 0) { $parsedArgs.ExcludedPathPatterns = @($parsedArgs.ExcludedPathPatterns) + @($ExcludePath) }
+if ($PreserveDebug.IsPresent) { $parsedArgs.PreserveDebug = $true }
 
 $ProjectPath = $parsedArgs.ProjectPath
 $FeatureId = $parsedArgs.FeatureId
@@ -315,6 +612,7 @@ $IterationNumber = $parsedArgs.IterationNumber
 $Quiet = [bool]$parsedArgs.Quiet
 $Json = [bool]$parsedArgs.Json
 $Open = [bool]$parsedArgs.Open
+$Live = [bool]$parsedArgs.Live
 $Help = [bool]$parsedArgs.Help
 
 if ($Help) {
@@ -331,6 +629,95 @@ $resolvedProjectPath = Resolve-ProjectPath -Path $ProjectPath
 if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     Write-Error ("Project path does not exist: {0}" -f $resolvedProjectPath)
     exit 1
+}
+
+if ($Live) {
+    # iter-008: the MANUAL door drives the worktree co-review SERVICE - the ONE method. It auto-resolves
+    # baseline/design-context/host (no required --host/--design-context-ref) and runs in a read-only worktree. The
+    # diff-cramming first cut of this never-released feature is being removed; there is no legacy path to select.
+    $coReviewEngine = 'worktree'
+
+    if ($coReviewEngine -eq 'worktree') {
+        try {
+            . (Join-Path $PSScriptRoot 'internal/continuous-co-review/co-review-service.ps1')
+            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { 900 }
+            $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.RunId) -BaselineRef ([string]$parsedArgs.BaselineRef) -CodeWriterHost ([string]$parsedArgs.CodeWriterHost) -TimeoutSeconds $tos
+            $findings = Get-ContinuousCoReviewServiceFindings -RepoRoot $resolvedProjectPath -RunId $run.run_id
+            $fc = if ($findings) { @($findings.findings).Count } else { 0 }
+            $fstatus = if ($findings) { [string]$findings.status } else { '' }
+            # FAIL LOUD: the inline run returns status='done' ONLY when the co-review actually ran. Any other status
+            # (notably 'failed' / no-authorized-reviewer-host) is NOT a clean review - surface the reason + remediation
+            # and exit NON-ZERO, so a caller cannot read an empty result as "reviewed, no findings" and substitute its
+            # own review (the failure mode that let an unauthorized run get accepted on the Copilot dogfood).
+            if ([string]$run.status -ne 'done') {
+                $reason = if (($run.PSObject.Properties['failure_reason']) -and (-not [string]::IsNullOrWhiteSpace([string]$run.failure_reason))) { [string]$run.failure_reason } else { [string]$run.status }
+                if ($Json) {
+                    [pscustomobject]@{ run_id = $run.run_id; engine = 'worktree'; status = $run.status; failure_reason = $reason; ok = $false; run_dir = $run.run_dir } | ConvertTo-Json -Depth 8
+                }
+                else {
+                    $rb = ('=' * 60)
+                    Write-Host $rb -ForegroundColor Red
+                    Write-Host 'SPECREW CO-REVIEW DID NOT RUN' -ForegroundColor Red
+                    Write-Host $rb -ForegroundColor Red
+                    Write-Host ("Run: {0}   Reason: {1}" -f $run.run_id, $reason)
+                    if ($reason -match 'no-authorized-reviewer-host') {
+                        Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
+                        Write-Host '    specrew review --host <claude|codex|...> --authorization-ref <ref>'
+                    }
+                    else { Write-Host ("Inspect: {0}" -f $run.run_dir) }
+                    Write-Host 'Do NOT substitute another review for this - the co-review must run to produce gate evidence.' -ForegroundColor Yellow
+                }
+                exit 1
+            }
+            if ($Json) {
+                [pscustomobject]@{ run_id = $run.run_id; engine = 'worktree'; status = $run.status; findings_status = $fstatus; findings_count = $fc; run_dir = $run.run_dir } | ConvertTo-Json -Depth 8
+            }
+            elseif ($Quiet) {
+                Write-Host ("review-run run_id={0} engine=worktree status={1} findings={2}" -f $run.run_id, $run.status, $fc)
+            }
+            else {
+                $border = ('=' * 60)
+                Write-Host $border -ForegroundColor Green
+                Write-Host 'SPECREW LIVE REVIEW (worktree engine)' -ForegroundColor Green
+                Write-Host $border -ForegroundColor Green
+                Write-Host ("Run: {0}" -f $run.run_id)
+                Write-Host ("Status: {0}  Findings: {1} ({2})" -f $run.status, $fc, $fstatus)
+                if ($run.PSObject.Properties['elapsed_seconds'] -and $null -ne $run.elapsed_seconds) {
+                    Write-Host ("Elapsed: {0}s  Timeout: {1}s" -f $run.elapsed_seconds, $run.timeout_seconds)
+                }
+                if ($findings -and $fc -gt 0) { foreach ($f in @($findings.findings)) { Write-Host ("  [{0}] {1} - {2}" -f $f.severity, $f.location.path, ([string]$f.comment)) } }
+            }
+            # HOST-NEUTRAL gate evidence: the detached reap promotes on a host whose Stop hook fires, but a
+            # straight-through host (Copilot) never fires it - so THIS inline door (the F3 checkpoint) promotes through
+            # the SAME canonical producer (Add-...PassRunRecord with the DIGEST), gated on the SAME affirmative-pass
+            # decision the reap uses. Idempotent + fail-open: a later reap promotion of the same run is a no-op, and any
+            # failure leaves the gate to block safely. Advisory-only (no promotion) on a non-affirmative verdict.
+            try {
+                # P1 (Codex review): a SCOPED live review (explicit --baseline-ref) is exploratory and must NOT
+                # auto-anchor signoff evidence - the --live help says an explicit baseline does not auto-anchor.
+                # Promoting it records the merge-base digest as if the whole feature were reviewed, letting a narrow
+                # `--baseline-ref HEAD~1` satisfy review-signoff for earlier changes that were never co-reviewed.
+                # Promote ONLY a signoff run (baseline OMITTED -> auto-anchored to the feature merge-base).
+                $scopedExploratoryReview = -not [string]::IsNullOrWhiteSpace([string]$parsedArgs.BaselineRef)
+                $verdict = ConvertFrom-ContinuousCoReviewNavigatorVerdict -ResultPath (Join-Path $run.run_dir 'result.out')
+                $isPromotablePass = Test-ContinuousCoReviewVerdictIsPromotablePass -Verdict $verdict
+                if ($isPromotablePass -and (-not $scopedExploratoryReview)) {
+                    $digestId = if ($run.PSObject.Properties['reviewed_digest_tree_id']) { [string]$run.reviewed_digest_tree_id } else { '' }
+                    if (-not [string]::IsNullOrWhiteSpace($digestId)) {
+                        $promoted = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $resolvedProjectPath -RunId $run.run_id -TreeId $digestId -Now ([datetime]::UtcNow)
+                        if ((-not [string]::IsNullOrWhiteSpace([string]$promoted)) -and (-not $Quiet) -and (-not $Json)) { Write-Host ("  promoted as co-review gate evidence (run {0})" -f $run.run_id) -ForegroundColor Green }
+                    }
+                }
+                elseif ($isPromotablePass -and $scopedExploratoryReview -and (-not $Quiet) -and (-not $Json)) {
+                    Write-Host ("  scoped review (--baseline-ref {0}) is exploratory - NOT promoted as signoff gate evidence." -f $parsedArgs.BaselineRef) -ForegroundColor Yellow
+                }
+            }
+            catch { $null = $_ }
+        }
+        catch { Write-Error $_.Exception.Message; exit 1 }
+        exit 0
+    }
+
 }
 
 try {

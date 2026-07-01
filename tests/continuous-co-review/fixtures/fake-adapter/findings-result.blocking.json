@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "run_id": "run-fake-adapter-blocking",
+  "status": "findings",
+  "reviewer": {
+    "host": "fixture",
+    "model": "fixture-reviewer",
+    "adapter_id": "reviewer-host-adapter-fixture"
+  },
+  "findings": [
+    {
+      "finding_id": "finding-fake-adapter-blocking",
+      "source_run_id": "run-fake-adapter-blocking",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/reviewer-host-adapter-fixture.ps1",
+        "line_start": 1,
+        "line_end": 1
+      },
+      "severity": "blocking",
+      "kind": "design-contract-violation",
+      "design_reference": "FR-006",
+      "comment": "Fake adapter fixture produces a deterministic blocking finding.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-06-17T21:25:00Z"
+}

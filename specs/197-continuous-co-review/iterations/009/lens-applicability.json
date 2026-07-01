@@ -1,0 +1,41 @@
+{
+  "feature": "197-continuous-co-review",
+  "iteration": "009",
+  "workshop_intake": false,
+  "confirmation_required": true,
+  "selected": [
+    "component-design",
+    "requirements-nfr"
+  ],
+  "workshop": {
+    "component-design": {
+      "agenda": [
+        "mechanism seams in the existing worktree pipeline (which script each R touches)",
+        "the remediation-menu surface (R6) + round-state choice-carrying",
+        "incremental finding emission + partial harvest (R1)",
+        "hard-timeout watchdog + process-tree kill (R5)"
+      ],
+      "decision": "Extend the existing worktree-reviewer pipeline at named seams (no new architecture). Component-to-responsibility: worktree-reviewer.ps1 owns the hard timeout (R5); worktree-review-orchestrator.ps1 owns partial harvest + evidence labelling (R1/R4); the reviewer instruction contract owns incremental emission (R1); reviewer-selection-policy + reviewer-authorization-gate own pre-flight independence + labelled same-host fallback (R3); the navigator/provider own the remediation-menu surface (R2/R3/R6/accept/override); co-review-round-state.json carries the human choice to the next run; review-signoff-evidence-gate owns tiered degraded-evidence + recorded ack + degraded-block override (R4/D5). R6 remediation menu (more time / different host / narrow scope code-process-file-function / accept partial / override block) is the unifying surface; scope-narrowing extends the existing user-code/subtree scoping.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/009/design-analysis.md - mechanism-to-component map + remediation-menu flow"
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "the never-deadlock / any-review-is-better-than-nothing principle",
+        "degraded-evidence gate policy (D4, tiered by actual assurance)",
+        "hard-timeout semantics + WSL-validation acceptance gate (D3/R5)",
+        "blocking-finding handling from a degraded review (D5)",
+        "async human-gate interaction model (D1)"
+      ],
+      "decision": "Guiding NFR: any review > nothing; the gate never hard-deadlocks. D1 hybrid interaction (R3 pre-flight with labelled same-host fallback; R2 post-hoc with a pre-flight generous-budget heuristic for large diffs). D4 tiered evidence: full+independent auto-allows at any budget; partial OR same-host needs a recorded first-class ack verdict; time-extended is not reduced assurance. D5 blocking findings always surface and stop; a degraded-review block is overridable with a recorded reason. D3 hard timeout = independent watchdog + process-group/job-object tree-kill + stdio-redirect + 5s graceful flush; WSL-validation is a hard acceptance gate.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    }
+  },
+  "co_design": true
+}

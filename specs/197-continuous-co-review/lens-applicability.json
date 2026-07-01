@@ -1,0 +1,209 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "requirements-nfr",
+    "data-storage",
+    "security-compliance",
+    "integration-api",
+    "devops-operations",
+    "observability-resilience",
+    "code-implementation"
+  ],
+  "skipped": {
+    "ui-ux": "No app UI or user-facing screen is introduced in Iteration 001. User-facing behavior is CLI/artifact wording and review-thread/gate messages, covered by requirements-nfr, observability-resilience, devops-operations, and code-implementation."
+  },
+  "depths": {
+    "architecture-core": "full",
+    "component-design": "full",
+    "requirements-nfr": "medium",
+    "data-storage": "medium",
+    "security-compliance": "medium",
+    "integration-api": "full",
+    "devops-operations": "light",
+    "observability-resilience": "medium",
+    "code-implementation": "medium"
+  },
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "Should Iteration 001 spawn a fresh reviewer process for each review run or reuse a long-lived reviewer?",
+        "How should the review context be packaged and bounded for a fresh-context reviewer?",
+        "How should the orchestrator detect reviewer completion, timeouts, invalid JSON, and process cleanup failures?",
+        "Where should reviewer provider/model selection and cost authorization live?",
+        "Which review kinds and multi-reviewer modes are in scope now versus future features?",
+        "Where should the canonical reviewer instruction live, and how should host folders receive best-effort mirrors?",
+        "Which component owns reviewer-definition injection into the outbound host prompt?",
+        "How should ReviewRequest carry design context content, round number, prior findings, visibility policy, and do-policy?",
+        "How should read-only enforcement and mutation recovery work when host-level readonly flags are not uniform?"
+      ],
+      "decision": "Agreed architecture-core direction: Iteration 001 uses a modular, contract-and-gate-centered architecture with one bounded fresh-context read-only reviewer process per code/change-set review run. The orchestrator builds an explicit review request package from the git diff, governing design/spec context, allowed paths, review kind, and provider/model configuration; process exit plus valid stdout JSON marks completion; timeout, nonzero exit, empty output, or invalid JSON becomes a deterministic failure finding or gate block. Provider/model selection and cost authorization are explicit configuration, not implicit background spend. The contract preserves future features for stronger Job Object/cgroup cleanup, optional long-lived reviewer reuse, multi-reviewer Codex/Claude/provider fan-out, retro-informed review, and non-code review kinds, but those are out of scope for the first release. Iteration 002 send-back adds a reviewer-definition and prompt-composition layer without replacing the spine: the canonical reviewer instruction lives at scripts/internal/continuous-co-review/code-review-agent.md, host-folder copies are best-effort mirrors only, prompt injection is the required execution path, the core prompt composer owns Proposal 145 rubric/policy/design-context/round/prior-finding injection, adapters stay transport/read-only capability edges, ReviewRequest carries structured design context content, exact diff content, round number, prior findings, visibility policy, and do-policy, and reviewer execution defaults to an isolated review workspace with pre/post mutation validation so any reviewer write is captured as evidence and discarded with the workspace instead of reverted in the active feature worktree.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/architecture-core.md — fresh-process reviewer orchestration flow and future-feature notes."
+    },
+    "component-design": {
+      "agenda": [
+        "What decomposition vocabulary should bind the component map for Iteration 001?",
+        "What responsibilities belong together, and what should stay separate?",
+        "Which dependencies point inward versus outward?",
+        "Where should reviewer visibility, temporary request bundles, cleanup, and concurrency be owned?",
+        "Where should external JSON schemas be decoupled from internal runtime models?",
+        "What extension mechanism fits provider adapters without overbuilding Iteration 001?",
+        "Which components own reviewer instruction loading, prompt composition, round context, and mutation detection?",
+        "How should dependency direction keep reviewer semantics out of host adapters?",
+        "Which abstraction shape fits the reviewer-definition repair without adding dynamic plugins or generated code?",
+        "How should ReviewRequest.v2, FindingsResult.v1, and generated prompt text stay decoupled?",
+        "How should centralized reviewer-definition injection coexist with convention-based host adapter extension?"
+      ],
+      "decision": "Agreed component-design direction: Iteration 001 uses a layered/modular component design with a provider adapter seam. Stable review contracts sit inward, provider-specific command adapters sit outward, and the orchestrator depends on contracts plus interfaces rather than provider command details. Reviewer visibility is policy plus review bundle only in this first slice; hard OS/filesystem sandboxing remains deferred future hardening. External JSON schemas/DTOs remain decoupled from internal runtime models. ReviewRunWorkspaceManager owns unique per-run temp workspace allocation, bundle placement, cleanup, optional debug preservation, no bundle reuse, and concurrency-safe run IDs across worktrees and within a single worktree. Provider extensibility uses composition plus a static in-repo provider adapter registry selected by explicit configuration, capability discovery, reviewer-selection policy, and human authorization. ReviewProviderCatalog, ProviderCapabilityDiscovery, ReviewerSelectionPolicy, and HumanAuthorizationGate own installed-host/model discovery, strongest review-class model recommendation, cross-host/cross-model independence preference when available and authorized, and blocking rather than silently downgrading unavailable requested models. Full dynamic plugins, multi-reviewer fan-out, quorum policy, quota probing, and hard sandboxing are future features. Iteration 002 send-back keeps the layered/modular design and adds explicit components around reviewer instruction ownership, prompt composition, round context, and mutation detection: ReviewerInstructionSource loads the canonical code-review-agent.md, ReviewPromptComposer renders the complete injected host prompt, ReviewRoundContextBuilder supplies round_number and prior_findings, ReviewRequestSchema.v2 carries structured design context/diff/policy/round fields, WorkspaceMutationGuard captures pre/post isolated-workspace baselines and mutation diffs, and HostAgentMirrorDeployer copies host-folder mirrors for consistency only. Host adapters remain transport/read-only capability edges and must not own rubric, policy wording, prior-finding logic, or durable writes.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/component-design.md — layered component map, dependency direction, run workspace ownership, and provider adapter extension seam."
+    },
+    "requirements-nfr": {
+      "agenda": [
+        "Which NFRs are design drivers for Iteration 001?",
+        "Which constraints are mandatory rather than preferences?",
+        "Which requirements need a measurable threshold?",
+        "Which requirements are unknown enough to require clarification?",
+        "Which acceptance criteria prove the quality, not only the happy path?",
+        "Should prompt completeness be a binding NFR, and which reviewer-definition fields must be asserted in the actual outbound host prompt?",
+        "Should ReviewRequest.v2 structured observability be binding, and which fields must schema/fixture evidence expose?",
+        "How do deterministic fixture tests prove the prompt is complete instead of hiding an empty or skeletal prompt behind a successful fake FindingsResult.v1?",
+        "How should review-only behavior, supported host read-only flags, isolated workspaces, and mutation detection be measured?",
+        "How should the host-neutral injected-prompt path relate to non-authoritative native host mirrors?",
+        "How should SC-012 manual validation and no-scope-creep constraints be made measurable for the send-back?"
+      ],
+      "decision": "Agreed requirements-NFR direction: Iteration 001 treats deterministic failure handling, auditability, finding traceability, fix verification, bounded review/fix convergence, compatibility with F-184 sibling work, least-privilege honesty, concurrency safety, cost control, and maintainability/testability as binding or high-priority quality drivers. The review gate is not satisfied merely because a blackboard file exists or no blocking finding is currently listed; checkpoint advancement is safe only when every blocking finding is fixed with evidence, explicitly rejected with rationale, or escalated to a human after the bounded loop is exhausted. The review/fix loop is capped at two rounds for Iteration 001: initial review plus one fix-verification round, then mandatory human escalation if the same blocking finding remains unresolved. Iteration 002 send-back adds binding measurable quality requirements for reviewer-definition delivery: every outbound adapter prompt must contain the canonical code-review-agent.md content, Proposal 145 rubric, workshop-decision conformance, claim/design trace, report-falsification checks, design context content, exact diff/change-set content, round_number, prior_findings, visibility policy, do-policy, and FindingsResult.v1-only output instruction. ReviewRequest.v2 must expose those inputs as structured observable fields, fake/fixture tests must inspect the actual adapter prompt so empty prompts cannot pass, review-only behavior and isolated-workspace mutation detection are binding, host-neutral injected prompt composition is authoritative across all five adapters, native host mirrors are non-authoritative consistency copies only, SC-012 manual validation must run the same injected-prompt path, and scope exclusions remain binding for new dependencies, live cross-host CI, rung-1 hooks, Proposal 139, Proposal 196, and Proposal 181/194 automation.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/requirements-nfr.md — quality-attribute priority table and measurable NFR thresholds."
+    },
+    "data-storage": {
+      "agenda": [
+        "Is persistent storage required, or is derived/transient state enough?",
+        "What owns each data type?",
+        "Which storage model fits the first slice?",
+        "What consistency model is required?",
+        "How are schema changes, backup, restore, and retention handled?",
+        "How does the design avoid direct access to another component's private storage?"
+      ],
+      "decision": "Agreed data-storage direction: Iteration 001 uses versioned filesystem artifacts only, with no database, queue, cache, event stream, search index, blob store, or external data provider. Durable review evidence and gate state live under `.specrew/review/inline/<run-id>/...` and include run metadata, findings, dispositions, fix evidence references, gate verdicts, provenance, and schema version information. Temporary request bundles are immutable per-run workspace artifacts owned by ReviewRunWorkspaceManager, are never reused across runs, and are cleaned by default unless explicit debug preservation is enabled. Durable review artifacts are committed to Git when they serve as boundary evidence; temporary request bundles are not committed by default.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/data-storage.md — filesystem artifact ownership, temporary bundle lifecycle, and durable review evidence model."
+    },
+    "security-compliance": {
+      "agenda": [
+        "What repository or bundle context may a trusted reviewer inspect?",
+        "What ambient machine state and sensitive data must never be deliberately packaged or persisted?",
+        "What authority does the reviewer process have over source files, Specrew state, and Git state?",
+        "What provider/model authorization is required before reviewer invocation?",
+        "What command-construction and malformed-output controls are required for provider adapters?",
+        "What audit metadata is enough for Iteration 001 without leaking secrets?",
+        "What visibility policy should the canonical reviewer definition and ReviewRequest.v2 enforce?",
+        "What do-policy should the injected reviewer instruction enforce?",
+        "How should host read-only flags and unsupported host capabilities be represented?",
+        "How should isolated-workspace mutation detection classify reviewer-authored file changes?",
+        "What redaction and audit evidence proves prompt injection without persisting raw prompts, raw transcripts, or secrets?",
+        "What command-safety and responsibility boundary keeps host adapters transport-only?"
+      ],
+      "decision": "Agreed security-compliance direction: Proposal 197 treats the reviewer as a trusted component, not an adversary, so Iteration 001 must not artificially blind the reviewer from repository context needed for high-quality design-conformance review. The reviewer may inspect repository context needed for correct review and may call its authorized provider/model, but it must not directly edit source files, stage commits, push branches, or mutate Specrew state. Review bundles and durable artifacts must never deliberately include environment variables, credentials, access tokens, token stores, local private config, unrelated temp files, raw prompts, raw provider transcripts, or secret values; sensitive findings reference locations and redact secret values. Provider/model use is limited to explicit allowed configuration, with human authorization required for non-default, paid, external, or newly added providers. Provider adapters must use safe argument-array or equivalent invocation, generated or normalized run IDs and paths, and deterministic blocking on timeout, nonzero exit, empty output, invalid JSON, malformed schema, or unknown blocking state. Iteration 002 send-back tightens the reviewer-definition trust boundary: the reviewer may read supplied ReviewRequest.v2 content, exact diff/change-set, prior findings, design context content, and bounded repository context needed to validate the changed surface, but must not inspect or persist ambient secrets, token stores, environment variables, unrelated local config, or private machine state. The injected do-policy is strict review-only: emit exactly FindingsResult.v1 and never modify, create, delete, format, stage, commit, push, switch branches, mutate Specrew state, run repair/generator/install commands, or emit alternate schemas. Host adapters pass native read-only or permission-deny flags where supported, record unsupported capability honestly, and rely on mandatory isolated-workspace mutation detection as the uniform enforcement layer. Any source/spec/state/Git mutation invalidates the review execution and blocks the gate; mutation evidence records paths and classification only and is never treated as a fix. Real runs persist hashes, versions, source references, run metadata, gate verdicts, failure classifications, and mutation status rather than raw prompts, raw provider transcripts, or secret values; deterministic fixture tests may capture sanitized composed prompts to prove the real prompt path includes the rubric, design context, round number, and prior findings. Host adapters remain transport-only safe-argv/equivalent edges and do not own rubric text, policy wording, prior-finding semantics, durable writes, or gate verdicts.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/security-compliance.md — trust-boundary and attack-surface controls for trusted fresh-context reviewer runs plus reviewer-definition prompt injection, read-only enforcement, mutation detection, and redacted audit evidence."
+    },
+    "integration-api": {
+      "agenda": [
+        "What integration style should connect the orchestrator, provider adapters, fresh reviewer process, durable artifacts, and gate validator?",
+        "What owns the contracts and how are schema versions handled?",
+        "Are reviewer operations synchronous, asynchronous, streaming, retried, or replayable?",
+        "What is the error envelope for findings, infrastructure failures, malformed output, and unsafe gate state?",
+        "When and how does the human choose reviewer AI host/model?",
+        "How are model catalogs discovered without hardcoding volatile model IDs?",
+        "What compatibility fixtures prove producer and consumer expectations?",
+        "Should the send-back introduce ReviewRequest.v2 as the required request contract for reviewer-definition injection, while keeping FindingsResult.v1 as the output contract?",
+        "Which component owns each contract/source seam, and how do host adapters stay transport-only?",
+        "Should reviewer-definition execution remain synchronous and bounded, with explicit reruns instead of silent retry?",
+        "How should replay, run identity, and prior_findings prevent unresolved blocking findings from disappearing?",
+        "Which failures become InfrastructureFailure.v1, and which become invalid review execution or unsafe gate state?",
+        "Which producer/consumer fixtures prove schema evolution and actual prompt delivery across all five adapters?"
+      ],
+      "decision": "Agreed integration-api direction: Iteration 001 uses local, host-neutral, contract-first integration. The orchestrator creates a versioned ReviewRequest, invokes a provider adapter through safe argv or equivalent APIs, accepts only stdout JSON as the reviewer result, and writes durable ReviewThread and GateVerdict artifacts. Specrew owns versioned ReviewRequest, FindingsResult, ReviewThread, GateVerdict, and InfrastructureFailure contracts; adapters translate provider-specific CLI behavior into those shapes. Reviewer runs are synchronous and bounded with no automatic retry by default, and replay creates a new run ID/provenance record. Timeout, nonzero exit, empty stdout, invalid JSON, schema mismatch, provider missing, command invocation failure, unavailable requested model, or malformed durable state are distinct infrastructure/unsafe failures and are never treated as no findings. Specrew discovers installed Codex, Claude, Copilot, Cursor, and Antigravity headless hosts, intersects them with allowed configuration, recommends the strongest available review-class model and cross-host/cross-model independence when available and authorized, records requested and actual host/model, and asks the human to authorize provider/model/cost/effort. Model IDs are data/config rather than hardcoded contract policy; discovery uses explicit config/allowlists, official model-list commands where available, reliable CLI help/introspection, or human-entered IDs. Runtime review does not depend on live web search, and Iteration 001 does not probe token quota or usage. Iteration 002 send-back adds ReviewRequest.v2 as the required request contract for reviewer-definition injection while keeping FindingsResult.v1 as the stdout output contract. ReviewerInstructionSource owns canonical code-review-agent.md loading and hash metadata, ReviewRequestBuilder owns structured request data, ReviewPromptComposer owns complete injected prompt rendering, ReviewerExecutionEngine owns isolated workspace invocation and mutation guard, and host adapters remain transport/read-only capability edges only. Reviewer-definition execution stays synchronous and bounded; reruns are append-only evidence with unique run_id values, round_number, and prior_findings that must be explicitly verified. Infrastructure failures cover missing/unavailable host/model/CLI and malformed provider execution, while missing prompt semantics, reviewer mutation, malformed durable gate state, or dropped prior blocking findings become invalid review execution or unsafe gate state. Compatibility tests must cover valid/invalid ReviewRequest.v2 producer fixtures, actual composed prompt capture, fixture full path, infrastructure failures, mutation guard behavior, and all five host adapters receiving the complete prompt.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/integration-api.md — local contract sequence, provider/model selection path, reviewer-definition injection sequence, error envelope, and compatibility fixture floor."
+    },
+    "devops-operations": {
+      "agenda": [
+        "What hosting model should run Proposal 197 Iteration 001?",
+        "What infrastructure is code-owned, external, or manually configured?",
+        "Which environments must behave equivalently, and where may provider/model availability differ?",
+        "How are non-secret configuration, provider credentials, and dynamic authorization handled?",
+        "What CI/CD stages, rollout strategy, rollback path, and forge-native lane are required?",
+        "How should a downstream CI/CD E2E proposal include the reviewer agent path?",
+        "What users, roles, service identities, and permissions are needed?"
+      ],
+      "decision": "Agreed devops-operations direction: Iteration 001 uses a local Specrew tool/module-command hosting model in the developer checkout/session, with no server, daemon, queue, cloud resource, background service, hosted reviewer worker, new service identity, new GitHub Actions workflow, branch-protection mutation, release publishing, or automated rollout/rollback. Proposal 197 owns the local review spine only: review contracts/schemas, provider adapter interfaces, static provider catalog/config references, durable artifact writer, and local validator/test fixtures. Git, PowerShell/Specrew runtime, installed AI host CLIs, provider accounts/quotas, GitHub branch protection, and PR review remain external or human-owned. Environment parity is required at contract behavior level, while installed providers/models and paid/external authorization may differ by environment and surface as capability/authorization outcomes. Configuration is explicit and non-secret; Proposal 197 must not collect, store, copy, normalize, bundle, or persist provider credentials or secret values. Local validation plus existing GitHub PR governance is the Iteration 001 rollout path. Proposal 197 must preserve reviewer-agent contract hooks so a downstream/companion CI/CD E2E proposal can exercise request creation, adapter invocation, reviewer process or controlled fake, result/failure envelope, durable artifacts, and gate verdict end-to-end.",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/devops-operations.md — local operations topology, GitHub PR governance path, and downstream reviewer-agent CI/CD E2E compatibility path."
+    },
+    "observability-resilience": {
+      "agenda": [
+        "What should be logged or recorded so a maintainer can reconstruct a review run?",
+        "What correlation identifiers must flow through request, findings, thread, and gate artifacts?",
+        "What validation or health/readiness checks prove the path is usable locally?",
+        "Which failures are expected operational outcomes versus exceptional code defects?",
+        "What timeout, retry, idempotency, replay, cleanup, and recovery policy applies?",
+        "What must not be logged or persisted because of cost, noise, or secret exposure?"
+      ],
+      "decision": "Agreed observability-resilience direction: Iteration 001 splits durable operational evidence into ReviewRequest, SpawnInvocation, and ReviewRun artifacts. run_id is the primary correlation key across request, invocation, findings, review-thread, and gate-verdict records, with checkpoint, baseline, request hash, adapter, requested/actual host/model, finding, thread, verdict, blocking-count, and escalation identifiers as required supporting keys. Schema/fixture validation, local capability checks, and a controlled fake or fixture adapter E2E path are required; real AI-host smoke is optional and only runs when configured and authorized. No reviewable diff is an explicit ReviewRunSkipped/no-op gate outcome, not an error or silent skip. Dependency/config/provider availability failures are expected operational outcomes, while internal invariant violations remain code defects. Reviewer invocation may use an ordered authorized provider/host/model priority list with at most one availability fallback attempt in Iteration 001, no silent downgrade, and requested/actual host/model provenance. Replay creates a new run id, request bundles are immutable per run, writes are idempotent by run id, cleanup status is recorded, and durable artifacts persist structured redacted evidence only while raw prompts/transcripts/stderr and secret/ambient state stay off by default.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/observability-resilience.md — request/failure-mode flow, correlation chain, readiness floor, retry/fallback policy, and redacted evidence boundary."
+    },
+    "code-implementation": {
+      "agenda": [
+        "Do we have a coding guideline or example project to emulate?",
+        "What stack/runtime baseline and artifact formats should the implementation rules bind?",
+        "Which baseline craft defaults are accepted or excepted for Proposal 197?",
+        "What error/failure, retry/fallback, contract versioning, adapter extension, validation, and testing posture should implementation follow?",
+        "May this feature add dependencies, and how should shared-code packaging work?",
+        "Should the reviewer-definition repair continue using current Specrew implementation methods and the existing no-new-dependency manifest?",
+        "Which focused PowerShell seams should own canonical reviewer instruction loading, ReviewRequest.v2 building, prompt composition, round/prior-findings context, mutation detection, and host mirror deployment?",
+        "How should deterministic fixture tests prove the actual outbound prompt contains the canonical reviewer instruction, Proposal 145 rubric, design context, round/prior-findings, visibility/do-policy, and FindingsResult.v1-only output instruction?",
+        "How should host adapters remain transport-only while still passing read-only flags and classifying CLI outcomes?",
+        "How should host-folder mirrors be deployed without becoming the runtime source of truth?",
+        "How should mutation-guard tests prove reviewer writes invalidate the execution rather than becoming fixes?",
+        "How should SC-012 manual validation invoke the exact injected-prompt path?",
+        "When should the feature branch merge or rebase latest remote main and resolve conflicts before implementation?"
+      ],
+      "decision": "Agreed code-implementation direction: Proposal 197 uses the current Specrew implementation methods as its source of code-rules truth, with no external guideline or example-project ingestion. The resolved stack is PowerShell 7.x plus Markdown/YAML/JSON governance artifacts, Pester tests, and local file/stdin/stdout/process contracts. Baseline craft defaults remain on: intent-revealing names, short functions, low nesting, composition seams, stronger contract types, guarded invariants, secure defaults, simple tests, rationale-only comments, and examples as API tests. Implementation represents expected operational outcomes as structured evidence, keeps internal invariant/schema/code defects as hard failures, permits at most one authorized availability fallback with no silent downgrade, versions additive local contracts, uses PowerShell function/module Strategy seams for host/provider adapters, validates input/execution/output artifact boundaries, relies on deterministic Pester and fixtures with live host smoke only when configured/authorized, uses existing project tools with no new dependency by default, ships reusable surfaces through existing Specrew module/deployment paths, avoids broad utility packages, and preserves the F-184 protected-surface constraint. Iteration 002 send-back keeps the existing manifest and adds focused implementation rules: deliver canonical code-review-agent.md through the same ReviewPromptComposer path used by real host adapters, add narrow PowerShell seams for ReviewerInstructionSource, ReviewRequest.v2 builder, ReviewPromptComposer, ReviewRoundContext/prior-findings builder, WorkspaceMutationGuard, and HostAgentMirrorDeployer, and avoid broad utility modules or central host-name switch logic. Deterministic fixture tests must inspect the actual composed outbound prompt and fail if it omits the canonical instruction, Proposal 145 rubric, workshop-decision conformance, design context content, exact diff/change-set content, round_number, prior_findings and verification instructions, visibility policy, do-policy, or FindingsResult.v1-only output instruction. Host adapters receive a complete prompt and remain transport-only safe-argv/equivalent invocation edges; native host-folder mirrors are consistency copies only, not the runtime source of truth. Disposable review workspace mutation tests must prove reviewer-written source/spec/state/Git changes invalidate execution and are never copied back or treated as fixes. SC-012 manual validation must invoke the exact injected-prompt reviewer path, not a hand-written prompt. Before implementation begins, the feature branch must merge or rebase latest remote main and resolve conflicts; if the conflict surface is large, that synchronization may become its own preparatory iteration.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "workshop/code-implementation.md — grouped implementation-rule flow, resolved stack, dependency policy, Iteration 001 non-drivers, and reviewer-definition prompt-composer repair rules."
+    }
+  }
+}

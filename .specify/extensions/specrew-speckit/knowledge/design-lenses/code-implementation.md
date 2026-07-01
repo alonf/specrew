@@ -51,6 +51,14 @@ Surfaced via the **grouping model** (see below); the catalog holds the full rule
   **"use existing project tools / no new dependency" first** plus options; for a chosen dependency capture
   version, license, source org, canonical URL, maintenance signal, security/advisory status,
   compatibility, cost/quota (if relevant), coupling weight, replaceability, and test implications.
+- **Continuous co-review harness/model/effort** — for code-writing features, ask which continuous co-review harness, model,
+  and optional effort setting should review the implementation (for example Codex + ChatGPT, Claude + Opus 4.8 1M context, or Copilot
+  on a strong model). If the human skips the workshop or does not choose a reviewer, Specrew auto-selects:
+  Codex + ChatGPT and Claude + Opus 4.8 1M context are peer top review classes; prefer Codex when Claude wrote
+  the code and prefer Claude when Codex wrote it; Copilot on a strong model ranks next; then other harnesses.
+  If only one harness is available, use that harness with its best authorized review model. Record the answer in
+  `reviewer_preference`; dynamic model/effort discovery is future capability-adapter work, so MVP values are
+  captured as explicit host-specific labels.
 
 ## Rule grouping and consumption model
 
@@ -97,6 +105,16 @@ The code rules are mostly **product-level and stable**:
   applicability-filtered only when context applies. Never a flat wall.
 - **Dependency selection**: default-first "use existing project tools / no new dependency"; capture the
   fields for any chosen dependency into the manifest `dependency_policy`.
+- **Reviewer selection (INT-006 - present the list, do NOT ask blind)**: before closing this lens, RUN
+  `specrew review --list-hosts --code-writer-host <the host you are running as>` and PRESENT its output to
+  the human verbatim - the SELECTABLE hosts (recommended independent first, then their own code-writer shown
+  as also-selectable, then any unavailable host shown with its reason) and the DEFAULT. Do NOT present from
+  memory or from the examples above; the command reflects what is actually installed on the human's PATH.
+  Then capture their pick into `reviewer_preference` as `mode=human-selected` with the chosen `host`. A human
+  MAY pick their own code-writer - only they know each host's quota/token status; independence is the
+  recommendation, not a rule. If they make no choice, record the DEFAULT the command marked (still
+  `mode=human-selected`). Do NOT show or pin a model - Specrew uses the host's own default model (no dynamic
+  model discovery exists yet).
 - **Capture** the selections/decisions/custom-rules/dependency-policy into `implementation-rules.yml`
   (reference-by-ID) + the human-readable `workshop/code-implementation.md`; record the lens in
   `lens-applicability.json`.
@@ -110,6 +128,7 @@ The code rules are mostly **product-level and stable**:
 - Concurrency: locks or lock-free/immutable/channels? Copy semantics? Error-handling style?
 - Protocol / pagination / cache / messaging posture? Testing/TDD posture?
 - Do repeated conditionals call for Strategy/State? Functional or inheritance polymorphism?
+- Which review harness and model should review the code, or should Specrew auto-select if no choice is made?
 - May this feature add a dependency — or can existing project tools do it? If new: version, license,
   source, maintenance, security advisories, compatibility, coupling, replaceability, test impact?
 
@@ -142,6 +161,8 @@ The code rules are mostly **product-level and stable**:
 - `specs/<feature>/implementation-rules.yml` — the per-feature manifest (reference-by-ID).
 - `specs/<feature>/workshop/code-implementation.md` — the human-readable lens record.
 - `code-rules.local.yml` (project root, optional) — the reusable overlay (ingested guideline + custom rules).
+- `reviewer_preference` in the workshop record / implementation manifest — selected reviewer harness/model/effort
+  or explicit auto-selection fallback.
 
 ## Manifest shape (hand-authored example)
 
@@ -170,6 +191,14 @@ selections:
 custom_rules: []
 dependency_policy:
   stance: "use-existing-no-new-dependency"
+reviewer_preference:
+  mode: "human-selected"
+  host: "codex"
+  model: "chatgpt"
+  effort: "max"
+  source: "code-implementation-workshop"
+  authorization_ref: null
+  rationale: "Code author is Claude, so Codex gives an independent strong review."
 provenance:
   confirmation: "human-confirmed"
   confirmation_scope: "lens-question"

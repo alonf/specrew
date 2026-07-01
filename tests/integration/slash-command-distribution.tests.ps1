@@ -70,6 +70,8 @@ foreach ($dirName in $expectedSkillDirs) {
     $skillMd = Join-Path $skillsSourceRoot "$dirName\SKILL.md"
     Assert-True -Condition (Test-Path -LiteralPath $skillMd -PathType Leaf) -Message "Source SKILL.md exists: $dirName"
 }
+$reviewSkillContent = Get-Content -LiteralPath (Join-Path $skillsSourceRoot 'specrew-review\SKILL.md') -Raw
+Assert-True -Condition ($reviewSkillContent -like '*--live*' -and $reviewSkillContent -like '*.specrew/review/inline/<run-id>*') -Message 'specrew-review skill documents live reviewer evidence mode'
 
 Write-Host ''
 Write-Host '--- Test 3: runtime deployment writes all seven command skills to all three active roots ---'
@@ -86,6 +88,9 @@ try {
             Assert-True -Condition (Test-Path -LiteralPath $markerPath -PathType Leaf) -Message "$root contains $dirName managed marker"
         }
     }
+
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $scratchProject 'scripts\internal\continuous-co-review\_load.ps1') -PathType Leaf) -Message 'deployment includes continuous co-review runtime loader'
+    Assert-True -Condition (Test-Path -LiteralPath (Join-Path $scratchProject '.specrew\review\contracts\review-request.schema.json') -PathType Leaf) -Message 'deployment includes live review contract schemas'
 }
 finally {
     if (Test-Path -LiteralPath $scratchProject) {
