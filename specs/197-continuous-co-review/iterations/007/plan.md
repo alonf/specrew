@@ -34,11 +34,13 @@ delivered fixes carried forward into 008/009. Full narrative in
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ |
-| T091 | Subtree-scoped change-set diff for nested governance roots (`81b7070e`). | FR-030 | Real-reviewer wiring | 0.00 | Implementer | `scripts/internal/continuous-co-review/**` | done |
-| T092 | Scaffolding exclusion + large-diff cap + adapter input-size guard + state-the-reason diagnostics (`85c12930`). | FR-030 | Real-reviewer wiring | 0.00 | Implementer | `scripts/internal/continuous-co-review/**` | done |
-| T093 | Deploy-completeness: ship the co-review runtime + isolated-task launcher + `atomic-write.ps1` to deployed projects (`49f88717`). | FR-031 | Deploy-completeness | 0.00 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | done |
-| T094 | Pester v4→v5.5.0 migration (`85c12930`), 44 CCR files, count-parity verified. | SC-006 | Test-suite integrity | 0.00 | Reviewer | `tests/continuous-co-review/**` | done |
-| T095 | Reviewer-context architecture finding → pivot to iteration 008. | FR-026 | Reviewer-context redesign | 0.00 | Planner | `specs/197-continuous-co-review/iterations/008/**` | deferred |
+| T101 | Subtree-scoped change-set diff for nested governance roots (`81b7070e`). | FR-030 | Real-reviewer wiring | 0.00 | Implementer | `scripts/internal/continuous-co-review/**` | done |
+| T102 | Scaffolding exclusion + large-diff cap + adapter input-size guard + state-the-reason diagnostics (`85c12930`). | FR-030 | Real-reviewer wiring | 0.00 | Implementer | `scripts/internal/continuous-co-review/**` | done |
+| T103 | Deploy-completeness: ship the co-review runtime + isolated-task launcher + `atomic-write.ps1` to deployed projects (`49f88717`). | FR-031 | Deploy-completeness | 0.00 | Implementer | `extensions/specrew-speckit/scripts/deploy-squad-runtime.ps1` | done |
+| T104 | Pester v4→v5.5.0 migration (`85c12930`), 44 CCR files, count-parity verified. | SC-006 | Test-suite integrity | 0.00 | Reviewer | `tests/continuous-co-review/**` | done |
+| T105 | Reviewer-context architecture finding → pivot to iteration 008. | FR-026 | Reviewer-context redesign | 0.00 | Planner | `specs/197-continuous-co-review/iterations/008/**` | deferred |
+
+<!-- 2026-07-01: these post-hoc task IDs were renumbered T091-T095 -> T101-T105 to resolve the collision with iteration 009's canonical, commit-cited T090-T098 (T101-T105 is the next free block above iter-009's T099/T100). The delivered commits are unchanged; only the post-hoc labels moved. Mirrors the iter-009 T095 resolution of the earlier T083-T085 collision. -->
 
 ## Effort Model
 

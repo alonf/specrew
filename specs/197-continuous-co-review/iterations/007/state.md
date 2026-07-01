@@ -3,7 +3,7 @@
 **Schema**: v1
 **Current Phase**: abandoned
 **Iteration Status**: abandoned
-**Last Completed Task**: iter-007 post-hoc T094 (Pester v4→v5.5 migration) — see the task-ID collision note below
+**Last Completed Task**: iter-007 post-hoc T104 (Pester v4→v5.5 migration) — see the task-ID collision note below
 **Tasks Remaining**: (none — pivoted to 008; delivered fixes carried forward)
 **In Progress**: (none)
 **Baseline Ref**: 49f887174c4a668ece3aaede6ca0910741e085c3
@@ -13,9 +13,9 @@
 
 - **Status set to `abandoned`** (recorded 2026-06-26; canonical state fields added 2026-07-01 for governance completeness). Iteration 007 ran as an exploratory drive-the-real-path iteration and **pivoted to iteration 008 before running its own review/retro/signoff cycle** — no review-signoff verdict, no Task Verdicts table, and no retro were recorded. It is `abandoned` (its cycle did not complete) rather than `complete` because authoring those now would fabricate governance that never happened (the 2026-06-24 anti-fabrication ruling). Its DELIVERED fixes are live and were carried forward into 008/009: subtree-scoped change-set diff (`81b7070e`), scaffolding-exclusion + large-diff cap + adapter input-size guard + diagnostics (`85c12930`), deploy-completeness (`49f88717`), and the Pester v4→v5.5 migration. The reviewer-context flow was found architecturally fragile (see below) — the finding that justified the pivot.
 
-## Governance note (2026-07-01) — task-ID collision (flagged, resolution pending)
+## Governance note (2026-07-01) — task-ID collision RESOLVED (renumbered)
 
-iter-007's plan.md (a post-hoc reconstruction, commit `4a5ebb05`) labels its delivered work **T091–T095**, which COLLIDES with iteration 009's canonical, commit-cited **T090–T098** (e.g. T091 hard-timeout, T093 host-fallback, T094 degraded-gate). The delivered work is unaffected; only the labels collide. Resolution — renumber iter-007's post-hoc IDs to a free range — is flagged for a maintainer decision, mirroring the iter-009 T095 resolution of the earlier T083–T085 collision.
+iter-007's plan.md (a post-hoc reconstruction, commit `4a5ebb05`) originally labelled its delivered work **T091–T095**, which COLLIDED with iteration 009's canonical, commit-cited **T090–T098** (T091 hard-timeout, T093 host-fallback, T094 degraded-gate). **Resolved 2026-07-01**: renumbered to **T101–T105** (the next free block above iter-009's T099/T100), mirroring the iter-009 T095 resolution of the earlier T083–T085 collision. The delivered commits are unchanged; only the post-hoc labels moved.
 
 ## What this iteration delivered
 

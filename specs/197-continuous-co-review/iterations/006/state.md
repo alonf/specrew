@@ -4,8 +4,8 @@
 **Feature**: 197-continuous-co-review
 **Iteration**: 006
 **Baseline Ref**: 7333f2b5
-**Current Phase**: review
-**Iteration Status**: reviewing
+**Current Phase**: retro
+**Iteration Status**: retro
 **Last Completed Task**: T082–T086 all delivered (done); T085 live-dispatcher e2e — PASSED (all 6 conditions); 3 first-run failures FIXED
 **Tasks Remaining**: review-signoff never formally executed — iteration 006 was SUPERSEDED by iteration 007 (real-reviewer wiring on a real deployed project) before formal retro/closeout (+ a lingering-child watch-item carried to the maintainer's real-host e2e)
 **In Progress**: — (e2e complete)
