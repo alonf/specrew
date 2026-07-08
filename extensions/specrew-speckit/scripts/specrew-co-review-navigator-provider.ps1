@@ -93,13 +93,15 @@ function Write-CoReviewNavigatorTrace {
 # --- manual $args parse (the double-dash contract; NO param()) ---
 $sourceEventArg = $null
 $hostKindArg = $null
+$transcriptPathArg = $null
 for ($i = 0; $i -lt $args.Count; $i++) {
     if ($args[$i] -eq '--source-event' -and ($i + 1) -lt $args.Count) { $sourceEventArg = [string]$args[$i + 1] }
     # M1 fix (145 iter-006): --host-kind IS the code-writer host - thread it to the navigator so reviewer
-    # selection is code-writer-INDEPENDENT by logic (claude->codex, codex->claude), not merely by which
-    # hosts the catalog authorizes. --transcript-path stays accepted-but-unused (the navigator works off
-    # git state + the registry, not the transcript).
+    # selection is code-writer-INDEPENDENT by logic (a different harness than the code-writer, resolved
+    # from the catalog), not merely by which hosts the catalog authorizes. --transcript-path threads to
+    # the reap (T106/N4) so the escalation-latch can read REAL user turns for human closure.
     elseif ($args[$i] -eq '--host-kind' -and ($i + 1) -lt $args.Count) { $hostKindArg = [string]$args[$i + 1] }
+    elseif ($args[$i] -eq '--transcript-path' -and ($i + 1) -lt $args.Count) { $transcriptPathArg = [string]$args[$i + 1] }
 }
 
 try {
@@ -145,6 +147,8 @@ try {
     # M1 fix (145 iter-006): thread the code-writer host (the dispatcher's --host-kind) so reviewer
     # selection is independent-by-logic, not config-incidental.
     if (-not [string]::IsNullOrWhiteSpace($hostKindArg)) { $navParams['CodeWriterHost'] = $hostKindArg }
+    # T106/N4: thread the transcript so the escalation-latch can detect a human closure.
+    if (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) { $navParams['TranscriptPath'] = $transcriptPathArg }
     # Honor the project's configured co_review_timeout_seconds on the AUTO path (Codex review P2): without this the
     # navigator always fell back to its default, ignoring an explicit per-project policy. Best-effort inline read
     # (same grammar as Get-ContinuousCoReviewNavigatorTimeoutSeconds); left UNSET when the key is absent so the

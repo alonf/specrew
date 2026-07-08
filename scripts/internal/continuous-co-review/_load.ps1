@@ -17,6 +17,7 @@ $proposal197ReviewerModules = @(
     'inline-review-gate-evaluator.ps1'
     'review-run-index-writer.ps1'
     'review-signoff-evidence-gate.ps1'
+    'escalation-latch.ps1'
 )
 
 foreach ($moduleName in $proposal197ReviewerModules) {

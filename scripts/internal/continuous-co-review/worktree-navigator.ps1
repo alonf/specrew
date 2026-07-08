@@ -19,13 +19,16 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
         [string]$TrunkName = 'main',
         [switch]$SessionStart,
         [string]$CodeWriterHost,
+        # T106/N4: the host transcript path (optional) - threads to the reap so the escalation-latch
+        # can read REAL user turns to detect human closure.
+        [string]$TranscriptPath,
         [int]$TimeoutSeconds = 900
     )
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $decision = [pscustomobject]@{ action = 'no-op'; reason = ''; engine = 'worktree'; fired_run_id = $null; fired_tree_id = $null; stop_block = $null; inject_notes = @() }
 
     # REAP (reuse) — surfaces any completed verdict (incl. the worktree engine's result.out) + cleans orphans.
-    $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $resolved -TrunkName $TrunkName -CrossSession:$SessionStart
+    $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $resolved -TrunkName $TrunkName -CrossSession:$SessionStart -TranscriptPath $TranscriptPath
     $decision.stop_block = $reap.stop_block
     $decision.inject_notes = @($reap.inject_notes)
     if ($SessionStart) { $decision.reason = 'cross-session-sweep'; return $decision }

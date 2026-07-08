@@ -496,6 +496,9 @@ function Invoke-ContinuousCoReviewNavigatorReap {
         [Parameter(Mandatory)][string]$RepoRoot,
         [switch]$CrossSession,
         [string]$TrunkName = 'main',
+        # T106/N4: the host transcript path (optional) - the escalation-latch reads REAL user turns
+        # from it to decide human closure. Absent -> the latch default-denies (keeps state, no close).
+        [AllowNull()][string]$TranscriptPath,
         [datetime]$Now = [datetime]::UtcNow
     )
     $result = [pscustomobject]@{ stop_block = $null; inject_notes = (New-Object System.Collections.Generic.List[string]); reaped_run_ids = (New-Object System.Collections.Generic.List[string]); promoted_run_ids = (New-Object System.Collections.Generic.List[string]) }
@@ -564,12 +567,82 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     # blackboard (fail-open -> $null; the stub is excluded inside). T084: surface the thread.
                     $threadRef = Write-ContinuousCoReviewNavigatorBlackboard -RepoRoot $RepoRoot -RunId $runId -Verdict $verdict -Now $Now
                     $threadSuffix = if ($threadRef) { " Full findings (all severities): $threadRef" } else { '' }
+                    $latchPath = Join-Path $RepoRoot '.specrew/runtime/co-review-escalation-latch.json'
+                    if (-not $verdict.blocking) {
+                        # T106/N4: a CONVERGED (non-blocking) verdict on the lineage clears any open latch.
+                        try { if (Test-Path -LiteralPath $latchPath -PathType Leaf) { Remove-Item -LiteralPath $latchPath -Force -ErrorAction SilentlyContinue } } catch { $null = $_ }
+                    }
                     if ($verdict.blocking) {
-                        if ($null -eq $result.stop_block) {
-                            $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId -BlackboardRef $threadRef)
+                        # T106/N4 (D-197-I009-010): the escalation-latch. A verdict whose blocking findings
+                        # are ALL loop-state escalations (kind='escalation') stop-blocks ONCE, then latches
+                        # QUIET (a brief note each stop) until the human closes it (suppress + reset the
+                        # sticky round-state) or the lineage converges. ANY non-escalation blocking finding
+                        # (a real bug) never latches - it blocks every time. Default-deny on every failure.
+                        $latchHandled = $false
+                        try {
+                            $rawFindings = if ($null -ne $verdict.raw -and ($verdict.raw.PSObject.Properties.Name -contains 'findings') -and $null -ne $verdict.raw.findings) { @($verdict.raw.findings) } else { @() }
+                            $blockingF = @($rawFindings | Where-Object { $null -ne $_ -and ($_.PSObject.Properties.Name -contains 'severity') -and ([string]$_.severity -eq 'blocking') })
+                            $allEscalation = ($blockingF.Count -gt 0)
+                            foreach ($bf in $blockingF) {
+                                if (-not (($bf.PSObject.Properties.Name -contains 'kind') -and ([string]$bf.kind -eq 'escalation'))) { $allEscalation = $false; break }
+                            }
+                            if ($allEscalation) {
+                                if (-not (Get-Command -Name 'Test-ContinuousCoReviewEscalationStopBlockClosed' -ErrorAction SilentlyContinue)) {
+                                    $lp = Join-Path $PSScriptRoot 'escalation-latch.ps1'
+                                    if (Test-Path -LiteralPath $lp -PathType Leaf) { try { . $lp } catch { $null = $_ } }
+                                }
+                                $latchKey = ((@($blockingF | ForEach-Object { if ($_.PSObject.Properties.Name -contains 'finding_id') { [string]$_.finding_id } }) | Sort-Object) -join '+')
+                                $latch = $null
+                                if (Test-Path -LiteralPath $latchPath -PathType Leaf) {
+                                    try { $latch = Get-Content -LiteralPath $latchPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $latch = $null }
+                                }
+                                $latchMatches = ($null -ne $latch -and ($latch.PSObject.Properties.Name -contains 'key') -and ([string]$latch.key -eq $latchKey))
+                                if ($latchMatches -and (Get-Command -Name 'Test-ContinuousCoReviewEscalationStopBlockClosed' -ErrorAction SilentlyContinue)) {
+                                    $turns = @()
+                                    if (-not [string]::IsNullOrWhiteSpace($TranscriptPath) -and (Get-Command -Name 'Get-ContinuousCoReviewTranscriptTurns' -ErrorAction SilentlyContinue)) {
+                                        try { $turns = @(Get-ContinuousCoReviewTranscriptTurns -TranscriptPath $TranscriptPath) } catch { $turns = @() }
+                                    }
+                                    if (Test-ContinuousCoReviewEscalationStopBlockClosed -BlockingFindings $blockingF -SurfacedAtUtc ([string]$latch.surfaced_at) -ConversationTurns $turns) {
+                                        # HUMAN-CLOSED: suppress the block, clear the latch, reset the sticky round-state.
+                                        try { Remove-Item -LiteralPath $latchPath -Force -ErrorAction SilentlyContinue } catch { $null = $_ }
+                                        try {
+                                            $rsPath = Join-Path $RepoRoot '.specrew/runtime/co-review-round-state.json'
+                                            if (Test-Path -LiteralPath $rsPath -PathType Leaf) {
+                                                $rs = Get-Content -LiteralPath $rsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                                                if ($rs.PSObject.Properties.Name -contains 'blocking') { $rs.blocking = $false }
+                                                if ($rs.PSObject.Properties.Name -contains 'round') { $rs.round = 0 }
+                                                ($rs | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $rsPath -Encoding UTF8
+                                            }
+                                        }
+                                        catch { $null = $_ }
+                                        $result.inject_notes.Add(("[co-review] ceiling escalation CLOSED by your authorization (run {0}) - the sticky round-state was reset; co-review resumes fresh at the next changed checkpoint." -f $runId)) | Out-Null
+                                        $latchHandled = $true
+                                    }
+                                    else {
+                                        # LATCHED QUIET: surfaced before, not yet closed - a brief note, not another stop-block.
+                                        $result.inject_notes.Add(("[co-review] ceiling escalation still OPEN (latched quiet; already surfaced). Reply to authorize/close it, or use the remediation menu for run {0}." -f $runId)) | Out-Null
+                                        $latchHandled = $true
+                                    }
+                                }
+                                elseif (-not $latchMatches) {
+                                    # FIRST surface for this escalation: stop-block below + record the latch.
+                                    try {
+                                        $ldir = Split-Path -Parent $latchPath
+                                        if ($ldir -and -not (Test-Path -LiteralPath $ldir)) { New-Item -ItemType Directory -Path $ldir -Force | Out-Null }
+                                        ([pscustomobject]@{ key = $latchKey; surfaced_at = $Now.ToUniversalTime().ToString('o'); run_id = $runId } | ConvertTo-Json -Compress) | Set-Content -LiteralPath $latchPath -Encoding UTF8
+                                    }
+                                    catch { $null = $_ }
+                                }
+                            }
                         }
-                        if (-not [string]::IsNullOrWhiteSpace($moreTimeNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $moreTimeNote)) | Out-Null }
-                        if (-not [string]::IsNullOrWhiteSpace($independenceNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $independenceNote)) | Out-Null }
+                        catch { $null = $_ }
+                        if (-not $latchHandled) {
+                            if ($null -eq $result.stop_block) {
+                                $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId -BlackboardRef $threadRef)
+                            }
+                            if (-not [string]::IsNullOrWhiteSpace($moreTimeNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $moreTimeNote)) | Out-Null }
+                            if (-not [string]::IsNullOrWhiteSpace($independenceNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $independenceNote)) | Out-Null }
+                        }
                     }
                     elseif (($verdict.PSObject.Properties.Name -contains 'is_stub') -and $verdict.is_stub) {
                         # The default PLACEHOLDER stub always emits pass without reviewing. Surface it as

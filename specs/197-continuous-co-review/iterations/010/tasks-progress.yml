@@ -41,14 +41,14 @@ tasks:
     blocked_reason: ""
   T106:
     title: "Wire the escalation-latch: load `escalation-latch.ps1` via `_load.ps1`; invoke from the navigator so a ceiling escalation surfaces once then latches quiet; reset round-state on a converged checkpoint; integration test on real transcript data."
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-08T16:00:00Z"
-    completed_at: ""
+    completed_at: "2026-07-08T17:00:00Z"
     blocked_reason: ""
   T107:
     title: "code-review-agent.md preservation fold: graft the TO-FOLD manifest rows (falsification stance, P145 phases, per-lens validation, workshop-conformance, claim/design-trace, deterministic-failure≠clean, secret-non-exfiltration) into `Get-ContinuousCoReviewSlimPrompt`; drop the DROP rows (ReviewRequest.v2 / read-only-composed-prompt / composer / mirror-authority); retire the file to a reference doc; re-point the test at the outbound slim prompt."
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-08T17:00:00Z"
     completed_at: ""
     blocked_reason: ""
   T108:
