@@ -73,9 +73,9 @@ Current template inventory and disposition:
 
 ## Effort
 
-~4-6 SP: W1 template authoring + fixture/integration-test updates (2 SP); W2 trivial; W3 deploy-list
-+ test surgery (1-2 SP); W4 one-line init change + test; W5 rides the existing obsolete-file removal
-surface (1 SP).
+~4-6 SP: W1 template authoring plus fixture/integration-test updates (2 SP); W2 trivial; W3
+deploy-list and test surgery (1-2 SP); W4 one-line init change plus test; W5 rides the existing
+obsolete-file removal surface (1 SP).
 
 ## Open questions
 
