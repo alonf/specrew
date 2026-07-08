@@ -27592,3 +27592,23 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   Finding source: run 20260708T225439577 — the navigator firing UNPROMPTED on the proposals
   checkpoint and catching its own dedup defect in 132s (codex recovered, sharp). Drift record
   D-197-I010-005. CCR suite 257/257.
+
+## 2026-07-09T07:45:00Z — Copilot headless-reviewer probe: vector VIABLE; probe-in-cwd incident (evidence for 203)
+
+- **Decision ID**: NOTE-197-I010-005
+- **Type**: probe result + incident record
+- **Recorded At**: 2026-07-09T07:45:00Z
+- **Probe result (the maintainer's "how come no copilot reviewer" question)**: GitHub Copilot CLI HAS
+  the required headless shape — `copilot --allow-all -p "<prompt>"` returned the correct answer in
+  34s, exit 0 (agentic non-interactive mode with `--allow-all-tools` documented as required for
+  non-interactive). Copilot-as-reviewer is one catalog row + validation away; candidate vector
+  recorded here for the wiring task (order-sensitive probing per the how-to still required for the
+  full review-length behavior: timeout flags, empty-exit signature, output shape).
+- **Incident**: the probe ran in the SELF-HOST repo cwd — copilot's session hooks fired the Specrew
+  bootstrap, and its scaffolding REWROTE iterations/010 state.md (rich execution narrative replaced
+  by a template stub) and touched tasks-progress.yml. Recovery: both files git-restored from HEAD
+  (8cac7f21); boundary cursor and start-context verified untouched; copilot's navigator invocations
+  were no-ops. Lessons: (a) probe agentic CLIs in a SCRATCH directory, never a governed cwd —
+  recorded for the add-a-reviewer-host how-to; (b) live evidence for Proposal 203's confinement
+  theme: an agentic host in a governed cwd self-bootstraps and mutates governance state — the
+  reviewer worktree's machinery-stripping is what prevents exactly this class inside reviews.
