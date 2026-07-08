@@ -95,14 +95,15 @@
 
 ### D-197-I010-006 — Two-doors budget drift: the manual --live door kept the iteration-002 hardcoded 120s that the auto path had already fixed
 
-**Status**: RESOLVED (fixed 2026-07-09; maintainer fix-now decision , DEC-197-I010-007).
-**Detected by**: the downstream consumer project (tesr197local, 2026-07-09) — the FIRST-ever exercise of the --live door default budget: every reviewer attempt was cut at ~130s (claude mid-answer unparseable; antigravity mid-review with salvaged  notes) — reproducing verbatim the iteration-002 failure the navigator comment records ().
+**Status**: RESOLVED (fixed 2026-07-09; maintainer fix-now decision "1", DEC-197-I010-007).
+**Detected by**: the downstream consumer project (tesr197local, 2026-07-09) — the FIRST-ever exercise of the --live door default budget: every reviewer attempt was cut at ~130s (claude mid-answer unparseable; antigravity mid-review with salvaged "waiting for background tasks" notes) — reproducing verbatim the iteration-002 failure the navigator comment records ("a 120s rerun timed out, so no findings landed").
 
-**Finding**: iteration 002 raised the AUTO-path default to 300s + the  config override, but  kept a hardcoded parsed default of 120 on the manual door, consulted neither the config nor the navigator getter, left the tested generous-budget scaler unwired, and carried a dead  branch. Undetected for two months because every dogfood --live run passed an explicit .
+**Finding**: iteration 002 raised the AUTO-path default to 300s + the `co_review_timeout_seconds` config override, but `specrew-review.ps1` kept a hardcoded parsed default of 120 on the manual door, consulted neither the config nor the navigator getter, left the tested generous-budget scaler unwired, and carried a dead `else { 900 }` branch. Undetected for two months because every dogfood --live run passed an explicit `--timeout-seconds`.
 
-**Resolution (implementation-reverted-to-requirement)**: the door resolves budget as explicit flag →  config → 300s baseline (the exact auto-path resolution, via ); parsed default 120 → 0 (unset marker). Regression assertion added to review-command Test 5 (the refused run''s status envelope must carry 300). Per-host budget floors (agy needs more than codex) are recorded as the Proposal 102 catalog follow-up.
+**Resolution (implementation-reverted-to-requirement)**: the door resolves budget as explicit flag → `co_review_timeout_seconds` config → 300s baseline (the exact auto-path resolution, via `Get-ContinuousCoReviewNavigatorTimeoutSeconds`); parsed default 120 → 0 (unset marker). Regression assertion added to review-command Test 5 (the refused run's status envelope must carry 300). Per-host budget floors (agy needs more than codex) are recorded as the Proposal 102 catalog follow-up.
 
 **Trace**: FR-034 lineage (T082/T092 budget doctrine); consumer runs iter001-claude / iter001-antigravity / iter001-ag2; DEC-197-I010-007.
+
 ### D-197-I009-003 closure — conformance flush/read race REFUTED with evidence (T109)
 
 **Status**: CLOSED (refuted-with-evidence, 2026-07-08; per the design N7 either/or and the maintainer-approved default).
