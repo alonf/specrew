@@ -17,3 +17,5 @@ quality:
     default_policy: "strongest-available"
     allow_lower_tier_override: true
     approval_required: true
+public_readiness:
+  enabled: true

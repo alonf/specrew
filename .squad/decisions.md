@@ -27462,3 +27462,18 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Next Action**: fix under the validator-surface ownership (F-006/F-013 lineage) as ordinary repo
   maintenance after 0.40.0; the T111 evidence record carries the honest `failed=2` for the unit
   suite with the in-tree note as the standing explanation.
+
+## 2026-07-09T05:00:00Z — Amendment to NOTE-197-I010-003: public-readiness test failures ROOT-CAUSED and FIXED (fixture lag)
+
+- **Decision ID**: NOTE-197-I010-003-A
+- **Type**: maintenance-note amendment (root cause + fix; supersedes the "carry as maintenance" ruling for the branch)
+- **Recorded At**: 2026-07-09T05:00:00Z
+- **Prompted by**: maintainer question 2026-07-09 ("Maybe the test does not check it correctly. Maybe we have them using a different file name that the test should expect").
+- **Root cause**: the F-040 opt-in gate (2026-05-23, `public_readiness.enabled` in `.specrew/config.yml`,
+  default OFF) was never migrated into the two 2026-05-04 test fixtures — the validator correctly
+  skipped and emitted zero warnings; the fixtures lagged the contract, the validator is sound.
+- **Fix**: 2-line test-data change (opt-in appended to both fixture configs); test file 6/6,
+  `tests/unit` 10/10. Zero production code touched. Full analysis:
+  `specs/197-continuous-co-review/iterations/010/quality/known-test-issues.md`.
+- **Still open (main only)**: `main` (`5bca4fdf`) fails ALL SIX tests in this file (incl. clean +
+  hard-fail cases) — a separate undiagnosed breakage to reconcile at PR time.

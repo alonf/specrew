@@ -1,24 +1,29 @@
 # Known Test Issues — pre-existing, NOT F-197 regressions (verified by commit comparison)
 
 **Schema**: v1
-**Recorded**: 2026-07-08 (during the T111 evidence-recording sweep)
+**Recorded**: 2026-07-08 (during the T111 evidence-recording sweep); public-readiness item
+ROOT-CAUSED AND FIXED 2026-07-09.
 
-## `tests/unit` — 2 pre-existing failures (public-readiness drift warnings)
+## `tests/unit` — public-readiness drift warnings: ROOT-CAUSED and FIXED (fixture lag, not validator defect)
 
-- **Failing tests**: `validate-governance public-readiness warnings — emits additive soft warnings
-  for drifted fixtures` (both `extension` and `specify` validator copies).
-  Expected 5 `WARN [public-readiness]` lines from the drifted fixture; got 0 (exit 0, PASS otherwise).
-- **NOT an F-197/T111 regression — proven by comparison**: the identical failure signature
-  (8 passed / 2 failed, same two tests) reproduces in a detached worktree at commit `2bd508c7`
-  (the tree BEFORE T111), run 2026-07-08 with the same Pester 5.8.0 invocation. F-197 touches no
-  validator or public-readiness surface.
-- **Scope ruling**: the public-readiness soft-warning path belongs to F-006/F-013 validator
-  surfaces, out of F-197's charter. Fixing it here would be unreviewed scope at review-signoff.
-  Carried as a repo maintenance item (see the 2026-07-08 decisions-ledger note); it does not block
-  0.40.0 (the check degrades to fewer soft WARNINGS, never to a false hard-PASS of a hard-fail).
-- **Machine evidence honesty**: the T111 evidence record for the `unit` suite carries
-  `failed=2` — the recorder writes what the runner reported, and this note is the standing
-  explanation.
+- **Symptom**: `validate-governance public-readiness warnings — emits additive soft warnings for
+  drifted fixtures` failed on both validator copies: expected 5 `WARN [public-readiness]` lines from
+  the deliberately-incomplete fixture; got 0 (exit 0, PASS otherwise).
+- **NOT an F-197/T111 regression — proven twice**: identical signature (8/2, same two tests) in a
+  detached worktree at pre-T111 commit `2bd508c7`; and on `main` (`5bca4fdf`) the same test file is
+  WORSE (all 6 fail, including clean-fixture and hard-fail cases — main has its own additional
+  breakage on this surface, not diagnosed here).
+- **Root cause (maintainer-prompted diagnosis, 2026-07-09)**: the F-040 dogfooding fix (2026-05-23)
+  made public-readiness checks OPT-IN via `.specrew/config.yml#public_readiness.enabled` (new
+  projects default private). Both test fixtures were bootstrapped 2026-05-04 and were never migrated
+  to the opt-in contract — so the check silently skipped and emitted zero warnings. The VALIDATOR is
+  correct; the FIXTURES lagged a behavior change.
+- **Fix (2-line test data, zero production code)**: `public_readiness:\n  enabled: true` appended to
+  both fixture configs (`public-readiness-clean` + `public-readiness-drift`). The clean fixture now
+  genuinely exercises the enabled-but-clean path; the drift fixture exercises all 5 warnings.
+  Verified: the test file passes 6/6; `tests/unit` is 10/10.
+- **Left for main**: `main`'s additional failures on this file (clean + hard-fail cases) are a
+  separate, undiagnosed breakage to reconcile at PR time.
 
 ## `tests/unit` plain-script discovery noise
 
