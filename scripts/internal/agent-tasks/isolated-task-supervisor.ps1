@@ -108,6 +108,9 @@ try {
         RedirectStandardError  = $resultErrPath
     }
     if ($IsWindows) { $spArgs.WindowStyle = 'Hidden' }   # Windows-only; omit on Unix
+    # Compile the containment runtime BEFORE the spawn (T091 root-cause): first-use Add-Type takes
+    # seconds; paying it after Start-Process opens the pre-assignment escape window.
+    Initialize-SpecrewProcessContainmentRuntime
     if (-not $IsWindows) {
         # T100/FR-039 (N2): make the harness its OWN session/process-group leader so one group signal
         # (`kill -- -PGID`) reaches the whole reviewer tree atomically. util-linux setsid EXECS the

@@ -6,10 +6,36 @@
 Set-StrictMode -Version Latest
 
 function Get-SpecrewProcessTreeDescendants {
-    # Snapshot the full descendant tree (BFS via `pgrep -P`) BEFORE any kill - so a grandchild that the kill
-    # would re-parent is still in the snapshot. Returns descendants only (NOT $RootPid), deepest-first.
+    # Snapshot the full descendant tree BEFORE any kill - so a grandchild that the kill would re-parent
+    # is still in the snapshot. Returns descendants only (NOT $RootPid), deepest-first. Cross-platform:
+    # one CIM parent-map pass on Windows (T091: the dead-root belt needs a REAL snapshot there too),
+    # BFS via `pgrep -P` on Unix.
     param([Parameter(Mandatory)][int]$RootPid)
     $ordered = [System.Collections.Generic.List[int]]::new()
+    if ($IsWindows) {
+        # One enumeration, then BFS the parent map in memory (N processes, not N queries).
+        $byParent = @{}
+        try {
+            foreach ($p in (Get-CimInstance Win32_Process -ErrorAction Stop | Select-Object ProcessId, ParentProcessId)) {
+                $pp = [int]$p.ParentProcessId
+                if (-not $byParent.ContainsKey($pp)) { $byParent[$pp] = [System.Collections.Generic.List[int]]::new() }
+                $byParent[$pp].Add([int]$p.ProcessId)
+            }
+        }
+        catch { return , (@()) }
+        $frontier = @($RootPid)
+        while ($frontier.Count -gt 0) {
+            $next = [System.Collections.Generic.List[int]]::new()
+            foreach ($p in $frontier) {
+                if ($byParent.ContainsKey([int]$p)) {
+                    foreach ($k in $byParent[[int]$p]) { if (-not $ordered.Contains($k)) { $ordered.Add($k); $next.Add($k) } }
+                }
+            }
+            $frontier = $next.ToArray()
+        }
+        $ordered.Reverse()
+        return , ($ordered.ToArray())
+    }
     $frontier = @($RootPid)
     while ($frontier.Count -gt 0) {
         $next = [System.Collections.Generic.List[int]]::new()
@@ -28,13 +54,26 @@ function Get-SpecrewProcessTreeDescendants {
     return , ($ordered.ToArray())
 }
 
+function Initialize-SpecrewProcessContainmentRuntime {
+    # T091 root-cause fix: the Job Object P/Invoke type compiles on FIRST use (Add-Type, 1-3s). If that
+    # first use happens AFTER the child spawn (inside New-SpecrewProcessContainment), the child can fork
+    # a grandchild DURING the compile - before job assignment - and escape containment (the empirically
+    # caught pre-assignment window). Call this BEFORE spawning: the compile happens while no child
+    # exists, so assignment lands within ms of the spawn. No-op on Unix and on repeat calls.
+    if ($IsWindows) { try { Initialize-SpecrewJobObjectType } catch { $null = $_ } }
+}
+
 function Stop-SpecrewProcessTree {
     # Kill $RootPid AND its descendant(s), gracefully (SIGTERM -> flush) then hard (SIGKILL). Cross-platform.
     param([Parameter(Mandatory)][int]$RootPid, [int]$GraceSeconds = 5)
     if ($IsWindows) {
+        $snapshot = @(Get-SpecrewProcessTreeDescendants -RootPid $RootPid)                 # while the root is alive
         try { & taskkill /PID $RootPid /T 2>&1 | Out-Null } catch { $null = $_ }          # graceful close
         if ($GraceSeconds -gt 0) { Start-Sleep -Seconds $GraceSeconds }
         try { & taskkill /PID $RootPid /T /F 2>&1 | Out-Null } catch { $null = $_ }        # force the tree
+        # Dead-root belt (T091): /T cannot resolve the tree of an already-dead root, so a descendant
+        # whose parent died first would survive it. The pre-kill snapshot still names it - force it.
+        foreach ($p in $snapshot) { try { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
         return
     }
     # Unix. `kill` is a Stop-Process ALIAS in PowerShell, so resolve the Application binary explicitly.
@@ -226,13 +265,19 @@ function Stop-SpecrewProcessContainment {
     $rootPid = [int]$Containment.child_pid
 
     if ($Containment.mode -eq 'job-object' -and $Containment.job_handle -and ($Containment.job_handle -ne [IntPtr]::Zero)) {
+        # Snapshot the descendants WHILE THE ROOT IS ALIVE: a grandchild forked in the pre-assignment
+        # window is outside the job AND unreachable via /T once its parent dies - only a live snapshot
+        # names it (the empirically caught escape; see Initialize-SpecrewProcessContainmentRuntime).
+        $snapshot = @(Get-SpecrewProcessTreeDescendants -RootPid $rootPid)
         # Graceful close first (taskkill /T posts WM_CLOSE / console ctrl to the tree), then the
         # ATOMIC job kill - every job member dies in one kernel call, no walk, no race.
         try { & taskkill /PID $rootPid /T 2>&1 | Out-Null } catch { $null = $_ }
         if ($GraceSeconds -gt 0) { Start-Sleep -Seconds $GraceSeconds }
         try { $null = [SpecrewJobNative]::TerminateJobObject($Containment.job_handle, 137) } catch { $null = $_ }
-        # Belt-and-suspenders for the pre-assignment escape window.
+        # Belt-and-suspenders for pre-assignment escapees: tree-kill while a live root can resolve it,
+        # then force every snapshot survivor individually (a dead root resolves no tree).
         try { & taskkill /PID $rootPid /T /F 2>&1 | Out-Null } catch { $null = $_ }
+        foreach ($p in $snapshot) { try { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
         return
     }
 
@@ -240,13 +285,17 @@ function Stop-SpecrewProcessContainment {
         $killBin = Get-Command -Name 'kill' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($killBin) {
             $pgid = [int]$Containment.child_pgid
+            # Pre-kill snapshot (same rationale as the job branch): a descendant that re-setsid'd out
+            # of the group is invisible to the group signal AND to a post-kill walk of a dead root.
+            $snapshot = @(Get-SpecrewProcessTreeDescendants -RootPid $rootPid)
             # Graceful group TERM (the whole session flushes), grace, then group KILL - one signal
             # reaches every group member atomically (no snapshot race for non-setsid descendants).
             try { & $killBin.Source -TERM -- "-$pgid" 2>$null } catch { $null = $_ }
             if ($GraceSeconds -gt 0) { Start-Sleep -Seconds $GraceSeconds }
             try { & $killBin.Source -KILL -- "-$pgid" 2>$null } catch { $null = $_ }
-            # Final sweep: a descendant that re-setsid'd itself left the group - the walk catches it.
-            Stop-SpecrewProcessTree -RootPid $rootPid -GraceSeconds 0
+            # Belt: force any snapshot survivor (group escapees), root-last semantics preserved by the
+            # group KILL above having already taken the root.
+            foreach ($p in $snapshot) { try { Stop-Process -Id $p -Force -ErrorAction SilentlyContinue } catch { $null = $_ } }
             return
         }
     }

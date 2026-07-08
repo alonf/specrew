@@ -400,6 +400,26 @@ function Stop-SpecrewIsolatedTask {
     $childPgid = $null
     if ($Registry.PSObject.Properties.Name -contains 'child_pid') { $childPid = $Registry.child_pid }
     if ($Registry.PSObject.Properties.Name -contains 'child_pgid') { $childPgid = $Registry.child_pgid }
+    if (-not $childPid -and -not $childPgid) {
+        # T091: the detached-ENTRY path (co-review-service) is not the isolated-task supervisor, so its
+        # registry carries no child_*; the reviewer's pids flow via heartbeat TELEMETRY into the run
+        # dir's status.json instead. Probe it so a dead entry's reviewer tree is still killable here.
+        try {
+            $runDir = if ($Registry.PSObject.Properties.Name -contains 'run_dir') { [string]$Registry.run_dir } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($runDir)) {
+                $stPath = Join-Path $runDir 'status.json'
+                if (Test-Path -LiteralPath $stPath -PathType Leaf) {
+                    $st = Get-Content -LiteralPath $stPath -Raw | ConvertFrom-Json
+                    $tel = if ($st.PSObject.Properties.Name -contains 'reviewer_telemetry') { $st.reviewer_telemetry } else { $null }
+                    if ($null -ne $tel) {
+                        if ($tel.PSObject.Properties.Name -contains 'child_pid') { $childPid = $tel.child_pid }
+                        if ($tel.PSObject.Properties.Name -contains 'child_pgid') { $childPgid = $tel.child_pgid }
+                    }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
     if ($childPid -or $childPgid) {
         $treeLoaded = Import-SpecrewIsolatedTaskProcessTree
         if ($treeLoaded -and $childPid) {

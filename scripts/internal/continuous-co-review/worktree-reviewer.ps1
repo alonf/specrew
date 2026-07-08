@@ -1,8 +1,10 @@
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-# T091/FR-037: the shared cross-platform graceful process-tree kill - ONE watchdog kill for both the inline
-# reviewer spawn here AND the detached supervisor. Loaded best-effort; the kill site falls back if absent.
+# T091/FR-037 + T100/FR-039: ONE process manager for the reviewer spawn - the same OS-native containment
+# primitives the isolated-task supervisor uses (process-tree.ps1: Job Object / setsid+PGID / snapshot-walk
+# fallback). Loaded here; REQUIRED at spawn time (Invoke-ContinuousCoReviewAgentInWorktree refuses to spawn
+# an uncontainable reviewer - the divergent $proc.Kill fallback is deleted per design N1).
 $specrewProcessTreeHelper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
 if (Test-Path -LiteralPath $specrewProcessTreeHelper -PathType Leaf) { . $specrewProcessTreeHelper }
 
@@ -468,20 +470,27 @@ function New-ContinuousCoReviewReviewerInvocationTelemetry {
         [Parameter(Mandatory)]$Stopwatch,
         [Parameter(Mandatory)][int]$TimeoutSeconds,
         [bool]$TimedOut = $false,
-        [bool]$Running = $false
+        [bool]$Running = $false,
+        [AllowNull()]$Containment
     )
 
     return [pscustomobject][ordered]@{
-        reviewer_host    = $HostName
-        command_file     = [string]$Command.file
-        command_args     = @($Command.pre_args)
-        prompt_via_stdin = [bool]$Command.prompt_via_stdin
-        timeout_seconds  = $TimeoutSeconds
-        started_at       = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp -Timestamp $StartedAt
-        updated_at       = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp
-        elapsed_seconds  = [math]::Round($Stopwatch.Elapsed.TotalSeconds, 3)
-        running          = $Running
-        timed_out        = $TimedOut
+        reviewer_host               = $HostName
+        command_file                = [string]$Command.file
+        command_args                = @($Command.pre_args)
+        prompt_via_stdin            = [bool]$Command.prompt_via_stdin
+        timeout_seconds             = $TimeoutSeconds
+        started_at                  = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp -Timestamp $StartedAt
+        updated_at                  = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp
+        elapsed_seconds             = [math]::Round($Stopwatch.Elapsed.TotalSeconds, 3)
+        running                     = $Running
+        timed_out                   = $TimedOut
+        # T091/N1 instrumentation: WHICH containment held the reviewer + the pids the reaper needs to
+        # kill the tree of a dead detached-entry (flows into status.json via the heartbeat).
+        containment                 = if ($null -ne $Containment) { [string]$Containment.mode } else { $null }
+        child_pid                   = if ($null -ne $Containment) { $Containment.child_pid } else { $null }
+        child_pgid                  = if ($null -ne $Containment) { $Containment.child_pgid } else { $null }
+        containment_degraded_reason = if ($null -ne $Containment) { $Containment.degraded_reason } else { $null }
     }
 }
 
@@ -499,69 +508,100 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     $cmd = Get-ContinuousCoReviewAgentCommand -HostName $HostName
     $startedAt = [datetime]::UtcNow
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
+
+    # T091/N1 (FR-037): the reviewer spawn is managed by the SAME OS-native containment the isolated-task
+    # supervisor uses (T100: Job Object w/ KILL_ON_JOB_CLOSE on Windows, setsid+PGID group on Unix, the
+    # snapshot walk as the helper-internal fallback). REQUIRED: a reviewer we cannot contain is a reviewer
+    # we refuse to spawn - a deploy gap fails LOUD (the orchestrator surfaces the reason) instead of the
+    # old divergent single-pid .NET kill fallback (deleted per N1: ONE kill mechanism, not two).
+    if (-not (Get-Command -Name 'New-SpecrewProcessContainment' -ErrorAction SilentlyContinue)) {
+        $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
+        if (Test-Path -LiteralPath $helper -PathType Leaf) { try { . $helper } catch { $null = $_ } }
+    }
+    if (-not (Get-Command -Name 'New-SpecrewProcessContainment' -ErrorAction SilentlyContinue)) {
+        throw 'co-review: the OS-native containment helper (agent-tasks/process-tree.ps1) is unavailable - refusing to spawn an uncontainable reviewer (T091/FR-037; check the module deploy).'
+    }
+    # Compile the containment runtime BEFORE the spawn: the first-use Add-Type takes seconds, and paying
+    # it after Start() opens the pre-assignment escape window (empirically caught - the grandchild forked
+    # during the compile and outlived every kill).
+    Initialize-SpecrewProcessContainmentRuntime
+
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $cmd.file
     foreach ($a in @($cmd.pre_args)) { [void]$psi.ArgumentList.Add($a) }
     if (-not $cmd.prompt_via_stdin) { [void]$psi.ArgumentList.Add($Prompt) }   # codex exec takes the prompt as a positional arg
+    if (-not $IsWindows) {
+        # setsid exec (same trick as the supervisor spawn): the reviewer becomes its own session/group
+        # leader so one group signal reaches its whole tree; exec-in-place keeps the PID + the redirected
+        # stdio pipes. The containment probe below VERIFIES leadership and degrades honestly if not.
+        $setsidBin = Get-Command -Name 'setsid' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($setsidBin) {
+            $inner = @($psi.FileName) + @($psi.ArgumentList)
+            $psi.ArgumentList.Clear()
+            foreach ($a in $inner) { [void]$psi.ArgumentList.Add($a) }
+            $psi.FileName = $setsidBin.Source
+        }
+    }
     $psi.WorkingDirectory = $WorktreePath
     $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
     $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
     $psi.StandardInputEncoding = [System.Text.UTF8Encoding]::new($false)
     $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
     [void]$proc.Start()
-    $outTask = $proc.StandardOutput.ReadToEndAsync(); $errTask = $proc.StandardError.ReadToEndAsync()
-    if ($cmd.prompt_via_stdin) { $proc.StandardInput.Write($Prompt) }
-    $proc.StandardInput.Close()
-    $exited = $false
-    while (-not $exited) {
-        $remainingMs = [int][math]::Ceiling(($TimeoutSeconds * 1000) - $sw.ElapsedMilliseconds)
-        if ($remainingMs -le 0) { break }
-        $sliceMs = [math]::Min(5000, $remainingMs)
-        $exited = $proc.WaitForExit($sliceMs)
-        if (-not $exited -and $Heartbeat) {
-            try {
-                & $Heartbeat (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Running $true)
+    # Contain BEFORE handing the reviewer its prompt: a stdin-prompted host is still blocked reading stdin
+    # here, so the tree is contained before the reviewer can have forked anything (zero escape window).
+    $containment = New-SpecrewProcessContainment -ChildPid $proc.Id
+    try {
+        $outTask = $proc.StandardOutput.ReadToEndAsync(); $errTask = $proc.StandardError.ReadToEndAsync()
+        if ($cmd.prompt_via_stdin) { $proc.StandardInput.Write($Prompt) }
+        $proc.StandardInput.Close()
+        $exited = $false
+        while (-not $exited) {
+            $remainingMs = [int][math]::Ceiling(($TimeoutSeconds * 1000) - $sw.ElapsedMilliseconds)
+            if ($remainingMs -le 0) { break }
+            $sliceMs = [math]::Min(5000, $remainingMs)
+            $exited = $proc.WaitForExit($sliceMs)
+            if (-not $exited -and $Heartbeat) {
+                try {
+                    & $Heartbeat (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Running $true -Containment $containment)
+                }
+                catch { $null = $_ }
             }
-            catch { $null = $_ }
         }
-    }
-    if (-not $exited) {
-        # T091/FR-037: graceful tree-kill via the shared helper (a flush window for the in-flight finding),
-        # falling back to the .NET tree-kill if the helper is unavailable.
-        if (Get-Command -Name 'Stop-SpecrewProcessTree' -ErrorAction SilentlyContinue) {
-            Stop-SpecrewProcessTree -RootPid $proc.Id -GraceSeconds 5
+        if (-not $exited) {
+            # THE one kill (T091/N1): graceful TERM (flush window for the in-flight finding, R1) ->
+            # atomic OS kill (job / group) -> snapshot-walk sweep, all inside the shared helper.
+            Stop-SpecrewProcessContainment -Containment $containment -GraceSeconds 5
+            $sw.Stop()
+            # BLOCKING co-review finding (T090/R1): the reviewer's stdout captured BEFORE the kill (including anything
+            # flushed during the graceful window) lives in $outTask. Return it as the partial result so prose-salvage
+            # has the in-pipe reasoning to fall back on. WITHOUT this, every timeout returned stdout='' and the salvage
+            # floor was inert on the EXACT failure (timeout) the iteration was built for. The pipe closes when the
+            # killed process exits, so the bounded await resolves promptly.
+            $partialOut = ''
+            try { if ($outTask.Wait(3000)) { $partialOut = [string]$outTask.Result } } catch { $null = $_ }
+            return [pscustomobject]@{
+                exit_code        = $null
+                stdout           = $partialOut
+                stderr           = 'timeout'
+                telemetry        = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -TimedOut $true -Containment $containment)
+            }
         }
-        else {
-            # f2: the shared graceful tree-kill is NOT dropped — it is the primary path; this is a defensive
-            # fallback for when process-tree.ps1 did not load (a deploy gap). SURFACE it (no graceful flush,
-            # not the validated path) instead of degrading silently.
-            [Console]::Error.WriteLine('[co-review] WARN Stop-SpecrewProcessTree unavailable - using the $proc.Kill($true) fallback (no graceful flush); check the process-tree helper deploy.')
-            try { $proc.Kill($true) } catch { $null = $_ }
-        }
+        $out = if ($outTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $outTask.Result } else { '' }
+        $err = if ($errTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $errTask.Result } else { '' }
+        $code = $proc.ExitCode; $proc.Dispose()
         $sw.Stop()
-        # BLOCKING co-review finding (T090/R1): the reviewer's stdout captured BEFORE the kill (including anything
-        # flushed during the graceful window) lives in $outTask. Return it as the partial result so prose-salvage
-        # has the in-pipe reasoning to fall back on. WITHOUT this, every timeout returned stdout='' and the salvage
-        # floor was inert on the EXACT failure (timeout) the iteration was built for. The pipe closes when the
-        # killed process exits, so the bounded await resolves promptly.
-        $partialOut = ''
-        try { if ($outTask.Wait(3000)) { $partialOut = [string]$outTask.Result } } catch { $null = $_ }
         return [pscustomobject]@{
-            exit_code        = $null
-            stdout           = $partialOut
-            stderr           = 'timeout'
-            telemetry        = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -TimedOut $true)
+            exit_code = $code
+            stdout    = $out
+            stderr    = $err
+            telemetry = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Containment $containment)
         }
     }
-    $out = if ($outTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $outTask.Result } else { '' }
-    $err = if ($errTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $errTask.Result } else { '' }
-    $code = $proc.ExitCode; $proc.Dispose()
-    $sw.Stop()
-    return [pscustomobject]@{
-        exit_code = $code
-        stdout    = $out
-        stderr    = $err
-        telemetry = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds)
+    finally {
+        # Straggler reap + handle release, same semantics as the supervisor's finally: a background
+        # process the reviewer left behind must not outlive the run, even on a clean exit.
+        try { Close-SpecrewProcessContainment -Containment $containment } catch { $null = $_ }
     }
 }
 

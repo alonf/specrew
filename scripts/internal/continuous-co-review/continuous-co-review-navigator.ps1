@@ -689,6 +689,25 @@ function Invoke-ContinuousCoReviewNavigatorInlineReap {
         # (On Windows the supervisor's closed job handle already reaped the tree - KILL_ON_JOB_CLOSE.)
         $childPgid = if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'child_pgid')) { $Registry.child_pgid } else { $null }
         $childPid = if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'child_pid')) { $Registry.child_pid } else { $null }
+        if (-not $childPid -and -not $childPgid) {
+            # T091: detached-ENTRY runs record the reviewer's pids via heartbeat telemetry in the run
+            # dir's status.json (the registry carries no child_*). Probe it (same as the launcher reaper).
+            try {
+                $rd = if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'run_dir')) { [string]$Registry.run_dir } else { '' }
+                if (-not [string]::IsNullOrWhiteSpace($rd)) {
+                    $stp = Join-Path $rd 'status.json'
+                    if (Test-Path -LiteralPath $stp -PathType Leaf) {
+                        $sto = Get-Content -LiteralPath $stp -Raw -Encoding UTF8 | ConvertFrom-Json
+                        $tel = if ($sto.PSObject.Properties.Name -contains 'reviewer_telemetry') { $sto.reviewer_telemetry } else { $null }
+                        if ($null -ne $tel) {
+                            if ($tel.PSObject.Properties.Name -contains 'child_pid') { $childPid = $tel.child_pid }
+                            if ($tel.PSObject.Properties.Name -contains 'child_pgid') { $childPgid = $tel.child_pgid }
+                        }
+                    }
+                }
+            }
+            catch { $null = $_ }
+        }
         if ($childPgid -and -not $IsWindows) {
             $killBin = Get-Command -Name 'kill' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
             if ($killBin) { try { & $killBin.Source -KILL -- ("-{0}" -f [int]$childPgid) 2>$null } catch { $null = $_ } }
