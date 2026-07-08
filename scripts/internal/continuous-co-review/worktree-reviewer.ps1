@@ -275,7 +275,13 @@ function Get-ContinuousCoReviewSlimPrompt {
     # The SLIM prompt (a few KB) — the reviewer reads the diff + design + browses/runs the project itself.
     # Round-aware: round 1 reviews; later rounds verify the prior findings are resolved; at the FINAL round the
     # reviewer escalates (the counter is a safety ceiling, the reviewer's judgement is the brains).
-    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope)
+    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope, [switch]$DesignContextEmpty)
+    # f1 (codex 2026-07-08): when NO design context resolved, say so HONESTLY - the reviewer must not
+    # silently skip design conformance; it reviews code/process and RAISES the gap as a finding.
+    $designContextBlock = if ($DesignContextEmpty) {
+        "`nNOTE - NO DESIGN CONTEXT RESOLVED: .review/design/ is EMPTY for this run (no spec, design-analysis, or contracts could be resolved from the project). Design-conformance CANNOT be validated this round: review the code + process axes only, RAISE the missing design context itself as a finding (severity per impact), and treat this review as PARTIAL (the run is labelled accordingly).`n"
+    }
+    else { '' }
     # T096/FR-038: the human-directed scope (remediation choice 3) narrows THIS review. The run is
     # labelled completeness=partial by the orchestrator, so the narrowed evidence can never silently
     # satisfy the full-signoff gate (T094).
@@ -298,7 +304,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     }
     return @"
 You are the Specrew continuous co-reviewer (a fresh-context, design- AND process-conformance reviewer).
-$scopeBlock
+$scopeBlock$designContextBlock
 Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN any
 command (tests, build, lint, search) you need to verify the change — but you are READ-ONLY on the source: do
 NOT modify, fix, or patch any file. Your job is to find issues, not fix them.
@@ -398,12 +404,43 @@ function Get-ContinuousCoReviewHarvestedPartialResult {
     $findings = [System.Collections.Generic.List[object]]::new()
     $jsonlPath = Join-Path $WorktreePath '.review/findings.jsonl'
     if (Test-Path -LiteralPath $jsonlPath -PathType Leaf) {
+        $harvestIdx = 0
         foreach ($line in @(Get-Content -LiteralPath $jsonlPath -ErrorAction SilentlyContinue)) {
             $t = ([string]$line).Trim()
             if ([string]::IsNullOrWhiteSpace($t)) { continue }
             try {
                 $obj = $t | ConvertFrom-Json -ErrorAction Stop
-                if ($null -ne $obj -and $null -ne $obj.PSObject.Properties['comment']) { $findings.Add($obj) }
+                if ($null -eq $obj -or $null -eq $obj.PSObject.Properties['comment'] -or [string]::IsNullOrWhiteSpace([string]$obj.comment)) { continue }
+                $harvestIdx++
+                # f2 (codex 2026-07-08): NORMALIZE every harvested line into the FindingsResult ITEM
+                # schema - a cut-short reviewer's partial line keeps its content but gets schema-valid
+                # defaults for whatever is missing/invalid, and is never embedded raw. source_run_id is
+                # FORCED to this run (a harvested line cannot claim another run's identity), and the
+                # disposition/resolution are forced open/unresolved (an in-flight finding is never
+                # pre-resolved by the line that reported it).
+                $sev = if ($null -ne $obj.PSObject.Properties['severity'] -and ([string]$obj.severity -in @('blocking', 'advisory', 'nit'))) { [string]$obj.severity } else { 'advisory' }
+                $kind = if ($null -ne $obj.PSObject.Properties['kind'] -and -not [string]::IsNullOrWhiteSpace([string]$obj.kind)) { [string]$obj.kind } else { 'partial-harvest' }
+                $designRef = if ($null -ne $obj.PSObject.Properties['design_reference'] -and -not [string]::IsNullOrWhiteSpace([string]$obj.design_reference)) { [string]$obj.design_reference } else { 'partial-review-salvage' }
+                $findingId = if ($null -ne $obj.PSObject.Properties['finding_id'] -and -not [string]::IsNullOrWhiteSpace([string]$obj.finding_id)) { [string]$obj.finding_id } else { ('partial-{0}' -f $harvestIdx) }
+                $loc = [pscustomobject]@{ line_start = $null; line_end = $null }
+                if ($null -ne $obj.PSObject.Properties['location'] -and $null -ne $obj.location) {
+                    $p = if ($null -ne $obj.location.PSObject.Properties['path']) { [string]$obj.location.path } else { '' }
+                    $ls = $null; $le = $null
+                    if ($null -ne $obj.location.PSObject.Properties['line_start'] -and $null -ne $obj.location.line_start) { try { $ls = [int]$obj.location.line_start } catch { $ls = $null } }
+                    if ($null -ne $obj.location.PSObject.Properties['line_end'] -and $null -ne $obj.location.line_end) { try { $le = [int]$obj.location.line_end } catch { $le = $null } }
+                    $loc = if (-not [string]::IsNullOrWhiteSpace($p)) { [pscustomobject]@{ path = $p; line_start = $ls; line_end = $le } } else { [pscustomobject]@{ line_start = $ls; line_end = $le } }
+                }
+                $findings.Add([pscustomobject]@{
+                        finding_id       = $findingId
+                        source_run_id    = $RunId
+                        location         = $loc
+                        severity         = $sev
+                        kind             = $kind
+                        design_reference = $designRef
+                        comment          = [string]$obj.comment
+                        disposition      = 'open'
+                        resolution       = [pscustomobject]@{ state = 'unresolved'; fix_evidence_ref = $null; rationale = $null }
+                    })
             }
             catch { $null = $_ }   # a truncated / garbled trailing line is expected on a killed run - skip it
         }
@@ -665,9 +702,10 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
         [Parameter(Mandatory)][string]$HostName, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings,
         [int]$TimeoutSeconds = 600,
         [scriptblock]$Heartbeat,
-        [string]$HumanScope
+        [string]$HumanScope,
+        [switch]$DesignContextEmpty
     )
-    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope
+    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty
     $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
 
     # T108/FR-033 (D-197-I009-015): retry ONCE on an EMPTY exit-0 result before the run can be declared

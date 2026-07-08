@@ -45,15 +45,43 @@ function Resolve-ContinuousCoReviewWorktreeBaseline {
 }
 
 function Resolve-ContinuousCoReviewWorktreeDesignContext {
-    # Auto-resolve the design context: the feature's spec.md + the latest iteration's design-analysis.md,
-    # from .specify/feature.json. Returns project-relative paths (or @() if unresolved). (G1: the manual door
-    # no longer needs an explicit --design-context-ref.)
+    # Auto-resolve the design context: the feature's spec.md + the latest iteration's design-analysis.md.
+    # Sources, in order (f1 fix, codex finding 2026-07-08): (1) .specify/feature.json (fast, but
+    # GITIGNORED machine-local state - a fresh clone lacks it), (2) .specrew/start-context.json
+    # session_state (the durable lifecycle pointer), (3) a single specs/*/spec.md directory when
+    # unambiguous. Returns project-relative paths (or @() if genuinely unresolved - the CALLER now
+    # records + degrades an empty resolution instead of silently reviewing blind).
     param([Parameter(Mandatory)][string]$RepoRoot)
     $out = New-Object System.Collections.Generic.List[string]
-    $fj = Join-Path $RepoRoot '.specify/feature.json'
-    if (-not (Test-Path -LiteralPath $fj -PathType Leaf)) { return @() }
     $featureDir = $null
-    try { $featureDir = ([string]((Get-Content $fj -Raw -Encoding UTF8 | ConvertFrom-Json).feature_directory)).Replace('\', '/').TrimEnd('/') } catch { return @() }
+    $fj = Join-Path $RepoRoot '.specify/feature.json'
+    if (Test-Path -LiteralPath $fj -PathType Leaf) {
+        try { $featureDir = ([string]((Get-Content $fj -Raw -Encoding UTF8 | ConvertFrom-Json).feature_directory)).Replace('\', '/').TrimEnd('/') } catch { $featureDir = $null }
+    }
+    if ([string]::IsNullOrWhiteSpace($featureDir)) {
+        # Durable fallback: the lifecycle start-context names the active feature.
+        try {
+            $scPath = Join-Path $RepoRoot '.specrew/start-context.json'
+            if (Test-Path -LiteralPath $scPath -PathType Leaf) {
+                $sc = Get-Content -LiteralPath $scPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state) {
+                    $ref = if ($sc.session_state.PSObject.Properties['feature_ref']) { [string]$sc.session_state.feature_ref } else { '' }
+                    if (-not [string]::IsNullOrWhiteSpace($ref) -and (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path 'specs' $ref)) -PathType Container)) {
+                        $featureDir = ('specs/' + $ref)
+                    }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+    if ([string]::IsNullOrWhiteSpace($featureDir)) {
+        # Last resort: a SINGLE unambiguous specs/*/spec.md (multi-feature repos stay unresolved).
+        try {
+            $specDirs = @(Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'specs') -Directory -ErrorAction Stop | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'spec.md') -PathType Leaf })
+            if ($specDirs.Count -eq 1) { $featureDir = ('specs/' + $specDirs[0].Name) }
+        }
+        catch { $null = $_ }
+    }
     if ([string]::IsNullOrWhiteSpace($featureDir)) { return @() }
     if (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path $featureDir 'spec.md')) -PathType Leaf) { [void]$out.Add("$featureDir/spec.md") }
     $iterRoot = Join-Path $RepoRoot (Join-Path $featureDir 'iterations')
@@ -331,6 +359,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
     $remediation = Read-ContinuousCoReviewRemediationChoice -RepoRoot $RepoRoot
     $humanScope = $null
     $remediationApplied = $null
+    $designContextEmpty = $false   # set for real at the design-context-resolution phase (f1)
     if ($null -ne $remediation) {
         $remediationApplied = [string]$remediation.choice
         switch ($remediationApplied) {
@@ -393,6 +422,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             }
             remediation_applied = $remediationApplied
             human_scope = $humanScope
+            design_context = if ($designContextEmpty) { 'empty' } else { 'resolved' }
             phase_durations_seconds = [pscustomobject]$phaseTimings
         }
         if ($Extra) { foreach ($k in $Extra.Keys) { $obj[$k] = $Extra[$k] } }
@@ -408,6 +438,15 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         $currentPhase = 'design-context-resolution'
         & $recordPhaseStart $currentPhase
         if (-not $DesignContextFiles -or @($DesignContextFiles).Count -eq 0) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
+        # f1 (codex 2026-07-08): an EMPTY design context is RECORDED + DEGRADES the run - never a
+        # silent blind review. The reviewer is told (prompt note), status.json carries it, and the
+        # done-write forces completeness=partial so the T094 tier demands a human ack for the
+        # evidence. Not a terminal failure: a genuinely spec-less repo (greenfield empty-tree
+        # baseline) may legitimately review code-only.
+        $designContextEmpty = (@($DesignContextFiles).Count -eq 0)
+        if ($designContextEmpty) {
+            [Console]::Error.WriteLine('[co-review] WARN DESIGN_CONTEXT_EMPTY no spec/design-analysis resolved (.review/design will be empty); the run is labelled partial and the reviewer is told to flag it.')
+        }
         & $recordPhaseEnd 'design-context-resolution'
 
         # SELECT the reviewer host: independent-preferred + authorized, labelled (T093/FR-035). A
@@ -498,7 +537,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 param($Telemetry)
                 & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
-            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope
+            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty
             & $recordPhaseEnd 'reviewer-execution'
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout
@@ -514,6 +553,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             # T096: a human-SCOPED review covered a SUBSET of the increment - its evidence is honestly
             # PARTIAL (the T094 tiered gate then requires the recorded ack, never a silent full pass).
             if (-not [string]::IsNullOrWhiteSpace([string]$humanScope)) { $completeness = 'partial' }
+            # f1: a review that ran WITHOUT design context could not validate design conformance -
+            # same honest degradation (partial -> the T094 ack tier), never silent full evidence.
+            if ($designContextEmpty) { $completeness = 'partial' }
             if (-not [string]::IsNullOrWhiteSpace($json)) {
                 $currentPhase = 'write-result'
                 & $recordPhaseStart $currentPhase
