@@ -385,3 +385,29 @@ Until then, Step 7 is the one piece of "open-closed violation residue" that rema
 - The original design doc with rationale: [`docs/design/host-package-architecture.md`](../design/host-package-architecture.md)
 - Existing host packages as reference templates: [`hosts/copilot/`](../../hosts/copilot/), [`hosts/claude/`](../../hosts/claude/), [`hosts/codex/`](../../hosts/codex/), [`hosts/antigravity/`](../../hosts/antigravity/)
 - Tests that verify the contract: [`tests/integration/host-registry.tests.ps1`](../../tests/integration/host-registry.tests.ps1)
+
+## Adding a REVIEWER host (continuous co-review) — a much smaller job
+
+The steps above create an **execution host package** (launch, hooks, coordinator rules). Making a
+harness usable as a **continuous co-review reviewer** is deliberately smaller — the CCR core is
+host-neutral, so ALL harness specifics live in ONE catalog:
+
+1. **Add a catalog row** in `scripts/internal/continuous-co-review/reviewer-host-catalog.ps1`:
+   binary name, the agentic args for a non-interactive one-shot run, whether the prompt travels via
+   stdin or as a positional arg, and a review-class rank. That row is the ONLY code change — a
+   governance test (`host-neutral-core.Tests.ps1`) fails the build if harness names leak into the
+   core.
+2. **Probe the CLI first** (lessons from wiring `agy`): flag ORDER matters for some CLIs (flags after
+   the print/prompt flag may be swallowed into the prompt); check for an internal default timeout
+   that silently truncates long reviews (prefer an explicit generous print-timeout flag); and verify
+   what an out-of-quota/expired-session failure looks like — an instant `exit 0` with EMPTY stdout is
+   the common worst case, and the pipeline's retry-once + cause diagnostic handles it, but knowing
+   the signature saves debugging time.
+3. **Authorize it per project** (human step, never automated):
+   `specrew review --host <name> --authorization-ref "<who-approved-when>"`.
+4. **Validate end-to-end**: `specrew review --live --host <name> --code-writer-host <writer>` should
+   produce `.specrew/review/inline/<run-id>/findings-result.json` with your harness recorded as the
+   reviewer and the independence label reflecting the writer/reviewer pairing.
+
+Model selection within a harness (ranked model lists, quota-group-aware fallback) is a planned
+follow-up — see Proposal 102, Pillar 5 addendum.

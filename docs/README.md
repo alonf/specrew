@@ -5,7 +5,8 @@ This directory contains the main user-facing documentation for Specrew.
 ## Documentation Structure
 
 - `getting-started.md` - practical bootstrap and quickstart guidance for greenfield and brownfield repos
-- `user-guide.md` - lifecycle guide for planning, execution, review, retrospective, and drift handling
+- `user-guide.md` - lifecycle guide for planning, execution, review, retrospective, and drift handling — including [Continuous co-review](user-guide.md#continuous-co-review-feature-197-0400-beta) (the independent AI reviewer at implement checkpoints and the review-signoff evidence gate)
+- `troubleshooting.md` - symptom-driven recovery guide (installs, resume, hooks, and [co-review problems](troubleshooting.md#continuous-co-review-problems))
 - `methodology\` - the methodology contract: lifecycle discipline, review instructions, proposal discipline, and the [Design Workshop methodology](methodology/design-workshop-methodology.md) (the lens-driven human-agent design conversation at intake and the design-analysis stop)
 - `api-reference.md` - extension surfaces and integration points for building on Specrew
 - `github-project.md` - Specrew self-development board and project operating model

@@ -28,6 +28,7 @@ If you run `specrew update` when the installed module itself is stale, you only 
 | Resume reopens "`=== AWAITING YOUR VERDICT ===`" at a boundary you thought was done | A committed boundary is not an authorized boundary | Go to [Resume re-asks for a verdict you already gave](#resume-re-asks-for-a-verdict-you-already-gave). |
 | A `HOLLOW HANDOVER` warning, or "another session may be active in this worktree" | Expected advisories: an unauthored handover body; a fresh session marker from the previous session | Go to [Handover and concurrency advisories](#handover-and-concurrency-advisories). |
 | A crash lost the last few minutes, or Antigravity shows no welcome-back banner | Expected continuity limits: a hard kill fires no stop hook; Antigravity hooks may be unavailable or may not fire in that host build | Go to [A crash lost recent conversation, or Antigravity shows no welcome-back](#a-crash-lost-recent-conversation-or-antigravity-shows-no-welcome-back). |
+| `specrew review --live` fails with `no-authorized-reviewer-host`, `requested-host-not-available`, or `no-parseable-findings-json`; or review-signoff blocks on review evidence | No reviewer is authorized yet, the requested harness is not installed/authorized, the reviewer CLI returned nothing (quota/session), or the promoted evidence is stale/degraded | Go to [Continuous co-review problems](#continuous-co-review-problems). |
 
 ## PSGallery side-by-side installs or stale cache
 
@@ -311,3 +312,61 @@ uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0
 ```
 
 Then re-run `specrew init`. (`uv` is required — see [getting-started](getting-started.md#1-check-dependencies).) The `@v…` tag tracks Specrew's supported floor; if the command `specrew init` prints names a different version, prefer the printed one — it is generated from the runtime baseline, not from this doc.
+
+## Continuous co-review problems
+
+Continuous co-review (Feature 197, 0.40.0-beta) fails LOUD by design — every failure below is a
+recorded state with a named next move, never a silent pass.
+
+### `no-authorized-reviewer-host`
+
+No reviewer harness is human-authorized for this project yet. Authorization is a one-time explicit
+step (an agent can never self-grant it):
+
+```powershell
+specrew review --host codex --authorization-ref "your-name-approved-<date>"
+```
+
+Any installed harness from the catalog works (`claude`, `codex`, `copilot`, `cursor-agent`,
+`antigravity`). Prefer a harness DIFFERENT from the one writing your code — same-host reviews are
+labelled degraded and need an ack at signoff.
+
+### `requested-host-not-available`
+
+You passed an explicit `--host` that is not installed, not authorized, or has no agentic command in
+the reviewer-host catalog. Specrew honours your request or fails — it never substitutes a different
+harness silently. Either authorize/install that harness or re-run without `--host` to let selection
+pick the strongest authorized independent reviewer.
+
+### `no-parseable-findings-json` (reviewer returned nothing)
+
+The reviewer CLI exited 0 with EMPTY output twice (the built-in retry also came back empty). The run
+status records a cause diagnostic (`no-output-produced` vs `finalization-or-capture-gap`) under
+`.specrew/review/pending/<run-id>/status.json`. Field causes, in observed order of likelihood:
+
+1. **Quota / usage-window exhaustion** — check the provider's quota surface (e.g. `agy models` shows
+   per-model-group five-hour and weekly windows; codex has no such surface — try a trivial prompt).
+   Wait for the window or authorize a different harness, then record the choice:
+   `specrew review --remediate different-host --host <other>`.
+2. **Expired login/session** — re-authenticate the reviewer CLI interactively, then re-run.
+3. **Intermittent finalization flake** (codex-observed) — a plain re-run usually recovers; the retry
+   diagnostic distinguishes this from quota (work started, result lost vs nothing produced).
+
+### Review-signoff blocks with degraded or stale evidence
+
+- **Degraded** (partial / same-host / over-budget): the block names the exact ack —
+  `specrew review --ack-degraded <run-id> --ack-reason "<why this evidence is acceptable>"` — or fix
+  the cause (full independent rerun) instead of acking.
+- **Stale** (digest mismatch): the promoted evidence covers an older tree than the one at the gate.
+  Any commit after the reviewed run stales it — rerun `specrew review --live` so the evidence covers
+  the current tree, and land any remaining edits BEFORE the rerun, not after.
+- **Blocking verdict from a full+independent run**: not overridable by design (only degraded runs
+  accept `--remediate override-block`). Fix the findings and rerun, or take the human repair path the
+  escalation names.
+
+### A problem run parked the loop
+
+Timeouts, partials, and reviewer outages surface a five-option remediation menu at the next stop
+(`more-time` / `different-host` / `narrow-scope` / `accept-partial` / `override-block`, via
+`specrew review --remediate ...`). The recorded choice shapes exactly ONE next run; human-directed
+reruns are never halted by the autonomous round ceiling.
