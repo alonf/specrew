@@ -96,6 +96,28 @@ function Get-SpecrewIsolatedTaskHost {
     return 'unknown'
 }
 
+function Get-SpecrewIsolatedTaskSessionId {
+    # T100: best-effort session identity for the registry (which SESSION fired the task) - the
+    # session-scoping of the pidfile registry. The dispatcher/provider may export it; absence is
+    # honest ('unknown') and the SessionStart sweep still reaps every stale entry regardless.
+    foreach ($var in 'SPECREW_SESSION_ID', 'CLAUDE_SESSION_ID') {
+        $val = [System.Environment]::GetEnvironmentVariable($var)
+        if ($val) { return $val }
+    }
+    return 'unknown'
+}
+
+function Import-SpecrewIsolatedTaskProcessTree {
+    # Load the co-located process-tree.ps1 sibling (co-deployed via FileList) for the reaper's
+    # child-tree kill. Best-effort: a miss degrades Stop-SpecrewIsolatedTask to single-pid kills.
+    if (Get-Command -Name 'Stop-SpecrewProcessContainment' -ErrorAction SilentlyContinue) { return $true }
+    $helper = Join-Path $PSScriptRoot 'process-tree.ps1'
+    if (Test-Path -LiteralPath $helper -PathType Leaf) {
+        try { . $helper; return $true } catch { $null = $_ }
+    }
+    return $false
+}
+
 function New-SpecrewIsolatedTaskWorktree {
     <#
         Materialize a read-only snapshot of $TreeId into an EPHEMERAL dir OUTSIDE the repo.
@@ -202,7 +224,11 @@ function Start-SpecrewIsolatedTask {
 
         # Where the supervisor writes status.json + result (and the job spec). A stable, caller-owned
         # directory (e.g. under .specrew/review/pending/<run-id>/) - NOT the ephemeral worktree.
-        [Parameter(Mandatory)][string]$RunDir
+        [Parameter(Mandatory)][string]$RunDir,
+
+        # T100: the firing session's identity, recorded on the registry entry (session-scoped pidfile).
+        # Defaults to the env seam (SPECREW_SESSION_ID / CLAUDE_SESSION_ID) -> 'unknown'.
+        [string]$SessionId
     )
 
     # --- policy seams: build only the review path ------------------------------------------------
@@ -229,6 +255,7 @@ function Start-SpecrewIsolatedTask {
     $startedAt = (Get-Date).ToUniversalTime().ToString('o')
     $deadline = (Get-Date).ToUniversalTime().AddSeconds($TimeoutSec).ToString('o')
     $hostLabel = Get-SpecrewIsolatedTaskHost
+    if ([string]::IsNullOrWhiteSpace($SessionId)) { $SessionId = Get-SpecrewIsolatedTaskSessionId }
 
     New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
 
@@ -251,6 +278,7 @@ function Start-SpecrewIsolatedTask {
         run_id         = $runId
         supervisor_pid = $null            # filled after Start-Process
         host           = $hostLabel
+        session_id     = $SessionId       # T100: session-scoped pidfile registry
         task_kind      = $TaskKind
         access         = $Access
         disposition    = $Disposition
@@ -352,6 +380,8 @@ function Stop-SpecrewIsolatedTask {
     }
 
     # 1) Kill the supervisor if still alive (zombie from a dead launcher's orphan, or a stuck loop).
+    #    On Windows this ALSO kills the reviewer tree by construction: the dying supervisor's job
+    #    handle closes and KILL_ON_JOB_CLOSE reaps every job member (T100).
     $supPid = $null
     if ($Registry.PSObject.Properties.Name -contains 'supervisor_pid') { $supPid = $Registry.supervisor_pid }
     if ($supPid) {
@@ -359,6 +389,27 @@ function Stop-SpecrewIsolatedTask {
         try { $alive = Get-Process -Id ([int]$supPid) -ErrorAction Stop } catch { $alive = $null }
         if ($alive) {
             try { Stop-Process -Id ([int]$supPid) -Force -ErrorAction SilentlyContinue } catch { $null = $_ }
+        }
+    }
+
+    # 1b) T100: kill the recorded CHILD tree too - the case this reaper exists for is a supervisor
+    #     that DIED without disposing (no job handle left on Unix, nothing watching the pgid). The
+    #     registry is the session-scoped pidfile: child_pgid (Unix group kill) / child_pid (tree
+    #     walk) recorded by the supervisor at spawn make the orphaned reviewer tree killable here.
+    $childPid = $null
+    $childPgid = $null
+    if ($Registry.PSObject.Properties.Name -contains 'child_pid') { $childPid = $Registry.child_pid }
+    if ($Registry.PSObject.Properties.Name -contains 'child_pgid') { $childPgid = $Registry.child_pgid }
+    if ($childPid -or $childPgid) {
+        $treeLoaded = Import-SpecrewIsolatedTaskProcessTree
+        if ($treeLoaded -and $childPid) {
+            $mode = if ($childPgid -and -not $IsWindows) { 'pgid' } else { 'tree-kill' }
+            $desc = [pscustomobject]@{ mode = $mode; child_pid = [int]$childPid; child_pgid = $childPgid; job_handle = $null }
+            try { Stop-SpecrewProcessContainment -Containment $desc -GraceSeconds 2 } catch { $null = $_ }
+        }
+        elseif ($childPid) {
+            # Degraded (helper missing): at least the direct child dies.
+            try { Stop-Process -Id ([int]$childPid) -Force -ErrorAction SilentlyContinue } catch { $null = $_ }
         }
     }
 
@@ -374,6 +425,7 @@ function Stop-SpecrewIsolatedTask {
         try {
             $reg = Get-Content -LiteralPath $RegistryPath -Raw | ConvertFrom-Json
             $reg | Add-Member -NotePropertyName 'status' -NotePropertyValue $Reason -Force
+            $reg | Add-Member -NotePropertyName 'terminal_reason' -NotePropertyValue $Reason -Force
             $reg | Add-Member -NotePropertyName 'reaped_at' -NotePropertyValue ((Get-Date).ToUniversalTime().ToString('o')) -Force
             Write-SpecrewFileAtomic -Path $RegistryPath -Content (($reg | ConvertTo-Json -Depth 8))
         }

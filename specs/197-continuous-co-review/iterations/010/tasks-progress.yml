@@ -5,8 +5,8 @@ updated_at: "2026-07-08T07:40:18.6190760Z"
 tasks:
   T091:
     title: "R5 hard-timeout completion: route the inline `specrew review --live` spawn through the isolated-task supervisor; delete `worktree-reviewer.ps1`'s duplicate inline `$proc.Kill($true)`; instrument the live escape first; WSL-validated (hard gate)."
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-08T09:30:00Z"
     completed_at: ""
     blocked_reason: ""
   T093:
@@ -35,9 +35,9 @@ tasks:
     blocked_reason: ""
   T100:
     title: "OS-native robust supervisor: Windows Job Object (`KILL_ON_JOB_CLOSE`) + Unix `setsid`+PGID group kill (cgroup where delegated) so the whole reviewer tree dies atomically; session-scoped pidfile registry + SessionStart orphan reaper; record `terminal_reason`. WSL-validated."
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-08T08:00:00Z"
-    completed_at: ""
+    completed_at: "2026-07-08T09:30:00Z"
     blocked_reason: ""
   T106:
     title: "Wire the escalation-latch: load `escalation-latch.ps1` via `_load.ps1`; invoke from the navigator so a ceiling escalation surfaces once then latches quiet; reset round-state on a converged checkpoint; integration test on real transcript data."

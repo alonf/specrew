@@ -22,7 +22,8 @@ Describe 'isolated-task-supervisor tree-kill (T091/FR-037)' {
             # The harness (run as `pwsh -File harness.ps1` by the supervisor) spawns a GRANDCHILD that
             # sleeps far past the timeout, records its pid, then sleeps itself so the harness is alive
             # when the supervisor's deadline fires.
-            $command = "`$gc = Start-Process pwsh -ArgumentList '-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 300' -PassThru; Set-Content -LiteralPath '$gcPidFile' -Value `$gc.Id; Start-Sleep -Seconds 300"
+            # Hidden on Windows (else every grandchild opens a visible terminal); param unsupported on Unix.
+            $command = "`$sp = @{ FilePath='pwsh'; ArgumentList=@('-NoProfile','-NonInteractive','-Command','Start-Sleep -Seconds 300'); PassThru=`$true }; if (`$IsWindows) { `$sp.WindowStyle='Hidden' }; `$gc = Start-Process @sp; Set-Content -LiteralPath '$gcPidFile' -Value `$gc.Id; Start-Sleep -Seconds 300"
 
             $job = [ordered]@{
                 run_id        = 't091-treekill'

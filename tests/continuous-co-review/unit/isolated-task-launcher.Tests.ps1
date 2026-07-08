@@ -235,7 +235,10 @@ Start-Sleep -Seconds 60
         New-Item -ItemType Directory -Path $fakeWt -Force | Out-Null
         Set-Content -LiteralPath (Join-Path $fakeWt 'leftover.txt') -Value 'orphan' -Encoding UTF8
 
-        $sleeper = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 60') -PassThru -WindowStyle Hidden
+        # -WindowStyle is Windows-only (NotSupported on Unix pwsh) - the first real WSL run caught this.
+        $sleeperArgs = @{ FilePath = 'pwsh'; ArgumentList = @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 60'); PassThru = $true }
+        if ($IsWindows) { $sleeperArgs.WindowStyle = 'Hidden' }
+        $sleeper = Start-Process @sleeperArgs
         $runDir = Join-Path $script:RepoRoot ('.scratch/pestertmp/run-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $runDir -Force | Out-Null
         $regPath = Join-Path $runDir 'orphan.json'

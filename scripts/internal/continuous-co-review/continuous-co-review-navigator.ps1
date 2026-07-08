@@ -684,6 +684,18 @@ function Invoke-ContinuousCoReviewNavigatorInlineReap {
         if ($supPid) {
             try { $null = Get-Process -Id ([int]$supPid) -ErrorAction Stop; Stop-Process -Id ([int]$supPid) -Force -ErrorAction SilentlyContinue } catch { $null = $_ }
         }
+        # T100 parity: best-effort kill of the recorded CHILD tree (the dead-supervisor orphan class).
+        # Unix: one group signal via the recorded pgid; anywhere: the direct child pid as fallback.
+        # (On Windows the supervisor's closed job handle already reaped the tree - KILL_ON_JOB_CLOSE.)
+        $childPgid = if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'child_pgid')) { $Registry.child_pgid } else { $null }
+        $childPid = if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'child_pid')) { $Registry.child_pid } else { $null }
+        if ($childPgid -and -not $IsWindows) {
+            $killBin = Get-Command -Name 'kill' -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($killBin) { try { & $killBin.Source -KILL -- ("-{0}" -f [int]$childPgid) 2>$null } catch { $null = $_ } }
+        }
+        if ($childPid) {
+            try { Stop-Process -Id ([int]$childPid) -Force -ErrorAction SilentlyContinue } catch { $null = $_ }
+        }
         $wt = if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'worktree_path')) { [string]$Registry.worktree_path } else { $null }
         # The worktree is a `git archive | tar` EXPORT into a plain temp dir (see
         # New-SpecrewIsolatedTaskWorktree: RO path = `git archive --output <tar>` + `tar -xf`, NOT
