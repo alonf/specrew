@@ -68,8 +68,25 @@ function Select-ContinuousCoReviewReviewerCandidate {
         return $null
     }
 
-    if (-not [string]::IsNullOrWhiteSpace($preferredReviewerHost) -and $selection[0].host -eq $preferredReviewerHost) {
+    if (-not [string]::IsNullOrWhiteSpace($RequestedHost)) {
+        # honour-or-surface --host (T093/FR-035): an explicit request is HONOURED (the filter above
+        # restricted eligibility to it); the caller surfaces the reason when it cannot be.
+        $selection[0].selection_reason = 'requested-host-honoured'
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($preferredReviewerHost) -and $selection[0].host -eq $preferredReviewerHost) {
         $selection[0].selection_reason = 'preferred-independent-reviewer-for-code-writer-host'
+    }
+
+    # T093/FR-035 + SEC-004 (iter-009 D1): INDEPENDENCE is first-class selection evidence - a same-host
+    # review fires immediately as a LABELLED fallback (never blocks, never silently substitutes), and
+    # the label feeds the D4 tiered-evidence gate. 'unverified' = the code-writer host is unknown, so
+    # independence cannot be asserted (the gate treats it as NOT independent - conservative).
+    $independence = if ([string]::IsNullOrWhiteSpace($CodeWriterHost)) { 'unverified' }
+    elseif ($selection[0].host -ne $CodeWriterHost) { 'independent' }
+    else { 'same-host' }
+    $selection[0] | Add-Member -NotePropertyName 'independence' -NotePropertyValue $independence -Force
+    if ($independence -eq 'same-host' -and [string]::IsNullOrWhiteSpace($RequestedHost)) {
+        $selection[0].selection_reason = 'same-host-fallback-no-independent-authorized'
     }
 
     return $selection[0]

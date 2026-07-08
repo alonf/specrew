@@ -82,7 +82,7 @@ function Resolve-ContinuousCoReviewReviewerHost {
     # a stated reason). Lazy-loads the CCR engine (_load) if the catalog/policy aren't in scope (the detached path
     # dot-sources only the orchestrator). This is what makes the worktree reviewer host-NEUTRAL + authorized, not
     # claude-pinned.
-    param([Parameter(Mandatory)][string]$RepoRoot, [string]$CodeWriterHost)
+    param([Parameter(Mandatory)][string]$RepoRoot, [string]$CodeWriterHost, [string]$RequestedHost)
     if (-not (Get-Command 'Select-ContinuousCoReviewReviewerCandidate' -ErrorAction SilentlyContinue)) {
         $loadPath = Join-Path $PSScriptRoot '_load.ps1'
         if (Test-Path -LiteralPath $loadPath -PathType Leaf) { try { . $loadPath } catch { $null = $_ } }
@@ -90,16 +90,20 @@ function Resolve-ContinuousCoReviewReviewerHost {
     if (-not (Get-Command 'Get-ContinuousCoReviewReviewerHostCatalog' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Select-ContinuousCoReviewReviewerCandidate' -ErrorAction SilentlyContinue)) { return $null }
     try {
         # Same load path as the legacy navigator (continuous-co-review-navigator.ps1:849-865): the persisted
-        # human-authorized config -> catalog -> independent+authorized candidate.
+        # human-authorized config -> catalog -> independent+authorized candidate. T093: an explicit
+        # -RequestedHost restricts the selection (honour-or-surface); the returned independence label
+        # ('independent' | 'same-host' | 'unverified') is the D4 gate's evidence dimension.
         $reviewerConfig = $null
         $reviewerHostsPath = Join-Path $RepoRoot '.specrew/reviewer-hosts.json'
         if (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf) {
             try { $reviewerConfig = (Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100) } catch { $reviewerConfig = $null }
         }
         $catalog = Get-ContinuousCoReviewReviewerHostCatalog -Configuration $reviewerConfig
-        $cand = Select-ContinuousCoReviewReviewerCandidate -Catalog $catalog -CodeWriterHost $CodeWriterHost
+        $cand = Select-ContinuousCoReviewReviewerCandidate -Catalog $catalog -CodeWriterHost $CodeWriterHost -RequestedHost $RequestedHost
         if ($null -eq $cand -or [string]::IsNullOrWhiteSpace([string]$cand.host)) { return $null }
-        return [pscustomobject]@{ host = [string]$cand.host; model = [string]$cand.model }
+        $indep = if ($cand.PSObject.Properties['independence']) { [string]$cand.independence } else { 'unverified' }
+        $selReason = if ($cand.PSObject.Properties['selection_reason']) { [string]$cand.selection_reason } else { '' }
+        return [pscustomobject]@{ host = [string]$cand.host; model = [string]$cand.model; independence = $indep; selection_reason = $selReason }
     }
     catch { return $null }
 }
@@ -185,6 +189,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         [string]$BaselineRef,
         [string[]]$DesignContextFiles,
         [string]$CodeWriterHost,
+        [string]$RequestedHost,
         [int]$TimeoutSeconds = 900
     )
     New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
@@ -251,16 +256,26 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         if (-not $DesignContextFiles -or @($DesignContextFiles).Count -eq 0) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
         & $recordPhaseEnd 'design-context-resolution'
 
-        # SELECT the reviewer host: independent of the code-writer + authorized. Fail-soft (stated reason) if none.
+        # SELECT the reviewer host: independent-preferred + authorized, labelled (T093/FR-035). A
+        # same-host fallback FIRES immediately (never blocks); the label makes it first-class evidence.
+        # Fail-soft (stated reason) if none - and an un-honourable explicit --host is SURFACED, never
+        # silently substituted.
         $currentPhase = 'reviewer-host-selection'
         & $recordPhaseStart $currentPhase
-        $reviewerHost = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $RepoRoot -CodeWriterHost $CodeWriterHost
+        $reviewerHost = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $RepoRoot -CodeWriterHost $CodeWriterHost -RequestedHost $RequestedHost
         & $recordPhaseEnd 'reviewer-host-selection'
-        if ($null -eq $reviewerHost) { & $writeStatus 'failed' @{ failure_reason = 'no-authorized-reviewer-host' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
+        if ($null -eq $reviewerHost) {
+            $selFailure = if (-not [string]::IsNullOrWhiteSpace($RequestedHost)) {
+                "requested-host-not-available: '$RequestedHost' is not installed+authorized (an explicit --host is honoured or surfaced, never silently substituted)"
+            }
+            else { 'no-authorized-reviewer-host' }
+            & $writeStatus 'failed' @{ failure_reason = $selFailure; requested_reviewer_host = $RequestedHost }
+            return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+        }
 
         $currentPhase = 'worktree-materialization'
         & $recordPhaseStart $currentPhase
-        & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host }
+        & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; reviewer_selection_reason = $reviewerHost.selection_reason; requested_reviewer_host = $RequestedHost }
         $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles
         & $recordPhaseEnd 'worktree-materialization'
         # T092 pre-flight generous-budget bump REVERTED (Issue 1): a 30-min AUTO checkpoint review is wrong - the
@@ -317,15 +332,15 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $true -Findings $priorFindings
                 & $recordPhaseEnd 'ceiling-halt'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
             $currentPhase = 'reviewer-execution'
-            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $null }
+            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null }
             & $recordPhaseStart $currentPhase
             $reviewerHeartbeat = {
                 param($Telemetry)
-                & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
+                & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
             $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat
             & $recordPhaseEnd 'reviewer-execution'
@@ -351,7 +366,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $recordPhaseEnd 'write-result'
                 $currentPhase = 'complete'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; reviewer_telemetry = $reviewerTelemetry }
             }
             else {
                 $currentPhase = 'write-failure'
@@ -363,7 +378,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $recordPhaseEnd 'write-failure'
                 $currentPhase = 'failed'
                 $runTimer.Stop()
-                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_independence = $reviewerHost.independence; reviewer_telemetry = $reviewerTelemetry }
             }
         }
         finally {

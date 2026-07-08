@@ -48,6 +48,9 @@ function Start-ContinuousCoReviewServiceRun {
         [string]$TreeId,
         [string]$BaselineRef,
         [string]$CodeWriterHost,
+        # T093/FR-035: an explicit reviewer-host request (the --live door's --host). Honoured or
+        # surfaced by the orchestrator's selection, never silently substituted.
+        [string]$RequestedHost,
         [int]$TimeoutSeconds = 900,
         [switch]$Detached
     )
@@ -57,7 +60,7 @@ function Start-ContinuousCoReviewServiceRun {
     if (-not (Test-Path -LiteralPath $runDir)) { New-Item -ItemType Directory -Path $runDir -Force | Out-Null }
 
     if (-not $Detached) {
-        $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $resolved -RunDir $runDir -RunId $RunId -BaselineRef $BaselineRef -CodeWriterHost $CodeWriterHost -TimeoutSeconds $TimeoutSeconds
+        $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $resolved -RunDir $runDir -RunId $RunId -BaselineRef $BaselineRef -CodeWriterHost $CodeWriterHost -RequestedHost $RequestedHost -TimeoutSeconds $TimeoutSeconds
         # Pass the failure_reason through, and read tree_id null-safely - a FAILED run (e.g. no-authorized-reviewer-host)
         # writes no tree_id, and a bare `.Value` on the missing property would crash the caller into a messy stack
         # instead of a clean, actionable status (the door relies on this to fail loud rather than silently).
@@ -93,6 +96,7 @@ function Start-ContinuousCoReviewServiceRun {
     $spawnArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $entry, '-RepoRoot', $resolved, '-RunDir', $runDir, '-RunId', $RunId, '-RegistryPath', $regPath, '-TimeoutSeconds', $TimeoutSeconds)
     if (-not [string]::IsNullOrWhiteSpace($BaselineRef)) { $spawnArgs += @('-BaselineRef', $BaselineRef) }
     if (-not [string]::IsNullOrWhiteSpace($CodeWriterHost)) { $spawnArgs += @('-CodeWriterHost', $CodeWriterHost) }
+    if (-not [string]::IsNullOrWhiteSpace($RequestedHost)) { $spawnArgs += @('-RequestedHost', $RequestedHost) }
     # ISSUE-1 ROOT FIX (the 20-minute Stop): spawn the detached review inheriting NOTHING, so it cannot hold the
     # dispatcher's - and TRANSITIVELY the HOST's - stdout pipe open. The host (Claude Code) launches the dispatcher
     # and reads its stdout to EOF with NO drain cap (it is the host, not our code), so any inherited pipe blocks the

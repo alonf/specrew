@@ -641,7 +641,9 @@ if ($Live) {
         try {
             . (Join-Path $PSScriptRoot 'internal/continuous-co-review/co-review-service.ps1')
             $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { 900 }
-            $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.RunId) -BaselineRef ([string]$parsedArgs.BaselineRef) -CodeWriterHost ([string]$parsedArgs.CodeWriterHost) -TimeoutSeconds $tos
+            # T093/FR-035: an explicit `--host X --live` is a reviewer-host REQUEST for this run -
+            # honoured (even same-host, labelled) or surfaced, never silently substituted.
+            $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.RunId) -BaselineRef ([string]$parsedArgs.BaselineRef) -CodeWriterHost ([string]$parsedArgs.CodeWriterHost) -RequestedHost ([string]$parsedArgs.Host) -TimeoutSeconds $tos
             $findings = Get-ContinuousCoReviewServiceFindings -RepoRoot $resolvedProjectPath -RunId $run.run_id
             $fc = if ($findings) { @($findings.findings).Count } else { 0 }
             $fstatus = if ($findings) { [string]$findings.status } else { '' }

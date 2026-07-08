@@ -536,6 +536,14 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     }
                 }
                 catch { $null = $_ }
+                # T093/FR-035: a same-host fallback review is surfaced AS same-host with the one-time
+                # upgrade ask - authorizing an independent host upgrades the NEXT run (this one never
+                # blocked; the labelled fallback fired immediately, per iter-009 D1).
+                $independenceNote = ''
+                $regIndependence = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewer_independence')) { [string]$reg.reviewer_independence } else { '' }
+                if ($regIndependence -eq 'same-host') {
+                    $independenceNote = ' NOTE: this was a SAME-HOST fallback review (reviewer = code-writer host; labelled, not silently substituted). Authorize an INDEPENDENT reviewer once: ``specrew review --host <other-host> --authorization-ref <ref>`` - the next run upgrades automatically.'
+                }
                 if ($status -eq 'done' -and $verdict.ok) {
                     # T083: route the REAL reviewer's full findings (all severities) to the durable
                     # blackboard (fail-open -> $null; the stub is excluded inside). T084: surface the thread.
@@ -546,6 +554,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                             $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId -BlackboardRef $threadRef)
                         }
                         if (-not [string]::IsNullOrWhiteSpace($moreTimeNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $moreTimeNote)) | Out-Null }
+                        if (-not [string]::IsNullOrWhiteSpace($independenceNote)) { $result.inject_notes.Add(("[co-review] run {0}:{1}" -f $runId, $independenceNote)) | Out-Null }
                     }
                     elseif (($verdict.PSObject.Properties.Name -contains 'is_stub') -and $verdict.is_stub) {
                         # The default PLACEHOLDER stub always emits pass without reviewing. Surface it as
@@ -555,7 +564,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         $result.inject_notes.Add(("[co-review] checkpoint navigator fired (run {0}) - plumbing OK, but the real reviewer is not wired yet, so this is NOT counted as gate evidence." -f $runId)) | Out-Null
                     }
                     elseif ((-not [string]::IsNullOrWhiteSpace([string]$verdict.disposition)) -and ([string]$verdict.disposition -match '(?i)^\s*(pass|approved|clean|no.?findings)\s*$')) {
-                        $result.inject_notes.Add(("[co-review] checkpoint review PASSED (run {0}): {1}.{2}" -f $runId, $verdict.summary, $threadSuffix)) | Out-Null
+                        $result.inject_notes.Add(("[co-review] checkpoint review PASSED (run {0}): {1}.{2}{3}" -f $runId, $verdict.summary, $threadSuffix, $independenceNote)) | Out-Null
                         # PROMOTE only on an AFFIRMATIVE pass disposition (pass/approved/clean/no-findings) -
                         # NEVER on mere absence-of-blocking, else a 'needs-work'/'partial'/unparseable verdict
                         # would launder to a gate 'pass'. The stub is excluded above; this makes the promotion
@@ -566,7 +575,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     else {
                         # Non-blocking but NOT an affirmative pass (needs-work / partial / no parseable pass
                         # disposition): advisory only, NEVER gate evidence. (145 G-197-I005-01)
-                        $result.inject_notes.Add(("[co-review] checkpoint review run {0} returned a non-blocking, non-pass verdict ('{1}') - advisory only, NOT counted as gate evidence.{2}{3}" -f $runId, ([string]$verdict.disposition), $threadSuffix, $moreTimeNote)) | Out-Null
+                        $result.inject_notes.Add(("[co-review] checkpoint review run {0} returned a non-blocking, non-pass verdict ('{1}') - advisory only, NOT counted as gate evidence.{2}{3}{4}" -f $runId, ([string]$verdict.disposition), $threadSuffix, $moreTimeNote, $independenceNote)) | Out-Null
                     }
                 }
                 elseif ($status -eq 'done' -and -not $verdict.ok) {

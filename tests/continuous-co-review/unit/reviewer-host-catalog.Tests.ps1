@@ -229,7 +229,10 @@ Describe 'Proposal 197 T031 TG-011 reviewer host catalog obeys implementation-ru
 
         $selection.host | Should -Be 'claude'
         $selection.model | Should -Be 'opus-4.8-1m-context'
-        $selection.selection_reason | Should -Be 'highest-authorized-review-class-rank'
+        # T093/FR-035: the single-harness case IS the same-host fallback - it fires (never blocks) and
+        # says so, instead of the old unlabelled generic rank reason.
+        $selection.selection_reason | Should -Be 'same-host-fallback-no-independent-authorized'
+        $selection.independence | Should -Be 'same-host'
     }
 
     It 'requires explicit authorization before paid, external, non-default, or newly added reviewer spawning' {

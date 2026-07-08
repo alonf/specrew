@@ -11,14 +11,14 @@ tasks:
     blocked_reason: ""
   T093:
     title: "Host-independence fallback: pre-flight independence check; fire a labelled same-host fallback immediately (never block); the answer upgrades the next run; honour-or-surface `--host`."
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-08T11:30:00Z"
-    completed_at: ""
+    completed_at: "2026-07-08T12:30:00Z"
     blocked_reason: ""
   T094:
     title: "Tiered degraded-evidence gate: 3-dimension label (completeness/independence/budget); full+independent auto-allows; partial OR same-host need a recorded first-class ack verdict; never deadlock; degraded-block override with recorded reason."
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-08T12:30:00Z"
     completed_at: ""
     blocked_reason: ""
   T096:
