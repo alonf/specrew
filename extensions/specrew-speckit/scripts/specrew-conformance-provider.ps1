@@ -454,15 +454,19 @@ try {
     }
     if ($inWorkshop) { $rawHit = $false }  # a workshop lens question owes no packet and is not a raw-Spec-Kit deviation.
 
-    # --- EXPENSIVE transcript parse ONLY when a packet-owed trigger is structurally possible AND not in-workshop
-    # (PERF: the per-line ConvertFrom-Json parse is the dominant Stop-hook cost and scales with session size; a
-    # no-trigger / in-workshop stop skips it entirely). ---
+    # --- EXPENSIVE transcript parse ONLY on a MATERIAL-TURN stop (T099/FR-040, design N3): the per-line
+    # ConvertFrom-Json parse is the dominant Stop-hook cost and scales with session size. It runs ONLY when
+    # the stop actually followed material work (the deterministic rolling-handover signal), a boundary is
+    # pending, or a material forced-continue retry is in flight - a trivial/conversational stop skips it
+    # entirely. The old `$anySpec` trigger made EVERY stop in EVERY real project pay the parse just to feed
+    # the #1 intake regex; that check now only evaluates on the stops that already warranted the parse
+    # (an idle intake drift is caught by the bootstrap orientation surface instead). ---
     $lastAssistantText = $null; $intakeHit = $false; $ccLoaded = $false; $markerForPendingCrossing = $false
     $pendingCrossing = $null
     if ($hasPending -and (Get-Command Get-SpecrewPendingBoundaryCrossing -ErrorAction SilentlyContinue)) {
         try { $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$pending.LastAuthorizedBoundary) -WorkingBoundary ([string]$pending.WorkingBoundary) } catch { $pendingCrossing = $null }
     }
-    if (($hasPending -or $anySpec -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $inWorkshop)) {
+    if (($hasPending -or $materialStop -or -not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $inWorkshop)) {
         if ([string]::IsNullOrWhiteSpace($bootstrapDir)) { $bootstrapDir = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot }
         if (-not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
             $cc = Join-Path $bootstrapDir 'ConversationCaptureAccessor.ps1'
