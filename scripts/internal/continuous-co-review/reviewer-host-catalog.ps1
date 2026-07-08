@@ -72,7 +72,7 @@ function Get-ContinuousCoReviewReviewerHostRows {
         # review budget so OUR watchdog owns the kill (agy's default truncated a real 310s review to a
         # partial-harvest salvage). agy's native `models` subcommand is the first real consumer for the
         # model_probe seam (DEFER-197-I010-002).
-        @{ host = 'antigravity'; command = 'agy'; agentic_args = @('--dangerously-skip-permissions', '--print-timeout', '9m', '--print'); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65 }
+        @{ host = 'antigravity'; command = 'agy'; agentic_args = @('--dangerously-skip-permissions', '--print-timeout', '15m', '--print'); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65 }
     )
 }
 
