@@ -12,7 +12,7 @@ honestly record the rest as unavailable/unauthorized — no all-five claim witho
 | codex | yes (`codex.exe`) | **yes** (`maintainer-authorized-dogfood-self-review-2026-07-01`) | **YES — as the independent REVIEWER host** | `specrew review --live --code-writer-host claude` executed the full worktree pipeline: selection labelled codex `independent` of the claude code-writer (T093), the OS-contained spawn ran `codex exec` in the stripped worktree (T091/T100), and the run produced a verdict (outcome recorded below). |
 | copilot | yes (`copilot.cmd`) | no (`allowed=false`, no ref) | **NO — recorded unavailable-for-review** | Installed but not human-authorized; authorization is a human cost/independence consent (SEC-004) and is NOT self-granted for a validation checkbox. |
 | cursor-agent | yes (`cursor-agent.cmd`) | no (`allowed=false`, no ref) | **NO — recorded unavailable-for-review** | Same as copilot. |
-| antigravity | **no** | no | **NO — not installed** | Honestly unavailable. |
+| antigravity | **yes** (`agy`, installed by the maintainer 2026-07-08 for this validation) | **yes** (`maintainer-authorized-antigravity-validation-2026-07-08`) | **YES — as the independent REVIEWER host (codex-replacement)** | Wired same-day into `reviewer-host-catalog.ps1` (the ONLY host-data seam) and exercised via `specrew review --live --host antigravity --code-writer-host claude`: a clean full+independent promoted pass AND a 5-finding verification round (details below). |
 
 ## claude-side evidence (SC-022: the Stop-hook fire on the code-writer host)
 
@@ -62,11 +62,40 @@ honestly record the rest as unavailable/unauthorized — no all-five claim witho
 Both were carried from the prior round (2026-07-01/02 era) and re-verified unresolved — the
 round-threading itself is further SC-012 evidence.
 
+## antigravity-side evidence (SC-022: a third harness, wired and exercised the same day — added 2026-07-08 PM)
+
+Mid-validation, codex went **hard-down** (three consecutive empty-exit-0 runs; the T108 retry recovered
+none — the never-false-green contract failed them LOUDLY instead of promoting empties). The maintainer
+installed antigravity (`agy`) and authorized it as the replacement independent reviewer — turning the
+outage into the SC-022 breadth validation this table had honestly recorded as unavailable:
+
+- **Wiring (host-neutrality proof in practice)**: adding the harness touched ONLY
+  `reviewer-host-catalog.ps1` (command `agy`, agentic args validated by probe) plus the human
+  authorization in `.specrew/reviewer-hosts.json` — zero core-code changes, exactly the
+  D-197-I010-002 seam contract. Probe findings worth recording: `agy` is flag-ORDER sensitive
+  (flags after `--print` are swallowed into the prompt) and enforces an internal ~5m default budget
+  (`--print-timeout 15m` + a 780s supervisor budget is the working vector).
+- **Run `20260708T112337722` (post-escalation-fix verification)**: status `done`, **0 findings**,
+  labels **full + independent + normal** — the clean promoted pass whose evidence unblocked the
+  review-signoff boundary sync (digest-fresh, lineage-linked).
+- **Run `20260708T115526673` (fix-batch verification, elapsed 742.7s of 780s)**: status `done`,
+  **5 real findings** (3 blocking doc/test-drift, 2 advisory honesty items incl. the fabricated
+  tasks-progress timestamps) — proving the third harness produces substantive, actionable review, not
+  just green checkmarks. All 5 fixed same-day (drift-log **D-197-I010-003**).
+- Each rerun rode a recorded T096 remediation (`different-host → antigravity`, authorized by the
+  maintainer) — the menu mechanism exercised again, now cross-harness.
+
 ## Honest ceilings
 
-- copilot / cursor-agent / antigravity were **not** exercised (unauthorized / not installed) — SC-022's
-  five-harness breadth is validated to the degree this machine + the maintainer's authorizations allow,
-  exactly as the N8 scope rule prescribes.
+- copilot / cursor-agent were **not** exercised (installed but not human-authorized; SEC-004 consent is
+  not self-granted for a validation checkbox) — SC-022's five-harness breadth is validated to the
+  degree this machine + the maintainer's authorizations allow, exactly as the N8 scope rule prescribes.
+  Three of five harnesses have real end-to-end evidence (claude code-writer, codex + antigravity
+  independent reviewers).
+- codex's availability degraded to hard-down during the day (quota/session — the empty-exit-0 pattern
+  the T108 diagnostic classifies); its end-to-end evidence above stands, and the mid-day reviewer
+  SWAP to antigravity is itself resilience evidence for the catalog-driven selection (no core change,
+  no substitution — a loud failure followed by a human-directed different-host remediation).
 - The claude-side reviewer role (claude reviewing codex-written code) is not exercisable in this
   session (claude is the code-writer; using it as its own reviewer would be the same-host degraded
   path by construction).

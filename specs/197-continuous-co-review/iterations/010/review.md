@@ -7,11 +7,12 @@
 ## Review method
 
 Runtime-evidence review of all 11 tasks (24.00/24.00 SP, 14 boundary commits `083c8607`…`0ca8d6f5`):
-per-task Pester evidence on Windows AND WSL (the R5/T100 hard gate), the full-suite sweep (233/233,
-1 platform skip), mechanical lenses (zero findings), and — decisively — **live adversarial co-review
-by the independent codex reviewer** through both doors (inline + navigator auto-fire), whose blocking
-findings were fixed maintainer-approved same-day and re-verified. This iteration's review activity is
-the feature's own machinery reviewing the feature, PLUS the human maintainer's architecture review
+per-task Pester evidence on Windows AND WSL (the R5/T100 hard gate), the full-suite sweep (final:
+245/245, 2 env-guarded skips), mechanical lenses (zero findings), and — decisively — **live
+adversarial co-review by independent reviewers on TWO different harnesses** (codex, then antigravity
+after codex went hard-down) through both doors (inline + navigator auto-fire), whose blocking findings
+were fixed maintainer-approved same-day and re-verified. This iteration's review activity is the
+feature's own machinery reviewing the feature, PLUS the human maintainer's architecture review
 (which caught D-197-I010-002).
 
 ## Task Verdicts
@@ -28,7 +29,7 @@ the feature's own machinery reviewing the feature, PLUS the human maintainer's a
 | T107 | FR-017, FR-018, FR-021, SEC-007, SC-013, SC-014 | pass | Every TO-FOLD manifest row grafted into the REAL outbound slim prompt and asserted; every DROP row asserted absent; file retired to docs/reference/ (off FileList, manifest valid). Contracts 24/24. |
 | T108 | FR-033, SC-024 | pass | Host-generic retry-once on empty exit-0 + cause diagnostic. **Fired on real codex flakes 3× this session** (2 recovered, 1 double-flake failed LOUDLY exit-1 — never-false-green held in production). |
 | T109 | FR-040, SC-025 | pass | Forensic on the real dogfood corpus (21 records, 8 blocks): **D-197-I009-003 CLOSED refuted-with-evidence**; permanent reopen-on-signature analyzer shipped; no mitigation re-added per the approved N7 default. |
-| T110 | SC-012, SC-022 | pass | claude (code-writer, live hooks) + codex (reviewer, both doors) exercised end-to-end; copilot/cursor-agent recorded installed-but-unauthorized; antigravity not installed (maintainer installing — validation carried to feature-closeout). Evidence: quality/cross-host-validation.md. |
+| T110 | SC-012, SC-022 | pass | claude (code-writer, live hooks) + codex AND antigravity (independent reviewers, both doors) exercised end-to-end — antigravity wired same-day via the catalog seam alone when codex went hard-down; copilot/cursor-agent recorded installed-but-unauthorized. Evidence: quality/cross-host-validation.md. |
 
 ## Live co-review outcome (the feature reviewing itself)
 
@@ -48,7 +49,8 @@ the feature's own machinery reviewing the feature, PLUS the human maintainer's a
 - Codex escalation f1 (silent blind-context reviews, FR-011-adjacent): durable fallbacks + record/degrade/tell shipped and re-verified: fixed-now
 - Codex escalation f2 (schema-invalid partial harvest vs findings-result.schema.json) incl. the line-minimum residual: full normalization shipped, schema-validated in tests: fixed-now
 - D-197-I010-002 (maintainer finding: harness names hardcoded in the CCR core vs FR-016/SC-022): catalog-derived independence rule + loud fallbacks + mandatory -HostName + governance guard test: fixed-now
-- SC-022 harness breadth beyond claude+codex (copilot/cursor-agent unauthorized on this machine; antigravity being installed by the maintainer 2026-07-08): validation carried to feature-closeout/post-install per the N8 installed+authorized scope rule and the maintainer decision recorded in .squad\decisions.md: deferred
+- Verification round (antigravity run 20260708T115526673, 3 blocking + 2 advisory): teaching docs and test contracts lagging this iteration's own doctrine decisions (review-signoff refocus baseline-anchoring, code-implementation lens host-neutral wording, review-command Test 5 legacy pipeline) plus two honesty items (fabricated tasks-progress timestamps, unrecorded drift) — all corrected, recorded as D-197-I010-003: fixed-now
+- SC-022 harness breadth (copilot/cursor-agent installed-but-unauthorized on this machine): the antigravity leg of this defer was DISCHARGED in-iteration (installed+authorized 2026-07-08, exercised end-to-end as the independent reviewer — see quality/cross-host-validation.md); the remaining copilot/cursor-agent breadth stays deferred per the N8 installed+authorized scope rule and the maintainer decision recorded in .squad\decisions.md: deferred
 - Same-host fallback strongest-model upgrade + reviewer-failure classification/opt-in fallback chain (maintainer Q3/Q4 recommendations, agreed 2026-07-08, recorded in .squad\decisions.md): post-0.40.0 fast-follows, not release-blocking (current behavior safe-and-surfaced): deferred
 
 ## Notes
@@ -60,4 +62,4 @@ the feature's own machinery reviewing the feature, PLUS the human maintainer's a
   today — the ~50% field rate is CONFIRMED by the T108 diagnostic (2× finalization-or-capture-gap,
   1× no-output-produced). The retry recovers singles; a double-flake fails loudly. This evidence
   feeds the Q4 fast-follow (failure classification + opt-in fallback chain).
-- Drift: 2 events + 1 carried-finding closure, all resolved — see drift-log.md.
+- Drift: 3 events + 1 carried-finding closure, all resolved — see drift-log.md.
