@@ -59,13 +59,13 @@ tasks:
     blocked_reason: ""
   T109:
     title: "Flush-race forensic (D-197-I009-003): a forensic test confirming or refuting the conformance stop-block flush/read race on real captured data. If confirmed, a cheaper mitigation than the reverted 4×-tail-200 re-read (gated by T099's material-turn check); if refuted, close the finding refuted-with-evidence."
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-08T18:15:00Z"
-    completed_at: ""
+    completed_at: "2026-07-08T18:45:00Z"
     blocked_reason: ""
   T110:
     title: "SC-012/SC-022 cross-host manual validation: exercise the Stop-hook co-review fire across the installed+authorized harnesses (claude, codex today); honestly record which harnesses were exercised vs unavailable."
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-08T18:45:00Z"
     completed_at: ""
     blocked_reason: ""

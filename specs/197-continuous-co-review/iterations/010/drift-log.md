@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 2 (1 governance-tooling; 1 implementation-vs-requirement)
-**Resolution rate**: 100% (2/2 resolved)
+**Total drift events**: 2 (1 governance-tooling; 1 implementation-vs-requirement), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
+**Resolution rate**: 100% (2/2 resolved; 1/1 carried finding closed)
 **Specification drift**: None detected (D-002 was implementation drift against the standing host-neutrality requirement)
 
 ## Events
@@ -55,6 +55,11 @@
 **Resolution (implementation-reverted-to-requirement)**: the independence preference is now catalog-derived (strongest eligible candidate on a DIFFERENT harness than the code-writer — any host, including future ones); the catalog-unreachable fallback THROWS (surfaced as a failed run, never a silent wrong-host review); `-HostName` is mandatory at the core invocation seams; the ask-path fails soft with `no-authorized-reviewer-host`; guidance prose is host-neutral. A host-neutrality guard test (`tests/continuous-co-review/governance/host-neutral-core.Tests.ps1`) scans the CCR core for lowercase harness-name literals outside the catalog so the class cannot regress.
 
 **Trace**: FR-016, SC-022, SEC-004 (independence policy); maintainer directive 2026-07-08.
+
+### D-197-I009-003 closure — conformance flush/read race REFUTED with evidence (T109)
+
+**Status**: CLOSED (refuted-with-evidence, 2026-07-08; per the design N7 either/or and the maintainer-approved default).
+**Evidence**: the forensic on the REAL self-host corpus — 21 journal records (8 stop-blocks, 2026-06-29 → 2026-07-08, dx instrumentation live throughout): zero stale/unreadable reads; every `packet-absent` block read a genuinely packet-less message; the only packet-present blocks are marker-mismatch enforcement under the separately-tracked D-197-I010-001 cursor defect; the 2026-07-08 event is first-party witnessed end-to-end (legit block → packet rendered → next stop passed). Full analysis: `specs/197-continuous-co-review/iterations/010/quality/flush-race-forensic.md`. The permanent analyzer (`tests/continuous-co-review/unit/flush-race-forensic.Tests.ps1`) fails-and-reopens if the signature ever appears; no mitigation re-added (the T099 material-turn gate bounds the parse cost regardless).
 
 ### Resolution Strategies (Unused)
 
