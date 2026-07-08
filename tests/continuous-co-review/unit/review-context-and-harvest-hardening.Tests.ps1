@@ -155,6 +155,23 @@ Describe 'f2: the partial-findings harvest normalizes into the FindingsResult it
         @(($json | ConvertFrom-Json).findings)[0].severity | Should -Be 'advisory'
     }
 
+    It 'zero/negative/inverted line numbers are normalized (contract minimum 1) - the f2 verification-round residual' {
+        Set-Content -LiteralPath (Join-Path $script:wt '.review/findings.jsonl') -Encoding UTF8 -Value @(
+            '{"comment":"zero line","location":{"path":"a.ps1","line_start":0,"line_end":5}}'
+            '{"comment":"negative line","location":{"path":"b.ps1","line_start":-3,"line_end":-1}}'
+            '{"comment":"inverted range","location":{"path":"c.ps1","line_start":9,"line_end":2}}'
+        )
+        $json = Get-ContinuousCoReviewHarvestedPartialResult -WorktreePath $script:wt -RawStdout '' -RunId 'f2-run'
+        $obj = $json | ConvertFrom-Json
+        $f = @($obj.findings)
+        $f[0].location.line_start | Should -BeNullOrEmpty -Because 'line 0 violates the contract minimum of 1'
+        $f[1].location.line_start | Should -BeNullOrEmpty
+        $f[1].location.line_end | Should -BeNullOrEmpty
+        [int]$f[2].location.line_end | Should -Be 9 -Because 'an inverted range is clamped to a valid single-line range'
+        $validation = Test-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $script:SchemaRoot -InputObject $obj
+        $validation.Valid | Should -BeTrue -Because ('errors: ' + (@($validation.Errors) -join '; '))
+    }
+
     It 'the harvested result VALIDATES against the real FindingsResult schema (the f2 acceptance)' {
         Set-Content -LiteralPath (Join-Path $script:wt '.review/findings.jsonl') -Encoding UTF8 -Value @(
             '{"comment":"bare note"}'

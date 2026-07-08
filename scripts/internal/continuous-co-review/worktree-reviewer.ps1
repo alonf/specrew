@@ -428,6 +428,11 @@ function Get-ContinuousCoReviewHarvestedPartialResult {
                     $ls = $null; $le = $null
                     if ($null -ne $obj.location.PSObject.Properties['line_start'] -and $null -ne $obj.location.line_start) { try { $ls = [int]$obj.location.line_start } catch { $ls = $null } }
                     if ($null -ne $obj.location.PSObject.Properties['line_end'] -and $null -ne $obj.location.line_end) { try { $le = [int]$obj.location.line_end } catch { $le = $null } }
+                    # f2 residual (codex verification round 2026-07-08): the contract types line numbers
+                    # as integer minimum 1 - a 0/negative harvested line is INVALID, not "line zero".
+                    if ($null -ne $ls -and $ls -lt 1) { $ls = $null }
+                    if ($null -ne $le -and $le -lt 1) { $le = $null }
+                    if ($null -ne $ls -and $null -ne $le -and $le -lt $ls) { $le = $ls }
                     $loc = if (-not [string]::IsNullOrWhiteSpace($p)) { [pscustomobject]@{ path = $p; line_start = $ls; line_end = $le } } else { [pscustomobject]@{ line_start = $ls; line_end = $le } }
                 }
                 $findings.Add([pscustomobject]@{
