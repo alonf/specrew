@@ -145,6 +145,12 @@ Design (extends the availability policy table above with a cheaper rung that com
   doubles as the quota-failover lever.
 - **Human override wins**: an explicit `--model` (like an explicit `--host`) is
   honoured-or-surfaced, never silently substituted.
+- **Opt-in cross-host auto-fallback chain (Q4, agreed 2026-07-08)**: when the model list is
+  exhausted, an OPT-IN pre-authorized chain (`co_review_auto_fallback`, default OFF — the default
+  remains tell-then-ask via the remediation menu) may continue to the next authorized host; the
+  last rung is the same-host implementer model, which always lands at the degraded/ack tier.
+  Failure-reason classification (quota / model-not-found / unknown, host-specific signatures as
+  catalog data) is the trigger vocabulary for both the walk-down and the chain.
 - **Independence nuance**: harness-level independence stays the ranking criterion (shipped
   semantics), but the model list lets a same-harness fallback ALSO cross model families (e.g.
   antigravity-on-GPT-OSS reviewing claude-written code) — strictly better than the same-host
