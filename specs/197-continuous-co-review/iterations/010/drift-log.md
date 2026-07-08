@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 5 (1 governance-tooling; 3 implementation-vs-requirement; 1 doc/test-vs-doctrine), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
-**Resolution rate**: 100% (5/5 resolved; 1/1 carried finding closed)
+**Total drift events**: 6 (1 governance-tooling; 4 implementation-vs-requirement; 1 doc/test-vs-doctrine), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
+**Resolution rate**: 100% (6/6 resolved; 1/1 carried finding closed)
 **Specification drift**: None detected (D-002 was implementation drift against the standing host-neutrality requirement; D-003 was documentation/test drift against decisions this iteration itself made; D-004 was implementation drift against FR-025 found by the feature's own reviewer)
 
 ## Events
@@ -93,6 +93,16 @@
 
 **Trace**: FR-025 family (with D-197-I010-004); SC-025 (Stop budget: the digest runs only on implement-stage material stops); codex finding run `20260708T225439577`; maintainer decision DEC-197-I010-006.
 
+### D-197-I010-006 — Two-doors budget drift: the manual --live door kept the iteration-002 hardcoded 120s that the auto path had already fixed
+
+**Status**: RESOLVED (fixed 2026-07-09; maintainer fix-now decision , DEC-197-I010-007).
+**Detected by**: the downstream consumer project (tesr197local, 2026-07-09) — the FIRST-ever exercise of the --live door default budget: every reviewer attempt was cut at ~130s (claude mid-answer unparseable; antigravity mid-review with salvaged  notes) — reproducing verbatim the iteration-002 failure the navigator comment records ().
+
+**Finding**: iteration 002 raised the AUTO-path default to 300s + the  config override, but  kept a hardcoded parsed default of 120 on the manual door, consulted neither the config nor the navigator getter, left the tested generous-budget scaler unwired, and carried a dead  branch. Undetected for two months because every dogfood --live run passed an explicit .
+
+**Resolution (implementation-reverted-to-requirement)**: the door resolves budget as explicit flag →  config → 300s baseline (the exact auto-path resolution, via ); parsed default 120 → 0 (unset marker). Regression assertion added to review-command Test 5 (the refused run''s status envelope must carry 300). Per-host budget floors (agy needs more than codex) are recorded as the Proposal 102 catalog follow-up.
+
+**Trace**: FR-034 lineage (T082/T092 budget doctrine); consumer runs iter001-claude / iter001-antigravity / iter001-ag2; DEC-197-I010-007.
 ### D-197-I009-003 closure — conformance flush/read race REFUTED with evidence (T109)
 
 **Status**: CLOSED (refuted-with-evidence, 2026-07-08; per the design N7 either/or and the maintainer-approved default).

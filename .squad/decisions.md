@@ -27612,3 +27612,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   recorded for the add-a-reviewer-host how-to; (b) live evidence for Proposal 203's confinement
   theme: an agentic host in a governed cwd self-bootstraps and mutates governance state — the
   reviewer worktree's machinery-stripping is what prevents exactly this class inside reviews.
+
+## 2026-07-09T08:30:00Z — Fix-now of the --live door budget drift (downstream-found)
+
+- **Decision ID**: DEC-197-I010-007
+- **Type**: defect human-close (fix-now) — two-doors drift, FR-034 budget doctrine
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T08:30:00Z
+- **Authorization Text**:
+  > "1" (= fix now; maintainer, on the packet tracing the --live door's hardcoded 120s to the
+  > iteration-002 fossil the auto path had already fixed, 2026-07-09)
+- **Fix**: the --live door resolves budget as explicit `--timeout-seconds` → `co_review_timeout_seconds`
+  config → 300s baseline (identical to the auto path via Get-ContinuousCoReviewNavigatorTimeoutSeconds);
+  parsed default 120 → 0 (unset marker); dead `else { 900 }` removed; Test 5 regression asserts the
+  refused run's status envelope carries 300. Found by the consumer project's first-ever default-budget
+  exercise (every reviewer cut at ~130s). Per-host budget floors → Proposal 102 catalog follow-up.
+  Drift record D-197-I010-006.

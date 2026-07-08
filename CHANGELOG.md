@@ -66,6 +66,10 @@ human PASS verdict.
   DEDUP keys on the same digest identity (was: HEAD tree, which deduped dirty increments as
   already-reviewed — found by a navigator auto-fire reviewing its own machinery), so one identity
   drives dedup, materialization, and the gate.
+- The `specrew review --live` default budget now resolves like the auto path — explicit
+  `--timeout-seconds`, else `co_review_timeout_seconds` config, else a 300s baseline (was: a
+  hardcoded 120s left over from iteration 002 that cut agentic reviewers mid-review; found by the
+  first downstream project to use the default).
 - Reviewer runs with an unresolvable design context are recorded, the reviewer is told, and the run
   is labelled partial (was: a silent blind review); durable fallbacks resolve the context from
   feature metadata, session state, or a single spec directory.

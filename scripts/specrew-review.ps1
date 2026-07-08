@@ -161,7 +161,7 @@ function Convert-UnixStyleArguments {
         Effort          = $null
         AuthorizationRef = $null
         CodeWriterHost  = $null
-        TimeoutSeconds  = 120
+        TimeoutSeconds  = 0
         FallbackPolicy  = 'none'
         ReviewerConfigPath = $null
         SchemaRoot      = $null
@@ -705,7 +705,14 @@ if ($Live) {
     if ($coReviewEngine -eq 'worktree') {
         try {
             . (Join-Path $PSScriptRoot 'internal/continuous-co-review/co-review-service.ps1')
-            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { 900 }
+            # Budget resolution (D-197-I010-006 drift fix): explicit --timeout-seconds wins; otherwise the SAME
+            # config-aware default as the auto path (co_review_timeout_seconds, 300s baseline - the iteration-002
+            # lesson "a 120s budget cut a real review mid-flight" was fixed on the navigator but this door kept a
+            # hardcoded 120 for two months; first exercised by a downstream project 2026-07-09 and it starved an
+            # agentic reviewer verbatim). Per-host budget floors are the Proposal 102 catalog follow-up.
+            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds }
+            elseif (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -Default 300) }
+            else { 300 }
             # T093/FR-035: an explicit `--host X --live` is a reviewer-host REQUEST for this run -
             # honoured (even same-host, labelled) or surfaced, never silently substituted.
             $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.RunId) -BaselineRef ([string]$parsedArgs.BaselineRef) -CodeWriterHost ([string]$parsedArgs.CodeWriterHost) -RequestedHost ([string]$parsedArgs.Host) -TimeoutSeconds $tos
