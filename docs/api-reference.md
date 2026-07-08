@@ -77,6 +77,51 @@ Behavior:
 - fail-open: a missing section or unresolved feature degrades to a best-effort
   write, never a throw
 
+## `specrew review`
+
+Location: `scripts/specrew-review.ps1`
+
+```text
+specrew review                                              # replay the latest reviewer packet
+specrew review --live [--baseline-ref <git-ref>]            # run a live co-review now
+specrew review --host <h> --authorization-ref <ref>         # one-time reviewer authorization
+specrew review --ack-degraded <run-id> --ack-reason "<why>" # record a degraded-evidence ack
+specrew review --remediate <choice> [...]                   # record a problem-run remediation
+```
+
+The continuous co-review surface (Feature 197): replay persisted reviewer evidence, run a live
+review in an OS-contained ephemeral worktree, authorize reviewer harnesses, and record the two
+human verdicts the signoff gate understands (degraded-evidence acks, remediation choices).
+
+Flags:
+
+- `--live` runs a live review of the current change-set; WITHOUT `--baseline-ref` the baseline
+  auto-anchors to the feature merge-base (the signoff-evidence shape); an explicit
+  `--baseline-ref <git-ref>` run is exploratory-only and never signoff evidence
+- `--host <h>` selects a reviewer harness from the catalog (claude, codex, copilot, cursor-agent,
+  antigravity) — honoured-or-surfaced (`requested-host-not-available`), never silently substituted;
+  with `--authorization-ref <ref>` (no `--live`) it records the one-time human authorization instead
+- `--code-writer-host <h>` names the implementing harness so independence can be labelled
+- `--timeout-seconds <n>` sets the reviewer budget; `--effort <tier>`, `--model <id>` are recorded
+  as requested metadata
+- `--ack-degraded <run-id> --ack-reason "<why>"` records the first-class human ack that lets
+  partial / same-host / unverified evidence satisfy the review-signoff gate
+- `--remediate <more-time|different-host|narrow-scope|accept-partial|override-block>` records a
+  problem-run remediation, carried one-shot to the next run (`--scope
+  code|process|path:<p>|function:<name>` with narrow-scope; `--run-id` + `--ack-reason` with
+  accept-partial / override-block). `override-block` refuses full+independent blocking verdicts (D5)
+- `--json` / `--quiet` emit machine shapes; `--project-path <path>` selects the target project
+
+Behavior:
+
+- durable evidence lands under `.specrew/review/inline/<run-id>/` (`findings-result.json`,
+  `review-run.json`, `gate-verdict.json`); the review-signoff gate checks digest freshness, lineage,
+  and the evidence-tier labels (completeness / independence / budget)
+- a reviewer returning empty exit-0 output is retried once with a cause diagnostic; a still-empty
+  retry fails LOUD (`no-parseable-findings-json`) — never a false pass
+- every spawn is OS-contained (Windows Job Object / Unix process group): timeout or supervisor death
+  kills the whole reviewer tree
+
 ## `specrew hooks status | install | remove`
 
 Location: `scripts/specrew-hooks.ps1`

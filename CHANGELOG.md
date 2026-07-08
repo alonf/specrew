@@ -4,6 +4,78 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
+## [0.40.0-beta.1] - 2026-07-08
+
+Feature 197 (Continuous Co-Review) **feature-complete** (iterations 009-010 since the 0.39.0-beta1
+preview). **BETA** — stable 0.40.0 promotion requires the clean-environment install validation and a
+human PASS verdict.
+
+### Added
+
+- **OS-native reviewer containment:** every reviewer spawn (inline `--live` AND the Stop-hook
+  detached fire) runs under a Windows Job Object (`KILL_ON_JOB_CLOSE`) or Unix `setsid`+process-group,
+  so the whole reviewer tree dies atomically on timeout, kill, or supervisor death — validated on
+  Windows and WSL both directions (dead supervisor / dead child). Session-scoped registry, child-aware
+  orphan reaper, and a `terminal_reason` on every terminal status write.
+- **Tiered degraded-evidence gate:** every promoted run carries 3-dimension evidence labels
+  (completeness full/partial · independence independent/same-host/unverified · budget
+  normal/time-extended). Full+independent evidence auto-allows review-signoff; anything degraded
+  needs a recorded first-class human ack (`specrew review --ack-degraded <run-id> --ack-reason`) —
+  the gate never deadlocks and never silently passes.
+- **Remediation menu:** any problem run (timeout, partial, blocked, reviewer-down) surfaces five
+  human choices — more time / different host / narrow scope (code · process · path · function) /
+  accept partial / override block — via `specrew review --remediate <choice>`; the choice is carried
+  one-shot on the round-state, human-directed reruns bypass the autonomous round ceiling, and scoped
+  reruns are honestly labelled partial. Override honors D5: a full+independent blocking verdict is
+  never agent-overridable.
+- **Escalation latch:** a round-ceiling escalation surfaces ONCE then latches quiet; only a real
+  human turn (machine-injection refused) or a converged checkpoint clears it — no repeated nagging,
+  no lost escalations.
+- **Host-neutral core, enforced:** `reviewer-host-catalog.ps1` is the ONLY place harness specifics
+  live (D-197-I010-002); independence preference is catalog-derived (strongest eligible reviewer on a
+  DIFFERENT harness than the code-writer), an explicit `--host` is honoured-or-surfaced
+  (`requested-host-not-available` — never a silent substitute), a missing catalog fails loud, and a
+  governance guard test keeps harness names out of the core.
+- **Antigravity reviewer harness:** `agy` wired as a catalog row and field-validated end-to-end
+  (clean promoted pass + substantive multi-finding rounds while serving as the independent reviewer).
+- **Reviewer prompt consolidation:** the standalone code-review-agent playbook is grafted into the
+  outbound slim prompt (falsification stance, phased review, per-lens validation, claim/design-trace,
+  never-false-green, secret non-exfiltration) and the file retired to `docs/reference/`.
+- **Codex reliability hardening:** adapter-level retry-once on an empty exit-0 result with a cause
+  diagnostic (`finalization-or-capture-gap` vs `no-output-produced`); a still-empty retry fails LOUD.
+- **Stop-hook cost control:** the conformance transcript parse runs only after material turns —
+  conversational stops stay cheap.
+- **Signoff-run baseline doctrine:** `specrew review --live` auto-anchors its baseline to the feature
+  merge-base for signoff evidence; an explicit `--baseline-ref` run is exploratory by design and
+  never counts as signoff evidence. All teaching surfaces (refocus, charters, ceremonies, skills)
+  state this.
+
+### Fixed
+
+- Reviewer runs with an unresolvable design context are recorded, the reviewer is told, and the run
+  is labelled partial (was: a silent blind review); durable fallbacks resolve the context from
+  feature metadata, session state, or a single spec directory.
+- Harvested partial reviewer output is normalized to the full findings schema (was: schema-lax
+  embedding of bare comments).
+- The Unix detached service spawn no longer passes the Windows-only `-WindowStyle` flag.
+- The launcher's post-spawn registry write merges instead of clobbering a fast supervisor's
+  containment telemetry (race fixed + regression-tested).
+- Containment test harnesses no longer flash visible terminal windows on Windows.
+- The conformance flush/read race suspected since iter-009 was forensically REFUTED on the real
+  self-host corpus (21 records); a permanent analyzer reopens the finding if the signature ever
+  appears.
+
+### Notes
+
+- **Known limitation (recorded, fast-follow):** reviewer *filesystem* confinement is instructional —
+  process containment is enforced, but a permissions-skipped reviewer agent can reach the origin repo
+  by absolute path (observed in dogfood; no state was mutated). Worktree relocation + origin-path
+  guard are the priority follow-up (DEFER-197-I010-003).
+- **Reviewer quota reality (field notes, 2026-07-08):** codex intermittently returns empty exit-0
+  (retry recovers singles; doubles fail loud); antigravity meters quota per model GROUP with
+  independent windows — the ranked model-priority-within-harness design that addresses both is
+  recorded in Proposal 102 (Pillar 5 addendum) as a post-0.40.0 fast-follow.
+
 ## [0.39.0-beta1] - 2026-07-01
 
 Features 197 (Continuous Co-Review) + 185 (Host-Neutral Lifecycle Gate Enforcement). **BETA** (no stable or
