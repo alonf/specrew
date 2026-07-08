@@ -35,12 +35,16 @@ Describe 'Proposal 197 T067 re-architected co-review signoff gate (FR-025)' {
             }
 
         function Write-PassRun {
+                # These fixtures model a healthy full+independent run (T094: the tiered gate reads the
+                # evidence labels; this file tests freshness/coverage, degraded tiers have their own file).
                 param($Repo, $RunId, $BaselineRef, $TreeId, $ReviewedRef)
                 $dir = Join-Path (Join-Path $Repo '.specrew/review/inline') $RunId
                 New-Item -ItemType Directory -Path $dir -Force | Out-Null
                 ([pscustomobject][ordered]@{
                     schema_version = '1.0'; run_id = $RunId; checkpoint_id = 'cp'; baseline_ref = $BaselineRef
-                    diff_hash = 'sha256:x'; reviewed_ref = $ReviewedRef; reviewed_tree_id = $TreeId; status = 'pass'
+                    diff_hash = 'sha256:x'; reviewed_ref = $ReviewedRef; reviewed_tree_id = $TreeId
+                    evidence_labels = [pscustomobject]@{ completeness = 'full'; independence = 'independent'; budget = 'normal' }
+                    status = 'pass'
                     created_at = '2026-06-20T00:00:01Z'; updated_at = '2026-06-20T00:00:01Z'
                 } | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $dir 'review-run.json') -Encoding UTF8 -NoNewline
             }

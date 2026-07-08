@@ -93,8 +93,12 @@ Describe 'the orchestrator produces + threads a non-empty digest (real detached-
             $gateDigest = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $fx).tree_id
             $status.reviewed_digest_tree_id | Should -Be $gateDigest
 
+            # T093/T094 integration: the REAL pipeline labelled the fixture reviewer INDEPENDENT of the
+            # 'copilot' code-writer; promote with the real labels and the tiered gate auto-allows.
+            $status.reviewer_independence | Should -Be 'independent'
+            $realLabels = [pscustomobject]@{ completeness = 'full'; independence = [string]$status.reviewer_independence; budget = 'normal' }
             # and promoting it yields a FRESH gate decision (the whole chain: produce -> thread -> promote -> accept)
-            $null = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $fx -RunId $run.run_id -TreeId $status.reviewed_digest_tree_id -TrunkName 'main' -Now ([datetime]::UtcNow)
+            $null = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $fx -RunId $run.run_id -TreeId $status.reviewed_digest_tree_id -TrunkName 'main' -EvidenceLabels $realLabels -Now ([datetime]::UtcNow)
             (Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $fx -TrunkName 'main').decision | Should -Be 'allow'
         }
         finally {

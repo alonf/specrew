@@ -39,7 +39,7 @@ Describe 'signoff gate: the DIGEST promotion is fresh; the HEAD-tree (the bug) i
     It 'a digest-promoted pass is allow / fresh-and-covered' {
         $fx = New-GateFx
         $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $fx
-        $null = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $fx -RunId 'r1' -TreeId $d.tree_id -TrunkName 'main' -Now ([datetime]::UtcNow)
+        $null = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $fx -RunId 'r1' -TreeId $d.tree_id -TrunkName 'main' -EvidenceLabels ([pscustomobject]@{ completeness = 'full'; independence = 'independent'; budget = 'normal' }) -Now ([datetime]::UtcNow)
         $dec = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $fx -TrunkName 'main'
         $dec.decision | Should -Be 'allow'
         $dec.reason | Should -Be 'fresh-and-covered'
@@ -50,7 +50,7 @@ Describe 'signoff gate: the DIGEST promotion is fresh; the HEAD-tree (the bug) i
         $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $fx
         $head = Get-ContinuousCoReviewWorktreeIdentity -RepoRoot $fx
         $d.tree_id | Should -Not -Be $head
-        $null = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $fx -RunId 'r1' -TreeId $head -TrunkName 'main' -Now ([datetime]::UtcNow)
+        $null = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $fx -RunId 'r1' -TreeId $head -TrunkName 'main' -EvidenceLabels ([pscustomobject]@{ completeness = 'full'; independence = 'independent'; budget = 'normal' }) -Now ([datetime]::UtcNow)
         $dec = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $fx -TrunkName 'main'
         $dec.decision | Should -Be 'block'
         $dec.reason | Should -Be 'stale-co-review-evidence'
@@ -59,7 +59,7 @@ Describe 'signoff gate: the DIGEST promotion is fresh; the HEAD-tree (the bug) i
     It 'on the SAME divergent tree the DIGEST promotion is fresh (the fix lands where the bug lived)' {
         $fx = New-GateFx -Divergent
         $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $fx
-        $null = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $fx -RunId 'r1' -TreeId $d.tree_id -TrunkName 'main' -Now ([datetime]::UtcNow)
+        $null = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $fx -RunId 'r1' -TreeId $d.tree_id -TrunkName 'main' -EvidenceLabels ([pscustomobject]@{ completeness = 'full'; independence = 'independent'; budget = 'normal' }) -Now ([datetime]::UtcNow)
         $dec = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $fx -TrunkName 'main'
         $dec.decision | Should -Be 'allow'
     }

@@ -50,7 +50,9 @@ Describe 'Proposal 197 T073/T074 hard co-review signoff-gate wiring (FR-025/SC-0
                 New-Item -ItemType Directory -Path $dir -Force | Out-Null
                 ([pscustomobject][ordered]@{
                     schema_version = '1.0'; run_id = $RunId; checkpoint_id = 'cp'; baseline_ref = $BaselineRef
-                    diff_hash = 'sha256:x'; reviewed_ref = $ReviewedRef; reviewed_tree_id = $TreeId; status = 'pass'
+                    diff_hash = 'sha256:x'; reviewed_ref = $ReviewedRef; reviewed_tree_id = $TreeId
+                    evidence_labels = [pscustomobject]@{ completeness = 'full'; independence = 'independent'; budget = 'normal' }   # T094: healthy-run fixture
+                    status = 'pass'
                     created_at = '2026-06-23T00:00:01Z'; updated_at = '2026-06-23T00:00:01Z'
                 } | ConvertTo-Json -Depth 10) | Set-Content -LiteralPath (Join-Path $dir 'review-run.json') -Encoding UTF8 -NoNewline
             }

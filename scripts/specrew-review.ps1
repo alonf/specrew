@@ -99,6 +99,8 @@ Options:
   --feature <id>         Restrict lookup to one feature directory under specs\
   --iteration <NNN>      Replay a specific iteration directory
   --live                 Run the continuous co-review runtime and write .specrew\review\inline evidence
+  --ack-degraded <run-id>  Record a first-class human ack of DEGRADED review evidence (with --ack-reason)
+  --ack-reason <text>    Why the degraded assurance level (partial/same-host) is acceptable for signoff
   --baseline-ref <ref>   Optional git ref/SHA baseline. Omit for a signoff run (auto-anchors
                          to the last pass or the merge-base with the trunk); supplying it
                          makes the run exploratory (it does not auto-anchor).
@@ -166,6 +168,8 @@ function Convert-UnixStyleArguments {
         AllowedPaths    = @()
         ForbiddenPaths  = @()
         ExcludedPathPatterns = @()
+        AckDegradedRunId = $null
+        AckReason       = $null
     }
 
     $CliArgs = @($CliArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
@@ -236,6 +240,16 @@ function Convert-UnixStyleArguments {
             '^--json$' { $result.Json = $true }
             '^--open$' { $result.Open = $true }
             '^--live$' { $result.Live = $true }
+            '^--ack-degraded$' {
+                $index++
+                if ($index -ge $CliArgs.Count) { throw '--ack-degraded requires a run-id value.' }
+                $result.AckDegradedRunId = $CliArgs[$index]
+            }
+            '^--ack-reason$' {
+                $index++
+                if ($index -ge $CliArgs.Count) { throw '--ack-reason requires a value.' }
+                $result.AckReason = $CliArgs[$index]
+            }
             '^--preserve-debug$' { $result.PreserveDebug = $true }
             '^(?:-h|--help)$' { $result.Help = $true }
             '^\d{3,}$' {
@@ -631,6 +645,26 @@ if (-not (Test-Path -LiteralPath $resolvedProjectPath -PathType Container)) {
     exit 1
 }
 
+# T094/FR-036: record the FIRST-CLASS human acknowledgement of degraded review evidence, then exit
+# (a standalone op, like authorize). This human-typed command IS the trust boundary the gate's ack
+# reader relies on - the recorded verdict lets a partial/same-host review satisfy signoff consciously.
+if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckDegradedRunId)) {
+    try {
+        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+        if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
+            throw '--ack-degraded needs --ack-reason "<why this assurance level is acceptable>" (an ack is never implicit).'
+        }
+        $ackBy = (& git -C $resolvedProjectPath config user.name 2>$null)
+        if ([string]::IsNullOrWhiteSpace([string]$ackBy)) { $ackBy = [string]$env:USERNAME }
+        if ([string]::IsNullOrWhiteSpace([string]$ackBy)) { $ackBy = 'human' }
+        $ack = Add-ContinuousCoReviewDegradedAck -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.AckDegradedRunId) -AuthorizedBy ([string]$ackBy).Trim() -Rationale ([string]$parsedArgs.AckReason)
+        if ($Json) { $ack | ConvertTo-Json -Depth 6 }
+        else { Write-Host ("degraded-evidence acknowledgement recorded for run {0} by {1}" -f $ack.run_id, $ack.authorized_by) -ForegroundColor Green }
+        exit 0
+    }
+    catch { Write-Error $_.Exception.Message; exit 1 }
+}
+
 if ($Live) {
     # iter-008: the MANUAL door drives the worktree co-review SERVICE - the ONE method. It auto-resolves
     # baseline/design-context/host (no required --host/--design-context-ref) and runs in a read-only worktree. The
@@ -706,7 +740,19 @@ if ($Live) {
                 if ($isPromotablePass -and (-not $scopedExploratoryReview)) {
                     $digestId = if ($run.PSObject.Properties['reviewed_digest_tree_id']) { [string]$run.reviewed_digest_tree_id } else { '' }
                     if (-not [string]::IsNullOrWhiteSpace($digestId)) {
-                        $promoted = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $resolvedProjectPath -RunId $run.run_id -TreeId $digestId -Now ([datetime]::UtcNow)
+                        # T094/FR-036: carry the run's 3-dimension evidence labels onto the promoted record.
+                        $doorLabels = [pscustomobject]@{ completeness = 'full'; independence = 'unverified'; budget = 'normal' }
+                        try {
+                            $doorStatusPath = Join-Path $run.run_dir 'status.json'
+                            if (Test-Path -LiteralPath $doorStatusPath -PathType Leaf) {
+                                $doorStatus = Get-Content -LiteralPath $doorStatusPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                                if (($doorStatus.PSObject.Properties.Name -contains 'completeness') -and -not [string]::IsNullOrWhiteSpace([string]$doorStatus.completeness)) { $doorLabels.completeness = [string]$doorStatus.completeness }
+                                if (($doorStatus.PSObject.Properties.Name -contains 'reviewer_independence') -and -not [string]::IsNullOrWhiteSpace([string]$doorStatus.reviewer_independence)) { $doorLabels.independence = [string]$doorStatus.reviewer_independence }
+                                if (($doorStatus.PSObject.Properties.Name -contains 'budget_bumped')) { try { if ([bool]$doorStatus.budget_bumped) { $doorLabels.budget = 'time-extended' } } catch { $null = $_ } }
+                            }
+                        }
+                        catch { $null = $_ }
+                        $promoted = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $resolvedProjectPath -RunId $run.run_id -TreeId $digestId -EvidenceLabels $doorLabels -Now ([datetime]::UtcNow)
                         if ((-not [string]::IsNullOrWhiteSpace([string]$promoted)) -and (-not $Quiet) -and (-not $Json)) { Write-Host ("  promoted as co-review gate evidence (run {0})" -f $run.run_id) -ForegroundColor Green }
                     }
                 }

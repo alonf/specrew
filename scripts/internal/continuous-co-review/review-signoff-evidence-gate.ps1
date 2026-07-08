@@ -34,7 +34,9 @@ function New-ContinuousCoReviewSignoffGateDecision {
         [AllowNull()] [string] $CurrentTreeId,
         [AllowNull()] [string] $MatchedRunId,
         [AllowNull()] [string] $AnchorRef,
-        [AllowNull()] $OverrideAuthorization
+        [AllowNull()] $OverrideAuthorization,
+        [AllowNull()] $EvidenceLabels,
+        [AllowNull()] $Acknowledgement
     )
 
     return [pscustomobject][ordered]@{
@@ -46,7 +48,72 @@ function New-ContinuousCoReviewSignoffGateDecision {
         matched_run_id = $MatchedRunId
         anchor_ref     = $AnchorRef
         override       = $OverrideAuthorization
+        evidence_labels = $EvidenceLabels
+        acknowledgement = $Acknowledgement
     }
+}
+
+function Get-ContinuousCoReviewRunEvidenceLabels {
+    # T094/FR-036 (iter-009 D4): a run record's 3-dimension assurance labels with CONSERVATIVE
+    # defaults for records that predate the labels: completeness 'full' (promotion always required an
+    # affirmative full pass), independence 'unverified' (unprovable -> not independent, SEC-004),
+    # budget 'normal' ('time-extended' is NOT reduced assurance either way).
+    param([AllowNull()] $Run)
+    $labels = [pscustomobject]@{ completeness = 'full'; independence = 'unverified'; budget = 'normal' }
+    if ($null -eq $Run) { return $labels }
+    $recorded = Get-ContinuousCoReviewRunIndexProperty -Object $Run -Name 'evidence_labels'
+    if ($null -eq $recorded) { return $labels }
+    foreach ($dim in @('completeness', 'independence', 'budget')) {
+        $val = [string](Get-ContinuousCoReviewRunIndexProperty -Object $recorded -Name $dim)
+        if (-not [string]::IsNullOrWhiteSpace($val)) { $labels.$dim = $val }
+    }
+    return $labels
+}
+
+function Test-ContinuousCoReviewEvidenceIsDegraded {
+    # D4 tiers: full + independent (any budget) is FULL assurance; anything else (partial OR a
+    # not-provably-independent reviewer) is DEGRADED and needs a recorded human ack.
+    param([Parameter(Mandatory)] $Labels)
+    return (([string]$Labels.completeness -ne 'full') -or ([string]$Labels.independence -ne 'independent'))
+}
+
+function Add-ContinuousCoReviewDegradedAck {
+    <#
+        T094/FR-036: record the FIRST-CLASS human acknowledgement of degraded review evidence, as a
+        durable per-run artifact (.specrew/review/inline/<run-id>/degraded-ack.json) the gate reads.
+        TRUST BOUNDARY (same as the override + review-run.json, see Test-...OverrideAuthorization):
+        construct only from a genuinely human-authored action (the `specrew review --ack-degraded`
+        command / a captured human verdict), never from agent-forgeable input.
+    #>
+    param(
+        [Parameter(Mandatory)][string] $RepoRoot,
+        [Parameter(Mandatory)][string] $RunId,
+        [Parameter(Mandatory)][string] $AuthorizedBy,
+        [Parameter(Mandatory)][string] $Rationale,
+        [datetime] $Now = [datetime]::UtcNow
+    )
+    if ([string]::IsNullOrWhiteSpace($AuthorizedBy) -or [string]::IsNullOrWhiteSpace($Rationale)) {
+        throw 'Add-ContinuousCoReviewDegradedAck: -AuthorizedBy and -Rationale are both required (an ack is never implicit).'
+    }
+    $dir = Join-Path (Resolve-Path -LiteralPath $RepoRoot).Path ".specrew/review/inline/$RunId"
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $ack = [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        run_id         = $RunId
+        authorized_by  = $AuthorizedBy
+        rationale      = $Rationale
+        acknowledged_at = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+    }
+    $path = Join-Path $dir 'degraded-ack.json'
+    Set-Content -LiteralPath $path -Value ($ack | ConvertTo-Json -Depth 8) -Encoding UTF8 -NoNewline
+    return $ack
+}
+
+function Get-ContinuousCoReviewDegradedAck {
+    param([Parameter(Mandatory)][string] $RepoRoot, [Parameter(Mandatory)][string] $RunId)
+    $path = Join-Path (Resolve-Path -LiteralPath $RepoRoot).Path ".specrew/review/inline/$RunId/degraded-ack.json"
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return $null }
+    try { return (Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null }
 }
 
 function Test-ContinuousCoReviewOverrideAuthorization {
@@ -136,7 +203,11 @@ function Get-ContinuousCoReviewSignoffGateDecision {
 
         [string[]] $ExcludedPathPatterns = @(),
 
-        [AllowNull()] $OverrideAuthorization
+        [AllowNull()] $OverrideAuthorization,
+
+        # T094/FR-036: an explicit degraded-evidence acknowledgement (authorized_by + rationale).
+        # When omitted, the persisted per-run ack (degraded-ack.json) is honoured instead.
+        [AllowNull()] $DegradedAcknowledgement
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -191,7 +262,26 @@ function Get-ContinuousCoReviewSignoffGateDecision {
         return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'coverage-gap' -Message "The reviewed chain does not reach the trunk anchor (gap at $($chain.gap_at)); some feature content was never co-reviewed." -CurrentTreeId $digest.tree_id -MatchedRunId ([string] (Get-ContinuousCoReviewRunIndexProperty -Object $matched -Name 'run_id')) -AnchorRef $anchor
     }
 
-    return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'fresh-and-covered' -Message 'The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor.' -CurrentTreeId $digest.tree_id -MatchedRunId ([string] (Get-ContinuousCoReviewRunIndexProperty -Object $matched -Name 'run_id')) -AnchorRef $anchor
+    # 6. T094/FR-036 (iter-009 D4) - the TIERED assurance decision on the matched evidence:
+    #    full + independent (any budget: 'time-extended' is NOT reduced assurance) -> auto-allow;
+    #    partial OR not-provably-independent -> allow ONLY with a recorded first-class human ack.
+    #    NEVER deadlocks: the worst case is the ack ask below, always satisfiable via
+    #    `specrew review --ack-degraded <run-id> --ack-reason "<why>"`.
+    $matchedRunId = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $matched -Name 'run_id')
+    $labels = Get-ContinuousCoReviewRunEvidenceLabels -Run $matched
+    if (-not (Test-ContinuousCoReviewEvidenceIsDegraded -Labels $labels)) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'fresh-and-covered' -Message 'The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor.' -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
+    }
+
+    $ack = $DegradedAcknowledgement
+    if (-not (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $ack)) {
+        $ack = Get-ContinuousCoReviewDegradedAck -RepoRoot $resolvedRepoRoot -RunId $matchedRunId
+    }
+    if (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $ack) {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'degraded-evidence-acknowledged' -Message ("Signoff allowed on DEGRADED review evidence (completeness={0}, independence={1}, budget={2}) under a recorded human acknowledgement." -f $labels.completeness, $labels.independence, $labels.budget) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels -Acknowledgement $ack
+    }
+
+    return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'degraded-evidence-needs-ack' -Message ("The matching co-review evidence is DEGRADED (completeness={0}, independence={1}, budget={2}); signing off on it needs a recorded human acknowledgement: run ``specrew review --ack-degraded {3} --ack-reason `"<why this assurance level is acceptable>`"`` (or re-run a full independent review)." -f $labels.completeness, $labels.independence, $labels.budget, $matchedRunId) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
 }
 
 function Assert-ContinuousCoReviewSignoffGate {
@@ -203,10 +293,12 @@ function Assert-ContinuousCoReviewSignoffGate {
 
         [string[]] $ExcludedPathPatterns = @(),
 
-        [AllowNull()] $OverrideAuthorization
+        [AllowNull()] $OverrideAuthorization,
+
+        [AllowNull()] $DegradedAcknowledgement
     )
 
-    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -TrunkName $TrunkName -ExcludedPathPatterns $ExcludedPathPatterns -OverrideAuthorization $OverrideAuthorization
+    $decision = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $RepoRoot -TrunkName $TrunkName -ExcludedPathPatterns $ExcludedPathPatterns -OverrideAuthorization $OverrideAuthorization -DegradedAcknowledgement $DegradedAcknowledgement
     if ($decision.decision -eq 'block') {
         throw "[continuous-co-review-gate] review-signoff refused ($($decision.reason)): $($decision.message)"
     }

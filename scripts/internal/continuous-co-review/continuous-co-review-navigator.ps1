@@ -525,14 +525,18 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                 # "more time" choice. The findings are real (T090 harvest) but incomplete; a fresh run at a larger
                 # budget completes it. Additive ("here are partial findings; extend to finish"), not "retry a fail".
                 $moreTimeNote = ''
+                $stObj = $null
                 try {
                     $stPath = Join-Path (Split-Path -Parent $resultPath) 'status.json'
                     if (Test-Path -LiteralPath $stPath -PathType Leaf) {
                         $stObj = Get-Content -LiteralPath $stPath -Raw -Encoding UTF8 | ConvertFrom-Json
-                        if (($stObj.PSObject.Properties.Name -contains 'completeness') -and ([string]$stObj.completeness -eq 'partial')) {
-                            $sugg = 1800; try { $cur = [int]$stObj.timeout_seconds; if ($cur -gt 0) { $sugg = [int]($cur * 2) } } catch { $null = $_ }
-                            $moreTimeNote = (" NOTE: this was a PARTIAL review - it reached its time budget, so the findings above may be incomplete. To complete it, give it MORE TIME: re-run with a larger budget, e.g. ``specrew review --live --timeout-seconds {0}``." -f $sugg)
-                        }
+                    }
+                }
+                catch { $stObj = $null }
+                try {
+                    if (($null -ne $stObj) -and ($stObj.PSObject.Properties.Name -contains 'completeness') -and ([string]$stObj.completeness -eq 'partial')) {
+                        $sugg = 1800; try { $cur = [int]$stObj.timeout_seconds; if ($cur -gt 0) { $sugg = [int]($cur * 2) } } catch { $null = $_ }
+                        $moreTimeNote = (" NOTE: this was a PARTIAL review - it reached its time budget, so the findings above may be incomplete. To complete it, give it MORE TIME: re-run with a larger budget, e.g. ``specrew review --live --timeout-seconds {0}``." -f $sugg)
                     }
                 }
                 catch { $null = $_ }
@@ -544,6 +548,17 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                 if ($regIndependence -eq 'same-host') {
                     $independenceNote = ' NOTE: this was a SAME-HOST fallback review (reviewer = code-writer host; labelled, not silently substituted). Authorize an INDEPENDENT reviewer once: ``specrew review --host <other-host> --authorization-ref <ref>`` - the next run upgrades automatically.'
                 }
+                # T094/FR-036 (iter-009 D4): the 3-dimension evidence labels, derived from the terminal
+                # status + registry and promoted onto the durable record - the tiered gate's assurance
+                # input. Defaults are the CONSERVATIVE reading (unverified independence needs an ack).
+                $runLabels = [pscustomobject]@{ completeness = 'full'; independence = 'unverified'; budget = 'normal' }
+                try {
+                    if (($null -ne $stObj) -and ($stObj.PSObject.Properties.Name -contains 'completeness') -and -not [string]::IsNullOrWhiteSpace([string]$stObj.completeness)) { $runLabels.completeness = [string]$stObj.completeness }
+                    if (-not [string]::IsNullOrWhiteSpace($regIndependence)) { $runLabels.independence = $regIndependence }
+                    elseif (($null -ne $stObj) -and ($stObj.PSObject.Properties.Name -contains 'reviewer_independence') -and -not [string]::IsNullOrWhiteSpace([string]$stObj.reviewer_independence)) { $runLabels.independence = [string]$stObj.reviewer_independence }
+                    if (($null -ne $stObj) -and ($stObj.PSObject.Properties.Name -contains 'budget_bumped')) { try { if ([bool]$stObj.budget_bumped) { $runLabels.budget = 'time-extended' } } catch { $null = $_ } }
+                }
+                catch { $null = $_ }
                 if ($status -eq 'done' -and $verdict.ok) {
                     # T083: route the REAL reviewer's full findings (all severities) to the durable
                     # blackboard (fail-open -> $null; the stub is excluded inside). T084: surface the thread.
@@ -569,7 +584,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         # NEVER on mere absence-of-blocking, else a 'needs-work'/'partial'/unparseable verdict
                         # would launder to a gate 'pass'. The stub is excluded above; this makes the promotion
                         # adversarially sound for the real reviewer too. (145 G-197-I005-01)
-                        $promotedId = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $RepoRoot -RunId $runId -TreeId $treeId -TrunkName $TrunkName -Now $Now
+                        $promotedId = Add-ContinuousCoReviewNavigatorPassRunRecord -RepoRoot $RepoRoot -RunId $runId -TreeId $treeId -TrunkName $TrunkName -EvidenceLabels $runLabels -Now $Now
                         if (-not [string]::IsNullOrWhiteSpace($promotedId)) { $result.promoted_run_ids.Add($promotedId) | Out-Null }
                     }
                     else {
@@ -792,6 +807,9 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
         [Parameter(Mandatory)][string]$RunId,
         [AllowNull()][string]$TreeId,
         [string]$TrunkName = 'main',
+        # T094/FR-036: the run's 3-dimension evidence labels (completeness/independence/budget),
+        # recorded onto the durable review-run.json so the tiered signoff gate can read assurance.
+        [AllowNull()]$EvidenceLabels,
         [datetime]$Now = [datetime]::UtcNow
     )
     try {
@@ -838,7 +856,7 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
 
         $null = Write-ContinuousCoReviewRunIndex -RepoRoot $RepoRoot -RunId $RunId -CheckpointId $checkpointId `
             -BaselineRef ([string]$anchor) -ReviewedRef $reviewedRef -ReviewedTreeId $TreeId `
-            -GateVerdict $verdict -CreatedAt $Now
+            -GateVerdict $verdict -EvidenceLabels $EvidenceLabels -CreatedAt $Now
         return $RunId
     }
     catch { $null = $_; return $null }

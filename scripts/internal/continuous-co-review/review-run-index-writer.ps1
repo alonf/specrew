@@ -104,6 +104,12 @@ function New-ContinuousCoReviewRunIndexRecord {
         [AllowNull()]
         [string] $ReviewedTreeId,
 
+        # T094/FR-036 (iter-009 D4): the 3-dimension evidence labels
+        # { completeness: full|partial; independence: independent|same-host|unverified;
+        #   budget: normal|time-extended } - the tiered signoff gate's assurance input.
+        [AllowNull()]
+        $EvidenceLabels,
+
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
@@ -168,6 +174,7 @@ function New-ContinuousCoReviewRunIndexRecord {
         reviewed_ref              = $ReviewedRef
         reviewed_tree_id          = $ReviewedTreeId
         scope                     = $Scope
+        evidence_labels           = $EvidenceLabels
         status                    = $status
         request_ref               = 'review-request.json'
         request_hash              = $requestHash
@@ -280,6 +287,9 @@ function Write-ContinuousCoReviewRunIndex {
         [AllowNull()]
         $SkippedRun,
 
+        [AllowNull()]
+        $EvidenceLabels,
+
         [datetime] $CreatedAt = [datetime]::UtcNow
     )
 
@@ -332,6 +342,7 @@ function Write-ContinuousCoReviewRunIndex {
         -ReviewThread $ReviewThread `
         -GateVerdict $GateVerdict `
         -CleanupResult $CleanupResult `
+        -EvidenceLabels $EvidenceLabels `
         -CreatedAt $CreatedAt
 
     if ($null -ne $ReviewRequest) { Write-ContinuousCoReviewRunIndexJson -Path (Join-Path $runRoot 'review-request.json') -InputObject $ReviewRequest }
