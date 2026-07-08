@@ -330,10 +330,23 @@ function Start-SpecrewIsolatedTask {
     if ($IsWindows) { $spArgs.WindowStyle = 'Hidden' }   # Windows-only; omit on Unix
     $proc = Start-Process @spArgs
 
-    # Record the supervisor pid into the registry (read-modify-write; the supervisor only writes the
-    # terminal status fields after this).
-    $registry.supervisor_pid = $proc.Id
-    Write-SpecrewFileAtomic -Path $registryPath -Content (($registry | ConvertTo-Json -Depth 8))
+    # Record the supervisor pid by MERGING into the CURRENT on-disk registry - NOT by rewriting the
+    # stale pre-spawn object (co-review finding f1, run 20260708T112353271): a FAST supervisor may
+    # already have merged child_pid/child_pgid/containment (or even a terminal status) by now, and a
+    # stale-object rewrite would CLOBBER that evidence back to a bare 'running' record, defeating the
+    # session-scoped pidfile registry the orphan reaper relies on (T100/SC-025). The supervisor's
+    # terminal write additionally RE-ASSERTS the child fields, so even the microscopic read-write
+    # window left here self-heals at terminal.
+    try {
+        $cur = Get-Content -LiteralPath $registryPath -Raw | ConvertFrom-Json
+        $cur | Add-Member -NotePropertyName 'supervisor_pid' -NotePropertyValue $proc.Id -Force
+        Write-SpecrewFileAtomic -Path $registryPath -Content (($cur | ConvertTo-Json -Depth 8))
+    }
+    catch {
+        # Unreadable current state (should not happen - we just wrote it): never lose the pid.
+        $registry.supervisor_pid = $proc.Id
+        Write-SpecrewFileAtomic -Path $registryPath -Content (($registry | ConvertTo-Json -Depth 8))
+    }
 
     # Fire-and-return: hand back the run metadata. The caller does NOT wait.
     return [pscustomobject]([ordered]@{

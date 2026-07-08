@@ -129,7 +129,10 @@ function Start-ContinuousCoReviewServiceRun {
     }
     else {
         try {
-            $proc = Start-Process -FilePath (Get-Command pwsh).Source -ArgumentList $spawnArgs -PassThru -WindowStyle Hidden `
+            # NO -WindowStyle here: this IS the non-Windows branch (Windows uses Win32_Process.Create
+            # above) and -WindowStyle throws NotSupported on Unix pwsh - it silently broke the WSL/Linux
+            # detached fire before the reviewer ever started (co-review finding f2, run 20260708T112353271).
+            $proc = Start-Process -FilePath (Get-Command pwsh).Source -ArgumentList $spawnArgs -PassThru `
                 -RedirectStandardOutput (Join-Path $runDir 'entry.out.log') -RedirectStandardError (Join-Path $runDir 'entry.err.log')
         }
         catch {

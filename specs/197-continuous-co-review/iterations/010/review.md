@@ -43,6 +43,8 @@ the feature's own machinery reviewing the feature, PLUS the human maintainer's a
 
 ## Gap Ledger
 
+- Turn-end auto-review f1 (run 20260708T112353271: the launcher's post-spawn registry write could clobber a fast supervisor's child containment evidence, T100/SC-025): merge-not-rewrite + terminal re-assert belt + a mocked fast-supervisor race regression test: fixed-now
+- Turn-end auto-review f2 (same run: the Unix detached service spawn passed Windows-only -WindowStyle and failed on WSL/Linux before the reviewer started): flag removed from the Unix branch + a real-branch WSL regression test (detached-service-spawn-unix): fixed-now
 - Codex escalation f1 (silent blind-context reviews, FR-011-adjacent): durable fallbacks + record/degrade/tell shipped and re-verified: fixed-now
 - Codex escalation f2 (schema-invalid partial harvest vs findings-result.schema.json) incl. the line-minimum residual: full normalization shipped, schema-validated in tests: fixed-now
 - D-197-I010-002 (maintainer finding: harness names hardcoded in the CCR core vs FR-016/SC-022): catalog-derived independence rule + loud fallbacks + mandatory -HostName + governance guard test: fixed-now

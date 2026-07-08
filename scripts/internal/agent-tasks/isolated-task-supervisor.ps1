@@ -213,10 +213,19 @@ finally {
     if ($worktree -and (Test-Path -LiteralPath $worktree)) {
         Remove-Item -LiteralPath $worktree -Recurse -Force -ErrorAction SilentlyContinue
     }
-    # Mark the registry terminal (read-modify-write; running -> terminal).
-    Update-SupervisorRegistryStatus -RegistryPath $registryPath -Status $terminalStatus -Extra @{
+    # Mark the registry terminal (read-modify-write; running -> terminal). The child containment
+    # fields are RE-ASSERTED here (belt for the launcher's post-spawn merge window, finding f1): if a
+    # racing parent write clobbered the mid-run child info, the terminal write restores it, so the
+    # reaper's evidence is always complete once the run ends.
+    $terminalExtra = @{
         terminal_reason = $terminalReason
         finished_at     = (Get-Date).ToUniversalTime().ToString('o')
         worktree_gone   = (-not ($worktree -and (Test-Path -LiteralPath $worktree)))
     }
+    if ($null -ne $childPid) { $terminalExtra.child_pid = $childPid }
+    if ($null -ne $containment) {
+        $terminalExtra.child_pgid = $containment.child_pgid
+        $terminalExtra.containment = $containment.mode
+    }
+    Update-SupervisorRegistryStatus -RegistryPath $registryPath -Status $terminalStatus -Extra $terminalExtra
 }

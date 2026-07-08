@@ -186,6 +186,39 @@ Start-Sleep -Seconds 300
         }
     }
 
+    It 'the launcher post-spawn write MERGES supervisor_pid and never clobbers a fast supervisor''s child fields (finding f1)' {
+        # Regression for co-review finding f1 (run 20260708T112353271): the launcher used to rewrite
+        # the whole STALE pre-spawn registry object to add supervisor_pid - a fast supervisor's
+        # already-merged child_pid/child_pgid/containment got clobbered back to a bare running record.
+        # Simulate the fastest possible supervisor: the Start-Process mock merges the child fields the
+        # instant the supervisor is "fired", BEFORE the launcher's post-spawn write runs.
+        $src = script:New-TempTreeIdRepo -MarkerContent 'race-fast-supervisor'
+        $runDir = Join-Path $script:RepoRoot ('.scratch/pestertmp/run-' + [guid]::NewGuid().ToString('N'))
+        try {
+            Mock -CommandName Start-Process -MockWith {
+                $regFile = Get-ChildItem -LiteralPath (Join-Path $src.Repo '.specrew/review/pending') -Filter '*.json' | Select-Object -First 1
+                $reg = Get-Content -LiteralPath $regFile.FullName -Raw | ConvertFrom-Json
+                foreach ($kv in @(@('child_pid', 4242), @('child_pgid', $null), @('containment', 'job-object'))) {
+                    $reg | Add-Member -NotePropertyName $kv[0] -NotePropertyValue $kv[1] -Force
+                }
+                ($reg | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath $regFile.FullName -Encoding UTF8
+                return [pscustomobject]@{ Id = 99999 }
+            }
+
+            $run = Start-SpecrewIsolatedTask -RepoRoot $src.Repo -TreeId $src.TreeId `
+                -TimeoutSec 30 -Command 'exit 0' -RunDir $runDir
+
+            $reg = Get-Content -LiteralPath $run.registry_path -Raw | ConvertFrom-Json
+            [int]$reg.supervisor_pid | Should -Be 99999 -Because 'the pid must be recorded'
+            [int]$reg.child_pid | Should -Be 4242 -Because 'the fast supervisor''s child evidence must SURVIVE the post-spawn write (merge, not clobber)'
+            [string]$reg.containment | Should -Be 'job-object'
+        }
+        finally {
+            Remove-Item -LiteralPath $src.Repo -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $runDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'Unix: the reaper kills a DEAD supervisor''s orphaned reviewer GROUP via the recorded pgid' -Skip:($IsWindows) {
         $src = script:New-TempTreeIdRepo -MarkerContent 'containment-supkill-unix'
         $runDir = Join-Path $script:RepoRoot ('.scratch/pestertmp/run-' + [guid]::NewGuid().ToString('N'))
