@@ -27359,3 +27359,68 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 07d6d3b2
 - **Recorded At**: 2026-07-08T11:29:56Z
+
+## 2026-07-08T12:55:00Z — Finding + defer: reviewer worktree-confinement is instructional, not enforced (observed escape)
+
+- **Decision ID**: DEFER-197-I010-003
+- **Type**: defer
+- **Affected Requirement**: SEC-004 (reviewer containment); FR-011 (review isolation); NFR-001
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess (pending verdict at the review-signoff gate packet, 2026-07-08)
+- **Recorded At**: 2026-07-08T12:55:00Z
+- **Finding (observed in production dogfood, runs 20260708T123219859 + 20260708T123610575)**:
+  The detached antigravity reviewer (permissions-skipped by design) operated on the ORIGIN repo by
+  absolute path instead of staying inside its stripped worktree: it ran the origin's Pester suites
+  (`C:\Dev\specrew-197-continuous-co-review\tests\...`), probed
+  `scripts\internal\sync-boundary-state.ps1` (`New-SpecrewSessionState -BoundaryType 'retro'`) in a
+  non-interactive-unsafe way that HUNG on a mandatory-parameter prompt (wedging the run until the
+  budget kill), and one probe invoked `specrew review --live` against the origin, firing a REAL
+  codex run (20260708T123610575). Absolute origin paths are learnable from committed governance docs
+  (file:/// URLs, Rule 52) and, because the worktree materializes UNDER the origin repo root, ANY
+  git-upward discovery inside it resolves to the origin. Process-tree containment (T100) held —
+  every child died with the run — but FILESYSTEM confinement is currently a slim-prompt instruction
+  the reviewer can ignore. No origin governance state was mutated (verified: pending-verdict-stop.md,
+  start-context.json untouched; working tree clean), but the vector allows it.
+- **Next Action (post-0.40.0 fast-follow, priority-up)**: (a) materialize reviewer worktrees OUTSIDE
+  the origin repo root (temp), (b) strip/relativize origin-absolute paths from the reviewer bundle,
+  (c) slim-prompt hard rule + spawn-contract line forbidding origin-path operations, and evaluate an
+  origin-path watchdog (fail the run loudly on foreign-path access). Recorded honestly as discovered
+  by the feature's own dogfood at the review-signoff gate.
+
+## 2026-07-08T12:56:00Z — Evidence note: codex stale-verdict event (feeds DEFER-197-I010-002 classification)
+
+- **Decision ID**: NOTE-197-I010-001
+- **Type**: evidence-note
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess (visibility at the review-signoff gate packet)
+- **Recorded At**: 2026-07-08T12:56:00Z
+- **Evidence**: probe-fired codex run 20260708T123610575 returned a structured round-2 verdict in
+  216s claiming the prior live-wiring findings "still fail" on tree 8ecd8c02 — contradicted by the
+  actually-executed suites (review-signoff-live-wiring all-pass, review-command 6/6, CCR Pester
+  245/245 on that tree). A too-fast confident-stale verdict is a reliability mode DISTINCT from the
+  empty-exit-0 flake (T108) and strengthens the DEFER-197-I010-002 case for failure/quality
+  classification. Its round-state write was superseded by the round-2 antigravity terminal write;
+  no gate impact.
+
+## 2026-07-08T13:12:00Z — Design refinement (maintainer): ranked model priority WITHIN each harness (amends DEFER-197-I010-002)
+
+- **Decision ID**: NOTE-197-I010-002
+- **Type**: design-refinement (amends DEFER-197-I010-002; no scope change to iter-010/0.40.0)
+- **Affected Requirement**: FR-016/SC-022 (reviewer selection); DEFER-197-I010-002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-08T13:12:00Z
+- **Authorization Text**:
+  > "As we have priority between harnesses for a reviewer, we can have a priority of models within harnesses" (maintainer, 2026-07-08, during the antigravity Gemini-group quota outage)
+- **Design direction**: selection becomes two-level — rank hosts (independence-first, unchanged), then a
+  RANKED MODEL LIST within the selected host. Catalog row grows `models = @(@{ id; flag_args;
+  class_rank; quota_group }, ...)` (curated per-release data, per the no-runtime-web-discovery
+  decision) plus a per-host model flag so the chosen model THREADS INTO the agentic invocation
+  (today the catalog `model` field is display/ranking metadata only; every harness runs its own
+  default and specrew never passes a model). Classified failures (quota-empty / model-not-found /
+  empty-exit-0 via the T108 diagnostic) walk DOWN the model list before any cross-host fallback,
+  preferring a model in a DIFFERENT quota group on quota failures — field lesson: antigravity
+  meters quota per model GROUP (Gemini vs Claude/GPT) with independent 5-hour/weekly windows, so
+  model priority is also the natural quota-failover lever. `--model` stays the human override.
+- **Field evidence**: 2026-07-08 — antigravity's Gemini group hit 0% five-hour quota (instant
+  empty-exit-0 runs, ~10s) while its Claude/GPT group sat at 100%; no lever existed to use it
+  without a shipped-code edit. Runs 20260708T124931609 (double-empty loud fail) + quota screen.
