@@ -70,7 +70,7 @@ tasks:
     completed_at: "2026-07-08T09:51:36Z"
     blocked_reason: ""
   T111:
-    title: "Implementer test-evidence for the reviewer (DEC-197-I010-004 send-back): digest-bound machine-recorded suite evidence, orchestrator injection on exact digest match, gated slim-prompt substitution rule — closes the reviewer budget-death loop."
+    title: "Implementer test-evidence for the co-review agent — DEC-197-I010-004 send-back: digest-bound machine-recorded suite evidence, orchestrator injection on exact digest match, gated slim-prompt substitution rule — closes the budget-death loop."
     status: "done"
     started_at: "2026-07-08T19:52:00Z"
     completed_at: "2026-07-08T20:26:38Z"
