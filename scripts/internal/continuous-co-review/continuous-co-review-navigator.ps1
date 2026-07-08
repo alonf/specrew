@@ -631,7 +631,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         catch { $navFailReason = '' }
                     }
                     if ($navFailReason -match '(?i)no-authorized-reviewer-host') {
-                        $result.inject_notes.Add(("[co-review] checkpoint FIRED (run {0}) but NO reviewer host is authorized, so NO review ran. The 'auto-select' default does not auto-authorize - authorize an INDEPENDENT reviewer ONCE: ``specrew review --host codex --authorization-ref <ref>`` (or claude/copilot). It then reviews automatically at the next changed checkpoint." -f $runId)) | Out-Null
+                        $result.inject_notes.Add(("[co-review] checkpoint FIRED (run {0}) but NO reviewer host is authorized, so NO review ran. The 'auto-select' default does not auto-authorize - authorize an INDEPENDENT reviewer ONCE: ``specrew review --host <an-installed-harness-other-than-the-code-writer> --authorization-ref <ref>``. It then reviews automatically at the next changed checkpoint." -f $runId)) | Out-Null
                     }
                     else {
                         $result.inject_notes.Add(("[co-review] checkpoint review run {0} ended '{1}' without a verdict (no blocking signal); a re-review fires on the next changed checkpoint." -f $runId, $status)) | Out-Null

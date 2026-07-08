@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 1 (governance-tooling; not spec/implementation drift)
-**Resolution rate**: 100% (1/1 reconciled)
-**Specification drift**: None detected
+**Total drift events**: 2 (1 governance-tooling; 1 implementation-vs-requirement)
+**Resolution rate**: 100% (2/2 resolved)
+**Specification drift**: None detected (D-002 was implementation drift against the standing host-neutrality requirement)
 
 ## Events
 
@@ -38,6 +38,23 @@
 **Resolution (maintainer-confirmed "reconcile and proceed", 2026-07-01)**: reconciled `.specrew/start-context.json` (gitignored runtime state) to the true position — `last_authorized_boundary: plan`, `pending_next_boundary: tasks`, and a corrected `verdict_history` entry recording the real `approved for plan with Option A` verdict (auth commit `ab1b516b`, the iter-010 design-analysis Human Decision). Removed the stale `intake -> specify` `pending-verdict-stop.md`. This is the same defect class as D-197-I009-008; the durable, multi-machine cursor fix stays deferred to **Proposals 142/193** (a separate feature after F-197).
 
 **Trace**: governance state-truth (boundary cursor); D-197-I009-008; Proposals 142/193. Not a spec/implementation drift.
+
+### D-197-I010-002 — Reviewer-host names hardcoded in the CCR core (host-neutrality violation)
+
+**Status**: RESOLVED (fixed 2026-07-08, same-day as detection).
+**Detected by**: the maintainer's code review during iter-010 execution (2026-07-08): "the worktree reviewer is not host-agnostic — harness specifics (claude, codex, copilot, …) must come from the host-specific code; the core stays AI-host-free."
+
+**Finding (against FR-016/SC-022 host-neutrality; `reviewer-host-catalog.ps1` is the ONLY sanctioned host-data seam)**:
+
+- `reviewer-selection-policy.ps1` hardcoded a `claude↔codex` independence-preference pairing in core policy.
+- `worktree-reviewer.ps1` `Get-ContinuousCoReviewAgentCommand` silently fell back to a hardcoded `claude -p --permission-mode bypassPermissions` invocation when the catalog could not load — a wrong-host run instead of a loud failure.
+- `worktree-reviewer.ps1` core invocation functions defaulted `-HostName 'claude'`.
+- `co-review-service.ps1` ask-path defaulted to `'claude'` when no reviewer host resolved.
+- `continuous-co-review-navigator.ps1` core-emitted guidance prose hardcoded `--host codex … (or claude/copilot)`.
+
+**Resolution (implementation-reverted-to-requirement)**: the independence preference is now catalog-derived (strongest eligible candidate on a DIFFERENT harness than the code-writer — any host, including future ones); the catalog-unreachable fallback THROWS (surfaced as a failed run, never a silent wrong-host review); `-HostName` is mandatory at the core invocation seams; the ask-path fails soft with `no-authorized-reviewer-host`; guidance prose is host-neutral. A host-neutrality guard test (`tests/continuous-co-review/governance/host-neutral-core.Tests.ps1`) scans the CCR core for lowercase harness-name literals outside the catalog so the class cannot regress.
+
+**Trace**: FR-016, SC-022, SEC-004 (independence policy); maintainer directive 2026-07-08.
 
 ### Resolution Strategies (Unused)
 

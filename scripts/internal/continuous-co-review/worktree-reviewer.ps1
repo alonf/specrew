@@ -455,10 +455,9 @@ function Get-ContinuousCoReviewAgentCommand {
     # authorized, code-writer-independent) is the policy's job.
     param([Parameter(Mandatory)][string]$HostName)
     # The DETACHED pipeline dot-sources _load.ps1 only INSIDE Resolve-...ReviewerHost's function scope, so the
-    # catalog is gone by the time this runs — without this lazy-load, a SELECTED codex reviewer would silently fall
-    # through to the claude default below (wrong binary + flags, and status.json would mislabel it as codex).
-    # Dot-source _load into THIS scope and use the catalog immediately (the host-NEUTRALity is intact: data is in
-    # the catalog, this just reaches it).
+    # catalog is gone by the time this runs — without this lazy-load, the SELECTED reviewer's command could not
+    # resolve and the run would fail loud (see the throw below). Dot-source _load into THIS scope and use the
+    # catalog immediately (host-NEUTRALity: the catalog is the ONLY host-data source; this just reaches it).
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewHostAgenticCommand' -ErrorAction SilentlyContinue)) {
         $loadPath = Join-Path $PSScriptRoot '_load.ps1'
         if (Test-Path -LiteralPath $loadPath -PathType Leaf) { try { . $loadPath } catch { $null = $_ } }
@@ -467,8 +466,10 @@ function Get-ContinuousCoReviewAgentCommand {
         $cmd = Get-ContinuousCoReviewHostAgenticCommand -HostName $HostName
         if ($null -ne $cmd -and -not [string]::IsNullOrWhiteSpace([string]$cmd.file)) { return $cmd }
     }
-    # Last-resort fallback ONLY if the catalog is genuinely unreachable.
-    return [pscustomobject]@{ file = 'claude'; pre_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true }
+    # D-197-I010-002 (host-neutral core): NO hardcoded harness fallback. An unreachable catalog is a
+    # deploy gap - fail LOUD (the orchestrator surfaces the failed run) rather than silently invoking
+    # a wrong host. Host specifics (binary, flags, prompt transport) live ONLY in the catalog.
+    throw "co-review: the reviewer host catalog is unreachable, so the agentic command for host '$HostName' cannot be resolved (host specifics live only in reviewer-host-catalog.ps1; check the module deploy)."
 }
 
 function ConvertTo-ContinuousCoReviewReviewerIsoTimestamp {
@@ -515,7 +516,9 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     param(
         [Parameter(Mandatory)][string]$WorktreePath,
         [Parameter(Mandatory)][string]$Prompt,
-        [string]$HostName = 'claude',
+        # MANDATORY (D-197-I010-002): the host comes from the SELECTION policy over the catalog -
+        # the core never defaults to a named harness.
+        [Parameter(Mandatory)][string]$HostName,
         [int]$TimeoutSeconds = 600,
         [scriptblock]$Heartbeat
     )
@@ -624,7 +627,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
     # on the SELECTED (independent, authorized) reviewer host.
     param(
         [Parameter(Mandatory)][string]$WorktreePath, [Parameter(Mandatory)][string]$RunId,
-        [string]$HostName = 'claude', [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings,
+        [Parameter(Mandatory)][string]$HostName, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings,
         [int]$TimeoutSeconds = 600,
         [scriptblock]$Heartbeat,
         [string]$HumanScope

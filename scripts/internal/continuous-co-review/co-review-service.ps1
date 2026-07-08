@@ -212,8 +212,13 @@ function Invoke-ContinuousCoReviewServiceAsk {
     $prior = Get-ContinuousCoReviewServiceFindings -RepoRoot $resolved -RunId $RunId
     if ([string]::IsNullOrWhiteSpace($BaselineRef)) { $BaselineRef = Resolve-ContinuousCoReviewWorktreeBaseline -RepoRoot $resolved }
     $design = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $resolved)
+    # D-197-I010-002 (host-neutral core): no named-harness fallback - an unresolved reviewer host
+    # fails soft with the stated reason instead of silently asking a hardcoded host.
     $reviewerHost = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $resolved -CodeWriterHost $CodeWriterHost
-    $askHost = if ($reviewerHost) { $reviewerHost.host } else { 'claude' }
+    if ($null -eq $reviewerHost) {
+        return [pscustomobject]@{ ok = $false; answer = $null; failure_reason = 'no-authorized-reviewer-host'; reviewer_host = $null }
+    }
+    $askHost = [string]$reviewerHost.host
     $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $resolved -BaselineRef $BaselineRef -DesignContextFiles $design
     try {
         $prompt = Get-ContinuousCoReviewAskPrompt -Question $Question -PriorFindings $prior

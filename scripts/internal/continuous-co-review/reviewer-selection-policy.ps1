@@ -46,18 +46,16 @@ function Select-ContinuousCoReviewReviewerCandidate {
         }
     )
 
-    $preferredReviewerHost = switch -Regex ([string]$CodeWriterHost) {
-        '^claude$' { 'codex'; break }
-        '^codex$' { 'claude'; break }
-        default { $null }
-    }
-
     $rankedEligible = @($eligible | Sort-Object -Property @{ Expression = 'review_class_rank'; Descending = $true }, @{ Expression = 'host'; Descending = $false })
-    $selection = if ([string]::IsNullOrWhiteSpace($RequestedHost) -and -not [string]::IsNullOrWhiteSpace($preferredReviewerHost)) {
-        @($rankedEligible | Where-Object { $_.host -eq $preferredReviewerHost } | Select-Object -First 1)
-    }
-    else {
-        @()
+    # HOST-NEUTRAL independence preference (D-197-I010-002 / FR-016+SEC-004): prefer the STRONGEST
+    # eligible candidate on a DIFFERENT harness than the code-writer - a pure policy over catalog
+    # data, valid for any host including ones added later. Host specifics (names, binaries, flags)
+    # live ONLY in reviewer-host-catalog.ps1; this core never names a harness.
+    $preferredIndependent = $false
+    $selection = @()
+    if ([string]::IsNullOrWhiteSpace($RequestedHost) -and -not [string]::IsNullOrWhiteSpace($CodeWriterHost)) {
+        $selection = @($rankedEligible | Where-Object { $_.host -ne $CodeWriterHost } | Select-Object -First 1)
+        if (@($selection).Count -gt 0) { $preferredIndependent = $true }
     }
 
     if (@($selection).Count -eq 0) {
@@ -73,7 +71,7 @@ function Select-ContinuousCoReviewReviewerCandidate {
         # restricted eligibility to it); the caller surfaces the reason when it cannot be.
         $selection[0].selection_reason = 'requested-host-honoured'
     }
-    elseif (-not [string]::IsNullOrWhiteSpace($preferredReviewerHost) -and $selection[0].host -eq $preferredReviewerHost) {
+    elseif ($preferredIndependent) {
         $selection[0].selection_reason = 'preferred-independent-reviewer-for-code-writer-host'
     }
 
