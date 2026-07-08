@@ -637,6 +637,27 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         $result.inject_notes.Add(("[co-review] checkpoint review run {0} ended '{1}' without a verdict (no blocking signal); a re-review fires on the next changed checkpoint." -f $runId, $status)) | Out-Null
                     }
                 }
+                # T096/FR-038 (iter-009 D6/R6): ONE remediation menu on any review PROBLEM - the human's
+                # choice rides co-review-round-state.json and shapes the next run. The no-authorized-host
+                # failure keeps its own authorize note above (authorization IS its remediation).
+                $menuFailReason = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'failure_reason')) { [string]$reg.failure_reason } else { '' }
+                $problem = $null
+                if ($status -ne 'done') {
+                    if ($menuFailReason -notmatch '(?i)no-authorized-reviewer-host') { $problem = ("ended '{0}'" -f $status) }
+                }
+                elseif ($verdict.ok -and $verdict.blocking) { $problem = 'a BLOCKING finding' }
+                elseif ($runLabels.completeness -eq 'partial') { $problem = 'PARTIAL completeness (time budget reached)' }
+                elseif ($runLabels.independence -eq 'same-host') { $problem = 'a SAME-HOST (degraded) review' }
+                if ($null -ne $problem) {
+                    $menu = ("[co-review] REMEDIATION MENU for run {0} ({1}): " -f $runId, $problem) +
+                    '1) more time -> `specrew review --remediate more-time --timeout-seconds <n>`; ' +
+                    '2) different host -> `specrew review --remediate different-host --host <name>`; ' +
+                    '3) narrow the scope -> `specrew review --remediate narrow-scope --scope <code|process|path:<p>|function:<name>>`; ' +
+                    ('4) accept partial -> `specrew review --remediate accept-partial --run-id {0} --ack-reason "<why>"`; ' -f $runId) +
+                    ('5) override the block (degraded only) -> `specrew review --remediate override-block --run-id {0} --ack-reason "<why>"`. ' -f $runId) +
+                    'The choice is carried in the round-state and applied to the next run.'
+                    $result.inject_notes.Add($menu) | Out-Null
+                }
             }
             # Retire the terminal entry (its worktree was already disposed by the supervisor's finally).
             Clear-ContinuousCoReviewNavigatorEntry -RepoRoot $RepoRoot -RegistryPath $regPath -Registry $reg

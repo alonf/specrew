@@ -275,7 +275,21 @@ function Get-ContinuousCoReviewSlimPrompt {
     # The SLIM prompt (a few KB) — the reviewer reads the diff + design + browses/runs the project itself.
     # Round-aware: round 1 reviews; later rounds verify the prior findings are resolved; at the FINAL round the
     # reviewer escalates (the counter is a safety ceiling, the reviewer's judgement is the brains).
-    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings)
+    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope)
+    # T096/FR-038: the human-directed scope (remediation choice 3) narrows THIS review. The run is
+    # labelled completeness=partial by the orchestrator, so the narrowed evidence can never silently
+    # satisfy the full-signoff gate (T094).
+    $scopeBlock = if (-not [string]::IsNullOrWhiteSpace($HumanScope)) {
+        $scopeText = switch -Regex ($HumanScope) {
+            '^code$' { 'ONLY the CODE changes (skip process/progress conformance).'; break }
+            '^process$' { 'ONLY the PROCESS/PROGRESS conformance (.review/process/; skip code-level review).'; break }
+            '^path:(.+)$' { "ONLY the file/path '$($Matches[1])' (findings elsewhere are out of scope this round)."; break }
+            '^function:(.+)$' { "ONLY the function/symbol '$($Matches[1])' and its direct call sites."; break }
+            default { "ONLY: $HumanScope" }
+        }
+        "`nHUMAN-DIRECTED SCOPE (a remediation choice - honour it): review $scopeText`n"
+    }
+    else { '' }
     $roundBlock = if ($RoundNumber -gt 1 -and -not [string]::IsNullOrWhiteSpace($PriorFindings)) {
         "This is review round $RoundNumber of at most $MaxRounds. The PRIOR round produced these findings - verify each is RESOLVED in this change (a prior blocking finding still present is a failed fix):`n$PriorFindings`n`nIf this is the FINAL round ($RoundNumber of $MaxRounds) and a prior BLOCKING finding is STILL unresolved, return ONE finding with kind 'escalation' + severity 'blocking' calling for a HUMAN decision (stop the autonomous review->fix loop) - do not merely repeat the unresolved finding."
     }
@@ -284,7 +298,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     }
     return @"
 You are the Specrew continuous co-reviewer (a fresh-context, design- AND process-conformance reviewer).
-
+$scopeBlock
 Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN any
 command (tests, build, lint, search) you need to verify the change — but you are READ-ONLY on the source: do
 NOT modify, fix, or patch any file. Your job is to find issues, not fix them.
@@ -612,8 +626,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
         [Parameter(Mandatory)][string]$WorktreePath, [Parameter(Mandatory)][string]$RunId,
         [string]$HostName = 'claude', [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings,
         [int]$TimeoutSeconds = 600,
-        [scriptblock]$Heartbeat
+        [scriptblock]$Heartbeat,
+        [string]$HumanScope
     )
-    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings
+    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope
     return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat)
 }

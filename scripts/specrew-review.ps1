@@ -101,6 +101,9 @@ Options:
   --live                 Run the continuous co-review runtime and write .specrew\review\inline evidence
   --ack-degraded <run-id>  Record a first-class human ack of DEGRADED review evidence (with --ack-reason)
   --ack-reason <text>    Why the degraded assurance level (partial/same-host) is acceptable for signoff
+  --remediate <choice>   Record a review-problem remediation: more-time | different-host | narrow-scope |
+                         accept-partial | override-block (carried via round-state to the next run)
+  --scope <spec>         Human-directed scope for narrow-scope: code | process | path:<p> | function:<name>
   --baseline-ref <ref>   Optional git ref/SHA baseline. Omit for a signoff run (auto-anchors
                          to the last pass or the merge-base with the trunk); supplying it
                          makes the run exploratory (it does not auto-anchor).
@@ -170,13 +173,16 @@ function Convert-UnixStyleArguments {
         ExcludedPathPatterns = @()
         AckDegradedRunId = $null
         AckReason       = $null
+        Remediate       = $null
+        Scope           = $null
+        TimeoutSecondsExplicit = $false
     }
 
     $CliArgs = @($CliArgs | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
-            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path)(?:=(?<value>.+))?$' {
+            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope)(?:=(?<value>.+))?$' {
                 $name = $Matches['name']
                 $value = $Matches['value']
                 if ([string]::IsNullOrWhiteSpace($value)) {
@@ -199,7 +205,9 @@ function Convert-UnixStyleArguments {
                     'reviewer-config' { $result.ReviewerConfigPath = $value }
                     'schema-root' { $result.SchemaRoot = $value }
                     'run-root' { $result.RunRoot = $value }
-                    'timeout-seconds' { $result.TimeoutSeconds = [int]$value }
+                    'timeout-seconds' { $result.TimeoutSeconds = [int]$value; $result.TimeoutSecondsExplicit = $true }
+                    'remediate' { $result.Remediate = $value }
+                    'scope' { $result.Scope = $value }
                     'design-context-ref' { $result.DesignContextRefs = @($result.DesignContextRefs) + @($value) }
                     'allowed-path' { $result.AllowedPaths = @($result.AllowedPaths) + @($value) }
                     'forbidden-path' { $result.ForbiddenPaths = @($result.ForbiddenPaths) + @($value) }
@@ -660,6 +668,29 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckDegradedRunId)) {
         $ack = Add-ContinuousCoReviewDegradedAck -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.AckDegradedRunId) -AuthorizedBy ([string]$ackBy).Trim() -Rationale ([string]$parsedArgs.AckReason)
         if ($Json) { $ack | ConvertTo-Json -Depth 6 }
         else { Write-Host ("degraded-evidence acknowledgement recorded for run {0} by {1}" -f $ack.run_id, $ack.authorized_by) -ForegroundColor Green }
+        exit 0
+    }
+    catch { Write-Error $_.Exception.Message; exit 1 }
+}
+
+# T096/FR-038: record the human's remediation choice (the menu's carrier), then exit. The choice
+# rides co-review-round-state.json and shapes the NEXT run (more-time/different-host/narrow-scope);
+# accept-partial/override-block act immediately. This human-typed command is the trust boundary.
+if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
+    try {
+        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/worktree-review-orchestrator.ps1')
+        $remParams = @{ RepoRoot = $resolvedProjectPath; Choice = [string]$parsedArgs.Remediate }
+        if ($parsedArgs.TimeoutSecondsExplicit) { $remParams.TimeoutSeconds = [int]$parsedArgs.TimeoutSeconds }
+        if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Host)) { $remParams.HostName = [string]$parsedArgs.Host }
+        if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Scope)) { $remParams.Scope = [string]$parsedArgs.Scope }
+        if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.RunId)) { $remParams.RunId = [string]$parsedArgs.RunId }
+        if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) { $remParams.Reason = [string]$parsedArgs.AckReason }
+        $rem = Set-ContinuousCoReviewRemediationChoice @remParams
+        if ($Json) { $rem | ConvertTo-Json -Depth 6 }
+        else {
+            $applied = if ([string]$rem.choice -in @('accept-partial', 'override-block')) { 'recorded and applied immediately' } else { 'recorded - it shapes the NEXT review run' }
+            Write-Host ("remediation '{0}' {1} (by {2})" -f $rem.choice, $applied, $rem.authorized_by) -ForegroundColor Green
+        }
         exit 0
     }
     catch { Write-Error $_.Exception.Message; exit 1 }

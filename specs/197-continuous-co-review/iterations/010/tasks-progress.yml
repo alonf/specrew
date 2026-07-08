@@ -23,14 +23,14 @@ tasks:
     blocked_reason: ""
   T096:
     title: "Remediation menu at the next Stop (more time / different host / narrow scope: code · process · file · function / accept partial / override), carried via `co-review-round-state.json`; honour the human-directed scope."
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-08T13:30:00Z"
-    completed_at: ""
+    completed_at: "2026-07-08T15:00:00Z"
     blocked_reason: ""
   T099:
     title: "Material-turn gate for the Stop-hook conformance parse: run the parse only when a stop follows a material turn, so trivial/conversational stops stay cheap."
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-08T15:00:00Z"
     completed_at: ""
     blocked_reason: ""
   T100:

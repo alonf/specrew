@@ -134,9 +134,136 @@ function Set-ContinuousCoReviewRoundState {
     $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $RepoRoot
     try {
         $dir = Split-Path -Parent $p; if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
-        ([pscustomobject]@{ changed_paths = @($ChangedPaths); round = $Round; blocking = $Blocking; findings = $Findings } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+        # T096/FR-038: PRESERVE an un-consumed remediation choice across the per-run rewrite (the
+        # human may record it between runs; only the consumer clears it).
+        $remediation = $null
+        try {
+            if (Test-Path -LiteralPath $p -PathType Leaf) {
+                $prior = Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'remediation')) { $remediation = $prior.remediation }
+            }
+        }
+        catch { $remediation = $null }
+        ([pscustomobject]@{ changed_paths = @($ChangedPaths); round = $Round; blocking = $Blocking; findings = $Findings; remediation = $remediation } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
     }
     catch { $null = $_ }
+}
+
+function Set-ContinuousCoReviewRemediationChoice {
+    <#
+        T096/FR-038 (iter-009 D6/R6): record the human's remediation choice onto the round-state so
+        the NEXT run applies it (the menu's carrier). Choices:
+          more-time (+TimeoutSeconds) | different-host (+HostName) | narrow-scope (+Scope) |
+          accept-partial (+RunId +Reason: records the T094 degraded ack immediately) |
+          override-block (+RunId +Reason: D5 - only a DEGRADED run's block is overridable).
+        TRUST BOUNDARY: construct only from a genuinely human-typed command
+        (`specrew review --remediate ...`) or a captured human verdict.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][ValidateSet('more-time', 'different-host', 'narrow-scope', 'accept-partial', 'override-block')][string]$Choice,
+        [int]$TimeoutSeconds = 0,
+        [string]$HostName,
+        [string]$Scope,
+        [string]$RunId,
+        [string]$Reason,
+        [string]$AuthorizedBy,
+        [datetime]$Now = [datetime]::UtcNow
+    )
+    $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    if ([string]::IsNullOrWhiteSpace($AuthorizedBy)) {
+        $AuthorizedBy = (& git -C $resolved config user.name 2>$null)
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = [string]$env:USERNAME }
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = 'human' }
+    }
+    $AuthorizedBy = ([string]$AuthorizedBy).Trim()
+
+    switch ($Choice) {
+        'different-host' { if ([string]::IsNullOrWhiteSpace($HostName)) { throw "remediation 'different-host' needs --host <name>." } }
+        'narrow-scope' {
+            if ([string]::IsNullOrWhiteSpace($Scope)) { throw "remediation 'narrow-scope' needs --scope <code|process|path:<p>|function:<name>>." }
+            if ($Scope -notmatch '^(code|process|path:.+|function:.+)$') { throw "remediation scope '$Scope' is not one of code | process | path:<p> | function:<name>." }
+        }
+        'accept-partial' {
+            if ([string]::IsNullOrWhiteSpace($RunId) -or [string]::IsNullOrWhiteSpace($Reason)) { throw "remediation 'accept-partial' needs --run-id <id> and --ack-reason '<why>'." }
+            # Accepting the partial IS the T094 first-class ack - record it immediately (no rerun).
+            if (-not (Get-Command -Name 'Add-ContinuousCoReviewDegradedAck' -ErrorAction SilentlyContinue)) {
+                $lp = Join-Path $PSScriptRoot '_load.ps1'; if (Test-Path -LiteralPath $lp -PathType Leaf) { . $lp }
+            }
+            $null = Add-ContinuousCoReviewDegradedAck -RepoRoot $resolved -RunId $RunId -AuthorizedBy $AuthorizedBy -Rationale $Reason -Now $Now
+        }
+        'override-block' {
+            if ([string]::IsNullOrWhiteSpace($RunId) -or [string]::IsNullOrWhiteSpace($Reason)) { throw "remediation 'override-block' needs --run-id <id> and --ack-reason '<why>'." }
+            # D5: ONLY a DEGRADED run's block is overridable - a full+independent review's blocking
+            # finding must be addressed, not waved through. Verify from the run's terminal status.
+            $rdir = Join-Path $resolved ".specrew/review/pending/$RunId"
+            $stPath = Join-Path $rdir 'status.json'
+            $labels = $null
+            if (Test-Path -LiteralPath $stPath -PathType Leaf) {
+                try {
+                    $st = Get-Content -LiteralPath $stPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                    $comp = if (($st.PSObject.Properties.Name -contains 'completeness') -and -not [string]::IsNullOrWhiteSpace([string]$st.completeness)) { [string]$st.completeness } else { 'full' }
+                    $indep = if (($st.PSObject.Properties.Name -contains 'reviewer_independence') -and -not [string]::IsNullOrWhiteSpace([string]$st.reviewer_independence)) { [string]$st.reviewer_independence } else { 'unverified' }
+                    $labels = [pscustomobject]@{ completeness = $comp; independence = $indep }
+                }
+                catch { $labels = $null }
+            }
+            if ($null -eq $labels) { throw "remediation 'override-block': run '$RunId' has no readable terminal status - cannot verify the review was degraded, so its block is NOT overridable (address the finding or re-run)." }
+            if ($labels.completeness -eq 'full' -and $labels.independence -eq 'independent') {
+                throw "remediation 'override-block': run '$RunId' was a FULL INDEPENDENT review - its blocking finding must be addressed (or re-reviewed), never overridden (D5 allows overriding DEGRADED blocks only)."
+            }
+            # Record the durable override + clear the sticky blocking round-state so the loop unblocks.
+            $ovDir = Join-Path $resolved ".specrew/review/inline/$RunId"
+            New-Item -ItemType Directory -Path $ovDir -Force | Out-Null
+            ([pscustomobject][ordered]@{
+                schema_version = '1.0'; run_id = $RunId; authorized_by = $AuthorizedBy; rationale = $Reason
+                evidence_labels = $labels
+                overridden_at = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+            } | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath (Join-Path $ovDir 'degraded-block-override.json') -Encoding UTF8 -NoNewline
+            $prior = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+            if ($null -ne $prior) {
+                Set-ContinuousCoReviewRoundState -RepoRoot $resolved -ChangedPaths @($prior.changed_paths) -Round ([int]$prior.round) -Blocking $false -Findings ([string]$prior.findings)
+            }
+        }
+    }
+
+    $remediation = [pscustomobject][ordered]@{
+        choice          = $Choice
+        timeout_seconds = if ($TimeoutSeconds -gt 0) { $TimeoutSeconds } else { $null }
+        host            = if ([string]::IsNullOrWhiteSpace($HostName)) { $null } else { $HostName }
+        scope           = if ([string]::IsNullOrWhiteSpace($Scope)) { $null } else { $Scope }
+        run_id          = if ([string]::IsNullOrWhiteSpace($RunId)) { $null } else { $RunId }
+        reason          = if ([string]::IsNullOrWhiteSpace($Reason)) { $null } else { $Reason }
+        authorized_by   = $AuthorizedBy
+        recorded_at     = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+    }
+    # accept-partial / override-block act immediately (above); the rerun-shaping choices ride the
+    # round-state to the next run.
+    if ($Choice -in @('more-time', 'different-host', 'narrow-scope')) {
+        $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
+        $dir = Split-Path -Parent $p; if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $state = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+        if ($null -eq $state) { $state = [pscustomobject]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null } }
+        $state | Add-Member -NotePropertyName 'remediation' -NotePropertyValue $remediation -Force
+        ($state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    }
+    return $remediation
+}
+
+function Read-ContinuousCoReviewRemediationChoice {
+    # ONE-SHOT consumer (T096): return the pending remediation (or $null) and CLEAR it from the
+    # round-state - a human choice applies to exactly one rerun, never silently forever.
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $state = Get-ContinuousCoReviewRoundState -RepoRoot $RepoRoot
+    if ($null -eq $state -or -not ($state.PSObject.Properties.Name -contains 'remediation') -or $null -eq $state.remediation) { return $null }
+    $choice = $state.remediation
+    try {
+        $state.remediation = $null
+        $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $RepoRoot
+        ($state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    }
+    catch { $null = $_ }
+    return $choice
 }
 
 function Test-ContinuousCoReviewPathLineageOverlap {
@@ -197,6 +324,31 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
     $statusPath = Join-Path $RunDir 'status.json'
     $startedAt = [datetime]::UtcNow
     $runTimer = [System.Diagnostics.Stopwatch]::StartNew()
+
+    # T096/FR-038 (iter-009 D6/R6): consume a pending human remediation choice (ONE-SHOT) and shape
+    # THIS run with it - more time (budget), different host (selection), narrow scope (the reviewer's
+    # human-directed scope). accept-partial/override-block acted immediately at record time.
+    $remediation = Read-ContinuousCoReviewRemediationChoice -RepoRoot $RepoRoot
+    $humanScope = $null
+    $remediationApplied = $null
+    if ($null -ne $remediation) {
+        $remediationApplied = [string]$remediation.choice
+        switch ($remediationApplied) {
+            'more-time' {
+                $req = 0
+                try { if (($remediation.PSObject.Properties.Name -contains 'timeout_seconds') -and $null -ne $remediation.timeout_seconds) { $req = [int]$remediation.timeout_seconds } } catch { $req = 0 }
+                if ($req -le 0) { $req = $TimeoutSeconds * 2 }
+                $TimeoutSeconds = [math]::Max($TimeoutSeconds, $req)
+            }
+            'different-host' {
+                if (($remediation.PSObject.Properties.Name -contains 'host') -and -not [string]::IsNullOrWhiteSpace([string]$remediation.host)) { $RequestedHost = [string]$remediation.host }
+            }
+            'narrow-scope' {
+                if (($remediation.PSObject.Properties.Name -contains 'scope') -and -not [string]::IsNullOrWhiteSpace([string]$remediation.scope)) { $humanScope = [string]$remediation.scope }
+            }
+        }
+    }
+
     $phaseTimings = [ordered]@{}
     $phaseTimers = @{}
     $currentPhase = 'initializing'
@@ -239,6 +391,8 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 result_out  = $resultOut
                 status_json = $statusPath
             }
+            remediation_applied = $remediationApplied
+            human_scope = $humanScope
             phase_durations_seconds = [pscustomobject]$phaseTimings
         }
         if ($Extra) { foreach ($k in $Extra.Keys) { $obj[$k] = $Extra[$k] } }
@@ -314,7 +468,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         }
         & $recordPhaseEnd 'round-state-resolution'
         try {
-            if ($round -gt $maxRounds) {
+            # T096: a HUMAN-DIRECTED rerun (a consumed remediation) is never auto-halted - the round
+            # ceiling guards the AUTO loop; the menu is its escape hatch.
+            if (($round -gt $maxRounds) -and ($null -eq $remediationApplied)) {
                 # CEILING REACHED — do NOT fire another review round (the deterministic spin-stop / round-9 fix: a
                 # round>maxRounds guard provably halts the monotonic climb while the change-set overlaps). BUT a halt
                 # is NOT a clean pass. The old code wrote an EMPTY result here, so the run read as
@@ -342,7 +498,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 param($Telemetry)
                 & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
-            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat
+            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope
             & $recordPhaseEnd 'reviewer-execution'
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout
@@ -355,6 +511,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 $json = Get-ContinuousCoReviewHarvestedPartialResult -WorktreePath $wt.worktree_path -RawStdout $raw -RunId $RunId
                 if (-not [string]::IsNullOrWhiteSpace($json)) { $completeness = 'partial' }
             }
+            # T096: a human-SCOPED review covered a SUBSET of the increment - its evidence is honestly
+            # PARTIAL (the T094 tiered gate then requires the recorded ack, never a silent full pass).
+            if (-not [string]::IsNullOrWhiteSpace([string]$humanScope)) { $completeness = 'partial' }
             if (-not [string]::IsNullOrWhiteSpace($json)) {
                 $currentPhase = 'write-result'
                 & $recordPhaseStart $currentPhase
