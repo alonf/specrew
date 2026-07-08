@@ -62,14 +62,17 @@ function Get-ContinuousCoReviewReviewerHostRows {
         @{ host = 'copilot'; command = 'copilot'; agentic_args = @(); prompt_via_stdin = $false; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80 }
         @{ host = 'cursor-agent'; command = 'cursor-agent'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70 }
         # antigravity ships as `agy` (verified live on the maintainer machine 2026-07-08). The WORKING
-        # headless vector - probe-validated, order-sensitive: `agy --dangerously-skip-permissions
-        # --print "<prompt>"` (prompt POSITIONAL, appended last by the invocation core). skip-permissions
-        # for the same reason as the codex bypass above (the ephemeral read-only worktree IS the sandbox;
-        # headless permission prompts would hang). --print-timeout is NOT passed: both its value forms
-        # HANG headless (probe-verified); agy's 5m default may truncate a long review - that lands as a
-        # partial harvest (T090) + the honest partial label, never a silent loss. agy's native `models`
-        # subcommand is the first real consumer for the model_probe seam (DEFER-197-I010-002).
-        @{ host = 'antigravity'; command = 'agy'; agentic_args = @('--dangerously-skip-permissions', '--print'); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65 }
+        # headless vector is probe-validated and ORDER-SENSITIVE: flags BEFORE --print, prompt
+        # POSITIONAL directly after it (the invocation core appends the prompt last):
+        #   agy --dangerously-skip-permissions --print-timeout 9m --print "<prompt>"
+        # Any flag AFTER --print is swallowed into the prompt (probe: the model answered an essay about
+        # the flag text; --print-timeout placed after --print hangs). skip-permissions for the same
+        # reason as the codex bypass above (the ephemeral read-only worktree IS the sandbox; headless
+        # permission prompts would hang). --print-timeout 9m lifts agy's 5m internal default above our
+        # review budget so OUR watchdog owns the kill (agy's default truncated a real 310s review to a
+        # partial-harvest salvage). agy's native `models` subcommand is the first real consumer for the
+        # model_probe seam (DEFER-197-I010-002).
+        @{ host = 'antigravity'; command = 'agy'; agentic_args = @('--dangerously-skip-permissions', '--print-timeout', '9m', '--print'); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65 }
     )
 }
 

@@ -752,7 +752,14 @@ if ($Live) {
                 if ($run.PSObject.Properties['elapsed_seconds'] -and $null -ne $run.elapsed_seconds) {
                     Write-Host ("Elapsed: {0}s  Timeout: {1}s" -f $run.elapsed_seconds, $run.timeout_seconds)
                 }
-                if ($findings -and $fc -gt 0) { foreach ($f in @($findings.findings)) { Write-Host ("  [{0}] {1} - {2}" -f $f.severity, $f.location.path, ([string]$f.comment)) } }
+                if ($findings -and $fc -gt 0) {
+                    foreach ($f in @($findings.findings)) {
+                        # location.path is OPTIONAL per the FindingsResult schema (a salvage/harvest
+                        # finding may be path-less) - render null-safe (StrictMode).
+                        $floc = if (($null -ne $f.PSObject.Properties['location']) -and $null -ne $f.location -and ($null -ne $f.location.PSObject.Properties['path']) -and -not [string]::IsNullOrWhiteSpace([string]$f.location.path)) { [string]$f.location.path } else { '(no path)' }
+                        Write-Host ("  [{0}] {1} - {2}" -f $f.severity, $floc, ([string]$f.comment))
+                    }
+                }
             }
             # HOST-NEUTRAL gate evidence: the detached reap promotes on a host whose Stop hook fires, but a
             # straight-through host (Copilot) never fires it - so THIS inline door (the F3 checkpoint) promotes through
