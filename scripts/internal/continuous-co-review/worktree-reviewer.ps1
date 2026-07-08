@@ -600,8 +600,13 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     $containment = New-SpecrewProcessContainment -ChildPid $proc.Id
     try {
         $outTask = $proc.StandardOutput.ReadToEndAsync(); $errTask = $proc.StandardError.ReadToEndAsync()
-        if ($cmd.prompt_via_stdin) { $proc.StandardInput.Write($Prompt) }
-        $proc.StandardInput.Close()
+        # T108 hardening: a reviewer that exits (or closes stdin) BEFORE consuming the prompt breaks the
+        # pipe - that IOException must not crash the invocation (it IS the empty-exit0 failure class the
+        # retry exists for); the child's own exit code + captured output still tell the truth.
+        if ($cmd.prompt_via_stdin) {
+            try { $proc.StandardInput.Write($Prompt) } catch { $null = $_ }
+        }
+        try { $proc.StandardInput.Close() } catch { $null = $_ }
         $exited = $false
         while (-not $exited) {
             $remainingMs = [int][math]::Ceiling(($TimeoutSeconds * 1000) - $sw.ElapsedMilliseconds)
@@ -663,5 +668,36 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
         [string]$HumanScope
     )
     $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope
-    return (Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat)
+    $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
+
+    # T108/FR-033 (D-197-I009-015): retry ONCE on an EMPTY exit-0 result before the run can be declared
+    # no-parseable-findings - the field failure was ~50% empty-but-successful exits on one reviewer host,
+    # but the guard is host-GENERIC (any host can drop its final blob). The DIAGNOSTIC distinguishes the
+    # two suspect causes: incremental findings PRESENT in the worktree = the reviewer worked and the
+    # final stdout was lost (finalization/capture gap); ABSENT = the run produced nothing at all.
+    # NEVER-FALSE-GREEN is preserved: a still-empty retry returns empty and the orchestrator fails the
+    # run loudly (no-parseable-findings-json) - the retry can only ADD a real result, never fake one.
+    $emptyExit0 = ($null -ne $r) -and ($r.exit_code -eq 0) -and [string]::IsNullOrWhiteSpace([string]$r.stdout)
+    if ($emptyExit0) {
+        $jsonlPresent = Test-Path -LiteralPath (Join-Path $WorktreePath '.review/findings.jsonl') -PathType Leaf
+        $firstAttempt = [pscustomobject][ordered]@{
+            exit_code                    = $r.exit_code
+            stdout_length                = ([string]$r.stdout).Length
+            stderr_length                = ([string]$r.stderr).Length
+            elapsed_seconds              = if ($null -ne $r.telemetry) { $r.telemetry.elapsed_seconds } else { $null }
+            incremental_findings_present = $jsonlPresent
+            probable_cause               = if ($jsonlPresent) { 'finalization-or-capture-gap' } else { 'no-output-produced' }
+        }
+        [Console]::Error.WriteLine(("[co-review] WARN EMPTY_EXIT0_RESULT reviewer host '{0}' returned exit 0 with EMPTY stdout (probable cause: {1}); retrying once (T108/D-197-I009-015)." -f $HostName, $firstAttempt.probable_cause))
+        $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
+        if ($null -ne $r.telemetry) {
+            $r.telemetry | Add-Member -NotePropertyName 'empty_result_retry' -NotePropertyValue ([pscustomobject][ordered]@{
+                    retried              = $true
+                    first_attempt        = $firstAttempt
+                    retry_stdout_length  = ([string]$r.stdout).Length
+                    retry_still_empty    = [string]::IsNullOrWhiteSpace([string]$r.stdout)
+                }) -Force
+        }
+    }
+    return $r
 }
