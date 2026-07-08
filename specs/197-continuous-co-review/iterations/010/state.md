@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T106
-**Tasks Remaining**: T107, T108, T109, T110
-**In Progress**: T107
+**Last Completed Task**: T107
+**Tasks Remaining**: T108, T109, T110
+**In Progress**: T108
 **Baseline Ref**: 16bc485f6cb38b783963095ee360481ba8335562
 **Updated**: 2026-07-08
 **Before-implement**: APPROVED by the maintainer 2026-07-02 ("1" = approved for before-implement; Stop-hook-captured against `tasks -> before-implement`). Hardening-gate `ready`; implementation authorized. Ship 0.40.0.
@@ -14,7 +14,8 @@
 
 - Implementation authorized 2026-07-02; iteration executing. Resumed 2026-07-08 after maintainer vacation (state regressed by session-start sync was restored to the committed `executing` truth).
 - Planned sequence: T100 (OS-native supervisor) → T091 (hard-timeout consolidation, WSL hard gate) → T093/T094/T096 (fallback/gate/menu) → T106 (latch wiring) → T107 (reviewer fold) → T108/T109 (findings) → T110 (cross-host validation). Boundary-commit each; tests green per task.
-- Task progress: 7 complete (T100, T091, T093, T094, T096, T099, T106), 1 in-progress (T107), 3 pending, 0 blocked.
+- Task progress: 8 complete (T100, T091, T093, T094, T096, T099, T106, T107), 1 in-progress (T108), 2 pending, 0 blocked.
+- T107 delivered 2026-07-08: every TO-FOLD manifest row grafted into Get-ContinuousCoReviewSlimPrompt (falsification stance, workshop conformance + per-lens naming, 6 P145 phases incl. mandatory-blocking, claim/design-trace, never-false-green, no-web/deps, secret non-exfiltration); every DROP row asserted absent; code-review-agent.md retired to docs/reference/ (off FileList); reviewer-instruction.Tests.ps1 re-pointed at the REAL outbound prompt (9 assertions). Contracts 24/24; manifest valid; deploy-completeness green.
 - T106 delivered 2026-07-08: escalation-latch wired (_load + navigator + transcript threading through provider→navigator→reap); ceiling escalations surface once then latch quiet; a REAL human turn closes (forgery gate holds: machine-injected turns refused), clearing the latch + resetting the sticky round-state; convergence clears; real bugs never latch. 6/6 integration tests on real transcript shapes.
 - T099 delivered 2026-07-08: the expensive per-line transcript parse now gates on boundary/material/retry only — the old anySpec trigger taxed EVERY stop in every real project; conversational stops stay cheap (no parse, no journal). Mirror synced; 4/4 incl. parity.
 - D-197-I010-002 (maintainer finding): host-neutrality violation in the CCR core fixed same-day (66adc90a) — catalog-derived independence rule, loud fallbacks, mandatory -HostName, host-neutral prose, governance guard test.

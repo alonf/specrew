@@ -252,7 +252,6 @@
         'scripts/internal/continuous-co-review/_load.ps1',
         'scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1',
         'scripts/internal/continuous-co-review/co-review-service.ps1',
-        'scripts/internal/continuous-co-review/code-review-agent.md',
         'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1',
         'scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1',
         'scripts/internal/continuous-co-review/review-blackboard-writer.ps1',

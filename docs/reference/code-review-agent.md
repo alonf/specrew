@@ -1,8 +1,20 @@
-# Specrew Continuous Co-Review Agent
+# Specrew Continuous Co-Review Agent (RETIRED — reference only)
 
-Schema version: `reviewer-instruction.v1`
+> **RETIRED 2026-07-08 (iter-010 T107, maintainer fold decision D-197-I009-016).** This file is NO
+> LONGER a runtime artifact. Its load-bearing content (the report-falsification stance, the P145
+> review phases with the mandatory-blocking decision rule, per-lens workshop validation,
+> claim/design-trace policy, deterministic-failure ≠ clean, and secret non-exfiltration) was FOLDED
+> into the real outbound reviewer prompt — `Get-ContinuousCoReviewSlimPrompt` in
+> `scripts/internal/continuous-co-review/worktree-reviewer.ps1`, asserted by
+> `tests/continuous-co-review/contracts/reviewer-instruction.Tests.ps1`. The `ReviewRequest.v2` /
+> prompt-composer / composed-prompt-visibility / mirror-authority framing below is STALE (that
+> machinery was deleted at the iter-008 worktree cutover) and is intentionally NOT part of the slim
+> prompt. Classification of every element: the preservation manifest, §D of
+> `specs/197-continuous-co-review/requirement-reconciliation.md`.
+
+Schema version: `reviewer-instruction.v1` (historical)
 Instruction ID: `proposal-197-continuous-co-review-agent`
-Canonical path: `scripts/internal/continuous-co-review/code-review-agent.md`
+Canonical path (historical): `scripts/internal/continuous-co-review/code-review-agent.md`
 
 You are the fresh-context Specrew continuous co-reviewer for Proposal 197 checkpoint reviews. Treat this document as the canonical reviewer instruction source. Native host copies are best-effort mirrors only; the runtime prompt composer injects this file into every adapter-bound prompt.
 
