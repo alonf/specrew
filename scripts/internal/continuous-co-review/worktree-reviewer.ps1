@@ -165,17 +165,24 @@ function New-ContinuousCoReviewStrippedWorktree {
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$BaselineRef,
         [string[]]$DesignContextFiles = @(),
-        [string]$EphemeralRoot
+        [string]$EphemeralRoot,
+        [AllowEmptyString()][string]$SourceTreeId
     )
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $gitRoot = (& git -C $resolved rev-parse --show-toplevel 2>$null).Trim()
     $prefix = (& git -C $resolved rev-parse --show-prefix 2>$null).Trim().TrimEnd('/')   # '' when project == git root
-    # Resolve the reviewed subtree's TREE id (HEAD:path is already a tree; HEAD needs ^{tree} to peel the commit).
+    # IDENTITY UNIFICATION (escalation 20260708T211331029, FR-025 class): when the orchestrator passes the
+    # reviewed-state digest tree (-SourceTreeId), materialize FROM THAT TREE - the reviewed content and the
+    # gate-certified content are then the SAME git object by construction, so uncommitted working-tree changes
+    # are REVIEWED, never silently certified. Without it (digest failure / legacy callers) fall back to HEAD;
+    # the orchestrator's reviewed_digest_error then says why the identities may differ.
+    $reviewSource = if (-not [string]::IsNullOrWhiteSpace($SourceTreeId)) { $SourceTreeId } else { 'HEAD' }
+    # Resolve the reviewed subtree's TREE id (<src>:path is already a tree; a commit-ish needs ^{tree} to peel).
     $treeId = if ([string]::IsNullOrWhiteSpace($prefix)) {
-        (& git -C $gitRoot rev-parse 'HEAD^{tree}' 2>$null).Trim()
+        (& git -C $gitRoot rev-parse "$reviewSource^{tree}" 2>$null).Trim()
     }
     else {
-        (& git -C $gitRoot rev-parse "HEAD:$prefix" 2>$null).Trim()
+        (& git -C $gitRoot rev-parse "${reviewSource}:$prefix" 2>$null).Trim()
     }
 
     if ([string]::IsNullOrWhiteSpace($EphemeralRoot)) { $EphemeralRoot = [System.IO.Path]::GetTempPath() }
@@ -222,11 +229,14 @@ function New-ContinuousCoReviewStrippedWorktree {
         $mp = if ([string]::IsNullOrWhiteSpace($prefix)) { $m } else { "$prefix/$m" }
         ":(exclude)$mp"
     }
+    # The change-set diff runs baseline -> the SAME review source as the materialized tree (git diff accepts
+    # tree objects), so .review/changes.diff shows exactly what the reviewer's worktree contains - including
+    # uncommitted changes when the digest tree is the source.
     $diffPathspec = @($scope) + @($machineryExcludes)
-    $diff = (& git -C $gitRoot diff --no-ext-diff --src-prefix=a/ --dst-prefix=b/ $BaselineRef HEAD -- @diffPathspec 2>$null) -join "`n"
+    $diff = (& git -C $gitRoot diff --no-ext-diff --src-prefix=a/ --dst-prefix=b/ $BaselineRef $reviewSource -- @diffPathspec 2>$null) -join "`n"
     if (-not [string]::IsNullOrWhiteSpace($prefix)) { $diff = $diff -replace ([regex]::Escape("$prefix/")), '' }
     [System.IO.File]::WriteAllText((Join-Path $reviewDir 'changes.diff'), $diff)
-    $changed = @((& git -C $gitRoot diff --name-only $BaselineRef HEAD -- @diffPathspec 2>$null) | Where-Object { $_ })
+    $changed = @((& git -C $gitRoot diff --name-only $BaselineRef $reviewSource -- @diffPathspec 2>$null) | Where-Object { $_ })
     foreach ($d in @($DesignContextFiles)) {
         $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $resolved $d }
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }

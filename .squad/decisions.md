@@ -27477,3 +27477,22 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   `specs/197-continuous-co-review/iterations/010/quality/known-test-issues.md`.
 - **Still open (main only)**: `main` (`5bca4fdf`) fails ALL SIX tests in this file (incl. clean +
   hard-fail cases) — a separate undiagnosed breakage to reconcile at PR time.
+
+## 2026-07-09T05:45:00Z — Human-close of escalation 20260708T211331029: FIX NOW the reviewed-vs-certified identity gap
+
+- **Decision ID**: DEC-197-I010-005
+- **Type**: escalation human-close (fix-now) — round-ceiling escalation, full+independent reviewer (D5: human-only)
+- **Affected Requirement**: FR-025 (unreviewed-source false-allow), SC-019/SC-020 (gate evidence integrity)
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010 (review-round fix, D-197-I010-004)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T05:45:00Z
+- **Authorization Text**:
+  > "1" (= Fix now — unify the reviewed identity with the certified identity; maintainer, on the escalation packet naming the HEAD-vs-working-tree gap, 2026-07-09)
+- **Fix**: the orchestrator computes the reviewed-state digest FIRST and materializes the reviewer
+  worktree FROM the digest's own tree object (the digest is a real `git write-tree` object) — the
+  reviewed content and the certified content are the same git tree by construction; changes.diff runs
+  baseline→that tree; digest failure falls back to HEAD with reviewed_digest_error explaining the
+  divergence; `--live` now reviews uncommitted work. Dirty-tree regression tests (worktree-source-
+  tree-identity.Tests.ps1); CCR suite 254/254. Evidence-run context: the escalating run was the FIRST
+  consumer of T111 implementer evidence and completed in 141s (vs 4 prior ~880s budget deaths) —
+  T111 validated in the same run that raised the finding.

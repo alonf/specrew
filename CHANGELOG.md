@@ -58,6 +58,11 @@ human PASS verdict.
 
 ### Fixed
 
+- **Reviewed identity = certified identity** (found by the feature's own reviewer in dogfood): the
+  reviewer worktree now materializes from the reviewed-state digest's own tree object instead of
+  HEAD, so the content the reviewer sees and the content the signoff gate certifies are the same git
+  tree by construction — uncommitted changes can no longer be certified as reviewed without being
+  seen, and `specrew review --live` genuinely reviews uncommitted work.
 - Reviewer runs with an unresolvable design context are recorded, the reviewer is told, and the run
   is labelled partial (was: a silent blind review); durable fallbacks resolve the context from
   feature metadata, session state, or a single spec directory.

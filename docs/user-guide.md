@@ -542,7 +542,9 @@ labelled `same-host` (degraded — see below).
 
 Durable evidence lands under `.specrew/review/inline/<run-id>/` (`findings-result.json`,
 `review-run.json`, `gate-verdict.json`) and is what the review-signoff gate checks — freshness is
-digest-based, so evidence for an older tree does not pass a newer one.
+digest-based, so evidence for an older tree does not pass a newer one. The reviewer's worktree is
+materialized from that same digest tree, so what the reviewer sees and what the gate certifies are
+the same content by construction — including uncommitted changes on a `--live` run.
 
 Reviews are much faster when the implementer's test runs are recorded: after running your suites,
 record the machine-observed result with `Write-ContinuousCoReviewTestEvidence` (suite, counts, exit

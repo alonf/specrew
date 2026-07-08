@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 3 (1 governance-tooling; 1 implementation-vs-requirement; 1 doc/test-vs-doctrine), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
-**Resolution rate**: 100% (3/3 resolved; 1/1 carried finding closed)
-**Specification drift**: None detected (D-002 was implementation drift against the standing host-neutrality requirement; D-003 was documentation/test drift against decisions this iteration itself made)
+**Total drift events**: 4 (1 governance-tooling; 2 implementation-vs-requirement; 1 doc/test-vs-doctrine), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
+**Resolution rate**: 100% (4/4 resolved; 1/1 carried finding closed)
+**Specification drift**: None detected (D-002 was implementation drift against the standing host-neutrality requirement; D-003 was documentation/test drift against decisions this iteration itself made; D-004 was implementation drift against FR-025 found by the feature's own reviewer)
 
 ## Events
 
@@ -70,6 +70,17 @@
 - (Advisory) these drifts were initially unrecorded in this drift-log. **Resolved**: this entry.
 
 **Trace**: P1 baseline-anchoring doctrine (iter-010 design); D-197-I010-002; T093 honour-or-surface; Rule "Honest state". Strategy: implementation-reverted-to-requirement (docs/tests corrected to the decided doctrine).
+
+### D-197-I010-004 — Reviewed identity ≠ certified identity: worktree materialized HEAD while the gate digested the working tree (FR-025 false-allow vector)
+
+**Status**: RESOLVED (fixed 2026-07-09, same session; maintainer fix-now decision "1" on the round-ceiling escalation).
+**Detected by**: the feature's own reviewer — antigravity run `20260708T211331029` (round-5 escalation, 141s, the FIRST run consuming T111 implementer evidence): "the worktree reviewer still materializes and diffs HEAD rather than the same current-state tree identity used by the reviewed-state digest… This allows uncommitted changes to bypass review while recording the working tree's digest as reviewed."
+
+**Finding (verified against source before fixing)**: `New-ContinuousCoReviewStrippedWorktree` archived `HEAD^{tree}` while `Get-ContinuousCoReviewReviewedStateDigest` (the gate's freshness identity) is `git write-tree` over the WORKING tree. With uncommitted changes present, the reviewer reviewed HEAD but the run recorded the working-tree digest — un-reviewed content could be certified as reviewed. Exploit requires a DIRTY tree at run time; every boundary-evidence run this iteration ran on a clean tree (HEAD == working tree), so no existing evidence was tainted.
+
+**Resolution (implementation-reverted-to-requirement)**: the orchestrator now computes the digest FIRST and materializes the worktree FROM the digest's own tree object (`-SourceTreeId`; the digest tree is a real `git write-tree` object, so `git archive` serves it directly) — the reviewed content and the certified content are the SAME git tree by construction, and `.review/changes.diff` runs baseline→that tree. Digest failure falls back to HEAD with `reviewed_digest_error` carrying why the identities may differ. Bonus: `specrew review --live` now genuinely reviews uncommitted work. Regression tests: `worktree-source-tree-identity.Tests.ps1` (dirty-tree content present in the worktree + materialized tree id EQUALS the certified digest id; HEAD fallback preserved). Full CCR suite 254/254.
+
+**Trace**: FR-025 (unreviewed-source false-allow — the same class the digest strip-list rules guard); SC-019/SC-020 (gate evidence integrity); escalation run `20260708T211331029`; maintainer decision DEC-197-I010-005.
 
 ### D-197-I009-003 closure — conformance flush/read race REFUTED with evidence (T109)
 

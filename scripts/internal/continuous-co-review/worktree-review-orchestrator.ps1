@@ -466,10 +466,29 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             return (Get-Content $statusPath -Raw | ConvertFrom-Json)
         }
 
+        # The reviewed-state DIGEST = the gate's identity. Get-...SignoffGateDecision compares ITS current digest to a
+        # passing run's recorded reviewed_tree_id. Computed BEFORE materialization (identity-unification fix,
+        # escalation 20260708T211331029): the worktree is materialized FROM this digest tree, so the reviewed
+        # content and the certified content are the SAME git tree object by construction - uncommitted changes
+        # are REVIEWED, never silently certified (the FR-025 false-allow the reviewer escalated). Computed over
+        # the MAIN repo (the worktree is a bare git-archive extract, NOT a git repo). _load is dot-sourced only
+        # inside Resolve-...ReviewerHost's scope, so lazy-load it for THIS scope.
+        if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+            $lp = Join-Path $PSScriptRoot '_load.ps1'; if (Test-Path -LiteralPath $lp -PathType Leaf) { try { . $lp } catch { $null = $_ } }
+        }
+        # SURFACE a digest failure (do not swallow it to ''): an empty digest makes the gate's freshness loop skip the
+        # record -> a genuinely clean review blocks as 'stale' with no visible cause. Carry the reason in the status.
+        # On digest failure the materialization falls back to HEAD (reviewedDigestErr says why the identities differ).
+        $currentPhase = 'reviewed-state-digest'
+        & $recordPhaseStart $currentPhase
+        $reviewedDigestId = ''; $reviewedDigestErr = ''
+        try { $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot; if ($null -ne $dg -and $dg.ok) { $reviewedDigestId = [string]$dg.tree_id } else { $reviewedDigestErr = if ($null -ne $dg) { [string]$dg.failure_reason } else { 'digest-unavailable' } } } catch { $reviewedDigestErr = $_.Exception.Message }
+        & $recordPhaseEnd 'reviewed-state-digest'
+
         $currentPhase = 'worktree-materialization'
         & $recordPhaseStart $currentPhase
         & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; reviewer_selection_reason = $reviewerHost.selection_reason; requested_reviewer_host = $RequestedHost }
-        $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles
+        $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles -SourceTreeId $reviewedDigestId
         & $recordPhaseEnd 'worktree-materialization'
         # T092 pre-flight generous-budget bump REVERTED (Issue 1): a 30-min AUTO checkpoint review is wrong - the
         # navigator fires one on every checkpoint, and even fully detached it should be SHORT. The auto path now
@@ -478,21 +497,6 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         # Phase-2 activity watchdog (kill on inactivity, not a fixed wall). The helpers
         # (Get-ContinuousCoReviewGenerousBudget / Test-ContinuousCoReviewExplicitTimeoutConfigured) + $wt.diff_bytes
         # are retained (unit-tested) for manual-path / Phase-2 reuse.
-        # The reviewed-state DIGEST = the gate's identity. Get-...SignoffGateDecision compares ITS current digest to a
-        # passing run's recorded reviewed_tree_id; recording the worktree HEAD-tree instead (the old bug) NEVER matched
-        # the gate's working-tree digest, so every promoted pass read 'stale'. Compute it HERE, off the Stop budget,
-        # over the MAIN repo (the worktree is a bare git-archive extract, NOT a git repo, so the digest can't run on
-        # it). _load is dot-sourced only inside Resolve-...ReviewerHost's scope, so lazy-load it for THIS scope.
-        if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
-            $lp = Join-Path $PSScriptRoot '_load.ps1'; if (Test-Path -LiteralPath $lp -PathType Leaf) { try { . $lp } catch { $null = $_ } }
-        }
-        # SURFACE a digest failure (do not swallow it to ''): an empty digest makes the gate's freshness loop skip the
-        # record -> a genuinely clean review blocks as 'stale' with no visible cause. Carry the reason in the status.
-        $currentPhase = 'reviewed-state-digest'
-        & $recordPhaseStart $currentPhase
-        $reviewedDigestId = ''; $reviewedDigestErr = ''
-        try { $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot; if ($null -ne $dg -and $dg.ok) { $reviewedDigestId = [string]$dg.tree_id } else { $reviewedDigestErr = if ($null -ne $dg) { [string]$dg.failure_reason } else { 'digest-unavailable' } } } catch { $reviewedDigestErr = $_.Exception.Message }
-        & $recordPhaseEnd 'reviewed-state-digest'
         # T111 (DEC-197-I010-004): inject the implementer's MACHINE-RECORDED test evidence into the worktree -
         # ONLY on an exact digest match with the tree under review, so the reviewer can substitute the recorded
         # suites for broad re-runs (the budget-death fix). A mismatch or absence injects NOTHING (never wrong
