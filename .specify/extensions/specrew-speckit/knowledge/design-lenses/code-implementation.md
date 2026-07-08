@@ -54,8 +54,10 @@ Surfaced via the **grouping model** (see below); the catalog holds the full rule
 - **Continuous co-review harness/model/effort** — for code-writing features, ask which continuous co-review harness, model,
   and optional effort setting should review the implementation (for example Codex + ChatGPT, Claude + Opus 4.8 1M context, or Copilot
   on a strong model). If the human skips the workshop or does not choose a reviewer, Specrew auto-selects:
-  Codex + ChatGPT and Claude + Opus 4.8 1M context are peer top review classes; prefer Codex when Claude wrote
-  the code and prefer Claude when Codex wrote it; Copilot on a strong model ranks next; then other harnesses.
+  Codex + ChatGPT and Claude + Opus 4.8 1M context are peer top review classes, Copilot on a strong model ranks
+  next, then other harnesses — and the selection always prefers the strongest eligible reviewer on a DIFFERENT
+  harness than the code-writer (host-neutral independence; no hardcoded host pairing), falling back to the same
+  harness only when no independent option is authorized (fired immediately and labelled same-host).
   If only one harness is available, use that harness with its best authorized review model. Record the answer in
   `reviewer_preference`; dynamic model/effort discovery is future capability-adapter work, so MVP values are
   captured as explicit host-specific labels.
@@ -115,6 +117,16 @@ The code rules are mostly **product-level and stable**:
   recommendation, not a rule. If they make no choice, record the DEFAULT the command marked (still
   `mode=human-selected`). Do NOT show or pin a model - Specrew uses the host's own default model (no dynamic
   model discovery exists yet).
+  - **AUTHORIZE the pick (bridge to the navigator)**: capturing `reviewer_preference` alone is NOT enough - the
+    async navigator selects from `.specrew/reviewer-hosts.json`, NOT from the workshop manifest. After the human
+    picks, RUN `specrew review --host <chosen> --authorization-ref workshop-<feature>` to persist the
+    human-provenance authorization to `reviewer-hosts.json` (the navigator reads it READ-ONLY). The HUMAN chose it,
+    so this records their provenance - it is NOT agent self-authorization (the Proposal-190 hole). Do NOT hand-write
+    `reviewer-hosts.json` yourself: the command writes the EXACT `hosts[]` catalog schema the navigator READS; a
+    hand-authored file (e.g. an `authorizations[]` array) is INERT - the co-review silently finds no host and a
+    different agent fills the vacuum with its own review that the lifecycle then accepts. If the command ERRORS,
+    surface the error to the human and STOP; never fall back to writing the file by hand. WITHOUT a command-written
+    authorization the auto-fired co-review has no host and stays dark.
 - **Capture** the selections/decisions/custom-rules/dependency-policy into `implementation-rules.yml`
   (reference-by-ID) + the human-readable `workshop/code-implementation.md`; record the lens in
   `lens-applicability.json`.

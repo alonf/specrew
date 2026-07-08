@@ -57,12 +57,12 @@
       "host": "antigravity",
       "model": "configured-by-user",
       "adapter_id": "reviewer-host-adapter-antigravity-prompt",
-      "allowed": false,
-      "installed": false,
+      "allowed": true,
+      "installed": true,
       "review_class_rank": 65,
       "model_source": "human-entered",
       "cost_class": "non-default",
-      "authorization_ref": null,
+      "authorization_ref": "maintainer-antigravity-validation-2026-07-08",
       "fallback_allowed": false,
       "timeout_seconds": 0
     }

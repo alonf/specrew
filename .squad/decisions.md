@@ -27343,3 +27343,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Authorization Text**:
   > "OK, agree for all answers and recommendations." (maintainer, 2026-07-08 — Q3: same-host fallback selects the strongest cataloged review model, curated per-release, no runtime web discovery; Q4: failure-reason classification with host-specific signatures as catalog data + an opt-in pre-authorized auto-fallback chain, default ask-first)
 - **Next Action**: post-0.40.0 fast-follow tasks; not release-blocking (current behavior is safe-and-surfaced: labelled same-host fallback + tell-then-ask remediation menu).
+
+## 2026-07-08T11:29:56Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-07-08T11:29:56Z
+- **Warning**: Expected next boundary 'tasks' but received 'review-signoff'.
+
+## 2026-07-08T11:29:56Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 07d6d3b2
+- **Recorded At**: 2026-07-08T11:29:56Z

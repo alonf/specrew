@@ -192,65 +192,50 @@ foreach ($pattern in @('"feature":\s*"001-sample"', '"iteration":\s*"001"', '"di
 }
 Write-Pass 'JSON mode emits structured reviewer summary data'
 
-Write-Host "`nTest 5: live fixture review writes inline reviewer evidence"
+Write-Host "`nTest 5: live review REFUSES an unregistered host loudly (honour-or-surface, never substitute)"
+# REWRITTEN 2026-07-08 (co-review finding, run 20260708T115526673): the old Test 5 drove the LEGACY
+# pre-worktree-cutover fixture pipeline and asserted its deleted artifact set (review-request.json /
+# spawn-invocation.json / gate_state). Under the CURRENT engine + T093 honour-or-surface + the
+# D-197-I010-002 loud-fail doctrine, an explicit --host that is not installed+authorized+cataloged
+# must fail with a stated reason and write NO gate evidence - never silently substitute a harness.
 $liveProjectRoot = Join-Path $scratchRoot 'live-project'
 $liveSourcePath = Join-Path $liveProjectRoot 'src\sample.ps1'
-$liveSpecPath = Join-Path $liveProjectRoot 'specs\001-live\spec.md'
 $null = New-Item -ItemType Directory -Path (Split-Path -Parent $liveSourcePath) -Force
-$null = New-Item -ItemType Directory -Path (Split-Path -Parent $liveSpecPath) -Force
 $null = New-Item -ItemType Directory -Path (Join-Path $liveProjectRoot '.specrew') -Force
 [System.IO.File]::WriteAllText((Join-Path $liveProjectRoot '.specrew\config.yml'), "project_name: live-review`n", [System.Text.UTF8Encoding]::new($false))
-[System.IO.File]::WriteAllText($liveSpecPath, "# Live Review Spec`n`nA design context source for live review.`n", [System.Text.UTF8Encoding]::new($false))
 [System.IO.File]::WriteAllText($liveSourcePath, "function Get-Sample { 'before' }`n", [System.Text.UTF8Encoding]::new($false))
 Invoke-Git -Repository $liveProjectRoot -Arguments @('init', '--initial-branch=main') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('config', 'user.email', 'specrew-test@example.invalid') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('config', 'user.name', 'Specrew Test') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('add', '.') | Out-Null
 Invoke-Git -Repository $liveProjectRoot -Arguments @('commit', '-m', 'baseline') | Out-Null
-$baselineRef = ([string](@(Invoke-Git -Repository $liveProjectRoot -Arguments @('rev-parse', 'HEAD'))[0])).Trim()
 Add-Content -LiteralPath $liveSourcePath -Value "function Get-SampleAfter { 'after' }" -Encoding UTF8
 
-$liveRunId = 'test-live-fixture-review'
+$liveRunId = 'test-live-unregistered-host'
 $liveResult = Invoke-TestScript -ScriptPath $entryScript -ArgumentList @(
     'review', '--project-path', $liveProjectRoot,
-    '--live', '--baseline-ref', $baselineRef,
+    '--live',
     '--host', 'fixture',
-    '--effort', 'max',
     '--code-writer-host', 'claude',
-    '--run-id', $liveRunId,
-    '--checkpoint-id', 'test-live-fixture-review',
-    '--design-context-ref', 'specs\001-live\spec.md',
-    '--json'
+    '--run-id', $liveRunId
 )
-if ($liveResult.ExitCode -ne 0) {
-    Write-Fail 'specrew review --live fixture mode failed'
+if ($liveResult.ExitCode -eq 0) {
+    Write-Fail 'specrew review --live with an unregistered --host must exit non-zero (loud refusal)'
     Write-Host ($liveResult.Output -join "`n") -ForegroundColor Yellow
     exit 1
 }
-
 $liveOutput = $liveResult.Output -join "`n"
-foreach ($pattern in @('"mode":\s*"live"', '"run_id":\s*"test-live-fixture-review"', '"gate_state":\s*"pass"', '"actual_host":\s*"fixture"')) {
-    if (-not (Assert-Contains -Content $liveOutput -Pattern $pattern -FailureMessage ("Live JSON output is missing '{0}'." -f $pattern))) {
-        exit 1
-    }
-}
-$liveEvidenceRoot = Join-Path $liveProjectRoot ".specrew\review\inline\$liveRunId"
-foreach ($artifact in @('review-request.json', 'spawn-invocation.json', 'findings-result.json', 'gate-verdict.json', 'review-run.json')) {
-    if (-not (Test-Path -LiteralPath (Join-Path $liveEvidenceRoot $artifact) -PathType Leaf)) {
-        Write-Fail "Live review did not write evidence artifact: $artifact"
-        exit 1
-    }
-}
-$liveReviewRequest = Get-Content -LiteralPath (Join-Path $liveEvidenceRoot 'review-request.json') -Raw | ConvertFrom-Json
-if ($liveReviewRequest.provider_request.code_writer_host -ne 'claude') {
-    Write-Fail 'Live fixture mode did not persist code_writer_host in review-request.json'
+if (-not (Assert-Contains -Content $liveOutput -Pattern 'requested-host-not-available' -FailureMessage 'the refusal must state requested-host-not-available (honour-or-surface)')) {
     exit 1
 }
-if ($liveReviewRequest.provider_request.requested_effort -ne 'max') {
-    Write-Fail 'Live fixture mode did not persist requested_effort in review-request.json'
+if (-not (Assert-Contains -Content $liveOutput -Pattern 'DID NOT RUN' -FailureMessage 'the refusal must state the co-review did not run')) {
     exit 1
 }
-Write-Pass 'Live fixture mode writes continuous co-review inline evidence'
+if (Test-Path -LiteralPath (Join-Path $liveProjectRoot ".specrew\review\inline\$liveRunId\review-run.json") -PathType Leaf) {
+    Write-Fail 'an unregistered-host refusal must not write promoted gate evidence'
+    exit 1
+}
+Write-Pass 'Live review refuses an unregistered host loudly and writes no gate evidence'
 
 Write-Host "`nTest 6: reviewer replay surfaces lockout-chain cap state when present"
 $capFixturePath = Join-Path $repoRoot 'tests\integration\fixtures\lockout-chain-cap\project'

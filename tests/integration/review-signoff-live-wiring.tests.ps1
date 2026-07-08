@@ -74,7 +74,9 @@ foreach ($source in $sourcePairs) {
     }
 
     $content = Get-Content -LiteralPath $source.Path -Raw -Encoding UTF8
-    Assert-Contains -Content $content -Pattern '(?s)(/specrew-review|specrew review)\s+--live\s+--baseline-ref' -FailureMessage "$($source.Name) requires live review invocation"
+    # Doctrine (P1, iter-010): a signoff run auto-anchors its baseline - an explicit --baseline-ref
+    # run is EXPLORATORY and never signoff evidence, so the docs teach `--live` WITHOUT --baseline-ref.
+    Assert-Contains -Content $content -Pattern '(?s)(/specrew-review|specrew review)\s+--live\b' -FailureMessage "$($source.Name) requires live review invocation"
     Assert-Contains -Content $content -Pattern '(?s)\.specrew[\\/]+review[\\/]+inline[\\/]+<run-id>[\\/]+gate-verdict\.json|\.specrew\\review\\inline\\<run-id>\\gate-verdict\.json' -FailureMessage "$($source.Name) names gate-verdict live evidence"
     Assert-Contains -Content $content -Pattern '(?s)\.specrew[\\/]+review[\\/]+inline[\\/]+<run-id>[\\/]+review-run\.json|\.specrew\\review\\inline\\<run-id>\\review-run\.json' -FailureMessage "$($source.Name) names review-run live evidence"
 }
@@ -97,8 +99,11 @@ foreach ($source in $codeLensPairs) {
     }
 
     $content = Get-Content -LiteralPath $source.Path -Raw -Encoding UTF8
-    Assert-Contains -Content $content -Pattern 'which continuous co-review harness and model should review the code' -FailureMessage "$($source.Name) asks for reviewer harness and model during the code lens"
-    Assert-Contains -Content $content -Pattern '(?s)auto-select.*Codex/ChatGPT.*Claude/Opus 4\.8 1M.*rank-85.*Copilot.*rank 80' -FailureMessage "$($source.Name) documents fallback auto-selection ranking"
+    # Regexes track the CURRENT lens wording (iter-010: 'Codex + ChatGPT' phrasing, explicit rank
+    # numbers removed, and the auto-selection rule is the HOST-NEUTRAL different-harness preference
+    # per D-197-I010-002 - not a hardcoded pairing).
+    Assert-Contains -Content $content -Pattern '(?s)which continuous co-review harness, model,.{0,120}should review the implementation' -FailureMessage "$($source.Name) asks for reviewer harness and model during the code lens"
+    Assert-Contains -Content $content -Pattern '(?s)auto-selects:.*Codex \+ ChatGPT.*Claude \+ Opus 4\.8 1M.*peer top review classes.*Copilot.*DIFFERENT\s+harness than the code-writer' -FailureMessage "$($source.Name) documents fallback auto-selection ranking"
 }
 
 if ($script:Failures -gt 0) {

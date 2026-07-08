@@ -286,7 +286,7 @@ Verdicts belong in `review.md`, not just meeting notes.
 When the iteration touched code, runtime scripts, prompts, workflows, or executable governance, run live continuous co-review before assigning an accepted iteration verdict:
 
 ```powershell
-specrew review --live --baseline-ref <committed-baseline> `
+specrew review --live `
   --project-path . `
   --checkpoint-id review-signoff-NNN `
   --run-id review-signoff-NNN `

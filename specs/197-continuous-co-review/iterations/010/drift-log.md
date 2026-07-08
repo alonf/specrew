@@ -22,9 +22,9 @@
 
 ## Summary
 
-**Total drift events**: 2 (1 governance-tooling; 1 implementation-vs-requirement), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
-**Resolution rate**: 100% (2/2 resolved; 1/1 carried finding closed)
-**Specification drift**: None detected (D-002 was implementation drift against the standing host-neutrality requirement)
+**Total drift events**: 3 (1 governance-tooling; 1 implementation-vs-requirement; 1 doc/test-vs-doctrine), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
+**Resolution rate**: 100% (3/3 resolved; 1/1 carried finding closed)
+**Specification drift**: None detected (D-002 was implementation drift against the standing host-neutrality requirement; D-003 was documentation/test drift against decisions this iteration itself made)
 
 ## Events
 
@@ -55,6 +55,21 @@
 **Resolution (implementation-reverted-to-requirement)**: the independence preference is now catalog-derived (strongest eligible candidate on a DIFFERENT harness than the code-writer — any host, including future ones); the catalog-unreachable fallback THROWS (surfaced as a failed run, never a silent wrong-host review); `-HostName` is mandatory at the core invocation seams; the ask-path fails soft with `no-authorized-reviewer-host`; guidance prose is host-neutral. A host-neutrality guard test (`tests/continuous-co-review/governance/host-neutral-core.Tests.ps1`) scans the CCR core for lowercase harness-name literals outside the catalog so the class cannot regress.
 
 **Trace**: FR-016, SC-022, SEC-004 (independence policy); maintainer directive 2026-07-08.
+
+### D-197-I010-003 — Teaching docs and integration tests lagged this iteration's own doctrine decisions (co-review verification round)
+
+**Status**: RESOLVED (fixed 2026-07-08, same day; caught by the continuous co-review verification run `20260708T115526673` — the feature under review found the drift in its own iteration artifacts).
+**Detected by**: the antigravity worktree reviewer (3 blocking + 2 advisory findings), verifying the escalation-repair fix batch.
+
+**Findings and resolutions (all doc/test drift against decisions already made THIS iteration — D-197-I010-002 host-neutrality and the P1 baseline-anchoring doctrine):**
+
+- `extensions/specrew-speckit/refocus/review-signoff.md` had drifted from its `.specify` mirror, and both still taught `--live --baseline-ref <committed-baseline>` — contradicting the P1 doctrine (a signoff run auto-anchors to the feature merge-base; an explicit `--baseline-ref` run is EXPLORATORY and never signoff evidence). **Resolved**: item 4 rewritten to teach `--live` with the baseline omitted, naming the three durable evidence artifacts; source and mirror re-synced; the same stale teaching swept out of 8 charter/ceremony/reviewer-agent files and the 6 deployed SKILL.md copies.
+- `extensions/specrew-speckit/knowledge/design-lenses/code-implementation.md` (and mirror) still described a hardcoded `claude↔codex` reviewer pairing; `tests/integration/review-signoff-live-wiring.tests.ps1` asserted regexes pinned to the OLD wording (pre-`Codex + ChatGPT`, explicit rank numbers). **Resolved**: the lens now states the host-neutral rule (strongest eligible reviewer on a DIFFERENT harness than the code-writer, same-host fallback fired immediately and labelled); the test regexes now assert the current doctrine wording, including the literal `DIFFERENT harness than the code-writer`.
+- `tests/integration/review-command.ps1` Test 5 still drove the deleted pre-worktree-cutover fixture pipeline (`--host fixture` expecting exit 0 + the legacy artifact set). **Resolved**: rewritten to assert the CURRENT contract — an unregistered `--host` fails loudly with `requested-host-not-available` and writes no gate evidence (honour-or-surface, never substitute).
+- (Advisory) `tasks-progress.yml` carried fabricated completion timestamps lying in the future of the review run's start. **Resolved**: all task `started_at`/`completed_at` values replaced with the real boundary/commit-derived times from git history; recorded here as an honesty correction — progress artifacts must carry disk/git truth, never narrative-convenient times.
+- (Advisory) these drifts were initially unrecorded in this drift-log. **Resolved**: this entry.
+
+**Trace**: P1 baseline-anchoring doctrine (iter-010 design); D-197-I010-002; T093 honour-or-surface; Rule "Honest state". Strategy: implementation-reverted-to-requirement (docs/tests corrected to the decided doctrine).
 
 ### D-197-I009-003 closure — conformance flush/read race REFUTED with evidence (T109)
 
