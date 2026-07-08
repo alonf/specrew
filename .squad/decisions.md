@@ -27449,3 +27449,16 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   slim prompt gains one rule: digest-matched machine-recorded evidence substitutes for re-running
   those suites — spot-check targeted tests only; absence → reviewer judgment; hand-written claims
   remain claims (never-false-green intact). Tests for all three seams.
+
+## 2026-07-08T21:05:00Z — Maintenance note: pre-existing tests/unit public-readiness failures (out of F-197 scope)
+
+- **Decision ID**: NOTE-197-I010-003
+- **Type**: maintenance-note (repo test hygiene; not F-197 drift)
+- **Recorded At**: 2026-07-08T21:05:00Z
+- **Evidence**: `tests/unit` fails 2 of 10 Pester tests (public-readiness drifted-fixture warnings,
+  extension + specify: expected 5 WARN lines, got 0) — signature IDENTICAL in a detached worktree at
+  pre-T111 commit `2bd508c7`, so pre-existing, not an F-197/T111 regression. Full analysis:
+  `specs/197-continuous-co-review/iterations/010/quality/known-test-issues.md`.
+- **Next Action**: fix under the validator-surface ownership (F-006/F-013 lineage) as ordinary repo
+  maintenance after 0.40.0; the T111 evidence record carries the honest `failed=2` for the unit
+  suite with the in-tree note as the standing explanation.
