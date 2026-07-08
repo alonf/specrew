@@ -27294,3 +27294,52 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: ab1b516b
 - **Recorded At**: 2026-07-01T20:37:29Z
+
+## 2026-07-08 — Maintainer decisions: iter-010 escalation repair + reviewer-system Q&A (Alon Fliess)
+
+- **Codex escalation repair path APPROVED** ("I agree with your recommendation"): f1 = restore the
+  machine-local feature.json + durable design-context fallbacks + record/degrade/tell on empty
+  context (degrade chosen over terminal-fail to keep the greenfield path); f2 = full item-schema
+  normalization of the partial harvest. Human-directed verification reruns authorized (carried via
+  the T096 remediation mechanism, authorized_by Alon Fliess).
+- **Q1 rounds**: keep `co_review_max_rounds` default = 2 (the ceiling caps only the AUTONOMOUS loop;
+  human-directed rounds are unbounded via the remediation menu). Per-project override stands.
+- **Q2 any-harness reviewer**: affirmed — the catalog is the only host seam (post D-197-I010-002);
+  claude+codex field-validated; other harnesses are a catalog row + a validation session away.
+- **Q3 single-harness users**: never ask for a reviewer; same-host fallback stands. AGREED fast-follow:
+  same-host fallback should select the harness's STRONGEST cataloged review model (curated per-release
+  table as catalog data; --model stays the human override; NO runtime web discovery — models are
+  config data, refreshed by Specrew releases / `specrew update`).
+- **Q4 reviewer-failure handling**: affirmed tell-then-ask via the remediation menu (no silent
+  substitution, SEC-004). AGREED fast-follows: failure-reason classification (quota / model-not-found
+  / unknown) with host-specific error signatures as CATALOG data; an OPT-IN pre-authorized
+  auto-fallback chain (`co_review_auto_fallback`), default off; last rung = same-host implementer
+  model, ack-priced.
+- **Antigravity**: the maintainer is INSTALLING antigravity to extend SC-022 validation to it —
+  validation carried to feature-closeout / post-install (recorded in the iter-010 Gap Ledger as
+  deferred).
+- **Scope ruling**: Q3/Q4 fast-follows are post-0.40.0 (not release-blocking; current behavior is
+  safe-and-surfaced). 0.40.0 proceeds to review-signoff on the verified iter-010 scope.
+
+## 2026-07-08T10:30:00Z — Defer: SC-022 harness breadth beyond claude+codex (iter-010 Gap Ledger)
+
+- **Decision ID**: DEFER-197-I010-001
+- **Type**: defer
+- **Affected Requirement**: SC-022
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-08T10:30:00Z
+- **Authorization Text**:
+  > "OK, agree for all answers and recommendations. I will install antigravity so we can also check it" (maintainer, 2026-07-08)
+- **Next Action**: validate antigravity as a reviewer once installed+authorized (feature-closeout or post-0.40.0); copilot/cursor-agent remain unauthorized-by-consent per the N8 installed+authorized scope rule.
+
+## 2026-07-08T10:31:00Z — Defer: reviewer-system fast-follows (same-host strongest-model; failure classification + opt-in fallback)
+
+- **Decision ID**: DEFER-197-I010-002
+- **Type**: defer
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-08T10:31:00Z
+- **Authorization Text**:
+  > "OK, agree for all answers and recommendations." (maintainer, 2026-07-08 — Q3: same-host fallback selects the strongest cataloged review model, curated per-release, no runtime web discovery; Q4: failure-reason classification with host-specific signatures as catalog data + an opt-in pre-authorized auto-fallback chain, default ask-first)
+- **Next Action**: post-0.40.0 fast-follow tasks; not release-blocking (current behavior is safe-and-surfaced: labelled same-host fallback + tell-then-ask remediation menu).
