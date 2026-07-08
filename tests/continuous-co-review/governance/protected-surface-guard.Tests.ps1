@@ -58,8 +58,16 @@ Describe 'Proposal 197 protected surface guard' {
     }
 
     It 'keeps the current git diff outside F-184 protected surfaces' {
+        # ENVIRONMENT GUARD (co-review finding 2026-07-08, run 20260708T113633825): this guard checks
+        # the REAL repo's working diff. The continuous co-review worktree is a bare git-archive extract
+        # (no .git), so `git diff` there exits 129 - SKIP with the reason instead of a false FAIL.
         Push-Location -LiteralPath $script:RepoRoot
         try {
+            $insideRepo = (& git rev-parse --is-inside-work-tree 2>$null)
+            if ($LASTEXITCODE -ne 0 -or ([string]$insideRepo).Trim() -ne 'true') {
+                Set-ItResult -Skipped -Because 'not a git work tree (e.g. the stripped co-review worktree) - the protected-surface diff guard is a real-repo meta-check'
+                return
+            }
             $changedPaths = @(& git --no-pager diff --name-only)
             $gitExitCode = $LASTEXITCODE
         }

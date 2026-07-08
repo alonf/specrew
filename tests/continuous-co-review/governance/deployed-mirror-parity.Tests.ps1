@@ -23,6 +23,14 @@ Describe 'F-197 deployed extension files mirror source (D-197-I009-001 guard)' {
     }
 
     It 'every F-197-owned deployed extension file is content-identical to source' {
+        # ENVIRONMENT GUARD (co-review finding 2026-07-08, run 20260708T113633825): this is a META-test
+        # about the REAL repo's committed mirror state. The continuous co-review worktree deliberately
+        # STRIPS .specify/ (machinery), so inside a review worktree - or any checkout without the
+        # deployed mirror - there is nothing to compare: SKIP with the reason, never a false FAIL.
+        if (-not (Test-Path -LiteralPath (Join-Path $script:RepoRoot '.specify') -PathType Container)) {
+            Set-ItResult -Skipped -Because 'no .specify/ deployed mirror in this checkout (e.g. the stripped co-review worktree) - parity is a real-repo meta-check'
+            return
+        }
         $drift = [System.Collections.Generic.List[string]]::new()
         foreach ($rel in $script:MirroredRel) {
             $src = Join-Path $script:RepoRoot $rel
