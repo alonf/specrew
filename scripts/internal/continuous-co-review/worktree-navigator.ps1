@@ -37,8 +37,11 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
     $stage = Get-ContinuousCoReviewNavigatorImplementStage -RepoRoot $resolved
     if ($stage -ne 'implement') { $decision.reason = "not-implement-stage ($stage)"; return $decision }
 
-    # FAST identity + dedup (reuse the state). No heavy digest.
-    $treeId = Get-ContinuousCoReviewWorktreeIdentity -RepoRoot $resolved
+    # Identity + dedup: the CERTIFIED digest identity (working tree), so a dirty increment CHANGES the
+    # key and fires a new review - HEAD-tree keying deduped uncommitted edits as already-reviewed
+    # (codex finding, run 20260708T225439577; the D-197-I010-004 follow-on). Digest failure falls back
+    # to the HEAD subtree inside the helper (the navigator never breaks on a digest error).
+    $treeId = Get-ContinuousCoReviewCheckpointIdentity -RepoRoot $resolved
     if ([string]::IsNullOrWhiteSpace($treeId)) { $decision.reason = 'identity-unresolved'; return $decision }
     $decision.fired_tree_id = $treeId
     if ($treeId -eq (Get-ContinuousCoReviewNavigatorLastFiredTreeId -RepoRoot $resolved)) { $decision.reason = 'deduped (already reviewed this tree)'; return $decision }

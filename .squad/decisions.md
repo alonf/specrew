@@ -27496,3 +27496,99 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   tree-identity.Tests.ps1); CCR suite 254/254. Evidence-run context: the escalating run was the FIRST
   consumer of T111 implementer evidence and completed in 141s (vs 4 prior ~880s budget deaths) —
   T111 validated in the same run that raised the finding.
+
+## 2026-07-08T21:41:32Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-07-08T21:41:32Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-07-08T21:41:32Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 010
+- **Task ID**: (none)
+- **Auth Commit Hash**: 23d1b7ec
+- **Recorded At**: 2026-07-08T21:41:32Z
+
+## 2026-07-08T22:02:33Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-07-08T22:02:33Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-07-08T22:02:33Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 010
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5ac430ef
+- **Recorded At**: 2026-07-08T22:02:33Z
+
+## 2026-07-09T06:40:00Z — Field finding (downstream dogfood): bootstrap deploys broken-by-construction forge workflows; host-machinery review asymmetry
+
+- **Decision ID**: NOTE-197-I010-004
+- **Type**: field-evidence + fast-follow candidate (distribution surfaces, mostly OUTSIDE F-197 charter)
+- **Recorded At**: 2026-07-09T06:40:00Z
+- **Evidence**: consumer test project C:\Temp\tesr197local (feature 001-number-cube-explorer):
+  smoke run 20260708T220720322 (3 blocking) and the project's own checkpoint run
+  20260708T220613175 (4 blocking) — EVERY finding targets Specrew-deployed scaffold, ZERO target
+  the user's feature code (their suite: 24/24 green). Flagged: .github/workflows/specrew-ci.yml,
+  specrew-project-sync.yml, specrew-confidence-lane.yml (reference ./extensions/**,
+  ./tests/integration/*.ps1, .github/scripts/sync-specrew-board.ps1, tests/manual/** — paths that
+  exist ONLY in the Specrew dev repo; deterministically broken in any consumer project) and
+  .claude/settings.local.json (machine-local hook config, deployed un-gitignored).
+- **Product implications**:
+  1. (Distribution, F-045/F-101 lineage) `specrew init` must NOT deploy forge workflows wired to
+     dev-repo paths into consumer projects — deploy consumer-correct lanes, gate on forge presence,
+     or defer until a remote exists (matching the DevOps-lens teaching the reviewer itself cited).
+  2. (F-197-adjacent) Host-machinery dirs are inconsistently handled between the DIGEST identity
+     (includes .claude/** and .github/** — not in the ambient denylist) and the WORKTREE strip
+     (marker-detected machinery removal): content a reviewer may never see can be certified, and
+     un-strippable local config (settings.local.json) gets reviewed as app changes. Align the two
+     lists (machinery dirs excluded from BOTH or included in BOTH) — same FR-025 identity family
+     as D-197-I010-004, scoped to host-machinery paths.
+  3. Downstream UX: a first co-review experience blocked on OUR scaffold is the wrong first
+     impression even though the reviewer is factually right.
+- **Downstream unblock applied/available**: the untracked broken workflows can simply be deleted in
+  consumer projects (redeployable when a forge exists); the human defer path (recorded decision →
+  next round reads it → resolved-by-deferral) covers the remainder.
+- **Next Action**: fast-follow alongside DEFER-197-I010-003 (worktree confinement) and the Proposal
+  102 model work; not 0.40.0-blocking (the failure mode is loud-and-honest, never false-green).
+
+### NOTE-197-I010-004 addendum (2026-07-09): origin traced + prompt-teaching refinement
+
+- **Origin**: the four workflows in `templates/github/workflows/` were written in the Feature-019 era
+  FOR SPECREW'S OWN REPO (commit `6737f115` "Feature 019 T006") — they still target branch
+  `001-specrew-product` (Specrew's own first feature) and self-host paths. The F-031 distribution
+  module later bundled them as init-deployed templates (`distribution-module-init.ps1:170` ASSERTS
+  they deploy to every consumer project) without consumer-izing them. Broken downstream ever since;
+  invisible because consumer projects had no GitHub remote (Actions never ran) and no reviewer ever
+  saw a consumer working tree — until F-197's identity fix made untracked content reviewable, and
+  the first consumer-project run surfaced it same-day.
+- **Additional refinement (F-197 prompt)**: machinery paths (`.specify/**`, `.specrew/**`,
+  `.squad/**`) are intentionally stripped from the reviewer worktree AND the digest — the slim
+  prompt should say so, so reviewers do not raise absence findings for references INTO machinery
+  (the downstream run's finding #2 class: hooks pointing at a stripped-but-real dispatcher).
+  Runtime evidence (hooks executing all session) is the correct rebuttal shape.
+
+## 2026-07-09T07:15:00Z — Fix-now of the auto-fire dedup identity gap (codex auto-fire finding)
+
+- **Decision ID**: DEC-197-I010-006
+- **Type**: blocking-finding human-close (fix-now) — D-197-I010-004 follow-on
+- **Affected Requirement**: FR-025 family (one identity for dedup/materialization/gate), SC-025
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T07:15:00Z
+- **Authorization Text**:
+  > "1" (= fix now; maintainer, on the packet describing the codex auto-fire finding that the
+  > navigator dedup keyed on HEAD^{tree} and deduped dirty increments as already-reviewed, 2026-07-09)
+- **Fix**: `Get-ContinuousCoReviewCheckpointIdentity` (certified digest first, HEAD-subtree fallback)
+  keys the navigator dedup AND the service pending registration; regression tests prove a dirty tree
+  changes the key and the key is content-addressed (no double-fire on committing identical content).
+  Finding source: run 20260708T225439577 — the navigator firing UNPROMPTED on the proposals
+  checkpoint and catching its own dedup defect in 132s (codex recovered, sharp). Drift record
+  D-197-I010-005. CCR suite 257/257.

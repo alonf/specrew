@@ -19,10 +19,34 @@ function New-ContinuousCoReviewServiceRunId {
     return ('ccr-{0}' -f ([guid]::NewGuid().ToString('N')))
 }
 
+function Get-ContinuousCoReviewCheckpointIdentity {
+    # The CHECKPOINT identity for auto-fire dedup and pending-entry registration = the CERTIFIED
+    # reviewed-state digest (working tree), falling back to the HEAD subtree only when the digest
+    # cannot be computed. Fixes the codex finding of run 20260708T225439577 (the D-197-I010-004
+    # follow-on): keying dedup on HEAD^{tree} meant an UNCOMMITTED edit after a fired commit kept the
+    # old key and was deduped as already-reviewed, so the auto path never reviewed dirty increments -
+    # the one identity that materialization, the gate, and now the dedup share is the digest. The
+    # original HEAD-tree choice guarded a 50s digest cost that no longer exists (batched git calls
+    # brought it to ~0.2-2s), and this only runs on implement-stage material stops.
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    try {
+        if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+            $lp = Join-Path $PSScriptRoot '_load.ps1'
+            if (Test-Path -LiteralPath $lp -PathType Leaf) { . $lp }
+        }
+        $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot
+        if ($null -ne $dg -and [bool]$dg.ok -and -not [string]::IsNullOrWhiteSpace([string]$dg.tree_id)) {
+            return ([string]$dg.tree_id).Trim()
+        }
+    }
+    catch { $null = $_ }
+    return (Get-ContinuousCoReviewWorktreeIdentity -RepoRoot $RepoRoot)
+}
+
 function Get-ContinuousCoReviewWorktreeIdentity {
-    # The FAST reviewed-state identity = HEAD's reviewed SUBTREE tree-id (nested-project aware). git's tracked tree
-    # excludes gitignored content, so there is no node_modules force-add (the 50s digest cost is gone). It changes
-    # when the user commits an increment, so the dedup fires once per committed checkpoint.
+    # The FAST identity = HEAD's reviewed SUBTREE tree-id (nested-project aware). Retained as the
+    # digest-failure FALLBACK for Get-ContinuousCoReviewCheckpointIdentity (it misses dirty
+    # working-tree changes by construction - do not key dedup on it directly).
     param([Parameter(Mandatory)][string]$RepoRoot)
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $prefixRaw = (& git -C $resolved rev-parse --show-prefix 2>$null)
@@ -72,7 +96,7 @@ function Start-ContinuousCoReviewServiceRun {
         return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = ([string]$st.status); failure_reason = $failReason; reviewed_digest_tree_id = $digestVal; detached = $false; tree_id = $treeIdVal; elapsed_seconds = $elapsedVal; timeout_seconds = $timeoutVal }
     }
 
-    if ([string]::IsNullOrWhiteSpace($TreeId)) { $TreeId = Get-ContinuousCoReviewWorktreeIdentity -RepoRoot $resolved }
+    if ([string]::IsNullOrWhiteSpace($TreeId)) { $TreeId = Get-ContinuousCoReviewCheckpointIdentity -RepoRoot $resolved }
     $regPath = Join-Path (Get-ContinuousCoReviewNavigatorPendingDir -RepoRoot $resolved) "$RunId.json"
     $resultPath = Join-Path $runDir 'result.out'
     $now = [datetime]::UtcNow

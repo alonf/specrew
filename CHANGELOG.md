@@ -62,7 +62,10 @@ human PASS verdict.
   reviewer worktree now materializes from the reviewed-state digest's own tree object instead of
   HEAD, so the content the reviewer sees and the content the signoff gate certifies are the same git
   tree by construction — uncommitted changes can no longer be certified as reviewed without being
-  seen, and `specrew review --live` genuinely reviews uncommitted work.
+  seen, and `specrew review --live` genuinely reviews uncommitted work. The navigator auto-fire
+  DEDUP keys on the same digest identity (was: HEAD tree, which deduped dirty increments as
+  already-reviewed — found by a navigator auto-fire reviewing its own machinery), so one identity
+  drives dedup, materialization, and the gate.
 - Reviewer runs with an unresolvable design context are recorded, the reviewer is told, and the run
   is labelled partial (was: a silent blind review); durable fallbacks resolve the context from
   feature metadata, session state, or a single spec directory.

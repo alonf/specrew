@@ -22,8 +22,8 @@
 
 ## Summary
 
-**Total drift events**: 4 (1 governance-tooling; 2 implementation-vs-requirement; 1 doc/test-vs-doctrine), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
-**Resolution rate**: 100% (4/4 resolved; 1/1 carried finding closed)
+**Total drift events**: 5 (1 governance-tooling; 3 implementation-vs-requirement; 1 doc/test-vs-doctrine), plus 1 carried-finding closure (D-197-I009-003 refuted-with-evidence)
+**Resolution rate**: 100% (5/5 resolved; 1/1 carried finding closed)
 **Specification drift**: None detected (D-002 was implementation drift against the standing host-neutrality requirement; D-003 was documentation/test drift against decisions this iteration itself made; D-004 was implementation drift against FR-025 found by the feature's own reviewer)
 
 ## Events
@@ -81,6 +81,17 @@
 **Resolution (implementation-reverted-to-requirement)**: the orchestrator now computes the digest FIRST and materializes the worktree FROM the digest's own tree object (`-SourceTreeId`; the digest tree is a real `git write-tree` object, so `git archive` serves it directly) — the reviewed content and the certified content are the SAME git tree by construction, and `.review/changes.diff` runs baseline→that tree. Digest failure falls back to HEAD with `reviewed_digest_error` carrying why the identities may differ. Bonus: `specrew review --live` now genuinely reviews uncommitted work. Regression tests: `worktree-source-tree-identity.Tests.ps1` (dirty-tree content present in the worktree + materialized tree id EQUALS the certified digest id; HEAD fallback preserved). Full CCR suite 254/254.
 
 **Trace**: FR-025 (unreviewed-source false-allow — the same class the digest strip-list rules guard); SC-019/SC-020 (gate evidence integrity); escalation run `20260708T211331029`; maintainer decision DEC-197-I010-005.
+
+### D-197-I010-005 — Auto-fire dedup keyed on HEAD tree: dirty increments deduped as already-reviewed (D-197-I010-004 follow-on)
+
+**Status**: RESOLVED (fixed 2026-07-09, same session; maintainer fix-now decision "1").
+**Detected by**: the feature's own NAVIGATOR AUTO-FIRE — codex run `20260708T225439577` (round 1, 132s, fired unprompted at a turn-end Stop on the proposals checkpoint): "the Stop-hook navigator still deduplicates on Get-ContinuousCoReviewWorktreeIdentity, which is HEAD^{tree}… additional uncommitted checkpoint edits keep the same HEAD tree and are skipped as already reviewed."
+
+**Finding (verified against source)**: `worktree-navigator.ps1:41` keyed dedup on the HEAD subtree while materialization and the gate use the working-tree digest — after one fire for a commit, dirty edits kept the old key, so the AUTO path never reviewed dirty increments (the manual `--live` path was already fixed by D-197-I010-004). Bounded blast radius: the signoff gate's digest-freshness backstop still blocks a dirty tree from passing on stale evidence — an auto-COVERAGE gap, not a certification hole. The original HEAD-tree choice guarded a 50s digest cost that no longer exists (~0.2-2s post-batching).
+
+**Resolution (implementation-reverted-to-requirement)**: new `Get-ContinuousCoReviewCheckpointIdentity` (digest-first, HEAD-subtree fallback on digest failure) keys BOTH the navigator dedup and the service pending-entry registration — one identity for dedup, materialization, and the gate. Regression tests (`checkpoint-identity.Tests.ps1`): dirty tree CHANGES the key (the bypass scenario), clean key equals the certified digest, and the key is content-addressed (committing identical content does not double-fire). CCR suite 257/257.
+
+**Trace**: FR-025 family (with D-197-I010-004); SC-025 (Stop budget: the digest runs only on implement-stage material stops); codex finding run `20260708T225439577`; maintainer decision DEC-197-I010-006.
 
 ### D-197-I009-003 closure — conformance flush/read race REFUTED with evidence (T109)
 
