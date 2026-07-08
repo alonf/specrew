@@ -27424,3 +27424,28 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Field evidence**: 2026-07-08 — antigravity's Gemini group hit 0% five-hour quota (instant
   empty-exit-0 runs, ~10s) while its Claude/GPT group sat at 100%; no lever existed to use it
   without a shipped-code edit. Runs 20260708T124931609 (double-empty loud fail) + quota screen.
+
+## 2026-07-08T19:50:00Z — Send-back at review-signoff: implementer test-evidence for the reviewer (T111)
+
+- **Decision ID**: DEC-197-I010-004
+- **Type**: send-back scope addition (review-signoff → implementation, one scoped task)
+- **Affected Requirement**: FR-009/FR-011 (reviewer context), SC-024 (budget confidence), the T107 falsification grafts
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010 (T111, ~2 SP — fits the approved 26 SP cap: 24 delivered + 2)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-08T19:50:00Z
+- **Authorization Text**:
+  > "Can we change the instruction telling it that the tests already passed by the implementors? Can we provide proofs?" … "1" (= send back and build it; maintainer, 2026-07-08)
+- **Root cause being fixed**: the outbound budget policy tells the reviewer to "use implementer
+  validation evidence first", but NO evidence is ever provided in the worktree, while the grafted
+  falsification stance ("runtime evidence only; prose claims are not verification") forbids trusting
+  claims — so on a large change-set the reviewer re-runs the full test pyramid and dies at the
+  harness budget ceiling. Four consecutive verification attempts on tree 2bd508c7 failed this way
+  (budget-kill ×3, quota ×1); the feature could not converge on its own review.
+- **Design (T111)**: (a) `Write-ContinuousCoReviewTestEvidence` records MACHINE-OBSERVED test runs
+  (suite, counts, exit code, duration, timestamp) bound to the reviewed-state digest of the tree the
+  tests ran against, under `.specrew/review/test-evidence/<digest>.json` (digest-excluded runtime
+  state); (b) the orchestrator injects the evidence into the worktree as
+  `.review/implementer-evidence.json` ONLY on a digest match with the tree being reviewed; (c) the
+  slim prompt gains one rule: digest-matched machine-recorded evidence substitutes for re-running
+  those suites — spot-check targeted tests only; absence → reviewer judgment; hand-written claims
+  remain claims (never-false-green intact). Tests for all three seams.

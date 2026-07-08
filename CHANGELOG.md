@@ -43,6 +43,12 @@ human PASS verdict.
   never-false-green, secret non-exfiltration) and the file retired to `docs/reference/`.
 - **Codex reliability hardening:** adapter-level retry-once on an empty exit-0 result with a cause
   diagnostic (`finalization-or-capture-gap` vs `no-output-produced`); a still-empty retry fails LOUD.
+- **Implementer test-evidence for the reviewer:** `Write-ContinuousCoReviewTestEvidence` records the
+  implementer's ACTUAL suite runs (counts, exit codes, durations) bound to the reviewed-state digest;
+  the orchestrator injects the record into the reviewer worktree ONLY on an exact digest match, and
+  the reviewer substitutes it for broad suite re-runs (targeted spot-checks only) — so reviews spend
+  their budget reviewing instead of re-testing. Hand-written claims keep zero evidence standing
+  (never-false-green intact).
 - **Stop-hook cost control:** the conformance transcript parse runs only after material turns —
   conversational stops stay cheap.
 - **Signoff-run baseline doctrine:** `specrew review --live` auto-anchors its baseline to the feature

@@ -544,6 +544,12 @@ Durable evidence lands under `.specrew/review/inline/<run-id>/` (`findings-resul
 `review-run.json`, `gate-verdict.json`) and is what the review-signoff gate checks — freshness is
 digest-based, so evidence for an older tree does not pass a newer one.
 
+Reviews are much faster when the implementer's test runs are recorded: after running your suites,
+record the machine-observed result with `Write-ContinuousCoReviewTestEvidence` (suite, counts, exit
+code, duration — bound to the current tree digest). The reviewer receives digest-matched evidence
+inside its worktree and substitutes it for re-running whole suites; any edit after recording changes
+the digest and orphans the record, so stale evidence is never presented.
+
 ### Evidence tiers and degraded acks
 
 Every promoted run carries three labels: **completeness** (full/partial), **independence**

@@ -1,7 +1,7 @@
 schema: "v1"
 feature: "197-continuous-co-review"
 iteration: "010"
-updated_at: "2026-07-08T12:11:35Z"
+updated_at: "2026-07-08T20:26:38Z"
 tasks:
   T091:
     title: "R5 hard-timeout completion: route the inline `specrew review --live` spawn through the isolated-task supervisor; delete `worktree-reviewer.ps1`'s duplicate inline `$proc.Kill($true)`; instrument the live escape first; WSL-validated (hard gate)."
@@ -68,4 +68,10 @@ tasks:
     status: "done"
     started_at: "2026-07-08T09:45:19Z"
     completed_at: "2026-07-08T09:51:36Z"
+    blocked_reason: ""
+  T111:
+    title: "Implementer test-evidence for the reviewer (DEC-197-I010-004 send-back): digest-bound machine-recorded suite evidence, orchestrator injection on exact digest match, gated slim-prompt substitution rule — closes the reviewer budget-death loop."
+    status: "done"
+    started_at: "2026-07-08T19:52:00Z"
+    completed_at: "2026-07-08T20:26:38Z"
     blocked_reason: ""

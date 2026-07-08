@@ -493,6 +493,17 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         $reviewedDigestId = ''; $reviewedDigestErr = ''
         try { $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot; if ($null -ne $dg -and $dg.ok) { $reviewedDigestId = [string]$dg.tree_id } else { $reviewedDigestErr = if ($null -ne $dg) { [string]$dg.failure_reason } else { 'digest-unavailable' } } } catch { $reviewedDigestErr = $_.Exception.Message }
         & $recordPhaseEnd 'reviewed-state-digest'
+        # T111 (DEC-197-I010-004): inject the implementer's MACHINE-RECORDED test evidence into the worktree -
+        # ONLY on an exact digest match with the tree under review, so the reviewer can substitute the recorded
+        # suites for broad re-runs (the budget-death fix). A mismatch or absence injects NOTHING (never wrong
+        # evidence); the prompt block is gated on the same flag so the reviewer is never told to trust a file
+        # that is not there.
+        $implementerEvidencePresent = $false
+        try {
+            if (Get-Command -Name 'Copy-ContinuousCoReviewImplementerEvidence' -ErrorAction SilentlyContinue) {
+                $implementerEvidencePresent = [bool](Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $RepoRoot -WorktreePath $wt.worktree_path -DigestTreeId $reviewedDigestId)
+            }
+        } catch { $implementerEvidencePresent = $false }
         # ROUND: same lineage (change-set overlaps the prior round's) + the prior was blocking -> this is a fix
         # re-review (round+1, thread the prior findings); else a new checkpoint (round 1, no prior). The reviewer
         # escalates at the final round (the counter is the safety ceiling).
@@ -531,13 +542,13 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
             $currentPhase = 'reviewer-execution'
-            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null }
+            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent }
             & $recordPhaseStart $currentPhase
             $reviewerHeartbeat = {
                 param($Telemetry)
                 & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
-            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty
+            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty -ImplementerEvidencePresent:$implementerEvidencePresent
             & $recordPhaseEnd 'reviewer-execution'
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout

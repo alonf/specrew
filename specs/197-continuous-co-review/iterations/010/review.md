@@ -6,9 +6,9 @@
 
 ## Review method
 
-Runtime-evidence review of all 11 tasks (24.00/24.00 SP, 14 boundary commits `083c8607`…`0ca8d6f5`):
-per-task Pester evidence on Windows AND WSL (the R5/T100 hard gate), the full-suite sweep (final:
-245/245, 2 env-guarded skips), mechanical lenses (zero findings), and — decisively — **live
+Runtime-evidence review of all 12 tasks (26.00/26.00 SP incl. the T111 send-back, boundary commits
+`083c8607`…): per-task Pester evidence on Windows AND WSL (the R5/T100 hard gate), the full-suite
+sweep (final: 252/252, 2 env-guarded skips), mechanical lenses (zero findings), and — decisively — **live
 adversarial co-review by independent reviewers on TWO different harnesses** (codex, then antigravity
 after codex went hard-down) through both doors (inline + navigator auto-fire), whose blocking findings
 were fixed maintainer-approved same-day and re-verified. This iteration's review activity is the
@@ -30,6 +30,7 @@ feature's own machinery reviewing the feature, PLUS the human maintainer's archi
 | T108 | FR-033, SC-024 | pass | Host-generic retry-once on empty exit-0 + cause diagnostic. **Fired on real codex flakes 3× this session** (2 recovered, 1 double-flake failed LOUDLY exit-1 — never-false-green held in production). |
 | T109 | FR-040, SC-025 | pass | Forensic on the real dogfood corpus (21 records, 8 blocks): **D-197-I009-003 CLOSED refuted-with-evidence**; permanent reopen-on-signature analyzer shipped; no mitigation re-added per the approved N7 default. |
 | T110 | SC-012, SC-022 | pass | claude (code-writer, live hooks) + codex AND antigravity (independent reviewers, both doors) exercised end-to-end — antigravity wired same-day via the catalog seam alone when codex went hard-down; copilot/cursor-agent recorded installed-but-unauthorized. Evidence: quality/cross-host-validation.md. |
+| T111 | FR-009, FR-011, SC-024 | pass | Maintainer send-back (DEC-197-I010-004): digest-bound machine-recorded test evidence + exact-digest-match worktree injection + gated prompt substitution rule; never-false-green intact (only recorder output has evidence standing). 7/7 new tests; full suite 252/252 after the change. The closing co-review run over this tree is the mechanism's own first consumer. |
 
 ## Live co-review outcome (the feature reviewing itself)
 
@@ -55,9 +56,10 @@ feature's own machinery reviewing the feature, PLUS the human maintainer's archi
 
 ## Notes
 
-- Capacity: 24.00/26 planned = 24.00 delivered (variance 0). The two unplanned work items (the
-  maintainer's host-neutrality finding and the codex escalation fixes) were absorbed within the
-  iteration without displacing planned scope.
+- Capacity: 26.00/26 delivered (24.00 planned + the 2.00 T111 send-back, which consumed the approved
+  cap's headroom exactly; variance 0 against the cap). The unplanned work items (the maintainer's
+  host-neutrality finding, the codex escalation fixes, and the T111 send-back) were absorbed within
+  the approved capacity without displacing planned scope.
 - Codex reliability diagnostic (D-197-I009-015 follow-through): 3 empty-exit0 events in 4 real runs
   today — the ~50% field rate is CONFIRMED by the T108 diagnostic (2× finalization-or-capture-gap,
   1× no-output-produced). The retry recovers singles; a double-flake fails loudly. This evidence

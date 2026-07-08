@@ -130,6 +130,7 @@ The co-review pipeline persists JSON evidence validated against schemas deployed
 | `.specrew/review/pending/<run-id>/status.json` | (heartbeat envelope) | the run supervisor (heartbeats + terminal write with `terminal_reason`) | reapers, `--live` progress, diagnostics |
 | `.specrew/reviewer-hosts.json` | (host registry) | `specrew review --host <h> --authorization-ref <ref>` (human authorization) + installed-state refresh | reviewer selection policy |
 | `.specrew/runtime/co-review-round-state.json` | (round carrier) | run terminal writes; `--remediate` records the one-shot remediation | the next run (round threading), the escalation latch |
+| `.specrew/review/test-evidence/<digest>.json` | (evidence record) | `Write-ContinuousCoReviewTestEvidence` (machine-observed suite runs, digest-bound) | the orchestrator (injected into the reviewer worktree as `.review/implementer-evidence.json` ONLY on an exact digest match) |
 
 Writer contract highlights:
 

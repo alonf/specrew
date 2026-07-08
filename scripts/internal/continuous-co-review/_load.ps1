@@ -9,6 +9,7 @@ $proposal197ReviewerModules = @(
     'reviewer-contracts.ps1'
     'checkpoint-diff-provider.ps1'
     'reviewed-state-digest.ps1'
+    'test-evidence-recorder.ps1'
     'reviewer-host-catalog.ps1'
     'reviewer-authorization-gate.ps1'
     'reviewer-selection-policy.ps1'

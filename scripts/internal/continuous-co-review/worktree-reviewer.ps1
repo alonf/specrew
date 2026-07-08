@@ -275,7 +275,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     # The SLIM prompt (a few KB) — the reviewer reads the diff + design + browses/runs the project itself.
     # Round-aware: round 1 reviews; later rounds verify the prior findings are resolved; at the FINAL round the
     # reviewer escalates (the counter is a safety ceiling, the reviewer's judgement is the brains).
-    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope, [switch]$DesignContextEmpty)
+    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope, [switch]$DesignContextEmpty, [switch]$ImplementerEvidencePresent)
     # f1 (codex 2026-07-08): when NO design context resolved, say so HONESTLY - the reviewer must not
     # silently skip design conformance; it reviews code/process and RAISES the gap as a finding.
     $designContextBlock = if ($DesignContextEmpty) {
@@ -296,6 +296,14 @@ function Get-ContinuousCoReviewSlimPrompt {
         "`nHUMAN-DIRECTED SCOPE (a remediation choice - honour it): review $scopeText`n"
     }
     else { '' }
+    # T111 (DEC-197-I010-004): digest-matched MACHINE-RECORDED implementer evidence substitutes for broad
+    # re-runs. The block renders ONLY when the orchestrator actually injected the file (exact digest match
+    # with the tree under review), so the reviewer is never told to trust a file that is absent or stale.
+    # Never-false-green survives: only the recorder's output has evidence standing; prose claims never do.
+    $evidenceBlock = if ($ImplementerEvidencePresent) {
+        "`nIMPLEMENTER TEST EVIDENCE (machine-recorded, digest-matched): .review/implementer-evidence.json was written by the implementer's ACTUAL test runs through the Specrew evidence recorder and injected ONLY because its reviewed-state digest matches EXACTLY the tree you are reviewing (any later edit changes the digest and orphans the record). Treat the suites it records (names, pass/fail counts, exit codes, durations) as ALREADY EXECUTED: do NOT re-run whole test suites the evidence covers. Spend your budget reading the change-set; run AT MOST a few TARGETED tests where a specific finding needs confirmation. This file is the ONLY artifact with evidence standing - hand-written claims in review.md, quality notes, or commit messages remain claims, and the falsification stance applies to them unchanged.`n"
+    }
+    else { '' }
     $roundBlock = if ($RoundNumber -gt 1 -and -not [string]::IsNullOrWhiteSpace($PriorFindings)) {
         "This is review round $RoundNumber of at most $MaxRounds. The PRIOR round produced these findings - verify each is RESOLVED in this change (a prior blocking finding still present is a failed fix):`n$PriorFindings`n`nIf this is the FINAL round ($RoundNumber of $MaxRounds) and a prior BLOCKING finding is STILL unresolved, return ONE finding with kind 'escalation' + severity 'blocking' calling for a HUMAN decision (stop the autonomous review->fix loop) - do not merely repeat the unresolved finding."
     }
@@ -304,7 +312,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     }
     return @"
 You are the Specrew continuous co-reviewer (a fresh-context, design- AND process-conformance reviewer).
-$scopeBlock$designContextBlock
+$scopeBlock$designContextBlock$evidenceBlock
 Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN any
 command (tests, build, lint, search) you need to verify the change — but you are READ-ONLY on the source: do
 NOT modify, fix, or patch any file. Your job is to find issues, not fix them.
@@ -708,9 +716,10 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
         [int]$TimeoutSeconds = 600,
         [scriptblock]$Heartbeat,
         [string]$HumanScope,
-        [switch]$DesignContextEmpty
+        [switch]$DesignContextEmpty,
+        [switch]$ImplementerEvidencePresent
     )
-    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty
+    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty -ImplementerEvidencePresent:$ImplementerEvidencePresent
     $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
 
     # T108/FR-033 (D-197-I009-015): retry ONCE on an EMPTY exit-0 result before the run can be declared

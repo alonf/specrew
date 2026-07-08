@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: reviewing
-**Capacity**: 24.00/26 story_points
+**Capacity**: 26.00/26 story_points
 **Started**: 2026-07-01
 
 <!--
@@ -46,6 +46,7 @@ Robustness completion + reviewer-instruction fold, closing F-197 as **0.40.0** (
 | T108 | Codex reliability (D-197-I009-015): adapter-level retry-once on a 0-byte result before declaring `no-parseable-findings`; a diagnostic capturing whether the empty exit-0 is a capture-path gap vs codex finalization. Preserves never-false-green (a still-empty retry fails loudly). | FR-033, SC-024 | Codex reliability | 1.50 | Implementer | `scripts/internal/continuous-co-review/reviewer-host-catalog.ps1`; `scripts/internal/continuous-co-review/worktree-reviewer.ps1`; `tests/continuous-co-review/**` | done |
 | T109 | Flush-race forensic (D-197-I009-003): a forensic test confirming or refuting the conformance stop-block flush/read race on real captured data. If confirmed, a cheaper mitigation than the reverted 4×-tail-200 re-read (gated by T099's material-turn check); if refuted, close the finding refuted-with-evidence. | FR-040, SC-025 | Flush-race forensic | 1.50 | Reviewer | `extensions/specrew-speckit/scripts/specrew-conformance-provider.ps1`; `tests/continuous-co-review/**` | done |
 | T110 | SC-012/SC-022 cross-host manual validation: exercise the Stop-hook co-review fire across the installed+authorized harnesses (claude, codex today); honestly record which harnesses were exercised vs unavailable. | SC-012, SC-022 | Cross-host validation | 2.00 | Spec Steward | `specs/197-continuous-co-review/iterations/010/**` | done |
+| T111 | Implementer test-evidence for the reviewer (DEC-197-I010-004, maintainer send-back at review-signoff 2026-07-08): digest-bound machine-recorded suite evidence (`Write-ContinuousCoReviewTestEvidence`), orchestrator injection into the worktree on an exact digest match (`.review/implementer-evidence.json`), gated slim-prompt substitution rule — closes the reviewer budget-death loop (4× verification budget/quota deaths on the 275-file change-set). | FR-009, FR-011, SC-024 | Reviewer evidence trust | 2.00 | Implementer | `scripts/internal/continuous-co-review/test-evidence-recorder.ps1`; `scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1`; `scripts/internal/continuous-co-review/worktree-reviewer.ps1`; `tests/continuous-co-review/unit/test-evidence-recorder.Tests.ps1` | done |
 
 ## Effort Model
 
@@ -62,9 +63,9 @@ Robustness completion + reviewer-instruction fold, closing F-197 as **0.40.0** (
 ## Traceability Summary
 
 - **In-scope requirements**: FR-035, FR-036, FR-037, FR-038, FR-039, FR-040 (R3–R8), FR-017/018/021 + SEC-007 + SC-013/014 (canonical-instruction fold), SC-012, SC-019, SC-020, SC-022, SC-024, SC-025, NFR-001, NFR-005; plus findings D-197-I009-003/-010/-015/-016.
-- **Bidirectional**: every task T091/T093/T094/T096/T099/T100/T106–T110 traces to ≥1 FR/SC/finding (Requirement column); every in-scope requirement above has ≥1 covering task (FR-035→T093, FR-036→T094, FR-037→T091, FR-038→T096, FR-039→T100, FR-040→T099+T109, FR-017/018/021+SEC-007+SC-013/014→T107, D-010→T106, D-015→T108, D-003→T109, SC-012/022→T110). Full traceability check runs at after-tasks.
-- **Carried IDs**: T091/T093/T094/T096/T099/T100 retain their iter-009 IDs (same work, deferred to iter-010); T106–T110 are new. No collision with iter-007's renumbered T101–T105.
-- **Capacity status**: PASS — 24.00/26 story_points (2.00 headroom).
+- **Bidirectional**: every task T091/T093/T094/T096/T099/T100/T106–T111 traces to ≥1 FR/SC/finding (Requirement column); every in-scope requirement above has ≥1 covering task (FR-035→T093, FR-036→T094, FR-037→T091, FR-038→T096, FR-039→T100, FR-040→T099+T109, FR-017/018/021+SEC-007+SC-013/014→T107, D-010→T106, D-015→T108, D-003→T109, SC-012/022→T110, FR-009/FR-011/SC-024→T111). Full traceability check runs at after-tasks.
+- **Carried IDs**: T091/T093/T094/T096/T099/T100 retain their iter-009 IDs (same work, deferred to iter-010); T106–T110 are new; T111 is the maintainer-authorized review-signoff send-back (DEC-197-I010-004, 2026-07-08). No collision with iter-007's renumbered T101–T105.
+- **Capacity status**: PASS — 26.00/26 story_points (the T111 send-back consumed the 2.00 headroom exactly; still at the approved cap).
 
 ## Acceptance gates
 

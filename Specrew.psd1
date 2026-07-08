@@ -264,6 +264,7 @@
         'scripts/internal/continuous-co-review/reviewer-host-presentation.ps1',
         'scripts/internal/continuous-co-review/reviewer-selection-policy.ps1',
         'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1',
+        'scripts/internal/continuous-co-review/test-evidence-recorder.ps1',
         'scripts/internal/continuous-co-review/worktree-navigator.ps1',
         'scripts/internal/continuous-co-review/worktree-review-detached-entry.ps1',
         'scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1',
