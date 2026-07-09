@@ -249,5 +249,5 @@ component-design lens; the slicing placing these components in iteration
   accepted as defaults.
 - **Modifications**: None.
 - **Design-analysis draft commit**: `89215832`
-- **Decision recorded in commit**: `RECORDED-IN-GATES-COMMIT` (backfilled
-  with the exact hash in the gates-packet commit)
+- **Decision recorded in commit**: `233176a2` (gate packet persisted in the
+  follow-up gates commit)
