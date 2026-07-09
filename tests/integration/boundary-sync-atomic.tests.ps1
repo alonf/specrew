@@ -92,17 +92,19 @@ $null = & git -C $projectRoot add -A 2>&1
 $null = & git -C $projectRoot commit -m 'Seed start-context.json' --quiet 2>&1
 $authCommit = (@(& git -C $projectRoot rev-parse HEAD 2>&1))[0].ToString().Trim()
 
-# Run the boundary sync helper to sync to 'review-signoff'
+# Run the boundary sync helper to sync to 'retro' (was review-signoff: the F-197 co-review gate now
+# correctly fail-closes that boundary without promoted evidence, and this test's subject is WRITE
+# ATOMICITY - boundary-agnostic - not the gate).
 $syncResult = Invoke-TestScript -ScriptPath $syncScript -ArgumentList @(
     '-ProjectPath', $projectRoot,
-    '-BoundaryType', 'review-signoff',
+    '-BoundaryType', 'retro',
     '-FeatureRef', '046-046-bug-bash',
     '-IterationNumber', '001',
     '-AuthCommitHash', $authCommit
 )
 
 if ($syncResult.ExitCode -ne 0) {
-    Write-Fail ("Boundary sync to review-signoff failed:`n{0}" -f ($syncResult.Output -join [Environment]::NewLine))
+    Write-Fail ("Boundary sync to retro failed:`n{0}" -f ($syncResult.Output -join [Environment]::NewLine))
     exit 1
 }
 
@@ -116,8 +118,8 @@ if ($syncResult.ExitCode -ne 0) {
 # asserted the fabrication itself.)
 $context = Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12
 
-if ($context.session_state.boundary_type -ne 'review-signoff') {
-    Write-Fail ("Cursor in session_state.boundary_type did not advance. Expected 'review-signoff', found '{0}'" -f $context.session_state.boundary_type)
+if ($context.session_state.boundary_type -ne 'retro') {
+    Write-Fail ("Cursor in session_state.boundary_type did not advance. Expected 'retro', found '{0}'" -f $context.session_state.boundary_type)
     exit 1
 }
 
