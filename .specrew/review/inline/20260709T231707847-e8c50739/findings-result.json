@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260709T231707847-e8c50739",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260709T231707847-e8c50739",
+      "location": {
+        "path": "install.sh",
+        "line_start": 1,
+        "line_end": 1
+      },
+      "severity": "blocking",
+      "kind": "escalation",
+      "design_reference": "final-round unresolved prior blocking finding; devops-operations lens / README native install entrypoint / specs/198-beta2-hardening/iterations/001 scope excludes bin/install shell mode changes",
+      "comment": "Final review round escalation: the prior blocking executable-bit regression is still present in .review/changes.diff (install.sh and bin/specrew* remain changed from 100755 to 100644, with shell integration tests also downgraded), and no worktree-visible human deferral in .review/process, specs/198-beta2-hardening, or the active iteration drift/quality artifacts covers it. Stop the autonomous review-fix loop and obtain a human decision: either restore executable bits for the Unix entrypoints/tests or record an explicit worktree-visible deferral naming this regression, the approving human, and where the work is carried.",
+      "disposition": "escalated_to_human",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-09T23:19:23Z"
+}
