@@ -9,8 +9,15 @@ $ScriptRoot = $PSScriptRoot
 # reset SPECREW_MODULE_PATH back to its own path on load, silently clobbering the trial and forcing a destructive
 # overwrite of the installed module to test a branch (the exact asymmetry this closes). Falls back to this tree when
 # the env var is unset or invalid, so normal installs are unaffected.
+#
+# Only an OPERATOR-set path is a trial declaration. A path a Specrew module load announced itself (marked
+# 'module-announce' below) must NOT be honored: otherwise loading copy A and then importing copy B in the same
+# session silently dispatches B from A's tree - a user upgrading in-session keeps running the OLD version, and
+# the pre-publish harness's candidate module ran the PSGallery BASELINE's scripts (v0.40.0-beta1 dry-run
+# failure: the candidate's update stamped the baseline's stale 0.27.5).
 $cliRoot = $ScriptRoot
 if ((-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) -and
+    ($env:SPECREW_MODULE_PATH_ORIGIN -ne 'module-announce') -and
     (Test-Path -LiteralPath (Join-Path $env:SPECREW_MODULE_PATH 'scripts/specrew.ps1') -PathType Leaf) -and
     (Test-Path -LiteralPath (Join-Path $env:SPECREW_MODULE_PATH 'Specrew.psd1') -PathType Leaf)) {
     # Require BOTH the manifest AND the CLI entry so a partial/incorrect directory is not accepted as a valid
@@ -25,6 +32,15 @@ $internalScriptsPath = Join-Path -Path $scriptsPath -ChildPath 'internal'
 # agent-spawned shells (e.g. `pwsh -File .specify/.../sync-boundary-state.ps1`) dispatch THERE instead of a stale
 # PSGallery install. Env vars inherit across child processes automatically.
 $env:SPECREW_MODULE_PATH = $cliRoot
+if ($cliRoot -eq $ScriptRoot) {
+    # Self-announced path: mark it so a LATER Specrew module load in this session does not mistake it for an
+    # operator-set dev override (raw-script children read SPECREW_MODULE_PATH directly and are unaffected).
+    $env:SPECREW_MODULE_PATH_ORIGIN = 'module-announce'
+}
+else {
+    # Operator-set override honored: leave the path unmarked so nested module loads keep honoring the trial.
+    $env:SPECREW_MODULE_PATH_ORIGIN = $null
+}
 
 . (Join-Path -Path $internalScriptsPath -ChildPath 'dashboard-renderer.ps1')
 
