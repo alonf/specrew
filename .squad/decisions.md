@@ -27759,3 +27759,29 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   triage + exact unblock command handed to the maintainer.
 - **Suites after batch**: CCR 258/0, unit 10/0 (deterministic now), review-command 7/7 PASS,
   whitelist file all-pass.
+
+## DEC-197-REL-001 — E2E wait released; 197 thread closed (2026-07-09)
+
+- **Maintainer decision**: "I do not think we need to wait anymore for the test project. We can
+  close 197, and start fresh on the next (continued) issue or feature." The step-11
+  clean-environment gate is satisfied by the beta-1 E2E evidence already gathered rather than by a
+  formal PASS message.
+- **What the tesr197local E2E field-validated on the published 0.40.0-beta1**: gallery install +
+  beta switch (dev-tree env override removed, `module-version-detected 0.39.0 -> 0.40.0`, config
+  restamped by the exact code path the dry-run repair fixed); session resume on a new host
+  (copilot) with drift detection and an honest boundary stop; the signoff gate fail-closing on
+  stale evidence after a reconcile commit and passing on promoted fresh evidence; a full lifecycle
+  tail (review-signoff -> retro -> iteration-closeout -> feature-closeout) on gallery bits;
+  checkpoint auto/manual reviews, skill routing, refocus hooks across five hosts; the escalation
+  and ack teaching surfaces.
+- **What it did NOT cleanly validate**: repeated live claude reviews died to a self-inflicted
+  budget spiral (explicit `--timeout-seconds` 180/300/400 under the configured 600; a 7s CLI probe
+  proved the host healthy) — captured as 203-W14/W16, not an infrastructure defect.
+- **Findings ledger**: 203 W13-W16 (W13 narrowed per codex P2 - conditional tracker strip with a
+  deterministic honesty check), 204 W7, Proposal 205 (self-leak firewall) - PR #3078.
+- **Release state**: 0.40.0-beta1 published (PSGallery + GitHub release, tag on merge commit
+  6374626b). STABLE 0.40.0 promotion NOT executed - it remains a separate human authorization
+  (beta-before-stable); the maintainer's "close 197" was not read as that authorization.
+- **Open issues carried**: #2908 (public-readiness suite red on main - NOT superseded; exit 64
+  reconfirmed 2026-07-09) and #2909 (broken forge templates -> Proposal 204) roll into the beta-2
+  triage.

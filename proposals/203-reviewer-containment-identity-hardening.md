@@ -120,11 +120,17 @@ gallery bits; both gates fired CORRECTLY, the findings are about what the correc
   tracker edit. `specs/**` is digest identity BY DESIGN (spec/plan/tasks edits must stale evidence),
   but `iterations/*/state.md` and `iterations/*/tasks-progress.yml` are machine-managed DERIVED
   bookkeeping, not reviewable content — the acceptance truth lives in `review.md` plus the run
-  records, never in the trackers. Fix: add exactly `specs/*/iterations/*/state.md` and
-  `specs/*/iterations/*/tasks-progress.yml` to the DIGEST-IDENTITY strip list in
-  `reviewed-state-digest.ps1` — narrowly; spec/plan/tasks/review/retro themselves stay identity.
-  Needs the reviewer-can-still-see-it regression test (the strip-list false-allow discipline) plus
-  its inverse: a tracker-only edit must NOT stale evidence.
+  records, never in the trackers. Fix — CONDITIONAL, not a raw strip (codex P2 on PR #3078: a raw
+  strip opens a false-green path where a post-review tracker edit marks untested work "done" and
+  reuses the stale pass, while the reviewer contract explicitly treats tracker honesty as
+  reviewable process state): a tracker-only delta bypasses evidence staling ONLY when a
+  deterministic honesty check passes — the edited tracker's claims must be consistent with (a
+  subset of) the accepted `review.md` verdict and recorded run evidence. A claims-INCREASING edit
+  (pending->done, untested->tested beyond the accepted record) keeps staling the digest exactly as
+  today. Scope: `specs/*/iterations/*/state.md` and `specs/*/iterations/*/tasks-progress.yml`
+  only; spec/plan/tasks/review/retro stay unconditional identity. Needs BOTH regression tests: the
+  reviewer-can-still-see-it discipline, and reconcile-toward-truth does not stale / falsify-forward
+  does.
 - **W14 — Warn when an explicit `--timeout-seconds` undercuts the resolved config budget**: the
   project config carried `co_review_timeout_seconds: 600`, but the driving agent passed
   `--timeout-seconds 180` (then 400) and the reviewer was killed before producing anything —
