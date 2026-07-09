@@ -26768,6 +26768,69 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Auth Commit Hash**: 39c218bee40ace3d5ee6857acdea915fd47a6d2b
 - **Recorded At**: 2026-06-15T02:26:40Z
 
+## 2026-06-17T18:47:22Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 21c69f6801c0e021eb546e8c2513fb985fa44d2e
+- **Recorded At**: 2026-06-17T18:47:21Z
+
+## 2026-06-17T19:11:50Z — Boundary enforcement: plan
+
+- **Feature**: 197-continuous-co-review
+- **Boundary Type**: plan
+- **Current Boundary**: clarify
+- **Requested Boundary**: plan
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-17T19:12:12Z — Boundary enforcement: plan
+
+- **Feature**: 197-continuous-co-review
+- **Boundary Type**: plan
+- **Current Boundary**: clarify
+- **Requested Boundary**: plan
+- **Enforcement Action**: authorized
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Persisted authorization matched the requested boundary.
+
+## 2026-06-17T19:16:09Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 4c3d99fd7cd745ba9af181119d781d7c94297573
+- **Recorded At**: 2026-06-17T19:16:08Z
+
+## 2026-06-17T19:46:17Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: 737b88fd6f6c5c05b4e842e73c10f38899ad4c21
+- **Recorded At**: 2026-06-17T19:46:17Z
+
+## 2026-06-17T19:48:26Z — Runtime evidence: Proposal 197 after-tasks PASS pending before-implement
+
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 001
+- **Requested By**: Alon Fliess
+- **After-tasks Gate**: PASS (reported at tasks-boundary synchronization request)
+- **Boundary State**: tasks synchronized; before-implement remains human-judgment-required
+- **Capacity Evidence**: `specs/197-continuous-co-review/tasks.md` records 18.75 story points against the approved 18 SP Iteration 001 capacity
+- **Decision State**: human decision pending; do not start implementation until explicit before-implement authorization resolves the 18.75/18 SP overcommit
+- **Implementation State**: not started by this synchronization
+
+## 2026-06-17T20:18:24Z — Boundary enforcement: before-implement
+
+- **Feature**: 197-continuous-co-review
 ## 2026-06-15T22:23:09Z — Boundary sync: specify
 
 - **Boundary Type**: specify
@@ -26831,6 +26894,43 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Agent Response Snippet**: (none)
 - **Reason**: No persisted authorization matched tasks -> before-implement.
 
+## 2026-06-17T20:21:45Z — F-197 iteration-001 tasks->before-implement: APPROVE WITH INSTRUCTIONS
+
+### 2026-06-17 — Verdict: APPROVE WITH INSTRUCTIONS — defer lower-priority real-adapter breadth and proceed to before-implement
+
+- **Decision ID**: f197-i001-tasks-before-implement-approved
+- **Type**: boundary-verdict
+- **Affected Requirement**: FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020, FR-021, FR-022, FR-023, FR-024, FR-025, FR-026, FR-027, FR-028, FR-029, FR-030, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008, SC-009, SC-010
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\001
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-06-17T20:21:45Z
+- **Verdict**: APPROVE WITH INSTRUCTIONS — advance iteration-001 tasks->before-implement after reducing the active spine scope to 18.00 SP. Proceed to before-implement only; do not start implementation without a separate `before-implement -> implement` authorization.
+- **Carried instructions**:
+  1. Defer T035, T036, and T037 to Iteration 002 with 0.00 SP in Iteration 001.
+  2. Scope T042 to Claude and Codex adapter implementations only; move Copilot, Cursor, and Antigravity implementations to Iteration 002.
+  3. Do not defer spine-integrity work: contract/schema, git-diff change-set, blackboard protocol, standalone gate validator, SC-006 guard T011/T047, fake/fixture adapter T017/T023, and infrastructure-failure floor T009.
+  4. Re-run capacity and after-tasks checks; expected capacity is 18.00/18 SP before proceeding to before-implement.
+- **Disposition**: task and iteration-plan capacity repaired to 18.00 SP, after-tasks PASS confirmed, governance validation PASS confirmed, and execution-readiness artifacts scaffolded. Implementation remains blocked until the separate before-implement->implement authorization.
+
+## 2026-06-17T20:20:08Z — Boundary enforcement: before-implement
+
+- **Feature**: 197-continuous-co-review
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: No persisted authorization matched tasks -> before-implement.
+
+## 2026-06-17T20:26:08Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 001
+- **Task ID**: (none)
+- **Auth Commit Hash**: b79f73a5d1f9ec6f0ef729cdda5c3543f225d112
+- **Recorded At**: 2026-06-17T20:26:07Z
 ## 2026-06-16T00:36:27Z — Boundary enforcement: before-implement
 
 - **Feature**: 183-stability-quality-bundle
@@ -27185,3 +27285,477 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 7ac1fc888ecdfbdd785a06b12b20e516e5d1ad6b
 - **Recorded At**: 2026-06-18T07:50:14Z
+
+## 2026-07-01T20:37:29Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: ab1b516b
+- **Recorded At**: 2026-07-01T20:37:29Z
+
+## 2026-07-08 — Maintainer decisions: iter-010 escalation repair + reviewer-system Q&A (Alon Fliess)
+
+- **Codex escalation repair path APPROVED** ("I agree with your recommendation"): f1 = restore the
+  machine-local feature.json + durable design-context fallbacks + record/degrade/tell on empty
+  context (degrade chosen over terminal-fail to keep the greenfield path); f2 = full item-schema
+  normalization of the partial harvest. Human-directed verification reruns authorized (carried via
+  the T096 remediation mechanism, authorized_by Alon Fliess).
+- **Q1 rounds**: keep `co_review_max_rounds` default = 2 (the ceiling caps only the AUTONOMOUS loop;
+  human-directed rounds are unbounded via the remediation menu). Per-project override stands.
+- **Q2 any-harness reviewer**: affirmed — the catalog is the only host seam (post D-197-I010-002);
+  claude+codex field-validated; other harnesses are a catalog row + a validation session away.
+- **Q3 single-harness users**: never ask for a reviewer; same-host fallback stands. AGREED fast-follow:
+  same-host fallback should select the harness's STRONGEST cataloged review model (curated per-release
+  table as catalog data; --model stays the human override; NO runtime web discovery — models are
+  config data, refreshed by Specrew releases / `specrew update`).
+- **Q4 reviewer-failure handling**: affirmed tell-then-ask via the remediation menu (no silent
+  substitution, SEC-004). AGREED fast-follows: failure-reason classification (quota / model-not-found
+  / unknown) with host-specific error signatures as CATALOG data; an OPT-IN pre-authorized
+  auto-fallback chain (`co_review_auto_fallback`), default off; last rung = same-host implementer
+  model, ack-priced.
+- **Antigravity**: the maintainer is INSTALLING antigravity to extend SC-022 validation to it —
+  validation carried to feature-closeout / post-install (recorded in the iter-010 Gap Ledger as
+  deferred).
+- **Scope ruling**: Q3/Q4 fast-follows are post-0.40.0 (not release-blocking; current behavior is
+  safe-and-surfaced). 0.40.0 proceeds to review-signoff on the verified iter-010 scope.
+
+## 2026-07-08T10:30:00Z — Defer: SC-022 harness breadth beyond claude+codex (iter-010 Gap Ledger)
+
+- **Decision ID**: DEFER-197-I010-001
+- **Type**: defer
+- **Affected Requirement**: SC-022
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-08T10:30:00Z
+- **Authorization Text**:
+  > "OK, agree for all answers and recommendations. I will install antigravity so we can also check it" (maintainer, 2026-07-08)
+- **Next Action**: validate antigravity as a reviewer once installed+authorized (feature-closeout or post-0.40.0); copilot/cursor-agent remain unauthorized-by-consent per the N8 installed+authorized scope rule.
+
+## 2026-07-08T10:31:00Z — Defer: reviewer-system fast-follows (same-host strongest-model; failure classification + opt-in fallback)
+
+- **Decision ID**: DEFER-197-I010-002
+- **Type**: defer
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-08T10:31:00Z
+- **Authorization Text**:
+  > "OK, agree for all answers and recommendations." (maintainer, 2026-07-08 — Q3: same-host fallback selects the strongest cataloged review model, curated per-release, no runtime web discovery; Q4: failure-reason classification with host-specific signatures as catalog data + an opt-in pre-authorized auto-fallback chain, default ask-first)
+- **Next Action**: post-0.40.0 fast-follow tasks; not release-blocking (current behavior is safe-and-surfaced: labelled same-host fallback + tell-then-ask remediation menu).
+
+## 2026-07-08T11:29:56Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-07-08T11:29:56Z
+- **Warning**: Expected next boundary 'tasks' but received 'review-signoff'.
+
+## 2026-07-08T11:29:56Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 07d6d3b2
+- **Recorded At**: 2026-07-08T11:29:56Z
+
+## 2026-07-08T12:55:00Z — Finding + defer: reviewer worktree-confinement is instructional, not enforced (observed escape)
+
+- **Decision ID**: DEFER-197-I010-003
+- **Type**: defer
+- **Affected Requirement**: SEC-004 (reviewer containment); FR-011 (review isolation); NFR-001
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess (pending verdict at the review-signoff gate packet, 2026-07-08)
+- **Recorded At**: 2026-07-08T12:55:00Z
+- **Finding (observed in production dogfood, runs 20260708T123219859 + 20260708T123610575)**:
+  The detached antigravity reviewer (permissions-skipped by design) operated on the ORIGIN repo by
+  absolute path instead of staying inside its stripped worktree: it ran the origin's Pester suites
+  (`C:\Dev\specrew-197-continuous-co-review\tests\...`), probed
+  `scripts\internal\sync-boundary-state.ps1` (`New-SpecrewSessionState -BoundaryType 'retro'`) in a
+  non-interactive-unsafe way that HUNG on a mandatory-parameter prompt (wedging the run until the
+  budget kill), and one probe invoked `specrew review --live` against the origin, firing a REAL
+  codex run (20260708T123610575). Absolute origin paths are learnable from committed governance docs
+  (file:/// URLs, Rule 52) and, because the worktree materializes UNDER the origin repo root, ANY
+  git-upward discovery inside it resolves to the origin. Process-tree containment (T100) held —
+  every child died with the run — but FILESYSTEM confinement is currently a slim-prompt instruction
+  the reviewer can ignore. No origin governance state was mutated (verified: pending-verdict-stop.md,
+  start-context.json untouched; working tree clean), but the vector allows it.
+- **Next Action (post-0.40.0 fast-follow, priority-up)**: (a) materialize reviewer worktrees OUTSIDE
+  the origin repo root (temp), (b) strip/relativize origin-absolute paths from the reviewer bundle,
+  (c) slim-prompt hard rule + spawn-contract line forbidding origin-path operations, and evaluate an
+  origin-path watchdog (fail the run loudly on foreign-path access). Recorded honestly as discovered
+  by the feature's own dogfood at the review-signoff gate.
+
+## 2026-07-08T12:56:00Z — Evidence note: codex stale-verdict event (feeds DEFER-197-I010-002 classification)
+
+- **Decision ID**: NOTE-197-I010-001
+- **Type**: evidence-note
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess (visibility at the review-signoff gate packet)
+- **Recorded At**: 2026-07-08T12:56:00Z
+- **Evidence**: probe-fired codex run 20260708T123610575 returned a structured round-2 verdict in
+  216s claiming the prior live-wiring findings "still fail" on tree 8ecd8c02 — contradicted by the
+  actually-executed suites (review-signoff-live-wiring all-pass, review-command 6/6, CCR Pester
+  245/245 on that tree). A too-fast confident-stale verdict is a reliability mode DISTINCT from the
+  empty-exit-0 flake (T108) and strengthens the DEFER-197-I010-002 case for failure/quality
+  classification. Its round-state write was superseded by the round-2 antigravity terminal write;
+  no gate impact.
+
+## 2026-07-08T13:12:00Z — Design refinement (maintainer): ranked model priority WITHIN each harness (amends DEFER-197-I010-002)
+
+- **Decision ID**: NOTE-197-I010-002
+- **Type**: design-refinement (amends DEFER-197-I010-002; no scope change to iter-010/0.40.0)
+- **Affected Requirement**: FR-016/SC-022 (reviewer selection); DEFER-197-I010-002
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-08T13:12:00Z
+- **Authorization Text**:
+  > "As we have priority between harnesses for a reviewer, we can have a priority of models within harnesses" (maintainer, 2026-07-08, during the antigravity Gemini-group quota outage)
+- **Design direction**: selection becomes two-level — rank hosts (independence-first, unchanged), then a
+  RANKED MODEL LIST within the selected host. Catalog row grows `models = @(@{ id; flag_args;
+  class_rank; quota_group }, ...)` (curated per-release data, per the no-runtime-web-discovery
+  decision) plus a per-host model flag so the chosen model THREADS INTO the agentic invocation
+  (today the catalog `model` field is display/ranking metadata only; every harness runs its own
+  default and specrew never passes a model). Classified failures (quota-empty / model-not-found /
+  empty-exit-0 via the T108 diagnostic) walk DOWN the model list before any cross-host fallback,
+  preferring a model in a DIFFERENT quota group on quota failures — field lesson: antigravity
+  meters quota per model GROUP (Gemini vs Claude/GPT) with independent 5-hour/weekly windows, so
+  model priority is also the natural quota-failover lever. `--model` stays the human override.
+- **Field evidence**: 2026-07-08 — antigravity's Gemini group hit 0% five-hour quota (instant
+  empty-exit-0 runs, ~10s) while its Claude/GPT group sat at 100%; no lever existed to use it
+  without a shipped-code edit. Runs 20260708T124931609 (double-empty loud fail) + quota screen.
+
+## 2026-07-08T19:50:00Z — Send-back at review-signoff: implementer test-evidence for the reviewer (T111)
+
+- **Decision ID**: DEC-197-I010-004
+- **Type**: send-back scope addition (review-signoff → implementation, one scoped task)
+- **Affected Requirement**: FR-009/FR-011 (reviewer context), SC-024 (budget confidence), the T107 falsification grafts
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010 (T111, ~2 SP — fits the approved 26 SP cap: 24 delivered + 2)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-08T19:50:00Z
+- **Authorization Text**:
+  > "Can we change the instruction telling it that the tests already passed by the implementors? Can we provide proofs?" … "1" (= send back and build it; maintainer, 2026-07-08)
+- **Root cause being fixed**: the outbound budget policy tells the reviewer to "use implementer
+  validation evidence first", but NO evidence is ever provided in the worktree, while the grafted
+  falsification stance ("runtime evidence only; prose claims are not verification") forbids trusting
+  claims — so on a large change-set the reviewer re-runs the full test pyramid and dies at the
+  harness budget ceiling. Four consecutive verification attempts on tree 2bd508c7 failed this way
+  (budget-kill ×3, quota ×1); the feature could not converge on its own review.
+- **Design (T111)**: (a) `Write-ContinuousCoReviewTestEvidence` records MACHINE-OBSERVED test runs
+  (suite, counts, exit code, duration, timestamp) bound to the reviewed-state digest of the tree the
+  tests ran against, under `.specrew/review/test-evidence/<digest>.json` (digest-excluded runtime
+  state); (b) the orchestrator injects the evidence into the worktree as
+  `.review/implementer-evidence.json` ONLY on a digest match with the tree being reviewed; (c) the
+  slim prompt gains one rule: digest-matched machine-recorded evidence substitutes for re-running
+  those suites — spot-check targeted tests only; absence → reviewer judgment; hand-written claims
+  remain claims (never-false-green intact). Tests for all three seams.
+
+## 2026-07-08T21:05:00Z — Maintenance note: pre-existing tests/unit public-readiness failures (out of F-197 scope)
+
+- **Decision ID**: NOTE-197-I010-003
+- **Type**: maintenance-note (repo test hygiene; not F-197 drift)
+- **Recorded At**: 2026-07-08T21:05:00Z
+- **Evidence**: `tests/unit` fails 2 of 10 Pester tests (public-readiness drifted-fixture warnings,
+  extension + specify: expected 5 WARN lines, got 0) — signature IDENTICAL in a detached worktree at
+  pre-T111 commit `2bd508c7`, so pre-existing, not an F-197/T111 regression. Full analysis:
+  `specs/197-continuous-co-review/iterations/010/quality/known-test-issues.md`.
+- **Next Action**: fix under the validator-surface ownership (F-006/F-013 lineage) as ordinary repo
+  maintenance after 0.40.0; the T111 evidence record carries the honest `failed=2` for the unit
+  suite with the in-tree note as the standing explanation.
+
+## 2026-07-09T05:00:00Z — Amendment to NOTE-197-I010-003: public-readiness test failures ROOT-CAUSED and FIXED (fixture lag)
+
+- **Decision ID**: NOTE-197-I010-003-A
+- **Type**: maintenance-note amendment (root cause + fix; supersedes the "carry as maintenance" ruling for the branch)
+- **Recorded At**: 2026-07-09T05:00:00Z
+- **Prompted by**: maintainer question 2026-07-09 ("Maybe the test does not check it correctly. Maybe we have them using a different file name that the test should expect").
+- **Root cause**: the F-040 opt-in gate (2026-05-23, `public_readiness.enabled` in `.specrew/config.yml`,
+  default OFF) was never migrated into the two 2026-05-04 test fixtures — the validator correctly
+  skipped and emitted zero warnings; the fixtures lagged the contract, the validator is sound.
+- **Fix**: 2-line test-data change (opt-in appended to both fixture configs); test file 6/6,
+  `tests/unit` 10/10. Zero production code touched. Full analysis:
+  `specs/197-continuous-co-review/iterations/010/quality/known-test-issues.md`.
+- **Still open (main only)**: `main` (`5bca4fdf`) fails ALL SIX tests in this file (incl. clean +
+  hard-fail cases) — a separate undiagnosed breakage to reconcile at PR time.
+
+## 2026-07-09T05:45:00Z — Human-close of escalation 20260708T211331029: FIX NOW the reviewed-vs-certified identity gap
+
+- **Decision ID**: DEC-197-I010-005
+- **Type**: escalation human-close (fix-now) — round-ceiling escalation, full+independent reviewer (D5: human-only)
+- **Affected Requirement**: FR-025 (unreviewed-source false-allow), SC-019/SC-020 (gate evidence integrity)
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010 (review-round fix, D-197-I010-004)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T05:45:00Z
+- **Authorization Text**:
+  > "1" (= Fix now — unify the reviewed identity with the certified identity; maintainer, on the escalation packet naming the HEAD-vs-working-tree gap, 2026-07-09)
+- **Fix**: the orchestrator computes the reviewed-state digest FIRST and materializes the reviewer
+  worktree FROM the digest's own tree object (the digest is a real `git write-tree` object) — the
+  reviewed content and the certified content are the same git tree by construction; changes.diff runs
+  baseline→that tree; digest failure falls back to HEAD with reviewed_digest_error explaining the
+  divergence; `--live` now reviews uncommitted work. Dirty-tree regression tests (worktree-source-
+  tree-identity.Tests.ps1); CCR suite 254/254. Evidence-run context: the escalating run was the FIRST
+  consumer of T111 implementer evidence and completed in 141s (vs 4 prior ~880s budget deaths) —
+  T111 validated in the same run that raised the finding.
+
+## 2026-07-08T21:41:32Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-07-08T21:41:32Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-07-08T21:41:32Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 010
+- **Task ID**: (none)
+- **Auth Commit Hash**: 23d1b7ec
+- **Recorded At**: 2026-07-08T21:41:32Z
+
+## 2026-07-08T22:02:33Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-07-08T22:02:33Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-07-08T22:02:33Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 010
+- **Task ID**: (none)
+- **Auth Commit Hash**: 5ac430ef
+- **Recorded At**: 2026-07-08T22:02:33Z
+
+## 2026-07-09T06:40:00Z — Field finding (downstream dogfood): bootstrap deploys broken-by-construction forge workflows; host-machinery review asymmetry
+
+- **Decision ID**: NOTE-197-I010-004
+- **Type**: field-evidence + fast-follow candidate (distribution surfaces, mostly OUTSIDE F-197 charter)
+- **Recorded At**: 2026-07-09T06:40:00Z
+- **Evidence**: consumer test project C:\Temp\tesr197local (feature 001-number-cube-explorer):
+  smoke run 20260708T220720322 (3 blocking) and the project's own checkpoint run
+  20260708T220613175 (4 blocking) — EVERY finding targets Specrew-deployed scaffold, ZERO target
+  the user's feature code (their suite: 24/24 green). Flagged: .github/workflows/specrew-ci.yml,
+  specrew-project-sync.yml, specrew-confidence-lane.yml (reference ./extensions/**,
+  ./tests/integration/*.ps1, .github/scripts/sync-specrew-board.ps1, tests/manual/** — paths that
+  exist ONLY in the Specrew dev repo; deterministically broken in any consumer project) and
+  .claude/settings.local.json (machine-local hook config, deployed un-gitignored).
+- **Product implications**:
+  1. (Distribution, F-045/F-101 lineage) `specrew init` must NOT deploy forge workflows wired to
+     dev-repo paths into consumer projects — deploy consumer-correct lanes, gate on forge presence,
+     or defer until a remote exists (matching the DevOps-lens teaching the reviewer itself cited).
+  2. (F-197-adjacent) Host-machinery dirs are inconsistently handled between the DIGEST identity
+     (includes .claude/** and .github/** — not in the ambient denylist) and the WORKTREE strip
+     (marker-detected machinery removal): content a reviewer may never see can be certified, and
+     un-strippable local config (settings.local.json) gets reviewed as app changes. Align the two
+     lists (machinery dirs excluded from BOTH or included in BOTH) — same FR-025 identity family
+     as D-197-I010-004, scoped to host-machinery paths.
+  3. Downstream UX: a first co-review experience blocked on OUR scaffold is the wrong first
+     impression even though the reviewer is factually right.
+- **Downstream unblock applied/available**: the untracked broken workflows can simply be deleted in
+  consumer projects (redeployable when a forge exists); the human defer path (recorded decision →
+  next round reads it → resolved-by-deferral) covers the remainder.
+- **Next Action**: fast-follow alongside DEFER-197-I010-003 (worktree confinement) and the Proposal
+  102 model work; not 0.40.0-blocking (the failure mode is loud-and-honest, never false-green).
+
+### NOTE-197-I010-004 addendum (2026-07-09): origin traced + prompt-teaching refinement
+
+- **Origin**: the four workflows in `templates/github/workflows/` were written in the Feature-019 era
+  FOR SPECREW'S OWN REPO (commit `6737f115` "Feature 019 T006") — they still target branch
+  `001-specrew-product` (Specrew's own first feature) and self-host paths. The F-031 distribution
+  module later bundled them as init-deployed templates (`distribution-module-init.ps1:170` ASSERTS
+  they deploy to every consumer project) without consumer-izing them. Broken downstream ever since;
+  invisible because consumer projects had no GitHub remote (Actions never ran) and no reviewer ever
+  saw a consumer working tree — until F-197's identity fix made untracked content reviewable, and
+  the first consumer-project run surfaced it same-day.
+- **Additional refinement (F-197 prompt)**: machinery paths (`.specify/**`, `.specrew/**`,
+  `.squad/**`) are intentionally stripped from the reviewer worktree AND the digest — the slim
+  prompt should say so, so reviewers do not raise absence findings for references INTO machinery
+  (the downstream run's finding #2 class: hooks pointing at a stripped-but-real dispatcher).
+  Runtime evidence (hooks executing all session) is the correct rebuttal shape.
+
+## 2026-07-09T07:15:00Z — Fix-now of the auto-fire dedup identity gap (codex auto-fire finding)
+
+- **Decision ID**: DEC-197-I010-006
+- **Type**: blocking-finding human-close (fix-now) — D-197-I010-004 follow-on
+- **Affected Requirement**: FR-025 family (one identity for dedup/materialization/gate), SC-025
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T07:15:00Z
+- **Authorization Text**:
+  > "1" (= fix now; maintainer, on the packet describing the codex auto-fire finding that the
+  > navigator dedup keyed on HEAD^{tree} and deduped dirty increments as already-reviewed, 2026-07-09)
+- **Fix**: `Get-ContinuousCoReviewCheckpointIdentity` (certified digest first, HEAD-subtree fallback)
+  keys the navigator dedup AND the service pending registration; regression tests prove a dirty tree
+  changes the key and the key is content-addressed (no double-fire on committing identical content).
+  Finding source: run 20260708T225439577 — the navigator firing UNPROMPTED on the proposals
+  checkpoint and catching its own dedup defect in 132s (codex recovered, sharp). Drift record
+  D-197-I010-005. CCR suite 257/257.
+
+## 2026-07-09T07:45:00Z — Copilot headless-reviewer probe: vector VIABLE; probe-in-cwd incident (evidence for 203)
+
+- **Decision ID**: NOTE-197-I010-005
+- **Type**: probe result + incident record
+- **Recorded At**: 2026-07-09T07:45:00Z
+- **Probe result (the maintainer's "how come no copilot reviewer" question)**: GitHub Copilot CLI HAS
+  the required headless shape — `copilot --allow-all -p "<prompt>"` returned the correct answer in
+  34s, exit 0 (agentic non-interactive mode with `--allow-all-tools` documented as required for
+  non-interactive). Copilot-as-reviewer is one catalog row + validation away; candidate vector
+  recorded here for the wiring task (order-sensitive probing per the how-to still required for the
+  full review-length behavior: timeout flags, empty-exit signature, output shape).
+- **Incident**: the probe ran in the SELF-HOST repo cwd — copilot's session hooks fired the Specrew
+  bootstrap, and its scaffolding REWROTE iterations/010 state.md (rich execution narrative replaced
+  by a template stub) and touched tasks-progress.yml. Recovery: both files git-restored from HEAD
+  (8cac7f21); boundary cursor and start-context verified untouched; copilot's navigator invocations
+  were no-ops. Lessons: (a) probe agentic CLIs in a SCRATCH directory, never a governed cwd —
+  recorded for the add-a-reviewer-host how-to; (b) live evidence for Proposal 203's confinement
+  theme: an agentic host in a governed cwd self-bootstraps and mutates governance state — the
+  reviewer worktree's machinery-stripping is what prevents exactly this class inside reviews.
+
+## 2026-07-09T08:30:00Z — Fix-now of the --live door budget drift (downstream-found)
+
+- **Decision ID**: DEC-197-I010-007
+- **Type**: defect human-close (fix-now) — two-doors drift, FR-034 budget doctrine
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T08:30:00Z
+- **Authorization Text**:
+  > "1" (= fix now; maintainer, on the packet tracing the --live door's hardcoded 120s to the
+  > iteration-002 fossil the auto path had already fixed, 2026-07-09)
+- **Fix**: the --live door resolves budget as explicit `--timeout-seconds` → `co_review_timeout_seconds`
+  config → 300s baseline (identical to the auto path via Get-ContinuousCoReviewNavigatorTimeoutSeconds);
+  parsed default 120 → 0 (unset marker); dead `else { 900 }` removed; Test 5 regression asserts the
+  refused run's status envelope carries 300. Found by the consumer project's first-ever default-budget
+  exercise (every reviewer cut at ~130s). Per-host budget floors → Proposal 102 catalog follow-up.
+  Drift record D-197-I010-006.
+
+## 2026-07-09T09:40:00Z — Deferral of the codex auto-fire findings f1-f3 to Proposal 203 (W8-W10)
+
+- **Decision ID**: DEC-197-I010-008
+- **Type**: review-finding deferral (human-close of the round-2 escalation, run 20260709T000318564)
+- **Affected Requirement**: FR-027/SC-021 (W9), T111/verification-confidence (W8), checkpoint identity (W10)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T09:40:00Z
+- **Authorization Text**:
+  > "Agree (1 - go) with all, do it." (maintainer, 2026-07-09, on the packet presenting the
+  > known-limitations table and the 15-minute honesty fix + defer-to-203 path)
+- **Scope**: codex findings f1 (forgeable caller-supplied evidence), f2 (auto-fire merge-base
+  baseline instead of per-checkpoint increment), f3 (fire-time vs child-time digest race) — all
+  verified-true, all coherence/hardening class (no false-allow: what is certified is always what was
+  reviewed; the signoff gate re-checks the current tree). Recorded as Proposal 203 W8/W9/W10 with
+  the run as evidence. INTERIM SHIPPED same-night: the slim prompt says IMPLEMENTER-recorded (never
+  machine-observed) and arms spot-checks as forgery detection with blocking teeth (W8 interim).
+- **Beta posture**: 0.40.0-beta.1 ships loud-and-honest with these as documented known limitations;
+  the core guarantees (never-false-green, loud failures, human-gated overrides, digest-fresh gate,
+  reviewed==certified) hold.
+
+## 2026-07-09T10:05:00Z — Resolved-by-deferral round teaching (the T106 human-close missing half)
+
+- **Decision ID**: DEC-197-I010-009
+- **Type**: convergence-mechanism completion (executing the approved DEC-197-I010-008 path)
+- **Approving Human**: Alon Fliess (the "go" decision specified reviewers converge on the recorded
+  deferral; this makes that mechanically true)
+- **Recorded At**: 2026-07-09T10:05:00Z
+- **Gap (found by the deferral's own first exercise, run 20260709T002004132)**: the round-4 reviewer
+  READ DEC-197-I010-008 and still escalated - the fix-verification round teaching had NO deferral
+  vocabulary ("still present = failed fix"), and a full+independent block is not overridable by
+  design (D5), so a human-deferred blocking finding could NEVER converge: a deadlock the T094
+  never-deadlock rule did not cover (it assumed degraded evidence, not human-deferred findings).
+- **Fix**: the round prompt gains RESOLVED-BY-DEFERRAL - a prior finding is resolved when a RECORDED
+  human deferral covers it, VERIFIED IN THE WORKTREE (a decisions/drift/proposal record naming the
+  finding, the approving human, and where the work is carried); a deferral CLAIM without a
+  verifiable record is itself a blocking finding (never-false-green preserved); the final-round
+  escalation rule applies only to findings NOT covered by a verified deferral. Prompt contract
+  tests 17/17.
+
+## 2026-07-09T01:01:01Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-07-09T01:01:01Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-07-09T01:01:01Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 010
+- **Task ID**: (none)
+- **Auth Commit Hash**: 4e711036
+- **Recorded At**: 2026-07-09T01:01:01Z
+
+## 2026-07-09T06:58:01Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 010
+- **Task ID**: (none)
+- **Auth Commit Hash**: f34b8d71
+- **Recorded At**: 2026-07-09T06:58:01Z
+
+## 2026-07-09T07:25:25Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 010
+- **Task ID**: (none)
+- **Auth Commit Hash**: c3508e5e
+- **Recorded At**: 2026-07-09T07:25:24Z
+
+## 2026-07-09T10:30:00Z — Defer: FR-027 incremental per-checkpoint baselines on the auto path (203-W9)
+
+- **Decision ID**: DEFER-197-I010-003
+- **Type**: defer
+- **Affected Requirement**: FR-027
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T10:30:00Z
+- **Authorization Text**:
+  > "Agree (1 - go) with all, do it." (maintainer, 2026-07-09 — the DEC-197-I010-008 deferral of
+  > codex findings f1-f3; f2 is the FR-027 item)
+- **Next Action**: Proposal 203 W9 — the navigator records the last-REVIEWED checkpoint identity and
+  threads it as the next fire's baseline (merge-base fallback when none). Interim behavior is
+  safe-but-broad: every auto-fire reviews the whole feature diff since the branch point (over-reviews,
+  never under-reviews); the signoff `--live` merge-base doctrine is unchanged.
+
+## 2026-07-09T08:17:18Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 93ae4a4f
+- **Recorded At**: 2026-07-09T08:17:18Z
+
+## 2026-07-09T08:38:10Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: efeb7dba
+- **Recorded At**: 2026-07-09T08:38:10Z
+
+## 2026-07-09T12:30:00Z — P1 field fix: the public CLI whitelist rejected the T094/T096 remediation/ack quartet
+
+- **Decision ID**: NOTE-197-I010-006
+- **Type**: field-fix record (pre-publish hardening, maintainer "OK" on the triage)
+- **Recorded At**: 2026-07-09T12:30:00Z
+- **The P1**: `scripts/specrew.ps1` (the public front door the product's OWN stop-blocks and gate
+  messages tell users to run) carried an arg whitelist predating T094/T096 — every
+  `--ack-degraded/--ack-reason/--remediate/--scope` command was rejected as "Unsupported argument".
+  Found by the downstream consumer project (its agent correctly reported the mechanisms unusable and
+  nearly hunted a gate bypass); invisible in self-host because all dev invocations went directly to
+  `scripts/specrew-review.ps1`. FIXED: quartet whitelisted + Test 6b (side-effect-free bare-flag
+  proof) + review-command Test 6 exercising the ack guard THROUGH the front door.
+- **Also fixed in the batch**: (a) `--ack-degraded` now rejects a flag-shaped run-id with precise
+  usage (the downstream agent's exact stumble); (b) resolved-by-deferral teaching requires
+  WORKTREE-VISIBLE record homes (drift-log/specs/proposals) — `.squad/decisions.md` is
+  machinery-stripped from review worktrees, so records only there are unverifiable to reviewers
+  (mirror rule added); (c) slash-command-arg-whitelist Test 7 made deterministic + side-effect-free
+  (it previously fired REAL live reviews on any machine with an authorized reviewer — the source of
+  the phantom review runs and multi-minute test hangs — and asserted pre-cutover refusal text).
+- **Downstream repairs applied directly**: tesr197local config.yml un-jammed (my Add-Content bug);
+  triage + exact unblock command handed to the maintainer.
+- **Suites after batch**: CCR 258/0, unit 10/0 (deterministic now), review-command 7/7 PASS,
+  whitelist file all-pass.

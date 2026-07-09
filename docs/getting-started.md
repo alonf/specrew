@@ -193,6 +193,21 @@ When the Crew surfaces a clarify question, answer it. When it surfaces a plannin
 
 > **Switching hosts on the same project** is supported: end the session, then **launch the other host directly** in the project (`claude` / `codex` / `copilot` / `cursor-agent` / `agy`) and type `continue` — its SessionStart or equivalent hook reads the rolling handover and resumes the same feature at the same spot. `specrew start --host <other>` stays available as the optional explicit driver, and it is the fallback on **Antigravity** if project hooks do not fire. Mid-session switching still means end-and-restart — by design. (Concurrent multi-host execution is Scenario B of [Proposal 024](../proposals/024-multi-host-runtime-abstraction.md), not in F-040's scope.)
 
+**Authorize a co-reviewer (one-time, recommended).** From 0.40.0-beta, an independent AI reviewer — on a
+**different harness than the one writing your code** — reviews each implement checkpoint in an isolated
+worktree, and review-signoff will not accept a code-touched iteration without that evidence. Reviewer
+harnesses cost money and act with elevated permissions, so authorizing one is an explicit human step the
+Crew can never do for you:
+
+```powershell
+specrew review --host codex --authorization-ref "your-name-approved-2026-07-08"
+```
+
+Pick any installed harness (`claude`, `codex`, `copilot`, `cursor-agent`, `antigravity`) — ideally not the
+one you develop with. If you skip this, the first implement checkpoint surfaces an actionable "authorize a
+reviewer" message rather than failing silently. Day-to-day usage (live runs, evidence tiers, the remediation
+menu) is covered in [docs/user-guide.md "Continuous co-review"](user-guide.md#continuous-co-review-feature-197-0400-beta).
+
 ### 5. Close the iteration (and the feature)
 
 The lifecycle does not end at `implement`. Two more boundaries finish the work:

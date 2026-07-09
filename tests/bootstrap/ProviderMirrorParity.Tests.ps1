@@ -107,4 +107,18 @@ foreach ($pv in @('specrew-bootstrap-provider.ps1', 'specrew-handover-provider.p
     Assert-True (($pvText -match 'SPECREW-UTF8-OUTPUT') -and ($pvText -match '\[Console\]::OutputEncoding')) "$pv declares UTF-8 output (Prop-145 P3 non-ASCII capture fix)"
 }
 
+# F-197 iter-005: registry-row drift guard. The co-review-navigator row was added to the extension SOURCE
+# refocus-scopes.json but NOT the .specify DEPLOYED copy, and the dispatcher loads .specify FIRST - so the
+# navigator was INERT on this repo's live dispatch while every fixture-catalog test stayed green (the
+# file-presence-not-equal-runtime trap). This parity guard catches a missing/extra provider row.
+$refExt = Join-Path $repoRoot 'extensions/specrew-speckit/refocus-scopes.json'
+$refSpec = Join-Path $repoRoot '.specify/extensions/specrew-speckit/refocus-scopes.json'
+if ((Test-Path -LiteralPath $refExt) -and (Test-Path -LiteralPath $refSpec)) {
+    Assert-True ((Get-Content -LiteralPath $refExt -Raw) -eq (Get-Content -LiteralPath $refSpec -Raw)) (
+        'refocus-scopes.json: the .specify/ deployed catalog is byte-identical to the extension source. If this ' +
+        'FAILS, re-sync: Copy-Item extensions/specrew-speckit/refocus-scopes.json over the .specify copy (a missing ' +
+        'provider row makes that provider INERT - the dispatcher loads .specify first).')
+    Write-Host 'Asserted refocus-scopes.json catalog parity (extension source <-> .specify deployed)'
+}
+
 Write-Host "`n=== ProviderMirrorParity.Tests.ps1: all full-copy provider mirrors in sync ===" -ForegroundColor Green

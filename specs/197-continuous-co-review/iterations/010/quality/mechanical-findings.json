@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/197-continuous-co-review/spec.md",
+  "iterationRef": "specs/197-continuous-co-review/iterations/010",
+  "generatedAt": "2026-07-08T10:21:43Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.39.0"
+  },
+  "findings": []
+}

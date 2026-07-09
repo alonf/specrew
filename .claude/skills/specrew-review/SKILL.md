@@ -1,6 +1,6 @@
 ---
 name: specrew-review
-description: Replay the persisted reviewer closeout packet for a completed iteration.
+description: Run live continuous co-review or replay persisted reviewer evidence for an iteration.
 ---
 
 # specrew-review
@@ -13,13 +13,14 @@ description: Replay the persisted reviewer closeout packet for a completed itera
 
 ## Purpose
 
-Trigger or inspect the Specrew review-oriented workflow — replay the persisted reviewer closeout packet for a completed iteration.
+Trigger or inspect the Specrew review-oriented workflow. Use live mode to run the continuous co-review runtime and persist reviewer evidence under `.specrew/review/inline/<run-id>/`; use replay mode to inspect an existing reviewer closeout packet for a completed iteration.
 
 ## When to Use
 
+- When a reviewer needs a live continuous co-review run before or during a review boundary.
 - When a reviewer wants to inspect the review summary for a completed iteration.
 - When replaying the reviewer closeout packet.
-- Invoke this skill when the user says: "Show the review summary", "Review the iteration", "Show reviewer output".
+- Invoke this skill when the user says: "Run the reviewer", "Run live review", "Show the review summary", "Review the iteration", "Show reviewer output".
 
 ## Boundary Safety
 
@@ -36,6 +37,16 @@ This skill is part of the `/specrew-*` command surface. It coexists with `/speck
 ```text
 /specrew-review [<iteration>] [--project-path <path>] [--feature <id>]
                  [--iteration <NNN>] [--quiet] [--json] [--open]
+/specrew-review --live [--baseline-ref <git-ref>] [--project-path <path>]   # baseline auto-anchors for signoff; an explicit --baseline-ref run is exploratory-only
+                 [--checkpoint-id <id>] [--run-id <id>] [--host <host>]
+                 [--model <model>] [--effort <effort>] [--authorization-ref <ref>]
+                 [--code-writer-host <host>]
+                 [--design-context-ref <path>] [--allowed-path <path>]
+                 [--forbidden-path <path>] [--exclude-path <path>]
+                 [--reviewer-config <path>] [--schema-root <path>]
+                 [--run-root <path>] [--timeout-seconds <N>]
+                 [--fallback-policy <none|one-authorized-availability-fallback>]
+                 [--preserve-debug]
 ```
 
 Backed by: `specrew review` / `scripts/specrew-review.ps1`
@@ -51,10 +62,30 @@ Backed by: `specrew review` / `scripts/specrew-review.ps1`
 | `--quiet` | flag | No | Emit only the stable machine-parseable digest line |
 | `--json` | flag | No | Emit JSON summary instead of the visual reviewer summary |
 | `--open` | flag | No | Open reviewer-index.md and review-diagrams.md when present |
+| `--live` | flag | No | Run the continuous co-review runtime instead of replaying prior closeout state |
+| `--baseline-ref` | string | Yes for `--live` | Git ref used to compute the review change set |
+| `--checkpoint-id` | string | No | Stable checkpoint identifier for the live review request |
+| `--run-id` | string | No | Explicit run id for evidence under `.specrew/review/inline/<run-id>/` |
+| `--host` | string | No | Reviewer host to request (`claude`, `codex`, `copilot`, `cursor-agent`, or `antigravity`) |
+| `--model` | string | No | Reviewer model override; non-default models require `--authorization-ref` |
+| `--effort` | string | No | Optional host-specific reviewer reasoning/effort label persisted in evidence |
+| `--authorization-ref` | string | No | Human authorization reference for host/model selection |
+| `--code-writer-host` | string | No | Implementation host (`claude`, `codex`, etc.) used to prefer an independent peer reviewer |
+| `--design-context-ref` | string | No | Design or lifecycle artifact to include in the review request context |
+| `--allowed-path` | string | No | Add a mutable path allowlist entry for this live review run |
+| `--forbidden-path` | string | No | Add a protected path entry for this live review run |
+| `--exclude-path` | string | No | Add a change-set exclusion entry for this live review run |
+| `--reviewer-config` | string | No | JSON reviewer host configuration for deterministic or authorized hosts |
+| `--schema-root` | string | No | Contract schema root for `ReviewRequest` and `FindingsResult` validation |
+| `--run-root` | string | No | Override the evidence output root; defaults to `.specrew/review/inline` |
+| `--timeout-seconds` | number | No | Live reviewer host timeout |
+| `--fallback-policy` | string | No | Host fallback policy (`none` or `one-authorized-availability-fallback`) |
+| `--preserve-debug` | flag | No | Preserve debug artifacts from the live review run |
 
 ## Outputs
 
-- Reviewer closeout packet for the specified iteration.
+- Live `ReviewRequest`, prompt bundle, host invocation metadata, `FindingsResult`, gate verdict, and run index under `.specrew/review/inline/<run-id>/` when `--live` is used.
+- Reviewer closeout packet for the specified iteration when replay mode is used.
 - Raw/native output from the underlying `specrew review` workflow with minimal wrapper context.
 
 ## Argument Whitelist
@@ -66,6 +97,8 @@ Only the arguments listed above are accepted in v1. Unknown arguments are reject
 | Failure mode | Behavior |
 | --- | --- |
 | Unsupported argument | Rejected immediately with command-specific help guidance |
+| Missing `--baseline-ref` in live mode | Error explaining that live review needs a baseline ref |
+| Unauthorized reviewer host/model | Infrastructure failure with reviewer authorization guidance; do not treat this as reviewer approval |
 | No iteration found | Error with guidance to check `specs/` directory structure |
 | Missing project setup | Stop with `specrew init` remediation |
 

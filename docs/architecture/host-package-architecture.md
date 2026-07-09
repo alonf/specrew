@@ -13,6 +13,14 @@ This architecture moves to the **Open-Closed Principle**: host-neutral core code
 
 **The promise:** to add a new host, you `mkdir hosts/<kind>/`, write 3 small files, and you're done. No edits to existing files.
 
+> **A second, smaller host seam — reviewer hosts (Feature 197, 0.40.0)**: continuous co-review
+> applies the same principle one level down. A harness's REVIEWER capability (binary, one-shot
+> agentic flags, prompt transport, review-class rank) lives as a single data row in
+> `scripts/internal/continuous-co-review/reviewer-host-catalog.ps1` — the CCR core never names a
+> harness, and a governance test (`host-neutral-core.Tests.ps1`) fails the build if one leaks in.
+> Adding a reviewer host is a catalog-row edit plus a per-project human authorization, NOT a full
+> host package; see [add-a-new-host.md § Adding a REVIEWER host](../how-to/add-a-new-host.md#adding-a-reviewer-host-continuous-co-review--a-much-smaller-job).
+
 ## File layout
 
 ```text

@@ -28,6 +28,8 @@
 .specrew/handover/
 # F-174: per-session runtime journals + session marker + refocus breaker state (regenerated each session, never pushed)
 .specrew/runtime/
+# F-197 iter-005: async co-review navigator pending-task registry (launcher<->reaper signaling, ephemeral per-machine; the durable passing-run evidence the gate reads lives in .specrew/review/inline/ and stays tracked)
+.specrew/review/pending/
 # version-check cache (regenerated on the next version check)
 .specrew/version-check-cache.json
 

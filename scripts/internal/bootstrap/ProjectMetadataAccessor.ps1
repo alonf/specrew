@@ -231,6 +231,34 @@ function Test-SpecrewIsGitRepoRoot {
     catch { return $false }
 }
 
+function Get-SpecrewGitScanScope {
+    # iter-007 (real-host dogfood): resolve HOW to scope a git scan to $ProjectRoot's OWN subtree, tolerant of
+    # $ProjectRoot being a SUBDIR of a larger repo (a Specrew project NESTED in a monorepo - the case that
+    # hollowed EnglishIntake's handover). Returns:
+    #   InWorkTree : is $ProjectRoot inside ANY git work tree (the repo root OR a subdir)? Replaces the
+    #                is-repo-ROOT gate: a nested project is now scanned (scoped), not skipped.
+    #   Prefix     : the repo-root-relative prefix of $ProjectRoot ('' when it IS the repo root; e.g.
+    #                'Tools/EnglishIntake/' when nested). Callers strip this to map git's repo-root-relative
+    #                paths back to project-relative.
+    # Pairs with the `-- .` pathspec the callers add: that confines the scan to the cwd (-C $ProjectRoot)
+    # subtree so a nested project NEVER scans the unbounded parent tree (the original hook-hang hazard the
+    # is-repo-root gate guarded against). Fail-safe: any error / not-in-a-work-tree -> InWorkTree=$false so the
+    # caller degrades to the empty/no-scan shape, exactly as before. This helper is the seam the deferred
+    # navigator subtree-scoping will reuse (see iterations/007/subtree-scoping-seed.md).
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param([Parameter(Mandatory)][string] $ProjectRoot)
+    try {
+        $inside = (& git -C $ProjectRoot rev-parse --is-inside-work-tree 2>$null)
+        if ($LASTEXITCODE -ne 0 -or ([string]$inside).Trim() -ne 'true') {
+            return [pscustomobject]@{ InWorkTree = $false; Prefix = '' }
+        }
+        $prefix = ([string](& git -C $ProjectRoot rev-parse --show-prefix 2>$null)).Trim()
+        return [pscustomobject]@{ InWorkTree = $true; Prefix = $prefix }
+    }
+    catch { return [pscustomobject]@{ InWorkTree = $false; Prefix = '' } }
+}
+
 function Get-SpecrewEmptySessionDelta {
     # The empty/zero delta shape Get-SpecrewSessionDelta returns when there is no git scan to run (not a repo
     # root). Single source of truth so the gate and the happy path can never drift in shape.
@@ -270,7 +298,12 @@ function Get-SpecrewSessionDelta {
     # project root that merely sits under a parent git repo / worktree), `git status --untracked-files=all`
     # would scan the entire PARENT tree - unbounded, hangs the hook, and reports the parent's files as this
     # project's delta. Returning the empty shape here is the same fail-safe degrade as any git error.
-    if (-not (Test-SpecrewIsGitRepoRoot -ProjectRoot $ProjectRoot)) { return Get-SpecrewEmptySessionDelta }
+    # iter-007 fix: scope the scan to $ProjectRoot's OWN subtree, tolerant of a project NESTED in a larger repo
+    # (governance-root != git-root). InWorkTree=$false (not inside any git work tree) keeps the original
+    # fail-safe: degrade to the empty shape, never scan a parent repo unbounded. Prefix maps the scoped scan's
+    # repo-root-relative paths back to project-relative. (Dogfood: EnglishIntake under iTeach-Avatar hollowed.)
+    $scanScope = Get-SpecrewGitScanScope -ProjectRoot $ProjectRoot
+    if (-not $scanScope.InWorkTree) { return Get-SpecrewEmptySessionDelta }
 
     $branch = ''; $headShort = ''; $headSubject = ''
     try { $branch = ([string](& git -C $ProjectRoot rev-parse --abbrev-ref HEAD 2>$null)).Trim() } catch { $null = $_ }
@@ -281,8 +314,15 @@ function Get-SpecrewSessionDelta {
     try {
         # --untracked-files=all expands untracked DIRECTORIES (e.g. specs/) into their individual files so the
         # user's real work (specs/<feature>/spec.md, workshop/<lens>.md) surfaces instead of a bare "specs/".
-        $porcelain = @(& git -C $ProjectRoot status --porcelain --untracked-files=all 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-        $uncommittedFiles = @($porcelain | ForEach-Object { ($_ -replace '^..\s+', '').Trim() } | Where-Object { $_ })
+        # `-- .` confines the scan to $ProjectRoot's subtree (the cwd via -C) so a nested project never walks the
+        # parent repo. status --porcelain returns REPO-ROOT-relative paths, so strip the subtree prefix back to
+        # project-relative (Prefix='' at the repo root -> the strip is a no-op).
+        $porcelain = @(& git -C $ProjectRoot status --porcelain --untracked-files=all -- . 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+        $uncommittedFiles = @($porcelain | ForEach-Object {
+                $p = ($_ -replace '^..\s+', '').Trim()
+                if ($scanScope.Prefix -and $p) { $p = ($p -replace ('^' + [regex]::Escape($scanScope.Prefix)), '') }
+                $p
+            } | Where-Object { $_ })
     }
     catch { $uncommittedFiles = @() }
 
@@ -299,7 +339,9 @@ function Get-SpecrewSessionDelta {
     $newCommits = @()
     if (-not [string]::IsNullOrWhiteSpace($SinceCommit)) {
         try {
-            $log = @(& git -C $ProjectRoot log --oneline ("{0}..HEAD" -f $SinceCommit) 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            # `-- .` scopes "new commits this session" to commits touching $ProjectRoot's subtree (a nested
+            # project's own commits, not the whole monorepo's).
+            $log = @(& git -C $ProjectRoot log --oneline ("{0}..HEAD" -f $SinceCommit) -- . 2>$null) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
             if ($LASTEXITCODE -eq 0) { $newCommits = @($log) }
         }
         catch { $newCommits = @() }

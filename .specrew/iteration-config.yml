@@ -43,7 +43,17 @@ effort_unit: "story_points"
 # REVERTED 2026-06-17 at F-184 retro: restored to the global default 20. The
 # F-184 iteration plan remains 26/26 as historical truth under the temporary
 # override and is protected by closed/past-implementation capacity validation.
-capacity_per_iteration: 20
+#
+# OVERRIDE 4 (2026-07-02, F-197 iteration 010, verdict: approved for plan with Option A,
+# auth commit ab1b516b): raised 20 -> 26 for the full-scope robustness-completion iteration
+# (T091/T093/T094/T096/T099/T100 + the code-review-agent.md preservation fold + open findings
+# D-197-I009-003/-015 + cross-host validation; 24.00 SP planned), which the maintainer explicitly
+# chose to keep as ONE coherent closing iteration (D2 "include T099+T100 too", 2026-07-01) rather
+# than split. Made INFORMED of the split-not-raise position above. Applied only AFTER iteration 009
+# was closed (2026-07-02) so it is grandfathered at 20; iterations 001-009 validate against their own
+# plan capacity. Same REVERSIBLE terms: the f197-i010-cap-revert-obligation restores this to the
+# global default 20 at iter-010 closeout.
+capacity_per_iteration: 26
 
 # Iteration bounding strategy
 # - scope: Iteration completes when planned tasks are done (time varies)

@@ -77,6 +77,24 @@
         }
       }
     },
+    "reviewer_preference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "source"],
+      "description": "Human-selected or explicitly auto-selected continuous co-review preference captured by the code-implementation workshop. Model and effort are opaque because harness capabilities are provider-specific and volatile.",
+      "properties": {
+        "mode": {
+          "enum": ["human-selected", "auto-select"],
+          "description": "human-selected means the workshop chose a reviewer; auto-select means Specrew should apply the ranking policy."
+        },
+        "host": { "type": ["string", "null"], "description": "Requested reviewer harness/host, such as codex, claude, or copilot." },
+        "model": { "type": ["string", "null"], "description": "Requested reviewer model label/id as understood by the selected host." },
+        "effort": { "type": ["string", "null"], "description": "Optional host-specific reasoning/effort setting, stored opaquely for the reviewer adapter/future capability layer." },
+        "source": { "enum": ["code-implementation-workshop", "auto-selection-fallback"] },
+        "authorization_ref": { "type": ["string", "null"], "description": "Optional approval reference when the chosen reviewer requires explicit cost/privacy authorization." },
+        "rationale": { "type": ["string", "null"], "description": "Short reason for the choice or fallback." }
+      }
+    },
     "provenance": {
       "type": "object",
       "additionalProperties": false,

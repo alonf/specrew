@@ -1,0 +1,13 @@
+<!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks -->
+## What I Just Did
+Authored the iteration plan covering the #2885 latency fix and the gate-enforcement wiring.
+## Why I Stopped
+Boundary: plan. The plan is drafted and needs your verdict before tasks are derived.
+## What Needs Your Review
+The scope table, the effort model, and the traceability summary in plan.md.
+## What Happens Next
+On approval I derive the task table and begin the test-first implementation of #2885.
+## Discussion Prompts
+1. Is the opt-in gate flag default-OFF posture acceptable for governed projects?
+## What I Need From You
+Reply: approved for tasks / rejected for tasks / parked.

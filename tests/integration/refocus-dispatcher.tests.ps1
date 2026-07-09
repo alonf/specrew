@@ -127,6 +127,17 @@ Assert-True ($result.ExitCode -eq 0) 'broken catalog exits 0 (fail-open)'
 Assert-True ($result.StdErr.Contains('WARN CATALOG_SCHEMA')) 'broken catalog warns CATALOG_SCHEMA once'
 Assert-True ([string]::IsNullOrWhiteSpace($result.StdOut)) 'broken catalog: automation goes quiet'
 
+# --- 5b. SPECREW_DISABLE_EVENTS: surgical per-event kill-switch (recovery lever) ---
+# Reuses the still-broken catalog as a probe: a DISABLED event no-ops BEFORE any parsing (so the broken catalog
+# is never reached -> NO WARN); a non-listed event still reaches parsing (the broken catalog WARNs) - proving the
+# silence is scoped to the named events only, unlike SPECREW_REFOCUS_DISABLE which silences every event.
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson $eventCompact -ExtraEnv @{ SPECREW_DISABLE_EVENTS = 'SessionStart' }
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdOut) -and [string]::IsNullOrWhiteSpace($result.StdErr)) 'DISABLE_EVENTS: a listed event no-ops before any parsing (broken catalog never reached -> no WARN)'
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson $eventCompact -ExtraEnv @{ SPECREW_DISABLE_EVENTS = 'Stop' }
+Assert-True ($result.ExitCode -eq 0 -and $result.StdErr.Contains('WARN CATALOG_SCHEMA')) 'DISABLE_EVENTS: a NON-listed event proceeds normally (reaches parsing -> still WARNs)'
+$result = Invoke-Dispatcher -Dispatcher $dispatcher -DispatcherArgs @('-Event', 'SessionStart') -StdinJson $eventCompact -ExtraEnv @{ SPECREW_DISABLE_EVENTS = 'stop, sessionstart' }
+Assert-True ($result.ExitCode -eq 0 -and [string]::IsNullOrWhiteSpace($result.StdErr)) 'DISABLE_EVENTS: case-insensitive comma-list match silences (no WARN)'
+
 # --- 6. Self-gate: non-Specrew directory is a silent no-op ------------------------
 $bareDir = Join-Path ([System.IO.Path]::GetTempPath()) ('specrew-refocus-bare-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $bareDir -Force | Out-Null

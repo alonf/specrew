@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://specrew.local/contracts/continuous-co-review/gate-verdict.schema.json",
+  "title": "GateVerdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "verdict_id", "run_id", "checkpoint_id", "state", "unresolved_blocking_count", "created_at"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "verdict_id": { "type": "string", "minLength": 1 },
+    "run_id": { "type": "string", "minLength": 1 },
+    "checkpoint_id": { "type": "string", "minLength": 1 },
+    "state": { "enum": ["pass", "blocked", "unsafe", "escalated", "skipped"] },
+    "unresolved_blocking_count": { "type": "integer", "minimum": 0 },
+    "blocking_finding_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "unsafe_reasons": { "type": "array", "items": { "type": "string" }, "default": [] },
+    "round_count": { "type": "integer", "minimum": 0 },
+    "escalation_ref": { "type": ["string", "null"] },
+    "created_at": { "type": "string", "format": "date-time" }
+  }
+}

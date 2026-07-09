@@ -1,0 +1,66 @@
+{
+  "workshop_intake": true,
+  "confirmation_required": true,
+  "selected": [
+    "architecture-core",
+    "component-design",
+    "security-compliance",
+    "code-implementation"
+  ],
+  "workshop": {
+    "architecture-core": {
+      "agenda": [
+        "context-delivery model: curated-diff-in-prompt vs worktree-the-reviewer-reads",
+        "worktree contents: what is stripped vs kept",
+        "reviewed-state identity + the dispatcher 20s Stop budget",
+        "what is out of scope"
+      ],
+      "decision": "Worktree-based context delivery: reviewer runs in a git-tree worktree of the project minus the methodology's KNOWN deployed machinery (.specrew/.specify/.squad + deployed scripts/internal/continuous-co-review,agent-tasks; node_modules/build auto-excluded as gitignored), reads .review/changes.diff as the entry point + design context as files, slim prompt, browses real files. ALL heavy work moves to a DETACHED async process with a generous budget; the Stop hook only triggers (<1s) so 20s never bounds the review. Nothing out of scope by fiat.",
+      "depth": "full",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/008/workshop/architecture-core.md - worktree-based reviewer-context flow"
+    },
+    "component-design": {
+      "agenda": [
+        "which components change vs survive vs new vs removed",
+        "manual /specrew-review shares the pipeline",
+        "result-delivery / human-gated status survives",
+        "review rounds configurable"
+      ],
+      "decision": "Change-impact map agreed: back half (reap, blackboard, signoff-gate, host adapters, selection/authorization) SURVIVES; navigator Stop-path shrinks to a trigger; worktree-materialize/digest/diff-provider/prompt-composer/reviewer-instruction/execution-engine CHANGE; NEW = detached prepare+review orchestrator + .review/ assembler; REMOVED = scaffolding-exclusion heuristic + diff cap/input-guard. ADDITIONS: manual /specrew-review (specrew-review.ps1 + skill) is a 2nd door into the SAME detached pipeline (deploy fixed); the result-delivery + human-gated status ('continue'/status) loop is KEPT + central, driving the agent to fix after a blocking verdict; review runs up to N rounds then escalates, N = co_review_max_rounds (default 2, configurable, not hardcoded).",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    },
+    "security-compliance": {
+      "agenda": [
+        "revised visibility policy (browse the worktree)",
+        "read-only / no-mutation boundary",
+        "secrets/confidentiality in the worktree",
+        "relevance vs confidentiality stripping"
+      ],
+      "decision": "Reviewer is a fully-trusted component: SEES ALL (no confidentiality blinding) and RUNS ALL (agentic - executes tests/builds/exploration in the ephemeral worktree to verify) in a read-only-source ephemeral worktree; the ONLY restriction is it CANNOT FIX the code (FindingsResult not patches; real repo never mutated; worktree discarded; fixes via the result-delivery/round loop - closes G2). Confidentiality applies only to durable artifacts (redact secret values to location; no ambient/machine state). Methodology-machinery strip is relevance (review the user project, not the deployed tool), orthogonal to see-all. Strengthens F-197 trust boundary with the run capability.",
+      "depth": "medium",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question",
+      "diagram": "iterations/008/workshop/security-compliance.md - reviewer trust boundary (see-all/run-all/cant-fix, read-only ephemeral worktree)"
+    },
+    "code-implementation": {
+      "agenda": [
+        "reuse F-197 code-rules?",
+        "dependency policy (new deps?)",
+        "iter-008 implementation craft deltas"
+      ],
+      "decision": "Reuse F-197 code-rules (PowerShell 7.x idioms, Set-StrictMode, fail-open contracts, established CCR conventions); NO new dependencies (git, claude/codex CLIs, Pester 5.5 - all existing). iter-008 deltas: agentic reviewer invocation (claude -p/codex with read+run tools in the worktree cwd, slim prompt); worktree lifecycle must dispose reliably (the ~75 leftover specrew-itask-* debris); tests on Pester 5.5 + the deploy-completeness smoke-test pattern (49f88717) as the acceptance bar (deployed-and-fires, not unit-green).",
+      "depth": "light",
+      "moved_on": true,
+      "confirmation": "human-confirmed",
+      "confirmation_scope": "lens-question"
+    }
+  },
+  "co_design": true
+}

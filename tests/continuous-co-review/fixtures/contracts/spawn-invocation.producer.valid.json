@@ -1,0 +1,24 @@
+{
+  "schema_version": "1.0",
+  "invocation_id": "invocation-001",
+  "run_id": "run-197-fixture-001",
+  "attempt_number": 1,
+  "adapter_id": "fixture",
+  "requested_host": "fixture",
+  "requested_model": "fixture-reviewer",
+  "actual_host": "fixture",
+  "actual_model": "fixture-reviewer",
+  "argv_summary": [
+    "fixture-reviewer",
+    "--request",
+    "<redacted-request-path>"
+  ],
+  "working_directory_ref": "workspace/run-197-fixture-001",
+  "timeout_seconds": 60,
+  "stdout_capture_policy": "parse-json-only",
+  "stderr_capture_policy": "status-only",
+  "exit_code": 0,
+  "failure_category": null,
+  "started_at": "2026-06-17T21:10:00Z",
+  "ended_at": "2026-06-17T21:10:05Z"
+}

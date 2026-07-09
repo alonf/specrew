@@ -33,7 +33,10 @@ test PASS or FAIL verdict.
 
 Steps 1-4 are the normal Specrew feature implementation, review, retro, and
 iteration closeout flow. Release discipline begins after feature-closeout is
-ready.
+ready. From 0.40.0, a code-touched review-signoff inside steps 1-4 requires
+promoted continuous co-review evidence (`.specrew/review/inline/<run-id>/`) —
+full+independent, or degraded with a recorded human ack — so every release
+candidate carries an independent-reviewer trail.
 
 ### Step 5: Push the feature branch
 

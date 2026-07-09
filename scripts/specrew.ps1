@@ -32,6 +32,23 @@ if ($VersionRequested.IsPresent) {
     $Command = 'version'
 }
 
+# CLI side-by-side dev testing: when SPECREW_MODULE_PATH points to a Specrew DEV tree, run the CLI from THERE - the
+# SAME env var the runtime (navigator, hook-dispatcher, bootstrap/handover providers) already honors. This closes the
+# asymmetry where a trial could redirect the hooks but NOT `specrew init`/`review`, forcing a destructive overwrite of
+# the installed module to test a branch. Recursion-guarded on the resolved path (the dev tree's own copy sees
+# $PSCommandPath == $devSpecrew and runs normally); a strict no-op when the env var is unset or points elsewhere.
+if (-not [string]::IsNullOrWhiteSpace($env:SPECREW_MODULE_PATH)) {
+    $devSpecrew = Join-Path $env:SPECREW_MODULE_PATH 'scripts/specrew.ps1'
+    if ((Test-Path -LiteralPath $devSpecrew -PathType Leaf) -and
+        ((Resolve-Path -LiteralPath $devSpecrew).Path -ne (Resolve-Path -LiteralPath $PSCommandPath).Path)) {
+        $forward = @()
+        if (-not [string]::IsNullOrWhiteSpace($Command)) { $forward += $Command }
+        $forward += @($Arguments)
+        & pwsh -NoProfile -ExecutionPolicy Bypass -File $devSpecrew @forward
+        exit $LASTEXITCODE
+    }
+}
+
 function Show-Usage {
     @'
 specrew - Spec-governed AI crew operating model
@@ -39,7 +56,7 @@ specrew - Spec-governed AI crew operating model
 Usage:
   specrew init [options]           Bootstrap Specrew in the current or target project
   specrew start [args]             Start or resume the Squad-driven Spec Kit lifecycle
-  specrew review [options]         Replay the persisted reviewer closeout packet
+  specrew review [options]         Run live co-review or replay persisted reviewer evidence
   specrew where [options]          Show the velocity dashboard ("where am I?")
   specrew status [options]         Alias for specrew where
   specrew update [options]         Refresh Specrew assets or upgrade managed platforms
@@ -51,7 +68,7 @@ Usage:
 Commands:
   init     Initialize Specrew (Spec Kit + Squad + governance)
   start    Start or resume feature delivery through Squad + Spec Kit
-  review   Show reviewer summary for a completed iteration
+  review   Run live reviewer evidence or show reviewer summary for a completed iteration
   where    Show the velocity dashboard
   status   Alias for where
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
@@ -67,6 +84,7 @@ Examples:
   specrew start
   specrew start "Build a REST API for user management"
   specrew review --project-path .
+  specrew review --live --baseline-ref origin/main --host claude --authorization-ref manual-review
   specrew where
   specrew status --compact
   specrew update
@@ -96,7 +114,7 @@ Slash-command catalog (`/specrew-help` fallback):
   /specrew-status   Alias for /specrew-where
   /specrew-update   Refresh Specrew-managed assets and runtime surfaces
   /specrew-team     Manage Squad team members
-  /specrew-review   Replay reviewer closeout state without approving a boundary
+  /specrew-review   Run live reviewer evidence or replay closeout state without approving a boundary
   /specrew-help     Canonical catalog/help fallback
   /specrew-version  Installed version and compatibility state
 '@ | Write-Host
@@ -337,7 +355,12 @@ function Assert-WhitelistedArguments {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--info', '--all', '--specrew', '--squad', '--spec-kit', '--skip-update-check', '--upstream-latest', '--help', '-h') -ValueOptions @('--project-path')
         }
         'review' {
-            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration') -MaxPositionals 1
+            # T094/T096 flags (--ack-degraded/--ack-reason/--remediate/--scope) MUST be whitelisted here:
+            # this front door is what the product's own stop-blocks and gate messages tell users to run.
+            # Downstream field bug 2026-07-09 (tesr197local): the whitelist predated the flags, so every
+            # sanctioned remediation/ack command was rejected as "Unsupported argument" and the agent
+            # concluded the mechanisms were unimplemented. Whitelist test covers the quartet.
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--checkpoint-id', '--run-id', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path', '--ack-degraded', '--ack-reason', '--remediate', '--scope') -MaxPositionals 1
         }
         'version' {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h') -ValueOptions @('--project-path')

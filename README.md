@@ -8,7 +8,7 @@
 # Specrew
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.39.0-blue.svg)](.specrew/config.yml)
+[![Version](https://img.shields.io/badge/version-0.40.0-blue.svg)](.specrew/config.yml)
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-orange.svg)](#status)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-blue.svg)](#prerequisites)
 
@@ -228,7 +228,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 ## Status
 
 - **Latest stable baseline**: 0.37.0 — Feature 174 (hook-driven session bootstrap), promoted after beta-before-stable validation; builds on 0.36.0 (Feature 182, work-kind & branch governance) and the 0.33.0–0.35.0 Refocus + lens line; see [CHANGELOG.md](CHANGELOG.md) for release details
-- **Active development line**: `0.39.0-beta1` (Feature 185 — Host-Neutral Lifecycle Gate Enforcement), in flight on this branch; builds on the `0.38.0-beta1` (Feature 184 — Full Antigravity Refocus) base
+- **Active development line**: `0.40.0-beta.1` (Feature 197 — Continuous Co-Review, feature-complete), in flight on this branch; builds on the `0.39.0-beta1` (Features 197-preview + 185) base
 - **Alpha software**, validated through dogfooding in this repository
 - **Built for a single developer today.** Multi-developer reconciliation is a roadmap item ([Proposal 010](proposals/010-multi-developer-reconciliation.md)); a leaner spec-first concurrent model is queued as [Proposal 115](proposals/115-spec-first-concurrent-development-workflow.md).
 - Release truth lives in [CHANGELOG.md](CHANGELOG.md), [docs/versioning.md](docs/versioning.md), and the `v0.NN.0` tags.
@@ -244,6 +244,7 @@ Vanilla Spec Kit ships the slash-command surface but has no orchestration or bou
 - A per-user **Crew Interaction Profile** (`/specrew-user-profile`) — four decision-area settings (Product Strategy, UX/UI Design, Software Architecture, AI Delivery Planning) that tune how much Specrew asks, explains, recommends, and auto-decides. It resolves per current user from the loader/path rule (`$env:USERPROFILE\.specrew\user-profile.yml` on Windows, `~/.specrew/user-profile.yml` on Unix), is surfaced as soft session guidance everywhere and hard-applied only in `/speckit.specify`, and lets teammates run different local profiles in the same repo with no shared-repository changes. See [docs/user-guide.md "Crew Interaction Profile"](docs/user-guide.md#crew-interaction-profile).
 - Slash-command catalog deployed to `.claude/skills/`, `.github/skills/`, and `.agents/skills/` ([Feature 024](specs/024-slash-command-multi-host-correctness/spec.md))
 - Validator memoization, parallelization, closed-iteration index, repetition detector — the v0.24.3 process-optimization bundle keeps the discipline cheap to enforce
+- **Continuous co-review** ([Feature 197](specs/197-continuous-co-review/spec.md), 0.40.0-beta): a Stop-hook navigator fires an independent, human-authorized reviewer harness (one-time `specrew review --host <h> --authorization-ref <ref>` per project) in an OS-contained ephemeral worktree at each implement checkpoint, and `specrew review --live` runs one on demand. The selection is host-neutral (strongest eligible reviewer on a DIFFERENT harness than the code-writer, from the reviewer-host catalog — claude, codex, copilot, cursor-agent, antigravity). Review-signoff **fails closed** until real co-review evidence exists: degraded evidence (partial / same-host / over-budget) needs a recorded human ack (`--ack-degraded`), problem runs surface a five-option remediation menu (`--remediate`) instead of looping, and a round-ceiling escalation surfaces once then waits for a human — never a silent false-green
 - Reviewer-regression routing, session-loaded file change detection, drift-log integrity
 - Pre-boundary markdown-lint auto-fix gate keeps every boundary commit lint-clean
 - **Refocus drift recovery** (`/specrew-refocus`) + automatic discipline injection: boundary syncs deliver the incoming stage's rules on every host; hook-capable hosts re-ground context through their native carriers. On Antigravity, `PreInvocation` carries launch/bootstrap and B3 boundary refocus, `Stop` carries handover, and B1 compaction refocus remains absent. The refocus machinery keeps a per-session circuit breaker and three kill-switch levels.

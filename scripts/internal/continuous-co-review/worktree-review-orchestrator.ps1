@@ -1,0 +1,613 @@
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+# iter-008 — the detached "prepare+review" orchestrator. Auto-resolves the inputs (merge-base baseline + design
+# context), runs the worktree-reviewer pipeline, and writes a REAP-CONSUMABLE result (result.out = FindingsResult
+# JSON, status.json = terminal status) under a run dir, then disposes the ephemeral worktree. BOTH doors — the
+# navigator's fast Stop-trigger AND /specrew-review — drive THIS one pipeline (G1/G3 close here). All heavy work
+# lives here, off the 20s Stop budget. See specs/197-continuous-co-review/iterations/008/design-analysis.md.
+
+. (Join-Path $PSScriptRoot 'worktree-reviewer.ps1')
+
+function ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp {
+    param([datetime]$Timestamp = [datetime]::UtcNow)
+    return $Timestamp.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+}
+
+function Resolve-ContinuousCoReviewTrunkName {
+    param([Parameter(Mandatory)][string]$GitRoot)
+    $head = (& git -C $GitRoot symbolic-ref --quiet refs/remotes/origin/HEAD 2>$null)
+    if ($head) { return ($head.Trim() -replace '^refs/remotes/', '') }
+    foreach ($t in @('origin/main', 'origin/dev', 'main', 'dev', 'master')) {
+        & git -C $GitRoot rev-parse --verify --quiet "$t^{commit}" 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) { return $t }
+    }
+    return $null
+}
+
+function Resolve-ContinuousCoReviewWorktreeBaseline {
+    # The review baseline = merge-base with trunk (the user's INCREMENT since branching, not the inception).
+    param([Parameter(Mandatory)][string]$RepoRoot, [string]$Trunk)
+    $gitRoot = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null).Trim()
+    if ([string]::IsNullOrWhiteSpace($gitRoot)) { return $null }
+    if (-not $Trunk) { $Trunk = Resolve-ContinuousCoReviewTrunkName -GitRoot $gitRoot }
+    $mb = $null
+    if ($Trunk) { $mb = (& git -C $gitRoot merge-base HEAD $Trunk 2>$null); if ($LASTEXITCODE -ne 0) { $mb = $null } }
+    if ([string]::IsNullOrWhiteSpace($mb)) {
+        # No trunk (a GREENFIELD: `specrew init` creates ONLY the feature branch - no main/master/remote) OR no
+        # merge-base (unrelated histories): fall back to the EMPTY TREE so the co-review reviews the whole feature's
+        # source instead of failing 'baseline-unresolved' and never running. This was the root cause of the first real
+        # e2e producing zero co-review evidence. The strip/digest list still excludes .specrew/.specify machinery from
+        # what the reviewer sees, so the empty-tree baseline reviews source only, not scaffolding.
+        return '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+    }
+    return ([string]$mb).Trim()
+}
+
+function Resolve-ContinuousCoReviewWorktreeDesignContext {
+    # Auto-resolve the design context: the feature's spec.md + the latest iteration's design-analysis.md.
+    # Sources, in order (f1 fix, codex finding 2026-07-08): (1) .specify/feature.json (fast, but
+    # GITIGNORED machine-local state - a fresh clone lacks it), (2) .specrew/start-context.json
+    # session_state (the durable lifecycle pointer), (3) a single specs/*/spec.md directory when
+    # unambiguous. Returns project-relative paths (or @() if genuinely unresolved - the CALLER now
+    # records + degrades an empty resolution instead of silently reviewing blind).
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $out = New-Object System.Collections.Generic.List[string]
+    $featureDir = $null
+    $fj = Join-Path $RepoRoot '.specify/feature.json'
+    if (Test-Path -LiteralPath $fj -PathType Leaf) {
+        try { $featureDir = ([string]((Get-Content $fj -Raw -Encoding UTF8 | ConvertFrom-Json).feature_directory)).Replace('\', '/').TrimEnd('/') } catch { $featureDir = $null }
+    }
+    if ([string]::IsNullOrWhiteSpace($featureDir)) {
+        # Durable fallback: the lifecycle start-context names the active feature.
+        try {
+            $scPath = Join-Path $RepoRoot '.specrew/start-context.json'
+            if (Test-Path -LiteralPath $scPath -PathType Leaf) {
+                $sc = Get-Content -LiteralPath $scPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state) {
+                    $ref = if ($sc.session_state.PSObject.Properties['feature_ref']) { [string]$sc.session_state.feature_ref } else { '' }
+                    if (-not [string]::IsNullOrWhiteSpace($ref) -and (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path 'specs' $ref)) -PathType Container)) {
+                        $featureDir = ('specs/' + $ref)
+                    }
+                }
+            }
+        }
+        catch { $null = $_ }
+    }
+    if ([string]::IsNullOrWhiteSpace($featureDir)) {
+        # Last resort: a SINGLE unambiguous specs/*/spec.md (multi-feature repos stay unresolved).
+        try {
+            $specDirs = @(Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'specs') -Directory -ErrorAction Stop | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'spec.md') -PathType Leaf })
+            if ($specDirs.Count -eq 1) { $featureDir = ('specs/' + $specDirs[0].Name) }
+        }
+        catch { $null = $_ }
+    }
+    if ([string]::IsNullOrWhiteSpace($featureDir)) { return @() }
+    if (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path $featureDir 'spec.md')) -PathType Leaf) { [void]$out.Add("$featureDir/spec.md") }
+    $iterRoot = Join-Path $RepoRoot (Join-Path $featureDir 'iterations')
+    if (Test-Path -LiteralPath $iterRoot -PathType Container) {
+        $latest = @(Get-ChildItem -LiteralPath $iterRoot -Directory -EA SilentlyContinue | Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } -Descending | Select-Object -First 1)
+        if ($latest -and (Test-Path -LiteralPath (Join-Path $latest[0].FullName 'design-analysis.md') -PathType Leaf)) {
+            [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, (Join-Path $latest[0].FullName 'design-analysis.md')).Replace('\', '/')))
+        }
+    }
+    # Surface the FORMAL contracts (JSON Schema / OpenAPI / proto / Avro / GraphQL) - the AUTHORITY for machine
+    # formats (casing, field names, types, enums). spec.md + design-analysis are PROSE and describe intent
+    # informally; without the contract the reviewer would rule conformance from the narrative and can confidently
+    # contradict the real schema (the curation-steers-the-reviewer failure the worktree pivot was meant to escape).
+    $contractsDir = Join-Path $RepoRoot (Join-Path $featureDir 'contracts')
+    if (Test-Path -LiteralPath $contractsDir -PathType Container) {
+        foreach ($cf in @(Get-ChildItem -LiteralPath $contractsDir -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '(?i)^\.(json|ya?ml|proto|graphql|avsc|xsd)$' })) {
+            [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, $cf.FullName)).Replace('\', '/'))
+        }
+    }
+    return @($out)
+}
+
+function Resolve-ContinuousCoReviewReviewerHost {
+    # Select the reviewer host: code-writer-INDEPENDENT + AUTHORIZED (reviewer-hosts.json), via the legacy policy
+    # (reused, NOT reinvented). Returns @{ host; model } or $null (no authorized host -> the caller fails-soft with
+    # a stated reason). Lazy-loads the CCR engine (_load) if the catalog/policy aren't in scope (the detached path
+    # dot-sources only the orchestrator). This is what makes the worktree reviewer host-NEUTRAL + authorized, not
+    # claude-pinned.
+    param([Parameter(Mandatory)][string]$RepoRoot, [string]$CodeWriterHost, [string]$RequestedHost)
+    if (-not (Get-Command 'Select-ContinuousCoReviewReviewerCandidate' -ErrorAction SilentlyContinue)) {
+        $loadPath = Join-Path $PSScriptRoot '_load.ps1'
+        if (Test-Path -LiteralPath $loadPath -PathType Leaf) { try { . $loadPath } catch { $null = $_ } }
+    }
+    if (-not (Get-Command 'Get-ContinuousCoReviewReviewerHostCatalog' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Select-ContinuousCoReviewReviewerCandidate' -ErrorAction SilentlyContinue)) { return $null }
+    try {
+        # Same load path as the legacy navigator (continuous-co-review-navigator.ps1:849-865): the persisted
+        # human-authorized config -> catalog -> independent+authorized candidate. T093: an explicit
+        # -RequestedHost restricts the selection (honour-or-surface); the returned independence label
+        # ('independent' | 'same-host' | 'unverified') is the D4 gate's evidence dimension.
+        $reviewerConfig = $null
+        $reviewerHostsPath = Join-Path $RepoRoot '.specrew/reviewer-hosts.json'
+        if (Test-Path -LiteralPath $reviewerHostsPath -PathType Leaf) {
+            try { $reviewerConfig = (Get-Content -LiteralPath $reviewerHostsPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 100) } catch { $reviewerConfig = $null }
+        }
+        $catalog = Get-ContinuousCoReviewReviewerHostCatalog -Configuration $reviewerConfig
+        $cand = Select-ContinuousCoReviewReviewerCandidate -Catalog $catalog -CodeWriterHost $CodeWriterHost -RequestedHost $RequestedHost
+        if ($null -eq $cand -or [string]::IsNullOrWhiteSpace([string]$cand.host)) { return $null }
+        $indep = if ($cand.PSObject.Properties['independence']) { [string]$cand.independence } else { 'unverified' }
+        $selReason = if ($cand.PSObject.Properties['selection_reason']) { [string]$cand.selection_reason } else { '' }
+        return [pscustomobject]@{ host = [string]$cand.host; model = [string]$cand.model; independence = $indep; selection_reason = $selReason }
+    }
+    catch { return $null }
+}
+
+function Get-ContinuousCoReviewMaxRounds {
+    # co_review_max_rounds (config, default 2). The review->fix->re-review ceiling before escalation.
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $cfg = Join-Path $RepoRoot '.specrew/config.yml'
+    if (Test-Path -LiteralPath $cfg -PathType Leaf) {
+        foreach ($line in (Get-Content -LiteralPath $cfg -Encoding UTF8)) {
+            if ($line -match '^\s*co_review_max_rounds\s*:\s*(\d+)') { $n = [int]$Matches[1]; if ($n -ge 1) { return $n } }
+        }
+    }
+    return 2
+}
+
+function Get-ContinuousCoReviewRoundStatePath { param([Parameter(Mandatory)][string]$RepoRoot) return (Join-Path $RepoRoot '.specrew/runtime/co-review-round-state.json') }
+
+function Get-ContinuousCoReviewRoundState {
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $RepoRoot
+    if (Test-Path -LiteralPath $p -PathType Leaf) { try { return (Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json) } catch { return $null } }
+    return $null
+}
+
+function Set-ContinuousCoReviewRoundState {
+    param([Parameter(Mandatory)][string]$RepoRoot, [string[]]$ChangedPaths, [int]$Round, [bool]$Blocking, [string]$Findings)
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $RepoRoot
+    try {
+        $dir = Split-Path -Parent $p; if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        # T096/FR-038: PRESERVE an un-consumed remediation choice across the per-run rewrite (the
+        # human may record it between runs; only the consumer clears it).
+        $remediation = $null
+        try {
+            if (Test-Path -LiteralPath $p -PathType Leaf) {
+                $prior = Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json
+                if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'remediation')) { $remediation = $prior.remediation }
+            }
+        }
+        catch { $remediation = $null }
+        ([pscustomobject]@{ changed_paths = @($ChangedPaths); round = $Round; blocking = $Blocking; findings = $Findings; remediation = $remediation } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    }
+    catch { $null = $_ }
+}
+
+function Set-ContinuousCoReviewRemediationChoice {
+    <#
+        T096/FR-038 (iter-009 D6/R6): record the human's remediation choice onto the round-state so
+        the NEXT run applies it (the menu's carrier). Choices:
+          more-time (+TimeoutSeconds) | different-host (+HostName) | narrow-scope (+Scope) |
+          accept-partial (+RunId +Reason: records the T094 degraded ack immediately) |
+          override-block (+RunId +Reason: D5 - only a DEGRADED run's block is overridable).
+        TRUST BOUNDARY: construct only from a genuinely human-typed command
+        (`specrew review --remediate ...`) or a captured human verdict.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][ValidateSet('more-time', 'different-host', 'narrow-scope', 'accept-partial', 'override-block')][string]$Choice,
+        [int]$TimeoutSeconds = 0,
+        [string]$HostName,
+        [string]$Scope,
+        [string]$RunId,
+        [string]$Reason,
+        [string]$AuthorizedBy,
+        [datetime]$Now = [datetime]::UtcNow
+    )
+    $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    if ([string]::IsNullOrWhiteSpace($AuthorizedBy)) {
+        $AuthorizedBy = (& git -C $resolved config user.name 2>$null)
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = [string]$env:USERNAME }
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = 'human' }
+    }
+    $AuthorizedBy = ([string]$AuthorizedBy).Trim()
+
+    switch ($Choice) {
+        'different-host' { if ([string]::IsNullOrWhiteSpace($HostName)) { throw "remediation 'different-host' needs --host <name>." } }
+        'narrow-scope' {
+            if ([string]::IsNullOrWhiteSpace($Scope)) { throw "remediation 'narrow-scope' needs --scope <code|process|path:<p>|function:<name>>." }
+            if ($Scope -notmatch '^(code|process|path:.+|function:.+)$') { throw "remediation scope '$Scope' is not one of code | process | path:<p> | function:<name>." }
+        }
+        'accept-partial' {
+            if ([string]::IsNullOrWhiteSpace($RunId) -or [string]::IsNullOrWhiteSpace($Reason)) { throw "remediation 'accept-partial' needs --run-id <id> and --ack-reason '<why>'." }
+            # Accepting the partial IS the T094 first-class ack - record it immediately (no rerun).
+            if (-not (Get-Command -Name 'Add-ContinuousCoReviewDegradedAck' -ErrorAction SilentlyContinue)) {
+                $lp = Join-Path $PSScriptRoot '_load.ps1'; if (Test-Path -LiteralPath $lp -PathType Leaf) { . $lp }
+            }
+            $null = Add-ContinuousCoReviewDegradedAck -RepoRoot $resolved -RunId $RunId -AuthorizedBy $AuthorizedBy -Rationale $Reason -Now $Now
+        }
+        'override-block' {
+            if ([string]::IsNullOrWhiteSpace($RunId) -or [string]::IsNullOrWhiteSpace($Reason)) { throw "remediation 'override-block' needs --run-id <id> and --ack-reason '<why>'." }
+            # D5: ONLY a DEGRADED run's block is overridable - a full+independent review's blocking
+            # finding must be addressed, not waved through. Verify from the run's terminal status.
+            $rdir = Join-Path $resolved ".specrew/review/pending/$RunId"
+            $stPath = Join-Path $rdir 'status.json'
+            $labels = $null
+            if (Test-Path -LiteralPath $stPath -PathType Leaf) {
+                try {
+                    $st = Get-Content -LiteralPath $stPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                    $comp = if (($st.PSObject.Properties.Name -contains 'completeness') -and -not [string]::IsNullOrWhiteSpace([string]$st.completeness)) { [string]$st.completeness } else { 'full' }
+                    $indep = if (($st.PSObject.Properties.Name -contains 'reviewer_independence') -and -not [string]::IsNullOrWhiteSpace([string]$st.reviewer_independence)) { [string]$st.reviewer_independence } else { 'unverified' }
+                    $labels = [pscustomobject]@{ completeness = $comp; independence = $indep }
+                }
+                catch { $labels = $null }
+            }
+            if ($null -eq $labels) { throw "remediation 'override-block': run '$RunId' has no readable terminal status - cannot verify the review was degraded, so its block is NOT overridable (address the finding or re-run)." }
+            if ($labels.completeness -eq 'full' -and $labels.independence -eq 'independent') {
+                throw "remediation 'override-block': run '$RunId' was a FULL INDEPENDENT review - its blocking finding must be addressed (or re-reviewed), never overridden (D5 allows overriding DEGRADED blocks only)."
+            }
+            # Record the durable override + clear the sticky blocking round-state so the loop unblocks.
+            $ovDir = Join-Path $resolved ".specrew/review/inline/$RunId"
+            New-Item -ItemType Directory -Path $ovDir -Force | Out-Null
+            ([pscustomobject][ordered]@{
+                schema_version = '1.0'; run_id = $RunId; authorized_by = $AuthorizedBy; rationale = $Reason
+                evidence_labels = $labels
+                overridden_at = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+            } | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath (Join-Path $ovDir 'degraded-block-override.json') -Encoding UTF8 -NoNewline
+            $prior = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+            if ($null -ne $prior) {
+                Set-ContinuousCoReviewRoundState -RepoRoot $resolved -ChangedPaths @($prior.changed_paths) -Round ([int]$prior.round) -Blocking $false -Findings ([string]$prior.findings)
+            }
+        }
+    }
+
+    $remediation = [pscustomobject][ordered]@{
+        choice          = $Choice
+        timeout_seconds = if ($TimeoutSeconds -gt 0) { $TimeoutSeconds } else { $null }
+        host            = if ([string]::IsNullOrWhiteSpace($HostName)) { $null } else { $HostName }
+        scope           = if ([string]::IsNullOrWhiteSpace($Scope)) { $null } else { $Scope }
+        run_id          = if ([string]::IsNullOrWhiteSpace($RunId)) { $null } else { $RunId }
+        reason          = if ([string]::IsNullOrWhiteSpace($Reason)) { $null } else { $Reason }
+        authorized_by   = $AuthorizedBy
+        recorded_at     = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+    }
+    # accept-partial / override-block act immediately (above); the rerun-shaping choices ride the
+    # round-state to the next run.
+    if ($Choice -in @('more-time', 'different-host', 'narrow-scope')) {
+        $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
+        $dir = Split-Path -Parent $p; if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+        $state = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+        if ($null -eq $state) { $state = [pscustomobject]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null } }
+        $state | Add-Member -NotePropertyName 'remediation' -NotePropertyValue $remediation -Force
+        ($state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    }
+    return $remediation
+}
+
+function Read-ContinuousCoReviewRemediationChoice {
+    # ONE-SHOT consumer (T096): return the pending remediation (or $null) and CLEAR it from the
+    # round-state - a human choice applies to exactly one rerun, never silently forever.
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $state = Get-ContinuousCoReviewRoundState -RepoRoot $RepoRoot
+    if ($null -eq $state -or -not ($state.PSObject.Properties.Name -contains 'remediation') -or $null -eq $state.remediation) { return $null }
+    $choice = $state.remediation
+    try {
+        $state.remediation = $null
+        $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $RepoRoot
+        ($state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    }
+    catch { $null = $_ }
+    return $choice
+}
+
+function Test-ContinuousCoReviewPathLineageOverlap {
+    # Same review LINEAGE = the current change-set overlaps the prior round's (a fix attempt on the SAME area) -
+    # NOT merely "the prior was blocking" (which conflates unrelated checkpoints -> spurious escalation + irrelevant
+    # prior findings). Overlap -> increment + thread prior findings; no overlap -> a new checkpoint (round 1).
+    param([string[]]$Current, [string[]]$Prior)
+    if (-not $Current -or -not $Prior -or @($Current).Count -eq 0 -or @($Prior).Count -eq 0) { return $false }
+    $set = [System.Collections.Generic.HashSet[string]]::new([string[]]@($Prior), [System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($c in @($Current)) { if ($set.Contains([string]$c)) { return $true } }
+    return $false
+}
+
+function Get-ContinuousCoReviewFindingsJson {
+    # Robustly extract the FindingsResult JSON from a free-form agentic reviewer's stdout. The reviewer is told to
+    # output ONLY the JSON, but a non-deterministic agent may narrate AROUND it with prose containing braces
+    # (`if (x) { ... }`), so a naive first-brace..last-brace span can capture non-JSON and false-fail the run. Try,
+    # in order: a ```json fence, the whole span, then balanced {...} objects scanned from the END (the prompt asks
+    # for the JSON last). Accept the first candidate that PARSES and carries a `findings` property (the contract
+    # marker). Returns the JSON string, or $null if no valid FindingsResult is present.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Raw)
+    if ([string]::IsNullOrWhiteSpace($Raw)) { return $null }
+    $candidates = New-Object System.Collections.Generic.List[string]
+    $fence = [regex]::Match($Raw, '(?s)```(?:json)?\s*(\{.*\})\s*```')
+    if ($fence.Success) { [void]$candidates.Add($fence.Groups[1].Value) }
+    $s = $Raw.IndexOf('{'); $e = $Raw.LastIndexOf('}')
+    if ($s -ge 0 -and $e -gt $s) { [void]$candidates.Add($Raw.Substring($s, $e - $s + 1)) }
+    for ($i = $Raw.Length - 1; $i -ge 0 -and $candidates.Count -lt 8; $i--) {
+        if ($Raw[$i] -ne '}') { continue }
+        $depth = 0
+        for ($j = $i; $j -ge 0; $j--) {
+            if ($Raw[$j] -eq '}') { $depth++ }
+            elseif ($Raw[$j] -eq '{') { $depth--; if ($depth -eq 0) { [void]$candidates.Add($Raw.Substring($j, $i - $j + 1)); break } }
+        }
+    }
+    foreach ($cand in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($cand)) { continue }
+        try { $o = $cand | ConvertFrom-Json -Depth 100; if ($null -ne $o -and $o.PSObject.Properties['findings']) { return $cand } } catch { $null = $_ }
+    }
+    return $null
+}
+
+function Invoke-ContinuousCoReviewWorktreeReviewRun {
+    # The full detached run: auto-resolve → materialize stripped worktree + .review/ → agentic review → write a
+    # reap-consumable result under $RunDir, then dispose. Returns the terminal status object.
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$RunDir,
+        [Parameter(Mandatory)][string]$RunId,
+        [string]$BaselineRef,
+        [string[]]$DesignContextFiles,
+        [string]$CodeWriterHost,
+        [string]$RequestedHost,
+        [int]$TimeoutSeconds = 900
+    )
+    New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
+    $resultOut = Join-Path $RunDir 'result.out'
+    $statusPath = Join-Path $RunDir 'status.json'
+    $startedAt = [datetime]::UtcNow
+    $runTimer = [System.Diagnostics.Stopwatch]::StartNew()
+
+    # T096/FR-038 (iter-009 D6/R6): consume a pending human remediation choice (ONE-SHOT) and shape
+    # THIS run with it - more time (budget), different host (selection), narrow scope (the reviewer's
+    # human-directed scope). accept-partial/override-block acted immediately at record time.
+    $remediation = Read-ContinuousCoReviewRemediationChoice -RepoRoot $RepoRoot
+    $humanScope = $null
+    $remediationApplied = $null
+    $designContextEmpty = $false   # set for real at the design-context-resolution phase (f1)
+    if ($null -ne $remediation) {
+        $remediationApplied = [string]$remediation.choice
+        switch ($remediationApplied) {
+            'more-time' {
+                $req = 0
+                try { if (($remediation.PSObject.Properties.Name -contains 'timeout_seconds') -and $null -ne $remediation.timeout_seconds) { $req = [int]$remediation.timeout_seconds } } catch { $req = 0 }
+                if ($req -le 0) { $req = $TimeoutSeconds * 2 }
+                $TimeoutSeconds = [math]::Max($TimeoutSeconds, $req)
+            }
+            'different-host' {
+                if (($remediation.PSObject.Properties.Name -contains 'host') -and -not [string]::IsNullOrWhiteSpace([string]$remediation.host)) { $RequestedHost = [string]$remediation.host }
+            }
+            'narrow-scope' {
+                if (($remediation.PSObject.Properties.Name -contains 'scope') -and -not [string]::IsNullOrWhiteSpace([string]$remediation.scope)) { $humanScope = [string]$remediation.scope }
+            }
+        }
+    }
+
+    $phaseTimings = [ordered]@{}
+    $phaseTimers = @{}
+    $currentPhase = 'initializing'
+    $softBudgetSeconds = [math]::Max(60, [math]::Min([int]($TimeoutSeconds * 0.35), 300))
+    # T092/R2 (FR-034): the generous-budget bump is computed AFTER worktree materialization (once the diff size is
+    # known). Tracked here so every status write records the default vs the effective (possibly bumped) budget.
+    $budgetDefaultSeconds = $TimeoutSeconds; $budgetBumped = $false
+    $budgetPolicy = 'Use implementer validation evidence first. Spend reviewer runtime where it materially changes confidence; targeted reruns are preferred over broad suites unless broad verification is justified by risk.'
+    $recordPhaseStart = {
+        param([string]$Name)
+        if ([string]::IsNullOrWhiteSpace($Name)) { return }
+        $phaseTimers[$Name] = [System.Diagnostics.Stopwatch]::StartNew()
+    }
+    $recordPhaseEnd = {
+        param([string]$Name)
+        if ([string]::IsNullOrWhiteSpace($Name)) { return }
+        if ($phaseTimers.Contains($Name)) {
+            $phaseTimers[$Name].Stop()
+            $phaseTimings[$Name] = [math]::Round($phaseTimers[$Name].Elapsed.TotalSeconds, 3)
+            $phaseTimers.Remove($Name)
+        }
+    }
+    $writeStatus = {
+        param([string]$St, [hashtable]$Extra)
+        $obj = [ordered]@{
+            schema_version = '1.0'
+            run_id         = $RunId
+            status         = $St
+            phase          = $currentPhase
+            started_at     = ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp -Timestamp $startedAt
+            updated_at     = ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp
+            elapsed_seconds = [math]::Round($runTimer.Elapsed.TotalSeconds, 3)
+            timeout_seconds = $TimeoutSeconds
+            soft_budget_seconds = $softBudgetSeconds
+            budget_policy = $budgetPolicy
+            budget_default_seconds = $budgetDefaultSeconds
+            budget_bumped = $budgetBumped
+            artifacts = [ordered]@{
+                run_dir     = $RunDir
+                result_out  = $resultOut
+                status_json = $statusPath
+            }
+            remediation_applied = $remediationApplied
+            human_scope = $humanScope
+            design_context = if ($designContextEmpty) { 'empty' } else { 'resolved' }
+            phase_durations_seconds = [pscustomobject]$phaseTimings
+        }
+        if ($Extra) { foreach ($k in $Extra.Keys) { $obj[$k] = $Extra[$k] } }
+        [System.IO.File]::WriteAllText($statusPath, (([pscustomobject]$obj) | ConvertTo-Json -Depth 8))
+    }
+    try {
+        & $writeStatus 'running' @{ phase = 'initializing' }
+        $currentPhase = 'baseline-resolution'
+        & $recordPhaseStart $currentPhase
+        if ([string]::IsNullOrWhiteSpace($BaselineRef)) { $BaselineRef = Resolve-ContinuousCoReviewWorktreeBaseline -RepoRoot $RepoRoot }
+        & $recordPhaseEnd 'baseline-resolution'
+        if ([string]::IsNullOrWhiteSpace($BaselineRef)) { & $writeStatus 'failed' @{ failure_reason = 'baseline-unresolved' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
+        $currentPhase = 'design-context-resolution'
+        & $recordPhaseStart $currentPhase
+        if (-not $DesignContextFiles -or @($DesignContextFiles).Count -eq 0) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
+        # f1 (codex 2026-07-08): an EMPTY design context is RECORDED + DEGRADES the run - never a
+        # silent blind review. The reviewer is told (prompt note), status.json carries it, and the
+        # done-write forces completeness=partial so the T094 tier demands a human ack for the
+        # evidence. Not a terminal failure: a genuinely spec-less repo (greenfield empty-tree
+        # baseline) may legitimately review code-only.
+        $designContextEmpty = (@($DesignContextFiles).Count -eq 0)
+        if ($designContextEmpty) {
+            [Console]::Error.WriteLine('[co-review] WARN DESIGN_CONTEXT_EMPTY no spec/design-analysis resolved (.review/design will be empty); the run is labelled partial and the reviewer is told to flag it.')
+        }
+        & $recordPhaseEnd 'design-context-resolution'
+
+        # SELECT the reviewer host: independent-preferred + authorized, labelled (T093/FR-035). A
+        # same-host fallback FIRES immediately (never blocks); the label makes it first-class evidence.
+        # Fail-soft (stated reason) if none - and an un-honourable explicit --host is SURFACED, never
+        # silently substituted.
+        $currentPhase = 'reviewer-host-selection'
+        & $recordPhaseStart $currentPhase
+        $reviewerHost = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $RepoRoot -CodeWriterHost $CodeWriterHost -RequestedHost $RequestedHost
+        & $recordPhaseEnd 'reviewer-host-selection'
+        if ($null -eq $reviewerHost) {
+            $selFailure = if (-not [string]::IsNullOrWhiteSpace($RequestedHost)) {
+                "requested-host-not-available: '$RequestedHost' is not installed+authorized (an explicit --host is honoured or surfaced, never silently substituted)"
+            }
+            else { 'no-authorized-reviewer-host' }
+            & $writeStatus 'failed' @{ failure_reason = $selFailure; requested_reviewer_host = $RequestedHost }
+            return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+        }
+
+        # The reviewed-state DIGEST = the gate's identity. Get-...SignoffGateDecision compares ITS current digest to a
+        # passing run's recorded reviewed_tree_id. Computed BEFORE materialization (identity-unification fix,
+        # escalation 20260708T211331029): the worktree is materialized FROM this digest tree, so the reviewed
+        # content and the certified content are the SAME git tree object by construction - uncommitted changes
+        # are REVIEWED, never silently certified (the FR-025 false-allow the reviewer escalated). Computed over
+        # the MAIN repo (the worktree is a bare git-archive extract, NOT a git repo). _load is dot-sourced only
+        # inside Resolve-...ReviewerHost's scope, so lazy-load it for THIS scope.
+        if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+            $lp = Join-Path $PSScriptRoot '_load.ps1'; if (Test-Path -LiteralPath $lp -PathType Leaf) { try { . $lp } catch { $null = $_ } }
+        }
+        # SURFACE a digest failure (do not swallow it to ''): an empty digest makes the gate's freshness loop skip the
+        # record -> a genuinely clean review blocks as 'stale' with no visible cause. Carry the reason in the status.
+        # On digest failure the materialization falls back to HEAD (reviewedDigestErr says why the identities differ).
+        $currentPhase = 'reviewed-state-digest'
+        & $recordPhaseStart $currentPhase
+        $reviewedDigestId = ''; $reviewedDigestErr = ''
+        try { $dg = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot; if ($null -ne $dg -and $dg.ok) { $reviewedDigestId = [string]$dg.tree_id } else { $reviewedDigestErr = if ($null -ne $dg) { [string]$dg.failure_reason } else { 'digest-unavailable' } } } catch { $reviewedDigestErr = $_.Exception.Message }
+        & $recordPhaseEnd 'reviewed-state-digest'
+
+        $currentPhase = 'worktree-materialization'
+        & $recordPhaseStart $currentPhase
+        & $writeStatus 'running' @{ baseline_ref = $BaselineRef; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; reviewer_selection_reason = $reviewerHost.selection_reason; requested_reviewer_host = $RequestedHost }
+        $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $RepoRoot -BaselineRef $BaselineRef -DesignContextFiles $DesignContextFiles -SourceTreeId $reviewedDigestId
+        & $recordPhaseEnd 'worktree-materialization'
+        # T092 pre-flight generous-budget bump REVERTED (Issue 1): a 30-min AUTO checkpoint review is wrong - the
+        # navigator fires one on every checkpoint, and even fully detached it should be SHORT. The auto path now
+        # uses the passed-in budget (the navigator default). The generous budget belongs to manual
+        # `specrew review --live` (where the human explicitly waits) and, for the auto path, is superseded by the
+        # Phase-2 activity watchdog (kill on inactivity, not a fixed wall). The helpers
+        # (Get-ContinuousCoReviewGenerousBudget / Test-ContinuousCoReviewExplicitTimeoutConfigured) + $wt.diff_bytes
+        # are retained (unit-tested) for manual-path / Phase-2 reuse.
+        # T111 (DEC-197-I010-004): inject the implementer's MACHINE-RECORDED test evidence into the worktree -
+        # ONLY on an exact digest match with the tree under review, so the reviewer can substitute the recorded
+        # suites for broad re-runs (the budget-death fix). A mismatch or absence injects NOTHING (never wrong
+        # evidence); the prompt block is gated on the same flag so the reviewer is never told to trust a file
+        # that is not there.
+        $implementerEvidencePresent = $false
+        try {
+            if (Get-Command -Name 'Copy-ContinuousCoReviewImplementerEvidence' -ErrorAction SilentlyContinue) {
+                $implementerEvidencePresent = [bool](Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $RepoRoot -WorktreePath $wt.worktree_path -DigestTreeId $reviewedDigestId)
+            }
+        } catch { $implementerEvidencePresent = $false }
+        # ROUND: same lineage (change-set overlaps the prior round's) + the prior was blocking -> this is a fix
+        # re-review (round+1, thread the prior findings); else a new checkpoint (round 1, no prior). The reviewer
+        # escalates at the final round (the counter is the safety ceiling).
+        $currentPhase = 'round-state-resolution'
+        & $recordPhaseStart $currentPhase
+        $maxRounds = Get-ContinuousCoReviewMaxRounds -RepoRoot $RepoRoot
+        $prior = Get-ContinuousCoReviewRoundState -RepoRoot $RepoRoot
+        $round = 1; $priorFindings = $null
+        if ($null -ne $prior -and ([bool]$prior.blocking) -and (Test-ContinuousCoReviewPathLineageOverlap -Current @($wt.changed_paths) -Prior @($prior.changed_paths))) {
+            $round = [int]$prior.round + 1
+            $priorFindings = [string]$prior.findings
+        }
+        & $recordPhaseEnd 'round-state-resolution'
+        try {
+            # T096: a HUMAN-DIRECTED rerun (a consumed remediation) is never auto-halted - the round
+            # ceiling guards the AUTO loop; the menu is its escape hatch.
+            if (($round -gt $maxRounds) -and ($null -eq $remediationApplied)) {
+                # CEILING REACHED — do NOT fire another review round (the deterministic spin-stop / round-9 fix: a
+                # round>maxRounds guard provably halts the monotonic climb while the change-set overlaps). BUT a halt
+                # is NOT a clean pass. The old code wrote an EMPTY result here, so the run read as
+                # 'done / 0 findings / clean' and SILENTLY passed an UNREVIEWED increment — the false-green
+                # (D-197-I009-010) that fooled a dogfood coordinator into signing off code the reviewer never saw.
+                # Instead emit a VISIBLE escalation finding so the run can NEVER be read as clean: kind='escalation'
+                # -> Option A parks it as escalated_to_human (the gate does NOT deadlock); severity 'blocking' -> the
+                # navigator surfaces a NOT-REVIEWED stop-block. Persist a STICKY round-state (blocking=true) so
+                # overlapping checkpoints stay above the ceiling and review stays bounded for THIS path-set (resets
+                # when the change-set no longer overlaps). status carries reviewed=false so any consumer reading
+                # status.json knows the increment was NOT reviewed. (F-197 iter-009 Option A #2 + D-010 hardening.)
+                $currentPhase = 'ceiling-halt'
+                & $recordPhaseStart $currentPhase
+                [System.IO.File]::WriteAllText($resultOut, (New-ContinuousCoReviewCeilingEscalationResult -RunId $RunId -Round $round -MaxRounds $maxRounds))
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $true -Findings $priorFindings
+                & $recordPhaseEnd 'ceiling-halt'
+                $runTimer.Stop()
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
+            $currentPhase = 'reviewer-execution'
+            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent }
+            & $recordPhaseStart $currentPhase
+            $reviewerHeartbeat = {
+                param($Telemetry)
+                & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
+            }
+            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty -ImplementerEvidencePresent:$implementerEvidencePresent
+            & $recordPhaseEnd 'reviewer-execution'
+            $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
+            $raw = [string]$r.stdout
+            $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
+            $completeness = 'full'
+            if ([string]::IsNullOrWhiteSpace($json)) {
+                # T090/R1: the final blob is empty/unparseable (a timeout / cut-short run). HARVEST the incremental
+                # .review/findings.jsonl prefix (or prose-salvage) so a degraded review still surfaces findings
+                # (any review > nothing), instead of discarding the whole run as 'no-parseable-findings-json'.
+                $json = Get-ContinuousCoReviewHarvestedPartialResult -WorktreePath $wt.worktree_path -RawStdout $raw -RunId $RunId
+                if (-not [string]::IsNullOrWhiteSpace($json)) { $completeness = 'partial' }
+            }
+            # T096: a human-SCOPED review covered a SUBSET of the increment - its evidence is honestly
+            # PARTIAL (the T094 tiered gate then requires the recorded ack, never a silent full pass).
+            if (-not [string]::IsNullOrWhiteSpace([string]$humanScope)) { $completeness = 'partial' }
+            # f1: a review that ran WITHOUT design context could not validate design conformance -
+            # same honest degradation (partial -> the T094 ack tier), never silent full evidence.
+            if ($designContextEmpty) { $completeness = 'partial' }
+            if (-not [string]::IsNullOrWhiteSpace($json)) {
+                $currentPhase = 'write-result'
+                & $recordPhaseStart $currentPhase
+                [System.IO.File]::WriteAllText($resultOut, $json)
+                # detect a blocking finding -> feed the next round's lineage decision
+                $blocking = $false
+                try { foreach ($f in @(($json | ConvertFrom-Json -Depth 100).findings)) { if (([string]$f.severity) -match '(?i)block') { $blocking = $true; break } } } catch { $null = $_ }
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $blocking -Findings $json
+                & $recordPhaseEnd 'write-result'
+                $currentPhase = 'complete'
+                $runTimer.Stop()
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; reviewer_telemetry = $reviewerTelemetry }
+            }
+            else {
+                $currentPhase = 'write-failure'
+                & $recordPhaseStart $currentPhase
+                [System.IO.File]::WriteAllText($resultOut, '')
+                # STATE the reason: capture exit code + a stderr tail so an unparseable/empty verdict is diagnosable
+                # (the agent invocation otherwise drops stderr and the failure is invisible).
+                $stderrTail = if (-not [string]::IsNullOrWhiteSpace([string]$r.stderr)) { (([string]$r.stderr) -split "`n" | Where-Object { $_ } | Select-Object -Last 3) -join ' | ' } else { '' }
+                & $recordPhaseEnd 'write-failure'
+                $currentPhase = 'failed'
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_independence = $reviewerHost.independence; reviewer_telemetry = $reviewerTelemetry }
+            }
+        }
+        finally {
+            $currentPhase = 'cleanup'
+            & $recordPhaseStart $currentPhase
+            Remove-Item -LiteralPath $wt.worktree_path -Recurse -Force -ErrorAction SilentlyContinue
+            & $recordPhaseEnd 'cleanup'
+        }
+    }
+    catch {
+        $currentPhase = 'failed'
+        $runTimer.Stop()
+        & $writeStatus 'failed' @{ failure_reason = 'orchestrator-exception'; message = ([string]$_.Exception.Message) }
+    }
+    if (Test-Path -LiteralPath $statusPath) { return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
+}

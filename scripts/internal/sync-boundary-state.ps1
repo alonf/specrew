@@ -31,6 +31,16 @@ if (-not (Test-Path -LiteralPath $sessionConfigHelperPath -PathType Leaf)) {
 }
 . $sessionConfigHelperPath
 
+# T073 / FR-025: the opt-in continuous-co-review signoff-gate wiring seam. The gate DECISION
+# module is loaded lazily (only when the gate fires); this file provides the thin flag-check +
+# conditional-Assert entry point Invoke-SpecrewBoundaryStateSync calls at the review-signoff
+# boundary.
+$coReviewGateWiringPath = Join-Path $PSScriptRoot 'continuous-co-review\signoff-gate-wiring.ps1'
+if (-not (Test-Path -LiteralPath $coReviewGateWiringPath -PathType Leaf)) {
+    throw "Missing continuous-co-review signoff-gate wiring helper '$coReviewGateWiringPath'."
+}
+. $coReviewGateWiringPath
+
 $scriptRoot = Split-Path -Parent $PSScriptRoot
 foreach ($helperName in @('decisions-split.ps1', 'append-only-logs.ps1', 'psd1-sort.ps1', 'auto-detection.ps1')) {
     $helperPath = Join-Path $scriptRoot $helperName
@@ -1495,6 +1505,15 @@ function Invoke-SpecrewBoundaryStateSync {
         -BoundaryType $BoundaryType `
         -FeatureRef $effectiveFeatureRef `
         -IterationNumber $effectiveIterationNumber
+
+    # T073 / FR-025 / SC-019 / SC-020: opt-in continuous-co-review signoff gate. A no-op for
+    # every boundary except review-signoff and a no-op unless co_review_gate_enforcement is
+    # enabled; when ON it refuses signoff (throws) on un-reviewed/stale/uncovered state. $BoundaryType
+    # is canonical here (implement/review both alias to review-signoff). Out-Null guards the
+    # boundary-sync result pipeline against the gate's allow-path return value.
+    Invoke-ContinuousCoReviewSignoffGateIfEnabled `
+        -ProjectRoot $paths.ProjectRoot `
+        -BoundaryType $BoundaryType | Out-Null
 
     $latestBoundary = Get-LatestSpecrewBoundarySyncState -ProjectRoot $paths.ProjectRoot
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)

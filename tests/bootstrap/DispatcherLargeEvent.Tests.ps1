@@ -60,6 +60,24 @@ try {
 }
 finally { Remove-Item -LiteralPath $s1.Proj -Recurse -Force -ErrorAction SilentlyContinue }
 
+# --- 2b-nav (F-197, ALWAYS): the co-review-navigator provider is built WITHOUT --event-json on EVERY host. The
+#     navigator binds Stop-class AND SessionStart; on Codex Stop the same 10s-of-KB last_assistant_message in
+#     --event-json blew the Windows command-line limit, so the navigator silently never launched. It reads ONLY
+#     --source-event (works off git state, never the event payload), so the clean-args strip is safe on
+#     SessionStart too. Assert clean args on a Stop event here (the codex-blowup case). ---
+$sNav = Invoke-DispatcherScenario -Providers @(@{ id = 'co-review-navigator'; order = 50; command = 'co-review-navigator-stub.ps1'; body = $recordArgs.Replace('handover-args.json', 'co-review-navigator-args.json') }) `
+    -EventObj @{ session_id = 'nav'; source = 'stop'; transcript_path = 'C:\t\sess.jsonl' }
+try {
+    Assert-True ($sNav.ExitCode -eq 0) '2b-nav: dispatcher exits 0'
+    $navArgsPath = Join-Path $sNav.Proj 'co-review-navigator-args.json'
+    Assert-True (Test-Path -LiteralPath $navArgsPath) '2b-nav: the co-review-navigator provider launched'
+    $navCaptured = @(Get-Content -LiteralPath $navArgsPath -Raw | ConvertFrom-Json)
+    Assert-True (-not ($navCaptured -contains '--event-json')) '2b-nav: the navigator receives NO --event-json (so a large Codex Stop cannot block its launch on any host)'
+    $nsi = [array]::IndexOf($navCaptured, '--source-event')
+    Assert-True ($nsi -ge 0 -and $navCaptured[$nsi + 1] -eq 'Stop') '2b-nav: the navigator still gets --source-event Stop (its only consumed arg)'
+}
+finally { Remove-Item -LiteralPath $sNav.Proj -Recurse -Force -ErrorAction SilentlyContinue }
+
 # --- 2a (WINDOWS-ONLY): a non-handover provider that gets the 60KB --event-json fails to launch but is CONTAINED;
 #     the later handover provider still runs. The trigger is the Windows command-line ceiling. ---
 if ($IsWindows) {

@@ -545,10 +545,14 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
                 if ($ss) {
                     $featureValue = $ss.PSObject.Properties['feature_ref'].Value
                     $commitValue = $ss.PSObject.Properties['auth_commit_hash'].Value
-                    $boundaryValue = $ss.PSObject.Properties['boundary_type'].Value
                     if (-not [string]::IsNullOrWhiteSpace([string]$featureValue)) { $featureRef = [string]$featureValue }
                     if (-not [string]::IsNullOrWhiteSpace([string]$commitValue)) { $authCommit = [string]$commitValue }
-                    if ([string]::IsNullOrWhiteSpace($workingBoundary) -and -not [string]::IsNullOrWhiteSpace([string]$boundaryValue)) { $workingBoundary = [string]$boundaryValue }
+                }
+                # working boundary via the CANONICAL v1/v2-tolerant reader (was session_state.boundary_type only,
+                # which read $null on a v2 start-context). $pending.WorkingBoundary still takes precedence above.
+                if ([string]::IsNullOrWhiteSpace($workingBoundary)) {
+                    $bv = Get-SpecrewStartContextBoundary -StartContext $ctx
+                    if (-not [string]::IsNullOrWhiteSpace([string]$bv)) { $workingBoundary = [string]$bv }
                 }
             }
             catch { $null = $_ }
@@ -707,9 +711,19 @@ function Update-SpecrewRollingHandover {
             $ctx = Get-Content -LiteralPath $ctxPath -Raw | ConvertFrom-Json
             $ss = & $getProp $ctx 'session_state'
             $feature = & $getProp $ss 'feature_ref'
-            $boundary = & $getProp $ss 'boundary_type'
+            # HOST is read FIRST: it must never be lost to a later throw in this try (a caller that did
+            # not co-load the canonical boundary reader used to blow past this line via the catch, so the
+            # committed host was skipped and env detection wrongly won - the WorkshopHostDetection (d)
+            # regression that shipped red CI from 2026-07-01).
             $h = & $getProp $ss 'host'; if ([string]::IsNullOrWhiteSpace($h)) { $h = & $getProp $ctx 'host' }
             if (-not [string]::IsNullOrWhiteSpace($h)) { $fromHost = [string]$h }
+            # working boundary via the CANONICAL v1/v2-tolerant reader (was session_state.boundary_type only ->
+            # $null on a v2 start-context; the boundary:null half of the hollow-handover symptom). GUARDED:
+            # when a caller has not co-loaded the reader, fall back to the v1 field rather than throwing.
+            $boundary = if (Get-Command -Name 'Get-SpecrewStartContextBoundary' -ErrorAction SilentlyContinue) {
+                Get-SpecrewStartContextBoundary -StartContext $ctx
+            }
+            else { & $getProp $ss 'boundary_type' }
             # T003: the AUTHORIZED gate (deterministic governance state, not agent behavior) - DISTINCT from
             # session_state.boundary_type (the WORKING position above). last_authorized_boundary + the richest
             # human-legible proof from verdict_history[-1].
@@ -782,8 +796,16 @@ function Update-SpecrewRollingHandover {
     # worktree, an ungated `git status` walks the whole parent tree (unbounded -> hangs the hook; try/catch
     # cannot bound a hung process) AND would report the PARENT'S dirty files as this project's change. Not a
     # repo root -> no tracked change to detect here (consistent with the empty Get-SpecrewSessionDelta below).
-    if (Test-SpecrewIsGitRepoRoot -ProjectRoot $ProjectRoot) {
-        try { $st = (& git -C $ProjectRoot status --porcelain 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
+    # iter-007 fix: subtree-scoped material-change detection (was gated on is-repo-ROOT, so a project NESTED in a
+    # larger repo always saw "no change" -> the hollow handover / no re-orientation). InWorkTree keeps the
+    # parent-scan fail-safe; `-- .` confines this (hotter, per-PostToolUse) status to $ProjectRoot's subtree.
+    $changeScope = Get-SpecrewGitScanScope -ProjectRoot $ProjectRoot
+    if ($changeScope.InWorkTree) {
+        # ':(exclude).specrew' - the handover/runtime dir this very function writes must never count as
+        # the material change (self-trigger: the untracked .specrew seed made EVERY nested PostToolUse
+        # "material", and the parent-scan pin in WritePathRepoRootGate red since the iter-007 scoped-scan
+        # change). Materiality means the USER changed something; Specrew's own runtime churn does not.
+        try { $st = (& git -C $ProjectRoot status --porcelain -- . ':(exclude).specrew' 2>$null); $hasChange = -not [string]::IsNullOrWhiteSpace(($st -join "`n")) } catch { $null = $_ }
     }
     $mc = Test-SpecrewHandoverMaterialChange -CurrentBoundary $boundary -LastBoundary $lastBoundary -HasTrackedChange $hasChange -HandoverExists ($null -ne $existing)
     # Prop-145 round-4 (HIGH): a conversation-only turn (clean tree, same boundary) is NOT a git/boundary "material

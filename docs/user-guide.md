@@ -510,6 +510,82 @@ Checklist:
 - Overall verdict recorded
 - Any unresolved drift explicitly called out
 
+## Continuous co-review (Feature 197, 0.40.0-beta)
+
+An independent AI reviewer — on a **different harness than the one writing the code** — reviews each
+implement checkpoint in an ephemeral, OS-contained worktree, and review-signoff **fails closed**
+until that evidence exists. A self-review can never satisfy the gate.
+
+### One-time setup: authorize a reviewer
+
+Reviewer harnesses cost money and act with elevated permissions, so authorization is an explicit
+human step (never self-granted by an agent):
+
+```powershell
+specrew review --host codex --authorization-ref "your-name-approved-2026-07-08"
+```
+
+Any installed harness from the reviewer-host catalog works (`claude`, `codex`, `copilot`,
+`cursor-agent`, `antigravity`). Selection prefers the strongest authorized reviewer on a DIFFERENT
+harness than the code-writer; with only one harness available, the fallback fires immediately but is
+labelled `same-host` (degraded — see below).
+
+### What runs, and when
+
+- **Automatic**: a Stop-hook navigator fires a detached review of the committed increment at each
+  implement checkpoint. It dedups (one review per tree state) and never blocks your session.
+- **On demand**: `specrew review --live` reviews the current change-set. For signoff evidence run it
+  WITHOUT `--baseline-ref` — the baseline auto-anchors to the feature merge-base. An explicit
+  `--baseline-ref` run is exploratory by design and never counts as signoff evidence.
+- **Replay**: `specrew review` (no flags) replays the latest persisted reviewer packet; `--json` and
+  `--quiet` emit machine shapes.
+
+Durable evidence lands under `.specrew/review/inline/<run-id>/` (`findings-result.json`,
+`review-run.json`, `gate-verdict.json`) and is what the review-signoff gate checks — freshness is
+digest-based, so evidence for an older tree does not pass a newer one. The reviewer's worktree is
+materialized from that same digest tree, so what the reviewer sees and what the gate certifies are
+the same content by construction — including uncommitted changes on a `--live` run.
+
+Reviews are much faster when the implementer's test runs are recorded: after running your suites,
+record the machine-observed result with `Write-ContinuousCoReviewTestEvidence` (suite, counts, exit
+code, duration — bound to the current tree digest). The reviewer receives digest-matched evidence
+inside its worktree and substitutes it for re-running whole suites; any edit after recording changes
+the digest and orphans the record, so stale evidence is never presented.
+
+### Evidence tiers and degraded acks
+
+Every promoted run carries three labels: **completeness** (full/partial), **independence**
+(independent/same-host/unverified), and **budget** (normal/time-extended). Full + independent
+evidence passes the gate on its own. Anything degraded needs a recorded human acknowledgement:
+
+```powershell
+specrew review --ack-degraded <run-id> --ack-reason "why this evidence is acceptable"
+```
+
+The gate never deadlocks — a degraded block always names the exact ack command — and it never
+silently passes.
+
+### When a run has a problem
+
+Timeouts, partial results, reviewer outages, and blocking verdicts surface a five-option remediation
+menu at the next stop instead of looping:
+
+```powershell
+specrew review --remediate more-time --timeout-seconds 900
+specrew review --remediate different-host --host antigravity
+specrew review --remediate narrow-scope --scope path:src/engine
+specrew review --remediate accept-partial --run-id <id> --ack-reason "<why>"
+specrew review --remediate override-block --run-id <id> --ack-reason "<why>"
+```
+
+The choice is carried one-shot to the next run; human-directed reruns are never halted by the
+autonomous round ceiling. Two hard rules: an explicit `--host` is honoured or the run fails with
+`requested-host-not-available` (never a silent substitute), and `override-block` refuses to override
+a full+independent blocking verdict — only a human-visible repair path clears those.
+
+If the reviewer escalates (round ceiling with unresolved blocking findings), the escalation surfaces
+ONCE and then waits quietly for a real human decision.
+
 ## Reviewer-Regression Routing and Lockout-Cap Behavior
 
 Specrew treats a concrete human-found defect in a slice that the Squad reviewer already approved or marked ready as a **Reviewer Regression Event**. The event stays a soft-warning governance signal, but it immediately changes the next review path for that feature:

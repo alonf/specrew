@@ -1,0 +1,10 @@
+- **user:** CODEX-USER what is the latency budget?
+- **assistant:** CODEX-ASSISTANT the budget is roughly sixteen seconds today.
+- **user:** COPILOT-USER show me the scope.
+- **assistant:** COPILOT-ASSISTANT here is the scope summary.
+- **user:** CURSOR-USER ready when you are.
+- **assistant:** CURSOR-ASSISTANT acknowledged.
+- **assistant:** <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> ## What I Just Did Authored the iteration plan covering the #2885 latency fix and the gate-enforcement wiring. ## Why I Stopped Boundary: plan. The plan is drafted and needs your verdict befo...
+- **user:** approved
+
+Full transcript (read on-demand for depth): <FIXTURE>

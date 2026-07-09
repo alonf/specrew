@@ -114,6 +114,52 @@ Cross-model reviewer is sometimes unavailable: rate-limited, network down, quota
 
 Profile chooses the policy. Audit log captures every bypass so retros can detect "we relied on the reviewer but it was bypassed 40% of the time" pattern.
 
+#### Pillar 5 addendum — ranked model priority WITHIN a harness (added 2026-07-08, field-driven)
+
+F-197's shipped reviewer selection ranks **harnesses** (independence-first: strongest eligible
+reviewer on a DIFFERENT harness than the code-writer, per the host-neutral catalog seam) — but below
+the harness there is no model dimension at all: the catalog's `model` field is display/ranking
+metadata, no model is ever passed to a reviewer CLI, and every harness runs on its own configured
+default. The 2026-07-08 self-host outage showed exactly how that fails (maintainer: *"As we have
+priority between harnesses for a reviewer, we can have a priority of models within harnesses"*):
+antigravity's **Gemini model-group** five-hour quota hit 0% — instant empty-exit-0 runs — while its
+**Claude/GPT model-group** sat at 100% available, and no lever short of a shipped-code edit could
+use it. Both independent harnesses were down (codex hard-down the same day), stalling a
+review-signoff boundary for hours on quota that WAS available.
+
+Design (extends the availability policy table above with a cheaper rung that comes BEFORE it):
+
+- **Two-level selection**: rank hosts (unchanged, independence-first), then a **ranked model list
+  within the selected host**. Catalog row grows
+  `models = @(@{ id; flag_args; class_rank; quota_group }, ...)` and a per-host model flag so the
+  chosen model **threads into the agentic invocation** (curated per-release data — models are
+  volatile config, refreshed by Specrew releases / `specrew update`; NO runtime web discovery, per
+  the 2026-07-08 maintainer decisions).
+- **Walk-down triggers**: classified failures — quota-empty, model-not-found, and the
+  empty-exit-0 signature (F-197 T108 diagnostic distinguishes no-output-produced from
+  finalization-or-capture-gap). Walk down the model list BEFORE any cross-host fallback: a same-host
+  model switch is cheaper than a host switch and preserves the independence label.
+- **Quota-group awareness**: providers meter quota per model GROUP with independent windows
+  (antigravity: Gemini vs Claude/GPT, each with separate 5-hour and weekly limits). On a
+  quota-classified failure, prefer the next model in a DIFFERENT quota group — model priority
+  doubles as the quota-failover lever.
+- **Human override wins**: an explicit `--model` (like an explicit `--host`) is
+  honoured-or-surfaced, never silently substituted.
+- **Opt-in cross-host auto-fallback chain (Q4, agreed 2026-07-08)**: when the model list is
+  exhausted, an OPT-IN pre-authorized chain (`co_review_auto_fallback`, default OFF — the default
+  remains tell-then-ask via the remediation menu) may continue to the next authorized host; the
+  last rung is the same-host implementer model, which always lands at the degraded/ack tier.
+  Failure-reason classification (quota / model-not-found / unknown, host-specific signatures as
+  catalog data) is the trigger vocabulary for both the walk-down and the chain.
+- **Independence nuance**: harness-level independence stays the ranking criterion (shipped
+  semantics), but the model list lets a same-harness fallback ALSO cross model families (e.g.
+  antigravity-on-GPT-OSS reviewing claude-written code) — strictly better than the same-host
+  same-family fallback for the cross-training-lineage concern this proposal exists for.
+
+Self-host ledger trail: DEFER-197-I010-002 (fast-follow authorization) and NOTE-197-I010-002 (this
+design direction, maintainer-stated) in `.squad/decisions.md`; field evidence run
+`20260708T124931609` (double empty-exit-0 loud fail) + the account quota screen.
+
 ### Pillar 6 — Composition with Proposal 089 (PR Review Integration)
 
 089 shipped F-038 as a minimal slice. It **surfaces external reviewer findings** (currently Copilot's automated PR review) into Specrew's lifecycle — pull-style.
@@ -283,3 +329,4 @@ Sequencing: ships after 069 enables practical multi-host execution. Plausible Q3
 - **2026-05-28**: amended. Added FR-016 (all commissioned reviewers MUST load `.specrew/review/reviewer-instructions.md` from Proposal 140 + cite version in review output). Added Safeguard 4d (Reviewer instruction playbook citation as load-bearing form-vs-meaning defense). Added Proposal 140 as REQUIRED dependency (102 cannot deliver value without 140). Amendment empirically motivated by F-049 iter-3 review-signoff 2026-05-28: single-reviewer Pillar 5 form check approved an iteration; independent reviewer with explicit playbook context (the contents of `docs/methodology/review-instructions.md` shipped 2026-05-28 commit `01df228a`) correctly rejected with 4 substantive gaps. The differentiator was review-context quality, not model independence. The amendment closes the empirical gap that "two reviewers without shared playbook = two ignorant reviewers" — independence alone is insufficient.
 - **2026-05-29**: amended. Added Pillar 7 (Reviewer Role Differentiation — Code-Outcome vs SDLC-Process) as V2 architectural extension. Maintainer-stated framing (during 2026-05-29 dogfooding session): "Maybe we need two reviewers, one for the code and outcome, and one for the SDLC process?" Empirically motivated by 8+ cross-review instances across F-049 + F-050 lifecycle work in single session, with specific failure pattern: 2 iteration-closeout state-truth integrity gaps in F-049 alone (instances 2 + 5 in memory `[[cross-reviewer-3rd-empirical-instance-2026-05-28]]`) where single-reviewer attention biased toward substance and away from state-artifact-truth. Pillar 7 ships LAST in defense-in-depth ordering — after Proposal 142 (State-Truth Integrity Validator, ~3-5 SP) ships the mechanical Layer 1 enforcement and Proposal 140 ships the playbook discipline Layer 2 enforcement. Pillar 7 catches the residual semantic-judgment gaps Layers 1+2 cannot. Cost framing: total cost scales to 2-3× single-reviewer baseline at L2+Pillar-7; worth it for state-sync-heavy boundaries (iteration-closeout, feature-closeout), over-engineered for routine work.
 - **2026-06-01**: promoted from candidate to draft as a partial sequencing action before remaining F-051 iterations, based on F-051 Iteration 2a's three-round review remediation cycle and structured-review artifact repair evidence.
+- **2026-07-08**: amended. Added Pillar 5 addendum (ranked model priority WITHIN a harness: two-level host→model selection, per-host model-flag threading, classified-failure walk-down before cross-host fallback, quota-group-crossing preference). Maintainer-stated direction during the F-197 iter-010 review-signoff antigravity quota outage: "As we have priority between harnesses for a reviewer, we can have a priority of models within harnesses." Field-motivated: antigravity's Gemini group at 0% five-hour quota (instant empty-exit-0, T108-diagnosed) while its Claude/GPT group sat at 100%, with codex simultaneously hard-down — both independent harnesses out on quota that was actually available. Post-0.40.0 fast-follow per DEFER-197-I010-002/NOTE-197-I010-002; composes with F-197's host-neutral catalog seam (D-197-I010-002: host/model specifics are catalog DATA).

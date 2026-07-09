@@ -4,13 +4,110 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
-## [0.39.0-beta1] - 2026-06-23
+## [0.40.0-beta1] - 2026-07-09
 
-Feature 185 — Host-Neutral Lifecycle Gate Enforcement. **BETA** (no stable or full-parity claim). Builds on
-the 0.38.0-beta1 (Feature 184 — Full Antigravity Refocus) base.
+Feature 197 (Continuous Co-Review) **feature-complete** (iterations 009-010 since the 0.39.0-beta1
+preview). **BETA** — stable 0.40.0 promotion requires the clean-environment install validation and a
+human PASS verdict.
 
 ### Added
 
+- **OS-native reviewer containment:** every reviewer spawn (inline `--live` AND the Stop-hook
+  detached fire) runs under a Windows Job Object (`KILL_ON_JOB_CLOSE`) or Unix `setsid`+process-group,
+  so the whole reviewer tree dies atomically on timeout, kill, or supervisor death — validated on
+  Windows and WSL both directions (dead supervisor / dead child). Session-scoped registry, child-aware
+  orphan reaper, and a `terminal_reason` on every terminal status write.
+- **Tiered degraded-evidence gate:** every promoted run carries 3-dimension evidence labels
+  (completeness full/partial · independence independent/same-host/unverified · budget
+  normal/time-extended). Full+independent evidence auto-allows review-signoff; anything degraded
+  needs a recorded first-class human ack (`specrew review --ack-degraded <run-id> --ack-reason`) —
+  the gate never deadlocks and never silently passes.
+- **Remediation menu:** any problem run (timeout, partial, blocked, reviewer-down) surfaces five
+  human choices — more time / different host / narrow scope (code · process · path · function) /
+  accept partial / override block — via `specrew review --remediate <choice>`; the choice is carried
+  one-shot on the round-state, human-directed reruns bypass the autonomous round ceiling, and scoped
+  reruns are honestly labelled partial. Override honors D5: a full+independent blocking verdict is
+  never agent-overridable.
+- **Escalation latch:** a round-ceiling escalation surfaces ONCE then latches quiet; only a real
+  human turn (machine-injection refused) or a converged checkpoint clears it — no repeated nagging,
+  no lost escalations.
+- **Host-neutral core, enforced:** `reviewer-host-catalog.ps1` is the ONLY place harness specifics
+  live (D-197-I010-002); independence preference is catalog-derived (strongest eligible reviewer on a
+  DIFFERENT harness than the code-writer), an explicit `--host` is honoured-or-surfaced
+  (`requested-host-not-available` — never a silent substitute), a missing catalog fails loud, and a
+  governance guard test keeps harness names out of the core.
+- **Antigravity reviewer harness:** `agy` wired as a catalog row and field-validated end-to-end
+  (clean promoted pass + substantive multi-finding rounds while serving as the independent reviewer).
+- **Reviewer prompt consolidation:** the standalone code-review-agent playbook is grafted into the
+  outbound slim prompt (falsification stance, phased review, per-lens validation, claim/design-trace,
+  never-false-green, secret non-exfiltration) and the file retired to `docs/reference/`.
+- **Codex reliability hardening:** adapter-level retry-once on an empty exit-0 result with a cause
+  diagnostic (`finalization-or-capture-gap` vs `no-output-produced`); a still-empty retry fails LOUD.
+- **Implementer test-evidence for the reviewer:** `Write-ContinuousCoReviewTestEvidence` records the
+  implementer's ACTUAL suite runs (counts, exit codes, durations) bound to the reviewed-state digest;
+  the orchestrator injects the record into the reviewer worktree ONLY on an exact digest match, and
+  the reviewer substitutes it for broad suite re-runs (targeted spot-checks only) — so reviews spend
+  their budget reviewing instead of re-testing. Hand-written claims keep zero evidence standing
+  (never-false-green intact).
+- **Stop-hook cost control:** the conformance transcript parse runs only after material turns —
+  conversational stops stay cheap.
+- **Signoff-run baseline doctrine:** `specrew review --live` auto-anchors its baseline to the feature
+  merge-base for signoff evidence; an explicit `--baseline-ref` run is exploratory by design and
+  never counts as signoff evidence. All teaching surfaces (refocus, charters, ceremonies, skills)
+  state this.
+
+### Fixed
+
+- **Reviewed identity = certified identity** (found by the feature's own reviewer in dogfood): the
+  reviewer worktree now materializes from the reviewed-state digest's own tree object instead of
+  HEAD, so the content the reviewer sees and the content the signoff gate certifies are the same git
+  tree by construction — uncommitted changes can no longer be certified as reviewed without being
+  seen, and `specrew review --live` genuinely reviews uncommitted work. The navigator auto-fire
+  DEDUP keys on the same digest identity (was: HEAD tree, which deduped dirty increments as
+  already-reviewed — found by a navigator auto-fire reviewing its own machinery), so one identity
+  drives dedup, materialization, and the gate.
+- The `specrew review --live` default budget now resolves like the auto path — explicit
+  `--timeout-seconds`, else `co_review_timeout_seconds` config, else a 300s baseline (was: a
+  hardcoded 120s left over from iteration 002 that cut agentic reviewers mid-review; found by the
+  first downstream project to use the default).
+- Reviewer runs with an unresolvable design context are recorded, the reviewer is told, and the run
+  is labelled partial (was: a silent blind review); durable fallbacks resolve the context from
+  feature metadata, session state, or a single spec directory.
+- Harvested partial reviewer output is normalized to the full findings schema (was: schema-lax
+  embedding of bare comments).
+- The Unix detached service spawn no longer passes the Windows-only `-WindowStyle` flag.
+- The launcher's post-spawn registry write merges instead of clobbering a fast supervisor's
+  containment telemetry (race fixed + regression-tested).
+- Containment test harnesses no longer flash visible terminal windows on Windows.
+- The conformance flush/read race suspected since iter-009 was forensically REFUTED on the real
+  self-host corpus (21 records); a permanent analyzer reopens the finding if the signature ever
+  appears.
+
+### Notes
+
+- **Known limitation (recorded, fast-follow):** reviewer *filesystem* confinement is instructional —
+  process containment is enforced, but a permissions-skipped reviewer agent can reach the origin repo
+  by absolute path (observed in dogfood; no state was mutated). Worktree relocation + origin-path
+  guard are the priority follow-up (DEFER-197-I010-003).
+- **Reviewer quota reality (field notes, 2026-07-08):** codex intermittently returns empty exit-0
+  (retry recovers singles; doubles fail loud); antigravity meters quota per model GROUP with
+  independent windows — the ranked model-priority-within-harness design that addresses both is
+  recorded in Proposal 102 (Pillar 5 addendum) as a post-0.40.0 fast-follow.
+
+## [0.39.0-beta1] - 2026-07-01
+
+Features 197 (Continuous Co-Review) + 185 (Host-Neutral Lifecycle Gate Enforcement). **BETA** (no stable or
+full-parity claim). Builds on the 0.38.0-beta1 (Feature 184 — Full Antigravity Refocus) base.
+
+### Added
+
+- **Continuous Co-Review (Feature 197):** a Stop-hook navigator fires an independent reviewer (codex / a second
+  Claude / copilot) in an ephemeral read-only git worktree at each implement checkpoint, producing a
+  schema-conformant findings verdict. The reviewer is host-neutral and code-writer-INDEPENDENT + human-authorized
+  (`specrew review --host <h> --authorization-ref <ref>`); the review-signoff gate fails closed until real
+  co-review evidence exists, so a self-review cannot satisfy it. A round ceiling bounds non-convergence and a
+  ceiling-halt emits a VISIBLE escalation (never a 0-findings false-green). `specrew review --live` runs an
+  on-demand review of the working change-set.
 - **Host-neutral lifecycle gate enforcement:** cleaned all-host refocus/coordinator instructions so non-Claude
   hosts receive a harness-free boundary-stop contract instead of Claude-only `specrew-gate-stop` /
   `AskUserQuestion` directives.
@@ -39,6 +136,14 @@ the 0.38.0-beta1 (Feature 184 — Full Antigravity Refocus) base.
   beta readiness review.
 - This prerelease intentionally remains beta-before-stable. Stable promotion requires the normal clean
   prerelease install validation and human PASS verdict.
+- **Continuous co-review setup + reliability (beta, Feature 197):** a reviewer host must be human-authorized
+  once per project — `specrew review --host codex --authorization-ref <ref>` — before the Stop-hook auto-fire
+  can produce a review; the recommended `auto-select` preference does NOT auto-authorize, and an unauthorized
+  first checkpoint now surfaces an actionable "authorize a reviewer" message rather than failing silently. The
+  codex reviewer is intermittently unreliable (occasional empty exit-0 output → no review produced; re-fire to
+  retry) — this always fails loudly (`status=failed`), never as a false pass. See iteration drift-log
+  D-013..D-015 for the dev-trial version-split, the auto-select authorization gap, and the codex-reliability
+  characteristic.
 
 ## [0.38.0-beta1] - 2026-06-18
 

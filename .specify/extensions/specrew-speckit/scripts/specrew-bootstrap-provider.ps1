@@ -138,7 +138,26 @@ function Format-BootstrapDirective {
     $lines.Add('On your VERY FIRST response - BEFORE anything else and REGARDLESS of the user''s first message (even a task like "create a feature ...") - render the Specrew ORIENTATION BANNER as visible prose, THEN act on the request. The banner is mandatory on every host; never skip it. Render it ONCE, only as the opening of THIS session''s first response: if you RE-READ this contract later in the same session (e.g. to re-check the lifecycle state), do NOT render the banner again - you have already oriented; just continue the work. Render, in order:')
     $lines.Add('  (1) Specrew is governing this session, and HOW we work: a spec-driven lifecycle with human-authorized boundaries - you DRIVE the gates and do NOT free-run the SDLC.')
     $lines.Add('  (2) Specrew version, the host you are, the project + branch, and the current lifecycle position.')
-    $lines.Add('  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can (FR-025).')
+    # FR-025 (banner-3 resolution fix, 2026-07-01 / D-197-I009-012): inject the RESOLVED expertise line straight
+    # into the reminder. A POINTER-mode host (claude/codex - whose hook-output cap drops the inline contract) skims
+    # the pointer and renders an EMPTY item 3 ("it knows nothing about me") even though ~/.specrew/user-profile.yml
+    # IS set. Read it here and hand the agent the resolved line so it cannot render the generic example or the
+    # fallback. Fail-soft: if the profile reader is unavailable or the profile is empty, fall back to the prior
+    # guidance VERBATIM, so this can only improve item 3, never break the bootstrap.
+    $bannerItem3 = $null
+    try {
+        if (Get-Command -Name 'Get-SpecrewProfileOrientationLine' -ErrorAction SilentlyContinue) {
+            $resolvedExpertiseLine = Get-SpecrewProfileOrientationLine -Profile (Get-UserProfile)
+            if (-not [string]::IsNullOrWhiteSpace($resolvedExpertiseLine)) {
+                $bannerItem3 = '  (3) How you will adapt to the HUMAN - render banner item 3 with THIS resolved adaptation, read from the user''s ~/.specrew/user-profile.yml (do NOT substitute the example, and do NOT render the no-profile fallback): ' + ([string]$resolvedExpertiseLine).Trim() + ' (FR-025).'
+            }
+        }
+    }
+    catch { $bannerItem3 = $null }
+    if ([string]::IsNullOrWhiteSpace($bannerItem3)) {
+        $bannerItem3 = '  (3) How you will adapt to the HUMAN - the user-profile / expertise dials from the contract (e.g. "I''ll treat you as an expert on Software Architecture ...") - so they see what you know about them. If the contract carries NO user-profile/expertise adaptation (none is set), instead tell them they can set how you adapt by running /specrew-user-profile - the hook cannot ask, but they can (FR-025).'
+    }
+    $lines.Add($bannerItem3)
     $lines.Add('  (4) Any validated handover summary; (5) a one-line state reason when non-default; (6) a brief recommended next step for THIS state; (7) the Resume / New / Pick-feature menu as TEXT (offer Resume only when a valid active session exists).')
     # F-174 iter-11 (T009, DF-2): EMBED the resolved version + branch in the directive TEXT so a pointer-mode
     # host (codex - it does NOT inline the contract, so the version/branch never reached its banner; the

@@ -1,0 +1,205 @@
+schema_version: "1.0"
+context_scope: "feature_standalone"
+resolved_stack: "powershell-markdown-yaml-json"
+selections:
+  - id: "code-rule.intent-revealing-names"
+    checked: true
+  - id: "code-rule.short-functions"
+    checked: true
+  - id: "code-rule.avoid-deep-nesting"
+    checked: true
+  - id: "code-rule.dependency-injection"
+    checked: true
+    decision: "Use PowerShell-friendly composition seams: inject function sets, scriptblocks, configuration, and file paths rather than hard-wiring provider or filesystem behavior into core reviewer orchestration."
+    enforcement: [review, tests]
+  - id: "code-rule.dtos-between-services"
+    checked: true
+    decision: "Treat ReviewRequest, FindingsResult, ReviewThread, GateVerdict, InfrastructureFailure, SpawnInvocation, and ReviewRun shapes as local DTO/contract artifacts; provider-specific payloads must be translated at adapter boundaries."
+    enforcement: [review, tests]
+  - id: "code-rule.avoid-common-utility-libs"
+    checked: true
+    decision: "Do not introduce broad utility modules for Proposal 197; extract only focused internal modules around real seams such as contracts, evidence writing, adapter invocation, and gate verdict evaluation."
+    enforcement: [review]
+  - id: "code-rule.immutability-intent"
+    checked: true
+    decision: "Treat request bundles and run evidence as immutable per-run records; replay creates a new run id rather than mutating prior request evidence."
+    enforcement: [review, tests]
+  - id: "code-rule.comments-wisely"
+    checked: true
+    decision: "Comments explain reviewer-contract rationale, redaction boundaries, fallback decisions, and protected-surface constraints; avoid restating obvious PowerShell control flow."
+    enforcement: [review]
+  - id: "code-rule.no-magic-numbers"
+    checked: true
+  - id: "code-rule.optimize-apis-for-call-site"
+    checked: true
+    decision: "Design local commands, functions, and artifacts from the implementer/reviewer call site: explicit run id, checkpoint baseline, request path, provider/model request, and verdict path."
+    enforcement: [review]
+  - id: "code-rule.stronger-domain-types"
+    checked: true
+    decision: "Prefer named contract fields, enum-like status values, schema versions, and explicit failure categories over loose stringly-typed ad hoc records."
+    enforcement: [review, tests]
+  - id: "code-rule.object-invariants"
+    checked: true
+    decision: "Guard impossible states such as a pass verdict with unresolved blocking findings, a fallback without authorization, or a ReviewRun without a run_id as internal defects."
+    enforcement: [tests, review]
+  - id: "code-rule.no-leaky-mutable-internals"
+    checked: true
+  - id: "code-rule.normalize-state"
+    checked: true
+    decision: "Use ReviewRun as the durable audit index tying request, invocation, result, thread, verdict, provider/model provenance, and cleanup evidence together; avoid duplicated unowned gate state."
+    enforcement: [review, tests]
+  - id: "code-rule.simple-trustworthy-tests"
+    checked: true
+    decision: "Use deterministic Pester tests and fixtures for builders, fallback selection, failure classification, redaction, skipped runs, schema compatibility, and fake reviewer paths."
+    enforcement: [tests]
+  - id: "code-rule.docs-as-api-test"
+    checked: true
+    decision: "Contract examples and workshop artifacts must be readable enough that a maintainer can understand how to invoke or review the local reviewer spine."
+    enforcement: [review]
+  - id: "code-rule.language-native-constructs"
+    checked: true
+    decision: "Use idiomatic PowerShell functions, ordered hashtables, parameter blocks, safe argv invocation, and JSON/YAML artifacts rather than unnecessary class hierarchies."
+    enforcement: [review]
+  - id: "code-rule.secure-coding-defaults"
+    checked: true
+    decision: "Do not package or persist environment variables, credentials, token stores, raw prompts, raw transcripts, full stderr/stdout, or unrelated ambient state by default."
+    enforcement: [review, tests]
+  - id: "code-rule.solid-baseline"
+    checked: true
+  - id: "code-rule.strategy-state-over-repeated-conditionals"
+    checked: true
+    decision: "Use strategy-style host/provider adapters and capability descriptors instead of repeated host-name conditionals in core orchestration."
+    enforcement: [review]
+  - id: "code-rule.polymorphism-mechanism"
+    checked: true
+    decision: "Prefer function/module strategy seams and injected function sets over inheritance for PowerShell host/provider adapters."
+    enforcement: [review]
+  - id: "code-rule.complex-code-stable"
+    checked: true
+    decision: "Keep stable contract, evidence, and gate logic inward; volatile host CLI details remain in adapters."
+    enforcement: [review]
+  - id: "code-rule.anti-corruption-layers"
+    checked: true
+    decision: "Provider adapters are the anti-corruption layer translating host-specific CLI behavior into Specrew-owned contract artifacts."
+    enforcement: [review, tests]
+  - id: "code-rule.type-inference-deliberate"
+    checked: true
+    decision: "Use explicit names and casts where PowerShell object shape, schema fields, or path handling would otherwise be ambiguous."
+    enforcement: [review]
+  - id: "code-rule.concurrency-over-locks"
+    checked: true
+    decision: "Prefer unique run ids, immutable per-run workspaces, and no bundle reuse over shared mutable state or locks; do not introduce concurrent worker infrastructure in Iteration 001."
+    enforcement: [review, tests]
+  - id: "code-rule.idiomatic-error-handling"
+    checked: true
+    decision: "Use strict mode and Stop semantics in scripts; represent expected external failures as structured operational outcomes, while internal invariant/code defects fail loudly in tests and review."
+    enforcement: [review, tests]
+  - id: "code-rule.careful-retries"
+    checked: true
+    decision: "Allow at most one authorized availability fallback attempt from explicit configuration when the primary authorized host/model is unreachable; a specifically requested unavailable model is a hard block unless the exact alternate was already human-authorized, and schema or invariant defects are never retried."
+    enforcement: [review, tests]
+  - id: "code-rule.logging-traceability"
+    checked: true
+    decision: "Record run_id, checkpoint, baseline, request hash, adapter, requested/actual host/model, finding/thread/verdict/escalation identifiers, and cleanup status as structured redacted evidence."
+    enforcement: [review, tests]
+  - id: "code-rule.robustness-state-boundaries"
+    checked: true
+    decision: "Distinguish no-reviewable-diff, provider availability, authorization, timeout, malformed output, malformed durable state, non-convergence, and internal defects as separate outcomes."
+    enforcement: [review, tests]
+  - id: "code-rule.testing-posture"
+    checked: true
+    decision: "Use deterministic Pester unit, contract, and fixture tests; live AI-host smoke is optional and only when configured and explicitly authorized."
+    enforcement: [tests, review]
+  - id: "code-rule.evidence-driven-performance"
+    checked: false
+    decision: "Exception: Iteration 001 is governance/tooling correctness work; no performance tuning focus unless a measurable local timeout issue appears."
+  - id: "code-rule.copy-semantics"
+    checked: true
+    decision: "Use immutable snapshots and DTO projections for review requests and evidence rather than sharing mutable runtime objects across run steps."
+    enforcement: [review]
+  - id: "code-rule.extension-points"
+    checked: true
+    decision: "Declare host/provider adapter and capability-descriptor seams explicitly; future hosts extend through adapters rather than editing core gate logic."
+    enforcement: [review]
+  - id: "code-rule.api-service-design"
+    checked: true
+    decision: "Treat local file/stdin/stdout/CLI shapes as public integration contracts with schema_version, stable fields, and additive evolution."
+    enforcement: [review, tests]
+  - id: "code-rule.authz-security-context"
+    checked: true
+    decision: "Human-approved configuration governs paid, external, non-default, or newly added providers/models; ambient provider credentials are never copied into Specrew artifacts."
+    enforcement: [review, tests]
+  - id: "code-rule.validation-boundaries"
+    checked: true
+    decision: "Validate ReviewRequest, capability descriptors, SpawnInvocation, FindingsResult, ReviewThread, GateVerdict, ReviewRun, ReviewRunSkipped, and InfrastructureFailure at input, execution, and output boundaries."
+    enforcement: [tests, review]
+  - id: "code-rule.write-conflict-semantics"
+    checked: true
+    decision: "Durable writes are idempotent by run id and fail on accidental overwrite; replay uses a new run id."
+    enforcement: [tests, review]
+  - id: "code-rule.collection-query-semantics"
+    checked: false
+    decision: "Exception: Iteration 001 does not expose user collection query surfaces."
+  - id: "code-rule.pagination-delivery"
+    checked: false
+    decision: "Exception: Iteration 001 has no paginated delivery surface."
+  - id: "code-rule.protocol-choice"
+    checked: true
+    decision: "Use local file/stdin/stdout/process-exit contracts, not REST, GraphQL, gRPC, queues, daemons, streaming APIs, or in-session subagent APIs."
+    enforcement: [review]
+  - id: "code-rule.messaging-event-processing"
+    checked: false
+    decision: "Exception: Iteration 001 introduces no queue, pub-sub, event stream, router, or background worker."
+  - id: "code-rule.cache-boundaries"
+    checked: false
+    decision: "Exception: Iteration 001 introduces no cache and must not use cache or database state as a communication channel."
+  - id: "code-rule.lts-version-check"
+    checked: true
+    decision: "Bind to the existing Specrew PowerShell 7.x baseline and confirm supported runtime at implementation time without live web dependency in the reviewer runtime."
+    enforcement: [review]
+  - id: "code-rule.framework-validation"
+    checked: true
+    decision: "Use existing schema validation and fixture patterns where available; do not create parallel hand-rolled validators when a catalog/schema path already exists."
+    enforcement: [tests, review]
+  - id: "code-rule.shared-code-packaging"
+    checked: true
+    decision: "Ship reusable implementation through existing Specrew module/deployment surfaces and mirror extension assets only where existing parity rules require it; no separate package in Iteration 001."
+    enforcement: [review, tests]
+  - id: "code-rule.public-api-reusable-design"
+    checked: true
+    decision: "Document adapter/capability and contract examples enough for future host additions, with deprecate-before-remove compatibility."
+    enforcement: [review]
+custom_rules:
+  - id: "proposal-197.rule.current-specrew-methods"
+    text: "Continue with the current Specrew implementation methods as the source of code-rules truth; no external guideline or example project ingestion is required for this feature."
+    scope: "proposal-197"
+    provenance: "free-text"
+  - id: "proposal-197.rule.f184-protected-surfaces"
+    text: "Do not edit F-184-protected host-runtime, hook, provider, registry, refocus, or shared governance surfaces without explicit coordination; avoid ambiguous provider-file naming because Proposal 197 reviewer-agent provider adapters are distinct from F-184 repository/provider infrastructure."
+    scope: "proposal-197-iteration-001"
+    provenance: "free-text"
+  - id: "proposal-197.rule.injected-reviewer-definition"
+    text: "Deliver the canonical code-review-agent.md through the same ReviewPromptComposer path used by real host adapters; native host-folder copies are best-effort mirrors only and runtime correctness must not depend on host auto-loading an agent file."
+    scope: "proposal-197-send-back"
+    provenance: "free-text"
+  - id: "proposal-197.rule.prompt-composer-fixture-evidence"
+    text: "Deterministic fixture tests must inspect the actual composed outbound prompt and fail if it omits the canonical reviewer instruction, Proposal 145 rubric, workshop-decision conformance, design context content, exact diff/change-set content, round_number, prior_findings, visibility policy, do-policy, or FindingsResult.v1-only output instruction."
+    scope: "proposal-197-send-back"
+    provenance: "free-text"
+  - id: "proposal-197.rule.transport-only-adapters"
+    text: "Host adapters receive a complete composed prompt and remain transport-only safe-argv/equivalent invocation edges; they may pass read-only flags and classify CLI outcomes but must not own rubric text, policy wording, prior-finding semantics, durable writes, or gate verdicts."
+    scope: "proposal-197-send-back"
+    provenance: "free-text"
+  - id: "proposal-197.rule.disposable-workspace-mutation-guard"
+    text: "Reviewer execution uses an isolated disposable workspace with pre/post mutation validation; source/spec/state/Git mutations invalidate the review execution and are recorded as evidence only, never copied back or treated as fixes."
+    scope: "proposal-197-send-back"
+    provenance: "free-text"
+  - id: "proposal-197.rule.remote-main-sync-before-implementation"
+    text: "Before implementation begins, merge or rebase the feature branch with latest remote main and resolve conflicts; if the conflict surface is large, split that synchronization into its own preparatory iteration."
+    scope: "proposal-197-send-back"
+    provenance: "free-text"
+dependency_policy:
+  stance: "use-existing-no-new-dependency"
+provenance:
+  confirmation: "human-confirmed"
+  confirmation_scope: "lens-question"

@@ -1,33 +1,20 @@
 ---
-focus_area: "F-184 iteration-closeout verdict"
-active_issues: "awaiting human iteration-closeout verdict; do not open feature-closeout or iteration 002 without approval"
+focus_area: "Feature 197 before-implement boundary"
+active_issues: "[]"
 schema: v1
-updated_at: 2026-06-18T07:50:14Z
+updated_at: 2026-07-09T08:38:10Z
 session_state_active: false
 session_state_boundary: feature-closeout
-session_state_feature: 184-full-antigravity-refocus
-session_state_feature_path: "C:\Dev\183-stability-quality-bundle\specs\184-full-antigravity-refocus"
+session_state_feature: 197-continuous-co-review
+session_state_feature_path: "C:\Dev\specrew-197-continuous-co-review\specs\197-continuous-co-review"
 session_state_iteration: "(none)"
 session_state_task: "(none)"
-session_state_auth_commit: 7ac1fc888ecdfbdd785a06b12b20e516e5d1ad6b
-session_state_recorded_at: 2026-06-18T07:50:14Z
+session_state_auth_commit: efeb7dba
+session_state_recorded_at: 2026-07-09T08:38:10Z
 ---
 
 # What We're Focused On
 
-Feature 184-full-antigravity-refocus is active at the iteration-closeout
-boundary.
+Feature 197, continuous co-review, is paused at the before-implement boundary for Iteration 002. The reviewer-definition repair plan is capacity-clean at 8.00/20 story_points, Iteration 002 plan/state/drift artifacts exist, and runtime implementation must not start until the human explicitly authorizes `before-implement -> implement`.
 
-- Iteration: 001
-- Task: (none)
-- Recorded at: 2026-06-17T12:19:51Z
-- Authorization commit: 00d2b7bd
-
-Closeout preparation rendered
-file:///C:/Dev/183-stability-quality-bundle/specs/184-full-antigravity-refocus/iterations/001/dashboard.md
-and appended
-file:///C:/Dev/183-stability-quality-bundle/.specrew/closed-iterations.yml.
-
-Stop here for the human iteration-closeout verdict. Do not enter
-feature-closeout or open iteration 002 until the human explicitly approves the
-next boundary.
+The latest `origin/main` synchronization is being completed as a readiness repair so the branch diff no longer reports stale `.specrew/runtime/refocus-channel1.json` history. After the sync is committed and pushed, rerun the before-implement gate and stop for the human verdict.

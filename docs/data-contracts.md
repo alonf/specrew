@@ -115,3 +115,32 @@ When a feature changes any state-file schema or reader behavior:
 - Do not assume Windows path separators; normalize with `Join-Path` and repo-relative paths.
 - Write UTF-8 artifacts without relying on platform-specific defaults.
 - Keep fixture assertions insensitive to line-ending differences unless line endings are the contract under test.
+
+## Continuous co-review evidence contracts (Feature 197, schema v1)
+
+The co-review pipeline persists JSON evidence validated against schemas deployed to
+`.specrew/review/contracts/` in every governed project (source of truth:
+`specs/197-continuous-co-review/contracts/` in this repo).
+
+| Artifact | Schema | Written by | Read by |
+| --- | --- | --- | --- |
+| `.specrew/review/inline/<run-id>/findings-result.json` | `findings-result.schema.json` | the reviewer harvest (normalized — partial salvage included) | the signoff gate, `specrew review` replay, the navigator reap |
+| `.specrew/review/inline/<run-id>/review-run.json` | (run envelope) | run promotion | the review-signoff evidence gate (digest freshness + lineage + evidence labels) |
+| `.specrew/review/inline/<run-id>/gate-verdict.json` | `gate-verdict.schema.json` | the inline gate evaluator | review-signoff, replay |
+| `.specrew/review/pending/<run-id>/status.json` | (heartbeat envelope) | the run supervisor (heartbeats + terminal write with `terminal_reason`) | reapers, `--live` progress, diagnostics |
+| `.specrew/reviewer-hosts.json` | (host registry) | `specrew review --host <h> --authorization-ref <ref>` (human authorization) + installed-state refresh | reviewer selection policy |
+| `.specrew/runtime/co-review-round-state.json` | (round carrier) | run terminal writes; `--remediate` records the one-shot remediation | the next run (round threading), the escalation latch |
+| `.specrew/review/test-evidence/<digest>.json` | (evidence record) | `Write-ContinuousCoReviewTestEvidence` (machine-observed suite runs, digest-bound) | the orchestrator (injected into the reviewer worktree as `.review/implementer-evidence.json` ONLY on an exact digest match) |
+
+Writer contract highlights:
+
+- every promoted run carries the 3-dimension evidence labels (`completeness`, `independence`,
+  `budget`) and the reviewed-tree digest the gate compares for freshness;
+- finding items are schema-normalized even when salvaged from a partial run (`source_run_id` forced,
+  line numbers min 1);
+- terminal status writes re-assert child/containment fields so a concurrent registry writer can
+  never erase kill-evidence.
+
+Reader contract highlights: the gate treats a digest mismatch as STALE (never passes older evidence
+against a newer tree), tolerates absent optional fields (StrictMode-safe reads), and a blocking
+verdict from a full+independent run is not agent-overridable.

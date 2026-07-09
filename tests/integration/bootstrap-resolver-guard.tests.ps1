@@ -98,6 +98,10 @@ try {
     New-Item -ItemType Directory -Path (Join-Path $proj 'extensions/specrew-speckit/scripts') -Force | Out-Null
     Copy-Item -LiteralPath (Join-Path $repoRoot 'hosts') -Destination (Join-Path $proj 'hosts') -Recurse -Force
     Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/internal/bootstrap') -Destination (Join-Path $internal 'bootstrap') -Recurse -Force
+    # F-197: the bootstrap provider hard-requires the continuous-co-review signoff-gate wiring (and the
+    # navigator fire-path lives beside it) - the minimal self-host fixture must carry both subtrees.
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/internal/continuous-co-review') -Destination (Join-Path $internal 'continuous-co-review') -Recurse -Force
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/internal/agent-tasks') -Destination (Join-Path $internal 'agent-tasks') -Recurse -Force
     Get-ChildItem -LiteralPath (Join-Path $repoRoot 'scripts/internal') -Filter '*.ps1' -File |
         ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $internal $_.Name) -Force }
     foreach ($f in 'decisions-split.ps1', 'append-only-logs.ps1', 'psd1-sort.ps1', 'auto-detection.ps1') {
