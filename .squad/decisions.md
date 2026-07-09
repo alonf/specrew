@@ -27648,3 +27648,22 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Beta posture**: 0.40.0-beta.1 ships loud-and-honest with these as documented known limitations;
   the core guarantees (never-false-green, loud failures, human-gated overrides, digest-fresh gate,
   reviewed==certified) hold.
+
+## 2026-07-09T10:05:00Z — Resolved-by-deferral round teaching (the T106 human-close missing half)
+
+- **Decision ID**: DEC-197-I010-009
+- **Type**: convergence-mechanism completion (executing the approved DEC-197-I010-008 path)
+- **Approving Human**: Alon Fliess (the "go" decision specified reviewers converge on the recorded
+  deferral; this makes that mechanically true)
+- **Recorded At**: 2026-07-09T10:05:00Z
+- **Gap (found by the deferral's own first exercise, run 20260709T002004132)**: the round-4 reviewer
+  READ DEC-197-I010-008 and still escalated - the fix-verification round teaching had NO deferral
+  vocabulary ("still present = failed fix"), and a full+independent block is not overridable by
+  design (D5), so a human-deferred blocking finding could NEVER converge: a deadlock the T094
+  never-deadlock rule did not cover (it assumed degraded evidence, not human-deferred findings).
+- **Fix**: the round prompt gains RESOLVED-BY-DEFERRAL - a prior finding is resolved when a RECORDED
+  human deferral covers it, VERIFIED IN THE WORKTREE (a decisions/drift/proposal record naming the
+  finding, the approving human, and where the work is carried); a deferral CLAIM without a
+  verifiable record is itself a blocking finding (never-false-green preserved); the final-round
+  escalation rule applies only to findings NOT covered by a verified deferral. Prompt contract
+  tests 17/17.

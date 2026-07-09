@@ -126,4 +126,15 @@ Describe 'Get-ContinuousCoReviewSlimPrompt implementer-evidence block' {
         $without | Should -Match 'REPORT-FALSIFICATION STANCE'
         $with | Should -Match 'NEVER-FALSE-GREEN'
     }
+
+    It 'teaches RESOLVED-BY-DEFERRAL on fix-verification rounds (the T106 human-close missing half)' {
+        $round2 = Get-ContinuousCoReviewSlimPrompt -RunId 'r1' -RoundNumber 2 -MaxRounds 2 -PriorFindings '{"findings":[{"finding_id":"f1"}]}'
+        # A recorded human deferral resolves a finding for round purposes - verified in-tree, never a claim.
+        $round2 | Should -Match 'RESOLVED-BY-DEFERRAL'
+        $round2 | Should -Match 'RECORDED HUMAN DEFERRAL'
+        $round2 | Should -Match 'deferral CLAIM without a verifiable record is itself a blocking finding'
+        $round2 | Should -Match 'not covered by a verified recorded deferral'
+        # Round 1 has no prior findings and no deferral teaching.
+        (Get-ContinuousCoReviewSlimPrompt -RunId 'r1') | Should -Not -Match 'RESOLVED-BY-DEFERRAL'
+    }
 }
