@@ -110,6 +110,30 @@ blocks the very re-review that would confirm the finding is gone"); maintainer-d
   finding (or whose flagged files changed since the finding) resets — or does not increment — the
   round counter; only true no-movement rounds climb toward escalation.
 
+Second field batch (2026-07-09, tesr197local on the published 0.40.0-beta1 — the first-ever E2E on
+gallery bits; both gates fired CORRECTLY, the findings are about what the correctness costs):
+
+- **W13 — Machine-managed iteration trackers stale the review digest**: a human-approved
+  reconciliation of `state.md`/`tasks-progress.yml` (bookkeeping repaired to match the already
+  accepted `review.md`; zero reviewable content changed) altered the reviewed-state digest, so the
+  signoff gate demanded a fresh live review to re-anchor evidence — a full reviewer cycle spent on a
+  tracker edit. `specs/**` is digest identity BY DESIGN (spec/plan/tasks edits must stale evidence),
+  but `iterations/*/state.md` and `iterations/*/tasks-progress.yml` are machine-managed DERIVED
+  bookkeeping, not reviewable content — the acceptance truth lives in `review.md` plus the run
+  records, never in the trackers. Fix: add exactly `specs/*/iterations/*/state.md` and
+  `specs/*/iterations/*/tasks-progress.yml` to the DIGEST-IDENTITY strip list in
+  `reviewed-state-digest.ps1` — narrowly; spec/plan/tasks/review/retro themselves stay identity.
+  Needs the reviewer-can-still-see-it regression test (the strip-list false-allow discipline) plus
+  its inverse: a tracker-only edit must NOT stale evidence.
+- **W14 — Warn when an explicit `--timeout-seconds` undercuts the resolved config budget**: the
+  project config carried `co_review_timeout_seconds: 600`, but the driving agent passed
+  `--timeout-seconds 180` (then 400) and the reviewer was killed before producing anything —
+  explicit-beats-config is the correct precedence (DEC-197-I010-007), yet the CLI accepted a
+  guaranteed-to-fail downgrade silently. Fix: one warning line at budget resolution when the
+  explicit value is below the config/default it overrides ("explicit 180s < configured 600s;
+  reviews typically need the configured budget"), so the operator sees the downgrade before losing
+  a review cycle to it.
+
 ## Out of scope
 
 - Model/quota fallback (Proposal 102 Pillar 5 addendum owns it).
@@ -119,9 +143,10 @@ blocks the very re-review that would confirm the finding is gone"); maintainer-d
 
 ## Effort
 
-~5-8 SP: W1/W3/W6 are small and mechanical (1-2 SP together); W2 and W5 are careful list/refactor
+~6-10 SP: W1/W3/W6 are small and mechanical (1-2 SP together); W2 and W5 are careful list/refactor
 work with regression tests (2-3 SP); W4 is the open-ended one (evaluate first, 1-3 SP if pursued);
-W7 is a decision + a small hook/refocus change (1 SP).
+W7 is a decision + a small hook/refocus change (1 SP); W13 is a two-line strip-list change whose
+cost is the paired regression tests (1 SP); W14 is one warning line (well under 1 SP).
 
 ## Phase placement
 
@@ -158,6 +183,7 @@ closed the certification gap for ordinary source).
 
 ## Status history
 
+- **2026-07-09 (beta-1 E2E)**: amended - W13/W14 added from the first E2E on published gallery bits (tesr197local): a governance-tracker reconcile staled the review digest and cost a full live review (W13); an explicit downward `--timeout-seconds` override was accepted silently and killed the reviewer before output (W14).
 - **2026-07-09 (later)**: amended - W11/W12 round-ceiling UX findings added from the downstream consumer dogfood (the ceiling chicken-and-egg); maintainer-directed to ship as 0.40.0-beta2 ("Add it to 203 and we will do it as beta 2").
 - **2026-07-09**: status set to `candidate`. Drafted from the F-197 iteration-010 dogfood ledger at
   maintainer direction ("copy all your recording legends to either github issues or proposals").
