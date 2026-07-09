@@ -64,6 +64,32 @@ inherit them:
   loud failure > host neutrality > teach-don't-trap > evidence-over-presence;
   paired-test rule binds every honesty invariant.
 
+## Clarifications
+
+### Session 2026-07-09 (clarify)
+
+- Q: Which per-host `default_timeout_seconds` values ship in the catalog? →
+  A (human): **antigravity 900** (measured 600–870s, headroom under its
+  lifted 15-minute host-side kill so our watchdog owns the reap),
+  **claude 600** (measured ceiling); **codex and copilot get measured on the
+  consumer test project during iteration 002** and their rows are added from
+  that evidence — absent rows fall to the 600 floor until measured. FR-022
+  amended accordingly.
+- Q: FR-014 (203-W7 standing-practice mechanism)? → A (human, approved with
+  defaults at the specify gate): kept as written — refocus-instructed duty
+  via the recorded-run wrapper is the host-neutral floor; hook-automated
+  recording is an enhancement where a host supports it, never the dependency.
+- Q: SC-014 stable-promotion E2E — scripted harness or manual? → A (human,
+  approved default): stays a manual maintainer dogfood on the published
+  beta2 bits; no scripted consumer-E2E harness in this feature.
+- Q: Pre-existing validator WARNs (missing dashboard.md on closed iterations
+  of F-048/141/174/182/197)? → A (human, approved default): left untouched —
+  they predate this feature and do not gate it.
+- Q: FR-036 consumer heal semantics when a shipped leak is found downstream?
+  → A (self-answered from repo doctrine, FR-028 parity): flag-only for
+  user-authored files; auto-rewrite only Specrew-owned deployed files whose
+  content hash matches a shipped version.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - One approval advances one boundary, on every host (Priority: P1)
@@ -457,7 +483,10 @@ pin-surface consistency assertions.
   durable record and CLI message MUST teach the sanctioned next steps
   (re-run with a larger explicit budget, or raise
   `co_review_timeout_seconds`) while the increase itself stays human-typed
-  per T096; the agent never self-escalates.
+  per T096; the agent never self-escalates. Shipped values (clarify
+  2026-07-09): antigravity 900, claude 600 (field-measured); codex and
+  copilot rows are added from timed reviews on the consumer test project
+  during iteration 002 — absent rows fall to the floor until measured.
 - **FR-023 (W15)**: The manual `--live` door MUST resolve the code-writer
   host, when the flag is absent, via the same env cascade as
   `--list-hosts` (`--code-writer-host` → `SPECREW_HOST` →
