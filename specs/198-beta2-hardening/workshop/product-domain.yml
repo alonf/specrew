@@ -1,0 +1,156 @@
+schema_version: v1
+depth: standard
+depth_reason: >-
+  Later feature in a well-known product (normally Light), but it is
+  release-blocking (stable 0.40.0 held per DEC-197-REL-001), multi-iteration
+  (~15-25 SP), and touches every consumer project's trust surfaces. Discovery
+  cost is low because proposals 203/204/205 and issue #2906 carry
+  field-verified evidence (run IDs, ledger entries), so Standard is pre-filled
+  from the proposals and confirmed with the maintainer rather than re-derived.
+  Deep is not warranted: no new product, no new user segment, no regulated
+  domain.
+context_scope: feature_standalone
+product_id: specrew
+product_context_ref: null
+areas:
+  users_stakeholders: >-
+    Downstream consumer developers and agents (inherit broken CI templates,
+    self-leaked methodology, silent boundary bypass, and wrong per-host review
+    budgets from init); the maintainer/release owner (stable 0.40.0 held on
+    this bundle); reviewer agents on all four hosts (harmed by missing
+    stripped-paths teaching and flat timeout defaults); the Specrew governance
+    trust story itself.
+  pain_job: >-
+    Four field-evidenced defect classes from the F-197 dogfoods and the beta-1
+    E2E: (1) reviewer containment/identity gaps - instructional-only
+    filesystem confinement, digest/worktree divergence, absent
+    stripped-paths teaching (203); (2) broken-by-construction consumer
+    distribution plus self-leak of Specrew-self facts into consumer surfaces
+    (204/205); (3) p0 silent boundary-approval bypass on non-stopping hosts -
+    Test-SpecrewBoundaryAuthorization is dead code (#2906); (4) beta-1 E2E
+    frictions - round-ceiling chicken-and-egg, budget kills at flat 300s,
+    tracker-edit-staled review evidence (203 W11-W16).
+  current_workaround: >-
+    Hand-edited consumer configs (co_review_timeout_seconds), human acks over
+    repeated review rounds flagging scaffold, tribal knowledge of the
+    remediation door, and the F-174 re-confirm backstop catching some skipped
+    boundaries after the fact.
+  existing_system_context: >-
+    Pure hardening of shipped 0.40.0-beta1. Every fix lands in an existing
+    seam: reviewer-host-catalog.ps1 (the only harness-data seam), the deploy
+    manifest/template surface, sync-boundary-state.ps1 and
+    shared-governance.ps1, refocus/prompt content, and the Spec-Kit/Squad
+    version pins.
+  constraints: >-
+    Host-neutral core (catalog is the only harness-data seam); T096
+    (remediations/acks/budget increases only from genuinely human-typed
+    commands); D5 (full+independent blocking verdicts never
+    agent-overridable); specs/, proposals/, docs/, tests/ are digest identity;
+    ProviderMirrorParity (every extensions/specrew-speckit script change syncs
+    its .specify mirror); new shipped files join Specrew.psd1 FileList;
+    markdownlint --fix before every commit; tag-push workflow auto-publishes
+    prereleases; never run agentic CLI probes in a governed cwd.
+  outcomes_success_metrics: >-
+    v0.40.0-beta2 ships all four work streams plus the Spec-Kit 0.12.9 and
+    Squad 0.11.0 bumps; the beta-1 E2E frictions do not reproduce on a fresh
+    consumer E2E against published beta2 bits; issues #2909 and #2903 close;
+    stable 0.40.0 unblocks after the maintainer's separate manual PASS.
+  mvp: >-
+    The four streams as triaged: 203 W1-W16, 204 W1-W7, 205 W1-W6, the #2906
+    detect-at-next-stop fix, and the toolchain bumps, released as
+    v0.40.0-beta2 (ModuleVersion 0.40.0, Prerelease beta2). Gate reading
+    confirmed by maintainer: all four streams landed with conditionals
+    honestly resolved - 203-W4 stays evaluate-first (may resolve to
+    not-pursued), 203-W7 is a decision item; not "every W item implemented".
+  non_goals: >-
+    Model/quota fallback (Proposal 102 owns it); the board-sync feature
+    (Proposal 101); non-GitHub forges; 204-W6 co-review-evidence CI lane
+    (design note only); cross-host sandbox APIs; automatic bounded budget
+    escalation (joins Proposal 102's opt-in umbrella if ever wanted).
+  alternatives_differentiation: >-
+    No competing alternative: this hardens the shipped product. The rejected
+    alternative is promoting stable 0.40.0 with known trust gaps -
+    DEC-197-REL-001 explicitly holds stable on this bundle.
+  adoption_rollout: >-
+    beta2 publishes automatically on tag push (prerelease); existing consumers
+    heal via specrew update (204-W5 obsolete-file surface + #2903 refocus
+    sync); fresh consumers get the consumer-ized surface via init (204-W1/W3,
+    W5b bootstrap commit); stable promotion is a separate maintainer PASS
+    after a fresh consumer E2E on the published beta2 bits.
+statements:
+  - text: Stable 0.40.0 is held until this bundle ships (DEC-197-REL-001).
+    area: constraints
+    evidence: known
+  - text: >-
+      Every consumer project since F-031 received deterministically broken CI
+      templates; first flagged by the first consumer-tree co-review on
+      2026-07-08 (runs 20260708T220720322, 20260708T220613175).
+    area: pain_job
+    evidence: known
+  - text: >-
+      Test-SpecrewBoundaryAuthorization has zero production call sites; a real
+      Copilot-host run advanced retro -> iteration-closeout on one approval.
+    area: pain_job
+    evidence: known
+  - text: >-
+      Reviewer escape observed 2026-07-08: a permissions-skipped antigravity
+      reviewer operated on the origin repo by absolute path; process
+      containment held, nothing mutated, but the vector allows mutation.
+    area: pain_job
+    evidence: known
+  - text: >-
+      Per-host review budgets differ in the field (antigravity 600-870s,
+      claude ~400-600s) while the shipped default is a flat 300s.
+    area: pain_job
+    evidence: known
+  - text: >-
+      Spec-Kit 0.12.9 removes --ai/--ai-commands-dir/--ai-skills (use
+      --integration <key>); scripts/specrew-init.ps1 ~line 621 passes
+      "--ai copilot" and will hard-fail; git extension became opt-in at
+      v0.10.0; agent-context extension full opt-in at v0.12.0; per-event hook
+      lists with priority ordering added v0.10.0.
+    area: existing_system_context
+    evidence: known
+  - text: >-
+      Squad 0.11.0 has no breaking release notes (adds squad registry, renames
+      ".NET Aspire" to "Aspire" in help text).
+    area: existing_system_context
+    evidence: known
+  - text: >-
+      --script ps and --ignore-agent-tools still exist on the Spec-Kit 0.12
+      CLI, and our extension.yml hooks schema still loads under 0.12; the
+      breaking-changes brief directs verification during implementation.
+    area: existing_system_context
+    evidence: research-needed
+    load_bearing: false
+  - text: >-
+      The beta2 gate is all four streams landed with conditionals honestly
+      resolved (203-W4 evaluate-first, 203-W7 decision item), not every W item
+      implemented.
+    area: mvp
+    evidence: known
+  - text: >-
+      Stable promotion requires a fresh consumer E2E dogfood on published
+      beta2 bits plus the maintainer's manual PASS.
+    area: outcomes_success_metrics
+    evidence: known
+  - text: >-
+      The tag-push workflow auto-publishes prereleases; the
+      psgallery-release-credentials doc still describes an older dry-run-only
+      model and may be fixed in this feature.
+    area: adoption_rollout
+    evidence: known
+  - text: >-
+      Landing 205-W1 (deny-list lint) early means every template this feature
+      touches is born clean instead of retro-scrubbed.
+    area: adoption_rollout
+    evidence: known
+skipped: []
+follow_up_research:
+  - >-
+    Verify against the installed Spec-Kit 0.12.9 CLI: --script ps and
+    --ignore-agent-tools survive, extension.yml hooks schema loads, and
+    whether our flow needs "specify extension add git" (git extension opt-in
+    since 0.10.0).
+confirmation: human-confirmed
+confirmation_scope: lens-question
