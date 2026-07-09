@@ -473,6 +473,39 @@ function Remove-SpecrewEntriesFromEventMap {
     }
 }
 
+function Remove-SpecrewEntriesFromDirectEventMap {
+    # Variant of Remove-SpecrewEntriesFromEventMap for the `direct-event-map` ConfigShape, where event keys live
+    # at the JSON ROOT alongside arbitrary unrelated top-level properties (this config file has no `hooks` wrapper).
+    # CRITICAL difference: only ARRAY-valued properties are treated as event groups. The base helper rewrites
+    # EVERY property's value via `$eventProp.Value = $kept.ToArray()`, which would wrap a non-array scalar root
+    # property (e.g. a `version` field, or any user top-level setting) into a single-element array and break both
+    # user-content preservation and re-deploy idempotence. Restricting to array-valued properties leaves every
+    # unrelated top-level property byte-untouched, satisfying the direct-event-map invariant that unrelated
+    # top-level properties are preserved.
+    param($EventMap)
+    if ($null -eq $EventMap) { return }
+    foreach ($eventProp in @($EventMap.PSObject.Properties)) {
+        if (-not ($eventProp.Value -is [System.Array])) { continue }   # unrelated scalar/object top-level prop: untouched
+        $kept = New-Object System.Collections.Generic.List[object]
+        foreach ($group in @($eventProp.Value)) {
+            if ($null -eq $group -or $group -is [string]) { $kept.Add($group) | Out-Null; continue }
+            if (Test-IsSpecrewGroup -Group $group) { continue }   # wholly ours: dropped
+            if ($group.PSObject.Properties['hooks'] -and $null -ne $group.hooks) {
+                $userHooks = @(@($group.hooks) | Where-Object {
+                        -not ($_.PSObject.Properties['command'] -and (Test-IsSpecrewCommandText -CommandText ([string]$_.command)))
+                    })
+                if ($userHooks.Count -lt @($group.hooks).Count -and $userHooks.Count -gt 0) {
+                    $group.PSObject.Properties['hooks'].Value = $userHooks
+                }
+                elseif ($userHooks.Count -eq 0) { continue }
+            }
+            $kept.Add($group) | Out-Null
+        }
+        if ($kept.Count -gt 0) { $eventProp.Value = $kept.ToArray() }
+        else { $EventMap.PSObject.Properties.Remove($eventProp.Name) }
+    }
+}
+
 function Get-HookCommandTexts {
     param($Node)
     $commands = New-Object System.Collections.Generic.List[string]
@@ -627,6 +660,55 @@ if ($hookConfigShape -eq 'named-definition') {
         $hookDefinition | Add-Member -NotePropertyName $eventName -NotePropertyValue @($eventGroups[$eventName]) -Force
     }
     $settings | Add-Member -NotePropertyName $hookName -NotePropertyValue $hookDefinition -Force
+    Save-Target -SettingsObject $settings
+    $boundEvents = ($eventGroups.Keys -join ' + ')
+    Write-Output ("[specrew-refocus] {0} hooks deployed to {1} ({2}; PreToolUse dormant)" -f $HostKind, $settingsPath, $boundEvents)
+    exit 0
+}
+
+if ($hookConfigShape -eq 'direct-event-map') {
+    # Generic manifest-selected shape: event keys live at the JSON ROOT of the config file (no `hooks` wrapper).
+    # Selected purely by the host manifest's RefocusHookBindings.ConfigShape value — the deployer never branches
+    # on a host name. The root object ($settings) IS the event map; merge/remove operate on it directly, and a
+    # guarded remove leaves every unrelated top-level property untouched (see Remove-SpecrewEntriesFromDirectEventMap).
+    $directEventMap = $settings
+
+    if ($Remove) {
+        if ($ownsSettingsFile) {
+            if (Test-Path -LiteralPath $settingsPath -PathType Leaf) { Remove-Item -LiteralPath $settingsPath -Force }
+        }
+        else {
+            Remove-SpecrewEntriesFromDirectEventMap -EventMap $directEventMap
+            Save-Target -SettingsObject $settings
+        }
+        New-Item -ItemType Directory -Path (Split-Path -Parent $optOutMarker) -Force | Out-Null
+        [System.IO.File]::WriteAllText($optOutMarker, ("opted out {0}`n" -f (Get-Date).ToUniversalTime().ToString('o')), [System.Text.UTF8Encoding]::new($false))
+        Write-Output ("[specrew-refocus] {0} hooks removed; opt-out recorded (re-enable: deploy-refocus-hooks.ps1 -HostKind {0} -Force)" -f $HostKind)
+        exit 0
+    }
+
+    if ((Test-Path -LiteralPath $optOutMarker -PathType Leaf) -and -not $Force) {
+        Write-Output ("[specrew-refocus] {0} hook deployment skipped: opt-out recorded (re-enable explicitly with -Force)" -f $HostKind)
+        exit 0
+    }
+    if ($Force -and (Test-Path -LiteralPath $optOutMarker -PathType Leaf)) {
+        Remove-Item -LiteralPath $optOutMarker -Force
+    }
+
+    if ($hookCommandMode -in @('launcher-file', 'launcher-encoded')) { Install-HookLauncher }
+
+    Remove-SpecrewEntriesFromDirectEventMap -EventMap $directEventMap
+    $eventGroups = Get-HostEventGroups
+    foreach ($eventName in $eventGroups.Keys) {
+        $group = $eventGroups[$eventName]
+        $existing = $directEventMap.PSObject.Properties[$eventName]
+        if ($null -ne $existing -and $null -ne $existing.Value) {
+            $existing.Value = @(@($existing.Value) + @($group))
+        }
+        else {
+            $directEventMap | Add-Member -NotePropertyName $eventName -NotePropertyValue @($group) -Force
+        }
+    }
     Save-Target -SettingsObject $settings
     $boundEvents = ($eventGroups.Keys -join ' + ')
     Write-Output ("[specrew-refocus] {0} hooks deployed to {1} ({2}; PreToolUse dormant)" -f $HostKind, $settingsPath, $boundEvents)

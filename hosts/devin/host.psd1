@@ -54,6 +54,44 @@
         AccessorEditRequired = $false
     }
 
+    # FR-009 (iteration 002, T012): refocus hook bindings. Devin's .devin/hooks.v1.json stores the lifecycle
+    # event map at the FILE ROOT (no `hooks` wrapper), so it selects the generic manifest-driven
+    # ConfigShape='direct-event-map' added to the shared deployer. Events are Claude-compatible
+    # (SessionStart/UserPromptSubmit/Stop, hooks-array groups) and Stop uses the existing decision-block envelope.
+    # No SettingsVersion is declared: the `v1` lives in the filename, and a root `version` scalar would be wrapped
+    # to an array by the event-map remove pass and break re-deploy idempotence. Project resolution rides
+    # DEVIN_PROJECT_DIR via the per-machine launcher's manifest-enumerated ProjectRootEnvironmentVariables.
+    # HONESTY (FR-009): on the tested build the Windows hook-runner needs sh.exe on PATH for command hooks, so
+    # direct-launch hooks may not fire on Windows. This ships experimental/degraded — NOT full parity. The
+    # sh.exe->pwsh host-neutral attempt and live validation are iteration 003.
+    RefocusHookBindings = @{
+        BoundTriggers  = @('b1', 'b2', 'b3')
+        Events         = @('SessionStart', 'UserPromptSubmit')
+        SettingsFile   = '.devin/hooks.v1.json'   # project-level; root-level direct event map (no `hooks` wrapper)
+        OptOutMarkerFile = '.specrew/runtime/refocus-hooks-optout-devin'
+        DispatcherPath = '.specify/extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1'
+        ConfigShape    = 'direct-event-map'
+        CommandMode    = 'launcher-file'
+        ProjectRootEnvironmentVariables = @('DEVIN_PROJECT_DIR')
+        DispatcherRuntime = @{
+            BootstrapDeliveryEvents = @('SessionStart')
+            B3DeliveryEvents        = @('PostToolUse', 'UserPromptSubmit')
+            RefocusTriggerByEvent   = @{ PostToolUse = 'b3'; UserPromptSubmit = 'b3' }
+            SuppressedRefocusEvents = @()
+            OutputShape             = 'hookSpecificOutput'
+            # Stop expects JSON and only permits decision:"block"; non-blocking Stop nudges are suppressed as `{}`
+            # while real stop-blocks short-circuit through StopBlockShape below (existing decision-block envelope).
+            DecisionOnlyEvents      = @('Stop')
+            StopBlockShape          = 'decision-block'
+            BootstrapDeliveryMode   = 'pointer'
+        }
+        Registrations  = @(
+            @{ Event = 'SessionStart'; DispatcherEvent = 'SessionStart'; HandlerShape = 'hooks-array'; Timeout = 30 },
+            @{ Event = 'UserPromptSubmit'; DispatcherEvent = 'UserPromptSubmit'; HandlerShape = 'hooks-array'; Timeout = 30 },
+            @{ Event = 'Stop'; DispatcherEvent = 'Stop'; HandlerShape = 'hooks-array'; Timeout = 30 }
+        )
+    }
+
     # FR-013 (coordinator eligibility) is owned by Slice D (iteration 004). Devin is coordinator-capable,
     # uses host_process access, and defaults to disabled-unless-selected. The coordinator metadata is
     # declared here so the manifest is the single source of truth; the registry consumers that DERIVE the
