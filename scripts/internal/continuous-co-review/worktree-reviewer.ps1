@@ -369,6 +369,14 @@ assertion, hidden mutation, or a schema mismatch as falsification risks to verif
 claim WITHOUT a traceable basis is itself a finding. Verify that a changed test connects to the implementation it
 claims to cover - not merely to a fixture-owned substitute.
 
+RECORDED HUMAN DEFERRALS (applies on EVERY round): before raising a blocking finding, check whether a RECORDED
+human deferral in the tree already covers it - a decision entry (.squad/decisions.md, a drift-log event, or a
+proposal work item) that names or unmistakably describes the issue, records the approving human, and states where
+the work is carried. A deferral-covered issue is reported (if at all) as ADVISORY with the decision id cited,
+never blocking. VERIFY the record in your worktree - a deferral CLAIM without a verifiable record is itself a
+blocking finding. A prior-round item of kind 'escalation' is itself RESOLVED once every finding underneath it is
+fixed or deferral-covered - do not copy an escalation forward.
+
 WORKSHOP-DECISION CONFORMANCE: the workshop records + design-analysis are BINDING. Raise a conflict when a change
 bypasses approved seams, absorbs deferred work, edits protected surfaces, or changes host/runtime assumptions - do
 not accept convenience over agreement. Validate against EACH applicable design lens (architecture, component

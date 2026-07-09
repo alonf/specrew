@@ -134,7 +134,12 @@ Describe 'Get-ContinuousCoReviewSlimPrompt implementer-evidence block' {
         $round2 | Should -Match 'RECORDED HUMAN DEFERRAL'
         $round2 | Should -Match 'deferral CLAIM without a verifiable record is itself a blocking finding'
         $round2 | Should -Match 'not covered by a verified recorded deferral'
-        # Round 1 has no prior findings and no deferral teaching.
-        (Get-ContinuousCoReviewSlimPrompt -RunId 'r1') | Should -Not -Match 'RESOLVED-BY-DEFERRAL'
+        # Deferral awareness applies on EVERY round (a fresh round-1 review of a diff containing
+        # deferred issues must not re-raise them as blocking), and escalation items never self-perpetuate.
+        $round1 = Get-ContinuousCoReviewSlimPrompt -RunId 'r1'
+        $round1 | Should -Match 'RECORDED HUMAN DEFERRALS \(applies on EVERY round\)'
+        $round1 | Should -Match 'reported \(if at all\) as ADVISORY with the decision id cited'
+        $round2 | Should -Match "kind 'escalation' is itself RESOLVED"
+        $round2 | Should -Match 'do not copy an escalation forward'
     }
 }
