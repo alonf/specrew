@@ -145,7 +145,11 @@ gallery bits; both gates fired CORRECTLY, the findings are about what the correc
   harness-data seam: add a `default_timeout_seconds` column per row; resolution becomes explicit
   flag -> project config -> catalog per-host default -> 300 floor. W14's downgrade warning then
   keys off the RESOLVED value, so an explicit 180 against claude's catalog 600 warns even in
-  projects that never touched their config.
+  projects that never touched their config. On a plain timeout failure the durable failure record
+  and CLI message TEACH the sanctioned next step (re-run with a larger explicit budget, or raise
+  `co_review_timeout_seconds`) — the increase itself stays human-typed per the T096 trust boundary;
+  the agent never self-escalates its own review budget. Automatic bounded escalation, if ever
+  wanted, joins Proposal 102's opt-in `co_review_auto_fallback` umbrella, not the default path.
 - **W15 — The manual `--live` door should default the code-writer host from the session**: a manual
   `specrew review --live --host <reviewer>` without `--code-writer-host` records
   `independence: 'unverified'` (correctly treated as not-independent, SEC-004) even when the
