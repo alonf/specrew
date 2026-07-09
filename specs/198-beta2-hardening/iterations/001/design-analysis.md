@@ -49,6 +49,12 @@ hardcoded list of template globs; wire it as a CI job.
 
 **Architectural pattern**: scripted transaction.
 
+```mermaid
+flowchart LR
+  Script[lint script<br/>hardcoded patterns + globs] --> CI[CI job]
+  Bump[pin bumps + suites] --> CI
+```
+
 **Quality features considered**: covers the happy path; no single-truth
 data file (patterns-as-code), so consumer-side reuse (FR-036) later means
 extracting or duplicating the list; scan surface can silently drift from
@@ -99,6 +105,15 @@ dependency-install minimum, validate-versions defaults).
 **Architectural pattern**: data-driven catalog behind a stable seam (the
 repo doctrine, A1).
 
+```mermaid
+flowchart LR
+  Deny[SelfLeakDenyList<br/>versioned JSON, FileList] --> Lint[SelfLeakLintLane]
+  Manifest[deploy-manifest source] -->|derives scan surface| Lint
+  Lint -->|unannotated hit = RED,<br/>teaches escape + rule doc| CI[Specrew CI job]
+  Probe[scratch-dir 0.12.9 + squad probes] --> Evidence[iterations/001/quality evidence]
+  Evidence --> Pins[all pin surfaces move together]
+```
+
 **Quality features considered**: single-truth list (205-W6), scanned ==
 shipped by construction, versioned contract (I3), paired honesty tests
 (NFR-007), probe evidence (NFR-006), transparency in lint output naming
@@ -125,6 +140,14 @@ fixture matrix.
 
 **Architectural pattern**: extensible lint platform.
 
+```mermaid
+flowchart LR
+  Rules[pluggable rule engines] --> Core[lint core]
+  Core --> SARIF[SARIF + GitHub annotations]
+  Matrix[dual-version Spec-Kit fixture matrix] --> CI[CI]
+  SARIF --> CI
+```
+
 **Quality features considered**: maximal tooling polish; the dual-version
 matrix was already explicitly rejected at the workshop (I2), and SARIF
 adds surface with no consumer demand.
@@ -141,11 +164,13 @@ adds surface with no consumer demand.
 
 ## Crew Recommendation
 
-**Option B.** It is the only option that realizes the already-human-agreed
-workshop decisions (205-W6 single truth, I1 evidence-first, I2 single pin,
-I3 versioning, NFR-007 paired tests) without rework or contradiction.
-Option A re-litigates the data-seam doctrine by accident; Option C
-re-litigates I2 by design.
+**Option B.** It is the only alternative that realizes the already-human-
+agreed workshop decisions (205-W6 single truth, I1 evidence-first, I2
+single pin, I3 versioning, NFR-007 paired tests) without rework or
+contradiction; both rejected alternatives re-litigate a recorded workshop
+decision — one collapses the data seam by accident, the other reopens the
+dual-matrix question by design (rationales in their trade-off tables
+above).
 
 ## Capacity Model
 
@@ -158,21 +183,50 @@ demonstrated git-extension dependency).
 
 ## Applicable Lenses
 
-- **architecture-core**: Option B keeps volatility in data (deny-list),
-  logic stable (lint reads manifest source) — A1 honored.
-- **component-design**: builds exactly the SelfLeakLintLane +
-  SelfLeakDenyList + ToolchainPins components from the agreed map.
-- **requirements-nfr**: paired tests per class; lint output content
-  asserted (transparency).
-- **data-storage**: JSON + schema_version + entry shape as agreed.
-- **security-compliance**: author-time firewall arm of the trust story.
-- **integration-api**: I1/I2/I3 realized; probe evidence recorded.
-- **devops-operations**: blocking self-host lane (advisory posture is for
-  the CONSUMER gateway, not our own repo); pin surfaces move together.
-- **observability-resilience**: red output names file/term/class/escape +
-  doc pointer; probe evidence correlates by date/run.
-- **code-implementation**: six custom rules apply from this iteration's
-  first commit (born-clean, FileList, mirror parity, scratch-probes-only).
+- **architecture-core**
+  - Addressed: Option B keeps volatility in data (the deny-list file) and
+    logic stable (the lint derives its surface from the manifest source) —
+    the A1 doctrine; the simplest alternative was rejected in the option
+    comparison precisely for collapsing that seam.
+- **component-design**
+  - Addressed: Option B builds exactly the SelfLeakLintLane,
+    SelfLeakDenyList, ToolchainPins, and InitBootstrap (Spec-Kit slice)
+    components from the human-approved map, with the responsibilities
+    recorded in the Co-Design Record below.
+- **requirements-nfr**
+  - Addressed: Option B ships the paired tests per deny-list class
+    (seeded-leak red / annotated green / clean green) and asserts the lint
+    output content, satisfying NFR-007 and the transparency attribute; the
+    simplest alternative carried no paired-fixture harness.
+- **data-storage**
+  - Addressed: Option B implements the agreed JSON shape (schema_version;
+    entries pattern/class/reason/source/added; per-file-kind annotation
+    escapes) — the data-storage lens decision realized verbatim.
+- **security-compliance**
+  - Addressed: Option B is the author-time arm of the firewall trust
+    story: the deny-list gate red-blocks self-facts before they ship,
+    which the option comparison shows the simplest alternative only
+    approximates with drift-prone hardcoded patterns.
+- **integration-api**
+  - Addressed: Option B realizes I1 (evidence-gated extension decisions
+    from scratch-dir probes), I2 (single tested pins 0.12.9/0.11.0), and
+    I3 (versioned deny-list contract); the by-the-book alternative was
+    rejected for contradicting I2's no-dual-matrix decision.
+- **devops-operations**
+  - Addressed: Option B wires the lint as a BLOCKING self-host lane
+    (advisory-first applies to the consumer gateway, not our own repo)
+    and moves all pin surfaces together, per the devops lens decisions.
+- **observability-resilience**
+  - Addressed: Option B's red output names file, term, class, the
+    annotation escape, and the rule doc (teach-don't-trap), and the probe
+    evidence is recorded digest-matched under iterations/001/quality/ for
+    reviewer correlation.
+- **code-implementation**
+  - Addressed: Option B operates under the six F-198 custom rules from
+    this iteration's first commit (born-clean, psd1-filelist,
+    provider-mirror-parity, scratch-probes-only, remote-main-sync,
+    paired-honesty-tests) as recorded in the implementation-rules
+    manifest.
 
 ## Co-Design Record
 
