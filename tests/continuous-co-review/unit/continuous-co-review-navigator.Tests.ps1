@@ -179,7 +179,8 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         # throws NoProcessFoundForGivenId) is still classified absent -> reaped + cleaned.
         $root = script:New-NavigatorProject -FileContent 'base'
         try {
-            $deadProc = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'exit 0') -PassThru -WindowStyle Hidden
+            $winStyle = if ($IsWindows) { @{ WindowStyle = 'Hidden' } } else { @{} }   # -WindowStyle is Windows-only
+            $deadProc = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'exit 0') -PassThru @winStyle
             $deadProc.WaitForExit()
             $deadPid = $deadProc.Id
             $fakeWt = Join-Path ([System.IO.Path]::GetTempPath()) ('nav-absent-wt-' + [guid]::NewGuid().ToString('N'))

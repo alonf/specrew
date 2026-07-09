@@ -50,6 +50,7 @@ recorded maintainer decision into named fast-follow homes.
 
 ## Tests and Validation (recorded at this closeout on the branch tree)
 
+- **WSL full-suite sweep at closeout** (maintainer-requested, 2026-07-09): the ENTIRE continuous-co-review suite on WSL Ubuntu (Pester 6.0.0): **256 passed / 0 failed / 4 platform-conditional skips** on the final tree. Three test-file Windows-isms found and fixed in the process (raw -WindowStyle in two test harnesses; a null $env:TEMP path) - product code needed zero changes; the containment hard-gate WSL evidence from implementation stands.
 - **Machine-recorded suite evidence** (T111 recorder, digest-bound to the reviewed tree):
   continuous-co-review **258/0** (2 env-guarded skips), unit **10/0**, integration-review-command
   **7/0**, integration-live-wiring **34/0**; WSL validation passed during T091/T100 (dead-supervisor

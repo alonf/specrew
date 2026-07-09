@@ -41,7 +41,8 @@ function Add-PendingEntry {
 
 # --- (2) STILL RUNNING: a live supervisor (a sleeper) -> reap leaves it pending AND says "still reviewing". ---
 $running = New-PendingRepo
-$sleeper = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 60') -PassThru -WindowStyle Hidden
+$winStyle = if ($IsWindows) { @{ WindowStyle = 'Hidden' } } else { @{} }   # -WindowStyle is Windows-only
+$sleeper = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 60') -PassThru @winStyle
 try {
     Add-PendingEntry -Root $running -RunId 'run-running' -SupervisorPid $sleeper.Id -Status 'running'
     $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $running -CrossSession:$false -TrunkName 'main' -Now ([datetime]::UtcNow)

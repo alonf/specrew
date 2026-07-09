@@ -40,7 +40,7 @@ Describe 'boundary-reader conformance: canonical == every self-contained-provide
     )
     foreach ($c in $cases) {
         Context $c.name {
-            $root = Join-Path $env:TEMP ('brc-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+            $root = Join-Path ([System.IO.Path]::GetTempPath()) ('brc-' + [guid]::NewGuid().ToString('N').Substring(0, 8))   # $env:TEMP is Windows-only
             New-Item -ItemType Directory -Path (Join-Path $root '.specrew') -Force | Out-Null
             $c.json | Set-Content -LiteralPath (Join-Path $root '.specrew/start-context.json') -Encoding UTF8
             $obj = $c.json | ConvertFrom-Json
