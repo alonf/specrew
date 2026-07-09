@@ -22,8 +22,8 @@
   loop into 2–7 minute evidence-backed reviews: digest-bound machine-recorded suite evidence,
   injected only on an exact tree match, with spot-checks armed as forgery detection.
 - **Host-neutrality (D-002) proved out in production the same day it shipped.** When codex went
-  hard-down mid-boundary, antigravity was wired as the independent reviewer via ONE catalog data row
-  + a human authorization — zero core changes — and carried the verification rounds. Later, the
+  hard-down mid-boundary, antigravity was wired as the independent reviewer via one catalog data row
+  plus a human authorization — zero core changes — and carried the verification rounds. Later, the
   copilot headless vector was probe-validated the same way (one row away, NOTE-005). The T108
   empty-exit-0 retry recovered live flakes on BOTH harnesses.
 - **The first downstream consumer validated the whole loop end-to-end** (`tesr197local`,
