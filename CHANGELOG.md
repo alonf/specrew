@@ -4,7 +4,7 @@ Retroactive alpha release history for shipped Specrew features. `.specrew\config
 is the canonical source for the active version; this file records the feature
 baseline that each release number represents.
 
-## [0.40.0-beta.1] - 2026-07-08
+## [0.40.0-beta1] - 2026-07-09
 
 Feature 197 (Continuous Co-Review) **feature-complete** (iterations 009-010 since the 0.39.0-beta1
 preview). **BETA** — stable 0.40.0 promotion requires the clean-environment install validation and a
