@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: planning
-**Capacity**: 0/26 story_points
+**Capacity**: 5/26 story_points
 **Started**: 2026-07-10
 **Completed**:
 
@@ -33,6 +33,12 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
+| T001 | Spec-Kit 0.12.9 scratch probe (evidence recorded) | FR-038 | US6 | 0.5 | Implementer | specs/198-beta2-hardening/iterations/001/quality/** | planned | — | — | — |
+| T002 | Spec-Kit migration + pin surfaces (fixture suites green) | FR-038 | US6 | 1.0 | Implementer | scripts/specrew-init.ps1, scripts/internal/version-check.ps1, extensions/specrew-speckit/extension.yml, .specify/** | planned | — | — | — |
+| T003 | Squad 0.11.0 bump (probe + layout suites) | FR-039 | US6 | 0.5 | Implementer | scripts/internal/dependency-install.ps1, scripts/internal/validate-versions.ps1, .github/workflows/** | planned | — | — | — |
+| T004 | SelfLeakDenyList data file + seed + shape tests | FR-037 | US5 | 1.0 | Implementer | extensions/specrew-speckit/data/**, Specrew.psd1, tests/unit/** | planned | — | — | — |
+| T005 | Self-leak lint + blocking CI job (paired fixtures) | FR-033 | US5 | 1.5 | Implementer | scripts/internal/lint-self-leak.ps1, .github/workflows/specrew-ci.yml, tests/unit/** | planned | — | — | — |
+| T006 | Parameterization rule doc (lint points at it) | FR-034 | US5 | 0.5 | Implementer | docs/methodology/** | planned | — | — | — |
 
 ## Effort Model
 
