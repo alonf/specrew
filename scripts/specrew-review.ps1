@@ -251,6 +251,11 @@ function Convert-UnixStyleArguments {
             '^--ack-degraded$' {
                 $index++
                 if ($index -ge $CliArgs.Count) { throw '--ack-degraded requires a run-id value.' }
+                # Downstream field bug (2026-07-09): `--ack-degraded --ack-reason "..."` bound the NEXT FLAG
+                # as the run-id and the orphaned reason text then read as an unknown argument - the agent
+                # concluded the flag was "unsupported by the binary". A flag-shaped run-id is always a
+                # missing-value mistake: say so precisely.
+                if (([string]$CliArgs[$index]).StartsWith('--')) { throw ('--ack-degraded requires a run-id BEFORE other flags (got ''{0}''). Usage: specrew review --ack-degraded <run-id> --ack-reason "<why>"' -f $CliArgs[$index]) }
                 $result.AckDegradedRunId = $CliArgs[$index]
             }
             '^--ack-reason$' {

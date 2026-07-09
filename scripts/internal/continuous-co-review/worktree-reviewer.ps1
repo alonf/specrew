@@ -324,7 +324,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     # deferral is resolved for round purposes - the record must be verifiable IN THE TREE, never a
     # prose claim (never-false-green holds: the reviewer verifies the record, not testimony).
     $roundBlock = if ($RoundNumber -gt 1 -and -not [string]::IsNullOrWhiteSpace($PriorFindings)) {
-        "This is review round $RoundNumber of at most $MaxRounds. The PRIOR round produced these findings - verify each is RESOLVED in this change (a prior blocking finding still present is a failed fix):`n$PriorFindings`n`nRESOLVED-BY-DEFERRAL: a prior finding is ALSO resolved when a RECORDED HUMAN DEFERRAL covers it - a decision entry in the tree (.squad/decisions.md, a drift-log event, or a proposal work item) that (a) names or unmistakably describes the finding, (b) records the approving human, and (c) states where the work is carried (a proposal/task reference). VERIFY the record exists in your worktree and covers the finding - a deferral CLAIM without a verifiable record is itself a blocking finding. For a deferral-covered finding: mark it resolved, cite the decision id in your findings notes, and do NOT re-raise or escalate it.`n`nIf this is the FINAL round ($RoundNumber of $MaxRounds) and a prior BLOCKING finding is STILL unresolved AND not covered by a verified recorded deferral, return ONE finding with kind 'escalation' + severity 'blocking' calling for a HUMAN decision (stop the autonomous review->fix loop) - do not merely repeat the unresolved finding."
+        "This is review round $RoundNumber of at most $MaxRounds. The PRIOR round produced these findings - verify each is RESOLVED in this change (a prior blocking finding still present is a failed fix):`n$PriorFindings`n`nRESOLVED-BY-DEFERRAL: a prior finding is ALSO resolved when a RECORDED HUMAN DEFERRAL covers it - a decision record in a WORKTREE-VISIBLE artifact (an iteration drift-log event, a specs decision artifact, or a proposal work item) that (a) names or unmistakably describes the finding, (b) records the approving human, and (c) states where the work is carried. Governance-machinery paths (.squad/, .specrew/, .specify/) are STRIPPED from your worktree - a record only there is UNVERIFIABLE-HERE, and the implementer must mirror it into a worktree-visible artifact. VERIFY the record exists in your worktree and covers the finding - a deferral CLAIM without a verifiable worktree-visible record is itself a blocking finding. For a deferral-covered finding: mark it resolved, cite the decision id in your findings notes, and do NOT re-raise or escalate it.`n`nIf this is the FINAL round ($RoundNumber of $MaxRounds) and a prior BLOCKING finding is STILL unresolved AND not covered by a verified recorded deferral, return ONE finding with kind 'escalation' + severity 'blocking' calling for a HUMAN decision (stop the autonomous review->fix loop) - do not merely repeat the unresolved finding."
     }
     else {
         "This is review round $RoundNumber of at most $MaxRounds (initial review of this change)."
@@ -370,12 +370,16 @@ claim WITHOUT a traceable basis is itself a finding. Verify that a changed test 
 claims to cover - not merely to a fixture-owned substitute.
 
 RECORDED HUMAN DEFERRALS (applies on EVERY round): before raising a blocking finding, check whether a RECORDED
-human deferral in the tree already covers it - a decision entry (.squad/decisions.md, a drift-log event, or a
-proposal work item) that names or unmistakably describes the issue, records the approving human, and states where
-the work is carried. A deferral-covered issue is reported (if at all) as ADVISORY with the decision id cited,
-never blocking. VERIFY the record in your worktree - a deferral CLAIM without a verifiable record is itself a
-blocking finding. A prior-round item of kind 'escalation' is itself RESOLVED once every finding underneath it is
-fixed or deferral-covered - do not copy an escalation forward.
+human deferral in the tree already covers it - a decision record in a WORKTREE-VISIBLE artifact (an iteration
+drift-log event, a specs decision artifact, or a proposal work item) that names or unmistakably describes the
+issue, records the approving human, and states where the work is carried. NOTE: governance-machinery paths
+(.squad/, .specrew/, .specify/) are intentionally STRIPPED from your worktree, so a record living ONLY in
+.squad/decisions.md is invisible to you - treat references to it as UNVERIFIABLE-HERE (not false) and look for
+the mirror record in the drift-log/specs/proposals; the implementer is required to mirror deferrals into a
+worktree-visible artifact. A deferral-covered issue is reported (if at all) as ADVISORY with the decision id
+cited, never blocking. A deferral CLAIM without a verifiable worktree-visible record is itself a blocking
+finding. A prior-round item of kind 'escalation' is itself RESOLVED once every finding underneath it is fixed or
+deferral-covered - do not copy an escalation forward.
 
 WORKSHOP-DECISION CONFORMANCE: the workshop records + design-analysis are BINDING. Raise a conflict when a change
 bypasses approved seams, absorbs deferred work, edits protected surfaces, or changes host/runtime assumptions - do

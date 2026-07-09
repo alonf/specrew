@@ -99,14 +99,44 @@ $result = Invoke-Specrew -CommandArgs @('review', '--not-a-real-flag')
 Assert-True -Condition ($result.ExitCode -ne 0) -Message 'specrew review --not-a-real-flag exits non-zero'
 Assert-Contains -Text $result.Output -Substring 'WARNING:' -Message 'specrew review --not-a-real-flag emits WARNING prefix'
 
+# --- Test 6b: the T094/T096 remediation/ack quartet passes the whitelist (downstream field bug 2026-07-09:
+# the whitelist predated these flags, so the product's OWN printed commands were rejected as unsupported).
+# Bare flags (no value) are used so the assertion is side-effect-free: the whitelist accepts them and the
+# missing-value error proves routing continued past the whitelist ('requires a value', never 'Unsupported').
+Write-Host ''
+Write-Host '--- Test 6b: review whitelist accepts --ack-degraded/--ack-reason/--remediate/--scope ---'
+foreach ($quartetFlag in @('--ack-degraded', '--ack-reason', '--remediate', '--scope')) {
+    $result = Invoke-Specrew -CommandArgs @('review', $quartetFlag)
+    Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message ("specrew review {0} passes the whitelist" -f $quartetFlag)
+    Assert-Contains -Text $result.Output -Substring 'requires a value' -Message ("specrew review {0} reaches the missing-value validation (whitelist did not reject it)" -f $quartetFlag)
+}
+
 # --- Test 7: live review args are accepted by the whitelist ---
 Write-Host ''
 Write-Host '--- Test 7: review accepts live-mode arguments ---'
-$result = Invoke-Specrew -CommandArgs @('review', '--live')
-Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew review --live passes whitelist check'
-# T068: --baseline-ref is now optional (a bare --live auto-anchors); a live run instead
-# requires a reviewer, and is refused BEFORE any change-set/evidence write (no pollution).
-Assert-Contains -Text $result.Output -Substring 'required for live review' -Message 'specrew review --live reaches live-review validation (reviewer required, no evidence written)'
+# DETERMINISTIC + SIDE-EFFECT-FREE (fixed 2026-07-09): the old form ran --live against the CURRENT
+# repo, so on any machine with an authorized reviewer it fired a REAL review (minutes of runtime,
+# quota burn, evidence writes) - and its 'required for live review' assertion text predates the
+# iter-008 worktree cutover (the refusal now reads no-authorized-reviewer-host). A pristine scratch
+# project has no authorized reviewer, so the run is refused loudly BEFORE any evidence write.
+$liveScratch = Join-Path ([System.IO.Path]::GetTempPath()) ('whitelist-live-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+New-Item -ItemType Directory -Path (Join-Path $liveScratch '.specrew') -Force | Out-Null
+Set-Content -LiteralPath (Join-Path $liveScratch '.specrew\config.yml') -Value 'project_name: whitelist-live' -Encoding UTF8
+& git -C $liveScratch init --initial-branch=main 2>$null | Out-Null
+& git -C $liveScratch config user.email 'specrew-test@example.invalid' 2>$null | Out-Null
+& git -C $liveScratch config user.name 'Specrew Test' 2>$null | Out-Null
+Set-Content -LiteralPath (Join-Path $liveScratch 'README.md') -Value 'scratch' -Encoding UTF8
+& git -C $liveScratch add . 2>$null | Out-Null
+& git -C $liveScratch commit -m baseline 2>$null | Out-Null
+try {
+    $result = Invoke-Specrew -CommandArgs @('review', '--live', '--project-path', $liveScratch)
+    Assert-True -Condition (-not ($result.Output -like '*Unsupported argument*')) -Message 'specrew review --live passes whitelist check'
+    Assert-True -Condition ($result.ExitCode -ne 0) -Message 'specrew review --live with no authorized reviewer exits non-zero (refused, never silently substituted)'
+    Assert-Contains -Text $result.Output -Substring 'no-authorized-reviewer-host' -Message 'specrew review --live reaches live-review validation (reviewer required, no evidence written)'
+}
+finally {
+    Remove-Item -LiteralPath $liveScratch -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 # --- Test 8: --help is always accepted (whitelisted flag) ---
 Write-Host ''

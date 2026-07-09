@@ -253,7 +253,26 @@ else {
 }
 Write-Pass 'Live review refuses an unregistered host loudly and writes no gate evidence'
 
-Write-Host "`nTest 6: reviewer replay surfaces lockout-chain cap state when present"
+Write-Host "`nTest 6: --ack-degraded with a flag-shaped run-id fails with precise usage (downstream field bug 2026-07-09)"
+# Capture stderr too (2>&1): the guard is a parse-time THROW, which the plain helper's stdout
+# capture misses. Assert wrap-proof tokens: 'run-id' + 'Usage' distinguish the precise guard from
+# the generic unknown-argument error (which has neither).
+$ackOut = @(& pwsh -NoProfile -File $entryScript review --project-path $liveProjectRoot --ack-degraded --ack-reason 'some rationale' 2>&1)
+$ackExit = $LASTEXITCODE
+if ($ackExit -eq 0) {
+    Write-Fail '--ack-degraded without a run-id must exit non-zero'
+    exit 1
+}
+$ackText = ($ackOut | ForEach-Object { [string]$_ }) -join "`n"
+if (-not (Assert-Contains -Content $ackText -Pattern 'run-id' -FailureMessage 'the guard names the missing run-id (through the PUBLIC front door - the whitelist must admit the flag first)')) {
+    exit 1
+}
+if (-not (Assert-Contains -Content $ackText -Pattern 'Usage' -FailureMessage 'the guard shows actionable usage (not a generic unknown-argument error)')) {
+    exit 1
+}
+Write-Pass '--ack-degraded flag-shaped run-id is rejected with actionable usage'
+
+Write-Host "`nTest 7: reviewer replay surfaces lockout-chain cap state when present"
 $capFixturePath = Join-Path $repoRoot 'tests\integration\fixtures\lockout-chain-cap\project'
 if (-not (Test-Path -LiteralPath $capFixturePath -PathType Container)) {
     Write-Fail "Missing lockout-chain-cap fixture: $capFixturePath"

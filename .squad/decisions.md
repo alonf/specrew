@@ -27717,3 +27717,45 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   threads it as the next fire's baseline (merge-base fallback when none). Interim behavior is
   safe-but-broad: every auto-fire reviews the whole feature diff since the branch point (over-reviews,
   never under-reviews); the signoff `--live` merge-base doctrine is unchanged.
+
+## 2026-07-09T08:17:18Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 93ae4a4f
+- **Recorded At**: 2026-07-09T08:17:18Z
+
+## 2026-07-09T08:38:10Z — Boundary sync: feature-closeout
+
+- **Boundary Type**: feature-closeout
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: efeb7dba
+- **Recorded At**: 2026-07-09T08:38:10Z
+
+## 2026-07-09T12:30:00Z — P1 field fix: the public CLI whitelist rejected the T094/T096 remediation/ack quartet
+
+- **Decision ID**: NOTE-197-I010-006
+- **Type**: field-fix record (pre-publish hardening, maintainer "OK" on the triage)
+- **Recorded At**: 2026-07-09T12:30:00Z
+- **The P1**: `scripts/specrew.ps1` (the public front door the product's OWN stop-blocks and gate
+  messages tell users to run) carried an arg whitelist predating T094/T096 — every
+  `--ack-degraded/--ack-reason/--remediate/--scope` command was rejected as "Unsupported argument".
+  Found by the downstream consumer project (its agent correctly reported the mechanisms unusable and
+  nearly hunted a gate bypass); invisible in self-host because all dev invocations went directly to
+  `scripts/specrew-review.ps1`. FIXED: quartet whitelisted + Test 6b (side-effect-free bare-flag
+  proof) + review-command Test 6 exercising the ack guard THROUGH the front door.
+- **Also fixed in the batch**: (a) `--ack-degraded` now rejects a flag-shaped run-id with precise
+  usage (the downstream agent's exact stumble); (b) resolved-by-deferral teaching requires
+  WORKTREE-VISIBLE record homes (drift-log/specs/proposals) — `.squad/decisions.md` is
+  machinery-stripped from review worktrees, so records only there are unverifiable to reviewers
+  (mirror rule added); (c) slash-command-arg-whitelist Test 7 made deterministic + side-effect-free
+  (it previously fired REAL live reviews on any machine with an authorized reviewer — the source of
+  the phantom review runs and multi-minute test hangs — and asserted pre-cutover refusal text).
+- **Downstream repairs applied directly**: tesr197local config.yml un-jammed (my Add-Content bug);
+  triage + exact unblock command handed to the maintainer.
+- **Suites after batch**: CCR 258/0, unit 10/0 (deterministic now), review-command 7/7 PASS,
+  whitelist file all-pass.

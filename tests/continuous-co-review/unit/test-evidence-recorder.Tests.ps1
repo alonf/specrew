@@ -132,14 +132,22 @@ Describe 'Get-ContinuousCoReviewSlimPrompt implementer-evidence block' {
         # A recorded human deferral resolves a finding for round purposes - verified in-tree, never a claim.
         $round2 | Should -Match 'RESOLVED-BY-DEFERRAL'
         $round2 | Should -Match 'RECORDED HUMAN DEFERRAL'
-        $round2 | Should -Match 'deferral CLAIM without a verifiable record is itself a blocking finding'
+        $round2 | Should -Match 'deferral CLAIM without a verifiable worktree-visible record is itself a blocking finding'
         $round2 | Should -Match 'not covered by a verified recorded deferral'
         # Deferral awareness applies on EVERY round (a fresh round-1 review of a diff containing
         # deferred issues must not re-raise them as blocking), and escalation items never self-perpetuate.
         $round1 = Get-ContinuousCoReviewSlimPrompt -RunId 'r1'
         $round1 | Should -Match 'RECORDED HUMAN DEFERRALS \(applies on EVERY round\)'
-        $round1 | Should -Match 'reported \(if at all\) as ADVISORY with the decision id cited'
+        $round1 | Should -Match 'as ADVISORY with the decision id'
         $round2 | Should -Match "kind 'escalation' is itself RESOLVED"
         $round2 | Should -Match 'do not copy an escalation forward'
+        # Downstream field bug (2026-07-09, tesr197local): deferral records must be WORKTREE-VISIBLE -
+        # .squad/decisions.md is machinery-stripped from review worktrees, so the teaching must name
+        # drift-log/specs/proposals as the verifiable homes and treat machinery-only records as
+        # unverifiable-here rather than false.
+        $round1 | Should -Match 'WORKTREE-VISIBLE artifact'
+        $round1 | Should -Match 'UNVERIFIABLE-HERE'
+        $round2 | Should -Match 'WORKTREE-VISIBLE artifact'
+        $round2 | Should -Not -Match '\(\.squad/decisions\.md, a drift-log event'
     }
 }

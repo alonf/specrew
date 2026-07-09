@@ -355,7 +355,12 @@ function Assert-WhitelistedArguments {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--info', '--all', '--specrew', '--squad', '--spec-kit', '--skip-update-check', '--upstream-latest', '--help', '-h') -ValueOptions @('--project-path')
         }
         'review' {
-            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--checkpoint-id', '--run-id', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path') -MaxPositionals 1
+            # T094/T096 flags (--ack-degraded/--ack-reason/--remediate/--scope) MUST be whitelisted here:
+            # this front door is what the product's own stop-blocks and gate messages tell users to run.
+            # Downstream field bug 2026-07-09 (tesr197local): the whitelist predated the flags, so every
+            # sanctioned remediation/ack command was rejected as "Unsupported argument" and the agent
+            # concluded the mechanisms were unimplemented. Whitelist test covers the quartet.
+            Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--quiet', '--json', '--open', '--live', '--preserve-debug', '--list-hosts', '--help', '-h') -ValueOptions @('--project-path', '--feature', '--iteration', '--baseline-ref', '--checkpoint-id', '--run-id', '--host', '--model', '--effort', '--authorization-ref', '--code-writer-host', '--fallback-policy', '--reviewer-config', '--schema-root', '--run-root', '--timeout-seconds', '--design-context-ref', '--allowed-path', '--forbidden-path', '--exclude-path', '--ack-degraded', '--ack-reason', '--remediate', '--scope') -MaxPositionals 1
         }
         'version' {
             Assert-OptionArguments -CommandName $CommandName -ArgumentList $ArgumentList -SwitchOptions @('--help', '-h') -ValueOptions @('--project-path')
