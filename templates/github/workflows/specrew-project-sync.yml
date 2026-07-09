@@ -41,5 +41,6 @@ jobs:
 
           .\.github\scripts\sync-specrew-board.ps1 `
             -Repository "${{ github.repository }}" `
+            # specrew-self-ok: tracked debt - retired by the FR-026 deploy-list surgery (F-198 iteration 004, issue 2909)
             -ProjectOwner "alonf" `
             -ProjectNumber 10

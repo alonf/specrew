@@ -248,7 +248,7 @@ Specrew created baseline roles in managed block but didn't populate Squad's reco
 - ✅ Set repository secret `SPECREW_PROJECT_TOKEN` using `gh secret set`
 - ✅ Verified secret creation via `gh secret list`
 - ✅ Manually tested sync script against live board
-- ✅ Confirmed 23 issues synced to `alonf/projects/10`
+- ✅ Confirmed 23 issues synced to the configured `<owner>/projects/<n>` board
 - ✅ Updated `docs/github-project.md` with "Blocker Cleared" status
 - ✅ Committed workflow and script files to git
 

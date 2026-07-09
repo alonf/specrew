@@ -20,6 +20,7 @@ $ErrorActionPreference = 'Stop'
 #
 #   0) Explicit override via $env:SPECREW_MODULE_PATH (iter-006 T001). Set by
 #      Specrew.psm1 at import time so agent-spawned child PowerShell processes
+# specrew-self-ok: Specrew's own module-discovery note - the wrapper resolves the installed Specrew module
 #      dispatch to the actively-imported Dev tree instead of a stale PSGallery install.
 #
 #   1) Specrew dev-tree dogfooding: walk up from $PSScriptRoot looking for a dir

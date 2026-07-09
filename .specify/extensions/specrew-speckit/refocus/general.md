@@ -4,7 +4,6 @@ sources:
   - extensions/specrew-speckit/squad-templates/coordinator/specrew-governance.md
   - docs/methodology/lifecycle-discipline.md
   - docs/methodology/review-instructions.md
-  - proposals/145-structured-multi-phase-reviewer.md
   - extensions/specrew-speckit/squad-templates/skills/gate-stop.md
 reviewed_at: 2026-06-08
 ---

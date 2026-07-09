@@ -11,6 +11,21 @@ on:
     branches: [ main, 001-specrew-product ]
 
 jobs:
+  self-leak-lint:
+    name: Self-leak firewall (deploy surface)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Lint the consumer-deployed surface against the deny-list
+        shell: pwsh
+        # Blocking in the self-host repo (F-198 FR-033): a deny-listed
+        # Specrew-self fact without a specrew-self-ok annotation is a red
+        # build. Exit 2 (unreadable rule surface) also fails loud.
+        run: pwsh -NoProfile -File scripts/internal/lint-self-leak.ps1 -ProjectRoot .
+
   lint:
     name: Lint
     runs-on: ubuntu-latest

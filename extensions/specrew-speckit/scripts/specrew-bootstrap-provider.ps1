@@ -161,6 +161,7 @@ function Format-BootstrapDirective {
     $lines.Add('  (4) Any validated handover summary; (5) a one-line state reason when non-default; (6) a brief recommended next step for THIS state; (7) the Resume / New / Pick-feature menu as TEXT (offer Resume only when a valid active session exists).')
     # F-174 iter-11 (T009, DF-2): EMBED the resolved version + branch in the directive TEXT so a pointer-mode
     # host (codex - it does NOT inline the contract, so the version/branch never reached its banner; the
+    # specrew-self-ok: provenance comment citing the self-host iteration that shaped this behavior
     # iteration-010 codex pointer-banner showed "not resolved") renders a COMPLETE banner item 2 from literal
     # values. claude/copilot/cursor get these from the inlined contract; this makes the directive self-sufficient.
     # Fail-soft: a value that could not be resolved is omitted (the agent falls back to what it can see).

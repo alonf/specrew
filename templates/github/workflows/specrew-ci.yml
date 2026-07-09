@@ -46,6 +46,7 @@ jobs:
                          Where-Object { $_.FullName -notmatch '[\\/]\.(git|squad|specify)[\\/]' }
           if ($scriptFiles.Count -gt 0) {
             $results = $scriptFiles | ForEach-Object {
+              # specrew-self-ok: tracked debt - retired by the FR-026 deploy-list surgery (F-198 iteration 004, issue 2909)
               Invoke-ScriptAnalyzer -Path $_.FullName -Settings PSGallery
             }
             if ($results) {

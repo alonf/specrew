@@ -375,6 +375,7 @@ Ensure-Directory -Path (Join-Path $targetSpecifyRoot 'extensions') -Actions $act
 Ensure-Directory -Path $targetExtensionRoot -Actions $actions
 
 # Items marked Optional may legitimately be absent in the installed package
+# specrew-self-ok: Specrew's own update path - the module genuinely installs from this registry
 # (PSGallery/NuGet packaging drops empty-with-.gitkeep directories like hooks/);
 # absence is logged and skipped. Required items are load-bearing for the Spec Kit
 # extension — absence indicates a corrupt installed package and MUST throw loudly,
@@ -383,6 +384,7 @@ $itemsToCopy = @(
     @{ Name = 'commands';        Optional = $false }
     @{ Name = 'extension.yml';   Optional = $false }
     @{ Name = 'README.md';       Optional = $false }
+    # specrew-self-ok: Specrew's own update path - the module genuinely installs from this registry
     @{ Name = 'hooks';           Optional = $true  }   # PSGallery drops empty .gitkeep dirs
     @{ Name = 'scripts';         Optional = $false }
     @{ Name = 'templates';       Optional = $false }

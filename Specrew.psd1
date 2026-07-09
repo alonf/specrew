@@ -60,6 +60,7 @@
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-review-signoff.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-specify.md',
         'extensions/specrew-speckit/commands/speckit.specrew-speckit.sync-tasks.md',
+        'extensions/specrew-speckit/data/self-leak-deny-list.json',
         'extensions/specrew-speckit/design/soft-validator-handoff-governance.md',
         'extensions/specrew-speckit/extension.yml',
         'extensions/specrew-speckit/governance/validation-lane.md',

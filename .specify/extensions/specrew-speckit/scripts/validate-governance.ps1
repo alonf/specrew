@@ -4293,7 +4293,7 @@ Validates that declared task completion in state.md matches observed committed c
 in git diff. Blocks review boundary advancement when form-vs-meaning gap is detected.
 
 .PARAMETER IterationDirectory
-Path to iteration directory (e.g., C:\Dev\Specrew\specs\028-review-evidence-integrity).
+Path to iteration directory (e.g., C:\Projects\my-app\specs\001-user-auth).
 
 .PARAMETER Baseline
 Git baseline reference to compare against HEAD (e.g., 'main', commit SHA).

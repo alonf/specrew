@@ -30,6 +30,7 @@ retro -> iteration-closeout -> feature-closeout -> (release per the project's me
 ## Notes
 
 - Every boundary is a human-verdict stop; one approval advances at most one boundary.
+<!-- specrew-self-ok: tracked debt - FR-030 (F-198 iteration 004) makes this line release-model-aware -->
 - The release SDLC is instantiated from the project's governance — GitHub/PSGallery are a Specrew-own
   example, **not a downstream mandate**.
 - A post-merge finding is a **new** work item, never a reopen of the merged feature.

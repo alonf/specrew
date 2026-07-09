@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0",
+  "description": "Self-leak firewall deny-list (F-198 / Proposal 205). Patterns matching Specrew-SELF facts that must never ship in consumer-deployed surfaces without an adjacent 'specrew-self-ok: <reason>' annotation. Single truth for the repo CI lane and the consumer-side checks. The lint excludes this file itself from scanning (it is the rule file).",
+  "annotation": {
+    "token": "specrew-self-ok:",
+    "semantics": "A hit is annotated when the hit line, or the line immediately above it, contains the token followed by non-empty reason text. Comment form per file kind: <!-- specrew-self-ok: reason --> for .md; # specrew-self-ok: reason for .ps1/.psd1/.yml. A token with no reason text is treated as unannotated.",
+    "doc": "docs/methodology/self-leak-firewall.md"
+  },
+  "entries": [
+    {
+      "pattern": "(?i)\\bPSGallery\\b|\\bPowerShell Gallery\\b",
+      "class": "registry",
+      "reason": "Specrew's own publish registry. Consumer teaching must resolve the project's publish target from its governance, never name ours as the example-that-reads-as-mandate.",
+      "source": "proposal 205 W1 seed; 204-W7 field leak (2026-07-09 beta-1 E2E closeout taught PSGallery steps in a no-remote repo)",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)beta-before-stable|beta before stable",
+      "class": "release-model",
+      "reason": "Specrew's own release SDLC. As deployed methodology it must be scoped to projects WITH a publish target, resolved at render time from the project's release model.",
+      "source": "proposal 205 instance 1 (release-model leak, 204-W7)",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)alonf/specrew",
+      "class": "repo-ref",
+      "reason": "The self-repo forge slug; consumer surfaces must reference the consumer's own repository.",
+      "source": "proposal 205 W1 seed",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)\\bspecrew-19[0-9]-[a-z0-9-]+",
+      "class": "dev-path",
+      "reason": "Specrew dev worktree naming. Reaching a consumer session it causes identity conflation (a downstream agent asserted 'This project is specrew-197-continuous-co-review' about a consumer project).",
+      "source": "proposal 205 instance 2 (identity conflation)",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)C:\\\\Dev\\\\specrew[a-z0-9-]*",
+      "class": "dev-path",
+      "reason": "Maintainer dev-machine absolute paths; consumer surfaces must never carry the self-repo's location.",
+      "source": "proposal 205 W1 seed; 203 W2 sibling (origin-absolute paths are learnable from committed docs)",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)tesr19[0-9]local",
+      "class": "dev-path",
+      "reason": "Specrew's own consumer test-project naming; a self-fact when it appears in deployed teaching.",
+      "source": "F-198 seed (field dogfood project names appear across self-host ledgers)",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)\\bF-19[0-9]\\b",
+      "class": "feature-id",
+      "reason": "Specrew self feature identifiers read as consumer instruction; deployed teaching must stand on the abstract rule, not our feature history.",
+      "source": "proposal 205 W1 seed",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)\\biteration-010\\b",
+      "class": "feature-id",
+      "reason": "A Specrew self iteration identifier (the F-197 hardening iteration) named by the proposal as a leaked self-fact.",
+      "source": "proposal 205 W1 seed",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)proposals/\\d{3}",
+      "class": "decision-ref",
+      "reason": "Self-repo proposal paths as consumer instruction; consumers cannot and should not read Specrew's proposal tree.",
+      "source": "proposal 205 W1 seed",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)\\b(DEC|DEFER|NOTE)-19[0-9]-",
+      "class": "decision-ref",
+      "reason": "Specrew self decision-ledger identifiers; the generic .squad/decisions.md path is legitimate consumer layout, but OUR ledger entry ids are self-facts.",
+      "source": "F-198 seed (narrowed from the proposal's '.squad/decisions.md as consumer instruction' to avoid false positives on the consumer's own ledger)",
+      "added": "2026-07-10"
+    },
+    {
+      "pattern": "(?i)\\balonf\\b|Alon Fliess|alonfliess",
+      "class": "maintainer-id",
+      "reason": "Maintainer identifiers; consumer surfaces are maintainer-neutral.",
+      "source": "proposal 205 W1 seed",
+      "added": "2026-07-10"
+    }
+  ]
+}
