@@ -1,16 +1,22 @@
 # Iteration State: 001
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: (populate from plan.md)
+**Last Completed Task**: T001
+**Tasks Remaining**: T002, T003, T004, T005, T006
 **In Progress**: (none)
 **Baseline Ref**: 62ff9d6473405ecc8433d6609b6d50c3be5459af
-**Updated**: 2026-07-09T20:35:30Z
+**Updated**: 2026-07-10T00:00:00Z
 
 ## Execution Summary
 
-- Execution has not started yet.
-- This artifact was scaffolded before task execution so resume state can be updated after each task.
+- Iteration status: executing (before-implement authorized 2026-07-10).
+- T001 done: Spec-Kit 0.12.9 scratch probe complete; evidence at
+  quality/toolchain-probe-evidence.md. Key outcomes: `--integration`
+  migration confirmed; `--script ps`/`--ignore-agent-tools` survive;
+  multi-integration lifted behind `--force` (new refusal text — the
+  0.8.4 skip-regex no longer matches); git extension NOT added
+  (auto-commit conflicts with boundary discipline); our extension's
+  hooks schema loads under 0.12.9 (12 commands / 4 hooks, Enabled).
 
 ## Notes
 
