@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Capture Kind**: feature-closeout
-**Captured At**: 2026-07-09T08:17:21Z
+**Captured At**: 2026-07-09T08:38:13Z
 **Render Mode**: full
 **Rendering Mode**: monochrome
 **Color Mode**: monochrome
@@ -11,17 +11,15 @@
 ## Dashboard
 
 ```text
-AWAITING YOUR VERDICT: 'feature-closeout' is committed / in-progress but NOT human-authorized (last authorized: iteration-closeout). A committed boundary is not an approved one — the gate advances only when you confirm. Give the boundary verdict to authorize it; if you already approved, the session may have ended before your verdict was captured, so please re-confirm.
-
 Boundary enforcement: enabled
-Last authorized boundary: iteration-closeout
+Last authorized boundary: feature-closeout
 Pending next boundary: (none)
-Last enforcement timestamp: 07/09/2026 07:32:01
-Total enforcement events: 6
+Last enforcement timestamp: 07/09/2026 08:17:49
+Total enforcement events: 7
 
 SPECREW VELOCITY DASHBOARD
 ------------------------------------------------------------------------
-Today: 2026-07-09 | Captured: 2026-07-09T08:17:21Z
+Today: 2026-07-09 | Captured: 2026-07-09T08:38:13Z
 Repo: specrew-197-continuous-co-review | Branch: 197-continuous-co-review
 Rendering: monochrome-safe fallback
 Summary: > F-197 Continuous Co-Review (In Progress · phase abandoned) | Velocity 6.24 SP/day (10 closed iterations, high)
