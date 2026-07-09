@@ -27667,3 +27667,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   verifiable record is itself a blocking finding (never-false-green preserved); the final-round
   escalation rule applies only to findings NOT covered by a verified deferral. Prompt contract
   tests 17/17.
+
+## 2026-07-09T01:01:01Z — Boundary sync warning: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Latest Recorded Boundary**: review-signoff
+- **Recorded At**: 2026-07-09T01:01:01Z
+- **Warning**: Expected next boundary 'retro' but received 'review-signoff'.
+
+## 2026-07-09T01:01:01Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 197-continuous-co-review
+- **Iteration Number**: 010
+- **Task ID**: (none)
+- **Auth Commit Hash**: 4e711036
+- **Recorded At**: 2026-07-09T01:01:01Z
