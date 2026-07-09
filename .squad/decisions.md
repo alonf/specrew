@@ -27706,7 +27706,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 
 - **Decision ID**: DEFER-197-I010-003
 - **Type**: defer
-- **Affected Requirement**: FR-027 (incremental change-set per checkpoint), SC-021
+- **Affected Requirement**: FR-027
 - **Affected Iteration**: specs\197-continuous-co-review\iterations\010
 - **Approving Human**: Alon Fliess
 - **Recorded At**: 2026-07-09T10:30:00Z
