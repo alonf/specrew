@@ -27701,3 +27701,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: c3508e5e
 - **Recorded At**: 2026-07-09T07:25:24Z
+
+## 2026-07-09T10:30:00Z — Defer: FR-027 incremental per-checkpoint baselines on the auto path (203-W9)
+
+- **Decision ID**: DEFER-197-I010-003
+- **Type**: defer
+- **Affected Requirement**: FR-027 (incremental change-set per checkpoint), SC-021
+- **Affected Iteration**: specs\197-continuous-co-review\iterations\010
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T10:30:00Z
+- **Authorization Text**:
+  > "Agree (1 - go) with all, do it." (maintainer, 2026-07-09 — the DEC-197-I010-008 deferral of
+  > codex findings f1-f3; f2 is the FR-027 item)
+- **Next Action**: Proposal 203 W9 — the navigator records the last-REVIEWED checkpoint identity and
+  threads it as the next fire's baseline (merge-base fallback when none). Interim behavior is
+  safe-but-broad: every auto-fire reviews the whole feature diff since the branch point (over-reviews,
+  never under-reviews); the signoff `--live` merge-base doctrine is unchanged.
