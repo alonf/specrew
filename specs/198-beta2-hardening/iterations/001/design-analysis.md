@@ -237,7 +237,17 @@ component-design lens; the slicing placing these components in iteration
 
 ## Human Decision
 
-**Status**: PENDING — awaiting the maintainer's verdict in the shape
-`approved for plan with Option <X>`. The decision, any modifications, the
-verdict evidence, and the authorizing commit are recorded here upon
-approval.
+- **Decision verdict**: approved for plan with Option B (maintainer chose
+  option 1 — "Approve as-is — proceed with Option B and the defaults" — at
+  the rendered design-analysis gate stop, 2026-07-10; hook-captured
+  transcript verdict).
+- **Chosen Option**: Option B — data-driven lint + evidence-first bumps.
+- **Reason**: Option B is the only alternative that realizes the
+  workshop-bound decisions (205-W6 single truth, I1 evidence-first, I2
+  single pin, I3 versioning, NFR-007 paired tests) without rework; the
+  manifest-derived scan surface and the blocking self-host posture were
+  accepted as defaults.
+- **Modifications**: None.
+- **Design-analysis draft commit**: `89215832`
+- **Decision recorded in commit**: `RECORDED-IN-GATES-COMMIT` (backfilled
+  with the exact hash in the gates-packet commit)
