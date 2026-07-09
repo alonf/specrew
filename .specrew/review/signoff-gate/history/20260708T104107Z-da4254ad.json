@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "boundary_type": "review-signoff",
+  "recorded_at": "2026-07-08T10:41:07Z",
+  "decision": {
+    "schema_version": "1.0",
+    "decision": "block",
+    "reason": "no-co-review-evidence",
+    "message": "No passing or escalated co-review run on this lineage; the current state has not been co-reviewed.",
+    "current_tree_id": "4ebce3f7f4b5feff16865ec5605715bdc663859f",
+    "matched_run_id": "",
+    "anchor_ref": "5c491916a30164cf84823466dadc62c6aefaaeb1",
+    "override": null,
+    "evidence_labels": null,
+    "acknowledgement": null
+  }
+}

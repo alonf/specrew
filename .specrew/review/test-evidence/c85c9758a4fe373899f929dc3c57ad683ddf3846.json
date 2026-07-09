@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "reviewed_digest_tree_id": "c85c9758a4fe373899f929dc3c57ad683ddf3846",
+  "recorded_at": "2026-07-08T20:42:02Z",
+  "suites": [
+    {
+      "suite": "continuous-co-review",
+      "passed": 252,
+      "failed": 0,
+      "skipped": 2,
+      "exit_code": 0,
+      "duration_seconds": 158.91,
+      "command": "Invoke-Pester tests\\continuous-co-review",
+      "recorded_at": "2026-07-08T20:36:34Z"
+    },
+    {
+      "suite": "unit",
+      "passed": 8,
+      "failed": 2,
+      "skipped": 0,
+      "exit_code": 1,
+      "duration_seconds": 325.81,
+      "command": "Invoke-Pester tests\\unit",
+      "recorded_at": "2026-07-08T20:42:02Z"
+    }
+  ]
+}

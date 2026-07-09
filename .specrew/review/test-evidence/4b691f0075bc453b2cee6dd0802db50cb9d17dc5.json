@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "reviewed_digest_tree_id": "4b691f0075bc453b2cee6dd0802db50cb9d17dc5",
+  "recorded_at": "2026-07-08T21:02:38Z",
+  "suites": [
+    {
+      "suite": "unit",
+      "passed": 8,
+      "failed": 2,
+      "skipped": 0,
+      "exit_code": 1,
+      "duration_seconds": 211.184,
+      "command": "Invoke-Pester tests\\unit",
+      "recorded_at": "2026-07-08T21:02:38Z"
+    }
+  ]
+}

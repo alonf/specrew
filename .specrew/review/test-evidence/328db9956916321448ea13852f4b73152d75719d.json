@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "reviewed_digest_tree_id": "328db9956916321448ea13852f4b73152d75719d",
+  "recorded_at": "2026-07-08T20:59:05Z",
+  "suites": [
+    {
+      "suite": "continuous-co-review",
+      "passed": 252,
+      "failed": 0,
+      "skipped": 2,
+      "exit_code": 0,
+      "duration_seconds": 165.715,
+      "command": "Invoke-Pester tests\\continuous-co-review",
+      "recorded_at": "2026-07-08T20:59:05Z"
+    }
+  ]
+}
