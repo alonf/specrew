@@ -1,0 +1,25 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260708T104218604-6fd8a95b",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "co-review-ceiling-escalation",
+      "source_run_id": "20260708T104218604-6fd8a95b",
+      "location": {
+        "path": ".review/changes.diff"
+      },
+      "severity": "blocking",
+      "kind": "escalation",
+      "design_reference": "co-review round ceiling (co_review_max_rounds)",
+      "comment": "CO-REVIEW CEILING REACHED (round 5 > max_rounds 2) with an unresolved blocking finding still open from a prior round. This increment was NOT REVIEWED -- the auto-loop stopped here to avoid spinning. This is an ESCALATION, not a clean pass: resolve the open blocking finding, or raise co_review_max_rounds / reset the co-review round state, so review resumes. Reading this run as '0 findings / clean' is a FALSE-GREEN.",
+      "disposition": "escalated_to_human",
+      "resolution": {
+        "state": "escalated",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-08T10:42:27Z"
+}

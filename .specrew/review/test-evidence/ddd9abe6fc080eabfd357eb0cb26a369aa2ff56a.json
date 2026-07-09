@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "reviewed_digest_tree_id": "ddd9abe6fc080eabfd357eb0cb26a369aa2ff56a",
+  "recorded_at": "2026-07-08T21:56:03Z",
+  "suites": [
+    {
+      "suite": "continuous-co-review",
+      "passed": 254,
+      "failed": 0,
+      "skipped": 2,
+      "exit_code": 0,
+      "duration_seconds": 168.886,
+      "command": "Invoke-Pester tests\\continuous-co-review",
+      "recorded_at": "2026-07-08T21:47:42Z"
+    },
+    {
+      "suite": "unit",
+      "passed": 10,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 325.257,
+      "command": "Invoke-Pester tests\\unit",
+      "recorded_at": "2026-07-08T21:53:09Z"
+    },
+    {
+      "suite": "bootstrap",
+      "passed": 0,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 159.043,
+      "command": "Invoke-Pester tests\\bootstrap",
+      "recorded_at": "2026-07-08T21:55:50Z"
+    },
+    {
+      "suite": "integration-review-command",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 9.403,
+      "command": "pwsh -NoProfile -File tests\\integration\\review-command.ps1",
+      "recorded_at": "2026-07-08T21:56:01Z"
+    },
+    {
+      "suite": "integration-review-signoff-live-wiring",
+      "passed": 34,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 0.338,
+      "command": "pwsh -NoProfile -File tests\\integration\\review-signoff-live-wiring.tests.ps1",
+      "recorded_at": "2026-07-08T21:56:03Z"
+    }
+  ]
+}

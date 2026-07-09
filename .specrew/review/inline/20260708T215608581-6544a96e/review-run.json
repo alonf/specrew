@@ -1,0 +1,33 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260708T215608581-6544a96e",
+  "checkpoint_id": "nav-20260708T215608581-6544a96e",
+  "baseline_ref": "5c491916a30164cf84823466dadc62c6aefaaeb1",
+  "diff_hash": null,
+  "reviewed_ref": "5ac430efa2103dee903fb3b06d2223787212a7f8",
+  "reviewed_tree_id": "ddd9abe6fc080eabfd357eb0cb26a369aa2ff56a",
+  "scope": "",
+  "evidence_labels": {
+    "completeness": "full",
+    "independence": "independent",
+    "budget": "normal"
+  },
+  "status": "pass",
+  "request_ref": "review-request.json",
+  "request_hash": null,
+  "invocation_ref": null,
+  "invocation_id": null,
+  "findings_result_ref": null,
+  "infrastructure_failure_ref": null,
+  "review_thread_ref": null,
+  "gate_verdict_ref": "gate-verdict.json",
+  "requested_host": null,
+  "requested_model": null,
+  "actual_host": null,
+  "actual_model": null,
+  "adapter_id": null,
+  "cleanup_status": null,
+  "cleanup_failure_ref": null,
+  "created_at": "2026-07-08T22:01:51Z",
+  "updated_at": "2026-07-08T22:01:51Z"
+}

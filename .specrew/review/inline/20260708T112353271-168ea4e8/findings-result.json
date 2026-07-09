@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260708T112353271-168ea4e8",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260708T112353271-168ea4e8",
+      "location": {
+        "path": "scripts/internal/agent-tasks/isolated-task-launcher.ps1",
+        "line_start": 333,
+        "line_end": 336
+      },
+      "severity": "blocking",
+      "kind": "registry-race",
+      "design_reference": "T100 / FR-039 / SC-025 / design-analysis N2",
+      "comment": "The launcher writes the initial registry, starts the detached supervisor, then rewrites the whole stale registry object just to add supervisor_pid. If the supervisor has already read-modify-written child_pid/child_pgid/containment or a terminal status, this parent write can clobber that evidence back to status=running without child containment data, defeating the session-scoped pidfile registry and orphan-reaper evidence required by T100/SC-025. Update the post-spawn path to merge supervisor_pid into the current on-disk registry instead of rewriting the stale pre-spawn object, and cover the fast-supervisor race.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f2",
+      "source_run_id": "20260708T112353271-168ea4e8",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/co-review-service.ps1",
+        "line_start": 140,
+        "line_end": 141
+      },
+      "severity": "blocking",
+      "kind": "cross-platform-spawn",
+      "design_reference": "T100 / SC-025 / design-analysis N2",
+      "comment": "The non-Windows detached review spawn still passes Start-Process -WindowStyle Hidden. PowerShell only supports -WindowStyle on Windows; the isolated-task launcher correctly gates this parameter with $IsWindows, but this Unix/WSL branch does not. On WSL/Linux the detached service path can fail before starting the reviewer, contradicting the claimed WSL-validated Stop-hook detached spawn and cross-platform supervisor requirements. Gate -WindowStyle to Windows or remove it from the non-Windows branch and add a Unix/WSL spawn regression test.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-08T11:28:48Z"
+}
