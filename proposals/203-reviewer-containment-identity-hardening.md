@@ -133,6 +133,19 @@ gallery bits; both gates fired CORRECTLY, the findings are about what the correc
   explicit value is below the config/default it overrides ("explicit 180s < configured 600s;
   reviews typically need the configured budget"), so the operator sees the downgrade before losing
   a review cycle to it.
+- **W16 — Per-host default review budgets belong in the catalog**: the shipped watchdog default is
+  a flat 300 seconds for EVERY host (`Get-ContinuousCoReviewNavigatorTimeoutSeconds -Default 300`),
+  `specrew init` does not scaffold `co_review_timeout_seconds`, and the catalog carries no budget
+  column — yet the field timings disagree per host: antigravity needs 600-870s (measured on the
+  self-host repo; its own `--print-timeout` had to be lifted to 15m so OUR watchdog owns the kill),
+  and claude needed ~400-600s on the same machine (three tesr197local checkpoint reviews died at
+  180/300/400s while a 7-second CLI probe proved the host healthy — pure budget, not infra). The
+  only reason the test project survives is a hand-edited config value; every fresh consumer gets
+  300s against hosts that need more. Budget is HOST data, and the catalog is the single
+  harness-data seam: add a `default_timeout_seconds` column per row; resolution becomes explicit
+  flag -> project config -> catalog per-host default -> 300 floor. W14's downgrade warning then
+  keys off the RESOLVED value, so an explicit 180 against claude's catalog 600 warns even in
+  projects that never touched their config.
 - **W15 — The manual `--live` door should default the code-writer host from the session**: a manual
   `specrew review --live --host <reviewer>` without `--code-writer-host` records
   `independence: 'unverified'` (correctly treated as not-independent, SEC-004) even when the
