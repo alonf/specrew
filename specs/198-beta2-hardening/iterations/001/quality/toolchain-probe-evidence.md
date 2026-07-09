@@ -61,8 +61,38 @@ condition-b-scratch-probe-only). Resolved commit at tag v0.12.9:
 
 ## Environment
 
-- `uv 0.8.17`; global `specify 0.8.4` untouched (probe used uvx).
-- Squad probe evidence lands with T003 (its own scratch probe).
+- `uv 0.8.17`; the T001 probe used uvx (global tool untouched at probe
+  time). At T002 verification the machine toolchain moved to the pins via
+  the exact CI commands: `uv tool install --force specify-cli --from
+  git+https://github.com/github/spec-kit.git@v0.12.9` (0.8.4 → 0.12.9,
+  reversible with the same command @v0.8.4) and
+  `npm install -g @bradygaster/squad-cli@0.11.0` (0.9.1 → 0.11.0).
+
+## Squad 0.11.0 probe (T003)
+
+- `npx -y @bradygaster/squad-cli@0.11.0 --version` → `0.11.0`.
+- `squad init --non-interactive` in the scratch dir
+  (`…\scratchpad\squad-probe-001`) → "Squad initialized." exit 0; the
+  `.squad` layout is complete (agents, casting, decisions, fact-checker,
+  identity, log, memory, orchestration-log, plugins, rai, templates +
+  ceremonies.md, config.json, decisions.md, routing.md, team.md).
+- No breaking behavior observed (release notes: adds `squad registry`,
+  renames ".NET Aspire"→"Aspire" in help text).
+
+## Suite evidence on the pinned toolchain (T002/T003, 2026-07-10)
+
+- `tests/integration/version-info-states.tests.ps1` — PASS (exit 0) after
+  Test 8 was updated from the retired 0.9.0-window lock to the
+  single-tested-pin lock (shipped min supported; pre-break 0.9.0 now
+  correctly behind-supported).
+- `tests/integration/bootstrap-asset-blocker-recovery.ps1` — PASS (exit 0)
+  after shim + assertion versions moved to the pins.
+- `tests/integration/squad-duplicate-rows.tests.ps1` — PASS (exit 0);
+  exercises a REAL `specrew init` (specify 0.12.9 `--integration copilot`
+  + squad 0.11.0) — the live no-extensions fixture evidence.
+- `tests/integration/deployed-bootstrap-floor.tests.ps1` — PASS (exit 0).
+- `tests/integration/command-surface-deploy.tests.ps1` — PASS (exit 0).
+- Full suite runs on the PR CI lanes (now pinned 0.12.9 / 0.11.0).
 
 ## Consequences carried into T002
 

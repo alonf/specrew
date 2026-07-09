@@ -8,7 +8,7 @@ extension:
   description: "Spec Kit extension providing governance artifacts, templates, and validation for Specrew"
 
 requires:
-  speckit_version: ">=0.8.4"
+  speckit_version: ">=0.12.9"
 
 provides:
   commands:

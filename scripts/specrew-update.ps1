@@ -1133,9 +1133,9 @@ if ($null -ne $supportedVersions) {
     $minimumSquadVersion = $supportedVersions.Squad.Min
 }
 else {
-    Write-Warning "Could not load module-side scripts/internal/supported-versions.yml. Falling back to historical minimums (Spec Kit 0.8.4 / Squad 0.9.1); --info status will use two-state model."
-    $minimumSpecKitVersion = '0.8.4'
-    $minimumSquadVersion = '0.9.1'
+    Write-Warning "Could not load module-side scripts/internal/supported-versions.yml. Falling back to historical minimums (Spec Kit 0.12.9 / Squad 0.11.0); --info status will use two-state model."
+    $minimumSpecKitVersion = '0.12.9'
+    $minimumSquadVersion = '0.11.0'
 }
 
 foreach ($requiredPath in @($specrewManifestPath, $validateVersionsScript, $deploySpeckitExtensionScript, $deploySquadRuntimeScript)) {

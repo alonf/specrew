@@ -69,8 +69,8 @@ try {
         Write-Fail "Declaration loaded as null; expected to find scripts/internal/supported-versions.yml"
     }
     Assert-Equal -Expected 'v1' -Actual $declaration.Schema -Message "Schema field parsed"
-    Assert-Equal -Expected '0.8.4' -Actual $declaration.Speckit.Min -Message "Speckit.Min parsed"
-    Assert-Equal -Expected '0.9.1' -Actual $declaration.Squad.Min -Message "Squad.Min parsed"
+    Assert-Equal -Expected '0.12.9' -Actual $declaration.Speckit.Min -Message "Speckit.Min parsed"
+    Assert-Equal -Expected '0.11.0' -Actual $declaration.Squad.Min -Message "Squad.Min parsed"
     if ([string]::IsNullOrWhiteSpace($declaration.Speckit.MaxTested)) {
         Write-Fail "Speckit.MaxTested is empty"
     }
@@ -152,18 +152,22 @@ squad:
     Assert-Equal -Expected '' -Actual $notesDeclaration.Squad.Notes -Message "Squad.Notes empty when blank"
 
     Write-Host ""
-    Write-Host "Test 8: Spec Kit 0.9.0 is within the supported window (feature 090 / spike-speckit-090)"
-    # Churn-free lock: an installed 0.9.0 must resolve as supported against the SHIPPED
-    # declaration (current or update-available-supported, never ahead/behind). Survives
-    # future bumps above 0.9.0 without test edits.
+    Write-Host "Test 8: the shipped PIN is within its own supported window (F-198 single-tested-pin, I2)"
+    # Churn-free lock: the shipped min must resolve as supported against the SHIPPED
+    # declaration (current or update-available-supported, never ahead/behind), whatever
+    # the pin is. Pre-pin versions (e.g. 0.9.0, the pre-0.10.0 --ai syntax era) must now
+    # resolve behind-supported: the 0.10.0 flag break makes them incompatible with the
+    # deployed init surface (F-198 T001 probe evidence).
     $shipped = Get-SpecrewSupportedVersions
     if ($null -eq $shipped) { Write-Fail "Shipped declaration loaded as null" }
-    $status090 = Get-SpecrewVersionStatus -Current '0.9.0' -Min $shipped.Speckit.Min -MaxTested $shipped.Speckit.MaxTested
-    if ($status090 -notin @('current', 'update-available-supported')) {
-        Write-Fail ("Installed Spec Kit 0.9.0 resolves to '{0}'; expected supported (current/update-available-supported). Shipped max_tested='{1}'" -f $status090, $shipped.Speckit.MaxTested)
+    $statusPin = Get-SpecrewVersionStatus -Current $shipped.Speckit.Min -Min $shipped.Speckit.Min -MaxTested $shipped.Speckit.MaxTested
+    if ($statusPin -notin @('current', 'update-available-supported')) {
+        Write-Fail ("Installed Spec Kit {0} resolves to '{1}'; expected supported (current/update-available-supported). Shipped max_tested='{2}'" -f $shipped.Speckit.Min, $statusPin, $shipped.Speckit.MaxTested)
     }
-    Write-Pass ("Spec Kit 0.9.0 resolves to '{0}' against the shipped declaration (supported)" -f $status090)
-    # Four-state logic locked at a 0.9.0 ceiling (explicit params; churn-free).
+    Write-Pass ("Spec Kit {0} resolves to '{1}' against the shipped declaration (supported)" -f $shipped.Speckit.Min, $statusPin)
+    $statusPrePin = Get-SpecrewVersionStatus -Current '0.9.0' -Min $shipped.Speckit.Min -MaxTested $shipped.Speckit.MaxTested
+    Assert-Equal -Expected 'behind-supported' -Actual $statusPrePin -Message "pre-break 0.9.0 resolves behind-supported against the shipped pin"
+    # Four-state logic locked at a fixed ceiling (explicit params; churn-free).
     Assert-Equal -Expected 'current' -Actual (Get-SpecrewVersionStatus -Current '0.9.0' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.9.0 == max_tested 0.9.0 returns current"
     Assert-Equal -Expected 'update-available-supported' -Actual (Get-SpecrewVersionStatus -Current '0.8.18' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.8.18 < max_tested 0.9.0 returns update-available-supported"
     Assert-Equal -Expected 'ahead-of-supported' -Actual (Get-SpecrewVersionStatus -Current '0.9.1' -Min '0.8.4' -MaxTested '0.9.0') -Message "0.9.1 > max_tested 0.9.0 returns ahead-of-supported"

@@ -6,9 +6,9 @@ param(
     [switch]$DryRun,
     [switch]$Force,
     [Alias('speckit-version')]
-    [string]$SpecKitVersion = '0.8.4',
+    [string]$SpecKitVersion = '0.12.9',
     [Alias('squad-version')]
-    [string]$SquadVersion = '0.9.1',
+    [string]$SquadVersion = '0.11.0',
     [string]$Agents = 'copilot',
     [Alias('no-agents')]
     [switch]$NoAgents,
@@ -614,11 +614,13 @@ Write-Step 'Detecting Copilot runtime and delegated agents'
 if ($shouldInitializeSpecify) {
     Write-Step 'Running specify init'
     if ($DryRun) {
-        Write-Host ("[dry-run] specify init --here --ai copilot --script ps --ignore-agent-tools{0}" -f $(if ($shouldForceSpecifyInit) { ' --force' } else { '' })) -ForegroundColor Yellow
+        Write-Host ("[dry-run] specify init --here --integration copilot --script ps --ignore-agent-tools{0}" -f $(if ($shouldForceSpecifyInit) { ' --force' } else { '' })) -ForegroundColor Yellow
         Add-Action -Actions $actions -Step 'specify-init' -Outcome 'would initialize .specify'
     }
     else {
-        $specifyArguments = @('init', '--here', '--ai', 'copilot', '--script', 'ps', '--ignore-agent-tools')
+        # Spec Kit >=0.10.0 removed the --ai flag family; --integration <key> is the surface
+        # (verified against 0.12.9 - F-198 T001 probe evidence).
+        $specifyArguments = @('init', '--here', '--integration', 'copilot', '--script', 'ps', '--ignore-agent-tools')
         if ($shouldForceSpecifyInit) {
             $specifyArguments += '--force'
         }
@@ -653,28 +655,27 @@ if ($shouldInitializeSpecify) {
         # (copilot, the default). Palette-hosts that declare a slash-command surface (Claude,
         # Antigravity) need their OWN native surface, or they are told to use commands they do not
         # have (#2884 4th face — Claude got CLAUDE.md telling it to use /speckit.* with nothing
-        # deployed). Spec Kit's claude integration deploys `.claude/skills/speckit-*`; install it
-        # (and agy) alongside copilot via `integration install <key>`. NOTE (D-197-I009-011): Spec Kit 0.8.4 (the
-        # pinned + min-supported version) is SINGLE-INTEGRATION: `specify init --ai copilot` installs copilot, and a
-        # later `integration install claude` is refused with "Integration 'copilot' is already installed." Its
-        # `integration install` takes only [--script | --integration-options] KEY -- there is NO --force flag to
-        # override that (passing one earlier made Spec Kit reject the call with a usage error instead). So on 0.8.4
-        # the palette-host native surfaces genuinely CANNOT be added beside copilot -- a Spec Kit capability limit,
-        # not a Specrew failure: the palette host uses the governed-scripts fallback the coordinator guard already
-        # blesses, so the "already installed" outcome is an expected SKIP (logged info, not an alarming warning).
+        # deployed). HISTORY (D-197-I009-011): Spec Kit 0.8.4 was hard single-integration — a later
+        # `integration install claude` was refused outright and no --force existed, so palette hosts
+        # used the governed-scripts fallback. Spec Kit >=0.10.0 lifted that: a bare install beside
+        # copilot is still refused ("Installing multiple integrations is only automatic when all
+        # involved integrations are declared multi-install safe"), but --force installs alongside and
+        # keeps copilot the default ("Default integration remains: copilot" — F-198 T001 probe,
+        # 0.12.9). So install the palette surfaces WITH --force; the refusal branch remains only as a
+        # defensive skip if a future Spec Kit narrows --force again.
         foreach ($paletteIntegration in @('claude', 'agy')) {
             Write-Step ("Installing Spec Kit native commands for {0}" -f $paletteIntegration)
-            $integResult = Invoke-NativeCommandForOutput -FilePath 'specify' -ArgumentList @('integration', 'install', $paletteIntegration) -WorkingDirectory $resolvedProjectPath
+            $integResult = Invoke-NativeCommandForOutput -FilePath 'specify' -ArgumentList @('integration', 'install', $paletteIntegration, '--force') -WorkingDirectory $resolvedProjectPath
             $integFailure = Get-FirstNonEmptyOutputLine -OutputLines $integResult.Output
             if ($integResult.ExitCode -eq 0) {
                 Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("installed native commands: {0}" -f $paletteIntegration)
             }
-            elseif ($integFailure -match '(?i)already installed') {
-                # Spec Kit single-integration limit (see note above): copilot is already the project's one integration,
-                # so the palette host cannot get a native surface here. EXPECTED on 0.8.4 -> a clean SKIP + the
-                # governed-scripts fallback, NOT an alarming failure. (D-197-I009-011)
-                Write-Host ("[info] Spec Kit native commands for {0} skipped: Spec Kit {1} installs one integration per project (copilot); {0} uses the governed-scripts fallback." -f $paletteIntegration, $SpecKitVersion) -ForegroundColor DarkGray
-                Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("skipped {0}: Spec Kit single-integration; governed-scripts fallback" -f $paletteIntegration)
+            elseif ($integFailure -match '(?i)already installed|multi-install safe|only automatic') {
+                # Defensive skip: Spec Kit declined the side-by-side install (a future version may
+                # re-narrow --force). The palette host uses the governed-scripts fallback the
+                # coordinator guard already blesses — a clean SKIP, not an alarming failure.
+                Write-Host ("[info] Spec Kit native commands for {0} skipped: Spec Kit {1} declined a side-by-side install; {0} uses the governed-scripts fallback." -f $paletteIntegration, $SpecKitVersion) -ForegroundColor DarkGray
+                Add-Action -Actions $actions -Step 'specify-integration' -Outcome ("skipped {0}: side-by-side install declined; governed-scripts fallback" -f $paletteIntegration)
             }
             else {
                 Write-Host ("[warn] specify integration install {0} failed (non-fatal; host uses the governed-scripts fallback): {1}" -f $paletteIntegration, $integFailure) -ForegroundColor Yellow

@@ -27785,3 +27785,48 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Open issues carried**: #2908 (public-readiness suite red on main - NOT superseded; exit 64
   reconfirmed 2026-07-09) and #2909 (broken forge templates -> Proposal 204) roll into the beta-2
   triage.
+
+## 2026-07-09T19:26:23Z — Boundary sync: specify
+
+- **Boundary Type**: specify
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 96ee91dc
+- **Recorded At**: 2026-07-09T19:26:23Z
+
+## 2026-07-09T19:43:03Z — Boundary sync: clarify
+
+- **Boundary Type**: clarify
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 62ff9d64
+- **Recorded At**: 2026-07-09T19:43:03Z
+
+## 2026-07-09T22:34:03Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: ff67fe8a
+- **Recorded At**: 2026-07-09T22:34:03Z
+
+## 2026-07-09T22:39:40Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3740c570
+- **Recorded At**: 2026-07-09T22:39:39Z
+
+## 2026-07-09T22:48:14Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: c9aa3206
+- **Recorded At**: 2026-07-09T22:48:14Z

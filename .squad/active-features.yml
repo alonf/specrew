@@ -34,3 +34,8 @@ claims:
     claim_start_time: "2026-06-16T23:10:34Z"
     last_refresh_time: "2026-06-17T22:55:24Z"
     branch_name: "184-full-antigravity-refocus"
+  - feature_id: "198-beta2-hardening"
+    claimed_by: "alon@ALONBLADE"
+    claim_start_time: "2026-07-09T19:26:23Z"
+    last_refresh_time: "2026-07-09T22:48:14Z"
+    branch_name: "198-beta2-hardening"

@@ -193,9 +193,9 @@ Options:
   -DryRun | --dry-run     Show planned changes without writing
   -Force | --force        Skip interactive prompts and use default selections
   -SpecKitVersion | --speckit-version
-                         Minimum Spec Kit version (default: 0.8.4)
+                         Minimum Spec Kit version (default: 0.12.9)
   -SquadVersion | --squad-version
-                         Minimum Squad version (default: 0.9.1)
+                         Minimum Squad version (default: 0.11.0)
   -Agents | --agents      Optional DELEGATED agents (orthogonal to --host launch selection): claude | codex | comma list | all. The launch host stays as selected via `specrew start --host <kind>` (default: copilot)
   -NoAgents | --no-agents Disable optional delegated agents. The launch host stays as selected via `specrew start --host <kind>`
   -SkipUpdateCheck | --skip-update-check
