@@ -284,6 +284,10 @@ jobs:
         shell: pwsh
         run: ./tests/integration/version-checks.tests.ps1
 
+      - name: Integration - module-path announce origin (dev-trial vs module-announce)
+        shell: pwsh
+        run: ./tests/integration/module-path-announce-origin.tests.ps1
+
       - name: Integration - Unix resolver path semantics (F-160 / Proposal 160; POSIX branch runs on this Ubuntu lane)
         shell: pwsh
         run: ./tests/integration/unix-resolver-path-semantics.tests.ps1

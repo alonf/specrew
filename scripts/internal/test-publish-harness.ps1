@@ -204,7 +204,15 @@ try {
     # Unload baseline module and load candidate module
     Write-Host "Switching to candidate module..."
     Remove-Module Specrew -Force -ErrorAction SilentlyContinue
-    
+
+    # The baseline module load announced its own tree in SPECREW_MODULE_PATH (legacy versions do not mark
+    # SPECREW_MODULE_PATH_ORIGIN), and the candidate psm1 honors an unmarked path as an operator dev-trial
+    # override - which would dispatch the candidate's CLI from the BASELINE tree and stamp the baseline's
+    # versions into the fixture config (the v0.40.0-beta1 dry-run failure: expected 0.40.0, got the
+    # baseline's stale 0.27.5). This harness's subject is the CANDIDATE - clear the announcement first.
+    $env:SPECREW_MODULE_PATH = $null
+    $env:SPECREW_MODULE_PATH_ORIGIN = $null
+
     # Import candidate module explicitly
     $candidateModulePath = Join-Path -Path $CandidatePath -ChildPath 'Specrew.psm1'
     Import-Module $candidateModulePath -Force -Global
