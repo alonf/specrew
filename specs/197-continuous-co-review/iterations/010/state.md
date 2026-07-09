@@ -1,21 +1,23 @@
 # Iteration State: 010
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: reviewing
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T111
 **Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 16bc485f6cb38b783963095ee360481ba8335562
-**Updated**: 2026-07-08
+**Updated**: 2026-07-09
 **Before-implement**: APPROVED by the maintainer 2026-07-02 ("1" = approved for before-implement; Stop-hook-captured against `tasks -> before-implement`). Hardening-gate `ready`; implementation authorized. Ship 0.40.0.
+
+**Closeout (2026-07-09)**: review-signoff APPROVED (verdict 1, auth 4e711036, evidence run 20260709T005739948 full/independent/pass); retro APPROVED (verdict 1, auth f34b8d71). 12/12 tasks done, 26.00/26 SP, 6 drift events 100% resolved; fast-follows filed (Proposals 203/204, 102 addendum, issues #2908/#2909). Ships as 0.40.0-beta.1 on the release flow.
 
 ## Execution Summary
 
 - Implementation authorized 2026-07-02; iteration executing. Resumed 2026-07-08 after maintainer vacation (state regressed by session-start sync was restored to the committed `executing` truth).
 - Planned sequence: T100 (OS-native supervisor) → T091 (hard-timeout consolidation, WSL hard gate) → T093/T094/T096 (fallback/gate/menu) → T106 (latch wiring) → T107 (reviewer fold) → T108/T109 (findings) → T110 (cross-host validation). Boundary-commit each; tests green per task.
 - Task progress: 12 complete (ALL: T100, T091, T093, T094, T096, T099, T106, T107, T108, T109, T110, T111), 0 in-progress, 0 pending, 0 blocked. 26.00/26.00 SP delivered (T111 = the maintainer-authorized review-signoff send-back, DEC-197-I010-004).
-- T111 delivered 2026-07-08 (send-back, DEC-197-I010-004): implementer test-evidence for the reviewer — `Write-ContinuousCoReviewTestEvidence` records machine-observed suite runs bound to the reviewed-state digest; the orchestrator injects `.review/implementer-evidence.json` into the worktree ONLY on an exact digest match; the slim prompt substitutes digest-matched evidence for broad suite re-runs (targeted spot-checks only; prose claims keep zero evidence standing). Root cause closed: 4 consecutive verification runs died at the budget/quota ceiling re-running the full test pyramid the implementer had already run. 7/7 new tests; full CCR suite 252/252 (2 env skips).
+- T111 delivered 2026-07-08 (send-back, DEC-197-I010-004): implementer test-evidence for the reviewer — `Write-ContinuousCoReviewTestEvidence` records implementer-recorded suite runs bound to the reviewed-state digest (honesty wording per 203-W8); the orchestrator injects `.review/implementer-evidence.json` into the worktree ONLY on an exact digest match; the slim prompt substitutes digest-matched evidence for broad suite re-runs (targeted spot-checks only; prose claims keep zero evidence standing). Root cause closed: 4 consecutive verification runs died at the budget/quota ceiling re-running the full test pyramid the implementer had already run. 7/7 new tests; full CCR suite 252/252 (2 env skips).
 - T110 delivered 2026-07-08 (extended same-day): cross-host validation EXECUTED — claude as the governed code-writer host (live hook chain all session); codex as the independent reviewer via BOTH doors (inline `--live` run 20260708T094626098 + the navigator auto-fire 20260708T094838294); **antigravity installed+authorized by the maintainer mid-day and exercised as the replacement independent reviewer** after codex went hard-down (clean promoted pass 20260708T112337722 full+independent; substantive 5-finding verification round 20260708T115526673) — wired via the catalog seam alone, zero core changes; copilot/cursor-agent honestly recorded installed-but-unauthorized. The runs validated T108 (retry fired on real codex empty-exit0s), T093 (independent selection), T091/T100 (contained spawn), T096 (maintainer-authorized different-host remediations), R1/round-threading, and the ceiling escalation. Evidence: quality/cross-host-validation.md.
 - ESCALATION RESOLVED 2026-07-08: the codex-escalated blocking findings (f1 blind-context review; f2 harvest schema laxity) were fixed on the maintainer-approved repair path and verified RESOLVED by run 20260708T101433191; the follow-on antigravity verification round's 5 findings (doc/test doctrine drift + honesty items) fixed same-day as D-197-I010-003. Full suite at that point: 245/245 (2 env-guarded skips); 252/252 after T111.
 - SECOND ESCALATION RESOLVED 2026-07-09: the first T111-evidence review (run 20260708T211331029, 141s — the evidence mechanism ended the budget-death loop on its first exercise) raised a round-ceiling escalation with a REAL FR-025 false-allow (worktree archived HEAD while the gate digested the working tree; dirty-tree-only exploit; no boundary evidence tainted — all runs clean-tree). Maintainer "1" = fix now (DEC-197-I010-005): worktree now materializes FROM the digest tree (one identity by construction, D-197-I010-004); dirty-tree regression tests; CCR suite 254/254.
