@@ -111,8 +111,13 @@ Describe 'Copy-ContinuousCoReviewImplementerEvidence' {
 Describe 'Get-ContinuousCoReviewSlimPrompt implementer-evidence block' {
     It 'instructs evidence-substitution ONLY when the evidence was actually injected' {
         $with = Get-ContinuousCoReviewSlimPrompt -RunId 'r1' -ImplementerEvidencePresent
-        $with | Should -Match 'IMPLEMENTER TEST EVIDENCE \(machine-recorded, digest-matched\)'
-        $with | Should -Match 'do NOT re-run whole test suites the evidence covers'
+        # 203-W8 honesty (codex f1): the prompt must say IMPLEMENTER-recorded (never machine-observed),
+        # arm the spot-check as forgery detection, and keep the substitution rule for budget purposes.
+        $with | Should -Match 'IMPLEMENTER TEST EVIDENCE \(implementer-recorded, digest-matched\)'
+        $with | Should -Match 'IMPLEMENTER-SUPPLIED, not independently observed'
+        $with | Should -Match 'do NOT re-run whole covered suites by default'
+        $with | Should -Match 'mismatch between a spot-check and the record is itself a BLOCKING honesty finding'
+        $with | Should -Not -Match 'machine-recorded'
         $with | Should -Match 'falsification stance applies to them unchanged'
 
         $without = Get-ContinuousCoReviewSlimPrompt -RunId 'r1'

@@ -27628,3 +27628,23 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   refused run's status envelope carries 300. Found by the consumer project's first-ever default-budget
   exercise (every reviewer cut at ~130s). Per-host budget floors → Proposal 102 catalog follow-up.
   Drift record D-197-I010-006.
+
+## 2026-07-09T09:40:00Z — Deferral of the codex auto-fire findings f1-f3 to Proposal 203 (W8-W10)
+
+- **Decision ID**: DEC-197-I010-008
+- **Type**: review-finding deferral (human-close of the round-2 escalation, run 20260709T000318564)
+- **Affected Requirement**: FR-027/SC-021 (W9), T111/verification-confidence (W8), checkpoint identity (W10)
+- **Approving Human**: Alon Fliess
+- **Recorded At**: 2026-07-09T09:40:00Z
+- **Authorization Text**:
+  > "Agree (1 - go) with all, do it." (maintainer, 2026-07-09, on the packet presenting the
+  > known-limitations table and the 15-minute honesty fix + defer-to-203 path)
+- **Scope**: codex findings f1 (forgeable caller-supplied evidence), f2 (auto-fire merge-base
+  baseline instead of per-checkpoint increment), f3 (fire-time vs child-time digest race) — all
+  verified-true, all coherence/hardening class (no false-allow: what is certified is always what was
+  reviewed; the signoff gate re-checks the current tree). Recorded as Proposal 203 W8/W9/W10 with
+  the run as evidence. INTERIM SHIPPED same-night: the slim prompt says IMPLEMENTER-recorded (never
+  machine-observed) and arms spot-checks as forgery detection with blocking teeth (W8 interim).
+- **Beta posture**: 0.40.0-beta.1 ships loud-and-honest with these as documented known limitations;
+  the core guarantees (never-false-green, loud failures, human-gated overrides, digest-fresh gate,
+  reviewed==certified) hold.

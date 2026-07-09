@@ -59,6 +59,13 @@ Current template inventory and disposition:
 - **W5 — Update-path migration**: `specrew update` removes the retired broken templates from
   existing consumer projects (the F-116 obsolete-file-removal surface) so current downstream repos
   heal.
+- **W5b — Init creates (or offers) the bootstrap commit**: `specrew init` currently leaves the
+  ENTIRE deployed scaffold untracked, so a fresh project's first feature diff swallows it and the
+  co-review blocks on Specrew's own files for rounds (the 2026-07-09 tesr197local saga: a
+  zero-commit repo where every review round flagged different scaffold, including the un-removable
+  live hook wiring, until a human ack). Init should end with a `chore(specrew): bootstrap scaffold`
+  commit (or an explicit offer, brownfield-aware), giving every review and every feature diff a
+  clean baseline from minute one.
 - **W6 — Future lane (design note only)**: the gateway can later verify CO-REVIEW EVIDENCE freshness
   on code-touched PRs (`review-run.json` digest vs the PR head) — F-197's remote enforcement arm,
   composing with Proposal 087's push-to-main scoping. Not in this slice.

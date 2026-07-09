@@ -65,6 +65,31 @@ residual gaps in the same seam:
   results) so reviewers always find digest-matched evidence. Today it is voluntary; the 2026-07-08
   budget-death arc shows what its absence costs.
 
+The following three were found by the FIRST properly-budgeted codex auto-fire (run
+`20260708T235143936`, 408s, 2026-07-09) reviewing the fixes themselves, verified-true against
+source, and deferred by maintainer decision DEC-197-I010-008 (the beta ships loud-and-honest; the
+interim prompt-honesty fix landed same-night so T111 never overclaims):
+
+- **W8 — Runner-observed evidence recorder (codex f1)**: `Write-ContinuousCoReviewTestEvidence`
+  persists CALLER-SUPPLIED numbers — nothing observes the run, so the evidence is forgeable by the
+  implementer path (exactly the party the falsification stance distrusts). Fix: an execution wrapper
+  (`Invoke-ContinuousCoReviewRecordedTestRun`) that RUNS the suite itself (Pester `-PassThru`,
+  vitest/JUnit adapters later) and records what IT observed — the recorded `command` stays the
+  reviewer's cheap re-run handle. Interim (shipped): the prompt says implementer-recorded (never
+  machine-observed) and arms spot-checks as forgery detection with blocking teeth.
+- **W9 — Per-checkpoint incremental baselines for the auto path (codex f2)**: the navigator fires
+  without `BaselineRef`, so the orchestrator anchors to the trunk merge-base and every checkpoint
+  review re-reads the WHOLE feature diff — safe but slow/noisy, and against FR-027's incremental
+  intent (it also explains the 408s runtime of the run that reported it). Fix: the navigator records
+  the last-REVIEWED checkpoint identity and threads it as the next fire's baseline (falling back to
+  merge-base when none), with the signoff `--live` doctrine unchanged (merge-base anchor).
+- **W10 — Freeze the fire-time digest through the detached chain (codex f3)**: the fire computes the
+  checkpoint digest for dedup but the detached child recomputes later, so edits landing in between
+  are reviewed as "the checkpoint" (what is CERTIFIED is still what was reviewed — the drift is
+  checkpoint bookkeeping, not false-allow). Fix: pass the fire-time tree id through the detached
+  entry; the digest tree PERSISTS as a git object, so the child can materialize the exact frozen
+  checkpoint and label the run stale-vs-current when the tree has moved.
+
 ## Out of scope
 
 - Model/quota fallback (Proposal 102 Pillar 5 addendum owns it).

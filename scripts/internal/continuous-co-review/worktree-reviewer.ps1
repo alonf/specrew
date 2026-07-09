@@ -306,12 +306,15 @@ function Get-ContinuousCoReviewSlimPrompt {
         "`nHUMAN-DIRECTED SCOPE (a remediation choice - honour it): review $scopeText`n"
     }
     else { '' }
-    # T111 (DEC-197-I010-004): digest-matched MACHINE-RECORDED implementer evidence substitutes for broad
-    # re-runs. The block renders ONLY when the orchestrator actually injected the file (exact digest match
-    # with the tree under review), so the reviewer is never told to trust a file that is absent or stale.
-    # Never-false-green survives: only the recorder's output has evidence standing; prose claims never do.
+    # T111 (DEC-197-I010-004): digest-matched implementer-recorded evidence substitutes for broad re-runs.
+    # The block renders ONLY when the orchestrator actually injected the file (exact digest match with the
+    # tree under review), so the reviewer is never told to trust a file that is absent or stale.
+    # HONESTY (codex finding f1, run 20260708T235143936 / 203-W8): the recorder persists CALLER-SUPPLIED
+    # numbers - it does not independently observe the run - so the prompt says IMPLEMENTER-RECORDED (never
+    # "machine-observed") and arms the spot-check as forgery detection. The runner-observed wrapper is the
+    # 203-W8 fast-follow. Never-false-green survives: prose claims still have zero standing.
     $evidenceBlock = if ($ImplementerEvidencePresent) {
-        "`nIMPLEMENTER TEST EVIDENCE (machine-recorded, digest-matched): .review/implementer-evidence.json was written by the implementer's ACTUAL test runs through the Specrew evidence recorder and injected ONLY because its reviewed-state digest matches EXACTLY the tree you are reviewing (any later edit changes the digest and orphans the record). Treat the suites it records (names, pass/fail counts, exit codes, durations) as ALREADY EXECUTED: do NOT re-run whole test suites the evidence covers. Spend your budget reading the change-set; run AT MOST a few TARGETED tests where a specific finding needs confirmation. This file is the ONLY artifact with evidence standing - hand-written claims in review.md, quality notes, or commit messages remain claims, and the falsification stance applies to them unchanged.`n"
+        "`nIMPLEMENTER TEST EVIDENCE (implementer-recorded, digest-matched): .review/implementer-evidence.json was recorded by the implementer's tooling and injected ONLY because its reviewed-state digest matches EXACTLY the tree you are reviewing (any later edit changes the digest and orphans the record). It is IMPLEMENTER-SUPPLIED, not independently observed: treat the recorded suites (names, pass/fail counts, exit codes, durations) as strong prior evidence for budget purposes - do NOT re-run whole covered suites by default - but SPOT-CHECK a small targeted sample (a suite subset or a handful of named tests) where your findings depend on that evidence. ANY mismatch between a spot-check and the record is itself a BLOCKING honesty finding. Hand-written claims in review.md, quality notes, or commit messages remain claims with zero evidence standing, and the falsification stance applies to them unchanged.`n"
     }
     else { '' }
     $roundBlock = if ($RoundNumber -gt 1 -and -not [string]::IsNullOrWhiteSpace($PriorFindings)) {
