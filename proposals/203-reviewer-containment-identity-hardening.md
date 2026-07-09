@@ -133,6 +133,16 @@ gallery bits; both gates fired CORRECTLY, the findings are about what the correc
   explicit value is below the config/default it overrides ("explicit 180s < configured 600s;
   reviews typically need the configured budget"), so the operator sees the downgrade before losing
   a review cycle to it.
+- **W15 — The manual `--live` door should default the code-writer host from the session**: a manual
+  `specrew review --live --host <reviewer>` without `--code-writer-host` records
+  `independence: 'unverified'` (correctly treated as not-independent, SEC-004) even when the
+  session env knows exactly who is implementing — the `--list-hosts` path ALREADY resolves the
+  code-writer via `--code-writer-host` -> `SPECREW_HOST` -> `SPECREW_ACTIVE_HOST`, but the live
+  door leaves it null. Field effect (tesr197local): the operator restarted with copilot as the
+  implementer and a claude reviewer — genuinely independent — yet the evidence could not say so,
+  and the status surface read as if reviewer independence had not improved. Fix: apply the same
+  env cascade as `--list-hosts` when the flag is absent (explicit flag still wins); the label then
+  reflects the real session instead of defaulting to unprovable.
 
 ## Out of scope
 
