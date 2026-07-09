@@ -90,6 +90,26 @@ interim prompt-honesty fix landed same-night so T111 never overclaims):
   entry; the digest tree PERSISTS as a git object, so the child can materialize the exact frozen
   checkpoint and label the run stale-vs-current when the tree has moved.
 
+The following two are round-ceiling UX findings from the downstream consumer dogfood
+(2026-07-09, tesr197local — the ceiling chicken-and-egg its agent named precisely: "the ceiling
+blocks the very re-review that would confirm the finding is gone"); maintainer-directed to ship in
+0.40.0-**beta2**:
+
+- **W11 — The ceiling-halt message must teach the sanctioned door**: the halt text told the agent to
+  "reset the co-review round state so review resumes" — pointing at STATE SURGERY instead of the
+  designed escape (`specrew review --remediate more-time --timeout-seconds <n>`: human-typed,
+  ceiling-bypassing, one-shot per T096). The downstream agent burned two full review rounds
+  rediscovering tribal knowledge one sentence would have carried. Fix: the ceiling-halt escalation
+  text (and the reap's surfacing note) name the exact remediation command and state that a bare
+  `--live` rerun will NOT re-review past the ceiling; never suggest touching runtime state.
+- **W12 — Fix-responsive rounds do not burn the ceiling**: the ceiling exists to stop SPIN (same
+  findings, no movement) but cannot tell progress from spin — a round that RESOLVED prior findings
+  while finding new ones (legitimate onion-peeling: round 1 found f1; round 2 confirmed f1 fixed AND
+  found f2) still counts toward the ceiling, so honest progress gets halted and every subsequent run
+  ceiling-halts without reviewing. Fix: a round whose verdict resolves at least one threaded prior
+  finding (or whose flagged files changed since the finding) resets — or does not increment — the
+  round counter; only true no-movement rounds climb toward escalation.
+
 ## Out of scope
 
 - Model/quota fallback (Proposal 102 Pillar 5 addendum owns it).
@@ -138,5 +158,6 @@ closed the certification gap for ordinary source).
 
 ## Status history
 
+- **2026-07-09 (later)**: amended - W11/W12 round-ceiling UX findings added from the downstream consumer dogfood (the ceiling chicken-and-egg); maintainer-directed to ship as 0.40.0-beta2 ("Add it to 203 and we will do it as beta 2").
 - **2026-07-09**: status set to `candidate`. Drafted from the F-197 iteration-010 dogfood ledger at
   maintainer direction ("copy all your recording legends to either github issues or proposals").
