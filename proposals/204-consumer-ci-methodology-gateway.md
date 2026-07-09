@@ -69,6 +69,26 @@ Current template inventory and disposition:
 - **W6 — Future lane (design note only)**: the gateway can later verify CO-REVIEW EVIDENCE freshness
   on code-touched PRs (`review-run.json` digest vs the PR head) — F-197's remote enforcement arm,
   composing with Proposal 087's push-to-main scoping. Not in this slice.
+- **W7 — Feature-closeout teaching must be release-model-aware** (2026-07-09, tesr197local beta-1
+  E2E): at the first consumer feature-closeout, the boundary packet taught Specrew's OWN release
+  SDLC — "push → PR → review → merge → beta tag → publish → manual validation → stable promotion
+  become available" — in a repo with NO git remote, no forge, and no
+  `.specrew/repository-governance.yml` (the agent had to discover `git remote -v` empty and
+  improvise a local-only recommendation; to its credit it refused to invent a forge). Two defects
+  in one: (a) the lifecycle template half-abstracts ("release SDLC is instantiated from the
+  project's governance; GitHub/PSGallery are a Specrew-own detail") yet hard-declares "Produces a
+  release: yes" and provides NO resolution when the governance file is absent; (b) the
+  consumer-deployed refocus/closeout discipline states "beta-before-stable is universal" — true for
+  Specrew-the-module, false as consumer methodology: not every project releases per feature, and
+  most don't publish beta→stable to a registry. Fix: resolve a RELEASE MODEL at feature-closeout —
+  `repository-governance.yml` if present, else inferred (`git remote -v` empty → local-only;
+  remote, no forge config → push-only; forge → PR flow; publish target → beta→stable) — render
+  ONLY the applicable steps and name why the rest are N/A ("local-only closeout: branch-ready
+  evidence is the complete final status; configure a remote to enable release steps"); scope the
+  beta-before-stable mandate to projects WITH a publish target; let `specrew init` record the
+  model in `repository-governance.yml` (ask once, infer as default). Template line to fix:
+  `software-feature-lifecycle.md` "Produces a release: yes" → "release per the project's release
+  model (may be none)".
 
 ## Out of scope
 

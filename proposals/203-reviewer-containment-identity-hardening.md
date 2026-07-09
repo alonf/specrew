@@ -110,6 +110,63 @@ blocks the very re-review that would confirm the finding is gone"); maintainer-d
   finding (or whose flagged files changed since the finding) resets — or does not increment — the
   round counter; only true no-movement rounds climb toward escalation.
 
+Second field batch (2026-07-09, tesr197local on the published 0.40.0-beta1 — the first-ever E2E on
+gallery bits; both gates fired CORRECTLY, the findings are about what the correctness costs):
+
+- **W13 — Machine-managed iteration trackers stale the review digest**: a human-approved
+  reconciliation of `state.md`/`tasks-progress.yml` (bookkeeping repaired to match the already
+  accepted `review.md`; zero reviewable content changed) altered the reviewed-state digest, so the
+  signoff gate demanded a fresh live review to re-anchor evidence — a full reviewer cycle spent on a
+  tracker edit. `specs/**` is digest identity BY DESIGN (spec/plan/tasks edits must stale evidence),
+  but `iterations/*/state.md` and `iterations/*/tasks-progress.yml` are machine-managed DERIVED
+  bookkeeping, not reviewable content — the acceptance truth lives in `review.md` plus the run
+  records, never in the trackers. Fix — CONDITIONAL, not a raw strip (codex P2 on PR #3078: a raw
+  strip opens a false-green path where a post-review tracker edit marks untested work "done" and
+  reuses the stale pass, while the reviewer contract explicitly treats tracker honesty as
+  reviewable process state): a tracker-only delta bypasses evidence staling ONLY when a
+  deterministic honesty check passes — the edited tracker's claims must be consistent with (a
+  subset of) the accepted `review.md` verdict and recorded run evidence. A claims-INCREASING edit
+  (pending->done, untested->tested beyond the accepted record) keeps staling the digest exactly as
+  today. Scope: `specs/*/iterations/*/state.md` and `specs/*/iterations/*/tasks-progress.yml`
+  only; spec/plan/tasks/review/retro stay unconditional identity. Needs BOTH regression tests: the
+  reviewer-can-still-see-it discipline, and reconcile-toward-truth does not stale / falsify-forward
+  does.
+- **W14 — Warn when an explicit `--timeout-seconds` undercuts the resolved config budget**: the
+  project config carried `co_review_timeout_seconds: 600`, but the driving agent passed
+  `--timeout-seconds 180` (then 400) and the reviewer was killed before producing anything —
+  explicit-beats-config is the correct precedence (DEC-197-I010-007), yet the CLI accepted a
+  guaranteed-to-fail downgrade silently. Fix: one warning line at budget resolution when the
+  explicit value is below the config/default it overrides ("explicit 180s < configured 600s;
+  reviews typically need the configured budget"), so the operator sees the downgrade before losing
+  a review cycle to it.
+- **W16 — Per-host default review budgets belong in the catalog**: the shipped watchdog default is
+  a flat 300 seconds for EVERY host (`Get-ContinuousCoReviewNavigatorTimeoutSeconds -Default 300`),
+  `specrew init` does not scaffold `co_review_timeout_seconds`, and the catalog carries no budget
+  column — yet the field timings disagree per host: antigravity needs 600-870s (measured on the
+  self-host repo; its own `--print-timeout` had to be lifted to 15m so OUR watchdog owns the kill),
+  and claude needed ~400-600s on the same machine (three tesr197local checkpoint reviews died at
+  180/300/400s while a 7-second CLI probe proved the host healthy — pure budget, not infra). The
+  only reason the test project survives is a hand-edited config value; every fresh consumer gets
+  300s against hosts that need more. Budget is HOST data, and the catalog is the single
+  harness-data seam: add a `default_timeout_seconds` column per row; resolution becomes explicit
+  flag -> project config -> catalog per-host default -> 300 floor. W14's downgrade warning then
+  keys off the RESOLVED value, so an explicit 180 against claude's catalog 600 warns even in
+  projects that never touched their config. On a plain timeout failure the durable failure record
+  and CLI message TEACH the sanctioned next step (re-run with a larger explicit budget, or raise
+  `co_review_timeout_seconds`) — the increase itself stays human-typed per the T096 trust boundary;
+  the agent never self-escalates its own review budget. Automatic bounded escalation, if ever
+  wanted, joins Proposal 102's opt-in `co_review_auto_fallback` umbrella, not the default path.
+- **W15 — The manual `--live` door should default the code-writer host from the session**: a manual
+  `specrew review --live --host <reviewer>` without `--code-writer-host` records
+  `independence: 'unverified'` (correctly treated as not-independent, SEC-004) even when the
+  session env knows exactly who is implementing — the `--list-hosts` path ALREADY resolves the
+  code-writer via `--code-writer-host` -> `SPECREW_HOST` -> `SPECREW_ACTIVE_HOST`, but the live
+  door leaves it null. Field effect (tesr197local): the operator restarted with copilot as the
+  implementer and a claude reviewer — genuinely independent — yet the evidence could not say so,
+  and the status surface read as if reviewer independence had not improved. Fix: apply the same
+  env cascade as `--list-hosts` when the flag is absent (explicit flag still wins); the label then
+  reflects the real session instead of defaulting to unprovable.
+
 ## Out of scope
 
 - Model/quota fallback (Proposal 102 Pillar 5 addendum owns it).
@@ -119,9 +176,10 @@ blocks the very re-review that would confirm the finding is gone"); maintainer-d
 
 ## Effort
 
-~5-8 SP: W1/W3/W6 are small and mechanical (1-2 SP together); W2 and W5 are careful list/refactor
+~6-10 SP: W1/W3/W6 are small and mechanical (1-2 SP together); W2 and W5 are careful list/refactor
 work with regression tests (2-3 SP); W4 is the open-ended one (evaluate first, 1-3 SP if pursued);
-W7 is a decision + a small hook/refocus change (1 SP).
+W7 is a decision + a small hook/refocus change (1 SP); W13 is a two-line strip-list change whose
+cost is the paired regression tests (1 SP); W14 is one warning line (well under 1 SP).
 
 ## Phase placement
 
@@ -158,6 +216,7 @@ closed the certification gap for ordinary source).
 
 ## Status history
 
+- **2026-07-09 (beta-1 E2E)**: amended - W13/W14 added from the first E2E on published gallery bits (tesr197local): a governance-tracker reconcile staled the review digest and cost a full live review (W13); an explicit downward `--timeout-seconds` override was accepted silently and killed the reviewer before output (W14).
 - **2026-07-09 (later)**: amended - W11/W12 round-ceiling UX findings added from the downstream consumer dogfood (the ceiling chicken-and-egg); maintainer-directed to ship as 0.40.0-beta2 ("Add it to 203 and we will do it as beta 2").
 - **2026-07-09**: status set to `candidate`. Drafted from the F-197 iteration-010 dogfood ledger at
   maintainer direction ("copy all your recording legends to either github issues or proposals").
