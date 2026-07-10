@@ -42,7 +42,7 @@
 | & '.\\tests\\integration\\quality-evidence-governance.ps1' | pass | 1 | 0 | 00:00:12.8685789 | 0 | PASS: Quality evidence governance regressions passed. |
 | & '.\\tests\\integration\\process-quality-scorer.ps1' | pass | 1 | 0 | 00:00:00.9332674 | 0 | PASS: Process scorer returns structured artifact and phase adherence results |
 | & '.\\tests\\integration\\process-quality-report.ps1' | pass | 1 | 0 | 00:00:00.8257661 | 0 | PASS: Process scorer writes a Markdown report with process and deferred outcome sections |
-| pwsh -File tests/unit/self-leak-lint.tests.ps1 | pass | 18 | 0 | ~00:01:30 | 0 | Paired per-class red/green + annotation semantics + exit-2 loud + surface enumeration + real-repo born-clean guard |
+| pwsh -File tests/unit/self-leak-lint.tests.ps1 | pass | 19 | 0 | ~00:01:30 | 0 | Paired per-class red/green + annotation semantics incl. wrong-form abuse path (Test 4b) + exit-2 loud + surface enumeration + real-repo born-clean guard |
 | pwsh -File tests/integration/version-info-states.tests.ps1 | pass | 1 | 0 | ~00:00:20 | 0 | Single-tested-pin window lock (Test 8 updated per I2) |
 | pwsh -File tests/integration/bootstrap-asset-blocker-recovery.ps1 | pass | 1 | 0 | ~00:00:40 | 0 | Repair path asserts v0.12.9; shims at pinned versions |
 | pwsh -File tests/integration/squad-duplicate-rows.tests.ps1 | pass | 1 | 0 | ~00:02:00 | 0 | REAL specrew init on pinned toolchain (specify 0.12.9 --integration + squad 0.11.0) - the live no-extensions fixture |
@@ -62,6 +62,6 @@
 | ----------- | --------------------- |
 | FR-033 | tests/unit/self-leak-lint.tests.ps1 (Tests 2-9: per-class red, surface==FileList, born-clean guard); .github/workflows/specrew-ci.yml self-leak-lint job |
 | FR-034 | tests/unit/self-leak-lint.tests.ps1 (Test 7: red output names escape + docs/methodology/self-leak-firewall.md) |
-| FR-037 | tests/unit/self-leak-lint.tests.ps1 (Tests 1, 3, 4: shape/classes/compile, annotation semantics per file kind, missing-reason red) |
+| FR-037 | tests/unit/self-leak-lint.tests.ps1 (Tests 1, 3, 4, 4b: shape/classes/compile, annotation semantics per file kind, missing-reason red, wrong-form abuse path red) |
 | FR-038 | iterations/001/quality/toolchain-probe-evidence.md (probe transcript); tests/integration/squad-duplicate-rows.tests.ps1 (real init on 0.12.9); version-info-states; bootstrap-asset-blocker-recovery; deployed-bootstrap-floor; command-surface-deploy |
 | FR-039 | squad 0.11.0 scratch probe (evidence file); tests/integration/squad-duplicate-rows.tests.ps1; version-info-states |
