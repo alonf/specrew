@@ -8,6 +8,39 @@ Set-StrictMode -Version Latest
 $specrewProcessTreeHelper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
 if (Test-Path -LiteralPath $specrewProcessTreeHelper -PathType Leaf) { . $specrewProcessTreeHelper }
 
+function Invoke-WorktreeReviewerGitCapture {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string[]]$Arguments
+    )
+
+    # Robust git invocation IMMUNE to the ambient [Console]::OutputEncoding state: PowerShell's
+    # `& git` throws "StandardOutputEncoding is only supported when standard output is redirected"
+    # in hook/supervised contexts (F-197 iter-005 lesson, same pattern as
+    # Invoke-ContinuousCoReviewGit in checkpoint-diff-provider.ps1; this call site was never
+    # migrated - caught blocking the F-198 iteration-001 signoff review, runs 6e5a8dab/cc6e2018/
+    # 1a752eea). Local copy keeps this file self-contained across the detached load orders.
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = 'git'
+    foreach ($a in $Arguments) { [void]$psi.ArgumentList.Add([string]$a) }
+    $psi.WorkingDirectory = $RepoRoot
+    $psi.UseShellExecute = $false
+    $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.StandardOutputEncoding = [System.Text.UTF8Encoding]::new($false)
+    $psi.StandardErrorEncoding = [System.Text.UTF8Encoding]::new($false)
+
+    $proc = [System.Diagnostics.Process]::new()
+    $proc.StartInfo = $psi
+    [void]$proc.Start()
+    $stdout = $proc.StandardOutput.ReadToEnd()
+    [void]$proc.StandardError.ReadToEnd()
+    $proc.WaitForExit()
+    $proc.Dispose()
+    return $stdout
+}
+
 # iter-008 — the worktree-based, agentic, see-all/run-all reviewer (NEW, built alongside the old curated-diff
 # path; the old path keeps working until this is proven + cut over). The reviewer runs in an ephemeral,
 # read-only-source git-tree worktree of the project with the methodology machinery stripped, reads
@@ -233,21 +266,14 @@ function New-ContinuousCoReviewStrippedWorktree {
     # tree objects), so .review/changes.diff shows exactly what the reviewer's worktree contains - including
     # uncommitted changes when the digest tree is the source.
     $diffPathspec = @($scope) + @($machineryExcludes)
-    # git writes both outputs itself (--output=): capturing native stdout trips
-    # .NET's StandardOutputEncoding guard in console-less supervised contexts
-    # (observed 2026-07-10, runs 6e5a8dab/cc6e2018: "StandardOutputEncoding is
-    # only supported when standard output is redirected"). File-writes are
-    # console-state-independent.
-    $diffOutFile = Join-Path $reviewDir 'changes.diff.raw'
-    & git -C $gitRoot diff --no-ext-diff --src-prefix=a/ --dst-prefix=b/ "--output=$diffOutFile" $BaselineRef $reviewSource -- @diffPathspec 2>$null
-    $diff = if (Test-Path -LiteralPath $diffOutFile) { [System.IO.File]::ReadAllText($diffOutFile) } else { '' }
-    Remove-Item -LiteralPath $diffOutFile -Force -ErrorAction SilentlyContinue
+    # Console-state-immune invocations (see Invoke-WorktreeReviewerGitCapture above).
+    $diffArgs = @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
+    $diff = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $diffArgs
     if (-not [string]::IsNullOrWhiteSpace($prefix)) { $diff = $diff -replace ([regex]::Escape("$prefix/")), '' }
     [System.IO.File]::WriteAllText((Join-Path $reviewDir 'changes.diff'), $diff)
-    $namesOutFile = Join-Path $reviewDir 'changes.names.raw'
-    & git -C $gitRoot diff --name-only "--output=$namesOutFile" $BaselineRef $reviewSource -- @diffPathspec 2>$null
-    $changed = if (Test-Path -LiteralPath $namesOutFile) { @([System.IO.File]::ReadAllLines($namesOutFile) | Where-Object { $_ }) } else { @() }
-    Remove-Item -LiteralPath $namesOutFile -Force -ErrorAction SilentlyContinue
+    $namesArgs = @('diff', '--name-only', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
+    $namesRaw = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $namesArgs
+    $changed = @((($namesRaw -replace "`r`n", "`n") -split "`n") | Where-Object { $_ })
     foreach ($d in @($DesignContextFiles)) {
         $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $resolved $d }
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
