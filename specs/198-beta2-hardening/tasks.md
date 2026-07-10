@@ -42,7 +42,7 @@ each iteration's own design-analysis before execution.
 - [ ] T017 [owner: Implementer] [sp: 1.5] **ONE machinery list, both strips** — path-granular list per S2; digest strip == worktree strip by construction; reviewer-can-still-see-it regression per exclusion (Trace: FR-012, SC-004, NFR-007; owns: machinery list data file, digest + worktree strip consumers)
 - [ ] T018 [owner: Implementer] [sp: 1.0] **Recorded-run evidence wrapper** — `Invoke-ContinuousCoReviewRecordedTestRun` runs Pester `-PassThru` itself; caller-supplied numbers rejected/labeled; refocus duty line (W7 floor) (Trace: FR-014, FR-015, NFR-007; owns: evidence recorder + refocus content)
 - [ ] T019 [owner: Implementer] [sp: 1.0] **Checkpoint baselines + frozen digest** — last-REVIEWED identity threaded as next baseline (merge-base fallback); fire-time tree id through the detached chain; stale-vs-current label (Trace: FR-016, FR-017; owns: navigator + detached entry)
-- [ ] T020 [owner: Implementer] [sp: 1.0] **Round-ceiling economy** — halt text teaches the exact remediation door; fix-responsive rounds do not increment; paired no-movement test (Trace: FR-018, FR-019, SC-007, NFR-007; owns: ceiling governor + halt text)
+- [ ] T020 [owner: Implementer] [sp: 1.0] **Review-loop spend allowance UX** — consumer-legible allowance-halt text (spend-guard explanation, N-of-M rounds, exact human-typed reset command, resolved-vs-open state computed from the disposition trail); every round counts (clarify 2026-07-10 supersedes the no-increment design); message-content test asserts zero Specrew-internal identifiers in the halt (Trace: FR-018, FR-019, SC-007, NFR-007; owns: ceiling governor + halt text)
 
 ## Iteration 004 — Distribution + release (5.5 SP, planned grain)
 
