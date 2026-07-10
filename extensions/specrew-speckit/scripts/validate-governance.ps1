@@ -1583,7 +1583,7 @@ function Test-BoundaryStateAdvanceVerdict {
         $iterationRef = if ($null -ne $iterProp) { [string]$iterProp.Value } else { '' }
         Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
 
-        # F-198 FR-003: the unauthorized working boundary is the NORMAL between-packet-and-reply
+        # FR-003 (hardening feature): the unauthorized working boundary is the NORMAL between-packet-and-reply
         # state (WARN above). But when the enforcement cursor's own pending ask names a DIFFERENT
         # boundary than the working one, the session moved past an unresolved approval - the
         # skipped-boundary state the sync ratchet refuses at advance time. At validation time it

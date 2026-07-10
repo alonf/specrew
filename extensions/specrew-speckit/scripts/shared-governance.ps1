@@ -965,12 +965,12 @@ function Get-SpecrewPendingBoundaryCrossing {
         $authIdx = if ([string]::IsNullOrWhiteSpace($lastAuthCanonical)) { -1 } else { [Array]::IndexOf($order, $lastAuthCanonical) }
         if ($workingIdx -lt 0) { return $result }
 
-        # ITERATION CYCLE RESET (F-198 FR-004, field-found 2026-07-11): the canonical order is
+        # ITERATION CYCLE RESET (FR-004 of the hardening feature, field-found 2026-07-11): the canonical order is
         # linear but iterations LOOP - after an authorized `iteration-closeout`, the next
         # iteration re-enters at an earlier-phase boundary (plan/tasks/...). The old
         # `workingIdx -le authIdx` guard read that as "backward", so NO pending artifact was
         # written for any new-cycle crossing and the verdict capture refused with
-        # MARKER_CURSOR_MISMATCH (two live instances: F-198 iteration 002 plan and
+        # MARKER_CURSOR_MISMATCH (two live instances: this feature's own iteration-002 plan and
         # before-implement). When the cursor sits at iteration-closeout and the working
         # boundary is an earlier-phase crossing, the pending ask is the new cycle's earliest
         # un-authorized boundary, from-side iteration-closeout.
@@ -1836,7 +1836,7 @@ function Test-SpecrewBoundaryAuthorization {
 }
 
 function Get-SpecrewUnreconciledBoundary {
-    # F-198 FR-001/FR-002: the ONE shared read answering "is there a human-judgment boundary
+    # FR-001/FR-002: the ONE shared read answering "is there a human-judgment boundary
     # crossing that was mechanically recorded but never human-authorized?" Consumed by the sync
     # ratchet, the governance validator, the resume/start re-confirm surface, and the hard gates
     # (the A2 covering set) so the answer cannot drift between call sites. Pure read - never
@@ -1892,7 +1892,7 @@ function Get-SpecrewUnreconciledBoundary {
 }
 
 function Invoke-SpecrewBoundaryRatchetGate {
-    # F-198 FR-002: the ratchet. On a host whose agent never stops, the FIRST unapproved
+    # FR-002: the ratchet. On a host whose agent never stops, the FIRST unapproved
     # crossing still records mechanically (F-174 preserved - a human was not present to ask),
     # but a SECOND advance while that crossing is unapproved is refused here, loudly. The
     # refusal message is consumer-legible by contract (FR-018 as amended): it names the waiting
@@ -1953,7 +1953,7 @@ function Add-SpecrewBoundaryAuthorization {
         [AllowNull()]
         [string]$EvidenceSource,
 
-        # F-198 FR-005: 'standard' (the verdict answered the live pending ask) | 'retroactive'
+        # FR-005: 'standard' (the verdict answered the live pending ask) | 'retroactive'
         # (the human reconciled an already-crossed boundary after the fact - the resume/re-confirm
         # surface, or a capture that missed its original stop). Recorded on the entry so
         # retroactive approvals are auditably distinct.
@@ -1966,7 +1966,7 @@ function Add-SpecrewBoundaryAuthorization {
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
     $currentIndex = if ([string]::IsNullOrWhiteSpace($currentCanonical)) { -1 } else { [Array]::IndexOf($boundaryOrder, $currentCanonical) }
     $authorizedIndex = [Array]::IndexOf($boundaryOrder, $authorizedCanonical)
-    # Iteration cycle reset (F-198 FR-004): authorizing an earlier-phase boundary FROM
+    # Iteration cycle reset (FR-004): authorizing an earlier-phase boundary FROM
     # iteration-closeout is the next iteration beginning, not a backward move.
     $isCycleReset = ($currentCanonical -eq 'iteration-closeout' -and $authorizedIndex -ge [Array]::IndexOf($boundaryOrder, 'plan') -and $authorizedIndex -lt $currentIndex)
     if ($authorizedIndex -lt $currentIndex -and -not $isCycleReset) {
@@ -1997,7 +1997,7 @@ function Add-SpecrewBoundaryAuthorization {
         throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
     }
 
-    # F-198 idempotence: a re-fired authorization for the boundary the cursor ALREADY sits on
+    # Idempotence (FR-005): a re-fired authorization for the boundary the cursor ALREADY sits on
     # (same to_boundary as the newest entry) is a duplicate capture of the same verdict - a
     # no-op, never a duplicate history entry. Narrow by design: in a new iteration cycle the
     # cursor is 'iteration-closeout', so re-authorizing 'plan' for the NEXT iteration still
