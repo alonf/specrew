@@ -21,6 +21,7 @@
 - Old-debt cleanup beyond plan (maintainer-directed 2026-07-10, "a since we need to get rid of old problems"): neutral squad identity/now.md seed, self-facts scrubbed from five agent-history seeds, dangling proposals/145 deep-sources dropped, neutral validate-governance help example: fixed-now.
 - Independent-review catch (run 20260710T014752659, codex): the pin sweep missed extension.yml config.defaults.versions (min_speckit/min_squad) and validate-versions.ps1 parameter defaults + doc line + extension README - all five stragglers fixed to 0.12.9/0.11.0 with mirrors synced in the same change: fixed-now.
 - Independent-review catch (run 20260710T021347228, codex, temp-fixture PROOF): the annotation check accepted any comment form - a hash-style suppression in .md sanctioned a hit (false-green authorization path). Fixed: form validated per file kind (HTML comment for md; # for ps1/psd1/psm1/yml/yaml/sh/extensionless; kinds with no sanctioned form cannot be annotated - fail-closed); abuse-path Test 4b added (19/19 green): fixed-now.
+- Independent-review catch (run 20260710T103527700, codex, citing the feature's own psd1-filelist rule): lint-self-leak.ps1 and docs/methodology/self-leak-firewall.md were missing from Specrew.psd1 FileList - both added (psd1 parse-verified): fixed-now.
 - Tracked-debt annotations (7 hits: FR-030 release-model class x5, FR-026 retired-template class x2) are deliberate, reason-carrying markers whose removal is owned by iteration 004 tasks T021-T029; not a gap in this iteration's scope: fixed-now.
 
 ## Evidence
