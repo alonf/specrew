@@ -266,14 +266,25 @@ function New-ContinuousCoReviewStrippedWorktree {
     # tree objects), so .review/changes.diff shows exactly what the reviewer's worktree contains - including
     # uncommitted changes when the digest tree is the source.
     $diffPathspec = @($scope) + @($machineryExcludes)
-    # Console-state-immune invocations (see Invoke-WorktreeReviewerGitCapture above).
-    $diffArgs = @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
+    # Console-state-immune invocations (see Invoke-WorktreeReviewerGitCapture above), with the
+    # pathspec passed via --pathspec-from-file: the exclude list exceeds the Windows 32K
+    # command-line limit on large machinery sets ("The filename or extension is too long",
+    # run fe3a695a).
+    $pathspecFile = $null
+    $pathspecArgs = @()
+    if (@($diffPathspec).Count -gt 0) {
+        $pathspecFile = Join-Path $reviewDir 'pathspec.tmp'
+        [System.IO.File]::WriteAllLines($pathspecFile, [string[]]@($diffPathspec))
+        $pathspecArgs = @("--pathspec-from-file=$pathspecFile")
+    }
+    $diffArgs = @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/') + $pathspecArgs + @($BaselineRef, $reviewSource)
     $diff = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $diffArgs
     if (-not [string]::IsNullOrWhiteSpace($prefix)) { $diff = $diff -replace ([regex]::Escape("$prefix/")), '' }
     [System.IO.File]::WriteAllText((Join-Path $reviewDir 'changes.diff'), $diff)
-    $namesArgs = @('diff', '--name-only', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
+    $namesArgs = @('diff', '--name-only') + $pathspecArgs + @($BaselineRef, $reviewSource)
     $namesRaw = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $namesArgs
     $changed = @((($namesRaw -replace "`r`n", "`n") -split "`n") | Where-Object { $_ })
+    if ($pathspecFile) { Remove-Item -LiteralPath $pathspecFile -Force -ErrorAction SilentlyContinue }
     foreach ($d in @($DesignContextFiles)) {
         $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $resolved $d }
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
