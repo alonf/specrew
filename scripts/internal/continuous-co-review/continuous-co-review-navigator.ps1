@@ -419,7 +419,11 @@ function Write-ContinuousCoReviewNavigatorBlackboard {
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)]$Verdict,
-        [datetime]$Now = [datetime]::UtcNow
+        [datetime]$Now = [datetime]::UtcNow,
+        # FR-017 (T019a): the reviewed tree id, stamped into the persisted findings so EVERY
+        # record surface says what was reviewed (the run index alone was not enough - the
+        # findings consumer could not check freshness).
+        [AllowNull()][string]$ReviewedTreeId
     )
     if (($Verdict.PSObject.Properties.Name -contains 'is_stub') -and $Verdict.is_stub) { return $null }
     if ($null -eq $Verdict.raw) { return $null }
@@ -449,6 +453,10 @@ function Write-ContinuousCoReviewNavigatorBlackboard {
         # NORMALIZE run_id to the registry run-id (co-locate with the gate record under inline/<run-id>/).
         if ($findings.PSObject.Properties.Name -contains 'run_id') { $findings.run_id = $RunId }
         else { $findings | Add-Member -NotePropertyName run_id -NotePropertyValue $RunId -Force }
+        if (-not [string]::IsNullOrWhiteSpace($ReviewedTreeId)) {
+            if ($findings.PSObject.Properties.Name -contains 'reviewed_tree_id') { $findings.reviewed_tree_id = $ReviewedTreeId }
+            else { $findings | Add-Member -NotePropertyName reviewed_tree_id -NotePropertyValue $ReviewedTreeId -Force }
+        }
         Write-ContinuousCoReviewBlackboardThread -RepoRoot $RepoRoot -CheckpointId ("nav-$RunId") -FindingsResult $findings -CreatedAt $Now | Out-Null
         return ".specrew/review/inline/$RunId/"
     }
@@ -575,7 +583,8 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                 if ($status -eq 'done' -and $verdict.ok) {
                     # T083: route the REAL reviewer's full findings (all severities) to the durable
                     # blackboard (fail-open -> $null; the stub is excluded inside). T084: surface the thread.
-                    $threadRef = Write-ContinuousCoReviewNavigatorBlackboard -RepoRoot $RepoRoot -RunId $runId -Verdict $verdict -Now $Now
+                    $regTreeIdForStamp = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewed_tree_id')) { [string]$reg.reviewed_tree_id } else { $null }
+                    $threadRef = Write-ContinuousCoReviewNavigatorBlackboard -RepoRoot $RepoRoot -RunId $runId -Verdict $verdict -Now $Now -ReviewedTreeId $regTreeIdForStamp
                     $threadSuffix = if ($threadRef) { " Full findings (all severities): $threadRef" } else { '' }
                     $latchPath = Join-Path $RepoRoot '.specrew/runtime/co-review-escalation-latch.json'
                     if (-not $verdict.blocking) {
@@ -646,6 +655,26 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                             }
                         }
                         catch { $null = $_ }
+                        # FR-017 (T019a, Devin-crew field diagnosis): digest-match BEFORE blocking -
+                        # the same freshness check the signoff gate performs. A verdict whose
+                        # recorded snapshot no longer matches the CURRENT tree surfaces as
+                        # ADVISORY (the tree moved while the review ran; the findings may already
+                        # be fixed) - never as a fresh stop-block describing a tree that no longer
+                        # exists. Fail direction: BOTH ids must be known and DIFFER to downgrade;
+                        # an unknown id keeps the block (never suppress a real block on a gap).
+                        if (-not $latchHandled) {
+                            try {
+                                $runTreeId = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewed_tree_id')) { [string]$reg.reviewed_tree_id } else { '' }
+                                if (-not [string]::IsNullOrWhiteSpace($runTreeId) -and (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
+                                    $currentDigest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot
+                                    if ($null -ne $currentDigest -and [bool]$currentDigest.ok -and -not [string]::IsNullOrWhiteSpace([string]$currentDigest.tree_id) -and ([string]$currentDigest.tree_id -ne $runTreeId)) {
+                                        $result.inject_notes.Add(("[co-review] run {0} reviewed an OLDER tree than the current one (the tree moved while the review ran). Its {1} blocking finding(s) surface as ADVISORY, not a stop-block: re-check each against the current tree - it may already be fixed; the next fresh round confirms." -f $runId, @($blockingF).Count)) | Out-Null
+                                        $latchHandled = $true
+                                    }
+                                }
+                            }
+                            catch { $null = $_ }
+                        }
                         if (-not $latchHandled) {
                             if ($null -eq $result.stop_block) {
                                 $result.stop_block = (Build-ContinuousCoReviewNavigatorStopBlock -Verdict $verdict -RunId $runId -BlackboardRef $threadRef)

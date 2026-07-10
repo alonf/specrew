@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Status**: executing
-**Capacity**: 7/26 story_points
+**Capacity**: 8/26 story_points
 **Started**: 2026-07-11
 **Completed**:
 
@@ -45,6 +45,7 @@
 | T010 | Tracker honesty check + announced gate-level bypass (paired tests) | FR-020 | US3 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/**, tests/** | done | — | — | — |
 | T011 | Catalog budget rows + BudgetResolver chain + W14 warning + timeout teaching (amended UX) | FR-021, FR-022 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/reviewer-host-catalog.ps1, scripts/internal/continuous-co-review/**, tests/** | done | — | — | — |
 | T012 | Live-door independence defaulting + provenance | FR-023 | US3 | 0.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/** | done | — | — | — |
+| T019a | Stale-verdict surfacing (pulled forward, maintainer-approved) | FR-017 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1 | done | — | — | — |
 
 ## Effort Model
 
