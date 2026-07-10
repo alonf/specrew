@@ -135,9 +135,14 @@ function Test-SelfLeakAnnotated {
         if ($candidateIndex -lt 0 -or $candidateIndex -ge $Lines.Count) { continue }
         $match = [regex]::Match($Lines[$candidateIndex], $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         if (-not $match.Success) { continue }
-        if (-not [string]::IsNullOrWhiteSpace($match.Groups['reason'].Value)) { return $true }
+        $reason = $match.Groups['reason'].Value.Trim()
+        # Return the HUMAN's reason text (not just a boolean): the reason is the audit trail, and
+        # the annotated output must surface it (agent-action transparency - a sanction whose
+        # recorded WHY never reaches the operator is form without meaning; copilot review catch,
+        # run 7b55bbc8).
+        if (-not [string]::IsNullOrWhiteSpace($reason)) { return $reason }
     }
-    return $false
+    return $null
 }
 
 try {
@@ -164,14 +169,16 @@ foreach ($file in $surface) {
         foreach ($entry in $denyList.Entries) {
             $match = $entry.Regex.Match($lines[$i])
             if (-not $match.Success) { continue }
+            $annotationReason = Test-SelfLeakAnnotated -Lines $lines -LineIndex $i -FilePath $file.Full
             $record = [pscustomobject]@{
-                File    = $file.Relative
-                Line    = $i + 1
-                Matched = $match.Value
-                Class   = $entry.Class
-                Reason  = $entry.Reason
+                File             = $file.Relative
+                Line             = $i + 1
+                Matched          = $match.Value
+                Class            = $entry.Class
+                Reason           = $entry.Reason
+                AnnotationReason = $annotationReason
             }
-            if (Test-SelfLeakAnnotated -Lines $lines -LineIndex $i -FilePath $file.Full) {
+            if ($null -ne $annotationReason) {
                 $annotated += $record
             }
             else {
@@ -184,7 +191,7 @@ foreach ($file in $surface) {
 if (@($annotated).Count -gt 0) {
     Write-Host ("[self-leak-lint] {0} annotated hit(s) (sanctioned, reasons recorded):" -f @($annotated).Count) -ForegroundColor DarkYellow
     foreach ($hit in $annotated) {
-        Write-Host ("  [annotated] {0}:{1} '{2}' ({3})" -f $hit.File, $hit.Line, $hit.Matched, $hit.Class)
+        Write-Host ("  [annotated] {0}:{1} '{2}' ({3}) - reason: {4}" -f $hit.File, $hit.Line, $hit.Matched, $hit.Class, $hit.AnnotationReason)
     }
 }
 

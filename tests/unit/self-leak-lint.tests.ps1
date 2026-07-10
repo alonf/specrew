@@ -99,8 +99,13 @@ $fixture = New-Fixture -Name 'annotated'
 "<!-- specrew-self-ok: fixture line-above reason -->`nask FixtureMaintainer for approval" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
 $result = Invoke-Lint -FixtureRoot $fixture
 if ($result.ExitCode -ne 0) { Write-Fail "annotated fixture: expected exit 0, got $($result.ExitCode): $($result.Output)" }
-elseif ($result.Output -notmatch '\[annotated\]') { Write-Fail "annotated hits are not listed with reasons (transparency)" }
-else { Write-Pass "same-line (# yml) and line-above (md HTML) annotations sanction; annotated hits listed" }
+elseif ($result.Output -notmatch '\[annotated\]') { Write-Fail "annotated hits are not listed (transparency)" }
+elseif (($result.Output -notmatch [regex]::Escape('fixture same-line reason')) -or ($result.Output -notmatch [regex]::Escape('fixture line-above reason'))) {
+    # The HUMAN's reason text must reach the operator - asserting the literal '[annotated]' alone
+    # let a reason-dropping regression pass (copilot review catch, run 7b55bbc8).
+    Write-Fail "annotated output does not surface the human-supplied reason text"
+}
+else { Write-Pass "same-line (# yml) and line-above (md HTML) annotations sanction; the human's reason text is surfaced per hit" }
 Remove-Item -Recurse -Force $fixture
 
 Write-Host "Test 4: annotation WITHOUT reason is unannotated -> RED"
