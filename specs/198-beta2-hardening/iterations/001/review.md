@@ -25,7 +25,7 @@
 
 ## Evidence
 
-- **Machine evidence**: tests/unit/self-leak-lint.tests.ps1 — 18/18 PASS
+- **Machine evidence**: tests/unit/self-leak-lint.tests.ps1 — 19/19 PASS (18 original + abuse-path Test 4b)
   (paired per class + annotation semantics + exit-2 loud failure + surface
   enumeration + real-repo born-clean). Integration:
   version-info-states, bootstrap-asset-blocker-recovery,
@@ -35,7 +35,7 @@
   findings + squad probe + suite ledger).
 - **Mechanical checks**: quality/mechanical-findings.json — zero findings
   for this iteration.
-- **Co-review**: three navigator runs
+- **Co-review (final)**: signoff run 20260710T022949913-cdf729a4 (codex, independent, full): ZERO blocking findings, one nit (this stale evidence count - corrected in place). Earlier chain: three navigator runs
   (20260709T224852258, 20260709T231707847, 20260709T231951205); the one
   blocking finding (mode-change) was refuted against the committed tree
   (DRIFT-198-I001-001) and resolved by maintainer-typed ack
