@@ -252,8 +252,34 @@ function Get-ContinuousCoReviewSignoffGateDecision {
             break
         }
     }
+    # 4b. F-198 FR-020 (mechanism b): the ANNOUNCED tracker-only bypass. When no run matches
+    # exactly, a passing run whose ONLY delta to the current tree is machine-managed tracker
+    # bookkeeping - with claims verified as a subset of the review record that run already
+    # accepted - keeps its evidence fresh. Fail-closed: any parse ambiguity or claim increase
+    # falls through to the stale block exactly as before. The digest formula is untouched.
+    $honestyBypassNote = $null
+    $dishonestReason = $null
+    if ($null -eq $matched -and (Get-Command -Name 'Get-ContinuousCoReviewTrackerOnlyDelta' -ErrorAction SilentlyContinue)) {
+        foreach ($run in $passingRuns) {
+            $recordedTreeId = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $run -Name 'reviewed_tree_id')
+            if ([string]::IsNullOrWhiteSpace($recordedTreeId) -or $recordedTreeId -eq $emptyTreeId) { continue }
+            $delta = Get-ContinuousCoReviewTrackerOnlyDelta -RepoRoot $resolvedRepoRoot -FromTreeId $recordedTreeId -ToTreeId $digest.tree_id
+            if (-not $delta.Ok -or -not $delta.TrackerOnly) { continue }
+            $honesty = Test-ContinuousCoReviewTrackerReconcileHonest -RepoRoot $resolvedRepoRoot -FromTreeId $recordedTreeId -ToTreeId $digest.tree_id -TrackerPaths @($delta.Paths)
+            if ($honesty.Honest) {
+                $matched = $run
+                $honestyBypassNote = ("TRACKER-ONLY RECONCILE ACCEPTED: the only change since the reviewed tree is tracker bookkeeping ({0}) whose claims match the already-accepted review record; that run's evidence is kept fresh. " -f (@($delta.Paths) -join ', '))
+                break
+            }
+            $dishonestReason = $honesty.Reason
+        }
+    }
     if ($null -eq $matched) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'stale-co-review-evidence' -Message 'The current working tree does not match any passing co-review; re-run continuous co-review before signoff.' -CurrentTreeId $digest.tree_id -AnchorRef $anchor
+        $staleMessage = 'The current working tree does not match any passing co-review; re-run continuous co-review before signoff.'
+        if (-not [string]::IsNullOrWhiteSpace($dishonestReason)) {
+            $staleMessage = ("The current working tree does not match any passing co-review, and the tracker-only change could not be accepted ({0}) - a claims-increasing tracker edit needs a fresh review, exactly as any content change." -f $dishonestReason)
+        }
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'stale-co-review-evidence' -Message $staleMessage -CurrentTreeId $digest.tree_id -AnchorRef $anchor
     }
 
     # 5. Coverage: the matched run's chain must reach the anchor with no gap.
@@ -270,7 +296,7 @@ function Get-ContinuousCoReviewSignoffGateDecision {
     $matchedRunId = [string] (Get-ContinuousCoReviewRunIndexProperty -Object $matched -Name 'run_id')
     $labels = Get-ContinuousCoReviewRunEvidenceLabels -Run $matched
     if (-not (Test-ContinuousCoReviewEvidenceIsDegraded -Labels $labels)) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'fresh-and-covered' -Message 'The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor.' -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'fresh-and-covered' -Message ("{0}The current reviewed-state matches a passing co-review whose chain covers the feature back to the trunk anchor." -f [string]$honestyBypassNote) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
     }
 
     $ack = $DegradedAcknowledgement
