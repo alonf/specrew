@@ -306,7 +306,20 @@ amendments).
 
 ## Human Decision
 
-**Status**: PENDING — awaiting the maintainer's verdict in the shape
-`approved for plan with Option <X>`, including the measurement-evidence
-reading (decision point 4). The decision, modifications, verdict
-evidence, and authorizing commit are recorded here upon approval.
+- **Decision verdict**: approved for plan with Option B (maintainer chose
+  option 1 — "Approve as-is — proceed with Option B and the defaults" —
+  at the rendered design gate stop, 2026-07-11; hook-captured transcript
+  verdict).
+- **Chosen Option**: Option B — one primitive, covering set, recorded
+  reconciliation.
+- **Reason**: the workshop-bound shape (A2/A3/S3/S4 + both maintainer
+  amendments) with iteration-001 field incidents as fixtures; defaults
+  accepted, including the measurement-evidence reading (self-host
+  timings accepted as conservative upper bounds; no separate
+  consumer-project measurement pass) and the catalog values
+  (copilot 300, codex 600, claude 600, antigravity 900).
+- **Modifications**: None.
+- **Design-analysis draft commit**: `3386dbf1`
+- **Decision recorded in commit**: recorded with the iteration-002
+  lens-applicability record in the commit that carries this section
+  (gate packet persisted in the follow-up gates commit).
