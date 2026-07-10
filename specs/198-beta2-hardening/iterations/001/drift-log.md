@@ -50,6 +50,7 @@ reviewer-side observation refuted against the committed tree)
   the FR-012 reviewer-can-still-see-it discipline are the iteration-003
   owners of honest worktree materialization; this event is field evidence
   for that work).
+- **Human ack**: recorded 2026-07-10 - the maintainer typed "approve" accepting this refutation (T096 human-typed input; disposition disposition-f1-human-ack in the run 20260709T224852258-bd274a8d review thread).
 - **Resolution**: no tree change required or made (nothing to revert —
   the claimed regression does not exist in the committed tree). Evidence
   recorded here + surfaced to the maintainer at the material-work stop

@@ -27,10 +27,20 @@
       "review_round": 0,
       "actor_role": "reviewer",
       "recorded_at": "2026-07-09T23:17:05Z"
+    },
+    {
+      "disposition_id": "disposition-f1-human-ack",
+      "finding_id": "f1",
+      "state": "resolved",
+      "rationale": "Human ack (maintainer typed \"approve\", 2026-07-10) accepting the DRIFT-198-I001-001 refutation: git ls-tree shows identical blobs AND modes (100755) vs origin/main; core.filemode=false; the observed 100755->100644 rows are a reviewer-side Windows materialization artifact, not a tree change. Field input carried to iteration 003 (FR-012/FR-017 honest materialization).",
+      "fix_evidence_ref": "specs/198-beta2-hardening/iterations/001/drift-log.md#drift-198-i001-001",
+      "review_round": 3,
+      "actor_role": "human",
+      "recorded_at": "2026-07-10T00:12:02Z"
     }
   ],
-  "resolution_summary": "Inline reviewer returned 2 finding(s); disposition trail persisted by orchestrator.",
+  "resolution_summary": "Blocking finding f1 resolved by human ack: refuted against the committed tree (DRIFT-198-I001-001); no tree change existed to make.",
   "escalation_ref": "",
   "created_at": "2026-07-09T23:17:05Z",
-  "updated_at": "2026-07-09T23:17:05Z"
+  "updated_at": "2026-07-10T00:12:02Z"
 }
