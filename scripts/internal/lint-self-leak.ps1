@@ -36,7 +36,6 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $ruleDoc = 'docs/methodology/self-leak-firewall.md'
-$annotationToken = 'specrew-self-ok:'
 
 if ([string]::IsNullOrWhiteSpace($DenyListPath)) {
     $DenyListPath = Join-Path $ProjectRoot 'extensions/specrew-speckit/data/self-leak-deny-list.json'
@@ -115,17 +114,28 @@ function Test-SelfLeakAnnotated {
     param(
         [Parameter(Mandatory = $true)][AllowEmptyString()][AllowEmptyCollection()][string[]]$Lines,
         [Parameter(Mandatory = $true)][int]$LineIndex,
-        [Parameter(Mandatory = $true)][string]$Token
+        [Parameter(Mandatory = $true)][string]$FilePath
     )
+
+    # The annotation FORM is part of the contract (a malformed suppression is a false-green
+    # authorization path — independent-review catch, run b12861a6): .md sanctions ONLY inside an
+    # HTML comment; hash-comment kinds (.ps1/.psd1/.psm1/.yml/.yaml/.sh + extensionless shell
+    # wrappers) ONLY behind a `#`. File kinds with no sanctioned form cannot be annotated at all
+    # (fail-closed: no bypass without a validatable form).
+    $extension = [System.IO.Path]::GetExtension($FilePath)
+    $pattern = switch -Regex ($extension) {
+        '^\.(md|markdown)$' { '<!--\s*specrew-self-ok:(?<reason>([^-]|-(?!->))*)-->' ; break }
+        '^\.(ps1|psd1|psm1|yml|yaml|sh)$' { '#[^#]*?specrew-self-ok:(?<reason>.+)$' ; break }
+        '^$' { '#[^#]*?specrew-self-ok:(?<reason>.+)$' ; break }   # extensionless shell wrappers
+        default { $null }
+    }
+    if ($null -eq $pattern) { return $false }
 
     foreach ($candidateIndex in @($LineIndex, ($LineIndex - 1))) {
         if ($candidateIndex -lt 0 -or $candidateIndex -ge $Lines.Count) { continue }
-        $candidate = $Lines[$candidateIndex]
-        $tokenAt = $candidate.IndexOf($Token, [System.StringComparison]::OrdinalIgnoreCase)
-        if ($tokenAt -lt 0) { continue }
-        $reason = $candidate.Substring($tokenAt + $Token.Length)
-        $reason = $reason -replace '-->\s*$', ''   # md comment closer is not reason text
-        if (-not [string]::IsNullOrWhiteSpace($reason)) { return $true }
+        $match = [regex]::Match($Lines[$candidateIndex], $pattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+        if (-not $match.Success) { continue }
+        if (-not [string]::IsNullOrWhiteSpace($match.Groups['reason'].Value)) { return $true }
     }
     return $false
 }
@@ -161,7 +171,7 @@ foreach ($file in $surface) {
                 Class   = $entry.Class
                 Reason  = $entry.Reason
             }
-            if (Test-SelfLeakAnnotated -Lines $lines -LineIndex $i -Token $annotationToken) {
+            if (Test-SelfLeakAnnotated -Lines $lines -LineIndex $i -FilePath $file.Full) {
                 $annotated += $record
             }
             else {

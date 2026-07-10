@@ -111,6 +111,16 @@ $result = Invoke-Lint -FixtureRoot $fixture
 if ($result.ExitCode -ne 1) { Write-Fail "missing-reason annotation: expected exit 1, got $($result.ExitCode)" } else { Write-Pass "missing-reason annotation treated as unannotated (red)" }
 Remove-Item -Recurse -Force $fixture
 
+Write-Host "Test 4b: WRONG comment form per file kind is unannotated -> RED (abuse path, review catch b12861a6)"
+$fixture = New-Fixture -Name 'wrongform'
+"# specrew-self-ok: hash form is not valid in markdown`nask FixtureMaintainer for approval" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+"<!-- specrew-self-ok: html form is not valid in yml -->`ninstall from FakeGallery today" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 1) { Write-Fail "wrong-form annotations: expected exit 1, got $($result.ExitCode): $($result.Output)" }
+elseif (($result.Output -notmatch [regex]::Escape('templates/seeded.md')) -or ($result.Output -notmatch [regex]::Escape('templates/seeded.yml'))) { Write-Fail "wrong-form annotations: both malformed suppressions must red" }
+else { Write-Pass "hash-in-md and html-in-yml suppressions are rejected (form validated by extension)" }
+Remove-Item -Recurse -Force $fixture
+
 Write-Host "Test 5: clean surface -> green; non-consumer files never scanned"
 $fixture = New-Fixture -Name 'clean'
 'neutral one' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
