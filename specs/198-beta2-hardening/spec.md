@@ -102,6 +102,21 @@ inherit them:
   carrying NO Specrew-internal identifiers (no trust-boundary rule names,
   feature numbers, or proposal references a downstream human cannot
   understand). FR-018/FR-019/SC-007 amended accordingly.
+- Q (2026-07-11, maintainer-relayed from the parallel Devin-host crew):
+  why do "fresh-context" reviews deliver stale blocks? → A (field
+  diagnosis, three mechanisms confirmed against both sessions' run
+  records): (1) launch-per-stop + verdict-surfaces-one-stop-later means a
+  block can describe a tree that no longer exists (their run 4a052917;
+  our fa5ff2f3/73700590); (2) threaded re-checks re-affirm against the
+  thread's ORIGINAL material (their f22aa729 launched two fix-generations
+  behind yet reported the original tree; deleting round-state broke the
+  chain and their genuinely fresh b7a04055 returned zero findings);
+  (3) nothing stamps or checks freshness on the NAVIGATOR surfacing path
+  — the digest match exists only at the signoff gate. Fixes folded into
+  FR-017 (amended) and T019: stamp the reviewed tree id into every run
+  record surface, navigator digest-match before blocking (stale verdicts
+  surface as stale-vs-current advisory), and in-flight dedup per lineage.
+  T019 grows ~+0.5 SP; iteration 003's design-analysis details it.
 - Q (2026-07-10, follow-up, maintainer-typed): who runs the remediation
   machinery? → A (human): "This is a very bad UX, why do you ask the user
   to run a script. Ask the user for approval to allow to reset the
@@ -477,9 +492,17 @@ pin-surface consistency assertions.
   identity and thread it as the next auto-fire's baseline, falling back to
   the trunk merge-base when none exists; the signoff `--live` merge-base
   doctrine is unchanged.
-- **FR-017 (W10)**: The fire-time checkpoint tree id MUST pass through the
-  detached chain; the child MUST materialize exactly that frozen tree and
-  label the run stale-vs-current when the working tree has moved.
+- **FR-017 (W10, amended by clarify 2026-07-11 — Devin-crew field
+  diagnosis)**: The fire-time checkpoint tree id MUST pass through the
+  detached chain; the child MUST materialize exactly that frozen tree;
+  the reviewed tree id MUST be stamped into EVERY run record surface
+  (including the findings result, not only the run index); the NAVIGATOR
+  surfacing path MUST perform the same digest match the signoff gate
+  already does BEFORE blocking on a run's findings — a verdict whose
+  snapshot no longer matches the current tree surfaces as
+  stale-vs-current (advisory), never as a fresh block; and a new
+  hook-fired review MUST NOT launch while one is already in flight for
+  the same lineage (in-flight dedup).
 - **FR-018 (W11, amended by clarify 2026-07-10 + follow-up)**: The
   allowance-halt text (and the reap's surfacing note) MUST be
   consumer-legible spend-guard teaching: state that the review-loop
