@@ -120,6 +120,12 @@ if ($result.ExitCode -ne 1) { Write-Fail "wrong-form annotations: expected exit 
 elseif (($result.Output -notmatch [regex]::Escape('templates/seeded.md')) -or ($result.Output -notmatch [regex]::Escape('templates/seeded.yml'))) { Write-Fail "wrong-form annotations: both malformed suppressions must red" }
 else { Write-Pass "hash-in-md and html-in-yml suppressions are rejected (form validated by extension)" }
 Remove-Item -Recurse -Force $fixture
+$fixture = New-Fixture -Name 'bareprose'
+"specrew-self-ok: bare prose is not a comment`nask FixtureMaintainer for approval" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 1) { Write-Fail "bare-prose annotation in .md: expected exit 1, got $($result.ExitCode)" } else { Write-Pass "bare-prose (non-comment) annotation line does not sanction (run fa5ff2f3 abuse path)" }
+Remove-Item -Recurse -Force $fixture
 
 Write-Host "Test 5: clean surface -> green; non-consumer files never scanned"
 $fixture = New-Fixture -Name 'clean'
