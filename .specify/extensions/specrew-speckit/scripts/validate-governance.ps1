@@ -1582,6 +1582,17 @@ function Test-BoundaryStateAdvanceVerdict {
         $iterProp = $sessionState.Value.PSObject.Properties['iteration_number']
         $iterationRef = if ($null -ne $iterProp) { [string]$iterProp.Value } else { '' }
         Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
+
+        # F-198 FR-003: the unauthorized working boundary is the NORMAL between-packet-and-reply
+        # state (WARN above). But when the enforcement cursor's own pending ask names a DIFFERENT
+        # boundary than the working one, the session moved past an unresolved approval - the
+        # skipped-boundary state the sync ratchet refuses at advance time. At validation time it
+        # is a FAIL: the work recorded under the skipped step has no human decision behind it.
+        $pendingProp = if ($null -ne $enforcement -and $null -ne $enforcement.Value) { $enforcement.Value.PSObject.Properties['pending_next_boundary'] } else { $null }
+        $pendingNext = if ($null -ne $pendingProp) { [string]$pendingProp.Value } else { '' }
+        if (-not [string]::IsNullOrWhiteSpace($pendingNext) -and $pendingNext -ne $boundary) {
+            Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: the session's working boundary is '{0}' but the unresolved approval ask is for '{1}' - a human-judgment step was passed without its verdict. Reconcile before closing anything: approve the waiting step when the assistant asks, or roll back to the last approved commit (the assistant asks for explicit confirmation first)." -f $boundary, $pendingNext)
+        }
     }
 }
 

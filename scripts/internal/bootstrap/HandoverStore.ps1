@@ -640,10 +640,13 @@ function Invoke-SpecrewBoundaryVerdictCapture {
 
         if ([bool]$pendingCrossing.HasPendingVerdict -and $actualFrom -eq $expectedFrom -and $actualTo -eq $expectedTo) {
             $evidenceSource = if ([string]$captured.Reason -eq 'captured-pending-artifact-fallback') { 'hook-captured-from-transcript-pending-artifact' } else { 'hook-captured-from-transcript' }
+            # F-198 FR-005: an authorization for a boundary BEHIND the working crossing is a
+            # reconciliation of already-done work - record it distinctly as retroactive.
+            $authorizationKind = if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.PendingToBoundary)) -ne (Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$pendingCrossing.WorkingBoundary))) { 'retroactive' } else { 'standard' }
             Add-SpecrewBoundaryAuthorization -ProjectRoot $ProjectRoot `
                 -CurrentBoundary $pendingCrossing.PendingFromBoundary -AuthorizedBoundary $pendingCrossing.PendingToBoundary `
                 -AuthorizingHuman 'unattributed' -VerdictText $captured.VerdictText `
-                -EvidenceSource $evidenceSource | Out-Null
+                -EvidenceSource $evidenceSource -Kind $authorizationKind | Out-Null
             Sync-SpecrewPendingVerdictArtifactAfterAuthorization -ProjectRoot $ProjectRoot -NowUtc $NowUtc
             $result.authorized = $true
             $result.reason = 'authorized'

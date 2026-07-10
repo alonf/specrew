@@ -1500,6 +1500,14 @@ function Invoke-SpecrewBoundaryStateSync {
             -IterationNumber $effectiveIterationNumber | Out-Null
     }
 
+    # F-198 FR-002: the boundary ratchet. The first unapproved crossing still records (F-174 -
+    # no human was present to ask on a non-stopping host), but a SECOND advance while an earlier
+    # human-judgment crossing is unapproved refuses loudly here - deterministic, host-neutral,
+    # no hook dependency. Re-syncing the SAME boundary stays allowed (idempotent re-record).
+    Invoke-SpecrewBoundaryRatchetGate `
+        -ProjectRoot $paths.ProjectRoot `
+        -RequestedBoundary $BoundaryType | Out-Null
+
     Invoke-SpecrewIterationStateTruthGate `
         -ProjectRoot $paths.ProjectRoot `
         -BoundaryType $BoundaryType `

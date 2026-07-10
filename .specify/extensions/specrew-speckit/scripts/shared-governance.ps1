@@ -963,7 +963,31 @@ function Get-SpecrewPendingBoundaryCrossing {
 
         $workingIdx = [Array]::IndexOf($order, $workingCanonical)
         $authIdx = if ([string]::IsNullOrWhiteSpace($lastAuthCanonical)) { -1 } else { [Array]::IndexOf($order, $lastAuthCanonical) }
-        if ($workingIdx -lt 0 -or $workingIdx -le $authIdx) { return $result }
+        if ($workingIdx -lt 0) { return $result }
+
+        # ITERATION CYCLE RESET (F-198 FR-004, field-found 2026-07-11): the canonical order is
+        # linear but iterations LOOP - after an authorized `iteration-closeout`, the next
+        # iteration re-enters at an earlier-phase boundary (plan/tasks/...). The old
+        # `workingIdx -le authIdx` guard read that as "backward", so NO pending artifact was
+        # written for any new-cycle crossing and the verdict capture refused with
+        # MARKER_CURSOR_MISMATCH (two live instances: F-198 iteration 002 plan and
+        # before-implement). When the cursor sits at iteration-closeout and the working
+        # boundary is an earlier-phase crossing, the pending ask is the new cycle's earliest
+        # un-authorized boundary, from-side iteration-closeout.
+        $planIdx = [Array]::IndexOf($order, 'plan')
+        $isCycleReset = ($lastAuthCanonical -eq 'iteration-closeout' -and $workingIdx -le $authIdx -and $workingIdx -ge $planIdx)
+        if ($workingIdx -le $authIdx -and -not $isCycleReset) { return $result }
+
+        if ($isCycleReset) {
+            $result.HasPendingVerdict = $true
+            $result.PendingFromBoundary = 'iteration-closeout'
+            $result.PendingToBoundary = $order[$planIdx]
+            $result.PendingFromMarkerBoundary = 'iteration-closeout'
+            $result.PendingToMarkerBoundary = $order[$planIdx]
+            $result.IsFirstBoundary = $false
+            $result.IsMultiBoundaryGap = ($workingIdx -gt $planIdx)
+            return $result
+        }
 
         $toIdx = $authIdx + 1
         if ($toIdx -lt 0 -or $toIdx -ge $order.Count) { return $result }
@@ -1811,6 +1835,91 @@ function Test-SpecrewBoundaryAuthorization {
     }
 }
 
+function Get-SpecrewUnreconciledBoundary {
+    # F-198 FR-001/FR-002: the ONE shared read answering "is there a human-judgment boundary
+    # crossing that was mechanically recorded but never human-authorized?" Consumed by the sync
+    # ratchet, the governance validator, the resume/start re-confirm surface, and the hard gates
+    # (the A2 covering set) so the answer cannot drift between call sites. Pure read - never
+    # mutates state. Returns $null when clean, else a pscustomobject:
+    #   Boundary        - the unauthorized crossing (canonical name)
+    #   LastAuthorized  - the cursor (canonical name or $null)
+    #   RevertAnchor    - the auth_commit_hash of the newest authorization (the rollback target)
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot
+    )
+
+    $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+    if ($enforcementState.NeedsMigration -or $enforcementState.Issues.Count -gt 0) { return $null }
+
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    $working = $null
+    if ($contextState.Context.Contains('session_state')) {
+        $session = $contextState.Context['session_state']
+        if ($session -is [System.Collections.IDictionary] -and $session.Contains('boundary_type')) {
+            $working = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$session['boundary_type'])
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($working)) { return $null }
+    # A session boundary that does not normalize to a canonical human-judgment boundary
+    # (e.g. a legacy 'implement' alias) cannot be a skipped APPROVAL - the ratchet only
+    # guards the policy-classed gates. Malformed enforcement STATE still hard-fails
+    # upstream (the enforcement-state Issues path).
+    if ($working -notin @(Get-SpecrewCanonicalBoundaryTypes)) { return $null }
+
+    $policyClass = Get-SpecrewBoundaryPolicyClass -ProjectRoot $ProjectRoot -Boundary $working
+    if ($policyClass -ne 'human-judgment-required') { return $null }
+
+    $lastAuthorized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcementState.State['last_authorized_boundary'])
+    if ($lastAuthorized -eq $working) { return $null }
+
+    $revertAnchor = $null
+    foreach ($entry in @($enforcementState.State['verdict_history'])) {
+        $entryMap = if ($entry -is [System.Collections.IDictionary]) { $entry } else { $entry | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+        $toBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['to_boundary'])
+        $human = [string]$entryMap['authorizing_human']
+        if ($toBoundary -eq $working -and -not [string]::IsNullOrWhiteSpace($human)) { return $null }
+        if (-not [string]::IsNullOrWhiteSpace([string]$entryMap['auth_commit_hash'])) {
+            $revertAnchor = [string]$entryMap['auth_commit_hash']   # newest wins (history is append-ordered)
+        }
+    }
+
+    return [pscustomobject]@{
+        Boundary       = $working
+        LastAuthorized = $lastAuthorized
+        RevertAnchor   = $revertAnchor
+    }
+}
+
+function Invoke-SpecrewBoundaryRatchetGate {
+    # F-198 FR-002: the ratchet. On a host whose agent never stops, the FIRST unapproved
+    # crossing still records mechanically (F-174 preserved - a human was not present to ask),
+    # but a SECOND advance while that crossing is unapproved is refused here, loudly. The
+    # refusal message is consumer-legible by contract (FR-018 as amended): it names the waiting
+    # step and both ways forward, tells the assistant to ask an approve/decline question, and
+    # carries no internal rule identifiers. Re-recording the SAME boundary is not an advance
+    # (idempotent re-sync stays allowed).
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ProjectRoot,
+
+        [Parameter(Mandatory = $true)]
+        [string]$RequestedBoundary
+    )
+
+    $requestedCanonical = Resolve-SpecrewCanonicalBoundaryType -Boundary $RequestedBoundary -ParameterName 'RequestedBoundary'
+    $unreconciled = Get-SpecrewUnreconciledBoundary -ProjectRoot $ProjectRoot
+    if ($null -eq $unreconciled) { return $true }
+    if ($unreconciled.Boundary -eq $requestedCanonical) { return $true }
+
+    $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
+    $launchMode = if ($contextState.Context.Contains('launch_mode')) { [string]$contextState.Context['launch_mode'] } else { $null }
+    Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'blocked' -CurrentBoundary $unreconciled.Boundary -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $null -Reason ("Ratchet refusal: '{0}' is recorded but not human-approved; a second advance to '{1}' is refused until it is reconciled." -f $unreconciled.Boundary, $requestedCanonical)
+
+    $anchorText = if ([string]::IsNullOrWhiteSpace([string]$unreconciled.RevertAnchor)) { 'the last approved commit' } else { ("commit {0}" -f ([string]$unreconciled.RevertAnchor).Substring(0, [Math]::Min(8, ([string]$unreconciled.RevertAnchor).Length))) }
+    throw ("Cannot continue to '{0}': the earlier '{1}' step is still waiting for your approval. One approval advances one step, so the assistant must not move past an unapproved step. Two ways forward: (1) approve the waiting '{1}' step - the assistant will ask you to approve or decline it; or (2) roll back to the last approved point ({2}) - the assistant will ask for your explicit confirmation first, because rolling back discards the unapproved work. Re-running the same command will not bypass this stop." -f $requestedCanonical, $unreconciled.Boundary, $anchorText)
+}
+
 function Add-SpecrewBoundaryAuthorization {
     param(
         [Parameter(Mandatory = $true)]
@@ -1842,7 +1951,14 @@ function Add-SpecrewBoundaryAuthorization {
         # 'unspecified'. Recorded on the verdict_history entry so the audit trail is honest about each
         # authorization's provenance strength. It is NEVER 'fabricated' — sync no longer writes authorizations.
         [AllowNull()]
-        [string]$EvidenceSource
+        [string]$EvidenceSource,
+
+        # F-198 FR-005: 'standard' (the verdict answered the live pending ask) | 'retroactive'
+        # (the human reconciled an already-crossed boundary after the fact - the resume/re-confirm
+        # surface, or a capture that missed its original stop). Recorded on the entry so
+        # retroactive approvals are auditably distinct.
+        [AllowNull()]
+        [string]$Kind
     )
 
     $currentCanonical = if ([string]::IsNullOrWhiteSpace($CurrentBoundary)) { $null } else { Resolve-SpecrewCanonicalBoundaryType -Boundary $CurrentBoundary -ParameterName 'CurrentBoundary' }
@@ -1850,7 +1966,10 @@ function Add-SpecrewBoundaryAuthorization {
     $boundaryOrder = @(Get-SpecrewBoundaryOrder)
     $currentIndex = if ([string]::IsNullOrWhiteSpace($currentCanonical)) { -1 } else { [Array]::IndexOf($boundaryOrder, $currentCanonical) }
     $authorizedIndex = [Array]::IndexOf($boundaryOrder, $authorizedCanonical)
-    if ($authorizedIndex -lt $currentIndex) {
+    # Iteration cycle reset (F-198 FR-004): authorizing an earlier-phase boundary FROM
+    # iteration-closeout is the next iteration beginning, not a backward move.
+    $isCycleReset = ($currentCanonical -eq 'iteration-closeout' -and $authorizedIndex -ge [Array]::IndexOf($boundaryOrder, 'plan') -and $authorizedIndex -lt $currentIndex)
+    if ($authorizedIndex -lt $currentIndex -and -not $isCycleReset) {
         throw "Cannot authorize '$authorizedCanonical' from '$currentCanonical' because it moves backward in the canonical order."
     }
 
@@ -1878,11 +1997,35 @@ function Add-SpecrewBoundaryAuthorization {
         throw "Boundary enforcement state is malformed: $($enforcementState.Issues -join '; ')"
     }
 
+    # F-198 idempotence: a re-fired authorization for the boundary the cursor ALREADY sits on
+    # (same to_boundary as the newest entry) is a duplicate capture of the same verdict - a
+    # no-op, never a duplicate history entry. Narrow by design: in a new iteration cycle the
+    # cursor is 'iteration-closeout', so re-authorizing 'plan' for the NEXT iteration still
+    # appends (the cursor differs).
+    $existingHistory = @($enforcementState.State['verdict_history'])
+    $cursorBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcementState.State['last_authorized_boundary'])
+    if ($cursorBoundary -eq $authorizedCanonical -and $existingHistory.Count -gt 0) {
+        $newestEntry = $existingHistory[-1]
+        $newestMap = if ($newestEntry -is [System.Collections.IDictionary]) { $newestEntry } else { $newestEntry | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+        if ((Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$newestMap['to_boundary'])) -eq $authorizedCanonical) {
+            return [pscustomobject]@{
+                AuthorizedBoundary = $authorizedCanonical
+                StoredVerdict      = [string]$newestMap['verdict_text']
+                RecordedAt         = [string]$newestMap['recorded_at']
+                DirectiveSentinel  = 'SPECREW_BOUNDARY_AUTHORIZED'
+            }
+        }
+    }
+
     $verdictHistory = New-Object System.Collections.Generic.List[object]
     foreach ($entry in @($enforcementState.State['verdict_history'])) {
         $verdictHistory.Add($entry) | Out-Null
     }
     $effectiveEvidenceSource = if ([string]::IsNullOrWhiteSpace($EvidenceSource)) { 'unspecified' } else { $EvidenceSource.Trim() }
+    $effectiveKind = if ([string]::IsNullOrWhiteSpace($Kind)) { 'standard' } else { $Kind.Trim().ToLowerInvariant() }
+    if ($effectiveKind -notin @('standard', 'retroactive')) {
+        throw "Authorization kind '$Kind' is not recognized (standard | retroactive)."
+    }
     $verdictHistory.Add([ordered]@{
         from_boundary     = $currentCanonical
         to_boundary       = $authorizedCanonical
@@ -1891,6 +2034,7 @@ function Add-SpecrewBoundaryAuthorization {
         recorded_at       = $effectiveRecordedAt
         auth_commit_hash  = $effectiveAuthCommitHash
         evidence_source   = $effectiveEvidenceSource
+        kind              = $effectiveKind
     }) | Out-Null
 
     $updatedState = [ordered]@{
