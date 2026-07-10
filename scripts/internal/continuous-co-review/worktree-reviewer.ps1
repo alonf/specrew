@@ -233,10 +233,21 @@ function New-ContinuousCoReviewStrippedWorktree {
     # tree objects), so .review/changes.diff shows exactly what the reviewer's worktree contains - including
     # uncommitted changes when the digest tree is the source.
     $diffPathspec = @($scope) + @($machineryExcludes)
-    $diff = (& git -C $gitRoot diff --no-ext-diff --src-prefix=a/ --dst-prefix=b/ $BaselineRef $reviewSource -- @diffPathspec 2>$null) -join "`n"
+    # git writes both outputs itself (--output=): capturing native stdout trips
+    # .NET's StandardOutputEncoding guard in console-less supervised contexts
+    # (observed 2026-07-10, runs 6e5a8dab/cc6e2018: "StandardOutputEncoding is
+    # only supported when standard output is redirected"). File-writes are
+    # console-state-independent.
+    $diffOutFile = Join-Path $reviewDir 'changes.diff.raw'
+    & git -C $gitRoot diff --no-ext-diff --src-prefix=a/ --dst-prefix=b/ "--output=$diffOutFile" $BaselineRef $reviewSource -- @diffPathspec 2>$null
+    $diff = if (Test-Path -LiteralPath $diffOutFile) { [System.IO.File]::ReadAllText($diffOutFile) } else { '' }
+    Remove-Item -LiteralPath $diffOutFile -Force -ErrorAction SilentlyContinue
     if (-not [string]::IsNullOrWhiteSpace($prefix)) { $diff = $diff -replace ([regex]::Escape("$prefix/")), '' }
     [System.IO.File]::WriteAllText((Join-Path $reviewDir 'changes.diff'), $diff)
-    $changed = @((& git -C $gitRoot diff --name-only $BaselineRef $reviewSource -- @diffPathspec 2>$null) | Where-Object { $_ })
+    $namesOutFile = Join-Path $reviewDir 'changes.names.raw'
+    & git -C $gitRoot diff --name-only "--output=$namesOutFile" $BaselineRef $reviewSource -- @diffPathspec 2>$null
+    $changed = if (Test-Path -LiteralPath $namesOutFile) { @([System.IO.File]::ReadAllLines($namesOutFile) | Where-Object { $_ }) } else { @() }
+    Remove-Item -LiteralPath $namesOutFile -Force -ErrorAction SilentlyContinue
     foreach ($d in @($DesignContextFiles)) {
         $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $resolved $d }
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
