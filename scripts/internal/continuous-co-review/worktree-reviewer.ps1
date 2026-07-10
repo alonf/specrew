@@ -257,34 +257,46 @@ function New-ContinuousCoReviewStrippedWorktree {
     # strip — a known list, NOT a heuristic). So the reviewer's entry point is the user's changes, consistent
     # with the stripped worktree. Paths made subtree-relative so they match the worktree root.
     $scope = if ([string]::IsNullOrWhiteSpace($prefix)) { @() } else { @("$prefix/") }
-    $machineryExcludes = foreach ($m in $machinery) {
+    # Collapse same-parent `specrew-*` mirror dirs into ONE glob exclude per parent: the marker
+    # scan yields hundreds of sibling dirs (398 in the self-host repo) and the literal exclude
+    # list crossed the Windows 32K command-line limit mid-F-198 ("The filename or extension is
+    # too long", run fe3a695a). Semantics preserved: every collapsed sibling matches its parent
+    # glob; an unmarked `specrew-*` dir under the same parent is machinery by naming anyway.
+    $literalMachinery = [System.Collections.Generic.List[string]]::new()
+    $globParents = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($m in $machinery) {
         if ($m -eq '.git') { continue }
-        $mp = if ([string]::IsNullOrWhiteSpace($prefix)) { $m } else { "$prefix/$m" }
-        ":(exclude)$mp"
+        if ($m -match '^(?<parent>.+)/(?<leaf>specrew-[^/]+)$') {
+            [void]$globParents.Add($Matches['parent'])
+        }
+        else {
+            [void]$literalMachinery.Add($m)
+        }
     }
+    $machineryExcludes = @(
+        foreach ($m in $literalMachinery) {
+            $mp = if ([string]::IsNullOrWhiteSpace($prefix)) { $m } else { "$prefix/$m" }
+            ":(exclude)$mp"
+        }
+        foreach ($p in $globParents) {
+            $pp = if ([string]::IsNullOrWhiteSpace($prefix)) { $p } else { "$prefix/$p" }
+            ":(exclude)$pp/specrew-*"
+        }
+    )
     # The change-set diff runs baseline -> the SAME review source as the materialized tree (git diff accepts
     # tree objects), so .review/changes.diff shows exactly what the reviewer's worktree contains - including
     # uncommitted changes when the digest tree is the source.
     $diffPathspec = @($scope) + @($machineryExcludes)
-    # Console-state-immune invocations (see Invoke-WorktreeReviewerGitCapture above), with the
-    # pathspec passed via --pathspec-from-file: the exclude list exceeds the Windows 32K
-    # command-line limit on large machinery sets ("The filename or extension is too long",
-    # run fe3a695a).
-    $pathspecFile = $null
-    $pathspecArgs = @()
-    if (@($diffPathspec).Count -gt 0) {
-        $pathspecFile = Join-Path $reviewDir 'pathspec.tmp'
-        [System.IO.File]::WriteAllLines($pathspecFile, [string[]]@($diffPathspec))
-        $pathspecArgs = @("--pathspec-from-file=$pathspecFile")
-    }
-    $diffArgs = @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/') + $pathspecArgs + @($BaselineRef, $reviewSource)
+    # Console-state-immune invocations (see Invoke-WorktreeReviewerGitCapture above); the glob
+    # collapse above keeps the pathspec far below the Windows command-line limit (git diff has
+    # no --pathspec-from-file, so the command line is the only channel).
+    $diffArgs = @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
     $diff = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $diffArgs
     if (-not [string]::IsNullOrWhiteSpace($prefix)) { $diff = $diff -replace ([regex]::Escape("$prefix/")), '' }
     [System.IO.File]::WriteAllText((Join-Path $reviewDir 'changes.diff'), $diff)
-    $namesArgs = @('diff', '--name-only') + $pathspecArgs + @($BaselineRef, $reviewSource)
+    $namesArgs = @('diff', '--name-only', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
     $namesRaw = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $namesArgs
     $changed = @((($namesRaw -replace "`r`n", "`n") -split "`n") | Where-Object { $_ })
-    if ($pathspecFile) { Remove-Item -LiteralPath $pathspecFile -Force -ErrorAction SilentlyContinue }
     foreach ($d in @($DesignContextFiles)) {
         $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $resolved $d }
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
