@@ -636,6 +636,11 @@ function Get-ContinuousCoReviewAgentCommand {
     if (Get-Command -Name 'Get-ContinuousCoReviewHostAgenticCommand' -ErrorAction SilentlyContinue) {
         $cmd = Get-ContinuousCoReviewHostAgenticCommand -HostName $HostName
         if ($null -ne $cmd -and -not [string]::IsNullOrWhiteSpace([string]$cmd.file)) { return $cmd }
+        # The catalog ANSWERED - this host simply has no agentic vector defined (or no row). Say
+        # THAT: the old text blamed an "unreachable catalog" and sent the human debugging the module
+        # deploy instead of the row (wrong-diagnosis message, F-198 FR-018 class - cost a real
+        # debugging detour on 2026-07-10, run c0a4479b).
+        throw "co-review: reviewer host '$HostName' has no agentic invocation defined in its reviewer-host-catalog.ps1 row (the host may be probe-validated only). Complete the row's agentic_args, or choose a host whose row defines one."
     }
     # D-197-I010-002 (host-neutral core): NO hardcoded harness fallback. An unreachable catalog is a
     # deploy gap - fail LOUD (the orchestrator surfaces the failed run) rather than silently invoking

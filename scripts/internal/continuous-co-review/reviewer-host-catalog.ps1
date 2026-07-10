@@ -59,7 +59,14 @@ function Get-ContinuousCoReviewReviewerHostRows {
         # failure modes with zero per-run / per-machine config. (F-197 reviewer robustness; drift D-197-I009-009 / T102.
         # NOTE: reviewing UNTRUSTED third-party code should use the per-run trust-injection mode instead — see T102.)
         @{ host = 'codex'; command = 'codex'; agentic_args = @('exec', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check'); prompt_via_stdin = $false; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85 }
-        @{ host = 'copilot'; command = 'copilot'; agentic_args = @(); prompt_via_stdin = $false; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80 }
+        # copilot headless vector probe-validated live 2026-07-10 (F-198 iteration 001; scratch
+        # probe answered in 6s and exited): `-p <prompt>` is non-interactive exit-after-completion,
+        # --allow-all-tools is REQUIRED for non-interactive mode, --allow-all-paths lets the
+        # reviewer browse its disposable worktree (the ephemeral read-only worktree IS the sandbox,
+        # same doctrine as the codex bypass above), --no-ask-user keeps it autonomous (no ask_user
+        # stalls headless), --no-custom-instructions keeps stray instruction files out of the
+        # composed-prompt contract. The invocation core appends the prompt last, directly after -p.
+        @{ host = 'copilot'; command = 'copilot'; agentic_args = @('--allow-all-tools', '--allow-all-paths', '--no-ask-user', '--no-custom-instructions', '--no-color', '--log-level', 'none', '-p'); prompt_via_stdin = $false; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80 }
         @{ host = 'cursor-agent'; command = 'cursor-agent'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70 }
         # antigravity ships as `agy` (verified live on the maintainer machine 2026-07-08). The WORKING
         # headless vector is probe-validated and ORDER-SENSITIVE: flags BEFORE --print, prompt
