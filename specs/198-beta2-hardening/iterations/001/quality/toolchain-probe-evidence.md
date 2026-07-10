@@ -61,7 +61,7 @@ condition-b-scratch-probe-only). Resolved commit at tag v0.12.9:
 
 ## Environment
 
-- `uv 0.8.17`; the T001 probe used uvx (global tool untouched at probe
++ `uv 0.8.17`; the T001 probe used uvx (global tool untouched at probe
   time). At T002 verification the machine toolchain moved to the pins via
   the exact CI commands: `uv tool install --force specify-cli --from
   git+https://github.com/github/spec-kit.git@v0.12.9` (0.8.4 → 0.12.9,
@@ -70,35 +70,35 @@ condition-b-scratch-probe-only). Resolved commit at tag v0.12.9:
 
 ## Squad 0.11.0 probe (T003)
 
-- `npx -y @bradygaster/squad-cli@0.11.0 --version` → `0.11.0`.
-- `squad init --non-interactive` in the scratch dir
++ `npx -y @bradygaster/squad-cli@0.11.0 --version` → `0.11.0`.
++ `squad init --non-interactive` in the scratch dir
   (`…\scratchpad\squad-probe-001`) → "Squad initialized." exit 0; the
   `.squad` layout is complete (agents, casting, decisions, fact-checker,
   identity, log, memory, orchestration-log, plugins, rai, templates +
   ceremonies.md, config.json, decisions.md, routing.md, team.md).
-- No breaking behavior observed (release notes: adds `squad registry`,
++ No breaking behavior observed (release notes: adds `squad registry`,
   renames ".NET Aspire"→"Aspire" in help text).
 
 ## Suite evidence on the pinned toolchain (T002/T003, 2026-07-10)
 
-- `tests/integration/version-info-states.tests.ps1` — PASS (exit 0) after
++ `tests/integration/version-info-states.tests.ps1` — PASS (exit 0) after
   Test 8 was updated from the retired 0.9.0-window lock to the
   single-tested-pin lock (shipped min supported; pre-break 0.9.0 now
   correctly behind-supported).
-- `tests/integration/bootstrap-asset-blocker-recovery.ps1` — PASS (exit 0)
++ `tests/integration/bootstrap-asset-blocker-recovery.ps1` — PASS (exit 0)
   after shim + assertion versions moved to the pins.
-- `tests/integration/squad-duplicate-rows.tests.ps1` — PASS (exit 0);
++ `tests/integration/squad-duplicate-rows.tests.ps1` — PASS (exit 0);
   exercises a REAL `specrew init` (specify 0.12.9 `--integration copilot`
   + squad 0.11.0) — the live no-extensions fixture evidence.
-- `tests/integration/deployed-bootstrap-floor.tests.ps1` — PASS (exit 0).
-- `tests/integration/command-surface-deploy.tests.ps1` — PASS (exit 0).
-- Full suite runs on the PR CI lanes (now pinned 0.12.9 / 0.11.0).
++ `tests/integration/deployed-bootstrap-floor.tests.ps1` — PASS (exit 0).
++ `tests/integration/command-surface-deploy.tests.ps1` — PASS (exit 0).
++ Full suite runs on the PR CI lanes (now pinned 0.12.9 / 0.11.0).
 
 ## Consequences carried into T002
 
-- Migrate line ~621: `('init','--here','--integration','copilot',
++ Migrate line ~621: `('init','--here','--integration','copilot',
   '--script','ps','--ignore-agent-tools')` (+ dry-run echo text).
-- Palette loop: add `--force`; update skip-detection to the 0.12 refusal
++ Palette loop: add `--force`; update skip-detection to the 0.12 refusal
   text; revise the D-197-I009-011 comment (limit lifted at 0.12.9).
-- Preflight/doc text: default version 0.12.9.
-- No `specify extension add git`; no agent-context extension.
++ Preflight/doc text: default version 0.12.9.
++ No `specify extension add git`; no agent-context extension.
