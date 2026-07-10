@@ -102,6 +102,17 @@ inherit them:
   carrying NO Specrew-internal identifiers (no trust-boundary rule names,
   feature numbers, or proposal references a downstream human cannot
   understand). FR-018/FR-019/SC-007 amended accordingly.
+- Q (2026-07-10, follow-up, maintainer-typed): who runs the remediation
+  machinery? → A (human): "This is a very bad UX, why do you ask the user
+  to run a script. Ask the user for approval to allow to reset the
+  iteration." The human-typed trust boundary binds the DECISION, not the
+  keystrokes: the agent asks a plain approve/deny question in the
+  conversation; the human's recorded approval (the same conversational
+  verdict capture boundary approvals use) is the authorization; the AGENT
+  then executes the remediation command citing that approval as evidence.
+  The human is never asked to copy-paste shell commands. Applies to every
+  remediation/ack/budget-increase teaching in this feature (FR-018,
+  FR-022 amended).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -469,17 +480,21 @@ pin-surface consistency assertions.
 - **FR-017 (W10)**: The fire-time checkpoint tree id MUST pass through the
   detached chain; the child MUST materialize exactly that frozen tree and
   label the run stale-vs-current when the working tree has moved.
-- **FR-018 (W11, amended by clarify 2026-07-10)**: The allowance-halt text
-  (and the reap's surfacing note) MUST be consumer-legible spend-guard
-  teaching: state that the review-loop allowance is exhausted (N of M
-  rounds used), explain that the allowance guards the project's AI-usage
-  spending (each round invokes a paid reviewer), state why a human
-  decision is wanted now, name the EXACT human-typed command that grants
-  more rounds, and state that a bare `--live` rerun will NOT re-review
-  past the allowance. It MUST NOT suggest touching runtime state, and it
-  MUST NOT contain Specrew-internal identifiers (trust-boundary rule
-  names, self feature/iteration numbers, proposal references) — a
-  message-content test asserts their absence.
+- **FR-018 (W11, amended by clarify 2026-07-10 + follow-up)**: The
+  allowance-halt text (and the reap's surfacing note) MUST be
+  consumer-legible spend-guard teaching: state that the review-loop
+  allowance is exhausted (N of M rounds used), explain that the allowance
+  guards the project's AI-usage spending (each round invokes a paid
+  reviewer), state why a human decision is wanted now, and instruct the
+  AGENT to ask the human a plain approve/deny question — on the human's
+  recorded conversational approval the agent executes the remediation
+  itself, citing the approval as authorization evidence (the human is
+  NEVER asked to copy-paste a command; the trust boundary binds the
+  decision, not the keystrokes). The text MUST state that a bare `--live`
+  rerun will NOT re-review past the allowance, MUST NOT suggest touching
+  runtime state, and MUST NOT contain Specrew-internal identifiers
+  (trust-boundary rule names, self feature/iteration numbers, proposal
+  references) — a message-content test asserts their absence.
 - **FR-019 (W12, amended by clarify 2026-07-10 — supersedes the
   workshop's no-increment design)**: The round ceiling is an AI-usage
   spend allowance: EVERY review round counts toward it, including
@@ -510,11 +525,14 @@ pin-surface consistency assertions.
   (terminal fallback, never a clamp); on a plain timeout failure the
   durable record and CLI message MUST teach the sanctioned next steps
   (re-run with a larger explicit budget, or raise
-  `co_review_timeout_seconds`) while the increase itself stays human-typed
-  per T096; the agent never self-escalates. Shipped values (clarify
-  2026-07-09): antigravity 900, claude 600 (field-measured); codex and
-  copilot rows are added from timed reviews on the consumer test project
-  during iteration 002 — absent rows fall to the floor until measured.
+  `co_review_timeout_seconds`) while the increase itself stays
+  human-approved per T096 as amended (clarify 2026-07-10 follow-up: the
+  agent asks a plain approve/deny question and executes on the recorded
+  approval — the human never copy-pastes commands); the agent never
+  self-escalates. Shipped values (clarify 2026-07-09): antigravity 900,
+  claude 600 (field-measured); codex and copilot rows are added from
+  timed reviews on the consumer test project during iteration 002 —
+  absent rows fall to the floor until measured.
 - **FR-023 (W15)**: The manual `--live` door MUST resolve the code-writer
   host, when the flag is absent, via the same env cascade as
   `--list-hosts` (`--code-writer-host` → `SPECREW_HOST` →
