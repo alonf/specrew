@@ -89,6 +89,19 @@ inherit them:
   → A (self-answered from repo doctrine, FR-028 parity): flag-only for
   user-authored files; auto-rewrite only Specrew-owned deployed files whose
   content hash matches a shipped version.
+- Q (2026-07-10, mid-iteration-001, maintainer-typed): what is the round
+  ceiling FOR, and does a fix-responsive round reset it? → A (human): the
+  ceiling is an **AI-usage spend allowance** — its purpose is to stop
+  review spend and let the human approve more; therefore EVERY round
+  counts, including fix-responsive ones ("it is ok to stop on a new
+  finding even if we solved the previous one"). This supersedes the
+  workshop's no-increment design for FR-019. The REAL fix is the halt
+  message UX: consumer-legible ("review loop allowance exhausted…"),
+  explaining that the guard protects AI-usage spending and why the human
+  should approve a reset, naming the exact human-typed command — and
+  carrying NO Specrew-internal identifiers (no trust-boundary rule names,
+  feature numbers, or proposal references a downstream human cannot
+  understand). FR-018/FR-019/SC-007 amended accordingly.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -362,6 +375,11 @@ pin-surface consistency assertions.
 - A machinery-list edit that removes an exclusion → both strips change
   together; the paired reviewer-can-still-see-it test updates in the same
   change (W5).
+- The allowance halts while the only open finding is already resolved in
+  the disposition trail → the halt says so ("previous finding resolved; a
+  fresh round is needed to confirm") and still waits for the human-typed
+  reset — the spend checkpoint applies even to good news (FR-019 as
+  amended).
 - A deny-list annotation with no reason text → treated as unannotated:
   red (205-W1).
 - The env cascade resolves a code-writer host equal to the reviewer host →
@@ -451,15 +469,25 @@ pin-surface consistency assertions.
 - **FR-017 (W10)**: The fire-time checkpoint tree id MUST pass through the
   detached chain; the child MUST materialize exactly that frozen tree and
   label the run stale-vs-current when the working tree has moved.
-- **FR-018 (W11)**: The ceiling-halt escalation text (and the reap's
-  surfacing note) MUST name the exact remediation command
-  (`specrew review --remediate more-time --timeout-seconds <n>`), state
-  that a bare `--live` rerun will NOT re-review past the ceiling, and
-  never suggest touching runtime state.
-- **FR-019 (W12)**: A round whose verdict resolves at least one threaded
-  prior finding (or whose flagged files changed since the finding) MUST
-  NOT increment the round ceiling; only true no-movement rounds climb
-  toward escalation.
+- **FR-018 (W11, amended by clarify 2026-07-10)**: The allowance-halt text
+  (and the reap's surfacing note) MUST be consumer-legible spend-guard
+  teaching: state that the review-loop allowance is exhausted (N of M
+  rounds used), explain that the allowance guards the project's AI-usage
+  spending (each round invokes a paid reviewer), state why a human
+  decision is wanted now, name the EXACT human-typed command that grants
+  more rounds, and state that a bare `--live` rerun will NOT re-review
+  past the allowance. It MUST NOT suggest touching runtime state, and it
+  MUST NOT contain Specrew-internal identifiers (trust-boundary rule
+  names, self feature/iteration numbers, proposal references) — a
+  message-content test asserts their absence.
+- **FR-019 (W12, amended by clarify 2026-07-10 — supersedes the
+  workshop's no-increment design)**: The round ceiling is an AI-usage
+  spend allowance: EVERY review round counts toward it, including
+  fix-responsive rounds. The halt MUST distinguish the states honestly in
+  consumer language — "your previous finding was resolved; a fresh round
+  is needed to confirm" vs "a blocking finding is still open" — so the
+  human's reset decision is informed; the resolved-prior-finding state
+  MUST be computed from the disposition trail, never guessed.
 
 #### Digest identity & budgets (203 W13–W16) — owner: implementer + spec steward; iteration 002
 
@@ -700,9 +728,12 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
 - **SC-006**: Budget resolution resolves catalog defaults per host, the
   600 floor for unknown hosts, and warns at resolution time on explicit
   downgrades — proven by fixture across all four cascade positions. (US3)
-- **SC-007**: The fix-responsive sequence (round 1 finds f1; round 2
-  confirms f1 fixed and finds f2; round 3 confirms f2 fixed) completes
-  with no ceiling halt; a same-findings-no-movement sequence halts. (US3)
+- **SC-007 (amended by clarify 2026-07-10)**: When the allowance is
+  exhausted after a fix-responsive sequence, the halt renders the
+  resolved-prior-finding state and the exact reset command in
+  consumer-legible spend-guard language; a message-content test proves the
+  halt contains zero Specrew-internal identifiers; a human-typed reset
+  resumes review on the next run. (US3)
 - **SC-008**: A fresh `specrew init` on a scratch GitHub-provider project
   yields CI referencing only paths that exist in that project, generic
   triggers, an announced bootstrap commit, and an ignored local host
