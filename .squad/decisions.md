@@ -27830,3 +27830,30 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: c9aa3206
 - **Recorded At**: 2026-07-09T22:48:14Z
+
+## 2026-07-10T18:20:31Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 573ef67a
+- **Recorded At**: 2026-07-10T18:20:31Z
+
+## 2026-07-10T18:36:42Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: ebc245bc
+- **Recorded At**: 2026-07-10T18:36:42Z
+
+## 2026-07-10T20:00:55Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: e9454447
+- **Recorded At**: 2026-07-10T20:00:55Z

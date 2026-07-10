@@ -127,3 +127,6 @@
 {"recorded_at":"2026-07-09T22:34:03Z","schema":"v1","payload":{"boundary_type":"plan","task_id":null,"iteration_number":"","auth_commit_hash":"ff67fe8a","feature_ref":"198-beta2-hardening"},"event_type":"boundary-sync"}
 {"payload":{"boundary_type":"tasks","iteration_number":"","auth_commit_hash":"3740c570","task_id":null,"feature_ref":"198-beta2-hardening"},"schema":"v1","recorded_at":"2026-07-09T22:39:39Z","event_type":"boundary-sync"}
 {"recorded_at":"2026-07-09T22:48:14Z","payload":{"iteration_number":"","boundary_type":"before-implement","feature_ref":"198-beta2-hardening","task_id":null,"auth_commit_hash":"c9aa3206"},"event_type":"boundary-sync","schema":"v1"}
+{"payload":{"auth_commit_hash":"573ef67a","task_id":null,"iteration_number":"","boundary_type":"review-signoff","feature_ref":"198-beta2-hardening"},"event_type":"boundary-sync","schema":"v1","recorded_at":"2026-07-10T18:20:31Z"}
+{"recorded_at":"2026-07-10T18:36:42Z","event_type":"boundary-sync","payload":{"boundary_type":"retro","feature_ref":"198-beta2-hardening","iteration_number":"","task_id":null,"auth_commit_hash":"ebc245bc"},"schema":"v1"}
+{"schema":"v1","event_type":"boundary-sync","recorded_at":"2026-07-10T20:00:55Z","payload":{"boundary_type":"iteration-closeout","feature_ref":"198-beta2-hardening","iteration_number":"","task_id":null,"auth_commit_hash":"e9454447"}}
