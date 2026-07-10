@@ -1,8 +1,8 @@
 name: Specrew Confidence Lane
 
 env:
-  SPEC_KIT_VERSION: '0.8.4'
-  SQUAD_VERSION: '0.9.1'
+  SPEC_KIT_VERSION: '0.12.9'
+  SQUAD_VERSION: '0.11.0'
 
 on:
   schedule:

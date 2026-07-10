@@ -302,13 +302,13 @@ The last line is the one that matters: always verify `node -v` **inside `pwsh`**
 `specrew init` validates the bundled Spec Kit (`specify-cli`) against Specrew's supported baseline and fails closed if it is missing or below the floor:
 
 ```text
-Specrew requires Spec Kit >= 0.8.4 but found 0.0.22.
+Specrew requires Spec Kit >= 0.12.9 but found 0.0.22.
 ```
 
-The supported floor and the latest tested version are declared in `scripts/internal/supported-versions.yml` (`speckit.min` / `speckit.max_tested`) — currently floor **0.8.4**, tested up to **0.9.0**. `specrew init` prints the exact remediation command for the floor; run it (add `--force` to replace an existing tool install):
+The supported floor and the latest tested version are declared in `scripts/internal/supported-versions.yml` (`speckit.min` / `speckit.max_tested`) — currently floor **0.12.9**, tested up to **0.12.9**. `specrew init` prints the exact remediation command for the floor; run it (add `--force` to replace an existing tool install):
 
 ```sh
-uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.4 --force
+uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.12.9 --force
 ```
 
 Then re-run `specrew init`. (`uv` is required — see [getting-started](getting-started.md#1-check-dependencies).) The `@v…` tag tracks Specrew's supported floor; if the command `specrew init` prints names a different version, prefer the printed one — it is generated from the runtime baseline, not from this doc.

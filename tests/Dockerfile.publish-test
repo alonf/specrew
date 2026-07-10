@@ -22,8 +22,8 @@ FROM ubuntu:22.04
 # operations and shell out to the specify (spec-kit) and squad CLIs. The minimal
 # PowerShell base image has none of these. Versions are pinned to match the CI
 # contract lane (.github/workflows/specrew-ci.yml SPEC_KIT_VERSION / SQUAD_VERSION).
-ARG SPEC_KIT_VERSION=0.8.4
-ARG SQUAD_VERSION=0.9.1
+ARG SPEC_KIT_VERSION=0.12.9
+ARG SQUAD_VERSION=0.11.0
 ENV PATH="/root/.local/bin:${PATH}"
 
 # Install PowerShell from Microsoft's apt package feed + base toolchain.
