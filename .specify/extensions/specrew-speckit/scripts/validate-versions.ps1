@@ -7,7 +7,7 @@
 
 .DESCRIPTION
     Checks that Spec Kit and Squad are installed at versions compatible with Specrew.
-    Required versions default to Spec Kit >= 0.8.4 and Squad >= 0.9.1.
+    Required versions default to Spec Kit >= 0.12.9 and Squad >= 0.11.0.
 
 .PARAMETER SpecKitVersion
     Installed Spec Kit version (optional, auto-detected if omitted).
@@ -35,8 +35,8 @@
 param(
     [string]$SpecKitVersion,
     [string]$SquadVersion,
-    [string]$MinimumSpecKitVersion = '0.8.4',
-    [string]$MinimumSquadVersion = '0.9.1',
+    [string]$MinimumSpecKitVersion = '0.12.9',
+    [string]$MinimumSquadVersion = '0.11.0',
     [switch]$PassThru
 )
 
