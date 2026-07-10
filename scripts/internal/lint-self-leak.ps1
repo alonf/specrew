@@ -55,6 +55,15 @@ function Read-SelfLeakDenyList {
     if ($null -eq $parsed.schema_version -or [string]::IsNullOrWhiteSpace([string]$parsed.schema_version)) {
         throw ("Deny-list at {0} has no schema_version." -f $Path)
     }
+    # The REPO-side reader is version-LOCKED (the asymmetric contract): this lane and the list
+    # ship from the same repo, so an unknown schema_version means changed semantics this reader
+    # cannot honor - scanning anyway could false-green. Exit-2 loud. (The iteration-004
+    # CONSUMER-side reader is the deliberately fail-open-WARN one; codex review catch,
+    # run de8951f5.)
+    $supportedSchemaVersions = @('1.0')
+    if ([string]$parsed.schema_version -notin $supportedSchemaVersions) {
+        throw ("Deny-list at {0} has schema_version '{1}' but this lane supports only: {2}. A newer list needs the matching lane." -f $Path, [string]$parsed.schema_version, ($supportedSchemaVersions -join ', '))
+    }
     if ($null -eq $parsed.entries -or @($parsed.entries).Count -eq 0) {
         throw ("Deny-list at {0} has no entries." -f $Path)
     }

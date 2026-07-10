@@ -153,6 +153,10 @@ else { Write-Pass "corrupt deny-list fails loud with exit 2" }
 Remove-Item -Recurse -Force (Join-Path $fixture 'deny-list.json')
 $result = Invoke-Lint -FixtureRoot $fixture
 if ($result.ExitCode -ne 2) { Write-Fail "missing deny-list: expected exit 2, got $($result.ExitCode)" } else { Write-Pass "missing deny-list fails loud with exit 2" }
+'{ "schema_version": "2.0", "entries": [ { "pattern": "x", "class": "registry", "reason": "r", "source": "s", "added": "2026-07-11" } ] }' | Set-Content -LiteralPath (Join-Path $fixture 'deny-list.json') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 2) { Write-Fail "unsupported schema_version 2.0: expected exit 2 (version-locked repo reader, run de8951f5), got $($result.ExitCode)" }
+else { Write-Pass "unsupported schema_version fails loud with exit 2 (repo reader is version-locked)" }
 Remove-Item -Recurse -Force $fixture
 
 Write-Host "Test 7: red output teaches the escape and the rule doc (FR-034)"
