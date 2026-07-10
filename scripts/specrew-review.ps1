@@ -710,14 +710,16 @@ if ($Live) {
     if ($coReviewEngine -eq 'worktree') {
         try {
             . (Join-Path $PSScriptRoot 'internal/continuous-co-review/co-review-service.ps1')
-            # Budget resolution (D-197-I010-006 drift fix): explicit --timeout-seconds wins; otherwise the SAME
-            # config-aware default as the auto path (co_review_timeout_seconds, 300s baseline - the iteration-002
-            # lesson "a 120s budget cut a real review mid-flight" was fixed on the navigator but this door kept a
-            # hardcoded 120 for two months; first exercised by a downstream project 2026-07-09 and it starved an
-            # agentic reviewer verbatim). Per-host budget floors are the Proposal 102 catalog follow-up.
-            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds }
-            elseif (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -Default 300) }
-            else { 300 }
+            # Budget resolution (F-198 FR-021/FR-022, supersedes the D-197-I010-006 flat default):
+            # explicit --timeout-seconds wins (explicit-beats-config) -> project config -> catalog
+            # per-host default -> the 600-second floor. When an explicit value UNDERCUTS what the
+            # chain would resolve, warn AT RESOLUTION TIME so the operator sees the downgrade
+            # before losing a review cycle to it.
+            $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName ([string]$parsedArgs.Host)) } else { 600 }
+            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
+            if ([int]$parsedArgs.TimeoutSeconds -gt 0 -and [int]$parsedArgs.TimeoutSeconds -lt $resolvedBudget) {
+                Write-Host ("[co-review] NOTE: your explicit budget ({0}s) is below the resolved budget for this setup ({1}s). Reviews here typically need the larger budget - a too-small one can end the review before it produces anything. If it gets cut short, ask me and I'll request your approval to re-run with the larger budget." -f [int]$parsedArgs.TimeoutSeconds, $resolvedBudget) -ForegroundColor Yellow
+            }
             # T093/FR-035: an explicit `--host X --live` is a reviewer-host REQUEST for this run -
             # honoured (even same-host, labelled) or surfaced, never silently substituted.
             $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolvedProjectPath -RunId ([string]$parsedArgs.RunId) -BaselineRef ([string]$parsedArgs.BaselineRef) -CodeWriterHost ([string]$parsedArgs.CodeWriterHost) -RequestedHost ([string]$parsedArgs.Host) -TimeoutSeconds $tos
@@ -742,6 +744,13 @@ if ($Live) {
                     if ($reason -match 'no-authorized-reviewer-host') {
                         Write-Host 'No reviewer host is authorized. Authorize one (independent of the code-writer):'
                         Write-Host '    specrew review --host <claude|codex|...> --authorization-ref <ref>'
+                    }
+                    elseif ($reason -match 'timeout|budget') {
+                        # F-198 FR-022 teaching (consumer-legible, amended approval UX): the sanctioned
+                        # next step is a bigger budget approved by the human - the assistant asks, the
+                        # human approves, the assistant re-runs. Never runtime-state surgery.
+                        Write-Host ("Inspect: {0}" -f $run.run_dir)
+                        Write-Host ("This looks like a review budget kill ({0}s was not enough). Ask your assistant to request your approval for a longer budget and re-run - or raise co_review_timeout_seconds in .specrew/config.yml yourself. A plain re-run with the same budget will likely die the same way." -f $tos) -ForegroundColor Yellow
                     }
                     else { Write-Host ("Inspect: {0}" -f $run.run_dir) }
                     Write-Host 'Do NOT substitute another review for this - the co-review must run to produce gate evidence.' -ForegroundColor Yellow

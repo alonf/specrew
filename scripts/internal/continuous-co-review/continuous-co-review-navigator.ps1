@@ -97,18 +97,28 @@ function Get-ContinuousCoReviewNavigatorTimeoutSeconds {
     # quote-strip + inline-comment-tolerant grammar). This is the ADAPTER/host-call budget (how long the
     # reviewer process may run); the launcher's own supervisor TimeoutSec is kept ABOVE it (see
     # Invoke-ContinuousCoReviewNavigator) so the adapter times out gracefully before the supervisor hard-kills.
-    param([Parameter(Mandatory)][string]$RepoRoot, [int]$Default = 300)
+    # F-198 FR-022 resolution chain: explicit flag (handled by CALLERS - explicit always wins,
+    # DEC-197-I010-007) -> project config `co_review_timeout_seconds` -> catalog per-host
+    # `default_timeout_seconds` (when -HostName is known) -> the 600-second FLOOR (maintainer
+    # ruling: "300 is too short according to all our tests"; the floor is the terminal
+    # fallback, never a clamp on explicit values).
+    param([Parameter(Mandatory)][string]$RepoRoot, [int]$Default = 600, [AllowNull()][string]$HostName)
     $configPath = Join-Path $RepoRoot '.specrew/config.yml'
-    if (-not (Test-Path -LiteralPath $configPath -PathType Leaf)) { return $Default }
-    try {
-        foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
-            if ($line -match '^\s*co_review_timeout_seconds:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
-                $parsed = 0
-                if ([int]::TryParse(($Matches['value'].Trim()), [ref]$parsed) -and $parsed -gt 0) { return $parsed }
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        try {
+            foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
+                if ($line -match '^\s*co_review_timeout_seconds:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
+                    $parsed = 0
+                    if ([int]::TryParse(($Matches['value'].Trim()), [ref]$parsed) -and $parsed -gt 0) { return $parsed }
+                }
             }
         }
+        catch { $null = $_ }
     }
-    catch { $null = $_ }
+    if (-not [string]::IsNullOrWhiteSpace($HostName) -and (Get-Command -Name 'Get-ContinuousCoReviewHostDefaultTimeoutSeconds' -ErrorAction SilentlyContinue)) {
+        $catalogValue = Get-ContinuousCoReviewHostDefaultTimeoutSeconds -HostName $HostName
+        if ($null -ne $catalogValue -and [int]$catalogValue -gt 0) { return [int]$catalogValue }
+    }
     return $Default
 }
 
