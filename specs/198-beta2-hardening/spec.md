@@ -128,6 +128,24 @@ inherit them:
   The human is never asked to copy-paste shell commands. Applies to every
   remediation/ack/budget-increase teaching in this feature (FR-018,
   FR-022 amended).
+- Q (2026-07-11, field incident DEC-198-GOV-001): the pending-artifact
+  fallback verdict capture recorded "approved for retro" that the human
+  never gave — it read the Stop hook's own blocking feedback (machinery
+  text injected as a user-role transcript turn, containing
+  approval-shaped wording) as a human approval and synthesized the
+  verdict phrase, 32 seconds after the prior capture and while the
+  human's actual reply was a send-back. → A (human, retro
+  approve-with-instructions): folded into iteration 003 as explicit
+  requirements FR-041..FR-044 with tasks T030..T033 — machinery-turn
+  exclusion, tokenizer tightening, exact-sequence regression fixtures,
+  and a designed correction door that APPENDS invalidation records
+  (original entry identity, correcting authority, reason, timestamp,
+  resulting boundary state) instead of deleting history. All remaining
+  ledger entries are audited against the transcript BEFORE iteration 002
+  closeout (compact per-entry record; no automatic alterations; any
+  further invalid entry requires its own explicit correction decision).
+  Containment and T020 keep priority; the capture fix is sized at
+  iteration 003's design-analysis, never displacing them silently.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -658,6 +676,32 @@ pin-surface consistency assertions.
   CHANGELOG, README, Specrew.psd1 incl. FileList) before the tag is
   pushed; `docs/operations/psgallery-release-credentials.md` MUST be
   rewritten to describe the auto-publish reality.
+
+#### Verdict-capture integrity (field incident DEC-198-GOV-001, maintainer-instructed 2026-07-11)
+
+- **FR-041 (GOV-001a)**: Human-verdict capture MUST consider only
+  genuinely human-typed turns as verdict evidence: hook-injected and
+  machinery-generated transcript turns (host hook blocking feedback,
+  injected governance/system text) are excluded regardless of their
+  transcript role labeling. Paired tests: a genuine human verdict
+  captures; the identical text arriving as hook feedback does not.
+- **FR-042 (GOV-001b)**: Approval tokenization MUST NOT parse
+  approval-shaped text that merely mentions, quotes, or teaches about
+  approval (e.g. "if you already approved, please re-confirm") as an
+  approval verdict; only an actual human verdict utterance authorizes.
+  Abuse-path tests carry message-content assertions per NFR-007.
+- **FR-043 (GOV-001c)**: Regression fixtures MUST reproduce the exact
+  2026-07-11 fabrication sequence — rendered boundary packet, Stop-hook
+  blocking feedback arriving as a user-role turn, no human reply — and
+  assert that capture records nothing (no ledger entry, no pending
+  artifact consumption).
+- **FR-044 (GOV-001d)**: The authorization ledger MUST gain a designed
+  correction mechanism that APPENDS an invalidation/correction record —
+  preserving the original entry's identity, the correcting authority,
+  the reason, the timestamp, and the resulting boundary state — never
+  silently deleting history; every effective-state reader MUST honor
+  invalidation records. (The 2026-07-11 surgery was a one-off deletion
+  because no door existed; this requirement retires that class.)
 
 ### Non-Functional Requirements
 
