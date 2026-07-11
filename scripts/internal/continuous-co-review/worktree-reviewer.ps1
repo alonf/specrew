@@ -397,6 +397,100 @@ function Get-ContinuousCoReviewGenerousBudget {
     return [math]::Min([int]($DefaultSeconds * $factor), $CapSeconds)
 }
 
+function Get-ContinuousCoReviewWorktreeSourceHashes {
+    # FR-010 mutation-evidence helper: a map { relative-path -> sha256 } of the worktree's existing
+    # files (skipping the reviewer's own .review/ output area and .git). Comparing this before vs
+    # after a verification run makes any MUTATION of an existing source file visible - new files
+    # (legitimate test output) do not perturb existing entries, so the delta isolates the read-only
+    # violation the reviewer must never commit.
+    param([Parameter(Mandatory)][string]$WorktreePath)
+    $map = @{}
+    $rootFull = (Resolve-Path -LiteralPath $WorktreePath).Path.TrimEnd([char]'\', [char]'/')
+    foreach ($f in @(Get-ChildItem -LiteralPath $WorktreePath -Recurse -File -Force -ErrorAction SilentlyContinue)) {
+        $rel = [System.IO.Path]::GetRelativePath($rootFull, $f.FullName).Replace('\', '/')
+        if ($rel -like '.review/*' -or $rel -like '.git/*') { continue }
+        try { $map[$rel] = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256 -ErrorAction Stop).Hash } catch { $map[$rel] = 'unreadable' }
+    }
+    return $map
+}
+
+function Invoke-ContinuousCoReviewBoundedVerification {
+    # FR-010 (203 W3) + the maintainer's REQUIRED bounded in-worktree verification: run the DECLARED
+    # verification commands INSIDE the confined worktree, each with (1) a TIMEOUT and process
+    # CONTAINMENT (the whole child process tree is killed on timeout), (2) CAPPED output capture, and
+    # (3) PRE/POST MUTATION EVIDENCE (existing-file hashes before vs after, so a verification that
+    # mutated the read-only source is recorded). It runs ONLY the declared command set - never an
+    # unrestricted whole-repository suite. Returns one record per command.
+    param(
+        [Parameter(Mandatory)][string]$WorktreePath,
+        [string[]]$DeclaredCommands = @(),
+        # Glob patterns for LEGITIMATE output paths (e.g. '*.log', 'coverage/*'). A NEW file is exempt
+        # from the mutation record ONLY if it matches one of these; every other add/delete/modify of
+        # the read-only source is a mutation.
+        [string[]]$AllowedOutputPaths = @(),
+        [int]$TimeoutSeconds = 120,
+        [int]$MaxOutputBytes = 65536
+    )
+    $results = New-Object System.Collections.Generic.List[object]
+    foreach ($cmd in @($DeclaredCommands)) {
+        if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
+        $preHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $WorktreePath
+        # Process containment via ProcessStartInfo (the repo's console-immune pattern): a child pwsh
+        # with cwd = the worktree, redirected streams read ASYNC (no pipe deadlock), and Kill($true)
+        # to reap the ENTIRE process tree on timeout.
+        $psi = [System.Diagnostics.ProcessStartInfo]::new()
+        $psi.FileName = (Get-Process -Id $PID).Path
+        foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', $cmd)) { [void]$psi.ArgumentList.Add($a) }
+        $psi.WorkingDirectory = $WorktreePath
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.UseShellExecute = $false
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        $soTask = $proc.StandardOutput.ReadToEndAsync()
+        $seTask = $proc.StandardError.ReadToEndAsync()
+        $timedOut = -not $proc.WaitForExit([int]($TimeoutSeconds * 1000))
+        if ($timedOut) { try { $proc.Kill($true) } catch { $null = $_ } ; [void]$proc.WaitForExit() }
+        $exit = if ($timedOut) { $null } else { [int]$proc.ExitCode }
+        $out = ''
+        try { $out = ([string]$soTask.Result + [string]$seTask.Result) } catch { $out = '' }
+        # Cap the captured output at MaxOutputBytes UTF-8 BYTES (not characters): decode the first N
+        # bytes so a verbose/hostile command cannot blow the record size. A partial trailing multibyte
+        # char degrades to U+FFFD - acceptable for a bounded capture.
+        $truncated = $false
+        if (-not [string]::IsNullOrEmpty($out)) {
+            $outBytes = [System.Text.Encoding]::UTF8.GetBytes($out)
+            if ($outBytes.Length -gt $MaxOutputBytes) {
+                $out = [System.Text.Encoding]::UTF8.GetString($outBytes, 0, $MaxOutputBytes)
+                $truncated = $true
+            }
+        }
+        $postHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $WorktreePath
+        # Mutation evidence: the reviewer is READ-ONLY, so ADDED, DELETED, and MODIFIED files ALL count
+        # as mutations. A NEW file is exempt ONLY when it matches the explicit output-path allowlist -
+        # otherwise a reviewer could plant new source that steers the very verification it then runs.
+        $mutatedPaths = New-Object System.Collections.Generic.List[string]
+        foreach ($k in $preHashes.Keys) {
+            if (-not $postHashes.ContainsKey($k) -or $postHashes[$k] -ne $preHashes[$k]) { [void]$mutatedPaths.Add($k) }   # deleted or modified
+        }
+        foreach ($k in $postHashes.Keys) {
+            if ($preHashes.ContainsKey($k)) { continue }
+            $allowed = $false
+            foreach ($pat in @($AllowedOutputPaths)) { if (-not [string]::IsNullOrWhiteSpace($pat) -and ($k -like $pat)) { $allowed = $true; break } }
+            if (-not $allowed) { [void]$mutatedPaths.Add($k) }   # unexplained new file
+        }
+        $results.Add([pscustomobject]@{
+                command          = $cmd
+                exit_code        = $exit
+                timed_out        = $timedOut
+                output           = [string]$out
+                output_truncated = $truncated
+                source_mutated   = ($mutatedPaths.Count -gt 0)
+                mutated_paths    = $mutatedPaths.ToArray()
+            }) | Out-Null
+    }
+    return $results.ToArray()
+}
+
 function Get-ContinuousCoReviewSlimPrompt {
     # The SLIM prompt (a few KB) — the reviewer reads the diff + design + browses/runs the project itself.
     # Round-aware: round 1 reviews; later rounds verify the prior findings are resolved; at the FINAL round the
@@ -448,9 +542,21 @@ function Get-ContinuousCoReviewSlimPrompt {
     return @"
 You are the Specrew continuous co-reviewer (a fresh-context, design- AND process-conformance reviewer).
 $scopeBlock$designContextBlock$evidenceBlock
-Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN any
-command (tests, build, lint, search) you need to verify the change — but you are READ-ONLY on the source: do
-NOT modify, fix, or patch any file. Your job is to find issues, not fix them.
+Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN
+verification you need — but you are READ-ONLY on the source: do NOT modify, fix, or patch any file. Your job is
+to find issues, not fix them.
+
+WORKTREE CONFINEMENT: this working directory is a DISPOSABLE, ISOLATED copy — NOT the real project. It lives
+OUTSIDE the origin repository (no upward path reaches it), the governance machinery (.squad/, .specrew/, .specify/)
+is stripped, and origin-absolute paths are relativized to <project>. Stay INSIDE it: do not try to locate, read,
+or reach the origin project, and do not depend on absolute paths. Anything intentionally absent here — the stripped
+machinery, a relativized path — is EXPECTED; treat a reference to it as unverifiable-here, never as a defect.
+
+BOUNDED VERIFICATION: when you run tests/build to verify a claim, run ONLY the implementer's DECLARED verification
+commands (the ones the change says validate it) — never an unrestricted whole-repository sweep. Each such run is
+executed with a timeout and process containment (a hung command is killed), its captured output is capped, and the
+worktree is hashed before and after so any MUTATION of existing source is recorded (you are READ-ONLY: a
+verification that edits existing source is itself a finding).
 
 1. Read .review/changes.diff — this is the change-set under review (what changed).
 2. Read .review/design/ — the spec + design-analysis (PROSE intent) the change must conform to, AND

@@ -272,6 +272,7 @@
         'scripts/internal/continuous-co-review/worktree-review-detached-entry.ps1',
         'scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1',
         'scripts/internal/continuous-co-review/worktree-reviewer.ps1',
+        'scripts/internal/continuous-co-review/reviewer-spawn-contract.md',
         'scripts/internal/coordinator-prompt-surgery.ps1',
         'scripts/internal/coordinator-resume.ps1',
         'scripts/internal/dashboard-renderer.ps1',

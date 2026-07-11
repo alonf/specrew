@@ -1,11 +1,11 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T014
-**Tasks Remaining**: T015, T016, T017, T018, T019, T030, T031, T032, T033, T034b
-**In Progress**: T015 (next)
+**Last Completed Task**: T015
+**Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
+**In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T18:40:00Z
+**Updated**: 2026-07-11T20:20:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -87,8 +87,20 @@
   StrictMode on a host object lacking independence_source (test mocks) -
   now defensive; four shared-engine F-197 suites added to the F-198 CI
   registry so this class is caught (the NFR-007 gap that let it slip).
-- T015 (confinement contract + REQUIRED bounded in-worktree verification)
-  is next in the Option B order.
+- T015 done (FR-010/FR-013): the confinement contract (worktree-only
+  rules + what-is-absent teaching) is written into the reviewer slim
+  prompt and captured durably in reviewer-spawn-contract.md; the REQUIRED
+  bounded in-worktree verification (Invoke-ContinuousCoReviewBoundedVerification)
+  runs ONLY declared commands, each with a timeout + process-tree kill on
+  expiry, a UTF-8 BYTE output cap, and pre/post mutation evidence where
+  ADDED/DELETED/MODIFIED all count (a new file is exempt only via an
+  explicit output-path allowlist). Two maintainer honesty corrections
+  applied (add/delete as mutations + byte-not-char cap); the
+  return @(List) -> ToArray() binding fix per the maintainer diagnosis.
+  Paired suite 9/9 (timeout, process-tree kill, byte cap, add/delete/
+  modify mutation, allowed-output, empty); added to the F-198 CI registry
+  (now 15 suites, all green).
+- T016 (containment detector, T100 registry) is next in the Option B order.
 
 ## Notes
 

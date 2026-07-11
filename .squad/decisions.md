@@ -28248,3 +28248,11 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 
 - The ceiling escalation (run 98481d9f) surfaced the T020 CONSUMER-LEGIBLE halt text itself (spend-guard explanation, 3-of-2 rounds, the reset command, zero internal identifiers) - the UX working as designed.
 - The held finding was the two 8d3f5a6b findings, BOTH now fixed (finding 1 wired 6fc654cd, finding 2 exec-bit 0b9fd024; both ancestors of HEAD, suites green). Cleared with `--remediate resolved-against-disk --fix-evidence-ref <HEAD>`: the honesty guard verified the fix is committed, the latch cleared (blocking=false, round=0), a resolved-against-disk disposition recorded. NO more-time reset, NO human dance - the exact stale-latch tax T020 was built to end, demonstrated end-to-end on its first real use.
+
+## 2026-07-11T20:20:00Z — T015 done (confinement contract + bounded in-worktree verification, FR-010/FR-013)
+
+- **Confinement contract**: worktree-only rules + what-is-absent teaching written into the reviewer slim prompt; durable source of truth in reviewer-spawn-contract.md (FileList-registered).
+- **Bounded verification (Invoke-ContinuousCoReviewBoundedVerification)**: runs ONLY declared commands, each with a timeout + Kill(entireProcessTree) on expiry, a UTF-8 BYTE output cap, and pre/post mutation evidence.
+- **Two maintainer honesty corrections applied**: (1) ADDED/DELETED/MODIFIED all count as mutations - a new file is exempt ONLY via an explicit AllowedOutputPaths allowlist (so a reviewer cannot plant new source that steers its own verification); (2) MaxOutputBytes now enforces a real UTF-8 BYTE limit, not characters.
+- **Binding fix (maintainer diagnosis, exactly right)**: the "Argument types do not match" at the call boundary was `return @($results)` over List[object] failing to enumerate; changed to `return $results.ToArray()`. No new launch helper needed.
+- **Proof**: paired suite 9/9 (read-only no-mutation, timeout, process-tree kill of a spawned child, byte cap, modified/deleted/added mutation, allowed-output exempt, empty-command); added to the F-198 CI registry - 15 suites all green.
