@@ -47,22 +47,37 @@ Remove-Item -Recurse -Force $fx
 
 Write-Host "Test 5: independence provenance - flag beats env, env beats unverified (FR-023)"
 . (Join-Path $repoRoot 'scripts\internal\continuous-co-review\worktree-review-orchestrator.ps1')
+# Hermetic fixture (independent-review catch): the resolver authorizes hosts from
+# <RepoRoot>/.specrew/reviewer-hosts.json, which is untracked runtime state - absent in a
+# clean checkout, so pointing at the live repo made these assertions depend on ambient
+# authorization. The fixture carries its own authorized codex entry, like Tests 2-4.
+$fx5 = Join-Path ([System.IO.Path]::GetTempPath()) ("provenance-fixture-{0}" -f [guid]::NewGuid().ToString('N').Substring(0, 8))
+New-Item -ItemType Directory -Force -Path (Join-Path $fx5 '.specrew') | Out-Null
+@{
+    schema_version = '1.0'
+    hosts          = @(@{
+            host = 'codex'; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'
+            allowed = $true; installed = $true; review_class_rank = 85; model_source = 'human-entered'
+            cost_class = 'non-default'; authorization_ref = 'fixture-authorized'; fallback_allowed = $false
+            timeout_seconds = 0
+        })
+} | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $fx5 '.specrew\reviewer-hosts.json') -Encoding UTF8
 $savedHost = $env:SPECREW_HOST; $savedActive = $env:SPECREW_ACTIVE_HOST
 try {
     $env:SPECREW_HOST = 'claude'; $env:SPECREW_ACTIVE_HOST = $null
-    $r = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $repoRoot -CodeWriterHost 'claude' -RequestedHost 'codex'
+    $r = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $fx5 -CodeWriterHost 'claude' -RequestedHost 'codex'
     if ($null -eq $r -or [string]$r.independence_source -ne 'flag') { Write-Fail "explicit flag must record independence_source=flag, got: $($r | ConvertTo-Json -Compress)" }
     else { Write-Pass "explicit -CodeWriterHost records independence_source=flag" }
-    $r = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $repoRoot -CodeWriterHost '' -RequestedHost 'codex'
+    $r = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $fx5 -CodeWriterHost '' -RequestedHost 'codex'
     if ($null -eq $r -or [string]$r.independence_source -ne 'env') { Write-Fail "env cascade must record independence_source=env, got: $($r | ConvertTo-Json -Compress)" }
     elseif ([string]$r.independence -ne 'independent') { Write-Fail "env-resolved claude code-writer vs codex reviewer must label independent, got '$($r.independence)'" }
     else { Write-Pass "SPECREW_HOST cascade records independence_source=env and upgrades the label to independent" }
     $env:SPECREW_HOST = $null
-    $r = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $repoRoot -CodeWriterHost '' -RequestedHost 'codex'
+    $r = Resolve-ContinuousCoReviewReviewerHost -RepoRoot $fx5 -CodeWriterHost '' -RequestedHost 'codex'
     if ($null -eq $r -or [string]$r.independence_source -ne 'unverified') { Write-Fail "no flag + no env must record independence_source=unverified, got: $($r | ConvertTo-Json -Compress)" }
     else { Write-Pass "no flag/env stays unverified (SEC-004 fail-closed treatment unchanged)" }
 }
-finally { $env:SPECREW_HOST = $savedHost; $env:SPECREW_ACTIVE_HOST = $savedActive }
+finally { $env:SPECREW_HOST = $savedHost; $env:SPECREW_ACTIVE_HOST = $savedActive; Remove-Item -Recurse -Force $fx5 -ErrorAction SilentlyContinue }
 
 Write-Host ""
 if ($script:failCount -gt 0) { Write-Host "$script:failCount test(s) FAILED" -ForegroundColor Red; exit 1 }
