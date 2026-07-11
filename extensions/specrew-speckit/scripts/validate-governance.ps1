@@ -1584,15 +1584,21 @@ function Test-BoundaryStateAdvanceVerdict {
     Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching CURRENT-CYCLE boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
 
     # FR-003 (hardening feature): the unauthorized working boundary is the NORMAL between-packet-and-reply
-    # state (WARN above). But when the enforcement cursor's own pending ask names a DIFFERENT
-    # boundary than the working one, the session moved past an unresolved approval - the
-    # skipped-boundary state the sync ratchet refuses at advance time. At validation time it
-    # is a FAIL: the work recorded under the skipped step has no human decision behind it.
-    $enforcement = $context.PSObject.Properties['boundary_enforcement']
-    $pendingProp = if ($null -ne $enforcement -and $null -ne $enforcement.Value) { $enforcement.Value.PSObject.Properties['pending_next_boundary'] } else { $null }
-    $pendingNext = if ($null -ne $pendingProp) { [string]$pendingProp.Value } else { '' }
-    if (-not [string]::IsNullOrWhiteSpace($pendingNext) -and $pendingNext -ne $boundary) {
-        Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: the session's working boundary is '{0}' but the unresolved approval ask is for '{1}' - a human-judgment step was passed without its verdict. Reconcile before closing anything: approve the waiting step when the assistant asks, or roll back to the last approved commit (the assistant asks for explicit confirmation first)." -f $boundary, $pendingNext)
+    # state (WARN above). The FAIL discriminator - was a human-judgment step PASSED, not merely
+    # awaited? - is likewise derived from the shared primitives (run-2594b7b5 round-2 catch: a raw
+    # pending_next_boundary field read here was still a per-site copy). A multi-boundary gap, or an
+    # earliest pending ask that is not the working boundary itself, means the session moved past an
+    # unresolved approval; the work recorded under the skipped step has no human decision behind it.
+    try {
+        $pendingCrossing = Get-SpecrewPendingBoundaryCrossing -LastAuthorizedBoundary ([string]$unreconciledCrossing.LastAuthorized) -WorkingBoundary ([string]$unreconciledCrossing.Boundary)
+        $earliestAsk = [string]$pendingCrossing.PendingToBoundary
+        $workingCanonical = [string]$unreconciledCrossing.Boundary
+        if ([bool]$pendingCrossing.IsMultiBoundaryGap -or ((-not [string]::IsNullOrWhiteSpace($earliestAsk)) -and $earliestAsk -ne $workingCanonical)) {
+            Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: the session's working boundary is '{0}' but the unresolved approval ask is for '{1}' - a human-judgment step was passed without its verdict. Reconcile before closing anything: approve the waiting step when the assistant asks, or roll back to the last approved commit (the assistant asks for explicit confirmation first)." -f $workingCanonical, $earliestAsk)
+        }
+    }
+    catch {
+        Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: {0}" -f $_.Exception.Message)
     }
 }
 

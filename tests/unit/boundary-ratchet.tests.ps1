@@ -4,9 +4,11 @@
 # idempotent on re-fire. Fixtures use TEMP project roots only (hardening-gate
 # condition-b: never this session's live .specrew state).
 #
-# The FR-003 validator branch (skipped-boundary-unreconciled) shares its input fields
-# with the standing state-advance-without-verdict check inside validate-governance.ps1
-# and is exercised there; this file covers the shared primitive both consume.
+# The FR-003 validator checks (state-advance-without-verdict WARN + the
+# skipped-boundary-unreconciled FAIL discriminator) consume Get-SpecrewUnreconciledBoundary
+# and Get-SpecrewPendingBoundaryCrossing directly (run-2594b7b5 review catches: the earlier
+# inline field copies were cycle-blind); this file proves those shared primitives, incl. the
+# cycle-scoped matcher every authorization read routes through.
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
