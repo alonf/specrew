@@ -195,6 +195,63 @@ catch { $threw = $true }
 if (-not $threw) { Write-Fail "the ratchet gate passed on an unreadable ledger (fail open)" } else { Write-Pass "the ratchet gate refuses to advance over an unreadable ledger" }
 Remove-Item -Recurse -Force $fx
 
+Write-Host "Test 13: live gate (Test-SpecrewBoundaryAuthorization) is cycle-scoped - the run-2594b7b5 reviewer repro"
+# The reviewer's exact live repro: cursor=iteration-closeout (cycle closed, nothing since),
+# a single prior-cycle clarify->plan entry with a human. The gate authorized it (name match
+# across unscoped history). It must BLOCK: a closed cycle authorizes nothing further.
+$fx = New-RatchetFixture -WorkingBoundary 'plan' -LastAuthorized 'iteration-closeout' -History @(New-HistoryEntry -From 'clarify' -To 'plan' -Hash 'a1a1a1a10001')
+$auth = Test-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'clarify' -RequestedBoundary 'plan'
+if ([bool]$auth.Authorized) { Write-Fail "prior-cycle clarify->plan entry authorized the new cycle's crossing (the reviewer's live repro, cycle-blind)" }
+else { Write-Pass "closed-cycle cursor blocks the prior-cycle name match (Decision: $($auth.Decision))" }
+Remove-Item -Recurse -Force $fx
+# Paired legitimate path: the same-cycle authorization (the cycle-reset edge itself) authorizes.
+$fx = New-RatchetFixture -WorkingBoundary 'plan' -LastAuthorized 'plan' -History @(
+    (New-HistoryEntry -From 'retro' -To 'iteration-closeout' -Hash 'a1a1a1a10002'),
+    (New-HistoryEntry -From 'iteration-closeout' -To 'plan' -Hash 'a1a1a1a10003')
+)
+$auth = Test-SpecrewBoundaryAuthorization -ProjectRoot $fx -CurrentBoundary 'iteration-closeout' -RequestedBoundary 'plan'
+if (-not [bool]$auth.Authorized) { Write-Fail "the current cycle's own reset-edge authorization must authorize, got Decision: $($auth.Decision)" }
+else { Write-Pass "the same-cycle reset-edge authorization authorizes the gate" }
+Remove-Item -Recurse -Force $fx
+
+Write-Host "Test 14: first crossing of a NEW cycle - no reset edge recorded yet, prior cycle cannot leak forward"
+# History ends at the prior cycle's closeout (no iteration-closeout->plan edge exists yet).
+# The primitive must report the new cycle's plan crossing unreconciled even though a
+# prior-cycle plan entry exists further back.
+$fx = New-RatchetFixture -WorkingBoundary 'plan' -LastAuthorized 'iteration-closeout' -History @(
+    (New-HistoryEntry -From 'clarify' -To 'plan' -Hash 'b2b2b2b20001'),
+    (New-HistoryEntry -From 'plan' -To 'tasks' -Hash 'b2b2b2b20002'),
+    (New-HistoryEntry -From 'retro' -To 'iteration-closeout' -Hash 'b2b2b2b20003')
+)
+$un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
+if ($null -eq $un -or $un.Boundary -ne 'plan') { Write-Fail "first-crossing-of-new-cycle must stay unreconciled, got: $($un | ConvertTo-Json -Compress)" }
+else { Write-Pass "new-cycle first crossing stays unreconciled; the prior cycle's plan entry cannot leak forward" }
+Remove-Item -Recurse -Force $fx
+
+Write-Host "Test 15: prior cycle's closeout entry cannot reconcile the current cycle's closeout crossing"
+# Mid-cycle entries exist for the current cycle, its closeout is unauthorized; the prior
+# cycle's retro->iteration-closeout entry sits further back. The closeout-terminator rule
+# must stop the walk instead of matching across the cycle edge.
+$fx = New-RatchetFixture -WorkingBoundary 'iteration-closeout' -LastAuthorized 'retro' -History @(
+    (New-HistoryEntry -From 'retro' -To 'iteration-closeout' -Hash 'c3c3c3c30001'),
+    (New-HistoryEntry -From 'iteration-closeout' -To 'plan' -Hash 'c3c3c3c30002'),
+    (New-HistoryEntry -From 'plan' -To 'tasks' -Hash 'c3c3c3c30003'),
+    (New-HistoryEntry -From 'review-signoff' -To 'retro' -Hash 'c3c3c3c30004')
+)
+$un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
+if ($null -eq $un -or $un.Boundary -ne 'iteration-closeout') { Write-Fail "the prior cycle's closeout entry reconciled the current closeout crossing, got: $($un | ConvertTo-Json -Compress)" }
+else { Write-Pass "current-cycle closeout stays unreconciled; the prior cycle's closeout entry stops the walk" }
+# Paired legitimate path: the current cycle's own closeout authorization reconciles.
+$fx2 = New-RatchetFixture -WorkingBoundary 'iteration-closeout' -LastAuthorized 'iteration-closeout' -History @(
+    (New-HistoryEntry -From 'iteration-closeout' -To 'plan' -Hash 'c3c3c3c30005'),
+    (New-HistoryEntry -From 'plan' -To 'tasks' -Hash 'c3c3c3c30006'),
+    (New-HistoryEntry -From 'retro' -To 'iteration-closeout' -Hash 'c3c3c3c30007')
+)
+$un2 = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx2
+if ($null -ne $un2) { Write-Fail "the current cycle's own closeout authorization must reconcile, got: $($un2 | ConvertTo-Json -Compress)" }
+else { Write-Pass "the current cycle's own closeout authorization reconciles" }
+Remove-Item -Recurse -Force $fx, $fx2
+
 Write-Host ""
 if ($script:failCount -gt 0) { Write-Host "$script:failCount test(s) FAILED" -ForegroundColor Red; exit 1 }
 Write-Host "All boundary-ratchet paired tests passed." -ForegroundColor Green

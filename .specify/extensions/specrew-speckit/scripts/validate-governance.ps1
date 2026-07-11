@@ -1564,35 +1564,35 @@ function Test-BoundaryStateAdvanceVerdict {
     $humanVerdictBoundaries = @('before-implement', 'review-signoff', 'iteration-closeout', 'feature-closeout')
     if ($boundary -notin $humanVerdictBoundaries) { return }
 
-    $enforcement = $context.PSObject.Properties['boundary_enforcement']
-    $history = @()
-    if ($null -ne $enforcement -and $null -ne $enforcement.Value -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
-        $history = @($enforcement.Value.verdict_history)
+    # DEC-198-GOV-002 (run-2594b7b5 review catch): this check previously counted bare
+    # to_boundary name matches across the ENTIRE unscoped history, so a PRIOR iteration
+    # cycle's same-named approval silenced it. It now consumes THE shared cycle-aware
+    # primitive (fail-closed on an unreadable ledger) so the validator and the sync
+    # ratchet cannot drift - sharing input fields is not consuming the primitive.
+    $unreconciledCrossing = $null
+    try {
+        $unreconciledCrossing = Get-SpecrewUnreconciledBoundary -ProjectRoot $ProjectRoot
     }
+    catch {
+        Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: {0}" -f $_.Exception.Message)
+        return
+    }
+    if ($null -eq $unreconciledCrossing) { return }
 
-    $authorized = @($history | Where-Object {
-            $null -ne $_ -and
-            $null -ne $_.PSObject.Properties['to_boundary'] -and
-            ([string]$_.PSObject.Properties['to_boundary'].Value -eq $boundary) -and
-            $null -ne $_.PSObject.Properties['authorizing_human'] -and
-            (-not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value))
-        })
+    $iterProp = $sessionState.Value.PSObject.Properties['iteration_number']
+    $iterationRef = if ($null -ne $iterProp) { [string]$iterProp.Value } else { '' }
+    Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching CURRENT-CYCLE boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
 
-    if ($authorized.Count -eq 0) {
-        $iterProp = $sessionState.Value.PSObject.Properties['iteration_number']
-        $iterationRef = if ($null -ne $iterProp) { [string]$iterProp.Value } else { '' }
-        Write-TrustHardeningWarning -Category 'state-advance-without-verdict' -Detail ("Active session boundary advanced to human-judgment gate '{0}' (iteration {1}) without a matching boundary_enforcement.verdict_history entry naming an authorizing human. Record the human verdict explicitly or roll the boundary back." -f $boundary, $(if ([string]::IsNullOrWhiteSpace($iterationRef)) { '(unknown)' } else { $iterationRef }))
-
-        # FR-003 (hardening feature): the unauthorized working boundary is the NORMAL between-packet-and-reply
-        # state (WARN above). But when the enforcement cursor's own pending ask names a DIFFERENT
-        # boundary than the working one, the session moved past an unresolved approval - the
-        # skipped-boundary state the sync ratchet refuses at advance time. At validation time it
-        # is a FAIL: the work recorded under the skipped step has no human decision behind it.
-        $pendingProp = if ($null -ne $enforcement -and $null -ne $enforcement.Value) { $enforcement.Value.PSObject.Properties['pending_next_boundary'] } else { $null }
-        $pendingNext = if ($null -ne $pendingProp) { [string]$pendingProp.Value } else { '' }
-        if (-not [string]::IsNullOrWhiteSpace($pendingNext) -and $pendingNext -ne $boundary) {
-            Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: the session's working boundary is '{0}' but the unresolved approval ask is for '{1}' - a human-judgment step was passed without its verdict. Reconcile before closing anything: approve the waiting step when the assistant asks, or roll back to the last approved commit (the assistant asks for explicit confirmation first)." -f $boundary, $pendingNext)
-        }
+    # FR-003 (hardening feature): the unauthorized working boundary is the NORMAL between-packet-and-reply
+    # state (WARN above). But when the enforcement cursor's own pending ask names a DIFFERENT
+    # boundary than the working one, the session moved past an unresolved approval - the
+    # skipped-boundary state the sync ratchet refuses at advance time. At validation time it
+    # is a FAIL: the work recorded under the skipped step has no human decision behind it.
+    $enforcement = $context.PSObject.Properties['boundary_enforcement']
+    $pendingProp = if ($null -ne $enforcement -and $null -ne $enforcement.Value) { $enforcement.Value.PSObject.Properties['pending_next_boundary'] } else { $null }
+    $pendingNext = if ($null -ne $pendingProp) { [string]$pendingProp.Value } else { '' }
+    if (-not [string]::IsNullOrWhiteSpace($pendingNext) -and $pendingNext -ne $boundary) {
+        Write-TrustHardeningWarning -Category 'skipped-boundary-unreconciled' -Detail ("VALIDATION FAIL: the session's working boundary is '{0}' but the unresolved approval ask is for '{1}' - a human-judgment step was passed without its verdict. Reconcile before closing anything: approve the waiting step when the assistant asks, or roll back to the last approved commit (the assistant asks for explicit confirmation first)." -f $boundary, $pendingNext)
     }
 }
 

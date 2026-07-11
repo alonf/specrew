@@ -1788,15 +1788,12 @@ function Test-SpecrewBoundaryAuthorization {
         }
     }
 
-    $matchedVerdict = $null
-    foreach ($verdict in @($enforcementState.State['verdict_history'])) {
-        $verdictMap = if ($verdict -is [System.Collections.IDictionary]) { $verdict } else { $verdict | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
-        $fromBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap['from_boundary'])
-        $toBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$verdictMap['to_boundary'])
-        if ($fromBoundary -eq $currentCanonical -and $toBoundary -eq $requestedCanonical) {
-            $matchedVerdict = $verdictMap
-        }
-    }
+    # DEC-198-GOV-002 (run-2594b7b5 review catch): this live gate matched (from, to) by NAME
+    # across the ENTIRE unscoped history, so a prior iteration cycle's approval silently
+    # authorized the current cycle's same-named crossing with zero human involvement. It now
+    # consumes THE shared cycle-scoped matcher the unreconciled primitive uses - one read,
+    # no per-site copy to drift.
+    $matchedVerdict = Find-SpecrewCycleScopedAuthorization -History @($enforcementState.State['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $currentCanonical -LastAuthorizedBoundary ([string]$enforcementState.State['last_authorized_boundary'])
 
     if ($null -ne $matchedVerdict) {
         Add-SpecrewBoundaryEnforcementLedgerEntry -ProjectRoot $ProjectRoot -Boundary $requestedCanonical -EnforcementAction 'authorized' -CurrentBoundary $currentCanonical -RequestedBoundary $requestedCanonical -LaunchMode $launchMode -AgentResponseSnippet $snippet -Reason 'Persisted authorization matched the requested boundary.'
@@ -1833,6 +1830,70 @@ function Test-SpecrewBoundaryAuthorization {
         Reason                = "No persisted authorization matched $currentCanonical -> $requestedCanonical."
         PolicyClass           = $policyClass
     }
+}
+
+function Find-SpecrewCycleScopedAuthorization {
+    # DEC-198-GOV-002 (+ the run-2594b7b5 review catch): THE cycle-scoped reconciliation read,
+    # shared by every consumer that asks "does a recorded human authorization cover this
+    # crossing IN THE CURRENT iteration cycle?" (the unreconciled primitive, the live
+    # Test-SpecrewBoundaryAuthorization gate). Lifecycles loop, so boundary names recur every
+    # iteration: a bare name match across unscoped history re-uses a PRIOR cycle's approval.
+    # Rules, walking the append-ordered history newest-to-oldest:
+    #   - The cursor invariant first: every authorization write moves last_authorized_boundary,
+    #     so cursor == 'iteration-closeout' proves NO post-closeout authorization exists - a
+    #     closed cycle authorizes nothing further; only its own closeout crossing may match.
+    #   - An entry whose to_boundary cannot be read canonically ends the walk: unreadable
+    #     identity fails CLOSED (no match), never open.
+    #   - An entry with to == 'iteration-closeout' terminates a cycle: it may itself match
+    #     (the current cycle's own closeout, only when nothing mid-cycle is newer), and
+    #     everything older belongs to a closed cycle - stop.
+    #   - A cycle-reset edge (from == 'iteration-closeout' into plan-or-later-before-closeout)
+    #     starts the current cycle: the edge itself may match, and everything older stops.
+    param(
+        [AllowNull()]
+        [object[]]$History,
+
+        [Parameter(Mandatory = $true)]
+        [string]$ToBoundary,
+
+        [AllowNull()]
+        [string]$FromBoundary,
+
+        [switch]$RequireAuthorizingHuman,
+
+        [AllowNull()]
+        [string]$LastAuthorizedBoundary
+    )
+
+    $boundaryOrder = @(Get-SpecrewBoundaryOrder)
+    $planIdx = [Array]::IndexOf($boundaryOrder, 'plan')
+    $closeoutIdx = [Array]::IndexOf($boundaryOrder, 'iteration-closeout')
+    $targetTo = Normalize-SpecrewCanonicalBoundaryType -Boundary $ToBoundary
+    $targetFrom = if ([string]::IsNullOrWhiteSpace($FromBoundary)) { $null } else { Normalize-SpecrewCanonicalBoundaryType -Boundary $FromBoundary }
+    $cursor = if ([string]::IsNullOrWhiteSpace($LastAuthorizedBoundary)) { $null } else { Normalize-SpecrewCanonicalBoundaryType -Boundary $LastAuthorizedBoundary }
+    if ($cursor -eq 'iteration-closeout' -and $targetTo -ne 'iteration-closeout') { return $null }
+
+    $items = @($History)
+    $walkedMidCycle = $false
+    for ($i = $items.Count - 1; $i -ge 0; $i--) {
+        $entryMap = if ($items[$i] -is [System.Collections.IDictionary]) { $items[$i] } else { $items[$i] | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+        $to = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['to_boundary'])
+        if ([string]::IsNullOrWhiteSpace($to) -or $to -notin $boundaryOrder) { return $null }
+        $from = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['from_boundary'])
+        $human = [string]$entryMap['authorizing_human']
+        $entryMatches = ($to -eq $targetTo) -and
+        ($null -eq $targetFrom -or $from -eq $targetFrom) -and
+        ((-not $RequireAuthorizingHuman) -or (-not [string]::IsNullOrWhiteSpace($human)))
+        if ($to -eq 'iteration-closeout') {
+            if (-not $walkedMidCycle -and $entryMatches) { return $entryMap }
+            return $null
+        }
+        if ($entryMatches) { return $entryMap }
+        $toIdx = [Array]::IndexOf($boundaryOrder, $to)
+        if ($from -eq 'iteration-closeout' -and $toIdx -ge $planIdx -and $toIdx -lt $closeoutIdx) { return $null }
+        if ($toIdx -lt $closeoutIdx) { $walkedMidCycle = $true }
+    }
+    return $null
 }
 
 function Get-SpecrewUnreconciledBoundary {
@@ -1892,25 +1953,11 @@ function Get-SpecrewUnreconciledBoundary {
     # occurrence, never the bare boundary name - lifecycles loop, so every boundary name
     # recurs each iteration and iteration N-1's same-named approval must not satisfy
     # iteration N's crossing (field failure: 001's retro entry satisfied 002's retro).
-    # Walk newest-to-oldest; only entries on this side of the newest cycle-reset edge
-    # (iteration-closeout -> plan-or-later-before-closeout) may reconcile the working
-    # crossing. An entry whose identity cannot be read canonically terminates the walk:
-    # unreadable identity fails CLOSED (stays unreconciled), never open.
-    $boundaryOrder = @(Get-SpecrewBoundaryOrder)
-    $planIdx = [Array]::IndexOf($boundaryOrder, 'plan')
-    $closeoutIdx = [Array]::IndexOf($boundaryOrder, 'iteration-closeout')
-    $reconciled = $false
-    for ($i = $history.Count - 1; $i -ge 0; $i--) {
-        $entryMap = if ($history[$i] -is [System.Collections.IDictionary]) { $history[$i] } else { $history[$i] | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
-        $toBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['to_boundary'])
-        if ([string]::IsNullOrWhiteSpace($toBoundary) -or $toBoundary -notin $boundaryOrder) { break }
-        $human = [string]$entryMap['authorizing_human']
-        if ($toBoundary -eq $working -and -not [string]::IsNullOrWhiteSpace($human)) { $reconciled = $true; break }
-        $fromBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['from_boundary'])
-        $toIdx = [Array]::IndexOf($boundaryOrder, $toBoundary)
-        if ($fromBoundary -eq 'iteration-closeout' -and $toIdx -ge $planIdx -and $toIdx -lt $closeoutIdx) { break }
-    }
-    if ($reconciled) { return $null }
+    # The cycle scoping lives in Find-SpecrewCycleScopedAuthorization, THE shared matcher
+    # this primitive and the live authorization gate both consume (run-2594b7b5 review
+    # catch: a per-site copy of the scan is exactly how the gate stayed cycle-blind).
+    $reconciledEntry = Find-SpecrewCycleScopedAuthorization -History $history -ToBoundary $working -RequireAuthorizingHuman -LastAuthorizedBoundary $lastAuthorized
+    if ($null -ne $reconciledEntry) { return $null }
 
     return [pscustomobject]@{
         Boundary       = $working
