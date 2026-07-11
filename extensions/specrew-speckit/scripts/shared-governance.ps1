@@ -1850,7 +1850,13 @@ function Get-SpecrewUnreconciledBoundary {
     )
 
     $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
-    if ($enforcementState.NeedsMigration -or $enforcementState.Issues.Count -gt 0) { return $null }
+    if ($enforcementState.NeedsMigration) { return $null }
+    # DEC-198-GOV-002 (with the cycle fix below): malformed enforcement state must fail
+    # CLOSED at every consumer of this read, not read as "nothing unreconciled". A corrupt
+    # ledger passing the ratchet is the same fail-open class as the cycle blindness.
+    if ($enforcementState.Issues.Count -gt 0) {
+        throw ("The boundary approval ledger cannot be read ({0}). Fix the recorded state before advancing; no boundary step can be verified while the ledger is unreadable." -f (@($enforcementState.Issues) -join '; '))
+    }
 
     $contextState = Get-SpecrewStartContextState -ProjectRoot $ProjectRoot
     $working = $null
@@ -1873,16 +1879,38 @@ function Get-SpecrewUnreconciledBoundary {
     $lastAuthorized = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$enforcementState.State['last_authorized_boundary'])
     if ($lastAuthorized -eq $working) { return $null }
 
+    $history = @($enforcementState.State['verdict_history'])
     $revertAnchor = $null
-    foreach ($entry in @($enforcementState.State['verdict_history'])) {
+    foreach ($entry in $history) {
         $entryMap = if ($entry -is [System.Collections.IDictionary]) { $entry } else { $entry | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
-        $toBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['to_boundary'])
-        $human = [string]$entryMap['authorizing_human']
-        if ($toBoundary -eq $working -and -not [string]::IsNullOrWhiteSpace($human)) { return $null }
         if (-not [string]::IsNullOrWhiteSpace([string]$entryMap['auth_commit_hash'])) {
             $revertAnchor = [string]$entryMap['auth_commit_hash']   # newest wins (history is append-ordered)
         }
     }
+
+    # DEC-198-GOV-002: reconciliation binds to the CURRENT iteration cycle and ordered
+    # occurrence, never the bare boundary name - lifecycles loop, so every boundary name
+    # recurs each iteration and iteration N-1's same-named approval must not satisfy
+    # iteration N's crossing (field failure: 001's retro entry satisfied 002's retro).
+    # Walk newest-to-oldest; only entries on this side of the newest cycle-reset edge
+    # (iteration-closeout -> plan-or-later-before-closeout) may reconcile the working
+    # crossing. An entry whose identity cannot be read canonically terminates the walk:
+    # unreadable identity fails CLOSED (stays unreconciled), never open.
+    $boundaryOrder = @(Get-SpecrewBoundaryOrder)
+    $planIdx = [Array]::IndexOf($boundaryOrder, 'plan')
+    $closeoutIdx = [Array]::IndexOf($boundaryOrder, 'iteration-closeout')
+    $reconciled = $false
+    for ($i = $history.Count - 1; $i -ge 0; $i--) {
+        $entryMap = if ($history[$i] -is [System.Collections.IDictionary]) { $history[$i] } else { $history[$i] | ConvertTo-Json -Depth 12 | ConvertFrom-Json -AsHashtable -Depth 12 }
+        $toBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['to_boundary'])
+        if ([string]::IsNullOrWhiteSpace($toBoundary) -or $toBoundary -notin $boundaryOrder) { break }
+        $human = [string]$entryMap['authorizing_human']
+        if ($toBoundary -eq $working -and -not [string]::IsNullOrWhiteSpace($human)) { $reconciled = $true; break }
+        $fromBoundary = Normalize-SpecrewCanonicalBoundaryType -Boundary ([string]$entryMap['from_boundary'])
+        $toIdx = [Array]::IndexOf($boundaryOrder, $toBoundary)
+        if ($fromBoundary -eq 'iteration-closeout' -and $toIdx -ge $planIdx -and $toIdx -lt $closeoutIdx) { break }
+    }
+    if ($reconciled) { return $null }
 
     return [pscustomobject]@{
         Boundary       = $working

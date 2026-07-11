@@ -104,11 +104,13 @@ $un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
 if ($null -ne $un) { Write-Fail "a non-canonical alias (implement) must not latch" } else { Write-Pass "non-canonical alias (implement) does not latch or crash the ratchet" }
 Remove-Item -Recurse -Force $fx
 $fx = New-RatchetFixture -WorkingBoundary 'clarify' -LastAuthorized 'specify' -History @(New-HistoryEntry -From $null -To 'specify')
-$ctx = Get-Content (Join-Path $fx '.specrew\start-context.json') -Raw | ConvertFrom-Json
-$ctx.boundary_enforcement.policy_classes.clarify = 'autonomous'
-$ctx | ConvertTo-Json -Depth 10 | Set-Content (Join-Path $fx '.specrew\start-context.json') -Encoding UTF8
+@(
+    'boundary_enforcement:'
+    '  policy_classes:'
+    '    clarify: future-policy'
+) | Set-Content (Join-Path $fx '.specrew\config.yml') -Encoding UTF8
 $un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
-if ($null -ne $un) { Write-Fail "an autonomous-classed boundary must not latch" } else { Write-Pass "autonomous-classed boundary (clarify) does not latch the ratchet" }
+if ($null -ne $un) { Write-Fail "a non-human-judgment-classed boundary must not latch, got: $($un | ConvertTo-Json -Compress)" } else { Write-Pass "non-human-judgment-classed boundary (clarify, future-policy via config.yml - the real policy seam) does not latch the ratchet" }
 Remove-Item -Recurse -Force $fx
 
 Write-Host "Test 6: cycle reset - pending crossing for a new iteration (field bug, 2026-07-11)"
@@ -139,6 +141,58 @@ $fx = New-RatchetFixture -WorkingBoundary 'tasks' -LastAuthorized 'plan' -Histor
 $a = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
 $b = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
 if (($a | ConvertTo-Json -Compress) -ne ($b | ConvertTo-Json -Compress)) { Write-Fail "primitive is not pure" } else { Write-Pass "primitive returns identical results on identical state" }
+Remove-Item -Recurse -Force $fx
+
+Write-Host "Test 10: DEC-198-GOV-002 regression - a PRIOR cycle's same-named approval must not reconcile this cycle's crossing"
+# The exact field shape (2026-07-11): iteration 001 closed with an authorized retro,
+# the cycle reset into 002, 002 advanced to review-signoff, and its retro crossing was
+# recorded but NOT yet human-authorized. The name-matching scan let 001's retro entry
+# satisfy 002's retro, and the closeout sync passed a gate that had to refuse.
+$fieldHistory = @(
+    (New-HistoryEntry -From 'before-implement' -To 'review-signoff' -Hash 'c0c0c0c00001'),
+    (New-HistoryEntry -From 'review-signoff' -To 'retro' -Hash 'c0c0c0c00002'),
+    (New-HistoryEntry -From 'retro' -To 'iteration-closeout' -Hash 'c0c0c0c00003'),
+    (New-HistoryEntry -From 'iteration-closeout' -To 'plan' -Hash 'c0c0c0c00004'),
+    (New-HistoryEntry -From 'plan' -To 'tasks' -Hash 'c0c0c0c00005'),
+    (New-HistoryEntry -From 'tasks' -To 'before-implement' -Hash 'c0c0c0c00006'),
+    (New-HistoryEntry -From 'before-implement' -To 'review-signoff' -Hash 'c0c0c0c00007')
+)
+$fx = New-RatchetFixture -WorkingBoundary 'retro' -LastAuthorized 'review-signoff' -History $fieldHistory
+$un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
+if ($null -eq $un -or $un.Boundary -ne 'retro') { Write-Fail "prior-cycle retro entry reconciled the current crossing (cycle-blind), got: $($un | ConvertTo-Json -Compress)" }
+else { Write-Pass "current-cycle retro stays unreconciled despite the prior cycle's same-named approval" }
+$threw = $false
+try { Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'iteration-closeout' | Out-Null }
+catch { $threw = $true; if ($_.Exception.Message -notmatch "'retro'" -or $_.Exception.Message -notmatch "'iteration-closeout'") { Write-Fail "refusal must name both boundaries: $($_.Exception.Message)" } else { Write-Pass "the closeout advance refuses while the current-cycle retro awaits its verdict (the field sequence, now caught)" } }
+if (-not $threw) { Write-Fail "the closeout advance passed over an unreconciled current-cycle retro (the field failure reproduced)" }
+Remove-Item -Recurse -Force $fx
+
+Write-Host "Test 11: same-cycle reconciliation still works, incl. a lagging cursor (paired: legitimate path passes)"
+$sameCycle = $fieldHistory + @(New-HistoryEntry -From 'review-signoff' -To 'retro' -Hash 'c0c0c0c00008')
+$fx = New-RatchetFixture -WorkingBoundary 'retro' -LastAuthorized 'review-signoff' -History $sameCycle
+$un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
+if ($null -ne $un) { Write-Fail "a same-cycle retro authorization (after the cycle-reset edge) must reconcile even with a lagging cursor, got: $($un | ConvertTo-Json -Compress)" }
+else { Write-Pass "same-cycle authorization reconciles; lagging-cursor defensive read preserved" }
+$gate = Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'iteration-closeout'
+if ($gate -ne $true) { Write-Fail "gate should pass once the current-cycle crossing is reconciled" } else { Write-Pass "gate passes the closeout advance after same-cycle reconciliation" }
+Remove-Item -Recurse -Force $fx
+
+Write-Host "Test 12: unreadable ledger identity fails CLOSED - loud hard fail, never silent-clean (paired: abuse cannot fail open)"
+$corrupt = $fieldHistory + @(New-HistoryEntry -From 'review-signoff' -To 'not-a-boundary' -Hash 'c0c0c0c00009')
+$fx = New-RatchetFixture -WorkingBoundary 'retro' -LastAuthorized 'review-signoff' -History $corrupt
+$threw = $false
+try { Get-SpecrewUnreconciledBoundary -ProjectRoot $fx | Out-Null }
+catch {
+    $threw = $true
+    if ($_.Exception.Message -notmatch 'ledger' -or $_.Exception.Message -notmatch 'not-a-boundary') { Write-Fail "the hard fail must name the ledger and the offending value: $($_.Exception.Message)" }
+    elseif ($_.Exception.Message -match 'T0\d\d|F-19\d|proposal|FR-\d') { Write-Fail "the hard fail leaks internal identifiers: $($_.Exception.Message)" }
+    else { Write-Pass "unreadable ledger identity hard-fails loud, naming the offending value, zero internal identifiers" }
+}
+if (-not $threw) { Write-Fail "unreadable ledger identity was read as clean (fail open) - the pre-fix behavior" }
+$threw = $false
+try { Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'iteration-closeout' | Out-Null }
+catch { $threw = $true }
+if (-not $threw) { Write-Fail "the ratchet gate passed on an unreadable ledger (fail open)" } else { Write-Pass "the ratchet gate refuses to advance over an unreadable ledger" }
 Remove-Item -Recurse -Force $fx
 
 Write-Host ""

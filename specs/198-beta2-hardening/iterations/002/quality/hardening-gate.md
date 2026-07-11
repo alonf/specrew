@@ -51,7 +51,16 @@
   check DECLINED the tracker bypass on a mixed delta (state.md + lint
   fix) exactly as designed. Budget chain fell through correctly in live
   runs (copilot catalog 300s resolved) and in tests (absent row -> 600
-  floor, loud).
+  floor, loud). Closeout send-back correction (DEC-198-GOV-002): the
+  "unparseable verdict-history is a hard fail" claim was found FALSE in
+  the field twice - the primitive reconciled by boundary name across
+  cycles (a prior iteration's approval satisfied the current crossing)
+  and read a malformed ledger as clean. Both fail-opens fixed before
+  this iteration closed: cycle-bound reconciliation + loud hard fail on
+  an unreadable ledger, proven by paired regressions (Tests 10-12) that
+  replay the exact field sequence, plus validator PASS and a fresh
+  independent review round on the fixed tree. The claim in this row is
+  true as of the fix, not before.
 - **retry-idempotency-requirements — recorded.** Double-sync observed
   live as warn-plus-no-op (retro re-sync after the send-back fixes); the
   same-cursor authorization no-op guard exercised live six times (the
