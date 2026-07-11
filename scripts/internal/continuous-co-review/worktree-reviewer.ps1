@@ -219,6 +219,19 @@ function New-ContinuousCoReviewStrippedWorktree {
     }
 
     if ([string]::IsNullOrWhiteSpace($EphemeralRoot)) { $EphemeralRoot = [System.IO.Path]::GetTempPath() }
+    # FR-008 (203 W1) / SC-002 containment: the reviewer worktree MUST materialize OUTSIDE the
+    # origin so no upward directory/git walk from inside the confined worktree can resolve the real
+    # project. Reject an EphemeralRoot that resolves AT or UNDER the origin git root (or the
+    # governance RepoRoot) - a worktree nested in origin would defeat the confinement by
+    # construction. Fails LOUD and early, before any archive/extract.
+    $ephemeralFull = [System.IO.Path]::GetFullPath($EphemeralRoot).TrimEnd([char]'\', [char]'/')
+    foreach ($originPath in @($gitRoot, $resolved)) {
+        if ([string]::IsNullOrWhiteSpace($originPath)) { continue }
+        $originFull = [System.IO.Path]::GetFullPath($originPath).TrimEnd([char]'\', [char]'/')
+        if ($ephemeralFull -eq $originFull -or $ephemeralFull.StartsWith($originFull + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw "[co-review] refusing to materialize the reviewer worktree inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (FR-008 containment)."
+        }
+    }
     $worktree = Join-Path $EphemeralRoot ('ccr-worktree-' + [guid]::NewGuid().ToString('N'))
     $tarPath = "$worktree.tar"
     New-Item -ItemType Directory -Path $worktree -Force | Out-Null
