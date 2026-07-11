@@ -34,12 +34,20 @@ times the surface the estimate assumed.
 
 ## Drift Summary
 
-- Total drift events: 0
+- Total drift events: 1 (post-retro annotation, 2026-07-11: zero at the
+  time this retro was approved; DRIFT-198-I002-001 was detected AFTER
+  retro approval, during the iteration-closeout arc - the shipped
+  ratchet primitive diverged from FR-001/FR-002 (cycle-blind
+  reconciliation + fail-open on a malformed ledger), was escalated via
+  the maintainer's closeout send-back, and was reworked with paired
+  regressions before the iteration closed; see drift-log.md)
 - Resolved via spec update: 0
 - Resolved via revert: 0
 - Deferred: 0
-- Escalated to human decision: 0 (the cycle-reset discovery was in-scope
-  FR-004 work, recorded in review.md's Gap Ledger, not spec drift)
+- Escalated to human decision: 1 (DRIFT-198-I002-001, resolution
+  human-decision + rework; the cycle-reset discovery during execution
+  remains in-scope FR-004 work, recorded in review.md's Gap Ledger, not
+  spec drift)
 
 ## What Went Well
 
