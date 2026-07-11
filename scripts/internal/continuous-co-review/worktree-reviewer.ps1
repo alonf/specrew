@@ -418,6 +418,38 @@ function Get-ContinuousCoReviewWorktreeSourceHashes {
     return $map
 }
 
+function Copy-ContinuousCoReviewVerificationSandbox {
+    # T015 (findings 97a93603-2 / 4b124d0e-1): a DISPOSABLE copy of the reviewer worktree in which the
+    # declared verification runs, so an output-writing or read-only verification does its work WITHOUT
+    # perturbing the tree the reviewer is handed. This is NOT a security boundary - a command has ambient
+    # filesystem authority and can still reach the reviewer tree by absolute/.. path; the ORCHESTRATOR
+    # therefore hashes the certified reviewer tree before/after and REFUSES the run if it changed.
+    # ROBUST against concurrent reviewer-host churn (finding c9abe16d, where Copy-Item -Recurse died when
+    # a transient .antigravitycli/*.json vanished mid-copy): volatile host-runtime dirs and .git are
+    # skipped, and a file that vanishes mid-copy is tolerated - the stable SOURCE the verification needs
+    # is what matters, not another run's ephemeral host state.
+    param([Parameter(Mandatory)][string]$SourceWorktree, [Parameter(Mandatory)][string]$DestRoot)
+    $srcRoot = (Resolve-Path -LiteralPath $SourceWorktree).Path.TrimEnd([char]'\', [char]'/')
+    [void][System.IO.Directory]::CreateDirectory($DestRoot)
+    $skipTop = @('.git', '.antigravitycli', '.codex', '.claude', '.cursor', '.gemini')
+    foreach ($item in @(Get-ChildItem -LiteralPath $srcRoot -Recurse -Force -ErrorAction SilentlyContinue)) {
+        $rel = [System.IO.Path]::GetRelativePath($srcRoot, $item.FullName)
+        $top = ($rel -replace '[\\/].*$', '')
+        if ($skipTop -contains $top) { continue }
+        $dest = Join-Path $DestRoot $rel
+        try {
+            if ($item.PSIsContainer) { [void][System.IO.Directory]::CreateDirectory($dest) }
+            else {
+                $destDir = [System.IO.Path]::GetDirectoryName($dest)
+                if (-not [string]::IsNullOrEmpty($destDir)) { [void][System.IO.Directory]::CreateDirectory($destDir) }
+                Copy-Item -LiteralPath $item.FullName -Destination $dest -Force -ErrorAction Stop
+            }
+        }
+        catch { $null = $_ }   # a file vanished mid-copy (concurrent host churn) - tolerated
+    }
+    return $DestRoot
+}
+
 function Invoke-ContinuousCoReviewBoundedVerification {
     # FR-010 (203 W3) + the maintainer's REQUIRED bounded in-worktree verification: run the DECLARED
     # verification commands INSIDE the confined worktree, each with (1) a TIMEOUT and process

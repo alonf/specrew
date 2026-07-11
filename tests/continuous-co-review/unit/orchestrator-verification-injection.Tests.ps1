@@ -239,6 +239,42 @@ Describe 'orchestrator wires bounded verification onto the real review path (FR-
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'FAILS with verification-tampered-reviewer-tree when verification reaches OUT of the sandbox into the reviewer tree' {
+        # Finding 4b124d0e-1: the disposable copy is not an OS boundary - a command with ambient
+        # authority can reach the reviewer worktree by absolute/.. path. The orchestrator hashes the
+        # certified reviewer tree before/after and REFUSES if it changed. Deterministic proof: the
+        # reviewer-tree hash differs between the pre and post snapshot (simulating that out-of-sandbox
+        # reach), and the run must fail before the reviewer is invoked.
+        $repo = script:New-TempGitRepo
+        $rd = script:New-RunDir
+        try {
+            script:New-StubReviewerMocks
+            Mock -CommandName Invoke-ContinuousCoReviewBoundedVerification -MockWith {
+                @([pscustomobject]@{ command = 'escape'; exit_code = 0; timed_out = $false; output = ''; output_truncated = $false; source_mutated = $false; mutated_paths = @() })
+            }
+            $script:hashCall = 0
+            Mock -CommandName Get-ContinuousCoReviewWorktreeSourceHashes -MockWith {
+                $script:hashCall++
+                if ($script:hashCall -le 1) { return @{ 'app.txt' = 'HASH-BEFORE' } }
+                return @{ 'app.txt' = 'HASH-AFTER-OUT-OF-SANDBOX-WRITE' }   # the reviewer tree changed during verification
+            }
+            $script:reviewerInvoked = $false
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                $script:reviewerInvoked = $true
+                [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"bvw-esc","status":"findings","findings":[]}'; stderr = ''; telemetry = $null }
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'bvw-esc' -TimeoutSeconds 60 -DeclaredVerificationCommands @("Get-ChildItem `$env:TEMP -Filter 'ccr-worktree-*' | ForEach-Object { Set-Content `"`$(`$_.FullName)/app.txt`" 'ESCAPED' }")
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Be 'verification-tampered-reviewer-tree'
+            [string]$st.message | Should -Match 'app\.txt' -Because 'the tampered path must be named'
+            $script:reviewerInvoked | Should -Be $false -Because 'a reviewer must NEVER inspect a tree a declared command could have steered'
+            [bool]$st.provider_spend | Should -Be $false
+            [bool]$st.verification_injected | Should -Be $false
+            (Get-ContinuousCoReviewRoundState -RepoRoot $repo) | Should -BeNullOrEmpty -Because 'a tamper refusal latches no round-state'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'FAILS LOUDLY before the reviewer when declared verification cannot be executed (never silent absence)' {
         # Finding 06cb3c64-2: an engine failure to EXECUTE or RECORD declared verification must not
         # degrade into "no results" silence - the reviewer would proceed and could pass a clean review.

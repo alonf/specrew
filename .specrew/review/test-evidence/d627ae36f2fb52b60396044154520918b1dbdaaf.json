@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "reviewed_digest_tree_id": "d627ae36f2fb52b60396044154520918b1dbdaaf",
+  "recorded_at": "2026-07-11T22:05:24Z",
+  "suites": [
+    {
+      "suite": "tests/continuous-co-review/unit/bounded-verification.Tests.ps1",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 12.202,
+      "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
+      "recorded_at": "2026-07-11T22:05:24Z"
+    }
+  ]
+}

@@ -768,30 +768,49 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             $verificationDeclaredCount = $verificationDeclared.Count
             $verificationToRun = @($verificationDeclared | Select-Object -First 8)
             $verificationInfraError = $null
-            $verifyCopyRoot = $null
+            $verificationTamperError = $null
             if ($verificationToRun.Count -gt 0) {
+                $verifyCopyRoot = $null
+                $vres = @()
+                # INTEGRITY BASELINE: hash the CERTIFIED reviewer tree (source + .review-authority inputs;
+                # excludes .git and the engine-owned .review/verification output) BEFORE verification.
+                $reviewerPre = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
                 try {
                     if (-not (Get-Command -Name 'Invoke-ContinuousCoReviewBoundedVerification' -ErrorAction SilentlyContinue)) {
                         throw 'Invoke-ContinuousCoReviewBoundedVerification is not loaded in this session'
                     }
-                    # TAMPER-PROOF REVIEWER INPUTS (finding 97a93603-2): declared commands run in a
-                    # DISPOSABLE SIBLING COPY of the worktree, NEVER the tree the reviewer is handed. A
-                    # mutating declaration is still RECORDED (source_mutated in the results, for the
-                    # reviewer to judge) but by construction it cannot alter the certified reviewer
-                    # inputs - source, .review/changes.diff, design context. The copy lives in system
-                    # temp (the same T013 containment class as the worktree itself) and is removed in
-                    # the finally regardless of outcome.
-                    $verifyCopyRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('specrew-review-verify-' + [guid]::NewGuid().ToString('N'))
-                    Copy-Item -LiteralPath $wt.worktree_path -Destination $verifyCopyRoot -Recurse -Force
-                    $vres = Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $verifyCopyRoot -DeclaredCommands $verificationToRun -AllowedOutputPaths @($VerificationAllowedOutputPaths) -TimeoutSeconds ([math]::Max(30, [math]::Min($TimeoutSeconds, 300)))
-                    $vdir = Join-Path $wt.worktree_path '.review/verification'
-                    [void][System.IO.Directory]::CreateDirectory($vdir)
-                    [System.IO.File]::WriteAllText((Join-Path $vdir 'results.json'), (ConvertTo-Json @($vres) -Depth 6 -AsArray))
-                    $verificationRunCount = @($vres).Count
-                    $verificationResultsPresent = $true
+                    # Declared commands run in a DISPOSABLE COPY (robust against concurrent reviewer-host
+                    # churn), never the reviewer tree itself - so an output-writing verification does not
+                    # perturb the reviewer inputs, and a mutating declaration is RECORDED (source_mutated)
+                    # for the reviewer to judge. The copy is NOT an OS security boundary; the integrity
+                    # check below is what actually protects the reviewer tree.
+                    $verifyCopyRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-verify-' + [guid]::NewGuid().ToString('N'))
+                    $null = Copy-ContinuousCoReviewVerificationSandbox -SourceWorktree $wt.worktree_path -DestRoot $verifyCopyRoot
+                    $vres = @(Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $verifyCopyRoot -DeclaredCommands $verificationToRun -AllowedOutputPaths @($VerificationAllowedOutputPaths) -TimeoutSeconds ([math]::Max(30, [math]::Min($TimeoutSeconds, 300))))
+                    $verificationRunCount = $vres.Count
                 }
                 catch { $verificationInfraError = [string]$_.Exception.Message }
                 finally { if ($null -ne $verifyCopyRoot) { Remove-Item -LiteralPath $verifyCopyRoot -Recurse -Force -ErrorAction SilentlyContinue } }
+                # INTEGRITY CHECK (finding 4b124d0e-1): the sandbox is not an OS boundary, so a hostile
+                # command with ambient authority could reach the reviewer tree by absolute/.. path. If any
+                # source or .review-authority file changed, the reviewer would inspect a tree DIFFERENT
+                # from the certified fire-time tree - detect it and REFUSE (below), never proceed.
+                if ($null -eq $verificationInfraError) {
+                    $reviewerPost = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
+                    $tamperedPaths = New-Object System.Collections.Generic.List[string]
+                    foreach ($k in $reviewerPre.Keys) { if (-not $reviewerPost.ContainsKey($k) -or $reviewerPost[$k] -ne $reviewerPre[$k]) { [void]$tamperedPaths.Add($k) } }
+                    foreach ($k in $reviewerPost.Keys) { if (-not $reviewerPre.ContainsKey($k)) { [void]$tamperedPaths.Add($k) } }
+                    if ($tamperedPaths.Count -gt 0) {
+                        $verificationTamperError = ('declared verification altered the certified reviewer tree (out-of-sandbox write): ' + (@($tamperedPaths | Select-Object -First 10) -join ', '))
+                    }
+                    else {
+                        # Clean: inject the host-observed results for the reviewer to consume.
+                        $vdir = Join-Path $wt.worktree_path '.review/verification'
+                        [void][System.IO.Directory]::CreateDirectory($vdir)
+                        [System.IO.File]::WriteAllText((Join-Path $vdir 'results.json'), (ConvertTo-Json $vres -Depth 6 -AsArray))
+                        $verificationResultsPresent = $true
+                    }
+                }
             }
             & $recordPhaseEnd 'bounded-verification'
             # NEVER-FALSE-GREEN (finding 06cb3c64-2): a DECLARED verification that could not be EXECUTED
@@ -801,10 +820,19 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             # NEITHER provider budget NOR a round-allowance slot (the T020 preflight class), and the
             # status carries a diagnosable reason. (A command that RUNS and fails - non-zero exit,
             # timeout, mutation - is a RESULT for the reviewer to judge, never this path.)
-            if ($null -ne $verificationInfraError) {
+            # A declared verification that could not EXECUTE (infra) or that TAMPERED with the certified
+            # reviewer tree (out-of-sandbox write) FAILS the run loudly BEFORE the model is invoked - the
+            # reviewer must never inspect a tree the verification could have steered, and a declared
+            # verification must never silently degrade into no-results. Both are the T020 preflight class
+            # (model not invoked -> neither budget consumed, no round latched); the reason distinguishes
+            # them. (A command that RUNS and fails - non-zero exit, timeout, self-mutation of the sandbox -
+            # is a RESULT for the reviewer to judge, never this path.)
+            if ($null -ne $verificationInfraError -or $null -ne $verificationTamperError) {
+                $verifyReason = if ($null -ne $verificationTamperError) { 'verification-tampered-reviewer-tree' } else { 'verification-not-executed' }
+                $verifyMsg = if ($null -ne $verificationTamperError) { $verificationTamperError } else { $verificationInfraError }
                 $verifySpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $false -ProducedReview $false
                 $runTimer.Stop()
-                & $writeStatus 'failed' @{ failure_reason = 'verification-not-executed'; message = $verificationInfraError; spend_class = $verifySpend.class; provider_spend = $verifySpend.records_provider_spend; round_consumed = $verifySpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; verification_source = $verificationSource; verification_declared_count = $verificationDeclaredCount; verification_run_count = $verificationRunCount; verification_injected = $false; reviewed = $false }
+                & $writeStatus 'failed' @{ failure_reason = $verifyReason; message = $verifyMsg; spend_class = $verifySpend.class; provider_spend = $verifySpend.records_provider_spend; round_consumed = $verifySpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; verification_source = $verificationSource; verification_declared_count = $verificationDeclaredCount; verification_run_count = $verificationRunCount; verification_injected = $false; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
             $currentPhase = 'reviewer-execution'

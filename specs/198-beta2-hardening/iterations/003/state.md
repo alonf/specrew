@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T22:40:00Z
+**Updated**: 2026-07-11T23:10:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -181,16 +181,13 @@
   still open in the d3edd098 tree (escalation, human-decision framing:
   disposable-child verification OR fail/rematerialize) + advisory f2
   (tasks.md checkboxes for T013/T014/T015/T020 lagged plan/state). Fixed:
-  (1) declared commands now run in a DISPOSABLE SIBLING COPY of the
-  worktree (system temp, T013 containment class, removed in finally) -
-  a mutating declaration is still recorded for the reviewer to judge but
-  is structurally unable to alter the certified reviewer inputs; the
-  orchestrator-path test now asserts the reviewer-visible tree keeps the
-  fire-time content (app.txt unmodified, changes.diff intact) while
-  source_mutated=true is recorded. Of the escalation's two remedies the
-  fix implements disposable-child verification (the stronger: the
-  reviewer tree is never touched, no restore step to get wrong) -
-  surfaced to the maintainer at the next stop for veto. (2) tasks.md
+  (1) declared commands now run in a DISPOSABLE COPY of the worktree, so
+  an output-writing verification does not perturb the reviewer inputs and
+  a mutating declaration is recorded for the reviewer to judge. (NOTE: the
+  first cut of this entry called the copy "structurally unable to alter"
+  the reviewer inputs - that overclaim was itself the next finding
+  (4b124d0e-1) and is corrected below; the copy is NOT an OS boundary.)
+  (2) tasks.md
   T013/T014/T015/T020 ticked to match plan/state (the checklist had
   simply lagged; no divergent semantics).
 - Confirming review 90173dc6 (round 1 after the d0cc9bf7 reset): 2
@@ -212,6 +209,40 @@
   commands from this record and re-observes the suites through the
   bounded wrapper in the disposable copy. Registry counts in this file
   are henceforth BACKED by that record, not prose.
+- Confirming review 4b124d0e + my --live run c9abe16d (round 1): 3 issues,
+  all real. (1) SECURITY (4b124d0e-1): the disposable copy is NOT an OS
+  boundary - a declared command has ambient filesystem authority and can
+  reach the sibling reviewer worktree by absolute/.. path; my "structurally
+  unable" claim was false. Fixed per the escalation's accepted remedy
+  (detect + refuse, not sandbox theatre): the orchestrator hashes the
+  CERTIFIED reviewer tree before/after verification and, if any source or
+  .review-authority file changed, FAILS the run
+  (verification-tampered-reviewer-tree) before the reviewer is invoked.
+  Deterministic paired test proves an out-of-sandbox reviewer-tree change
+  is caught and the reviewer is never invoked. All "structurally unable" /
+  OS-sandbox language removed. (2) FRAGILITY (c9abe16d): my --live round-2
+  review DID NOT RUN - Copy-Item -Recurse crashed when a transient
+  reviewer-host file (.antigravitycli/*.json) vanished mid-copy under the
+  concurrent-review races. Fixed: a robust Copy-...VerificationSandbox
+  skips .git + volatile host-runtime dirs and tolerates a file that
+  vanishes mid-copy. (3) EVIDENCE (4b124d0e-2): no worktree-visible
+  runtime-evidence artifact existed (the .specrew record is stripped from
+  the reviewer worktree). Fixed: hand-authored iterations/003/
+  coverage-evidence.md (worktree-visible; commands/counts/exit/durations),
+  and the digest-linked supply record NARROWED to the single fast
+  self-contained bounded-verification suite (12/12, ~12s) so the live
+  re-run is cheap - re-running the 91s full registry every review was the
+  T111 budget-death class. Suites 24/24; registry 16/16 (88s).
+- DESIGN CONCERN surfaced to the maintainer (not auto-resolved): the
+  orchestrator-runs-declared-verification mechanism has now taken 5 review
+  rounds of hardening (tamper, fragility, authority-hash, evidence, escape)
+  and re-runs suites inside a copy on every review - tension with the T111
+  "do NOT re-run whole covered suites" anti-budget-death design. Options
+  for the maintainer: keep hardening the re-run design, or simplify to the
+  honest host-boundary contract (reviewer reads T111 evidence + self-
+  spot-checks; orchestrator does NOT re-run; the bounded wrapper stays for
+  EXPLICIT caller-supplied focused commands only). Recommendation carried
+  in the stop packet; proceeding with the hardened fix meanwhile.
 - Next: fix re-review (round 2, same lineage) verifies both resolutions;
   then T016 if clean.
 
