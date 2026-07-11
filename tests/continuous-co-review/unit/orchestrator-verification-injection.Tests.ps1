@@ -228,6 +228,33 @@ Describe 'orchestrator wires bounded verification onto the real review path (FR-
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'FAILS LOUDLY before the reviewer when declared verification cannot be executed (never silent absence)' {
+        # Finding 06cb3c64-2: an engine failure to EXECUTE or RECORD declared verification must not
+        # degrade into "no results" silence - the reviewer would proceed and could pass a clean review.
+        $repo = script:New-TempGitRepo
+        $rd = script:New-RunDir
+        try {
+            script:New-StubReviewerMocks
+            Mock -CommandName Invoke-ContinuousCoReviewBoundedVerification -MockWith { throw 'forced wrapper failure' }
+            $script:reviewerInvoked = $false
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                $script:reviewerInvoked = $true
+                [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"bvw-lf","status":"findings","findings":[]}'; stderr = ''; telemetry = $null }
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'bvw-lf' -TimeoutSeconds 60 -DeclaredVerificationCommands @('Write-Output "will not run"')
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Be 'verification-not-executed'
+            [string]$st.message | Should -Match 'forced wrapper failure' -Because 'the failure must be diagnosable, not swallowed'
+            $script:reviewerInvoked | Should -Be $false -Because 'a run whose declared verification could not execute must never reach a passable review'
+            [bool]$st.provider_spend | Should -Be $false -Because 'the model was never invoked - the T020 preflight class consumes neither budget'
+            [bool]$st.round_consumed | Should -Be $false
+            [bool]$st.verification_injected | Should -Be $false
+            [int]$st.verification_declared_count | Should -Be 1
+            (Get-ContinuousCoReviewRoundState -RepoRoot $repo) | Should -BeNullOrEmpty -Because 'an engine infrastructure failure latches no round-state'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'injects NOTHING and reports the account honestly when nothing is declared anywhere' {
         $repo = script:New-TempGitRepo
         $rd = script:New-RunDir

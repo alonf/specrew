@@ -767,8 +767,12 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             $verificationDeclared = @($verificationDeclared | Where-Object { $seenCmd.Add($_) })
             $verificationDeclaredCount = $verificationDeclared.Count
             $verificationToRun = @($verificationDeclared | Select-Object -First 8)
-            try {
-                if ($verificationToRun.Count -gt 0 -and (Get-Command -Name 'Invoke-ContinuousCoReviewBoundedVerification' -ErrorAction SilentlyContinue)) {
+            $verificationInfraError = $null
+            if ($verificationToRun.Count -gt 0) {
+                try {
+                    if (-not (Get-Command -Name 'Invoke-ContinuousCoReviewBoundedVerification' -ErrorAction SilentlyContinue)) {
+                        throw 'Invoke-ContinuousCoReviewBoundedVerification is not loaded in this session'
+                    }
                     $vres = Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt.worktree_path -DeclaredCommands $verificationToRun -AllowedOutputPaths @($VerificationAllowedOutputPaths) -TimeoutSeconds ([math]::Max(30, [math]::Min($TimeoutSeconds, 300)))
                     $vdir = Join-Path $wt.worktree_path '.review/verification'
                     [void][System.IO.Directory]::CreateDirectory($vdir)
@@ -776,8 +780,22 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                     $verificationRunCount = @($vres).Count
                     $verificationResultsPresent = $true
                 }
-            } catch { $verificationResultsPresent = $false; $verificationRunCount = 0 }
+                catch { $verificationInfraError = [string]$_.Exception.Message }
+            }
             & $recordPhaseEnd 'bounded-verification'
+            # NEVER-FALSE-GREEN (finding 06cb3c64-2): a DECLARED verification that could not be EXECUTED
+            # or RECORDED must not degrade into no-results silence - the reviewer would proceed and could
+            # pass a clean review with the declared verification simply absent. Fail the run LOUDLY here,
+            # BEFORE the model is invoked: an infrastructure failure of the engine's own runner consumes
+            # NEITHER provider budget NOR a round-allowance slot (the T020 preflight class), and the
+            # status carries a diagnosable reason. (A command that RUNS and fails - non-zero exit,
+            # timeout, mutation - is a RESULT for the reviewer to judge, never this path.)
+            if ($null -ne $verificationInfraError) {
+                $verifySpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $false -ProducedReview $false
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'verification-not-executed'; message = $verificationInfraError; spend_class = $verifySpend.class; provider_spend = $verifySpend.records_provider_spend; round_consumed = $verifySpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; verification_source = $verificationSource; verification_declared_count = $verificationDeclaredCount; verification_run_count = $verificationRunCount; verification_injected = $false; reviewed = $false }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
             $currentPhase = 'reviewer-execution'
             & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent; verification_source = $verificationSource; verification_declared_count = $verificationDeclaredCount; verification_run_count = $verificationRunCount; verification_injected = $verificationResultsPresent }
             & $recordPhaseStart $currentPhase

@@ -71,11 +71,13 @@ Describe 'reviewer bounded in-worktree verification (FR-010)' {
         finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'bounds SUSTAINED multibyte output through the production boundary (memory stays bounded; cap holds)' {
-        # Finding-2 proof: the child STREAMS ~3 MB of a 3-byte UTF-8 char over 2000 chunks. CopyToAsync
-        # drains it to disk with a small buffer, so reviewer memory never accumulates the flood (the test
-        # completing at all is that proof); the byte cap then holds near MaxOutputBytes - not the 3 MB
-        # emitted. (Slack of 3 bytes: a truncated trailing multibyte sequence degrades to one U+FFFD.)
+    It 'bounds SUSTAINED multibyte output with ZERO-DISK capture (memory AND on-disk capture stay bounded)' {
+        # Findings bfc7b5c5-2 + 06cb3c64-1 proof: the child STREAMS ~3 MB of a 3-byte UTF-8 char over
+        # 2000 chunks. The pump retains at most MaxOutputBytes per stream in a FIXED buffer and DISCARDS
+        # the overflow while still draining the pipe - so neither reviewer memory nor host disk ever
+        # holds the flood. captured_*_bytes is the observable retention: it can never exceed the cap by
+        # construction, and the capture path writes NO temp files at all. (Slack of 3 bytes on the
+        # record: a truncated trailing multibyte sequence degrades to one U+FFFD.)
         $wt = script:New-Worktree
         try {
             $flood = "1..2000 | ForEach-Object { [Console]::Out.Write(([char]0x2122).ToString() * 512) }"
@@ -84,6 +86,8 @@ Describe 'reviewer bounded in-worktree verification (FR-010)' {
             $bytes = [System.Text.Encoding]::UTF8.GetByteCount($r[0].output)
             $bytes | Should -BeLessOrEqual (4096 + 3) -Because 'the cap holds - the multi-MB flood never lands in the record'
             $bytes | Should -BeGreaterOrEqual (4096 - 3) -Because 'the capture fills up to the cap, proving output actually streamed through'
+            $r[0].captured_stdout_bytes | Should -Be 4096 -Because 'retention is pump-bounded at exactly the cap - the other ~3 MB was drained and discarded'
+            $r[0].captured_stderr_bytes | Should -BeLessOrEqual 4096
             $r[0].source_mutated | Should -Be $false
         }
         finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }

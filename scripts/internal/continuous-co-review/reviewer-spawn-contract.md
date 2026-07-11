@@ -54,14 +54,23 @@ can. Enforcement is split honestly by who controls the run:
 
 1. **Timeout + process containment** — a per-command timeout; on expiry the ENTIRE child process tree
    is killed (`Kill(entireProcessTree)`), not just the direct child.
-2. **Byte-bounded, streaming output cap** — both pipes are drained to disk with `CopyToAsync` (reviewer
-   memory stays bounded regardless of output volume — a hostile flood lands on disk, not in the
-   process), then at most `MaxOutputBytes` **UTF-8 bytes** are read back; `output_truncated` records the
-   overflow.
+2. **Byte-bounded, zero-disk streaming cap** — both pipes are pumped into fixed byte buffers capped at
+   `MaxOutputBytes` each; overflow is read and **discarded** (the child is always drained, so it can
+   never block on a full pipe), memory stays bounded at ~2× cap, and **nothing is written to disk** —
+   a sustained flood can exhaust neither reviewer memory nor host temp storage. `output_truncated`
+   records the overflow; `captured_stdout_bytes` / `captured_stderr_bytes` record what was retained.
 3. **Pre/post mutation evidence** — the worktree's existing-file hashes are compared before and after.
    **Added, deleted, and modified files ALL count as mutations** (the runner must be read-only); a NEW
    file is exempt **only** when it matches the explicit output-path allowlist (`AllowedOutputPaths`,
    e.g. `*.log`, `coverage/*`). Any other new file is a mutation.
 
 Each command yields a record: `{ command, exit_code, timed_out, output, output_truncated,
-source_mutated, mutated_paths }`. A run whose `source_mutated` is true is itself a finding.
+captured_stdout_bytes, captured_stderr_bytes, source_mutated, mutated_paths }`. A run whose
+`source_mutated` is true is itself a finding.
+
+**Verification infrastructure failure is loud, never silent.** When commands WERE declared but the
+runner or the results write itself fails (an engine defect — distinct from a declared command that
+runs and fails, which is a result for the reviewer to judge), the run FAILS before the reviewer is
+invoked (`failure_reason: verification-not-executed`, diagnosable message, T020 preflight spend class —
+neither budget consumed). A declared verification can never silently degrade into "no results" and
+still produce a clean review.

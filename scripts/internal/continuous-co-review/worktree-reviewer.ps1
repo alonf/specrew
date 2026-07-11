@@ -436,10 +436,12 @@ function Invoke-ContinuousCoReviewBoundedVerification {
         if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
         $preHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $WorktreePath
         # Process containment via ProcessStartInfo (ArgumentList passes each arg ATOMICALLY - Start-Process
-        # would re-quote and split a command containing spaces/quotes). Both pipes are DRAINED CONTINUOUSLY
-        # TO DISK with CopyToAsync (the finding-2 fix): CopyToAsync loops an ~80KB buffer, so reviewer
-        # memory stays bounded no matter how much the command emits - a hostile flood lands on disk, not
-        # in the process. Kill($true) reaps the ENTIRE tree on timeout.
+        # would re-quote and split a command containing spaces/quotes). Both pipes are PUMPED on this
+        # thread into FIXED byte buffers capped at MaxOutputBytes each (findings bfc7b5c5-2 + 06cb3c64-1):
+        # overflow past the cap is READ AND DISCARDED - the child is always drained so it can never block
+        # on a full pipe, reviewer memory stays bounded at ~2x cap + the read buffers, and NOTHING is
+        # written to disk (no temp-storage exhaustion vector). Kill($true) reaps the ENTIRE tree on
+        # deadline; after a kill a short grace window collects the EOFs the kill releases.
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName = (Get-Process -Id $PID).Path
         foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', $cmd)) { [void]$psi.ArgumentList.Add($a) }
@@ -447,37 +449,64 @@ function Invoke-ContinuousCoReviewBoundedVerification {
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
         $psi.UseShellExecute = $false
-        $outFile = [System.IO.Path]::GetTempFileName()
-        $errFile = [System.IO.Path]::GetTempFileName()
-        $ofs = [System.IO.File]::Create($outFile)
-        $efs = [System.IO.File]::Create($errFile)
-        try {
-            $proc = [System.Diagnostics.Process]::Start($psi)
-            $copyOut = $proc.StandardOutput.BaseStream.CopyToAsync($ofs)
-            $copyErr = $proc.StandardError.BaseStream.CopyToAsync($efs)
-            $timedOut = -not $proc.WaitForExit([int]($TimeoutSeconds * 1000))
-            if ($timedOut) { try { $proc.Kill($true) } catch { $null = $_ } ; [void]$proc.WaitForExit() }
-            $exit = if ($timedOut) { $null } else { [int]$proc.ExitCode }
-            # Let the drains flush what the (now-exited or killed) child wrote before we read the files.
-            try { [void][System.Threading.Tasks.Task]::WaitAll(@($copyOut, $copyErr), 3000) } catch { $null = $_ }
-        }
-        finally { $ofs.Dispose(); $efs.Dispose() }
-        # Byte-bounded capture: read at most MaxOutputBytes UTF-8 BYTES TOTAL from the on-disk output;
-        # overflow past the cap is left on disk and DISCARDED from the record, flagged by output_truncated.
-        $truncated = $false
-        $outBuilder = New-Object System.Text.StringBuilder
-        foreach ($fp in @($outFile, $errFile)) {
-            if (-not (Test-Path -LiteralPath $fp -PathType Leaf)) { continue }
-            $room = $MaxOutputBytes - [System.Text.Encoding]::UTF8.GetByteCount($outBuilder.ToString())
-            $len = [long](Get-Item -LiteralPath $fp).Length
-            if ($len -gt $room) { $truncated = $true }
-            $take = [int][Math]::Max(0, [Math]::Min($len, [long]$room))
-            if ($take -gt 0) {
-                $fs = [System.IO.File]::OpenRead($fp)
-                try { $buf = New-Object byte[] $take; $n = $fs.Read($buf, 0, $take); [void]$outBuilder.Append([System.Text.Encoding]::UTF8.GetString($buf, 0, $n)) } finally { $fs.Dispose() }
+        $proc = [System.Diagnostics.Process]::Start($psi)
+        $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
+        $timedOut = $false
+        $killIssued = $false
+        $pumps = @(
+            [pscustomobject]@{ reader = $proc.StandardOutput.BaseStream; buf = (New-Object byte[] 81920); cap = (New-Object byte[] $MaxOutputBytes); task = $null; done = $false; written = 0; overflow = $false },
+            [pscustomobject]@{ reader = $proc.StandardError.BaseStream; buf = (New-Object byte[] 81920); cap = (New-Object byte[] $MaxOutputBytes); task = $null; done = $false; written = 0; overflow = $false }
+        )
+        foreach ($p in $pumps) { $p.task = $p.reader.ReadAsync($p.buf, 0, $p.buf.Length) }
+        while ($true) {
+            $active = @($pumps | Where-Object { -not $_.done })
+            if ($active.Count -eq 0) { break }
+            $now = [DateTime]::UtcNow
+            if ($now -ge $deadline) {
+                if ($killIssued) { break }   # post-kill grace expired; abandon the remaining reads
+                $timedOut = $true
+                $killIssued = $true
+                try { $proc.Kill($true) } catch { $null = $_ }
+                $deadline = $now.AddSeconds(3)
+                continue
             }
+            $taskArr = [System.Threading.Tasks.Task[]]@($active | ForEach-Object { $_.task })
+            $idx = [System.Threading.Tasks.Task]::WaitAny($taskArr, [int][Math]::Max(50, [Math]::Min(500, ($deadline - $now).TotalMilliseconds)))
+            if ($idx -lt 0) { continue }
+            $p = $active[$idx]
+            $n = 0
+            try { $n = [int]$p.task.Result } catch { $p.done = $true; continue }   # faulted read (pipe closed by the kill) = EOF
+            if ($n -le 0) { $p.done = $true; continue }
+            $room = $MaxOutputBytes - $p.written
+            if ($room -gt 0) {
+                $take = [int][Math]::Min($n, $room)
+                [Array]::Copy($p.buf, 0, $p.cap, $p.written, $take)
+                $p.written += $take
+                if ($take -lt $n) { $p.overflow = $true }
+            }
+            else { $p.overflow = $true }
+            $p.task = $p.reader.ReadAsync($p.buf, 0, $p.buf.Length)
         }
-        Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
+        if (-not $timedOut) {
+            # Streams hit EOF; the child should be exiting - a bounded wait, else it is a hang after EOF.
+            if (-not $proc.WaitForExit(5000)) { $timedOut = $true; try { $proc.Kill($true) } catch { $null = $_ }; [void]$proc.WaitForExit() }
+        }
+        else { try { $null = $proc.WaitForExit(2000) } catch { $null = $_ } }
+        $exit = if ($timedOut) { $null } else { [int]$proc.ExitCode }
+        # Byte-bounded record assembly: stdout first, then stderr into the remaining TOTAL room. The pump
+        # already bounded each stream at MaxOutputBytes, so the record can never exceed the cap; a
+        # truncated trailing multibyte char degrades to U+FFFD - acceptable for a bounded capture.
+        $truncated = ([bool]$pumps[0].overflow -or [bool]$pumps[1].overflow)
+        $outBuilder = New-Object System.Text.StringBuilder
+        $roomTotal = $MaxOutputBytes
+        foreach ($p in $pumps) {
+            if ($p.written -le 0) { continue }
+            if ($roomTotal -le 0) { $truncated = $true; continue }
+            $take = [int][Math]::Min($p.written, $roomTotal)
+            if ($take -lt $p.written) { $truncated = $true }
+            [void]$outBuilder.Append([System.Text.Encoding]::UTF8.GetString($p.cap, 0, $take))
+            $roomTotal -= $take
+        }
         $out = $outBuilder.ToString()
         $postHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $WorktreePath
         # Mutation evidence: the reviewer is READ-ONLY, so ADDED, DELETED, and MODIFIED files ALL count
@@ -494,13 +523,17 @@ function Invoke-ContinuousCoReviewBoundedVerification {
             if (-not $allowed) { [void]$mutatedPaths.Add($k) }   # unexplained new file
         }
         $results.Add([pscustomobject]@{
-                command          = $cmd
-                exit_code        = $exit
-                timed_out        = $timedOut
-                output           = [string]$out
-                output_truncated = $truncated
-                source_mutated   = ($mutatedPaths.Count -gt 0)
-                mutated_paths    = $mutatedPaths.ToArray()
+                command               = $cmd
+                exit_code             = $exit
+                timed_out             = $timedOut
+                output                = [string]$out
+                output_truncated      = $truncated
+                # Bytes actually RETAINED per stream (each pump-bounded at MaxOutputBytes): the
+                # observable proof that a sustained flood never lands in memory or on disk beyond the cap.
+                captured_stdout_bytes = [int]$pumps[0].written
+                captured_stderr_bytes = [int]$pumps[1].written
+                source_mutated        = ($mutatedPaths.Count -gt 0)
+                mutated_paths         = $mutatedPaths.ToArray()
             }) | Out-Null
     }
     return $results.ToArray()

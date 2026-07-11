@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T21:20:00Z
+**Updated**: 2026-07-11T21:45:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -149,9 +149,26 @@
   note: two closed F-197 iteration-006 artifacts carry the same
   "physically cannot reach" phrasing - left unedited (closed-record
   integrity), flagged to the maintainer.
-- Next per the same instruction: serialized fresh review against HEAD
-  (after resolved-against-disk clears the round-3 escalation latch, whose
-  demands 88de9ef8 + this commit satisfy), then T016 if clean.
+- Serialized fresh review ran per the instruction (run 06cb3c64, codex,
+  round 1 after the resolved-against-disk reset): 2 blocking findings,
+  BOTH verified real against disk and fixed:
+  (1) the CopyToAsync capture bounded memory but drained to UNBOUNDED temp
+  files - a hostile flood could exhaust host temp storage. Fixed by
+  eliminating disk entirely: both pipes are pumped into FIXED byte buffers
+  capped at MaxOutputBytes each, overflow read-and-DISCARDED (the child
+  stays drained, never blocks), memory ~2x cap, ZERO disk writes; the
+  record now carries captured_stdout_bytes/captured_stderr_bytes as the
+  observable retention proof (asserted at the cap under a ~3 MB flood).
+  (2) the broad catch swallowed wrapper/results-write failures, so a
+  DECLARED verification that failed to EXECUTE was indistinguishable from
+  none-declared - a never-false-green hole. Fixed: declared>0 + engine
+  failure now FAILS the run loudly BEFORE the model is invoked
+  (failure_reason=verification-not-executed, diagnosable message, T020
+  preflight spend class - neither budget consumed, no round latched);
+  paired test forces the wrapper to throw and proves the reviewer is
+  never invoked. Suites 21/21; registry 16/16.
+- Next: fix re-review (round 2, same lineage) against the corrected HEAD;
+  then T016 if clean.
 
 ## Notes
 
