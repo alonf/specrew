@@ -14,6 +14,9 @@ source of truth for what that prompt promises and why.
 - Anything intentionally absent — stripped machinery, a relativized path — is **expected, never a
   defect**; a reference to it is treated as unverifiable-here, not false.
 - The reviewer is **read-only on the source**: it finds issues, it does not fix them.
+- This is isolation by **snapshot + origin-reference removal (T013/T014), not an OS-enforced
+  filesystem sandbox**: confinement is a contract term the reviewer must honor, and the containment
+  detector (T016) monitors for violations and reports them loudly.
 
 ## Bounded verification — who runs it, and where the boundary is
 
@@ -21,20 +24,31 @@ The reviewer is a full agentic host with **direct tool access**: it runs shell c
 engine **cannot** route those runs through a PowerShell wrapper, and the contract does not pretend it
 can. Enforcement is split honestly by who controls the run:
 
-- **The reviewer's own runs are contained by the HOST BOUNDARY, not by a wrapper.** They execute inside
-  the disposable, isolated worktree the reviewer cannot escape (T013/T014), and the containment monitor
-  (T016, on the T100 registry) **records** what the reviewer runs. The prompt tells the reviewer this
-  plainly and requires it to stay read-only and run only the change's declared verification commands —
-  the boundary is the enforcement, not a claim that each call is wrapped.
+- **The reviewer's own runs are governed by the confinement CONTRACT — not by a wrapper, and not by an
+  OS sandbox.** T013 materializes the worktree as an isolated snapshot outside the origin repository and
+  T014 removes origin references from the reviewer-visible context. Neither creates an OS-enforced
+  filesystem sandbox: nothing OS-level prevents a hostile command from reaching outside the snapshot, so
+  the contract makes staying inside it — read-only, declared commands only — a binding term stated
+  plainly in the prompt, and the containment detector (T016, on the T100 registry) monitors for
+  violations and reports them loudly after the fact (it never kills a reviewer mid-flight).
 
 - **The orchestrator's runs ARE wrapped, on the real review path.** Before spawning the reviewer,
-  `Invoke-ContinuousCoReviewWorktreeReviewRun` runs any **declared verification commands**
-  (`-DeclaredVerificationCommands`) through `Invoke-ContinuousCoReviewBoundedVerification` and injects the
-  **host-observed** results into the worktree at `.review/verification/results.json`. This is the
-  runner-observed complement to the implementer-supplied evidence: it is independently observed by the
-  engine, so it carries no forgery spot-check. The reviewer prefers these results over re-running the
-  same commands. The prompt block is gated on the injection actually happening (empty command set → no
-  file, no block — never a pointer to an absent record).
+  `Invoke-ContinuousCoReviewWorktreeReviewRun` runs the **declared verification commands** through
+  `Invoke-ContinuousCoReviewBoundedVerification` and injects the **host-observed** results into the
+  worktree at `.review/verification/results.json`. This is the runner-observed complement to the
+  implementer-supplied evidence: it is independently observed by the engine, so it carries no forgery
+  spot-check. The reviewer prefers these results over re-running the same commands. The prompt block is
+  gated on the injection actually happening (no commands → no file, no block — never a pointer to an
+  absent record).
+
+  **Where the declared commands come from (minimal supply):** the caller's explicit
+  `-DeclaredVerificationCommands` wins; when the caller declares none, the engine uses **only**
+  commands **explicitly recorded** in the digest-matched implementer evidence
+  (`.review/implementer-evidence.json`, `suites[].command`) — **verbatim**. Commands are never inferred
+  from suite names, discovered by scanning, or defaulted to repository sweeps; evidence that records no
+  command strings supplies nothing, and the run status reports the account honestly
+  (`verification_source`, declared vs run counts). Generalized evidence discovery and richer provenance
+  are deferred to Proposal 203 W8.
 
 `Invoke-ContinuousCoReviewBoundedVerification` enforces, per command:
 

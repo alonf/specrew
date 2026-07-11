@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T20:40:00Z
+**Updated**: 2026-07-11T21:20:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -111,9 +111,11 @@
   (a real caller on the real path, gated so an empty set injects nothing -
   never a pointer to an absent file; the runner-observed complement the
   T111 comment flagged as the 203-W8 fast-follow), and (b) the prompt now
-  states the ENFORCEABLE host boundary honestly - the reviewer's own runs
-  are contained by the isolated worktree it cannot escape (T013/T014) + the
-  T016 monitor, NOT a false wrapper claim. (2) the output cap used
+  states the confinement contract honestly - the reviewer's own runs are
+  governed by the isolated snapshot + origin-reference removal (T013/T014)
+  with T016 monitoring/reporting, NOT a false wrapper claim. (Language
+  corrected again at the maintainer's follow-up: no "cannot escape" /
+  OS-sandbox implications anywhere - see the next entry.) (2) the output cap used
   ReadToEndAsync (unbounded memory before truncation) - REAL; now both
   pipes DRAIN TO DISK via CopyToAsync (~80KB buffer, reviewer memory
   bounded regardless of volume), then at most MaxOutputBytes are read back.
@@ -124,7 +126,32 @@
   SUPPLY of declared commands (deriving them from implementer-evidence =
   the 203-W8 runner-observed evidence) is left for a maintainer scope call,
   not folded in unilaterally.
-- T016 (containment detector, T100 registry) is next in the Option B order.
+- Maintainer verdict on the scope flag (2026-07-11, typed instruction):
+  (1) the MINIMAL declared-command supply path folded into T015 - ONLY
+  commands EXPLICITLY recorded in the digest-matched implementer evidence
+  (suites[].command, verbatim; the digest gate inherited from the T111
+  copy) reach -DeclaredVerificationCommands; caller-explicit wins; never
+  inferred from suite names, never test-scanning, never repository sweeps;
+  missing declarations run NOTHING and the status reports the account
+  honestly (verification_source + declared/run counts); dedupe + cap 8
+  (budget-death guard, cap visible in the counts); the run moved AFTER the
+  ceiling/preflight guards so halted runs never spend verification time.
+  Generalized discovery + provenance stay deferred to 203-W8 (T018).
+  (2) Confinement language corrected EVERYWHERE (prompt, spawn contract,
+  state, comments): T013/T014 provide an isolated snapshot + origin-
+  reference removal, T016 monitors and reports violations - never an
+  OS-enforced sandbox, never "cannot escape/reach". (3) Proof tests added:
+  evidence-recorded commands reach the production orchestrator path;
+  suite-name-only evidence supplies nothing (no inference); digest-
+  mismatched evidence supplies nothing; caller declarations win over
+  evidence; a mutating evidence-supplied command is recorded; timeout
+  bounds + verbatim transport asserted at the wrapper call. Historical
+  note: two closed F-197 iteration-006 artifacts carry the same
+  "physically cannot reach" phrasing - left unedited (closed-record
+  integrity), flagged to the maintainer.
+- Next per the same instruction: serialized fresh review against HEAD
+  (after resolved-against-disk clears the round-3 escalation latch, whose
+  demands 88de9ef8 + this commit satisfy), then T016 if clean.
 
 ## Notes
 
