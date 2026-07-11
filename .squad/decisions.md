@@ -450,7 +450,7 @@
   iteration. **The live-wiring floor is the LOAD-BEARING assertion (human-specified 2026-06-09), run in a
   real scratch project, PER INJECTING HOST:** (1) SessionStart writes `boundary_enforcement` ON DISK (in
   start-context.json); (2) a working turn + Stop captures the iteration intent into `last-start-prompt.md`
-  + the agent-authored handover ON DISK; (3) a FRESH resume READS them back. That deployed-tree on-disk
+  - the agent-authored handover ON DISK; (3) a FRESH resume READS them back. That deployed-tree on-disk
   round-trip is what catches every dev-tree-only "works" claim, and it gates the whole iteration.
 - **Process**: iteration 6 = a SUBSTANTIAL design pass first -> the before-implement gate. Apply the
   standing floors (validator EXIT 0 before every boundary); make the deployed live-wiring floor the
@@ -24133,6 +24133,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Recorded At**: 2026-06-06T13:57:06Z
 
 ## 2026-06-06T14:04:04Z — Delegated routing plan
+
 ## 2026-06-06T10:41:12Z — Delegated routing plan
 
 - **Enabled Agents**: claude
@@ -24147,6 +24148,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:04Z — Routing evidence: Implementer
 
 - **Decision ID**: routing-evidence-0db45c263c9c
+
 ## 2026-06-06T10:41:12Z — Routing evidence: Implementer
 
 - **Decision ID**: routing-evidence-67701a51bf8a
@@ -24164,6 +24166,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:05Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-973889924c32
+
 ## 2026-06-06T10:41:13Z — Routing evidence: Spec Steward
 
 - **Decision ID**: routing-evidence-c0b9de6afb0f
@@ -24181,6 +24184,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:05Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-cab2ec57532f
+
 ## 2026-06-06T10:41:14Z — Routing evidence: Planner
 
 - **Decision ID**: routing-evidence-232b2ffb208a
@@ -24198,6 +24202,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:06Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-0daa1626219f
+
 ## 2026-06-06T10:41:14Z — Routing evidence: Reviewer
 
 - **Decision ID**: routing-evidence-f4bdcbbe24c3
@@ -24215,6 +24220,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 ## 2026-06-06T14:04:06Z — Routing evidence: Retro Facilitator
 
 - **Decision ID**: routing-evidence-2a67a9950994
+
 ## 2026-06-06T10:41:15Z — Routing evidence: Retro Facilitator
 
 - **Decision ID**: routing-evidence-8ca806c05e19
@@ -24255,6 +24261,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 869e1537
 - **Recorded At**: 2026-06-06T15:27:11Z
+
 ## 2026-06-06T10:41:17Z — Boundary enforcement: feature-closeout
 
 - **Feature**: 140-unix-native-install
@@ -24308,6 +24315,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Boundary Type**: before-implement
 - **Current Boundary**: tasks
 - **Requested Boundary**: before-implement
+
 ## 2026-06-06T00:06:59Z — Boundary sync: review-signoff
 
 - **Boundary Type**: review-signoff
@@ -24413,6 +24421,7 @@ Documented in `specs/049-pipeline-hardening-intake/iterations/005/drift-log.md` 
 - **Task ID**: (none)
 - **Auth Commit Hash**: 1223e7db
 - **Recorded At**: 2026-06-06T13:50:41Z
+
 ## 2026-06-06T10:18:29Z — Boundary sync: iteration-closeout
 
 - **Boundary Type**: iteration-closeout
@@ -25578,6 +25587,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 9bed41a2e6dbdb91fcade1bf6008e92c223748e1
 - **Recorded At**: 2026-06-07T20:05:47Z
+
 ## 2026-06-06T16:01:21Z — Delegated routing plan
 
 - **Enabled Agents**: codex
@@ -26365,6 +26375,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Retroactive note**: recorded 2026-06-11 alongside iteration 008's reconstructed review.md / retro.md /
   drift-log.md (008 closed at boundary commit 7fe04228 on 2026-06-11 without committed closure artifacts;
   this formalizes the documented cross-host-validation outcome + the hollow-handover carry).
+
 ## 2026-06-11 — Defer (canonical, corrective): Feature 177 Iteration 002 D-003 behavioral SC-004 / SC-007 / SC-008 — gate met, line promoted to stable
 
 - **Decision ID**: defer-177-i002-d003-behavioral-sc-gate
@@ -26549,6 +26560,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
   calls routinely — spiritually back toward DF-5). **Evidence-source tag** is added to every `verdict_history`
   entry (`hook-captured-from-transcript` | `human-confirmed-at-resume`; never fabricated) so the audit trail is
   honest about each authorization's provenance strength.
+
 ## 2026-06-11T11:50:17Z — Delegated routing plan
 
 - **Enabled Agents**: codex
@@ -26831,6 +26843,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 ## 2026-06-17T20:18:24Z — Boundary enforcement: before-implement
 
 - **Feature**: 197-continuous-co-review
+
 ## 2026-06-15T22:23:09Z — Boundary sync: specify
 
 - **Boundary Type**: specify
@@ -26931,6 +26944,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: b79f73a5d1f9ec6f0ef729cdda5c3543f225d112
 - **Recorded At**: 2026-06-17T20:26:07Z
+
 ## 2026-06-16T00:36:27Z — Boundary enforcement: before-implement
 
 - **Feature**: 183-stability-quality-bundle
@@ -27547,7 +27561,7 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
      dev-repo paths into consumer projects — deploy consumer-correct lanes, gate on forge presence,
      or defer until a remote exists (matching the DevOps-lens teaching the reviewer itself cited).
   2. (F-197-adjacent) Host-machinery dirs are inconsistently handled between the DIGEST identity
-     (includes .claude/** and .github/** — not in the ambient denylist) and the WORKTREE strip
+     (includes .claude/**and .github/** — not in the ambient denylist) and the WORKTREE strip
      (marker-detected machinery removal): content a reviewer may never see can be certified, and
      un-strippable local config (settings.local.json) gets reviewed as app changes. Align the two
      lists (machinery dirs excluded from BOTH or included in BOTH) — same FR-025 identity family
@@ -27857,3 +27871,92 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: e9454447
 - **Recorded At**: 2026-07-10T20:00:55Z
+
+## 2026-07-10T21:26:14Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-10T21:26:14Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-07-10T21:26:15Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3386dbf1
+- **Recorded At**: 2026-07-10T21:26:15Z
+
+## 2026-07-10T21:32:28Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: plan
+- **Recorded At**: 2026-07-10T21:32:28Z
+- **Warning**: Expected next boundary 'tasks' but received 'before-implement'.
+
+## 2026-07-10T21:32:29Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3058b9c9
+- **Recorded At**: 2026-07-10T21:32:29Z
+
+## 2026-07-11T10:27:09Z — Boundary sync: review-signoff
+
+- **Boundary Type**: review-signoff
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: e9601d7b
+- **Recorded At**: 2026-07-11T10:27:09Z
+
+## 2026-07-11T10:41:48Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 828d2e18
+- **Recorded At**: 2026-07-11T10:41:48Z
+
+## 2026-07-11T10:42:10Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-07-11T10:42:10Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-07-11T10:42:11Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 828d2e18
+- **Recorded At**: 2026-07-11T10:42:10Z
+
+## 2026-07-11T11:02:57Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-07-11T11:02:57Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-07-11T11:02:57Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 96e180b1
+- **Recorded At**: 2026-07-11T11:02:57Z
+
+## 2026-07-11T11:05:00Z — DEC-198-GOV-001: fabricated retro authorization removed (maintainer-approved ledger surgery)
+
+- **What happened**: verdict_history gained `approved for retro` (recorded 2026-07-11T10:45:40Z, evidence `hook-captured-from-transcript-pending-artifact`) that the human never gave — their actual reply to the retro packet was a send-back. The pending-artifact fallback capture read the Stop hook's own blocking feedback (a user-role transcript turn containing approval-shaped machinery text) as a human approval and synthesized the verdict text from the pending artifact's phrase.
+- **Decision (maintainer, 2026-07-11)**: approve surgical removal of that single entry from `.specrew/start-context.json` `boundary_enforcement.verdict_history`; restore `last_authorized_boundary` to `review-signoff` so the retro boundary genuinely awaits a human verdict.
+- **Execution**: JsonNode-based one-off script (no date coercion, full-identity precondition incl. timestamp + evidence source; iteration 001's legitimate retro entry at index 6 verified untouched); pre-surgery backup retained in the session scratchpad; post-surgery state verified via `Get-SpecrewBoundaryEnforcementState` (shape clean) and `Get-SpecrewPendingVerdictState` (pending `review-signoff -> retro`).
+- **Follow-up owed (iteration 003 scope discussion)**: (a) capture must exclude hook-injected/user-role machinery turns from verdict evidence; (b) the approval tokenizer must not match approval-shaped scold text; (c) the ledger has no designed correction door — this surgery had to be a one-off script; (d) audit note: the 001 retro entry (2026-07-10T18:37:39Z) shares the fallback evidence source but its decision was genuinely given by the human that day.
