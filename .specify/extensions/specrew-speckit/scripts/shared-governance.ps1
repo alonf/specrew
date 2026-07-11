@@ -1890,7 +1890,17 @@ function Find-SpecrewCycleScopedAuthorization {
         }
         if ($entryMatches) { return $entryMap }
         $toIdx = [Array]::IndexOf($boundaryOrder, $to)
-        if ($from -eq 'iteration-closeout' -and $toIdx -ge $planIdx -and $toIdx -lt $closeoutIdx) { return $null }
+        if ($from -eq 'iteration-closeout' -and $toIdx -ge $planIdx -and $toIdx -lt $closeoutIdx) {
+            # A reset edge normally walls off the prior cycle - EXCEPT when the target IS
+            # 'iteration-closeout': the closing cycle's own closeout authorization legitimately
+            # sits just below its exit edge (post-closeout sync-lag shape: cursor already at the
+            # new cycle's plan while the working record still says iteration-closeout). Continue
+            # past exactly this edge; the closeout-terminator rule above still guards the walk -
+            # if the closing cycle's closeout entry is absent, walkedMidCycle is true by the time
+            # an OLDER cycle's closeout entry is reached, and the walk stops without matching.
+            if ($targetTo -eq 'iteration-closeout') { continue }
+            return $null
+        }
         if ($toIdx -lt $closeoutIdx) { $walkedMidCycle = $true }
     }
     return $null

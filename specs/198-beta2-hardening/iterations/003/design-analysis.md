@@ -86,7 +86,7 @@ the compat verification happens once, at the end, where rework is most
 expensive. It also reads their landed precursors last, forfeiting free
 design input for T013/T014/T017.
 
-**Effort estimate**: 11.5 SP planned (+ end-loaded rework risk on the
+**Effort estimate**: 12.0 SP planned (+ end-loaded rework risk on the
 overlap files, realistically +1-1.5 SP if their commit lands mid-iteration).
 
 **Reversibility cost**: medium — rework concentrated at the end.
@@ -156,9 +156,12 @@ disjoint file surface means its position cannot conflict with anything; the
 re-enable is a tested gate, not a judgment call; every 002 field incident
 becomes a fixture.
 
-**Effort estimate**: 11.5 SP planned (T013 1.0, T014 1.0, T015 0.5, T016
+**Effort estimate**: 12.0 SP planned (T013 1.0, T014 1.0, T015 0.5, T016
 1.0, T017 1.5, T018 1.0, T019 1.5, T020 1.0, T030 0.75, T031 0.5, T032 0.5,
-T033 1.0, T034 0.75 split 0.25/0.5) - provisional values confirmed as sized.
+T033 1.0, T034 0.75 split 0.25/0.5) - provisional values confirmed as
+sized. (The draft first said 11.5 - an addition error against these same
+rows, caught at self-review before the gate; the rows are authoritative:
+containment 5.0 + round economy 3.5 + capture 2.75 + integration 0.75.)
 
 **Reversibility cost**: low — the checkpoint is a scheduling device, not a
 structure; all new logic is pure functions + data + recorded transitions.
@@ -189,7 +192,7 @@ the iteration start blocks on external timing the crew does not control,
 while stable 0.40.0 is HELD on this feature (DEC-197-REL-001); an unbounded
 wait trades a bounded ~0.5 SP rework risk for unbounded calendar risk.
 
-**Effort estimate**: 11.5 SP planned + unbounded calendar wait.
+**Effort estimate**: 12.0 SP planned + unbounded calendar wait.
 
 **Reversibility cost**: low technically; high schedule cost.
 
@@ -202,20 +205,20 @@ wait trades a bounded ~0.5 SP rework risk for unbounded calendar risk.
 
 ## Crew Recommendation
 
-**Option B.** It is the only option that honors all three binding
+**Option B.** It is the only shape that honors all three binding
 instructions simultaneously - containment/T020 priority intact, the Devin
 fix inspected-and-reused at the cheapest point instead of reimplemented or
 end-merged, and the capture block sized-in-place on disjoint files with the
-fallback re-enable behind tested acceptance criteria. Option A pays an
-avoidable end-loaded merge tax on two-crew files; Option C trades a bounded
-half-point of rework for unbounded calendar risk while the release is held
-(rationales in their trade-off tables above).
+fallback re-enable behind tested acceptance criteria. Both rejected
+alternatives fail an instruction each: one end-loads the two-crew merge
+onto maximally-diverged files, the other blocks a release-holding iteration
+on external timing (rationales in their trade-off tables above).
 
 ## Capacity Model
 
-11.5 SP planned (containment 5.0, round-economy 3.5, capture-integrity
+12.0 SP planned (containment 5.0, round-economy 3.5, capture-integrity
 2.75, integration 0.75 sized as 0.25 + 0.5) against the 26 cap - honest
-forecast ~13-14 SP wall-clock with the pre-T020 review tax (the 002 retro
+forecast ~14 SP wall-clock with the pre-T020 review tax (the 002 retro
 calibration holds until T020 itself lands mid-iteration). Defer order if a
 slice spills: T033 first (the correction door can slip to iteration 004
 with an explicit maintainer decision - FR-044 has no downstream dependent
@@ -345,8 +348,12 @@ maintainer-instructed at the 003 planning approval.
       → co-review regression set (worktree/digest/signoff suites)
       → one live review round (compat proof)
       → exec-bit restoration verified vs DRIFT-198-I001-001
-      → conflicts? → resolve toward THEIR design-context surface,
-        ours adapts (they own that seam)
+      → MECHANICAL conflicts (line/rename/formatting, plumbing shape):
+        resolve toward THEIR design-context seam, ours adapts
+      → SEMANTIC conflicts (anything changing containment, authorization,
+        evidence integrity, or fail-closed behavior): ESCALATE to the
+        maintainer - never auto-resolved (maintainer instruction,
+        2026-07-11 send-back)
 ```
 
 ## Roadmap Fit
@@ -361,10 +368,23 @@ maintainer-instructed at the 003 planning approval.
 
 ## Human Decision
 
-- **Decision verdict**: (pending — awaiting the maintainer's option pick at
-  the rendered design gate stop)
-- **Chosen Option**: (pending)
-- **Reason**: (pending)
-- **Modifications**: (pending)
-- **Design-analysis draft commit**: (filled at commit)
-- **Decision recorded in commit**: (filled after the verdict)
+- **Decision verdict**: Option B chosen by the maintainer (2026-07-11,
+  typed at the design-gate exchange: "Option B is the correct technical
+  choice... Keep Option B"). The lifecycle boundary (plan -> tasks) was
+  deliberately NOT advanced by that message ("No lifecycle advancement is
+  authorized by this response") - its verdict is captured at the clean
+  boundary packet that followed.
+- **Chosen Option**: Option B — priority order + front-loaded inspection +
+  at-landing integration checkpoint; capture-integrity last on disjoint
+  files; fallback re-enable only behind T030-T033 acceptance criteria.
+- **Reason**: the only shape honoring all three binding instructions at
+  once (containment/T020 priority; inspect-and-reuse the Devin fix at the
+  cheapest point; capture block sized-in-place).
+- **Modifications (maintainer-typed)**: conflict-resolution doctrine
+  refined — MECHANICAL conflicts resolve toward the Devin-owned
+  design-context seam; SEMANTIC conflicts that change containment,
+  authorization, evidence integrity, or fail-closed behavior are ESCALATED
+  to the maintainer, never auto-resolved (recorded in the agreed flow
+  above and binding on T034b).
+- **Design-analysis draft commit**: `93dc37d2`
+- **Decision recorded in commit**: the commit carrying this section.

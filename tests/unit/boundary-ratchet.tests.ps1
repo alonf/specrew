@@ -254,6 +254,35 @@ if ($null -ne $un2) { Write-Fail "the current cycle's own closeout authorization
 else { Write-Pass "the current cycle's own closeout authorization reconciles" }
 Remove-Item -Recurse -Force $fx, $fx2
 
+Write-Host "Test 16: post-closeout sync lag - cursor at the new cycle's plan, working record still at iteration-closeout"
+# The field shape after a cycle turns over: the capture moved the cursor to plan (new cycle)
+# while session_state still says iteration-closeout (mechanical sync lags the capture). The
+# closing cycle's closeout IS authorized (the entry just below the reset edge); the primitive
+# must read this as CLEAN, not refuse the plan sync as a skipped closeout.
+$fx = New-RatchetFixture -WorkingBoundary 'iteration-closeout' -LastAuthorized 'plan' -History @(
+    (New-HistoryEntry -From 'review-signoff' -To 'retro' -Hash 'd4d4d4d40001'),
+    (New-HistoryEntry -From 'retro' -To 'iteration-closeout' -Hash 'd4d4d4d40002'),
+    (New-HistoryEntry -From 'iteration-closeout' -To 'plan' -Hash 'd4d4d4d40003')
+)
+$un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
+if ($null -ne $un) { Write-Fail "authorized closeout below its own exit edge must read clean, got: $($un | ConvertTo-Json -Compress)" }
+else { Write-Pass "post-closeout sync lag reads clean; the plan sync is not falsely refused" }
+$gate = Invoke-SpecrewBoundaryRatchetGate -ProjectRoot $fx -RequestedBoundary 'plan'
+if ($gate -ne $true) { Write-Fail "the plan sync must pass on the lag shape" } else { Write-Pass "ratchet passes the new cycle's plan sync on the lag shape" }
+Remove-Item -Recurse -Force $fx
+# Paired abuse: the same lag shape but the closing cycle's closeout was NEVER authorized -
+# only a prior cycle's closeout entry exists further back. Must stay unreconciled.
+$fx = New-RatchetFixture -WorkingBoundary 'iteration-closeout' -LastAuthorized 'plan' -History @(
+    (New-HistoryEntry -From 'retro' -To 'iteration-closeout' -Hash 'd4d4d4d40004'),
+    (New-HistoryEntry -From 'iteration-closeout' -To 'plan' -Hash 'd4d4d4d40005'),
+    (New-HistoryEntry -From 'plan' -To 'tasks' -Hash 'd4d4d4d40006'),
+    (New-HistoryEntry -From 'iteration-closeout' -To 'plan' -Hash 'd4d4d4d40007')
+)
+$un = Get-SpecrewUnreconciledBoundary -ProjectRoot $fx
+if ($null -eq $un -or $un.Boundary -ne 'iteration-closeout') { Write-Fail "an unauthorized closeout must stay unreconciled across the lag shape, got: $($un | ConvertTo-Json -Compress)" }
+else { Write-Pass "unauthorized closeout stays unreconciled: the prior cycle's closeout cannot leak through the exit edge" }
+Remove-Item -Recurse -Force $fx
+
 Write-Host ""
 if ($script:failCount -gt 0) { Write-Host "$script:failCount test(s) FAILED" -ForegroundColor Red; exit 1 }
 Write-Host "All boundary-ratchet paired tests passed." -ForegroundColor Green
