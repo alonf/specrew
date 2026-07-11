@@ -63,7 +63,7 @@
 
 - Current roster snapshot: Spec Steward, Planner, Implementer, Reviewer, Retro Facilitator
 - Technology and scope signals: Backend/service-oriented signals dominate the scoped requirements.
-- Task dependency graph: detailed dependencies are still pending task decomposition in this stub; revisit once the task table is populated.
+- Task dependency graph (as executed): T007 first (the shared primitive), then T008/T009 building on its plumbing; T010, T011, T012 independent of the US1 chain; T019a independent (navigator surface). All serial under one Implementer — no same-specialty parallelism was proposed or needed.
 - Workstream separability: Conflict-heavy signals are present, so keep same-specialty work serial unless ownership boundaries become explicit.
 - Shared-surface conflict risk: elevated due to shared-state / cross-cutting cues in scope text.
 - Prior reviewer ownership/hotspot evidence: Latest reviewer hotspots: specs/198-beta2-hardening/iterations/001/design-analysis.md (307 changed lines); specs/198-beta2-hardening/plan.md (254 changed lines)
@@ -73,22 +73,21 @@
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | TBD | Populate after task decomposition and approval gating |
-| Discovery/Spikes | TBD | Capture any required risk-reduction work revealed during planning |
-| Implementation | TBD | Sum planned delivery tasks once the task table is complete |
-| Review | TBD | Estimate review/demo effort after verdict flow is defined |
-| Rework | TBD | Expected needs-work buffer if review finds gaps |
+| Planning | light | Actual: light. Design-analysis + iteration plan passed their gates first-try (001 form lessons held). |
+| Discovery/Spikes | 0 | Actual: 0. No spikes planned; the cycle-reset discovery emerged inside T009 (Gap Ledger, review.md). |
+| Implementation | 6.5 | Actual: 7.25. Spread across T007/T009/T012; T009 carried the cycle-reset scope growth. |
+| Review | 1.0 | Actual: 1.75. One codex flake, one ceiling latch + more-time, one evidence-staleness re-round that caught a real bug. |
+| Rework | 0 | Actual: 0.25. Test 5 hermeticity fix, same hour as its catch (run 485cbb03). |
 
 ## Traceability Summary
 
-- Requirement scope for this stub: FR-001..FR-007, FR-020, FR-021, FR-022, FR-023
-- User stories represented in current scope: US1 (one approval advances one boundary), US3 (review rounds spend human budget honestly)
-- Pending detailed planning: populate the task table, then run specrew-capacity-planning and specrew-traceability-check before approval.
-- Overcommit guardrail: compare planned task effort against the configured threshold and record any required deferrals from the lowest-priority requirement slices before leaving planning.
+- Requirement scope delivered: FR-001..FR-007, FR-020, FR-021, FR-022, FR-023, plus FR-017's navigator-surfacing half (T019a, maintainer-approved pull-forward)
+- User stories represented: US1 (one approval advances one boundary), US3 (review rounds spend human budget honestly)
+- Detailed planning completed before execution: task table decomposed (7 tasks, 8.0 SP planned), capacity and traceability verified at the tasks/before-implement gates.
+- Overcommit outcome: 8.0 planned SP against the 26 SP cap — no deferrals required; final consumed 9.25 SP, within cap.
 
 ## Notes
 
-- This stub captures the planned scope pending detailed planning in the Specrew Planning ceremony.
-- Add task rows only for work that is traceable to the scoped requirements above.
-- Keep Status: planning until the plan is fully decomposed and approved.
-- If task effort exceeds the configured threshold, make the deferral decision explicit in this plan before execution starts and name the lowest-priority requirement slices proposed for deferral.
+- Iteration closed through review-signoff: review.md accepted (7/7 pass), signoff evidence chain 237849f1 -> 485cbb03 (real catch) -> 8bf11302 (clean, promoted); variance and lessons in retro.md.
+- T019a entered this iteration by maintainer decision (stale-verdict surfacing pulled forward from T019).
+- These closing sections (Phase Baseline, Concurrency Rationale, Traceability, Notes) were replaced with completion truth at retro after a maintainer send-back caught the scaffold text still standing — the same scaffold-staleness class this iteration's improvement action 3 now targets with a deterministic check.

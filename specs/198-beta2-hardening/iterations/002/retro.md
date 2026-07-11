@@ -85,19 +85,26 @@ times the surface the estimate assumed.
 ## Improvement Actions
 
 1. Owner: Implementer | Phase: iteration 003 (T013-T015 containment
-   contract) | Type: implementation | Expected effect: make "the reviewer
-   runs the unit suite inside the stripped worktree" an explicit,
-   recorded reviewer expectation in the containment contract — it is the
-   mechanism that caught Test 5 and it must not depend on reviewer whim.
+   contract) | Type: implementation | Expected effect: the containment
+   contract REQUIRES (maintainer instruction: requirement, not advisory)
+   an in-worktree verification step BOUNDED to declared relevant test
+   commands — with timeout/process containment, bounded output capture,
+   and post-run mutation detection — never an unrestricted
+   whole-repository suite run. This is the mechanism that caught Test 5,
+   made deterministic and safe.
 2. Owner: Implementer | Phase: iteration 003 (T020) | Type:
    implementation | Expected effect: the spend-allowance halt UX retires
    the latch-on-converging-round friction measured again this iteration
    (one latch + one human approval of pure loop mechanics).
-3. Owner: Implementer | Phase: continuous (pre-signoff) | Type: process |
-   Expected effect: before any signoff sync, sweep iteration artifacts
-   for scaffold phrases ("has not started yet", "Populate after") in
-   truth-gate-read fields; prevents the refusal round-trip and the
-   evidence re-round it forces.
+3. Owner: Implementer | Phase: iteration 003 (feasibility, then
+   continuous) | Type: implementation | Expected effect: promote the
+   scaffold-phrase sweep from a manual reminder to a DETERMINISTIC
+   pre-signoff check over truth-gate-read artifacts (scaffold phrases
+   like "has not started yet", "TBD", "pending task decomposition",
+   "Populate after") — this iteration proved a prose-only sweep
+   unreliable twice: state.md reached the signoff gate stale, and
+   plan.md's scaffold sections survived to the retro gate itself
+   (maintainer send-back).
 4. Owner: Reviewer | Phase: continuous | Type: process | Expected
    effect: fixture hermeticity is now a named review lens ("does every
    test build its own state, or does it lean on ambient repo files that a
@@ -116,6 +123,15 @@ times the surface the estimate assumed.
 
 ## Notes
 
+- Retro verdict history: sent back once — the maintainer caught plan.md's
+  scaffold sections (Phase Baseline TBDs, "pending task decomposition",
+  stub Notes) still standing while this retro claimed the scaffold sweep
+  as a corrective action; approving would have immediately disproved
+  action 3. Fixed before re-submission; the recurrence is itself the
+  evidence that action 3 must be deterministic, not prose.
+- Capture-latency keystroke tax: stays a retro note per maintainer
+  ruling — address in iteration 003 only if a small generic fix emerges
+  during planning; it must not displace containment or T020 work.
 - Signoff evidence chain for this iteration: clean 237849f1 → staleness
   re-round 485cbb03 (real catch: Test 5 hermeticity, fixed 14222c86) →
   clean 8bf11302 promoted as gate evidence; review-signoff approved by
