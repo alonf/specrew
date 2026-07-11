@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "v1",
+  "featureRef": "specs/198-beta2-hardening/spec.md",
+  "iterationRef": "specs/198-beta2-hardening/iterations/002",
+  "generatedAt": "2026-07-11T00:01:45Z",
+  "generator": {
+    "name": "specrew-mechanical-checks",
+    "version": "0.40.0"
+  },
+  "findings": []
+}
