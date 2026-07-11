@@ -3,7 +3,7 @@ proposal: 145
 title: Host-Neutral Structured Multi-Phase Reviewer (7-Phase Checklist + FR×Phase Coverage Matrix + Static Validator)
 status: candidate
 phase: phase-2
-estimated-sp: 45-65
+estimated-sp: 51-75
 priority-tier: 1
 discussion: surfaced 2026-05-30 after F-049 + F-050 dogfooding revealed 8+ "review missed X" instances despite review-signoff verdicts of accepted; pattern is structural (single-pass narrative reviewer with no per-dimension coverage enforcement), not exhortation-fixable
 ---
@@ -181,6 +181,175 @@ Gate-local examples:
 - `retro`: evidence, drift, lessons, deferrals, closeout consistency.
 
 This makes the final review more likely to pass for the right reason: earlier boundaries already produced structured evidence, and the final reviewer is not rediscovering basic governance drift at the end.
+
+## Amendment: lightweight semantic artifact reviewer at every human gate
+
+The deterministic preflight above catches malformed or mechanically
+inconsistent artifacts, but it cannot decide whether a plan is sensible, a
+task decomposition is complete, a budget statement contradicts its own table,
+or a retrospective's improvement action is disproved by the files being
+approved. Field evidence on 2026-07-11 produced all four classes during
+pre-code/process boundaries:
+
+- a before-implement packet described eight calls as total spend while a
+  required ninth call lived elsewhere in the plan;
+- corrected prose still disagreed with the canonical budget table and a task
+  referenced the wrong row;
+- a retrospective proposed a stale-scaffold sweep while its own committed plan
+  still contained `TBD`, "pending task decomposition", and "keep Status:
+  planning" text;
+- shipped production code was repaired during gate review before explicit
+  human authorization, showing that a review finding is not implementation
+  authority.
+
+These are semantic process/artifact defects. They are cheaper to catch than
+code defects and need less context, but deterministic validation alone cannot
+reliably detect them. Proposal 145 therefore defines two reviewer classes:
+
+| Reviewer class | Lifecycle stages | Primary purpose | Default capability |
+| --- | --- | --- | --- |
+| `artifact-process` | specify, clarify, plan, tasks, before-implement, retro, iteration-closeout, feature-closeout | Contradictions, incomplete decomposition, stale scaffold truth, unsupported claims, incorrect arithmetic/budgets, unauthorized work, packet-vs-artifact mismatch | fast/balanced semantic reviewer |
+| `code-outcome` | implementation checkpoints and review-signoff | Behavioral correctness, architecture, security, tests, regressions, and spec/design conformance | frontier reviewer |
+
+The artifact/process reviewer is a separate fresh-context reviewer, not the
+artifact author checking its own work. Cross-host independence is preferred;
+same-host fresh-context review is an honestly labeled fallback when policy
+allows it. Proposal 102 owns independence levels. The runtime model-resolution
+layer maps the `artifact-process` class to a currently available fast/balanced
+model. Proposal 145 owns when the reviewer runs, what it checks, and the
+evidence contract.
+
+### Gate-local execution order
+
+Every human-judgment boundary follows this sequence:
+
+1. Author the candidate artifact set.
+2. Run deterministic validation and boundary-specific mechanical preflight.
+3. Freeze the candidate artifact digest and construct a stage-scoped context
+   pack.
+4. Run one semantic `artifact-process` review against that digest.
+5. Resolve or explicitly disposition its findings; any repair that changes the
+   digest invalidates the review and requires a bounded rerun.
+6. Render the human packet only from the reviewed digest and attach the
+   artifact-review evidence.
+7. Stop for the human verdict. The reviewer never authorizes or advances the
+   boundary.
+
+The artifact reviewer is one bounded invocation per boundary by default, not a
+seven-phase code review. A second invocation is allowed only for a changed
+digest after findings are repaired or under an explicitly approved retry
+budget. Unchanged digest evidence is reusable. Mechanical preflight runs before
+the model call so quota is not spent finding errors a validator already knows.
+
+### Stage-specific semantic rubrics
+
+`specify` and `clarify`:
+
+- Are requirements internally consistent, testable, and free of hidden design
+  decisions presented as facts?
+- Are assumptions, unresolved questions, non-functional constraints, and
+  exclusions explicit?
+- Does each human decision have provenance rather than manufactured agreement?
+
+`plan`:
+
+- Does the decomposition cover every in-scope FR/SC without silently pulling
+  deferred work forward?
+- Are architecture, dependencies, capacity, sequencing, ownership, and risks
+  coherent?
+- Are risks converted into controls, tasks, or explicit human decisions?
+- Does any text still describe a planning stub or contradict the stated phase?
+
+`tasks`:
+
+- Is every task authorized by a requirement and equipped with verifiable
+  acceptance evidence?
+- Are dependencies, owner file globs, concurrency, and effort arithmetic
+  realistic and mutually consistent?
+- Are live calls, destructive operations, external writes, and human-owned
+  spending enumerated and bounded?
+- Do task details agree with the plan, hardening gate, and deferral record?
+
+`before-implement`:
+
+- Does the packet state the exact scope being authorized, including versions,
+  external costs, retries, and stop conditions?
+- Do canonical tables, prose, tasks, acceptance mappings, and gate conditions
+  agree numerically and semantically?
+- Has implementation already begun, and if so, is there valid prior authority
+  or an explicit ratification record that does not misclassify the work?
+- Are unresolved send-backs or prerequisite decisions still open?
+
+`retro`:
+
+- Do task and phase arithmetic reconcile with committed evidence?
+- Are lessons supported by observed events rather than retrospective narrative?
+- Does every improvement action have an owner, target phase, enforcement shape,
+  and measurable expected effect?
+- Do the artifacts being approved already contradict a proposed improvement?
+
+`iteration-closeout` and `feature-closeout`:
+
+- Do status, dashboard, closed-index, decision ledger, task ledger, and
+  handover tell the same lifecycle truth?
+- Are deferrals routed with explicit authority and durable ownership?
+- Does completion language overclaim evidence, release state, or merge state?
+
+### Artifact-review evidence contract
+
+Each gate-local semantic review emits a compact machine-readable record:
+
+- boundary and candidate digest;
+- reviewer harness, model identity when observable, and independence label;
+- stage rubric version;
+- findings with artifact/line references, severity, and disposition;
+- arithmetic/traceability assertions checked;
+- verdict: `pass | rework | blocked | unavailable`;
+- invocation count, timeout, and bounded failure reason;
+- reviewed-at timestamp and superseded-by digest when stale.
+
+The human packet MUST identify the matching artifact-review digest. A passing
+review for an older digest cannot support a newer packet. `unavailable` never
+becomes a silent pass: project policy chooses hard-block, explicit human bypass,
+or an honestly labeled same-host fallback.
+
+### Escalation and cost policy
+
+The default artifact reviewer is fast/balanced because its context is limited
+to structured lifecycle artifacts rather than the implementation tree. It
+escalates to a frontier reviewer when any of these apply:
+
+- security, privacy, destructive operation, release, or external-spend policy;
+- architecture or data-contract decisions with broad blast radius;
+- unresolved contradictions after one repair round;
+- requested exception to a deterministic gate;
+- artifact-process reviewer confidence/parse failure under a blocking policy.
+
+Model names never live in this lifecycle policy. The runtime model-resolution
+layer resolves the capability class against authenticated CLI availability and
+records the actual model used.
+
+### Amendment requirements
+
+- **AR-001**: Every human-judgment boundary runs deterministic preflight then a
+  stage-scoped semantic artifact/process review before rendering the packet.
+- **AR-002**: Artifact review is fresh-context and separately identified from
+  the author; independence/fallback is labeled under Proposal 102.
+- **AR-003**: The reviewer receives only stage-relevant artifact context by
+  default and uses a fast/balanced capability class; escalation conditions are
+  deterministic policy inputs.
+- **AR-004**: Review evidence is bound to the candidate artifact digest; any
+  review-relevant change stales it.
+- **AR-005**: One invocation per digest is the default; retries and reruns are
+  bounded and human-owned where they consume quota or external spend.
+- **AR-006**: The reviewer cannot authorize work, execute remediation as hidden
+  authority, or advance a boundary; human verdict provenance remains the only
+  policy authorization.
+- **AR-007**: Packet rendering fails when semantic review is missing, stale,
+  blocking, or unavailable without configured explicit bypass evidence.
+- **AR-008**: Stage rubrics cover semantic consistency across canonical tables,
+  prose, task/requirement mappings, state truth, budgets, authority, and
+  improvement-action enforceability.
 
 ## What — 7-Phase Structured Reviewer
 
@@ -532,8 +701,13 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 
 ## Sizing + sequencing
 
-- ~35-50 SP, 3-iteration decomposition plus optional prep slice:
+- ~51-75 SP planning envelope, 4-iteration decomposition plus optional prep
+  slice; the envelope includes integration/review reserve beyond the raw task
+  sums:
   - **Iter 0 / prep slice (~3-5 SP, optional):** host-neutral contract finalization, schema names, and `/specrew.refocus` input contract alignment if the refocus proposal/spec lands first
+  - **Iter A (~6-10 SP):** lightweight semantic artifact/process reviewer,
+    stage rubrics, digest-bound evidence, packet gate, bounded retry/reuse, and
+    fast/balanced-to-frontier escalation policy
   - **Iter 1 (~10-15 SP):** core skill scaffold + Phase 0-2 (context load + branch hygiene + functional correctness) + skeleton matrix output, implemented first for the current Squad/Copilot reviewer topology
   - **Iter 2 (~10-15 SP):** Phase 3-5 (NFR + code quality + test coverage + integrity)
   - **Iter 3 (~10-15 SP):** Phase 6-7 + static coverage validator + integration with existing review.md + host deployment
@@ -582,3 +756,13 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - **Prompt-only false confidence:** host instruction files and skills can still be ignored or dropped after compaction. Mitigate by treating them as reminders only; the validator must enforce artifacts.
 - **Hook portability gap:** Claude/Codex have useful lifecycle hooks, while Copilot/Cursor/Gemini-style hosts differ. Mitigate by making hooks optional accelerators, never the only gate enforcement.
 - **Current Squad/Copilot coupling:** the first implementation will naturally fit the current reviewer-agent flow. Mitigate by keeping the file contract host-neutral and documenting Squad as one executor topology, not the protocol itself.
+
+## Status history
+
+- 2026-07-11: amended with the lightweight semantic artifact/process reviewer
+  lane at every human-judgment boundary after repeated plan, budget-table,
+  retrospective scaffold-truth, and pre-authorization repair defects passed
+  deterministic checks but were caught by external review. Added digest-bound
+  evidence, stage rubrics, bounded invocation/retry policy, fast/balanced
+  default routing, and frontier escalation rules. Estimated scope increased by
+  6-10 SP.
