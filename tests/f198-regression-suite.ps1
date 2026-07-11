@@ -26,6 +26,13 @@ $registry = @(
     @{ area = 'reviewer origin-path hygiene (FR-009/SC-002)'; path = 'tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1'; kind = 'pester' }
     @{ area = 'review spend allowance (FR-018/FR-019)'; path = 'tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1'; kind = 'pester' }
     @{ area = 'signoff evidence gate (FR-020 wiring)'; path = 'tests/continuous-co-review/unit/degraded-evidence-gate.Tests.ps1'; kind = 'pester' }
+    # Shared co-review engine that F-198 modifies (T012/T014/T020 touch the orchestrator run path):
+    # these guard against the exact regression class that slipped when they were manual-only (a T012
+    # host-field addition crashed the orchestrator under StrictMode; only these full-run suites catch it).
+    @{ area = 'orchestrator run context + harvest (shared engine)'; path = 'tests/continuous-co-review/unit/review-context-and-harvest-hardening.Tests.ps1'; kind = 'pester' }
+    @{ area = 'remediation menu + ceiling (shared engine)'; path = 'tests/continuous-co-review/unit/remediation-menu.Tests.ps1'; kind = 'pester' }
+    @{ area = 'reviewer independence/fallback (shared engine)'; path = 'tests/continuous-co-review/unit/reviewer-independence-fallback.Tests.ps1'; kind = 'pester' }
+    @{ area = 'empty-result retry-once (shared engine)'; path = 'tests/continuous-co-review/unit/empty-result-retry.Tests.ps1'; kind = 'pester' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]

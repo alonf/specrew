@@ -129,4 +129,56 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
             $comment | Should -Not -Match '(?i)proposal|FR-0|NFR-|SC-0|DEC-198|escalated_to_human|round-state'
         }
     }
+
+    Context 'two-budget accounting wired into the orchestrator (end-to-end)' {
+        BeforeAll {
+            function script:New-RunRepo {
+                $repo = Join-Path ([System.IO.Path]::GetTempPath()) ('t020e2e-' + [guid]::NewGuid().ToString('N'))
+                New-Item -ItemType Directory -Path $repo -Force | Out-Null
+                & git -C $repo init -q 2>&1 | Out-Null
+                Set-Content -LiteralPath (Join-Path $repo 'app.txt') -Value 'v1' -Encoding UTF8
+                & git -C $repo -c user.name='t' -c user.email='t@t.local' add -A 2>&1 | Out-Null
+                & git -C $repo -c user.name='t' -c user.email='t@t.local' commit -q -m base 2>&1 | Out-Null
+                $baseline = (& git -C $repo rev-parse HEAD).Trim()
+                Set-Content -LiteralPath (Join-Path $repo 'app.txt') -Value 'v2 changed content' -Encoding UTF8
+                & git -C $repo -c user.name='t' -c user.email='t@t.local' commit -aq -m change 2>&1 | Out-Null
+                return [pscustomobject]@{ Repo = $repo; Baseline = $baseline }
+            }
+        }
+
+        It 'PREFLIGHT: a missing changes.diff fails BEFORE model invocation and consumes NEITHER budget' {
+            $f = script:New-RunRepo
+            $fakeWt = Join-Path ([System.IO.Path]::GetTempPath()) ('t020wt-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $fakeWt '.review') -Force | Out-Null   # a worktree with NO changes.diff
+            try {
+                Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test'; independence_source = 'flag' } }
+                Mock -CommandName New-ContinuousCoReviewStrippedWorktree -MockWith { [pscustomobject]@{ worktree_path = $fakeWt; tree_id = 'deadbeef'; changed_count = 1; changed_paths = @('app.txt'); diff_bytes = 0 } }
+                Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{}'; stderr = ''; telemetry = $null } }
+                $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $f.Repo -RunDir (Join-Path $f.Repo '.runs/pf') -RunId 'pf-run' -BaselineRef $f.Baseline -TimeoutSeconds 60
+                [string]$st.status | Should -Be 'failed'
+                [string]$st.failure_reason | Should -Be 'input-not-materialized'
+                [string]$st.spend_class | Should -Be 'preflight-failed'
+                $st.provider_spend | Should -Be $false
+                $st.round_consumed | Should -Be $false
+                Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0 -Because 'a missing input must prevent the model invocation entirely'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo, $fakeWt -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'POST-INVOCATION: an invoked run with no valid review consumes BOTH budgets + records a failed-invocation disposition' {
+            $f = script:New-RunRepo
+            try {
+                Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test'; independence_source = 'flag' } }
+                Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = ''; stderr = 'boom'; telemetry = $null } }
+                $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $f.Repo -RunDir (Join-Path $f.Repo '.runs/inv') -RunId 'inv-run' -BaselineRef $f.Baseline -TimeoutSeconds 60
+                [string]$st.status | Should -Be 'failed'
+                [string]$st.spend_class | Should -Be 'invoked-failed'
+                $st.provider_spend | Should -Be $true -Because 'the model was invoked, so provider budget was spent'
+                $st.round_consumed | Should -Be $true -Because 'an invoked failure counts the round'
+                $rs = Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo
+                @($rs.dispositions | Where-Object { $_.state -eq 'failed-invocation' }).Count | Should -BeGreaterOrEqual 1 -Because 'a failed invocation never disappears from accounting'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
 }

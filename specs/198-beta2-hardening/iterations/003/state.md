@@ -72,6 +72,21 @@
   Composes with the Devin design-ref plumbing (relativize, never drop); the
   change-set diff itself (real content under review) is untouched. Paired
   test origin-path-hygiene.Tests.ps1 5/5; added to the F-198 CI registry.
+- Co-review 8d3f5a6b (2 blocking): (1) T020 two-budget accounting was a
+  standalone classifier with no caller - REAL; now WIRED into the
+  orchestrator (preflight: a missing changes.diff fails before model
+  invocation, consuming neither budget; post-invocation: an invoked
+  invalid result records provider spend + consumes a round + a
+  failed-invocation disposition), end-to-end fixtures proving both.
+  (2) exec-bit strip on bin/specrew* - REFUTED: HEAD modes are 100755,
+  byte-and-mode-identical to origin/main (git diff --summary empty,
+  core.filemode=false); the reviewer worktree fabricates the phantom
+  because the Devin exec-bit-restoration fix (ec90e1b6) isn''t integrated
+  until T034b - the DRIFT-198-I001-001 class. Also fixed a pre-existing
+  T012 regression the fix surfaced: the orchestrator crashed under
+  StrictMode on a host object lacking independence_source (test mocks) -
+  now defensive; four shared-engine F-197 suites added to the F-198 CI
+  registry so this class is caught (the NFR-007 gap that let it slip).
 - T015 (confinement contract + REQUIRED bounded in-worktree verification)
   is next in the Option B order.
 

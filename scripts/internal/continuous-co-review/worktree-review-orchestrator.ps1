@@ -190,6 +190,23 @@ function Set-ContinuousCoReviewRoundState {
     catch { $null = $_ }
 }
 
+function Add-ContinuousCoReviewRoundDisposition {
+    # T020 (FR-019): append a disposition (e.g. a failed-invocation record) to the round-state trail
+    # WITHOUT disturbing the round/blocking/findings fields. The trail is the durable accounting record
+    # the halt text and audits read - a failed invocation never disappears from it.
+    param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][object]$Disposition)
+    $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
+    $state = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+    if ($null -eq $state) { $state = [pscustomobject]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null; remediation = $null; dispositions = @() } }
+    $disp = @()
+    if (($state.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $state.dispositions) { $disp = @($state.dispositions) }
+    $disp += $Disposition
+    $state | Add-Member -NotePropertyName 'dispositions' -NotePropertyValue $disp -Force
+    ($state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    return $Disposition
+}
+
 function Get-ContinuousCoReviewRoundSpendClass {
     # T020 (F-198 FR-018/FR-019, before-implement send-back): separate the TWO budgets a review run
     # touches - PROVIDER SPEND (actual model/API cost) and the REVIEW-ROUND ALLOWANCE (the autonomous
@@ -576,6 +593,13 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             & $writeStatus 'failed' @{ failure_reason = $selFailure; requested_reviewer_host = $RequestedHost }
             return (Get-Content $statusPath -Raw | ConvertFrom-Json)
         }
+        # Defensive normalization (regression guard): the status writes below read
+        # $reviewerHost.independence_source (added by the T012 live-door provenance). A host object
+        # that omits it - a legacy/stubbed selector - must NOT crash the orchestrator under
+        # StrictMode; default the provenance to 'unverified' (the SEC-004 fail-closed sense).
+        if (-not ($reviewerHost.PSObject.Properties.Name -contains 'independence_source')) {
+            $reviewerHost | Add-Member -NotePropertyName 'independence_source' -NotePropertyValue 'unverified' -Force
+        }
 
         # The reviewed-state DIGEST = the gate's identity. Get-...SignoffGateDecision compares ITS current digest to a
         # passing run's recorded reviewed_tree_id. Computed BEFORE materialization (identity-unification fix,
@@ -660,6 +684,19 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
+            # T020 PREFLIGHT (FR-019 two-budget accounting): the review INPUT must be materialized
+            # BEFORE the model is invoked. A missing .review/changes.diff is an INFRASTRUCTURE failure
+            # (the field da2bc5cc class where the engine did not materialize its own input) - it must
+            # consume NEITHER provider budget NOR a round-allowance slot, so we fail HERE without
+            # invoking the reviewer and without touching the round-state. Distinct from an invoked
+            # failure below (which DID spend and DOES count).
+            $changesDiffPath = Join-Path $wt.worktree_path '.review/changes.diff'
+            if (-not (Test-Path -LiteralPath $changesDiffPath -PathType Leaf)) {
+                $preflightSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $false -ModelInvoked $false -ProducedReview $false
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'input-not-materialized'; spend_class = $preflightSpend.class; provider_spend = $preflightSpend.records_provider_spend; round_consumed = $preflightSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
             $currentPhase = 'reviewer-execution'
             & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent }
             & $recordPhaseStart $currentPhase
@@ -706,10 +743,20 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 # STATE the reason: capture exit code + a stderr tail so an unparseable/empty verdict is diagnosable
                 # (the agent invocation otherwise drops stderr and the failure is invisible).
                 $stderrTail = if (-not [string]::IsNullOrWhiteSpace([string]$r.stderr)) { (([string]$r.stderr) -split "`n" | Where-Object { $_ } | Select-Object -Last 3) -join ' | ' } else { '' }
+                # T020 (FR-019): the model WAS invoked (provider spend incurred) but produced no valid
+                # review. Two-budget accounting: record provider spend AND consume a round-allowance slot
+                # with a distinct failed-invocation disposition - it never disappears from accounting.
+                # The prior blocking/findings are PRESERVED (a failed invocation reviewed nothing, so it
+                # resolves nothing); the round is recorded as consumed.
+                $failedSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false
+                $priorBlocking = ($null -ne $prior) -and [bool]$prior.blocking
+                $priorFindingsStr = if ($null -ne $prior) { [string]$prior.findings } else { $null }
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $priorBlocking -Findings $priorFindingsStr
+                $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'failed-invocation'; run_id = $RunId; round = $round; provider_spend = $true; recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
                 & $recordPhaseEnd 'write-failure'
                 $currentPhase = 'failed'
                 $runTimer.Stop()
-                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; spend_class = $failedSpend.class; provider_spend = $failedSpend.records_provider_spend; round_consumed = $failedSpend.consumes_round; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewer_telemetry = $reviewerTelemetry }
             }
         }
         finally {
