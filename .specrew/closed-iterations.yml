@@ -284,3 +284,6 @@ closed:
   - feature: 197-continuous-co-review
     iteration: 010
     closed_at: 2026-07-09T07:25:26Z
+  - feature: 198-beta2-hardening
+    iteration: 002
+    closed_at: 2026-07-11T14:27:48Z

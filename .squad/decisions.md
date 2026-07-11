@@ -28052,3 +28052,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **2. Regression added**: C17a/C17b - hook-injected user-role machinery text and agent-authored approval text produce NO fallback authorization while the mitigation is active; C10-C16 rewritten to the interim contract with the old expectations preserved as the iteration-003 re-enable acceptance surface.
 - **3. Preparatory records excised**: the 13:08Z dashboard and closed-index entry are removed; both regenerate AFTER this verdict is hook-captured so closed_at cannot predate authorization.
 - **4. Fallback redesign stays T030-T033 (iteration 003)**: re-enable only behind those acceptance criteria.
+
+## 2026-07-11T14:27:47Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-11T14:27:47Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-07-11T14:27:47Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: 284d1a54
+- **Recorded At**: 2026-07-11T14:27:47Z
