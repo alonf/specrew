@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T21:45:00Z
+**Updated**: 2026-07-11T22:10:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -167,8 +167,35 @@
   preflight spend class - neither budget consumed, no round latched);
   paired test forces the wrapper to throw and proves the reviewer is
   never invoked. Suites 21/21; registry 16/16.
-- Next: fix re-review (round 2, same lineage) against the corrected HEAD;
-  then T016 if clean.
+- CONCURRENT-REVIEW observation (recorded for T019): the manual --live run
+  (06cb3c64) and a navigator auto-run (97a93603) fired ~30s apart against
+  the same lineage - the in-flight dedup that would serialize them is
+  exactly T019's scope ("in-flight dedup per lineage"). 97a93603 added a
+  REAL third finding the manual run missed: the orchestrator ran declared
+  verification ON the reviewer's own worktree, so a mutating declared
+  command - though RECORDED - could tamper with reviewer inputs (source,
+  changes.diff, design context) before the review. Its other finding (the
+  swallowed infra exception) was already fixed by d3edd098 at arrival
+  (stale-against-disk; the demanded exception-path test exists).
+- Round-2 re-review ffb729f2 (final round): confirmed the tamper hole
+  still open in the d3edd098 tree (escalation, human-decision framing:
+  disposable-child verification OR fail/rematerialize) + advisory f2
+  (tasks.md checkboxes for T013/T014/T015/T020 lagged plan/state). Fixed:
+  (1) declared commands now run in a DISPOSABLE SIBLING COPY of the
+  worktree (system temp, T013 containment class, removed in finally) -
+  a mutating declaration is still recorded for the reviewer to judge but
+  is structurally unable to alter the certified reviewer inputs; the
+  orchestrator-path test now asserts the reviewer-visible tree keeps the
+  fire-time content (app.txt unmodified, changes.diff intact) while
+  source_mutated=true is recorded. Of the escalation's two remedies the
+  fix implements disposable-child verification (the stronger: the
+  reviewer tree is never touched, no restore step to get wrong) -
+  surfaced to the maintainer at the next stop for veto. (2) tasks.md
+  T013/T014/T015/T020 ticked to match plan/state (the checklist had
+  simply lagged; no divergent semantics).
+- Next: resolved-against-disk (fix evidence = this commit) to clear the
+  round-2 escalation latch, ONE fresh confirming review, then T016 if
+  clean.
 
 ## Notes
 

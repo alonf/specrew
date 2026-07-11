@@ -768,12 +768,22 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             $verificationDeclaredCount = $verificationDeclared.Count
             $verificationToRun = @($verificationDeclared | Select-Object -First 8)
             $verificationInfraError = $null
+            $verifyCopyRoot = $null
             if ($verificationToRun.Count -gt 0) {
                 try {
                     if (-not (Get-Command -Name 'Invoke-ContinuousCoReviewBoundedVerification' -ErrorAction SilentlyContinue)) {
                         throw 'Invoke-ContinuousCoReviewBoundedVerification is not loaded in this session'
                     }
-                    $vres = Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt.worktree_path -DeclaredCommands $verificationToRun -AllowedOutputPaths @($VerificationAllowedOutputPaths) -TimeoutSeconds ([math]::Max(30, [math]::Min($TimeoutSeconds, 300)))
+                    # TAMPER-PROOF REVIEWER INPUTS (finding 97a93603-2): declared commands run in a
+                    # DISPOSABLE SIBLING COPY of the worktree, NEVER the tree the reviewer is handed. A
+                    # mutating declaration is still RECORDED (source_mutated in the results, for the
+                    # reviewer to judge) but by construction it cannot alter the certified reviewer
+                    # inputs - source, .review/changes.diff, design context. The copy lives in system
+                    # temp (the same T013 containment class as the worktree itself) and is removed in
+                    # the finally regardless of outcome.
+                    $verifyCopyRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('specrew-review-verify-' + [guid]::NewGuid().ToString('N'))
+                    Copy-Item -LiteralPath $wt.worktree_path -Destination $verifyCopyRoot -Recurse -Force
+                    $vres = Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $verifyCopyRoot -DeclaredCommands $verificationToRun -AllowedOutputPaths @($VerificationAllowedOutputPaths) -TimeoutSeconds ([math]::Max(30, [math]::Min($TimeoutSeconds, 300)))
                     $vdir = Join-Path $wt.worktree_path '.review/verification'
                     [void][System.IO.Directory]::CreateDirectory($vdir)
                     [System.IO.File]::WriteAllText((Join-Path $vdir 'results.json'), (ConvertTo-Json @($vres) -Depth 6 -AsArray))
@@ -781,6 +791,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                     $verificationResultsPresent = $true
                 }
                 catch { $verificationInfraError = [string]$_.Exception.Message }
+                finally { if ($null -ne $verifyCopyRoot) { Remove-Item -LiteralPath $verifyCopyRoot -Recurse -Force -ErrorAction SilentlyContinue } }
             }
             & $recordPhaseEnd 'bounded-verification'
             # NEVER-FALSE-GREEN (finding 06cb3c64-2): a DECLARED verification that could not be EXECUTED

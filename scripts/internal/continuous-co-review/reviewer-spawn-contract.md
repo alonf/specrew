@@ -32,10 +32,14 @@ can. Enforcement is split honestly by who controls the run:
   plainly in the prompt, and the containment detector (T016, on the T100 registry) monitors for
   violations and reports them loudly after the fact (it never kills a reviewer mid-flight).
 
-- **The orchestrator's runs ARE wrapped, on the real review path.** Before spawning the reviewer,
-  `Invoke-ContinuousCoReviewWorktreeReviewRun` runs the **declared verification commands** through
-  `Invoke-ContinuousCoReviewBoundedVerification` and injects the **host-observed** results into the
-  worktree at `.review/verification/results.json`. This is the runner-observed complement to the
+- **The orchestrator's runs ARE wrapped, on the real review path — and they run in a disposable
+  copy.** Before spawning the reviewer, `Invoke-ContinuousCoReviewWorktreeReviewRun` runs the
+  **declared verification commands** through `Invoke-ContinuousCoReviewBoundedVerification` **in a
+  disposable sibling copy of the worktree, never the tree the reviewer is handed** — a mutating
+  declaration is recorded (`source_mutated`, for the reviewer to judge) but is structurally unable to
+  alter the certified reviewer inputs (source, `.review/changes.diff`, design context). The
+  **host-observed** results are injected into the reviewer worktree at
+  `.review/verification/results.json`. This is the runner-observed complement to the
   implementer-supplied evidence: it is independently observed by the engine, so it carries no forgery
   spot-check. The reviewer prefers these results over re-running the same commands. The prompt block is
   gated on the injection actually happening (no commands → no file, no block — never a pointer to an

@@ -180,7 +180,11 @@ Describe 'orchestrator wires bounded verification onto the real review path (FR-
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'RECORDS a mutating verification command as a mutation on the real path (mutation evidence enforced)' {
+    It 'RECORDS a mutating verification command AND the reviewer inputs stay untouched (disposable-copy verification)' {
+        # Finding 97a93603-2 / escalation ffb729f2: a declared command that mutates source must be
+        # RECORDED for the reviewer to judge - but it must be structurally UNABLE to alter the tree the
+        # reviewer is then handed (source, .review/changes.diff, design context). The orchestrator runs
+        # declared commands in a disposable sibling COPY, never the reviewer worktree.
         $repo = script:New-TempGitRepo
         $rd = script:New-RunDir
         try {
@@ -188,14 +192,21 @@ Describe 'orchestrator wires bounded verification onto the real review path (FR-
             $null = Write-ContinuousCoReviewTestEvidence -RepoRoot $repo -Suite 'unit-mut' -Passed 1 -ExitCode 0 -Command 'Set-Content -LiteralPath app.txt -Value "TAMPERED" -NoNewline'
             script:New-StubReviewerMocks
             $script:capturedResults = $null
+            $script:reviewerAppTxt = $null
+            $script:reviewerDiffExists = $null
             Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
                 $vp = Join-Path $WorktreePath '.review/verification/results.json'
                 if (Test-Path -LiteralPath $vp) { $script:capturedResults = Get-Content -LiteralPath $vp -Raw | ConvertFrom-Json }
+                $script:reviewerAppTxt = Get-Content -LiteralPath (Join-Path $WorktreePath 'app.txt') -Raw
+                $script:reviewerDiffExists = Test-Path -LiteralPath (Join-Path $WorktreePath '.review/changes.diff')
                 [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"bvw-mut","status":"findings","findings":[]}'; stderr = ''; telemetry = $null }
             }
             $null = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'bvw-mut' -TimeoutSeconds 60
             @($script:capturedResults)[0].source_mutated | Should -Be $true -Because 'a supplied command that edits reviewed source is recorded as a mutation on the real path'
             @($script:capturedResults)[0].mutated_paths | Should -Contain 'app.txt'
+            $script:reviewerAppTxt | Should -Match 'content' -Because 'the reviewer must see the certified fire-time content'
+            $script:reviewerAppTxt | Should -Not -Match 'TAMPERED' -Because 'a mutating declaration must be UNABLE to alter the tree the reviewer reviews'
+            $script:reviewerDiffExists | Should -Be $true -Because 'the review inputs (.review/changes.diff) must survive a hostile declared command'
         }
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }
