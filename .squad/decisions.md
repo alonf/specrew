@@ -28143,3 +28143,12 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Evidence (their run 20260711T150802669-da2bc5cc)**: seven stale replays of already-fixed findings ALONGSIDE three genuinely new findings in ONE run (the mixed-run case T019a''s whole-run advisory cannot decompose); ~eleven one-stop-behind replays across their session; a prior round consumed spend after the engine failed to materialize its own changes.diff input.
 - **Recorded into**: spec Clarifications (new entry), T019 (supersede obsolete in-flight results; bind findings to reviewed tree AND baseline; per-finding stale-vs-valid decomposition in mixed runs), T020 (input-never-materialized run = infra failure, never a spend-consuming round - scoped consistently with the "every round counts" ruling, which governs rounds that actually reviewed).
 - **Not done**: no scope expansion, no early implementation (before-implement verdict still pending), nothing launched for their crew. Their forensics (tree-id/baseline/launch-commit deltas, in-flight overlap) arrive as T019 fixture data; a possible second shared-engine commit from their diff-materialization investigation gets the T034 inspect/reuse doctrine.
+
+## 2026-07-11T15:19:09Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: e835f3ad
+- **Recorded At**: 2026-07-11T15:19:09Z
