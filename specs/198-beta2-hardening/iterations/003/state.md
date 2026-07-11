@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T22:10:00Z
+**Updated**: 2026-07-11T22:40:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -193,9 +193,27 @@
   surfaced to the maintainer at the next stop for veto. (2) tasks.md
   T013/T014/T015/T020 ticked to match plan/state (the checklist had
   simply lagged; no divergent semantics).
-- Next: resolved-against-disk (fix evidence = this commit) to clear the
-  round-2 escalation latch, ONE fresh confirming review, then T016 if
-  clean.
+- Confirming review 90173dc6 (round 1 after the d0cc9bf7 reset): 2
+  blocking, BOTH real. (1) The mutation snapshot SKIPPED all of .review/,
+  so a declared command could rewrite the verification copy's own
+  authority (changes.diff, design/) and manufacture a pass with
+  source_mutated=false. Fixed: the hash set now INCLUDES the
+  reviewer-authority inputs; excluded are ONLY .git/ and the narrow
+  engine-owned .review/verification/ output area. Paired tests: forging
+  .review/changes.diff is reported; the engine-owned area stays exempt
+  (wrapper suite 12/12). (2) The state's green counts were PROSE with no
+  digest-linked runtime evidence (zero evidence standing under the review
+  contract). Fixed the honest way: the T015 suites + the F-198 registry
+  are re-RUN and recorded through the T111 recorder
+  (Write-ContinuousCoReviewTestEvidence) with the runner-reported counts,
+  exit codes, durations, and the exact reproducible commands, digest-bound
+  to this tree at .specrew/review/test-evidence/<digest>.json - which
+  ALSO arms the minimal supply path: the next review derives its declared
+  commands from this record and re-observes the suites through the
+  bounded wrapper in the disposable copy. Registry counts in this file
+  are henceforth BACKED by that record, not prose.
+- Next: fix re-review (round 2, same lineage) verifies both resolutions;
+  then T016 if clean.
 
 ## Notes
 

@@ -66,7 +66,11 @@ can. Enforcement is split honestly by who controls the run:
 3. **Pre/post mutation evidence** — the worktree's existing-file hashes are compared before and after.
    **Added, deleted, and modified files ALL count as mutations** (the runner must be read-only); a NEW
    file is exempt **only** when it matches the explicit output-path allowlist (`AllowedOutputPaths`,
-   e.g. `*.log`, `coverage/*`). Any other new file is a mutation.
+   e.g. `*.log`, `coverage/*`). Any other new file is a mutation. The hashed set **includes the
+   reviewer-authority inputs under `.review/`** (`changes.diff`, design/spec/contracts, process
+   context) — a command that rewrites the very authority it verifies against manufactures a pass, so
+   that mutation is reported like any other. Excluded are only `.git/` and the narrow engine-owned
+   output area `.review/verification/`.
 
 Each command yields a record: `{ command, exit_code, timed_out, output, output_truncated,
 captured_stdout_bytes, captured_stderr_bytes, source_mutated, mutated_paths }`. A run whose

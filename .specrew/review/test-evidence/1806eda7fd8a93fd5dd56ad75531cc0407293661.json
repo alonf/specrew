@@ -1,0 +1,37 @@
+{
+  "schema_version": "1.0",
+  "reviewed_digest_tree_id": "1806eda7fd8a93fd5dd56ad75531cc0407293661",
+  "recorded_at": "2026-07-11T21:45:11Z",
+  "suites": [
+    {
+      "suite": "tests/continuous-co-review/unit/bounded-verification.Tests.ps1",
+      "passed": 12,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 12.221,
+      "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
+      "recorded_at": "2026-07-11T21:43:26Z"
+    },
+    {
+      "suite": "tests/continuous-co-review/unit/orchestrator-verification-injection.Tests.ps1",
+      "passed": 11,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 9.848,
+      "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/orchestrator-verification-injection.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
+      "recorded_at": "2026-07-11T21:43:38Z"
+    },
+    {
+      "suite": "tests/f198-regression-suite.ps1 (16-suite registry; counts are suites)",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 90.992,
+      "command": "& ./tests/f198-regression-suite.ps1; exit $LASTEXITCODE",
+      "recorded_at": "2026-07-11T21:45:11Z"
+    }
+  ]
+}

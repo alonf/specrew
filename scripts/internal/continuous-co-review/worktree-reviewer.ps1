@@ -399,16 +399,20 @@ function Get-ContinuousCoReviewGenerousBudget {
 
 function Get-ContinuousCoReviewWorktreeSourceHashes {
     # FR-010 mutation-evidence helper: a map { relative-path -> sha256 } of the worktree's existing
-    # files (skipping the reviewer's own .review/ output area and .git). Comparing this before vs
-    # after a verification run makes any MUTATION of an existing source file visible - new files
-    # (legitimate test output) do not perturb existing entries, so the delta isolates the read-only
-    # violation the reviewer must never commit.
+    # files. Comparing this before vs after a verification run makes any MUTATION of an existing file
+    # visible - new files (legitimate test output) do not perturb existing entries, so the delta
+    # isolates the read-only violation.
+    # SCOPE (finding 90173dc6-1): the REVIEWER-AUTHORITY inputs under .review/ (changes.diff, design/,
+    # contracts, process context) ARE hashed - a verification command that rewrites the very authority
+    # it verifies against can manufacture a pass, so such a mutation MUST be reported. Excluded are
+    # ONLY .git/ and the narrow engine-owned output area .review/verification/ (where the orchestrator
+    # itself records results - never a command's legitimate write target, never source).
     param([Parameter(Mandatory)][string]$WorktreePath)
     $map = @{}
     $rootFull = (Resolve-Path -LiteralPath $WorktreePath).Path.TrimEnd([char]'\', [char]'/')
     foreach ($f in @(Get-ChildItem -LiteralPath $WorktreePath -Recurse -File -Force -ErrorAction SilentlyContinue)) {
         $rel = [System.IO.Path]::GetRelativePath($rootFull, $f.FullName).Replace('\', '/')
-        if ($rel -like '.review/*' -or $rel -like '.git/*') { continue }
+        if ($rel -like '.git/*' -or $rel -like '.review/verification/*') { continue }
         try { $map[$rel] = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256 -ErrorAction Stop).Hash } catch { $map[$rel] = 'unreadable' }
     }
     return $map

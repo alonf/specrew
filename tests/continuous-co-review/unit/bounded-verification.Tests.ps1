@@ -15,6 +15,10 @@ Describe 'reviewer bounded in-worktree verification (FR-010)' {
             $wt = Join-Path ([System.IO.Path]::GetTempPath()) ('bv-' + [guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $wt -Force | Out-Null
             Set-Content -LiteralPath (Join-Path $wt 'app.txt') -Value 'original source' -Encoding UTF8 -NoNewline
+            # Reviewer-authority input (finding 90173dc6-1): hashed like source, so a verification
+            # command rewriting its own authority is reported.
+            New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $wt '.review/changes.diff') -Value 'diff --git a/app.txt b/app.txt' -Encoding UTF8 -NoNewline
             return $wt
         }
     }
@@ -119,6 +123,28 @@ Describe 'reviewer bounded in-worktree verification (FR-010)' {
             $r = @(Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt -DeclaredCommands @('Set-Content -LiteralPath planted-source.ps1 -Value "evil()" -NoNewline') -TimeoutSeconds 30)
             $r[0].source_mutated | Should -Be $true -Because 'a new unexplained file could steer the verification'
             $r[0].mutated_paths | Should -Contain 'planted-source.ps1'
+        }
+        finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'REPORTS a mutation of the reviewer-authority inputs (.review/changes.diff) - the authority cannot be rewritten silently' {
+        # Finding 90173dc6-1: a declared command that rewrites the very diff/design it verifies against
+        # can manufacture a pass; the mutation snapshot therefore INCLUDES the .review/ authority inputs.
+        $wt = script:New-Worktree
+        try {
+            $r = @(Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt -DeclaredCommands @('Set-Content -LiteralPath .review/changes.diff -Value "FORGED DIFF" -NoNewline') -TimeoutSeconds 30)
+            $r[0].source_mutated | Should -Be $true -Because 'rewriting the authority the verification runs against manufactures a pass - it must be reported'
+            $r[0].mutated_paths | Should -Contain '.review/changes.diff'
+        }
+        finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'the engine-owned .review/verification/ output area stays exempt (the narrow allowlist)' {
+        $wt = script:New-Worktree
+        try {
+            $cmd = 'New-Item -ItemType Directory -Path .review/verification -Force | Out-Null; Set-Content -LiteralPath .review/verification/probe.json -Value "{}" -NoNewline'
+            $r = @(Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt -DeclaredCommands @($cmd) -TimeoutSeconds 30)
+            $r[0].source_mutated | Should -Be $false -Because 'the orchestrator-owned results area is the ONLY .review exemption'
         }
         finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }
     }
