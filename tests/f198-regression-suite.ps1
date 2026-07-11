@@ -1,0 +1,79 @@
+#requires -Version 7.0
+# F-198 (0.40.0-beta2 hardening) honesty regression suite — the NFR-007 enforcement lane in CI.
+#
+# EXPLICIT registry, never a glob: this iteration's core honesty tests must not merge as manual-only.
+# Each entry runs in its own child pwsh with a PER-TEST TIMEOUT and its output captured, so a hang
+# fails loud (not a silent CI hang) and a failure prints the offending suite's tail. Add a row here
+# when a new F-198 honesty/regression suite lands; do NOT convert this to a directory glob (a bounded
+# list is the point - it states exactly what the beta2 honesty bar depends on).
+#
+# 'script' suites use the repo's Write-Pass/Write-Fail convention (exit 0 green / 1 red).
+# 'pester' suites run via Invoke-Pester and fail on any FailedCount.
+[CmdletBinding()]
+param([int]$PerTestTimeoutSeconds = 300)
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+$registry = @(
+    @{ area = 'boundary ratchet (FR-001..FR-005, cycle-scoped)'; path = 'tests/unit/boundary-ratchet.tests.ps1'; kind = 'script' }
+    @{ area = 'budget resolution + provenance (FR-021..FR-023)'; path = 'tests/unit/budget-resolution.tests.ps1'; kind = 'script' }
+    @{ area = 'tracker honesty check (FR-020)'; path = 'tests/unit/tracker-honesty-check.tests.ps1'; kind = 'script' }
+    @{ area = 'self-leak firewall (FR-033/FR-037)'; path = 'tests/unit/self-leak-lint.tests.ps1'; kind = 'script' }
+    @{ area = 'verdict-capture integrity (FR-041..FR-044)'; path = 'tests/integration/verdict-capture-blocks.tests.ps1'; kind = 'script' }
+    @{ area = 'reviewer containment (FR-008/SC-002)'; path = 'tests/continuous-co-review/unit/worktree-containment.Tests.ps1'; kind = 'pester' }
+    @{ area = 'review spend allowance (FR-018/FR-019)'; path = 'tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1'; kind = 'pester' }
+    @{ area = 'signoff evidence gate (FR-020 wiring)'; path = 'tests/continuous-co-review/unit/degraded-evidence-gate.Tests.ps1'; kind = 'pester' }
+)
+
+$failed = New-Object System.Collections.Generic.List[string]
+foreach ($t in $registry) {
+    $full = Join-Path $repoRoot $t.path
+    if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+        Write-Host ("FAIL (missing): {0} -> {1}" -f $t.area, $t.path) -ForegroundColor Red
+        $failed.Add("$($t.path) — MISSING") | Out-Null
+        continue
+    }
+    $outFile = [System.IO.Path]::GetTempFileName()
+    $errFile = [System.IO.Path]::GetTempFileName()
+    if ($t.kind -eq 'pester') {
+        $cmd = ("`$env:SPECREW_MODULE_PATH='{0}'; `$r = Invoke-Pester -Path '{1}' -Output Detailed -PassThru; exit ([int]`$r.FailedCount)" -f $repoRoot, $full)
+        $procArgs = @('-NoProfile', '-Command', $cmd)
+    }
+    else {
+        $procArgs = @('-NoProfile', '-File', $full)
+    }
+    $proc = Start-Process pwsh -ArgumentList $procArgs -PassThru -NoNewWindow -RedirectStandardOutput $outFile -RedirectStandardError $errFile -WorkingDirectory $repoRoot
+    $exited = $proc.WaitForExit($PerTestTimeoutSeconds * 1000)
+    if (-not $exited) {
+        try { $proc.Kill($true) } catch { $null = $_ }
+        Write-Host ("FAIL (TIMEOUT > {0}s): {1} -> {2}" -f $PerTestTimeoutSeconds, $t.area, $t.path) -ForegroundColor Red
+        $failed.Add("$($t.path) — TIMEOUT (>$PerTestTimeoutSeconds s)") | Out-Null
+        Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
+        continue
+    }
+    $proc.WaitForExit()
+    $exit = $proc.ExitCode
+    $out = ((Get-Content -LiteralPath $outFile -Raw -ErrorAction SilentlyContinue) + "`n" + (Get-Content -LiteralPath $errFile -Raw -ErrorAction SilentlyContinue))
+    Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
+    if ($exit -ne 0) {
+        Write-Host ("FAIL (exit {0}): {1} -> {2}" -f $exit, $t.area, $t.path) -ForegroundColor Red
+        Write-Host "----- last 40 lines -----"
+        @($out -split "`r?`n") | Select-Object -Last 40 | ForEach-Object { Write-Host "  $_" }
+        Write-Host "-------------------------"
+        $failed.Add("$($t.path) — exit $exit") | Out-Null
+    }
+    else {
+        Write-Host ("PASS: {0} -> {1}" -f $t.area, $t.path) -ForegroundColor Green
+    }
+}
+
+Write-Host ""
+if ($failed.Count -gt 0) {
+    Write-Host ("F-198 honesty regression suite: {0} of {1} FAILED" -f $failed.Count, $registry.Count) -ForegroundColor Red
+    $failed | ForEach-Object { Write-Host "  - $_" -ForegroundColor Red }
+    exit 1
+}
+Write-Host ("F-198 honesty regression suite: all {0} suites green." -f $registry.Count) -ForegroundColor Green
+exit 0

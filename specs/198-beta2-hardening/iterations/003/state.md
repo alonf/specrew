@@ -51,6 +51,17 @@
   resolved-vs-open, zero internal identifiers). CLI: --remediate
   resolved-against-disk --fix-evidence-ref. Proof suite 8/8;
   escalation-latch + degraded-gate regression 23/23; parse-clean.
+- NFR-007 enforcement gap CLOSED (maintainer-directed, before resuming
+  T014): the F-198 paired honesty tests were manual-only (no CI ran
+  tests/unit or tests/continuous-co-review). Wired a bounded, EXPLICIT
+  registry runner (tests/f198-regression-suite.ps1 - never a glob;
+  per-test timeout + clear failure output) covering the ratchet, spend
+  allowance, containment, tracker honesty, verdict-capture, budget, and
+  signoff-gate regressions, and added it as a blocking CI step in the
+  self-host lane (.github/workflows/specrew-ci.yml, timeout 15m). All 8
+  suites green locally. This closes the iteration's own NFR-007
+  enforcement - NOT T021 distribution work (T021 later generalizes/
+  deploys the mechanism to consumers).
 - Resuming the containment chain at T014 (bundle origin-path hygiene).
 
 ## Notes
