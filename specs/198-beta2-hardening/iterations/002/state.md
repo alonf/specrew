@@ -32,8 +32,8 @@
 - Iteration-closeout: sent back once (DEC-198-GOV-002 - the shipped
   ratchet was cycle-blind and read a malformed ledger as clean); fixed
   before closing per maintainer instruction: cycle-bound reconciliation
-  - hard-fail on unreadable ledger, paired regressions (ratchet suite
-  Tests 10-12), all governance suites green, validator PASS both
+  plus a hard-fail on unreadable ledger, paired regressions (ratchet
+  suite Tests 10-12), all governance suites green, validator PASS both
   iterations, fresh independent review round on the fixed tree; the
   premature dashboard/closed-iteration records were regenerated after
   the fix.
