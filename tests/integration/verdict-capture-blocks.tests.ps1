@@ -244,59 +244,77 @@ No open prompts.
 "@
     $pendingPlanTasks = New-PendingProject -LastAuthorizedBoundary 'plan' -WorkingBoundary 'tasks'
 
-    # C10: markerless packet + concise option 1 binds to the deterministic single pending crossing.
+    # C10-C14/C16 (REWRITTEN for the DEC-198-GOV-003 interim mitigation, maintainer-instructed
+    # at the iteration-002 closeout): the pending-artifact fallback is DISABLED after fabricating
+    # two authorizations in one day. EVERY markerless path - including the previously-legitimate
+    # option-1 binds (old C10/C11/C16) - now refuses with 'fallback-capture-disabled-interim'.
+    # The old expectations are the iteration-003 re-enable acceptance surface (T030-T033): the
+    # redesigned fallback must restore them WITH machinery-turn exclusion, tokenizer tightening,
+    # and the temporal-ordering guard.
+
+    # C10: markerless packet + genuine option 1 does NOT authorize while the mitigation is active.
     $c10 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = $markerlessPacket },
             @{ role = 'user'; text = 'option 1' }))
-    if (-not $c10.Found) { Fail "C10: markerless packet + option 1 should fall back to pending artifact (reason=$($c10.Reason))" }
-    if ($c10.FromBoundary -ne 'plan' -or $c10.ToBoundary -ne 'tasks') { Fail "C10: expected pending plan->tasks, got '$($c10.FromBoundary)->$($c10.ToBoundary)'" }
-    if ($c10.Reason -ne 'captured-pending-artifact-fallback') { Fail "C10: expected pending-artifact fallback reason, got '$($c10.Reason)'" }
-    Write-Pass "reader: markerless packet + option 1 binds to the single pending gate via pending-verdict state"
+    if ($c10.Found) { Fail "C10: the disabled fallback authorized a markerless option 1" }
+    if ($c10.Reason -ne 'fallback-capture-disabled-interim') { Fail "C10: expected fallback-capture-disabled-interim, got '$($c10.Reason)'" }
+    Write-Pass "reader (interim): markerless option 1 refuses - one re-confirm keystroke beats a fabricated authorization"
 
-    # C11: the bare "1" alias is accepted only because option 1 in the rendered packet is proven to be approval.
+    # C11: bare '1' likewise refuses while disabled.
     $c11 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = $markerlessPacket },
             @{ role = 'user'; text = '1' }))
-    if (-not $c11.Found) { Fail "C11: markerless packet + bare 1 should fall back to pending artifact (reason=$($c11.Reason))" }
-    Write-Pass "reader: markerless packet + bare 1 is accepted when option 1 is an approval option"
+    if ($c11.Found) { Fail "C11: the disabled fallback authorized a markerless bare 1" }
+    Write-Pass "reader (interim): markerless bare 1 refuses while the mitigation is active"
 
-    # C12: option 2 is not treated as approval in the markerless fallback because packets often use it for changes.
+    # C12/C13/C14: the abuse paths stay refused (now via the disable, previously via per-path guards).
     $c12 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = $markerlessPacket },
             @{ role = 'user'; text = 'option 2' }))
     if ($c12.Found) { Fail "C12: markerless fallback must not authorize option 2" }
-    if ($c12.Reason -ne 'approval-option-not-authorizing-fallback') { Fail "C12: expected approval-option-not-authorizing-fallback, got '$($c12.Reason)'" }
-    Write-Pass "reader: markerless fallback rejects option 2 instead of guessing its meaning"
-
-    # C13: no pending state means a markerless packet cannot authorize even with a clear approval phrase.
+    Write-Pass "reader (interim): markerless option 2 stays refused"
     $noPending = New-PendingProject -LastAuthorizedBoundary 'tasks' -WorkingBoundary 'tasks'
     $c13 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $noPending -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = $markerlessPacket },
             @{ role = 'user'; text = 'approved for tasks' }))
     if ($c13.Found) { Fail "C13: markerless fallback must not authorize without a pending verdict state" }
-    Write-Pass "reader: markerless fallback requires an active pending verdict state"
-
-    # C14: a named approval for a different boundary is not rebound to the pending crossing.
+    Write-Pass "reader (interim): markerless approval without pending state stays refused"
     $c14 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = $markerlessPacket },
             @{ role = 'user'; text = 'approved for clarify' }))
     if ($c14.Found) { Fail "C14: approval naming a different boundary must not fall back to pending" }
-    if ($c14.Reason -ne 'named-boundary-contradicts-pending') { Fail "C14: expected named-boundary-contradicts-pending, got '$($c14.Reason)'" }
-    Write-Pass "reader: markerless fallback rejects a named boundary that contradicts pending state"
+    Write-Pass "reader (interim): markerless contradicting-boundary approval stays refused"
 
-    # C15: UserPromptSubmit can pass the current human prompt even if the transcript tail has not appended it yet.
+    # C15: MARKER-BOUND capture is UNAFFECTED by the mitigation - the exact path that records
+    # genuine verdicts (incl. instruction-carrying ones) keeps working.
     $c15 = Get-SpecrewCapturedBoundaryVerdict -LastUserMessage 'approved for tasks' -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> verdict?" }))
     if (-not $c15.Found) { Fail "C15: prompt-submit supplied user approval should capture against the prior marker (reason=$($c15.Reason))" }
     if ($c15.FromBoundary -ne 'plan' -or $c15.ToBoundary -ne 'tasks') { Fail "C15: expected plan->tasks capture, got '$($c15.FromBoundary)->$($c15.ToBoundary)'" }
-    Write-Pass "reader: current UserPromptSubmit text can serve as the human approval before transcript append"
+    Write-Pass "reader: marker-bound capture stays fully active under the mitigation"
 
-    # C16: the prompt-submit path also supports the markerless pending-artifact fallback for concise option 1.
+    # C16: prompt-submit markerless fallback likewise refuses while disabled.
     $c16 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -LastUserMessage '1' -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = $markerlessPacket }))
-    if (-not $c16.Found) { Fail "C16: prompt-submit supplied bare 1 should fall back to pending artifact (reason=$($c16.Reason))" }
-    if ($c16.Reason -ne 'captured-pending-artifact-fallback') { Fail "C16: expected pending-artifact fallback reason, got '$($c16.Reason)'" }
-    Write-Pass "reader: current UserPromptSubmit text supports markerless fallback for option 1"
+    if ($c16.Found) { Fail "C16: the disabled fallback authorized a prompt-submit bare 1" }
+    if ($c16.Reason -ne 'fallback-capture-disabled-interim') { Fail "C16: expected fallback-capture-disabled-interim, got '$($c16.Reason)'" }
+    Write-Pass "reader (interim): prompt-submit markerless path refuses while the mitigation is active"
+
+    # C17 (DEC-198-GOV-003 regression, maintainer-instructed): the EXACT fabrication sequence -
+    # a rendered packet followed by hook-injected approval-shaped machinery text in a user-role
+    # turn, with NO human reply - must produce NO fallback authorization while the mitigation is
+    # active. Same for agent-authored approval text.
+    $hookFeedbackTurn = 'Stop hook feedback: Specrew: boundary state is pending. AWAITING YOUR VERDICT: if you already approved, please re-confirm. Give the boundary verdict to authorize it.'
+    $c17a = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = $markerlessPacket },
+            @{ role = 'user'; text = $hookFeedbackTurn }))
+    if ($c17a.Found) { Fail "C17a: hook-injected approval-shaped machinery text produced a fallback authorization (the GOV-001/GOV-003 fabrication)" }
+    Write-Pass "regression: hook-injected user-role machinery text cannot produce fallback authorization"
+    $c17b = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = $markerlessPacket },
+            @{ role = 'assistant'; text = 'approved for tasks - proceeding.' }))
+    if ($c17b.Found) { Fail "C17b: agent-authored approval text produced a fallback authorization" }
+    Write-Pass "regression: agent-authored approval text cannot produce fallback authorization"
 
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0

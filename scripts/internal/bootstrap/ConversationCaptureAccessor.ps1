@@ -220,6 +220,21 @@ function Get-SpecrewPendingVerdictFallbackCapture {
     try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pending = $null }
     if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { return $result }
 
+    # INTERIM MITIGATION (maintainer instruction at the iteration-002 closeout verdict,
+    # 2026-07-11, DEC-198-GOV-003): the pending-artifact fallback is DISABLED. It fabricated
+    # two authorizations in one day - both ~37s after a packet render, during the agent's own
+    # stop cycle, pairing a machinery/stale turn with the pending artifact's synthesized
+    # approval phrase - while the human's actual replies were send-backs. Marker-bound capture
+    # stays active: an uncaptured verdict now costs one re-confirm keystroke instead of a
+    # fabricated authorization. This return sits AFTER the cheap guards so the reason taxonomy
+    # stays honest: 'disabled' is reported only when a live pending crossing was actually
+    # declined. Re-enable ONLY when the fallback redesign passes its acceptance criteria
+    # (machinery-turn exclusion, tokenizer tightening, temporal-ordering guard, and the
+    # exact-sequence regression fixtures - the iteration-003 capture-integrity tasks).
+    # The body below is retained unreached as the redesign's reference implementation.
+    $result.Reason = 'fallback-capture-disabled-interim'
+    return $result
+
     $pendingFromMarker = [string]$pending.PendingFromMarkerBoundary
     $pendingToMarker = [string]$pending.PendingToMarkerBoundary
     $pendingFrom = [string]$pending.PendingFromBoundary

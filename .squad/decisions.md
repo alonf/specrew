@@ -28044,3 +28044,11 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: fceb3ee1
 - **Recorded At**: 2026-07-11T14:19:08Z
+
+## 2026-07-11T13:45:00Z — Iteration-closeout approved WITH instructions; DEC-198-GOV-003 interim mitigation executed
+
+- **Verdict (maintainer)**: approved for iteration-closeout, with binding instructions.
+- **1. Fallback capture DISABLED (interim)**: `Get-SpecrewPendingVerdictFallbackCapture` returns `fallback-capture-disabled-interim` whenever it would have declined/authorized a live pending crossing; cheap guards keep the honest reason taxonomy; marker-bound capture untouched (proven: C15 green; the option-2 retro verdict captured marker-bound). One re-confirm keystroke is the accepted cost.
+- **2. Regression added**: C17a/C17b - hook-injected user-role machinery text and agent-authored approval text produce NO fallback authorization while the mitigation is active; C10-C16 rewritten to the interim contract with the old expectations preserved as the iteration-003 re-enable acceptance surface.
+- **3. Preparatory records excised**: the 13:08Z dashboard and closed-index entry are removed; both regenerate AFTER this verdict is hook-captured so closed_at cannot predate authorization.
+- **4. Fallback redesign stays T030-T033 (iteration 003)**: re-enable only behind those acceptance criteria.
