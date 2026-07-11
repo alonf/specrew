@@ -27960,3 +27960,35 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Decision (maintainer, 2026-07-11)**: approve surgical removal of that single entry from `.specrew/start-context.json` `boundary_enforcement.verdict_history`; restore `last_authorized_boundary` to `review-signoff` so the retro boundary genuinely awaits a human verdict.
 - **Execution**: JsonNode-based one-off script (no date coercion, full-identity precondition incl. timestamp + evidence source; iteration 001's legitimate retro entry at index 6 verified untouched); pre-surgery backup retained in the session scratchpad; post-surgery state verified via `Get-SpecrewBoundaryEnforcementState` (shape clean) and `Get-SpecrewPendingVerdictState` (pending `review-signoff -> retro`).
 - **Follow-up owed (iteration 003 scope discussion)**: (a) capture must exclude hook-injected/user-role machinery turns from verdict evidence; (b) the approval tokenizer must not match approval-shaped scold text; (c) the ledger has no designed correction door — this surgery had to be a one-off script; (d) audit note: the 001 retro entry (2026-07-10T18:37:39Z) shares the fallback evidence source but its decision was genuinely given by the human that day.
+
+## 2026-07-11T11:45:29Z — Boundary sync warning: retro
+
+- **Boundary Type**: retro
+- **Latest Recorded Boundary**: retro
+- **Recorded At**: 2026-07-11T11:45:29Z
+- **Warning**: Expected next boundary 'iteration-closeout' but received 'retro'.
+
+## 2026-07-11T11:45:30Z — Boundary sync: retro
+
+- **Boundary Type**: retro
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: (none)
+- **Task ID**: (none)
+- **Auth Commit Hash**: 3bfb28a8
+- **Recorded At**: 2026-07-11T11:45:29Z
+
+## 2026-07-11T12:08:39Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: bcc99ab9
+- **Recorded At**: 2026-07-11T12:08:39Z
+
+## 2026-07-11T12:30:00Z — DEC-198-GOV-002: ratchet cycle-blindness defect (found in field, disclosed at 002 closeout)
+
+- **What happened**: the iteration-closeout boundary sync PASSED the ratchet while the iteration-002 retro crossing was still awaiting verdict capture. Root cause in `Get-SpecrewUnreconciledBoundary` (shared-governance.ps1): the verdict-history scan treats ANY entry whose `to_boundary` matches the working boundary as reconciling it — but boundary names recur every iteration cycle, so iteration 001's retro entry satisfied iteration 002's retro crossing. The ratchet (and the validator FAIL branch and re-confirm surface, which consume the same primitive) is fail-open for every second-and-later iteration of a feature.
+- **Why the artifact stayed right**: `Get-SpecrewPendingVerdictState` computes cursor-vs-working without the name-match scan — correct while the primitive was fooled; the one-primitive design's drift protection was undone by the primitive's own extra clause.
+- **Impact here**: mechanical-only — the closeout sync's mechanical work (dashboard render, index append) ran one capture-cycle early; the retro verdict itself was given by the maintainer in the transcript (approve-with-instructions, 11:55:22Z) and no human decision was bypassed. The closeout boundary verdict is being asked properly.
+- **Disposition**: candidate fix for iteration 003 planning alongside T030-T033 (likely: only entries NEWER than the newest authorization/cycle-reset may reconcile the working crossing — index-ordered, not name-matched); sized at 003 design-analysis per the standing instruction; containment and T020 keep priority. No state altered under this record.
