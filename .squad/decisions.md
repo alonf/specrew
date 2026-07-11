@@ -28175,3 +28175,10 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 007681e7
 - **Recorded At**: 2026-07-11T15:28:56Z
+
+## 2026-07-11T17:45:00Z — Before-implement APPROVED (option 2, ratifies c96b9bcd); pre-implementation dispositions
+
+- **Verdict**: approved for before-implement with instructions; maintainer ratified commit c96b9bcd (self-leak cleanup: comment-only, mirror-aligned, FR-refs not internal IDs). Execution authorized in the recorded Option B order.
+- **Instruction 1 (done)**: dispositioned untracked review run 20260711T152939716-c894a74b - a later escalation round of the same self-leak finding fixed in c96b9bcd; RESOLVED-AGAINST-DISK (lint exit 0, paired test green, mirror byte-identical, fix is ancestor of HEAD). Disposition record committed in the run dir; the run''s missing reviewed_tree_id is banked as T019 field evidence.
+- **Instruction 2 (deferred to post-capture)**: condition-a-human-authorization flips met with the auth reference AFTER the before-implement verdict is hook-captured (must not claim met before the capture exists - the very false-green condition-a was corrected for).
+- **Instruction 3 (standing)**: pending-artifact fallback stays DISABLED; strict unresolved-design-context failure preserved (T034/T020 as planned).
