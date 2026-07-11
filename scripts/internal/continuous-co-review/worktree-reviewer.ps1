@@ -435,9 +435,11 @@ function Invoke-ContinuousCoReviewBoundedVerification {
     foreach ($cmd in @($DeclaredCommands)) {
         if ([string]::IsNullOrWhiteSpace($cmd)) { continue }
         $preHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $WorktreePath
-        # Process containment via ProcessStartInfo (the repo's console-immune pattern): a child pwsh
-        # with cwd = the worktree, redirected streams read ASYNC (no pipe deadlock), and Kill($true)
-        # to reap the ENTIRE process tree on timeout.
+        # Process containment via ProcessStartInfo (ArgumentList passes each arg ATOMICALLY - Start-Process
+        # would re-quote and split a command containing spaces/quotes). Both pipes are DRAINED CONTINUOUSLY
+        # TO DISK with CopyToAsync (the finding-2 fix): CopyToAsync loops an ~80KB buffer, so reviewer
+        # memory stays bounded no matter how much the command emits - a hostile flood lands on disk, not
+        # in the process. Kill($true) reaps the ENTIRE tree on timeout.
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
         $psi.FileName = (Get-Process -Id $PID).Path
         foreach ($a in @('-NoProfile', '-NonInteractive', '-Command', $cmd)) { [void]$psi.ArgumentList.Add($a) }
@@ -445,25 +447,38 @@ function Invoke-ContinuousCoReviewBoundedVerification {
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
         $psi.UseShellExecute = $false
-        $proc = [System.Diagnostics.Process]::Start($psi)
-        $soTask = $proc.StandardOutput.ReadToEndAsync()
-        $seTask = $proc.StandardError.ReadToEndAsync()
-        $timedOut = -not $proc.WaitForExit([int]($TimeoutSeconds * 1000))
-        if ($timedOut) { try { $proc.Kill($true) } catch { $null = $_ } ; [void]$proc.WaitForExit() }
-        $exit = if ($timedOut) { $null } else { [int]$proc.ExitCode }
-        $out = ''
-        try { $out = ([string]$soTask.Result + [string]$seTask.Result) } catch { $out = '' }
-        # Cap the captured output at MaxOutputBytes UTF-8 BYTES (not characters): decode the first N
-        # bytes so a verbose/hostile command cannot blow the record size. A partial trailing multibyte
-        # char degrades to U+FFFD - acceptable for a bounded capture.
+        $outFile = [System.IO.Path]::GetTempFileName()
+        $errFile = [System.IO.Path]::GetTempFileName()
+        $ofs = [System.IO.File]::Create($outFile)
+        $efs = [System.IO.File]::Create($errFile)
+        try {
+            $proc = [System.Diagnostics.Process]::Start($psi)
+            $copyOut = $proc.StandardOutput.BaseStream.CopyToAsync($ofs)
+            $copyErr = $proc.StandardError.BaseStream.CopyToAsync($efs)
+            $timedOut = -not $proc.WaitForExit([int]($TimeoutSeconds * 1000))
+            if ($timedOut) { try { $proc.Kill($true) } catch { $null = $_ } ; [void]$proc.WaitForExit() }
+            $exit = if ($timedOut) { $null } else { [int]$proc.ExitCode }
+            # Let the drains flush what the (now-exited or killed) child wrote before we read the files.
+            try { [void][System.Threading.Tasks.Task]::WaitAll(@($copyOut, $copyErr), 3000) } catch { $null = $_ }
+        }
+        finally { $ofs.Dispose(); $efs.Dispose() }
+        # Byte-bounded capture: read at most MaxOutputBytes UTF-8 BYTES TOTAL from the on-disk output;
+        # overflow past the cap is left on disk and DISCARDED from the record, flagged by output_truncated.
         $truncated = $false
-        if (-not [string]::IsNullOrEmpty($out)) {
-            $outBytes = [System.Text.Encoding]::UTF8.GetBytes($out)
-            if ($outBytes.Length -gt $MaxOutputBytes) {
-                $out = [System.Text.Encoding]::UTF8.GetString($outBytes, 0, $MaxOutputBytes)
-                $truncated = $true
+        $outBuilder = New-Object System.Text.StringBuilder
+        foreach ($fp in @($outFile, $errFile)) {
+            if (-not (Test-Path -LiteralPath $fp -PathType Leaf)) { continue }
+            $room = $MaxOutputBytes - [System.Text.Encoding]::UTF8.GetByteCount($outBuilder.ToString())
+            $len = [long](Get-Item -LiteralPath $fp).Length
+            if ($len -gt $room) { $truncated = $true }
+            $take = [int][Math]::Max(0, [Math]::Min($len, [long]$room))
+            if ($take -gt 0) {
+                $fs = [System.IO.File]::OpenRead($fp)
+                try { $buf = New-Object byte[] $take; $n = $fs.Read($buf, 0, $take); [void]$outBuilder.Append([System.Text.Encoding]::UTF8.GetString($buf, 0, $n)) } finally { $fs.Dispose() }
             }
         }
+        Remove-Item -LiteralPath $outFile, $errFile -Force -ErrorAction SilentlyContinue
+        $out = $outBuilder.ToString()
         $postHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $WorktreePath
         # Mutation evidence: the reviewer is READ-ONLY, so ADDED, DELETED, and MODIFIED files ALL count
         # as mutations. A NEW file is exempt ONLY when it matches the explicit output-path allowlist -
@@ -495,7 +510,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     # The SLIM prompt (a few KB) — the reviewer reads the diff + design + browses/runs the project itself.
     # Round-aware: round 1 reviews; later rounds verify the prior findings are resolved; at the FINAL round the
     # reviewer escalates (the counter is a safety ceiling, the reviewer's judgement is the brains).
-    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope, [switch]$DesignContextEmpty, [switch]$ImplementerEvidencePresent)
+    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope, [switch]$DesignContextEmpty, [switch]$ImplementerEvidencePresent, [switch]$VerificationResultsPresent)
     # f1 (codex 2026-07-08): when NO design context resolved, say so HONESTLY - the reviewer must not
     # silently skip design conformance; it reviews code/process and RAISES the gap as a finding.
     $designContextBlock = if ($DesignContextEmpty) {
@@ -527,6 +542,15 @@ function Get-ContinuousCoReviewSlimPrompt {
         "`nIMPLEMENTER TEST EVIDENCE (implementer-recorded, digest-matched): .review/implementer-evidence.json was recorded by the implementer's tooling and injected ONLY because its reviewed-state digest matches EXACTLY the tree you are reviewing (any later edit changes the digest and orphans the record). It is IMPLEMENTER-SUPPLIED, not independently observed: treat the recorded suites (names, pass/fail counts, exit codes, durations) as strong prior evidence for budget purposes - do NOT re-run whole covered suites by default - but SPOT-CHECK a small targeted sample (a suite subset or a handful of named tests) where your findings depend on that evidence. ANY mismatch between a spot-check and the record is itself a BLOCKING honesty finding. Hand-written claims in review.md, quality notes, or commit messages remain claims with zero evidence standing, and the falsification stance applies to them unchanged.`n"
     }
     else { '' }
+    # T015 (FR-010): the orchestrator ran the DECLARED verification commands through the bounded wrapper and
+    # injected the HOST-OBSERVED results. Gated on the same flag the orchestrator sets when it actually wrote
+    # the file, so the reviewer is never pointed at an absent record. Unlike implementer evidence, THIS is
+    # independently observed by the engine (timeout + process-tree kill + byte-capped output + pre/post
+    # mutation hash), so it needs no forgery spot-check - a recorded mutation or non-zero exit IS a finding.
+    $verificationBlock = if ($VerificationResultsPresent) {
+        "`nBOUNDED VERIFICATION RESULTS (orchestrator-observed, host-run): .review/verification/results.json holds the DECLARED verification commands the engine ran FOR you before you were spawned - each with a per-command timeout + full process-tree kill on expiry, a byte-capped captured output (output_truncated flags the cap), and a pre/post worktree hash (source_mutated / mutated_paths). These are INDEPENDENTLY host-observed, not implementer-supplied: treat a recorded clean pass as strong evidence and do NOT re-run that same command by default. A record whose source_mutated is true, or whose exit_code is non-zero where a pass was claimed, is itself a finding to report.`n"
+    }
+    else { '' }
     # RESOLVED-BY-DEFERRAL (the missing half of the T106 human-close, found by DEC-197-I010-008's own
     # first exercise: a round-4 reviewer READ the deferral decision and still escalated because this
     # teaching had no deferral vocabulary - and a full+independent block is not overridable by design
@@ -541,7 +565,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     }
     return @"
 You are the Specrew continuous co-reviewer (a fresh-context, design- AND process-conformance reviewer).
-$scopeBlock$designContextBlock$evidenceBlock
+$scopeBlock$designContextBlock$evidenceBlock$verificationBlock
 Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN
 verification you need — but you are READ-ONLY on the source: do NOT modify, fix, or patch any file. Your job is
 to find issues, not fix them.
@@ -552,11 +576,13 @@ is stripped, and origin-absolute paths are relativized to <project>. Stay INSIDE
 or reach the origin project, and do not depend on absolute paths. Anything intentionally absent here — the stripped
 machinery, a relativized path — is EXPECTED; treat a reference to it as unverifiable-here, never as a defect.
 
-BOUNDED VERIFICATION: when you run tests/build to verify a claim, run ONLY the implementer's DECLARED verification
-commands (the ones the change says validate it) — never an unrestricted whole-repository sweep. Each such run is
-executed with a timeout and process containment (a hung command is killed), its captured output is capped, and the
-worktree is hashed before and after so any MUTATION of existing source is recorded (you are READ-ONLY: a
-verification that edits existing source is itself a finding).
+BOUNDED VERIFICATION: prefer the orchestrator-observed verification results above (when present) over re-running
+their commands. When you DO run tests/build yourself to verify a claim, run ONLY the DECLARED verification commands
+the change says validate it — never an unrestricted whole-repository sweep — and keep each run SHORT and targeted.
+Your runs execute at the HOST BOUNDARY: this worktree is the disposable, isolated copy described above (you cannot
+reach the origin project from it), and a containment monitor RECORDS the commands you run. You are READ-ONLY on the
+source: a command that edits, adds, or deletes existing source is a mutation you have caused — do not run it, and
+report a claimed verification that requires one as a finding.
 
 1. Read .review/changes.diff — this is the change-set under review (what changed).
 2. Read .review/design/ — the spec + design-analysis (PROSE intent) the change must conform to, AND
@@ -988,9 +1014,10 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
         [scriptblock]$Heartbeat,
         [string]$HumanScope,
         [switch]$DesignContextEmpty,
-        [switch]$ImplementerEvidencePresent
+        [switch]$ImplementerEvidencePresent,
+        [switch]$VerificationResultsPresent
     )
-    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty -ImplementerEvidencePresent:$ImplementerEvidencePresent
+    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty -ImplementerEvidencePresent:$ImplementerEvidencePresent -VerificationResultsPresent:$VerificationResultsPresent
     $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
 
     # T108/FR-033 (D-197-I009-015): retry ONCE on an EMPTY exit-0 result before the run can be declared

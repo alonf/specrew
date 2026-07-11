@@ -71,6 +71,24 @@ Describe 'reviewer bounded in-worktree verification (FR-010)' {
         finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'bounds SUSTAINED multibyte output through the production boundary (memory stays bounded; cap holds)' {
+        # Finding-2 proof: the child STREAMS ~3 MB of a 3-byte UTF-8 char over 2000 chunks. CopyToAsync
+        # drains it to disk with a small buffer, so reviewer memory never accumulates the flood (the test
+        # completing at all is that proof); the byte cap then holds near MaxOutputBytes - not the 3 MB
+        # emitted. (Slack of 3 bytes: a truncated trailing multibyte sequence degrades to one U+FFFD.)
+        $wt = script:New-Worktree
+        try {
+            $flood = "1..2000 | ForEach-Object { [Console]::Out.Write(([char]0x2122).ToString() * 512) }"
+            $r = @(Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt -DeclaredCommands @($flood) -TimeoutSeconds 60 -MaxOutputBytes 4096)
+            $r[0].output_truncated | Should -Be $true
+            $bytes = [System.Text.Encoding]::UTF8.GetByteCount($r[0].output)
+            $bytes | Should -BeLessOrEqual (4096 + 3) -Because 'the cap holds - the multi-MB flood never lands in the record'
+            $bytes | Should -BeGreaterOrEqual (4096 - 3) -Because 'the capture fills up to the cap, proving output actually streamed through'
+            $r[0].source_mutated | Should -Be $false
+        }
+        finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'records a MODIFIED existing file as a mutation' {
         $wt = script:New-Worktree
         try {

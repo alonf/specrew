@@ -15,21 +15,39 @@ source of truth for what that prompt promises and why.
   defect**; a reference to it is treated as unverifiable-here, not false.
 - The reviewer is **read-only on the source**: it finds issues, it does not fix them.
 
-## Bounded in-worktree verification (the REQUIRED verification step)
+## Bounded verification — who runs it, and where the boundary is
 
-When the reviewer runs tests/build to verify a claim, it runs **only the implementer's DECLARED
-verification commands** — never an unrestricted whole-repository sweep. Each run is executed by
-`Invoke-ContinuousCoReviewBoundedVerification` with:
+The reviewer is a full agentic host with **direct tool access**: it runs shell commands itself, so the
+engine **cannot** route those runs through a PowerShell wrapper, and the contract does not pretend it
+can. Enforcement is split honestly by who controls the run:
+
+- **The reviewer's own runs are contained by the HOST BOUNDARY, not by a wrapper.** They execute inside
+  the disposable, isolated worktree the reviewer cannot escape (T013/T014), and the containment monitor
+  (T016, on the T100 registry) **records** what the reviewer runs. The prompt tells the reviewer this
+  plainly and requires it to stay read-only and run only the change's declared verification commands —
+  the boundary is the enforcement, not a claim that each call is wrapped.
+
+- **The orchestrator's runs ARE wrapped, on the real review path.** Before spawning the reviewer,
+  `Invoke-ContinuousCoReviewWorktreeReviewRun` runs any **declared verification commands**
+  (`-DeclaredVerificationCommands`) through `Invoke-ContinuousCoReviewBoundedVerification` and injects the
+  **host-observed** results into the worktree at `.review/verification/results.json`. This is the
+  runner-observed complement to the implementer-supplied evidence: it is independently observed by the
+  engine, so it carries no forgery spot-check. The reviewer prefers these results over re-running the
+  same commands. The prompt block is gated on the injection actually happening (empty command set → no
+  file, no block — never a pointer to an absent record).
+
+`Invoke-ContinuousCoReviewBoundedVerification` enforces, per command:
 
 1. **Timeout + process containment** — a per-command timeout; on expiry the ENTIRE child process tree
    is killed (`Kill(entireProcessTree)`), not just the direct child.
-2. **Capped output** — captured stdout+stderr is truncated at a UTF-8 **byte** limit
-   (`MaxOutputBytes`); `output_truncated` records when the cap was hit.
+2. **Byte-bounded, streaming output cap** — both pipes are drained to disk with `CopyToAsync` (reviewer
+   memory stays bounded regardless of output volume — a hostile flood lands on disk, not in the
+   process), then at most `MaxOutputBytes` **UTF-8 bytes** are read back; `output_truncated` records the
+   overflow.
 3. **Pre/post mutation evidence** — the worktree's existing-file hashes are compared before and after.
-   **Added, deleted, and modified files ALL count as mutations** (the reviewer is read-only); a NEW
+   **Added, deleted, and modified files ALL count as mutations** (the runner must be read-only); a NEW
    file is exempt **only** when it matches the explicit output-path allowlist (`AllowedOutputPaths`,
-   e.g. `*.log`, `coverage/*`). Any other new file is a mutation — a reviewer must not plant new
-   source that steers the verification it then runs.
+   e.g. `*.log`, `coverage/*`). Any other new file is a mutation.
 
 Each command yields a record: `{ command, exit_code, timed_out, output, output_truncated,
 source_mutated, mutated_paths }`. A run whose `source_mutated` is true is itself a finding.

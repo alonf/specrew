@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T20:20:00Z
+**Updated**: 2026-07-11T20:40:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -100,6 +100,30 @@
   Paired suite 9/9 (timeout, process-tree kill, byte cap, add/delete/
   modify mutation, allowed-output, empty); added to the F-198 CI registry
   (now 15 suites, all green).
+- Co-review bfc7b5c5 (2 blocking, on T015): (1) the bounded-verification
+  wrapper had NO production caller and the prompt FALSELY claimed the
+  reviewer's OWN shell runs were wrapped - REAL (the reviewer is an agentic
+  host with direct tool access; nothing can route its runs through a
+  PowerShell wrapper). Fixed by the honest synthesis of both offered
+  options: (a) the ORCHESTRATOR now runs the DECLARED verification commands
+  through the wrapper and injects the HOST-OBSERVED results into the
+  worktree (.review/verification/results.json) BEFORE the reviewer spawns
+  (a real caller on the real path, gated so an empty set injects nothing -
+  never a pointer to an absent file; the runner-observed complement the
+  T111 comment flagged as the 203-W8 fast-follow), and (b) the prompt now
+  states the ENFORCEABLE host boundary honestly - the reviewer's own runs
+  are contained by the isolated worktree it cannot escape (T013/T014) + the
+  T016 monitor, NOT a false wrapper claim. (2) the output cap used
+  ReadToEndAsync (unbounded memory before truncation) - REAL; now both
+  pipes DRAIN TO DISK via CopyToAsync (~80KB buffer, reviewer memory
+  bounded regardless of volume), then at most MaxOutputBytes are read back.
+  New end-to-end suite orchestrator-verification-injection.Tests.ps1 (5:
+  injection-on-real-path, mutating-command-recorded, empty=>no-injection,
+  honest-prompt x2) + a SUSTAINED multibyte streaming test on the wrapper;
+  F-198 CI registry now 16 suites, all green. SCOPE FLAG: the automatic
+  SUPPLY of declared commands (deriving them from implementer-evidence =
+  the 203-W8 runner-observed evidence) is left for a maintainer scope call,
+  not folded in unilaterally.
 - T016 (containment detector, T100 registry) is next in the Option B order.
 
 ## Notes

@@ -25,6 +25,7 @@ $registry = @(
     @{ area = 'reviewer containment (FR-008/SC-002)'; path = 'tests/continuous-co-review/unit/worktree-containment.Tests.ps1'; kind = 'pester' }
     @{ area = 'reviewer origin-path hygiene (FR-009/SC-002)'; path = 'tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1'; kind = 'pester' }
     @{ area = 'reviewer bounded in-worktree verification (FR-010)'; path = 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1'; kind = 'pester' }
+    @{ area = 'bounded verification WIRED on the orchestrator path + honest prompt (FR-010)'; path = 'tests/continuous-co-review/unit/orchestrator-verification-injection.Tests.ps1'; kind = 'pester' }
     @{ area = 'review spend allowance (FR-018/FR-019)'; path = 'tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1'; kind = 'pester' }
     @{ area = 'signoff evidence gate (FR-020 wiring)'; path = 'tests/continuous-co-review/unit/degraded-evidence-gate.Tests.ps1'; kind = 'pester' }
     # Shared co-review engine that F-198 modifies (T012/T014/T020 touch the orchestrator run path):

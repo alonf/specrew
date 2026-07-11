@@ -473,7 +473,13 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         [string[]]$DesignContextFiles,
         [string]$CodeWriterHost,
         [string]$RequestedHost,
-        [int]$TimeoutSeconds = 900
+        [int]$TimeoutSeconds = 900,
+        # T015 (FR-010): the DECLARED verification commands the orchestrator runs FOR the reviewer through the
+        # bounded wrapper (timeout + process-tree kill + byte-capped output + pre/post mutation hash), injecting
+        # the HOST-OBSERVED results. Empty = nothing to verify (honest no-op). AllowedOutputPaths exempt only
+        # named build/log artifacts from the read-only mutation check.
+        [string[]]$DeclaredVerificationCommands = @(),
+        [string[]]$VerificationAllowedOutputPaths = @()
     )
     New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
     $resultOut = Join-Path $RunDir 'result.out'
@@ -643,6 +649,24 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 $implementerEvidencePresent = [bool](Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $RepoRoot -WorktreePath $wt.worktree_path -DigestTreeId $reviewedDigestId)
             }
         } catch { $implementerEvidencePresent = $false }
+        # T015 (FR-010): RUN the declared verification commands through the bounded wrapper HERE, on the real
+        # orchestrator path (not an unwired helper), and inject the host-OBSERVED results into the worktree so
+        # the reviewer consumes independent evidence rather than being told - falsely - that its own shell runs
+        # are wrapped. Bounded verification is enforceable only where the ORCHESTRATOR controls the run: the
+        # spawned reviewer has direct tool access, so its OWN runs are contained by the host boundary (the
+        # isolated worktree + the T016 monitor), which the prompt now states honestly. Empty command set => no
+        # file, no prompt block (gated on the same flag; never a claim about a file that is absent).
+        $verificationResultsPresent = $false
+        try {
+            $declaredCmds = @($DeclaredVerificationCommands | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+            if ($declaredCmds.Count -gt 0 -and (Get-Command -Name 'Invoke-ContinuousCoReviewBoundedVerification' -ErrorAction SilentlyContinue)) {
+                $vres = Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt.worktree_path -DeclaredCommands $declaredCmds -AllowedOutputPaths @($VerificationAllowedOutputPaths) -TimeoutSeconds ([math]::Max(30, [math]::Min($TimeoutSeconds, 300)))
+                $vdir = Join-Path $wt.worktree_path '.review/verification'
+                [void][System.IO.Directory]::CreateDirectory($vdir)
+                [System.IO.File]::WriteAllText((Join-Path $vdir 'results.json'), (ConvertTo-Json @($vres) -Depth 6 -AsArray))
+                $verificationResultsPresent = $true
+            }
+        } catch { $verificationResultsPresent = $false }
         # ROUND: same lineage (change-set overlaps the prior round's) + the prior was blocking -> this is a fix
         # re-review (round+1, thread the prior findings); else a new checkpoint (round 1, no prior). The reviewer
         # escalates at the final round (the counter is the safety ceiling).
@@ -704,7 +728,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 param($Telemetry)
                 & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
-            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty -ImplementerEvidencePresent:$implementerEvidencePresent
+            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty -ImplementerEvidencePresent:$implementerEvidencePresent -VerificationResultsPresent:$verificationResultsPresent
             & $recordPhaseEnd 'reviewer-execution'
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout
