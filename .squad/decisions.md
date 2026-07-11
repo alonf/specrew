@@ -28159,3 +28159,19 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Defect 2 (design-context strictness mischaracterized)**: the gate said unresolved design-context refs "keep the loud-warn precedent". The AUTHORIZED Devin fix (cca79708) is STRICT: explicitly-supplied unresolved refs FAIL before reviewer selection (`design-context-unresolved:`; status `unresolved_design_context`; only omitted/empty keeps the DESIGN_CONTEXT_EMPTY degrade; tests 7f/7g prove the reviewer is never invoked). Corrected in the gate error-handling row, T034, and the design-analysis flow: T034 MUST preserve strict fail-before-execution, never soften to a warn.
 - **Defect 3 (spend accounting conflated round allowance with provider spend)**: T020 now defines BOTH budgets and three cases - (a) preflight missing-input BEFORE invocation → infra failure, consumes neither provider budget nor round allowance; (b) model invoked → record actual provider spend even with no valid review; (c) post-invocation failure → consumes a round-allowance slot with a distinct failed-invocation disposition, never disappears from accounting. Paired tests required: preflight prevents invocation when changes.diff absent; post-invocation failures stay visible in spend telemetry. The prior banked note (17:15 earlier entry) that called it simply "never a spend-consuming round" was the conflation this send-back corrects.
 - **Boundary state**: plan->tasks was approved (option 1); the tasks->before-implement crossing is being re-presented on the SAME boundary after these corrections; no implementation authorized by this send-back.
+
+## 2026-07-11T15:28:56Z — Boundary sync warning: before-implement
+
+- **Boundary Type**: before-implement
+- **Latest Recorded Boundary**: before-implement
+- **Recorded At**: 2026-07-11T15:28:56Z
+- **Warning**: Expected next boundary 'review-signoff' but received 'before-implement'.
+
+## 2026-07-11T15:28:56Z — Boundary sync: before-implement
+
+- **Boundary Type**: before-implement
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 007681e7
+- **Recorded At**: 2026-07-11T15:28:56Z

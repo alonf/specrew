@@ -144,3 +144,4 @@
 {"event_type":"boundary-sync","recorded_at":"2026-07-11T14:54:07Z","payload":{"feature_ref":"198-beta2-hardening","boundary_type":"plan","task_id":null,"auth_commit_hash":"49082762","iteration_number":"003"},"schema":"v1"}
 {"schema":"v1","recorded_at":"2026-07-11T14:54:37Z","event_type":"boundary-sync","payload":{"boundary_type":"tasks","task_id":null,"auth_commit_hash":"49082762","iteration_number":"003","feature_ref":"198-beta2-hardening"}}
 {"recorded_at":"2026-07-11T15:19:09Z","payload":{"auth_commit_hash":"e835f3ad","task_id":null,"iteration_number":"003","feature_ref":"198-beta2-hardening","boundary_type":"before-implement"},"event_type":"boundary-sync","schema":"v1"}
+{"schema":"v1","event_type":"boundary-sync","payload":{"boundary_type":"before-implement","iteration_number":"003","feature_ref":"198-beta2-hardening","auth_commit_hash":"007681e7","task_id":null},"recorded_at":"2026-07-11T15:28:56Z"}
