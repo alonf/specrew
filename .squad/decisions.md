@@ -28083,3 +28083,28 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Marker hygiene**: the maintainer sent back the combined design+boundary packet because a stale marker risked ambiguous authorization evidence; one clean plan->tasks packet re-rendered; their send-back explicitly authorized no advancement.
 - **Primitive fix en route**: the post-closeout sync-lag shape (cursor at new-cycle plan, working record at iteration-closeout) falsely read as unreconciled because the reset edge walled off the closing cycle''s own closeout authorization; Find-SpecrewCycleScopedAuthorization now continues past the exit edge for the iteration-closeout target only, paired Test 16 (clean lag + unauthorized-closeout abuse) green, mirror synced.
 - **Draft arithmetic correction**: the design-analysis first said 11.5 SP; the task rows sum to 12.0 (containment 5.0 + round economy 3.5 + capture 2.75 + integration 0.75) - corrected before the gate, rows authoritative.
+
+## 2026-07-11T14:54:07Z — Boundary sync warning: plan
+
+- **Boundary Type**: plan
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-11T14:54:07Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'plan'.
+
+## 2026-07-11T14:54:07Z — Boundary sync: plan
+
+- **Boundary Type**: plan
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 49082762
+- **Recorded At**: 2026-07-11T14:54:07Z
+
+## 2026-07-11T14:54:37Z — Boundary sync: tasks
+
+- **Boundary Type**: tasks
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 003
+- **Task ID**: (none)
+- **Auth Commit Hash**: 49082762
+- **Recorded At**: 2026-07-11T14:54:37Z
