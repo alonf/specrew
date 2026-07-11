@@ -117,6 +117,26 @@ inherit them:
   record surface, navigator digest-match before blocking (stale verdicts
   surface as stale-vs-current advisory), and in-flight dedup per lineage.
   T019 grows ~+0.5 SP; iteration 003's design-analysis details it.
+- Q (2026-07-11, second maintainer-relayed Devin-crew field report, run
+  `20260711T150802669-da2bc5cc`): what does a MIXED review run mean for
+  staleness handling, and does an unmaterialized input consume spend? →
+  A (recorded as T019/T020 acceptance input; explicitly NOT a scope
+  expansion): their run carried SEVEN stale replays of already-fixed
+  findings ALONGSIDE three genuinely new findings (~eleven one-stop-behind
+  replays across their session), and a prior round spent budget after the
+  engine failed to materialize its own changes.diff input. T019's
+  acceptance therefore additionally covers: rejecting/superseding obsolete
+  in-flight results; binding findings to the exact reviewed tree AND
+  baseline; and distinguishing stale replays from still-valid findings
+  WITHIN one mixed run (per-finding tree-binding, not only whole-run
+  advisory). T020's round counting treats an input-never-materialized run
+  as an infra failure — loud, durably recorded, never a spend-consuming
+  review round (consistent with the iteration-002 codex-flake precedent;
+  the "every round counts" ruling governs rounds that actually reviewed).
+  Their crew's forensics (tree-id/baseline/launch-commit deltas, in-flight
+  overlap evidence) arrive as fixture data; if their diff-materialization
+  investigation produces a second shared-engine commit, it gets the same
+  T034 inspect/reuse doctrine — never independently reimplemented.
 - Q (2026-07-10, follow-up, maintainer-typed): who runs the remediation
   machinery? → A (human): "This is a very bad UX, why do you ask the user
   to run a script. Ask the user for approval to allow to reset the

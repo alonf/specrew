@@ -28115,3 +28115,31 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Sequencing fact recorded honestly**: plan.md was AUTHORED in the same working stretch in which the design gate was first run - the gate initially refused (multi-option recommendation wording; missing durable packet), was satisfied, and PASSED before the commit and before the plan boundary sync; the gate''s letter ("do not author plan.md until design analysis is valid") was met at commit/sync time, not at first keystroke. The ratification covers the committed content as it stands.
 - **Also corrected under the same send-back**: the plan''s Phase Baseline summed 11.5 against the 12.0 task total and double-booked the review allowance as an implementation subtraction; corrected to a coherent partition (Discovery 0.25 + Implementation 11.75 = 12.0) with Review 1.0 / Rework 0.25 stated as wall-clock allowances above the planned SP (forecast floor 13.25).
 - **Boundary state**: the plan->tasks crossing remains PENDING; no approval was given or recorded by the send-back ("Do not record this as approval").
+
+## 2026-07-11T15:15:16Z — Boundary enforcement: before-implement
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Ratchet refusal: 'tasks' is recorded but not human-approved; a second advance to 'before-implement' is refused until it is reconciled.
+
+## 2026-07-11T15:15:34Z — Boundary enforcement: before-implement
+
+- **Feature**: 198-beta2-hardening
+- **Boundary Type**: before-implement
+- **Current Boundary**: tasks
+- **Requested Boundary**: before-implement
+- **Enforcement Action**: blocked
+- **Launch Mode**: (none)
+- **Agent Response Snippet**: (none)
+- **Reason**: Ratchet refusal: 'tasks' is recorded but not human-approved; a second advance to 'before-implement' is refused until it is reconciled.
+
+## 2026-07-11T16:40:00Z — Second Devin-crew field report banked as T019/T020 acceptance input (no scope change)
+
+- **Evidence (their run 20260711T150802669-da2bc5cc)**: seven stale replays of already-fixed findings ALONGSIDE three genuinely new findings in ONE run (the mixed-run case T019a''s whole-run advisory cannot decompose); ~eleven one-stop-behind replays across their session; a prior round consumed spend after the engine failed to materialize its own changes.diff input.
+- **Recorded into**: spec Clarifications (new entry), T019 (supersede obsolete in-flight results; bind findings to reviewed tree AND baseline; per-finding stale-vs-valid decomposition in mixed runs), T020 (input-never-materialized run = infra failure, never a spend-consuming round - scoped consistently with the "every round counts" ruling, which governs rounds that actually reviewed).
+- **Not done**: no scope expansion, no early implementation (before-implement verdict still pending), nothing launched for their crew. Their forensics (tree-id/baseline/launch-commit deltas, in-flight overlap) arrive as T019 fixture data; a possible second shared-engine commit from their diff-materialization investigation gets the T034 inspect/reuse doctrine.
