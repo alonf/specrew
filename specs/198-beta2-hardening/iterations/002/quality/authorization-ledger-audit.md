@@ -68,6 +68,19 @@ Consequences carried into iteration 003 (T030-T033):
   as the ONLY evidence. The FR-044 correction door should support annotating
   such records (first natural use of append-style invalidation/correction).
 
+## Addendum (post-audit entries, 2026-07-11 afternoon)
+
+| # | Boundary | Recorded (UTC) | Evidence source | Matching human turn (UTC, text) | Verdict recorded | Determination |
+| - | -------- | -------------- | --------------- | ------------------------------- | ---------------- | ------------- |
+| 12 | review-signoff -> retro | 07-11 12:11:53 | marker-bound | 11:55:22 "2. Approve with instructions..." (answered the 11:46 re-presented retro packet) | approved for retro | valid - notably the marker-bound path captured an option-2 instruction-carrying verdict correctly; the option-2 gap is fallback-only |
+| 13 (removed) | retro -> iteration-closeout | 07-11 12:12:30 | fallback | NONE - recorded 37s after the retro capture, during the agent's own stop cycle; the human's actual reply to the closeout packet was "3. Send back" | approved for iteration-closeout | **invalid, fabricated** - the same mechanism as the removed DEC-198-GOV-001 entry (identical ~37s signature); excised by maintainer-approved surgery DEC-198-GOV-003 |
+
+The fabrication mechanism (T030-T032, iteration 003) thus fired twice in
+one day with the same timing signature; both instances were caught before
+any boundary advanced on them, and the second confirmed the audit's
+mechanism finding exactly (fallback fires at packet-render stop cycles
+and pairs a stale/machinery turn with the fresh pending artifact).
+
 ## Conclusion
 
 No unresolved authorization uncertainty remains: every boundary decision in

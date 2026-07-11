@@ -28005,3 +28005,42 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Catch (copilot, blocking)**: the first fix corrected only `Get-SpecrewUnreconciledBoundary`; `Test-SpecrewBoundaryAuthorization` - the live gate behind every sync command - still name-matched (from, to) across unscoped history (live repro: a prior-cycle approval authorized a new cycle''s crossing), and the validator''s FR-003 branch reimplemented an inline check instead of consuming the primitive.
 - **Fix**: ONE shared matcher `Find-SpecrewCycleScopedAuthorization` (cursor invariant: cursor==iteration-closeout proves no post-closeout authorization exists, so a closed cycle authorizes nothing further; cycle-reset edge and closeout-terminator stops; fail-closed on unreadable identity) consumed by the primitive AND the live gate; validator state-advance/skipped-boundary checks route through the primitive. Mirrors synced.
 - **Proof**: ratchet suite grown to 23 assertions (Tests 13-15: the reviewer''s exact repro + paired legit path; first-crossing-of-new-cycle; prior-cycle closeout terminator + paired legit own-closeout); all sibling suites green; governance validator PASS on iterations 001+002.
+
+## 2026-07-11T13:08:37Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-11T13:08:37Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-07-11T13:08:37Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fceb3ee1
+- **Recorded At**: 2026-07-11T13:08:37Z
+
+## 2026-07-11T13:20:00Z — DEC-198-GOV-003: second fabricated authorization removed (same class, same signature)
+
+- **What happened**: the fallback capture fabricated `approved for iteration-closeout` (12:12:30Z, 37s after the genuine retro capture, during the agent''s own stop cycle) while the human''s actual reply to the closeout packet was a send-back. Identical mechanism + timing signature to DEC-198-GOV-001; the capture-side fix is already scoped as FR-041..FR-044 / T030-T033 (iteration 003, maintainer ruling).
+- **Ratchet note**: the closeout sync passed because the fabricated entry moved the CURSOR - the cycle-aware ratchet judged correctly on poisoned data; the poison source is the capture bug, not the DEC-198-GOV-002 fix.
+- **Decision (maintainer)**: approve the same precondition-guarded surgery; entry removed (14 -> 13), cursor restored to retro, iteration 001''s closeout entry untouched, backup retained, state verified (pending correctly `retro -> iteration-closeout`).
+- **Also recorded**: the genuine retro capture (12:11:53Z) was MARKER-BOUND and correctly carried the option-2 instruction-bearing verdict - the option-2 parsing gap is fallback-only; audit addendum written.
+
+## 2026-07-11T14:19:08Z — Boundary sync warning: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Latest Recorded Boundary**: iteration-closeout
+- **Recorded At**: 2026-07-11T14:19:08Z
+- **Warning**: Expected next boundary 'feature-closeout' but received 'iteration-closeout'.
+
+## 2026-07-11T14:19:09Z — Boundary sync: iteration-closeout
+
+- **Boundary Type**: iteration-closeout
+- **Feature Ref**: 198-beta2-hardening
+- **Iteration Number**: 002
+- **Task ID**: (none)
+- **Auth Commit Hash**: fceb3ee1
+- **Recorded At**: 2026-07-11T14:19:08Z
