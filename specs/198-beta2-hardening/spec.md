@@ -129,14 +129,25 @@ inherit them:
   in-flight results; binding findings to the exact reviewed tree AND
   baseline; and distinguishing stale replays from still-valid findings
   WITHIN one mixed run (per-finding tree-binding, not only whole-run
-  advisory). T020's round counting treats an input-never-materialized run
-  as an infra failure — loud, durably recorded, never a spend-consuming
-  review round (consistent with the iteration-002 codex-flake precedent;
-  the "every round counts" ruling governs rounds that actually reviewed).
-  Their crew's forensics (tree-id/baseline/launch-commit deltas, in-flight
-  overlap evidence) arrive as fixture data; if their diff-materialization
-  investigation produces a second shared-engine commit, it gets the same
-  T034 inspect/reuse doctrine — never independently reimplemented.
+  advisory). T020 must SEPARATE two budgets the report proved were
+  conflated (provider spend = actual model/API cost; review-round
+  allowance = the autonomous-round ceiling), across three cases (corrected
+  at the maintainer's before-implement send-back, 2026-07-11): (a) a
+  PREFLIGHT check that detects a missing input (e.g. absent changes.diff)
+  BEFORE model invocation records an infrastructure failure consuming
+  NEITHER provider budget NOR round allowance; (b) a model that WAS
+  invoked records its actual provider spend even when no valid review
+  resulted; (c) such a post-invocation failure DOES consume a
+  round-allowance slot with a distinct failed-invocation disposition and
+  never disappears from accounting. The "every round counts" ruling still
+  governs rounds that actually reviewed; the preflight case consumes
+  nothing because it PREVENTS the wasteful invocation the da2bc5cc round
+  suffered. Their crew's forensics (tree-id/baseline/launch-commit deltas,
+  in-flight overlap evidence) arrive as fixture data; their
+  diff-materialization and strict-resolution commits (cca79708) get the
+  T034 inspect/reuse doctrine with the strict fail-before-execution
+  behavior preserved, never softened to a warn — never independently
+  reimplemented.
 - Q (2026-07-10, follow-up, maintainer-typed): who runs the remediation
   machinery? → A (human): "This is a very bad UX, why do you ask the user
   to run a script. Ask the user for approval to allow to reset the

@@ -345,6 +345,9 @@ maintainer-instructed at the 003 planning approval.
   ... iteration proceeds in priority order ...
   Devin commit lands (external) → CHECKPOINT T034b:
       cherry-pick (never reimplement)
+      → PRESERVE strict fail-before-execution for explicitly-supplied
+        unresolved design-context refs (cca79708; never soften to a warn;
+        tests mirror 7f/7g: reviewer never invoked on invalid refs)
       → co-review regression set (worktree/digest/signoff suites)
       → one live review round (compat proof)
       → exec-bit restoration verified vs DRIFT-198-I001-001
