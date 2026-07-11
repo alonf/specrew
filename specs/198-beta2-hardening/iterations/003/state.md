@@ -1,11 +1,11 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T013
-**Tasks Remaining**: T014, T015, T016, T017, T018, T019, T020, T030, T031, T032, T033, T034b
-**In Progress**: T014 (next)
+**Last Completed Task**: T020
+**Tasks Remaining**: T014, T015, T016, T017, T018, T019, T030, T031, T032, T033, T034b
+**In Progress**: T014 (resuming the containment chain after the T020 pull-forward)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T17:30:00Z
+**Updated**: 2026-07-11T18:00:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -38,7 +38,20 @@
   orchestrator). Paired test worktree-containment.Tests.ps1 3/3: outside
   origin + no upward-walk resolves origin; inside-origin and origin-itself
   refused.
-- T014 (bundle origin-path hygiene) is next in the Option B order.
+- T020 done (pulled forward, maintainer-directed execution-order
+  adjustment, NOT scope drift): the review-loop spend allowance. A
+  RESOLVED-AGAINST-DISK disposition clears the sticky blocking round-state
+  - resets the round so a fixed finding can neither re-escalate nor keep
+  consuming allowance (the four session incidents c894a74b/970a8d7c/
+  efbbb98d/e4e88cb0 as the regression class) - and it REQUIRES committed
+  fix evidence (an ancestor of HEAD; a bare claim is refused - no
+  false-green). Two-budget accounting (provider spend vs round allowance:
+  preflight-before-invocation consumes neither; invoked records spend +
+  round). Consumer-legible halt text (N-of-M, reset command,
+  resolved-vs-open, zero internal identifiers). CLI: --remediate
+  resolved-against-disk --fix-evidence-ref. Proof suite 8/8;
+  escalation-latch + degraded-gate regression 23/23; parse-clean.
+- Resuming the containment chain at T014 (bundle origin-path hygiene).
 
 ## Notes
 

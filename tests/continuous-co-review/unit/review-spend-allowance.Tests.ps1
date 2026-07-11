@@ -1,0 +1,132 @@
+#requires -Version 7.0
+$ErrorActionPreference = 'Stop'
+
+# T020 (F-198 FR-018 / FR-019 / SC-007, NFR-007): the review-loop spend allowance.
+# Proves the four observed stale-latch incidents (self-leak c894a74b/970a8d7c, FR-020
+# efbbb98d/e4e88cb0) can no longer happen: a RESOLVED-AGAINST-DISK disposition clears the
+# sticky blocking round-state and resets the round, so a fixed finding can NEITHER re-escalate
+# NOR keep consuming the round allowance - AND it requires committed fix evidence (no
+# false-green door). Plus the two-budget accounting (provider spend vs round allowance) and the
+# consumer-legible halt message (zero internal identifiers).
+Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-018 / FR-019)' {
+    BeforeAll {
+        $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
+        $env:SPECREW_MODULE_PATH = $script:RepoRoot
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1')
+
+        function script:New-LatchedRepo {
+            # A temp repo whose round-state holds a blocking finding at a HIGH round (the stuck latch),
+            # with a committed 'fix' whose commit is an ancestor of HEAD (real fix evidence).
+            $repo = Join-Path ([System.IO.Path]::GetTempPath()) ('t020-' + [guid]::NewGuid().ToString('N'))
+            New-Item -ItemType Directory -Path (Join-Path $repo '.specrew/runtime') -Force | Out-Null
+            & git -C $repo init -q 2>&1 | Out-Null
+            Set-Content -LiteralPath (Join-Path $repo 'code.ps1') -Value '# buggy' -Encoding UTF8 -NoNewline
+            & git -C $repo -c user.name='t' -c user.email='t@e.c' add -A 2>&1 | Out-Null
+            & git -C $repo -c user.name='t' -c user.email='t@e.c' commit -q -m 'seed (the finding)' 2>&1 | Out-Null
+            Set-Content -LiteralPath (Join-Path $repo 'code.ps1') -Value '# fixed' -Encoding UTF8 -NoNewline
+            & git -C $repo -c user.name='t' -c user.email='t@e.c' add -A 2>&1 | Out-Null
+            & git -C $repo -c user.name='t' -c user.email='t@e.c' commit -q -m 'the fix' 2>&1 | Out-Null
+            $fix = (& git -C $repo rev-parse HEAD).Trim()
+            $held = @{ schema_version = '1.0'; run_id = 'r-stale'; status = 'findings'; findings = @(@{ finding_id = 'f1'; severity = 'blocking'; kind = 'defect'; location = @{ path = 'code.ps1'; line_start = 1 } }) } | ConvertTo-Json -Depth 8 -Compress
+            (@{ changed_paths = @('code.ps1'); round = 3; blocking = $true; findings = $held; remediation = $null } | ConvertTo-Json -Depth 8 -Compress) |
+                Set-Content -LiteralPath (Join-Path $repo '.specrew/runtime/co-review-round-state.json') -Encoding UTF8
+            return [pscustomobject]@{ Repo = $repo; FixCommit = $fix }
+        }
+    }
+
+    Context 'resolved-against-disk disposition clears the latch (the four field incidents)' {
+        It 'clears blocking and resets the round so the finding cannot re-escalate or consume allowance' {
+            $f = script:New-LatchedRepo
+            try {
+                $d = Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $f.Repo -FixEvidenceRef $f.FixCommit
+                $d.state | Should -Be 'resolved-against-disk'
+                $d.fix_evidence_ref | Should -Be $f.FixCommit
+                $d.rounds_spent_before_resolution | Should -Be 3
+                $rs = Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo
+                $rs.blocking | Should -Be $false -Because 'a cleared latch cannot re-escalate'
+                $rs.round | Should -Be 0 -Because 'a reset round cannot keep consuming the allowance'
+                @($rs.changed_paths).Count | Should -Be 0 -Because 'the lineage reset stops the file-overlap climb'
+                @($rs.dispositions).Count | Should -Be 1
+                $rs.dispositions[0].state | Should -Be 'resolved-against-disk'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'the reset survives a subsequent per-run round-state write (disposition trail preserved)' {
+            $f = script:New-LatchedRepo
+            try {
+                $null = Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $f.Repo -FixEvidenceRef $f.FixCommit
+                # A later run writes fresh round-state; the disposition trail must persist.
+                Set-ContinuousCoReviewRoundState -RepoRoot $f.Repo -ChangedPaths @('other.ps1') -Round 1 -Blocking $false -Findings $null
+                $rs = Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo
+                @($rs.dispositions).Count | Should -Be 1 -Because 'the resolved-against-disk trail must not be wiped by a per-run write'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'REFUSES a resolved-against-disk claim with no real fix-evidence commit (no false-green door)' {
+            $f = script:New-LatchedRepo
+            try {
+                { Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $f.Repo -FixEvidenceRef 'not-a-real-commit' } |
+                    Should -Throw -ExpectedMessage '*does not resolve to a commit*'
+                (Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo).blocking | Should -Be $true -Because 'a bare claim must not clear the latch'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'REFUSES fix evidence that is not an ancestor of HEAD (the fix is not in the reviewed tree)' {
+            $f = script:New-LatchedRepo
+            try {
+                # A divergent commit NOT in HEAD's history.
+                & git -C $f.Repo -c user.name='t' -c user.email='t@e.c' checkout -q -b side HEAD~1 2>&1 | Out-Null
+                Set-Content -LiteralPath (Join-Path $f.Repo 'code.ps1') -Value '# divergent' -Encoding UTF8 -NoNewline
+                & git -C $f.Repo -c user.name='t' -c user.email='t@e.c' commit -aq -m 'divergent' 2>&1 | Out-Null
+                $divergent = (& git -C $f.Repo rev-parse HEAD).Trim()
+                & git -C $f.Repo -c user.name='t' -c user.email='t@e.c' checkout -q main 2>&1 | & git -C $f.Repo checkout -q - 2>&1 | Out-Null
+                { Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $f.Repo -FixEvidenceRef $divergent } |
+                    Should -Throw -ExpectedMessage '*not an ancestor of HEAD*'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
+    Context 'two-budget accounting (provider spend vs round allowance)' {
+        It 'preflight failure (input never materialized) consumes NEITHER budget' {
+            $c = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $false -ModelInvoked $false -ProducedReview $false
+            $c.class | Should -Be 'preflight-failed'
+            $c.consumes_round | Should -Be $false
+            $c.records_provider_spend | Should -Be $false
+        }
+        It 'an invoked run that produced a review consumes a round and records provider spend' {
+            $c = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $true
+            $c.class | Should -Be 'invoked-reviewed'
+            $c.consumes_round | Should -Be $true
+            $c.records_provider_spend | Should -Be $true
+        }
+        It 'an invoked run that failed (no valid review) records provider spend AND counts the round' {
+            $c = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false
+            $c.class | Should -Be 'invoked-failed'
+            $c.consumes_round | Should -Be $true -Because 'a failed invocation never disappears from round accounting'
+            $c.records_provider_spend | Should -Be $true -Because 'the model was invoked, so provider budget was spent'
+        }
+    }
+
+    Context 'consumer-legible halt message (FR-018)' {
+        It 'has zero internal identifiers, states N-of-M, names the reset command, and shows resolved-vs-open' {
+            . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+            $json = New-ContinuousCoReviewCeilingEscalationResult -RunId 'run-x' -Round 3 -MaxRounds 2 -ResolvedAgainstDiskCount 2
+            $comment = ($json | ConvertFrom-Json).findings[0].comment
+            $comment | Should -Match '3 review rounds' -Because 'N-of-M must be stated'
+            $comment | Should -Match 'limit is 2'
+            $comment | Should -Match 'specrew review --remediate more-time' -Because 'the exact reset command must be named'
+            $comment | Should -Match '2 earlier blocking item' -Because 'resolved-vs-open must come from the disposition trail'
+            $comment | Should -Match 'budget guard'
+            # Zero Specrew-internal identifiers in the human-facing halt.
+            $comment | Should -Not -Match 'co_review_max_rounds'
+            $comment | Should -Not -Match 'T0\d\d'
+            $comment | Should -Not -Match 'F-19\d'
+            $comment | Should -Not -Match '(?i)proposal|FR-0|NFR-|SC-0|DEC-198|escalated_to_human|round-state'
+        }
+    }
+}

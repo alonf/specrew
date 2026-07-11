@@ -52,7 +52,7 @@
 | T017 | ONE machinery list (digest strip == worktree strip by construction) | FR-012 | US2 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, extensions/specrew-speckit/data/**, tests/** | planned | — | — | — |
 | T018 | Recorded-run evidence wrapper | FR-014, FR-015 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/**, extensions/specrew-speckit/refocus/**, tests/** | planned | — | — | — |
 | T019 | Checkpoint baselines + frozen digest threading + in-flight dedup | FR-016, FR-017 | US3 | 1.5 | Implementer | scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1, tests/** | planned | — | — | — |
-| T020 | Spend-allowance halt UX (consumer-legible, zero internal identifiers) | FR-018, FR-019 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/** | planned | — | — | — |
+| T020 | Spend-allowance halt UX + two-budget accounting + resolved-against-disk disposition (pulled forward, maintainer-directed) | FR-018, FR-019 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/** | done | — | 1.5 | — |
 | T030 | Machinery-turn exclusion from verdict evidence | FR-041 | US1 | 0.75 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/** | planned | — | — | — |
 | T031 | Approval-tokenizer tightening + temporal-ordering + cursor-invariant guards | FR-042 | US1 | 0.5 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/** | planned | — | — | — |
 | T032 | Fabrication-sequence regression fixtures (re-enable acceptance surface) | FR-043 | US1 | 0.5 | Implementer | tests/integration/verdict-capture-blocks.tests.ps1 | planned | — | — | — |

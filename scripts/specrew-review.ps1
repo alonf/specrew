@@ -102,8 +102,9 @@ Options:
   --ack-degraded <run-id>  Record a first-class human ack of DEGRADED review evidence (with --ack-reason)
   --ack-reason <text>    Why the degraded assurance level (partial/same-host) is acceptable for signoff
   --remediate <choice>   Record a review-problem remediation: more-time | different-host | narrow-scope |
-                         accept-partial | override-block (carried via round-state to the next run)
+                         accept-partial | override-block | resolved-against-disk (carried via round-state)
   --scope <spec>         Human-directed scope for narrow-scope: code | process | path:<p> | function:<name>
+  --fix-evidence-ref <c> Commit that resolves the held finding (required by --remediate resolved-against-disk)
   --baseline-ref <ref>   Optional git ref/SHA baseline. Omit for a signoff run (auto-anchors
                          to the last pass or the merge-base with the trunk); supplying it
                          makes the run exploratory (it does not auto-anchor).
@@ -175,6 +176,7 @@ function Convert-UnixStyleArguments {
         AckReason       = $null
         Remediate       = $null
         Scope           = $null
+        FixEvidenceRef  = $null
         TimeoutSecondsExplicit = $false
     }
 
@@ -182,7 +184,7 @@ function Convert-UnixStyleArguments {
     for ($index = 0; $index -lt $CliArgs.Count; $index++) {
         $argument = $CliArgs[$index]
         switch -Regex ($argument) {
-            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope)(?:=(?<value>.+))?$' {
+            '^--(?<name>baseline-ref|trunk|checkpoint-id|run-id|host|model|effort|authorization-ref|code-writer-host|fallback-policy|reviewer-config|schema-root|run-root|timeout-seconds|design-context-ref|allowed-path|forbidden-path|exclude-path|remediate|scope|fix-evidence-ref)(?:=(?<value>.+))?$' {
                 $name = $Matches['name']
                 $value = $Matches['value']
                 if ([string]::IsNullOrWhiteSpace($value)) {
@@ -208,6 +210,7 @@ function Convert-UnixStyleArguments {
                     'timeout-seconds' { $result.TimeoutSeconds = [int]$value; $result.TimeoutSecondsExplicit = $true }
                     'remediate' { $result.Remediate = $value }
                     'scope' { $result.Scope = $value }
+                    'fix-evidence-ref' { $result.FixEvidenceRef = $value }
                     'design-context-ref' { $result.DesignContextRefs = @($result.DesignContextRefs) + @($value) }
                     'allowed-path' { $result.AllowedPaths = @($result.AllowedPaths) + @($value) }
                     'forbidden-path' { $result.ForbiddenPaths = @($result.ForbiddenPaths) + @($value) }
@@ -690,10 +693,11 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
         if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Scope)) { $remParams.Scope = [string]$parsedArgs.Scope }
         if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.RunId)) { $remParams.RunId = [string]$parsedArgs.RunId }
         if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) { $remParams.Reason = [string]$parsedArgs.AckReason }
+        if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.FixEvidenceRef)) { $remParams.FixEvidenceRef = [string]$parsedArgs.FixEvidenceRef }
         $rem = Set-ContinuousCoReviewRemediationChoice @remParams
         if ($Json) { $rem | ConvertTo-Json -Depth 6 }
         else {
-            $applied = if ([string]$rem.choice -in @('accept-partial', 'override-block')) { 'recorded and applied immediately' } else { 'recorded - it shapes the NEXT review run' }
+            $applied = if ([string]$rem.choice -in @('accept-partial', 'override-block', 'resolved-against-disk')) { 'recorded and applied immediately' } else { 'recorded - it shapes the NEXT review run' }
             Write-Host ("remediation '{0}' {1} (by {2})" -f $rem.choice, $applied, $rem.authorized_by) -ForegroundColor Green
         }
         exit 0

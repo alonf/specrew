@@ -172,18 +172,111 @@ function Set-ContinuousCoReviewRoundState {
     try {
         $dir = Split-Path -Parent $p; if ($dir -and -not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
         # T096/FR-038: PRESERVE an un-consumed remediation choice across the per-run rewrite (the
-        # human may record it between runs; only the consumer clears it).
+        # human may record it between runs; only the consumer clears it). T020/FR-019: likewise
+        # PRESERVE the resolved-against-disk disposition trail - it is the durable record the halt
+        # text reads to show resolved-vs-open, and it must not be wiped by a per-run status write.
         $remediation = $null
+        $dispositions = @()
         try {
             if (Test-Path -LiteralPath $p -PathType Leaf) {
                 $prior = Get-Content -LiteralPath $p -Raw -Encoding UTF8 | ConvertFrom-Json
                 if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'remediation')) { $remediation = $prior.remediation }
+                if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) { $dispositions = @($prior.dispositions) }
             }
         }
-        catch { $remediation = $null }
-        ([pscustomobject]@{ changed_paths = @($ChangedPaths); round = $Round; blocking = $Blocking; findings = $Findings; remediation = $remediation } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+        catch { $remediation = $null; $dispositions = @() }
+        ([pscustomobject]@{ changed_paths = @($ChangedPaths); round = $Round; blocking = $Blocking; findings = $Findings; remediation = $remediation; dispositions = $dispositions } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
     }
     catch { $null = $_ }
+}
+
+function Get-ContinuousCoReviewRoundSpendClass {
+    # T020 (F-198 FR-018/FR-019, before-implement send-back): separate the TWO budgets a review run
+    # touches - PROVIDER SPEND (actual model/API cost) and the REVIEW-ROUND ALLOWANCE (the autonomous
+    # ceiling). Classifies one run outcome:
+    #   'preflight-failed'   -> a required input (e.g. .review/changes.diff) was missing BEFORE the
+    #                           model was invoked: an INFRASTRUCTURE failure that consumes NEITHER
+    #                           provider budget NOR a round-allowance slot (it prevented the wasteful
+    #                           invocation the field da2bc5cc round suffered).
+    #   'invoked-reviewed'   -> the model was invoked and produced a review: provider spend recorded,
+    #                           the round counts.
+    #   'invoked-failed'     -> the model WAS invoked but produced no valid review: provider spend IS
+    #                           recorded (real cost), AND the round counts with a failed-invocation
+    #                           disposition - it never disappears from accounting.
+    # Returns @{ class; consumes_round; records_provider_spend; reason }.
+    param(
+        [Parameter(Mandatory)][bool]$InputMaterialized,
+        [Parameter(Mandatory)][bool]$ModelInvoked,
+        [Parameter(Mandatory)][bool]$ProducedReview
+    )
+    if (-not $InputMaterialized -and -not $ModelInvoked) {
+        return [pscustomobject]@{ class = 'preflight-failed'; consumes_round = $false; records_provider_spend = $false; reason = 'required review input was not materialized; the model was never invoked (infrastructure failure)' }
+    }
+    if ($ModelInvoked -and $ProducedReview) {
+        return [pscustomobject]@{ class = 'invoked-reviewed'; consumes_round = $true; records_provider_spend = $true; reason = 'the reviewer was invoked and produced a review' }
+    }
+    if ($ModelInvoked -and -not $ProducedReview) {
+        return [pscustomobject]@{ class = 'invoked-failed'; consumes_round = $true; records_provider_spend = $true; reason = 'the reviewer was invoked but produced no valid review (provider spend still incurred; the round is counted with a failed-invocation disposition)' }
+    }
+    # Input materialized but the model was (intentionally) not invoked, and no review: treat as a
+    # preflight-class no-op that consumes neither (defensive; no spend occurred).
+    return [pscustomobject]@{ class = 'preflight-failed'; consumes_round = $false; records_provider_spend = $false; reason = 'the model was not invoked; no provider spend or round consumed' }
+}
+
+function Set-ContinuousCoReviewFindingResolvedAgainstDisk {
+    # T020 (F-198 FR-018/FR-019): a RESOLVED-AGAINST-DISK disposition. When a held blocking finding
+    # has been FIXED and the fix is committed IN THE REVIEWED LINEAGE (an ancestor of HEAD), this
+    # records the resolution and CLEARS the sticky blocking round-state + resets the round + the
+    # change-set lineage - so the finding can NEITHER re-escalate NOR keep consuming the round
+    # allowance. The four field incidents (self-leak c894a74b/970a8d7c, FR-020 efbbb98d/e4e88cb0)
+    # were exactly this: a fixed finding whose file-overlap kept climbing the ceiling. This is NOT
+    # override-block (which waves a DEGRADED block through): the finding is genuinely resolved, so a
+    # fix-evidence commit that is an ANCESTOR OF HEAD is REQUIRED - an unverifiable/absent ref is
+    # refused, so a bare 'resolved' claim can never clear the latch (no false-green door). The rounds
+    # already spent stay recorded in the disposition trail; only FUTURE consumption on this resolved
+    # finding is stopped.
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$FixEvidenceRef,
+        [string]$AuthorizedBy,
+        [datetime]$Now = [datetime]::UtcNow
+    )
+    $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $commit = (& git -C $resolved rev-parse --verify "$FixEvidenceRef^{commit}" 2>$null)
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($commit)) {
+        throw "resolved-against-disk needs a real fix-evidence commit; '$FixEvidenceRef' does not resolve to a commit (a bare 'resolved' claim cannot clear the review latch)."
+    }
+    $commit = $commit.Trim()
+    & git -C $resolved merge-base --is-ancestor $commit HEAD 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "resolved-against-disk fix evidence '$FixEvidenceRef' is not an ancestor of HEAD: the fix is not in the reviewed tree, so the finding is NOT resolved-against-disk."
+    }
+    $prior = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+    if ($null -eq $prior) { return $null }   # nothing latched to resolve
+    if ([string]::IsNullOrWhiteSpace($AuthorizedBy)) {
+        $AuthorizedBy = (& git -C $resolved config user.name 2>$null)
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = 'human' }
+    }
+    $findingId = ''
+    try { $findingId = [string](($prior.findings | ConvertFrom-Json).findings[0].finding_id) } catch { $findingId = '' }
+    $disposition = [pscustomobject][ordered]@{
+        state                          = 'resolved-against-disk'
+        finding_id                     = $findingId
+        fix_evidence_ref               = $commit
+        authorized_by                  = ([string]$AuthorizedBy).Trim()
+        recorded_at                    = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+        rounds_spent_before_resolution = [int]$prior.round
+    }
+    $dispositions = @()
+    if (($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) { $dispositions = @($prior.dispositions) }
+    $dispositions += $disposition
+    # Clear the latch: blocking=false, round=0, lineage reset - the resolved finding no longer climbs
+    # the ceiling nor re-surfaces. The remediation carrier and the (now-appended) disposition trail
+    # are preserved.
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
+    $remediation = if (($prior.PSObject.Properties.Name -contains 'remediation')) { $prior.remediation } else { $null }
+    ([pscustomobject][ordered]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null; remediation = $remediation; dispositions = $dispositions } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    return $disposition
 }
 
 function Set-ContinuousCoReviewRemediationChoice {
@@ -198,12 +291,13 @@ function Set-ContinuousCoReviewRemediationChoice {
     #>
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [Parameter(Mandatory)][ValidateSet('more-time', 'different-host', 'narrow-scope', 'accept-partial', 'override-block')][string]$Choice,
+        [Parameter(Mandatory)][ValidateSet('more-time', 'different-host', 'narrow-scope', 'accept-partial', 'override-block', 'resolved-against-disk')][string]$Choice,
         [int]$TimeoutSeconds = 0,
         [string]$HostName,
         [string]$Scope,
         [string]$RunId,
         [string]$Reason,
+        [string]$FixEvidenceRef,
         [string]$AuthorizedBy,
         [datetime]$Now = [datetime]::UtcNow
     )
@@ -261,6 +355,14 @@ function Set-ContinuousCoReviewRemediationChoice {
             if ($null -ne $prior) {
                 Set-ContinuousCoReviewRoundState -RepoRoot $resolved -ChangedPaths @($prior.changed_paths) -Round ([int]$prior.round) -Blocking $false -Findings ([string]$prior.findings)
             }
+        }
+        'resolved-against-disk' {
+            # T020: the held blocking finding has been FIXED and the fix is committed IN HEAD's
+            # lineage. Distinct from override-block (which waves a DEGRADED block through): this
+            # requires committed fix evidence (an ancestor of HEAD) and clears the latch + resets the
+            # round so the resolved finding can neither re-escalate nor keep consuming the allowance.
+            if ([string]::IsNullOrWhiteSpace($FixEvidenceRef)) { throw "remediation 'resolved-against-disk' needs --fix-evidence-ref <commit> (the commit that resolves the finding)." }
+            $null = Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $resolved -FixEvidenceRef $FixEvidenceRef -AuthorizedBy $AuthorizedBy -Now $Now
         }
     }
 
@@ -547,7 +649,11 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 # status.json knows the increment was NOT reviewed. (F-197 iter-009 Option A #2 + D-010 hardening.)
                 $currentPhase = 'ceiling-halt'
                 & $recordPhaseStart $currentPhase
-                [System.IO.File]::WriteAllText($resultOut, (New-ContinuousCoReviewCeilingEscalationResult -RunId $RunId -Round $round -MaxRounds $maxRounds))
+                $resolvedCount = 0
+                if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) {
+                    $resolvedCount = @($prior.dispositions | Where-Object { [string]$_.state -eq 'resolved-against-disk' }).Count
+                }
+                [System.IO.File]::WriteAllText($resultOut, (New-ContinuousCoReviewCeilingEscalationResult -RunId $RunId -Round $round -MaxRounds $maxRounds -ResolvedAgainstDiskCount $resolvedCount))
                 Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $true -Findings $priorFindings
                 & $recordPhaseEnd 'ceiling-halt'
                 $runTimer.Stop()

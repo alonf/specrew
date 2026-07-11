@@ -601,13 +601,26 @@ function New-ContinuousCoReviewCeilingEscalationResult {
     param(
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)][int]$Round,
-        [Parameter(Mandatory)][int]$MaxRounds
+        [Parameter(Mandatory)][int]$MaxRounds,
+        [int]$ResolvedAgainstDiskCount = 0
     )
+    # T020 (FR-018/FR-019): the halt message is CONSUMER-LEGIBLE - plain words, the review-spend
+    # guard explained, N-of-M rounds, the resolved-vs-open state from the disposition trail, and the
+    # exact command that grants more review budget. It carries ZERO internal identifiers (no rule,
+    # feature, proposal, or task codenames; no engine field names) so a downstream human who never
+    # saw this project's internals can act on it. The maintainer amendment keeps every round counting
+    # (the guard is a spend allowance), and the naming of the command is transparency - a person may
+    # run it, or approve the agent running it.
+    $resolvedNote = if ($ResolvedAgainstDiskCount -gt 0) {
+        (" (Along the way {0} earlier blocking item(s) were confirmed fixed and cleared, so those are not what stopped it.) " -f $ResolvedAgainstDiskCount)
+    }
+    else { ' ' }
     $comment = (
-        ("CO-REVIEW CEILING REACHED (round {0} > max_rounds {1}) with an unresolved blocking finding still open from a " -f $Round, $MaxRounds) +
-        'prior round. This increment was NOT REVIEWED -- the auto-loop stopped here to avoid spinning. This is an ' +
-        'ESCALATION, not a clean pass: resolve the open blocking finding, or raise co_review_max_rounds / reset the ' +
-        "co-review round state, so review resumes. Reading this run as '0 findings / clean' is a FALSE-GREEN."
+        ("This automated code review reached its spending limit for this change: it has run {0} review rounds (the limit is {1}) and a blocking item is still open." -f $Round, $MaxRounds) +
+        ' The limit is a budget guard - it caps how much AI-usage a single review can spend before a person decides whether to keep going - so the review PAUSED here instead of continuing to spend.' +
+        $resolvedNote +
+        'This is not a clean pass: the latest change was not reviewed, and treating it as "no findings" would be wrong.' +
+        ' To continue, a person can approve more review budget for this change (run `specrew review --remediate more-time`, or approve the assistant doing it), or fix the open blocking item so the next review passes on its own.'
     )
     $result = [pscustomobject]@{
         schema_version = '1.0'
@@ -615,12 +628,12 @@ function New-ContinuousCoReviewCeilingEscalationResult {
         status         = 'findings'
         findings       = @(
             [pscustomobject]@{
-                finding_id       = 'co-review-ceiling-escalation'
+                finding_id       = 'review-spending-limit-reached'
                 source_run_id    = $RunId
                 location         = [pscustomobject]@{ path = '.review/changes.diff' }
                 severity         = 'blocking'
                 kind             = 'escalation'
-                design_reference = 'co-review round ceiling (co_review_max_rounds)'
+                design_reference = 'review spending limit reached'
                 comment          = $comment
                 disposition      = 'escalated_to_human'
                 resolution       = [pscustomobject]@{ state = 'escalated'; fix_evidence_ref = $null; rationale = $null }
