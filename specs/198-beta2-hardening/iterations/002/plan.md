@@ -2,8 +2,8 @@
 
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
-**Status**: reviewing
-**Capacity**: 8/26 story_points
+**Status**: retro
+**Capacity**: 9.25/26 story_points
 **Started**: 2026-07-11
 **Completed**:
 
@@ -39,13 +39,13 @@
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
-| T007 | Boundary ratchet + shared primitive (sync + validator call sites) | FR-001, FR-002, FR-003, FR-006 | US1 | 1.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/**, scripts/internal/sync-boundary-state.ps1, tests/** | done | — | — | — |
-| T008 | Reconciliation flows (retroactive entries; revert behind confirm; honest-limit teaching) | FR-005, FR-007 | US1 | 1.5 | Implementer | scripts/internal/sync-boundary-state.ps1, extensions/specrew-speckit/refocus/**, tests/** | done | — | — | — |
-| T009 | Resume/start awaiting-verdict re-confirm surface | FR-004 | US1 | 0.5 | Implementer | scripts/internal/**, extensions/specrew-speckit/scripts/**, tests/** | done | — | — | — |
-| T010 | Tracker honesty check + announced gate-level bypass (paired tests) | FR-020 | US3 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/**, tests/** | done | — | — | — |
-| T011 | Catalog budget rows + BudgetResolver chain + W14 warning + timeout teaching (amended UX) | FR-021, FR-022 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/reviewer-host-catalog.ps1, scripts/internal/continuous-co-review/**, tests/** | done | — | — | — |
-| T012 | Live-door independence defaulting + provenance | FR-023 | US3 | 0.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/** | done | — | — | — |
-| T019a | Stale-verdict surfacing (pulled forward, maintainer-approved) | FR-017 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1 | done | — | — | — |
+| T007 | Boundary ratchet + shared primitive (sync + validator call sites) | FR-001, FR-002, FR-003, FR-006 | US1 | 1.5 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/**, scripts/internal/sync-boundary-state.ps1, tests/** | done | — | 2 | pass |
+| T008 | Reconciliation flows (retroactive entries; revert behind confirm; honest-limit teaching) | FR-005, FR-007 | US1 | 1.5 | Implementer | scripts/internal/sync-boundary-state.ps1, extensions/specrew-speckit/refocus/**, tests/** | done | — | 1 | pass |
+| T009 | Resume/start awaiting-verdict re-confirm surface | FR-004 | US1 | 0.5 | Implementer | scripts/internal/**, extensions/specrew-speckit/scripts/**, tests/** | done | — | 1.5 | pass |
+| T010 | Tracker honesty check + announced gate-level bypass (paired tests) | FR-020 | US3 | 2.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/**, tests/** | done | — | 2 | pass |
+| T011 | Catalog budget rows + BudgetResolver chain + W14 warning + timeout teaching (amended UX) | FR-021, FR-022 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/reviewer-host-catalog.ps1, scripts/internal/continuous-co-review/**, tests/** | done | — | 1 | pass |
+| T012 | Live-door independence defaulting + provenance | FR-023 | US3 | 0.5 | Implementer | scripts/internal/continuous-co-review/**, scripts/specrew-review.ps1, tests/** | done | — | 0.75 | pass |
+| T019a | Stale-verdict surfacing (pulled forward, maintainer-approved) | FR-017 | US3 | 1.0 | Implementer | scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1 | done | — | 1 | pass |
 
 ## Effort Model
 
