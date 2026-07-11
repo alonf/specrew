@@ -1564,11 +1564,11 @@ function Test-BoundaryStateAdvanceVerdict {
     $humanVerdictBoundaries = @('before-implement', 'review-signoff', 'iteration-closeout', 'feature-closeout')
     if ($boundary -notin $humanVerdictBoundaries) { return }
 
-    # DEC-198-GOV-002 (run-2594b7b5 review catch): this check previously counted bare
-    # to_boundary name matches across the ENTIRE unscoped history, so a PRIOR iteration
-    # cycle's same-named approval silenced it. It now consumes THE shared cycle-aware
-    # primitive (fail-closed on an unreadable ledger) so the validator and the sync
-    # ratchet cannot drift - sharing input fields is not consuming the primitive.
+    # FR-003/FR-004: this check must NOT count bare to_boundary name matches across the
+    # ENTIRE unscoped history, or a PRIOR iteration cycle's same-named approval silences it.
+    # It consumes THE shared cycle-aware primitive (fail-closed on an unreadable ledger) so
+    # the validator and the sync ratchet cannot drift - sharing input fields is not
+    # consuming the primitive.
     $unreconciledCrossing = $null
     try {
         $unreconciledCrossing = Get-SpecrewUnreconciledBoundary -ProjectRoot $ProjectRoot

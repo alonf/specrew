@@ -1788,11 +1788,11 @@ function Test-SpecrewBoundaryAuthorization {
         }
     }
 
-    # DEC-198-GOV-002 (run-2594b7b5 review catch): this live gate matched (from, to) by NAME
-    # across the ENTIRE unscoped history, so a prior iteration cycle's approval silently
-    # authorized the current cycle's same-named crossing with zero human involvement. It now
-    # consumes THE shared cycle-scoped matcher the unreconciled primitive uses - one read,
-    # no per-site copy to drift.
+    # FR-001/FR-002/FR-004: this live gate must NOT match (from, to) by NAME across the
+    # ENTIRE unscoped history - because lifecycles loop, a prior iteration cycle's approval
+    # would otherwise authorize the current cycle's same-named crossing with zero human
+    # involvement. It consumes THE shared cycle-scoped matcher the unreconciled primitive
+    # uses - one read, no per-site copy to drift.
     $matchedVerdict = Find-SpecrewCycleScopedAuthorization -History @($enforcementState.State['verdict_history']) -ToBoundary $requestedCanonical -FromBoundary $currentCanonical -LastAuthorizedBoundary ([string]$enforcementState.State['last_authorized_boundary'])
 
     if ($null -ne $matchedVerdict) {
@@ -1833,10 +1833,10 @@ function Test-SpecrewBoundaryAuthorization {
 }
 
 function Find-SpecrewCycleScopedAuthorization {
-    # DEC-198-GOV-002 (+ the run-2594b7b5 review catch): THE cycle-scoped reconciliation read,
-    # shared by every consumer that asks "does a recorded human authorization cover this
-    # crossing IN THE CURRENT iteration cycle?" (the unreconciled primitive, the live
-    # Test-SpecrewBoundaryAuthorization gate). Lifecycles loop, so boundary names recur every
+    # FR-001/FR-004: THE cycle-scoped reconciliation read, shared by every consumer that asks
+    # "does a recorded human authorization cover this crossing IN THE CURRENT iteration
+    # cycle?" (the unreconciled primitive, the live Test-SpecrewBoundaryAuthorization gate).
+    # Lifecycles loop, so boundary names recur every
     # iteration: a bare name match across unscoped history re-uses a PRIOR cycle's approval.
     # Rules, walking the append-ordered history newest-to-oldest:
     #   - The cursor invariant first: every authorization write moves last_authorized_boundary,
@@ -1922,9 +1922,9 @@ function Get-SpecrewUnreconciledBoundary {
 
     $enforcementState = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
     if ($enforcementState.NeedsMigration) { return $null }
-    # DEC-198-GOV-002 (with the cycle fix below): malformed enforcement state must fail
-    # CLOSED at every consumer of this read, not read as "nothing unreconciled". A corrupt
-    # ledger passing the ratchet is the same fail-open class as the cycle blindness.
+    # FR-002/NFR-001 (fail-closed): malformed enforcement state must fail CLOSED at every
+    # consumer of this read, not read as "nothing unreconciled". A corrupt ledger passing the
+    # ratchet is the same fail-open class as cycle-name blindness.
     if ($enforcementState.Issues.Count -gt 0) {
         throw ("The boundary approval ledger cannot be read ({0}). Fix the recorded state before advancing; no boundary step can be verified while the ledger is unreadable." -f (@($enforcementState.Issues) -join '; '))
     }
@@ -1959,13 +1959,12 @@ function Get-SpecrewUnreconciledBoundary {
         }
     }
 
-    # DEC-198-GOV-002: reconciliation binds to the CURRENT iteration cycle and ordered
-    # occurrence, never the bare boundary name - lifecycles loop, so every boundary name
-    # recurs each iteration and iteration N-1's same-named approval must not satisfy
-    # iteration N's crossing (field failure: 001's retro entry satisfied 002's retro).
-    # The cycle scoping lives in Find-SpecrewCycleScopedAuthorization, THE shared matcher
-    # this primitive and the live authorization gate both consume (run-2594b7b5 review
-    # catch: a per-site copy of the scan is exactly how the gate stayed cycle-blind).
+    # FR-004: reconciliation binds to the CURRENT iteration cycle and ordered occurrence,
+    # never the bare boundary name - lifecycles loop, so every boundary name recurs each
+    # iteration and a prior iteration's same-named approval must not satisfy the current
+    # iteration's crossing. The cycle scoping lives in Find-SpecrewCycleScopedAuthorization,
+    # THE shared matcher this primitive and the live authorization gate both consume - a
+    # per-site copy of the scan is exactly how a live gate can stay cycle-blind.
     $reconciledEntry = Find-SpecrewCycleScopedAuthorization -History $history -ToBoundary $working -RequireAuthorizingHuman -LastAuthorizedBoundary $lastAuthorized
     if ($null -ne $reconciledEntry) { return $null }
 
