@@ -28108,3 +28108,10 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 49082762
 - **Recorded At**: 2026-07-11T14:54:37Z
+
+## 2026-07-11T15:55:00Z — DEC-198-I003-001: maintainer ratification of commit 49082762 (recorded per typed instruction)
+
+- **What is ratified**: commit `49082762` - the iteration 003 plan + scaffolds + design-gate packet + the post-closeout sync-lag primitive fix (Test 16). The maintainer''s 2026-07-11 send-back instructed recording this ratification explicitly while withholding the plan->tasks boundary verdict itself.
+- **Sequencing fact recorded honestly**: plan.md was AUTHORED in the same working stretch in which the design gate was first run - the gate initially refused (multi-option recommendation wording; missing durable packet), was satisfied, and PASSED before the commit and before the plan boundary sync; the gate''s letter ("do not author plan.md until design analysis is valid") was met at commit/sync time, not at first keystroke. The ratification covers the committed content as it stands.
+- **Also corrected under the same send-back**: the plan''s Phase Baseline summed 11.5 against the 12.0 task total and double-booked the review allowance as an implementation subtraction; corrected to a coherent partition (Discovery 0.25 + Implementation 11.75 = 12.0) with Review 1.0 / Rework 0.25 stated as wall-clock allowances above the planned SP (forecast floor 13.25).
+- **Boundary state**: the plan->tasks crossing remains PENDING; no approval was given or recorded by the send-back ("Do not record this as approval").

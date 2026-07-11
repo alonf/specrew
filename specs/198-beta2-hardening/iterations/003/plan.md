@@ -92,11 +92,11 @@
 
 | Phase | Estimated Effort | Notes |
 | ----- | ---------------- | ----- |
-| Planning | light | Design-analysis 003 (Option B) + this plan; gate before sync. |
+| Planning | light | Design-analysis 003 (Option B) + this plan; gate passed before the plan boundary sync. |
 | Discovery/Spikes | 0.25 | T034a seam inspection is the only discovery slice. |
-| Implementation | 10.0 | T013-T020 (8.5) + T030-T033 (2.75) less the review/rework allowances carried below; T034b 0.5 rides the landing checkpoint. |
-| Review | 1.0 | Estimated at the 002 calibration (~2x historic) until T020 lands mid-iteration and the loop tax drops. |
-| Rework | 0.25 | Reviewer-catch buffer at the 002 observed rate (same-day fixes). |
+| Implementation | 11.75 | All task execution: containment 5.0 (T013-T017) + round economy 3.5 (T018-T020) + capture integrity 2.75 (T030-T033) + T034b 0.5 at the landing checkpoint. Partition check: 0.25 + 11.75 = 12.0, the planned task total. |
+| Review | 1.0 | Wall-clock allowance ABOVE the 12.0 planned task SP, at the 002 calibration (~2x historic) until T020 lands mid-iteration. |
+| Rework | 0.25 | Wall-clock allowance ABOVE the planned task SP; reviewer-catch buffer at the 002 observed rate (same-day fixes). |
 
 ## Traceability Summary
 
@@ -113,8 +113,16 @@
 
 - Option B per the recorded Human Decision (design-analysis.md), with the
   maintainer's conflict-escalation doctrine binding on T034b.
+- Effort accounting: the 12.0 planned task SP partition into Discovery
+  0.25 + Implementation 11.75; the Review 1.0 and Rework 0.25 rows are
+  wall-clock ALLOWANCES beyond the planned task SP, giving the honest
+  forecast of ~13.25 SP wall-clock (the design-analysis states ~14 as the
+  conservative round; the allowance arithmetic here is the precise floor).
 - The pending-artifact fallback capture remains DISABLED (DEC-198-GOV-003
   interim) throughout this iteration; re-enable only when T030-T033 pass
   the documented acceptance criteria.
 - Implementation starts only on the before-implement verdict (maintainer
   instruction at the planning approval).
+- Phase Baseline corrected at the maintainer's 2026-07-11 send-back: the
+  first authored table summed 11.5 against the 12.0 task total and
+  double-booked the review allowance as an implementation subtraction.
