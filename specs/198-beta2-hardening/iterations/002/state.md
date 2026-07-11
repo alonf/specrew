@@ -1,13 +1,13 @@
 # Iteration State: 002
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
 **Last Completed Task**: T019a
-**Tasks Remaining**: (none - implementation and review complete)
+**Tasks Remaining**: (none)
 **In Progress**: (none)
 **Baseline Ref**: 1fdd7c6d60943c28ae90c43aba286044d5619642
-**Updated**: 2026-07-11T10:45:00Z
+**Updated**: 2026-07-11T12:20:00Z
 
 ## Execution Summary
 
@@ -22,7 +22,13 @@
   regenerated, zero mechanical findings; signoff evidence chain 237849f1
   (clean) -> 485cbb03 (real catch: Test 5 hermeticity, fixed 14222c86) ->
   8bf11302 (clean, promoted); review-signoff approved by the maintainer
-  (option 1, defaults); retro.md authored.
+  (option 1, defaults).
+- Retro: sent back once (plan scaffold sections caught standing), fixed,
+  then approved with instructions - DEC-198-GOV-001 folded into iteration
+  003 as FR-041..FR-044 / T030-T033; the 12-entry authorization ledger
+  audit recorded (quality/authorization-ledger-audit.md, no unresolved
+  authorization uncertainty); hardening gate flipped to runtime-evidence
+  / recorded at closeout.
 
 ## Notes
 
