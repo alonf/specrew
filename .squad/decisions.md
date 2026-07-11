@@ -28223,3 +28223,10 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Delivered**: tests/f198-regression-suite.ps1 - an EXPLICIT registry (8 suites, never a glob), each run in a child pwsh with a per-test timeout (default 300s) + captured output (a hang fails loud, a failure prints the tail). Added as a blocking step in the self-host CI (.github/workflows/specrew-ci.yml, timeout-minutes 15). NOT mirrored to the consumer template (self-host enforcement of F-198''s own code; T021 later generalizes/deploys). Runner is a dev/CI file - not in the module FileList (tests are not shipped).
 - **Green**: all 8 suites pass locally via the runner (exit 0).
 - **Scope note**: this is iteration-003 engine-hardening self-enforcement - the engine hardening does not merge while its core honesty tests are manual-only. T021 can generalize/deploy the CI mechanism to consumers later.
+
+## 2026-07-11T18:40:00Z — T014 done (bundle origin-path hygiene, FR-009/SC-002)
+
+- **Leak fixed**: the reviewer-visible context (copied state.md/plan.md/spec.md/design-analysis.md snapshots) carried file:/// ORIGIN-ABSOLUTE URLs, handing the confined reviewer the real project location. ConvertTo-ContinuousCoReviewOriginRelativized relativizes origin-absolute paths (file:/// URLs + both separator forms, case-insensitive, multi-root: governance root + git top-level) to <project> in the process-context copies, the generated process-context.md, and the design-context copies. RELATIVIZES, never removes - the path structure stays reviewable; the change-set diff (real content under review) is untouched.
+- **Composes with the Devin seam** (T034a): the supplied design-context ref is relativized in the copy, never dropped - their plumbing + our hygiene coexist in the same reviewer-context path.
+- **Proof**: origin-path-hygiene.Tests.ps1 5/5 (file:/// URLs, both separators + case-insensitive, no over-scrub of relative/foreign paths, multi-root, empty no-op); added to the F-198 CI registry.
+- **Next**: T015 (confinement contract + REQUIRED bounded in-worktree verification).

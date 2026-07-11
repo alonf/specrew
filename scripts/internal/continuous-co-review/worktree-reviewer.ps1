@@ -111,6 +111,33 @@ function Get-ContinuousCoReviewMachineryPaths {
     return @($core + $marked + $mirrors | Where-Object { $_ -and $_ -ne '.' } | Sort-Object -Unique)
 }
 
+function ConvertTo-ContinuousCoReviewOriginRelativized {
+    # FR-009 (203 W2) origin-path hygiene: strip/relativize ORIGIN-ABSOLUTE paths from the
+    # reviewer-visible context so the confined reviewer never sees the real project location (an
+    # information leak that also hands it an upward path out of the worktree). RELATIVIZES rather
+    # than removes - the path STRUCTURE stays reviewable (e.g. specs/.../state.md), only the origin
+    # PREFIX is neutralized to '<project>'. Case-insensitive (Windows paths); covers file:/// URLs
+    # and both separator forms. Composes with the Devin design-ref plumbing: a supplied design-context
+    # path is relativized, never dropped.
+    param(
+        [AllowNull()][string]$Content,
+        [Parameter(Mandatory)][string[]]$OriginRoots
+    )
+    if ([string]::IsNullOrWhiteSpace($Content)) { return $Content }
+    $out = $Content
+    $ci = [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+    foreach ($root in ($OriginRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Sort-Object { $_.Length } -Descending)) {
+        $full = [System.IO.Path]::GetFullPath($root).TrimEnd([char]'\', [char]'/')
+        $fwd = $full.Replace('\', '/')
+        $bwd = $full.Replace('/', '\')
+        # file:/// URL form first (most specific), then the bare absolute path in either separator form.
+        $out = [regex]::Replace($out, ('file:///' + [regex]::Escape($fwd)), 'file:///<project>', $ci)
+        $out = [regex]::Replace($out, [regex]::Escape($fwd), '<project>', $ci)
+        $out = [regex]::Replace($out, [regex]::Escape($bwd), '<project>', $ci)
+    }
+    return $out
+}
+
 function Write-ContinuousCoReviewProcessContext {
     # Curated PROCESS / PROGRESS context for the reviewer (under .review/process/) so it can review progress
     # conformance - right task? on-plan? drift recorded? progress honest? - WITHOUT the raw, noisy .specrew
@@ -120,6 +147,10 @@ function Write-ContinuousCoReviewProcessContext {
     param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$ReviewDir)
     $procDir = Join-Path $ReviewDir 'process'
     New-Item -ItemType Directory -Path $procDir -Force | Out-Null
+    # FR-009 origin-path hygiene: the origin roots whose absolute form must never appear in the
+    # reviewer's context - the governance RepoRoot AND the git top-level (nested-project safe).
+    $originRoots = @($RepoRoot)
+    try { $gitTop = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null); if (-not [string]::IsNullOrWhiteSpace($gitTop)) { $originRoots += $gitTop.Trim() } } catch { $null = $_ }
 
     $featureDir = $null; $phase = $null
     $fj = Join-Path $RepoRoot '.specify/feature.json'
@@ -155,7 +186,14 @@ function Write-ContinuousCoReviewProcessContext {
             }
         }
         foreach ($pf in $progressFiles) {
-            if (Test-Path -LiteralPath $pf -PathType Leaf) { Copy-Item -LiteralPath $pf -Destination $procDir -Force; [void]$copied.Add((Split-Path $pf -Leaf)) }
+            if (Test-Path -LiteralPath $pf -PathType Leaf) {
+                # FR-009: relativize origin-absolute paths (file:/// URLs, bare paths) IN THE COPY the
+                # reviewer sees - the snapshot content stays reviewable, the origin location does not leak.
+                $leaf = Split-Path $pf -Leaf
+                $scrubbed = ConvertTo-ContinuousCoReviewOriginRelativized -Content (Get-Content -LiteralPath $pf -Raw -Encoding UTF8) -OriginRoots $originRoots
+                [System.IO.File]::WriteAllText((Join-Path $procDir $leaf), $scrubbed)
+                [void]$copied.Add($leaf)
+            }
         }
     }
 
@@ -184,7 +222,7 @@ function Write-ContinuousCoReviewProcessContext {
     [void]$lines.Add('- Is drift recorded in drift-log.md where the implementation diverged from spec/plan?')
     [void]$lines.Add('- Is tasks-progress / state HONEST (nothing marked done that is not actually done/tested)?')
     [void]$lines.Add('- Does the work stay within planned scope for this lifecycle position (see the lifecycle note)?')
-    [System.IO.File]::WriteAllText((Join-Path $procDir 'process-context.md'), ($lines -join "`n"))
+    [System.IO.File]::WriteAllText((Join-Path $procDir 'process-context.md'), (ConvertTo-ContinuousCoReviewOriginRelativized -Content ($lines -join "`n") -OriginRoots $originRoots))
 }
 
 function New-ContinuousCoReviewStrippedWorktree {
@@ -310,13 +348,18 @@ function New-ContinuousCoReviewStrippedWorktree {
     $namesArgs = @('diff', '--name-only', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
     $namesRaw = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $namesArgs
     $changed = @((($namesRaw -replace "`r`n", "`n") -split "`n") | Where-Object { $_ })
+    $designOriginRoots = @($resolved); if (-not [string]::IsNullOrWhiteSpace($gitRoot)) { $designOriginRoots += $gitRoot }
     foreach ($d in @($DesignContextFiles)) {
         $full = if ([System.IO.Path]::IsPathRooted($d)) { $d } else { Join-Path $resolved $d }
         if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { continue }
         # Formal contracts go under design/contracts/ (grouped + obviously the AUTHORITY); prose goes flat in design/.
         $destDir = if ($d -match '(^|/)contracts/') { Join-Path $reviewDir 'design/contracts' } else { Join-Path $reviewDir 'design' }
         if (-not (Test-Path -LiteralPath $destDir)) { New-Item -ItemType Directory -Path $destDir -Force | Out-Null }
-        Copy-Item -LiteralPath $full -Destination $destDir -Force
+        # FR-009: relativize origin-absolute paths (e.g. file:/// spec/design URLs) in the design
+        # snapshot the reviewer sees - the design content stays authoritative, the origin does not leak.
+        # Composes with the Devin design-ref plumbing: the supplied ref is relativized, never dropped.
+        $scrubbed = ConvertTo-ContinuousCoReviewOriginRelativized -Content (Get-Content -LiteralPath $full -Raw -Encoding UTF8) -OriginRoots $designOriginRoots
+        [System.IO.File]::WriteAllText((Join-Path $destDir (Split-Path $full -Leaf)), $scrubbed)
     }
 
     # Curated process/progress context (distilled from the real project; the raw .specrew is stripped).

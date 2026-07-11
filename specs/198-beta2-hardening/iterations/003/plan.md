@@ -46,7 +46,7 @@
 | ---- | ----- | ----------- | ----- | ------ | ----- | ---------------- | ------ | ----- | ------ | ------- |
 | T034a | Devin-seam inspection (runs FIRST per Option B) | FR-012, FR-017 | US2 | 0.25 | Implementer | specs/198-beta2-hardening/iterations/003/** | done | — | 0.25 | — |
 | T013 | Worktree relocation (system temp; no upward-walk) | FR-008 | US2 | 1.0 | Implementer | scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1, scripts/internal/continuous-co-review/worktree-reviewer.ps1, tests/** | done | — | 1 | — |
-| T014 | Bundle origin-path hygiene (composes with Devin design-ref plumbing) | FR-009 | US2 | 1.0 | Implementer | scripts/internal/continuous-co-review/worktree-reviewer.ps1, tests/** | planned | — | — | — |
+| T014 | Bundle origin-path hygiene (composes with Devin design-ref plumbing) | FR-009 | US2 | 1.0 | Implementer | scripts/internal/continuous-co-review/worktree-reviewer.ps1, tests/** | done | — | 1 | — |
 | T015 | Confinement contract + REQUIRED bounded in-worktree verification | FR-010, FR-013 | US2 | 0.5 | Implementer | scripts/internal/continuous-co-review/**, .specrew/review/process/** | planned | — | — | — |
 | T016 | Containment detector (T100 registry; loud; false-kill guard) | FR-011 | US2 | 1.0 | Implementer | scripts/internal/continuous-co-review/**, tests/** | planned | — | — | — |
 | T017 | ONE machinery list (digest strip == worktree strip by construction) | FR-012 | US2 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, extensions/specrew-speckit/data/**, tests/** | planned | — | — | — |

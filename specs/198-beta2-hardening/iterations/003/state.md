@@ -1,11 +1,11 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T020
-**Tasks Remaining**: T014, T015, T016, T017, T018, T019, T030, T031, T032, T033, T034b
-**In Progress**: T014 (resuming the containment chain after the T020 pull-forward)
+**Last Completed Task**: T014
+**Tasks Remaining**: T015, T016, T017, T018, T019, T030, T031, T032, T033, T034b
+**In Progress**: T015 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T18:00:00Z
+**Updated**: 2026-07-11T18:40:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -62,7 +62,18 @@
   suites green locally. This closes the iteration's own NFR-007
   enforcement - NOT T021 distribution work (T021 later generalizes/
   deploys the mechanism to consumers).
-- Resuming the containment chain at T014 (bundle origin-path hygiene).
+- T014 done (FR-009/SC-002): the reviewer-visible context leaked the
+  origin location via file:/// origin URLs in the copied state/plan/spec/
+  design snapshots. New ConvertTo-ContinuousCoReviewOriginRelativized
+  relativizes origin-absolute paths (file:/// URLs + both separator forms,
+  case-insensitive, multi-root) to <project> in the process-context copies,
+  the generated process-context.md, and the design-context copies - the
+  path STRUCTURE stays reviewable, only the origin PREFIX is neutralized.
+  Composes with the Devin design-ref plumbing (relativize, never drop); the
+  change-set diff itself (real content under review) is untouched. Paired
+  test origin-path-hygiene.Tests.ps1 5/5; added to the F-198 CI registry.
+- T015 (confinement contract + REQUIRED bounded in-worktree verification)
+  is next in the Option B order.
 
 ## Notes
 
