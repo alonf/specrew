@@ -173,6 +173,26 @@ function Get-ContinuousCoReviewReviewedStateDigest {
 
     Push-Location -LiteralPath $resolvedRepoRoot
     try {
+        # core.filemode=false hosts (the Windows default): the filesystem carries NO executable bit,
+        # so git preserves modes from the PRIOR index entry — but this digest stages into a FRESH
+        # EMPTY index, where no prior entry exists. `git add -A` then stages every file as 100644,
+        # silently stripping the bit from tracked 100755 entrypoints (bin/*, install.sh), and the
+        # reviewer's baseline->digest diff fabricates a mode regression on every shipped Unix
+        # wrapper (the recurring co-review phantom / DRIFT-198-I001-001). Capture the REAL index's
+        # 100755 paths BEFORE switching indexes, and restore them after staging. Applied only when
+        # filemode is off: on Unix the filesystem bit is authoritative and a deliberate working-tree
+        # chmod must keep flowing into the digest. (Reused verbatim from Devin ec90e1b6, T034b partial.)
+        $execBitPaths = @()
+        $coreFilemode = ([string](& git config --get core.filemode 2>$null)).Trim()
+        if ($coreFilemode -ieq 'false') {
+            $rawIndexEntries = & git ls-files -z -s 2>$null
+            if ($LASTEXITCODE -eq 0) {
+                foreach ($indexEntry in (ConvertFrom-ContinuousCoReviewNulList -Raw $rawIndexEntries)) {
+                    if ($indexEntry -match '^100755 [0-9a-f]{40,64} \d\t(.+)$') { $execBitPaths += $Matches[1] }
+                }
+            }
+        }
+
         # A fresh (non-existent) GIT_INDEX_FILE is an EMPTY index, so `git add -A` stages
         # the full current working tree (every non-ignored file as an addition) WITHOUT
         # reading or writing the real .git/index. No HEAD dependency (works pre-commit).
@@ -181,6 +201,13 @@ function Get-ContinuousCoReviewReviewedStateDigest {
         & git add -A 2>$null | Out-Null
         if ($LASTEXITCODE -ne 0) {
             return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'git-add-all-failed'
+        }
+        if ($execBitPaths.Count -gt 0) {
+            # Only restore paths still present in the working tree: update-index aborts a whole
+            # chunk on the first missing path (deleted-in-worktree file), and the batch helper
+            # swallows that failure — which would leave later paths in the chunk unrestored.
+            $execBitPaths = @($execBitPaths | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf })
+            Invoke-ContinuousCoReviewGitPathBatch -GitArgs @('update-index', '--chmod=+x') -Paths $execBitPaths
         }
 
         $rawIgnored = & git ls-files -z --others --ignored --exclude-standard --directory 2>$null

@@ -57,7 +57,7 @@
 | T031 | Approval-tokenizer tightening + temporal-ordering + cursor-invariant guards | FR-042 | US1 | 0.5 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/** | planned | — | — | — |
 | T032 | Fabrication-sequence regression fixtures (re-enable acceptance surface) | FR-043 | US1 | 0.5 | Implementer | tests/integration/verdict-capture-blocks.tests.ps1 | planned | — | — | — |
 | T033 | Ledger correction door (append-only invalidation records) | FR-044 | US1 | 1.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/**, tests/** | planned | — | — | — |
-| T034b | Devin cherry-pick + regression set + live-round compat (AT LANDING) | FR-012, FR-017 | US2 | 0.5 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
+| T034b | Devin cherry-pick + regression set + live-round compat (AT LANDING) | FR-012, FR-017 | US2 | 0.5 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | in-progress | — | — | — |
 
 ## Effort Model
 

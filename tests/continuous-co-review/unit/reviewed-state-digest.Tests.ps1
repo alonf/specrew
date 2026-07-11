@@ -166,4 +166,26 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         Set-Content -LiteralPath (Join-Path $repo 'credentials.ts') -Value 'export const auth = () => evil()' -Encoding UTF8
         (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Not -Be $before   # drift detected
     }
+
+    It 'filemode=false regression: tracked 100755 entrypoints keep the executable bit in the digest tree (no fabricated mode diff)' {
+        # The recurring co-review phantom / DRIFT-198-I001-001: on core.filemode=false hosts the digest
+        # staged into a FRESH index, so tracked 100755 entrypoints (bin/*, install.sh) silently became
+        # 100644 and the baseline->digest diff fabricated a mode regression on every shipped wrapper.
+        # (Regression reused from Devin ec90e1b6, T034b partial.)
+        $repo = New-DigestRepo 'filemode-exec'
+        Invoke-DigestGit $repo @('config', 'core.filemode', 'false')
+        Set-Content -LiteralPath (Join-Path $repo 'run.sh') -Value "#!/bin/sh`necho ok" -Encoding UTF8
+        Invoke-DigestGit $repo @('add', 'run.sh')
+        Invoke-DigestGit $repo @('update-index', '--chmod=+x', 'run.sh')
+        Invoke-DigestGit $repo @('commit', '-q', '-m', 'exec entrypoint')
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        $d.ok | Should -Be $true
+        Push-Location -LiteralPath $repo
+        try {
+            $mode = ([string](@(& git ls-tree $d.tree_id run.sh 2>$null) | Select-Object -First 1)).Split(' ')[0]
+            $mode | Should -Be '100755'
+            @(& git diff HEAD $d.tree_id 2>$null | Where-Object { $_ -like 'old mode*' }).Count | Should -Be 0
+        }
+        finally { Pop-Location }
+    }
 }
