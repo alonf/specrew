@@ -99,6 +99,55 @@ Describe 'T094 tiered degraded-evidence signoff gate (FR-036)' {
         $allowed.reason | Should -Be 'degraded-evidence-acknowledged'
     }
 
+    It 'announces the tracker-only reconcile on BOTH degraded paths - the ack decision never loses the reused-evidence fact (FR-020 ANNOUNCED, run-86af61e6 catch)' {
+        $f = New-FeatureRepo 'tier-tracker-degraded'
+        $iterDir = Join-Path $f.repo 'specs/demo/iterations/001'
+        New-Item -ItemType Directory -Path $iterDir -Force | Out-Null
+        @'
+# Review: Iteration 001
+
+**Overall Verdict**: accepted
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T001 | FR-001 | pass | done |
+| T002 | FR-002 | needs-work | not yet |
+'@ | Set-Content (Join-Path $iterDir 'review.md') -Encoding UTF8
+        @'
+# Iteration State: 001
+
+**Iteration Status**: executing
+**Last Completed Task**: (none)
+'@ | Set-Content (Join-Path $iterDir 'state.md') -Encoding UTF8
+        Invoke-GateGit $f.repo @('add', '-A'); Invoke-GateGit $f.repo @('commit', '-q', '-m', 'trackers')
+        $head = (& git -C $f.repo rev-parse HEAD).Trim()
+        $treeId = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $f.repo).tree_id
+        Write-LabelledPassRun -Repo $f.repo -RunId 'r1' -BaselineRef $f.anchor -TreeId $treeId -ReviewedRef $head -Labels ([pscustomobject]@{ completeness = 'partial'; independence = 'independent'; budget = 'normal' })
+
+        # An honest tracker-only reconcile AFTER the reviewed tree: T001 done, matching the
+        # accepted pass verdict. The matched (degraded) evidence is now REUSED across this
+        # reconcile - a material fact the human's ack decision must be told.
+        @'
+# Iteration State: 001
+
+**Iteration Status**: executing
+**Last Completed Task**: T001
+'@ | Set-Content (Join-Path $iterDir 'state.md') -Encoding UTF8
+        Invoke-GateGit $f.repo @('add', '-A'); Invoke-GateGit $f.repo @('commit', '-q', '-m', 'tracker reconcile')
+
+        $blocked = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main'
+        $blocked.decision | Should -Be 'block'
+        $blocked.reason | Should -Be 'degraded-evidence-needs-ack'
+        $blocked.message | Should -Match 'TRACKER-ONLY RECONCILE ACCEPTED' -Because 'the ack ASK must carry the reused-evidence fact'
+        $blocked.message | Should -Match '--ack-degraded r1'
+
+        $ack = [pscustomobject]@{ authorized_by = 'Alon'; rationale = 'partial assurance accepted for the tracker-only reconcile scenario' }
+        $allowed = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main' -DegradedAcknowledgement $ack
+        $allowed.decision | Should -Be 'allow'
+        $allowed.reason | Should -Be 'degraded-evidence-acknowledged'
+        $allowed.message | Should -Match 'TRACKER-ONLY RECONCILE ACCEPTED' -Because 'the recorded ALLOW must carry it too'
+    }
+
     It 'treats a LEGACY record (no labels) as unverified independence -> needs ack (conservative)' {
         $f = New-FreshRepoWithRun 'tier-legacy' $null
         $d = Get-ContinuousCoReviewSignoffGateDecision -RepoRoot $f.repo -TrunkName 'main'

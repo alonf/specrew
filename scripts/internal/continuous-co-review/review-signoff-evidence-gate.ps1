@@ -304,10 +304,15 @@ function Get-ContinuousCoReviewSignoffGateDecision {
         $ack = Get-ContinuousCoReviewDegradedAck -RepoRoot $resolvedRepoRoot -RunId $matchedRunId
     }
     if (Test-ContinuousCoReviewOverrideAuthorization -OverrideAuthorization $ack) {
-        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'degraded-evidence-acknowledged' -Message ("Signoff allowed on DEGRADED review evidence (completeness={0}, independence={1}, budget={2}) under a recorded human acknowledgement." -f $labels.completeness, $labels.independence, $labels.budget) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels -Acknowledgement $ack
+        # FR-020 ANNOUNCED (run-86af61e6 review catch): when the matched run was accepted via the
+        # tracker-only reconcile, the human's ack decision must carry that fact too - the reviewed
+        # tree id was reused across a tracker-only reconcile, not reviewed against the exact
+        # current tree. Withholding it from the degraded-ack paths hid a material fact from the
+        # human decision while the fresh path announced it.
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'allow' -Reason 'degraded-evidence-acknowledged' -Message ("{0}Signoff allowed on DEGRADED review evidence (completeness={1}, independence={2}, budget={3}) under a recorded human acknowledgement." -f [string]$honestyBypassNote, $labels.completeness, $labels.independence, $labels.budget) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels -Acknowledgement $ack
     }
 
-    return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'degraded-evidence-needs-ack' -Message ("The matching co-review evidence is DEGRADED (completeness={0}, independence={1}, budget={2}); signing off on it needs a recorded human acknowledgement: run ``specrew review --ack-degraded {3} --ack-reason `"<why this assurance level is acceptable>`"`` (or re-run a full independent review)." -f $labels.completeness, $labels.independence, $labels.budget, $matchedRunId) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
+    return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'degraded-evidence-needs-ack' -Message ("{0}The matching co-review evidence is DEGRADED (completeness={1}, independence={2}, budget={3}); signing off on it needs a recorded human acknowledgement: run ``specrew review --ack-degraded {4} --ack-reason `"<why this assurance level is acceptable>`"`` (or re-run a full independent review)." -f [string]$honestyBypassNote, $labels.completeness, $labels.independence, $labels.budget, $matchedRunId) -CurrentTreeId $digest.tree_id -MatchedRunId $matchedRunId -AnchorRef $anchor -EvidenceLabels $labels
 }
 
 function Assert-ContinuousCoReviewSignoffGate {
