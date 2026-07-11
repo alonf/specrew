@@ -52,12 +52,42 @@ function Get-ContinuousCoReviewTreeFileContent {
 }
 
 function Get-ContinuousCoReviewStateClaims {
-    # Parse the claiming fields of a state.md. Returns $null when the shape is not the
-    # canonical one (fail-closed at the caller).
+    # Parse the CLAIM-bearing fields of a state.md against canonical enums/shapes (the
+    # TrackerClaims data model, FR-020). Returns $null (fail-closed at the caller) when ANY
+    # claim-bearing field is present in a non-canonical or unrecognized form. Extract-and-ignore
+    # would be a false-green door (the I3 fail-direction: an unmapped/unknown claim must DECLINE
+    # the bypass, never pass unchecked). The completion-signalling fields are Iteration Status and
+    # Last Completed Task; capacity/test-count claims belong to plan.md / coverage-evidence.md
+    # (non-tracker paths whose change already declines), so their appearance HERE is an
+    # unreconcilable injected claim and fails closed.
     param([AllowNull()][string]$Content)
     if ([string]::IsNullOrWhiteSpace($Content)) { return $null }
-    $status = if ($Content -match '(?m)^\*\*Iteration Status\*\*:\s*(?<v>[a-z-]+)\s*$') { $Matches['v'] } else { $null }
-    $lastTask = if ($Content -match '(?m)^\*\*Last Completed Task\*\*:\s*(?<v>\S[^\r\n]*)$') { $Matches['v'].Trim() } else { $null }
+
+    # Iteration Status: when present it MUST be a canonical iteration-status enum; an unknown
+    # status form (e.g. a completion-implying synonym) fails closed instead of passing unchecked.
+    $status = $null
+    if ($Content -match '(?m)^\*\*Iteration Status\*\*:\s*(?<v>\S[^\r\n]*?)\s*$') {
+        $raw = $Matches['v'].Trim()
+        if ($raw -notin @('planning', 'executing', 'reviewing', 'retro', 'complete', 'abandoned')) { return $null }
+        $status = $raw
+    }
+
+    # Last Completed Task: when present it MUST be a task id (Tnnn...) or an explicit '(none...)'
+    # sentinel; any other free-text claim shape fails closed.
+    $lastTask = $null
+    if ($Content -match '(?m)^\*\*Last Completed Task\*\*:\s*(?<v>\S[^\r\n]*?)\s*$') {
+        $raw = $Matches['v'].Trim()
+        if ($raw -match '^T\d{3}\b' -or $raw -match '^\(none') { $lastTask = $raw }
+        else { return $null }
+    }
+
+    # Capacity and test-count claims are authoritative TrackerClaims but their homes are plan.md /
+    # coverage-evidence.md (non-tracker paths). Injected into a tracker file they cannot be
+    # reconciled against the accepted review record -> fail closed.
+    if ($Content -match '(?im)^\**\s*Capacity\b' -or $Content -match '(?im)^\**\s*Tests?\s+(Run|Count|Total|Passed)\b') {
+        return $null
+    }
+
     if ($null -eq $status -and $null -eq $lastTask) { return $null }
     [pscustomobject]@{ IterationStatus = $status; LastCompletedTask = $lastTask }
 }
@@ -140,7 +170,11 @@ function Test-ContinuousCoReviewTrackerReconcileHonest {
             foreach ($line in ($content -split "`r?`n")) {
                 if ([string]::IsNullOrWhiteSpace($line) -or $line.TrimStart().StartsWith('#')) { continue }
                 if ($line -match '^\s*(?<task>T\d{3})\s*:\s*(?<status>[a-z-]+)\s*$') {
-                    $map[$Matches['task']] = $Matches['status']
+                    # task_statuses: canonical enums only (data model). A non-canonical status
+                    # form fails closed rather than being accepted as an unknown claim.
+                    $st = $Matches['status']
+                    if ($st -notin @('planned', 'in-progress', 'done', 'needs-rework', 'deferred', 'blocked')) { return $null }
+                    $map[$Matches['task']] = $st
                 }
                 else { return $null }
             }

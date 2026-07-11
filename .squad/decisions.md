@@ -28189,3 +28189,10 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Devin runtime constraints (maintainer, binding)**: Devin is logged in and AVAILABLE for LATER compatibility validation only. Do NOT wire Devin independently; do NOT run it from the governed worktree. The bounded live Devin compat review is authorized ONLY after T034b integration is verified, and runs from a SCRATCH DIRECTORY under explicit authorization at that time. The reviewer-catalog row (their T024) is inspected/reused at T034b IF part of the agreed incoming change set.
 - **Hands-off**: do NOT alter or overwrite the current .specrew/reviewer-hosts.json changes while handling T034a (respected - untouched).
 - **Order**: continuing in the approved Option B order; T013 (worktree relocation) next. Implementation authorized (before-implement captured, condition-a met).
+
+## 2026-07-11T17:00:00Z — DRIFT-198-I003-001: FR-020 honesty check fail-open fixed (co-review 1446b84c)
+
+- **Catch (blocking, verified valid against disk + data model)**: the shipped tracker honesty check (T010, iteration 002) parsed state.md by EXTRACT-and-ignore and accepted any [a-z-]+ status - contradicting the TrackerClaims data model (canonical enums; parse failure -> fail-closed) and the module''s own I3 fail-direction. A tracker-only edit could inject a foreign/unmapped claim or a non-canonical status and be judged honest, retaining stale review evidence (a false-green door in fail-closed machinery).
+- **Fix (implementation-corrected, in place)**: canonical iteration-status + task-status enums required (non-canonical -> fail-closed); Last Completed Task must be Tnnn or (none) sentinel; injected capacity/test-count claims in a tracker file decline the bypass. Not mirrored (scripts/internal/, no .specify copy).
+- **Proof**: tracker-honesty suite 11/11 (Tests 7-10 abuse decline; Test 11 paired legit still passes - no over-close); degraded-evidence-gate 9/9 (signoff wiring intact).
+- **Governance**: recorded as DRIFT-198-I003-001 (found/fixed in 003); NOT a scope change (realizes FR-020 per its own data model); closed 002 record not reopened.

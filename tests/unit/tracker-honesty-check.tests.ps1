@@ -111,6 +111,70 @@ $noReviewEdit = Save-Tree
 $h = Test-ContinuousCoReviewTrackerReconcileHonest -RepoRoot $fx -FromTreeId $noReviewBase -ToTreeId $noReviewEdit -TrackerPaths @('specs/demo/iterations/002/tasks-progress.yml')
 if ($h.Honest) { Write-Fail "bypass granted with no accepted review record beside the tracker" } else { Write-Pass "no accepted review record beside the tracker declines the bypass (fail-closed)" }
 
+# DEC-198-I003: the honesty parser must fail-closed on non-canonical / unmapped / injected
+# claim shapes (co-review catch: extract-and-ignore was a false-green door contradicting the
+# TrackerClaims data model + the module's own I3 fail-direction). Each abuse below is a clean
+# tracker-only delta whose ONLY change is the abusive claim; each must DECLINE the bypass.
+function New-AbuseFixture {
+    param([string]$Iter, [string]$BaselineTracker, [string]$BaselineContent, [string]$AbuseContent)
+    $dir = "specs\demo\iterations\$Iter"
+    New-Item -ItemType Directory -Force -Path (Join-Path $fx $dir) | Out-Null
+    @"
+# Review: Iteration $Iter
+
+**Overall Verdict**: accepted
+
+| Task | Requirement | Verdict | Notes |
+| ---- | ----------- | ------- | ----- |
+| T001 | FR-001 | pass | done |
+"@ | Set-Content (Join-Path $dir 'review.md')
+    $BaselineContent | Set-Content (Join-Path $dir $BaselineTracker)
+    $base = Save-Tree
+    $AbuseContent | Set-Content (Join-Path $dir $BaselineTracker)
+    $abuse = Save-Tree
+    $delta = Get-ContinuousCoReviewTrackerOnlyDelta -RepoRoot $fx -FromTreeId $base -ToTreeId $abuse
+    [pscustomobject]@{ Base = $base; Abuse = $abuse; Delta = $delta }
+}
+
+Write-Host "Test 7: non-canonical Iteration Status in state.md fails closed (canonical-enum requirement)"
+$f7 = New-AbuseFixture -Iter '010' -BaselineTracker 'state.md' `
+    -BaselineContent "# Iteration State: 010`n`n**Iteration Status**: executing`n**Last Completed Task**: (none)`n" `
+    -AbuseContent    "# Iteration State: 010`n`n**Iteration Status**: shipped`n**Last Completed Task**: (none)`n"
+$h = Test-ContinuousCoReviewTrackerReconcileHonest -RepoRoot $fx -FromTreeId $f7.Base -ToTreeId $f7.Abuse -TrackerPaths @($f7.Delta.Paths)
+if (-not $f7.Delta.TrackerOnly) { Write-Fail "Test 7 delta not tracker-only: $($f7.Delta | ConvertTo-Json -Compress)" }
+elseif ($h.Honest) { Write-Fail "non-canonical Iteration Status 'shipped' passed as honest - fail-open" }
+else { Write-Pass "non-canonical Iteration Status declines the bypass (fail-closed)" }
+
+Write-Host "Test 8: non-canonical task status in tasks-progress.yml fails closed"
+$f8 = New-AbuseFixture -Iter '011' -BaselineTracker 'tasks-progress.yml' `
+    -BaselineContent "T001: planned`n" -AbuseContent "T001: shipped`n"
+$h = Test-ContinuousCoReviewTrackerReconcileHonest -RepoRoot $fx -FromTreeId $f8.Base -ToTreeId $f8.Abuse -TrackerPaths @($f8.Delta.Paths)
+if ($h.Honest) { Write-Fail "non-canonical task status 'shipped' passed as honest - fail-open" }
+else { Write-Pass "non-canonical task status declines the bypass (fail-closed)" }
+
+Write-Host "Test 9: unrecognized Last Completed Task free-text fails closed"
+$f9 = New-AbuseFixture -Iter '012' -BaselineTracker 'state.md' `
+    -BaselineContent "# Iteration State: 012`n`n**Iteration Status**: executing`n**Last Completed Task**: (none)`n" `
+    -AbuseContent    "# Iteration State: 012`n`n**Iteration Status**: executing`n**Last Completed Task**: everything shipped and complete`n"
+$h = Test-ContinuousCoReviewTrackerReconcileHonest -RepoRoot $fx -FromTreeId $f9.Base -ToTreeId $f9.Abuse -TrackerPaths @($f9.Delta.Paths)
+if ($h.Honest) { Write-Fail "unrecognized Last Completed Task free-text passed as honest - fail-open" }
+else { Write-Pass "unrecognized Last Completed Task claim shape declines the bypass (fail-closed)" }
+
+Write-Host "Test 10: an injected capacity claim in state.md fails closed (foreign TrackerClaim)"
+$f10 = New-AbuseFixture -Iter '013' -BaselineTracker 'state.md' `
+    -BaselineContent "# Iteration State: 013`n`n**Iteration Status**: executing`n**Last Completed Task**: (none)`n" `
+    -AbuseContent    "# Iteration State: 013`n`n**Iteration Status**: executing`n**Last Completed Task**: (none)`n**Capacity**: 99/26 story_points`n"
+$h = Test-ContinuousCoReviewTrackerReconcileHonest -RepoRoot $fx -FromTreeId $f10.Base -ToTreeId $f10.Abuse -TrackerPaths @($f10.Delta.Paths)
+if ($h.Honest) { Write-Fail "injected capacity claim passed as honest - fail-open" }
+else { Write-Pass "injected capacity claim (foreign to the tracker) declines the bypass (fail-closed)" }
+
+Write-Host "Test 11: the legitimate canonical reconcile STILL passes (paired: fix did not over-close)"
+$f11 = New-AbuseFixture -Iter '014' -BaselineTracker 'tasks-progress.yml' `
+    -BaselineContent "T001: in-progress`n" -AbuseContent "T001: done`n"
+$h = Test-ContinuousCoReviewTrackerReconcileHonest -RepoRoot $fx -FromTreeId $f11.Base -ToTreeId $f11.Abuse -TrackerPaths @($f11.Delta.Paths)
+if (-not $h.Honest) { Write-Fail "canonical T001->done reconcile (accepted pass) wrongly declined after the fix: $($h.Reason)" }
+else { Write-Pass "canonical reconcile still honest - the fix fails closed on abuse without over-closing the legitimate path" }
+
 Set-Location $repoRoot
 Remove-Item -Recurse -Force $fx
 

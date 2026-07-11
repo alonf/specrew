@@ -23,6 +23,13 @@
   T013/T014/T017 with the compose-not-collide rules and the semantic-vs-
   mechanical conflict doctrine. Devin authorization deferred to
   post-T034b-verification from a scratch dir; reviewer-hosts.json untouched.
+- Co-review catch before T013 code (run 1446b84c, blocking): the shipped
+  FR-020 tracker honesty check (T010, iteration 002) had a fail-OPEN —
+  extract-and-ignore on state.md, non-canonical statuses accepted —
+  contradicting its own TrackerClaims data model. Fixed in place
+  (canonical enums, recognized shapes, injected-claim rejection); 5 paired
+  tests added; recorded as DRIFT-198-I003-001. Suite green,
+  signoff-gate wiring 9/9.
 - T013 (worktree relocation) is next in the Option B order.
 
 ## Notes
