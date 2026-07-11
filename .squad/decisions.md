@@ -28068,3 +28068,10 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Task ID**: (none)
 - **Auth Commit Hash**: 284d1a54
 - **Recorded At**: 2026-07-11T14:27:47Z
+
+## 2026-07-11T14:45:00Z — Iteration 003 planning opened (maintainer approve-with-instructions)
+
+- **Verdict**: approved to open iteration 003 planning; one iteration (provisional 10.75 SP within the 26 cap); planning only - implementation needs the before-implement verdict.
+- **Incoming shared-engine dependency (recorded per instruction)**: the Devin crew''s FORTHCOMING design-context validation commit on branch `200-devin-cli-host` (repo C:/Dev/specrew-200-devin-cli-host; crew mid-iteration-004). Landed precursors already on their branch: a697cefe (comma-split --design-context-ref + loud warn on unresolvable refs; touches worktree-reviewer.ps1, specrew-review.ps1) and ec90e1b6 (design-ref plumbing + digest exec-bit restoration; touches co-review-service.ps1, reviewed-state-digest.ps1 + tests - note: the exec-bit restoration addresses our DRIFT-198-I001-001 materialization class).
+- **Integration doctrine (instructed)**: INSPECT and reuse/cherry-pick their fix - never independently reimplement; post-integration compatibility + regression verification is mandatory because both crews touch the shared co-review machinery (new task T034).
+- **Fallback stays disabled** until T030-T033 satisfy the documented re-enable criteria.

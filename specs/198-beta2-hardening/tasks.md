@@ -34,7 +34,7 @@ each iteration's own design-analysis before execution.
 - [x] T019a [owner: Implementer] [sp: 1.0] **Stale-verdict surfacing (pulled forward from T019, maintainer-approved 2026-07-11)** — reviewed_tree_id stamped into findings-result via the blackboard route; the navigator digest-matches before blocking (both ids known + differing -> the verdict surfaces as ADVISORY stale-vs-current, never a fresh stop-block; unknown ids keep blocking, fail-closed) (Trace: FR-017; owns: continuous-co-review-navigator.ps1)
 - [x] T012 [owner: Implementer] [sp: 0.5] **Live-door independence defaulting** — `--list-hosts` env cascade applied to `--live`; `independence_source` recorded; SEC-004 unchanged (Trace: FR-023; owns: live-door resolution + run record)
 
-## Iteration 003 — Reviewer containment + round economy (8.0 SP planned grain + capture-integrity addendum, provisionally 2.75 SP, sized at 003 design-analysis)
+## Iteration 003 — Reviewer containment + round economy (8.0 SP planned grain + capture-integrity addendum 2.75 SP + Devin-integration T034 0.75 SP, both provisional, sized at 003 design-analysis)
 
 - [ ] T013 [owner: Implementer] [sp: 1.0] **Worktree relocation** — materialize outside origin root (system temp); upward-walk cannot resolve origin (Trace: FR-008, SC-002; owns: worktree materialization)
 - [ ] T014 [owner: Implementer] [sp: 1.0] **Bundle origin-path hygiene** — strip/relativize origin-absolute paths from reviewer-visible context (Trace: FR-009, SC-002; owns: bundle builder)
@@ -48,6 +48,7 @@ each iteration's own design-analysis before execution.
 - [ ] T031 [owner: Implementer] [sp: 0.5 provisional, resized at 003 design-analysis] **Approval-tokenizer tightening** — approval-shaped mention/quote/teach text ("if you already approved…") never parses as a verdict; only an actual verdict utterance authorizes; abuse-path message-content tests (Trace: FR-042, NFR-007; owns: `Test-SpecrewHumanVerdictToken` + fallback capture guards)
 - [ ] T032 [owner: Implementer] [sp: 0.5 provisional, resized at 003 design-analysis] **Fabrication-sequence regression fixtures** — reproduce the exact 2026-07-11 sequence (rendered packet → Stop-hook feedback as user-role turn → no human reply) and assert capture records nothing (no entry, no artifact consumption) (Trace: FR-043, NFR-007; owns: `tests/integration/verdict-capture-blocks.tests.ps1` fixture set)
 - [ ] T033 [owner: Implementer] [sp: 1.0 provisional, resized at 003 design-analysis] **Ledger correction door (append-only invalidation)** — designed mechanism appends an invalidation/correction record (original entry identity, correcting authority, reason, timestamp, resulting boundary state); effective-state readers honor invalidations; human-approval-bound per the approvals-bind-the-decision doctrine (Trace: FR-044, NFR-002; owns: `shared-governance.ps1` ledger surface + mirror)
+- [ ] T034 [owner: Implementer] [sp: 0.75 provisional, resized at 003 design-analysis] **Devin-crew shared-engine integration + compat/regression verification (maintainer-instructed, 2026-07-11)** — inspect and reuse/cherry-pick the forthcoming design-context validation commit from branch `200-devin-cli-host` (landed precursors a697cefe, ec90e1b6 — worktree-reviewer.ps1, specrew-review.ps1, co-review-service.ps1, reviewed-state-digest.ps1), never reimplement; then run the co-review engine regression set + a live round as compatibility verification, because both crews touch the shared machinery; ec90e1b6's exec-bit restoration is verified against the DRIFT-198-I001-001 materialization class (Trace: FR-012, FR-017, NFR-006; owns: `scripts/internal/continuous-co-review/**` integration surface, `tests/continuous-co-review/**`)
 
 ## Iteration 004 — Distribution + release (5.5 SP, planned grain)
 
@@ -99,6 +100,11 @@ design (clarify 2026-07-09), deliberately not a task.
   independent. The T030-T033 addendum (DEC-198-GOV-001) is sized at 003
   design-analysis and never silently displaces containment (T013-T017)
   or T020 — maintainer instruction, retro verdict 2026-07-11.
+- T034 (Devin-crew integration, maintainer-instructed at the 003
+  planning approval) is timing-gated on their forthcoming commit landing;
+  its placement relative to T013-T017 is an explicit 003 design-analysis
+  decision because both crews touch worktree-reviewer.ps1 and the digest
+  surfaces. Traceability: T034 -> FR-012/FR-017 verification surface.
 - Single-implementer serial execution within iterations; no same-specialty
   parallelism proposed (per the iteration plan's concurrency rationale —
   shared-surface risk on `shared-governance.ps1` and the deploy manifest).
