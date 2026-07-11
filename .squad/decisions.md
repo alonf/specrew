@@ -28196,3 +28196,9 @@ Recorded in: spec.md Amendment A8 (FR-041/SC-028 converged); iteration-012 revie
 - **Fix (implementation-corrected, in place)**: canonical iteration-status + task-status enums required (non-canonical -> fail-closed); Last Completed Task must be Tnnn or (none) sentinel; injected capacity/test-count claims in a tracker file decline the bypass. Not mirrored (scripts/internal/, no .specify copy).
 - **Proof**: tracker-honesty suite 11/11 (Tests 7-10 abuse decline; Test 11 paired legit still passes - no over-close); degraded-evidence-gate 9/9 (signoff wiring intact).
 - **Governance**: recorded as DRIFT-198-I003-001 (found/fixed in 003); NOT a scope change (realizes FR-020 per its own data model); closed 002 record not reopened.
+
+## 2026-07-11T17:20:00Z — efbbb98d: stale in-flight ceiling escalation of the already-fixed FR-020 finding (T019 field evidence)
+
+- **Determination**: the ceiling escalation (run efbbb98d) replays the FR-020 tracker-honesty critique already fixed in 4f6af63c. Proof: efbbb98d findings 17:03:57Z PREDATE the fix commit 17:10:44Z; it reviewed the pre-fix tree; NO reviewed_tree_id on the run. Committed code enforces canonical enums + declines injected/free-text claims; abuse suite 11/11 on disk. Nothing to fix.
+- **Pattern**: third stale/one-stop-behind escalation this session (self-leak c894a74b, ceiling 970a8d7c, now efbbb98d) - the pre-T019/T020 loop tax. Banked as direct field evidence for T019 (tree-binding + in-flight dedup) and T020 (round accounting: an in-flight run whose findings predate the fix must not consume the round allowance against the current tree).
+- **Pending**: latch-clear is a ceiling-escalation human decision; recommend dispositioning as resolved-against-disk and proceeding (the finding is provably stale, tests green) vs another reset+confirm (risks another in-flight stale escalation until T019 lands).
