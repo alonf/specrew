@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260711T174031509-29c49c69",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260711T174031509-29c49c69",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/tracker-honesty-check.ps1",
+        "line_start": 74,
+        "line_end": 78
+      },
+      "severity": "blocking",
+      "kind": "escalation",
+      "design_reference": "FR-020 / NFR-001 / specs/198-beta2-hardening/data-model.md:99-114 / architecture-core, integration-api, code-implementation and test-integrity lenses",
+      "comment": "HUMAN DECISION REQUIRED: stop the autonomous review/fix loop. The prior blocking finding remains unresolved and no worktree-visible human deferral covers it. The new code canonicalizes status enums and rejects injected capacity/test-count lines, but the authoritative TrackerClaims model says the deterministic state.md + tasks-progress.yml parse includes capacity and test_counts and subset-compares every claim against accepted review verdict + run records. Lines 74-78 instead categorically reject those claims without parsing or comparison, and Test 10 only proves rejection. This does not implement the prior requested complete canonical parser or prove legitimate capacity/test-count reconciliation. A human must decide whether to require that contract implementation plus paired legitimate/abuse tests, or record an explicit visible deferral naming the issue, approver, and carried work.",
+      "disposition": "escalated_to_human",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260711T174031509-29c49c69",
+      "location": {
+        "path": "scripts/internal/continuous-co-review/tracker-honesty-check.ps1",
+        "line_start": 75,
+        "line_end": 81
+      },
+      "severity": "blocking",
+      "kind": "escalation",
+      "design_reference": "FR-020 / NFR-001 / specs/198-beta2-hardening/data-model.md:99-114 / code-implementation and test-integrity lenses",
+      "comment": "HUMAN DECISION REQUIRED: stop the autonomous review/fix loop. The prior blocking parser finding remains partially unresolved and no worktree-visible human deferral covers it. Although canonical status enums and injected capacity are now rejected, Last Completed Task still uses prefix matches (`^T\\d{3}\\b` and `^\\(none`) and therefore accepts noncanonical claims such as `T001 everything shipped` or `(none) but complete`; when T001 has a pass verdict, the former can receive the tracker-only freshness bypass. Test 9 only checks free text that does not begin with a task id, so it does not falsify this surviving path. A human must require exact whole-field parsing plus paired abuse tests, or record a visible approved deferral naming the issue and carried work.",
+      "disposition": "escalated_to_human",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-11T17:43:25Z"
+}
