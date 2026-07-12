@@ -575,33 +575,32 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         # explicit-but-wrong ref must NEVER yield a design-blind review (the unreadable-context
         # false-green rule) — never softened to a warn.
         if ($explicitDesignContext) {
-            # HARDENED (co-review 13a8f2bd): existence alone is NOT enough - a rooted path or a ../
-            # traversal (or a symlink/reparse target) can point to an existing file OUTSIDE the project,
-            # which materialization would then copy into .review/design, leaking ambient host content to
-            # the reviewer. A ref must resolve to an EXISTING FILE that stays UNDER the CANONICAL repo
-            # root: reject rooted inputs, normalize `..` via GetFullPath, resolve links, and require
-            # containment beneath the real repo boundary.
-            $repoRootReal = try { $ri = Get-Item -LiteralPath $RepoRoot -Force -ErrorAction Stop; $rt = $ri.ResolveLinkTarget($true); [System.IO.Path]::GetFullPath($(if ($null -ne $rt) { $rt.FullName } else { $ri.FullName })).TrimEnd([char]'\', [char]'/') } catch { [System.IO.Path]::GetFullPath($RepoRoot).TrimEnd([char]'\', [char]'/') }
+            # HARDENED (co-review 13a8f2bd, 44760c20): existence alone is NOT enough - a rooted path, a
+            # ../ traversal, or an INTERMEDIATE directory symlink/junction can make a ref point to a file
+            # OUTSIDE the project, which materialization would then copy into .review/design, leaking
+            # ambient host content to the reviewer. A ref must resolve to an EXISTING FILE whose
+            # COMPONENT-WISE PHYSICAL path stays UNDER the physically-resolved repo root: reject rooted
+            # inputs, and canonicalize both sides with the SHARED Get-ContinuousCoReviewPhysicalPath (the
+            # SAME helper T013 uses - shared so their containment semantics cannot drift). FAIL-CLOSED: a
+            # ref whose physical path cannot be resolved, or is not under the repo root, is unresolved.
+            # POLICY: an IN-REPO symlink/junction whose physical target is still under the repo root is
+            # ALLOWED (its resolved path passes containment); only targets OUTSIDE the repo are rejected.
+            $repoRootReal = Get-ContinuousCoReviewPhysicalPath -Path $RepoRoot
             $unresolvedRefs = New-Object System.Collections.Generic.List[string]
             foreach ($dc in @($DesignContextFiles)) {
                 $ref = [string]$dc
                 $ok = $false
-                if (-not [string]::IsNullOrWhiteSpace($ref) -and -not [System.IO.Path]::IsPathRooted($ref)) {
-                    try {
-                        $full = [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $ref))
-                        if (Test-Path -LiteralPath $full -PathType Leaf) {
-                            $fi = Get-Item -LiteralPath $full -Force -ErrorAction Stop
-                            $ft = $fi.ResolveLinkTarget($true)
-                            $real = [System.IO.Path]::GetFullPath($(if ($null -ne $ft) { $ft.FullName } else { $fi.FullName }))
-                            if ($real -eq $repoRootReal -or $real.StartsWith($repoRootReal + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) { $ok = $true }
-                        }
+                if (-not [string]::IsNullOrWhiteSpace($ref) -and -not [System.IO.Path]::IsPathRooted($ref) -and -not [string]::IsNullOrEmpty($repoRootReal)) {
+                    $full = try { [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $ref)) } catch { $null }
+                    if ($full -and (Test-Path -LiteralPath $full -PathType Leaf)) {
+                        $real = Get-ContinuousCoReviewPhysicalPath -Path $full
+                        if (-not [string]::IsNullOrEmpty($real) -and ($real -eq $repoRootReal -or $real.StartsWith($repoRootReal + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase))) { $ok = $true }
                     }
-                    catch { $ok = $false }
                 }
                 if (-not $ok) { [void]$unresolvedRefs.Add($ref) }
             }
             if ($unresolvedRefs.Count -gt 0) {
-                $reason = ('design-context-unresolved: explicit design-context ref(s) did not resolve to a file UNDER the repo root (no rooted paths, no ../ traversal, no link escape): {0} (fix the path(s) or omit the flag to use auto-resolution)' -f (@($unresolvedRefs) -join ', '))
+                $reason = ('design-context-unresolved: explicit design-context ref(s) did not resolve to a file whose physical path is UNDER the repo root (no rooted paths, no ../ traversal, no symlink/junction escape - intermediate components included): {0} (fix the path(s) or omit the flag to use auto-resolution)' -f (@($unresolvedRefs) -join ', '))
                 & $writeStatus 'failed' @{ failure_reason = $reason; unresolved_design_context = @($unresolvedRefs) }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }

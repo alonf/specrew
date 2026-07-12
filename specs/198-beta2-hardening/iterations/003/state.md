@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T03:45:00Z
+**Updated**: 2026-07-12T04:15:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -407,8 +407,25 @@
   ../ traversal to an outside file REJECTED (reviewer never invoked), rooted
   absolute REJECTED, valid in-repo ref still PASSES (reviewer invoked). NOTE
   for the Devin crew: cca79708 upstream has this same traversal hole. Focused
-  suite 17/17; registry 16/16. Launching exactly one re-review for the new
-  digest.
+  suite 17/17; registry 16/16.
+- Re-review 44760c20 (final round, human-decision-framed): the traversal fix
+  was INCOMPLETE - it resolved only the FINAL file component, so an
+  INTERMEDIATE in-repo directory junction/symlink to an outside dir still
+  passed (ResolveLinkTarget is null on the non-link final file; FullName kept
+  the lexical in-repo alias). Real. Maintainer chose FIX (component-wise
+  physical containment). Implemented ONE shared canonicalizer
+  Get-ContinuousCoReviewPhysicalPath (worktree-reviewer.ps1): resolves EVERY
+  existing component (intermediate links followed), fail-closed on an
+  unresolvable existing component, lexical for not-yet-existing trailing
+  components. BOTH T013 (outside-origin guard) and the strict design-context
+  validation now use this ONE helper (semantics cannot drift). Policy: an
+  in-scope link whose physical target stays under the boundary PASSES; only
+  outside targets are rejected. Tests: intermediate-dir-junction-to-outside
+  design ref REJECTED (reviewer never invoked); shared-helper direct tests
+  (intermediate junction resolves to real outside target; in-scope junction
+  stays under root; plain path normalizes); the existing T013 junction +
+  traversal + rooted + valid tests still green. Suites 25/25; registry 16/16.
+  Launching exactly one serialized re-review.
 
 ## Notes
 

@@ -82,3 +82,61 @@ Describe 'reviewer worktree containment (FR-008 / SC-002)' {
         }
     }
 }
+
+Describe 'shared physical-path canonicalizer (Get-ContinuousCoReviewPhysicalPath) - the ONE primitive for T013 + strict design-context (co-review 44760c20)' {
+    BeforeAll {
+        $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
+        $env:SPECREW_MODULE_PATH = $script:RepoRoot
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+    }
+
+    It 'follows an INTERMEDIATE directory junction to its real target (physical path leaves the lexical base)' {
+        if (-not $IsWindows) { Set-ItResult -Skipped -Because 'directory-junction creation is Windows-specific'; return }
+        $base = Join-Path ([System.IO.Path]::GetTempPath()) ('pp-base-' + [guid]::NewGuid().ToString('N'))
+        $outside = Join-Path ([System.IO.Path]::GetTempPath()) ('pp-out-' + [guid]::NewGuid().ToString('N'))
+        $link = Join-Path $base 'link'
+        try {
+            New-Item -ItemType Directory -Path $base -Force | Out-Null
+            New-Item -ItemType Directory -Path $outside -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $outside 'f.txt') -Value 'x' -Encoding UTF8
+            New-Item -ItemType Junction -Path $link -Target $outside | Out-Null
+            $real = Get-ContinuousCoReviewPhysicalPath -Path (Join-Path $link 'f.txt')
+            $baseReal = Get-ContinuousCoReviewPhysicalPath -Path $base
+            $outsideReal = Get-ContinuousCoReviewPhysicalPath -Path $outside
+            $real | Should -Be (Join-Path $outsideReal 'f.txt') -Because 'the intermediate junction is followed to the real physical target, not the lexical alias'
+            $real.StartsWith($baseReal + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) | Should -Be $false -Because 'the resolved physical path is NOT under the lexical base'
+        }
+        finally {
+            if (Test-Path -LiteralPath $link) { try { [System.IO.Directory]::Delete($link) } catch { $null = $_ } }
+            Remove-Item -LiteralPath $base, $outside -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'an IN-scope junction to a target UNDER the root stays under the root (documented policy: in-scope links pass)' {
+        if (-not $IsWindows) { Set-ItResult -Skipped -Because 'directory-junction creation is Windows-specific'; return }
+        $root = Join-Path ([System.IO.Path]::GetTempPath()) ('pp-root-' + [guid]::NewGuid().ToString('N'))
+        $link = Join-Path $root 'link'
+        try {
+            New-Item -ItemType Directory -Path (Join-Path $root 'real') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root 'real/f.txt') -Value 'x' -Encoding UTF8
+            New-Item -ItemType Junction -Path $link -Target (Join-Path $root 'real') | Out-Null
+            $real = Get-ContinuousCoReviewPhysicalPath -Path (Join-Path $link 'f.txt')
+            $rootReal = Get-ContinuousCoReviewPhysicalPath -Path $root
+            $real.StartsWith($rootReal + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) | Should -Be $true -Because 'a link whose physical target is under the root stays under the root - allowed'
+        }
+        finally {
+            if (Test-Path -LiteralPath $link) { try { [System.IO.Directory]::Delete($link) } catch { $null = $_ } }
+            Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'resolves a plain (link-free) existing path to its normalized physical path' {
+        $d = Join-Path ([System.IO.Path]::GetTempPath()) ('pp-plain-' + [guid]::NewGuid().ToString('N'))
+        try {
+            New-Item -ItemType Directory -Path $d -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $d 'f.txt') -Value 'x' -Encoding UTF8
+            (Get-ContinuousCoReviewPhysicalPath -Path (Join-Path $d 'f.txt')) | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $d 'f.txt')).TrimEnd([char]'\', [char]'/'))
+        }
+        finally { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}

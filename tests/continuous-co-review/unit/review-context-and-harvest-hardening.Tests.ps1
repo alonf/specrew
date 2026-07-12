@@ -198,6 +198,31 @@ Describe 'T034b (reuse of Devin cca79708): explicit design-context refs must ALL
         }
         finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
     }
+
+    It 'an INTERMEDIATE in-repo directory JUNCTION targeting OUTSIDE the repo is REJECTED (component-wise physical containment); reviewer NEVER invoked (co-review 44760c20)' {
+        if (-not $IsWindows) { Set-ItResult -Skipped -Because 'directory-junction creation is Windows-specific'; return }
+        $repo = script:New-TempGitRepo -WithSpec
+        $outsideDir = Join-Path (Split-Path -Parent $repo) ('outside-dir-' + [guid]::NewGuid().ToString('N'))
+        $rd = Join-Path (Split-Path -Parent $repo) ('dcjn-runs-' + [guid]::NewGuid().ToString('N'))
+        $linkDir = Join-Path $repo 'linkdir'
+        try {
+            New-Item -ItemType Directory -Path $outsideDir -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $outsideDir 'secret.md') -Value '# ambient host secret' -Encoding UTF8
+            New-Item -ItemType Junction -Path $linkDir -Target $outsideDir | Out-Null   # in-repo junction -> OUTSIDE
+            Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+            # LEXICALLY in-repo (linkdir/secret.md) but PHYSICALLY outside via the intermediate junction.
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'dc-jn' -DesignContextFiles @('linkdir/secret.md') -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Match '^design-context-unresolved'
+            Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0 -Because 'an intermediate directory junction to outside must never yield a design-blind review that leaks host content'
+        }
+        finally {
+            if (Test-Path -LiteralPath $linkDir) { try { [System.IO.Directory]::Delete($linkDir) } catch { $null = $_ } }
+            Remove-Item -LiteralPath $outsideDir, $rd -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 Describe 'f2: the partial-findings harvest normalizes into the FindingsResult item schema' {

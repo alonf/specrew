@@ -17,9 +17,15 @@ source of truth for what that prompt promises and why.
 - This is isolation by **snapshot + origin-reference removal (T013/T014), not an OS-enforced
   filesystem sandbox**: confinement is a contract term the reviewer must honor, and the containment
   detector (T016) monitors for violations and reports them loudly.
-- The T013 outside-origin guard compares **resolved real paths** (following symlinks/junctions), not
-  lexical strings, and re-checks the created worktree — so an `EphemeralRoot` junction whose target is
-  inside origin cannot slip the worktree physically under the project.
+- The T013 outside-origin guard and the strict design-context validation share **one** physical-path
+  canonicalizer (`Get-ContinuousCoReviewPhysicalPath`) so their containment semantics cannot drift. It
+  resolves **every** path component — following intermediate directory symlinks/junctions, not just the
+  final component — to the real physical path, and **fails closed** if any existing component cannot be
+  resolved. T013 refuses an `EphemeralRoot` (or an intermediate component) whose physical target lands
+  under origin; the strict design-context gate refuses a ref whose physical path is not under the
+  repo root. **Policy for in-repo links:** a symlink/junction whose physical target is still under the
+  repo root (T013: outside origin) **passes** — only targets that resolve outside the boundary are
+  rejected.
 
 ## Verification and reviewer-invocation integrity
 

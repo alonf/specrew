@@ -225,6 +225,41 @@ function Write-ContinuousCoReviewProcessContext {
     [System.IO.File]::WriteAllText((Join-Path $procDir 'process-context.md'), (ConvertTo-ContinuousCoReviewOriginRelativized -Content ($lines -join "`n") -OriginRoots $originRoots))
 }
 
+function Get-ContinuousCoReviewPhysicalPath {
+    # THE shared physical-path canonicalizer (FR-008 + FR-010 containment). Resolves a path to its REAL
+    # physical location by walking EVERY component and following each existing symlink/junction to its
+    # target - intermediate DIRECTORY links included, not just the final component (the gap co-review
+    # 44760c20 found: FileInfo.ResolveLinkTarget only resolves the final item). Both T013 (worktree
+    # outside-origin guard) and the strict design-context validation MUST use this ONE helper so their
+    # containment semantics cannot drift.
+    #
+    # FAIL-CLOSED: returns $null if a component that EXISTS cannot be resolved reliably (the caller treats
+    # $null as "unresolved / outside"). A not-yet-existing TRAILING component is kept lexically (so a
+    # worktree dir about to be created still canonicalizes) - once a component does not exist, deeper
+    # components cannot either, so the remainder is purely lexical.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
+    $full = try { [System.IO.Path]::GetFullPath($Path) } catch { return $null }
+    $root = [System.IO.Path]::GetPathRoot($full)
+    if ([string]::IsNullOrEmpty($root)) { return $null }
+    $segs = @($full.Substring($root.Length) -split '[\\/]' | Where-Object { $_ -ne '' })
+    $cur = $root.TrimEnd([char]'\', [char]'/')
+    if ([string]::IsNullOrEmpty($cur)) { $cur = [string]$root }   # POSIX filesystem root '/'
+    for ($i = 0; $i -lt $segs.Count; $i++) {
+        $cur = Join-Path $cur $segs[$i]
+        $item = try { Get-Item -LiteralPath $cur -Force -ErrorAction Stop } catch { $null }
+        if ($null -eq $item) {
+            # Non-existent component: append the rest lexically (nothing physical left to resolve).
+            for ($j = $i + 1; $j -lt $segs.Count; $j++) { $cur = Join-Path $cur $segs[$j] }
+            break
+        }
+        $tgt = $null
+        try { $tgt = $item.ResolveLinkTarget($true) } catch { return $null }   # existing but unresolvable -> fail closed
+        if ($null -ne $tgt) { $cur = [System.IO.Path]::GetFullPath($tgt.FullName).TrimEnd([char]'\', [char]'/') }
+    }
+    return [System.IO.Path]::GetFullPath($cur).TrimEnd([char]'\', [char]'/')
+}
+
 function New-ContinuousCoReviewStrippedWorktree {
     # Materialize an EPHEMERAL git-tree worktree of the project's reviewed subtree, machinery stripped, with the
     # review context written under .review/. Returns @{ worktree_path; tree_id; changed_count }.
@@ -260,39 +295,34 @@ function New-ContinuousCoReviewStrippedWorktree {
     # FR-008 (203 W1) / SC-002 containment: the reviewer worktree MUST materialize OUTSIDE the origin so
     # no upward directory/git walk from inside the confined worktree can resolve the real project. Reject
     # an EphemeralRoot that resolves AT or UNDER the origin git root (or the governance RepoRoot).
-    # SYMLINK/JUNCTION SAFE (finding 3b5ae645): compare RESOLVED real paths, not lexical strings - an
-    # existing EphemeralRoot that is a junction/symlink whose lexical path is outside origin but whose
-    # TARGET is inside would pass a string-only check and then materialize physically under origin,
-    # restoring the upward-walk this guard exists to prevent.
-    $resolveRealPath = {
-        param([string]$p)
-        $real = $p
-        try {
-            $it = Get-Item -LiteralPath $p -Force -ErrorAction Stop
-            $tgt = $it.ResolveLinkTarget($true)   # final target if a link; $null when not a link
-            if ($null -ne $tgt) { $real = $tgt.FullName }
-            else { $real = $it.FullName }
-        }
-        catch { $real = $p }   # not-yet-existing path: nothing to resolve, fall back to lexical
-        return [System.IO.Path]::GetFullPath($real).TrimEnd([char]'\', [char]'/')
-    }
+    # SYMLINK/JUNCTION SAFE (findings 3b5ae645, 44760c20): compare COMPONENT-WISE PHYSICAL paths via the
+    # SHARED Get-ContinuousCoReviewPhysicalPath (the SAME helper the strict design-context validation
+    # uses, so containment semantics cannot drift) - not lexical strings, and not final-component-only. An
+    # EphemeralRoot, or an INTERMEDIATE directory component, that is a junction/symlink whose target is
+    # inside origin would otherwise pass and materialize physically under origin. FAIL-CLOSED: an
+    # unresolvable candidate is refused.
     $assertOutsideOrigin = {
-        param([string]$candidateReal, [string]$context)
+        param([string]$candidatePath, [string]$context)
+        $candidateReal = Get-ContinuousCoReviewPhysicalPath -Path $candidatePath
+        if ([string]::IsNullOrEmpty($candidateReal)) {
+            throw "[co-review] refusing to materialize the reviewer worktree $context - its physical path could not be resolved reliably (fail-closed, FR-008 containment)."
+        }
         foreach ($originPath in @($gitRoot, $resolved)) {
             if ([string]::IsNullOrWhiteSpace($originPath)) { continue }
-            $originFull = & $resolveRealPath $originPath
+            $originFull = Get-ContinuousCoReviewPhysicalPath -Path $originPath
+            if ([string]::IsNullOrEmpty($originFull)) { continue }
             if ($candidateReal -eq $originFull -or $candidateReal.StartsWith($originFull + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
                 throw "[co-review] refusing to materialize the reviewer worktree $context inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (FR-008 containment)."
             }
         }
     }
-    & $assertOutsideOrigin (& $resolveRealPath $EphemeralRoot) "root ('$EphemeralRoot')"
+    & $assertOutsideOrigin $EphemeralRoot "root ('$EphemeralRoot')"
     $worktree = Join-Path $EphemeralRoot ('ccr-worktree-' + [guid]::NewGuid().ToString('N'))
     $tarPath = "$worktree.tar"
     New-Item -ItemType Directory -Path $worktree -Force | Out-Null
-    # Verify the FINAL created worktree's resolved path is outside origin too (defense in depth: a link at
+    # Verify the FINAL created worktree's physical path is outside origin too (defense in depth: a link at
     # the leaf, or the root swapped for a junction between the check and the create, would otherwise slip).
-    & $assertOutsideOrigin (& $resolveRealPath $worktree) "path ('$worktree')"
+    & $assertOutsideOrigin $worktree "path ('$worktree')"
 
     # Archive the subtree tree to a FILE then extract (no native->native pipe; byte-exact, cross-platform).
     & git -C $gitRoot archive --format=tar --output $tarPath $treeId 2>&1 | Out-Null
