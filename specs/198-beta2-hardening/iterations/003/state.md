@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T02:25:00Z
+**Updated**: 2026-07-12T02:50:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -362,9 +362,27 @@
   T034b item is NO LONGER surfaced as a decision packet while its review is
   unresolved - it stays a recorded open item, dispositioned once the
   current-digest review is clean.
+- STOP-ORDERING requirement EXPANDED (maintainer detailed spec 2026-07-12):
+  FR-045 + T019/T030-T032 now carry the full behavior - while a required
+  co-review for the CURRENT digest is RUNNING, a Stop MUST (1) detect the
+  SINGLE tracked in-flight review, (2) block advancement internally, (3)
+  implementer WAITS/polls it, NEVER launches a duplicate, (4) optional one
+  progress line, (5) never ask the user to nudge/return. Terminal routing:
+  clean/current-digest -> six-section packet + marker (the ONLY marker path);
+  actionable -> suppress packet+marker, fix+re-review; human judgment ->
+  narrow non-boundary question only; timeout/infra -> report specific
+  failure, never "clean". Final packet BOUND to the accepted reviewed-tree
+  digest. Regression matrix (pending, duplicate-stop, stale completion,
+  superseded, actionable, human-escalation, timeout, clean) split across
+  T019 (stop-event) + T032 (capture). Full spec:
+  research/stop-ordering-defect.md.
+- Review counter RESET (maintainer approved 2026-07-12): the ceiling-halt
+  (run 8ec02c73, honest "2 of 2" - the round-accounting fix working; 6 items
+  cleared, T034b the sole open item) is cleared via the human-approved
+  more-time remediation so review can continue.
 - Open (recorded, NOT re-surfaced as a verdict packet per FR-045): the
-  T034b strict-resolution item - to be dispositioned (pull-forward vs
-  at-landing deferral) once the current-digest co-review is clean.
+  T034b strict-resolution item - dispositioned once the current-digest
+  co-review is clean, or by explicit maintainer direction.
 
 ## Notes
 

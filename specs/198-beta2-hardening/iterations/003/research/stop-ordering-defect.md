@@ -56,9 +56,48 @@ authorization class as DEC-198-GOV-001 and FR-041–FR-044, one layer up: not "w
   (blocked review present → verdict-shaped packet rendered → assert capture records nothing), alongside
   the FR-043 fabrication-sequence fixtures.
 
+## Required behavior (maintainer spec, 2026-07-12)
+
+### While a required co-review for the CURRENT digest is still RUNNING, a Stop event MUST NOT
+
+render the six-section lifecycle packet, approval options, or a `SPECREW-VERDICT-BOUNDARY` marker.
+Instead it MUST:
+
+1. **Detect the single tracked in-flight review** for the current digest.
+2. **Block lifecycle advancement internally** (no boundary crossing while the review runs).
+3. **Tell the implementer to wait or poll that existing run — never launch a duplicate** review.
+4. **Optionally** show the user ONE short progress sentence: review is running, no decision required.
+5. **Never** ask the user to "nudge" or return later; the implementer owns waiting for completion.
+
+### After the review reaches a TERMINAL state, route by outcome
+
+- **Clean / current-digest result** → render the normal six-section boundary packet AND the exact
+  marker (this is the only path that carries a lifecycle marker).
+- **Actionable findings** → SUPPRESS the boundary packet and marker; fix and re-review.
+- **Human judgment required** → ask ONLY the narrow non-boundary question, with no approval options and
+  no marker.
+- **Timeout / infrastructure failure** → report the SPECIFIC failure and apply the retry/spend policy;
+  do NOT represent it as a clean review.
+
+### Invariant
+
+Blocked, pending, stale, and superseded review attempts MUST NEVER become verdict-capture evidence.
+ONLY the final packet backed by ACCEPTED review evidence for the EXACT current digest may carry a
+lifecycle marker. The final packet is bound to the accepted reviewed-tree digest.
+
+### Regression coverage (required)
+
+Paired tests for each state: **pending review** (no packet/marker; wait, no duplicate), **duplicate
+Stop events** (a second Stop while one review is in flight does not launch a second review), **stale
+completion** (a completed review whose digest ≠ current is superseded, not authoritative), **actionable
+findings** (packet+marker suppressed; fix+re-review), **human-decision escalation** (narrow question
+only, no options/marker, not captured as a verdict), **timeout/infra failure** (specific failure, not
+clean), and **clean completion** (packet+marker rendered, bound to the accepted digest).
+
 ## Acceptance intent
 
 When FR-045 is realized (via T019 + T030–T032), the assistant/host cannot render a boundary verdict
 packet, and the capture layer cannot record an authorization, until the exact current digest carries
-clean or human-dispositioned review evidence — and a mid-review human question is structurally a narrow
-non-boundary decision, not a solicitable verdict.
+clean or human-dispositioned review evidence — a Stop during an in-flight review waits (no duplicate,
+no packet), and a mid-review human question is structurally a narrow non-boundary decision, not a
+solicitable verdict.
