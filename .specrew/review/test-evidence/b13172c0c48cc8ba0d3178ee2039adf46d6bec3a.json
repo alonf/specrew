@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
-  "reviewed_digest_tree_id": "b0afeb8e9392b03e6889bfbc59454a4a56d6c086",
-  "recorded_at": "2026-07-12T02:07:36Z",
+  "reviewed_digest_tree_id": "b13172c0c48cc8ba0d3178ee2039adf46d6bec3a",
+  "recorded_at": "2026-07-12T02:17:59Z",
   "suites": [
     {
       "suite": "tests/continuous-co-review/unit/worktree-containment.Tests.ps1",
@@ -9,9 +9,9 @@
       "failed": 0,
       "skipped": 0,
       "exit_code": 0,
-      "duration_seconds": 2.617,
+      "duration_seconds": 2.619,
       "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/worktree-containment.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
-      "recorded_at": "2026-07-12T02:07:09Z"
+      "recorded_at": "2026-07-12T02:17:25Z"
     },
     {
       "suite": "tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1",
@@ -19,9 +19,9 @@
       "failed": 0,
       "skipped": 0,
       "exit_code": 0,
-      "duration_seconds": 0.667,
+      "duration_seconds": 0.668,
       "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
-      "recorded_at": "2026-07-12T02:07:12Z"
+      "recorded_at": "2026-07-12T02:17:28Z"
     },
     {
       "suite": "tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1",
@@ -29,9 +29,9 @@
       "failed": 0,
       "skipped": 0,
       "exit_code": 0,
-      "duration_seconds": 4.828,
+      "duration_seconds": 4.603,
       "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
-      "recorded_at": "2026-07-12T02:07:19Z"
+      "recorded_at": "2026-07-12T02:17:34Z"
     },
     {
       "suite": "tests/continuous-co-review/unit/bounded-verification.Tests.ps1",
@@ -39,9 +39,9 @@
       "failed": 0,
       "skipped": 0,
       "exit_code": 0,
-      "duration_seconds": 10.703,
+      "duration_seconds": 10.77,
       "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
-      "recorded_at": "2026-07-12T02:07:31Z"
+      "recorded_at": "2026-07-12T02:17:47Z"
     },
     {
       "suite": "tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1",
@@ -49,9 +49,19 @@
       "failed": 0,
       "skipped": 0,
       "exit_code": 0,
-      "duration_seconds": 3.077,
+      "duration_seconds": 3.184,
       "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
-      "recorded_at": "2026-07-12T02:07:36Z"
+      "recorded_at": "2026-07-12T02:17:52Z"
+    },
+    {
+      "suite": "tests/continuous-co-review/unit/review-context-and-harvest-hardening.Tests.ps1",
+      "passed": 18,
+      "failed": 0,
+      "skipped": 0,
+      "exit_code": 0,
+      "duration_seconds": 5.088,
+      "command": "$env:SPECREW_MODULE_PATH=(Get-Location).Path; $r = Invoke-Pester -Path 'tests/continuous-co-review/unit/review-context-and-harvest-hardening.Tests.ps1' -PassThru -Output None; exit ([int]$r.FailedCount)",
+      "recorded_at": "2026-07-12T02:17:59Z"
     }
   ]
 }

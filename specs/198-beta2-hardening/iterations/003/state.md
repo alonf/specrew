@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T04:15:00Z
+**Updated**: 2026-07-12T04:40:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -425,7 +425,17 @@
   (intermediate junction resolves to real outside target; in-scope junction
   stays under root; plain path normalizes); the existing T013 junction +
   traversal + rooted + valid tests still green. Suites 25/25; registry 16/16.
-  Launching exactly one serialized re-review.
+- Re-review round after the containment fix hit a transient reviewer-HOST
+  infra failure first (run ecd4c7b8: codex empty-exit0 x2, T108 retry
+  exhausted -> no-parseable-findings-json, invoked-failed per T020 - NOT a
+  clean review, NOT a code finding; the FR-045 infra-failure route). The
+  FR-045 retry (one sequential re-run, not a duplicate) then RAN (run
+  ea521faf) and found 1 blocking: an EVIDENCE gap - the intermediate-junction
+  INTEGRATION proof lives in review-context-and-harvest-hardening.Tests.ps1
+  (18/18), which was NOT in the digest-matched evidence, so the 25/25 claim
+  had no standing for that suite. Durable fix: the recorder now records that
+  integration suite too (6 suites digest-bound); coverage-evidence.md gains a
+  T034b row. Launching exactly one serialized re-review.
 
 ## Notes
 
