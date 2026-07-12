@@ -105,17 +105,39 @@ Describe 'orchestrator does NOT auto-run verification, and integrity-checks the 
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'does NOT false-flag volatile reviewer-HOST runtime dirs (.codex, .antigravitycli, ...)' {
+    It 'does NOT false-flag a NEW file under a volatile reviewer-HOST runtime dir (.codex, ...)' {
         $repo = script:New-TempGitRepo; $rd = script:New-RunDir
         try {
             script:StubHost
             Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
                 New-Item -ItemType Directory -Path (Join-Path $WorktreePath '.codex') -Force | Out-Null
-                Set-Content -LiteralPath (Join-Path $WorktreePath '.codex/session.json') -Value '{}' -NoNewline   # the host's own ephemeral state
+                Set-Content -LiteralPath (Join-Path $WorktreePath '.codex/session.json') -Value '{}' -NoNewline   # NEW host ephemeral state
                 script:ReviewerResult 'ri-host'
             }
             $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-host' -TimeoutSeconds 60
-            [string]$st.status | Should -Be 'done' -Because 'host session churn is not source tampering'
+            [string]$st.status | Should -Be 'done' -Because 'a NEW host session file is churn, not source tampering'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'FAILS when the reviewer MODIFIES a PRE-EXISTING file inside a host-runtime dir (tracked config, not churn)' {
+        # Finding 3b5ae645: the host-dir exemption is NEW-files-only. A tracked config that the archive
+        # extracted (present in the PRE snapshot) must not be rewritable under .claude/.codex/... undetected.
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            $script:hc = 0
+            Mock -CommandName Get-ContinuousCoReviewWorktreeSourceHashes -MockWith {
+                $script:hc++
+                if ($script:hc -le 1) { return @{ '.claude/settings.json' = 'H1'; 'app.txt' = 'A' } }
+                return @{ '.claude/settings.json' = 'H2-REWRITTEN'; 'app.txt' = 'A' }   # a PRE-EXISTING host-dir config, rewritten
+            }
+            $script:reviewerInvoked = $false
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { $script:reviewerInvoked = $true; script:ReviewerResult 'ri-cfg' }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-cfg' -TimeoutSeconds 60
+            $script:reviewerInvoked | Should -Be $true -Because 'the tamper is detected AFTER the reviewer runs'
+            [string]$st.failure_reason | Should -Be 'reviewer-tampered-tree'
+            [string]$st.message | Should -Match 'settings\.json' -Because 'a modified pre-existing host-dir file is tampering, not exempt churn'
         }
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }

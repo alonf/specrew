@@ -738,8 +738,12 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             # the tree it certifies cannot be trusted.
             $reviewerPostHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
             $reviewerTamperedPaths = New-Object System.Collections.Generic.List[string]
+            # MODIFIED or DELETED pre-existing file (source, .review authority, OR tracked config under a
+            # host dir) -> tampering, unless it is the reviewer's own findings output.
             foreach ($k in $reviewerPreHashes.Keys) { if ((-not $reviewerPostHashes.ContainsKey($k) -or $reviewerPostHashes[$k] -ne $reviewerPreHashes[$k]) -and ($reviewerOutputAllow -notcontains $k)) { [void]$reviewerTamperedPaths.Add($k) } }
-            foreach ($k in $reviewerPostHashes.Keys) { if (-not $reviewerPreHashes.ContainsKey($k) -and ($reviewerOutputAllow -notcontains $k)) { [void]$reviewerTamperedPaths.Add($k) } }
+            # NEW file -> tampering, UNLESS it is the reviewer's findings output OR legitimate host session
+            # state (a NEW file under a volatile host-runtime dir). A new file anywhere else is planted.
+            foreach ($k in $reviewerPostHashes.Keys) { if ((-not $reviewerPreHashes.ContainsKey($k)) -and ($reviewerOutputAllow -notcontains $k) -and -not (Test-ContinuousCoReviewIsHostChurnPath -RelativePath $k)) { [void]$reviewerTamperedPaths.Add($k) } }
             if ($reviewerTamperedPaths.Count -gt 0) {
                 $currentPhase = 'reviewer-tamper'
                 $tamperSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false

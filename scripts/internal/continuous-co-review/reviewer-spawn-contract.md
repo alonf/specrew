@@ -17,6 +17,9 @@ source of truth for what that prompt promises and why.
 - This is isolation by **snapshot + origin-reference removal (T013/T014), not an OS-enforced
   filesystem sandbox**: confinement is a contract term the reviewer must honor, and the containment
   detector (T016) monitors for violations and reports them loudly.
+- The T013 outside-origin guard compares **resolved real paths** (following symlinks/junctions), not
+  lexical strings, and re-checks the created worktree — so an `EphemeralRoot` junction whose target is
+  inside origin cannot slip the worktree physically under the project.
 
 ## Verification and reviewer-invocation integrity
 
@@ -47,10 +50,12 @@ reviewer runs. The **only** permitted write is the reviewer's own output, `.revi
 other mutation — editing/adding/deleting source, rewriting a `.review/` input, or leaving build/test
 artifacts behind — **fails the review** (`failure_reason: reviewer-tampered-tree`; the model was invoked
 so it is the invoked-failed spend class — provider spend + round consumed + a `reviewer-tampered-tree`
-disposition — and the findings are discarded). Volatile reviewer-host runtime dirs (`.antigravitycli/`,
-`.codex/`, `.claude/`, `.cursor/`, `.gemini/`, `.copilot/`) and `.git/` are excluded from the hash so a
-host's own session churn is never mistaken for tampering. This is **monitored confinement, not
-OS-enforced filesystem isolation**; the T016 detector likewise monitors and reports, it does not sandbox.
+disposition — and the findings are discarded). The exemption for volatile reviewer-host runtime dirs
+(`.antigravitycli/`, `.codex/`, `.claude/`, `.cursor/`, `.gemini/`, `.copilot/`) is **new-files-only**:
+a host may create NEW ephemeral session state there, but a **pre-existing** file under one of those dirs
+(e.g. project-tracked config the archive extracted) that is **modified or deleted is still tampering** —
+those dirs are hashed, not skipped. This is **monitored confinement, not OS-enforced filesystem
+isolation**; the T016 detector likewise monitors and reports, it does not sandbox.
 
 **Future work (out of T015 scope).** Genuinely confining declared/reviewer commands — a dedicated
 process identity plus worktree-only ACL isolation — is recorded as a separate future proposal

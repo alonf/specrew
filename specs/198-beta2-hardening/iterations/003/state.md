@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T00:50:00Z
+**Updated**: 2026-07-12T01:15:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -300,6 +300,23 @@
   no budget reason to withhold it); coverage-evidence note corrected (also
   scrubbed the stale "disposable copy / minimal supply" wording the
   simplification removed).
+- Serialized review 3b5ae645 (my --live, concurrent with 40a06e84): 2
+  DIFFERENT blocking findings, both real containment holes (not about the
+  simplification). (1) T013 SYMLINK/JUNCTION ESCAPE (FR-008): the
+  outside-origin guard compared LEXICAL paths only, so an EphemeralRoot
+  junction whose target is inside origin passed, then materialized the
+  worktree physically under origin (restoring the upward-walk). Fixed: the
+  guard now resolves real paths via ResolveLinkTarget(final) for both the
+  root and the origin roots, AND re-checks the created worktree's resolved
+  path; junction-escape regression added (Windows-guarded). (2) HOST-DIR
+  EXEMPTION TOO BROAD: Get-...SourceHashes excluded .codex/.claude/.cursor/
+  etc. WHOLESALE, so a reviewer could rewrite tracked config there
+  undetected. Fixed: those dirs are now HASHED; the exemption is NEW-files
+  only (Test-...IsHostChurnPath in the integrity new-file branch) - a
+  modified/deleted PRE-EXISTING file under a host dir is tampering. Paired
+  test: a new .codex file is churn (done), a rewritten pre-existing
+  .claude/settings.json fails (reviewer-tampered-tree). Contract doc
+  updated for both. Reviewer suites 29/29.
 - Next: no older review in flight, ONE serialized review against HEAD, then
   T016 if clean.
 

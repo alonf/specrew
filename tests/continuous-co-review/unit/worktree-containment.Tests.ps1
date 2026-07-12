@@ -62,4 +62,23 @@ Describe 'reviewer worktree containment (FR-008 / SC-002)' {
         }
         finally { Remove-Item -LiteralPath $origin -Recurse -Force -ErrorAction SilentlyContinue }
     }
+
+    It 'REFUSES an EphemeralRoot JUNCTION whose target is inside origin (symlink/junction escape, finding 3b5ae645)' {
+        if (-not $IsWindows) { Set-ItResult -Skipped -Because 'directory-junction creation is Windows-specific'; return }
+        $origin = script:New-OriginRepo
+        $link = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-jn-' + [guid]::NewGuid().ToString('N'))
+        try {
+            $insideTarget = Join-Path $origin 'nested-target'
+            New-Item -ItemType Directory -Path $insideTarget -Force | Out-Null
+            # The link path is LEXICALLY outside origin, but its TARGET is inside origin - the lexical-only
+            # check passed it, then materialization would physically create the worktree under origin.
+            New-Item -ItemType Junction -Path $link -Target $insideTarget | Out-Null
+            { New-ContinuousCoReviewStrippedWorktree -RepoRoot $origin -BaselineRef 'HEAD' -EphemeralRoot $link } |
+                Should -Throw -ExpectedMessage '*containment*'
+        }
+        finally {
+            if (Test-Path -LiteralPath $link) { try { [System.IO.Directory]::Delete($link) } catch { $null = $_ } }   # remove the junction, not its target contents
+            Remove-Item -LiteralPath $origin -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }

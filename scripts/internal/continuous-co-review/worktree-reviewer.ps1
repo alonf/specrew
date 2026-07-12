@@ -257,22 +257,42 @@ function New-ContinuousCoReviewStrippedWorktree {
     }
 
     if ([string]::IsNullOrWhiteSpace($EphemeralRoot)) { $EphemeralRoot = [System.IO.Path]::GetTempPath() }
-    # FR-008 (203 W1) / SC-002 containment: the reviewer worktree MUST materialize OUTSIDE the
-    # origin so no upward directory/git walk from inside the confined worktree can resolve the real
-    # project. Reject an EphemeralRoot that resolves AT or UNDER the origin git root (or the
-    # governance RepoRoot) - a worktree nested in origin would defeat the confinement by
-    # construction. Fails LOUD and early, before any archive/extract.
-    $ephemeralFull = [System.IO.Path]::GetFullPath($EphemeralRoot).TrimEnd([char]'\', [char]'/')
-    foreach ($originPath in @($gitRoot, $resolved)) {
-        if ([string]::IsNullOrWhiteSpace($originPath)) { continue }
-        $originFull = [System.IO.Path]::GetFullPath($originPath).TrimEnd([char]'\', [char]'/')
-        if ($ephemeralFull -eq $originFull -or $ephemeralFull.StartsWith($originFull + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
-            throw "[co-review] refusing to materialize the reviewer worktree inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (FR-008 containment)."
+    # FR-008 (203 W1) / SC-002 containment: the reviewer worktree MUST materialize OUTSIDE the origin so
+    # no upward directory/git walk from inside the confined worktree can resolve the real project. Reject
+    # an EphemeralRoot that resolves AT or UNDER the origin git root (or the governance RepoRoot).
+    # SYMLINK/JUNCTION SAFE (finding 3b5ae645): compare RESOLVED real paths, not lexical strings - an
+    # existing EphemeralRoot that is a junction/symlink whose lexical path is outside origin but whose
+    # TARGET is inside would pass a string-only check and then materialize physically under origin,
+    # restoring the upward-walk this guard exists to prevent.
+    $resolveRealPath = {
+        param([string]$p)
+        $real = $p
+        try {
+            $it = Get-Item -LiteralPath $p -Force -ErrorAction Stop
+            $tgt = $it.ResolveLinkTarget($true)   # final target if a link; $null when not a link
+            if ($null -ne $tgt) { $real = $tgt.FullName }
+            else { $real = $it.FullName }
+        }
+        catch { $real = $p }   # not-yet-existing path: nothing to resolve, fall back to lexical
+        return [System.IO.Path]::GetFullPath($real).TrimEnd([char]'\', [char]'/')
+    }
+    $assertOutsideOrigin = {
+        param([string]$candidateReal, [string]$context)
+        foreach ($originPath in @($gitRoot, $resolved)) {
+            if ([string]::IsNullOrWhiteSpace($originPath)) { continue }
+            $originFull = & $resolveRealPath $originPath
+            if ($candidateReal -eq $originFull -or $candidateReal.StartsWith($originFull + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "[co-review] refusing to materialize the reviewer worktree $context inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (FR-008 containment)."
+            }
         }
     }
+    & $assertOutsideOrigin (& $resolveRealPath $EphemeralRoot) "root ('$EphemeralRoot')"
     $worktree = Join-Path $EphemeralRoot ('ccr-worktree-' + [guid]::NewGuid().ToString('N'))
     $tarPath = "$worktree.tar"
     New-Item -ItemType Directory -Path $worktree -Force | Out-Null
+    # Verify the FINAL created worktree's resolved path is outside origin too (defense in depth: a link at
+    # the leaf, or the root swapped for a junction between the check and the create, would otherwise slip).
+    & $assertOutsideOrigin (& $resolveRealPath $worktree) "path ('$worktree')"
 
     # Archive the subtree tree to a FILE then extract (no native->native pipe; byte-exact, cross-platform).
     & git -C $gitRoot archive --format=tar --output $tarPath $treeId 2>&1 | Out-Null
@@ -405,26 +425,36 @@ function Get-ContinuousCoReviewGenerousBudget {
     return [math]::Min([int]($DefaultSeconds * $factor), $CapSeconds)
 }
 
-# Volatile reviewer-HOST runtime directories: an agentic reviewer host (or a concurrent one) writes
-# ephemeral session state into its cwd. These are NOT source and NOT tampering, so integrity hashing
-# ignores them - otherwise every real review would false-flag its own host's churn.
-$script:ContinuousCoReviewVolatileHostDirs = @('.git', '.antigravitycli', '.codex', '.claude', '.cursor', '.gemini', '.copilot')
+# Volatile reviewer-HOST runtime directories: an agentic reviewer host writes ephemeral session state
+# into its cwd. A NEW file it creates under one of these during a review is churn, not tampering. But a
+# PRE-EXISTING file there (e.g. project-tracked config the archive extracted) that is MODIFIED or DELETED
+# IS tampering (finding 3b5ae645) - so these dirs are HASHED, not skipped; only NEW files under them are
+# exempted, and ONLY by the integrity check's new-file branch, never wholesale.
+$script:ContinuousCoReviewVolatileHostDirs = @('.antigravitycli', '.codex', '.claude', '.cursor', '.gemini', '.copilot')
+
+function Test-ContinuousCoReviewIsHostChurnPath {
+    # A NEW file that is legitimate reviewer-host session state: its TOP-LEVEL dir is a volatile host dir.
+    # Used ONLY for new files - a modified/deleted pre-existing file under a host dir is still tampering.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$RelativePath)
+    $top = ($RelativePath -replace '/.*$', '')
+    return ($script:ContinuousCoReviewVolatileHostDirs -contains $top)
+}
 
 function Get-ContinuousCoReviewWorktreeSourceHashes {
     # Integrity-evidence helper: a map { relative-path -> sha256 } of the worktree's existing files.
     # Comparing this before vs after execution makes any MUTATION of an existing file visible; a caller
-    # applies its own allowlist for legitimately-created files (verification output, reviewer findings).
-    # SCOPE: source AND the REVIEWER-AUTHORITY inputs under .review/ (changes.diff, design/, contracts,
-    # process context, implementer-evidence) are hashed - rewriting the authority the review depends on
-    # is exactly the tampering this must catch. Excluded are .git/ and the volatile reviewer-host runtime
-    # dirs (ephemeral session state, never source), so host churn does not false-flag as tampering.
+    # applies its own allowlist for legitimately-created NEW files (verification output, reviewer findings,
+    # host session churn). SCOPE: source AND the REVIEWER-AUTHORITY inputs under .review/ (changes.diff,
+    # design/, contracts, process context, implementer-evidence) AND any host-runtime dir contents are
+    # hashed - rewriting the authority the review depends on, or a tracked config under a host dir, is
+    # exactly the tampering this must catch. Only .git/ is skipped (git-archive extract has no .git anyway;
+    # kept for the opt-in helper).
     param([Parameter(Mandatory)][string]$WorktreePath)
     $map = @{}
     $rootFull = (Resolve-Path -LiteralPath $WorktreePath).Path.TrimEnd([char]'\', [char]'/')
     foreach ($f in @(Get-ChildItem -LiteralPath $WorktreePath -Recurse -File -Force -ErrorAction SilentlyContinue)) {
         $rel = [System.IO.Path]::GetRelativePath($rootFull, $f.FullName).Replace('\', '/')
-        $top = ($rel -replace '/.*$', '')
-        if ($script:ContinuousCoReviewVolatileHostDirs -contains $top) { continue }
+        if (($rel -replace '/.*$', '') -eq '.git') { continue }
         try { $map[$rel] = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256 -ErrorAction Stop).Hash } catch { $map[$rel] = 'unreadable' }
     }
     return $map
