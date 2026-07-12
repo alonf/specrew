@@ -188,20 +188,27 @@ function Get-ContinuousCoReviewReviewedStateDigest {
     # worktree is also out of the identity - NOT a false-allow: the reviewer never sees machinery, so it is not
     # reviewed source; .github/workflows and all non-machinery source stay IN both). Converted to strip patterns
     # (<path> for a file, <path>/** for a subtree). Applied to BOTH digest lists.
-    $machineryPatterns = @()
     # The ONE machinery source (Get-ContinuousCoReviewMachineryPaths) lives in worktree-reviewer.ps1, which _load.ps1
     # does NOT dot-source (it loads only shared leaf-modules). BOOTSTRAP it if absent (same pattern as the T100
-    # process-tree helper) so the digest ALWAYS derives machinery from the SAME source the worktree does - never a
-    # silent no-strip when it happens to be unloaded.
+    # process-tree helper). FAIL LOUDLY if it cannot be LOADED or EXECUTED - a silent no-strip would let the digest
+    # identity DIVERGE from the worktree strip (both must derive machinery from the SAME resolver; maintainer
+    # acceptance 2026-07-12). The worktree strip likewise throws if the resolver fails.
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
         $wrPath = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
         if (Test-Path -LiteralPath $wrPath -PathType Leaf) { try { . $wrPath } catch { $null = $_ } }
     }
-    if (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue) {
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason 'machinery-resolver-unavailable (the ONE FR-012 machinery resolver could not be loaded - refusing a digest that would diverge from the worktree strip)'
+    }
+    $machineryPatterns = @()
+    try {
         foreach ($m in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRepoRoot)) {
             if ([string]::IsNullOrWhiteSpace($m)) { continue }
             $machineryPatterns += ([string]$m); $machineryPatterns += ("{0}/**" -f $m)
         }
+    }
+    catch {
+        return New-ContinuousCoReviewDigestResult -Ok $false -FailureReason ('machinery-resolver-failed: ' + [string]$_.Exception.Message)
     }
     $inclusionDenylist = @(Get-ContinuousCoReviewSecretAmbientDenylist) + @($machineryPatterns) + @($ExcludedPathPatterns)
     $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($machineryPatterns) + @($ExcludedPathPatterns)

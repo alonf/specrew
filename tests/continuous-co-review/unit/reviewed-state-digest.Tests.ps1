@@ -100,6 +100,9 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         ($machinery -contains '.claude/skills') | Should -Be $true -Because 'the single source is Get-ContinuousCoReviewMachineryPaths - digest strip == worktree strip'
         ($machinery -contains '.github/agents') | Should -Be $true
         ($machinery -contains '.github/workflows') | Should -Be $false -Because 'workflows is NOT in the machinery source, so BOTH strips keep it'
+        # DIGEST-SIGNIFICANT: a change to reviewable content (a workflow) flips the identity.
+        Set-Content -LiteralPath (Join-Path $repo '.github/workflows/ci.yml') -Value 'on: pull_request' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Not -Be $d.tree_id -Because '.github/workflows is reviewable AND digest-significant - its change flips the identity (FR-012)'
     }
 
     It 'T017/FR-012: a MACHINERY-only change does NOT flip the digest (not reviewed), but a SOURCE change DOES (no false-allow of source)' {
@@ -114,6 +117,14 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Be $d0 -Because 'a machinery-only change is not reviewed, so it does NOT flip the identity'
         Set-Content -LiteralPath (Join-Path $repo 'src/app.ps1') -Value 'v1-source-edit' -Encoding UTF8
         (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Not -Be $d0 -Because 'a SOURCE edit MUST flip the identity (no false-allow of un-reviewed source)'
+    }
+
+    It 'T017/FR-012: a resolver EXECUTION failure fails the digest LOUDLY (never a silent no-strip - the digest cannot diverge from the worktree)' {
+        $repo = New-DigestRepo 't17-failloud'
+        Mock -CommandName Get-ContinuousCoReviewMachineryPaths -MockWith { throw 'resolver boom' }
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        $d.ok | Should -Be $false -Because 'if the ONE machinery resolver cannot execute, the digest MUST fail loudly, not silently skip machinery stripping (maintainer acceptance 2026-07-12)'
+        [string]$d.failure_reason | Should -Match 'machinery-resolver' -Because 'the failure reason names the resolver'
     }
 
     It 'detects a TRACKED change (tree-id flips)' {
