@@ -312,6 +312,16 @@ function Get-ContinuousCoReviewContainmentSamples {
     # BEST-EFFORT + READ-ONLY (never mutates/kills): Windows CIM Win32_Process (executable path + command-line
     # tokens; Windows exposes no cheap cwd, so detection there is exe/command-line-primary per FR-011's
     # "cwd/command-line sampling"); POSIX /proc (cwd, exe, cmdline). Returns @({pid; image; source; path}).
+    #
+    # HOST PROMPT-ARG EXEMPTION (field fix 2026-07-12, DRIFT-198-I003-004): the reviewer HOST is handed the review
+    # PROMPT as a positional command-line arg (`codex exec "<prompt>"`), and that prompt LEGITIMATELY names origin
+    # paths (the changed-file list, design-context refs, the project root itself). Tokenizing the host's OWN command
+    # line therefore flags prompt-MENTION as origin ACCESS - a FALSE POSITIVE that failed a real codex review of this
+    # very detector. So arg-sampling is SKIPPED for the ROOT pid and any same-image worker (the host); exe-source is
+    # still sampled for the host, and a NON-host descendant (git/rg/node) invoked with an origin path IS arg-sampled
+    # (a real operation-target signal). Residual, accepted under MONITORED (not OS-enforced) confinement: a host that
+    # reaches origin via a path in its OWN args is caught only by exe/cwd, and on Windows (no cheap cwd) that means
+    # exe-only for the host - the STRUCTURAL guarantee remains T013 (worktree materialized OUTSIDE origin).
     param([Parameter(Mandatory)][int]$RootPid)
     $samples = [System.Collections.Generic.List[object]]::new()
     if (-not (Get-Command -Name 'Get-SpecrewProcessTreeDescendants' -ErrorAction SilentlyContinue)) {
@@ -321,24 +331,37 @@ function Get-ContinuousCoReviewContainmentSamples {
     $procIds = @($RootPid)
     try { $procIds += @(Get-SpecrewProcessTreeDescendants -RootPid $RootPid) } catch { $null = $_ }
     $procIds = @($procIds | Where-Object { $_ -gt 0 } | Select-Object -Unique)
+    # The HOST is the reviewer we launched (RootPid) plus any worker sharing its image; its command line carries the
+    # PROMPT (which names origin paths legitimately), so arg-sampling it would false-flag. exe/cwd stay strong signals
+    # for everyone; arg is a real signal only for NON-host descendants. $isHostArgExempt fail-CLOSES toward the root:
+    # even if the root's image can't be resolved (CIM/proc race), the ROOT pid itself is always arg-exempt.
     if ($IsWindows) {
         $procs = @()
         try { $procs = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $procIds -contains [int]$_.ProcessId } | Select-Object ProcessId, Name, CommandLine, ExecutablePath) } catch { $procs = @() }
+        $rootImage = [string](($procs | Where-Object { [int]$_.ProcessId -eq $RootPid } | Select-Object -First 1).Name)
         foreach ($p in $procs) {
             $procId = [int]$p.ProcessId; $image = [string]$p.Name
             if (-not [string]::IsNullOrWhiteSpace([string]$p.ExecutablePath)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = [string]$p.ExecutablePath }) }
-            foreach ($tok in (Get-ContinuousCoReviewPathLikeTokens -CommandLine ([string]$p.CommandLine))) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            $isHostArgExempt = ($procId -eq $RootPid) -or ((-not [string]::IsNullOrWhiteSpace($rootImage)) -and ($image -ieq $rootImage))
+            if (-not $isHostArgExempt) {
+                foreach ($tok in (Get-ContinuousCoReviewPathLikeTokens -CommandLine ([string]$p.CommandLine))) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            }
         }
     }
     else {
+        $rootImage = ''
+        try { $rit = Get-Item -LiteralPath "/proc/$RootPid/exe" -Force -ErrorAction Stop; $rtg = $rit.ResolveLinkTarget($true); if ($rtg) { $rootImage = [System.IO.Path]::GetFileName($rtg.FullName) } } catch { $null = $_ }
         foreach ($procId in $procIds) {
             $image = ''
             $exe = try { $it = Get-Item -LiteralPath "/proc/$procId/exe" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
             if ($exe) { $image = [System.IO.Path]::GetFileName($exe); [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = $exe }) }
             $cwd = try { $it = Get-Item -LiteralPath "/proc/$procId/cwd" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
-            if ($cwd) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'cwd'; path = $cwd }) }
-            $cmdline = try { ([string](Get-Content -LiteralPath "/proc/$procId/cmdline" -Raw -ErrorAction Stop)) -replace "`0", ' ' } catch { '' }
-            foreach ($tok in (Get-ContinuousCoReviewPathLikeTokens -CommandLine $cmdline)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            if ($cwd) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'cwd'; path = $cwd }) }   # STRONG signal - always sampled
+            $isHostArgExempt = ($procId -eq $RootPid) -or ((-not [string]::IsNullOrWhiteSpace($rootImage)) -and ($image -ieq $rootImage))
+            if (-not $isHostArgExempt) {
+                $cmdline = try { ([string](Get-Content -LiteralPath "/proc/$procId/cmdline" -Raw -ErrorAction Stop)) -replace "`0", ' ' } catch { '' }
+                foreach ($tok in (Get-ContinuousCoReviewPathLikeTokens -CommandLine $cmdline)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            }
         }
     }
     return , ($samples.ToArray())

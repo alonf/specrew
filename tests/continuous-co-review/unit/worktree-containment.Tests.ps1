@@ -169,6 +169,7 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/agent-tasks/process-tree.ps1')   # so Get-SpecrewProcessTreeDescendants is mockable
 
         $script:Origin = Join-Path ([System.IO.Path]::GetTempPath()) ('t16-origin-' + [guid]::NewGuid().ToString('N'))
         $script:Worktree = Join-Path ([System.IO.Path]::GetTempPath()) ('t16-wt-' + [guid]::NewGuid().ToString('N'))
@@ -238,5 +239,30 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
             (Get-Process -Id $child.Id -ErrorAction SilentlyContinue) | Should -Not -BeNullOrEmpty -Because 'sampling is strictly read-only - it never terminates the sampled process'
         }
         finally { try { $child.Kill($true) } catch { $null = $_ } }
+    }
+
+    It 'HOST PROMPT-ARG EXEMPTION (DRIFT-198-I003-004): the reviewer HOST''s own prompt arg naming origin is NOT sampled as access, but a NON-host descendant tool invoked with an origin path IS (regression: false containment-violated on a real codex review)' -Skip:(-not $IsWindows) {
+        # The HOST (codex.exe = RootPid) is launched as `codex exec "<prompt>"`; the prompt legitimately names the
+        # origin project, so its command line carries the origin path WITHOUT the reviewer touching origin. A
+        # descendant git.exe invoked `git -C <origin>` IS a real operation-target signal. Mock the tree + CIM so the
+        # sampler sees exactly this shape and prove: host arg-token skipped, host exe still sampled, descendant kept.
+        Mock -CommandName Get-SpecrewProcessTreeDescendants -MockWith { @(777) }
+        Mock -CommandName Get-CimInstance -MockWith {
+            @(
+                [pscustomobject]@{ ProcessId = 666; Name = 'codex.exe'; CommandLine = ('codex exec "review {0} then stop"' -f $script:OriginSecret); ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
+                [pscustomobject]@{ ProcessId = 777; Name = 'git.exe'; CommandLine = ('git -C {0} status' -f $script:Origin); ExecutablePath = 'C:\Program Files\Git\cmd\git.exe' }
+            )
+        }
+        $samples = Get-ContinuousCoReviewContainmentSamples -RootPid 666
+        $argHost = @($samples | Where-Object { $_.source -eq 'arg' -and $_.image -eq 'codex.exe' })
+        $argHost.Count | Should -Be 0 -Because 'the HOST''s own command line carries the PROMPT (which names origin) - arg-sampling it would false-flag prompt-mention as access'
+        $exeHost = @($samples | Where-Object { $_.source -eq 'exe' -and $_.image -eq 'codex.exe' })
+        $exeHost.Count | Should -BeGreaterThan 0 -Because 'exe-source is STILL sampled for the host (a host exe UNDER origin would still be caught)'
+        $argChild = @($samples | Where-Object { $_.source -eq 'arg' -and $_.image -eq 'git.exe' })
+        $argChild.Count | Should -BeGreaterThan 0 -Because 'a NON-host descendant invoked with an origin path is a real operation-target signal and IS arg-sampled'
+        # End-to-end through the pure checker: the ONLY violation is the descendant git, never the host prompt.
+        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-HOSTEXEMPT'
+        @($v).Count | Should -Be 1 -Because 'only the descendant git''s origin arg resolves to a violation; the host prompt is exempt'
+        [string]$v[0].process | Should -Match 'git\.exe'
     }
 }
