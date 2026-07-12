@@ -757,6 +757,32 @@ This keeps scripts deterministic and auditable while keeping semantic review in 
 - **Hook portability gap:** Claude/Codex have useful lifecycle hooks, while Copilot/Cursor/Gemini-style hosts differ. Mitigate by making hooks optional accelerators, never the only gate enforcement.
 - **Current Squad/Copilot coupling:** the first implementation will naturally fit the current reviewer-agent flow. Mitigate by keeping the file contract host-neutral and documenting Squad as one executor topology, not the protocol itself.
 
+## Amendment - 2026-07-12: task review package and dual verdict
+
+The comparative analysis of [`obra/superpowers`](../docs/methodology/superpowers-comparative-analysis.md)
+adds a task-scoped contract beneath the full seven-phase signoff review:
+
+- Record the task baseline before implementation. Review-package construction must use that recorded
+  baseline and the certified current tree, never infer the range with `HEAD~1` or conversation memory.
+- Materialize a host-neutral package containing the approved task brief, changed-path manifest, exact
+  diff, implementer result, digest-bound verification evidence, accepted variances, and design/process
+  context. Missing required input fails before reviewer selection.
+- A fresh reviewer produces two independent verdicts: `spec_conformance` and
+  `implementation_quality`. Either blocking verdict blocks task acceptance; an aggregate `accepted`
+  may not erase the distinction.
+- `spec_conformance` checks omissions, extras, and requirement fidelity. `implementation_quality`
+  checks correctness, maintainability, security, tests, and evidence integrity. Findings cite the
+  package digest and source paths.
+- The task-level result can feed the later seven-phase review but cannot replace it. Reuse is allowed
+  only when its reviewed digest and applicable rubric remain exact.
+- If three materially different repair attempts fail for one finding family, stop the fix-review loop
+  for architecture judgment. Round ceilings remain governed by Proposals 197/203.
+
+Acceptance additions: fixtures prove baseline correctness across multi-commit tasks, reject a package
+whose brief/result/tree digests disagree, preserve both verdicts in aggregation, and prove the reviewer
+cannot pass a spec-conformant but unsafe implementation or a high-quality implementation that omits a
+requirement.
+
 ## Status history
 
 - 2026-07-11: amended with the lightweight semantic artifact/process reviewer
