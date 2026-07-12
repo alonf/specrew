@@ -36,8 +36,10 @@ function Get-ContinuousCoReviewSecretAmbientDenylist {
         # the exact FALSE-ALLOW that force-adding ignored source exists to prevent. These path+name patterns match
         # ONLY the closeout generator's own artifacts, so any OTHER ignored `.pending` (a real source file, or an
         # unlisted custom.md.pending under an iteration) stays IN the identity and its drift still flips the digest.
-        # Consolidation into ONE digest/worktree machinery data file is the planned T017 task (NOT pulled ahead of
-        # T016); this is the narrow interim fixture.
+        # T017 REALIZED the ONE machinery source (Get-ContinuousCoReviewMachineryPaths, consumed by BOTH the digest
+        # AND the worktree strip - see the $machineryPatterns wiring below). These .pending patterns are
+        # digest-specific scaffolder-BYPRODUCT hygiene (NOT host machinery), so they correctly stay here, not in the
+        # shared machinery list.
         'specs/*/iterations/*/code-map.md.pending',
         'specs/*/iterations/*/coverage-evidence.md.pending',
         'specs/*/iterations/*/dashboard.md.pending',
@@ -178,8 +180,31 @@ function Get-ContinuousCoReviewReviewedStateDigest {
     # add (keeps ambient/secret junk out of the tree), while the MINIMAL strip list decides
     # what to remove from the FINAL index (only genuinely-non-source, so no tracked source is
     # ever stripped - the false-allow fix).
-    $inclusionDenylist = @(Get-ContinuousCoReviewSecretAmbientDenylist) + @($ExcludedPathPatterns)
-    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($ExcludedPathPatterns)
+    #
+    # T017 (FR-012): the METHODOLOGY MACHINERY excluded from the digest identity is the SAME single source the
+    # WORKTREE strip uses - Get-ContinuousCoReviewMachineryPaths (core tool dirs + marker-detected + host-mirror
+    # subdirs, context-aware). By construction the digest and worktree strip the SAME machinery, so they cannot
+    # drift, and the identity covers EXACTLY the reviewable content the reviewer sees (machinery stripped from the
+    # worktree is also out of the identity - NOT a false-allow: the reviewer never sees machinery, so it is not
+    # reviewed source; .github/workflows and all non-machinery source stay IN both). Converted to strip patterns
+    # (<path> for a file, <path>/** for a subtree). Applied to BOTH digest lists.
+    $machineryPatterns = @()
+    # The ONE machinery source (Get-ContinuousCoReviewMachineryPaths) lives in worktree-reviewer.ps1, which _load.ps1
+    # does NOT dot-source (it loads only shared leaf-modules). BOOTSTRAP it if absent (same pattern as the T100
+    # process-tree helper) so the digest ALWAYS derives machinery from the SAME source the worktree does - never a
+    # silent no-strip when it happens to be unloaded.
+    if (-not (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue)) {
+        $wrPath = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+        if (Test-Path -LiteralPath $wrPath -PathType Leaf) { try { . $wrPath } catch { $null = $_ } }
+    }
+    if (Get-Command -Name 'Get-ContinuousCoReviewMachineryPaths' -ErrorAction SilentlyContinue) {
+        foreach ($m in @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $resolvedRepoRoot)) {
+            if ([string]::IsNullOrWhiteSpace($m)) { continue }
+            $machineryPatterns += ([string]$m); $machineryPatterns += ("{0}/**" -f $m)
+        }
+    }
+    $inclusionDenylist = @(Get-ContinuousCoReviewSecretAmbientDenylist) + @($machineryPatterns) + @($ExcludedPathPatterns)
+    $stripList = @(Get-ContinuousCoReviewDigestRuntimeStripList) + @($machineryPatterns) + @($ExcludedPathPatterns)
     $tempIndex = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-idx-' + [System.Guid]::NewGuid().ToString('N'))
 
     $hadPreviousIndex = Test-Path env:GIT_INDEX_FILE

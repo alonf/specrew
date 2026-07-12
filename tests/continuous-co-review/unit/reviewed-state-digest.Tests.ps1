@@ -8,6 +8,7 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         Import-Module (Join-Path $script:RepoRoot 'Specrew.psd1') -Force
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')   # T017: the ONE machinery source (Get-ContinuousCoReviewMachineryPaths) both strips consume
     
 
         # v5: helpers moved here so they are visible inside It blocks (Discovery/Run split).
@@ -70,6 +71,49 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
         $names = Get-TreeNames -Root $repo -TreeId $d.tree_id
         ($names -contains '.env') | Should -Be $false
+    }
+
+    It 'T017/FR-012: methodology MACHINERY (from the ONE Get-ContinuousCoReviewMachineryPaths source) is OUT of the digest identity, while .github/workflows + ordinary source stay IN (reviewer-can-still-see-it)' {
+        $repo = New-DigestRepo 't17-machinery'
+        # HOST MACHINERY (host-mirror subdirs) - the worktree strip removes these, so the identity must too (FR-012):
+        New-Item -ItemType Directory -Path (Join-Path $repo '.claude/skills/specrew-foo') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.claude/skills/specrew-foo/skill.md') -Value 'machinery' -Encoding UTF8
+        New-Item -ItemType Directory -Path (Join-Path $repo '.github/agents') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.github/agents/agent.md') -Value 'machinery' -Encoding UTF8
+        # NON-machinery that MUST stay reviewable in BOTH strips:
+        New-Item -ItemType Directory -Path (Join-Path $repo '.github/workflows') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.github/workflows/ci.yml') -Value 'on: push' -Encoding UTF8
+        New-Item -ItemType Directory -Path (Join-Path $repo 'src') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo 'src/app.ps1') -Value 'Write-Host hi' -Encoding UTF8
+        Invoke-DigestGit $repo @('add', '.claude', '.github', 'src')
+        Invoke-DigestGit $repo @('commit', '-q', '-m', 'machinery + workflows + src')
+
+        $d = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo
+        $d.ok | Should -Be $true
+        $names = @(Get-TreeNames -Root $repo -TreeId $d.tree_id)
+        ($names -join '|') | Should -Not -Match '\.claude/skills/specrew-foo/skill\.md' -Because 'host-mirror machinery is excluded from the identity via the SAME source the worktree strips (FR-012, no drift)'
+        ($names -join '|') | Should -Not -Match '\.github/agents/agent\.md' -Because '.github/agents is host machinery, excluded from both'
+        ($names -contains '.github/workflows/ci.yml') | Should -Be $true -Because '.github/workflows is NOT machinery - it stays in the identity, reviewable (reviewer-can-still-see-it)'
+        ($names -contains 'src/app.ps1') | Should -Be $true -Because 'ordinary source stays in the identity'
+        # BY CONSTRUCTION: the machinery the digest excludes IS the worktree-strip source (they cannot drift).
+        $machinery = @(Get-ContinuousCoReviewMachineryPaths -RepoRoot $repo)
+        ($machinery -contains '.claude/skills') | Should -Be $true -Because 'the single source is Get-ContinuousCoReviewMachineryPaths - digest strip == worktree strip'
+        ($machinery -contains '.github/agents') | Should -Be $true
+        ($machinery -contains '.github/workflows') | Should -Be $false -Because 'workflows is NOT in the machinery source, so BOTH strips keep it'
+    }
+
+    It 'T017/FR-012: a MACHINERY-only change does NOT flip the digest (not reviewed), but a SOURCE change DOES (no false-allow of source)' {
+        $repo = New-DigestRepo 't17-invariant'
+        New-Item -ItemType Directory -Path (Join-Path $repo '.claude/skills/specrew-foo') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.claude/skills/specrew-foo/skill.md') -Value 'v0' -Encoding UTF8
+        New-Item -ItemType Directory -Path (Join-Path $repo 'src') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo 'src/app.ps1') -Value 'v0' -Encoding UTF8
+        Invoke-DigestGit $repo @('add', '.claude', 'src'); Invoke-DigestGit $repo @('commit', '-q', '-m', 'base')
+        $d0 = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        Set-Content -LiteralPath (Join-Path $repo '.claude/skills/specrew-foo/skill.md') -Value 'v1-machinery-edit' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Be $d0 -Because 'a machinery-only change is not reviewed, so it does NOT flip the identity'
+        Set-Content -LiteralPath (Join-Path $repo 'src/app.ps1') -Value 'v1-source-edit' -Encoding UTF8
+        (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Not -Be $d0 -Because 'a SOURCE edit MUST flip the identity (no false-allow of un-reviewed source)'
     }
 
     It 'detects a TRACKED change (tree-id flips)' {
