@@ -462,31 +462,6 @@ function Get-ContinuousCoReviewFindingsJson {
     return $null
 }
 
-function Get-ContinuousCoReviewEvidenceDeclaredCommands {
-    # T015 (FR-010) minimal supply, maintainer-directed: ONLY verification commands EXPLICITLY recorded
-    # in the digest-matched implementer evidence ALREADY injected into this worktree (the T111 copy -
-    # the digest gate is INHERITED: stale or mismatched evidence never reaches the worktree, so it can
-    # never supply commands against a different tree). A suite record without a literal non-empty
-    # 'command' string supplies NOTHING - commands are never inferred from suite names, discovered by
-    # scanning, or defaulted to repository sweeps. Generalized evidence discovery + richer provenance
-    # are deferred to 203-W8 (T018).
-    param([Parameter(Mandatory)][string]$WorktreePath)
-    $p = Join-Path $WorktreePath '.review/implementer-evidence.json'
-    if (-not (Test-Path -LiteralPath $p -PathType Leaf)) { return @() }
-    $record = $null
-    try { $record = Get-Content -LiteralPath $p -Raw | ConvertFrom-Json } catch { return @() }
-    if ($null -eq $record -or -not ($record.PSObject.Properties.Name -contains 'suites')) { return @() }
-    $cmds = New-Object 'System.Collections.Generic.List[string]'
-    foreach ($s in @($record.suites)) {
-        if ($null -eq $s) { continue }
-        if (-not ($s.PSObject.Properties.Name -contains 'command')) { continue }
-        $c = [string]$s.command
-        if ([string]::IsNullOrWhiteSpace($c)) { continue }
-        [void]$cmds.Add($c)
-    }
-    return $cmds.ToArray()
-}
-
 function Invoke-ContinuousCoReviewWorktreeReviewRun {
     # The full detached run: auto-resolve → materialize stripped worktree + .review/ → agentic review → write a
     # reap-consumable result under $RunDir, then dispose. Returns the terminal status object.
@@ -498,15 +473,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         [string[]]$DesignContextFiles,
         [string]$CodeWriterHost,
         [string]$RequestedHost,
-        [int]$TimeoutSeconds = 900,
-        # T015 (FR-010): the DECLARED verification commands the orchestrator runs FOR the reviewer through the
-        # bounded wrapper (timeout + process-tree kill + byte-capped streaming output + pre/post mutation
-        # hash), injecting the HOST-OBSERVED results. Empty = fall back to commands EXPLICITLY recorded in
-        # the digest-matched implementer evidence (verbatim, never inferred); no evidence commands either =
-        # nothing runs, reported honestly. AllowedOutputPaths exempt only named build/log artifacts from the
-        # read-only mutation check.
-        [string[]]$DeclaredVerificationCommands = @(),
-        [string[]]$VerificationAllowedOutputPaths = @()
+        [int]$TimeoutSeconds = 900
     )
     New-Item -ItemType Directory -Path $RunDir -Force | Out-Null
     $resultOut = Join-Path $RunDir 'result.out'
@@ -676,13 +643,6 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 $implementerEvidencePresent = [bool](Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $RepoRoot -WorktreePath $wt.worktree_path -DigestTreeId $reviewedDigestId)
             }
         } catch { $implementerEvidencePresent = $false }
-        # T015 (FR-010) bounded-verification account - initialized HERE so every status write can report
-        # it honestly (a ceiling-halted or preflight-failed run declares/runs nothing); the actual run
-        # happens in the 'bounded-verification' phase below, AFTER the ceiling + preflight guards.
-        $verificationResultsPresent = $false
-        $verificationSource = 'none'
-        $verificationDeclaredCount = 0
-        $verificationRunCount = 0
         # ROUND: same lineage (change-set overlaps the prior round's) + the prior was blocking -> this is a fix
         # re-review (round+1, thread the prior findings); else a new checkpoint (round 1, no prior). The reviewer
         # escalates at the final round (the counter is the safety ceiling).
@@ -737,113 +697,55 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $writeStatus 'failed' @{ failure_reason = 'input-not-materialized'; spend_class = $preflightSpend.class; provider_spend = $preflightSpend.records_provider_spend; round_consumed = $preflightSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
-            # T015 (FR-010): RUN the declared verification commands through the bounded wrapper HERE, on
-            # the real orchestrator path (not an unwired helper), and inject the host-OBSERVED results
-            # into the worktree so the reviewer consumes engine-observed evidence rather than being told
-            # - falsely - that its own shell runs are wrapped. Wrapping is enforceable only where the
-            # ORCHESTRATOR controls the run: the spawned reviewer is an agentic host with direct tool
-            # access, so its OWN runs are governed by the confinement CONTRACT (T013 isolated snapshot /
-            # T014 origin-reference removal - NOT an OS-enforced sandbox) with the T016 detector
-            # monitoring and reporting violations; the prompt states that honestly. Placed AFTER the
-            # ceiling + preflight guards: a halted or unmaterialized run never spends verification time.
-            # SUPPLY (maintainer-directed minimal path): caller-explicit commands win; otherwise ONLY
-            # commands EXPLICITLY recorded in the digest-matched implementer evidence (the T111 injection
-            # above) are used - VERBATIM. Never inferred from suite names, never discovered by scanning,
-            # never a default repository sweep; evidence without literal command strings supplies NOTHING
-            # and the status reports that honestly. Generalized evidence discovery + richer provenance
-            # stay deferred to 203-W8 (T018).
-            $currentPhase = 'bounded-verification'
-            & $recordPhaseStart $currentPhase
-            $verificationDeclared = @($DeclaredVerificationCommands | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-            if ($verificationDeclared.Count -gt 0) { $verificationSource = 'caller' }
-            elseif ($implementerEvidencePresent) {
-                $verificationDeclared = @(Get-ContinuousCoReviewEvidenceDeclaredCommands -WorktreePath $wt.worktree_path)
-                if ($verificationDeclared.Count -gt 0) { $verificationSource = 'implementer-evidence' }
-            }
-            # Dedupe (first occurrence wins), then cap: a runaway declared set must not become the
-            # budget-death class this feature exists to stop. The cap is VISIBLE: declared vs run counts
-            # both land in the status, so a capped set never reads as full coverage.
-            $seenCmd = New-Object 'System.Collections.Generic.HashSet[string]'
-            $verificationDeclared = @($verificationDeclared | Where-Object { $seenCmd.Add($_) })
-            $verificationDeclaredCount = $verificationDeclared.Count
-            $verificationToRun = @($verificationDeclared | Select-Object -First 8)
-            $verificationInfraError = $null
-            $verificationTamperError = $null
-            if ($verificationToRun.Count -gt 0) {
-                $verifyCopyRoot = $null
-                $vres = @()
-                # INTEGRITY BASELINE: hash the CERTIFIED reviewer tree (source + .review-authority inputs;
-                # excludes .git and the engine-owned .review/verification output) BEFORE verification.
-                $reviewerPre = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
-                try {
-                    if (-not (Get-Command -Name 'Invoke-ContinuousCoReviewBoundedVerification' -ErrorAction SilentlyContinue)) {
-                        throw 'Invoke-ContinuousCoReviewBoundedVerification is not loaded in this session'
-                    }
-                    # Declared commands run in a DISPOSABLE COPY (robust against concurrent reviewer-host
-                    # churn), never the reviewer tree itself - so an output-writing verification does not
-                    # perturb the reviewer inputs, and a mutating declaration is RECORDED (source_mutated)
-                    # for the reviewer to judge. The copy is NOT an OS security boundary; the integrity
-                    # check below is what actually protects the reviewer tree.
-                    $verifyCopyRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ccr-verify-' + [guid]::NewGuid().ToString('N'))
-                    $null = Copy-ContinuousCoReviewVerificationSandbox -SourceWorktree $wt.worktree_path -DestRoot $verifyCopyRoot
-                    $vres = @(Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $verifyCopyRoot -DeclaredCommands $verificationToRun -AllowedOutputPaths @($VerificationAllowedOutputPaths) -TimeoutSeconds ([math]::Max(30, [math]::Min($TimeoutSeconds, 300))))
-                    $verificationRunCount = $vres.Count
-                }
-                catch { $verificationInfraError = [string]$_.Exception.Message }
-                finally { if ($null -ne $verifyCopyRoot) { Remove-Item -LiteralPath $verifyCopyRoot -Recurse -Force -ErrorAction SilentlyContinue } }
-                # INTEGRITY CHECK (finding 4b124d0e-1): the sandbox is not an OS boundary, so a hostile
-                # command with ambient authority could reach the reviewer tree by absolute/.. path. If any
-                # source or .review-authority file changed, the reviewer would inspect a tree DIFFERENT
-                # from the certified fire-time tree - detect it and REFUSE (below), never proceed.
-                if ($null -eq $verificationInfraError) {
-                    $reviewerPost = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
-                    $tamperedPaths = New-Object System.Collections.Generic.List[string]
-                    foreach ($k in $reviewerPre.Keys) { if (-not $reviewerPost.ContainsKey($k) -or $reviewerPost[$k] -ne $reviewerPre[$k]) { [void]$tamperedPaths.Add($k) } }
-                    foreach ($k in $reviewerPost.Keys) { if (-not $reviewerPre.ContainsKey($k)) { [void]$tamperedPaths.Add($k) } }
-                    if ($tamperedPaths.Count -gt 0) {
-                        $verificationTamperError = ('declared verification altered the certified reviewer tree (out-of-sandbox write): ' + (@($tamperedPaths | Select-Object -First 10) -join ', '))
-                    }
-                    else {
-                        # Clean: inject the host-observed results for the reviewer to consume.
-                        $vdir = Join-Path $wt.worktree_path '.review/verification'
-                        [void][System.IO.Directory]::CreateDirectory($vdir)
-                        [System.IO.File]::WriteAllText((Join-Path $vdir 'results.json'), (ConvertTo-Json $vres -Depth 6 -AsArray))
-                        $verificationResultsPresent = $true
-                    }
-                }
-            }
-            & $recordPhaseEnd 'bounded-verification'
-            # NEVER-FALSE-GREEN (finding 06cb3c64-2): a DECLARED verification that could not be EXECUTED
-            # or RECORDED must not degrade into no-results silence - the reviewer would proceed and could
-            # pass a clean review with the declared verification simply absent. Fail the run LOUDLY here,
-            # BEFORE the model is invoked: an infrastructure failure of the engine's own runner consumes
-            # NEITHER provider budget NOR a round-allowance slot (the T020 preflight class), and the
-            # status carries a diagnosable reason. (A command that RUNS and fails - non-zero exit,
-            # timeout, mutation - is a RESULT for the reviewer to judge, never this path.)
-            # A declared verification that could not EXECUTE (infra) or that TAMPERED with the certified
-            # reviewer tree (out-of-sandbox write) FAILS the run loudly BEFORE the model is invoked - the
-            # reviewer must never inspect a tree the verification could have steered, and a declared
-            # verification must never silently degrade into no-results. Both are the T020 preflight class
-            # (model not invoked -> neither budget consumed, no round latched); the reason distinguishes
-            # them. (A command that RUNS and fails - non-zero exit, timeout, self-mutation of the sandbox -
-            # is a RESULT for the reviewer to judge, never this path.)
-            if ($null -ne $verificationInfraError -or $null -ne $verificationTamperError) {
-                $verifyReason = if ($null -ne $verificationTamperError) { 'verification-tampered-reviewer-tree' } else { 'verification-not-executed' }
-                $verifyMsg = if ($null -ne $verificationTamperError) { $verificationTamperError } else { $verificationInfraError }
-                $verifySpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $false -ProducedReview $false
-                $runTimer.Stop()
-                & $writeStatus 'failed' @{ failure_reason = $verifyReason; message = $verifyMsg; spend_class = $verifySpend.class; provider_spend = $verifySpend.records_provider_spend; round_consumed = $verifySpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; verification_source = $verificationSource; verification_declared_count = $verificationDeclaredCount; verification_run_count = $verificationRunCount; verification_injected = $false; reviewed = $false }
-                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
-            }
+            # T015 (FR-010) SIMPLIFIED (maintainer option-1 decision, 2026-07-11): the orchestrator does
+            # NOT auto-run declared verification, copy a sandbox, or re-run commands per review. Automatic
+            # reruns were removed because they could not be confined in-process - the copy was not an OS
+            # boundary (ambient-authority escape, finding 4b124d0e), Copy-Item raced concurrent host churn
+            # (c9abe16d), unbounded output had to be capped (bfc7b5c5), and the mechanism fought T111's
+            # anti-budget-death design. Those cases survive as regression evidence in
+            # bounded-verification.Tests.ps1, documenting WHY. Runner-observed verification is now T018's
+            # job: verification runs ONCE through the recorded-run wrapper and the digest-bound evidence is
+            # injected as .review/implementer-evidence.json (above) for the reviewer to READ + spot-check.
+            # Invoke-ContinuousCoReviewBoundedVerification remains an EXPLICIT opt-in API only.
+            #
+            # REVIEWER-INVOCATION INTEGRITY: the reviewer is itself an agentic host with ambient authority.
+            # Hash the source + authoritative reviewer inputs (.review/changes.diff, design/, process/,
+            # implementer-evidence) immediately BEFORE and AFTER the reviewer runs; the ONLY permitted write
+            # is the reviewer's own output (.review/findings.jsonl). Any other mutation FAILS the review -
+            # the reviewer must inspect, never edit, the certified fire-time tree. This is MONITORED
+            # confinement, not OS-enforced filesystem isolation (a dedicated process identity + worktree-only
+            # ACL isolation is recorded as a separate future proposal, not T015 scope).
+            $reviewerOutputAllow = @('.review/findings.jsonl')
+            $reviewerPreHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
             $currentPhase = 'reviewer-execution'
-            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent; verification_source = $verificationSource; verification_declared_count = $verificationDeclaredCount; verification_run_count = $verificationRunCount; verification_injected = $verificationResultsPresent }
+            & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent }
             & $recordPhaseStart $currentPhase
             $reviewerHeartbeat = {
                 param($Telemetry)
                 & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
-            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty -ImplementerEvidencePresent:$implementerEvidencePresent -VerificationResultsPresent:$verificationResultsPresent
+            $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty -ImplementerEvidencePresent:$implementerEvidencePresent
             & $recordPhaseEnd 'reviewer-execution'
+            # INTEGRITY CHECK: did the reviewer mutate the certified tree beyond its allowed output? The
+            # model WAS invoked (provider spend real), so a violation is the invoked-failed class (spend +
+            # round consumed, distinct disposition) and the findings are DISCARDED - a reviewer that edited
+            # the tree it certifies cannot be trusted.
+            $reviewerPostHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
+            $reviewerTamperedPaths = New-Object System.Collections.Generic.List[string]
+            foreach ($k in $reviewerPreHashes.Keys) { if ((-not $reviewerPostHashes.ContainsKey($k) -or $reviewerPostHashes[$k] -ne $reviewerPreHashes[$k]) -and ($reviewerOutputAllow -notcontains $k)) { [void]$reviewerTamperedPaths.Add($k) } }
+            foreach ($k in $reviewerPostHashes.Keys) { if (-not $reviewerPreHashes.ContainsKey($k) -and ($reviewerOutputAllow -notcontains $k)) { [void]$reviewerTamperedPaths.Add($k) } }
+            if ($reviewerTamperedPaths.Count -gt 0) {
+                $currentPhase = 'reviewer-tamper'
+                $tamperSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false
+                [System.IO.File]::WriteAllText($resultOut, '')
+                $priorBlockingT = ($null -ne $prior) -and [bool]$prior.blocking
+                $priorFindingsT = if ($null -ne $prior) { [string]$prior.findings } else { $null }
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $priorBlockingT -Findings $priorFindingsT
+                $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'reviewer-tampered-tree'; run_id = $RunId; round = $round; provider_spend = $true; tampered_paths = @($reviewerTamperedPaths | Select-Object -First 10); recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'reviewer-tampered-tree'; message = ('the reviewer altered the certified tree beyond its allowed output (.review/findings.jsonl): ' + (@($reviewerTamperedPaths | Select-Object -First 10) -join ', ')); spend_class = $tamperSpend.class; provider_spend = $tamperSpend.records_provider_spend; round_consumed = $tamperSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout
             $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
@@ -872,7 +774,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $recordPhaseEnd 'write-result'
                 $currentPhase = 'complete'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; implementer_evidence = $implementerEvidencePresent; verification_source = $verificationSource; verification_declared_count = $verificationDeclaredCount; verification_run_count = $verificationRunCount; verification_injected = $verificationResultsPresent; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; implementer_evidence = $implementerEvidencePresent; reviewer_telemetry = $reviewerTelemetry }
             }
             else {
                 $currentPhase = 'write-failure'
@@ -894,7 +796,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $recordPhaseEnd 'write-failure'
                 $currentPhase = 'failed'
                 $runTimer.Stop()
-                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; spend_class = $failedSpend.class; provider_spend = $failedSpend.records_provider_spend; round_consumed = $failedSpend.consumes_round; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; verification_source = $verificationSource; verification_declared_count = $verificationDeclaredCount; verification_run_count = $verificationRunCount; verification_injected = $verificationResultsPresent; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'failed' @{ failure_reason = 'no-parseable-findings-json'; spend_class = $failedSpend.class; provider_spend = $failedSpend.records_provider_spend; round_consumed = $failedSpend.consumes_round; exit_code = $r.exit_code; stderr_tail = $stderrTail; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewer_telemetry = $reviewerTelemetry }
             }
         }
         finally {

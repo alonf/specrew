@@ -18,71 +18,62 @@ source of truth for what that prompt promises and why.
   filesystem sandbox**: confinement is a contract term the reviewer must honor, and the containment
   detector (T016) monitors for violations and reports them loudly.
 
-## Bounded verification — who runs it, and where the boundary is
+## Verification and reviewer-invocation integrity
 
-The reviewer is a full agentic host with **direct tool access**: it runs shell commands itself, so the
-engine **cannot** route those runs through a PowerShell wrapper, and the contract does not pretend it
-can. Enforcement is split honestly by who controls the run:
+**The orchestrator does NOT run verification for the reviewer.** An earlier design had the orchestrator
+re-run declared verification commands (auto-supplied from evidence) in a disposable copy on every
+review. It was removed (maintainer decision, 2026-07-11) because it could not be confined in-process and
+fought the anti-budget-death design of implementer evidence:
 
-- **The reviewer's own runs are governed by the confinement CONTRACT — not by a wrapper, and not by an
-  OS sandbox.** T013 materializes the worktree as an isolated snapshot outside the origin repository and
-  T014 removes origin references from the reviewer-visible context. Neither creates an OS-enforced
-  filesystem sandbox: nothing OS-level prevents a hostile command from reaching outside the snapshot, so
-  the contract makes staying inside it — read-only, declared commands only — a binding term stated
-  plainly in the prompt, and the containment detector (T016, on the T100 registry) monitors for
-  violations and reports them loudly after the fact (it never kills a reviewer mid-flight).
+- the copy was **not an OS boundary** — a command runs with ambient filesystem authority and can reach
+  the reviewer worktree by absolute/`..` path (finding `4b124d0e`);
+- copying the live worktree **raced concurrent reviewer-host churn** (finding `c9abe16d`);
+- unbounded output had to be capped (finding `bfc7b5c5`);
+- re-running whole suites every review is exactly what implementer evidence exists to avoid.
 
-- **The orchestrator's runs ARE wrapped, on the real review path — in a disposable copy, with a
-  reviewer-tree integrity check.** Before spawning the reviewer,
-  `Invoke-ContinuousCoReviewWorktreeReviewRun` runs the **declared verification commands** through
-  `Invoke-ContinuousCoReviewBoundedVerification` **in a disposable copy of the worktree**, so an
-  output-writing or read-only verification does its work without perturbing the tree the reviewer is
-  handed; a mutating declaration is recorded (`source_mutated`, for the reviewer to judge). The copy is
-  **not an OS security boundary** — a command runs with ambient filesystem authority and could reach
-  the reviewer tree by absolute/`..` path — so the orchestrator **hashes the certified reviewer tree
-  before and after** the run and, if any source or `.review`-authority file changed, **fails the run**
-  (`verification-tampered-reviewer-tree`) before the reviewer is invoked rather than letting it inspect
-  a steered tree. The copy is also robust against concurrent reviewer-host churn (transient host files
-  that vanish mid-copy are tolerated). On a clean run the **host-observed** results are injected at
-  `.review/verification/results.json` — the runner-observed complement to the implementer-supplied
-  evidence, independently observed by the engine, so it carries no forgery spot-check. The reviewer
-  prefers these results over re-running the same commands. The prompt block is gated on the injection
-  actually happening (no commands → no file, no block — never a pointer to an absent record).
+Those cases survive as **regression evidence** in `bounded-verification.Tests.ps1`, documenting why
+automatic reruns were removed.
 
-  **Where the declared commands come from (minimal supply):** the caller's explicit
-  `-DeclaredVerificationCommands` wins; when the caller declares none, the engine uses **only**
-  commands **explicitly recorded** in the digest-matched implementer evidence
-  (`.review/implementer-evidence.json`, `suites[].command`) — **verbatim**. Commands are never inferred
-  from suite names, discovered by scanning, or defaulted to repository sweeps; evidence that records no
-  command strings supplies nothing, and the run status reports the account honestly
-  (`verification_source`, declared vs run counts). Generalized evidence discovery and richer provenance
-  are deferred to Proposal 203 W8.
+**Runner-observed verification is T018's job.** Verification commands run **once** through the
+recorded-run wrapper (the implementer's tooling), and the digest-bound result is injected as
+`.review/implementer-evidence.json` for the reviewer to **read and spot-check** — never re-run wholesale
+(see the implementer-evidence block in the prompt). The digest gate means a stale record is never
+injected against a different tree.
 
-`Invoke-ContinuousCoReviewBoundedVerification` enforces, per command:
+**Reviewer-invocation integrity (the actual protection).** The reviewer is itself an agentic host with
+ambient authority, so the engine hashes the **source + authoritative reviewer inputs** (`.review/changes.diff`,
+`design/`, `process/`, `implementer-evidence.json`, and all source) immediately **before and after** the
+reviewer runs. The **only** permitted write is the reviewer's own output, `.review/findings.jsonl`. Any
+other mutation — editing/adding/deleting source, rewriting a `.review/` input, or leaving build/test
+artifacts behind — **fails the review** (`failure_reason: reviewer-tampered-tree`; the model was invoked
+so it is the invoked-failed spend class — provider spend + round consumed + a `reviewer-tampered-tree`
+disposition — and the findings are discarded). Volatile reviewer-host runtime dirs (`.antigravitycli/`,
+`.codex/`, `.claude/`, `.cursor/`, `.gemini/`, `.copilot/`) and `.git/` are excluded from the hash so a
+host's own session churn is never mistaken for tampering. This is **monitored confinement, not
+OS-enforced filesystem isolation**; the T016 detector likewise monitors and reports, it does not sandbox.
+
+**Future work (out of T015 scope).** Genuinely confining declared/reviewer commands — a dedicated
+process identity plus worktree-only ACL isolation — is recorded as a separate future proposal
+(`iterations/003/research/reviewer-os-isolation-future.md`).
+
+### The opt-in bounded-verification helper
+
+`Invoke-ContinuousCoReviewBoundedVerification` remains available as an **explicit opt-in API** for
+focused caller-supplied commands. **It never runs automatically** — the orchestrator does not call it.
+A caller that opts in gets, per command:
 
 1. **Timeout + process containment** — a per-command timeout; on expiry the ENTIRE child process tree
    is killed (`Kill(entireProcessTree)`), not just the direct child.
 2. **Byte-bounded, zero-disk streaming cap** — both pipes are pumped into fixed byte buffers capped at
    `MaxOutputBytes` each; overflow is read and **discarded** (the child is always drained, so it can
    never block on a full pipe), memory stays bounded at ~2× cap, and **nothing is written to disk** —
-   a sustained flood can exhaust neither reviewer memory nor host temp storage. `output_truncated`
-   records the overflow; `captured_stdout_bytes` / `captured_stderr_bytes` record what was retained.
-3. **Pre/post mutation evidence** — the worktree's existing-file hashes are compared before and after.
-   **Added, deleted, and modified files ALL count as mutations** (the runner must be read-only); a NEW
-   file is exempt **only** when it matches the explicit output-path allowlist (`AllowedOutputPaths`,
-   e.g. `*.log`, `coverage/*`). Any other new file is a mutation. The hashed set **includes the
-   reviewer-authority inputs under `.review/`** (`changes.diff`, design/spec/contracts, process
-   context) — a command that rewrites the very authority it verifies against manufactures a pass, so
-   that mutation is reported like any other. Excluded are only `.git/` and the narrow engine-owned
-   output area `.review/verification/`.
+   a sustained flood can exhaust neither memory nor host temp storage. `output_truncated` records the
+   overflow; `captured_stdout_bytes` / `captured_stderr_bytes` record what was retained.
+3. **Pre/post mutation evidence** — existing-file hashes before vs after. **Added, deleted, and modified
+   files ALL count**; a NEW file is exempt **only** via the explicit output-path allowlist
+   (`AllowedOutputPaths`). The hashed set **includes the `.review/` authority inputs** — rewriting the
+   authority a check depends on is itself a mutation. `.git/` and volatile host-runtime dirs are excluded.
 
-Each command yields a record: `{ command, exit_code, timed_out, output, output_truncated,
-captured_stdout_bytes, captured_stderr_bytes, source_mutated, mutated_paths }`. A run whose
-`source_mutated` is true is itself a finding.
-
-**Verification infrastructure failure is loud, never silent.** When commands WERE declared but the
-runner or the results write itself fails (an engine defect — distinct from a declared command that
-runs and fails, which is a result for the reviewer to judge), the run FAILS before the reviewer is
-invoked (`failure_reason: verification-not-executed`, diagnosable message, T020 preflight spend class —
-neither budget consumed). A declared verification can never silently degrade into "no results" and
-still produce a clean review.
+Each command yields `{ command, exit_code, timed_out, output, output_truncated, captured_stdout_bytes,
+captured_stderr_bytes, source_mutated, mutated_paths }`. The caller owns confinement of the directory it
+points the helper at.

@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T23:10:00Z
+**Updated**: 2026-07-11T23:55:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -243,8 +243,33 @@
   spot-checks; orchestrator does NOT re-run; the bounded wrapper stays for
   EXPLICIT caller-supplied focused commands only). Recommendation carried
   in the stop packet; proceeding with the hardened fix meanwhile.
-- Next: fix re-review (round 2, same lineage) verifies both resolutions;
-  then T016 if clean.
+- DESIGN DECISION (maintainer, option 1 = SIMPLIFY, 2026-07-11): removed
+  the orchestrator's automatic declared-command supply, verification-
+  sandbox copying, and per-review reruns entirely. Runner-observed
+  verification moves to T018 (commands run ONCE through the recorded-run
+  wrapper; digest-bound evidence injected as .review/implementer-evidence
+  .json for the reviewer to READ + spot-check). Invoke-...BoundedVerification
+  survives ONLY as an explicit opt-in API (never automatic). NEW protection
+  at the real risk: the REVIEWER invocation is integrity-checked - source +
+  .review authority hashed before/after, only .review/findings.jsonl may
+  change, any other mutation FAILS the review (reviewer-tampered-tree,
+  invoked-failed spend, findings discarded); volatile host dirs
+  (.antigravitycli/.codex/.claude/.cursor/.gemini/.copilot) + .git excluded
+  so host churn is not false-flagged. Docs say MONITORED confinement, not
+  OS isolation. Removed: Get-...EvidenceDeclaredCommands,
+  Copy-...VerificationSandbox, the -DeclaredVerificationCommands params, the
+  verification_* status fields, the prompt verification-results block +
+  VerificationResultsPresent param; the prompt now teaches STRICT read-only
+  (only findings.jsonl). Preserved as regression evidence (WHY reruns were
+  removed): bounded-verification.Tests.ps1 (opt-in helper). New suite
+  orchestrator-reviewer-integrity.Tests.ps1 (7): no-auto-run + helper never
+  auto-invoked, source-mutation fail, authority-mutation fail, findings.jsonl
+  allowed, host-dir not-flagged, honest prompt x2. OS-level isolation
+  (dedicated process identity + worktree-only ACLs) recorded as a future
+  proposal (research/reviewer-os-isolation-future.md), not T015 scope. Net a
+  code REDUCTION. Suites 18/18 (helper 11 + integrity 7); registry 16/16.
+- Next per the instruction: no older review in flight, ONE serialized review
+  against HEAD, then T016 if clean.
 
 ## Notes
 

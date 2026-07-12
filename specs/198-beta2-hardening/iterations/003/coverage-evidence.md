@@ -28,9 +28,9 @@ generator supersedes this at the iteration review boundary)
 
 | Command | Result | Pass | Fail | Duration | Exit | Notes |
 | ------- | ------ | ---- | ---- | -------- | ---- | ----- |
-| `$env:SPECREW_MODULE_PATH=(Get-Location).Path; Invoke-Pester -Path 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1' -PassThru` | pass | 12 | 0 | ~12s | 0 | FR-010 wrapper: timeout, process-tree kill, zero-disk byte-bounded streaming cap, add/delete/modify mutation, reviewer-authority (.review) mutation reported, engine-owned .review/verification exempt, allowlist, empty set |
-| `$env:SPECREW_MODULE_PATH=(Get-Location).Path; Invoke-Pester -Path 'tests/continuous-co-review/unit/orchestrator-verification-injection.Tests.ps1' -PassThru` | pass | 12 | 0 | ~11s | 0 | FR-010 wiring: caller + evidence supply reach the real path; no inference; digest-mismatch supplies nothing; disposable-copy keeps reviewer inputs untouched; out-of-sandbox tamper detected + refused; verification-not-executed loud-fail; honest prompt |
-| `& ./tests/f198-regression-suite.ps1` | pass | 16 | 0 | ~88s | 0 | Whole-feature honesty gate: 16 suites (ratchet, spend allowance, containment, origin hygiene, bounded verification + wiring, tracker honesty, verdict capture, budget, signoff gate, shared-engine, digest/exec-bit) |
+| `$env:SPECREW_MODULE_PATH=(Get-Location).Path; Invoke-Pester -Path 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1' -PassThru` | pass | 11 | 0 | ~12s | 0 | FR-010 opt-in helper + regression evidence for the removed auto-reruns: timeout, process-tree kill, zero-disk byte-bounded streaming cap, add/delete/modify mutation, reviewer-authority (.review) mutation reported, allowlist, empty set |
+| `$env:SPECREW_MODULE_PATH=(Get-Location).Path; Invoke-Pester -Path 'tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1' -PassThru` | pass | 7 | 0 | ~9s | 0 | FR-010 simplified: orchestrator never auto-runs the helper + injects no verification results; reviewer-invocation integrity fails on source/authority mutation, allows only .review/findings.jsonl, ignores volatile host dirs; honest strict-read-only prompt |
+| `& ./tests/f198-regression-suite.ps1` | pass | 16 | 0 | ~88s | 0 | Whole-feature honesty gate: 16 suites (ratchet, spend allowance, containment, origin hygiene, bounded-verification helper + reviewer-integrity, tracker honesty, verdict capture, budget, signoff gate, shared-engine, digest/exec-bit) |
 
 ## Coverage Estimate
 
@@ -44,7 +44,7 @@ generator supersedes this at the iteration review boundary)
 | ----------- | --------------------- |
 | FR-008 (worktree relocation) | tests/continuous-co-review/unit/worktree-containment.Tests.ps1 |
 | FR-009 (origin-path hygiene) | tests/continuous-co-review/unit/origin-path-hygiene.Tests.ps1 |
-| FR-010 (bounded verification + confinement contract) | tests/continuous-co-review/unit/bounded-verification.Tests.ps1, tests/continuous-co-review/unit/orchestrator-verification-injection.Tests.ps1 |
-| FR-013 (reviewer taught what is absent) | tests/continuous-co-review/unit/orchestrator-verification-injection.Tests.ps1 (honest-prompt cases) |
+| FR-010 (confinement contract + reviewer-invocation integrity; opt-in bounded helper) | tests/continuous-co-review/unit/bounded-verification.Tests.ps1, tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1 |
+| FR-013 (reviewer taught what is absent; strict read-only) | tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1 (honest-prompt cases) |
 | FR-018, FR-019 (spend allowance + two-budget) | tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1 |
 | NFR-007 (CI enforcement) | tests/f198-regression-suite.ps1 (blocking CI step) |

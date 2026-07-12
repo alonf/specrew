@@ -397,66 +397,43 @@ function Get-ContinuousCoReviewGenerousBudget {
     return [math]::Min([int]($DefaultSeconds * $factor), $CapSeconds)
 }
 
+# Volatile reviewer-HOST runtime directories: an agentic reviewer host (or a concurrent one) writes
+# ephemeral session state into its cwd. These are NOT source and NOT tampering, so integrity hashing
+# ignores them - otherwise every real review would false-flag its own host's churn.
+$script:ContinuousCoReviewVolatileHostDirs = @('.git', '.antigravitycli', '.codex', '.claude', '.cursor', '.gemini', '.copilot')
+
 function Get-ContinuousCoReviewWorktreeSourceHashes {
-    # FR-010 mutation-evidence helper: a map { relative-path -> sha256 } of the worktree's existing
-    # files. Comparing this before vs after a verification run makes any MUTATION of an existing file
-    # visible - new files (legitimate test output) do not perturb existing entries, so the delta
-    # isolates the read-only violation.
-    # SCOPE (finding 90173dc6-1): the REVIEWER-AUTHORITY inputs under .review/ (changes.diff, design/,
-    # contracts, process context) ARE hashed - a verification command that rewrites the very authority
-    # it verifies against can manufacture a pass, so such a mutation MUST be reported. Excluded are
-    # ONLY .git/ and the narrow engine-owned output area .review/verification/ (where the orchestrator
-    # itself records results - never a command's legitimate write target, never source).
+    # Integrity-evidence helper: a map { relative-path -> sha256 } of the worktree's existing files.
+    # Comparing this before vs after execution makes any MUTATION of an existing file visible; a caller
+    # applies its own allowlist for legitimately-created files (verification output, reviewer findings).
+    # SCOPE: source AND the REVIEWER-AUTHORITY inputs under .review/ (changes.diff, design/, contracts,
+    # process context, implementer-evidence) are hashed - rewriting the authority the review depends on
+    # is exactly the tampering this must catch. Excluded are .git/ and the volatile reviewer-host runtime
+    # dirs (ephemeral session state, never source), so host churn does not false-flag as tampering.
     param([Parameter(Mandatory)][string]$WorktreePath)
     $map = @{}
     $rootFull = (Resolve-Path -LiteralPath $WorktreePath).Path.TrimEnd([char]'\', [char]'/')
     foreach ($f in @(Get-ChildItem -LiteralPath $WorktreePath -Recurse -File -Force -ErrorAction SilentlyContinue)) {
         $rel = [System.IO.Path]::GetRelativePath($rootFull, $f.FullName).Replace('\', '/')
-        if ($rel -like '.git/*' -or $rel -like '.review/verification/*') { continue }
+        $top = ($rel -replace '/.*$', '')
+        if ($script:ContinuousCoReviewVolatileHostDirs -contains $top) { continue }
         try { $map[$rel] = (Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256 -ErrorAction Stop).Hash } catch { $map[$rel] = 'unreadable' }
     }
     return $map
 }
 
-function Copy-ContinuousCoReviewVerificationSandbox {
-    # T015 (findings 97a93603-2 / 4b124d0e-1): a DISPOSABLE copy of the reviewer worktree in which the
-    # declared verification runs, so an output-writing or read-only verification does its work WITHOUT
-    # perturbing the tree the reviewer is handed. This is NOT a security boundary - a command has ambient
-    # filesystem authority and can still reach the reviewer tree by absolute/.. path; the ORCHESTRATOR
-    # therefore hashes the certified reviewer tree before/after and REFUSES the run if it changed.
-    # ROBUST against concurrent reviewer-host churn (finding c9abe16d, where Copy-Item -Recurse died when
-    # a transient .antigravitycli/*.json vanished mid-copy): volatile host-runtime dirs and .git are
-    # skipped, and a file that vanishes mid-copy is tolerated - the stable SOURCE the verification needs
-    # is what matters, not another run's ephemeral host state.
-    param([Parameter(Mandatory)][string]$SourceWorktree, [Parameter(Mandatory)][string]$DestRoot)
-    $srcRoot = (Resolve-Path -LiteralPath $SourceWorktree).Path.TrimEnd([char]'\', [char]'/')
-    [void][System.IO.Directory]::CreateDirectory($DestRoot)
-    $skipTop = @('.git', '.antigravitycli', '.codex', '.claude', '.cursor', '.gemini')
-    foreach ($item in @(Get-ChildItem -LiteralPath $srcRoot -Recurse -Force -ErrorAction SilentlyContinue)) {
-        $rel = [System.IO.Path]::GetRelativePath($srcRoot, $item.FullName)
-        $top = ($rel -replace '[\\/].*$', '')
-        if ($skipTop -contains $top) { continue }
-        $dest = Join-Path $DestRoot $rel
-        try {
-            if ($item.PSIsContainer) { [void][System.IO.Directory]::CreateDirectory($dest) }
-            else {
-                $destDir = [System.IO.Path]::GetDirectoryName($dest)
-                if (-not [string]::IsNullOrEmpty($destDir)) { [void][System.IO.Directory]::CreateDirectory($destDir) }
-                Copy-Item -LiteralPath $item.FullName -Destination $dest -Force -ErrorAction Stop
-            }
-        }
-        catch { $null = $_ }   # a file vanished mid-copy (concurrent host churn) - tolerated
-    }
-    return $DestRoot
-}
-
 function Invoke-ContinuousCoReviewBoundedVerification {
-    # FR-010 (203 W3) + the maintainer's REQUIRED bounded in-worktree verification: run the DECLARED
-    # verification commands INSIDE the confined worktree, each with (1) a TIMEOUT and process
-    # CONTAINMENT (the whole child process tree is killed on timeout), (2) CAPPED output capture, and
-    # (3) PRE/POST MUTATION EVIDENCE (existing-file hashes before vs after, so a verification that
-    # mutated the read-only source is recorded). It runs ONLY the declared command set - never an
-    # unrestricted whole-repository suite. Returns one record per command.
+    # OPT-IN API ONLY (maintainer's option-1 simplification 2026-07-11): a focused bounded runner for
+    # EXPLICIT caller-supplied commands. It is NOT wired into the automatic review flow and MUST NEVER
+    # run automatically - the orchestrator does not call it (automatic per-review reruns were removed
+    # because they could not be confined in-process; see reviewer-spawn-contract.md). Runner-observed
+    # verification for a review is T018's job (commands run ONCE through the recorded-run wrapper; the
+    # digest-bound evidence is injected for the reviewer to read).
+    #
+    # Runs the DECLARED commands in the given directory, each with (1) a TIMEOUT and process CONTAINMENT
+    # (the whole child process tree is killed on timeout), (2) a byte-bounded, zero-disk CAPPED output
+    # capture, and (3) PRE/POST MUTATION EVIDENCE (existing-file hashes before vs after). Returns one
+    # record per command. The caller owns confinement of the directory it points this at.
     param(
         [Parameter(Mandatory)][string]$WorktreePath,
         [string[]]$DeclaredCommands = @(),
@@ -579,7 +556,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     # The SLIM prompt (a few KB) — the reviewer reads the diff + design + browses/runs the project itself.
     # Round-aware: round 1 reviews; later rounds verify the prior findings are resolved; at the FINAL round the
     # reviewer escalates (the counter is a safety ceiling, the reviewer's judgement is the brains).
-    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope, [switch]$DesignContextEmpty, [switch]$ImplementerEvidencePresent, [switch]$VerificationResultsPresent)
+    param([Parameter(Mandatory)][string]$RunId, [int]$RoundNumber = 1, [int]$MaxRounds = 2, [string]$PriorFindings, [string]$HumanScope, [switch]$DesignContextEmpty, [switch]$ImplementerEvidencePresent)
     # f1 (codex 2026-07-08): when NO design context resolved, say so HONESTLY - the reviewer must not
     # silently skip design conformance; it reviews code/process and RAISES the gap as a finding.
     $designContextBlock = if ($DesignContextEmpty) {
@@ -611,15 +588,6 @@ function Get-ContinuousCoReviewSlimPrompt {
         "`nIMPLEMENTER TEST EVIDENCE (implementer-recorded, digest-matched): .review/implementer-evidence.json was recorded by the implementer's tooling and injected ONLY because its reviewed-state digest matches EXACTLY the tree you are reviewing (any later edit changes the digest and orphans the record). It is IMPLEMENTER-SUPPLIED, not independently observed: treat the recorded suites (names, pass/fail counts, exit codes, durations) as strong prior evidence for budget purposes - do NOT re-run whole covered suites by default - but SPOT-CHECK a small targeted sample (a suite subset or a handful of named tests) where your findings depend on that evidence. ANY mismatch between a spot-check and the record is itself a BLOCKING honesty finding. Hand-written claims in review.md, quality notes, or commit messages remain claims with zero evidence standing, and the falsification stance applies to them unchanged.`n"
     }
     else { '' }
-    # T015 (FR-010): the orchestrator ran the DECLARED verification commands through the bounded wrapper and
-    # injected the HOST-OBSERVED results. Gated on the same flag the orchestrator sets when it actually wrote
-    # the file, so the reviewer is never pointed at an absent record. Unlike implementer evidence, THIS is
-    # independently observed by the engine (timeout + process-tree kill + byte-capped output + pre/post
-    # mutation hash), so it needs no forgery spot-check - a recorded mutation or non-zero exit IS a finding.
-    $verificationBlock = if ($VerificationResultsPresent) {
-        "`nBOUNDED VERIFICATION RESULTS (orchestrator-observed, host-run): .review/verification/results.json holds the DECLARED verification commands the engine ran FOR you before you were spawned - each with a per-command timeout + full process-tree kill on expiry, a byte-capped captured output (output_truncated flags the cap), and a pre/post worktree hash (source_mutated / mutated_paths). These are INDEPENDENTLY host-observed, not implementer-supplied: treat a recorded clean pass as strong evidence and do NOT re-run that same command by default. A record whose source_mutated is true, or whose exit_code is non-zero where a pass was claimed, is itself a finding to report.`n"
-    }
-    else { '' }
     # RESOLVED-BY-DEFERRAL (the missing half of the T106 human-close, found by DEC-197-I010-008's own
     # first exercise: a round-4 reviewer READ the deferral decision and still escalated because this
     # teaching had no deferral vocabulary - and a full+independent block is not overridable by design
@@ -634,7 +602,7 @@ function Get-ContinuousCoReviewSlimPrompt {
     }
     return @"
 You are the Specrew continuous co-reviewer (a fresh-context, design- AND process-conformance reviewer).
-$scopeBlock$designContextBlock$evidenceBlock$verificationBlock
+$scopeBlock$designContextBlock$evidenceBlock
 Your current working directory IS the reviewed project. You are TRUSTED and may READ any file and RUN
 verification you need — but you are READ-ONLY on the source: do NOT modify, fix, or patch any file. Your job is
 to find issues, not fix them.
@@ -647,14 +615,14 @@ engagement, and a violation is treated as a blocking finding when detected. Stay
 read, or reach the origin project, and do not depend on absolute paths. Anything intentionally absent here — the
 stripped machinery, a relativized path — is EXPECTED; treat a reference to it as unverifiable-here, never as a defect.
 
-BOUNDED VERIFICATION: prefer the orchestrator-observed verification results above (when present) over re-running
-their commands; when NO results file is present, the engine declared and ran NOTHING — your own targeted runs are
-then the only runtime evidence this round. When you DO run tests/build yourself to verify a claim, run ONLY the
-DECLARED verification commands the change says validate it — never an unrestricted whole-repository sweep — and
-keep each run SHORT and targeted. Your own runs are bounded by the WORKTREE CONFINEMENT contract above (an isolated
-snapshot, not an OS-enforced sandbox): honoring it is part of the review itself. You are READ-ONLY on the source: a
-command that edits, adds, or deletes files is a mutation you have caused — do not run it, and report a claimed
-verification that requires one as a finding.
+VERIFICATION — STRICTLY READ-ONLY (your tree is under integrity check): this working directory is hashed
+immediately BEFORE and AFTER your review, and the ONLY file you may create or modify is .review/findings.jsonl
+(your output). ANY other change to the tree — editing/adding/deleting source, rewriting a .review/ input, or
+leaving build/test artifacts behind — FAILS the whole review. So do NOT run builds or tests that write into this
+directory. Use the implementer's digest-matched test evidence (above, when present) as your runtime evidence and
+SPOT-CHECK it by READING — the diff, the code, the recorded commands and exit codes — not by re-running. A
+read-only inspection command that writes nothing here (reading files, git log, grep) is fine; anything that writes
+into the tree is not. A claim you cannot confirm without mutating the tree is reported as a finding, never acted on.
 
 1. Read .review/changes.diff — this is the change-set under review (what changed).
 2. Read .review/design/ — the spec + design-analysis (PROSE intent) the change must conform to, AND
@@ -1086,10 +1054,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
         [scriptblock]$Heartbeat,
         [string]$HumanScope,
         [switch]$DesignContextEmpty,
-        [switch]$ImplementerEvidencePresent,
-        [switch]$VerificationResultsPresent
+        [switch]$ImplementerEvidencePresent
     )
-    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty -ImplementerEvidencePresent:$ImplementerEvidencePresent -VerificationResultsPresent:$VerificationResultsPresent
+    $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty -ImplementerEvidencePresent:$ImplementerEvidencePresent
     $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
 
     # T108/FR-033 (D-197-I009-015): retry ONCE on an EMPTY exit-0 result before the run can be declared

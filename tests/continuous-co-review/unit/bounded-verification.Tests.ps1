@@ -1,10 +1,13 @@
 #requires -Version 7.0
 $ErrorActionPreference = 'Stop'
 
-# FR-010 (203 W3) — reviewer BOUNDED in-worktree verification (F-198 iteration 003, T015):
-# the reviewer runs ONLY declared verification commands, each with a timeout + process containment,
-# a UTF-8 BYTE output cap, and pre/post mutation evidence (add/delete/modify all count; a new file is
-# exempt only via an explicit output-path allowlist). Paired coverage across every constraint.
+# FR-010 (203 W3) — the OPT-IN bounded verification helper (F-198 iteration 003, T015). After the
+# maintainer's option-1 simplification (2026-07-11) this helper is NOT wired into the automatic review
+# flow; it remains an explicit opt-in API for focused caller-supplied commands. This suite is also the
+# REGRESSION EVIDENCE for why automatic per-review reruns were removed: it documents the timeout +
+# process-tree kill, the byte-bounded ZERO-DISK output cap (the unbounded-output finding bfc7b5c5), and
+# the pre/post mutation evidence incl. the reviewer-authority .review inputs (add/delete/modify all
+# count; a new file is exempt only via an explicit output-path allowlist).
 Describe 'reviewer bounded in-worktree verification (FR-010)' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
@@ -135,16 +138,6 @@ Describe 'reviewer bounded in-worktree verification (FR-010)' {
             $r = @(Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt -DeclaredCommands @('Set-Content -LiteralPath .review/changes.diff -Value "FORGED DIFF" -NoNewline') -TimeoutSeconds 30)
             $r[0].source_mutated | Should -Be $true -Because 'rewriting the authority the verification runs against manufactures a pass - it must be reported'
             $r[0].mutated_paths | Should -Contain '.review/changes.diff'
-        }
-        finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    It 'the engine-owned .review/verification/ output area stays exempt (the narrow allowlist)' {
-        $wt = script:New-Worktree
-        try {
-            $cmd = 'New-Item -ItemType Directory -Path .review/verification -Force | Out-Null; Set-Content -LiteralPath .review/verification/probe.json -Value "{}" -NoNewline'
-            $r = @(Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt -DeclaredCommands @($cmd) -TimeoutSeconds 30)
-            $r[0].source_mutated | Should -Be $false -Because 'the orchestrator-owned results area is the ONLY .review exemption'
         }
         finally { Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue }
     }
