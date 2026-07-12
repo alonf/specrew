@@ -892,6 +892,74 @@ function Get-ContinuousCoReviewHarvestedPartialResult {
     return ($result | ConvertTo-Json -Depth 100 -Compress)
 }
 
+function Get-ContinuousCoReviewFilePrimaryResult {
+    # FILE-PRIMARY acceptance (maintainer option-1 with strict qualification, 2026-07-12). Some reviewer hosts
+    # (codex exec) DELIVER their review by APPENDING to .review/findings.jsonl and exit 0 with EMPTY stdout - the
+    # engine's stdout-primary assumption then misfires on every such review: a wasteful T108 retry (a second full
+    # provider run), a 'partial' completeness mislabel, and a failure-looking EMPTY_EXIT0 WARN - even though the
+    # reviewer produced a COMPLETE review on disk. This returns a FULLY contract-validated FindingsResult JSON
+    # built from that file ONLY when EVERY strict condition holds; otherwise $null (FAIL-CLOSED - the caller then
+    # keeps the retry / lenient-harvest / partial path unchanged).
+    #
+    # STRICT, unlike the LENIENT Get-ContinuousCoReviewHarvestedPartialResult (which salvages a cut-short/timeout
+    # run and SKIPS malformed lines): here a single malformed/truncated line, a foreign/absent source_run_id, an
+    # empty file, or ANY schema miss => $null. The CALLER enforces the two conditions not checkable here: a CLEAN
+    # reviewer exit (0, not timed out) BEFORE calling, and the reviewer-tree INTEGRITY check (the orchestrator's
+    # pre/post-hash) before trusting the result.
+    #
+    # A ZERO-finding review is DELIBERATELY not acceptable via this path: file-only delivery cannot PROVE
+    # 'no_findings' (an empty/absent file is indistinguishable from a lost result), so a clean no-findings verdict
+    # must arrive as the stdout FindingsResult - never a bare empty file (maintainer rule; matches the prompt's
+    # NEVER-FALSE-GREEN: empty output is never a clean pass).
+    param(
+        [Parameter(Mandatory)][string]$WorktreePath,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][datetime]$RunStartUtc,
+        [bool]$ExistedBefore,
+        [string]$SchemaRoot
+    )
+    $jsonlPath = Join-Path $WorktreePath '.review/findings.jsonl'
+    if (-not (Test-Path -LiteralPath $jsonlPath -PathType Leaf)) { return $null }
+    # (2) CREATED / WRITTEN during THIS run. A file that did not exist at run start and exists now was created by
+    # this run; a PRE-EXISTING file counts only if its write time advanced past run start (a stale leftover with
+    # an older mtime is refused). Doubly-guarded by the per-finding source_run_id check (5) below.
+    $fi = Get-Item -LiteralPath $jsonlPath -ErrorAction SilentlyContinue
+    if ($null -eq $fi) { return $null }
+    $createdThisRun = (-not $ExistedBefore) -or ($fi.LastWriteTimeUtc -ge $RunStartUtc)
+    if (-not $createdThisRun) { return $null }
+    # (3)/(4)/(5) EVERY nonblank line must parse (no truncated/malformed tail tolerated) AND carry THIS run's
+    # source_run_id. A single failure fails the WHOLE file closed - there is no partial accept on this path.
+    $findings = [System.Collections.Generic.List[object]]::new()
+    foreach ($line in @(Get-Content -LiteralPath $jsonlPath -ErrorAction Stop)) {
+        if ([string]::IsNullOrWhiteSpace($line)) { continue }
+        $obj = $null
+        try { $obj = ([string]$line).Trim() | ConvertFrom-Json -Depth 100 -ErrorAction Stop }
+        catch { return $null }   # (4) malformed / truncated line -> fail closed
+        if ($null -eq $obj) { return $null }
+        if (($null -eq $obj.PSObject.Properties['source_run_id']) -or ([string]$obj.source_run_id -ne $RunId)) { return $null }   # (5) current run only
+        $findings.Add($obj)
+    }
+    if ($findings.Count -eq 0) { return $null }   # (3) empty file -> cannot prove a zero-finding review -> fail closed
+    # (6) assemble the FindingsResult envelope and run FULL contract validation against findings-result.schema.json.
+    $result = [pscustomobject][ordered]@{
+        schema_version = '1.0'
+        run_id         = $RunId
+        status         = 'findings'
+        findings       = $findings.ToArray()
+        created_at     = (ConvertTo-ContinuousCoReviewReviewerIsoTimestamp)
+    }
+    if (-not (Get-Command -Name 'Test-ReviewerContractObject' -ErrorAction SilentlyContinue)) {
+        $contractsHelper = Join-Path $PSScriptRoot 'reviewer-contracts.ps1'
+        if (Test-Path -LiteralPath $contractsHelper -PathType Leaf) { try { . $contractsHelper } catch { $null = $_ } }
+    }
+    if (-not (Get-Command -Name 'Test-ReviewerContractObject' -ErrorAction SilentlyContinue)) { return $null }   # cannot validate -> fail closed
+    $root = try { Get-ContinuousCoReviewContractRoot -SchemaRoot $SchemaRoot } catch { $null }
+    if ([string]::IsNullOrWhiteSpace($root)) { return $null }
+    $validation = try { Test-ReviewerContractObject -ContractName 'FindingsResult' -InputObject $result -SchemaRoot $root } catch { $null }
+    if (($null -eq $validation) -or (-not $validation.Valid)) { return $null }   # (6) any schema miss -> fail closed
+    return ($result | ConvertTo-Json -Depth 100 -Compress)
+}
+
 function New-ContinuousCoReviewCeilingEscalationResult {
     # D-197-I009-010 (false-green hardening): the round CEILING halts the auto-loop to stop the spin (the round-9
     # fix) — but a halt is NOT a clean pass. The old ceiling wrote an EMPTY result, so the run read as
@@ -1152,6 +1220,11 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
         [switch]$ImplementerEvidencePresent
     )
     $prompt = Get-ContinuousCoReviewSlimPrompt -RunId $RunId -RoundNumber $RoundNumber -MaxRounds $MaxRounds -PriorFindings $PriorFindings -HumanScope $HumanScope -DesignContextEmpty:$DesignContextEmpty -ImplementerEvidencePresent:$ImplementerEvidencePresent
+    # FILE-PRIMARY (2026-07-12): capture whether the reviewer's output file pre-exists + a run-start instant BEFORE
+    # the reviewer runs, so Get-ContinuousCoReviewFilePrimaryResult can prove the file was written by THIS run.
+    $findingsJsonlPath = Join-Path $WorktreePath '.review/findings.jsonl'
+    $runStartUtc = [datetime]::UtcNow
+    $existedBefore = Test-Path -LiteralPath $findingsJsonlPath -PathType Leaf
     $r = Invoke-ContinuousCoReviewAgentInWorktree -WorktreePath $WorktreePath -Prompt $prompt -HostName $HostName -TimeoutSeconds $TimeoutSeconds -Heartbeat $Heartbeat
 
     # T108/FR-033 (D-197-I009-015): retry ONCE on an EMPTY exit-0 result before the run can be declared
@@ -1161,9 +1234,21 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
     # final stdout was lost (finalization/capture gap); ABSENT = the run produced nothing at all.
     # NEVER-FALSE-GREEN is preserved: a still-empty retry returns empty and the orchestrator fails the
     # run loudly (no-parseable-findings-json) - the retry can only ADD a real result, never fake one.
+    #
+    # FILE-PRIMARY (2026-07-12): an EMPTY exit-0 result is EITHER a host that DELIVERED its review by writing
+    # .review/findings.jsonl and exited 0 with empty stdout (codex exec - a COMPLETE review on disk), OR a
+    # genuinely empty run. Distinguish them BEFORE retrying: if the reviewer produced a fully-contract-validated,
+    # current-run findings.jsonl, ACCEPT it as file-primary - NO retry, NO WARN (retrying would only burn a second
+    # provider run for the same review, the codex empty-stdout misfire). Only a genuinely empty result (no valid
+    # file) retries once, and only THEN is the WARN emitted. A NON-empty stdout is the stdout-primary path, left
+    # ENTIRELY unchanged (claude): $emptyExit0 is false, so neither the file-primary check nor the retry runs.
+    $filePrimary = $null
     $emptyExit0 = ($null -ne $r) -and ($r.exit_code -eq 0) -and [string]::IsNullOrWhiteSpace([string]$r.stdout)
     if ($emptyExit0) {
-        $jsonlPresent = Test-Path -LiteralPath (Join-Path $WorktreePath '.review/findings.jsonl') -PathType Leaf
+        $filePrimary = Get-ContinuousCoReviewFilePrimaryResult -WorktreePath $WorktreePath -RunId $RunId -RunStartUtc $runStartUtc -ExistedBefore $existedBefore
+    }
+    if ($emptyExit0 -and (-not $filePrimary)) {
+        $jsonlPresent = Test-Path -LiteralPath $findingsJsonlPath -PathType Leaf
         $firstAttempt = [pscustomobject][ordered]@{
             exit_code                    = $r.exit_code
             stdout_length                = ([string]$r.stdout).Length
@@ -1182,6 +1267,20 @@ function Invoke-ContinuousCoReviewWorktreeReviewer {
                     retry_still_empty    = [string]::IsNullOrWhiteSpace([string]$r.stdout)
                 }) -Force
         }
+        # the retry is a fresh reviewer run in the SAME worktree - if IT too delivered via the file with empty
+        # stdout, accept that; a NON-empty retry stdout is the stdout-primary path (left unchanged).
+        $emptyExit0Retry = ($null -ne $r) -and ($r.exit_code -eq 0) -and [string]::IsNullOrWhiteSpace([string]$r.stdout)
+        if ($emptyExit0Retry) {
+            $filePrimary = Get-ContinuousCoReviewFilePrimaryResult -WorktreePath $WorktreePath -RunId $RunId -RunStartUtc $runStartUtc -ExistedBefore $existedBefore
+        }
+    }
+
+    # Tag a COMPLETE file-delivered review so the orchestrator records completeness='full' + source=file-primary
+    # (instead of the empty-stdout -> lenient-harvest -> 'partial' path). The orchestrator's tamper check still runs
+    # AFTER this and can still fail the run; this only carries the validated result forward.
+    if ($filePrimary) {
+        $r | Add-Member -NotePropertyName 'file_primary_result' -NotePropertyValue $filePrimary -Force
+        if ($null -ne $r.telemetry) { $r.telemetry | Add-Member -NotePropertyName 'result_source' -NotePropertyValue 'file-primary' -Force }
     }
     return $r
 }

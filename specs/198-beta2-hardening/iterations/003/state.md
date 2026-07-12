@@ -470,17 +470,29 @@
   context) intermittently failed. FIX: the reviewer spawn
   (Invoke-ContinuousCoReviewAgentInWorktree) now sets
   $psi.Environment['SPECREW_REFOCUS_DISABLE']='1', inherited by codex + its
-  hook children, so a reviewer can never trigger governance on itself. Caveat:
-  the first codex invocation after the fix still empty-exit0'd once (T108 retry
-  then succeeded) - the fix removes the hook-interference vector but a residual
-  low-rate codex empty-exit still exists (the T108 retry handles it); to be
-  confirmed with more runs.
-- Review 551b5bae (codex, WITH the fix, completed via retry): 1 blocking -
-  evidence freshness: my UNCOMMITTED hook-suppress change shifted the digest,
-  so implementer-evidence.json was orphaned (absent from the snapshot), and the
-  coverage table was stale (worktree-containment 4 -> now 8). Fixed: coverage
-  counts updated, hook-suppress fix committed, evidence re-recorded for the new
-  digest.
+  hook children, so a reviewer can never trigger governance on itself.
+- CODEX empty-exit0 SECOND CAUSE + FIX (maintainer 2-step verification,
+  2026-07-12). Step 1 (commit 983ae3e7): deterministic regression proving the
+  reviewer launch path passes SPECREW_REFOCUS_DISABLE=1 and the dispatcher exits
+  before governance when it inherits it. Step 2 (three sequential + one preserved
+  codex probe via the exact launch path): empty-exit0-by-stdout PERSISTS, but
+  .review/findings.jsonl is PRESENT + VALID every time (finalization-or-capture-
+  gap, NOT the hook vector's no-output-produced). PROVEN second cause: codex
+  DELIVERS its review to .review/findings.jsonl (per the slim prompt) and exits 0
+  with EMPTY stdout; the engine's stdout-primary assumption then misfired - a
+  wasteful T108 retry, a 'partial' completeness mislabel, and a failure-looking
+  WARN - even though the orchestrator harvest still recovered the findings (the
+  co-review was FUNCTIONAL, just wasteful + mislabeled). CODEX_HOME NOT changed.
+- FIX (file-primary result, maintainer option-1 w/ strict qualification): a CLEAN
+  reviewer exit (0, not timed out) + EMPTY stdout + a current-run, every-line-
+  parses, fully contract-validated .review/findings.jsonl = a COMPLETE result
+  (completeness='full', result_source=file-primary) - NO retry, NO WARN. STRICT +
+  fail-closed (malformed/truncated/stale/mismatched-run/absent/empty falls back to
+  the retry/harvest/partial path); a zero-finding verdict must arrive via stdout
+  (file-only delivery cannot prove no_findings); stdout-primary hosts (claude)
+  unchanged. New suites reviewer-file-primary-result (10) + reviewer-hook-
+  suppression (3); F-198 registry 18/18 green. NEXT: re-record digest-bound
+  evidence for the committed tree, then one serialized co-review of that digest.
 
 ## Notes
 

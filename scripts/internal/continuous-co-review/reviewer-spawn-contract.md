@@ -66,6 +66,23 @@ a host may create NEW ephemeral session state there, but a **pre-existing** file
 those dirs are hashed, not skipped. This is **monitored confinement, not OS-enforced filesystem
 isolation**; the T016 detector likewise monitors and reports, it does not sandbox.
 
+**Result delivery — stdout-primary AND file-primary (2026-07-12).** The prompt asks the reviewer for its
+FindingsResult two ways: incrementally APPENDED to `.review/findings.jsonl` (one finding per line, so a
+timeout still surfaces what it found) AND as a final JSON object on **stdout**. Hosts differ: `claude`
+returns the authoritative object on stdout (STDOUT-PRIMARY); `codex exec` DELIVERS via the file and exits 0
+with **empty stdout** (FILE-PRIMARY). The engine honours both. When a host exits **cleanly (0, not timed
+out) with empty stdout** AND `.review/findings.jsonl` is a **complete, current-run, fully
+contract-validated** result (every non-blank line parses, every finding carries this run's `source_run_id`,
+the assembled FindingsResult passes `findings-result.schema.json`), that file **IS** the review: it is
+accepted as `completeness='full'` (`result_source: file-primary`) with **no** wasteful empty-exit0 retry.
+This is STRICT and **fail-closed** — a single malformed/truncated line, a foreign/absent run id, an empty or
+absent file, or any schema miss falls back to the retry → lenient-harvest → `partial` path. A NON-empty
+stdout is always stdout-primary (unchanged). A zero-finding verdict can **only** arrive via the stdout
+object, never a bare empty file (`no_findings` is unprovable from file-only delivery — the NEVER-FALSE-GREEN
+rule). Separately, the reviewer subprocess is spawned with `SPECREW_REFOCUS_DISABLE=1` so the reviewer host's
+OWN global Specrew hooks no-op — a reviewer must never trigger the governance machinery on itself (the codex
+empty-exit0 root cause, 2026-07-12).
+
 **Future work (out of T015 scope).** Genuinely confining declared/reviewer commands — a dedicated
 process identity plus worktree-only ACL isolation — is recorded as a separate future proposal
 (`iterations/003/research/reviewer-os-isolation-future.md`).

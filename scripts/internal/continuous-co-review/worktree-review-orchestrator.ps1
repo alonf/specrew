@@ -796,14 +796,27 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             }
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
             $raw = [string]$r.stdout
-            $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
-            $completeness = 'full'
-            if ([string]::IsNullOrWhiteSpace($json)) {
-                # T090/R1: the final blob is empty/unparseable (a timeout / cut-short run). HARVEST the incremental
-                # .review/findings.jsonl prefix (or prose-salvage) so a degraded review still surfaces findings
-                # (any review > nothing), instead of discarding the whole run as 'no-parseable-findings-json'.
-                $json = Get-ContinuousCoReviewHarvestedPartialResult -WorktreePath $wt.worktree_path -RawStdout $raw -RunId $RunId
-                if (-not [string]::IsNullOrWhiteSpace($json)) { $completeness = 'partial' }
+            $resultSource = 'stdout'
+            # FILE-PRIMARY (2026-07-12): the wrapper already FULLY contract-validated a clean-exit, current-run,
+            # schema-valid .review/findings.jsonl delivered by a host that writes the file and exits with EMPTY
+            # stdout (codex). Integrity has ALREADY passed (the tamper check above returned on any violation), so
+            # this is a COMPLETE review - completeness='full', NOT the empty-stdout -> lenient-harvest -> 'partial'
+            # path. A genuinely empty result carries no file_primary_result and falls through to stdout + harvest.
+            if (($r.PSObject.Properties['file_primary_result']) -and -not [string]::IsNullOrWhiteSpace([string]$r.file_primary_result)) {
+                $json = [string]$r.file_primary_result
+                $completeness = 'full'
+                $resultSource = 'file-primary'
+            }
+            else {
+                $json = Get-ContinuousCoReviewFindingsJson -Raw $raw   # robust: fence -> span -> balanced-scan, validated
+                $completeness = 'full'
+                if ([string]::IsNullOrWhiteSpace($json)) {
+                    # T090/R1: the final blob is empty/unparseable (a timeout / cut-short run). HARVEST the incremental
+                    # .review/findings.jsonl prefix (or prose-salvage) so a degraded review still surfaces findings
+                    # (any review > nothing), instead of discarding the whole run as 'no-parseable-findings-json'.
+                    $json = Get-ContinuousCoReviewHarvestedPartialResult -WorktreePath $wt.worktree_path -RawStdout $raw -RunId $RunId
+                    if (-not [string]::IsNullOrWhiteSpace($json)) { $completeness = 'partial' }
+                }
             }
             # T096: a human-SCOPED review covered a SUBSET of the increment - its evidence is honestly
             # PARTIAL (the T094 tiered gate then requires the recorded ack, never a silent full pass).
@@ -822,7 +835,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $recordPhaseEnd 'write-result'
                 $currentPhase = 'complete'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; implementer_evidence = $implementerEvidencePresent; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; result_source = $resultSource; implementer_evidence = $implementerEvidencePresent; reviewer_telemetry = $reviewerTelemetry }
             }
             else {
                 $currentPhase = 'write-failure'
