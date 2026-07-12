@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T05:10:00Z
+**Updated**: 2026-07-12T05:45:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -458,6 +458,29 @@
   design-context case-distinct-sibling REJECTION (reviewer never invoked;
   skipped on case-insensitive Windows). Suites 26/26 (1 POSIX-only skip on
   Windows); registry 16/16. Launching exactly one serialized re-review.
+- CODEX empty-exit0 ROOT CAUSE (maintainer-directed deep-dive): the reviewer
+  subprocess INHERITED the environment, so codex-the-reviewer's OWN global
+  Specrew hooks (~/.codex/hooks.json -> specrew-hook-launch.ps1, HostKind
+  codex) fired while it reviewed - and the codex STOP hook is a DECISION-BLOCK
+  that runs the Specrew dispatcher against the extracted specs/ in the reviewer
+  worktree, derailing codex into empty output. The launcher has a documented
+  kill switch (SPECREW_REFOCUS_DISABLE) but the engine NEVER set it for the
+  reviewer spawn (grep: 0 matches). Diagnosis proven: a bare-temp-dir codex
+  exec probe worked (no governance context); the worktree runs (governance
+  context) intermittently failed. FIX: the reviewer spawn
+  (Invoke-ContinuousCoReviewAgentInWorktree) now sets
+  $psi.Environment['SPECREW_REFOCUS_DISABLE']='1', inherited by codex + its
+  hook children, so a reviewer can never trigger governance on itself. Caveat:
+  the first codex invocation after the fix still empty-exit0'd once (T108 retry
+  then succeeded) - the fix removes the hook-interference vector but a residual
+  low-rate codex empty-exit still exists (the T108 retry handles it); to be
+  confirmed with more runs.
+- Review 551b5bae (codex, WITH the fix, completed via retry): 1 blocking -
+  evidence freshness: my UNCOMMITTED hook-suppress change shifted the digest,
+  so implementer-evidence.json was orphaned (absent from the snapshot), and the
+  coverage table was stale (worktree-containment 4 -> now 8). Fixed: coverage
+  counts updated, hook-suppress fix committed, evidence re-recorded for the new
+  digest.
 
 ## Notes
 

@@ -1067,6 +1067,14 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
     $psi.RedirectStandardInput = $true; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
     $psi.StandardInputEncoding = [System.Text.UTF8Encoding]::new($false)
+    # ROOT-CAUSE FIX (empty-exit0 diagnosis 2026-07-12): the reviewer host inherits the environment, so its
+    # OWN global Specrew hooks (e.g. ~/.codex/hooks.json -> specrew-hook-launch.ps1) fire while it reviews.
+    # The codex Stop hook is a DECISION-BLOCK that runs the Specrew dispatcher against the extracted specs/
+    # in the reviewer worktree and can block/derail the reviewer into producing NOTHING (the intermittent
+    # empty-exit0 / no-parseable-findings-json class). Set the launcher's documented kill switch so the
+    # reviewer subprocess AND its hook children no-op every Specrew hook: a reviewer must never trigger the
+    # governance machinery on itself. (The kill switch is inherited by codex's hook child processes.)
+    $psi.Environment['SPECREW_REFOCUS_DISABLE'] = '1'
     $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
     [void]$proc.Start()
     # Contain BEFORE handing the reviewer its prompt: a stdin-prompted host is still blocked reading stdin
