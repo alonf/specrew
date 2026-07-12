@@ -25,6 +25,12 @@ found by field accident rather than by any gate:
 3. **Self-host CI in every consumer** (Proposal 204's origin): F-019-era workflows with dev-repo
    paths and `001-specrew-product` triggers deployed by `specrew init` since F-031, deterministically
    broken downstream, invisible for months.
+4. **Technology/delivery assumption leak** (F-198/T018 design review, 2026-07-13): a proposed
+   downstream evidence wrapper treated Pester `-PassThru` as the universal test contract. The same
+   audit found unconditional Windows/PowerShell implementation teaching and "software feature
+   produces a release" language in consumer-deployed lifecycle surfaces. These statements did not
+   identify Specrew by name, so the original self-fact deny-list could miss them while still exporting
+   Specrew's implementation stack and delivery model as methodology.
 
 The leak happens at three times, and each needs its own defense: **author time** (templates, skills,
 refocus content, prompt-string literals written with self-context), **deploy time** (self-host files
@@ -62,6 +68,36 @@ agents conflating which project is under governance).
   repo CI lane (W1) and the consumer-side checks (W5), so prevention and detection cannot disagree
   about what a leak is.
 
+### Amendment - 2026-07-13: technology-assumption firewall
+
+The initial firewall catches concrete Specrew-self facts. It must also catch a broader semantic class:
+a downstream-facing statement that presents one stack, forge, test framework, package mechanism, or
+delivery model as universal without proving that it applies to the project.
+
+- **W7 — Applicability provenance**: every downstream-facing technology or delivery statement MUST
+  satisfy at least one of four shapes: `project-detected` from repository evidence;
+  `profile-selected` by an explicit quality/work-kind profile; `provider-gated` by repository
+  governance; or `example-only` with wording that cannot be read as a mandate. An unqualified concrete
+  technology statement is a leak even when it contains no Specrew identifier.
+- **W8 — Extended taxonomy**: the data file gains `stack-assumption` and `delivery-assumption`
+  classes. Seed terms cover concrete frameworks/runtimes/test tools used as universal requirements and
+  package/prerelease/registry/forge workflows used without a resolution point. Matching remains scoped
+  to consumer-deployed surfaces; Specrew implementation code, explicitly selected stack presets, and
+  provider-specific templates behind a matching provider gate are not findings.
+- **W9 — Heterogeneous fixture matrix**: runtime/static fixture coverage MUST include at least a Python
+  project with a non-Pester test command, a non-GitHub repository, and an internal application with no
+  publish/release target. Rendered prompts, refocus teaching, lifecycle templates, evidence guidance,
+  and deployed CI must contain no inapplicable technology or delivery mandate.
+- **W10 — Generic contract before adapters**: shared methodology contracts describe universal
+  observations and schemas first. Framework-specific enrichments are optional producers selected by
+  project evidence; they cannot define the core contract. For test evidence, the universal floor is
+  process execution metadata plus an optional schema-defined result produced by the project — never a
+  built-in assumption that every downstream test runner is Pester, pytest, Jest, or any other tool.
+
+This amendment composes with F-198 Iteration 004 for the already-known concrete leaks. It does not
+require a general natural-language theorem prover: W8 supplies high-signal lint seeds, W9 catches
+rendered semantic leakage, and each new field incident extends the corpus.
+
 ## Out of scope
 
 - The release-model resolver implementation (204-W7 owns it; this proposal only guarantees the
@@ -71,8 +107,23 @@ agents conflating which project is under governance).
 
 ## Effort
 
-~3-5 SP: W1 lint + initial list (1-2 SP); W3 folds into 204-W3's surgery (0); W4 fixture test
-(1 SP); W5 gateway + update wiring (1-2 SP); W2/W6 are conventions the others enforce.
+~5-8 SP: original W1-W6 (3-5 SP); W7-W8 taxonomy/applicability rules (1 SP); W9 heterogeneous
+fixture matrix (1-2 SP); W10 is a contract rule exercised through those fixtures.
+
+## Acceptance criteria
+
+- **AC1:** The author-time lint surface equals the deny-by-default deploy allowlist plus deployed-script
+  literals; an unannotated self-fact hit fails the build.
+- **AC2:** The same versioned taxonomy drives repository prevention and downstream advisory/heal checks.
+- **AC3:** A rendered anything-but-Specrew fixture contains no identity, path, release-model, or
+  self-host-CI leak.
+- **AC4:** Python/non-Pester, non-GitHub, and no-release fixtures receive no inapplicable PowerShell,
+  Pester, GitHub Actions/PR, package-registry, or prerelease mandate.
+- **AC5:** Provider-specific templates behind the matching provider gate and explicitly selected stack
+  presets remain valid, proving the firewall distinguishes specialization from universal leakage.
+- **AC6:** A generic downstream test-evidence contract records framework-neutral execution facts and
+  accepts optional schema-valid project-produced results without embedding a framework parser in core.
+- **AC7:** Every escape annotation includes a reason; missing or empty reasons fail validation.
 
 ## Phase placement
 
@@ -95,6 +146,9 @@ work touches is born clean instead of retro-scrubbed.
   workflow that assumes PR-based flow without naming GitHub). W4's fixture rendering plus field
   reports remain the backstop; every field-found leak adds its terms to the list (W6 makes that a
   one-line fix).
+- **Stack-term false positives**: names such as PowerShell, pytest, or GitHub are legitimate in
+  detected projects, selected presets, and provider-specific templates. Mitigation: W7 applicability
+  provenance and AC5; do not ban technology names globally.
 
 ## Cross-references
 
@@ -109,3 +163,7 @@ work touches is born clean instead of retro-scrubbed.
 - **2026-07-09**: status set to `candidate`. Drafted from the maintainer's prevent/detect question
   during the beta-1 E2E, generalizing the 204-W7 release-model leak, the downstream identity
   conflation, and the F-019 CI-template leak into one firewall mechanism.
+- **2026-07-13**: amended after the F-198/T018 design review caught a Pester-specific downstream
+  evidence contract and an audit found unconditional stack/release teaching. Added applicability
+  provenance, `stack-assumption`/`delivery-assumption` taxonomy, heterogeneous fixtures, and the
+  generic-contract-before-adapters rule. Estimate increased from 3-5 SP to 5-8 SP.
