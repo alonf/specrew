@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-11T23:55:00Z
+**Updated**: 2026-07-12T00:35:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -268,8 +268,28 @@
   (dedicated process identity + worktree-only ACLs) recorded as a future
   proposal (research/reviewer-os-isolation-future.md), not T015 scope. Net a
   code REDUCTION. Suites 18/18 (helper 11 + integrity 7); registry 16/16.
-- Next per the instruction: no older review in flight, ONE serialized review
-  against HEAD, then T016 if clean.
+- Serialized confirming review 9e3a44f1 (round 1, post-simplification): 2
+  blocking, BOTH real - and neither about the simplification (the review of
+  the whole change-set surfaced two pre-existing bugs). (1) FALSE ROUND
+  ACCOUNTING (T020/FR-019): the ceiling halt passed the PROSPECTIVE round
+  (prior.round+1) to the escalation + persisted it, so a never-invoked halt
+  read as "3 review rounds of 2" and state recorded round 3 - but only 2
+  rounds actually reviewed. Fixed: the halt now reports/persists
+  min(round,maxRounds) (the rounds that ran); the renderer test dropped its
+  fixture-owned 3-of-2 assertion and a real two-invocation e2e test proves
+  the ceiling reports 2, persists 2, and never invokes a reviewer. (2)
+  ORIGIN LEAK IN THE DIFF (FR-009/SC-002): the bundle builder wrote
+  .review/changes.diff WITHOUT relativization, so origin-absolute paths in
+  CHANGED CONTENT (committed review-evidence / docs referencing the origin)
+  leaked file:///C:/Dev... and C:\Dev... into the reviewer bundle - my T014
+  "leave the diff untouched" call was wrong. Fixed: the diff is now
+  relativized to <project> against both the governance + git roots before
+  writing (structure preserved, prefix scrubbed); a new END-TO-END
+  origin-path-hygiene test materializes a worktree whose changed content
+  embeds the origin path and asserts changes.diff carries zero
+  origin-absolute paths. Suites green; registry 16/16.
+- Next: no older review in flight, ONE serialized review against HEAD, then
+  T016 if clean.
 
 ## Notes
 

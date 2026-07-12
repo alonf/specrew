@@ -51,4 +51,35 @@ Describe 'reviewer context origin-path hygiene (FR-009 / SC-002)' {
     It 'is a no-op on empty/whitespace content' {
         (ConvertTo-ContinuousCoReviewOriginRelativized -Content '' -OriginRoots @('C:\x')) | Should -Be ''
     }
+
+    It 'END-TO-END: the materialized change-set diff itself is scrubbed of origin-absolute paths (finding 9e3a44f1)' {
+        # The helper tests above use synthetic strings; this proves the REAL bundle: a change whose
+        # CONTENT embeds this repo's own origin-absolute path must not leak it through .review/changes.diff.
+        $repo = Join-Path ([System.IO.Path]::GetTempPath()) ('ohyg-' + [guid]::NewGuid().ToString('N'))
+        $wtPath = $null
+        try {
+            New-Item -ItemType Directory -Path $repo -Force | Out-Null
+            & git -C $repo init -q 2>&1 | Out-Null
+            Set-Content -LiteralPath (Join-Path $repo 'app.txt') -Value 'base' -Encoding UTF8
+            & git -C $repo -c user.name='t' -c user.email='t@t.local' add -A 2>&1 | Out-Null
+            & git -C $repo -c user.name='t' -c user.email='t@t.local' commit -q -m base 2>&1 | Out-Null
+            $baseline = (& git -C $repo rev-parse HEAD).Trim()
+            $repoFwd = $repo -replace '\\', '/'
+            Set-Content -LiteralPath (Join-Path $repo 'app.txt') -Value ("see file:///$repoFwd/secrets/state.md and path $repo\deep\x.ps1") -Encoding UTF8
+            & git -C $repo -c user.name='t' -c user.email='t@t.local' commit -aq -m leak 2>&1 | Out-Null
+
+            $wt = New-ContinuousCoReviewStrippedWorktree -RepoRoot $repo -BaselineRef $baseline
+            $wtPath = $wt.worktree_path
+            $diff = Get-Content -LiteralPath (Join-Path $wtPath '.review/changes.diff') -Raw
+
+            $diff | Should -Match 'secrets/state\.md' -Because 'the real change content is still under review'
+            $diff | Should -Match '<project>' -Because 'the origin prefix was relativized, not the structure'
+            $diff | Should -Not -Match ([regex]::Escape($repoFwd)) -Because 'SC-002: zero origin-absolute paths (forward form) in the reviewer bundle'
+            $diff | Should -Not -Match ([regex]::Escape($repo)) -Because 'SC-002: zero origin-absolute paths (backslash form) in the reviewer bundle'
+        }
+        finally {
+            if ($wtPath) { Remove-Item -LiteralPath $wtPath -Recurse -Force -ErrorAction SilentlyContinue }
+            Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }

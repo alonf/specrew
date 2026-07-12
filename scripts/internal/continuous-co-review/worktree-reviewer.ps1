@@ -344,6 +344,14 @@ function New-ContinuousCoReviewStrippedWorktree {
     $diffArgs = @('diff', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
     $diff = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $diffArgs
     if (-not [string]::IsNullOrWhiteSpace($prefix)) { $diff = $diff -replace ([regex]::Escape("$prefix/")), '' }
+    # FR-009 / SC-002 (finding 9e3a44f1): the change-set diff CONTENT can carry ORIGIN-ABSOLUTE paths - a
+    # committed doc that references file:///<origin>, or committed review-evidence echoing an earlier run -
+    # and that is a real leak in the reviewer bundle (and hands the reviewer a route toward the origin).
+    # Relativize the diff to <project> against BOTH the governance root and the git root, exactly as the
+    # context copies are (T014). Structure is preserved; only the origin PREFIX is neutralized, so a genuine
+    # hardcoded-absolute-path change still shows as <project>/... and stays reviewable.
+    $diffOriginRoots = @($resolved); if (-not [string]::IsNullOrWhiteSpace($gitRoot)) { $diffOriginRoots += $gitRoot }
+    $diff = ConvertTo-ContinuousCoReviewOriginRelativized -Content $diff -OriginRoots $diffOriginRoots
     [System.IO.File]::WriteAllText((Join-Path $reviewDir 'changes.diff'), $diff)
     $namesArgs = @('diff', '--name-only', $BaselineRef, $reviewSource, '--') + @($diffPathspec)
     $namesRaw = Invoke-WorktreeReviewerGitCapture -RepoRoot $gitRoot -Arguments $namesArgs

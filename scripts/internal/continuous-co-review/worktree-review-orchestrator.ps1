@@ -677,11 +677,17 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 if ($null -ne $prior -and ($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) {
                     $resolvedCount = @($prior.dispositions | Where-Object { [string]$_.state -eq 'resolved-against-disk' }).Count
                 }
-                [System.IO.File]::WriteAllText($resultOut, (New-ContinuousCoReviewCeilingEscalationResult -RunId $RunId -Round $round -MaxRounds $maxRounds -ResolvedAgainstDiskCount $resolvedCount))
-                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $true -Findings $priorFindings
+                # HONEST SPEND COUNT (finding 9e3a44f1): $round here is the PROSPECTIVE round (prior.round+1)
+                # whose invocation the ceiling PREVENTS - it never reviewed. FR-019/T020 count only rounds that
+                # ACTUALLY reviewed, so the halt message and the persisted state report $maxRounds (the rounds
+                # that ran and hit the limit), never the +1 attempt. Persisting $maxRounds (not $round) keeps the
+                # sticky latch working - the next overlapping checkpoint still computes maxRounds+1 > maxRounds.
+                $spentRounds = [Math]::Min([int]$round, [int]$maxRounds)
+                [System.IO.File]::WriteAllText($resultOut, (New-ContinuousCoReviewCeilingEscalationResult -RunId $RunId -Round $spentRounds -MaxRounds $maxRounds -ResolvedAgainstDiskCount $resolvedCount))
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $spentRounds -Blocking $true -Findings $priorFindings
                 & $recordPhaseEnd 'ceiling-halt'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $spentRounds; max_rounds = $maxRounds; blocking = $false; ceiling_halted = $true; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
             # T020 PREFLIGHT (FR-019 two-budget accounting): the review INPUT must be materialized

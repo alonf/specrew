@@ -115,9 +115,9 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
     Context 'consumer-legible halt message (FR-018)' {
         It 'has zero internal identifiers, states N-of-M, names the reset command, and shows resolved-vs-open' {
             . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
-            $json = New-ContinuousCoReviewCeilingEscalationResult -RunId 'run-x' -Round 3 -MaxRounds 2 -ResolvedAgainstDiskCount 2
+            $json = New-ContinuousCoReviewCeilingEscalationResult -RunId 'run-x' -Round 2 -MaxRounds 2 -ResolvedAgainstDiskCount 2
             $comment = ($json | ConvertFrom-Json).findings[0].comment
-            $comment | Should -Match '3 review rounds' -Because 'N-of-M must be stated'
+            $comment | Should -Match '2 review rounds' -Because 'the count is the rounds that ACTUALLY reviewed, hitting the limit'
             $comment | Should -Match 'limit is 2'
             $comment | Should -Match 'specrew review --remediate more-time' -Because 'the exact reset command must be named'
             $comment | Should -Match '2 earlier blocking item' -Because 'resolved-vs-open must come from the disposition trail'
@@ -163,6 +163,26 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
                 Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0 -Because 'a missing input must prevent the model invocation entirely'
             }
             finally { Remove-Item -LiteralPath $f.Repo, $fakeWt -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'CEILING HALT counts only the rounds that ACTUALLY reviewed, never the never-invoked +1 attempt (finding 9e3a44f1)' {
+            $f = script:New-RunRepo
+            try {
+                Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test'; independence_source = 'flag' } }
+                Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+                # Seed a sticky blocking round-state AT the limit (2 rounds already reviewed), lineage = app.txt.
+                $seed = '{"schema_version":"1.0","run_id":"p","status":"findings","findings":[{"finding_id":"f1","source_run_id":"p","location":{"path":"app.txt","line_start":null,"line_end":null},"severity":"blocking","kind":"x","design_reference":"d","comment":"c","disposition":"open","resolution":{"state":"unresolved","fix_evidence_ref":null,"rationale":null}}],"created_at":"2026-07-11T00:00:00Z"}'
+                Set-ContinuousCoReviewRoundState -RepoRoot $f.Repo -ChangedPaths @('app.txt') -Round 2 -Blocking $true -Findings $seed
+                $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $f.Repo -RunDir (Join-Path $f.Repo '.runs/ceil') -RunId 'ceil-run' -BaselineRef $f.Baseline -TimeoutSeconds 60
+                [bool]$st.ceiling_halted | Should -Be $true -Because 'a 3rd overlapping round past the limit of 2 halts'
+                [int]$st.round | Should -Be 2 -Because 'the never-invoked halt attempt does NOT count as a reviewed round'
+                Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0 -Because 'the ceiling halt never invokes a reviewer'
+                $comment = (Get-Content -LiteralPath (Join-Path $f.Repo '.runs/ceil/result.out') -Raw | ConvertFrom-Json).findings[0].comment
+                $comment | Should -Match '2 review rounds' -Because 'the halt reports the rounds that actually ran'
+                $comment | Should -Not -Match '3 review rounds' -Because 'the 3rd attempt never reviewed - claiming 3-of-2 is false accounting'
+                [int](Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo).round | Should -Be 2 -Because 'the persisted sticky state records the honest count'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
         }
 
         It 'POST-INVOCATION: an invoked run with no valid review consumes BOTH budgets + records a failed-invocation disposition' {
