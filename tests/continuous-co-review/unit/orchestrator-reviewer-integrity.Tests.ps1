@@ -141,6 +141,35 @@ Describe 'orchestrator does NOT auto-run verification, and integrity-checks the 
         }
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }
+
+    It 'T016: FAILS the review (containment-violated) when the reviewer tree is observed reaching origin - loud origin-side record, redacted, findings discarded' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        $script:ContainOriginPath = Join-Path $repo 'app.txt'   # a REAL origin path the sampler will "observe"
+        try {
+            script:StubHost
+            # the sampler OBSERVES a process in the reviewer tree reaching an origin path (mocked deterministically);
+            # image is a FULL exe path so the record's bounded basename-only redaction can be asserted.
+            Mock -CommandName Get-ContinuousCoReviewContainmentSamples -MockWith { @(@{ pid = 4242; image = 'C:\tools\codex.exe'; source = 'arg'; path = $script:ContainOriginPath }) }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                & $Heartbeat ([pscustomobject]@{ child_pid = 4242 })   # fire ONE heartbeat -> the orchestrator samples + accumulates the violation
+                script:ReviewerResult 'ri-contain'                      # the reviewer then exits cleanly - the detector NEVER kills it mid-flight
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-contain' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Be 'containment-violated'
+            [string]$st.message | Should -Match 'app\.txt'
+            [bool]$st.provider_spend | Should -Be $true -Because 'the model WAS invoked - invoked-failed class'
+            [bool]$st.round_consumed | Should -Be $true
+            $rec = @($st.containment_violations)[0]
+            [string]$rec.command_line | Should -Match 'redacted' -Because 'the record NEVER carries the raw command line'
+            [string]$rec.process | Should -Match 'image=codex\.exe' -Because 'process metadata is the image BASENAME, bounded'
+            ($st.containment_violations | ConvertTo-Json -Depth 6) | Should -Not -Match 'tools' -Because 'the full executable path is NOT persisted (bounded/redacted)'
+            (Get-Content -LiteralPath (Join-Path $rd 'result.out') -Raw) | Should -BeNullOrEmpty -Because 'a containment-violating run''s findings are discarded'
+            $rs = Get-ContinuousCoReviewRoundState -RepoRoot $repo
+            @($rs.dispositions | Where-Object { $_.state -eq 'containment-violated' }).Count | Should -BeGreaterThan 0
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 Describe 'the slim prompt states strict read-only + monitored confinement honestly (FR-010/FR-013)' {

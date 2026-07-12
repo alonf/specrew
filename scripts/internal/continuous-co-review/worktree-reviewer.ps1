@@ -278,6 +278,118 @@ function Test-ContinuousCoReviewPathUnderRoot {
     return ($pReal.Equals($rReal, $cmp) -or $pReal.StartsWith($rReal + [System.IO.Path]::DirectorySeparatorChar, $cmp))
 }
 
+# ============================ T016 — containment-violation detector (FR-011 / SC-003) ============================
+# MONITORED confinement, NOT OS-enforced isolation: the reviewer is trusted-but-confined; its process tree must
+# stay under the disposable worktree (T013 materialized it OUTSIDE origin) and never reach back to origin. This
+# detector RIDES the T100 process registry (Get-SpecrewProcessTreeDescendants) to SAMPLE the tree's paths and,
+# on observed origin access, records a LOUD, ORIGIN-SIDE `containment-violated` finding. It is strictly
+# READ-ONLY: it samples nothing sensitive into a reviewer-visible artifact and NEVER mutates or kills the
+# reviewer mid-flight (the only kill remains the end-of-run Stop-SpecrewProcessContainment). The record carries
+# ONLY bounded, redacted path/process metadata - never the raw command line, prompt, env, or credentials
+# (maintainer 2026-07-12).
+
+function Get-ContinuousCoReviewPathLikeTokens {
+    # Extract ABSOLUTE path-like tokens from a raw command line for containment checking. ONLY absolute tokens
+    # (drive-rooted, UNC, or POSIX-rooted) are returned - a relative token would need the reviewer's OWN cwd to
+    # resolve (Windows has no cheap cwd), so relying on it would canonicalize against the wrong directory; that
+    # relative-arg gap is documented, and an absolute origin path (the natural SC-003 seed) is caught on both
+    # platforms. The command line itself is NEVER persisted; only a matched token can later become a record's
+    # `path`, and the checker still confirms it resolves under origin before recording anything.
+    param([AllowEmptyString()][string]$CommandLine)
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return , (@()) }
+    $out = [System.Collections.Generic.List[string]]::new()
+    foreach ($raw in ($CommandLine -split '\s+')) {
+        $t = ([string]$raw).Trim().Trim('"', "'")
+        if ([string]::IsNullOrWhiteSpace($t)) { continue }
+        if (($t -match '^[A-Za-z]:[\\/]') -or $t.StartsWith('\\') -or $t.StartsWith('/')) { [void]$out.Add($t) }
+    }
+    return , ($out.ToArray())
+}
+
+function Get-ContinuousCoReviewContainmentSamples {
+    # Sample the reviewer PROCESS TREE (root + descendants) for the path observations the checker judges. Rides
+    # Get-SpecrewProcessTreeDescendants (the T100 registry) for the pid list, then reads per-pid metadata
+    # BEST-EFFORT + READ-ONLY (never mutates/kills): Windows CIM Win32_Process (executable path + command-line
+    # tokens; Windows exposes no cheap cwd, so detection there is exe/command-line-primary per FR-011's
+    # "cwd/command-line sampling"); POSIX /proc (cwd, exe, cmdline). Returns @({pid; image; source; path}).
+    param([Parameter(Mandatory)][int]$RootPid)
+    $samples = [System.Collections.Generic.List[object]]::new()
+    if (-not (Get-Command -Name 'Get-SpecrewProcessTreeDescendants' -ErrorAction SilentlyContinue)) {
+        $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
+        if (Test-Path -LiteralPath $helper -PathType Leaf) { try { . $helper } catch { $null = $_ } }
+    }
+    $procIds = @($RootPid)
+    try { $procIds += @(Get-SpecrewProcessTreeDescendants -RootPid $RootPid) } catch { $null = $_ }
+    $procIds = @($procIds | Where-Object { $_ -gt 0 } | Select-Object -Unique)
+    if ($IsWindows) {
+        $procs = @()
+        try { $procs = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $procIds -contains [int]$_.ProcessId } | Select-Object ProcessId, Name, CommandLine, ExecutablePath) } catch { $procs = @() }
+        foreach ($p in $procs) {
+            $procId = [int]$p.ProcessId; $image = [string]$p.Name
+            if (-not [string]::IsNullOrWhiteSpace([string]$p.ExecutablePath)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = [string]$p.ExecutablePath }) }
+            foreach ($tok in (Get-ContinuousCoReviewPathLikeTokens -CommandLine ([string]$p.CommandLine))) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+        }
+    }
+    else {
+        foreach ($procId in $procIds) {
+            $image = ''
+            $exe = try { $it = Get-Item -LiteralPath "/proc/$procId/exe" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
+            if ($exe) { $image = [System.IO.Path]::GetFileName($exe); [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = $exe }) }
+            $cwd = try { $it = Get-Item -LiteralPath "/proc/$procId/cwd" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
+            if ($cwd) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'cwd'; path = $cwd }) }
+            $cmdline = try { ([string](Get-Content -LiteralPath "/proc/$procId/cmdline" -Raw -ErrorAction Stop)) -replace "`0", ' ' } catch { '' }
+            foreach ($tok in (Get-ContinuousCoReviewPathLikeTokens -CommandLine $cmdline)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+        }
+    }
+    return , ($samples.ToArray())
+}
+
+function Test-ContinuousCoReviewContainmentViolations {
+    # THE pure containment-violation checker (FR-011 / SC-003). A SAMPLE {pid; image; source(cwd|exe|arg); path}
+    # is a VIOLATION when its path physically resolves UNDER an origin root (observed origin access), via the
+    # SAME shared canonicalizer + predicate T013 uses (semantics cannot drift). Returns a BOUNDED, REDACTED
+    # ContainmentRecord per distinct (pid, source, origin-path): run_id, process (pid + image BASENAME only),
+    # command_line (a REDACTED marker - NEVER the raw command line/prompt/env/creds), the origin `path`
+    # (canonicalized, length-capped), the source signal, and observed_at. PURE + read-only: samples nothing,
+    # kills nothing - the loud fail is applied by the caller at the run's natural end, never mid-flight.
+    param(
+        [Parameter(Mandatory)][AllowNull()][object[]]$Samples,
+        [Parameter(Mandatory)][string[]]$OriginRoots,
+        [Parameter(Mandatory)][string]$RunId,
+        [string]$ObservedAt
+    )
+    if ([string]::IsNullOrWhiteSpace($ObservedAt)) { $ObservedAt = ConvertTo-ContinuousCoReviewReviewerIsoTimestamp }
+    $roots = @($OriginRoots | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $violations = [System.Collections.Generic.List[object]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($s in @($Samples)) {
+        if ($null -eq $s) { continue }
+        $path = try { [string]$s.path } catch { '' }
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $under = $false
+        foreach ($root in $roots) { if (Test-ContinuousCoReviewPathUnderRoot -Path $path -Root $root) { $under = $true; break } }
+        if (-not $under) { continue }
+        $resolved = Get-ContinuousCoReviewPhysicalPath -Path $path
+        if ([string]::IsNullOrWhiteSpace($resolved)) { $resolved = $path }
+        $procId = try { [int]$s.pid } catch { 0 }
+        $image = try { [string]$s.image } catch { '' }
+        $imageLeaf = if (-not [string]::IsNullOrWhiteSpace($image)) { try { [System.IO.Path]::GetFileName($image) } catch { $image } } else { 'unknown' }
+        $source = try { [string]$s.source } catch { '' }; if ([string]::IsNullOrWhiteSpace($source)) { $source = 'unknown' }
+        $boundedPath = if ($resolved.Length -gt 256) { $resolved.Substring(0, 256) + '...[truncated]' } else { $resolved }
+        $key = "$procId|$source|$boundedPath"
+        if (-not $seen.Add($key)) { continue }
+        [void]$violations.Add([pscustomobject][ordered]@{
+                run_id       = $RunId
+                process      = ("pid={0} image={1}" -f $procId, $imageLeaf)
+                command_line = ("[redacted - raw command line withheld; origin access observed via {0}]" -f $source)
+                path         = $boundedPath
+                source       = $source
+                observed_at  = $ObservedAt
+            })
+    }
+    return , ($violations.ToArray())
+}
+
 function New-ContinuousCoReviewStrippedWorktree {
     # Materialize an EPHEMERAL git-tree worktree of the project's reviewed subtree, machinery stripped, with the
     # review context written under .review/. Returns @{ worktree_path; tree_id; changed_count }.

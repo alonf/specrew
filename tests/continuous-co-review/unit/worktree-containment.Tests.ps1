@@ -157,3 +157,86 @@ Describe 'shared physical-path canonicalizer (Get-ContinuousCoReviewPhysicalPath
         finally { Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue }
     }
 }
+
+# FR-011 / SC-003 (T016) — the containment-violation DETECTOR: MONITORED confinement (not OS-enforced). The
+# reviewer tree must stay under the disposable worktree; observed ORIGIN access is a LOUD, ORIGIN-SIDE
+# `containment-violated` record carrying ONLY bounded/redacted path/process metadata (never the raw command
+# line/prompt/env/creds), and the detector NEVER kills the reviewer mid-flight (paired legit/abuse + false-kill
+# guard, NFR-007).
+Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
+    BeforeAll {
+        $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
+        $env:SPECREW_MODULE_PATH = $script:RepoRoot
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+
+        $script:Origin = Join-Path ([System.IO.Path]::GetTempPath()) ('t16-origin-' + [guid]::NewGuid().ToString('N'))
+        $script:Worktree = Join-Path ([System.IO.Path]::GetTempPath()) ('t16-wt-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $script:Origin -Force | Out-Null
+        New-Item -ItemType Directory -Path $script:Worktree -Force | Out-Null
+        $script:OriginSecret = Join-Path $script:Origin 'secret.md'; Set-Content -LiteralPath $script:OriginSecret -Value 'origin' -NoNewline
+        $script:WtSource = Join-Path $script:Worktree 'src.ps1'; Set-Content -LiteralPath $script:WtSource -Value 'wt' -NoNewline
+    }
+    AfterAll {
+        Remove-Item -LiteralPath $script:Origin, $script:Worktree -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
+    It 'ABUSE (SC-003): a sampled path under origin becomes a containment-violated record with bounded/redacted metadata (no raw command line, prompt, env, or creds)' {
+        $samples = @(
+            @{ pid = 201; image = 'C:\Program Files\codex\codex.exe'; source = 'arg'; path = $script:OriginSecret }  # VIOLATION
+            @{ pid = 201; image = 'codex.exe'; source = 'exe'; path = $script:WtSource }                              # legit (under worktree)
+        )
+        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-A'
+        @($v).Count | Should -Be 1 -Because 'exactly the origin-resolving sample is a violation; the in-worktree one is not'
+        $rec = $v[0]
+        $rec.run_id | Should -Be 'RUN-A'
+        $rec.source | Should -Be 'arg'
+        [string]$rec.path | Should -Match 'secret\.md' -Because 'the origin-access evidence path is recorded (origin-side record only)'
+        [string]$rec.process | Should -Match 'pid=201'
+        [string]$rec.process | Should -Match 'image=codex\.exe' -Because 'the process metadata is the image BASENAME, bounded'
+        [string]$rec.process | Should -Not -Match '\\' -Because 'no full executable path in the record (bounded process metadata)'
+        [string]$rec.command_line | Should -Match 'redacted' -Because 'command_line is a REDACTED marker, never the raw command line'
+        [string]$rec.observed_at | Should -Not -BeNullOrEmpty
+        # REDACTION: no record field may carry the raw command line / prompt / env / credential content
+        ($rec | ConvertTo-Json -Depth 5) | Should -Not -Match 'dangerously|--allow|Program Files|SECRET_TOKEN'
+    }
+
+    It 'LEGIT (SC-003): a full in-worktree sample set produces ZERO violations (no false-positive)' {
+        $samples = @(
+            @{ pid = 301; image = 'pwsh'; source = 'cwd'; path = $script:Worktree }
+            @{ pid = 301; image = 'pwsh'; source = 'arg'; path = $script:WtSource }
+            @{ pid = 302; image = 'codex'; source = 'exe'; path = (Join-Path $script:Worktree 'bin/tool') }
+        )
+        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-L'
+        @($v).Count | Should -Be 0
+    }
+
+    It 'REDACTION at source: only ABSOLUTE path tokens are extracted from a command line - flags and the prompt text are NOT treated as paths' {
+        $cmd = ('codex exec --dangerously-bypass-approvals-and-sandbox -p "review this SECRET_TOKEN prompt then do X" {0}' -f $script:OriginSecret)
+        # NB: the helper returns a `, (...)`-preserved array; assign directly (no @()) so a single token is not double-wrapped.
+        $tokens = Get-ContinuousCoReviewPathLikeTokens -CommandLine $cmd
+        $tokens | Should -Contain $script:OriginSecret -Because 'the absolute origin path IS a candidate path token'
+        (($tokens -join '|')) | Should -Not -Match 'dangerously|SECRET_TOKEN|prompt|exec' -Because 'flags and prompt words are NOT path-like and are never extracted (so they can never reach a record)'
+    }
+
+    It 'FALSE-KILL GUARD (never mid-flight kill): detecting a violation RECORDS it but does NOT terminate the process' {
+        $child = Start-Process pwsh -ArgumentList '-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 30' -PassThru -WindowStyle Hidden
+        try {
+            $samples = @(@{ pid = $child.Id; image = 'pwsh'; source = 'arg'; path = $script:OriginSecret })
+            $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-K'
+            @($v).Count | Should -Be 1
+            (Get-Process -Id $child.Id -ErrorAction SilentlyContinue) | Should -Not -BeNullOrEmpty -Because 'the detector records the violation but NEVER kills the reviewer mid-flight (monitored confinement, not enforcement)'
+        }
+        finally { try { $child.Kill($true) } catch { $null = $_ } }
+    }
+
+    It 'SAMPLER is read-only: it rides the process tree and returns path samples for a live child without terminating it' {
+        $child = Start-Process pwsh -ArgumentList '-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 30' -PassThru -WindowStyle Hidden
+        try {
+            $samples = Get-ContinuousCoReviewContainmentSamples -RootPid $child.Id
+            @($samples).Count | Should -BeGreaterThan 0 -Because 'a live child has at least an executable path / command line to sample'
+            (Get-Process -Id $child.Id -ErrorAction SilentlyContinue) | Should -Not -BeNullOrEmpty -Because 'sampling is strictly read-only - it never terminates the sampled process'
+        }
+        finally { try { $child.Kill($true) } catch { $null = $_ } }
+    }
+}

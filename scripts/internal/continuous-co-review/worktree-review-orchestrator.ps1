@@ -761,11 +761,34 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             # ACL isolation is recorded as a separate future proposal, not T015 scope).
             $reviewerOutputAllow = @('.review/findings.jsonl')
             $reviewerPreHashes = Get-ContinuousCoReviewWorktreeSourceHashes -WorktreePath $wt.worktree_path
+            # T016 (FR-011/SC-003) MONITORED containment: the origin roots the reviewer tree must NOT reach - the
+            # SAME two T013 guards against (the governance RepoRoot + the git top-level). Violations accumulate
+            # PASSIVELY across heartbeats (NEVER a mid-flight kill); the loud origin-side fail is applied at the
+            # reviewer's natural end (below). child_pid rides the existing reviewer telemetry.
+            $containmentOriginRoots = @($RepoRoot)
+            try { $cgt = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null); if (-not [string]::IsNullOrWhiteSpace($cgt)) { $containmentOriginRoots += ([string]$cgt).Trim() } } catch { $null = $_ }
+            $containmentViolations = [System.Collections.Generic.List[object]]::new()
+            $containmentSeen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
             $currentPhase = 'reviewer-execution'
             & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent }
             & $recordPhaseStart $currentPhase
             $reviewerHeartbeat = {
                 param($Telemetry)
+                # T016: ride the heartbeat to SAMPLE the reviewer tree (read-only) and accumulate any origin-access
+                # violation. Strictly monitoring - it never mutates or kills the reviewer; the loud fail is applied
+                # after the reviewer's natural end. Assign the `, (...)`-returning helpers to vars (never @()/inline
+                # foreach) so a single sample/violation is not double-wrapped.
+                if ($null -ne $Telemetry -and $Telemetry.PSObject.Properties['child_pid'] -and $Telemetry.child_pid -and $containmentOriginRoots.Count -gt 0) {
+                    try {
+                        $cvSamples = Get-ContinuousCoReviewContainmentSamples -RootPid ([int]$Telemetry.child_pid)
+                        $cvNew = Test-ContinuousCoReviewContainmentViolations -Samples $cvSamples -OriginRoots $containmentOriginRoots -RunId $RunId
+                        foreach ($cv in $cvNew) {
+                            $cvKey = ('{0}|{1}|{2}' -f $cv.process, $cv.source, $cv.path)
+                            if ($containmentSeen.Add($cvKey)) { [void]$containmentViolations.Add($cv) }
+                        }
+                    }
+                    catch { $null = $_ }
+                }
                 & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
             $r = Invoke-ContinuousCoReviewWorktreeReviewer -WorktreePath $wt.worktree_path -RunId $RunId -HostName $reviewerHost.host -RoundNumber $round -MaxRounds $maxRounds -PriorFindings $priorFindings -TimeoutSeconds $TimeoutSeconds -Heartbeat $reviewerHeartbeat -HumanScope $humanScope -DesignContextEmpty:$designContextEmpty -ImplementerEvidencePresent:$implementerEvidencePresent
@@ -792,6 +815,25 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'reviewer-tampered-tree'; run_id = $RunId; round = $round; provider_spend = $true; tampered_paths = @($reviewerTamperedPaths | Select-Object -First 10); recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
                 $runTimer.Stop()
                 & $writeStatus 'failed' @{ failure_reason = 'reviewer-tampered-tree'; message = ('the reviewer altered the certified tree beyond its allowed output (.review/findings.jsonl): ' + (@($reviewerTamperedPaths | Select-Object -First 10) -join ', ')); spend_class = $tamperSpend.class; provider_spend = $tamperSpend.records_provider_spend; round_consumed = $tamperSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
+            # T016 (FR-011/SC-003): CONTAINMENT VIOLATION. If the reviewer tree was observed reaching origin during
+            # the run (accumulated PASSIVELY across heartbeats - never a mid-flight kill), fail the run LOUDLY with
+            # an origin-side record. The model WAS invoked (provider spend real) -> invoked-failed class + a distinct
+            # disposition; the findings are DISCARDED (a reviewer that reached origin cannot be trusted). Records
+            # carry ONLY bounded/redacted path/process metadata (never the raw cmdline/prompt/env/creds), and only
+            # in these ORIGIN-SIDE writes (status.json + disposition), never the reviewer worktree.
+            if ($containmentViolations.Count -gt 0) {
+                $currentPhase = 'containment-violated'
+                $cvSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false
+                [System.IO.File]::WriteAllText($resultOut, '')
+                $priorBlockingCv = ($null -ne $prior) -and [bool]$prior.blocking
+                $priorFindingsCv = if ($null -ne $prior) { [string]$prior.findings } else { $null }
+                Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $priorBlockingCv -Findings $priorFindingsCv
+                $cvRecords = @($containmentViolations | Select-Object -First 10)
+                $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'containment-violated'; run_id = $RunId; round = $round; provider_spend = $true; violations = $cvRecords; recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
+                $runTimer.Stop()
+                & $writeStatus 'failed' @{ failure_reason = 'containment-violated'; message = ('the reviewer process tree accessed origin (monitored confinement): ' + (@($cvRecords | ForEach-Object { $_.path } | Select-Object -First 5) -join ', ')); containment_violations = $cvRecords; spend_class = $cvSpend.class; provider_spend = $cvSpend.records_provider_spend; round_consumed = $cvSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
