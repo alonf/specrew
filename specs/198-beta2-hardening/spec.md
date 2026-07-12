@@ -541,16 +541,37 @@ pin-surface consistency assertions.
 #### Review evidence & round economy (203 W7–W12) — owner: implementer + reviewer; iteration 003
 
 - **FR-014 (W7)**: The T111 standing practice MUST be resolved as: the
-  refocus-instructed duty to record test evidence via the recorded-run
-  wrapper after suite runs is the host-neutral floor; hook-automated
-  recording (where a host supports it) is an enhancement, never the
-  dependency — consistent with FR-006's hooks-are-UX doctrine.
-- **FR-015 (W8)**: An execution wrapper
-  (`Invoke-ContinuousCoReviewRecordedTestRun`) MUST run the suite itself
-  (Pester `-PassThru` first; adapter seam for other runners later) and
-  record what IT observed; caller-supplied numbers MUST be rejected or
-  labeled implementer-recorded (never machine-observed); the recorded
-  command remains the reviewer's cheap re-run handle.
+  refocus-instructed duty to record verification evidence via the **universal
+  recorded-run runner** (FR-015) after a verification command runs is the
+  host- AND framework-neutral floor; hook-automated recording (where a host
+  supports it) is an enhancement, never the dependency — consistent with
+  FR-006's hooks-are-UX doctrine.
+- **FR-015 (W8, amended by maintainer ruling 2026-07-13 — language/framework-NEUTRAL)**: A
+  **universal process runner** (`Invoke-ContinuousCoReviewRecordedRun`) MUST execute any
+  DECLARED verification command and record ONLY what it DIRECTLY observed:
+  - executable + arguments; working directory;
+  - the exact reviewed-tree digest (evidence is bound to it);
+  - start/end timestamps + duration;
+  - exit code + timeout status;
+  - bounded/redacted stdout/stderr metadata (never full/raw dumps);
+  - output-artifact digests;
+  - whether the command executed successfully (`command_succeeded`).
+
+  It MUST NOT build framework-specific parsers or maintain an adapter catalog, and MUST NEVER
+  parse human-readable console output to infer test counts — Specrew cannot know every downstream
+  language/framework/runner (custom included); the Specrew self-review is just ONE downstream.
+  RICH test counts are OPTIONAL and come ONLY from a schema-valid **`SpecrewTestResult`** JSON the
+  command PRODUCED DURING the recorded run, bound to the same tree digest:
+  `{ "schema_version": "1.0", "result": "passed|failed|…", "counts": { "passed", "failed", "skipped" } }`.
+  A downstream MAY supply a command/wrapper that translates its framework's output (Pester, pytest,
+  Jest, Vitest, dotnet test, Maven, Gradle, Go, Rust, custom, …) into this contract; Specrew
+  validates + records it WITHOUT knowing the framework. When no valid result is produced: record
+  command-execution facts only, set counts **unavailable**, and classify exit 0 as `command_succeeded`
+  (NOT "all tests passed"). When a structured result IS requested but missing / malformed / stale /
+  schema-invalid: **FAIL LOUDLY** — never degrade to a richer pass claim. **Caller-supplied pass/fail
+  counts are FORBIDDEN**; a rich claim comes only from a run-produced schema-valid result. The recorded
+  command remains the reviewer's cheap re-run handle. (T018 is EVIDENCE-ONLY; scheduling, injection,
+  digest collisions, stale results, and review lineage are T019.)
 - **FR-016 (W9)**: The navigator MUST record the last-REVIEWED checkpoint
   identity and thread it as the next auto-fire's baseline, falling back to
   the trunk merge-base when none exists; the signoff `--live` merge-base

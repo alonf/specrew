@@ -317,13 +317,25 @@ maintainer-instructed at the 003 planning approval.
    ContainmentDetector   — T100-registry cwd/commandline sampling; loud
                            containment-violated record; never mid-flight
                            kill (T016)
-   MachineryList         — ONE path-granular data file; digest strip ==
-                           worktree strip by construction (T017)
+   MachineryList         — ONE path-granular resolver (FUNCTION-based:
+                           Get-ContinuousCoReviewMachineryPaths, marker-detect +
+                           repo-context, maintainer-approved 2026-07-13); digest
+                           strip == worktree strip by construction; fails LOUD
+                           if the resolver cannot load/execute (T017)
 
    ROUND ECONOMY
-   RecordedRunWrapper    — Invoke-ContinuousCoReviewRecordedTestRun runs
-                           Pester -PassThru itself; caller numbers rejected
-                           (T018)
+   UniversalRunner       — Invoke-ContinuousCoReviewRecordedRun executes ANY
+                           declared verification command (language/framework-
+                           NEUTRAL); records DIRECT facts only (exe/args, cwd,
+                           reviewed-tree digest, start/end/duration, exit +
+                           timeout, bounded/redacted stdout/stderr metadata,
+                           output-artifact digests, command_succeeded). RICH
+                           counts OPTIONAL, ONLY from a run-produced schema-valid
+                           SpecrewTestResult bound to the same digest; else
+                           counts unavailable + command_succeeded (never parse
+                           console output). No framework parsers/adapter catalog;
+                           caller counts FORBIDDEN; requested-but-invalid result
+                           fails LOUD (T018)
    CheckpointBaselines   — last-REVIEWED identity as next baseline;
                            in-flight dedup per lineage (T019)
    AllowanceHaltUX       — consumer-legible spend-guard halt; every round

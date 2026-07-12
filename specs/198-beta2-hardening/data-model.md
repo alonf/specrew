@@ -134,6 +134,45 @@ Never enters reviewer-visible artifacts (W2-consistent).
 `.specrew/review/**`, gaining: `independence_source`
 (flag \| env \| unverified, FR-023), frozen fire-time tree id +
 stale-vs-current label (FR-017), last-reviewed checkpoint identity
-(FR-016), and machine-observed test evidence via the recorded-run wrapper
-(FR-015; caller-supplied numbers rejected or labeled
-implementer-recorded).
+(FR-016), and runner-observed verification evidence via the universal
+recorded-run runner (FR-015; command-execution facts + OPTIONAL schema-valid
+`SpecrewTestResult`; caller-supplied counts FORBIDDEN).
+
+## Entity: RecordedRunEvidence — iteration 003 (T018, FR-015 amended 2026-07-13)
+
+**Purpose**: language/framework-NEUTRAL runner-observed verification evidence for the EXACT
+reviewed-tree digest, written by the universal runner `Invoke-ContinuousCoReviewRecordedRun`
+under `.specrew/review/test-evidence/<digest>.json` (digest-EXCLUDED runtime state, so recording
+never changes the tree it certifies).
+
+**Fields (per recorded run entry)** — DIRECTLY observed only:
+
+- `command`: `{ executable, arguments[], working_directory }` — the reviewer's cheap re-run handle.
+- `reviewed_digest_tree_id`: the exact tree the command ran against (record keyed + bound to it).
+- `started_at`, `ended_at`, `duration_seconds`.
+- `exit_code`, `timed_out` (bool), `command_succeeded` (exit 0 AND not timed out).
+- `stdout_meta`, `stderr_meta`: `{ byte_count, sha256, truncated_tail }` — BOUNDED/REDACTED, never raw/full.
+- `artifacts[]`: `{ path, sha256, byte_count }` — output-artifact digests.
+- `test_result`: OPTIONAL. When the command PRODUCED a schema-valid `SpecrewTestResult` during the run
+  (bound to the same digest): `{ result, counts: { passed, failed, skipped }, source: "specrew-test-result" }`.
+  Otherwise `counts_available = false` and NO counts are inferred (exit 0 is `command_succeeded`, NOT
+  "all tests passed"). A REQUESTED but missing/malformed/stale/schema-invalid result FAILS the run LOUDLY.
+
+**Invariants**: never parse human-readable console output for counts; caller-supplied counts are
+FORBIDDEN; rich counts come ONLY from a run-produced schema-valid SpecrewTestResult. Evidence-only —
+injection, scheduling, cross-digest collision, and stale-result handling are T019.
+
+## Contract: SpecrewTestResult — iteration 003 (T018, universal result contract)
+
+**Purpose**: the ONE optional, framework-NEUTRAL JSON a downstream command MAY emit so its counts gain
+evidence standing, WITHOUT Specrew knowing the framework (Pester/pytest/Jest/Vitest/dotnet test/Maven/
+Gradle/Go/Rust/custom). Schema: `contracts/specrew-test-result.schema.json`.
+
+**Shape**:
+
+```json
+{ "schema_version": "1.0", "result": "passed|failed|errored|skipped", "counts": { "passed": 42, "failed": 0, "skipped": 3 } }
+```
+
+Specrew VALIDATES this against the schema and records it verbatim; an invalid, or requested-but-absent,
+result fails LOUDLY (never degrades to a richer pass claim).
