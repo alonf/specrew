@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "run_id": "20260712T005829819-d5511d31",
+  "status": "findings",
+  "findings": [
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260712T005829819-d5511d31",
+      "location": {
+        "path": "specs/198-beta2-hardening/iterations/003/coverage-evidence.md",
+        "line_start": 36,
+        "line_end": 36
+      },
+      "severity": "blocking",
+      "kind": "evidence-honesty",
+      "design_reference": "NFR-007; process tasks-progress/state honesty; specs/198-beta2-hardening/iterations/003/state.md:291-302",
+      "comment": "The worktree-visible evidence table says orchestrator-reviewer-integrity.Tests.ps1 passed 7 tests and explicitly claims its counts are runner-reported, but the digest-matched .review/implementer-evidence.json for this exact reviewed tree records 8 passed. The state also claims the earlier prose-only 7/7 problem was fixed by making this table a companion to the injected record. This stale count falsifies that process/evidence claim. Regenerate or update the visible coverage row from the digest-linked record (including its recorded duration/command) and keep state claims consistent; no visible human deferral covers the mismatch.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    },
+    {
+      "finding_id": "f1",
+      "source_run_id": "20260712T005829819-d5511d31",
+      "location": {
+        "path": "specs/198-beta2-hardening/tasks.md",
+        "line_start": 46,
+        "line_end": 46
+      },
+      "severity": "blocking",
+      "kind": "verification-evidence-gap",
+      "design_reference": "T020 / FR-018 / FR-019 / SC-007 / NFR-007; Verification confidence lens",
+      "comment": "T020 is marked done and explicitly requires paired tests proving the missing-input preflight and post-invocation accounting paths, but the digest-matched implementer evidence records only bounded-verification.Tests.ps1 and orchestrator-reviewer-integrity.Tests.ps1. The relevant changed suite tests/continuous-co-review/unit/review-spend-allowance.Tests.ps1 is not recorded. The pass claim in iterations/003/coverage-evidence.md is hand-written and has zero evidence standing under the review contract. Record a digest-matched execution of the T020 suite (including the preflight and failed-invocation cases), or leave T020 incomplete; current done/tested progress is not supportable.",
+      "disposition": "open",
+      "resolution": {
+        "state": "unresolved",
+        "fix_evidence_ref": null,
+        "rationale": null
+      }
+    }
+  ],
+  "created_at": "2026-07-12T01:02:06Z"
+}

@@ -10,30 +10,32 @@ generator supersedes this at the iteration review boundary)
 > finding 90173dc6-2 / 4b124d0e-2: narrative "green" counts have zero evidence standing under the
 > review contract, so the exact commands, counts, exit codes, and durations are recorded here where
 > the reviewer can see them (specs/ is not stripped from the reviewer worktree). The **digest-linked
-> runner-observed record** for BOTH T015 suites — the FR-010 production-path suite
-> (`orchestrator-reviewer-integrity.Tests.ps1`) and the opt-in helper (`bounded-verification.Tests.ps1`)
-> — lives under `.specrew/review/test-evidence/<digest>.json` (digest-excluded runtime state) and is
-> injected into the reviewer worktree as `.review/implementer-evidence.json`; so the counts below have
-> runner-observed standing, not prose-only (co-review finding 40a06e84). This file is the human-readable
-> companion to that record.
+> runner-observed record** for EVERY done-task suite below (T013/T014/T015 production+helper/T020) lives
+> under `.specrew/review/test-evidence/<digest>.json` (digest-excluded runtime state) and is injected
+> into the reviewer worktree as `.review/implementer-evidence.json`; so each row's count has
+> runner-observed standing, not prose-only (co-review findings 40a06e84 / d5511d31). This file is the
+> human-readable companion to that record.
 
 ## Test Strategy
 
-- The F-198 honesty regression suite (`tests/f198-regression-suite.ps1`) is a bounded, EXPLICIT
-  registry (never a glob) wired as a blocking CI step (NFR-007). It is the whole-feature honesty gate.
-- `orchestrator-reviewer-integrity.Tests.ps1` is the **production-path** evidence for FR-010 (the
-  orchestrator never auto-runs verification; the reviewer invocation is integrity-checked). It is
-  recorded as digest-linked runner-observed evidence the reviewer READS (the simplified model does not
-  re-run it), alongside the opt-in helper suite `bounded-verification.Tests.ps1`.
-- Every suite is run FOR REAL in-session; the counts/exit/duration below are runner-reported, never
-  hand-typed.
+- EVERY iteration-003 DONE-task suite (T013/T014/T015/T020) below is recorded as **digest-linked
+  runner-observed evidence** injected as `.review/implementer-evidence.json` — so each row's count has
+  runner-observed standing, not prose (co-review findings 40a06e84 / d5511d31). Under the simplified
+  model the reviewer READS this evidence; it is not re-run.
+- The F-198 honesty regression suite (`tests/f198-regression-suite.ps1`) is a bounded, EXPLICIT registry
+  (never a glob) wired as a blocking CI step (NFR-007); it runs these suites plus the shared-engine
+  suites as the whole-feature gate. Its per-suite counts are the individual records below.
+- Every suite is run FOR REAL in-session; the counts/exit/duration are runner-reported, never hand-typed.
 
 ## Tests Run
 
-| Command | Result | Pass | Fail | Duration | Exit | Notes |
-| ------- | ------ | ---- | ---- | -------- | ---- | ----- |
-| `$env:SPECREW_MODULE_PATH=(Get-Location).Path; Invoke-Pester -Path 'tests/continuous-co-review/unit/bounded-verification.Tests.ps1' -PassThru` | pass | 11 | 0 | ~12s | 0 | FR-010 opt-in helper + regression evidence for the removed auto-reruns: timeout, process-tree kill, zero-disk byte-bounded streaming cap, add/delete/modify mutation, reviewer-authority (.review) mutation reported, allowlist, empty set |
-| `$env:SPECREW_MODULE_PATH=(Get-Location).Path; Invoke-Pester -Path 'tests/continuous-co-review/unit/orchestrator-reviewer-integrity.Tests.ps1' -PassThru` | pass | 8 | 0 | ~7s | 0 | FR-010 simplified: orchestrator never auto-runs the helper + injects no verification results; reviewer-invocation integrity fails on source/authority mutation, allows only .review/findings.jsonl; a NEW host-dir file is churn but a MODIFIED pre-existing host-dir config fails; honest strict-read-only prompt |
+| Task | Suite | Result | Pass | Fail | Duration | Exit |
+| ---- | ----- | ------ | ---- | ---- | -------- | ---- |
+| T013 (FR-008) | `worktree-containment.Tests.ps1` — outside-origin materialization; refuses inside/origin-itself; symlink/junction escape refused | pass | 4 | 0 | ~4s | 0 |
+| T014 (FR-009) | `origin-path-hygiene.Tests.ps1` — relativizes origin paths (all forms, multi-root); END-TO-END diff scrub | pass | 6 | 0 | ~5s | 0 |
+| T015 (FR-010) prod | `orchestrator-reviewer-integrity.Tests.ps1` — no auto-verification; reviewer-invocation integrity (source/authority/host-config mutation fails; findings.jsonl allowed; new host churn ok); honest prompt | pass | 8 | 0 | ~7s | 0 |
+| T015 (FR-010) helper | `bounded-verification.Tests.ps1` — opt-in helper + removed-auto-rerun regression: timeout, process-tree kill, zero-disk byte cap, add/delete/modify + .review-authority mutation | pass | 11 | 0 | ~12s | 0 |
+| T020 (FR-018/019) | `review-spend-allowance.Tests.ps1` — two-budget classifier; preflight (no spend/round); post-invocation failed (spend+round); ceiling counts only reviewed rounds; consumer-legible halt | pass | 11 | 0 | ~7s | 0 |
 | `& ./tests/f198-regression-suite.ps1` | pass | 16 | 0 | ~88s | 0 | Whole-feature honesty gate: 16 suites (ratchet, spend allowance, containment, origin hygiene, bounded-verification helper + reviewer-integrity, tracker honesty, verdict capture, budget, signoff gate, shared-engine, digest/exec-bit) |
 
 ## Coverage Estimate

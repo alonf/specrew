@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T01:40:00Z
+**Updated**: 2026-07-12T02:05:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -334,8 +334,18 @@
   vs at-landing deferral) the maintainer owns. Surfaced in the stop packet;
   NOT clearing the latch unilaterally. The T015 simplification + all
   containment work reviewed clean; this lone blocker is deferred T034b work.
-- Next: maintainer decision on the T034b strict-resolution blocker (pull
-  forward now vs record at-landing deferral + proceed to T016).
+- Co-review d5511d31 (navigator, concurrent): finding-1 (coverage 7-vs-8)
+  was STALE (already fixed in 2bd6085b). finding-2 VALID: T020 is done but
+  its suite review-spend-allowance.Tests.ps1 was NOT in the digest-matched
+  evidence, so the done/tested claim was prose-only. DURABLE fix: the
+  recorder now records EVERY iteration-003 done-task suite (T013 containment
+  4, T014 origin-hygiene 6, T015 production 8 + helper 11, T020 spend 11) as
+  digest-linked runner-observed evidence; coverage-evidence.md rewritten as a
+  per-task table with those recorded counts (ends the prose-only-count class
+  for all done tasks, not just T015). The T034b strict-resolution blocker
+  (below) is still the maintainer's open decision.
+- Open (maintainer decision): the T034b strict-resolution blocker - pull
+  forward now vs record at-landing deferral + proceed to T016.
 
 ## Notes
 
