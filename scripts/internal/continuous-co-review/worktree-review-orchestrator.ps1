@@ -780,7 +780,12 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 # foreach) so a single sample/violation is not double-wrapped.
                 if ($null -ne $Telemetry -and $Telemetry.PSObject.Properties['child_pid'] -and $Telemetry.child_pid -and $containmentOriginRoots.Count -gt 0) {
                     try {
-                        $cvSamples = Get-ContinuousCoReviewContainmentSamples -RootPid ([int]$Telemetry.child_pid)
+                        # DRIFT-198-I003-004: pass the prompt's path tokens so the sampler subtracts prompt MENTIONS
+                        # from the host's argv (the host carries the prompt) while keeping real origin operation targets.
+                        # Guard the property access (strict-mode safe: a heartbeat telemetry without the field must not throw).
+                        $cvPromptTokens = @()
+                        if ($Telemetry.PSObject.Properties['prompt_mention_tokens']) { $cvPromptTokens = @($Telemetry.prompt_mention_tokens | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) }
+                        $cvSamples = Get-ContinuousCoReviewContainmentSamples -RootPid ([int]$Telemetry.child_pid) -PromptMentionTokens $cvPromptTokens
                         $cvNew = Test-ContinuousCoReviewContainmentViolations -Samples $cvSamples -OriginRoots $containmentOriginRoots -RunId $RunId
                         foreach ($cv in $cvNew) {
                             $cvKey = ('{0}|{1}|{2}' -f $cv.process, $cv.source, $cv.path)

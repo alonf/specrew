@@ -35,14 +35,15 @@ bound to T019 + T030–T032. One docs-vs-shipped-design drift
 verification" after the option-1 decision (2026-07-11) had made it opt-in —
 the authoritative docs are now aligned to the shipped design. One
 implementation defect in the shipped T016 detector (DRIFT-198-I003-004): the
-containment sampler tokenized the reviewer HOST's own prompt arg, so a codex
-review whose prompt merely NAMED the origin path false-flagged as origin
-access — caught by dogfooding the detector on its own increment, fixed in
-place with a host-prompt-arg exemption + a regression test.
+containment sampler could not tell a reviewer HOST's prompt MENTION of origin
+from real origin ACCESS — caught, and then its over-broad first fix ALSO caught,
+by successive fresh-context codex reviews; resolved by subtracting the known
+prompt tokens from the host argv so mentions drop while real operation targets
+stay observable (FR-011), with the earlier self-approved "residual" withdrawn.
 
 ## Events
 
-### DRIFT-198-I003-004 — T016 containment sampler tokenized the reviewer HOST's own prompt arg, false-flagging a real codex review as origin access (resolved: host-prompt-arg exemption + regression test)
+### DRIFT-198-I003-004 — T016 containment sampler could not distinguish a reviewer HOST's prompt MENTION of origin from real origin ACCESS (resolved in two field-caught stages: prompt-mention subtraction restores host observability)
 
 - **Requirement citation**: FR-011 / SC-003 (the T016 containment-violation
   DETECTOR: cwd/command-line sampling, loud origin-side `containment-violated`);
@@ -57,29 +58,48 @@ place with a host-prompt-arg exemption + a regression test.
   line, so an origin path MENTIONED in the prompt was recorded as origin ACCESS.
   The orchestrator's fail-loud path then failed a clean review with
   `failure_reason=containment-violated` and discarded its findings.
-- **Detection (dogfood — the detector caught its own bug)**: the first serialized
-  codex review OF the T016 increment (run `20260712T181010372-fpvalidate`) fired
-  the new detector on `pid=… image=codex.exe source=arg path=C:\Dev\…` — the
-  reviewer's own prompt-arg, not access. A true positive of a false-positive class.
-- **Resolution (implementation-corrected, in place)**: arg-sampling is now SKIPPED
-  for the reviewer HOST — the ROOT pid and any same-image worker — because the
-  prompt lives in the host's args; `exe`-source is still sampled for the host (a
-  host exe UNDER origin is still caught), and a NON-host descendant (git/rg/node)
-  invoked with an origin path IS still arg-sampled (a real operation-target signal).
-  The fail-CLOSED default keeps the ROOT pid arg-exempt even if its image can't be
-  resolved (CIM/proc race). Added a paired sampler regression test
-  (`worktree-containment.Tests.ps1`, HOST PROMPT-ARG EXEMPTION): host prompt-arg
-  skipped, host exe kept, descendant git arg kept → exactly one violation (the
-  descendant), never the host prompt.
-- **Residual limitation (documented, accepted under MONITORED confinement)**: a
-  host that reaches origin via a path in its OWN args is now caught only by
-  exe/cwd; on Windows (no cheap cwd) that means exe-only for the host. The
-  STRUCTURAL guarantee is unchanged — T013 materializes the reviewer worktree
-  OUTSIDE origin (fail-closed), and T016 remains a best-effort monitor, not
-  OS-enforced isolation.
+- **Stage 1 detection (dogfood — the detector caught its own bug)**: the first
+  serialized codex review OF the T016 increment (run
+  `20260712T181010372-fpvalidate`) fired the new detector on
+  `pid=… image=codex.exe source=arg path=C:\Dev\…` — the reviewer's own
+  prompt-arg, not access. A true positive of a false-positive class.
+- **Stage 2 — the first fix was itself over-broad, and codex caught THAT too
+  (dogfood²)**: the initial correction simply SKIPPED arg-sampling for the host
+  (root + same-image workers). That removed the false positive but BLINDED the
+  detector to a host that reaches origin via its OWN real arg — on Windows there
+  is no cheap cwd and the host exe is never under origin, so the host had NO
+  remaining access signal. The next fresh-context codex review (autonomous
+  navigator run `20260712T153106402-764adb91`, CORROBORATED by the manual
+  serialized review `20260712T183648073-fpvalidate`, both blocking, 1 finding)
+  flagged the gap AND correctly objected that this drift record had marked the
+  residual "accepted" with no human approver and no carried work item — i.e. an
+  invalid self-approved deferral.
+- **Resolution (implementation-corrected, in place — the sampling seam, not a
+  blanket skip)**: the launcher records the EXACT prompt's absolute path tokens
+  (`prompt_mention_tokens`, threaded to the sampler via the heartbeat telemetry);
+  for a host process the sampler SUBTRACTS those mentions from its argv tokens
+  (count-based, superset-gated `Get-ContinuousCoReviewOperationTargetTokens`) — a
+  prompt MENTION subtracts, but a REAL origin operation target beyond the prompt
+  (or a count that exceeds the prompt's) SURVIVES and is sampled. Host
+  command-line access is OBSERVABLE again (FR-011). Non-host descendants are
+  sampled in full; `exe`/`cwd` sampling is unchanged. Tests: a pure-helper test
+  (mention subtracts / real target survives / count-exceeds survives / non-superset
+  worker kept) + a sampler DISAMBIGUATION test (host prompt mention subtracted,
+  host real target AND descendant both observed → two violations, never the prompt).
+- **Inherent scope of "command-line sampling" (NOT a deferral; no human approval
+  claimed)**: FR-011's literal method is `cwd/command-line sampling`. It cannot
+  see origin access that manifests as NO path argument — a bare syscall file-open
+  by the host itself — and Windows exposes no cheap cwd. That is the defined SCOPE
+  of the method, not a deferred gap within it; deeper (syscall/handle-level)
+  interception would be a NEW requirement, not a carry-forward of FR-011. For the
+  un-sampleable case the STRUCTURAL guarantee remains T013 (worktree materialized
+  OUTSIDE origin, fail-closed). The Stage-2 "accepted residual" self-approval is
+  WITHDRAWN — nothing about FR-011 is being deferred.
 - **Scope note**: no new requirement and no scope change — this REALIZES FR-011 at
-  its intended precision (origin ACCESS, not origin MENTION); found and fixed in
-  003 as field evidence of the value of dogfooding the detector on its own tree.
+  its intended precision (origin ACCESS, not origin MENTION) and at its literal
+  scope (cwd/command-line). A two-stage field fix; strong evidence for the value of
+  dogfooding the detector on its own tree — and for a fresh-context reviewer
+  catching an over-correction the author would have shipped.
 
 ### DRIFT-198-I003-003 — T015 confinement contract: design surfaces bound "REQUIRED bounded verification" after the option-1 decision made it opt-in (resolved: docs aligned to the shipped design)
 

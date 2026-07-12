@@ -176,6 +176,7 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
         New-Item -ItemType Directory -Path $script:Origin -Force | Out-Null
         New-Item -ItemType Directory -Path $script:Worktree -Force | Out-Null
         $script:OriginSecret = Join-Path $script:Origin 'secret.md'; Set-Content -LiteralPath $script:OriginSecret -Value 'origin' -NoNewline
+        $script:OriginOther = Join-Path $script:Origin 'realtarget.md'; Set-Content -LiteralPath $script:OriginOther -Value 'origin2' -NoNewline
         $script:WtSource = Join-Path $script:Worktree 'src.ps1'; Set-Content -LiteralPath $script:WtSource -Value 'wt' -NoNewline
     }
     AfterAll {
@@ -241,28 +242,48 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
         finally { try { $child.Kill($true) } catch { $null = $_ } }
     }
 
-    It 'HOST PROMPT-ARG EXEMPTION (DRIFT-198-I003-004): the reviewer HOST''s own prompt arg naming origin is NOT sampled as access, but a NON-host descendant tool invoked with an origin path IS (regression: false containment-violated on a real codex review)' -Skip:(-not $IsWindows) {
-        # The HOST (codex.exe = RootPid) is launched as `codex exec "<prompt>"`; the prompt legitimately names the
-        # origin project, so its command line carries the origin path WITHOUT the reviewer touching origin. A
-        # descendant git.exe invoked `git -C <origin>` IS a real operation-target signal. Mock the tree + CIM so the
-        # sampler sees exactly this shape and prove: host arg-token skipped, host exe still sampled, descendant kept.
+    It 'PROMPT-MENTION SUBTRACTION (pure helper): host prompt mentions subtract, real operation targets survive (count-based, superset-gated)' {
+        $A = $script:OriginSecret; $B = $script:OriginOther; $C = $script:WtSource
+        # prompt-only host -> nothing survives (the classic false positive is gone)
+        @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A) -PromptTokens @($A)).Count | Should -Be 0
+        # a REAL extra origin target beyond the prompt SURVIVES (host access stays observable)
+        $r1 = @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A, $B) -PromptTokens @($A))
+        $r1 | Should -Contain $B
+        $r1 | Should -Not -Contain $A
+        # a real access to a path the prompt ALSO names survives - its COUNT exceeds the prompt's
+        $r2 = @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A, $A) -PromptTokens @($A))
+        $r2.Count | Should -Be 1; $r2 | Should -Contain $A
+        # NON-superset (a worker carrying only a real arg, not the whole prompt) is left UNCHANGED - its arg is kept
+        $r3 = @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A) -PromptTokens @($A, $C))
+        $r3.Count | Should -Be 1; $r3 | Should -Contain $A
+        # no prompt tokens -> unchanged
+        @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A, $B) -PromptTokens @()).Count | Should -Be 2
+    }
+
+    It 'HOST PROMPT-ARG DISAMBIGUATION (DRIFT-198-I003-004): a host prompt MENTION of origin is subtracted (no false positive), but a REAL origin operation target in the host argv AND a non-host descendant''s origin arg BOTH stay observable (FR-011)' -Skip:(-not $IsWindows) {
+        # The HOST (codex.exe = RootPid) is launched as `codex exec "<prompt>"`; the prompt legitimately NAMES an
+        # origin path (OriginSecret). The launcher passes the prompt's path tokens so the sampler SUBTRACTS that
+        # mention - but a REAL origin operation target the host argv ALSO carries (OriginOther, NOT in the prompt)
+        # must SURVIVE, and a descendant git''s origin arg (OriginSecret) must be sampled in full (subtraction is
+        # HOST-scoped). This is the codex-found gap: the earlier blanket exemption would have hidden OriginOther.
         Mock -CommandName Get-SpecrewProcessTreeDescendants -MockWith { @(777) }
         Mock -CommandName Get-CimInstance -MockWith {
             @(
-                [pscustomobject]@{ ProcessId = 666; Name = 'codex.exe'; CommandLine = ('codex exec "review {0} then stop"' -f $script:OriginSecret); ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
-                [pscustomobject]@{ ProcessId = 777; Name = 'git.exe'; CommandLine = ('git -C {0} status' -f $script:Origin); ExecutablePath = 'C:\Program Files\Git\cmd\git.exe' }
+                [pscustomobject]@{ ProcessId = 666; Name = 'codex.exe'; CommandLine = ('codex exec "review {0} then stop" --root {1}' -f $script:OriginSecret, $script:OriginOther); ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
+                [pscustomobject]@{ ProcessId = 777; Name = 'git.exe'; CommandLine = ('git --no-pager show {0}' -f $script:OriginSecret); ExecutablePath = 'C:\Program Files\Git\cmd\git.exe' }
             )
         }
-        $samples = Get-ContinuousCoReviewContainmentSamples -RootPid 666
-        $argHost = @($samples | Where-Object { $_.source -eq 'arg' -and $_.image -eq 'codex.exe' })
-        $argHost.Count | Should -Be 0 -Because 'the HOST''s own command line carries the PROMPT (which names origin) - arg-sampling it would false-flag prompt-mention as access'
-        $exeHost = @($samples | Where-Object { $_.source -eq 'exe' -and $_.image -eq 'codex.exe' })
-        $exeHost.Count | Should -BeGreaterThan 0 -Because 'exe-source is STILL sampled for the host (a host exe UNDER origin would still be caught)'
-        $argChild = @($samples | Where-Object { $_.source -eq 'arg' -and $_.image -eq 'git.exe' })
-        $argChild.Count | Should -BeGreaterThan 0 -Because 'a NON-host descendant invoked with an origin path is a real operation-target signal and IS arg-sampled'
-        # End-to-end through the pure checker: the ONLY violation is the descendant git, never the host prompt.
-        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-HOSTEXEMPT'
-        @($v).Count | Should -Be 1 -Because 'only the descendant git''s origin arg resolves to a violation; the host prompt is exempt'
-        [string]$v[0].process | Should -Match 'git\.exe'
+        $samples = Get-ContinuousCoReviewContainmentSamples -RootPid 666 -PromptMentionTokens @($script:OriginSecret)
+        $argHostTokens = @($samples | Where-Object { $_.source -eq 'arg' -and $_.image -eq 'codex.exe' } | ForEach-Object { $_.path })
+        $argHostTokens | Should -Not -Contain $script:OriginSecret -Because 'the prompt MENTION is subtracted from the host argv (the false positive that failed a real codex review is gone)'
+        $argHostTokens | Should -Contain $script:OriginOther -Because 'a REAL origin operation target beyond the prompt SURVIVES subtraction - host command-line access stays OBSERVABLE (FR-011, the codex-found gap)'
+        @($samples | Where-Object { $_.source -eq 'exe' -and $_.image -eq 'codex.exe' }).Count | Should -BeGreaterThan 0 -Because 'exe-source is still sampled for the host'
+        $argChildTokens = @($samples | Where-Object { $_.source -eq 'arg' -and $_.image -eq 'git.exe' } | ForEach-Object { $_.path })
+        $argChildTokens | Should -Contain $script:OriginSecret -Because 'prompt subtraction is HOST-scoped; a NON-host descendant is sampled in full'
+        # End-to-end through the pure checker: TWO violations (host real target + descendant), never the host prompt mention.
+        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-DISAMBIG'
+        @($v).Count | Should -Be 2 -Because 'the host real-target (OriginOther) AND the descendant (OriginSecret) resolve to violations; the host PROMPT mention does not'
+        (($v | ForEach-Object { [string]$_.process }) -join '|') | Should -Match 'codex\.exe'
+        (($v | ForEach-Object { [string]$_.process }) -join '|') | Should -Match 'git\.exe'
     }
 }
