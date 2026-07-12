@@ -735,13 +735,34 @@ function Get-ContinuousCoReviewGenerousBudget {
 # IS tampering (finding 3b5ae645) - so these dirs are HASHED, not skipped; only NEW files under them are
 # exempted, and ONLY by the integrity check's new-file branch, never wholesale.
 $script:ContinuousCoReviewVolatileHostDirs = @('.antigravitycli', '.codex', '.claude', '.cursor', '.gemini', '.copilot')
+# CHARACTERIZED EPHEMERAL allowlist (DRIFT-198-I003-006, maintainer ruling 2026-07-12): only KNOWN transient
+# reviewer-host outputs are exempt churn. A recognized ephemeral SUBDIR segment OR ephemeral FILE pattern under a
+# host dir passes; an UNKNOWN file, a CONFIG file, or persistent state FAILS integrity - a reviewer must NOT add
+# .codex/config.toml or .claude/settings.json and still get a valid result (only .review/findings.jsonl is writable).
+$script:ContinuousCoReviewEphemeralHostSegments = @('sessions', 'history', 'logs', 'log', 'cache', 'tmp', 'temp', 'todos', 'shell-snapshots', 'statsig', 'projects', 'ide', 'versions', 'updates')
+$script:ContinuousCoReviewEphemeralHostFilePatterns = @('*.log', '*.lock', '*.pid', '*.tmp', '*.jsonl', '*.sock', 'session*.json', 'history*.json', '*.session')
+$script:ContinuousCoReviewPersistentHostFilePatterns = @('config.*', 'settings.*', '*.toml', '*.yaml', '*.yml', '*.ini', '*.config', 'credentials*', 'auth*')
 
 function Test-ContinuousCoReviewIsHostChurnPath {
-    # A NEW file that is legitimate reviewer-host session state: its TOP-LEVEL dir is a volatile host dir.
-    # Used ONLY for new files - a modified/deleted pre-existing file under a host dir is still tampering.
+    # Is a NEW file legitimate, transient reviewer-host session state (exempt churn) - or unknown/persistent content
+    # that must FAIL the integrity check? (DRIFT-198-I003-006: the old exemption passed ANY new file under a host dir,
+    # so a reviewer could add .codex/config.toml / .claude/settings.json and still get a valid result.) Now the
+    # top-level dir MUST be a volatile host dir AND the path must match the CHARACTERIZED EPHEMERAL allowlist - a
+    # recognized ephemeral SUBDIR segment or ephemeral FILE pattern - and must NOT match a persistent/config pattern.
+    # Anything else under a host dir (unknown file, config, persistent state) is NOT churn. Used ONLY for new files;
+    # a modified/deleted PRE-EXISTING file under a host dir is always tampering (finding 3b5ae645).
     param([Parameter(Mandatory)][AllowEmptyString()][string]$RelativePath)
-    $top = ($RelativePath -replace '/.*$', '')
-    return ($script:ContinuousCoReviewVolatileHostDirs -contains $top)
+    $segments = @(($RelativePath -split '[\\/]') | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($segments.Count -eq 0) { return $false }
+    if ($script:ContinuousCoReviewVolatileHostDirs -notcontains $segments[0]) { return $false }   # not under a host dir
+    $leaf = [string]$segments[-1]
+    # EXPLICIT DENY: a config/persistent-looking file under a host dir is NEVER exempt churn (adding it is tampering).
+    foreach ($pat in $script:ContinuousCoReviewPersistentHostFilePatterns) { if ($leaf -like $pat) { return $false } }
+    # ALLOW: a recognized ephemeral SUBDIR segment...
+    for ($i = 1; $i -lt $segments.Count; $i++) { if ($script:ContinuousCoReviewEphemeralHostSegments -contains ([string]$segments[$i]).ToLowerInvariant()) { return $true } }
+    # ...OR a recognized ephemeral FILE pattern.
+    foreach ($pat in $script:ContinuousCoReviewEphemeralHostFilePatterns) { if ($leaf -like $pat) { return $true } }
+    return $false   # under a host dir but NOT a characterized ephemeral output -> tampering
 }
 
 function Get-ContinuousCoReviewWorktreeSourceHashes {

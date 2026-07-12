@@ -120,6 +120,42 @@ Describe 'orchestrator does NOT auto-run verification, and integrity-checks the 
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'FAILS when the reviewer adds a persistent CONFIG file under a host dir (DRIFT-198-I003-006: not exempt churn)' {
+        # The host-churn exemption is a CHARACTERIZED ephemeral allowlist - a reviewer must NOT add persistent config
+        # (.codex/config.toml, .claude/settings.json) or an arbitrary file and still get a valid result.
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        try {
+            script:StubHost
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                New-Item -ItemType Directory -Path (Join-Path $WorktreePath '.codex') -Force | Out-Null
+                Set-Content -LiteralPath (Join-Path $WorktreePath '.codex/config.toml') -Value 'persist = true' -NoNewline   # NEW persistent config
+                script:ReviewerResult 'ri-cfg2'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-cfg2' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed' -Because 'a NEW persistent config under a host dir is tampering, not exempt churn (DRIFT-198-I003-006)'
+            [string]$st.failure_reason | Should -Be 'reviewer-tampered-tree'
+            [string]$st.message | Should -Match 'config\.toml'
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'host-churn allowlist predicate (DRIFT-198-I003-006): characterized ephemeral outputs pass; config + unknown files fail' {
+        # ALLOWED - recognized ephemeral runtime outputs:
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/sessions/abc.jsonl' | Should -BeTrue -Because 'a session transcript is ephemeral'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/history.jsonl' | Should -BeTrue -Because 'a .jsonl log is ephemeral'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.claude/projects/x/y.jsonl' | Should -BeTrue -Because 'a projects session file is ephemeral'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/agent.lock' | Should -BeTrue -Because 'a lock file is ephemeral'
+        # DENIED - persistent config under a host dir:
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/config.toml' | Should -BeFalse -Because 'persistent config must FAIL integrity'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.claude/settings.json' | Should -BeFalse -Because 'persistent config must FAIL integrity'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.claude/settings.local.json' | Should -BeFalse
+        # DENIED - unrecognized file under a host dir:
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.codex/mystery.dat' | Should -BeFalse -Because 'an unrecognized file is not characterized ephemeral'
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath '.claude/payload.sh' | Should -BeFalse
+        # NOT under a host dir at all -> not churn (a real source path is judged by the normal integrity check):
+        Test-ContinuousCoReviewIsHostChurnPath -RelativePath 'src/app.ps1' | Should -BeFalse
+    }
+
     It 'FAILS when the reviewer MODIFIES a PRE-EXISTING file inside a host-runtime dir (tracked config, not churn)' {
         # Finding 3b5ae645: the host-dir exemption is NEW-files-only. A tracked config that the archive
         # extracted (present in the PRE snapshot) must not be rewritable under .claude/.codex/... undetected.

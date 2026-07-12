@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 5
+**Total drift events**: 6
 **Resolution rate**: DRIFT-198-I003-001 + DRIFT-198-I003-003 resolved in place;
 DRIFT-198-I003-002 recorded → T019/T030–T032; DRIFT-198-I003-004 resolved via a
 maintainer-decided FR-011/SC-003 AMENDMENT (T016 REOPENED, pending certification of
@@ -48,6 +48,44 @@ that never discard a valid review; sampler health is recorded so weak visibility
 is never silent), and T016 was REOPENED against the amended contract.
 
 ## Events
+
+### DRIFT-198-I003-006 — ADJACENT hardening found during T016/T020 confirmation: over-broad host-churn exemption + over-claiming coverage evidence (resolved in place; NOT absorbed into FR-011/FR-019)
+
+- **Scope note (maintainer instruction 2026-07-12)**: these two defects were surfaced by
+  the co-review WHILE confirming the T016/T020 amendments, but they are ADJACENT hardening
+  — recorded here as their own drift event, deliberately NOT folded into FR-011 or FR-019.
+- **Finding A — integrity-gate host-churn exemption too broad**:
+  - *Requirement citation*: the reviewer-invocation integrity contract (FR-010 family) +
+    `reviewer-spawn-contract.md` ("the ONLY permitted write is `.review/findings.jsonl`").
+  - *Divergence*: `Test-ContinuousCoReviewIsHostChurnPath` exempted ANY new file whose
+    top-level dir was a volatile host dir (`.codex`, `.claude`, …). A reviewer could add
+    persistent content (`.codex/config.toml`, `.claude/settings.json`) or an arbitrary file
+    and still receive a valid result — contradicting the spawn contract.
+  - *Detection*: co-review autonomous navigator run `20260712T182526592-abc8997e` (blocking).
+  - *Resolution (in place)*: the exemption is now a CHARACTERIZED ephemeral allowlist — a
+    recognized ephemeral subdir segment (`sessions`, `projects`, `todos`, `logs`, `cache`,
+    `tmp`, …) or file pattern (`*.jsonl`, `*.log`, `*.lock`, `*.tmp`, `session*.json`, …),
+    with an explicit DENY for config/persistent patterns (`config.*`, `settings.*`, `*.toml`,
+    `*.yaml`, …). An unknown/config/persistent new file under a host dir now FAILS integrity.
+    Paired tests: recognized ephemeral passes; a config file (`.codex/config.toml`) and an
+    unrecognized file FAIL (unit predicate + a negative integration test). `reviewer-spawn-contract.md`
+    updated to describe the narrowed allowlist.
+- **Finding B — coverage evidence over-claimed universal injection**:
+  - *Requirement citation*: the test-evidence-honesty rule (co-review f1, 2026-07-12) — a
+    count has standing only with digest-matched runner-observed evidence.
+  - *Divergence*: `coverage-evidence.md` claimed EVERY listed suite was injected as
+    `.review/implementer-evidence.json` with runner-observed standing, but a given review's
+    injected record contains only the suites recorded for THAT exact digest (the navigator's
+    run held 3 of the listed suites). So several rows (incl. T020) claimed standing they did
+    not have for that tree.
+  - *Detection*: same navigator run `20260712T182526592-abc8997e` (blocking).
+  - *Resolution (in place)*: `coverage-evidence.md` rewritten to state that a row has
+    digest-bound runner-observed standing ONLY for suites present in the digest-matched record
+    for the tree under review — NO universal-injection claim, NO reliance on historical runs;
+    the recorder must be re-run against the exact reviewed digest to cover every listed suite.
+- **Scope note**: two implementation/honesty corrections, maintainer-directed as adjacent
+  hardening (one authorized confirmation round). Not new requirements; not folded into
+  T016/T020.
 
 ### DRIFT-198-I003-005 — resolved-against-disk unintentionally REPLENISHED the review-spend allowance (resolved: split into resolve vs allowance-reset, maintainer ruling 2026-07-12)
 

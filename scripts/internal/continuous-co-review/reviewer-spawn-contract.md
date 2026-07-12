@@ -60,11 +60,14 @@ other mutation — editing/adding/deleting source, rewriting a `.review/` input,
 artifacts behind — **fails the review** (`failure_reason: reviewer-tampered-tree`; the model was invoked
 so it is the invoked-failed spend class — provider spend + round consumed + a `reviewer-tampered-tree`
 disposition — and the findings are discarded). The exemption for volatile reviewer-host runtime dirs
-(`.antigravitycli/`, `.codex/`, `.claude/`, `.cursor/`, `.gemini/`, `.copilot/`) is **new-files-only**:
-a host may create NEW ephemeral session state there, but a **pre-existing** file under one of those dirs
-(e.g. project-tracked config the archive extracted) that is **modified or deleted is still tampering** —
-those dirs are hashed, not skipped. This is **monitored confinement, not OS-enforced filesystem
-isolation**; the T016 detector likewise monitors and reports, it does not sandbox.
+(`.antigravitycli/`, `.codex/`, `.claude/`, `.cursor/`, `.gemini/`, `.copilot/`) is a **narrow, characterized
+ephemeral allowlist** (DRIFT-198-I003-006), NOT "any new file": a host may create NEW **recognized transient**
+session state there — an ephemeral subdir or file (`sessions/`, `projects/`, `todos/`, `*.jsonl`, `*.log`,
+`*.lock`, `*.tmp`, …). A NEW **unknown**, **configuration**, or **persistent** file under those dirs (e.g.
+`.codex/config.toml`, `.claude/settings.json`) is **tampering**, NOT exempt churn — it fails the review. A
+**pre-existing** file under one of those dirs (e.g. project-tracked config the archive extracted) that is
+**modified or deleted is still tampering** — those dirs are hashed, not skipped. This is **monitored
+confinement, not OS-enforced filesystem isolation**; the T016 monitor likewise reports, it does not sandbox.
 
 **Result delivery — stdout-primary AND file-primary (2026-07-12).** The prompt asks the reviewer for its
 FindingsResult two ways: incrementally APPENDED to `.review/findings.jsonl` (one finding per line, so a
