@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T01:15:00Z
+**Updated**: 2026-07-12T01:40:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -317,8 +317,25 @@
   test: a new .codex file is churn (done), a rewritten pre-existing
   .claude/settings.json fails (reviewer-tampered-tree). Contract doc
   updated for both. Reviewer suites 29/29.
-- Next: no older review in flight, ONE serialized review against HEAD, then
-  T016 if clean.
+- Serialized review 8ff8474e: 1 advisory + 1 blocking. ADVISORY (fixed):
+  coverage-evidence table still said orchestrator-reviewer-integrity 7/7
+  while the file + digest evidence are 8/8 (the host-dir config-modify test)
+  - table corrected to 8. BLOCKING (ESCALATED, not auto-resolved): the
+  strict design-context resolution for EXPLICITLY-supplied unresolved refs
+  (fail-before-reviewer-selection with design-context-unresolved: + status
+  unresolved_design_context; only omitted/empty degrades to
+  DESIGN_CONTEXT_EMPTY) is ABSENT from the orchestrator (confirmed: line 568
+  uses supplied DesignContextFiles as-is, no per-entry validation; no
+  unresolved_design_context anywhere). This is the Devin cca79708 behavior
+  that T034b carries and is EXPLICITLY at-landing/PENDING (this state's own
+  T034a/T034b entries + tasks.md). It is a Devin-SEAM FAIL-CLOSED behavior -
+  the maintainer's T034b doctrine says semantic/fail-closed seam conflicts
+  ESCALATE, never auto-resolve - and a scheduling call (pull T034b forward
+  vs at-landing deferral) the maintainer owns. Surfaced in the stop packet;
+  NOT clearing the latch unilaterally. The T015 simplification + all
+  containment work reviewed clean; this lone blocker is deferred T034b work.
+- Next: maintainer decision on the T034b strict-resolution blocker (pull
+  forward now vs record at-landing deferral + proceed to T016).
 
 ## Notes
 
