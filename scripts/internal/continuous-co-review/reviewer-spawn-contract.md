@@ -83,6 +83,25 @@ rule). Separately, the reviewer subprocess is spawned with `SPECREW_REFOCUS_DISA
 OWN global Specrew hooks no-op — a reviewer must never trigger the governance machinery on itself (the codex
 empty-exit0 root cause, 2026-07-12).
 
+**Reviewer-host hook suppression — a BOUNDED contract, NOT complete isolation (codex finding f1, 2026-07-12).**
+`SPECREW_REFOCUS_DISABLE=1` is set on the reviewer **process**, so the reviewer host's own lifecycle hooks
+no-op (a reviewer must never govern itself — recursive governance). Process environment is inherited, so this
+is a **bounded** contract with explicit supported and unsupported paths — it does **not** claim complete
+environment isolation:
+
+- **SUPPORTED** — governance-sensitive verification launched under a reviewer session MUST go through the
+  engine-owned bounded-verification helper (`Invoke-ContinuousCoReviewBoundedVerification`). That helper
+  **explicitly removes `SPECREW_REFOCUS_DISABLE` from every verification child's environment**, so a
+  governance/hook the child invokes executes **normally** (no false-green). This is the ONLY supported path for
+  a governance-sensitive check under a reviewer session.
+- **UNSUPPORTED (by design)** — an **arbitrary** child the reviewer spawns directly (not through that helper)
+  **inherits** the suppression. This is **intentional** (it is what prevents recursive governance); it is not a
+  gap to be closed by more instructions. The reviewer is therefore told (in the prompt) to **report a
+  governance/hook-behavior check that is not covered by digest-bound evidence as UNVERIFIABLE-here**, never to
+  run it directly and never to mutate its own environment. General process-level scoping (a launcher/dispatcher
+  marker distinguishing a host lifecycle hook from any other child) is **future OS-isolation work**, tracked
+  with `iterations/003/research/reviewer-os-isolation-future.md`, not T015 scope.
+
 **Future work (out of T015 scope).** Genuinely confining declared/reviewer commands — a dedicated
 process identity plus worktree-only ACL isolation — is recorded as a separate future proposal
 (`iterations/003/research/reviewer-os-isolation-future.md`).

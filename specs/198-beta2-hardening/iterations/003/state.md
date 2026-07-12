@@ -491,8 +491,28 @@
   the retry/harvest/partial path); a zero-finding verdict must arrive via stdout
   (file-only delivery cannot prove no_findings); stdout-primary hosts (claude)
   unchanged. New suites reviewer-file-primary-result (10) + reviewer-hook-
-  suppression (3); F-198 registry 18/18 green. NEXT: re-record digest-bound
-  evidence for the committed tree, then one serialized co-review of that digest.
+  suppression (4); F-198 registry 18/18 green (committed 08d97fa0).
+- END-TO-END VALIDATION (serialized codex co-review of digest 1173e1ab, run
+  20260712T112120158): the fix WORKS - result_source=file-primary,
+  completeness=full, T108_retried=false, reviewer-execution=103.9s (codex really
+  ran), implementer_evidence=true, independent, current-run identity confirmed.
+  A pre-fix ceiling latch (round 2, blocking, from the empty-exit0 failed-
+  invocation saga) first ceiling-halted a run; cleared via the AUDITABLE
+  `resolved-against-disk` remediation (--fix-evidence-ref 08d97fa0, ancestor
+  verified, 12 dispositions preserved), NOT a delete.
+- codex f1 (blocking, verification-environment-contamination): SPECREW_REFOCUS_
+  DISABLE=1 on the reviewer process is inherited by children, so a reviewer-
+  launched governance test could false-green. FIX (maintainer option-1 strict
+  bounded contract): the engine-owned bounded-verification helper now EXPLICITLY
+  REMOVES SPECREW_REFOCUS_DISABLE from each verification child (the ONLY supported
+  governance-sensitive path); paired test proves the reviewer host inherits
+  suppression while a bounded-verification child does NOT + reaches governance;
+  the prompt tells the reviewer to report a governance check not in evidence as
+  UNVERIFIABLE (never self-run / self-mutate env); reviewer-spawn-contract.md
+  records this as a BOUNDED contract (supported=bounded helper; unsupported=
+  arbitrary reviewer child inherits suppression BY DESIGN to prevent recursive
+  governance; general scoping = future OS-isolation), NOT complete isolation.
+  NEXT: re-record evidence for the committed tree, then one serialized co-review.
 
 ## Notes
 

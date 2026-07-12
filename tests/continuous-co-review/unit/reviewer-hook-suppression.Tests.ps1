@@ -75,4 +75,30 @@ Describe 'reviewer spawn suppresses the reviewer host''s own Specrew hooks (empt
             if ($null -eq $prev) { Remove-Item Env:\SPECREW_REFOCUS_DISABLE -ErrorAction SilentlyContinue } else { $env:SPECREW_REFOCUS_DISABLE = $prev }
         }
     }
+
+    # PAIRED CONTRACT (codex finding f1 verification-environment-contamination, 2026-07-12): the reviewer host +
+    # its lifecycle hooks MUST inherit the suppression (tests 1 + 2 above), but a governance-sensitive verification
+    # child launched through the engine's OWN bounded-verification helper MUST NOT inherit it - so a governance/hook
+    # it invokes executes normally instead of false-greening on the kill-switch no-op path. The bounded helper is
+    # the ONLY supported path for governance-sensitive verification under a reviewer session; arbitrary
+    # reviewer-spawned children still inherit suppression by design (documented in reviewer-spawn-contract.md).
+    It '3. a bounded-verification child does NOT inherit the suppression and would reach governance (the only supported governance-sensitive verification path)' {
+        $wt = Join-Path ([System.IO.Path]::GetTempPath()) ('bvsup-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $wt -Force | Out-Null
+        $prev = $env:SPECREW_REFOCUS_DISABLE
+        try {
+            $env:SPECREW_REFOCUS_DISABLE = '1'   # simulate running UNDER a reviewer session (the reviewer process carries this, and it is inherited by children)
+            # The command mirrors the dispatcher's EXACT kill-switch condition (specrew-hook-dispatcher.ps1 line 46:
+            # no-op iff SPECREW_REFOCUS_DISABLE is non-empty), reporting both the inherited value AND whether the
+            # kill switch would fire. A bounded-verification child that reaches governance shows an EMPTY value.
+            $cmd = '$k = -not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE); [Console]::Out.Write("CHILD_RD=[" + $env:SPECREW_REFOCUS_DISABLE + "] KILLSWITCH_FIRES=" + $k)'
+            $rec = Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt -DeclaredCommands @($cmd) -TimeoutSeconds 30
+            [string]$rec[0].output | Should -Match 'CHILD_RD=\[\]' -Because 'the bounded helper MUST remove SPECREW_REFOCUS_DISABLE from each verification child so it does not inherit the reviewer host suppression'
+            [string]$rec[0].output | Should -Match 'KILLSWITCH_FIRES=False' -Because 'with the var cleared the dispatcher kill switch does NOT fire - the verification child executes governance NORMALLY (no false-green)'
+        }
+        finally {
+            if ($null -eq $prev) { Remove-Item Env:\SPECREW_REFOCUS_DISABLE -ErrorAction SilentlyContinue } else { $env:SPECREW_REFOCUS_DISABLE = $prev }
+            Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
 }

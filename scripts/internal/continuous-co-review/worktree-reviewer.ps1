@@ -549,6 +549,16 @@ function Invoke-ContinuousCoReviewBoundedVerification {
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
         $psi.UseShellExecute = $false
+        # STRICT BOUNDED CONTRACT (codex finding f1 verification-environment-contamination, 2026-07-12): the
+        # reviewer process runs with SPECREW_REFOCUS_DISABLE=1 so the reviewer host's OWN lifecycle hooks no-op
+        # (a reviewer must not govern itself). That var is inherited by ANY child. This helper is the ONLY
+        # SUPPORTED path for governance-sensitive verification launched under a reviewer session, so it
+        # EXPLICITLY REMOVES the suppression from every verification child's environment - a governance/hook the
+        # child invokes then executes NORMALLY (no false-green). ProcessStartInfo.Environment is pre-seeded from
+        # this process; dropping the key means the child never inherits the reviewer's suppression. (This does NOT
+        # claim complete isolation: an arbitrary reviewer-spawned child that is NOT launched through this helper
+        # still inherits suppression - intentional, to prevent recursive governance; see reviewer-spawn-contract.md.)
+        [void]$psi.Environment.Remove('SPECREW_REFOCUS_DISABLE')
         $proc = [System.Diagnostics.Process]::Start($psi)
         $deadline = [DateTime]::UtcNow.AddSeconds($TimeoutSeconds)
         $timedOut = $false
@@ -710,6 +720,13 @@ directory. Use the implementer's digest-matched test evidence (above, when prese
 SPOT-CHECK it by READING — the diff, the code, the recorded commands and exit codes — not by re-running. A
 read-only inspection command that writes nothing here (reading files, git log, grep) is fine; anything that writes
 into the tree is not. A claim you cannot confirm without mutating the tree is reported as a finding, never acted on.
+
+GOVERNANCE-SENSITIVE CHECKS — REPORT AS UNVERIFIABLE, DO NOT SELF-TEST: you run under a reviewer session whose
+environment suppresses Specrew's own hooks (so a reviewer never governs itself). Do NOT run a governance/hook-behavior
+test directly, and do NOT alter your own environment to try to change that — a governance check you launch from here
+is environment-contaminated and could FALSE-GREEN. If some governance or hook behavior is not already covered by the
+digest-matched implementer evidence, report it as UNVERIFIABLE-HERE (a finding, never a pass) rather than running it
+yourself.
 
 1. Read .review/changes.diff — this is the change-set under review (what changed).
 2. Read .review/design/ — the spec + design-analysis (PROSE intent) the change must conform to, AND
