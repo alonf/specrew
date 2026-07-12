@@ -733,6 +733,24 @@ pin-surface consistency assertions.
   silently deleting history; every effective-state reader MUST honor
   invalidation records. (The 2026-07-11 surgery was a one-off deletion
   because no door existed; this requirement retires that class.)
+- **FR-045 (GOV-002, stop-ordering; field incident 2026-07-12,
+  maintainer-instructed)**: A user-facing lifecycle **verdict/boundary
+  packet** (the six-section re-entry packet with approval options and a
+  `SPECREW-VERDICT-BOUNDARY` marker) MUST NOT be rendered while a REQUIRED
+  co-review of the boundary's increment is pending/in-flight, or before
+  that review's reviewed-tree digest matches the EXACT current digest and
+  is clean or human-dispositioned. A blocked or superseded review attempt
+  MUST produce NO approval options and NO verdict-boundary marker. A human
+  question genuinely needed DURING review MUST be a NARROW, non-boundary
+  decision (no approval options, no marker), never a lifecycle verdict
+  packet. The boundary packet is rendered ONLY after the exact-current-
+  digest review evidence is clean or human-dispositioned. Bound to the
+  T019 in-flight/digest work (the reviewed-tree-digest acceptance gate) and
+  the T030–T032 capture-integrity work so a blocked or superseded packet
+  can NEVER be captured as authorization evidence. (Field incident: during
+  iteration-003 continuous co-review, decision/verdict-shaped packets were
+  rendered while co-reviews were still blocking — see
+  `iterations/003/research/stop-ordering-defect.md`.)
 
 ### Non-Functional Requirements
 

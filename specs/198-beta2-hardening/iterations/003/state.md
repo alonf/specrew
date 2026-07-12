@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T02:05:00Z
+**Updated**: 2026-07-12T02:25:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -344,8 +344,27 @@
   per-task table with those recorded counts (ends the prose-only-count class
   for all done tasks, not just T015). The T034b strict-resolution blocker
   (below) is still the maintainer's open decision.
-- Open (maintainer decision): the T034b strict-resolution blocker - pull
-  forward now vs record at-landing deferral + proceed to T016.
+- STOP-ORDERING DEFECT recorded (maintainer instruction 2026-07-12,
+  DRIFT-198-I003-002 → NEW FR-045/GOV-002): this session rendered
+  decision/verdict-shaped packets (six-section + numbered options) WHILE
+  co-reviews were pending/BLOCKING and before the exact-current-digest
+  review was clean/dispositioned - a blocked/superseded packet could then
+  be captured as authorization for a never-cleanly-reviewed increment (one
+  layer up from the FR-041 fabricated-auth class). Recorded as field
+  evidence (research/stop-ordering-defect.md) + FR-045 in spec.md + bound
+  to T019 (reviewed-tree-digest acceptance gate + in-flight dedup gates the
+  verdict packet) and T030-T032 (capture rejects blocked/superseded
+  packets; stop-ordering fixture). Rule: no verdict/boundary packet
+  (options + marker) while a required co-review is pending or before the
+  exact-current-digest evidence is clean/human-dispositioned; blocked
+  attempts yield no options + no marker; mid-review human questions are
+  narrow non-boundary decisions. Behavioral correction applied now: the
+  T034b item is NO LONGER surfaced as a decision packet while its review is
+  unresolved - it stays a recorded open item, dispositioned once the
+  current-digest review is clean.
+- Open (recorded, NOT re-surfaced as a verdict packet per FR-045): the
+  T034b strict-resolution item - to be dispositioned (pull-forward vs
+  at-landing deferral) once the current-digest co-review is clean.
 
 ## Notes
 

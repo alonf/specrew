@@ -22,13 +22,49 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution rate**: 100% (1/1 resolved)
+**Total drift events**: 2
+**Resolution rate**: 50% (1/2 resolved; DRIFT-198-I003-002 is a recorded
+requirement bound to T019/T030–T032, realized there)
 **Specification drift**: One implementation-vs-data-model divergence
 (DRIFT-198-I003-001) in iteration-002's shipped FR-020 code, surfaced by
-iteration-003 co-review and fixed in place with paired abuse tests.
+iteration-003 co-review and fixed in place with paired abuse tests. One
+process/governance defect (DRIFT-198-I003-002): lifecycle verdict packets
+were rendered during pending/blocking co-reviews — recorded as FR-045 and
+bound to T019 + T030–T032.
 
 ## Events
+
+### DRIFT-198-I003-002 — stop-ordering: verdict/decision packets rendered during a pending/blocking co-review (recorded → FR-045, bound to T019 + T030–T032)
+
+- **Requirement citation**: NEW FR-045 (GOV-002, stop-ordering); relates to
+  the never-false-green class of FR-041–FR-044 (capture integrity) and the
+  reviewed-tree-digest binding of FR-016/FR-017 (T019). NFR-002 (a
+  pre-verdict/blocked state must not remain authoritative).
+- **Divergence (process, this iteration)**: during iteration-003 continuous
+  co-review the assistant rendered user-facing decision/verdict-shaped
+  packets (six-section re-entry packet + numbered approval-style options)
+  while a required co-review was still pending/in-flight/BLOCKING, and
+  before the review's reviewed-tree digest was accepted against the exact
+  current tree (e.g. the T034b strict-resolution decision, surfaced with
+  numbered options across several stops while the co-review of that
+  increment kept returning blocking findings and concurrent navigator runs
+  were still firing). A blocked or superseded packet could then be captured
+  as authorization for a boundary whose increment was never cleanly
+  reviewed — one layer up from the FR-041 fabricated-authorization class.
+- **Detection**: maintainer instruction, 2026-07-12 (field evidence
+  `research/stop-ordering-defect.md`).
+- **Resolution (recorded + bound, realized in T019/T030–T032)**: FR-045
+  states the rule — no verdict/boundary packet (options + marker) while a
+  required co-review is pending or before the exact-current-digest review
+  is clean or human-dispositioned; a blocked attempt yields no options and
+  no marker; a mid-review human question is a narrow non-boundary decision;
+  bound to T019 (reviewed-tree-digest acceptance gate + in-flight dedup) and
+  T030–T032 (capture rejects blocked/superseded packets; fixtures reproduce
+  the stop-ordering sequence). Not resolved-in-place here (this iteration
+  did not build the enforcement); recorded as durable field evidence +
+  requirement + task binding so the enforcement lands where those tasks do.
+- **Scope note**: NEW requirement (FR-045), maintainer-instructed — added
+  to the capture-integrity requirement family, not a silent scope creep.
 
 ### DRIFT-198-I003-001 — FR-020 tracker honesty check diverged from its TrackerClaims data model (resolved: implementation-corrected)
 
