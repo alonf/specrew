@@ -435,6 +435,39 @@ But single-iter is preferred because the pillars compose tightly.
 - **Signal 4**: Per-iteration validator runtime drops measurably for multi-iter features (parallel subagent dispatch via Pillar 4)
 - **Signal 5**: External adopters (post-2026-09 window) cite cost efficiency + context durability as Specrew differentiators
 
+## Amendment - 2026-07-12: task-scoped artifact handoffs
+
+The comparative analysis of [`obra/superpowers`](../docs/methodology/superpowers-comparative-analysis.md)
+adds the following host-neutral execution contract. It sharpens the existing ephemeral-subagent model;
+it does not require a subagent for every trivial edit.
+
+- A dispatched task receives a versioned `task-brief` artifact containing the task ID, exact approved
+  requirements, relevant files, constraints, allowed commands, and the baseline tree/commit. It does
+  not receive the coordinator's unrestricted transcript as authority.
+- Before dispatch, a deterministic preflight validates the brief and the executor performs a semantic
+  contradiction scan. Missing files, contradictory requirements, or an unverifiable acceptance item
+  stop before implementation and return a narrow planning defect.
+- The implementer writes a structured `task-result` artifact with changed paths, verification evidence,
+  unresolved risks, and the reviewed HEAD. Claims without evidence retain zero evidence standing.
+- The reviewer receives a separately materialized review package derived from the brief, result,
+  baseline, and current tree. It does not inherit the implementer's chat context.
+- A durable progress ledger records task status, attempt lineage, evidence digest, reviewer verdicts,
+  and next action so compaction or host replacement cannot erase execution state.
+- Once a human approves an ordered task set, the coordinator proceeds between tasks without asking the
+  human to say "continue". It stops only for a boundary, actionable finding, ambiguity requiring human
+  judgment, or infrastructure failure.
+- Dispatch granularity and model tier are risk based. Mechanical edits may remain in the coordinator;
+  semantic, cross-file, security, and independent-review work receive fresh contexts. Model routing
+  composes with Proposal 068 and subsequent model-discovery work.
+- Three materially different failed fixes to the same root problem trigger an architecture checkpoint.
+  The coordinator must summarize evidence and question the design rather than spend a fourth local
+  patch attempt automatically.
+
+Acceptance additions: paired tests prove the exact baseline survives the brief/result/review-package
+chain; a fresh reviewer receives no hidden transcript authority; compaction reconstruction uses only the
+ledger and artifacts; contradiction preflight blocks before model spend; and an approved multi-task run
+does not solicit redundant continuation approval.
+
 ## Status history
 
 - 2026-05-27: candidate proposal drafted during F-049 close + sequencing conversation. User direction explicit: raise priority of multi-agent Claude support; speed up + reduce cost. Six pillars; 15-25 SP; V1 Claude-first with degraded-mode for other hosts. Empirically motivated by F-049 token economics + Shape 3c post-compaction discipline drop incidents + this session's empirical demonstration of subagent value (Explore + general-purpose subagents used repeatedly during F-049 work).
