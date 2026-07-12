@@ -306,6 +306,32 @@ function Select-ContinuousCoReviewAbsolutePathTokens {
     return $out.ToArray()
 }
 
+function Resolve-ContinuousCoReviewRelativeOriginTokens {
+    # A descendant launched from the disposable worktree (its cwd) can reach an origin sibling via a RELATIVE
+    # traversal arg (e.g. `git show ..\..\<origin>\secret`) - an ABSOLUTE-only token filter drops it, so the
+    # containment run could complete without a violation (codex run 20260712T195149281). Resolve each RELATIVE
+    # path-like argv token against the process cwd (POSIX `/proc/<pid>/cwd`; Windows: the known worktree the reviewer
+    # was launched in) and return the NORMALIZED ABSOLUTE path - the checker then confirms under-origin, so only a
+    # traversal that actually ESCAPES the worktree up to origin flags (a relative path that stays under the worktree
+    # normalizes to a non-origin path and is harmless). A token is "path-like" if it carries a path separator or a
+    # `..`/`.` traversal segment; a bare flag or sub-command has neither and is skipped. Absolute tokens are handled
+    # by Select-ContinuousCoReviewAbsolutePathTokens and skipped here. Fail-closed: no cwd → nothing resolved.
+    param([AllowNull()][string[]]$Argv, [AllowEmptyString()][string]$Cwd)
+    $out = [System.Collections.Generic.List[string]]::new()
+    if ([string]::IsNullOrWhiteSpace($Cwd)) { return $out.ToArray() }
+    foreach ($raw in @($Argv)) {
+        if ($null -eq $raw) { continue }
+        $t = ([string]$raw).Trim().Trim('"', "'")
+        if ([string]::IsNullOrWhiteSpace($t)) { continue }
+        if (($t -match '^[A-Za-z]:[\\/]') -or $t.StartsWith('\\') -or $t.StartsWith('/')) { continue }   # absolute: handled elsewhere
+        $looksLikePath = ($t -match '[\\/]') -or ($t -match '(^|[\\/])\.\.($|[\\/])') -or ($t -eq '..')
+        if (-not $looksLikePath) { continue }
+        $resolved = try { [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($Cwd, $t)) } catch { $null }
+        if (-not [string]::IsNullOrWhiteSpace($resolved)) { [void]$out.Add($resolved) }
+    }
+    return $out.ToArray()
+}
+
 function Get-ContinuousCoReviewCommandLineArgv {
     # Parse a raw command-line STRING into argv using PLATFORM-APPROPRIATE quoting (containment-detection-bypass fix,
     # codex run 20260712T192442732): a QUOTED argument containing spaces (e.g. "C:\Origin Project\secret.md") stays
@@ -380,10 +406,13 @@ function Get-ContinuousCoReviewContainmentSamples {
     # paths is never mistaken for origin ACCESS, while a REAL origin path passed as its OWN arg (by the host or any
     # descendant) IS observed. This SUPERSEDED the earlier prompt-token-subtraction workaround, whose whitespace-split
     # tokenizer both false-positived on prompt mentions AND could be BYPASSED by a quoted origin path with spaces
-    # (codex runs …181010372 / …190522932 / …192442732). Inherent scope of "command-line sampling" (NOT a deferral of
-    # FR-011): origin access with NO path arg (a bare syscall) is invisible to argv sampling, and Windows exposes no
-    # cheap cwd; the STRUCTURAL guarantee for those remains T013 (worktree materialized OUTSIDE origin).
-    param([Parameter(Mandatory)][int]$RootPid)
+    # (codex runs …181010372 / …190522932 / …192442732). RELATIVE traversal args (e.g. `git show ..\..\<origin>\x`)
+    # are ALSO caught: each relative path-like token is resolved against the process cwd
+    # (Resolve-ContinuousCoReviewRelativeOriginTokens; POSIX `/proc/<pid>/cwd`, Windows the -WorktreeCwd the reviewer
+    # was launched in) and the normalized absolute path is checked under-origin (codex run …195149281). Inherent scope
+    # of "command-line sampling" (NOT a deferral of FR-011): origin access with NO path arg at all (a bare syscall) is
+    # invisible to argv sampling; the STRUCTURAL guarantee for that remains T013 (worktree materialized OUTSIDE origin).
+    param([Parameter(Mandatory)][int]$RootPid, [AllowEmptyString()][string]$WorktreeCwd)
     $samples = [System.Collections.Generic.List[object]]::new()
     if (-not (Get-Command -Name 'Get-SpecrewProcessTreeDescendants' -ErrorAction SilentlyContinue)) {
         $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
@@ -401,7 +430,11 @@ function Get-ContinuousCoReviewContainmentSamples {
         foreach ($p in $procs) {
             $procId = [int]$p.ProcessId; $image = [string]$p.Name
             if (-not [string]::IsNullOrWhiteSpace([string]$p.ExecutablePath)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = [string]$p.ExecutablePath }) }
-            foreach ($tok in (Get-ContinuousCoReviewPathLikeTokens -CommandLine ([string]$p.CommandLine))) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            $argv = Get-ContinuousCoReviewCommandLineArgv -CommandLine ([string]$p.CommandLine)
+            foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            # Windows has no cheap per-process cwd: resolve RELATIVE traversal args against the worktree the reviewer
+            # was launched in (descendants inherit that cwd) so `..\..\<origin>\x` is caught (codex run …195149281).
+            foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $WorktreeCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
         }
     }
     else {
@@ -415,6 +448,9 @@ function Get-ContinuousCoReviewContainmentSamples {
             # would re-introduce the whitespace-split bypass for a path arg containing spaces).
             $argv = try { @(((Get-Content -LiteralPath "/proc/$procId/cmdline" -Raw -ErrorAction Stop) -split "`0") | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) } catch { @() }
             foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            # RELATIVE traversal args resolved against the process cwd (exact on POSIX; worktree fallback) -> under-origin.
+            $effectiveCwd = if (-not [string]::IsNullOrWhiteSpace($cwd)) { $cwd } else { $WorktreeCwd }
+            foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $effectiveCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
         }
     }
     return , ($samples.ToArray())

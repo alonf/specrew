@@ -277,4 +277,27 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
         @($v).Count | Should -Be 2 -Because 'the descendant''s quoted spaced path (OriginSpaced) + the worker''s real arg (OriginOther) are violations; the ROOT prompt mention (OriginSecret) is not'
         (($v | ForEach-Object { [string]$_.path }) -join '|') | Should -Match 'secret file\.md'
     }
+
+    It 'RELATIVE-TRAVERSAL abuse (SC-003, DRIFT-198-I003-004): a descendant invoked with a RELATIVE `..` path escaping the worktree to an origin file is DETECTED (resolved against the reviewer cwd), not silently dropped' -Skip:(-not $IsWindows) {
+        # codex run 20260712T195149281: an ABSOLUTE-only filter dropped a relative traversal (`git show ..\..\<origin>\x`),
+        # so the run could complete without containment-violated. The sampler now resolves relative path-like args
+        # against the reviewer cwd (here the worktree) and checks under-origin.
+        $rel = [System.IO.Path]::GetRelativePath($script:Worktree, $script:OriginSecret)   # e.g. ..\t16-origin-xxx\secret.md
+        $rel | Should -Match '\.\.' -Because 'the sibling origin file is reached from the worktree by a `..` traversal (test integrity)'
+        Mock -CommandName Get-SpecrewProcessTreeDescendants -MockWith { @(777) }
+        Mock -CommandName Get-CimInstance -MockWith {
+            @(
+                [pscustomobject]@{ ProcessId = 666; Name = 'codex.exe'; CommandLine = 'codex exec "review the changes"'; ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
+                [pscustomobject]@{ ProcessId = 777; Name = 'git.exe'; CommandLine = ('git --no-pager show "{0}"' -f $rel); ExecutablePath = 'C:\Program Files\Git\cmd\git.exe' }
+            )
+        }
+        # WITHOUT a cwd the relative token cannot resolve (documented fail-closed); WITH the worktree cwd it MUST be caught.
+        $noCwd = Get-ContinuousCoReviewContainmentSamples -RootPid 666
+        $v0 = Test-ContinuousCoReviewContainmentViolations -Samples $noCwd -OriginRoots @($script:Origin) -RunId 'RUN-REL0'
+        @($v0).Count | Should -Be 0 -Because 'a relative token has no meaning without a cwd (fail-closed, documented)'
+        $samples = Get-ContinuousCoReviewContainmentSamples -RootPid 666 -WorktreeCwd $script:Worktree
+        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-REL'
+        @($v).Count | Should -BeGreaterThan 0 -Because 'the relative `..` traversal to an origin file resolves against the reviewer cwd and is flagged (not dropped)'
+        (($v | ForEach-Object { [string]$_.path }) -join '|') | Should -Match 'secret\.md'
+    }
 }

@@ -36,11 +36,13 @@ verification" after the option-1 decision (2026-07-11) had made it opt-in —
 the authoritative docs are now aligned to the shipped design. One
 implementation defect in the shipped T016 detector (DRIFT-198-I003-004): a naive
 whitespace-split tokenizer both mis-read the reviewer's prompt as origin access
-AND could be bypassed by a quoted origin path with spaces — surfaced over four
-successive fresh-context codex reviews that drove three plausible-but-wrong fixes
-to the ROOT CAUSE; resolved by parsing STRUCTURED argv (CommandLineToArgvW /
-NUL-split), which makes the single-arg prompt a non-path token and keeps quoted
-paths intact, so the prompt-token-subtraction workaround was deleted.
+AND could be bypassed by quoted/relative origin paths — surfaced over five
+successive fresh-context codex reviews that drove four plausible-but-wrong states
+to a detector that parses STRUCTURED argv (CommandLineToArgvW / NUL-split; the
+single-arg prompt is a non-path token, quoted paths stay intact, the
+subtraction workaround deleted) AND resolves relative `..` traversals against the
+reviewer cwd — the last gap fixed on an explicit maintainer decision, not a
+self-declared deferral.
 
 ## Events
 
@@ -107,23 +109,39 @@ paths intact, so the prompt-token-subtraction workaround was deleted.
   tokenizer. Tests: a unit test (quoted-spaced path is one token; single-arg prompt yields
   no path token) + a sampler test (quoted spaced descendant path DETECTED; prompt not
   flagged; same-image worker's real arg observable → two violations, never the prompt).
-- **Inherent scope of "command-line sampling" (NOT a deferral; no human approval
-  claimed)**: FR-011's literal method is `cwd/command-line sampling`. It cannot
-  see origin access that manifests as NO path argument — a bare syscall file-open
-  by the host itself — and Windows exposes no cheap cwd. That is the defined SCOPE
-  of the method, not a deferred gap within it; deeper (syscall/handle-level)
-  interception would be a NEW requirement, not a carry-forward of FR-011. For the
-  un-sampleable case the STRUCTURAL guarantee remains T013 (worktree materialized
-  OUTSIDE origin, fail-closed). The Stage-2 "accepted residual" self-approval is
-  WITHDRAWN — nothing about FR-011 is being deferred.
+- **Stage 5 — RELATIVE-traversal bypass; MAINTAINER chose to FIX, not defer (run
+  `20260712T195149281`)**: the authoritative serialized review (evidence injected) found
+  that `Select-ContinuousCoReviewAbsolutePathTokens` kept only ABSOLUTE tokens and silently
+  dropped RELATIVE ones, so a descendant launched from the worktree could reach an origin
+  sibling via `git show ..\..\<origin>\secret` with no violation. This was the DOCUMENTED
+  relative-arg gap that Stage-4's resolution had framed as "inherent scope" — the SAME
+  self-declared-residual pattern Stage 2 was blocked for. Escalated to the maintainer (the
+  5th distinct detector finding); the maintainer explicitly chose to FIX it (a human
+  decision, not a self-approval). Fix: `Resolve-ContinuousCoReviewRelativeOriginTokens`
+  resolves each relative path-like argv token against the process cwd (POSIX
+  `/proc/<pid>/cwd`; Windows the `-WorktreeCwd` the reviewer was launched in) and the
+  normalized absolute path is checked under-origin — only a traversal that ESCAPES the
+  worktree up to origin flags. Test: a real `..`-traversal abuse (dropped without a cwd,
+  caught with the worktree cwd).
+- **Residual scope of "command-line sampling" (the ONLY remaining gap, honestly named)**:
+  after Stage 5 the detector catches absolute, quoted-with-spaces, AND relative-traversal
+  path args. The one residual is origin access that manifests as NO path argument at all — a
+  bare syscall file-open by the process itself (argv carries no path to sample). That is the
+  defined SCOPE of `command-line sampling`, not a deferred gap within it; syscall/handle-level
+  interception would be a NEW requirement. For that un-sampleable case the STRUCTURAL
+  guarantee remains T013 (worktree materialized OUTSIDE origin, fail-closed). The Stage-2/4
+  self-declared "residual/inherent scope" for the relative-arg case is SUPERSEDED — that case
+  is now DETECTED, per the maintainer's fix decision.
 - **Scope note**: no new requirement and no scope change — this REALIZES FR-011 at
   its intended precision (origin ACCESS, not origin MENTION) and at its literal
-  scope (cwd/command-line). A four-stage field fix that converged on the ROOT CAUSE
-  (false positive → over-broad skip → over-broad subtraction → the tokenizer itself →
-  structured argv, workaround removed); strong evidence for the value of dogfooding the
-  detector on its own tree — successive fresh-context reviewers drove it past three
-  plausible-but-wrong fixes to the real defect, and the final code is SIMPLER than any
-  of the intermediate patches.
+  scope (cwd/command-line). A five-stage field fix: false positive → over-broad skip →
+  over-broad subtraction → the tokenizer itself (structured argv, workaround removed) →
+  relative-traversal resolution (maintainer-approved, not self-deferred). Strong evidence
+  for dogfooding the detector on its own tree — five successive fresh-context reviews drove
+  it past four plausible-but-wrong states to a detector that now handles absolute, quoted,
+  and relative-traversal path args, with the single argless-syscall residual honestly named
+  and covered structurally by T013. The one remaining gap was fixed on an explicit human
+  decision, closing the self-declared-residual pattern the earlier rounds were blocked for.
 
 ### DRIFT-198-I003-003 — T015 confinement contract: design surfaces bound "REQUIRED bounded verification" after the option-1 decision made it opt-in (resolved: docs aligned to the shipped design)
 

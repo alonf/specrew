@@ -781,9 +781,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 if ($null -ne $Telemetry -and $Telemetry.PSObject.Properties['child_pid'] -and $Telemetry.child_pid -and $containmentOriginRoots.Count -gt 0) {
                     try {
                         # DRIFT-198-I003-004: the sampler parses STRUCTURED argv, so the single-arg prompt is one
-                        # non-path token (no false positive) and a quoted origin path with spaces is not bypassed - no
-                        # prompt-token plumbing needed here anymore.
-                        $cvSamples = Get-ContinuousCoReviewContainmentSamples -RootPid ([int]$Telemetry.child_pid)
+                        # non-path token (no false positive) and a quoted origin path with spaces is not bypassed. Pass
+                        # the reviewer worktree as the cwd so a RELATIVE `..` traversal to origin is resolved + caught.
+                        $cvSamples = Get-ContinuousCoReviewContainmentSamples -RootPid ([int]$Telemetry.child_pid) -WorktreeCwd $wt.worktree_path
                         $cvNew = Test-ContinuousCoReviewContainmentViolations -Samples $cvSamples -OriginRoots $containmentOriginRoots -RunId $RunId
                         foreach ($cv in $cvNew) {
                             $cvKey = ('{0}|{1}|{2}' -f $cv.process, $cv.source, $cv.path)
