@@ -83,9 +83,20 @@ is never silent), and T016 was REOPENED against the amended contract.
     digest-bound runner-observed standing ONLY for suites present in the digest-matched record
     for the tree under review — NO universal-injection claim, NO reliance on historical runs;
     the recorder must be re-run against the exact reviewed digest to cover every listed suite.
-- **Scope note**: two implementation/honesty corrections, maintainer-directed as adjacent
-  hardening (one authorized confirmation round). Not new requirements; not folded into
-  T016/T020.
+  - *Follow-up (bounded truth-alignment, maintainer-directed 2026-07-12; the authoritative review
+    `20260712T215431762` at the recorded digest was NON-blocking)*: the initial fix narrowed only the
+    intro; the meta-run/dispatcher bullet, the F-198 table row (18/0), and `state.md` L342-345 were
+    ALSO narrowed to exact-digest facts. The machine record proves which suites ran for its recorded
+    digest; a reviewer gives them standing only when that exact record is injected for the exact
+    reviewed digest. The autonomous navigator's partial injection is recorded as
+    **DRIFT-198-I003-002 behavior, NOT proof the recorded runs did not occur**.
+- **Follow-up to DRIFT-198-I003-005 (advisory f1, same authoritative review)**: the `allowance-reset`
+  `-NewMaxRounds` ceiling-EXTENSION was removed. The runtime ceiling reads only `.specrew/config.yml`,
+  so a round-state `max_rounds` override was a DEAD, misleading audit claim; `allowance-reset` now does
+  only the ENFORCED `round=0` replenish with its approver/time/reason audit.
+- **Scope note**: implementation/honesty corrections, maintainer-directed as adjacent hardening (one
+  authorized confirmation round + two bounded truth-alignment edits). Not new requirements; not folded
+  into T016/T020.
 
 ### DRIFT-198-I003-005 — resolved-against-disk unintentionally REPLENISHED the review-spend allowance (resolved: split into resolve vs allowance-reset, maintainer ruling 2026-07-12)
 

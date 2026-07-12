@@ -303,13 +303,15 @@ function Set-ContinuousCoReviewAllowanceReset {
     # T020 SPLIT (maintainer ruling 2026-07-12, DRIFT-198-I003-005): the SEPARATE, explicit human-approved
     # action that REPLENISHES the review-round SPEND ALLOWANCE. The ceiling is an AI-usage spend allowance
     # (spec FR-019); resolving a finding NEVER replenishes it - only THIS does, and only on a deliberate
-    # human decision. It resets the spent round count to 0 (or, with -NewMaxRounds, extends the ceiling),
-    # records WHO authorized it, WHEN, and the PREVIOUS/NEW allowance, and LEAVES the resolved-finding
-    # evidence (dispositions) + any open finding/blocking lineage INTACT (it grants budget, it does not
-    # resolve findings). TRUST BOUNDARY: construct only from a genuinely human-typed/approved command.
+    # human decision. It resets the spent round count to 0, records WHO authorized it, WHEN, and WHY, and
+    # LEAVES the resolved-finding evidence (dispositions) + any open finding/blocking lineage INTACT (it
+    # grants budget, it does not resolve findings). TRUST BOUNDARY: construct only from a genuinely
+    # human-typed/approved command. (A ceiling EXTENSION was removed: the runtime ceiling reads ONLY the
+    # configured .specrew/config.yml, so a round-state max_rounds override would be a DEAD, misleading audit
+    # claim - advisory f1, authoritative review 20260712T215431762. allowance-reset only does the ENFORCED
+    # round=0 replenish.)
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [int]$NewMaxRounds = 0,
         [string]$AuthorizedBy,
         [string]$Reason,
         [datetime]$Now = [datetime]::UtcNow
@@ -323,17 +325,13 @@ function Set-ContinuousCoReviewAllowanceReset {
     $prior = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
     if ($null -eq $prior) { $prior = [pscustomobject]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null } }
     $priorRound = [int]$prior.round
-    $priorMax = if ($prior.PSObject.Properties['max_rounds'] -and $prior.max_rounds) { [int]$prior.max_rounds } else { $null }
-    $newMax = if ($NewMaxRounds -gt 0) { $NewMaxRounds } else { $priorMax }
     $disposition = [pscustomobject][ordered]@{
-        state              = 'allowance-reset'
-        authorized_by      = ([string]$AuthorizedBy).Trim()
-        recorded_at        = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
-        reason             = if ([string]::IsNullOrWhiteSpace($Reason)) { $null } else { ([string]$Reason).Trim() }
-        previous_round     = $priorRound
-        new_round          = 0
-        previous_max_rounds = $priorMax
-        new_max_rounds     = $newMax
+        state          = 'allowance-reset'
+        authorized_by  = ([string]$AuthorizedBy).Trim()
+        recorded_at    = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+        reason         = if ([string]::IsNullOrWhiteSpace($Reason)) { $null } else { ([string]$Reason).Trim() }
+        previous_round = $priorRound
+        new_round      = 0
     }
     $dispositions = @()
     if (($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) { $dispositions = @($prior.dispositions) }
@@ -345,7 +343,6 @@ function Set-ContinuousCoReviewAllowanceReset {
     $priorChanged = if ($prior.PSObject.Properties['changed_paths']) { @($prior.changed_paths) } else { @() }
     $remediation = if (($prior.PSObject.Properties.Name -contains 'remediation')) { $prior.remediation } else { $null }
     $state = [ordered]@{ changed_paths = $priorChanged; round = 0; blocking = $priorBlocking; findings = $priorFindings; remediation = $remediation; dispositions = $dispositions }
-    if ($null -ne $newMax) { $state['max_rounds'] = $newMax }
     $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
     ([pscustomobject]$state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
     return $disposition

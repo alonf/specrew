@@ -33,10 +33,13 @@ generator supersedes this at the iteration review boundary)
   (never a glob) wired as a blocking CI step (NFR-007); it runs these suites plus the shared-engine
   suites as the whole-feature gate. Its per-suite counts are the individual records below.
 - The whole-registry META-run (`tests/f198-regression-suite.ps1`) AND the governed real-dispatcher suite
-  (`tests/integration/refocus-dispatcher.tests.ps1`, reused by the hook-suppression f1 test) are THEMSELVES
-  recorded as digest-linked runner-observed evidence (script-suite exit + PASS-line count) — so the
-  "18/18 registry green" / dispatcher pass claims here have runner-observed standing, not prose (co-review
-  finding f1 test-evidence-honesty, 2026-07-12).
+  (`tests/integration/refocus-dispatcher.tests.ps1`, reused by the hook-suppression f1 test) are written to
+  the **digest-keyed machine record** (`.specrew/review/test-evidence/<digest>.json`, script-suite exit +
+  PASS-line count) when the recorder runs against that tree. The machine record proves which suites ran for
+  its RECORDED digest. A reviewer may give the "18/18 registry green" / dispatcher-pass claims runner-observed
+  standing **only when that exact record is injected for the exact reviewed digest**. A review of a DIFFERENT
+  digest — e.g. the autonomous navigator, which computes its own working-tree digest and may inject only a
+  subset — is **DRIFT-198-I003-002 partial-injection behavior, NOT proof the recorded runs did not occur**.
 - Every suite is run FOR REAL in-session; the counts/exit/duration are runner-reported, never hand-typed.
 
 ## Tests Run
@@ -50,7 +53,7 @@ generator supersedes this at the iteration review boundary)
 | T020 (FR-018/019, amended) | `review-spend-allowance.Tests.ps1` — two-budget classifier; preflight (no spend/round); post-invocation failed (spend+round); ceiling counts only reviewed rounds; consumer-legible halt; FR-019 SPLIT (DRIFT-198-I003-005): resolved-against-disk PRESERVES the spent rounds (never implicitly replenishes); allowance-reset is the separate human-approved replenish (records authorizer/when/prev-new, leaves resolved-finding evidence intact, requires --ack-reason) | pass | 13 | 0 | ~8s | 0 |
 | T034b (FR-012, reuse of cca79708) | `review-context-and-harvest-hardening.Tests.ps1` — strict design-context: mixed/all-invalid/traversal/rooted/intermediate-dir-junction refs FAIL before reviewer selection (reviewer never invoked), valid in-repo ref passes, POSIX case-distinct sibling rejected (the +1 POSIX-only test, skipped on Windows); plus f1/f2 design-context + harvest | pass | 18 | 0 | ~9s | 0 |
 | codex-reviewer hardening (empty-exit0) | `reviewer-hook-suppression.Tests.ps1` (reviewer spawn passes SPECREW_REFOCUS_DISABLE=1; dispatcher exits before governance when it inherits it; PAIRED via the REAL dispatcher in the SHARED governed fixture — the reviewer host's own hook inherits suppression (NO refocus marker) while a bounded-verification child clears it, reaches the real dispatcher, and governance PRODUCES the `[specrew-refocus] trigger=b1` marker; codex finding f1 + its round-2 escalation on the earlier env-proxy test) + `reviewer-file-primary-result.Tests.ps1` (a clean-exit, current-run, fully-contract-validated `.review/findings.jsonl` is a FULL file-primary result — no wasteful T108 retry, no 'partial' mislabel; FAIL-CLOSED on malformed/truncated/stale/mismatched-run/absent/empty; normal stdout-primary hosts unchanged) | pass | 14 | 0 | ~6s | 0 |
-| `& ./tests/f198-regression-suite.ps1` | pass | 18 | 0 | ~100s | 0 | Whole-feature honesty gate: 18 suites (ratchet, spend allowance, containment, origin hygiene, bounded-verification helper + reviewer-integrity, tracker honesty, verdict capture, budget, signoff gate, shared-engine, digest/exec-bit, reviewer hook-suppression, file-primary result) |
+| `& ./tests/f198-regression-suite.ps1` | pass | 18 | 0 | ~100s | 0 | Whole-feature honesty gate: 18 suites (ratchet, spend allowance, containment, origin hygiene, bounded-verification helper + reviewer-integrity, tracker honesty, verdict capture, budget, signoff gate, shared-engine, digest/exec-bit, reviewer hook-suppression, file-primary result). Runner-reported for the recorded digest and written to the digest-keyed machine record; its evidence standing follows the exact-digest-injection note above (a partial-injection review is DRIFT-198-I003-002 behavior, not proof the run did not occur). |
 
 ## Coverage Estimate
 

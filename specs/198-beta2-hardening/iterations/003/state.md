@@ -1,11 +1,11 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T020 (spend-allowance/remediation). T016 is REOPENED (below), so it is NOT the last completed task.
-**Tasks Remaining**: T016 (reopened), T017, T018, T019, T030, T031, T032, T033, T034b
-**In Progress**: T016 — containment MONITOR, REOPENED under the FR-011/SC-003 amendment (maintainer review 2026-07-12); pending certification of the amended surfaces
+**Last Completed Task**: T016 (containment MONITOR — RE-CLOSED after the FR-011/SC-003 amendment + adjacent hardening DRIFT-006 were certified by a NON-blocking authoritative review; T013/T014/T015/T020 also complete)
+**Tasks Remaining**: T017, T018, T019, T030, T031, T032, T033, T034b
+**In Progress**: none active — T017 (consolidate the digest/worktree machinery list) is next
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T18:00:00Z
+**Updated**: 2026-07-12T22:00:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -339,12 +339,16 @@
   was STALE (already fixed in 2bd6085b). finding-2 VALID: T020 is done but
   its suite review-spend-allowance.Tests.ps1 was NOT in the digest-matched
   evidence, so the done/tested claim was prose-only. DURABLE fix: the
-  recorder now records EVERY iteration-003 done-task suite (T013 containment
-  4, T014 origin-hygiene 6, T015 production 8 + helper 11, T020 spend 11) as
-  digest-linked runner-observed evidence; coverage-evidence.md rewritten as a
-  per-task table with those recorded counts (ends the prose-only-count class
-  for all done tasks, not just T015). The T034b strict-resolution blocker
-  (below) is still the maintainer's open decision.
+  recorder records each iteration-003 done-task suite (T013 containment, T014
+  origin-hygiene, T015 production + helper, T020 spend) to the DIGEST-KEYED
+  machine record for the recorded tree — the record proves which suites ran for
+  its recorded digest. A reviewer gives a suite runner-observed standing ONLY when
+  that exact record is injected for the exact reviewed digest; a partial-injection
+  review (e.g. the autonomous navigator on its own working-tree digest) is
+  DRIFT-198-I003-002 behavior, NOT proof the recorded runs did not occur (no
+  universal-injection claim). coverage-evidence.md is a per-task table with the
+  runner-reported counts (DRIFT-198-I003-006 truth-alignment). The T034b
+  strict-resolution blocker (below) is still the maintainer's open decision.
 - STOP-ORDERING DEFECT recorded (maintainer instruction 2026-07-12,
   DRIFT-198-I003-002 → NEW FR-045/GOV-002): this session rendered
   decision/verdict-shaped packets (six-section + numbered options) WHILE
