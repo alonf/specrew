@@ -332,6 +332,25 @@ function Resolve-ContinuousCoReviewRelativeOriginTokens {
     return $out.ToArray()
 }
 
+function Expand-ContinuousCoReviewArgvPathCandidates {
+    # Best-effort expansion of argv tokens into candidate PATH strings. A path can hide in an OPTION-ATTACHED value
+    # (`--git-dir=C:\origin\.git`, `--git-dir=..\origin\.git`): the option prefix makes the whole token neither
+    # absolute nor a resolvable relative path, so it evades both filters (codex run 20260712T171701083). For each token
+    # we therefore ALSO yield the substring after the FIRST `=`. This is explicitly BEST-EFFORT and NOT complete -
+    # response files (`@argfile`), env-var expansion, and other path-bearing forms remain uncovered - which is exactly
+    # why an argv match is a DIAGNOSTIC WARNING, never a hard review-fail (FR-011 amended, maintainer review 2026-07-12).
+    param([AllowNull()][string[]]$Argv)
+    $out = [System.Collections.Generic.List[string]]::new()
+    foreach ($raw in @($Argv)) {
+        if ($null -eq $raw) { continue }
+        $t = [string]$raw
+        [void]$out.Add($t)
+        $eq = $t.IndexOf('=')
+        if ($eq -ge 0 -and $eq -lt ($t.Length - 1)) { [void]$out.Add($t.Substring($eq + 1)) }
+    }
+    return $out.ToArray()
+}
+
 function Get-ContinuousCoReviewCommandLineArgv {
     # Parse a raw command-line STRING into argv using PLATFORM-APPROPRIATE quoting (containment-detection-bypass fix,
     # codex run 20260712T192442732): a QUOTED argument containing spaces (e.g. "C:\Origin Project\secret.md") stays
@@ -409,50 +428,62 @@ function Get-ContinuousCoReviewContainmentSamples {
     # (codex runs …181010372 / …190522932 / …192442732). RELATIVE traversal args (e.g. `git show ..\..\<origin>\x`)
     # are ALSO caught: each relative path-like token is resolved against the process cwd
     # (Resolve-ContinuousCoReviewRelativeOriginTokens; POSIX `/proc/<pid>/cwd`, Windows the -WorktreeCwd the reviewer
-    # was launched in) and the normalized absolute path is checked under-origin (codex run …195149281). Inherent scope
-    # of "command-line sampling" (NOT a deferral of FR-011): origin access with NO path arg at all (a bare syscall) is
-    # invisible to argv sampling; the STRUCTURAL guarantee for that remains T013 (worktree materialized OUTSIDE origin).
-    param([Parameter(Mandatory)][int]$RootPid, [AllowEmptyString()][string]$WorktreeCwd)
+    # was launched in) and the normalized absolute path is checked under-origin (codex run …195149281). AMENDED design
+    # (maintainer review 2026-07-12, FR-011 amended): a cwd/exe-under-origin sample is a STRONG signal (hard
+    # `containment-violated`); a command-line ARGUMENT under origin is a BEST-EFFORT diagnostic warning only (argv
+    # coverage is inherently incomplete — option-attached `--name=value` is expanded, but response files / env expansion
+    # remain uncovered) and NEVER by itself discards a valid review. The STRUCTURAL guarantee is FR-008/T013. Returns the
+    # samples and, via the optional -Health [ref], the monitor's own health (procs seen, sample count, degraded + reason)
+    # so weak visibility is RECORDED, never silent inactivity.
+    param([Parameter(Mandatory)][int]$RootPid, [AllowEmptyString()][string]$WorktreeCwd, [ref]$Health)
     $samples = [System.Collections.Generic.List[object]]::new()
+    $degraded = $false; $degradedReason = ''; $procsSeen = 0
     if (-not (Get-Command -Name 'Get-SpecrewProcessTreeDescendants' -ErrorAction SilentlyContinue)) {
         $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
         if (Test-Path -LiteralPath $helper -PathType Leaf) { try { . $helper } catch { $null = $_ } }
     }
     $procIds = @($RootPid)
-    try { $procIds += @(Get-SpecrewProcessTreeDescendants -RootPid $RootPid) } catch { $null = $_ }
+    try { $procIds += @(Get-SpecrewProcessTreeDescendants -RootPid $RootPid) } catch { $degraded = $true; $degradedReason = 'process-tree-enumeration-failed' }
     $procIds = @($procIds | Where-Object { $_ -gt 0 } | Select-Object -Unique)
-    # EVERY process (root or descendant) is sampled the same way now: structured-argv path tokens + exe (+ cwd on
-    # POSIX). No prompt-scoped special-casing - the single-arg prompt simply is not a path token, so nothing to
-    # subtract and no worker to blind. exe/cwd stay strong signals for EVERYONE.
+    # STRONG signals (cwd/exe under origin) hard-fail; a command-line ARGUMENT under origin is a best-effort DIAGNOSTIC
+    # WARNING (FR-011 amended). Path candidates are EXPANDED so an option-attached value (`--git-dir=<path>`) is seen
+    # (best-effort, NOT complete). The monitor tracks its own HEALTH (degraded reason + counts) so weak visibility is
+    # RECORDED, never silent. A sampling failure sets degraded rather than silently returning nothing.
     if ($IsWindows) {
         $procs = @()
-        try { $procs = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $procIds -contains [int]$_.ProcessId } | Select-Object ProcessId, Name, CommandLine, ExecutablePath) } catch { $procs = @() }
+        try { $procs = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $procIds -contains [int]$_.ProcessId } | Select-Object ProcessId, Name, CommandLine, ExecutablePath) } catch { $degraded = $true; $degradedReason = 'cim-query-failed'; $procs = @() }
+        $procsSeen = @($procs).Count
         foreach ($p in $procs) {
             $procId = [int]$p.ProcessId; $image = [string]$p.Name
             if (-not [string]::IsNullOrWhiteSpace([string]$p.ExecutablePath)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = [string]$p.ExecutablePath }) }
-            $argv = Get-ContinuousCoReviewCommandLineArgv -CommandLine ([string]$p.CommandLine)
+            $argv = Expand-ContinuousCoReviewArgvPathCandidates -Argv (Get-ContinuousCoReviewCommandLineArgv -CommandLine ([string]$p.CommandLine))
             foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
-            # Windows has no cheap per-process cwd: resolve RELATIVE traversal args against the worktree the reviewer
-            # was launched in (descendants inherit that cwd) so `..\..\<origin>\x` is caught (codex run …195149281).
+            # Windows has no cheap per-process cwd: resolve RELATIVE traversal args against the worktree the reviewer was
+            # launched in (descendants inherit that cwd). This assumed-cwd is BEST-EFFORT (a child that chdir'd elsewhere
+            # is not precisely resolved) - acceptable because argv is a diagnostic WARNING, not a hard fail.
             foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $WorktreeCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
         }
+        if ($procsSeen -eq 0 -and $procIds.Count -gt 0 -and -not $degraded) { $degraded = $true; $degradedReason = 'no-process-metadata-read' }
     }
     else {
         foreach ($procId in $procIds) {
             $image = ''
             $exe = try { $it = Get-Item -LiteralPath "/proc/$procId/exe" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
-            if ($exe) { $image = [System.IO.Path]::GetFileName($exe); [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = $exe }) }
+            if ($exe) { $procsSeen++; $image = [System.IO.Path]::GetFileName($exe); [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = $exe }) }
             $cwd = try { $it = Get-Item -LiteralPath "/proc/$procId/cwd" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
             if ($cwd) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'cwd'; path = $cwd }) }   # STRONG signal - always sampled
             # STRUCTURED argv: /proc/<pid>/cmdline is NUL-delimited, so split on NUL (do NOT join to a string - that
             # would re-introduce the whitespace-split bypass for a path arg containing spaces).
             $argv = try { @(((Get-Content -LiteralPath "/proc/$procId/cmdline" -Raw -ErrorAction Stop) -split "`0") | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) } catch { @() }
+            $argv = Expand-ContinuousCoReviewArgvPathCandidates -Argv $argv
             foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
-            # RELATIVE traversal args resolved against the process cwd (exact on POSIX; worktree fallback) -> under-origin.
+            # RELATIVE traversal args resolved against the process cwd (EXACT on POSIX; worktree fallback) -> under-origin.
             $effectiveCwd = if (-not [string]::IsNullOrWhiteSpace($cwd)) { $cwd } else { $WorktreeCwd }
             foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $effectiveCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
         }
+        if ($procsSeen -eq 0 -and $procIds.Count -gt 0 -and -not $degraded) { $degraded = $true; $degradedReason = 'no-process-metadata-read' }
     }
+    if ($null -ne $Health) { $Health.Value = @{ procs_expected = $procIds.Count; procs_seen = $procsSeen; sample_count = $samples.Count; degraded = $degraded; reason = $degradedReason } }
     return , ($samples.ToArray())
 }
 
@@ -1410,6 +1441,13 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
                 }
                 catch { $null = $_ }
             }
+        }
+        # FINAL best-effort sample after the run loop (FR-011 amended, maintainer review 2026-07-12): a short-lived
+        # descendant may briefly linger, and on a TIMED-OUT reviewer this fires BEFORE the kill so a last origin access
+        # is still observed. running=false marks it FINAL so the monitor records it as taken without treating the
+        # (expected) vanished tree as a sampling failure. Never silent inactivity.
+        if ($Heartbeat) {
+            try { & $Heartbeat (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Running $false -Containment $containment) } catch { $null = $_ }
         }
         if (-not $exited) {
             # THE one kill (T091/N1): graceful TERM (flush window for the in-flight finding, R1) ->

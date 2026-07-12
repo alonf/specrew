@@ -142,14 +142,14 @@ Describe 'orchestrator does NOT auto-run verification, and integrity-checks the 
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
-    It 'T016: FAILS the review (containment-violated) when the reviewer tree is observed reaching origin - loud origin-side record, redacted, findings discarded' {
+    It 'T016 (FR-011 amended): a STRONG signal (exe/cwd under origin) FAILS the review (containment-violated) - loud origin-side record, redacted, findings discarded' {
         $repo = script:New-TempGitRepo; $rd = script:New-RunDir
         $script:ContainOriginPath = Join-Path $repo 'app.txt'   # a REAL origin path the sampler will "observe"
         try {
             script:StubHost
-            # the sampler OBSERVES a process in the reviewer tree reaching an origin path (mocked deterministically);
-            # image is a FULL exe path so the record's bounded basename-only redaction can be asserted.
-            Mock -CommandName Get-ContinuousCoReviewContainmentSamples -MockWith { @(@{ pid = 4242; image = 'C:\tools\codex.exe'; source = 'arg'; path = $script:ContainOriginPath }) }
+            # the sampler OBSERVES a reviewer-tree process whose EXECUTABLE resolves under origin (a STRONG signal, not
+            # a mere argv match); image is a FULL exe path so the record's bounded basename-only redaction can be asserted.
+            Mock -CommandName Get-ContinuousCoReviewContainmentSamples -MockWith { @(@{ pid = 4242; image = 'C:\tools\codex.exe'; source = 'exe'; path = $script:ContainOriginPath }) }
             Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
                 & $Heartbeat ([pscustomobject]@{ child_pid = 4242 })   # fire ONE heartbeat -> the orchestrator samples + accumulates the violation
                 script:ReviewerResult 'ri-contain'                      # the reviewer then exits cleanly - the detector NEVER kills it mid-flight
@@ -158,15 +158,41 @@ Describe 'orchestrator does NOT auto-run verification, and integrity-checks the 
             [string]$st.status | Should -Be 'failed'
             [string]$st.failure_reason | Should -Be 'containment-violated'
             [string]$st.message | Should -Match 'app\.txt'
+            [string]$st.message | Should -Match 'STRONG' -Because 'only a strong cwd/exe signal hard-fails (FR-011 amended)'
             [bool]$st.provider_spend | Should -Be $true -Because 'the model WAS invoked - invoked-failed class'
             [bool]$st.round_consumed | Should -Be $true
             $rec = @($st.containment_violations)[0]
             [string]$rec.command_line | Should -Match 'redacted' -Because 'the record NEVER carries the raw command line'
             [string]$rec.process | Should -Match 'image=codex\.exe' -Because 'process metadata is the image BASENAME, bounded'
             ($st.containment_violations | ConvertTo-Json -Depth 6) | Should -Not -Match 'tools' -Because 'the full executable path is NOT persisted (bounded/redacted)'
-            (Get-Content -LiteralPath (Join-Path $rd 'result.out') -Raw) | Should -BeNullOrEmpty -Because 'a containment-violating run''s findings are discarded'
+            (Get-Content -LiteralPath (Join-Path $rd 'result.out') -Raw) | Should -BeNullOrEmpty -Because 'a strong-signal containment violation discards findings'
             $rs = Get-ContinuousCoReviewRoundState -RepoRoot $repo
             @($rs.dispositions | Where-Object { $_.state -eq 'containment-violated' }).Count | Should -BeGreaterThan 0
+        }
+        finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'T016 (FR-011 amended): an ARGV-only match is a DIAGNOSTIC WARNING - the review is NOT discarded, findings preserved, sampler health recorded' {
+        $repo = script:New-TempGitRepo; $rd = script:New-RunDir
+        $script:ContainArgPath = Join-Path $repo 'app.txt'
+        try {
+            script:StubHost
+            # the sampler OBSERVES only a command-line ARGUMENT under origin (best-effort signal) - NOT a hard fail.
+            Mock -CommandName Get-ContinuousCoReviewContainmentSamples -MockWith { @(@{ pid = 4242; image = 'codex.exe'; source = 'arg'; path = $script:ContainArgPath }) }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith {
+                & $Heartbeat ([pscustomobject]@{ child_pid = 4242; running = $true })    # a RUNNING heartbeat
+                & $Heartbeat ([pscustomobject]@{ child_pid = 4242; running = $false })   # the FINAL sample after exit
+                script:ReviewerResult 'ri-argwarn'
+            }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir $rd -RunId 'ri-argwarn' -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'done' -Because 'an argv-only match must NOT discard an otherwise valid review (FR-011 amended)'
+            $st.PSObject.Properties['failure_reason'] | Should -BeNullOrEmpty -Because 'a done review has no containment failure_reason'
+            (Get-Content -LiteralPath (Join-Path $rd 'result.out') -Raw) | Should -Not -BeNullOrEmpty -Because 'the valid review findings are PRESERVED'
+            @($st.containment_warnings).Count | Should -BeGreaterThan 0 -Because 'the argv match is recorded as a bounded diagnostic warning'
+            [string](@($st.containment_warnings)[0].path) | Should -Match 'app\.txt'
+            $st.sampler_health | Should -Not -BeNullOrEmpty -Because 'the monitor records its own health so weak visibility is never silent'
+            [int]$st.sampler_health.attempts | Should -BeGreaterThan 0
+            [bool]$st.sampler_health.final_sample_taken | Should -BeTrue -Because 'a FINAL sample is taken after the reviewer exits (no-heartbeat/short-lived gap surfaced, never silent)'
         }
         finally { Remove-Item -LiteralPath $repo, $rd -Recurse -Force -ErrorAction SilentlyContinue }
     }

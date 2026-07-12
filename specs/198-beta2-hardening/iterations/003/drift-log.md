@@ -23,8 +23,10 @@
 ## Summary
 
 **Total drift events**: 4
-**Resolution rate**: 75% (3/4 resolved in place; DRIFT-198-I003-002 is a recorded
-requirement bound to T019/T030–T032, realized there)
+**Resolution rate**: DRIFT-198-I003-001 + DRIFT-198-I003-003 resolved in place;
+DRIFT-198-I003-002 recorded → T019/T030–T032; DRIFT-198-I003-004 resolved via a
+maintainer-decided FR-011/SC-003 AMENDMENT (T016 REOPENED, pending certification of
+the amended surfaces)
 **Specification drift**: One implementation-vs-data-model divergence
 (DRIFT-198-I003-001) in iteration-002's shipped FR-020 code, surfaced by
 iteration-003 co-review and fixed in place with paired abuse tests. One
@@ -34,15 +36,16 @@ bound to T019 + T030–T032. One docs-vs-shipped-design drift
 (DRIFT-198-I003-003): T015's design surfaces bound "REQUIRED bounded
 verification" after the option-1 decision (2026-07-11) had made it opt-in —
 the authoritative docs are now aligned to the shipped design. One
-implementation defect in the shipped T016 detector (DRIFT-198-I003-004): a naive
-whitespace-split tokenizer both mis-read the reviewer's prompt as origin access
-AND could be bypassed by quoted/relative origin paths — surfaced over five
-successive fresh-context codex reviews that drove four plausible-but-wrong states
-to a detector that parses STRUCTURED argv (CommandLineToArgvW / NUL-split; the
-single-arg prompt is a non-path token, quoted paths stay intact, the
-subtraction workaround deleted) AND resolves relative `..` traversals against the
-reviewer cwd — the last gap fixed on an explicit maintainer decision, not a
-self-declared deferral.
+design defect in the shipped T016 detector (DRIFT-198-I003-004): an argv
+containment detector built as a HARD review-failure could not be made complete.
+Six successive fresh-context reviews found the reviewer's prompt mis-read as
+access, then quoted / relative / option-attached path bypasses, plus periodic-
+sampling and silent-failure gaps. The maintainer's review determined the
+hard-failure argv DESIGN itself was the defect: FR-011 + SC-003 were AMENDED
+(FR-008/T013 is the structural guarantee; cwd/exe-under-origin are the only HARD
+`containment-violated` signals; argv matches are best-effort diagnostic WARNINGS
+that never discard a valid review; sampler health is recorded so weak visibility
+is never silent), and T016 was REOPENED against the amended contract.
 
 ## Events
 
@@ -123,25 +126,43 @@ self-declared deferral.
   normalized absolute path is checked under-origin — only a traversal that ESCAPES the
   worktree up to origin flags. Test: a real `..`-traversal abuse (dropped without a cwd,
   caught with the worktree cwd).
-- **Residual scope of "command-line sampling" (the ONLY remaining gap, honestly named)**:
-  after Stage 5 the detector catches absolute, quoted-with-spaces, AND relative-traversal
-  path args. The one residual is origin access that manifests as NO path argument at all — a
-  bare syscall file-open by the process itself (argv carries no path to sample). That is the
-  defined SCOPE of `command-line sampling`, not a deferred gap within it; syscall/handle-level
-  interception would be a NEW requirement. For that un-sampleable case the STRUCTURAL
-  guarantee remains T013 (worktree materialized OUTSIDE origin, fail-closed). The Stage-2/4
-  self-declared "residual/inherent scope" for the relative-arg case is SUPERSEDED — that case
-  is now DETECTED, per the maintainer's fix decision.
-- **Scope note**: no new requirement and no scope change — this REALIZES FR-011 at
-  its intended precision (origin ACCESS, not origin MENTION) and at its literal
-  scope (cwd/command-line). A five-stage field fix: false positive → over-broad skip →
-  over-broad subtraction → the tokenizer itself (structured argv, workaround removed) →
-  relative-traversal resolution (maintainer-approved, not self-deferred). Strong evidence
-  for dogfooding the detector on its own tree — five successive fresh-context reviews drove
-  it past four plausible-but-wrong states to a detector that now handles absolute, quoted,
-  and relative-traversal path args, with the single argless-syscall residual honestly named
-  and covered structurally by T013. The one remaining gap was fixed on an explicit human
-  decision, closing the self-declared-residual pattern the earlier rounds were blocked for.
+- **Stage 6 — the HARD-FAILURE DESIGN is the defect, not one tokenizer case (maintainer
+  review, run `20260712T171701083` + full review 2026-07-12)**: a 6th review found
+  option-attached path values (`--git-dir=..\<origin>\.git`, `--git-dir=C:\origin\.git`)
+  evade the detector — again contradicting a self-declared "only argless-syscall residual".
+  Escalated. The maintainer's full review then identified the PATTERN as the finding:
+  argv/command-line matching is inherently incomplete (six parser patches, plus periodic
+  5s-heartbeat sampling that misses a short-lived descendant, plus Windows assumed-cwd
+  classification), so using an argv match as a HARD review-failure is the wrong design.
+  Additional blocking findings: sampling exceptions degraded to SILENT inactivity (no health
+  recorded, contradicting spec L907); and demoting argv from a hard signal is a binding
+  behaviour change that requires an explicit REQUIREMENT AMENDMENT, not another drift-only
+  correction (FR-011 required argv observations to mark `containment-violated`).
+- **Resolution (Option 1 + explicit SPEC AMENDMENT; T016 REOPENED)** — the maintainer chose
+  Option 1 with a spec amendment (rejected Option 2, more patches). FR-011 and SC-003 are
+  AMENDED and T016 is REOPENED:
+  1. **FR-008/T013** (worktree materialized OUTSIDE origin) is the STRUCTURAL containment
+     guarantee.
+  2. **Strong signals** — a reviewer-tree process whose **cwd** or **exe** resolves under
+     origin — remain HARD `containment-violated` (fail loud, discard findings).
+  3. **Argv matches** become bounded **DIAGNOSTIC WARNINGS**: recorded, never grounds to
+     discard an otherwise valid review. `--name=value` is expanded as useful best-effort
+     coverage, WITHOUT any completeness claim.
+  4. The monitor records **SAMPLER HEALTH** — attempts, successful samples, failures,
+     degraded reason, final-sample-taken — so weak visibility (fewer samples, a sampling
+     error, a short-lived descendant between heartbeats) is VISIBLE, never silent
+     inactivity. A FINAL best-effort sample fires after the reviewer's run loop.
+  Code: the orchestrator partitions violations by source (cwd/exe → hard fail; arg →
+  warning) and persists `containment_warnings` + `sampler_health`; the sampler expands
+  option-values, resolves relative args against the process cwd, and returns health via a
+  `-Health [ref]`. Tests added: strong-signal hard-fail, argv-only warning (review NOT
+  discarded), option-attached value, sampling-failure (degraded recorded), final-sample,
+  alternate-child-cwd.
+- **Scope note**: this is a REQUIREMENT AMENDMENT (FR-011 + SC-003), maintainer-decided
+  2026-07-12 — not a silent drift-only correction. Six successive fresh-context reviews
+  demonstrated that the hard-failure argv design was the root problem; the honest resolution
+  makes T013 the guarantee, cwd/exe the hard signals, and argv a best-effort monitor whose
+  health is always recorded. T016 stays REOPENED until these amended surfaces are certified.
 
 ### DRIFT-198-I003-003 — T015 confinement contract: design surfaces bound "REQUIRED bounded verification" after the option-1 decision made it opt-in (resolved: docs aligned to the shipped design)
 

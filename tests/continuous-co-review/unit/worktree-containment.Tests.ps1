@@ -300,4 +300,38 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
         @($v).Count | Should -BeGreaterThan 0 -Because 'the relative `..` traversal to an origin file resolves against the reviewer cwd and is flagged (not dropped)'
         (($v | ForEach-Object { [string]$_.path }) -join '|') | Should -Match 'secret\.md'
     }
+
+    It 'OPTION-ATTACHED path (--name=value) is expanded and DETECTED as a best-effort arg candidate (codex run 20260712T171701083): absolute AND relative option values' -Skip:(-not $IsWindows) {
+        $relDir = [System.IO.Path]::GetRelativePath($script:Worktree, $script:OriginSpacedDir)   # ..\t16-origin-x\a b  (relative option value)
+        Mock -CommandName Get-SpecrewProcessTreeDescendants -MockWith { @(777, 888) }
+        Mock -CommandName Get-CimInstance -MockWith {
+            @(
+                [pscustomobject]@{ ProcessId = 666; Name = 'codex.exe'; CommandLine = 'codex exec "review"'; ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
+                [pscustomobject]@{ ProcessId = 777; Name = 'git.exe'; CommandLine = ('git --git-dir="{0}" status' -f $script:OriginSpacedDir); ExecutablePath = 'C:\Program Files\Git\cmd\git.exe' }   # ABSOLUTE option value
+                [pscustomobject]@{ ProcessId = 888; Name = 'git.exe'; CommandLine = ('git --git-dir="{0}" log' -f $relDir); ExecutablePath = 'C:\Program Files\Git\cmd\git.exe' }   # RELATIVE option value
+            )
+        }
+        $samples = Get-ContinuousCoReviewContainmentSamples -RootPid 666 -WorktreeCwd $script:Worktree
+        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-OPT'
+        @($v).Count | Should -BeGreaterThan 0 -Because 'the option-attached origin path (absolute + relative) is expanded past the `=` and DETECTED (best-effort argv coverage)'
+        (@($v | ForEach-Object { $_.source }) | Select-Object -Unique) | Should -Be 'arg' -Because 'an option-value match is an argv match -> a diagnostic WARNING (source=arg), never a hard fail'
+    }
+
+    It 'SAMPLER HEALTH: a sampling failure is RECORDED (degraded + reason), never silent inactivity (FR-011 amended)' -Skip:(-not $IsWindows) {
+        Mock -CommandName Get-SpecrewProcessTreeDescendants -MockWith { @() }
+        Mock -CommandName Get-CimInstance -MockWith { throw 'simulated CIM failure' }
+        $h = $null
+        $null = Get-ContinuousCoReviewContainmentSamples -RootPid 4242 -WorktreeCwd $script:Worktree -Health ([ref]$h)
+        $h | Should -Not -BeNullOrEmpty -Because 'the monitor always reports its health'
+        [bool]$h.degraded | Should -BeTrue -Because 'a CIM query failure is recorded as DEGRADED visibility, not silent'
+        [string]$h.reason | Should -Be 'cim-query-failed'
+    }
+
+    It 'ALTERNATE CHILD CWD: relative-arg classification DEPENDS on the process cwd - the same relative token reaches origin from one cwd but not another' {
+        $rel = [System.IO.Path]::GetRelativePath($script:Worktree, $script:OriginSecret)   # ..\t16-origin-x\secret.md
+        $fromWorktree = @(Resolve-ContinuousCoReviewRelativeOriginTokens -Argv @($rel) -Cwd $script:Worktree)
+        $fromWorktree | Should -Contain $script:OriginSecret -Because 'from the reviewer worktree cwd the `..` traversal reaches the origin file'
+        $fromElsewhere = @(Resolve-ContinuousCoReviewRelativeOriginTokens -Argv @($rel) -Cwd ([System.IO.Path]::GetTempPath()))
+        $fromElsewhere | Should -Not -Contain $script:OriginSecret -Because 'from a DIFFERENT cwd the SAME relative token resolves elsewhere - an alternate child cwd changes classification (POSIX uses the exact /proc/<pid>/cwd; Windows the assumed worktree, documented best-effort)'
+    }
 }

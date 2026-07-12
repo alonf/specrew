@@ -506,12 +506,26 @@ pin-surface consistency assertions.
 - **FR-010 (W3)**: The slim prompt and the reviewer spawn contract MUST
   state the confinement contract: worktree-only operations, origin paths
   out of bounds, lifecycle/governance script execution out of scope.
-- **FR-011 (W4)**: A containment detector, riding the existing T100
-  child-process registry (cwd/command-line sampling), MUST mark a run
-  `containment-violated` on observed origin access, fail it loudly with an
-  origin-side record (process, command line, path, timestamp), never kill
-  mid-flight, and never enter origin-flavored data into reviewer-visible
-  artifacts.
+- **FR-011 (W4)**: The STRUCTURAL containment guarantee is FR-008 — the reviewer
+  worktree materialized OUTSIDE the origin root, fail-closed. Riding the T100
+  child-process registry, a containment MONITOR samples the reviewer process tree
+  and classifies observed origin access by SIGNAL STRENGTH:
+  - **Strong signal (fail-loud)**: a reviewer-tree process whose **cwd** or
+    **executable** resolves UNDER an origin root MUST mark the run
+    `containment-violated` and fail it loudly with a bounded, redacted origin-side
+    record (process, path, timestamp; NEVER the raw command line/prompt/env/creds),
+    never killing the reviewer mid-flight.
+  - **Best-effort signal (diagnostic warning)**: a command-line ARGUMENT that
+    resolves under an origin root is recorded as a bounded DIAGNOSTIC WARNING.
+    Command-line/argv matching is inherently INCOMPLETE (it cannot cover every
+    path-bearing argument form), so an argv match MUST NOT by itself discard an
+    otherwise valid review. Best-effort coverage (absolute, quoted, relative
+    traversal, `--name=value`) is provided without any completeness claim.
+  The monitor MUST record its own HEALTH — sample attempts, successful samples,
+  failures, and degraded visibility — so weaker visibility (a host with fewer
+  samples, a sampling error, or a short-lived descendant that exits between
+  heartbeats) is always VISIBLE and never silent inactivity. No origin-flavored
+  data enters reviewer-visible artifacts.
 - **FR-012 (W5)**: ONE path-granular machinery list MUST be the single
   source for both the digest strip and the worktree strip: host machinery
   (`.claude/**`, `.agents/**`, `.cursor/**`, `.copilot/**`,
@@ -849,9 +863,14 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
 - **SC-002**: From inside a materialized reviewer worktree, git upward
   discovery cannot resolve the origin, and the reviewer bundle contains
   zero origin-absolute paths. (US2)
-- **SC-003**: Seeded origin access marks the run `containment-violated`
-  with a complete origin-side record; a full legitimate in-worktree suite
-  run produces zero violations. (US2)
+- **SC-003**: Seeded origin access via a STRONG signal — a reviewer-tree process
+  whose cwd or executable resolves under an origin root — marks the run
+  `containment-violated` with a bounded, redacted origin-side record. A seeded
+  origin access observed only as a command-line ARGUMENT is recorded as a bounded
+  diagnostic warning (best-effort; it does NOT by itself discard the review). The
+  monitor records its own sampling health, so degraded visibility is surfaced and
+  never silent. A full legitimate in-worktree suite run produces zero strong-signal
+  violations and zero argv warnings. (US2)
 - **SC-004**: The digest strip and worktree strip resolve identical path
   sets from the ONE list; `.github/workflows/**` is reviewable AND
   certified; each exclusion has a passing reviewer-can-still-see-it test.
@@ -904,10 +923,12 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
 - The tag-push workflow's auto-publish behavior for prereleases is
   current reality (observed for beta1) and remains the release mechanism
   for beta2; the credentials doc is stale and will be fixed (FR-040).
-- The T100 child-process registry provides sufficient cwd/command-line
-  visibility on all four hosts for the FR-011 detector; if a host's
-  visibility is weaker, the detector degrades to fewer samples — never to
-  silent inactivity.
+- The T100 child-process registry provides cwd/command-line visibility on all
+  four hosts for the FR-011 monitor; strong-signal (cwd/exe-under-origin) access
+  fails loud, an argv-under-origin match is a best-effort diagnostic warning, and
+  the monitor records its sampling health so weaker visibility (fewer samples, a
+  sampling error, or a short-lived descendant between heartbeats) degrades to fewer
+  samples and a recorded degraded state — never to silent inactivity.
 - Consumer projects obtain spec-kit/squad through Specrew's
   dependency-install path (the I2 single-pin posture depends on it).
 - The stable 0.40.0 promotion remains a separate maintainer PASS after

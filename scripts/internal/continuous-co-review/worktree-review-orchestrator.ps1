@@ -769,6 +769,9 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             try { $cgt = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null); if (-not [string]::IsNullOrWhiteSpace($cgt)) { $containmentOriginRoots += ([string]$cgt).Trim() } } catch { $null = $_ }
             $containmentViolations = [System.Collections.Generic.List[object]]::new()
             $containmentSeen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+            # FR-011 amended (maintainer review 2026-07-12): the monitor records its own HEALTH so weak visibility is
+            # never silent inactivity. A hashtable (reference type) so the heartbeat closure's mutations persist.
+            $samplerHealth = @{ attempts = 0; successful_samples = 0; failures = 0; last_reason = ''; final_sample_taken = $false; cadence_seconds = 5 }
             $currentPhase = 'reviewer-execution'
             & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; implementer_evidence = $implementerEvidencePresent }
             & $recordPhaseStart $currentPhase
@@ -779,18 +782,25 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 # after the reviewer's natural end. Assign the `, (...)`-returning helpers to vars (never @()/inline
                 # foreach) so a single sample/violation is not double-wrapped.
                 if ($null -ne $Telemetry -and $Telemetry.PSObject.Properties['child_pid'] -and $Telemetry.child_pid -and $containmentOriginRoots.Count -gt 0) {
+                    # A running=false telemetry is the FINAL post-exit sample: its vanished tree is EXPECTED, so it is
+                    # recorded as taken but its emptiness is NOT counted as a sampler failure.
+                    $isFinal = ($Telemetry.PSObject.Properties['running'] -and (-not $Telemetry.running))
+                    $samplerHealth.attempts++
                     try {
-                        # DRIFT-198-I003-004: the sampler parses STRUCTURED argv, so the single-arg prompt is one
-                        # non-path token (no false positive) and a quoted origin path with spaces is not bypassed. Pass
-                        # the reviewer worktree as the cwd so a RELATIVE `..` traversal to origin is resolved + caught.
-                        $cvSamples = Get-ContinuousCoReviewContainmentSamples -RootPid ([int]$Telemetry.child_pid) -WorktreeCwd $wt.worktree_path
+                        # DRIFT-198-I003-004: STRUCTURED argv (single-arg prompt is not a path; quoted/relative/option
+                        # forms covered best-effort). -Health returns the monitor's own visibility so it is never silent.
+                        $cvHealth = $null
+                        $cvSamples = Get-ContinuousCoReviewContainmentSamples -RootPid ([int]$Telemetry.child_pid) -WorktreeCwd $wt.worktree_path -Health ([ref]$cvHealth)
                         $cvNew = Test-ContinuousCoReviewContainmentViolations -Samples $cvSamples -OriginRoots $containmentOriginRoots -RunId $RunId
                         foreach ($cv in $cvNew) {
                             $cvKey = ('{0}|{1}|{2}' -f $cv.process, $cv.source, $cv.path)
                             if ($containmentSeen.Add($cvKey)) { [void]$containmentViolations.Add($cv) }
                         }
+                        if ($isFinal) { $samplerHealth.final_sample_taken = $true }
+                        elseif ($null -ne $cvHealth -and $cvHealth.degraded) { $samplerHealth.failures++; $samplerHealth.last_reason = [string]$cvHealth.reason }
+                        else { $samplerHealth.successful_samples++ }
                     }
-                    catch { $null = $_ }
+                    catch { if (-not $isFinal) { $samplerHealth.failures++; $samplerHealth.last_reason = 'sampler-exception' } }
                 }
                 & $writeStatus 'running' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $null; reviewer_telemetry = $Telemetry }
             }
@@ -826,17 +836,24 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             # disposition; the findings are DISCARDED (a reviewer that reached origin cannot be trusted). Records
             # carry ONLY bounded/redacted path/process metadata (never the raw cmdline/prompt/env/creds), and only
             # in these ORIGIN-SIDE writes (status.json + disposition), never the reviewer worktree.
-            if ($containmentViolations.Count -gt 0) {
+            # FR-011 AMENDED (maintainer review 2026-07-12): partition observed origin access by SIGNAL STRENGTH. A
+            # STRONG signal (a reviewer-tree process whose cwd or exe resolves under origin) hard-fails LOUDLY and
+            # DISCARDS findings. A command-line ARGUMENT under origin is a best-effort DIAGNOSTIC WARNING (argv matching
+            # is inherently incomplete) - recorded, but it NEVER by itself discards an otherwise valid review. The
+            # STRUCTURAL guarantee is FR-008/T013.
+            $strongViolations = @($containmentViolations | Where-Object { $_.source -in @('cwd', 'exe') })
+            $containmentArgWarnings = @($containmentViolations | Where-Object { $_.source -eq 'arg' } | Select-Object -First 20)
+            if ($strongViolations.Count -gt 0) {
                 $currentPhase = 'containment-violated'
                 $cvSpend = Get-ContinuousCoReviewRoundSpendClass -InputMaterialized $true -ModelInvoked $true -ProducedReview $false
                 [System.IO.File]::WriteAllText($resultOut, '')
                 $priorBlockingCv = ($null -ne $prior) -and [bool]$prior.blocking
                 $priorFindingsCv = if ($null -ne $prior) { [string]$prior.findings } else { $null }
                 Set-ContinuousCoReviewRoundState -RepoRoot $RepoRoot -ChangedPaths @($wt.changed_paths) -Round $round -Blocking $priorBlockingCv -Findings $priorFindingsCv
-                $cvRecords = @($containmentViolations | Select-Object -First 10)
-                $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'containment-violated'; run_id = $RunId; round = $round; provider_spend = $true; violations = $cvRecords; recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
+                $cvRecords = @($strongViolations | Select-Object -First 10)
+                $null = Add-ContinuousCoReviewRoundDisposition -RepoRoot $RepoRoot -Disposition ([pscustomobject][ordered]@{ state = 'containment-violated'; run_id = $RunId; round = $round; provider_spend = $true; violations = $cvRecords; arg_warnings = $containmentArgWarnings; sampler_health = $samplerHealth; recorded_at = (ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp) })
                 $runTimer.Stop()
-                & $writeStatus 'failed' @{ failure_reason = 'containment-violated'; message = ('the reviewer process tree accessed origin (monitored confinement): ' + (@($cvRecords | ForEach-Object { $_.path } | Select-Object -First 5) -join ', ')); containment_violations = $cvRecords; spend_class = $cvSpend.class; provider_spend = $cvSpend.records_provider_spend; round_consumed = $cvSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
+                & $writeStatus 'failed' @{ failure_reason = 'containment-violated'; message = ('the reviewer process tree accessed origin via a STRONG signal (cwd/exe under origin): ' + (@($cvRecords | ForEach-Object { $_.path } | Select-Object -First 5) -join ', ')); containment_violations = $cvRecords; containment_warnings = $containmentArgWarnings; sampler_health = $samplerHealth; spend_class = $cvSpend.class; provider_spend = $cvSpend.records_provider_spend; round_consumed = $cvSpend.consumes_round; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; reviewed = $false }
                 return (Get-Content $statusPath -Raw | ConvertFrom-Json)
             }
             $reviewerTelemetry = if ($r.PSObject.Properties['telemetry']) { $r.telemetry } else { $null }
@@ -880,7 +897,7 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
                 & $recordPhaseEnd 'write-result'
                 $currentPhase = 'complete'
                 $runTimer.Stop()
-                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; result_source = $resultSource; implementer_evidence = $implementerEvidencePresent; reviewer_telemetry = $reviewerTelemetry }
+                & $writeStatus 'done' @{ baseline_ref = $BaselineRef; changed_count = $wt.changed_count; changed_paths = @($wt.changed_paths); tree_id = $wt.tree_id; reviewed_digest_tree_id = $reviewedDigestId; reviewed_digest_error = $reviewedDigestErr; reviewer_host = $reviewerHost.host; reviewer_independence = $reviewerHost.independence; independence_source = $reviewerHost.independence_source; round = $round; max_rounds = $maxRounds; blocking = $blocking; completeness = $completeness; result_source = $resultSource; implementer_evidence = $implementerEvidencePresent; reviewer_telemetry = $reviewerTelemetry; containment_warnings = $containmentArgWarnings; sampler_health = $samplerHealth }
             }
             else {
                 $currentPhase = 'write-failure'
