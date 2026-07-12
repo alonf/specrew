@@ -15,6 +15,8 @@ Describe 'reviewer spawn suppresses the reviewer host''s own Specrew hooks (empt
         $env:SPECREW_MODULE_PATH = $script:RepoRoot
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-reviewer.ps1')
+        # REUSE the SAME governed dispatcher fixture the integration suite uses (no second substitute fixture).
+        . (Join-Path $script:RepoRoot 'tests/integration/refocus-dispatcher-fixture.ps1')
     }
 
     It '1. the reviewer launch path passes SPECREW_REFOCUS_DISABLE=1 to the spawned reviewer child process' {
@@ -76,29 +78,50 @@ Describe 'reviewer spawn suppresses the reviewer host''s own Specrew hooks (empt
         }
     }
 
-    # PAIRED CONTRACT (codex finding f1 verification-environment-contamination, 2026-07-12): the reviewer host +
-    # its lifecycle hooks MUST inherit the suppression (tests 1 + 2 above), but a governance-sensitive verification
-    # child launched through the engine's OWN bounded-verification helper MUST NOT inherit it - so a governance/hook
-    # it invokes executes normally instead of false-greening on the kill-switch no-op path. The bounded helper is
-    # the ONLY supported path for governance-sensitive verification under a reviewer session; arbitrary
-    # reviewer-spawned children still inherit suppression by design (documented in reviewer-spawn-contract.md).
-    It '3. a bounded-verification child does NOT inherit the suppression and would reach governance (the only supported governance-sensitive verification path)' {
-        $wt = Join-Path ([System.IO.Path]::GetTempPath()) ('bvsup-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path $wt -Force | Out-Null
+    # PAIRED CONTRACT via the REAL dispatcher in the SHARED governed fixture (codex finding f1
+    # verification-environment-contamination, maintainer-required real-dispatcher proof 2026-07-12). Under
+    # SPECREW_REFOCUS_DISABLE=1: (A) the reviewer host's OWN hook inherits suppression and the governed dispatcher
+    # emits NO refocus marker; (B) a verification child launched through the engine's OWN bounded-verification
+    # helper has the var REMOVED, reaches the REAL dispatcher in the SAME governed fixture, and governance PRODUCES
+    # the positive '[specrew-refocus] trigger=b1' marker. This is the ONLY supported governance-sensitive path;
+    # arbitrary reviewer-spawned children still inherit suppression by design (reviewer-spawn-contract.md).
+    It '3. governed-fixture PAIR: the reviewer host''s own hook inherits suppression (no marker), while a bounded-verification child clears it, reaches the REAL dispatcher, and produces the refocus marker' {
+        $fxRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('bvgov-' + [guid]::NewGuid().ToString('N'))
+        $fx = New-RefocusDispatcherFixture -ProjectRoot (Join-Path $fxRoot 'project') -RepoRoot $script:RepoRoot
+        $pwshPath = (Get-Process -Id $PID).Path
         $prev = $env:SPECREW_REFOCUS_DISABLE
         try {
-            $env:SPECREW_REFOCUS_DISABLE = '1'   # simulate running UNDER a reviewer session (the reviewer process carries this, and it is inherited by children)
-            # The command mirrors the dispatcher's EXACT kill-switch condition (specrew-hook-dispatcher.ps1 line 46:
-            # no-op iff SPECREW_REFOCUS_DISABLE is non-empty), reporting both the inherited value AND whether the
-            # kill switch would fire. A bounded-verification child that reaches governance shows an EMPTY value.
-            $cmd = '$k = -not [string]::IsNullOrWhiteSpace($env:SPECREW_REFOCUS_DISABLE); [Console]::Out.Write("CHILD_RD=[" + $env:SPECREW_REFOCUS_DISABLE + "] KILLSWITCH_FIRES=" + $k)'
-            $rec = Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $wt -DeclaredCommands @($cmd) -TimeoutSeconds 30
-            [string]$rec[0].output | Should -Match 'CHILD_RD=\[\]' -Because 'the bounded helper MUST remove SPECREW_REFOCUS_DISABLE from each verification child so it does not inherit the reviewer host suppression'
-            [string]$rec[0].output | Should -Match 'KILLSWITCH_FIRES=False' -Because 'with the var cleared the dispatcher kill switch does NOT fire - the verification child executes governance NORMALLY (no false-green)'
+            $env:SPECREW_REFOCUS_DISABLE = '1'   # a reviewer session: the reviewer process carries this, inherited by children
+
+            # (A) DIRECT reviewer-hook invocation - this IS the reviewer host firing its own hook; it INHERITS the
+            #     suppression. SessionStart/compact in the governed fixture would normally emit the refocus marker;
+            #     the kill switch silences it before any parsing.
+            $psi = [System.Diagnostics.ProcessStartInfo]::new($pwshPath)
+            foreach ($a in @('-NoProfile', '-NonInteractive', '-File', $fx.dispatcher, '-Event', 'SessionStart', '-HostKind', 'codex', '-HostBinding', $fx.host_binding, '-EventJson', $fx.event_compact)) { [void]$psi.ArgumentList.Add($a) }
+            $psi.WorkingDirectory = $fx.project_root; $psi.UseShellExecute = $false; $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+            # inherit the test env (SPECREW_REFOCUS_DISABLE=1); do NOT remove it - this is the reviewer host's OWN hook
+            $pDirect = [System.Diagnostics.Process]::Start($psi)
+            $directOut = $pDirect.StandardOutput.ReadToEnd(); $null = $pDirect.StandardError.ReadToEnd(); $pDirect.WaitForExit()
+            $pDirect.ExitCode | Should -Be 0 -Because 'the kill switch fails open (a hook failure never blocks the session)'
+            [string]$directOut | Should -Not -Match $fx.marker_regex -Because 'the reviewer host''s OWN hook inherits SPECREW_REFOCUS_DISABLE=1 and is SUPPRESSED - the governed dispatcher emits NO refocus marker'
+
+            # (B) THROUGH the bounded-verification helper - it removes SPECREW_REFOCUS_DISABLE from the child, which
+            #     then launches the REAL dispatcher in the SAME governed fixture and REACHES governance, so the
+            #     refocus marker IS produced. Asserts child env state, exit code, and marker PRESENCE.
+            $cmd = @"
+`$rd = `$env:SPECREW_REFOCUS_DISABLE
+`$out = & '$pwshPath' -NoProfile -NonInteractive -File '$($fx.dispatcher)' -Event SessionStart -HostKind codex -HostBinding '$($fx.host_binding)' -EventJson '$($fx.event_compact)'
+[Console]::Out.Write('CHILD_RD=[' + `$rd + '] EXIT=[' + `$LASTEXITCODE + '] MARK ' + (`$out -join ' '))
+"@
+            $rec = Invoke-ContinuousCoReviewBoundedVerification -WorktreePath $fx.project_root -DeclaredCommands @($cmd) -TimeoutSeconds 60
+            $bOut = [string]$rec[0].output
+            $bOut | Should -Match 'CHILD_RD=\[\]' -Because 'the bounded helper REMOVED SPECREW_REFOCUS_DISABLE from the verification child (child environment state)'
+            $bOut | Should -Match 'EXIT=\[0\]' -Because 'the real governed dispatcher exits 0'
+            $bOut | Should -Match $fx.marker_regex -Because 'the bounded-verification child cleared the suppression, reached the REAL governed dispatcher, and governance PRODUCED the refocus marker (no false-green)'
         }
         finally {
             if ($null -eq $prev) { Remove-Item Env:\SPECREW_REFOCUS_DISABLE -ErrorAction SilentlyContinue } else { $env:SPECREW_REFOCUS_DISABLE = $prev }
-            Remove-Item -LiteralPath $wt -Recurse -Force -ErrorAction SilentlyContinue
+            Remove-Item -LiteralPath $fxRoot -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
 }

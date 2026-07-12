@@ -512,7 +512,22 @@
   records this as a BOUNDED contract (supported=bounded helper; unsupported=
   arbitrary reviewer child inherits suppression BY DESIGN to prevent recursive
   governance; general scoping = future OS-isolation), NOT complete isolation.
-  NEXT: re-record evidence for the committed tree, then one serialized co-review.
+- codex f1 ROUND-2 ESCALATION (autonomous co-review of the fix): the first paired
+  test used a fixture-owned Boolean env-PROXY, never launching the REAL dispatcher
+  - so it proved the var was cleared but not that governance is actually reached.
+  Maintainer required the real-dispatcher proof. RESOLVED: EXTRACTED the existing
+  governed fixture from tests/integration/refocus-dispatcher.tests.ps1 into a
+  shared refocus-dispatcher-fixture.ps1 (no second substitute fixture), and
+  rewrote hook-suppression test 3 as a governed-fixture PAIR under
+  SPECREW_REFOCUS_DISABLE=1: (A) the reviewer host's OWN hook inherits suppression
+  -> the governed dispatcher emits NO '[specrew-refocus] trigger=b1' marker; (B) a
+  bounded-verification child clears the var, reaches the REAL dispatcher in the
+  SAME fixture, and governance PRODUCES the marker (asserts exit, marker
+  presence/absence, child env). Empirically: governance fails-open SILENTLY in a
+  bare dir (byte-identical to the kill-switch no-op), which is why the governed
+  fixture is required for a positive marker. Dispatcher + hook-suppression suites
+  green. NEXT: re-record evidence, remediate the escalation (resolved-against-disk),
+  one serialized co-review.
 
 ## Notes
 
