@@ -122,7 +122,8 @@
   New end-to-end suite orchestrator-verification-injection.Tests.ps1 (5:
   injection-on-real-path, mutating-command-recorded, empty=>no-injection,
   honest-prompt x2) + a SUSTAINED multibyte streaming test on the wrapper;
-  F-198 CI registry now 16 suites, all green. SCOPE FLAG: the automatic
+  F-198 CI registry was 16 suites, all green at that round's digest (it later
+  grew to 18). SCOPE FLAG: the automatic
   SUPPLY of declared commands (deriving them from implementer-evidence =
   the 203-W8 runner-observed evidence) is left for a maintainer scope call,
   not folded in unilaterally.
@@ -166,7 +167,7 @@
   (failure_reason=verification-not-executed, diagnosable message, T020
   preflight spend class - neither budget consumed, no round latched);
   paired test forces the wrapper to throw and proves the reviewer is
-  never invoked. Suites 21/21; registry 16/16.
+  never invoked. Suites 21/21; registry was 16/16 at that round's digest.
 - CONCURRENT-REVIEW observation (recorded for T019): the manual --live run
   (06cb3c64) and a navigator auto-run (97a93603) fired ~30s apart against
   the same lineage - the in-flight dedup that would serialize them is
@@ -232,7 +233,7 @@
   and the digest-linked supply record NARROWED to the single fast
   self-contained bounded-verification suite (12/12, ~12s) so the live
   re-run is cheap - re-running the 91s full registry every review was the
-  T111 budget-death class. Suites 24/24; registry 16/16 (88s).
+  T111 budget-death class. Suites 24/24; registry was 16/16 at that round's digest (88s).
 - DESIGN CONCERN surfaced to the maintainer (not auto-resolved): the
   orchestrator-runs-declared-verification mechanism has now taken 5 review
   rounds of hardening (tamper, fragility, authority-hash, evidence, escape)
@@ -267,7 +268,7 @@
   allowed, host-dir not-flagged, honest prompt x2. OS-level isolation
   (dedicated process identity + worktree-only ACLs) recorded as a future
   proposal (research/reviewer-os-isolation-future.md), not T015 scope. Net a
-  code REDUCTION. Suites 18/18 (helper 11 + integrity 7); registry 16/16.
+  code REDUCTION. Suites 18/18 (helper 11 + integrity 7); registry was 16/16 at that round's digest.
 - Serialized confirming review 9e3a44f1 (round 1, post-simplification): 2
   blocking, BOTH real - and neither about the simplification (the review of
   the whole change-set surfaced two pre-existing bugs). (1) FALSE ROUND
@@ -287,7 +288,7 @@
   writing (structure preserved, prefix scrubbed); a new END-TO-END
   origin-path-hygiene test materializes a worktree whose changed content
   embeds the origin path and asserts changes.diff carries zero
-  origin-absolute paths. Suites green; registry 16/16.
+  origin-absolute paths. Suites green; registry was 16/16 at that round's digest.
 - Co-review 40a06e84 (1 blocking, valid): the digest-bound implementer
   evidence injected for the reviewed tree covered ONLY bounded-verification
   .Tests.ps1 (the opt-in helper the orchestrator never calls); the
@@ -392,7 +393,7 @@
   warn. Paired 7f/7g mirrored as Pester in review-context-and-harvest-
   hardening.Tests.ps1: MIXED valid+invalid FAILS (reviewer never invoked),
   ALL-invalid FAILS (reviewer never invoked), OMITTED degrades (not a
-  strict-fail). Focused suite 14/14; F-198 registry 16/16. This closes the
+  strict-fail). Focused suite 14/14; F-198 registry was 16/16 at that round's digest. This closes the
   8ff8474e/9e3a44f1 strict-resolution blocker. T034b's remaining part (final
   live Devin compat review) stays at-landing.
 - The one review (run 13a8f2bd, per the maintainer's launch-one-and-wait
@@ -407,7 +408,7 @@
   ../ traversal to an outside file REJECTED (reviewer never invoked), rooted
   absolute REJECTED, valid in-repo ref still PASSES (reviewer invoked). NOTE
   for the Devin crew: cca79708 upstream has this same traversal hole. Focused
-  suite 17/17; registry 16/16.
+  suite 17/17; registry was 16/16 at that round's digest.
 - Re-review 44760c20 (final round, human-decision-framed): the traversal fix
   was INCOMPLETE - it resolved only the FINAL file component, so an
   INTERMEDIATE in-repo directory junction/symlink to an outside dir still
@@ -424,7 +425,7 @@
   design ref REJECTED (reviewer never invoked); shared-helper direct tests
   (intermediate junction resolves to real outside target; in-scope junction
   stays under root; plain path normalizes); the existing T013 junction +
-  traversal + rooted + valid tests still green. Suites 25/25; registry 16/16.
+  traversal + rooted + valid tests still green. Suites 25/25; registry was 16/16 at that round's digest.
 - Re-review round after the containment fix hit a transient reviewer-HOST
   infra failure first (run ecd4c7b8: codex empty-exit0 x2, T108 retry
   exhausted -> no-parseable-findings-json, invoked-failed per T020 - NOT a
@@ -457,7 +458,7 @@
   POSIX: case-distinct sibling NOT under root) + a POSIX end-to-end
   design-context case-distinct-sibling REJECTION (reviewer never invoked;
   skipped on case-insensitive Windows). Suites 26/26 (1 POSIX-only skip on
-  Windows); registry 16/16. Launching exactly one serialized re-review.
+  Windows); registry was 16/16 at that round's digest. Launching exactly one serialized re-review.
 - CODEX empty-exit0 ROOT CAUSE (maintainer-directed deep-dive): the reviewer
   subprocess INHERITED the environment, so codex-the-reviewer's OWN global
   Specrew hooks (~/.codex/hooks.json -> specrew-hook-launch.ps1, HostKind
@@ -491,7 +492,9 @@
   the retry/harvest/partial path); a zero-finding verdict must arrive via stdout
   (file-only delivery cannot prove no_findings); stdout-primary hosts (claude)
   unchanged. New suites reviewer-file-primary-result (10) + reviewer-hook-
-  suppression (4); F-198 registry 18/18 green (committed 08d97fa0).
+  suppression (4); F-198 registry was 18/18 at commit 08d97fa0 (the registry
+  META-run became digest-recorded evidence only from 36cbb73a - see the closing
+  AUTHORITATIVE note).
 - END-TO-END VALIDATION (serialized codex co-review of digest 1173e1ab, run
   20260712T112120158): the fix WORKS - result_source=file-primary,
   completeness=full, T108_retried=false, reviewer-execution=103.9s (codex really
@@ -541,8 +544,16 @@
   digest inclusion denylist (Get-ContinuousCoReviewSecretAmbientDenylist) so
   scaffolder staging byproducts are excluded from the digest identity AND the
   reviewer worktree (materialized from the digest tree) - NARROW: only the .pending
-  extension, other gitignored SOURCE stays reviewable (paired T017 test). NEXT:
-  commit, re-record evidence, remediate against the commit, one serialized review.
+  extension, other gitignored SOURCE stays reviewable (paired T017 test).
+- CURRENT AUTHORITATIVE registry evidence (evidence-honesty cleanup, maintainer-
+  directed 2026-07-12): the F-198 registry whole-run (18/18, exit 0) AND the
+  refocus-dispatcher suite are recorded as DIGEST-LINKED runner-observed evidence
+  (runner exit + PASS-line count) at the current cleanup digest - NOT a prose
+  claim. The per-round "registry was N/N at that round's digest" figures ABOVE are
+  explicitly TIME-BOUND historical snapshots (the registry grew 16 -> 18 over
+  iteration 003); they are not current-tree closure claims. NEXT: commit, re-record
+  evidence, remediate against the commit, one serialized review of the cleanup
+  digest (Copilot fallback if codex returns another true empty result).
 
 ## Notes
 
