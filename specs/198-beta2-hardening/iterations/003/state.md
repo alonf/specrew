@@ -1,11 +1,11 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T016 (containment MONITOR — RE-CLOSED after the FR-011/SC-003 amendment + adjacent hardening DRIFT-006 were certified by a NON-blocking authoritative review; T013/T014/T015/T020 also complete)
-**Tasks Remaining**: T017, T018, T019, T030, T031, T032, T033, T034b
-**In Progress**: none active — T017 (consolidate the digest/worktree machinery list) is next
+**Last Completed Task**: T017 (ONE machinery list — function-based single source `Get-ContinuousCoReviewMachineryPaths` consumed by BOTH strips, certified by a confirming co-review against the 5 acceptance criteria; T013/T014/T015/T016/T020 also complete)
+**Tasks Remaining**: T018, T019, T030, T031, T032, T033, T034b
+**In Progress**: none active — T018 (recorded-run evidence wrapper) is next
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T22:00:00Z
+**Updated**: 2026-07-13T01:00:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
