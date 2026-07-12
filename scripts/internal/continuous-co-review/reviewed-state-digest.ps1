@@ -30,13 +30,20 @@ function Get-ContinuousCoReviewSecretAmbientDenylist {
         'node_modules/**', 'dist/**', 'build/**', 'out/**', 'target/**', 'bin/**', 'obj/**',
         '.venv/**', 'venv/**', '__pycache__/**', '.tox/**', '.gradle/**', '.next/**',
         '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**',
-        # T017 (2026-07-12): review-scaffolder STAGING byproducts. `.pending` is the extension the review
-        # closeout generator writes its not-yet-promoted artifacts under (iterations/**/code-map.md.pending,
-        # reviewer-index.md.pending, ...); they are gitignored NON-source that must not enter the digest identity
-        # NOR the reviewer worktree (which is materialized FROM the digest tree, so one exclusion covers both).
-        # NARROW by construction - only the `.pending` staging extension by leaf/wildcard, so genuine ignored
-        # SOURCE (which the digest force-adds precisely so it cannot bypass review) is unaffected.
-        '*.pending'
+        # T017 INTERIM (2026-07-12, co-review f1 digest-false-allow): the SIX known review-closeout scaffolder
+        # STAGING byproducts, PATH-AND-NAME specific under specs/*/iterations/*/. A GLOBAL `*.pending` rule was
+        # WRONG - it would drop a genuine ignored SOURCE file (e.g. src/schema.pending) from the digest identity,
+        # the exact FALSE-ALLOW that force-adding ignored source exists to prevent. These path+name patterns match
+        # ONLY the closeout generator's own artifacts, so any OTHER ignored `.pending` (a real source file, or an
+        # unlisted custom.md.pending under an iteration) stays IN the identity and its drift still flips the digest.
+        # Consolidation into ONE digest/worktree machinery data file is the planned T017 task (NOT pulled ahead of
+        # T016); this is the narrow interim fixture.
+        'specs/*/iterations/*/code-map.md.pending',
+        'specs/*/iterations/*/coverage-evidence.md.pending',
+        'specs/*/iterations/*/dashboard.md.pending',
+        'specs/*/iterations/*/dependency-report.md.pending',
+        'specs/*/iterations/*/review-diagrams.md.pending',
+        'specs/*/iterations/*/reviewer-index.md.pending'
     )
 }
 

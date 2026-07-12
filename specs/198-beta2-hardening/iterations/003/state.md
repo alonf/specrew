@@ -540,11 +540,22 @@
   option-1 + T017 disposition): (f1) the evidence recorder now ALSO records the
   f198-regression-suite + refocus-dispatcher script-suites digest-bound (exit +
   PASS-count), and coverage-evidence.md states their runner-observed standing; (f2)
-  deleted the 6 stale iteration-001 .pending files; (T017) added `*.pending` to the
-  digest inclusion denylist (Get-ContinuousCoReviewSecretAmbientDenylist) so
-  scaffolder staging byproducts are excluded from the digest identity AND the
-  reviewer worktree (materialized from the digest tree) - NARROW: only the .pending
-  extension, other gitignored SOURCE stays reviewable (paired T017 test).
+  deleted the 6 stale iteration-001 .pending files; (T017 interim) excluded the SIX
+  named review-closeout scaffolder artifacts under specs/*/iterations/*/ (code-map,
+  coverage-evidence, dashboard, dependency-report, review-diagrams, reviewer-index
+  .md.pending) from the digest inclusion denylist
+  (Get-ContinuousCoReviewSecretAmbientDenylist) - excluded from the digest identity
+  AND the reviewer worktree (materialized from the digest tree).
+- CORRECTION (co-review f1 digest-false-allow, run 20260712T154540412): my FIRST
+  T017 cut used a GLOBAL `*.pending` rule and I wrongly described it as narrow. It
+  was NOT narrow - it would have dropped a genuine ignored SOURCE file (e.g.
+  src/schema.pending) from the digest, the exact false-allow the force-add-ignored-
+  source design prevents. FIXED to the six PATH-AND-NAME-specific patterns above;
+  paired tests now prove the six scaffold artifacts are excluded, src/schema.pending
+  still flips the digest, an unlisted specs/.../iterations/.../custom.md.pending
+  stays IN, and other ignored source stays reviewable. Consolidation into ONE
+  digest/worktree machinery data file remains the planned T017 task (not pulled
+  ahead of T016).
 - CURRENT AUTHORITATIVE registry evidence (evidence-honesty cleanup, maintainer-
   directed 2026-07-12): the F-198 registry whole-run (18/18, exit 0) AND the
   refocus-dispatcher suite are recorded as DIGEST-LINKED runner-observed evidence

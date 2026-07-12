@@ -119,18 +119,25 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Test-ContinuousCoReviewDigestPathDenied -Path 'gen/logic.py' -Denylist $deny) | Should -Be $false
     }
 
-    It 'T017: review-scaffolder *.pending STAGING byproducts are excluded from the digest, but source merely CONTAINING "pending" is NOT (narrow, no false-allow)' {
+    It 'T017: the SIX named review-closeout scaffolder artifacts under specs/*/iterations/*/ are excluded, but any OTHER ignored .pending (real source, or an unlisted iteration .pending) STAYS in the digest (path+name specific, no false-allow)' {
         $deny = Get-ContinuousCoReviewSecretAmbientDenylist
-        # EXCLUDED: the .pending staging byproducts at any depth (matched by leaf) - they must not enter the digest
-        # identity NOR the reviewer worktree materialized from the digest tree.
+        # (1) the six known closeout scaffolder artifacts under an iteration dir ARE excluded (must not enter the
+        # digest identity NOR the reviewer worktree materialized from the digest tree).
         (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/001/code-map.md.pending' -Denylist $deny) | Should -Be $true
-        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/001/reviewer-index.md.pending' -Denylist $deny) | Should -Be $true
-        (Test-ContinuousCoReviewDigestPathDenied -Path 'code-map.md.pending' -Denylist $deny) | Should -Be $true
-        # NARROW: genuine SOURCE that merely mentions 'pending' (NOT the .pending extension) stays IN the identity so
-        # its drift still flips the digest - excluding it would be a false-allow bypass (the exact class this guards).
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/003/coverage-evidence.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/dashboard.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/dependency-report.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/review-diagrams.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/foo/iterations/002/reviewer-index.md.pending' -Denylist $deny) | Should -Be $true
+        # (2) a genuine ignored SOURCE file ending in .pending STILL changes the digest (NOT excluded) - the exact
+        # false-allow the global *.pending rule would have introduced.
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'src/schema.pending' -Denylist $deny) | Should -Be $false
+        # (3) an UNLISTED custom .pending under an iteration dir ALSO stays in the digest (only the six known
+        # closeout names are excluded, not the .pending extension nor the iteration path wholesale).
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/001/custom.md.pending' -Denylist $deny) | Should -Be $false
+        # (4) other ignored SOURCE (merely mentioning 'pending', or unrelated) remains reviewable in the identity.
         (Test-ContinuousCoReviewDigestPathDenied -Path 'src/pending-queue.ts' -Denylist $deny) | Should -Be $false
         (Test-ContinuousCoReviewDigestPathDenied -Path 'lib/pending.go' -Denylist $deny) | Should -Be $false
-        (Test-ContinuousCoReviewDigestPathDenied -Path 'app/PendingReview.tsx' -Denylist $deny) | Should -Be $false
     }
 
     It 'correctness: tracked source under bin/ or named *.key/*.token stays in the identity and its drift flips it (false-allow fix)' {
