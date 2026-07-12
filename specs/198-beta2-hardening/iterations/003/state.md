@@ -1,11 +1,11 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T017 (ONE machinery list — function-based single source `Get-ContinuousCoReviewMachineryPaths` consumed by BOTH strips, certified by a confirming co-review against the 5 acceptance criteria; T013/T014/T015/T016/T020 also complete)
-**Tasks Remaining**: T018, T019, T030, T031, T032, T033, T034b
-**In Progress**: none active — T018 (recorded-run evidence wrapper) is next
+**Last Completed Task**: T018 (universal language/framework-NEUTRAL recorded-run evidence runner `Invoke-ContinuousCoReviewRecordedRun` — direct command-execution facts + OPTIONAL run-produced schema-valid SpecrewTestResult; caller counts forbidden; fail-loud; evidence-only; 10/10 focused + full 19-suite registry green; T013/T014/T015/T016/T017/T020 also complete)
+**Tasks Remaining**: T019, T030, T031, T032, T033, T034b
+**In Progress**: none active — T019 (checkpoint baselines + frozen digest + in-flight dedup + DRIFT-002 exact-digest handling) is next; NOT started (maintainer instruction 2026-07-13: do not begin T019)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-13T01:00:00Z
+**Updated**: 2026-07-13T03:00:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -569,6 +569,30 @@
   iteration 003); they are not current-tree closure claims. NEXT: commit, re-record
   evidence, remediate against the commit, one serialized review of the cleanup
   digest (Copilot fallback if codex returns another true empty result).
+- T018 DONE (FR-014/FR-015 amended 2026-07-13, language/framework-NEUTRAL): the
+  universal recorded-run runner Invoke-ContinuousCoReviewRecordedRun records ONLY
+  directly-observed process facts (exe/args/cwd, exact reviewed-tree digest,
+  start/end/duration, exit + timeout, bounded/redacted stdout/stderr metadata,
+  output-artifact digests, command_succeeded); RICH counts come ONLY from a
+  run-produced, schema-valid SpecrewTestResult bound to the same digest (caller
+  counts FORBIDDEN; requested-but-missing/malformed/stale/invalid FAILS LOUD; exit
+  0 = command_succeeded, never "all passed"). No framework parsers; Pester is a
+  DEMONSTRATION producer only. 10/10 focused (recorded-run.Tests.ps1) + full
+  19-suite F-198 registry green; dogfooded on a real Pester command
+  (framework-neutral facts + SpecrewTestResult passed=2/failed=0/skipped=1).
+  Refocus FR-014 runner-observed-evidence floor added to review-signoff.md.
+  EVIDENCE-ONLY for the exact digest — scheduling, injection, cross-digest
+  collisions, stale results, and lineage stay T019.
+- PROPOSAL 205 AMENDMENT carried into F-198 (maintainer 2026-07-13, strict scope
+  separation; merged main 1210d4e7): W10 (generic contract before adapters)
+  realized HERE by FR-015/T018; W7–W9 (applicability provenance —
+  project-detected/profile-selected/provider-gated/example-only; the
+  stack-assumption/delivery-assumption deny-list classes; heterogeneous
+  Python/non-Pester, non-GitHub, no-release fixtures) recorded as FR-046/FR-047,
+  owned by Iteration 004 T028 (SP 0.5->2.0 provisional, pending 004 design
+  calibration), composing with T021-T023 + T027. T004-T006 NOT reopened.
+  DRIFT-198-I003-007 records the provenance; retention/cleanup + exact-digest
+  artifact ownership carried to T019 alongside DRIFT-002.
 
 ## Notes
 

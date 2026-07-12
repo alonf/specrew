@@ -22,11 +22,13 @@
 
 ## Summary
 
-**Total drift events**: 6
+**Total drift events**: 7
 **Resolution rate**: DRIFT-198-I003-001 + DRIFT-198-I003-003 resolved in place;
 DRIFT-198-I003-002 recorded → T019/T030–T032; DRIFT-198-I003-004 resolved via a
 maintainer-decided FR-011/SC-003 AMENDMENT (T016 REOPENED, pending certification of
-the amended surfaces)
+the amended surfaces); DRIFT-198-I003-007 resolved via a proposal-205 AMENDMENT
+(W10 realized in T018/FR-015 here; W7–W9 carried to Iteration 004 T028 as FR-046/FR-047,
+no T004–T006 reopen)
 **Specification drift**: One implementation-vs-data-model divergence
 (DRIFT-198-I003-001) in iteration-002's shipped FR-020 code, surfaced by
 iteration-003 co-review and fixed in place with paired abuse tests. One
@@ -45,9 +47,57 @@ hard-failure argv DESIGN itself was the defect: FR-011 + SC-003 were AMENDED
 (FR-008/T013 is the structural guarantee; cwd/exe-under-origin are the only HARD
 `containment-violated` signals; argv matches are best-effort diagnostic WARNINGS
 that never discard a valid review; sampler health is recorded so weak visibility
-is never silent), and T016 was REOPENED against the amended contract.
+is never silent), and T016 was REOPENED against the amended contract. One
+design-time technology-assumption leak (DRIFT-198-I003-007): the T018 evidence
+wrapper was first designed around Pester as the universal test contract, and the
+same review found unconditional stack/release teaching that names no Specrew
+identifier. Proposal 205 was AMENDED (W7–W10); W10 (generic contract before
+adapters) is realized here by T018/FR-015, and W7–W9 (applicability provenance,
+`stack-assumption`/`delivery-assumption` taxonomy, heterogeneous fixtures) are
+carried to Iteration 004 under T028 (FR-046/FR-047), composing with T021–T023 and
+T027, with no reopen of the shipped firewall (T004–T006).
 
 ## Events
+
+### DRIFT-198-I003-007 — T018 design review surfaced a TECHNOLOGY/DELIVERY-ASSUMPTION leak class (Pester-specific evidence contract); proposal 205 AMENDED — W10 realized here in T018, W7–W9 carried to Iteration 004 T028 (recorded → FR-046/FR-047; NOT a T004–T006 reopen)
+
+- **Requirement citation**: FR-014/FR-015 (the recorded-run evidence contract) and the self-leak
+  firewall family (FR-033..FR-037, proposal 205). The maintainer's 2026-07-13 ruling
+  (language/framework-NEUTRAL runner) + proposal 205 amendment (merged to main `1210d4e7`).
+- **Divergence (design defect, caught BEFORE implementation)**: the T018 recorded-run evidence
+  wrapper was initially designed around Pester `-PassThru` as the universal test contract — exporting
+  Specrew's OWN test framework as the downstream evidence shape. The same design review surfaced the
+  broader class the identity-only deny-list could miss: downstream-FACING statements (unconditional
+  Windows/PowerShell implementation teaching; "software feature produces a release" language; absolute
+  `C:/Dev/Specrew` examples) that present ONE stack/forge/framework/delivery model as universal WITHOUT
+  naming Specrew — so the original deny-list would pass them while still leaking Specrew's
+  implementation stack + delivery model as methodology.
+- **Detection**: F-198/T018 design review, 2026-07-13 (maintainer); recorded in proposal 205's
+  amendment log the same day.
+- **Resolution (proposal 205 AMENDED + strict F-198 scope separation, maintainer-directed 2026-07-13)**:
+
+  1. **W10 (generic contract before adapters) is realized HERE in iteration 003 by T018/FR-015**: the
+     universal runner records framework-NEUTRAL execution facts and accepts an OPTIONAL, schema-valid,
+     project-PRODUCED `SpecrewTestResult`; NO built-in Pester/pytest/Jest/TRX/JUnit parser; exit 0 =
+     `command_succeeded`, never "all tests passed"; counts only from the produced contract. Pester is a
+     DEMONSTRATION producer (recorded-run test 10), never the core contract.
+  2. **W7–W9 are carried to Iteration 004 under T028** (spec FR-046/FR-047), composing with the
+     provider-gated consumer CI (T021–T023) and the release-model resolver (T027): applicability
+     provenance (every downstream tech/delivery statement is `project-detected` / `profile-selected` /
+     `provider-gated` / `example-only`), the extended `stack-assumption` + `delivery-assumption`
+     deny-list classes, and the heterogeneous fixture matrix (Python/non-Pester, non-GitHub, no-release).
+     Technology names are NOT globally banned — explicitly selected presets + provider-gated templates
+     stay valid.
+  3. **T004–T006 are NOT reopened**: the shipped firewall (deny-list data, repo lint lane,
+     parameterization doc) is untouched; the extension lands as NEW requirements owned by T028.
+
+  Updated: spec.md (FR-046/FR-047 amendment block + section header + US5 trace), tasks.md (T028 scope +
+  trace + honest SP growth 0.5→2.0; T018 refocus duty line), plus the T018 generic-runner artifacts
+  (FR-014/FR-015, data-model RecordedRunEvidence + SpecrewTestResult contract, evidence schema,
+  design-analysis UniversalRunner). NO Iteration 004 implementation begun.
+- **Scope note**: a PROPOSAL amendment (205) absorbed into F-198 as new Iteration 004 ownership + one
+  iteration-003 realization (T018) — maintainer-decided, strict scope separation; no T004–T006 reopen,
+  no Iteration 004 implementation started.
 
 ### DRIFT-198-I003-006 — ADJACENT hardening found during T016/T020 confirmation: over-broad host-churn exemption + over-claiming coverage evidence (resolved in place; NOT absorbed into FR-011/FR-019)
 

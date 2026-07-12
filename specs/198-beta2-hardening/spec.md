@@ -699,7 +699,7 @@ pin-surface consistency assertions.
   into an existing `.specify` so newly added provider/scope rows are never
   inert downstream.
 
-#### Self-leak firewall (205) — owner: implementer + reviewer; iterations 001 (W1/W2/W6) and 004 (W3/W4/W5)
+#### Self-leak firewall (205) — owner: implementer + reviewer; iterations 001 (W1/W2/W6), 003 (W10 via FR-015/T018), and 004 (W3/W4/W5, W7–W9)
 
 - **FR-033 (W1)**: A repo CI lane MUST scan exactly what ships to
   consumers (the deploy manifest's allowlist plus deployed scripts' string
@@ -725,6 +725,32 @@ pin-surface consistency assertions.
   comment for `.ps1`/`.psd1`/`.yml`; same-line-or-line-above semantics)
   shipped with the module and read by both the repo lane and the
   consumer-side checks; consumer-side version mismatch is a fail-open WARN.
+
+**Amendment — 2026-07-13 (technology-assumption firewall; proposal 205 W7–W10, merged to main `1210d4e7`).**
+The original classes catch concrete Specrew-self facts (identity, path, release-model, self-host CI).
+The F-198/T018 design review surfaced a broader semantic class: a downstream-FACING statement that
+presents one stack, forge, test framework, package mechanism, or delivery model as universal WITHOUT
+proving it applies — a leak even when it names no Specrew identifier. **W10 (generic contract before
+adapters) is ALREADY realized in iteration 003 by FR-015/T018**: the recorded-run contract records
+framework-NEUTRAL execution facts and accepts an OPTIONAL project-produced `SpecrewTestResult`, never
+a built-in framework parser. **W7–W9 land in iteration 004 under T028**, composing with the
+provider-gated consumer CI (T021–T023) and the release-model resolver (T027); they DO NOT reopen the
+shipped firewall (T004–T006):
+
+- **FR-046 (205-W7/W8)**: Every downstream-FACING technology or delivery statement MUST carry
+  applicability provenance — exactly one of: `project-detected` (from repository evidence),
+  `profile-selected` (by an explicit quality/work-kind profile), `provider-gated` (by repository
+  governance), or `example-only` (worded so it cannot read as a mandate). An unqualified concrete
+  technology statement is a leak EVEN WITH no Specrew identifier. The one versioned deny-list (FR-037)
+  gains `stack-assumption` and `delivery-assumption` classes — concrete frameworks/runtimes/test tools
+  used as universal requirements, and package/prerelease/registry/forge workflows used without a
+  resolution point — matching ONLY consumer-DEPLOYED surfaces. This does NOT globally ban technology
+  names: Specrew's own implementation code, explicitly selected stack presets, and provider-specific
+  templates behind a matching provider gate are NOT findings.
+- **FR-047 (205-W9)**: The FR-035 fixture matrix MUST additionally cover a Python project with a
+  non-Pester test command, a non-GitHub repository, and an internal application with no publish/release
+  target; rendered prompts, refocus teaching, lifecycle templates, evidence guidance, and deployed CI
+  MUST contain no inapplicable technology or delivery mandate for those fixtures.
 
 #### Toolchain currency — owner: implementer; iteration 001
 
@@ -856,7 +882,7 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
 | US2 (containment) | FR-008..FR-013 | 003 |
 | US3 (round economy) | FR-014..FR-023 | 002 (FR-020..023), 003 (FR-014..019) |
 | US4 (consumer distribution) | FR-024..FR-032 | 004 |
-| US5 (self-leak firewall) | FR-033..FR-037 | 001 (FR-033, FR-034, FR-037), 004 (FR-035, FR-036) |
+| US5 (self-leak firewall) | FR-033..FR-037, FR-046..FR-047 | 001 (FR-033, FR-034, FR-037), 003 (205-W10 realized by FR-015/T018), 004 (FR-035, FR-036, FR-046, FR-047) |
 | US6 (toolchain) | FR-038..FR-039 | 001 |
 | Release | FR-040 | 004 |
 
