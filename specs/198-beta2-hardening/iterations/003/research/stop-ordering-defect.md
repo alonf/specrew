@@ -101,3 +101,30 @@ packet, and the capture layer cannot record an authorization, until the exact cu
 clean or human-dispositioned review evidence — a Stop during an in-flight review waits (no duplicate,
 no packet), and a mid-review human question is structurally a narrow non-boundary decision, not a
 solicitable verdict.
+
+## Field evidence — autonomous/manual review collision (2026-07-12)
+
+A concrete instance observed during the T015 / file-primary remediation, recorded per maintainer
+instruction (rather than changing review scheduling now). Two review drivers ran against the same
+working tree:
+
+- the AUTONOMOUS continuous-co-review, fired by the Stop-hook navigator on nearly every assistant Stop; and
+- MANUAL serialized reviews the maintainer requested, each preceded by a per-digest evidence re-record.
+
+Because the manual cycle re-records implementer-evidence for the EXACT digest it then reviews, its runs
+carried injected evidence (`implementer_evidence=true`) and cleanly certified the current digest. The
+autonomous navigator, by contrast, materialized whatever transient working-tree digest each Stop landed
+on — digests for which no matching evidence had been recorded — so it produced STALE blocking packets:
+
+- runs `20260712T094204795` (ceiling escalation) and `20260712T115340210` / `20260712T140622099`
+  (evidence-absent / stale-count findings) each blocked on a digest already fixed or superseded by a
+  later commit + re-record;
+- their findings were real for THEIR digest but not for the current one, so treating them as blocking
+  authorization would have been the FR-045 failure class (a superseded/blocked packet standing in for a
+  clean-current-digest review).
+
+**Why this is FR-045 / T019 evidence, not a scheduling change**: the fix is not to silence the
+autonomous loop but to make the acceptance gate DIGEST-EXACT and in-flight-aware — T019's
+reviewed-tree-digest acceptance + in-flight dedup, and T030–T032's capture layer rejecting
+blocked/superseded packets, are precisely what render a stale-digest navigator block non-authoritative.
+This real collision is retained as the motivating field case for those tasks.

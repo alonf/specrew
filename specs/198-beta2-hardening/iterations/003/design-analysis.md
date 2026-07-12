@@ -25,8 +25,10 @@ cycle-blind ratchet reworked into ONE shared cycle-scoped matcher
 proving the fallback 0-for-7 honest-at-record-time and naming the missing
 temporal-ordering guard, and five independent-review catches - two of them
 test-integrity classes now carried as review lenses (fixture hermeticity;
-in-worktree suite execution, which the confinement contract must REQUIRE
-bounded, per the retro's hardened action 1).
+in-worktree suite execution - the retro's hardened action 1 originally bound this as
+REQUIRED bounded verification, SUPERSEDED by the option-1 decision (2026-07-11,
+DRIFT-198-I003-003): auto per-review verification removed, T018 owns runner-observed
+verification, bounded helper opt-in only).
 
 **Incoming shared-engine dependency (maintainer-instructed at the 003
 planning approval)**: the Devin crew's FORTHCOMING design-context validation
@@ -137,7 +139,7 @@ flowchart TB
   I[T034a INSPECT Devin precursors<br/>record integration seam] --> C
   subgraph C[Containment T013-T017, priority]
     T13[T013 worktree relocation<br/>system temp, no upward-walk] --> T14[T014 origin-path hygiene<br/>composes with their design-ref plumbing]
-    T14 --> T15[T015 confinement contract<br/>+ bounded in-worktree verification REQUIRED]
+    T14 --> T15[T015 confinement contract<br/>+ opt-in bounded helper; integrity mandatory]
     T15 --> T16[T016 detector, T100 registry<br/>relocation-aware sampling]
     T16 --> T17[T017 ONE machinery list<br/>digest strip == worktree strip by construction]
   end
@@ -278,9 +280,12 @@ T030/T031 (the live fabrication class the interim disable is holding shut).
   - Addressed: pure functions + data seams under the six F-198 custom
     rules; the two 002 test-integrity lessons are binding here - every new
     test builds its own fixture (hermeticity lens) and the confinement
-    contract REQUIRES the bounded in-worktree verification step (declared
-    test commands, timeout/process containment, bounded output, post-run
-    mutation detection - never an unrestricted suite).
+    bounded-verification helper (timeout/process containment, bounded output,
+    post-run mutation detection) is an EXPLICIT OPT-IN API - the orchestrator
+    does NOT auto-run it (option-1 decision 2026-07-11, DRIFT-198-I003-003);
+    runner-observed verification evidence is T018's one-time recorded-run job;
+    reviewer-invocation integrity (pre/post hash; only .review/findings.jsonl
+    writable) is MANDATORY; confinement is MONITORED, not OS-enforced.
 
 ## Co-Design Record
 
@@ -304,9 +309,11 @@ maintainer-instructed at the 003 planning approval.
    BundleHygiene         — strip/relativize origin-absolute paths from
                            reviewer-visible context (T014; composes with
                            Devin design-ref plumbing in the same functions)
-   ConfinementContract   — slim prompt + spawn contract: worktree-only rules,
-                           what-is-absent teaching, REQUIRED bounded
-                           in-worktree verification (T015)
+   ConfinementContract   — slim prompt + spawn contract: worktree-only rules +
+                           what-is-absent teaching; MONITORED confinement (not
+                           OS-enforced) + MANDATORY reviewer-invocation integrity;
+                           bounded-verification helper OPT-IN only, T018 owns
+                           runner-observed verification (T015; option-1 2026-07-11)
    ContainmentDetector   — T100-registry cwd/commandline sampling; loud
                            containment-violated record; never mid-flight
                            kill (T016)

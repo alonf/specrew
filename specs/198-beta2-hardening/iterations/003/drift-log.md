@@ -22,17 +22,55 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution rate**: 50% (1/2 resolved; DRIFT-198-I003-002 is a recorded
+**Total drift events**: 3
+**Resolution rate**: 67% (2/3 resolved in place; DRIFT-198-I003-002 is a recorded
 requirement bound to T019/T030–T032, realized there)
 **Specification drift**: One implementation-vs-data-model divergence
 (DRIFT-198-I003-001) in iteration-002's shipped FR-020 code, surfaced by
 iteration-003 co-review and fixed in place with paired abuse tests. One
 process/governance defect (DRIFT-198-I003-002): lifecycle verdict packets
 were rendered during pending/blocking co-reviews — recorded as FR-045 and
-bound to T019 + T030–T032.
+bound to T019 + T030–T032. One docs-vs-shipped-design drift
+(DRIFT-198-I003-003): T015's design surfaces bound "REQUIRED bounded
+verification" after the option-1 decision (2026-07-11) had made it opt-in —
+the authoritative docs are now aligned to the shipped design.
 
 ## Events
+
+### DRIFT-198-I003-003 — T015 confinement contract: design surfaces bound "REQUIRED bounded verification" after the option-1 decision made it opt-in (resolved: docs aligned to the shipped design)
+
+- **Requirement citation**: FR-010 (confinement contract), FR-013 (reviewer
+  teaching); the 203-W3/W6 doctrine; NFR-001 (no false-green). The shipped
+  `reviewer-spawn-contract.md` + the simplified orchestrator are the
+  authoritative CODE surfaces.
+- **Divergence (docs vs shipped design)**: T015's design bindings
+  (design-analysis.md ConfinementContract component map + the code-implementation
+  lens + the container diagram + the retro-lens reference) stated the confinement
+  contract "REQUIRES the bounded in-worktree verification step", but the
+  maintainer's option-1 decision (2026-07-11, state.md) REMOVED automatic
+  per-review verification from the orchestrator (it could not be confined
+  in-process - findings 4b124d0e / c9abe16d / bfc7b5c5) and kept the
+  bounded-verification helper as an EXPLICIT opt-in API only. The design surfaces
+  were not updated to match, and no drift event recorded the change.
+- **Detection**: iteration-003 continuous co-review (run
+  `20260712T171055717-fpvalidate`, ADVISORY process-design-drift) + maintainer
+  instruction 2026-07-12.
+- **Resolution (docs aligned to the shipped design, in place)**: every
+  authoritative surface now states the approved design —
+
+  1. automatic per-review verification was REMOVED;
+  2. T018 owns the one-time runner-observed verification evidence;
+  3. the bounded-verification helper is EXPLICIT opt-in only;
+  4. reviewer confinement is MONITORED, not OS-enforced;
+  5. reviewer-invocation integrity remains MANDATORY.
+
+  Updated: design-analysis.md (ConfinementContract component map,
+  code-implementation lens, container diagram, retro-lens reference), tasks.md
+  T015, and `reviewer-spawn-contract.md` (already aligned). T015 is treated as
+  complete only now that these records agree.
+- **Scope note**: no new requirement and no scope change - this ALIGNS the design
+  docs to a decision already shipped in code; the code was correct, the docs
+  lagged.
 
 ### DRIFT-198-I003-002 — stop-ordering: verdict/decision packets rendered during a pending/blocking co-review (recorded → FR-045, bound to T019 + T030–T032)
 
@@ -53,6 +91,17 @@ bound to T019 + T030–T032.
   reviewed — one layer up from the FR-041 fabricated-authorization class.
 - **Detection**: maintainer instruction, 2026-07-12 (field evidence
   `research/stop-ordering-defect.md`).
+- **Additional field evidence (2026-07-12, autonomous/manual review collision)**:
+  during the T015/file-primary remediation the AUTONOMOUS continuous-co-review
+  (Stop-hook navigator) and the MANUAL serialized reviews collided repeatedly -
+  the navigator fired on transient working-tree digests WITHOUT matching recorded
+  implementer-evidence, producing STALE blocking packets (e.g. runs
+  `20260712T094204795`, `20260712T115340210`, `20260712T140622099`) whose findings
+  were already fixed or superseded on the current digest. This is exactly the
+  class FR-045 + T019 exist to handle (in-flight dedup + an exact-current-digest
+  acceptance gate, so a blocked/superseded packet can never become authorization).
+  Recorded as T019/FR-045 field evidence rather than changing review scheduling now
+  (maintainer instruction 2026-07-12); detail in `research/stop-ordering-defect.md`.
 - **Resolution (recorded + bound, realized in T019/T030–T032)**: FR-045
   states the rule — no verdict/boundary packet (options + marker) while a
   required co-review is pending or before the exact-current-digest review
