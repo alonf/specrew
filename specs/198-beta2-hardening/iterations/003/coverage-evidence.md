@@ -26,6 +26,11 @@ generator supersedes this at the iteration review boundary)
 - The F-198 honesty regression suite (`tests/f198-regression-suite.ps1`) is a bounded, EXPLICIT registry
   (never a glob) wired as a blocking CI step (NFR-007); it runs these suites plus the shared-engine
   suites as the whole-feature gate. Its per-suite counts are the individual records below.
+- The whole-registry META-run (`tests/f198-regression-suite.ps1`) AND the governed real-dispatcher suite
+  (`tests/integration/refocus-dispatcher.tests.ps1`, reused by the hook-suppression f1 test) are THEMSELVES
+  recorded as digest-linked runner-observed evidence (script-suite exit + PASS-line count) — so the
+  "18/18 registry green" / dispatcher pass claims here have runner-observed standing, not prose (co-review
+  finding f1 test-evidence-honesty, 2026-07-12).
 - Every suite is run FOR REAL in-session; the counts/exit/duration are runner-reported, never hand-typed.
 
 ## Tests Run

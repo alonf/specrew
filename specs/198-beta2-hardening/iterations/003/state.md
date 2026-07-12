@@ -526,8 +526,23 @@
   presence/absence, child env). Empirically: governance fails-open SILENTLY in a
   bare dir (byte-identical to the kill-switch no-op), which is why the governed
   fixture is required for a positive marker. Dispatcher + hook-suppression suites
-  green. NEXT: re-record evidence, remediate the escalation (resolved-against-disk),
-  one serialized co-review.
+  green.
+- SERIALIZED review of digest e02d3243 (run 20260712T124441759) VALIDATED the fix
+  again (file-primary, full, no retry, current-run) and codex raised 2 new blocking
+  findings on INCREMENT HYGIENE (not the feature code): f1 test-evidence-honesty -
+  coverage/state claimed 'F-198 registry 18/18 green' but the digest record held no
+  execution of the registry META-run nor refocus-dispatcher.tests.ps1; f2
+  unplanned-generated-artifacts - 6 gitignored *.pending scaffolder byproducts from
+  completed iteration 001 appeared in the reviewed increment. FIX (maintainer
+  option-1 + T017 disposition): (f1) the evidence recorder now ALSO records the
+  f198-regression-suite + refocus-dispatcher script-suites digest-bound (exit +
+  PASS-count), and coverage-evidence.md states their runner-observed standing; (f2)
+  deleted the 6 stale iteration-001 .pending files; (T017) added `*.pending` to the
+  digest inclusion denylist (Get-ContinuousCoReviewSecretAmbientDenylist) so
+  scaffolder staging byproducts are excluded from the digest identity AND the
+  reviewer worktree (materialized from the digest tree) - NARROW: only the .pending
+  extension, other gitignored SOURCE stays reviewable (paired T017 test). NEXT:
+  commit, re-record evidence, remediate against the commit, one serialized review.
 
 ## Notes
 

@@ -29,7 +29,14 @@ function Get-ContinuousCoReviewSecretAmbientDenylist {
         'id_rsa', 'id_rsa.*', 'id_ed25519', 'id_ed25519.*', '.netrc', '.npmrc', '.pypirc',
         'node_modules/**', 'dist/**', 'build/**', 'out/**', 'target/**', 'bin/**', 'obj/**',
         '.venv/**', 'venv/**', '__pycache__/**', '.tox/**', '.gradle/**', '.next/**',
-        '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**'
+        '.git/**', '.specrew/**', '.squad/**', '.specify/**', '.scratch/**',
+        # T017 (2026-07-12): review-scaffolder STAGING byproducts. `.pending` is the extension the review
+        # closeout generator writes its not-yet-promoted artifacts under (iterations/**/code-map.md.pending,
+        # reviewer-index.md.pending, ...); they are gitignored NON-source that must not enter the digest identity
+        # NOR the reviewer worktree (which is materialized FROM the digest tree, so one exclusion covers both).
+        # NARROW by construction - only the `.pending` staging extension by leaf/wildcard, so genuine ignored
+        # SOURCE (which the digest force-adds precisely so it cannot bypass review) is unaffected.
+        '*.pending'
     )
 }
 

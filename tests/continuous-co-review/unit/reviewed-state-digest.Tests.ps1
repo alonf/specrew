@@ -119,6 +119,20 @@ Describe 'Proposal 197 T065 content-addressed reviewed-state digest (FR-025/SEC-
         (Test-ContinuousCoReviewDigestPathDenied -Path 'gen/logic.py' -Denylist $deny) | Should -Be $false
     }
 
+    It 'T017: review-scaffolder *.pending STAGING byproducts are excluded from the digest, but source merely CONTAINING "pending" is NOT (narrow, no false-allow)' {
+        $deny = Get-ContinuousCoReviewSecretAmbientDenylist
+        # EXCLUDED: the .pending staging byproducts at any depth (matched by leaf) - they must not enter the digest
+        # identity NOR the reviewer worktree materialized from the digest tree.
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/001/code-map.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'specs/198-beta2-hardening/iterations/001/reviewer-index.md.pending' -Denylist $deny) | Should -Be $true
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'code-map.md.pending' -Denylist $deny) | Should -Be $true
+        # NARROW: genuine SOURCE that merely mentions 'pending' (NOT the .pending extension) stays IN the identity so
+        # its drift still flips the digest - excluding it would be a false-allow bypass (the exact class this guards).
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'src/pending-queue.ts' -Denylist $deny) | Should -Be $false
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'lib/pending.go' -Denylist $deny) | Should -Be $false
+        (Test-ContinuousCoReviewDigestPathDenied -Path 'app/PendingReview.tsx' -Denylist $deny) | Should -Be $false
+    }
+
     It 'correctness: tracked source under bin/ or named *.key/*.token stays in the identity and its drift flips it (false-allow fix)' {
         $repo = New-DigestRepo 'identity-source'
         New-Item -ItemType Directory -Path (Join-Path $repo 'bin') -Force | Out-Null
