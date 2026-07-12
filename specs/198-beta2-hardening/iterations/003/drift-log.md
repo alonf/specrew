@@ -74,18 +74,28 @@ stay observable (FR-011), with the earlier self-approved "residual" withdrawn.
   flagged the gap AND correctly objected that this drift record had marked the
   residual "accepted" with no human approver and no carried work item — i.e. an
   invalid self-approved deferral.
-- **Resolution (implementation-corrected, in place — the sampling seam, not a
-  blanket skip)**: the launcher records the EXACT prompt's absolute path tokens
-  (`prompt_mention_tokens`, threaded to the sampler via the heartbeat telemetry);
-  for a host process the sampler SUBTRACTS those mentions from its argv tokens
-  (count-based, superset-gated `Get-ContinuousCoReviewOperationTargetTokens`) — a
-  prompt MENTION subtracts, but a REAL origin operation target beyond the prompt
-  (or a count that exceeds the prompt's) SURVIVES and is sampled. Host
-  command-line access is OBSERVABLE again (FR-011). Non-host descendants are
-  sampled in full; `exe`/`cwd` sampling is unchanged. Tests: a pure-helper test
-  (mention subtracts / real target survives / count-exceeds survives / non-superset
-  worker kept) + a sampler DISAMBIGUATION test (host prompt mention subtracted,
-  host real target AND descendant both observed → two violations, never the prompt).
+- **Stage 3 — subtraction was still too broad; codex caught THAT too (run
+  `20260712T190522932`)**: the Stage-2 fix subtracted for the root pid AND any
+  same-image worker. A follow-on codex review showed that is a containment FALSE
+  NEGATIVE — a same-image worker (e.g. pwsh spawning pwsh) accessing a prompt-named
+  origin path has its ONLY real token subtracted against the root's prompt, and the
+  superset gate is trivially met when the prompt names few distinct paths. A false
+  negative in a containment detector is worse than a false positive, so the reviewer
+  correctly blocked.
+- **Resolution (implementation-corrected, in place — the sampling seam, ROOT-scoped)**:
+  the launcher records the EXACT prompt's absolute path tokens (`prompt_mention_tokens`,
+  threaded to the sampler via the heartbeat telemetry); ONLY for the ROOT pid — the one
+  process whose argv literally carries the prompt — the sampler SUBTRACTS those mentions
+  from its argv tokens (count-based, superset-gated
+  `Get-ContinuousCoReviewOperationTargetTokens`): a prompt MENTION subtracts, but a REAL
+  origin operation target beyond the prompt (or a count exceeding the prompt's) SURVIVES
+  and is sampled. EVERY other process — a same-image worker or a plain descendant — is
+  sampled in FULL, so a worker's real origin access stays observable. Host command-line
+  access is OBSERVABLE again (FR-011); `exe`/`cwd` sampling is unchanged. Tests: a
+  pure-helper test (mention subtracts / real target survives / count-exceeds survives /
+  non-superset worker kept) + a ROOT-scoped DISAMBIGUATION test (root prompt mention
+  subtracted; root real target, a SAME-IMAGE non-root worker, AND a descendant all
+  observed → three violations, never the root prompt).
 - **Inherent scope of "command-line sampling" (NOT a deferral; no human approval
   claimed)**: FR-011's literal method is `cwd/command-line sampling`. It cannot
   see origin access that manifests as NO path argument — a bare syscall file-open
@@ -97,9 +107,10 @@ stay observable (FR-011), with the earlier self-approved "residual" withdrawn.
   WITHDRAWN — nothing about FR-011 is being deferred.
 - **Scope note**: no new requirement and no scope change — this REALIZES FR-011 at
   its intended precision (origin ACCESS, not origin MENTION) and at its literal
-  scope (cwd/command-line). A two-stage field fix; strong evidence for the value of
-  dogfooding the detector on its own tree — and for a fresh-context reviewer
-  catching an over-correction the author would have shipped.
+  scope (cwd/command-line). A three-stage field fix (false positive → over-broad skip
+  → over-broad subtraction → root-scoped subtraction); strong evidence for the value of
+  dogfooding the detector on its own tree — and for successive fresh-context reviewers
+  catching over-corrections the author would have shipped.
 
 ### DRIFT-198-I003-003 — T015 confinement contract: design surfaces bound "REQUIRED bounded verification" after the option-1 decision made it opt-in (resolved: docs aligned to the shipped design)
 
