@@ -139,4 +139,21 @@ Describe 'shared physical-path canonicalizer (Get-ContinuousCoReviewPhysicalPath
         }
         finally { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue }
     }
+
+    It 'Test-...PathUnderRoot uses PLATFORM-APPROPRIATE case sensitivity: exact-case child is under root; a case-distinct SIBLING is NOT under root on POSIX (co-review 40365de9)' {
+        $parent = Join-Path ([System.IO.Path]::GetTempPath()) ('csp-' + [guid]::NewGuid().ToString('N'))
+        try {
+            $root = Join-Path $parent 'Repo'
+            New-Item -ItemType Directory -Path (Join-Path $root 'Sub') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root 'Sub/f.txt') -Value 'x' -Encoding UTF8
+            (Test-ContinuousCoReviewPathUnderRoot -Path (Join-Path $root 'Sub/f.txt') -Root $root) | Should -Be $true -Because 'an exact-case descendant is under root on every platform'
+            $siblingLower = Join-Path $parent 'repo'   # case-distinct sibling of 'Repo'
+            New-Item -ItemType Directory -Path $siblingLower -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $siblingLower 'f.txt') -Value 'x' -Encoding UTF8
+            $underRoot = Test-ContinuousCoReviewPathUnderRoot -Path (Join-Path $siblingLower 'f.txt') -Root $root
+            if ($IsWindows) { $underRoot | Should -Be $true -Because 'NTFS is case-insensitive: parent/repo and parent/Repo are the SAME dir' }
+            else { $underRoot | Should -Be $false -Because 'POSIX is case-sensitive: parent/repo is a DIFFERENT dir from parent/Repo, not under it' }
+        }
+        finally { Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }

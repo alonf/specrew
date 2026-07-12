@@ -18,10 +18,13 @@ source of truth for what that prompt promises and why.
   filesystem sandbox**: confinement is a contract term the reviewer must honor, and the containment
   detector (T016) monitors for violations and reports them loudly.
 - The T013 outside-origin guard and the strict design-context validation share **one** physical-path
-  canonicalizer (`Get-ContinuousCoReviewPhysicalPath`) so their containment semantics cannot drift. It
-  resolves **every** path component — following intermediate directory symlinks/junctions, not just the
-  final component — to the real physical path, and **fails closed** if any existing component cannot be
-  resolved. T013 refuses an `EphemeralRoot` (or an intermediate component) whose physical target lands
+  canonicalizer (`Get-ContinuousCoReviewPhysicalPath`) **and one containment predicate**
+  (`Test-ContinuousCoReviewPathUnderRoot`) so their resolution AND comparison semantics cannot drift.
+  The canonicalizer resolves **every** path component — following intermediate directory
+  symlinks/junctions, not just the final component — to the real physical path, and **fails closed** if
+  any existing component cannot be resolved. The predicate compares with **platform-appropriate case
+  sensitivity** (Windows/NTFS case-insensitive; POSIX case-sensitive), so a case-distinct sibling (e.g.
+  `/x/repo` vs the repo `/x/Repo`) cannot be falsely accepted as "under root" on Linux. T013 refuses an `EphemeralRoot` (or an intermediate component) whose physical target lands
   under origin; the strict design-context gate refuses a ref whose physical path is not under the
   repo root. **Policy for in-repo links:** a symlink/junction whose physical target is still under the
   repo root (T013: outside origin) **passes** — only targets that resolve outside the boundary are

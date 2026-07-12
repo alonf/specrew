@@ -585,17 +585,16 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
             # ref whose physical path cannot be resolved, or is not under the repo root, is unresolved.
             # POLICY: an IN-REPO symlink/junction whose physical target is still under the repo root is
             # ALLOWED (its resolved path passes containment); only targets OUTSIDE the repo are rejected.
-            $repoRootReal = Get-ContinuousCoReviewPhysicalPath -Path $RepoRoot
             $unresolvedRefs = New-Object System.Collections.Generic.List[string]
             foreach ($dc in @($DesignContextFiles)) {
                 $ref = [string]$dc
                 $ok = $false
-                if (-not [string]::IsNullOrWhiteSpace($ref) -and -not [System.IO.Path]::IsPathRooted($ref) -and -not [string]::IsNullOrEmpty($repoRootReal)) {
+                if (-not [string]::IsNullOrWhiteSpace($ref) -and -not [System.IO.Path]::IsPathRooted($ref)) {
                     $full = try { [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $ref)) } catch { $null }
-                    if ($full -and (Test-Path -LiteralPath $full -PathType Leaf)) {
-                        $real = Get-ContinuousCoReviewPhysicalPath -Path $full
-                        if (-not [string]::IsNullOrEmpty($real) -and ($real -eq $repoRootReal -or $real.StartsWith($repoRootReal + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase))) { $ok = $true }
-                    }
+                    # Existing file whose COMPONENT-WISE PHYSICAL path is under the repo root, via the
+                    # SHARED containment predicate (same physical resolution + platform-appropriate case
+                    # as T013 - so a case-distinct sibling cannot slip on POSIX).
+                    if ($full -and (Test-Path -LiteralPath $full -PathType Leaf) -and (Test-ContinuousCoReviewPathUnderRoot -Path $full -Root $RepoRoot)) { $ok = $true }
                 }
                 if (-not $ok) { [void]$unresolvedRefs.Add($ref) }
             }

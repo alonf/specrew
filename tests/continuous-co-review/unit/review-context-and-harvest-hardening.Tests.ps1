@@ -223,6 +223,32 @@ Describe 'T034b (reuse of Devin cca79708): explicit design-context refs must ALL
             Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
+
+    It 'a POSIX CASE-DISTINCT sibling ref (repo .../Repo, sibling .../repo) is REJECTED on a case-sensitive filesystem; reviewer NEVER invoked (co-review 40365de9)' {
+        if ($IsWindows) { Set-ItResult -Skipped -Because 'NTFS is case-insensitive: .../Repo and .../repo are the SAME dir, so this escape cannot exist on Windows'; return }
+        $parent = Join-Path ([System.IO.Path]::GetTempPath()) ('cs-' + [guid]::NewGuid().ToString('N'))
+        try {
+            $repo = Join-Path $parent 'Repo'
+            New-Item -ItemType Directory -Path (Join-Path $repo 'specs/042-widget') -Force | Out-Null
+            & git -C $repo init -q 2>&1 | Out-Null
+            Set-Content -LiteralPath (Join-Path $repo 'specs/042-widget/spec.md') -Value '# spec' -Encoding UTF8
+            New-Item -ItemType Directory -Path (Join-Path $repo '.specify') -Force | Out-Null
+            ([pscustomobject]@{ feature_directory = 'specs/042-widget' } | ConvertTo-Json) | Set-Content -LiteralPath (Join-Path $repo '.specify/feature.json') -Encoding UTF8
+            & git -C $repo -c user.name='t' -c user.email='t@t.local' add -A 2>&1 | Out-Null
+            & git -C $repo -c user.name='t' -c user.email='t@t.local' commit -q -m seed 2>&1 | Out-Null
+            $sibling = Join-Path $parent 'repo'   # case-distinct sibling of 'Repo' - a DIFFERENT dir on POSIX
+            New-Item -ItemType Directory -Path $sibling -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $sibling 'secret.md') -Value '# ambient host secret' -Encoding UTF8
+            Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+            # '../repo/secret.md' from .../Repo resolves to .../repo/secret.md - a case-distinct DIFFERENT dir on POSIX.
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir (Join-Path $parent 'runs') -RunId 'cs-run' -DesignContextFiles @('../repo/secret.md') -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Match '^design-context-unresolved'
+            Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0 -Because 'a case-distinct sibling is a different dir on POSIX and must not leak host content'
+        }
+        finally { Remove-Item -LiteralPath $parent -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 Describe 'f2: the partial-findings harvest normalizes into the FindingsResult item schema' {

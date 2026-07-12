@@ -260,6 +260,24 @@ function Get-ContinuousCoReviewPhysicalPath {
     return [System.IO.Path]::GetFullPath($cur).TrimEnd([char]'\', [char]'/')
 }
 
+function Test-ContinuousCoReviewPathUnderRoot {
+    # THE shared CONTAINMENT predicate (co-review 40365de9): is $Path physically equal to, or a
+    # descendant of, $Root? Resolves BOTH sides with the shared component-wise physical-path canonicalizer
+    # (Get-ContinuousCoReviewPhysicalPath), then compares with PLATFORM-APPROPRIATE case sensitivity -
+    # Windows/NTFS is case-insensitive, POSIX is case-sensitive - so a case-distinct sibling (e.g.
+    # /tmp/repo vs the repo /tmp/Repo) is NOT falsely accepted as "under root" on Linux. Both T013 and the
+    # strict design-context validation use THIS predicate so their case + resolution semantics cannot
+    # drift. FAIL-CLOSED: an unresolvable path or root returns $false ("cannot prove it is under root") -
+    # design-context treats $false as reject; T013 treats a $true (under an origin) as refuse and
+    # separately fails closed on an unresolvable candidate.
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path, [Parameter(Mandatory)][AllowEmptyString()][string]$Root)
+    $pReal = Get-ContinuousCoReviewPhysicalPath -Path $Path
+    $rReal = Get-ContinuousCoReviewPhysicalPath -Path $Root
+    if ([string]::IsNullOrEmpty($pReal) -or [string]::IsNullOrEmpty($rReal)) { return $false }
+    $cmp = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    return ($pReal.Equals($rReal, $cmp) -or $pReal.StartsWith($rReal + [System.IO.Path]::DirectorySeparatorChar, $cmp))
+}
+
 function New-ContinuousCoReviewStrippedWorktree {
     # Materialize an EPHEMERAL git-tree worktree of the project's reviewed subtree, machinery stripped, with the
     # review context written under .review/. Returns @{ worktree_path; tree_id; changed_count }.
@@ -303,15 +321,16 @@ function New-ContinuousCoReviewStrippedWorktree {
     # unresolvable candidate is refused.
     $assertOutsideOrigin = {
         param([string]$candidatePath, [string]$context)
-        $candidateReal = Get-ContinuousCoReviewPhysicalPath -Path $candidatePath
-        if ([string]::IsNullOrEmpty($candidateReal)) {
+        # FAIL-CLOSED: an unresolvable candidate is refused. Containment (under-origin) uses the SHARED
+        # Test-ContinuousCoReviewPathUnderRoot - same physical resolution AND platform-appropriate case
+        # semantics as the strict design-context gate, so a case-distinct path can't slip on POSIX.
+        if ([string]::IsNullOrEmpty((Get-ContinuousCoReviewPhysicalPath -Path $candidatePath))) {
             throw "[co-review] refusing to materialize the reviewer worktree $context - its physical path could not be resolved reliably (fail-closed, FR-008 containment)."
         }
         foreach ($originPath in @($gitRoot, $resolved)) {
             if ([string]::IsNullOrWhiteSpace($originPath)) { continue }
-            $originFull = Get-ContinuousCoReviewPhysicalPath -Path $originPath
-            if ([string]::IsNullOrEmpty($originFull)) { continue }
-            if ($candidateReal -eq $originFull -or $candidateReal.StartsWith($originFull + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)) {
+            if (Test-ContinuousCoReviewPathUnderRoot -Path $candidatePath -Root $originPath) {
+                $originFull = Get-ContinuousCoReviewPhysicalPath -Path $originPath
                 throw "[co-review] refusing to materialize the reviewer worktree $context inside the origin ('$originFull'): the confined worktree must live outside the project so no upward walk can resolve it (FR-008 containment)."
             }
         }

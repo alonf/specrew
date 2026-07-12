@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T04:40:00Z
+**Updated**: 2026-07-12T05:10:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -436,6 +436,28 @@
   had no standing for that suite. Durable fix: the recorder now records that
   integration suite too (6 suites digest-bound); coverage-evidence.md gains a
   T034b row. Launching exactly one serialized re-review.
+- Codex-host availability check (maintainer-requested): codex-cli 0.144.1 IS
+  available - proven with a live `codex exec` probe (from a throwaway temp
+  dir, never the governed cwd per probe hygiene) that answered "C# 15 / .NET
+  11", exit 0. Catch: codex exec HANGS with an open stdin pipe (waits for EOF
+  even with a prompt arg); the engine already closes codex stdin
+  (worktree-reviewer.ps1:1064), so the empty-exit0 co-review failures are
+  codex's intermittent ~50% empty-output flakiness (the T108 retry class),
+  not a stdin bug or an outage. Maintainer chose: retry the co-review.
+- Re-review 40365de9 (codex landed a real run on retry): 1 blocking, REAL and
+  subtle - the containment comparison used OrdinalIgnoreCase UNCONDITIONALLY,
+  so on a CASE-SENSITIVE POSIX filesystem a case-distinct sibling (repo
+  /x/Repo, sibling /x/repo/secret.md) bypassed the check in BOTH the
+  design-context gate and the T013 guard. Fixed: a SHARED containment
+  predicate Test-ContinuousCoReviewPathUnderRoot (resolves both sides via the
+  shared physical-path helper, compares with PLATFORM-APPROPRIATE case -
+  OrdinalIgnoreCase on Windows, Ordinal on POSIX); both T013 and the strict
+  design-context gate now call it (case + resolution semantics cannot drift).
+  Tests: platform-aware predicate test (Windows: case-variant under root;
+  POSIX: case-distinct sibling NOT under root) + a POSIX end-to-end
+  design-context case-distinct-sibling REJECTION (reviewer never invoked;
+  skipped on case-insensitive Windows). Suites 26/26 (1 POSIX-only skip on
+  Windows); registry 16/16. Launching exactly one serialized re-review.
 
 ## Notes
 
