@@ -102,7 +102,9 @@ Options:
   --ack-degraded <run-id>  Record a first-class human ack of DEGRADED review evidence (with --ack-reason)
   --ack-reason <text>    Why the degraded assurance level (partial/same-host) is acceptable for signoff
   --remediate <choice>   Record a review-problem remediation: more-time | different-host | narrow-scope |
-                         accept-partial | override-block | resolved-against-disk (carried via round-state)
+                         accept-partial | override-block | resolved-against-disk | allowance-reset
+                         (resolved-against-disk clears a fixed finding but PRESERVES spent rounds;
+                         allowance-reset is the separate human-approved replenish of the round allowance)
   --scope <spec>         Human-directed scope for narrow-scope: code | process | path:<p> | function:<name>
   --fix-evidence-ref <c> Commit that resolves the held finding (required by --remediate resolved-against-disk)
   --baseline-ref <ref>   Optional git ref/SHA baseline. Omit for a signoff run (auto-anchors
@@ -697,7 +699,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
         $rem = Set-ContinuousCoReviewRemediationChoice @remParams
         if ($Json) { $rem | ConvertTo-Json -Depth 6 }
         else {
-            $applied = if ([string]$rem.choice -in @('accept-partial', 'override-block', 'resolved-against-disk')) { 'recorded and applied immediately' } else { 'recorded - it shapes the NEXT review run' }
+            $applied = if ([string]$rem.choice -in @('accept-partial', 'override-block', 'resolved-against-disk', 'allowance-reset')) { 'recorded and applied immediately' } else { 'recorded - it shapes the NEXT review run' }
             Write-Host ("remediation '{0}' {1} (by {2})" -f $rem.choice, $applied, $rem.authorized_by) -ForegroundColor Green
         }
         exit 0

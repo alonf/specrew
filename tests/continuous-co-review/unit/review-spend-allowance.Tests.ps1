@@ -36,7 +36,7 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
     }
 
     Context 'resolved-against-disk disposition clears the latch (the four field incidents)' {
-        It 'clears blocking and resets the round so the finding cannot re-escalate or consume allowance' {
+        It 'clears blocking + lineage but PRESERVES the spent rounds (never implicitly replenishes allowance - DRIFT-198-I003-005)' {
             $f = script:New-LatchedRepo
             try {
                 $d = Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $f.Repo -FixEvidenceRef $f.FixCommit
@@ -45,7 +45,7 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
                 $d.rounds_spent_before_resolution | Should -Be 3
                 $rs = Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo
                 $rs.blocking | Should -Be $false -Because 'a cleared latch cannot re-escalate'
-                $rs.round | Should -Be 0 -Because 'a reset round cannot keep consuming the allowance'
+                $rs.round | Should -Be 3 -Because 'resolving a finding NEVER replenishes the spend allowance - the rounds stay spent (FR-019 amended; only an explicit allowance-reset replenishes)'
                 @($rs.changed_paths).Count | Should -Be 0 -Because 'the lineage reset stops the file-overlap climb'
                 @($rs.dispositions).Count | Should -Be 1
                 $rs.dispositions[0].state | Should -Be 'resolved-against-disk'
@@ -86,6 +86,40 @@ Describe 'review spend allowance + resolved-against-disk disposition (T020 / FR-
                 & git -C $f.Repo -c user.name='t' -c user.email='t@e.c' checkout -q main 2>&1 | & git -C $f.Repo checkout -q - 2>&1 | Out-Null
                 { Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $f.Repo -FixEvidenceRef $divergent } |
                     Should -Throw -ExpectedMessage '*not an ancestor of HEAD*'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+    }
+
+    Context 'allowance-reset is the SEPARATE, explicit human-approved replenish (T020 SPLIT, DRIFT-198-I003-005)' {
+        It 'REPLENISHES the round allowance to 0, records authorizer/when/previous-new, and LEAVES resolved-finding evidence intact' {
+            $f = script:New-LatchedRepo
+            try {
+                # Resolve the finding first (round PRESERVED at 3), THEN a separate human allowance-reset replenishes.
+                $null = Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $f.Repo -FixEvidenceRef $f.FixCommit
+                [int](Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo).round | Should -Be 3 -Because 'resolve preserves the spend'
+                $d = Set-ContinuousCoReviewAllowanceReset -RepoRoot $f.Repo -AuthorizedBy 'Alon' -Reason 'approved more review budget'
+                $d.state | Should -Be 'allowance-reset'
+                $d.authorized_by | Should -Be 'Alon' -Because 'the audit records WHO authorized the reset'
+                [int]$d.previous_round | Should -Be 3 -Because 'the audit records the PREVIOUS allowance'
+                [int]$d.new_round | Should -Be 0 -Because 'the audit records the NEW allowance'
+                [string]$d.recorded_at | Should -Not -BeNullOrEmpty -Because 'the audit records WHEN'
+                $rs = Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo
+                [int]$rs.round | Should -Be 0 -Because 'ONLY the explicit allowance-reset replenishes the allowance'
+                @($rs.dispositions | Where-Object { $_.state -eq 'resolved-against-disk' }).Count | Should -Be 1 -Because 'the resolved-finding evidence is LEFT INTACT'
+                @($rs.dispositions | Where-Object { $_.state -eq 'allowance-reset' }).Count | Should -Be 1 -Because 'the allowance-reset is itself recorded in the trail'
+            }
+            finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
+        }
+
+        It 'via the remediation-choice API REQUIRES an explicit --ack-reason (human intent recorded), then replenishes' {
+            $f = script:New-LatchedRepo
+            try {
+                { Set-ContinuousCoReviewRemediationChoice -RepoRoot $f.Repo -Choice 'allowance-reset' } |
+                    Should -Throw -ExpectedMessage '*needs --ack-reason*'
+                $rem = Set-ContinuousCoReviewRemediationChoice -RepoRoot $f.Repo -Choice 'allowance-reset' -Reason 'human approved more budget' -AuthorizedBy 'Alon'
+                $rem.choice | Should -Be 'allowance-reset'
+                [int](Get-ContinuousCoReviewRoundState -RepoRoot $f.Repo).round | Should -Be 0 -Because 'the human-approved reset replenishes immediately'
             }
             finally { Remove-Item -LiteralPath $f.Repo -Recurse -Force -ErrorAction SilentlyContinue }
         }

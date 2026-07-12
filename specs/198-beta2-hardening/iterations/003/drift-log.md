@@ -22,7 +22,7 @@
 
 ## Summary
 
-**Total drift events**: 4
+**Total drift events**: 5
 **Resolution rate**: DRIFT-198-I003-001 + DRIFT-198-I003-003 resolved in place;
 DRIFT-198-I003-002 recorded → T019/T030–T032; DRIFT-198-I003-004 resolved via a
 maintainer-decided FR-011/SC-003 AMENDMENT (T016 REOPENED, pending certification of
@@ -48,6 +48,41 @@ that never discard a valid review; sampler health is recorded so weak visibility
 is never silent), and T016 was REOPENED against the amended contract.
 
 ## Events
+
+### DRIFT-198-I003-005 — resolved-against-disk unintentionally REPLENISHED the review-spend allowance (resolved: split into resolve vs allowance-reset, maintainer ruling 2026-07-12)
+
+- **Requirement citation**: FR-019 (the round ceiling is an AI-usage SPEND
+  allowance — EVERY round counts; only a human-approved reset replenishes) and the
+  maintainer-typed Q&A at spec.md ("the ceiling is an AI-usage spend allowance…
+  therefore EVERY round counts").
+- **Divergence (shipped in T020)**: `Set-ContinuousCoReviewFindingResolvedAgainstDisk`
+  reset the round-state `round` to **0** when clearing a resolved finding. That
+  IMPLICITLY replenished the spend allowance: after resolving a finding, a fresh full
+  allowance was available, so already-spent rounds were effectively reused —
+  contradicting FR-019's "every round counts."
+- **Detection**: iteration-003 continuous co-review (autonomous navigator run
+  `20260712T175244928-3e8a4ce0`, blocking). The finding also noted this iteration's
+  own remediation history: the ~10 `resolved-against-disk` calls used to clear the
+  latch during the DRIFT-004 arc each reset `round=0`, i.e. unintentionally
+  replenished the allowance.
+- **Resolution (maintainer ruling 2026-07-12 — SPLIT the concerns, implemented in
+  place)**: two distinct actions —
+  1. **`resolved-against-disk`** verifies the fix-evidence commit, clears the blocking
+     finding + its lineage, and now **PRESERVES the spent-round count** — it never
+     implicitly replenishes the allowance.
+  2. **`allowance-reset`** (NEW, `Set-ContinuousCoReviewAllowanceReset`) is the
+     separate, explicit human-approved action that resets/extends the round allowance;
+     it records the authorizer, timestamp, and previous/new allowance, and leaves the
+     resolved-finding evidence intact. Wired as a `--remediate allowance-reset` choice
+     that requires `--ack-reason`.
+  Updated: FR-019 (+ the assumption), `worktree-review-orchestrator.ps1`
+  (resolved-against-disk preserves `round`; new allowance-reset function + choice),
+  `specrew-review.ps1` (help + applied-immediately), and paired tests in
+  `review-spend-allowance.Tests.ps1` (resolve PRESERVES round; allowance-reset
+  replenishes + records + leaves evidence; the choice API requires `--ack-reason`).
+- **Scope note**: a REQUIREMENT AMENDMENT (FR-019) + implementation correction,
+  maintainer-decided. The prior in-session remediations that replenished allowance are
+  recorded here as the field evidence that motivated the split.
 
 ### DRIFT-198-I003-004 — T016 containment sampler could not distinguish a reviewer HOST's prompt MENTION of origin from real origin ACCESS (resolved in two field-caught stages: prompt-mention subtraction restores host observability)
 

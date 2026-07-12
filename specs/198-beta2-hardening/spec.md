@@ -582,13 +582,23 @@ pin-surface consistency assertions.
   (trust-boundary rule names, self feature/iteration numbers, proposal
   references) — a message-content test asserts their absence.
 - **FR-019 (W12, amended by clarify 2026-07-10 — supersedes the
-  workshop's no-increment design)**: The round ceiling is an AI-usage
+  workshop's no-increment design; further amended by maintainer ruling
+  2026-07-12, DRIFT-198-I003-005)**: The round ceiling is an AI-usage
   spend allowance: EVERY review round counts toward it, including
   fix-responsive rounds. The halt MUST distinguish the states honestly in
   consumer language — "your previous finding was resolved; a fresh round
   is needed to confirm" vs "a blocking finding is still open" — so the
   human's reset decision is informed; the resolved-prior-finding state
   MUST be computed from the disposition trail, never guessed.
+  **Resolving vs replenishing are SEPARATE (2026-07-12 ruling):** resolving a
+  finding (`resolved-against-disk`) clears the blocking finding + its lineage
+  but MUST **PRESERVE the spent-round count** — it NEVER implicitly replenishes
+  the allowance. Replenishing or extending the allowance is a **separate,
+  explicit human-approved action** (`allowance-reset`) that MUST record the
+  authorizer, the timestamp, and the previous/new allowance, and MUST leave the
+  resolved-finding evidence intact. (Earlier, `resolved-against-disk` reset the
+  round to 0 and unintentionally replenished the allowance — see
+  DRIFT-198-I003-005.)
 
 #### Digest identity & budgets (203 W13–W16) — owner: implementer + spec steward; iteration 002
 

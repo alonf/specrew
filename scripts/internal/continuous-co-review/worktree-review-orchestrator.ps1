@@ -241,17 +241,19 @@ function Get-ContinuousCoReviewRoundSpendClass {
 }
 
 function Set-ContinuousCoReviewFindingResolvedAgainstDisk {
-    # T020 (F-198 FR-018/FR-019): a RESOLVED-AGAINST-DISK disposition. When a held blocking finding
-    # has been FIXED and the fix is committed IN THE REVIEWED LINEAGE (an ancestor of HEAD), this
-    # records the resolution and CLEARS the sticky blocking round-state + resets the round + the
-    # change-set lineage - so the finding can NEITHER re-escalate NOR keep consuming the round
-    # allowance. The four field incidents (self-leak c894a74b/970a8d7c, FR-020 efbbb98d/e4e88cb0)
-    # were exactly this: a fixed finding whose file-overlap kept climbing the ceiling. This is NOT
-    # override-block (which waves a DEGRADED block through): the finding is genuinely resolved, so a
-    # fix-evidence commit that is an ANCESTOR OF HEAD is REQUIRED - an unverifiable/absent ref is
-    # refused, so a bare 'resolved' claim can never clear the latch (no false-green door). The rounds
-    # already spent stay recorded in the disposition trail; only FUTURE consumption on this resolved
-    # finding is stopped.
+    # T020 (F-198 FR-018/FR-019; SPLIT per maintainer ruling 2026-07-12, DRIFT-198-I003-005): a
+    # RESOLVED-AGAINST-DISK disposition. When a held blocking finding has been FIXED and the fix is
+    # committed IN THE REVIEWED LINEAGE (an ancestor of HEAD), this records the resolution and CLEARS
+    # the sticky blocking FINDING + change-set lineage - so the finding can NEITHER re-escalate NOR keep
+    # climbing the ceiling on its file overlap. It DELIBERATELY PRESERVES the number of rounds already
+    # spent: the ceiling is an AI-usage SPEND allowance where EVERY round counts (spec FR-019), so
+    # resolving a finding NEVER implicitly replenishes review allowance. Replenishing/extending the
+    # allowance is a SEPARATE, explicit human-approved action (Set-ContinuousCoReviewAllowanceReset).
+    # (Earlier this reset round=0 and unintentionally replenished allowance - DRIFT-198-I003-005.) This is
+    # NOT override-block (which waves a DEGRADED block through): the finding is genuinely resolved, so a
+    # fix-evidence commit that is an ANCESTOR OF HEAD is REQUIRED - an unverifiable/absent ref is refused,
+    # so a bare 'resolved' claim can never clear the latch (no false-green door). The rounds already spent
+    # stay recorded in the round-state AND the disposition trail.
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$FixEvidenceRef,
@@ -287,12 +289,65 @@ function Set-ContinuousCoReviewFindingResolvedAgainstDisk {
     $dispositions = @()
     if (($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) { $dispositions = @($prior.dispositions) }
     $dispositions += $disposition
-    # Clear the latch: blocking=false, round=0, lineage reset - the resolved finding no longer climbs
-    # the ceiling nor re-surfaces. The remediation carrier and the (now-appended) disposition trail
-    # are preserved.
+    # Clear the FINDING lineage: blocking=false, findings=null, changed_paths reset - the resolved
+    # finding no longer climbs the ceiling nor re-surfaces. PRESERVE round: the spent allowance is NOT
+    # replenished here (that is Set-ContinuousCoReviewAllowanceReset's job). The remediation carrier and
+    # the (now-appended) disposition trail are preserved.
     $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
     $remediation = if (($prior.PSObject.Properties.Name -contains 'remediation')) { $prior.remediation } else { $null }
-    ([pscustomobject][ordered]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null; remediation = $remediation; dispositions = $dispositions } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    ([pscustomobject][ordered]@{ changed_paths = @(); round = [int]$prior.round; blocking = $false; findings = $null; remediation = $remediation; dispositions = $dispositions } | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
+    return $disposition
+}
+
+function Set-ContinuousCoReviewAllowanceReset {
+    # T020 SPLIT (maintainer ruling 2026-07-12, DRIFT-198-I003-005): the SEPARATE, explicit human-approved
+    # action that REPLENISHES the review-round SPEND ALLOWANCE. The ceiling is an AI-usage spend allowance
+    # (spec FR-019); resolving a finding NEVER replenishes it - only THIS does, and only on a deliberate
+    # human decision. It resets the spent round count to 0 (or, with -NewMaxRounds, extends the ceiling),
+    # records WHO authorized it, WHEN, and the PREVIOUS/NEW allowance, and LEAVES the resolved-finding
+    # evidence (dispositions) + any open finding/blocking lineage INTACT (it grants budget, it does not
+    # resolve findings). TRUST BOUNDARY: construct only from a genuinely human-typed/approved command.
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [int]$NewMaxRounds = 0,
+        [string]$AuthorizedBy,
+        [string]$Reason,
+        [datetime]$Now = [datetime]::UtcNow
+    )
+    $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    if ([string]::IsNullOrWhiteSpace($AuthorizedBy)) {
+        $AuthorizedBy = (& git -C $resolved config user.name 2>$null)
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = [string]$env:USERNAME }
+        if ([string]::IsNullOrWhiteSpace([string]$AuthorizedBy)) { $AuthorizedBy = 'human' }
+    }
+    $prior = Get-ContinuousCoReviewRoundState -RepoRoot $resolved
+    if ($null -eq $prior) { $prior = [pscustomobject]@{ changed_paths = @(); round = 0; blocking = $false; findings = $null } }
+    $priorRound = [int]$prior.round
+    $priorMax = if ($prior.PSObject.Properties['max_rounds'] -and $prior.max_rounds) { [int]$prior.max_rounds } else { $null }
+    $newMax = if ($NewMaxRounds -gt 0) { $NewMaxRounds } else { $priorMax }
+    $disposition = [pscustomobject][ordered]@{
+        state              = 'allowance-reset'
+        authorized_by      = ([string]$AuthorizedBy).Trim()
+        recorded_at        = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
+        reason             = if ([string]::IsNullOrWhiteSpace($Reason)) { $null } else { ([string]$Reason).Trim() }
+        previous_round     = $priorRound
+        new_round          = 0
+        previous_max_rounds = $priorMax
+        new_max_rounds     = $newMax
+    }
+    $dispositions = @()
+    if (($prior.PSObject.Properties.Name -contains 'dispositions') -and $null -ne $prior.dispositions) { $dispositions = @($prior.dispositions) }
+    $dispositions += $disposition
+    # REPLENISH: round=0. PRESERVE the finding lineage (blocking/findings/changed_paths) + all evidence -
+    # granting budget is orthogonal to resolving findings.
+    $priorBlocking = ($prior.PSObject.Properties['blocking'] -and [bool]$prior.blocking)
+    $priorFindings = if ($prior.PSObject.Properties['findings']) { [string]$prior.findings } else { $null }
+    $priorChanged = if ($prior.PSObject.Properties['changed_paths']) { @($prior.changed_paths) } else { @() }
+    $remediation = if (($prior.PSObject.Properties.Name -contains 'remediation')) { $prior.remediation } else { $null }
+    $state = [ordered]@{ changed_paths = $priorChanged; round = 0; blocking = $priorBlocking; findings = $priorFindings; remediation = $remediation; dispositions = $dispositions }
+    if ($null -ne $newMax) { $state['max_rounds'] = $newMax }
+    $p = Get-ContinuousCoReviewRoundStatePath -RepoRoot $resolved
+    ([pscustomobject]$state | ConvertTo-Json -Depth 8 -Compress) | Set-Content -LiteralPath $p -Encoding UTF8
     return $disposition
 }
 
@@ -308,7 +363,7 @@ function Set-ContinuousCoReviewRemediationChoice {
     #>
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [Parameter(Mandatory)][ValidateSet('more-time', 'different-host', 'narrow-scope', 'accept-partial', 'override-block', 'resolved-against-disk')][string]$Choice,
+        [Parameter(Mandatory)][ValidateSet('more-time', 'different-host', 'narrow-scope', 'accept-partial', 'override-block', 'resolved-against-disk', 'allowance-reset')][string]$Choice,
         [int]$TimeoutSeconds = 0,
         [string]$HostName,
         [string]$Scope,
@@ -380,6 +435,13 @@ function Set-ContinuousCoReviewRemediationChoice {
             # round so the resolved finding can neither re-escalate nor keep consuming the allowance.
             if ([string]::IsNullOrWhiteSpace($FixEvidenceRef)) { throw "remediation 'resolved-against-disk' needs --fix-evidence-ref <commit> (the commit that resolves the finding)." }
             $null = Set-ContinuousCoReviewFindingResolvedAgainstDisk -RepoRoot $resolved -FixEvidenceRef $FixEvidenceRef -AuthorizedBy $AuthorizedBy -Now $Now
+        }
+        'allowance-reset' {
+            # T020 SPLIT (DRIFT-198-I003-005): the SEPARATE, explicit human-approved REPLENISH of the
+            # review-round spend allowance (resolved-against-disk no longer does this implicitly). Requires
+            # --ack-reason so the audit records WHY the human granted more review budget.
+            if ([string]::IsNullOrWhiteSpace($Reason)) { throw "remediation 'allowance-reset' needs --ack-reason '<why>' (records the human-approved allowance reset)." }
+            $null = Set-ContinuousCoReviewAllowanceReset -RepoRoot $resolved -AuthorizedBy $AuthorizedBy -Reason $Reason -Now $Now
         }
     }
 
