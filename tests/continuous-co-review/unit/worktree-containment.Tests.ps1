@@ -177,6 +177,10 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
         New-Item -ItemType Directory -Path $script:Worktree -Force | Out-Null
         $script:OriginSecret = Join-Path $script:Origin 'secret.md'; Set-Content -LiteralPath $script:OriginSecret -Value 'origin' -NoNewline
         $script:OriginOther = Join-Path $script:Origin 'realtarget.md'; Set-Content -LiteralPath $script:OriginOther -Value 'origin2' -NoNewline
+        # An origin path with SPACES in the directory AND file names - the whitespace-split bypass (codex
+        # 20260712T192442732) would fragment its quoted form; the structured-argv parser must keep it one token.
+        $script:OriginSpacedDir = Join-Path $script:Origin 'a b'; New-Item -ItemType Directory -Path $script:OriginSpacedDir -Force | Out-Null
+        $script:OriginSpaced = Join-Path $script:OriginSpacedDir 'secret file.md'; Set-Content -LiteralPath $script:OriginSpaced -Value 'spaced' -NoNewline
         $script:WtSource = Join-Path $script:Worktree 'src.ps1'; Set-Content -LiteralPath $script:WtSource -Value 'wt' -NoNewline
     }
     AfterAll {
@@ -213,12 +217,18 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
         @($v).Count | Should -Be 0
     }
 
-    It 'REDACTION at source: only ABSOLUTE path tokens are extracted from a command line - flags and the prompt text are NOT treated as paths' {
-        $cmd = ('codex exec --dangerously-bypass-approvals-and-sandbox -p "review this SECRET_TOKEN prompt then do X" {0}' -f $script:OriginSecret)
-        # NB: the helper returns a `, (...)`-preserved array; assign directly (no @()) so a single token is not double-wrapped.
-        $tokens = Get-ContinuousCoReviewPathLikeTokens -CommandLine $cmd
-        $tokens | Should -Contain $script:OriginSecret -Because 'the absolute origin path IS a candidate path token'
-        (($tokens -join '|')) | Should -Not -Match 'dangerously|SECRET_TOKEN|prompt|exec' -Because 'flags and prompt words are NOT path-like and are never extracted (so they can never reach a record)'
+    It 'STRUCTURED ARGV: a QUOTED path with spaces stays ONE token (whitespace-split bypass fix), the single-arg prompt naming origin yields NO path token, and flags are not paths' {
+        # A QUOTED absolute path with spaces must survive as ONE structured-argv token - the whitespace-split bypass
+        # (codex run 20260712T192442732) fragmented "C:\Origin Project\x" into C:\Origin + Project\x, neither under origin.
+        $spaced = 'C:\Origin Project\secret file.md'
+        $cmd = ('git --no-pager show "{0}" --dangerously-ignored' -f $spaced)
+        $tokens = @(Get-ContinuousCoReviewPathLikeTokens -CommandLine $cmd)
+        $tokens | Should -Contain $spaced -Because 'a QUOTED absolute path with spaces is ONE structured-argv token, not two fragments'
+        (($tokens -join '|')) | Should -Not -Match 'dangerously|show|git' -Because 'flags and the sub-command are NOT absolute paths and are never extracted'
+        # The WHOLE prompt passed as a SINGLE positional arg is one non-path token, so a prompt that merely NAMES an
+        # origin path yields NO path token (the DRIFT-198-I003-004 false positive is structurally impossible now).
+        $promptTokens = @(Get-ContinuousCoReviewPathLikeTokens -CommandLine ('codex exec "review the changes under {0} carefully"' -f $script:OriginSecret))
+        $promptTokens | Should -Not -Contain $script:OriginSecret -Because 'the prompt is ONE positional arg = one non-path token; naming origin in prose is not a path arg'
     }
 
     It 'FALSE-KILL GUARD (never mid-flight kill): detecting a violation RECORDS it but does NOT terminate the process' {
@@ -242,48 +252,29 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
         finally { try { $child.Kill($true) } catch { $null = $_ } }
     }
 
-    It 'PROMPT-MENTION SUBTRACTION (pure helper): host prompt mentions subtract, real operation targets survive (count-based, superset-gated)' {
-        $A = $script:OriginSecret; $B = $script:OriginOther; $C = $script:WtSource
-        # prompt-only host -> nothing survives (the classic false positive is gone)
-        @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A) -PromptTokens @($A)).Count | Should -Be 0
-        # a REAL extra origin target beyond the prompt SURVIVES (host access stays observable)
-        $r1 = @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A, $B) -PromptTokens @($A))
-        $r1 | Should -Contain $B
-        $r1 | Should -Not -Contain $A
-        # a real access to a path the prompt ALSO names survives - its COUNT exceeds the prompt's
-        $r2 = @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A, $A) -PromptTokens @($A))
-        $r2.Count | Should -Be 1; $r2 | Should -Contain $A
-        # NON-superset (a worker carrying only a real arg, not the whole prompt) is left UNCHANGED - its arg is kept
-        $r3 = @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A) -PromptTokens @($A, $C))
-        $r3.Count | Should -Be 1; $r3 | Should -Contain $A
-        # no prompt tokens -> unchanged
-        @(Get-ContinuousCoReviewOperationTargetTokens -ArgTokens @($A, $B) -PromptTokens @()).Count | Should -Be 2
-    }
-
-    It 'HOST PROMPT-ARG DISAMBIGUATION is ROOT-pid-scoped (DRIFT-198-I003-004): the ROOT host''s prompt MENTION subtracts and its REAL target survives, while a SAME-IMAGE non-root worker AND a descendant accessing a prompt-named origin path BOTH stay observable (no containment false negative)' -Skip:(-not $IsWindows) {
-        # ROOT codex.exe(666) carries the prompt (mentions OriginSecret) + a REAL target (OriginOther). A SAME-IMAGE
-        # worker codex.exe(888) - NOT the root - accesses a prompt-named origin path (OriginSecret); a descendant
-        # git.exe(777) likewise. Subtraction is ROOT-pid-scoped, so ONLY 666''s OriginSecret mention drops; 888 and 777
-        # stay fully observable. Regression for codex finding run 20260712T190522932: same-image subtraction was a
-        # containment FALSE NEGATIVE (a worker''s only real origin token would be masked against the root prompt).
+    It 'STRUCTURED-ARGV sampler (DRIFT-198-I003-004): a QUOTED origin path with spaces is DETECTED (not bypassed), the single-arg prompt naming origin is NOT flagged, and a same-image worker + descendant with real origin args stay observable' -Skip:(-not $IsWindows) {
+        # The whole DRIFT-004 arc resolved to ONE root cause - the whitespace-split tokenizer. With structured-argv
+        # parsing: (a) the ROOT host''s prompt (a SINGLE positional arg naming OriginSecret) is one non-path token, so
+        # no false positive; (b) a QUOTED origin path with spaces (OriginSpaced) stays one token and is DETECTED,
+        # closing the bypass (codex 20260712T192442732); (c) a same-image worker(888) and a descendant(777) with real
+        # origin args are sampled in FULL, so they stay observable (no false negative). No prompt-token plumbing.
         Mock -CommandName Get-SpecrewProcessTreeDescendants -MockWith { @(777, 888) }
         Mock -CommandName Get-CimInstance -MockWith {
             @(
-                [pscustomobject]@{ ProcessId = 666; Name = 'codex.exe'; CommandLine = ('codex exec "review {0} then stop" --root {1}' -f $script:OriginSecret, $script:OriginOther); ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
-                [pscustomobject]@{ ProcessId = 777; Name = 'git.exe'; CommandLine = ('git --no-pager show {0}' -f $script:OriginSecret); ExecutablePath = 'C:\Program Files\Git\cmd\git.exe' }
-                [pscustomobject]@{ ProcessId = 888; Name = 'codex.exe'; CommandLine = ('codex exec "open {0}"' -f $script:OriginSecret); ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
+                [pscustomobject]@{ ProcessId = 666; Name = 'codex.exe'; CommandLine = ('codex exec --skip-git-repo-check "review the changes under {0} and do not touch origin"' -f $script:OriginSecret); ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
+                [pscustomobject]@{ ProcessId = 777; Name = 'git.exe'; CommandLine = ('git --no-pager show "{0}"' -f $script:OriginSpaced); ExecutablePath = 'C:\Program Files\Git\cmd\git.exe' }
+                [pscustomobject]@{ ProcessId = 888; Name = 'codex.exe'; CommandLine = ('codex exec --add-dir {0}' -f $script:OriginOther); ExecutablePath = 'C:\Users\dev\.codex\bin\codex.exe' }
             )
         }
-        $samples = Get-ContinuousCoReviewContainmentSamples -RootPid 666 -PromptMentionTokens @($script:OriginSecret)
-        $root666 = @($samples | Where-Object { $_.source -eq 'arg' -and $_.pid -eq 666 } | ForEach-Object { $_.path })
-        $root666 | Should -Not -Contain $script:OriginSecret -Because 'the ROOT host''s prompt MENTION is subtracted (no false positive)'
-        $root666 | Should -Contain $script:OriginOther -Because 'the ROOT host''s REAL operation target beyond the prompt SURVIVES (FR-011)'
-        @($samples | Where-Object { $_.source -eq 'exe' -and $_.pid -eq 666 }).Count | Should -BeGreaterThan 0 -Because 'exe-source is still sampled for the host'
-        $worker888 = @($samples | Where-Object { $_.source -eq 'arg' -and $_.pid -eq 888 } | ForEach-Object { $_.path })
-        $worker888 | Should -Contain $script:OriginSecret -Because 'a SAME-IMAGE non-root worker is sampled in FULL - subtracting the root prompt there would be a containment FALSE NEGATIVE (codex f2)'
-        $child777 = @($samples | Where-Object { $_.source -eq 'arg' -and $_.pid -eq 777 } | ForEach-Object { $_.path })
-        $child777 | Should -Contain $script:OriginSecret -Because 'a non-host descendant is sampled in full'
-        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-DISAMBIG'
-        @($v).Count | Should -Be 3 -Because 'root real-target (OriginOther) + same-image worker (OriginSecret) + descendant (OriginSecret) are ALL violations; only the ROOT prompt mention is not'
+        $samples = Get-ContinuousCoReviewContainmentSamples -RootPid 666
+        $argRoot = @($samples | Where-Object { $_.source -eq 'arg' -and $_.pid -eq 666 } | ForEach-Object { $_.path })
+        $argRoot | Should -Not -Contain $script:OriginSecret -Because 'the prompt is ONE positional arg (a non-path token); naming origin in prose is not access - no false positive, no subtraction'
+        $argChild = @($samples | Where-Object { $_.source -eq 'arg' -and $_.pid -eq 777 } | ForEach-Object { $_.path })
+        $argChild | Should -Contain $script:OriginSpaced -Because 'a QUOTED origin path with spaces stays ONE structured-argv token and is DETECTED (containment-detection-bypass fix)'
+        $argWorker = @($samples | Where-Object { $_.source -eq 'arg' -and $_.pid -eq 888 } | ForEach-Object { $_.path })
+        $argWorker | Should -Contain $script:OriginOther -Because 'a same-image worker''s REAL origin arg is sampled in full and stays observable (no false negative)'
+        $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-ARGV'
+        @($v).Count | Should -Be 2 -Because 'the descendant''s quoted spaced path (OriginSpaced) + the worker''s real arg (OriginOther) are violations; the ROOT prompt mention (OriginSecret) is not'
+        (($v | ForEach-Object { [string]$_.path }) -join '|') | Should -Match 'secret file\.md'
     }
 }

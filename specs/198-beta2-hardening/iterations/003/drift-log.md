@@ -34,12 +34,13 @@ bound to T019 + T030–T032. One docs-vs-shipped-design drift
 (DRIFT-198-I003-003): T015's design surfaces bound "REQUIRED bounded
 verification" after the option-1 decision (2026-07-11) had made it opt-in —
 the authoritative docs are now aligned to the shipped design. One
-implementation defect in the shipped T016 detector (DRIFT-198-I003-004): the
-containment sampler could not tell a reviewer HOST's prompt MENTION of origin
-from real origin ACCESS — caught, and then its over-broad first fix ALSO caught,
-by successive fresh-context codex reviews; resolved by subtracting the known
-prompt tokens from the host argv so mentions drop while real operation targets
-stay observable (FR-011), with the earlier self-approved "residual" withdrawn.
+implementation defect in the shipped T016 detector (DRIFT-198-I003-004): a naive
+whitespace-split tokenizer both mis-read the reviewer's prompt as origin access
+AND could be bypassed by a quoted origin path with spaces — surfaced over four
+successive fresh-context codex reviews that drove three plausible-but-wrong fixes
+to the ROOT CAUSE; resolved by parsing STRUCTURED argv (CommandLineToArgvW /
+NUL-split), which makes the single-arg prompt a non-path token and keeps quoted
+paths intact, so the prompt-token-subtraction workaround was deleted.
 
 ## Events
 
@@ -82,20 +83,30 @@ stay observable (FR-011), with the earlier self-approved "residual" withdrawn.
   superset gate is trivially met when the prompt names few distinct paths. A false
   negative in a containment detector is worse than a false positive, so the reviewer
   correctly blocked.
-- **Resolution (implementation-corrected, in place — the sampling seam, ROOT-scoped)**:
-  the launcher records the EXACT prompt's absolute path tokens (`prompt_mention_tokens`,
-  threaded to the sampler via the heartbeat telemetry); ONLY for the ROOT pid — the one
-  process whose argv literally carries the prompt — the sampler SUBTRACTS those mentions
-  from its argv tokens (count-based, superset-gated
-  `Get-ContinuousCoReviewOperationTargetTokens`): a prompt MENTION subtracts, but a REAL
-  origin operation target beyond the prompt (or a count exceeding the prompt's) SURVIVES
-  and is sampled. EVERY other process — a same-image worker or a plain descendant — is
-  sampled in FULL, so a worker's real origin access stays observable. Host command-line
-  access is OBSERVABLE again (FR-011); `exe`/`cwd` sampling is unchanged. Tests: a
-  pure-helper test (mention subtracts / real target survives / count-exceeds survives /
-  non-superset worker kept) + a ROOT-scoped DISAMBIGUATION test (root prompt mention
-  subtracted; root real target, a SAME-IMAGE non-root worker, AND a descendant all
-  observed → three violations, never the root prompt).
+- **Stage 4 — the ROOT CAUSE surfaces: the tokenizer itself (run
+  `20260712T192442732`)**: a further codex review showed the whitespace-split tokenizer
+  `Get-ContinuousCoReviewPathLikeTokens` split the command line BEFORE removing quotes,
+  so a QUOTED origin operation target with spaces (e.g. `"C:\Origin Project\secret.md"`)
+  fragmented into `C:\Origin` + `Project\secret.md`, neither of which resolves under
+  origin — a containment-detection BYPASS (false negative). This was the ROOT CAUSE
+  behind the whole arc: the same naive tokenizer both mis-read the prompt (Stage 1) and
+  could be bypassed by a spaced path.
+- **Resolution (root-cause fix — STRUCTURED ARGV, subtraction removed)**: the sampler
+  now parses the command line into STRUCTURED argv with platform-appropriate quoting —
+  `CommandLineToArgvW` on Windows (honours `\"` escapes) and NUL-split
+  `/proc/<pid>/cmdline` on POSIX — then tests each whole argument for an absolute path
+  (`Get-ContinuousCoReviewCommandLineArgv` + `Select-ContinuousCoReviewAbsolutePathTokens`).
+  Consequences: (a) the reviewer's PROMPT — a SINGLE positional arg — is one non-path
+  token, so a prompt that merely NAMES origin is never mistaken for access (the Stage-1
+  false positive is now structurally impossible); (b) a QUOTED path with spaces stays one
+  token and IS detected (Stage-4 bypass closed); (c) every process — root, same-image
+  worker, or descendant — is sampled UNIFORMLY, so a real origin arg is always observable
+  (Stages 2–3 false negatives closed). The prompt-token-subtraction workaround
+  (`Get-ContinuousCoReviewOperationTargetTokens`, the `prompt_mention_tokens` telemetry,
+  the ROOT-pid gating) is DELETED — it existed only to compensate for the broken
+  tokenizer. Tests: a unit test (quoted-spaced path is one token; single-arg prompt yields
+  no path token) + a sampler test (quoted spaced descendant path DETECTED; prompt not
+  flagged; same-image worker's real arg observable → two violations, never the prompt).
 - **Inherent scope of "command-line sampling" (NOT a deferral; no human approval
   claimed)**: FR-011's literal method is `cwd/command-line sampling`. It cannot
   see origin access that manifests as NO path argument — a bare syscall file-open
@@ -107,10 +118,12 @@ stay observable (FR-011), with the earlier self-approved "residual" withdrawn.
   WITHDRAWN — nothing about FR-011 is being deferred.
 - **Scope note**: no new requirement and no scope change — this REALIZES FR-011 at
   its intended precision (origin ACCESS, not origin MENTION) and at its literal
-  scope (cwd/command-line). A three-stage field fix (false positive → over-broad skip
-  → over-broad subtraction → root-scoped subtraction); strong evidence for the value of
-  dogfooding the detector on its own tree — and for successive fresh-context reviewers
-  catching over-corrections the author would have shipped.
+  scope (cwd/command-line). A four-stage field fix that converged on the ROOT CAUSE
+  (false positive → over-broad skip → over-broad subtraction → the tokenizer itself →
+  structured argv, workaround removed); strong evidence for the value of dogfooding the
+  detector on its own tree — successive fresh-context reviewers drove it past three
+  plausible-but-wrong fixes to the real defect, and the final code is SIMPLER than any
+  of the intermediate patches.
 
 ### DRIFT-198-I003-003 — T015 confinement contract: design surfaces bound "REQUIRED bounded verification" after the option-1 decision made it opt-in (resolved: docs aligned to the shipped design)
 

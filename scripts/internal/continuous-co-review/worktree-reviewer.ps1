@@ -288,54 +288,82 @@ function Test-ContinuousCoReviewPathUnderRoot {
 # ONLY bounded, redacted path/process metadata - never the raw command line, prompt, env, or credentials
 # (maintainer 2026-07-12).
 
-function Get-ContinuousCoReviewPathLikeTokens {
-    # Extract ABSOLUTE path-like tokens from a raw command line for containment checking. ONLY absolute tokens
-    # (drive-rooted, UNC, or POSIX-rooted) are returned - a relative token would need the reviewer's OWN cwd to
-    # resolve (Windows has no cheap cwd), so relying on it would canonicalize against the wrong directory; that
-    # relative-arg gap is documented, and an absolute origin path (the natural SC-003 seed) is caught on both
-    # platforms. The command line itself is NEVER persisted; only a matched token can later become a record's
-    # `path`, and the checker still confirms it resolves under origin before recording anything.
-    param([AllowEmptyString()][string]$CommandLine)
-    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return , (@()) }
+function Select-ContinuousCoReviewAbsolutePathTokens {
+    # Filter an ALREADY-SPLIT argv array to its ABSOLUTE path tokens (drive-rooted, UNC, or POSIX-rooted). argv is
+    # STRUCTURED - one full argument per element - so a quoted path containing spaces is a single element and is
+    # NEVER re-split. Only absolute tokens are returned: a relative token would need the process cwd to resolve
+    # (Windows has no cheap cwd), and an absolute origin path is the natural SC-003 seed. Residual wrapping quotes
+    # are trimmed defensively. The command line is NEVER persisted; the checker re-confirms under-origin before it
+    # records anything.
+    param([AllowNull()][string[]]$Argv)
     $out = [System.Collections.Generic.List[string]]::new()
-    foreach ($raw in ($CommandLine -split '\s+')) {
+    foreach ($raw in @($Argv)) {
+        if ($null -eq $raw) { continue }
         $t = ([string]$raw).Trim().Trim('"', "'")
         if ([string]::IsNullOrWhiteSpace($t)) { continue }
         if (($t -match '^[A-Za-z]:[\\/]') -or $t.StartsWith('\\') -or $t.StartsWith('/')) { [void]$out.Add($t) }
     }
-    return , ($out.ToArray())
+    return $out.ToArray()
 }
 
-function Get-ContinuousCoReviewOperationTargetTokens {
-    # Separate OPERATION-TARGET path tokens from PROMPT-MENTION tokens in a reviewer HOST process's command line
-    # (DRIFT-198-I003-004). The host carries the review PROMPT in its argv (`codex exec "<prompt>"`) and the prompt
-    # LEGITIMATELY names origin paths - those are MENTIONS, not access. But the host may ALSO be invoked with a real
-    # origin path as an operation target, which MUST stay observable (FR-011). Count-based, superset-GATED
-    # subtraction: if the process's path-token multiset carries the WHOLE prompt multiset (so it is the
-    # prompt-bearing host), remove ONE occurrence of each prompt token - anything left is a real operation target;
-    # otherwise the process is NOT prompt-bearing (e.g. a worker invoked with only a real origin arg) and EVERY token
-    # is kept. The SAME extractor tokenizes the prompt and the command line, so a mention subtracts exactly (the
-    # count gate means a real access to a path the prompt also names still SURVIVES - its count exceeds the prompt's).
-    param([AllowNull()][string[]]$ArgTokens, [AllowNull()][string[]]$PromptTokens)
-    $arg = @($ArgTokens | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    $prompt = @($PromptTokens | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    if ($arg.Count -eq 0 -or $prompt.Count -eq 0) { return $arg }
-    $cmp = if ($IsWindows) { [System.StringComparer]::OrdinalIgnoreCase } else { [System.StringComparer]::Ordinal }
-    $need = [System.Collections.Generic.Dictionary[string, int]]::new($cmp)
-    foreach ($t in $prompt) { $c = 0; [void]$need.TryGetValue($t, [ref]$c); $need[$t] = $c + 1 }
-    # SUPERSET GATE: only a process carrying at least the WHOLE prompt multiset is the prompt-bearing host.
-    $have = [System.Collections.Generic.Dictionary[string, int]]::new($cmp)
-    foreach ($t in $arg) { $c = 0; [void]$have.TryGetValue($t, [ref]$c); $have[$t] = $c + 1 }
-    foreach ($kv in $need.GetEnumerator()) { $h = 0; [void]$have.TryGetValue($kv.Key, [ref]$h); if ($h -lt $kv.Value) { return $arg } }
-    # Subtract ONE occurrence per prompt token; keep the rest (real operation targets).
-    $remaining = [System.Collections.Generic.Dictionary[string, int]]::new($need, $cmp)
-    $out = [System.Collections.Generic.List[string]]::new()
-    foreach ($t in $arg) {
-        $left = 0
-        if ($remaining.TryGetValue($t, [ref]$left) -and $left -gt 0) { $remaining[$t] = $left - 1; continue }
-        [void]$out.Add($t)
+function Get-ContinuousCoReviewCommandLineArgv {
+    # Parse a raw command-line STRING into argv using PLATFORM-APPROPRIATE quoting (containment-detection-bypass fix,
+    # codex run 20260712T192442732): a QUOTED argument containing spaces (e.g. "C:\Origin Project\secret.md") stays
+    # ONE token instead of being whitespace-split into fragments that resolve nowhere. Windows uses the OS parser
+    # CommandLineToArgvW - it also honours \" escapes, so the reviewer's OWN quoted prompt collapses to a single
+    # non-path arg (which is WHY a prompt that merely NAMES origin is never mistaken for access - no token-subtraction
+    # workaround needed). Elsewhere this string entry point is a FALLBACK only (the POSIX sampler reads STRUCTURED
+    # argv from /proc/<pid>/cmdline directly); a quote-aware scan keeps a quoted-with-spaces token intact there.
+    param([AllowEmptyString()][string]$CommandLine)
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return @() }
+    if ($IsWindows) {
+        if (-not ([System.Management.Automation.PSTypeName]'Specrew.CoReview.NativeArgv').Type) {
+            try {
+                Add-Type -Namespace 'Specrew.CoReview' -Name 'NativeArgv' -MemberDefinition @'
+[System.Runtime.InteropServices.DllImport("shell32.dll", SetLastError = true, CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+public static extern System.IntPtr CommandLineToArgvW(string lpCmdLine, out int pNumArgs);
+[System.Runtime.InteropServices.DllImport("kernel32.dll", SetLastError = true)]
+public static extern System.IntPtr LocalFree(System.IntPtr hMem);
+'@
+            }
+            catch { $null = $_ }
+        }
+        if (([System.Management.Automation.PSTypeName]'Specrew.CoReview.NativeArgv').Type) {
+            $ptr = [System.IntPtr]::Zero
+            try {
+                $count = 0
+                $ptr = [Specrew.CoReview.NativeArgv]::CommandLineToArgvW($CommandLine, [ref]$count)
+                if ($ptr -ne [System.IntPtr]::Zero -and $count -gt 0) {
+                    $argv = [System.Collections.Generic.List[string]]::new()
+                    for ($i = 0; $i -lt $count; $i++) {
+                        $strPtr = [System.Runtime.InteropServices.Marshal]::ReadIntPtr($ptr, $i * [System.IntPtr]::Size)
+                        $s = [System.Runtime.InteropServices.Marshal]::PtrToStringUni($strPtr)
+                        if ($null -ne $s) { [void]$argv.Add($s) }
+                    }
+                    return $argv.ToArray()
+                }
+            }
+            catch { $null = $_ }
+            finally { if ($ptr -ne [System.IntPtr]::Zero) { [void][Specrew.CoReview.NativeArgv]::LocalFree($ptr) } }
+        }
     }
+    # Portable quote-aware fallback: a run of (double-quoted segment | non-whitespace char) is ONE token.
+    $out = [System.Collections.Generic.List[string]]::new()
+    foreach ($m in [regex]::Matches($CommandLine, '(?:"[^"]*"|\S)+')) { [void]$out.Add(($m.Value -replace '"', '')) }
     return $out.ToArray()
+}
+
+function Get-ContinuousCoReviewPathLikeTokens {
+    # Extract ABSOLUTE path tokens from a raw command line, QUOTE-AWARE. The line is parsed into STRUCTURED argv first
+    # (Get-ContinuousCoReviewCommandLineArgv) and each argument tested for an absolute path - so a quoted
+    # "C:\Origin Project\x" is ONE token, not two fragments (the whitespace-split BYPASS fix), AND the reviewer's
+    # PROMPT - passed as a SINGLE positional arg - is one non-path token, so a prompt that merely NAMES origin paths
+    # is never mistaken for origin ACCESS (the DRIFT-198-I003-004 false positive; the earlier token-subtraction
+    # workaround is no longer needed). The command line itself is NEVER persisted; only a matched token can become a
+    # record's `path`, and the checker still confirms it resolves under origin before recording anything.
+    param([AllowEmptyString()][string]$CommandLine)
+    if ([string]::IsNullOrWhiteSpace($CommandLine)) { return @() }
+    return Select-ContinuousCoReviewAbsolutePathTokens -Argv (Get-ContinuousCoReviewCommandLineArgv -CommandLine $CommandLine)
 }
 
 function Get-ContinuousCoReviewContainmentSamples {
@@ -345,23 +373,17 @@ function Get-ContinuousCoReviewContainmentSamples {
     # tokens; Windows exposes no cheap cwd, so detection there is exe/command-line-primary per FR-011's
     # "cwd/command-line sampling"); POSIX /proc (cwd, exe, cmdline). Returns @({pid; image; source; path}).
     #
-    # HOST PROMPT-ARG DISAMBIGUATION (DRIFT-198-I003-004): the reviewer HOST is handed the review PROMPT as a
-    # positional command-line arg (`codex exec "<prompt>"`), and that prompt LEGITIMATELY names origin paths (the
-    # changed-file list, design-context refs, the project root). Blindly tokenizing the host's command line flags
-    # prompt-MENTION as origin ACCESS (a FALSE POSITIVE that failed a real codex review); blindly SKIPPING the host's
-    # args would instead BLIND the detector to a host that reaches origin via a REAL arg. So the caller passes
-    # -PromptMentionTokens (the path tokens in the EXACT prompt the launcher handed the host), and ONLY for the ROOT
-    # pid - the one process whose argv literally CARRIES that prompt - the mentions are SUBTRACTED from its arg tokens
-    # (Get-ContinuousCoReviewOperationTargetTokens); what remains is a real operation target and IS sampled, so host
-    # command-line access stays OBSERVABLE (FR-011). Subtraction is ROOT-pid-scoped ONLY, NOT same-image workers: a
-    # descendant's args are operation TARGETS, not the prompt, so a same-image worker (e.g. pwsh spawning pwsh)
-    # accessing a prompt-named origin path MUST stay observable - subtracting against the root's prompt there would be
-    # a containment FALSE NEGATIVE (codex finding, run 20260712T190522932; a false negative in a containment detector
-    # is worse than a false positive). Non-root processes are sampled in FULL; exe/cwd sampling is unchanged. Inherent
-    # scope of "command-line sampling" (NOT a deferral of FR-011): origin access with NO path arg (a bare syscall by
-    # the host) is invisible to argv sampling, and Windows exposes no cheap cwd; the STRUCTURAL guarantee for those
-    # remains T013 (worktree materialized OUTSIDE origin).
-    param([Parameter(Mandatory)][int]$RootPid, [AllowNull()][string[]]$PromptMentionTokens = @())
+    # PROMPT vs ACCESS (DRIFT-198-I003-004): the reviewer HOST is handed the review PROMPT as a SINGLE positional
+    # command-line arg (`codex exec "<prompt>"`). Because the command line is parsed into STRUCTURED argv with
+    # platform-appropriate quoting (Get-ContinuousCoReviewPathLikeTokens → CommandLineToArgvW on Windows; NUL-split
+    # /proc/<pid>/cmdline on POSIX), that whole prompt is ONE non-path token - so a prompt that merely NAMES origin
+    # paths is never mistaken for origin ACCESS, while a REAL origin path passed as its OWN arg (by the host or any
+    # descendant) IS observed. This SUPERSEDED the earlier prompt-token-subtraction workaround, whose whitespace-split
+    # tokenizer both false-positived on prompt mentions AND could be BYPASSED by a quoted origin path with spaces
+    # (codex runs …181010372 / …190522932 / …192442732). Inherent scope of "command-line sampling" (NOT a deferral of
+    # FR-011): origin access with NO path arg (a bare syscall) is invisible to argv sampling, and Windows exposes no
+    # cheap cwd; the STRUCTURAL guarantee for those remains T013 (worktree materialized OUTSIDE origin).
+    param([Parameter(Mandatory)][int]$RootPid)
     $samples = [System.Collections.Generic.List[object]]::new()
     if (-not (Get-Command -Name 'Get-SpecrewProcessTreeDescendants' -ErrorAction SilentlyContinue)) {
         $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
@@ -370,19 +392,16 @@ function Get-ContinuousCoReviewContainmentSamples {
     $procIds = @($RootPid)
     try { $procIds += @(Get-SpecrewProcessTreeDescendants -RootPid $RootPid) } catch { $null = $_ }
     $procIds = @($procIds | Where-Object { $_ -gt 0 } | Select-Object -Unique)
-    # Only the ROOT pid's argv literally carries the review PROMPT, so ONLY its arg tokens get prompt-mention
-    # subtraction (its real operation targets survive → observable). EVERY other process - including a same-image
-    # worker - is arg-sampled in FULL: its args are operation TARGETS, and subtracting the root's prompt tokens there
-    # would mask a real origin access (a containment FALSE NEGATIVE). exe/cwd stay strong signals for EVERYONE.
+    # EVERY process (root or descendant) is sampled the same way now: structured-argv path tokens + exe (+ cwd on
+    # POSIX). No prompt-scoped special-casing - the single-arg prompt simply is not a path token, so nothing to
+    # subtract and no worker to blind. exe/cwd stay strong signals for EVERYONE.
     if ($IsWindows) {
         $procs = @()
         try { $procs = @(Get-CimInstance Win32_Process -ErrorAction Stop | Where-Object { $procIds -contains [int]$_.ProcessId } | Select-Object ProcessId, Name, CommandLine, ExecutablePath) } catch { $procs = @() }
         foreach ($p in $procs) {
             $procId = [int]$p.ProcessId; $image = [string]$p.Name
             if (-not [string]::IsNullOrWhiteSpace([string]$p.ExecutablePath)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = [string]$p.ExecutablePath }) }
-            $rawTokens = Get-ContinuousCoReviewPathLikeTokens -CommandLine ([string]$p.CommandLine)
-            $argTokens = if ($procId -eq $RootPid) { Get-ContinuousCoReviewOperationTargetTokens -ArgTokens $rawTokens -PromptTokens $PromptMentionTokens } else { $rawTokens }
-            foreach ($tok in $argTokens) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            foreach ($tok in (Get-ContinuousCoReviewPathLikeTokens -CommandLine ([string]$p.CommandLine))) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
         }
     }
     else {
@@ -392,10 +411,10 @@ function Get-ContinuousCoReviewContainmentSamples {
             if ($exe) { $image = [System.IO.Path]::GetFileName($exe); [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = $exe }) }
             $cwd = try { $it = Get-Item -LiteralPath "/proc/$procId/cwd" -Force -ErrorAction Stop; $tg = $it.ResolveLinkTarget($true); if ($tg) { $tg.FullName } else { $null } } catch { $null }
             if ($cwd) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'cwd'; path = $cwd }) }   # STRONG signal - always sampled
-            $cmdline = try { ([string](Get-Content -LiteralPath "/proc/$procId/cmdline" -Raw -ErrorAction Stop)) -replace "`0", ' ' } catch { '' }
-            $rawTokens = Get-ContinuousCoReviewPathLikeTokens -CommandLine $cmdline
-            $argTokens = if ($procId -eq $RootPid) { Get-ContinuousCoReviewOperationTargetTokens -ArgTokens $rawTokens -PromptTokens $PromptMentionTokens } else { $rawTokens }
-            foreach ($tok in $argTokens) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            # STRUCTURED argv: /proc/<pid>/cmdline is NUL-delimited, so split on NUL (do NOT join to a string - that
+            # would re-introduce the whitespace-split bypass for a path arg containing spaces).
+            $argv = try { @(((Get-Content -LiteralPath "/proc/$procId/cmdline" -Raw -ErrorAction Stop) -split "`0") | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) } catch { @() }
+            foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
         }
     }
     return , ($samples.ToArray())
@@ -1244,10 +1263,7 @@ function New-ContinuousCoReviewReviewerInvocationTelemetry {
         [Parameter(Mandatory)][int]$TimeoutSeconds,
         [bool]$TimedOut = $false,
         [bool]$Running = $false,
-        [AllowNull()]$Containment,
-        # T016/DRIFT-198-I003-004: the absolute path tokens present in the EXACT prompt handed to the host, so the
-        # containment sampler can subtract prompt MENTIONS from the host's argv and keep real operation targets.
-        [AllowNull()][string[]]$PromptMentionTokens = @()
+        [AllowNull()]$Containment
     )
 
     return [pscustomobject][ordered]@{
@@ -1267,7 +1283,6 @@ function New-ContinuousCoReviewReviewerInvocationTelemetry {
         child_pid                   = if ($null -ne $Containment) { $Containment.child_pid } else { $null }
         child_pgid                  = if ($null -ne $Containment) { $Containment.child_pgid } else { $null }
         containment_degraded_reason = if ($null -ne $Containment) { $Containment.degraded_reason } else { $null }
-        prompt_mention_tokens       = @($PromptMentionTokens)
     }
 }
 
@@ -1304,11 +1319,6 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
     # it after Start() opens the pre-assignment escape window (empirically caught - the grandchild forked
     # during the compile and outlived every kill).
     Initialize-SpecrewProcessContainmentRuntime
-
-    # T016/DRIFT-198-I003-004: capture the absolute path tokens the PROMPT itself names, so the containment sampler
-    # can subtract these MENTIONS from the host's argv (the prompt is passed as a positional arg) and still observe a
-    # real origin operation target. Computed ONCE from the exact prompt this run hands the host.
-    $promptMentionTokens = Get-ContinuousCoReviewPathLikeTokens -CommandLine $Prompt
 
     $psi = [System.Diagnostics.ProcessStartInfo]::new()
     $psi.FileName = $cmd.file
@@ -1360,7 +1370,7 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
             $exited = $proc.WaitForExit($sliceMs)
             if (-not $exited -and $Heartbeat) {
                 try {
-                    & $Heartbeat (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Running $true -Containment $containment -PromptMentionTokens $promptMentionTokens)
+                    & $Heartbeat (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Running $true -Containment $containment)
                 }
                 catch { $null = $_ }
             }
@@ -1381,7 +1391,7 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
                 exit_code        = $null
                 stdout           = $partialOut
                 stderr           = 'timeout'
-                telemetry        = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -TimedOut $true -Containment $containment -PromptMentionTokens $promptMentionTokens)
+                telemetry        = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -TimedOut $true -Containment $containment)
             }
         }
         $out = if ($outTask.Status -eq [System.Threading.Tasks.TaskStatus]::RanToCompletion) { $outTask.Result } else { '' }
@@ -1392,7 +1402,7 @@ function Invoke-ContinuousCoReviewAgentInWorktree {
             exit_code = $code
             stdout    = $out
             stderr    = $err
-            telemetry = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Containment $containment -PromptMentionTokens $promptMentionTokens)
+            telemetry = (New-ContinuousCoReviewReviewerInvocationTelemetry -HostName $HostName -Command $cmd -StartedAt $startedAt -Stopwatch $sw -TimeoutSeconds $TimeoutSeconds -Containment $containment)
         }
     }
     finally {
