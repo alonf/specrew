@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T03:15:00Z
+**Updated**: 2026-07-12T03:45:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -394,8 +394,21 @@
   ALL-invalid FAILS (reviewer never invoked), OMITTED degrades (not a
   strict-fail). Focused suite 14/14; F-198 registry 16/16. This closes the
   8ff8474e/9e3a44f1 strict-resolution blocker. T034b's remaining part (final
-  live Devin compat review) stays at-landing. Launching exactly one review for
-  the new digest per the maintainer's instruction.
+  live Devin compat review) stays at-landing.
+- The one review (run 13a8f2bd, per the maintainer's launch-one-and-wait
+  instruction) RAN and found 1 blocking - a REAL hole in the reused cca79708
+  code: the strict check used Test-Path(Join-Path RepoRoot ref) WITHOUT
+  canonicalizing + proving containment, so a ../ TRAVERSAL ref to an existing
+  file OUTSIDE the project passed, then materialization would copy that
+  ambient host content into .review/design. Fixed per the FR-045
+  actionable-findings route (fix + re-review, no packet): the check now
+  rejects ROOTED inputs, normalizes .. via GetFullPath, resolves links, and
+  requires the real path UNDER the canonical repo root. Paired tests added:
+  ../ traversal to an outside file REJECTED (reviewer never invoked), rooted
+  absolute REJECTED, valid in-repo ref still PASSES (reviewer invoked). NOTE
+  for the Devin crew: cca79708 upstream has this same traversal hole. Focused
+  suite 17/17; registry 16/16. Launching exactly one re-review for the new
+  digest.
 
 ## Notes
 

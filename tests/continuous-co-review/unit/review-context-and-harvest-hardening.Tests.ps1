@@ -155,6 +155,49 @@ Describe 'T034b (reuse of Devin cca79708): explicit design-context refs must ALL
         }
         finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
     }
+
+    It 'a ../ TRAVERSAL ref to an existing file OUTSIDE the repo is REJECTED (no ambient-content leak); reviewer NEVER invoked (co-review 13a8f2bd)' {
+        $repo = script:New-TempGitRepo -WithSpec
+        $outside = Join-Path (Split-Path -Parent $repo) ('outside-secret-' + [guid]::NewGuid().ToString('N') + '.md')
+        try {
+            Set-Content -LiteralPath $outside -Value '# ambient host secret' -Encoding UTF8
+            $traversalRef = '../' + (Split-Path -Leaf $outside)
+            Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir (Join-Path $repo '.runs/dc-trav') -RunId 'dc-trav' -DesignContextFiles @($traversalRef) -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Match '^design-context-unresolved'
+            Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0 -Because 'a traversal ref must never yield a design-blind review leaking outside content'
+        }
+        finally { Remove-Item -LiteralPath $outside -Force -ErrorAction SilentlyContinue; Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a ROOTED (absolute) ref is REJECTED even when it points inside the repo (refs must be repo-relative)' {
+        $repo = script:New-TempGitRepo -WithSpec
+        try {
+            $absoluteRef = (Join-Path $repo 'specs/042-widget/spec.md')   # absolute path to an in-repo file
+            Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir (Join-Path $repo '.runs/dc-root') -RunId 'dc-root' -DesignContextFiles @($absoluteRef) -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Match '^design-context-unresolved'
+            Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0
+        }
+        finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'a valid in-repo relative ref still PASSES the gate and the reviewer IS invoked (hardening did not break valid refs)' {
+        $repo = script:New-TempGitRepo -WithSpec
+        try {
+            Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir (Join-Path $repo '.runs/dc-ok') -RunId 'dc-ok' -DesignContextFiles @('specs/042-widget/spec.md') -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'done' -Because 'a valid in-repo ref passes the gate and the run completes'
+            [string]$st.design_context | Should -Be 'resolved' -Because 'the explicit valid ref is the resolved design context'
+            Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 1 -Because 'a valid ref proceeds to the reviewer'
+        }
+        finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
 
 Describe 'f2: the partial-findings harvest normalizes into the FindingsResult item schema' {
