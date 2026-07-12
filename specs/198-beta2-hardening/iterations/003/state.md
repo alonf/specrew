@@ -1,11 +1,11 @@
 # Iteration State: 003
 
 **Schema**: v1
-**Last Completed Task**: T016 (containment-violation detector; T013/T014/T015/T020 also complete per tasks.md)
-**Tasks Remaining**: T017, T018, T019, T030, T031, T032, T033, T034b
-**In Progress**: none active — T017 (consolidate the digest/worktree machinery list) is next
+**Last Completed Task**: T020 (spend-allowance/remediation). T016 is REOPENED (below), so it is NOT the last completed task.
+**Tasks Remaining**: T016 (reopened), T017, T018, T019, T030, T031, T032, T033, T034b
+**In Progress**: T016 — containment MONITOR, REOPENED under the FR-011/SC-003 amendment (maintainer review 2026-07-12); pending certification of the amended surfaces
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T16:30:00Z
+**Updated**: 2026-07-12T18:00:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
