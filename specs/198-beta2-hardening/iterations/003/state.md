@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T00:35:00Z
+**Updated**: 2026-07-12T00:50:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -288,6 +288,18 @@
   origin-path-hygiene test materializes a worktree whose changed content
   embeds the origin path and asserts changes.diff carries zero
   origin-absolute paths. Suites green; registry 16/16.
+- Co-review 40a06e84 (1 blocking, valid): the digest-bound implementer
+  evidence injected for the reviewed tree covered ONLY bounded-verification
+  .Tests.ps1 (the opt-in helper the orchestrator never calls); the
+  PRODUCTION-PATH suite orchestrator-reviewer-integrity.Tests.ps1 (which
+  proves no-auto-verification + reviewer-invocation integrity = the actual
+  FR-010 behavior) was claimed 7/7 only in the hand-authored coverage-
+  evidence table (zero evidence standing). Fixed: the recorder now records
+  BOTH T015 suites (production-path FIRST) as digest-linked runner-observed
+  evidence the reviewer reads (the simplified model reads, never re-runs, so
+  no budget reason to withhold it); coverage-evidence note corrected (also
+  scrubbed the stale "disposable copy / minimal supply" wording the
+  simplification removed).
 - Next: no older review in flight, ONE serialized review against HEAD, then
   T016 if clean.
 

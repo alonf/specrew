@@ -9,18 +9,22 @@ generator supersedes this at the iteration review boundary)
 > round-economy tasks completed so far (T013/T014/T015/T020), created in response to co-review
 > finding 90173dc6-2 / 4b124d0e-2: narrative "green" counts have zero evidence standing under the
 > review contract, so the exact commands, counts, exit codes, and durations are recorded here where
-> the reviewer can see them (specs/ is not stripped from the reviewer worktree). The digest-linked
-> runner-observed record for the focused T015 verification also lives under
-> `.specrew/review/test-evidence/<digest>.json` (digest-excluded runtime state); this file is its
-> human-readable, reviewer-visible companion.
+> the reviewer can see them (specs/ is not stripped from the reviewer worktree). The **digest-linked
+> runner-observed record** for BOTH T015 suites — the FR-010 production-path suite
+> (`orchestrator-reviewer-integrity.Tests.ps1`) and the opt-in helper (`bounded-verification.Tests.ps1`)
+> — lives under `.specrew/review/test-evidence/<digest>.json` (digest-excluded runtime state) and is
+> injected into the reviewer worktree as `.review/implementer-evidence.json`; so the counts below have
+> runner-observed standing, not prose-only (co-review finding 40a06e84). This file is the human-readable
+> companion to that record.
 
 ## Test Strategy
 
 - The F-198 honesty regression suite (`tests/f198-regression-suite.ps1`) is a bounded, EXPLICIT
   registry (never a glob) wired as a blocking CI step (NFR-007). It is the whole-feature honesty gate.
-- The focused T015 verification (`bounded-verification.Tests.ps1`) is the direct unit evidence for
-  FR-010 and is the command recorded as digest-linked runner-observed evidence (re-observed through
-  the bounded wrapper in the disposable copy on the next review, per the minimal supply path).
+- `orchestrator-reviewer-integrity.Tests.ps1` is the **production-path** evidence for FR-010 (the
+  orchestrator never auto-runs verification; the reviewer invocation is integrity-checked). It is
+  recorded as digest-linked runner-observed evidence the reviewer READS (the simplified model does not
+  re-run it), alongside the opt-in helper suite `bounded-verification.Tests.ps1`.
 - Every suite is run FOR REAL in-session; the counts/exit/duration below are runner-reported, never
   hand-typed.
 
