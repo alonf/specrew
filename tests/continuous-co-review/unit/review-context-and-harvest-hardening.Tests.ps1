@@ -113,6 +113,50 @@ Describe 'f1: an empty design context is recorded, told to the reviewer, and deg
     }
 }
 
+Describe 'T034b (reuse of Devin cca79708): explicit design-context refs must ALL resolve, else FAIL before reviewer execution (DEC-200-I004-006)' {
+
+    It 'MIXED valid+invalid explicit refs FAIL with design-context-unresolved; the reviewer is NEVER invoked' {
+        $repo = script:New-TempGitRepo -WithSpec   # specs/042-widget/spec.md is a real (valid) ref
+        try {
+            Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir (Join-Path $repo '.runs/dc-mixed') -RunId 'dc-mixed' -DesignContextFiles @('specs/042-widget/spec.md', 'specs/does-not-exist.md') -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Match '^design-context-unresolved'
+            [string]$st.failure_reason | Should -Match 'does-not-exist\.md' -Because 'the unresolved ref must be named'
+            @($st.unresolved_design_context) | Should -Contain 'specs/does-not-exist.md'
+            Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0 -Because 'an explicit-but-wrong ref must never yield a design-blind review'
+        }
+        finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'ALL-invalid explicit refs FAIL with design-context-unresolved; the reviewer is NEVER invoked' {
+        $repo = script:New-TempGitRepo -WithSpec
+        try {
+            Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir (Join-Path $repo '.runs/dc-all') -RunId 'dc-all' -DesignContextFiles @('nope-a.md', 'nope-b.md') -TimeoutSeconds 60
+            [string]$st.status | Should -Be 'failed'
+            [string]$st.failure_reason | Should -Match '^design-context-unresolved'
+            @($st.unresolved_design_context).Count | Should -Be 2
+            Should -Invoke -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -Times 0
+        }
+        finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'OMITTED design context still auto-resolves + degrades to DESIGN_CONTEXT_EMPTY (only omitted/empty degrades, never the strict-fail)' {
+        $repo = script:New-TempGitRepo   # no spec: auto-resolution finds nothing -> empty degrade, NOT a strict fail
+        try {
+            Mock -CommandName Resolve-ContinuousCoReviewReviewerHost -MockWith { [pscustomobject]@{ host = 'stub'; model = 'm'; independence = 'independent'; selection_reason = 'test' } }
+            Mock -CommandName Invoke-ContinuousCoReviewWorktreeReviewer -MockWith { [pscustomobject]@{ exit_code = 0; stdout = '{"schema_version":"1.0","run_id":"x","status":"no_findings","findings":[]}'; stderr = ''; telemetry = $null } }
+            $st = Invoke-ContinuousCoReviewWorktreeReviewRun -RepoRoot $repo -RunDir (Join-Path $repo '.runs/dc-omit') -RunId 'dc-omit' -TimeoutSeconds 60   # no -DesignContextFiles
+            [string]$st.status | Should -Be 'done' -Because 'omitted input takes the DESIGN_CONTEXT_EMPTY degrade, not the strict-fail'
+            [string]$st.design_context | Should -Be 'empty'
+        }
+        finally { Remove-Item -LiteralPath $repo -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+}
+
 Describe 'f2: the partial-findings harvest normalizes into the FindingsResult item schema' {
 
     BeforeEach {

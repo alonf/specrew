@@ -5,7 +5,7 @@
 **Tasks Remaining**: T016, T017, T018, T019, T030, T031, T032, T033, T034b
 **In Progress**: T016 (next)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
-**Updated**: 2026-07-12T02:50:00Z
+**Updated**: 2026-07-12T03:15:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -380,9 +380,22 @@
   (run 8ec02c73, honest "2 of 2" - the round-accounting fix working; 6 items
   cleared, T034b the sole open item) is cleared via the human-approved
   more-time remediation so review can continue.
-- Open (recorded, NOT re-surfaced as a verdict packet per FR-045): the
-  T034b strict-resolution item - dispositioned once the current-digest
-  co-review is clean, or by explicit maintainer direction.
+- T034b strict-resolution INTEGRATED (maintainer direction 2026-07-12: pull
+  forward now under the existing authorization). REUSED Devin cca79708
+  (DEC-200-I004-006) verbatim - my simplified orchestrator was byte-identical
+  to its pre-image at the design-context-resolution phase, so it applied
+  mechanically: explicitly-supplied design-context refs are ALL validated at
+  resolution time; ANY unresolved explicit ref FAILS the run BEFORE reviewer
+  selection with failure_reason 'design-context-unresolved: ...' listing every
+  unresolved ref (status carries unresolved_design_context[]); only
+  omitted/empty keeps the DESIGN_CONTEXT_EMPTY degrade - never softened to a
+  warn. Paired 7f/7g mirrored as Pester in review-context-and-harvest-
+  hardening.Tests.ps1: MIXED valid+invalid FAILS (reviewer never invoked),
+  ALL-invalid FAILS (reviewer never invoked), OMITTED degrades (not a
+  strict-fail). Focused suite 14/14; F-198 registry 16/16. This closes the
+  8ff8474e/9e3a44f1 strict-resolution blocker. T034b's remaining part (final
+  live Devin compat review) stays at-landing. Launching exactly one review for
+  the new digest per the maintainer's instruction.
 
 ## Notes
 

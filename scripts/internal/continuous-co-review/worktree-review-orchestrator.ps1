@@ -565,7 +565,25 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         if ([string]::IsNullOrWhiteSpace($BaselineRef)) { & $writeStatus 'failed' @{ failure_reason = 'baseline-unresolved' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
         $currentPhase = 'design-context-resolution'
         & $recordPhaseStart $currentPhase
-        if (-not $DesignContextFiles -or @($DesignContextFiles).Count -eq 0) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
+        $explicitDesignContext = ($DesignContextFiles -and @($DesignContextFiles).Count -gt 0)
+        if (-not $explicitDesignContext) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
+        # T034b integration of Devin cca79708 (DEC-200-I004-006, co-review a5ea8d4a f8), maintainer-
+        # authorized pull-forward 2026-07-12: EXPLICITLY supplied design-context refs must ALL resolve —
+        # any unresolved explicit ref FAILS the run HERE, before reviewer selection or execution, with an
+        # actionable reason listing the unresolved refs (status.json carries unresolved_design_context).
+        # Only omitted/empty input keeps the documented DESIGN_CONTEXT_EMPTY degrade below; an
+        # explicit-but-wrong ref must NEVER yield a design-blind review (the unreadable-context
+        # false-green rule) — never softened to a warn.
+        if ($explicitDesignContext) {
+            $unresolvedRefs = @(@($DesignContextFiles) | Where-Object {
+                    [string]::IsNullOrWhiteSpace([string]$_) -or -not (Test-Path -LiteralPath (Join-Path $RepoRoot ([string]$_)) -PathType Leaf)
+                })
+            if ($unresolvedRefs.Count -gt 0) {
+                $reason = ('design-context-unresolved: explicit design-context ref(s) did not resolve under the repo root: {0} (fix the path(s) or omit the flag to use auto-resolution)' -f (@($unresolvedRefs | ForEach-Object { [string]$_ }) -join ', '))
+                & $writeStatus 'failed' @{ failure_reason = $reason; unresolved_design_context = @($unresolvedRefs | ForEach-Object { [string]$_ }) }
+                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
+            }
+        }
         # f1 (codex 2026-07-08): an EMPTY design context is RECORDED + DEGRADES the run - never a
         # silent blind review. The reviewer is told (prompt note), status.json carries it, and the
         # done-write forces completeness=partial so the T094 tier demands a human ack for the
