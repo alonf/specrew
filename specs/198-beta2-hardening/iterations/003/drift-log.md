@@ -313,6 +313,16 @@ is never silent), and T016 was REOPENED against the amended contract.
   acceptance gate, so a blocked/superseded packet can never become authorization).
   Recorded as T019/FR-045 field evidence rather than changing review scheduling now
   (maintainer instruction 2026-07-12); detail in `research/stop-ordering-defect.md`.
+- **Exact-digest evidence-injection carry (2026-07-12 maintainer directive)**: a further
+  facet of the same collision — evidence recorded for digest A was PARTIALLY injected into a
+  review of digest B (the autonomous navigator's working-tree digest ≠ the recorder's digest),
+  so a review saw a SUBSET of the recorded suites and read it as an honesty mismatch (see
+  DRIFT-198-I003-006). CARRIED TO T019 (which owns digest identity + in-flight dedup +
+  exact-digest result handling): acceptance coverage MUST prove digest-A evidence cannot be
+  fully OR partially injected into a digest-B review, and a partial/mismatched injection is
+  surfaced honestly (never clean, never "the A-runs did not occur"). T018 stays scoped to
+  producing honest runner-observed evidence for its EXACT digest only — NOT review scheduling
+  or collision resolution.
 - **Resolution (recorded + bound, realized in T019/T030–T032)**: FR-045
   states the rule — no verdict/boundary packet (options + marker) while a
   required co-review is pending or before the exact-current-digest review
