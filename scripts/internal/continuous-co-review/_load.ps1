@@ -20,6 +20,10 @@ $proposal197ReviewerModules = @(
     'tracker-honesty-check.ps1'
     'review-signoff-evidence-gate.ps1'
     'escalation-latch.ps1'
+    # T019 step 6: the review-identity contracts + the per-lineage lease runtime are now WIRED (were unwired
+    # characterization). Pure/self-contained; consumed by the navigator reap (authority) + the fire path (lease).
+    'review-identity-contracts.ps1'
+    'co-review-lineage-lease.ps1'
 )
 
 foreach ($moduleName in $proposal197ReviewerModules) {
