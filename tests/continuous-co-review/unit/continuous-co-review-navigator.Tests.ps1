@@ -23,6 +23,7 @@ Describe 'T078/T079 continuous co-review navigator (reap + fire + dedup + orphan
         # The navigator dot-sources the launcher; _load brings the digest + gate-dispatch fns it reuses.
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1')
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/worktree-navigator.ps1')   # T019 piece 3: the fire entry (brings co-review-service + the lease)
 
         # A self-contained governed "project": a real git repo (so the digest + merge-base resolve) with
         # a .specrew/ dir + a start-context.json whose boundary_type puts us in the implement window.
@@ -348,6 +349,28 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
 
             $null = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
             (Get-ContinuousCoReviewLineageLease -RepoRoot $root -LineageId $lineage) | Should -BeNullOrEmpty -Because 'the owner completion released the lease on retirement (feeding any pending tree forward)'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    # T019 piece 3: the navigator FIRE decision consumes the per-lineage LEASE as the SINGLE in-flight dedup
+    # source (not a second competing mechanism). A lineage already under review by an in-flight owner is
+    # SUPPRESSED at the lease acquire before any reviewer spawns; the fire must record deduped-by-lease and must
+    # NOT advance last_fired_tree_id (else a queued newer tree would be treated as already-fired and never reviewed).
+    It 'T019 piece 3: a lineage already under review is deduped-by-lease at fire (no spawn, last_fired_tree_id unchanged)' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            $treeId = Get-ContinuousCoReviewCheckpointIdentity -RepoRoot $root
+            $treeId | Should -Not -BeNullOrEmpty
+            $lineage = Resolve-ContinuousCoReviewRepoLineageId -RepoRoot $root
+            # An in-flight review already OWNS the lease for this lineage + generation (= the current tree). This is
+            # the DRIFT-198-I003-002 collision class (a concurrent manual --live) that last_fired_tree_id misses.
+            (Request-ContinuousCoReviewLineageLease -RepoRoot $root -LineageId $lineage -Generation $treeId -RunId 'incumbent' -AcquiringPid $PID).acquired | Should -BeTrue
+
+            $decision = Invoke-ContinuousCoReviewWorktreeNavigator -RepoRoot $root
+            $decision.action | Should -Be 'no-op' -Because 'a lineage already under review must not spawn a second reviewer'
+            $decision.reason | Should -Match 'deduped-by-lease'
+            [string](Get-ContinuousCoReviewNavigatorLastFiredTreeId -RepoRoot $root) | Should -BeNullOrEmpty -Because 'a suppressed acquire must NOT advance last_fired_tree_id'
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }

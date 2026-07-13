@@ -46,11 +46,25 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
     $decision.fired_tree_id = $treeId
     if ($treeId -eq (Get-ContinuousCoReviewNavigatorLastFiredTreeId -RepoRoot $resolved)) { $decision.reason = 'deduped (already reviewed this tree)'; return $decision }
 
-    # FIRE via the host-neutral service (detached; all heavy work off the Stop budget).
+    # FIRE via the host-neutral service (detached; all heavy work off the Stop budget). T019 piece 3: the service
+    # acquires the per-lineage LEASE atomically BEFORE spawning any reviewer (piece 2), so a concurrent DUPLICATE
+    # (e.g. a manual --live already reviewing this lineage - the DRIFT-198-I003-002 collision class that
+    # last_fired_tree_id misses because other drivers never set it) or a NEWER tree queued behind a live owner is
+    # SUPPRESSED there rather than spawning a second reviewer. The LEASE is the SINGLE in-flight dedup source: we
+    # consume its suppression here rather than add a second competing mechanism. last_fired_tree_id stays purely the
+    # CHANGED-tree trigger above (don't re-review an unchanged, already-reviewed tree) and is advanced ONLY on a run
+    # that actually fired - a suppressed acquire must NOT advance it (else the queued newer tree would be treated as
+    # already-fired and never reviewed).
     try {
         $run = Start-ContinuousCoReviewServiceRun -RepoRoot $resolved -TreeId $treeId -CodeWriterHost $CodeWriterHost -TimeoutSeconds $TimeoutSeconds -Detached
-        Set-ContinuousCoReviewNavigatorLastFiredTreeId -RepoRoot $resolved -TreeId $treeId -RunId $run.run_id
-        $decision.action = 'fired'; $decision.reason = 'registered-checkpoint'; $decision.fired_run_id = $run.run_id
+        if (($run.PSObject.Properties['status']) -and ([string]$run.status -eq 'suppressed')) {
+            $supReason = if ($run.PSObject.Properties['suppressed_reason']) { [string]$run.suppressed_reason } else { 'lease-not-acquired' }
+            $decision.reason = ('deduped-by-lease ({0})' -f $supReason)   # NOT fired: no spawn, no spend/round, last_fired_tree_id UNCHANGED
+        }
+        else {
+            Set-ContinuousCoReviewNavigatorLastFiredTreeId -RepoRoot $resolved -TreeId $treeId -RunId $run.run_id
+            $decision.action = 'fired'; $decision.reason = 'registered-checkpoint'; $decision.fired_run_id = $run.run_id
+        }
     }
     catch {
         $decision.reason = ('fire-failed: ' + $_.Exception.Message)
