@@ -755,16 +755,31 @@ shipped firewall (T004–T006):
 #### Downstream verification model — owner: T018/T019 (seam, iteration 003) + parallel crew (supplier)
 
 - **FR-048 (T019 verification-plan seam)**: The recorded-run evidence path MUST accept its work as a
-  framework-NEUTRAL ORDERED verification plan — a list of commands, each carrying execution inputs
-  (executable, arguments, optional working directory / timeout / result path) AND a provenance tag of
-  exactly one of `project-config`, `project-detected`, `profile-selected`, or `provider-gated`. T018
-  EXECUTES the plan in order and records exact-reviewed-digest evidence per command (`command_succeeded`,
-  never "all tests passed"; richer counts ONLY from a run-produced schema-valid `SpecrewTestResult`); T019
-  injects ONLY evidence whose digest matches the current reviewed tree. An absent or empty plan MUST resolve
-  to an explicit `verification-not-configured` state — NEVER a silent success and NEVER a Specrew/Pester
-  default. T018/T019 MUST NOT discover, infer, or invent commands (no framework inference from file
-  extensions); they accept plans containing ARBITRARY commands and MIXED technologies unchanged. Producing
-  the plan is a SEPARATE workstream (FR-049).
+  framework-NEUTRAL ORDERED verification plan and execute it under these invariants (maintainer-approved with
+  amendments 2026-07-13):
+  - **Identity + joins**: the plan carries `schema_version` and a stable `plan_id`; every command carries a
+    stable `command_id`. Every execution record binds to BOTH the exact reviewed-tree digest AND its
+    `command_id`; T019 injects ONLY matching evidence and MUST reject digest-mismatched, DUPLICATE, or
+    UNJOINABLE (no matching `command_id`) evidence.
+  - **Command shape**: each command carries `executable`, `arguments` as a string ARRAY (never a shell
+    command string — shell behaviour MUST be explicit, e.g. `pwsh -File …` / `bash -lc …`), optional
+    `working_directory` / `result_path` that MUST be repository-relative + canonicalized and are REJECTED if
+    rooted or if they escape via `..` or a link, and `timeout_seconds` bounded by ENGINE POLICY (a supplier
+    can never request an unlimited run).
+  - **Auditable provenance**: provenance is an OBJECT `{ kind, source, … }` where `kind` is exactly one of
+    `project-config` / `project-detected` / `profile-selected` / `provider-gated` and `source` (plus
+    provider/profile identity where applicable) makes it auditable — not a bare enum.
+  - **No secrets**: neither the plan nor recorded evidence embeds secret environment VALUES; environment
+    customization is expressed as named references / an allowlist, and recorded values are redacted.
+  - **Execution + evidence**: T018 runs commands in DECLARED ORDER and records EVERY attempted command; a
+    failure MUST NEVER become missing evidence or a clean result (a non-zero exit / timeout is recorded as a
+    failed command, never dropped, never clean). Exit 0 records `command_succeeded`, never "all tests passed".
+    `require_result=true` means the command MUST produce a schema-valid `SpecrewTestResult` — its absence or
+    invalidity is a verification FAILURE; otherwise process evidence stays valid with counts unavailable.
+  - **No discovery**: an absent/empty plan resolves to an explicit `verification-not-configured` state (never
+    a silent success, never a Specrew/Pester default); T018/T019 MUST NOT discover, infer, or invent commands
+    (no framework inference from file extensions) and accept plans of ARBITRARY commands + MIXED technologies
+    unchanged. Producing the plan is the SEPARATE supplier workstream (FR-049).
 - **FR-049 (beta2 RELEASE DEPENDENCY — command-plan supplier)**: The beta2 feature/release MUST NOT close
   while the production verification path has no command-plan SUPPLIER feeding T018 through the FR-048
   contract. This is a RELEASE DEPENDENCY, not optional future work. The supplier (a separate
