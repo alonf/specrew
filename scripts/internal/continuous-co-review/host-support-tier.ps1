@@ -18,9 +18,12 @@ Set-StrictMode -Version Latest
 #
 # HONESTY (NFR-001/NFR-006): a tier is a CLAIM about evidence, never file presence. `verified` is reserved
 # for a surface whose Stop/SessionStart contract has been exercised end-to-end. Codex CLI and Copilot CLI are
-# GATED surfaces whose Stop-contract conformance probes (FR-051/T036, FR-052/T037) have not yet passed, so they
-# are `unverified` here and flip to `verified` only when those probes land - seeding them `verified` now would
-# be exactly the false-green this feature exists to prevent. An unknown host/surface resolves to `unverified`.
+# GATED surfaces whose Stop-contract conformance probes (FR-051/T036, FR-052/T037) have now PASSED (iter-005,
+# 2026-07-14), so per the maintainer ruling they are `verified` - each carrying an HONEST evidence PROVENANCE
+# (what was RUNNER-observed vs HUMAN-observed) plus any NARROWER limitation (e.g. Codex untrusted-headless), so
+# the claim never overstates. `verified` is still never fabricated: an unknown host/surface resolves to
+# `unverified`, and a row whose probe had NOT passed would stay `unverified`. Provenance TRAVELS WITH the claim -
+# a bare `verified` with no recorded evidence is exactly the false-green this feature exists to prevent.
 #
 # Richer desktop / IDE / cloud certification (host capability negotiation, multi-version + desktop/IDE
 # certification) is the Beta3 modernization tracked in GitHub issue #3084 - OUT OF SCOPE for Beta2.
@@ -85,7 +88,9 @@ function ConvertTo-SpecrewHostSupportSurfaceKey {
 function Get-SpecrewHostSupportTierRows {
     # The canonical host+surface support claims (DATA). Each row carries EXACTLY ONE tier from the closed set
     # plus a one-line consumer-legible rationale. This is the seed per the maintainer ruling (F-198 iter-005):
-    #   * CLI is the authoritative supported surface (claude/codex/copilot CLI are the gated surfaces).
+    #   * CLI is the authoritative supported surface; claude/codex/copilot CLI are all `verified` gated surfaces
+    #     (codex/copilot flipped unverified->verified in iter-005 per the maintainer ruling, each carrying an
+    #     honest provenance + narrower limitation - see the codex/copilot cli rows below).
     #   * claude VS Code + codex IDE/desktop = configuration-compatible (shared config; lifecycle not exercised).
     #   * copilot VS Code = unsupported for CLI Stop-hook enforcement (its CLI hooks are a DIFFERENT surface;
     #     it MUST NOT claim hook-gated CLI compatibility).
@@ -93,23 +98,41 @@ function Get-SpecrewHostSupportTierRows {
     #   * cloud = unsupported (categorical; handled in the lookup for EVERY host, plus this display row).
     $rows = @(
         [pscustomobject][ordered]@{ host = 'claude'; surface = 'cli'; tier = 'verified'
-            rationale = 'CLI Stop/SessionStart hook contract exercised end-to-end; the authoritative gated surface.' }
+            rationale = 'CLI Stop/SessionStart hook contract exercised end-to-end; the authoritative gated surface.'
+            provenance = ''
+            limitation = '' }
         [pscustomobject][ordered]@{ host = 'claude'; surface = 'vscode'; tier = 'configuration-compatible'
-            rationale = 'Shares Claude settings/hooks with the CLI; the lifecycle is not independently exercised here.' }
-        [pscustomobject][ordered]@{ host = 'codex'; surface = 'cli'; tier = 'unverified'
-            rationale = 'Gated surface, but its CLI Stop-contract conformance probe has not yet passed (not proven end-to-end).' }
+            rationale = 'Shares Claude settings/hooks with the CLI; the lifecycle is not independently exercised here.'
+            provenance = ''
+            limitation = '' }
+        [pscustomobject][ordered]@{ host = 'codex'; surface = 'cli'; tier = 'verified'
+            rationale = 'CLI Stop-contract verified: decision:block gates (runner-observed T036 probe); interactive trust prompt + Specrew hook execution human-observed (maintainer, iter-005).'
+            provenance = 'Stop response-shape gating is RUNNER-OBSERVED (the T036 executable probe): {"decision":"block","reason":...} force-continues the turn, while the Codex-manual {"continue":...,"stopReason":...,"systemMessage":...} shape does NOT gate. The interactive native trust request + subsequent Specrew hook execution in a REAL Codex session is HUMAN-OBSERVED (the maintainer exercised it 2026-07-14: Codex displayed the native trust prompt, the maintainer approved it, and the Specrew hook executed).'
+            limitation = 'Narrower headless-trust caveat, recorded SEPARATELY (NOT a whole-CLI downgrade): a trusted / previously-observed headless codex exec hook fires and is supported; an UNTRUSTED headless hook is silently skipped, so governance must fail/degrade before it is relied upon in that case.' }
         [pscustomobject][ordered]@{ host = 'codex'; surface = 'ide'; tier = 'configuration-compatible'
-            rationale = 'Shares Codex config layers with the CLI; the lifecycle is not independently exercised here.' }
+            rationale = 'Shares Codex config layers with the CLI; the lifecycle is not independently exercised here.'
+            provenance = ''
+            limitation = '' }
         [pscustomobject][ordered]@{ host = 'codex'; surface = 'desktop'; tier = 'configuration-compatible'
-            rationale = 'Shares Codex config layers with the CLI; the lifecycle is not independently exercised here.' }
-        [pscustomobject][ordered]@{ host = 'copilot'; surface = 'cli'; tier = 'unverified'
-            rationale = 'Gated surface, but its CLI hook-discovery / agentStop conformance probe has not yet passed.' }
+            rationale = 'Shares Codex config layers with the CLI; the lifecycle is not independently exercised here.'
+            provenance = ''
+            limitation = '' }
+        [pscustomobject][ordered]@{ host = 'copilot'; surface = 'cli'; tier = 'verified'
+            rationale = 'CLI hook contract verified: user-level sessionStart/agentStop fire in -p AND interactive; agentStop decision:block gate + fail-open confirmed (runner-observed T037 probe, iter-005).'
+            provenance = 'RUNNER-OBSERVED (the T037 executable probe, Copilot CLI 1.0.70): user-level hooks fire in BOTH copilot -p and interactive; the agentStop {"decision":"block","reason":...} gate (stdout JSON at exit 0) force-continues, the reason becomes the next prompt, allow terminates, and fail-open on malformed / non-zero-exit was confirmed. USER-level hooks are NOT trust-gated, so Specrew governance (which rides the user hook) fires in -p.'
+            limitation = 'Repo-LEVEL hooks in -p require the trustedFolders opt-in (an untrusted -p folder silently skips repo hooks). Specrew rides the USER-level hook, which is not trust-gated, so governance is not subject to this gate. The reviewer path''s INTENTIONAL suppression (SPECREW_REFOCUS_DISABLE=1: the hook fires, then no-ops) stays DISTINCT from an accidental never-fired bypass.' }
         [pscustomobject][ordered]@{ host = 'copilot'; surface = 'vscode'; tier = 'unsupported'
-            rationale = 'Does NOT receive CLI Stop-hook enforcement; its CLI hooks are a different surface - no reliable gated integration.' }
+            rationale = 'Does NOT receive CLI Stop-hook enforcement; its CLI hooks are a different surface - no reliable gated integration.'
+            provenance = ''
+            limitation = '' }
         [pscustomobject][ordered]@{ host = 'cursor'; surface = 'desktop'; tier = 'unverified'
-            rationale = 'Intended support exists but no conformance probe has passed.' }
+            rationale = 'Intended support exists but no conformance probe has passed.'
+            provenance = ''
+            limitation = '' }
         [pscustomobject][ordered]@{ host = '(any)'; surface = 'cloud'; tier = 'unsupported'
-            rationale = 'Beta2 is CLI-first; no cloud-agent Stop-hook enforcement or governance. Richer certification is Beta3 (issue #3084).' }
+            rationale = 'Beta2 is CLI-first; no cloud-agent Stop-hook enforcement or governance. Richer certification is Beta3 (issue #3084).'
+            provenance = ''
+            limitation = '' }
     )
 
     # Structural closed-set guard: a row carrying a tier outside the closed set is a build-time error, so a
@@ -138,11 +161,13 @@ function Get-SpecrewHostSupportTier {
     # Cloud is categorically unsupported for EVERY host (known or unknown) - the ruling admits no cloud support.
     if ($surfaceKey -eq 'cloud') {
         return [pscustomobject][ordered]@{
-            host      = $hostKey
-            surface   = 'cloud'
-            tier      = 'unsupported'
-            rationale = 'Beta2 is CLI-first; no cloud-agent Stop-hook enforcement or governance. Richer certification is Beta3 (issue #3084).'
-            known     = $true
+            host       = $hostKey
+            surface    = 'cloud'
+            tier       = 'unsupported'
+            rationale  = 'Beta2 is CLI-first; no cloud-agent Stop-hook enforcement or governance. Richer certification is Beta3 (issue #3084).'
+            provenance = ''
+            limitation = ''
+            known      = $true
         }
     }
 
@@ -152,22 +177,26 @@ function Get-SpecrewHostSupportTier {
 
     if ($null -ne $match) {
         return [pscustomobject][ordered]@{
-            host      = $match.host
-            surface   = $match.surface
-            tier      = $match.tier
-            rationale = $match.rationale
-            known     = $true
+            host       = $match.host
+            surface    = $match.surface
+            tier       = $match.tier
+            rationale  = $match.rationale
+            provenance = [string]$match.provenance
+            limitation = [string]$match.limitation
+            known      = $true
         }
     }
 
     # Unknown host/surface: fail-honest to `unverified`. Support is never ASSUMED - only a passed probe earns
     # `verified`, and only a recorded shared-config claim earns `configuration-compatible`.
     return [pscustomobject][ordered]@{
-        host      = $hostKey
-        surface   = $surfaceKey
-        tier      = 'unverified'
-        rationale = 'No support claim on record for this host/surface; unverified until a conformance probe passes (never assume verified).'
-        known     = $false
+        host       = $hostKey
+        surface    = $surfaceKey
+        tier       = 'unverified'
+        rationale  = 'No support claim on record for this host/surface; unverified until a conformance probe passes (never assume verified).'
+        provenance = ''
+        limitation = ''
+        known      = $false
     }
 }
 
@@ -195,5 +224,24 @@ function Format-SpecrewHostSupportTierReport {
     [void]$sb.AppendLine('  configuration-compatible  - documented shared configuration; lifecycle NOT independently exercised')
     [void]$sb.AppendLine('  unsupported               - no reliable gated integration (never implied to be governed)')
     [void]$sb.AppendLine('  unverified                - intended support exists but the conformance probe has not passed')
+
+    # Evidence provenance for `verified` gated surfaces whose proof carries HONEST runner/human-observed
+    # provenance (+ any narrower limitation). Rendered ONLY for rows that record a provenance string, so the
+    # doctor surface never shows a bare `verified` for a flipped gated surface (NFR-001 - provenance travels
+    # WITH the claim). StrictMode-safe property probes tolerate caller-supplied rows without these fields.
+    $provenanceRows = @($data | Where-Object {
+        $_.PSObject.Properties.Match('provenance').Count -gt 0 -and -not [string]::IsNullOrWhiteSpace([string]$_.provenance)
+    })
+    if ($provenanceRows.Count -gt 0) {
+        [void]$sb.AppendLine('')
+        [void]$sb.AppendLine('Evidence provenance (verified gated surfaces):')
+        foreach ($row in $provenanceRows) {
+            [void]$sb.AppendLine(('  {0}/{1}: {2}' -f $row.host, $row.surface, [string]$row.provenance))
+            $lim = if ($row.PSObject.Properties.Match('limitation').Count -gt 0) { [string]$row.limitation } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($lim)) {
+                [void]$sb.AppendLine(('    limitation: {0}' -f $lim))
+            }
+        }
+    }
     return $sb.ToString()
 }

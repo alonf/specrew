@@ -138,3 +138,44 @@ The response shape needs **no change**. The load-bearing follow-ups the observed
 ### Infrastructure notes / honest limitations
 - **Interactive (TTY) Stop-firing could not be observed** — no PTY in this environment; Codex refuses non-TTY interactive (`stdin is not a terminal`). Characterization covers the **headless `exec` surface** (what the reviewer host adapter uses) plus the shared hook-engine contract. Interactive-surface Stop-block firing should be dogfood-verified separately on a real terminal before relying on it for interactive governance.
 - No infra FAILURES occurred (auth worked, exec ran, hooks fired). The only "non-clean" exit was the intentional Scenario-C timeout (exit 124).
+
+---
+
+## 9. Maintainer decision + evidence provenance (2026-07-14)
+
+**Decision:** Flip the `codex` / `cli` host-support tier from `unverified` → **`verified`** (recorded in
+`scripts/internal/continuous-co-review/host-support-tier.ps1`, the `codex`/`cli` row, with the provenance +
+limitation fields below). This is NOT a bare `verified`: the claim travels with an HONEST split of what was
+runner-observed vs human-observed, plus the narrower headless-trust limitation kept SEPARATE from the flip.
+
+**Evidence PROVENANCE (what was observed, and how):**
+
+1. **Stop response-shape gating — RUNNER-OBSERVED (the T036 executable probe, §3 above).** The isolated
+   `codex exec` fixture proved that `{"decision":"block","reason":…}` on the hook's stdout at exit 0 is the shape
+   that force-continues the turn (Scenario C), that the `reason` reaches the next turn, and that the
+   **Codex-manual `{"continue":…,"stopReason":…,"systemMessage":…}` shape does NOT gate** (Scenarios D / CT).
+   This is machine-observed behavior of the installed CLI, not a doc reading. Specrew's
+   `StopBlockShape = 'decision-block'` is therefore confirmed against the runner.
+
+2. **Interactive trust prompt + subsequent hook execution — HUMAN-OBSERVED (this session).** The maintainer
+   exercised the interactive path directly: **Codex displayed its native trust request, the maintainer approved
+   it, and the Specrew hook then executed** in that real interactive Codex session. That firsthand observation —
+   not the PTY-less fixture — is the evidence for interactive-surface governance. (The §4 / §8 note that the
+   isolated harness could not drive interactive stands as an *infrastructure* limitation of the probe box, and is
+   now superseded for the trust-acquisition question by this direct human observation.)
+
+**NARROWER headless limitation — recorded SEPARATELY (NOT a whole-CLI downgrade):**
+
+- A **trusted / previously-observed** headless `codex exec` hook **fires and is supported** (Scenario A; the real
+  machine's persisted `[hooks.state] trusted_hash`, §5, is direct evidence trust was established there).
+- An **UNTRUSTED** headless hook is **silently skipped** (Scenario B) — so for that specific case governance MUST
+  **fail / degrade before it is relied upon** (seed/verify the `trusted_hash`, or pass
+  `--dangerously-bypass-hook-trust` for Specrew-owned headless invocations, per §7).
+- This limitation is a property of the **untrusted-headless** case only. It does **NOT** downgrade the Codex CLI
+  surface, and specifically it is **not** a reason to hold the tier at `unverified` just because the isolated,
+  PTY-less fixture could not itself drive the interactive trust prompt — the maintainer drove it directly (above).
+
+**Distinct from reviewer suppression.** The reviewer path's INTENTIONAL hook suppression (the reviewer spawns
+with `SPECREW_REFOCUS_DISABLE=1` so its own Specrew hooks fire-then-no-op — a reviewer must not govern itself) is
+a *deliberate, env-gated* no-op and is kept DISTINCT from this untrusted-headless *silent skip*; the two are not
+conflated. (See the Copilot characterization §5 for the general fired-then-suppressed vs never-fired distinction.)

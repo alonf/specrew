@@ -15,14 +15,16 @@ Describe 'F-198 T035 FR-050 host+surface support-tier model' {
         Import-Module (Join-Path $script:RepoRoot 'Specrew.psd1') -Force
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/_load.ps1')
 
-        # The maintainer-ruled seed - the EXACT tier each named host+surface must resolve to.
+        # The maintainer-ruled seed - the EXACT tier each named host+surface must resolve to. codex/cli and
+        # copilot/cli FLIPPED unverified->verified in iter-005 (2026-07-14) once their T036/T037 conformance
+        # probes passed; each now carries an honest evidence provenance (asserted separately below).
         $script:ExpectedTiers = @(
             @{ HostName = 'claude';  Surface = 'cli';     Tier = 'verified' }
             @{ HostName = 'claude';  Surface = 'vscode';  Tier = 'configuration-compatible' }
-            @{ HostName = 'codex';   Surface = 'cli';     Tier = 'unverified' }
+            @{ HostName = 'codex';   Surface = 'cli';     Tier = 'verified' }
             @{ HostName = 'codex';   Surface = 'ide';     Tier = 'configuration-compatible' }
             @{ HostName = 'codex';   Surface = 'desktop'; Tier = 'configuration-compatible' }
-            @{ HostName = 'copilot'; Surface = 'cli';     Tier = 'unverified' }
+            @{ HostName = 'copilot'; Surface = 'cli';     Tier = 'verified' }
             @{ HostName = 'copilot'; Surface = 'vscode';  Tier = 'unsupported' }
             @{ HostName = 'cursor';  Surface = 'desktop'; Tier = 'unverified' }
         )
@@ -79,22 +81,67 @@ Describe 'F-198 T035 FR-050 host+surface support-tier model' {
         }
     }
 
-    Context 'CLI is authoritative but only PROVEN surfaces are verified (honesty)' {
+    Context 'CLI is authoritative and every PROVEN gated surface is verified WITH honest provenance' {
         It 'classifies Claude CLI as verified (the exercised gated surface)' {
             (Get-SpecrewHostSupportTier -HostName 'claude' -Surface 'cli').tier | Should -Be 'verified'
         }
 
-        It 'holds Codex CLI at unverified until its conformance probe passes - never a false verified' {
+        It 'classifies Codex CLI as verified (probe passed) carrying its runner-observed + human-observed provenance' {
             $result = Get-SpecrewHostSupportTier -HostName 'codex' -Surface 'cli'
-            $result.tier | Should -Be 'unverified'
-            $result.tier | Should -Not -Be 'verified'
-            $result.rationale | Should -Match '(?i)conformance probe|not yet passed'
+            $result.tier | Should -Be 'verified'
+            # Honest provenance TRAVELS with the flip: what was runner-observed vs human-observed is recorded,
+            # not a bare `verified`. The Stop response-shape gating is runner-observed; the interactive trust
+            # prompt + hook execution is human-observed (maintainer, iter-005).
+            $result.provenance | Should -Not -BeNullOrEmpty
+            $result.provenance | Should -Match 'RUNNER-OBSERVED'
+            $result.provenance | Should -Match 'HUMAN-OBSERVED'
+            $result.provenance | Should -Match '(?i)decision.*block'
+            # The Codex-manual continue/stopReason/systemMessage shape does NOT gate - the provenance says so.
+            $result.provenance | Should -Match '(?i)does NOT gate'
+            $result.rationale | Should -Match '(?i)runner-observed'
+            $result.rationale | Should -Match '(?i)human-observed'
         }
 
-        It 'holds Copilot CLI at unverified until its conformance probe passes - never a false verified' {
+        It 'records the NARROWER Codex untrusted-headless limitation SEPARATELY, not as a whole-CLI downgrade' {
+            $result = Get-SpecrewHostSupportTier -HostName 'codex' -Surface 'cli'
+            $result.tier | Should -Be 'verified'   # still verified - the caveat does NOT downgrade the surface
+            $result.limitation | Should -Not -BeNullOrEmpty
+            $result.limitation | Should -Match '(?i)untrusted'
+            $result.limitation | Should -Match '(?i)headless'
+            $result.limitation | Should -Match '(?i)NOT a whole-CLI downgrade'
+        }
+
+        It 'classifies Copilot CLI as verified (probe passed) carrying its runner-observed provenance' {
             $result = Get-SpecrewHostSupportTier -HostName 'copilot' -Surface 'cli'
-            $result.tier | Should -Be 'unverified'
-            $result.tier | Should -Not -Be 'verified'
+            $result.tier | Should -Be 'verified'
+            $result.provenance | Should -Not -BeNullOrEmpty
+            $result.provenance | Should -Match 'RUNNER-OBSERVED'
+            # both `-p` and interactive user-hook firing were runner-observed; the block gate + fail-open confirmed.
+            $result.provenance | Should -Match '(?i)-p'
+            $result.provenance | Should -Match '(?i)interactive'
+            $result.provenance | Should -Match '(?i)fail-open'
+            $result.provenance | Should -Match '(?i)decision.*block'
+        }
+
+        It 'records the Copilot repo-hook trustedFolders limitation and keeps reviewer suppression DISTINCT from bypass' {
+            $result = Get-SpecrewHostSupportTier -HostName 'copilot' -Surface 'cli'
+            $result.limitation | Should -Not -BeNullOrEmpty
+            $result.limitation | Should -Match '(?i)trustedFolders'
+            # intentional reviewer suppression (fires then no-ops) MUST stay distinct from an accidental bypass.
+            $result.limitation | Should -Match '(?i)INTENTIONAL'
+            $result.limitation | Should -Match '(?i)DISTINCT'
+        }
+
+        It 'leaves the non-flipped rows without a fabricated provenance (empty provenance/limitation)' {
+            foreach ($pair in @(
+                    @{ h = 'claude'; s = 'vscode' }
+                    @{ h = 'codex'; s = 'ide' }
+                    @{ h = 'copilot'; s = 'vscode' }
+                    @{ h = 'cursor'; s = 'desktop' })) {
+                $r = Get-SpecrewHostSupportTier -HostName $pair.h -Surface $pair.s
+                $r.provenance | Should -BeNullOrEmpty
+                $r.limitation | Should -BeNullOrEmpty
+            }
         }
     }
 
@@ -184,6 +231,23 @@ Describe 'F-198 T035 FR-050 host+surface support-tier model' {
             $script:Report | Should -Match 'unsupported'
             $script:Report | Should -Match 'unverified'
             $script:Report | Should -Match '(?i)conformance probe has not passed'
+        }
+
+        It 'renders an evidence-provenance section for the verified gated CLI surfaces (codex + copilot)' {
+            $script:Report | Should -Match '(?i)Evidence provenance \(verified gated surfaces\)'
+            $script:Report | Should -Match 'codex/cli:\s+.*RUNNER-OBSERVED'
+            $script:Report | Should -Match 'copilot/cli:\s+.*RUNNER-OBSERVED'
+            # the human-observed half of the Codex proof is surfaced (not hidden in a bare `verified`).
+            $script:Report | Should -Match '(?i)HUMAN-OBSERVED'
+            # the narrower limitations travel with the claim on the doctor surface.
+            $script:Report | Should -Match '(?i)limitation:\s+.*untrusted'
+            $script:Report | Should -Match '(?i)limitation:\s+.*trustedFolders'
+        }
+
+        It 'renders NO provenance section for a caller-supplied row set that records no provenance (StrictMode-safe)' {
+            $custom = @([pscustomobject][ordered]@{ host = 'fixturehost'; surface = 'cli'; tier = 'verified'; rationale = 'fixture only' })
+            $out = Format-SpecrewHostSupportTierReport -Rows $custom
+            $out | Should -Not -Match '(?i)Evidence provenance \(verified gated surfaces\)'
         }
 
         It 'never renders Copilot VS Code or cloud as verified/configuration-compatible' {

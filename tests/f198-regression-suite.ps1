@@ -50,6 +50,7 @@ $registry = @(
     @{ area = 'T019 FR-045a stop-intent classifier - continue|intermediate|real precedence, marker corrections, packet consistency'; path = 'tests/continuous-co-review/unit/stop-intent-contract.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-045a stop-intent WIRING into the conformance Stop-provider - continue directive / intermediate suppress / real fail-safe / boundary-never-downgraded / bounded runaway'; path = 'tests/integration/conformance-stop-intent-wiring.tests.ps1'; kind = 'script' }
     @{ area = 'T035 FR-050 host+surface support-tier model - closed set enforced, exact tiers, Copilot-VS-Code/cloud never verified, unknown -> unverified, doctor/status renderer'; path = 'tests/continuous-co-review/unit/host-support-tier.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T037 FR-052 Copilot CLI contract (observed 1.0.70) - user-hook governs -p+interactive, repo-hook trustedFolders opt-in, decision-block gate, reviewer-suppression vs bypass'; path = 'tests/continuous-co-review/unit/copilot-cli-contract.Tests.ps1'; kind = 'pester' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]
