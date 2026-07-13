@@ -51,6 +51,9 @@ $registry = @(
     @{ area = 'T019 FR-045a stop-intent WIRING into the conformance Stop-provider - continue directive / intermediate suppress / real fail-safe / boundary-never-downgraded / bounded runaway'; path = 'tests/integration/conformance-stop-intent-wiring.tests.ps1'; kind = 'script' }
     @{ area = 'T035 FR-050 host+surface support-tier model - closed set enforced, exact tiers, Copilot-VS-Code/cloud never verified, unknown -> unverified, doctor/status renderer'; path = 'tests/continuous-co-review/unit/host-support-tier.Tests.ps1'; kind = 'pester' }
     @{ area = 'T037 FR-052 Copilot CLI contract (observed 1.0.70) - user-hook governs -p+interactive, repo-hook trustedFolders opt-in, decision-block gate, reviewer-suppression vs bypass'; path = 'tests/continuous-co-review/unit/copilot-cli-contract.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T038 FR-053 hook-health receipts - sanitized 6-field receipt, missing/stale/malformed/conflicting/drift never healthy, doctor/status renderer'; path = 'tests/continuous-co-review/unit/hook-health-receipt.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T036 FR-051 Codex untrusted-headless governance preflight - ready only when healthy, no ~/.codex mutation, actionable instruction, never silent-govern'; path = 'tests/continuous-co-review/unit/codex-headless-preflight.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T036 FR-051 Codex Stop-gate fail-open regression - dispatcher emits well-formed decision-block JSON; malformed/continue-shape/garbage rejected (never a silent bypass)'; path = 'tests/continuous-co-review/unit/codex-stop-gate-fail-open.Tests.ps1'; kind = 'pester' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]

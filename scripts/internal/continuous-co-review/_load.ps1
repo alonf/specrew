@@ -20,6 +20,9 @@ $proposal197ReviewerModules = @(
     # F-198 iter-005 / T035 (FR-050): the truthful host+surface support-tier model + doctor/status renderer.
     # Pure/self-contained (no cross-module deps); the ONE place a host+surface support CLAIM is recorded.
     'host-support-tier.ps1'
+    # F-198 iter-005 / T038 (FR-053) + T036 preflight (FR-051): sanitized hook-health receipts (missing is never
+    # healthy) + the Codex untrusted-headless governance preflight (read-only; never mutates ~/.codex). Self-contained.
+    'hook-health-receipt.ps1'
     'review-blackboard-writer.ps1'
     'inline-review-gate-evaluator.ps1'
     'review-run-index-writer.ps1'
