@@ -658,3 +658,21 @@
 
 - Update this file after each task completes.
 - Keep task identifiers aligned to plan.md.
+- beta2 RELEASE DEPENDENCY (CORRECTED 2026-07-13 — NOT deferred future work; maintainer ruling): downstream
+  verification-command SELECTION is SEPARATE from T018/T019 ownership but is a beta2 RELEASE DEPENDENCY — the
+  release/feature MUST NOT close while the production verification path has no command-plan SUPPLIER. Recorded
+  durably as spec **FR-048** (the T019 verification-plan seam: a framework-neutral ORDERED plan; each command
+  carries provenance project-config | project-detected | profile-selected | provider-gated; T018 executes +
+  records exact-digest evidence; T019 injects only matching; empty/absent -> explicit `verification-not-configured`,
+  never a silent success or a Pester default; T018/T019 accept arbitrary/mixed plans but NEVER discover/invent
+  commands), **FR-049** (the release dependency + the parallel crew's minimal beta supplier: config-authoritative
+  -> detected CI/build/package -> quality-profile -> provider-gated -> actionable verification-not-configured; no
+  extension inference, no Specrew/Pester default), and **SC-015** (the e2e release gate). The SEAM is defined
+  here in iteration 003 (T019 owned); the SUPPLIER is the parallel crew's workstream. T018/T019 own execution +
+  injection only — never selection/discovery.
+- DOC HYGIENE PENDING (T018/T019 audit residual, non-code): three pre-amendment design/proposal docs still read
+  "Pester -PassThru first / adapters later" — `workshop/component-design.md:79-81`, `review-diagrams.md:26`
+  (`RTR[RecordedTestRunner]` label), and `proposals/203-...:76-77`. The shipped code, spec FR-014/FR-015, and
+  DRIFT-198-I003-007 all carry the corrected framework-neutral model; these three are the only places the
+  rejected model still reads as current. Awaiting the maintainer's call on correction-note vs rewrite vs leave
+  (editing the merged proposal 203 is a judgment call).

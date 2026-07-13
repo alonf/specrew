@@ -752,6 +752,30 @@ shipped firewall (T004–T006):
   target; rendered prompts, refocus teaching, lifecycle templates, evidence guidance, and deployed CI
   MUST contain no inapplicable technology or delivery mandate for those fixtures.
 
+#### Downstream verification model — owner: T018/T019 (seam, iteration 003) + parallel crew (supplier)
+
+- **FR-048 (T019 verification-plan seam)**: The recorded-run evidence path MUST accept its work as a
+  framework-NEUTRAL ORDERED verification plan — a list of commands, each carrying execution inputs
+  (executable, arguments, optional working directory / timeout / result path) AND a provenance tag of
+  exactly one of `project-config`, `project-detected`, `profile-selected`, or `provider-gated`. T018
+  EXECUTES the plan in order and records exact-reviewed-digest evidence per command (`command_succeeded`,
+  never "all tests passed"; richer counts ONLY from a run-produced schema-valid `SpecrewTestResult`); T019
+  injects ONLY evidence whose digest matches the current reviewed tree. An absent or empty plan MUST resolve
+  to an explicit `verification-not-configured` state — NEVER a silent success and NEVER a Specrew/Pester
+  default. T018/T019 MUST NOT discover, infer, or invent commands (no framework inference from file
+  extensions); they accept plans containing ARBITRARY commands and MIXED technologies unchanged. Producing
+  the plan is a SEPARATE workstream (FR-049).
+- **FR-049 (beta2 RELEASE DEPENDENCY — command-plan supplier)**: The beta2 feature/release MUST NOT close
+  while the production verification path has no command-plan SUPPLIER feeding T018 through the FR-048
+  contract. This is a RELEASE DEPENDENCY, not optional future work. The supplier (a separate
+  downstream-verification-selection workstream, delivered by the parallel crew) MUST provide a minimal usable
+  beta contract with selection precedence: (1) explicit project configuration as the authoritative source;
+  (2) reliable detection from existing project-owned CI/build/package metadata; (3) explicit quality-profile
+  selection; (4) provider-specific commands ONLY when that provider is active; (5) a clear setup prompt or
+  actionable error (the `verification-not-configured` state) when nothing trustworthy can be selected; (6) NO
+  inference from file extensions and NO Specrew/Pester default. T018/T019 own execution + injection only
+  (FR-048); they never own selection/discovery.
+
 #### Toolchain currency — owner: implementer; iteration 001
 
 - **FR-038 (Spec-Kit)**: The Spec-Kit pin MUST move to 0.12.9: init
@@ -968,6 +992,14 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
   none of the four beta-1 friction classes (ceiling chicken-and-egg,
   flat-budget kill, tracker-staled review, closeout self-leak) — the
   stable-promotion gate input, maintainer-assessed.
+- **SC-015 (verification-plan end-to-end; RELEASE DEPENDENCY per FR-049)**: On
+  a downstream project, a command plan selected by the supplier (FR-049
+  precedence) is executed by T018 in order, producing exact-reviewed-digest
+  evidence that T019 injects for review; a project with no trustworthy command
+  source resolves to `verification-not-configured` with an actionable setup
+  prompt — never a silent success and never a Specrew/Pester default. The
+  beta2 feature/release MUST NOT close until this end-to-end path has a
+  production plan supplier feeding the FR-048 seam. (Release dependency.)
 
 ## Assumptions
 
