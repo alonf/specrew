@@ -271,6 +271,7 @@
         'scripts/internal/continuous-co-review/reviewer-selection-policy.ps1',
         'scripts/internal/continuous-co-review/reviewer-spawn-contract.md',
         'scripts/internal/continuous-co-review/signoff-gate-wiring.ps1',
+        'scripts/internal/continuous-co-review/stop-intent-contract.ps1',
         'scripts/internal/continuous-co-review/test-evidence-recorder.ps1',
         'scripts/internal/continuous-co-review/tracker-honesty-check.ps1',
         'scripts/internal/continuous-co-review/verification-plan-contract.ps1',

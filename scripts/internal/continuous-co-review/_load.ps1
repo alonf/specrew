@@ -26,6 +26,8 @@ $proposal197ReviewerModules = @(
     # T019 step 6: the review-identity contracts + the per-lineage lease runtime are now WIRED (were unwired
     # characterization). Pure/self-contained; consumed by the navigator reap (authority) + the fire path (lease).
     'review-identity-contracts.ps1'
+    # T019 piece 4b / FR-045a: the PURE Stop-intent classifier (intermediate operational yield vs a real handoff).
+    'stop-intent-contract.ps1'
     'co-review-lineage-lease.ps1'
     # T019 step 6 / FR-048: the framework-neutral verification-plan seam - the PURE plan contract (validators +
     # the evidence-join) and the EXECUTION runner that drives the universal recorded-run runner over an ordered,

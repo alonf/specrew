@@ -861,6 +861,36 @@ shipped firewall (T004–T006):
   iteration-003 continuous co-review, decision/verdict-shaped packets were
   rendered while co-reviews were still blocking — see
   `iterations/003/research/stop-ordering-defect.md`.)
+- **FR-045a (stop-INTENT classification; dogfood incident 2026-07-13,
+  maintainer-instructed)**: On a background-capable harness a host Stop may be
+  an OPERATIONAL YIELD while Specrew-OWNED work is still in flight — not a
+  conversational handoff — so Specrew MUST classify each Stop as `intermediate`
+  or `real`. A Stop is `intermediate` ONLY when ALL hold: required work has
+  already started; it is still running or its result is pending; the agent
+  retains ownership and intends to continue; and no user decision,
+  authorization, external action, or review is required. An intermediate Stop's
+  message is ONE concise progress sentence plus the assistant-only marker
+  `<!-- SPECREW-STOP-INTENT: intermediate -->`, with NO five-part packet, no
+  "What Needs Your Review" / "What I Need From You", no choices/prompts, no
+  request to nudge/wait/return, and NO verdict-boundary marker; the host's
+  normal background-completion mechanism returns the result and the agent
+  continues automatically, joining the existing task identity. A Stop is `real`
+  when any of these holds: work is complete and ready to report; a lifecycle
+  boundary was reached; human judgment/authorization is required; an external
+  action is required; execution failed/timed out and cannot continue
+  automatically; or the agent intentionally hands control back. Real stops keep
+  the existing boundary / non-boundary packet rules unchanged. "The agent needs
+  nothing from the user" is NOT sufficient for intermediate — final completion
+  also needs nothing yet is REAL; the defining condition is that OWNED WORK
+  REMAINS ACTIVE and the agent intends to continue. The marker is a portable
+  FALLBACK, not sole authority: the Stop hook also consults known Specrew
+  in-flight runtime state (the T019 registry). On CONTRADICTION — a pending
+  lifecycle verdict boundary, runtime state saying the work is terminal/absent,
+  a message requesting user action, the agent saying it is blocked/handing back,
+  or a marker sourced from user content — classify as REAL and apply normal
+  enforcement. This is NOT a per-host capability matrix: a host with no
+  background execution never produces an in-flight signal and behaves exactly as
+  before.
 
 ### Non-Functional Requirements
 

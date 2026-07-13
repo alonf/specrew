@@ -253,6 +253,30 @@ Validation: an empty/unknown digest never matches (fail-closed); digest-mismatch
 every review outcome (a stale result never blocks/decides/authorizes); `launch_review` is never asserted on the
 Stop path (the navigator owns firing).
 
+## Entity: StopIntent — iteration 003 (T019 piece 4b, FR-045a, 2026-07-13)
+
+**Purpose**: classify each host Stop as `intermediate` (an operational YIELD while Specrew-OWNED work is in
+flight and the agent intends to continue) or `real` (a genuine handoff), so an intermediate yield gets ONE
+progress sentence + the marker instead of the five-part material-work packet, while real stops keep the
+existing boundary / non-boundary packet rules unchanged. PURE + DETERMINISTIC (`stop-intent-contract.ps1`
+`Resolve-ContinuousCoReviewStopIntent`); the Stop hook computes the inputs (the marker in THIS turn's assistant
+message, the T019 in-flight registry, the pending-verdict state, message heuristics). NOT a per-host capability
+matrix — a host with no background execution never produces an in-flight signal and behaves exactly as before.
+
+### Attributes
+
+| Attribute | Type | Source | Contract |
+| --- | --- | --- | --- |
+| intermediate signal | bool | `MarkerPresent`+`MarkerFromAssistant` OR `OwnedWorkInFlight` (T019 registry) | intermediate requires ALL of: work started; still running/pending; agent retains ownership + intends to continue; no user decision/auth/external/review needed |
+| marker | assistant-only | `<!-- SPECREW-STOP-INTENT: intermediate -->` in the assistant's CURRENT turn | a portable FALLBACK, never sole authority; a marker from USER content is not authority |
+| contradiction | bool | `LifecycleBoundaryPending` / `RuntimeWorkTerminalOrAbsent` / `MessageRequestsUserAction` / `AgentBlockedOrHandingBack` / marker-from-user | ANY forces `real` + normal enforcement, overriding the marker |
+| result | { intent; enforce_packet; reason } | the classifier | `intermediate` → `enforce_packet=$false` (one progress sentence + marker; no packet, no verdict-boundary marker); `real` → `enforce_packet=$true` (existing rules) |
+
+Validation: "needs nothing from the user" is NOT sufficient for intermediate (final completion also needs
+nothing, yet is `real`); the defining condition is OWNED WORK REMAINS ACTIVE + intent to continue. On ANY
+contradiction, classify `real`. Repeated intermediate messages are rate-limited to one per unchanged in-flight
+work generation (a runtime-wiring concern, not part of this pure contract).
+
 ## Entity: ReviewArtifactClass — iteration 003 (T019)
 
 **Purpose**: the lifecycle class of every review artifact family, so retention (machine-local vs durable vs
