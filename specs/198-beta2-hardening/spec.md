@@ -794,6 +794,49 @@ shipped firewall (T004–T006):
   inference from file extensions and NO Specrew/Pester default. T018/T019 own execution + injection only
   (FR-048); they never own selection/discovery.
 
+#### Local-host Beta2 compatibility — owner: implementer; iteration 005 (Beta2 RELEASE BLOCKER, before FR-040)
+
+Beta2 is CLI-FIRST; cloud agents and cloud-gated development are explicitly UNSUPPORTED. GitHub issue #3084
+(`https://github.com/alonf/specrew/issues/3084`) records the broader Beta3 modernization — host capability
+negotiation, native lifecycle/subagent events, structured-output transport migration, plugin architecture, and
+multi-version + desktop/IDE certification — which is OUT OF SCOPE here. These FRs are the NARROW local-host
+blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3.
+
+- **FR-050 (host-support model + truthful tiers)**: CLI is the AUTHORITATIVE supported surface. Every host /
+  surface support claim MUST carry exactly one classification — `verified` (exercised end-to-end on that
+  surface), `configuration-compatible` (documented shared configuration; lifecycle NOT independently
+  exercised), `unsupported` (no reliable gated integration), or `unverified` (intended support exists but the
+  conformance probe has not passed). NO cloud-agent support may be implied. Claude VS Code and Codex IDE/desktop
+  are `configuration-compatible` (shared settings/hooks / shared Codex config layers); Copilot VS Code MUST NOT
+  claim hook-gated CLI compatibility; Cursor desktop is `unverified`. Any claim that Copilot VS Code or a cloud
+  agent receives CLI Stop-hook enforcement MUST be removed. Reference issue #3084 for the Beta3 follow-up.
+- **FR-051 (Codex Stop-contract conformance)**: Specrew currently models the Codex Stop as Claude-style
+  `{"decision":"block","reason":...}`, but the Codex manual documents shared hook control as
+  `{"continue":...,"stopReason":...,"systemMessage":...}`. Do NOT guess. An ISOLATED executable conformance
+  fixture (a SCRATCH dir, never the governed cwd — hooks self-bootstrap and mutate state) against the INSTALLED
+  Codex CLI MUST prove: the hook is discovered; the Stop event fires; the accepted continuation/block response
+  shape; the reason reaches the next turn; allowing Stop actually terminates; the loop guard prevents indefinite
+  continuation; malformed output fails VISIBLY (never becomes a clean pass). Then update ONLY the Codex host
+  adapter to the OBSERVED contract — the host-neutral dispatcher and the T019 Stop-intent semantics are
+  preserved and translated at the adapter boundary.
+- **FR-052 (Copilot CLI contract verification)**: Test interactive Copilot CLI user-hook discovery,
+  non-interactive `copilot -p` user-hook + repository-hook discovery, any required prompt-mode opt-in, and
+  agentStop blocking / continuation-reason delivery / allow-termination / loop behavior — do NOT rewrite the
+  documented `{"decision":"block","reason":...}` speculatively. The reviewer path INTENTIONALLY suppresses
+  Specrew governance hooks; the test MUST distinguish that intentional suppression from an accidental downstream
+  governance bypass. If project hooks are not loaded in `-p` by default, EITHER set the documented opt-in
+  whenever Specrew expects governance OR report that mode `unsupported` — never silently claim it is gated.
+- **FR-053 (minimum hook-health evidence)**: A deployed configuration is NOT proof the host loaded it. A REAL
+  host-triggered SessionStart/Stop probe MUST record a SANITIZED receipt (host; surface=cli; event; observed
+  host version; timestamp; adapter contract version) — with NO prompt, command arguments, environment values, or
+  secrets recorded. Missing / stale / conflicting / malformed receipts report `unverified` / `degraded`, and
+  MUST NEVER report `healthy`. The result is exposed through the existing doctor/status surface (or the narrowest
+  established equivalent). This is NOT Beta3's full capability-negotiation system.
+- **FR-054 (Codex plugin packaging scope, CONDITIONAL)**: IF Beta2 ships Codex plugin installation, a regression
+  MUST prove a plugin that intends no Codex hooks uses exactly `hooks: {}` and cannot auto-discover another
+  host's `hooks/hooks.json`. IF plugin installation is NOT a Beta2 deliverable, it stays in issue #3084 and is
+  NOT implemented here.
+
 #### Toolchain currency — owner: implementer; iteration 001
 
 - **FR-038 (Spec-Kit)**: The Spec-Kit pin MUST move to 0.12.9: init
