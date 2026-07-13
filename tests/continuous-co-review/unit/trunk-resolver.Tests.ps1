@@ -227,4 +227,15 @@ Describe 'Worktree baseline consumer (fail-loud on ok=false; empty-tree only for
         { Resolve-ContinuousCoReviewWorktreeBaseline -RepoRoot (New-BaselineSimpleRepo -NoCommit) } |
             Should -Throw -ExpectedMessage '*no commits*'
     }
+
+    It 'INVARIANT: an ok=true result with an EMPTY trunk_ref under a NON-greenfield source -> THROWS (not empty-tree)' {
+        # Empty-tree requires BOTH source=greenfield AND a null trunk_ref. A resolver invariant break (ok=true but no
+        # ref under any other source) must fail loudly, never silently empty-tree. Mock the resolver to force the case.
+        $repo = New-BaselineSimpleRepo -Base 'feature'   # a real repo so $gitRoot resolves; the mock drives the branch
+        Mock -CommandName Resolve-ContinuousCoReviewTrunkRef -MockWith { [pscustomobject]@{ ok = $true; trunk_ref = ''; source = 'conventional-ref'; message = '' } }
+        { Resolve-ContinuousCoReviewWorktreeBaseline -RepoRoot $repo } | Should -Throw -ExpectedMessage '*empty trunk*'
+        $baseline = $null
+        try { $baseline = Resolve-ContinuousCoReviewWorktreeBaseline -RepoRoot $repo } catch { $baseline = 'threw' }
+        $baseline | Should -Not -Be '4b825dc642cb6eb9a060e54bf8d69288fbee4904' -Because 'the empty-tree fallback must NOT be reachable under a non-greenfield source'
+    }
 }

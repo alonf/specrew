@@ -36,12 +36,18 @@ function Resolve-ContinuousCoReviewWorktreeBaseline {
         throw ("[continuous-co-review] {0}" -f $resolvedTrunk.message)
     }
 
-    # The ONLY empty-tree path: the explicit successful GREENFIELD result (only the feature branch, no trunk). This
-    # reviews the whole feature's source instead of failing to run - the root cause of the first real e2e producing
-    # zero co-review evidence. The strip/digest list still excludes .specrew/.specify machinery, so the empty-tree
-    # baseline reviews source only, not scaffolding.
-    if ($resolvedTrunk.source -eq 'greenfield' -or [string]::IsNullOrWhiteSpace([string]$resolvedTrunk.trunk_ref)) {
+    # The ONLY empty-tree path: the explicit successful GREENFIELD result - source='greenfield' AND a null
+    # trunk_ref TOGETHER (exactly the documented one case). Reviews the whole feature's source instead of failing
+    # to run - the root cause of the first real e2e producing zero co-review evidence. The strip/digest list still
+    # excludes .specrew/.specify machinery, so the empty-tree baseline reviews source only, not scaffolding.
+    if ($resolvedTrunk.source -eq 'greenfield' -and [string]::IsNullOrWhiteSpace([string]$resolvedTrunk.trunk_ref)) {
         return '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+    }
+
+    # Any OTHER ok=true result with an empty trunk_ref is a resolver invariant break (a non-greenfield ok result
+    # must carry a ref): fail loudly rather than silently empty-tree or merge-base against nothing.
+    if ([string]::IsNullOrWhiteSpace([string]$resolvedTrunk.trunk_ref)) {
+        throw ("[continuous-co-review] The trunk resolver returned an empty trunk under source '{0}' (a non-greenfield ok result must carry a ref); refusing to guess a review baseline. Set 'co_review_trunk: <branch>' in .specrew/config.yml." -f $resolvedTrunk.source)
     }
 
     $mb = (& git -C $gitRoot merge-base HEAD $resolvedTrunk.trunk_ref 2>$null)
