@@ -623,6 +623,30 @@
   New contract fns (Resolve-...AutoFireBaselineTreeId, Get-...LineageId, Resolve-...SameDigestAuthority) + a
   finding-join-and-disposition fixture; t019-identity-contracts.Tests.ps1 18/18 + full registry 20/20. Still UNWIRED;
   step 6 remains NOT started, pending maintainer approval of the corrected contracts.
+- T019 FINAL contract correction + STEP-6 pieces 1-3 landed as committed work (see git history): the
+  lease/generation authority replaces max-run-id (an atomically-acquired per-lineage lease keyed on the
+  immutable reviewed-tree digest; only the owner promotes; a clean stale result never erases a blocking one),
+  FR-045 required-review-not-started + human-dispositioned states, canonicalized lineage id; then piece 1
+  (registry-key-drift / DRIFT-002 root — the stale downgrade read a never-written id), the reviewed-tree
+  identity resolver hardening (explicit ids first, fail-closed on conflict), piece 2 (atomic lease acquire +
+  owner-only release + PID-reuse-safe reclaim), and piece 3 (the navigator fire consumes the SAME lease as
+  the one in-flight dedup). Also the beta2 RELEASE BLOCKER: the 197 contracts + tracker-honesty-check.ps1 were
+  read by deploy-squad-runtime.ps1 but absent from FileList, so released 0.40.0 failed during "Deploying Squad
+  runtime" — added to FileList + a packaged-artifact integration test that builds from FileList only. Pieces
+  4-7 (FR-045 packet gate, evidence-injection runs+embedded, findings tree/baseline stamping, retention
+  runtime) remain DEFERRED; runtime residue stays untouched.
+- SHARED TRUNK RESOLVER (DRIFT-198-I003-008, maintainer-directed 2026-07-13): trunk resolution was duplicated
+  across 5+ co-review sites with divergent, incomplete candidate lists (past `dev`-trunk + fresh-checkout fixes
+  had propagated to only one copy each; none did upstream / single-pre-feature-branch / fail-loud). Consolidated
+  into ONE `co-review-trunk-resolver.ps1` (`Resolve-ContinuousCoReviewTrunkRef`) with strict 6-level precedence
+  — explicit `co_review_trunk` → `origin/HEAD` → branch upstream → conventional refs (main/master/develop/dev)
+  → local-only single pre-feature branch → else FAIL with a config instruction. It NEVER creates/renames/moves a
+  branch; greenfield (only the feature branch) → empty-tree baseline (not an ambiguity). The merge-base anchor,
+  signoff gate + wiring, worktree baseline resolver, lineage resolver, CLI, navigator, and worktree-navigator
+  all consume it; every `'main'` default + duplicated loop removed; the baseline resolver now fails LOUDLY on a
+  genuinely ambiguous trunk instead of silently reviewing everything. trunk-resolver.Tests.ps1 (10 tests, the
+  6 required scenarios + precedence + greenfield + never-mutates) = F-198 registry suite #25; full registry
+  25/25 green.
 
 ## Notes
 

@@ -156,7 +156,7 @@ function Convert-UnixStyleArguments {
         Live            = $Live
         Help            = $Help
         BaselineRef     = $null
-        TrunkName       = 'main'
+        TrunkName       = ''   # '' -> the shared trunk resolver auto-detects (config/origin-HEAD/upstream/conventional); --trunk overrides
         CheckpointId    = 'manual-live-review'
         RunId           = $null
         Host            = $null

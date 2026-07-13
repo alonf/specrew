@@ -16,7 +16,7 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
     # through the service to the orchestrator's reviewer-host SELECTION (independent + authorized).
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
-        [string]$TrunkName = 'main',
+        [AllowEmptyString()][string]$TrunkName = '',
         [switch]$SessionStart,
         [string]$CodeWriterHost,
         # T106/N4: the host transcript path (optional) - threads to the reap so the escalation-latch

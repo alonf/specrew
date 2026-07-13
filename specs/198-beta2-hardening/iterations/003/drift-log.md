@@ -22,13 +22,14 @@
 
 ## Summary
 
-**Total drift events**: 7
-**Resolution rate**: DRIFT-198-I003-001 + DRIFT-198-I003-003 resolved in place;
-DRIFT-198-I003-002 recorded → T019/T030–T032; DRIFT-198-I003-004 resolved via a
+**Total drift events**: 8
+**Resolution rate**: DRIFT-198-I003-001 + DRIFT-198-I003-003 + DRIFT-198-I003-008 resolved
+in place; DRIFT-198-I003-002 recorded → T019/T030–T032; DRIFT-198-I003-004 resolved via a
 maintainer-decided FR-011/SC-003 AMENDMENT (T016 REOPENED, pending certification of
 the amended surfaces); DRIFT-198-I003-007 resolved via a proposal-205 AMENDMENT
 (W10 realized in T018/FR-015 here; W7–W9 carried to Iteration 004 T028 as FR-046/FR-047,
-no T004–T006 reopen)
+no T004–T006 reopen); DRIFT-198-I003-008 consolidated 5+ divergent trunk-resolution copies
+into ONE shared resolver with strict 6-level precedence (never mutates a branch)
 **Specification drift**: One implementation-vs-data-model divergence
 (DRIFT-198-I003-001) in iteration-002's shipped FR-020 code, surfaced by
 iteration-003 co-review and fixed in place with paired abuse tests. One
@@ -58,6 +59,43 @@ carried to Iteration 004 under T028 (FR-046/FR-047), composing with T021–T023 
 T027, with no reopen of the shipped firewall (T004–T006).
 
 ## Events
+
+### DRIFT-198-I003-008 — trunk resolution was DUPLICATED across 5+ co-review sites with divergent, incomplete precedence (a latent bug class); consolidated into ONE shared resolver (resolved in place, maintainer-directed 2026-07-13)
+
+- **Requirement citation**: FR-025 (the signoff coverage anchor = merge-base with trunk) and the
+  continuous co-review fire/lease path (FR-045 lineage identity). The trunk is the shared input both the
+  signoff gate and the fire baseline depend on; a wrong trunk silently breaks coverage proof and dedup.
+- **Divergence (latent defect, found during beta2 hardening)**: FIVE+ independent copies of "which branch
+  is trunk" had drifted apart — `Get-ContinuousCoReviewMergeBaseAnchor` (bare/`origin/<t>` + origin/HEAD
+  detection), the orchestrator's `Resolve-ContinuousCoReviewTrunkName` (origin/HEAD → `origin/main`,
+  `origin/dev`, `main`, `dev`, `master`), the lineage resolver's own 7-candidate loop, the signoff gate's
+  `Get-ContinuousCoReviewTrunkName` (config → hardcoded **`main`**), and hardcoded `-TrunkName = 'main'`
+  defaults in the CLI, navigator (×2), and worktree-navigator. They had **different candidate sets and
+  order**, so past fixes patched only ONE copy each: the iter-007 `dev`-trunk dogfood fix (origin/HEAD
+  detection) and the F5 fresh-checkout `origin/<t>` fix never propagated to the other copies. NONE
+  implemented a configured **branch upstream**, a **local-only single pre-feature branch**, or a
+  **fail-loud on ambiguity** — an ambiguous repo silently reviewed everything (or picked an arbitrary
+  first-match) instead of asking the human to configure the trunk.
+- **Detection**: F-198 beta2 hardening, 2026-07-13 (maintainer directive to make trunk resolution a shared
+  repository capability with strict precedence).
+- **Resolution (consolidated in place, maintainer-directed 2026-07-13)**: ONE shared resolver
+  `co-review-trunk-resolver.ps1` (`Resolve-ContinuousCoReviewTrunkRef`) with strict precedence — (1)
+  explicit `co_review_trunk` (a `-Trunk` override, else config), (2) `refs/remotes/origin/HEAD`, (3) the
+  current branch's configured upstream, (4) conventional refs `main`/`master`/`develop`/`dev` (local or
+  `origin/`, priority order), (5) a local-only repo with exactly ONE pre-feature branch, (6) else FAIL with
+  a config instruction. It **never creates, renames, or moves a branch** (read-only; proven by test). A
+  greenfield repo (only the feature branch) resolves to `greenfield` → the empty-tree baseline (legitimate,
+  not an ambiguity). The merge-base anchor, signoff gate + wiring, worktree baseline resolver, lineage
+  resolver, CLI, navigator, and worktree-navigator now all consume it; the duplicated loops and every
+  `'main'` default are removed. The baseline resolver fails LOUDLY on a genuinely ambiguous/misconfigured
+  trunk (levels 6 / explicit-unresolvable) rather than silently reviewing everything.
+- **Evidence**: `tests/continuous-co-review/unit/trunk-resolver.Tests.ps1` (10 tests: local-only master,
+  local-only main, origin/HEAD→develop precedence, explicit override + `-Trunk` wins, unresolvable-explicit
+  fails, ambiguous fails, single pre-feature branch, no-commit fails, greenfield ok-null, never-mutates).
+  Registered as F-198 regression suite #25; full registry green.
+- **Scope note**: a HARDENING consolidation of existing behavior (found + fixed in 003), not a new
+  requirement and not a scope expansion — it realizes the FR-025 anchor's intent uniformly. Recorded here
+  rather than reopening a closed record.
 
 ### DRIFT-198-I003-007 — T018 design review surfaced a TECHNOLOGY/DELIVERY-ASSUMPTION leak class (Pester-specific evidence contract); proposal 205 AMENDED — W10 realized here in T018, W7–W9 carried to Iteration 004 T028 (recorded → FR-046/FR-047; NOT a T004–T006 reopen)
 

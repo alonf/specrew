@@ -199,7 +199,7 @@ function Get-ContinuousCoReviewSignoffGateDecision {
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [string] $TrunkName = 'main',
+        [AllowEmptyString()][string] $TrunkName = '',
 
         [string[]] $ExcludedPathPatterns = @(),
 
@@ -320,7 +320,7 @@ function Assert-ContinuousCoReviewSignoffGate {
         [Parameter(Mandatory)]
         [string] $RepoRoot,
 
-        [string] $TrunkName = 'main',
+        [AllowEmptyString()][string] $TrunkName = '',
 
         [string[]] $ExcludedPathPatterns = @(),
 

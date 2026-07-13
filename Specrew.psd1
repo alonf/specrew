@@ -255,6 +255,7 @@
         'scripts/internal/continuous-co-review/checkpoint-diff-provider.ps1',
         'scripts/internal/continuous-co-review/co-review-lineage-lease.ps1',
         'scripts/internal/continuous-co-review/co-review-service.ps1',
+        'scripts/internal/continuous-co-review/co-review-trunk-resolver.ps1',
         'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1',
         'scripts/internal/continuous-co-review/escalation-latch.ps1',
         'scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1',

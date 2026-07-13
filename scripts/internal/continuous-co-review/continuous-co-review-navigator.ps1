@@ -558,7 +558,7 @@ function Invoke-ContinuousCoReviewNavigatorReap {
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [switch]$CrossSession,
-        [string]$TrunkName = 'main',
+        [AllowEmptyString()][string]$TrunkName = '',   # '' -> shared resolver auto-detects; a value is the explicit override
         # T106/N4: the host transcript path (optional) - the escalation-latch reads REAL user turns
         # from it to decide human closure. Absent -> the latch default-denies (keeps state, no close).
         [AllowNull()][string]$TranscriptPath,
@@ -1026,7 +1026,7 @@ function Add-ContinuousCoReviewNavigatorPassRunRecord {
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$RunId,
         [AllowNull()][string]$TreeId,
-        [string]$TrunkName = 'main',
+        [AllowEmptyString()][string]$TrunkName = '',   # '' -> shared resolver auto-detects; a value is the explicit override
         # T094/FR-036: the run's 3-dimension evidence labels (completeness/independence/budget),
         # recorded onto the durable review-run.json so the tiered signoff gate can read assurance.
         [AllowNull()]$EvidenceLabels,

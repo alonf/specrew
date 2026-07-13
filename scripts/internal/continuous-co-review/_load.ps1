@@ -6,6 +6,9 @@ Set-StrictMode -Version Latest
 # contract helpers, and the diff-provider's Invoke-...Git wrapper used by the dedup). Verified by AST call-graph
 # from the live entry points (worktree navigator + service + detached + signoff gate + host-auth).
 $proposal197ReviewerModules = @(
+    # The ONE shared trunk resolver (6-level precedence) - loaded FIRST so the anchor writer, signoff gate,
+    # baseline resolver, and lineage resolver all consume it instead of duplicating 'main' defaults.
+    'co-review-trunk-resolver.ps1'
     'reviewer-contracts.ps1'
     'checkpoint-diff-provider.ps1'
     'reviewed-state-digest.ps1'

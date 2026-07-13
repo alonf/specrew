@@ -260,10 +260,14 @@ function Resolve-ContinuousCoReviewRepoLineageId {
     $anchor = ''
     $target = ''
     try {
+        # Trunk via the ONE shared resolver (replaces this loop's duplicated candidate list). Unlike the gate,
+        # the lineage key must ALWAYS resolve for dedup, so an ambiguous/greenfield/failed trunk is not fatal
+        # here - it simply falls through to the stable HEAD anchor below (two concurrent fires of the same
+        # checkout still contend on the same lease). Guard for a standalone dot-source of only this module.
         $trunk = ''
-        foreach ($cand in @('origin/HEAD', 'origin/main', 'origin/master', 'origin/dev', 'main', 'master', 'dev')) {
-            $null = (& git -C $RepoRoot rev-parse --verify --quiet ('{0}^{{commit}}' -f $cand) 2>$null)
-            if ($LASTEXITCODE -eq 0) { $trunk = $cand; break }
+        if (Get-Command -Name 'Resolve-ContinuousCoReviewTrunkRef' -ErrorAction SilentlyContinue) {
+            $resolvedTrunk = Resolve-ContinuousCoReviewTrunkRef -RepoRoot $RepoRoot
+            if ($resolvedTrunk.ok -and -not [string]::IsNullOrWhiteSpace([string]$resolvedTrunk.trunk_ref)) { $trunk = [string]$resolvedTrunk.trunk_ref }
         }
         if (-not [string]::IsNullOrWhiteSpace($trunk)) {
             $mb = (& git -C $RepoRoot merge-base HEAD $trunk 2>$null)

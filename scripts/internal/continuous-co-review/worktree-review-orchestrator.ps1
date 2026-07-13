@@ -14,30 +14,35 @@ function ConvertTo-ContinuousCoReviewWorktreeIsoTimestamp {
     return $Timestamp.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ', [System.Globalization.CultureInfo]::InvariantCulture)
 }
 
-function Resolve-ContinuousCoReviewTrunkName {
-    param([Parameter(Mandatory)][string]$GitRoot)
-    $head = (& git -C $GitRoot symbolic-ref --quiet refs/remotes/origin/HEAD 2>$null)
-    if ($head) { return ($head.Trim() -replace '^refs/remotes/', '') }
-    foreach ($t in @('origin/main', 'origin/dev', 'main', 'dev', 'master')) {
-        & git -C $GitRoot rev-parse --verify --quiet "$t^{commit}" 2>$null | Out-Null
-        if ($LASTEXITCODE -eq 0) { return $t }
-    }
-    return $null
-}
-
 function Resolve-ContinuousCoReviewWorktreeBaseline {
     # The review baseline = merge-base with trunk (the user's INCREMENT since branching, not the inception).
+    # Trunk resolution is delegated to the ONE shared resolver (6-level precedence: co_review_trunk -> origin/HEAD
+    # -> upstream -> conventional refs -> single pre-feature branch). It NEVER creates/renames/moves a branch.
     param([Parameter(Mandatory)][string]$RepoRoot, [string]$Trunk)
     $gitRoot = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null).Trim()
     if ([string]::IsNullOrWhiteSpace($gitRoot)) { return $null }
-    if (-not $Trunk) { $Trunk = Resolve-ContinuousCoReviewTrunkName -GitRoot $gitRoot }
+
+    if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewTrunkRef' -ErrorAction SilentlyContinue)) {
+        $resolverPath = Join-Path $PSScriptRoot 'co-review-trunk-resolver.ps1'
+        if (Test-Path -LiteralPath $resolverPath -PathType Leaf) { . $resolverPath }
+    }
+    $resolvedTrunk = Resolve-ContinuousCoReviewTrunkRef -RepoRoot $gitRoot -Trunk $Trunk
+    if (-not $resolvedTrunk.ok -and @('ambiguous', 'explicit-trunk-unresolvable') -contains $resolvedTrunk.source) {
+        # Precedence level 6: an AMBIGUOUS or misconfigured trunk fails loudly with the config instruction rather
+        # than silently guessing a branch or reviewing everything. (no-commit/greenfield fall through to empty-tree.)
+        throw ("[continuous-co-review] {0}" -f $resolvedTrunk.message)
+    }
+
     $mb = $null
-    if ($Trunk) { $mb = (& git -C $gitRoot merge-base HEAD $Trunk 2>$null); if ($LASTEXITCODE -ne 0) { $mb = $null } }
+    if ($resolvedTrunk.ok -and -not [string]::IsNullOrWhiteSpace([string]$resolvedTrunk.trunk_ref)) {
+        $mb = (& git -C $gitRoot merge-base HEAD $resolvedTrunk.trunk_ref 2>$null)
+        if ($LASTEXITCODE -ne 0) { $mb = $null }
+    }
     if ([string]::IsNullOrWhiteSpace($mb)) {
-        # No trunk (a GREENFIELD: `specrew init` creates ONLY the feature branch - no main/master/remote) OR no
-        # merge-base (unrelated histories): fall back to the EMPTY TREE so the co-review reviews the whole feature's
-        # source instead of failing 'baseline-unresolved' and never running. This was the root cause of the first real
-        # e2e producing zero co-review evidence. The strip/digest list still excludes .specrew/.specify machinery from
+        # GREENFIELD (`specrew init` creates ONLY the feature branch - resolver source='greenfield') OR no merge-base
+        # (unrelated histories): fall back to the EMPTY TREE so the co-review reviews the whole feature's source
+        # instead of failing 'baseline-unresolved' and never running. This was the root cause of the first real e2e
+        # producing zero co-review evidence. The strip/digest list still excludes .specrew/.specify machinery from
         # what the reviewer sees, so the empty-tree baseline reviews source only, not scaffolding.
         return '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
     }
