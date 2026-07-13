@@ -1145,7 +1145,13 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
 - **Iteration Facilitator**: Crew coordinator (this session), one
   iteration at a time per the A4 slicing.
 - **Capacity Model**: story points; ~5–8 SP per iteration across four
-  iterations (~22 SP total, within the 15–25 SP triage envelope).
+  iterations (~22 SP), plus Iteration 005 (~4 SP) → **~26 SP total, an
+  EXPLICIT maintainer variance above the 15–25 SP triage envelope**
+  (approved 2026-07-14). Reason: confirmed Beta2 host-contract defects
+  (Codex/Copilot Stop contracts) and minimum hook-health detection are
+  release blockers discovered late in F-198 (reviewer, issue #3084). The
+  variance is bounded here — no further scope inflation; any additional
+  opportunity or architectural modernization goes to issue #3084.
 - **Drift Signals**: drift-log.md with requirement citations; the
   governance validator at every boundary commit; the paired-test rule
   (NFR-007) as review enforcement; SelfLeakLintLane red as an
