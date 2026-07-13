@@ -37,11 +37,14 @@ Describe 'T019 review-identity + artifact-lifecycle contracts (corrected, UNWIRE
         }
     }
 
-    Context 'Correction 2 — absolute digest-mismatch precedence (FR-045 matrix, every outcome)' {
+    Context 'Correction 2 (+ final 2a/2b) — FR-045 routing: absolute digest precedence, required-not-started, human-dispositioned' {
         It 'routes every state exactly as the matrix specifies' {
             $fx = Get-Fixture 'fr045-stop-ordering-matrix.json'
             foreach ($row in $fx.matrix) {
-                $r = Resolve-ContinuousCoReviewStopRouting -ReviewTerminal $row.review_terminal -ReviewOutcome $row.review_outcome -DigestMatchesCurrent $row.digest_matches_current -InFlightPresent $row.in_flight_present
+                $p = @{ ReviewTerminal = $row.review_terminal; ReviewOutcome = $row.review_outcome; DigestMatchesCurrent = $row.digest_matches_current; InFlightPresent = $row.in_flight_present }
+                if (Test-HasProp $row 'human_dispositioned') { $p.HumanDispositioned = [bool]$row.human_dispositioned }
+                if (Test-HasProp $row 'disposition_durable_and_digest_bound') { $p.DispositionDurableAndDigestBound = [bool]$row.disposition_durable_and_digest_bound }
+                $r = Resolve-ContinuousCoReviewStopRouting @p
                 $r.render_packet | Should -Be $row.expected.render_packet -Because "state '$($row.state)' render_packet"
                 $r.render_marker | Should -Be $row.expected.render_marker -Because "state '$($row.state)' render_marker"
                 $r.launch_review | Should -Be $row.expected.launch_review -Because "state '$($row.state)' launch_review"
@@ -49,21 +52,30 @@ Describe 'T019 review-identity + artifact-lifecycle contracts (corrected, UNWIRE
                 $r.capturable_as_verdict | Should -Be $row.expected.capturable_as_verdict -Because "state '$($row.state)' capturable"
             }
         }
-        It 'a STALE result of ANY outcome is superseded — never blocks, decides, reports, or authorizes' {
+        It 'required review absent + nothing in flight routes to required-review-not-started (not wait-poll)' {
+            (Resolve-ContinuousCoReviewStopRouting -ReviewTerminal $false -ReviewOutcome 'absent' -DigestMatchesCurrent $false -InFlightPresent $false).action | Should -Be 'required-review-not-started'
+        }
+        It 'a human disposition renders the packet ONLY when durable AND digest-bound' {
+            (Resolve-ContinuousCoReviewStopRouting -ReviewTerminal $true -ReviewOutcome 'human-judgment' -DigestMatchesCurrent $true -HumanDispositioned $true -DispositionDurableAndDigestBound $true).capturable_as_verdict | Should -BeTrue
+            (Resolve-ContinuousCoReviewStopRouting -ReviewTerminal $true -ReviewOutcome 'human-judgment' -DigestMatchesCurrent $true -HumanDispositioned $true -DispositionDurableAndDigestBound $false).action | Should -Be 'narrow-non-boundary-question'
+        }
+        It 'a STALE result of ANY outcome is superseded — EVEN a durable human disposition bound to a stale digest' {
             foreach ($outcome in @('clean', 'actionable', 'human-judgment', 'infra-failure')) {
-                $r = Resolve-ContinuousCoReviewStopRouting -ReviewTerminal $true -ReviewOutcome $outcome -DigestMatchesCurrent $false
+                $r = Resolve-ContinuousCoReviewStopRouting -ReviewTerminal $true -ReviewOutcome $outcome -DigestMatchesCurrent $false -HumanDispositioned $true -DispositionDurableAndDigestBound $true
                 $r.render_packet | Should -BeFalse -Because "stale $outcome must not render a packet"
                 $r.render_marker | Should -BeFalse -Because "stale $outcome must not carry a marker"
                 $r.capturable_as_verdict | Should -BeFalse -Because "stale $outcome is never capturable"
-                $r.action | Should -Be 're-review-current-digest' -Because "stale $outcome is superseded, not routed to its outcome action"
+                $r.action | Should -Be 're-review-current-digest'
             }
         }
-        It 'the invariant holds: exactly one capturable state, and a mismatch forces packet/marker/capturable false for every outcome' {
+        It 'the invariant holds: capturable states are exactly clean + human-dispositioned-durable at the current digest; mismatch forces all false; launch never true' {
             $fx = Get-Fixture 'fr045-stop-ordering-matrix.json'
-            @($fx.matrix | Where-Object { $_.expected.capturable_as_verdict }).Count | Should -Be 1
+            @($fx.matrix | Where-Object { $_.expected.capturable_as_verdict } | ForEach-Object { $_.state }) |
+                Should -Be @('clean-current-digest', 'human-dispositioned-durable-current-digest')
+            foreach ($row in @($fx.matrix | Where-Object { $_.expected.capturable_as_verdict })) {
+                $row.review_terminal | Should -BeTrue; $row.digest_matches_current | Should -BeTrue
+            }
             foreach ($row in @($fx.matrix | Where-Object { -not $_.digest_matches_current })) {
-                $row.expected.render_packet | Should -BeFalse
-                $row.expected.render_marker | Should -BeFalse
                 $row.expected.capturable_as_verdict | Should -BeFalse
             }
             foreach ($row in $fx.matrix) { $row.expected.launch_review | Should -BeFalse }
@@ -103,23 +115,36 @@ Describe 'T019 review-identity + artifact-lifecycle contracts (corrected, UNWIRE
         }
     }
 
-    Context 'Correction 5 — deterministic lineage id + monotonic same-digest authority' {
-        It 'the lineage id is deterministic and anchor+target sensitive' {
-            $fx = (Get-Fixture 'inflight-dedup-out-of-order.json').lineage_id_determinism
-            $a = Get-ContinuousCoReviewLineageId -AnchorRef $fx.anchor_ref -TargetRef $fx.target_ref
-            $b = Get-ContinuousCoReviewLineageId -AnchorRef $fx.anchor_ref -TargetRef $fx.target_ref
-            $a | Should -Be $b -Because 'same inputs -> same id'
+    Context 'Final-correction 3 — canonicalized lineage id (alias-equivalence, different-target)' {
+        It 'aliases resolving to the same commit id yield the same lineage id; a different target differs' {
+            $fx = (Get-Fixture 'inflight-dedup-out-of-order.json').lineage_id_canonicalization
+            $a = Get-ContinuousCoReviewLineageId -AnchorCommitId $fx.anchor_commit_id -TargetIdentity $fx.target_identity
+            $aliased = Get-ContinuousCoReviewLineageId -AnchorCommitId $fx.anchor_commit_id_alias_upper_padded -TargetIdentity $fx.target_identity
+            $a | Should -Be $aliased -Because 'the same resolved commit id (different case/whitespace) canonicalizes to the same id'
             $a | Should -Match '^lin-[0-9a-f]{16}$'
-            (Get-ContinuousCoReviewLineageId -AnchorRef $fx.different_anchor_ref -TargetRef $fx.target_ref) | Should -Not -Be $a
+            (Get-ContinuousCoReviewLineageId -AnchorCommitId $fx.anchor_commit_id -TargetIdentity $fx.different_target_identity) | Should -Not -Be $a
         }
-        It 'exactly one same-digest terminal run is authoritative (max run_id); others + wrong-digest + non-terminal are superseded/ineligible' {
-            $fx = (Get-Fixture 'inflight-dedup-out-of-order.json').same_digest_concurrent
-            $r = Resolve-ContinuousCoReviewSameDigestAuthority -Runs $fx.runs -CurrentDigest $fx.current_reviewed_digest
-            $r.authoritative_run_id | Should -Be $fx.expected_authoritative_run_id
-            @($r.superseded_run_ids) | Should -Be @($fx.expected_superseded_run_ids)
+    }
+    Context 'Final-correction 1 — lease/generation same-digest authority (not timestamp); blocking never erased' {
+        It 'only the lease owner (matching run_id AND generation) is authoritative; conflicts fail closed' {
+            $fx = (Get-Fixture 'inflight-dedup-out-of-order.json').same_digest_lease
+            foreach ($case in $fx.authority_cases) {
+                $r = Resolve-ContinuousCoReviewLeaseAuthority -Lease $fx.lease -CompletingRunId $case.completing_run_id -CompletingGeneration $case.completing_generation
+                $r.authoritative | Should -Be $case.expected_authoritative -Because "case '$($case.name)'"
+                $r.disposition | Should -Be $case.expected_disposition
+            }
         }
-        It 'no eligible run yields a null authority (fail-closed)' {
-            (Resolve-ContinuousCoReviewSameDigestAuthority -Runs @() -CurrentDigest 'x').authoritative_run_id | Should -BeNullOrEmpty
+        It 'a clean result never erases existing blocking findings by timestamp' {
+            $fx = (Get-Fixture 'inflight-dedup-out-of-order.json').same_digest_lease
+            foreach ($case in $fx.blocking_preservation_cases) {
+                $r = Test-ContinuousCoReviewBlockingPreserved -ExistingBlockingCount $case.existing_blocking_count -IncomingOutcome $case.incoming_outcome
+                $r.blocking_preserved | Should -Be $case.expected_blocking_preserved -Because "case '$($case.name)'"
+                $r.erased | Should -Be $case.expected_erased
+            }
+        }
+        It 'the lease carries lineage_id, generation, authoritative_run_id (persisted before launch)' {
+            $lease = Grant-ContinuousCoReviewLineageLease -LineageId 'lin-x' -Generation 3 -RunId 'run-9'
+            $lease.lineage_id | Should -Be 'lin-x'; $lease.generation | Should -Be 3; $lease.authoritative_run_id | Should -Be 'run-9'
         }
     }
 

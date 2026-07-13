@@ -64,15 +64,20 @@ function Resolve-ContinuousCoReviewAutoFireBaselineTreeId {
     }
 }
 
-# Correction 5 (part a) — DETERMINISTIC, persisted lineage id from the STABLE lineage anchor (merge-base
-# commit) + target ref, so every run in a lineage computes the same id (the baseline_tree_id advances WITHIN
-# a lineage, so it cannot key the lineage; the anchor + target do not).
+# Correction 5 (part a) + final-correction 3 — DETERMINISTIC, persisted lineage id from the STABLE lineage anchor
+# + target, with inputs CANONICALIZED before hashing so aliases that resolve to the same commit yield the SAME id.
+# The caller MUST pass the RESOLVED anchor COMMIT ID (git rev-parse — never a symbolic ref like HEAD/branch) and
+# the canonical target identity; this pure function then normalizes the string form (commit id trimmed +
+# lowercased; target trimmed, case-preserving since refs are case-sensitive on POSIX). The advancing
+# baseline_tree_id CANNOT key the lineage; the resolved anchor + target do not change across the lineage.
 function Get-ContinuousCoReviewLineageId {
     param(
-        [Parameter(Mandatory)][AllowEmptyString()][string]$AnchorRef,
-        [Parameter(Mandatory)][AllowEmptyString()][string]$TargetRef
+        [Parameter(Mandatory)][AllowEmptyString()][string]$AnchorCommitId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$TargetIdentity
     )
-    $material = "$AnchorRef`n$TargetRef"
+    $anchor = ([string]$AnchorCommitId).Trim().ToLowerInvariant()
+    $target = ([string]$TargetIdentity).Trim()
+    $material = "$anchor`n$target"
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($material)
     $hash = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($bytes)).Replace('-', '').ToLowerInvariant()
     return 'lin-' + $hash.Substring(0, 16)
@@ -144,29 +149,55 @@ function Test-ContinuousCoReviewResultSuperseded {
     }
 }
 
-# Correction 5 (part b) — MONOTONIC authority for SAME-DIGEST concurrent completions. Among terminal runs whose
-# reviewed digest equals the current tree, EXACTLY ONE is authoritative: the max run_id (run_ids are fire-time
-# sortable, so authority advances monotonically to the latest assessment of the same tree and never regresses).
-# Every other run — wrong digest OR a lower same-digest run_id — is superseded.
-function Resolve-ContinuousCoReviewSameDigestAuthority {
+# Final-correction 1 — SAME-DIGEST authority is an atomically-acquired LINEAGE LEASE / generation, NOT a
+# timestamp (max run_id) tie-break. A later clean run must NEVER erase an earlier blocking run by timestamp.
+# The lease { lineage_id, generation, authoritative_run_id } is acquired + persisted BEFORE a reviewer is
+# spawned; ONLY the lease owner (matching run_id AND generation) may become authoritative. A conflicting legacy
+# same-digest terminal result (a non-owner, or a stale generation) FAILS CLOSED — never silently authoritative,
+# and must be explicitly reconciled. (In step 6 the acquisition is atomic before spawn; this is the pure shape.)
+function Grant-ContinuousCoReviewLineageLease {
     param(
-        [object[]]$Runs = @(),
-        [Parameter(Mandatory)][AllowEmptyString()][string]$CurrentDigest
+        [Parameter(Mandatory)][AllowEmptyString()][string]$LineageId,
+        [Parameter(Mandatory)][int]$Generation,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$RunId
     )
-    $eligible = @()
-    foreach ($r in @($Runs)) {
-        if ($null -eq $r) { continue }
-        $rd = Get-ContinuousCoReviewRecordReviewedTreeId -RunRecord $r
-        $terminal = [bool](Get-ContinuousCoReviewContractProp -Object $r -Name 'terminal')
-        if ((-not [string]::IsNullOrWhiteSpace($CurrentDigest)) -and ($rd -ceq $CurrentDigest) -and $terminal) { $eligible += $r }
+    return [pscustomobject]@{ lineage_id = $LineageId; generation = $Generation; authoritative_run_id = $RunId }
+}
+
+function Resolve-ContinuousCoReviewLeaseAuthority {
+    param(
+        [Parameter(Mandatory)]$Lease,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$CompletingRunId,
+        [int]$CompletingGeneration = -1
+    )
+    $leaseRun = [string](Get-ContinuousCoReviewContractProp -Object $Lease -Name 'authoritative_run_id')
+    $leaseGen = Get-ContinuousCoReviewContractProp -Object $Lease -Name 'generation'
+    $genMatch = ($CompletingGeneration -lt 0) -or ($null -eq $leaseGen) -or ([int]$leaseGen -eq $CompletingGeneration)
+    $isOwner = (-not [string]::IsNullOrWhiteSpace($CompletingRunId)) -and ($leaseRun -ceq $CompletingRunId) -and $genMatch
+    if ($isOwner) {
+        return [pscustomobject]@{ authoritative = $true; disposition = 'authoritative'; reason = $null }
     }
-    if ($eligible.Count -eq 0) {
-        return [pscustomobject]@{ authoritative_run_id = $null; superseded_run_ids = @() }
+    return [pscustomobject]@{
+        authoritative = $false
+        disposition   = 'conflicting-fail-closed'
+        reason        = 'not the lease owner for this generation; a legacy/conflicting same-digest result fails closed and must be explicitly reconciled'
     }
-    $sorted = @($eligible | Sort-Object { [string](Get-ContinuousCoReviewContractProp -Object $_ -Name 'run_id') })
-    $auth = [string](Get-ContinuousCoReviewContractProp -Object ($sorted | Select-Object -Last 1) -Name 'run_id')
-    $superseded = @($sorted | ForEach-Object { [string](Get-ContinuousCoReviewContractProp -Object $_ -Name 'run_id') } | Where-Object { $_ -ne $auth })
-    return [pscustomobject]@{ authoritative_run_id = $auth; superseded_run_ids = $superseded }
+}
+
+# The blocking-findings invariant, enforced SEPARATELY from authority: a CLEAN result must NEVER erase blocking
+# findings by timestamp. Blocking findings recorded for a digest are STICKY — a clean incoming result preserves
+# them (they require explicit resolution, never a later-timestamp overwrite). `erased` is false by contract.
+function Test-ContinuousCoReviewBlockingPreserved {
+    param(
+        [int]$ExistingBlockingCount = 0,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$IncomingOutcome
+    )
+    $preserved = $ExistingBlockingCount -gt 0
+    return [pscustomobject]@{
+        blocking_preserved = $preserved
+        erased             = $false
+        reason             = if ($preserved -and ($IncomingOutcome -eq 'clean')) { 'a clean result never erases existing blocking findings by timestamp; they persist until explicitly resolved' } else { $null }
+    }
 }
 
 # ---------------------------------------------------------------------------------------------------
@@ -217,26 +248,42 @@ function Resolve-ContinuousCoReviewStopRouting {
         [Parameter(Mandatory)][bool]$ReviewTerminal,
         [Parameter(Mandatory)][AllowEmptyString()][string]$ReviewOutcome,
         [Parameter(Mandatory)][bool]$DigestMatchesCurrent,
-        [bool]$InFlightPresent = $false
+        [bool]$InFlightPresent = $false,
+        [bool]$HumanDispositioned = $false,
+        [bool]$DispositionDurableAndDigestBound = $false
     )
-    $wait = [pscustomobject]@{ render_packet = $false; render_marker = $false; launch_review = $false; action = 'wait-poll-existing'; capturable_as_verdict = $false }
+    function New-Suppressed([string]$action) {
+        [pscustomobject]@{ render_packet = $false; render_marker = $false; launch_review = $false; action = $action; capturable_as_verdict = $false }
+    }
+    function New-Packet([string]$action) {
+        [pscustomobject]@{ render_packet = $true; render_marker = $true; launch_review = $false; action = $action; capturable_as_verdict = $true }
+    }
 
-    # Not terminal (running / duplicate Stop during in-flight): wait, never a packet, never a duplicate.
-    if (-not $ReviewTerminal) { return $wait }
+    # Final-correction 2a: a REQUIRED review is absent AND nothing is in flight -> suppress packet/marker and
+    # route to required-review-not-started (NOT wait-poll-existing, which implies a run exists to wait on).
+    if ((-not $ReviewTerminal) -and (-not $InFlightPresent)) { return New-Suppressed 'required-review-not-started' }
+
+    # Not terminal but a run IS in flight (running / duplicate Stop): wait, never a packet, never a duplicate.
+    if (-not $ReviewTerminal) { return New-Suppressed 'wait-poll-existing' }
 
     # ABSOLUTE PRECEDENCE: a stale (digest-mismatched) terminal result of ANY outcome is superseded.
     if (-not $DigestMatchesCurrent) {
         $action = if ($InFlightPresent) { 'wait-poll-existing' } else { 're-review-current-digest' }
-        return [pscustomobject]@{ render_packet = $false; render_marker = $false; launch_review = $false; action = $action; capturable_as_verdict = $false }
+        return New-Suppressed $action
     }
 
     # Terminal AND at the exact current digest: route by outcome.
     switch ($ReviewOutcome) {
-        'clean'          { return [pscustomobject]@{ render_packet = $true;  render_marker = $true;  launch_review = $false; action = 'render-boundary-packet';       capturable_as_verdict = $true } }
-        'actionable'     { return [pscustomobject]@{ render_packet = $false; render_marker = $false; launch_review = $false; action = 'fix-and-re-review';            capturable_as_verdict = $false } }
-        'human-judgment' { return [pscustomobject]@{ render_packet = $false; render_marker = $false; launch_review = $false; action = 'narrow-non-boundary-question'; capturable_as_verdict = $false } }
-        'infra-failure'  { return [pscustomobject]@{ render_packet = $false; render_marker = $false; launch_review = $false; action = 'report-specific-failure';      capturable_as_verdict = $false } }
-        default          { return [pscustomobject]@{ render_packet = $false; render_marker = $false; launch_review = $false; action = 'report-specific-failure';      capturable_as_verdict = $false } }
+        'clean'          { return New-Packet 'render-boundary-packet' }
+        'actionable'     { return New-Suppressed 'fix-and-re-review' }
+        'human-judgment' {
+            # Final-correction 2b: a human-DISPOSITIONED current-digest review renders the boundary packet ONLY
+            # when the disposition is DURABLE and DIGEST-BOUND; otherwise it stays a narrow, non-capturable question.
+            if ($HumanDispositioned -and $DispositionDurableAndDigestBound) { return New-Packet 'render-boundary-packet-human-dispositioned' }
+            return New-Suppressed 'narrow-non-boundary-question'
+        }
+        'infra-failure'  { return New-Suppressed 'report-specific-failure' }
+        default          { return New-Suppressed 'report-specific-failure' }
     }
 }
 

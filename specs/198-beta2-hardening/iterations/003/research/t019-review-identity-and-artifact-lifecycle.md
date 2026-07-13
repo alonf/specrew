@@ -22,8 +22,20 @@ commit refs); (2) digest-mismatch precedence is ABSOLUTE across every review out
 requests a decision, or authorizes a packet; (3) finding→run joins FAIL CLOSED (`source_run_id` must equal `run_id`,
 and the reviewed tree + `baseline_tree_id` must be present); (4) a transient artifact is prunable ONLY after its
 owning run is terminal/reaped/abandoned; (5) a deterministic, persisted lineage id + a monotonic authority rule for
-same-digest concurrent completions (max `run_id`); (6) injection validates the envelope digest AND every embedded
-suite/run digest. The pure contract functions + fixtures reflect these (18/18 green).
+same-digest concurrent completions; (6) injection validates the envelope digest AND every embedded
+suite/run digest.
+
+**Final correction pass (maintainer 2026-07-13, pre-step-6)** — three further corrections: (a) same-digest authority
+is an atomically-acquired **lineage lease / generation** (`Grant-ContinuousCoReviewLineageLease` +
+`Resolve-ContinuousCoReviewLeaseAuthority`), NOT a max-`run_id` timestamp — only the lease owner (matching run_id AND
+generation) is authoritative; a conflicting non-owner/stale-generation result fails closed and must be explicitly
+reconciled; and a **clean result never erases blocking findings by timestamp** (`Test-ContinuousCoReviewBlockingPreserved`);
+(b) two new FR-045 states — **required-review-not-started** (absent review + nothing in flight → suppress, route to
+required-review-not-started, NOT wait-poll) and **human-dispositioned-current-digest** (render the packet only when the
+disposition is durable AND digest-bound; even then a stale-digest disposition is still superseded); (c) lineage inputs are
+**canonicalized before hashing** (resolved anchor commit id + canonical target) so aliases resolving to the same commit are
+equivalent. **21/21 green.** These force no semantic choice, so per the maintainer's instruction the slice proceeds
+directly to step 6 (runtime wiring) after the registry is green.
 
 ---
 
@@ -93,12 +105,14 @@ the runtime must satisfy once wired. Field names are the actual on-disk JSON key
 - **Gap**: dedup is by **last-fired DIGEST**, not by an in-flight **lineage** — two drivers (manual `--live` +
   Stop-hook navigator) firing seconds apart on the same lineage are not serialized (the recorded collision, see
   `stop-ordering-defect.md`). "Single tracked in-flight review" (FR-045) has no representation.
-- **Target (FR-017, corrected)**: a **deterministic, persisted lineage id** (`Get-ContinuousCoReviewLineageId` over
-  the STABLE anchor commit + target, so every run in a lineage computes the same id — the advancing `baseline_tree_id`
-  cannot key it); at most one tracked in-flight review **per lineage** (waits/polls, never a duplicate); an obsolete
-  out-of-order completion (digest ≠ current) is superseded; and for **same-digest concurrent completions**, a
-  **monotonic authority rule** (`Resolve-ContinuousCoReviewSameDigestAuthority` = max `run_id`) makes EXACTLY ONE
-  authoritative and supersedes the rest. Lineage is NOT keyed by the per-fire `checkpoint_id` (`nav-<run_id>`).
+- **Target (FR-017, corrected + final)**: a **deterministic, persisted lineage id** (`Get-ContinuousCoReviewLineageId`
+  over the RESOLVED anchor commit id + canonical target, CANONICALIZED before hashing so aliases are equivalent — the
+  advancing `baseline_tree_id` cannot key it); at most one tracked in-flight review **per lineage** (waits/polls, never
+  a duplicate); an obsolete out-of-order completion (digest ≠ current) is superseded; and for **same-digest concurrent
+  completions**, authority is an **atomically-acquired lease/generation** (`Grant-ContinuousCoReviewLineageLease` +
+  `Resolve-ContinuousCoReviewLeaseAuthority`), NOT a timestamp — ONLY the lease owner (run_id AND generation) is
+  authoritative; a conflicting non-owner/stale-generation result fails closed and is explicitly reconciled; and a clean
+  result NEVER erases blocking findings by timestamp. Lineage is NOT keyed by the per-fire `checkpoint_id`.
 
 ### A5. Per-finding identity
 
@@ -163,8 +177,8 @@ decisions; `t019-identity-contracts.Tests.ps1` asserts the two agree (**18/18** 
 | Fixture | Proves | Contract function |
 | --- | --- | --- |
 | `drift-002-digest-a-vs-b.json` (step 3, corr. 6) | injection validates the envelope AND every embedded run digest; a foreign embedded digest, a full/subset digest-B injection, and an empty digest are all refused; only exact-digest is injectable | `Test-ContinuousCoReviewEvidenceInjectable` |
-| `inflight-dedup-out-of-order.json` (step 4, corr. 1+5) | dedup (≤1 in-flight per lineage); out-of-order older completion superseded; deterministic lineage id; monotonic same-digest authority (max `run_id`); auto-fire baseline = last-accepted reviewed TREE | `Test-ContinuousCoReviewInFlightDuplicate`, `Test-ContinuousCoReviewResultSuperseded`, `Resolve-ContinuousCoReviewSameDigestAuthority`, `Get-ContinuousCoReviewLineageId`, `Resolve-ContinuousCoReviewAutoFireBaselineTreeId` |
-| `fr045-stop-ordering-matrix.json` (step 5, corr. 2) | the 11-state Stop routing with ABSOLUTE digest-mismatch precedence (stale clean/actionable/human-judgment/infra all superseded); exactly one capturable + marker state; `launch_review` never true | `Resolve-ContinuousCoReviewStopRouting` |
+| `inflight-dedup-out-of-order.json` (corr. 1+5, final 1+3) | dedup (≤1 in-flight per lineage); out-of-order superseded; CANONICALIZED deterministic lineage id (alias-equivalence); LEASE/generation same-digest authority (owner-only; conflicts fail closed; clean never erases blocking); auto-fire baseline = last-accepted reviewed TREE | `Test-...InFlightDuplicate`, `Test-...ResultSuperseded`, `Grant-...LineageLease`, `Resolve-...LeaseAuthority`, `Test-...BlockingPreserved`, `Get-...LineageId`, `Resolve-...AutoFireBaselineTreeId` |
+| `fr045-stop-ordering-matrix.json` (corr. 2, final 2a+2b) | the 14-state Stop routing with ABSOLUTE digest-mismatch precedence (every stale outcome superseded); `required-review-not-started`; human-dispositioned renders the packet only when durable + digest-bound; exactly two capturable states; `launch_review` never true | `Resolve-ContinuousCoReviewStopRouting` |
 | `finding-join-and-disposition.json` (corr. 3+4) | finding→run joins fail closed (mismatched `source_run_id`, missing tree/baseline); transient artifacts prunable only after the owning run is terminal/reaped/abandoned | `Get-ContinuousCoReviewFindingIdentity`, `Resolve-ContinuousCoReviewRecordDisposition` |
 
 Artifact base classes (`Get-ContinuousCoReviewArtifactClass`) are exercised directly.
