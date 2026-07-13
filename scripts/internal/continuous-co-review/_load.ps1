@@ -27,6 +27,11 @@ $proposal197ReviewerModules = @(
     # characterization). Pure/self-contained; consumed by the navigator reap (authority) + the fire path (lease).
     'review-identity-contracts.ps1'
     'co-review-lineage-lease.ps1'
+    # T019 step 6 / FR-048: the framework-neutral verification-plan seam - the PURE plan contract (validators +
+    # the evidence-join) and the EXECUTION runner that drives the universal recorded-run runner over an ordered,
+    # provenance-tagged plan. Contract before runner (the runner consumes it).
+    'verification-plan-contract.ps1'
+    'verification-plan-runner.ps1'
 )
 
 foreach ($moduleName in $proposal197ReviewerModules) {

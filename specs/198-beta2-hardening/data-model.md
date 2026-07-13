@@ -177,6 +177,61 @@ Gradle/Go/Rust/custom). Schema: `contracts/specrew-test-result.schema.json`.
 Specrew VALIDATES this against the schema and records it verbatim; an invalid, or requested-but-absent,
 result fails LOUDLY (never degrades to a richer pass claim).
 
+## Contract: VerificationPlan + VerificationCommand — iteration 003 (T019, FR-048, amended 2026-07-13)
+
+**Purpose**: the framework-NEUTRAL, ORDERED, provenance-tagged verification plan a downstream
+command-plan SUPPLIER produces; the universal T018 runner (`Invoke-ContinuousCoReviewVerificationPlan`)
+EXECUTES it in DECLARED order and T019 injects the matching digest+command_id-bound evidence. Neither
+T018 nor T019 EVER selects, discovers, or invents a command — they run EXACTLY what the plan declares.
+Schema: `contracts/verification-plan.schema.json`. Contract layer: `verification-plan-contract.ps1`
+(pure, except a filesystem symlink check in path-safety); executor: `verification-plan-runner.ps1`.
+
+**VerificationPlan fields**:
+
+- `schema_version` (string, "1.0").
+- `plan_id` (string, REQUIRED) — stable plan identity.
+- `commands` (VerificationCommand[], ORDERED — never sorted). `command_id` values MUST be unique.
+
+**VerificationCommand fields**:
+
+- `command_id` (string, REQUIRED, UNIQUE within the plan) — recorded evidence joins on
+  `command_id` + reviewed-tree digest.
+- `executable` (string, REQUIRED non-empty) — resolved via PATH; framework-neutral (pytest / cargo /
+  dotnet / bash / pwsh / anything).
+- `arguments` (string[], default []) — a STRICT string ARRAY. NEVER a single shell string: shell
+  behaviour is an explicit interpreter invocation (`pwsh -File …`, `bash -lc …`). A single-string
+  `arguments` is REJECTED.
+- `working_directory` (string, optional) — repository-RELATIVE + canonical; REJECTED if rooted, if it
+  escapes via `..`, or if a symlink/junction resolves outside RepoRoot.
+- `timeout_seconds` (int, default 0) — ENGINE-BOUNDED: 0/absent → engine DEFAULT (900s), over the
+  engine MAX (3600s) → clamped. A supplier can NEVER request an unlimited run.
+- `result_path` (string, optional) — repository-RELATIVE + canonical (same path-safety); where the
+  command WRITES its `SpecrewTestResult`.
+- `require_result` (bool, default false) — when true the command MUST produce a schema-valid
+  `SpecrewTestResult` at `result_path`; an absent/invalid result is a VERIFICATION FAILURE for that
+  command (`command_succeeded=false`, reason `required-result-missing-or-invalid`), never a richer
+  clean claim. When false, process evidence stays valid with counts unavailable.
+- `provenance` (object, REQUIRED) — AUDITABLE, not a bare enum:
+  `{ kind (one of project-config | project-detected | profile-selected | provider-gated), source
+  (required — the config path / detection signal / profile / provider id), provider (required when
+  kind=provider-gated), profile (required when kind=profile-selected) }`.
+- `env_refs` (string[], optional) — allowlist of env var NAMES to pass through. NAMES ONLY — a literal
+  `env`/`environment` value map is FORBIDDEN (no secret values in a plan or its recorded evidence).
+- `label` (string, optional).
+
+**Invariants**: ORDER is preserved and never sorted; provenance kind is one of the four values;
+`command_id` is required and unique; `arguments` is a string array; paths are repo-relative and
+non-escaping; timeouts are engine-bounded; no secret env values appear. An EMPTY plan (or a plan with
+no valid command) is the EXPLICIT `verification-not-configured` state — NEVER a silent success or a
+fabricated pass. The executor RECORDS AN EVIDENCE RECORD FOR EVERY ATTEMPTED COMMAND (successes AND
+failures, in order): a non-zero exit / timeout / structurally-un-runnable / required-result miss is
+recorded with `command_succeeded=false` — never dropped, never promoted to clean; the plan result
+exposes `all_succeeded` (false if any command failed, and false when nothing ran). Each record binds to
+the reviewed-tree digest AND its `command_id`; env values are redacted (only NAMES recorded). The T019
+join validator (`Test-ContinuousCoReviewPlanEvidenceInjectable`) REJECTS evidence that is
+digest-mismatched, DUPLICATE (a `command_id` appearing twice), or UNJOINABLE (a `command_id` with no
+matching plan command).
+
 ## Entity: ReviewIdentitySet — iteration 003 (T019, characterization 2026-07-13)
 
 **Purpose**: the five identities a review run and its findings are bound by, unified so evidence, lineage,
