@@ -55,6 +55,7 @@ $script:SpecrewFireDedupWindowSec = 60  # idempotency: a duplicate hook fire for
 $script:SpecrewMaterialHandoverMaxAgeSec = 300  # handover provider runs immediately before conformance; older snapshots are stale.
 $script:SpecrewMaterialRetryWindowSec = 600  # after a material stop block, keep enforcing only during the forced-continue loop.
 $script:SpecrewSubstantialChars = 600
+$script:SpecrewContinueLoopGuardBound = 3  # FR-045a: bound on consecutive `continue` classifications for the SAME material surface before the guard trips the classifier to a real stop (a runaway continue can never loop forever).
 
 function Test-SpecrewReentryPacketPresent {
     # >=4 of the 6 canonical section-header phrases present in the (flattened) last assistant message = the packet
@@ -428,6 +429,7 @@ try {
     $materialStop = ($null -ne $materialSignal -and [bool]$materialSignal.material)
     $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
     $materialSatisfiedPath = Join-Path $projectRoot '.specrew/runtime/conformance-material-satisfied.json'
+    $continueGuardPath = Join-Path $projectRoot '.specrew/runtime/conformance-continue-guard.json'  # FR-045a continue loop-guard store ({key,count,epoch}); keyed by "continue|<materialSurfaceHash>", NO time window (a changed surface = intervening progress = reset to 0).
     $existingBlockRecord = Get-SpecrewBlockRecord -Path $blockStatePath
     $materialRetryKey = Get-SpecrewRecentMaterialRetryKey -Record $existingBlockRecord
     $materialSatisfiedKey = Get-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath
@@ -574,7 +576,62 @@ try {
     $materialRetryBlock = (-not $hasPending) -and (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) -and (-not $packetPresent)
     $materialBlock = $materialInitialBlock -or $materialRetryBlock
     $blockKind = if ($boundaryBlock) { 'boundary' } elseif ($materialBlock) { 'material' } else { 'none' }
-    $blockWarranted = $canAssess -and ($blockKind -ne 'none')
+
+    # --- FR-045a STOP-INTENT classification (SAFETY-CRITICAL; FAIL-SAFE) --------------------------------------------
+    # Classify this Stop as continue|intermediate|real BEFORE the material-work packet enforcement, so an authorized
+    # in-phase workflow is neither stalled behind a status packet (continue) nor falsely handed back while owned async
+    # is in flight (intermediate). STRICTLY SCOPED to a MATERIAL, packet-less, non-boundary stop we could actually read
+    # ($blockKind -eq 'material' -and $canAssess). BOUNDARY stops, 'none', an unavailable classifier, and EVERY error
+    # leave $stopIntentOutcome at its 'real' default -> today's real-stop enforcement is preserved byte-for-byte. The
+    # classifier is dot-sourced fail-open: the ONE pure, self-contained contract file (sibling of bootstrap; no _load).
+    $stopIntentOutcome = 'real'   # FAIL-SAFE default: the existing real-stop enforcement, untouched.
+    $stopIntentReason = $null
+    $stopIntentContinueKey = $null
+    $stopIntentContinueCount = 0
+    if ($blockKind -eq 'material' -and $canAssess) {
+        try {
+            if (-not (Get-Command Resolve-ContinuousCoReviewStopIntent -ErrorAction SilentlyContinue) -and -not [string]::IsNullOrWhiteSpace($bootstrapDir)) {
+                $stopIntentPath = Join-Path (Split-Path $bootstrapDir -Parent) 'continuous-co-review/stop-intent-contract.ps1'
+                if (Test-Path -LiteralPath $stopIntentPath -PathType Leaf) { try { . $stopIntentPath } catch { $null = $_ } }
+            }
+            if (Get-Command Resolve-ContinuousCoReviewStopIntent -ErrorAction SilentlyContinue) {
+                $markerIntent = Get-ContinuousCoReviewStopIntentMarkerIntent -Text $lastAssistantText
+                # The GATE half of marker-and-gate: lifecycle confirms an already-authorized phase AND no pending
+                # boundary to cross. The marker alone never self-authorizes; the phase alone never proves work remains.
+                $authorizedWorkRemains = $hasBoundaryAuthorization -and $hasActiveLifecycleBoundary -and (-not $hasPending)
+                # Continue loop-guard: a CHANGED material surface key = intervening progress = read as 0; an UNCHANGED
+                # key accumulates. At the bound the classifier returns 'real' (the runaway-continue fallback to a packet).
+                $stopIntentContinueKey = 'continue|' + [string]$materialSignal.key
+                try {
+                    if (Test-Path -LiteralPath $continueGuardPath -PathType Leaf) {
+                        $cg = Get-Content -LiteralPath $continueGuardPath -Raw -Encoding UTF8 | ConvertFrom-Json -ErrorAction Stop
+                        if (($cg.PSObject.Properties.Name -contains 'key') -and ([string]$cg.key -eq $stopIntentContinueKey) -and ($cg.PSObject.Properties.Name -contains 'count')) {
+                            $stopIntentContinueCount = [int]$cg.count
+                        }
+                    }
+                }
+                catch { $null = $_ }
+                $continueGuardTripped = $stopIntentContinueCount -ge $script:SpecrewContinueLoopGuardBound
+                # v1 primary signals: the current-turn marker contract + the lifecycle boundary gate. UserActionRequired
+                # / AgentBlockedOrHandingBack / RequestedWorkComplete stay at their $false defaults - a same-stop review
+                # request / hand-back / completion is NOT inferred here in v1 (the marker is the agent's explicit continue
+                # assertion, the gate is authorization). OwnedWorkInFlight / RuntimeWorkKnownTerminal are host-native
+                # async signals this provider does not track (an `intermediate` marker is the async fallback).
+                $intent = Resolve-ContinuousCoReviewStopIntent -LifecycleBoundaryPending:$hasPending -MarkerIntent $markerIntent -MarkerFromAssistant:$true -AuthorizedWorkRemains:$authorizedWorkRemains -OwnedWorkInFlight:$false -RuntimeWorkKnownTerminal:$false -ContinueLoopGuardTripped:$continueGuardTripped
+                if ($null -ne $intent -and -not [string]::IsNullOrWhiteSpace([string]$intent.outcome)) {
+                    $stopIntentOutcome = [string]$intent.outcome
+                    $stopIntentReason = [string]$intent.reason
+                }
+            }
+        }
+        catch { $stopIntentOutcome = 'real'; $stopIntentReason = $null }  # FAIL-SAFE: any error -> the existing enforcement.
+    }
+    # Only a MATERIAL stop can flip these off 'real' (boundary/'none' never reach the classifier), so an unexpected
+    # outcome keeps $blockWarranted true (fails toward enforcement). Continue emits its own directive below; intermediate
+    # simply ends the turn (its async completion resumes the agent).
+    $stopIntentContinue = ($stopIntentOutcome -eq 'continue')
+    $stopIntentIntermediate = ($stopIntentOutcome -eq 'intermediate')
+    $blockWarranted = $canAssess -and ($blockKind -ne 'none') -and (-not $stopIntentContinue) -and (-not $stopIntentIntermediate)
 
     $journalPath = Join-Path $projectRoot '.specrew/runtime/conformance-journal.jsonl'
     $blockReason = $null
@@ -597,7 +654,19 @@ try {
     }
     else { 'na' }
 
-    if ($blockWarranted) {
+    if ($stopIntentContinue) {
+        # FR-045a CONTINUE: the current assistant turn declares the `continue` marker AND lifecycle authorization
+        # confirms remaining in-phase work. Do NOT render the five-part material packet; force-continue the turn with a
+        # SHORT continuation directive so the agent performs the NEXT authorized action (never another status packet).
+        # Increment the dedicated continue loop-guard for THIS material surface; once it reaches the bound the classifier
+        # returns 'real' (above) and the standard material packet fires instead - a runaway continue cannot loop forever.
+        $null = Set-SpecrewBlockCount -Path $continueGuardPath -Key $stopIntentContinueKey -Count ($stopIntentContinueCount + 1)
+        $sbC = New-Object System.Text.StringBuilder
+        [void]$sbC.AppendLine('Specrew: CONTINUATION DIRECTIVE - your last turn declared the continue marker while an already-authorized in-phase workflow still has remaining work. Continue the existing authorized workflow and perform the NEXT authorized action NOW, then stop again. Do NOT render a status packet; this is an internal continuation, not a human hand-back.')
+        if (-not [string]::IsNullOrWhiteSpace($stopIntentReason)) { [void]$sbC.AppendLine(('Reason: {0}' -f $stopIntentReason)) }
+        $blockReason = $sbC.ToString().TrimEnd()
+    }
+    elseif ($blockWarranted) {
         $count = Get-SpecrewBlockCount -Path $blockStatePath -Key $advanceKey
         if ($count -ge $script:SpecrewBlockCap) {
             # Over the consecutive-block cap - stop blocking to avoid a hang; degrade to a plain nudge this turn.
@@ -672,7 +741,10 @@ try {
         try {
             $jdir = Split-Path -Parent $journalPath
             if ($jdir -and -not (Test-Path -LiteralPath $jdir)) { New-Item -ItemType Directory -Path $jdir -Force | Out-Null }
-            $evt = if (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
+            # FR-045a: a continuation directive is NOT a packet-render block - label it distinctly so the flush-race
+            # forensic (which keys off 'stop-block' + a low dx_lat_hits to catch mid-flush truncation) does not treat a
+            # by-design non-packet continue message as a partial-read suspect.
+            $evt = if ($stopIntentContinue) { 'stop-continue' } elseif (-not [string]::IsNullOrWhiteSpace($blockReason)) { 'stop-block' } elseif ($capped) { 'stop-block-capped' } elseif ($intakeHit -or $rawHit) { 'nudge' } else { 'observe' }
             $jWorking = if ($null -ne $pending) { [string]$pending.WorkingBoundary } else { '' }
             $jAuth = if ($null -ne $pending) { [string]$pending.LastAuthorizedBoundary } else { '' }
             # dx_* = the actual inputs to the packetPresent decision, so a wrong block is no longer silent.
@@ -681,7 +753,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

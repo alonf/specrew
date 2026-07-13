@@ -48,6 +48,7 @@ $registry = @(
     @{ area = 'T019 FR-048 verification-plan seam contract - plan/command validation, path safety, auditable provenance, bounded timeout, evidence-join'; path = 'tests/continuous-co-review/unit/verification-plan-contract.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-048 verification-plan runner - ordered execution, record-every-attempt, engine-bounded timeout, never clean-on-failure'; path = 'tests/continuous-co-review/unit/verification-plan-runner.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 FR-045a stop-intent classifier - continue|intermediate|real precedence, marker corrections, packet consistency'; path = 'tests/continuous-co-review/unit/stop-intent-contract.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T019 FR-045a stop-intent WIRING into the conformance Stop-provider - continue directive / intermediate suppress / real fail-safe / boundary-never-downgraded / bounded runaway'; path = 'tests/integration/conformance-stop-intent-wiring.tests.ps1'; kind = 'script' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]
