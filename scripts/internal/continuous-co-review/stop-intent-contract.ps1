@@ -1,86 +1,115 @@
-# FR-045a STOP-INTENT classification (T019 piece 4b; dogfood 2026-07-13, corrected 2026-07-13). Classifies each
-# host Stop into THREE outcomes so an authorized workflow is neither stalled nor falsely handed back:
+# FR-045a STOP-INTENT classification (T019 piece 4b; dogfood + corrections 2026-07-13). Classifies each host Stop
+# into THREE outcomes so an authorized workflow is neither stalled nor falsely handed back:
 #
-#   continue     - authorized, immediately-executable owned work remains for THIS workflow and can proceed NOW;
-#                  no human decision/authorization/review/external action, and no required async result pending.
-#                  -> SUPPRESS the Stop: no packet, no message; the agent continues the existing workflow.
-#   intermediate - authorized work remains AND required owned ASYNC work is still running / awaiting a result;
-#                  the agent resumes from that existing work. -> ONE concise, rate-limited progress line + the
-#                  marker; no packet, no verdict marker; NEVER launch duplicate work.
-#   real         - the requested work is complete/ready to report; a lifecycle boundary; human judgment /
-#                  authorization / an external action is required; execution cannot continue after a failure /
-#                  timeout; or the agent genuinely, intentionally transfers control. -> existing packet rules.
+#   continue     - the CURRENT assistant turn declares the `continue` marker AND lifecycle authorization confirms
+#                  an already-authorized phase with NO unapproved boundary to cross, AND no async is pending, AND
+#                  the message carries no review request / question / completion / blocker / hand-back → SUPPRESS
+#                  the Stop (no packet); the agent performs the NEXT authorized action (not another status packet).
+#                  MARKER-AND-GATE: neither the marker nor the phase alone suffices — the marker asserts only that
+#                  executable work remains; the lifecycle state supplies authorization; work is never self-
+#                  authorized across a pending boundary.
+#   intermediate - required owned ASYNC work is in flight (the T019 registry, OR the assistant's `intermediate`
+#                  marker as the fallback for host-native work with no registry entry) → ONE concise, rate-limited
+#                  progress line + the marker; no packet, no verdict marker; NEVER launch duplicate work.
+#   real         - a pending boundary, human judgment/authorization/an external action, terminal completion, an
+#                  unrecoverable failure, or an intentional hand-back → existing boundary / non-boundary packet.
 #
-# THE FALSE PREMISE THIS CORRECTS: "no in-flight background work => real stop" is WRONG. Absence of async work
-# only means the event is not an async yield; it does NOT create a reason to hand control to the user. And "the
-# session is long / context is thin / a natural checkpoint" is an internal implementation concern, NEVER a
-# downstream SDLC boundary - context compaction handles session length, so it can never justify `real`.
+# THE FALSE PREMISE THIS CORRECTS: "no in-flight background work ⇒ real stop" is WRONG. Absence of async work only
+# means the event is not an async yield; it does NOT create a reason to hand control to the user. And "the session
+# is long / context is thin / a natural checkpoint" is an internal concern, NEVER a boundary — compaction handles
+# session length, so it can never justify `real`.
 #
-# PURE + DETERMINISTIC. The Stop hook computes the boolean inputs (marker in THIS turn's assistant message, the
-# T019 in-flight registry, the pending-verdict state, whether "What Needs Your Review" carries a real decision,
-# message heuristics) and this function classifies. NOT a per-host capability matrix: a host with no background
-# execution never produces an async signal, so it is only ever `continue` (work remains) or `real`.
+# PURE + DETERMINISTIC. The Stop hook computes the boolean inputs (the marker in THIS turn's assistant message via
+# Get-ContinuousCoReviewStopIntentMarkerIntent, the lifecycle/authorization gate state, the T019 in-flight
+# registry, whether the message carries a review request / completion / hand-back, and the loop-guard counter) and
+# this function classifies. NOT a per-host capability matrix: a host with no background execution never produces
+# an async signal, so it is only ever `continue` (marker + gate) or `real`.
 #
-# MARKER RULES (maintainer correction 2026-07-13): the marker is a portable FALLBACK for host-native async work
-# that has NO Specrew registry entry, never sole authority. A marker QUOTED IN USER CONTENT is IGNORED (not a
-# signal, and it does NOT independently force `real`). Only an AUTHORITATIVELY-KNOWN-TERMINAL task invalidates a
-# stale intermediate marker; an UNKNOWN / UNREGISTERED task does NOT invalidate it (that is what the fallback is
-# for). A pending boundary, a required user action, an explicit hand-back, or a known-terminal task override it.
+# MARKER RULES: a marker is honoured ONLY as the CURRENT assistant turn's own declaration — a marker quoted in
+# USER content or carried from an EARLIER transcript turn is IGNORED (not a signal, and it does NOT force `real`).
+# Only an AUTHORITATIVELY-KNOWN-TERMINAL task invalidates a stale `intermediate` marker; an UNKNOWN/UNREGISTERED
+# task does not (that is what the fallback is for).
+#
+# LOOP GUARD: a `continue` requires INTERVENING material progress / changed workflow state between consecutive
+# continues. Repeated `continue` markers with neither must not loop forever — after the bounded retry the hook
+# trips the guard and this returns a REAL stop (a specific internal-routing failure), never an infinite loop.
 
-$script:ContinuousCoReviewStopIntentMarker = '<!-- SPECREW-STOP-INTENT: intermediate -->'
+$script:ContinuousCoReviewStopIntentContinueMarker = '<!-- SPECREW-STOP-INTENT: continue -->'
+$script:ContinuousCoReviewStopIntentIntermediateMarker = '<!-- SPECREW-STOP-INTENT: intermediate -->'
 
 function Get-ContinuousCoReviewStopIntentMarker {
-    return $script:ContinuousCoReviewStopIntentMarker
+    param([ValidateSet('continue', 'intermediate')][string]$Intent = 'intermediate')
+    if ($Intent -eq 'continue') { return $script:ContinuousCoReviewStopIntentContinueMarker }
+    return $script:ContinuousCoReviewStopIntentIntermediateMarker
+}
+
+# Pure parser: the stop-intent a marker declares in $Text — 'continue' | 'intermediate' | ''. The CALLER passes
+# ONLY the current assistant turn's text (never quoted user content / earlier turns); provenance is the hook's
+# job. Both markers present ⇒ ambiguous ⇒ '' (fail-closed to no clear intent, so neither continue nor the marker
+# async-signal fires).
+function Get-ContinuousCoReviewStopIntentMarkerIntent {
+    param([AllowNull()][AllowEmptyString()][string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return '' }
+    $hasContinue = $Text.Contains($script:ContinuousCoReviewStopIntentContinueMarker)
+    $hasIntermediate = $Text.Contains($script:ContinuousCoReviewStopIntentIntermediateMarker)
+    if ($hasContinue -and $hasIntermediate) { return '' }
+    if ($hasContinue) { return 'continue' }
+    if ($hasIntermediate) { return 'intermediate' }
+    return ''
 }
 
 function Resolve-ContinuousCoReviewStopIntent {
     param(
-        # REAL-forcing (a genuine handoff) - any one wins, overriding an intermediate marker:
+        # REAL-forcing (precedence 1) — a genuine handoff. Any one wins, overriding a marker.
         [bool]$LifecycleBoundaryPending = $false,   # a lifecycle verdict boundary is pending (a human handoff is due)
-        [bool]$UserActionRequired = $false,         # a human decision / authorization / REVIEW / external action is required
-                                                    # (a substantive "What Needs Your Review" item sets this)
-        [bool]$AgentBlockedOrHandingBack = $false,  # execution cannot continue after a failure/timeout, OR the agent intentionally hands control back
-        [bool]$RequestedWorkComplete = $false,      # the requested work is terminal and ready for a final report
+        [bool]$UserActionRequired = $false,         # a substantive review request, a user question, or a required external action
+        [bool]$AgentBlockedOrHandingBack = $false,  # execution cannot continue (a blocker), or the agent intentionally hands control back
+        [bool]$RequestedWorkComplete = $false,      # terminal completion; a final report is due
 
-        # ASYNC (intermediate) signal:
+        # ASYNC / intermediate (precedence 2):
         [bool]$OwnedWorkInFlight = $false,          # required owned async work is running / awaiting a result (the T019 registry)
-        [bool]$MarkerPresent = $false,              # the SPECREW-STOP-INTENT marker is in the assistant's CURRENT-turn message
-        [bool]$MarkerFromAssistant = $true,         # that marker is the assistant's own turn, NOT quoted/echoed user content (else IGNORED)
-        [bool]$RuntimeWorkKnownTerminal = $false,   # the registry AUTHORITATIVELY knows the referenced task is terminal (invalidates a stale marker);
-                                                    # UNKNOWN / UNREGISTERED does NOT set this (the marker remains valid as the fallback)
+        [bool]$RuntimeWorkKnownTerminal = $false,   # the registry AUTHORITATIVELY knows the referenced task is terminal (invalidates a stale marker)
 
-        # CONTINUE signal:
-        [bool]$AuthorizedWorkRemains = $false       # authorized, immediately-executable owned work remains for the CURRENT workflow
-                                                    # (already-authorized, not merely a disk task list, and NOT beyond an unapproved boundary)
+        # MARKER — the current assistant turn's declared intent:
+        [ValidateSet('', 'continue', 'intermediate')][string]$MarkerIntent = '',
+        [bool]$MarkerFromAssistant = $true,         # the marker is the CURRENT assistant turn (else IGNORED: user-quoted / stale)
+
+        # CONTINUE authorization (precedence 3 — the GATE half of marker-and-gate):
+        [bool]$AuthorizedWorkRemains = $false,      # lifecycle confirms an already-authorized phase AND no unapproved boundary to cross
+
+        # LOOP GUARD:
+        [bool]$ContinueLoopGuardTripped = $false    # repeated continue with no intervening material progress / unchanged workflow → bounded to a real stop
     )
     $mk = {
         param([string]$outcome, [bool]$enforcePacket, [bool]$emitProgress, [string]$reason)
         [pscustomobject]@{ outcome = $outcome; enforce_packet = $enforcePacket; emit_progress = $emitProgress; reason = $reason }
     }
 
-    # 1. REAL - a pending boundary, a required human/external action (incl. a review request), or an
-    #    unrecoverable failure / intentional hand-back. These OVERRIDE any intermediate marker.
-    if ($LifecycleBoundaryPending)  { return & $mk 'real' $true $false 'a lifecycle verdict boundary is pending (a human handoff is due)' }
-    if ($UserActionRequired)        { return & $mk 'real' $true $false 'a human decision, authorization, review, or external action is required' }
-    if ($AgentBlockedOrHandingBack) { return & $mk 'real' $true $false 'execution cannot continue automatically, or the agent intentionally hands control back' }
+    # A marker counts ONLY as the current assistant turn's own declaration (never user-quoted / stale / earlier turn).
+    $effectiveMarker = if ($MarkerFromAssistant) { $MarkerIntent } else { '' }
 
-    # 2. REAL - the requested work is complete/terminal; a final report is due.
+    # 1. REAL — a pending boundary, a required human/external action, terminal completion, or a failure / hand-back.
+    if ($LifecycleBoundaryPending)  { return & $mk 'real' $true $false 'a lifecycle verdict boundary is pending (a human handoff is due)' }
+    if ($UserActionRequired)        { return & $mk 'real' $true $false 'a substantive review request, a user question, or a required external action' }
+    if ($AgentBlockedOrHandingBack) { return & $mk 'real' $true $false 'execution cannot continue automatically, or the agent intentionally hands control back' }
     if ($RequestedWorkComplete)     { return & $mk 'real' $true $false 'the requested work is complete and ready for a final report' }
 
-    # 3. INTERMEDIATE - required owned ASYNC work is still in flight. The signal is the registry OR the assistant's
-    #    own marker (the fallback for host-native work with no registry entry); a user-content marker is ignored;
-    #    an authoritatively-known-terminal task invalidates a stale marker, an unknown/unregistered one does not.
-    $assistantMarker = $MarkerPresent -and $MarkerFromAssistant
-    $asyncInFlight = ($OwnedWorkInFlight -or $assistantMarker) -and (-not $RuntimeWorkKnownTerminal)
+    # 2. INTERMEDIATE — required owned ASYNC work in flight (the registry OR the assistant's `intermediate` marker),
+    #    unless authoritatively known-terminal. Async takes precedence over continue.
+    $asyncInFlight = ($OwnedWorkInFlight -or ($effectiveMarker -eq 'intermediate')) -and (-not $RuntimeWorkKnownTerminal)
     if ($asyncInFlight) { return & $mk 'intermediate' $false $true 'required owned async work is in flight; a one-line operational yield - the agent resumes when it completes' }
 
-    # 4. CONTINUE - authorized, immediately-executable owned work remains for the current workflow and can proceed
-    #    NOW. Suppress the Stop entirely (no packet, no message); the agent continues. Session length / context /
-    #    "a natural checkpoint" are NOT reasons to hand back - compaction handles length.
-    if ($AuthorizedWorkRemains) { return & $mk 'continue' $false $false 'authorized work remains and can proceed now; suppress the stop and continue the existing workflow' }
+    # 3. CONTINUE — MARKER-AND-GATE: the current-assistant `continue` marker AND confirmed authorization (neither
+    #    alone). The loop guard bounds repeated no-progress continues to a real routing failure.
+    if (($effectiveMarker -eq 'continue') -and $AuthorizedWorkRemains) {
+        if ($ContinueLoopGuardTripped) {
+            return & $mk 'real' $true $false 'continue-loop-guard tripped: repeated continue with no intervening material progress / unchanged workflow - an internal routing failure surfaced as a real stop'
+        }
+        return & $mk 'continue' $false $false 'the current assistant turn declares continue AND lifecycle authorization confirms remaining in-phase work; suppress the stop and perform the next authorized action'
+    }
 
-    # 5. REAL - nothing to do and nothing pending: an explicit real stop WITH a reason, never an empty handoff.
-    return & $mk 'real' $true $false 'no authorized work remains and no async result is pending; an explicit real stop'
+    # 4. Otherwise → normal real-stop enforcement, with an explicit reason (never an empty handoff).
+    return & $mk 'real' $true $false 'no current-turn continue marker with authorization, no async in flight, and no other trigger; normal real-stop enforcement applies'
 }
 
 # FR-045a PACKET CONSISTENCY (maintainer correction 2026-07-13). A real-stop packet's five sections MUST agree on

@@ -272,12 +272,15 @@ with no background execution never produces an async signal, so it is only ever 
 | --- | --- | --- |
 | `real` | true / false | (1) a pending lifecycle boundary, a required human/external action (a substantive "What Needs Your Review" item counts via `UserActionRequired`), or an unrecoverable failure / intentional hand-back (`AgentBlockedOrHandingBack`); (2) terminal requested-work completion (`RequestedWorkComplete`); (5) nothing to do + nothing pending — an explicit real stop with a reason |
 | `intermediate` | false / true | (3) required owned ASYNC work in flight (`OwnedWorkInFlight` or a valid assistant marker) — one concise, rate-limited progress line + the marker; never duplicate work; resume when the result arrives |
-| `continue` | false / false | (4) authorized, immediately-executable owned work remains (`AuthorizedWorkRemains`) — SUPPRESS the Stop; no packet, no message; continue the existing workflow |
+| `continue` | false / false | (4) MARKER-AND-GATE: the CURRENT assistant turn's `continue` marker (`MarkerIntent='continue'` + `MarkerFromAssistant`) AND lifecycle authorization (`AuthorizedWorkRemains`) — SUPPRESS the Stop; no packet, no message; perform the NEXT authorized action. `ContinueLoopGuardTripped` bounds repeated no-progress continues to a real routing failure |
 
-`AuthorizedWorkRemains` must be already-authorized work for the current workflow (not merely a disk task list)
-and never work beyond an unapproved boundary. "Needs nothing from the user" is NOT sufficient for
-`continue`/`intermediate` (final completion also needs nothing yet is `real`); "the session is long / context
-is thin / a natural checkpoint" is an internal concern and NEVER a boundary — compaction handles session length.
+MARKER-AND-GATE: `continue` requires BOTH the current-turn marker (asserting executable work remains) AND
+`AuthorizedWorkRemains` (already-authorized work for the current workflow, not a disk task list, never beyond an
+unapproved boundary) — neither alone. "Needs nothing from the user" is NOT sufficient for `continue`/`intermediate`
+(final completion also needs nothing yet is `real`); "the session is long / context is thin / a natural
+checkpoint" is an internal concern and NEVER a boundary — compaction handles session length. LOOP GUARD: repeated
+`continue` markers with no intervening material progress / changed workflow state are bounded
+(`ContinueLoopGuardTripped`) to a real internal-routing failure, never an infinite loop.
 
 ### Marker rules
 

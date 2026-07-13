@@ -870,13 +870,16 @@ shipped firewall (T004–T006):
   workflow is neither stalled nor falsely handed back. The false premise "no
   in-flight work ⇒ real stop" is REJECTED: absence of async work only means the
   event is not an async yield; it does NOT create a reason to hand control to the
-  user. `continue`: authorized, immediately-executable OWNED work remains for the
-  current workflow and can proceed now, with no human decision/authorization/
-  review/external action and no required async result pending → SUPPRESS the Stop
-  (no packet, no message); the agent continues the existing workflow. Do not
-  infer `continue` merely from a task list on disk — it must be work already
-  authorized for the current workflow, and work beyond an unapproved boundary is
-  never `continue`. `intermediate`: authorized work remains AND required owned
+  user. `continue` (MARKER-AND-GATE): the CURRENT assistant turn declares the
+  marker `<!-- SPECREW-STOP-INTENT: continue -->` AND lifecycle state confirms an
+  already-authorized phase with NO unapproved boundary to cross, AND no async is
+  pending, AND the message carries no review request / question / completion /
+  blocker / hand-back → SUPPRESS the Stop (no packet, no message) and return an
+  internal continuation directive; the agent then performs the NEXT authorized
+  action, not another status packet. Neither the marker nor the phase alone
+  suffices: the marker asserts only that executable work remains; the lifecycle
+  state supplies authorization; work is never self-authorized across a pending
+  boundary, and `continue` is never inferred merely from a task list on disk. `intermediate`: authorized work remains AND required owned
   ASYNC work is still running/awaiting a result and the agent resumes from it →
   ONE concise, rate-limited progress sentence plus the assistant-only marker
   `<!-- SPECREW-STOP-INTENT: intermediate -->`, with NO packet, NO verdict marker,
@@ -889,9 +892,13 @@ shipped firewall (T004–T006):
   boundary OR a required human/external action (a substantive "What Needs Your
   Review" item counts) OR an unrecoverable failure / intentional hand-back →
   real; (2) terminal requested-work completion → real; (3) required owned async
-  work in flight → intermediate; (4) authorized immediately-executable work
-  remains → continue; (5) otherwise → real, WITH an explicit reason, never an
-  empty handoff. "Needs nothing from the user" is NOT sufficient for
+  work in flight → intermediate; (4) a current-assistant `continue` marker PLUS
+  confirmed lifecycle authorization → continue; (5) otherwise → real, WITH an
+  explicit reason, never an empty handoff. LOOP GUARD: a `continue` requires
+  intervening material progress / changed workflow state between consecutive
+  continues; repeated no-progress continues are bounded and, past the bound, the
+  hook trips to a REAL stop with a specific internal-routing failure (never an
+  infinite loop). "Needs nothing from the user" is NOT sufficient for
   `continue`/`intermediate` (final completion also needs nothing yet is `real`);
   "the session is long / context is thin / a natural checkpoint" is an internal
   concern and NEVER a boundary — compaction handles session length. MARKER: a
