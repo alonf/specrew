@@ -299,4 +299,56 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
+
+    # T019 step 6 piece 2c: the reap enforces LEASE authority (verdict authority is not ownership alone) - a
+    # completion that is not the current lease OWNER for its generation is advisory only; and the OWNER's terminal
+    # retirement RELEASES its lease so the queued pending tree becomes eligible.
+    It 'T019 step 6 piece 2c: a NON-OWNER completion is advisory only (not blocked), with a lease-authority note' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            $currentDigest = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+            $lineage = 'L-nonowner'
+            # An in-flight review 'incumbent' OWNS the lease for this lineage + generation (= the current tree).
+            (Request-ContinuousCoReviewLineageLease -RepoRoot $root -LineageId $lineage -Generation $currentDigest -RunId 'incumbent' -AcquiringPid $PID).acquired | Should -BeTrue
+            # A DIFFERENT run completes (blocking) for the same lineage + current digest, but is NOT the lease owner.
+            $blockingVerdict = '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.txt", "comment": "dummy", "disposition": "blocking" } ] }'
+            $runId = 'other-run'
+            $pendingDir = Join-Path $root '.specrew/review/pending'
+            $runDir = Join-Path $pendingDir $runId
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $resultPath = Join-Path $runDir 'result.out'
+            Set-Content -LiteralPath $resultPath -Value $blockingVerdict -Encoding UTF8
+            ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = $currentDigest; lineage_id = $lineage; generation = $currentDigest; owner_token = 'other-token' } | ConvertTo-Json) |
+                Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+
+            $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
+            $reap.stop_block | Should -BeNullOrEmpty -Because 'a non-lease-owner completion must NOT block using its result'
+            (@($reap.inject_notes) -join "`n") | Should -Match 'lease authority' -Because 'the non-owner completion is surfaced as advisory'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'T019 step 6 piece 2c: the OWNER completion RELEASES its lease on retirement' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            $currentDigest = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+            $lineage = 'L-owner'
+            $acq = Request-ContinuousCoReviewLineageLease -RepoRoot $root -LineageId $lineage -Generation $currentDigest -RunId 'owner-run' -AcquiringPid $PID
+            $acq.acquired | Should -BeTrue
+            (Get-ContinuousCoReviewLineageLease -RepoRoot $root -LineageId $lineage) | Should -Not -BeNullOrEmpty
+            $passVerdict = '{ "schema_version": "1.0", "status": "no_findings", "disposition": "pass", "blocking": false, "findings": [] }'
+            $runId = 'owner-run'
+            $pendingDir = Join-Path $root '.specrew/review/pending'
+            $runDir = Join-Path $pendingDir $runId
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $resultPath = Join-Path $runDir 'result.out'
+            Set-Content -LiteralPath $resultPath -Value $passVerdict -Encoding UTF8
+            ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = $currentDigest; lineage_id = $lineage; generation = $currentDigest; owner_token = $acq.lease.owner_token } | ConvertTo-Json) |
+                Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+
+            $null = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
+            (Get-ContinuousCoReviewLineageLease -RepoRoot $root -LineageId $lineage) | Should -BeNullOrEmpty -Because 'the owner completion released the lease on retirement (feeding any pending tree forward)'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }

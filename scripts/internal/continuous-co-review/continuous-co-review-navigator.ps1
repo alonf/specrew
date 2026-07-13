@@ -398,6 +398,17 @@ function Clear-ContinuousCoReviewNavigatorEntry {
     # record the gate enforces lives separately in .specrew/review/inline/ (written by the promotion above).
     param([Parameter(Mandatory)][string]$RepoRoot, [Parameter(Mandatory)][string]$RegistryPath, [AllowNull()]$Registry)
     try {
+        # T019 step 6 piece 2c: releasing the OWNER's per-lineage lease on terminal retirement makes any QUEUED
+        # pending newest tree eligible for the next generation. OWNER-ONLY (token + generation guarded inside);
+        # a no-op for a non-lease entry (older records) or a non-owner.
+        if (($null -ne $Registry) -and (Get-Command -Name 'Complete-ContinuousCoReviewLineageLease' -ErrorAction SilentlyContinue)) {
+            $lgLineage = if ($Registry.PSObject.Properties.Name -contains 'lineage_id') { [string]$Registry.lineage_id } else { '' }
+            if (-not [string]::IsNullOrWhiteSpace($lgLineage)) {
+                $lgGen = if ($Registry.PSObject.Properties.Name -contains 'generation') { [string]$Registry.generation } else { '' }
+                $lgTok = if ($Registry.PSObject.Properties.Name -contains 'owner_token') { [string]$Registry.owner_token } else { '' }
+                try { $null = Complete-ContinuousCoReviewLineageLease -RepoRoot $RepoRoot -LineageId $lgLineage -Generation $lgGen -OwnerToken $lgTok } catch { $null = $_ }
+            }
+        }
         $runDir = $null
         if ($null -ne $Registry -and ($Registry.PSObject.Properties.Name -contains 'run_dir')) { $runDir = [string]$Registry.run_dir }
         if (Test-Path -LiteralPath $RegistryPath -PathType Leaf) { Remove-Item -LiteralPath $RegistryPath -Force -ErrorAction SilentlyContinue }
@@ -618,11 +629,41 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     if (($null -ne $stObj) -and ($stObj.PSObject.Properties.Name -contains 'budget_bumped')) { try { if ([bool]$stObj.budget_bumped) { $runLabels.budget = 'time-extended' } } catch { $null = $_ } }
                 }
                 catch { $null = $_ }
-                if ($status -eq 'done' -and $verdict.ok -and $identityConflict) {
-                    # T019 step 6 (resolver hardening, maintainer 2026-07-13): the registry's two EXPLICIT reviewed-tree
-                    # identities disagree, so WHICH tree was reviewed is ambiguous. FAIL CLOSED - do NOT block, promote,
-                    # or stamp findings using either value; surface the named conflict for a human to reconcile.
-                    $result.inject_notes.Add(("[co-review] run {0}: {1}. The reviewed-tree identity is ambiguous, so this run's findings are NEITHER blocked, promoted, nor stamped - reconcile the registry's reviewed_digest_tree_id vs reviewed_tree_id." -f $runId, [string]$treeIdRes.reason)) | Out-Null
+                # T019 step 6 piece 2c: a completion that is NOT the current lease OWNER for its generation must never
+                # promote or block (fail closed to advisory) - the same posture as an identity conflict. The
+                # superseded-by-current + identity-conflict dimensions are handled below/above; this adds the lease
+                # OWNERSHIP + generation dimensions of Test-...LeasePromotionAuthority. Inert for older registries
+                # that carry no lineage_id (no lease was acquired).
+                $leaseNonAuth = $false
+                $leaseNonAuthReason = ''
+                if ($status -eq 'done' -and $verdict.ok -and -not $identityConflict) {
+                    try {
+                        $lgLineage = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'lineage_id')) { [string]$reg.lineage_id } else { '' }
+                        if (-not [string]::IsNullOrWhiteSpace($lgLineage) -and (Get-Command -Name 'Test-ContinuousCoReviewLeasePromotionAuthority' -ErrorAction SilentlyContinue) -and (Get-Command -Name 'Get-ContinuousCoReviewLineageLease' -ErrorAction SilentlyContinue)) {
+                            $lgLease = Get-ContinuousCoReviewLineageLease -RepoRoot $RepoRoot -LineageId $lgLineage
+                            $lgTok = if ($reg.PSObject.Properties.Name -contains 'owner_token') { [string]$reg.owner_token } else { '' }
+                            # Isolate the OWNER + GENERATION dimensions: pass current==result + identity=true so ONLY a
+                            # not-lease-owner / generation-mismatch trips here (superseded + conflict handled elsewhere).
+                            $lgAuth = Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lgLease -CompletingRunId $runId -CompletingOwnerToken $lgTok -ResultReviewedDigest ([string]$treeId) -CurrentDigest ([string]$treeId) -IdentityJoinsPass $true
+                            if ((-not $lgAuth.authoritative) -and ($lgAuth.reason -in @('not-lease-owner', 'generation-mismatch'))) {
+                                $leaseNonAuth = $true
+                                $leaseNonAuthReason = [string]$lgAuth.reason
+                            }
+                        }
+                    }
+                    catch { $null = $_ }
+                }
+                if ($status -eq 'done' -and $verdict.ok -and ($identityConflict -or $leaseNonAuth)) {
+                    if ($identityConflict) {
+                        # T019 step 6 (resolver hardening, maintainer 2026-07-13): the registry's two EXPLICIT reviewed-tree
+                        # identities disagree, so WHICH tree was reviewed is ambiguous. FAIL CLOSED - do NOT block, promote,
+                        # or stamp findings using either value; surface the named conflict for a human to reconcile.
+                        $result.inject_notes.Add(("[co-review] run {0}: {1}. The reviewed-tree identity is ambiguous, so this run's findings are NEITHER blocked, promoted, nor stamped - reconcile the registry's reviewed_digest_tree_id vs reviewed_tree_id." -f $runId, [string]$treeIdRes.reason)) | Out-Null
+                    }
+                    else {
+                        # T019 step 6 piece 2c: NOT the current lease owner for its generation -> advisory only.
+                        $result.inject_notes.Add(("[co-review] run {0}: lease authority '{1}' - this completion is not the current lease owner for its generation, so its findings are advisory only (NOT promoted or blocked)." -f $runId, $leaseNonAuthReason)) | Out-Null
+                    }
                 }
                 elseif ($status -eq 'done' -and $verdict.ok) {
                     # T083: route the REAL reviewer's full findings (all severities) to the durable
