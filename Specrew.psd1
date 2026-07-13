@@ -258,6 +258,7 @@
         'scripts/internal/continuous-co-review/co-review-trunk-resolver.ps1',
         'scripts/internal/continuous-co-review/continuous-co-review-navigator.ps1',
         'scripts/internal/continuous-co-review/escalation-latch.ps1',
+        'scripts/internal/continuous-co-review/host-support-tier.ps1',
         'scripts/internal/continuous-co-review/inline-review-gate-evaluator.ps1',
         'scripts/internal/continuous-co-review/review-blackboard-writer.ps1',
         'scripts/internal/continuous-co-review/review-identity-contracts.ps1',
