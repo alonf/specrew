@@ -230,7 +230,10 @@ exposes `all_succeeded` (false if any command failed, and false when nothing ran
 the reviewed-tree digest AND its `command_id`; env values are redacted (only NAMES recorded). The T019
 join validator (`Test-ContinuousCoReviewPlanEvidenceInjectable`) REJECTS evidence that is
 digest-mismatched, DUPLICATE (a `command_id` appearing twice), or UNJOINABLE (a `command_id` with no
-matching plan command).
+matching plan command). **Fail-fast (maintainer decision 2026-07-13)**: because `command_id` uniqueness is
+part of the plan schema, a DUPLICATE `command_id` (a malformed identity graph) is rejected at plan validation
+BEFORE any command executes — the runner returns `verification-plan-invalid` with ZERO command side effects;
+the join-validator duplicate rejection above is retained as defense-in-depth for evidence that still arrives.
 
 ## Entity: ReviewIdentitySet — iteration 003 (T019, characterization 2026-07-13)
 
@@ -253,29 +256,45 @@ Validation: an empty/unknown digest never matches (fail-closed); digest-mismatch
 every review outcome (a stale result never blocks/decides/authorizes); `launch_review` is never asserted on the
 Stop path (the navigator owns firing).
 
-## Entity: StopIntent — iteration 003 (T019 piece 4b, FR-045a, 2026-07-13)
+## Entity: StopIntent — iteration 003 (T019 piece 4b, FR-045a, corrected 2026-07-13)
 
-**Purpose**: classify each host Stop as `intermediate` (an operational YIELD while Specrew-OWNED work is in
-flight and the agent intends to continue) or `real` (a genuine handoff), so an intermediate yield gets ONE
-progress sentence + the marker instead of the five-part material-work packet, while real stops keep the
-existing boundary / non-boundary packet rules unchanged. PURE + DETERMINISTIC (`stop-intent-contract.ps1`
-`Resolve-ContinuousCoReviewStopIntent`); the Stop hook computes the inputs (the marker in THIS turn's assistant
-message, the T019 in-flight registry, the pending-verdict state, message heuristics). NOT a per-host capability
-matrix — a host with no background execution never produces an in-flight signal and behaves exactly as before.
+**Purpose**: classify each host Stop into THREE outcomes — `continue`, `intermediate`, or `real` — so an
+authorized workflow is neither stalled nor falsely handed back. The false premise "no in-flight work ⇒ real"
+is REJECTED: absence of async work does not create a reason to hand control to the user. PURE + DETERMINISTIC
+(`stop-intent-contract.ps1` `Resolve-ContinuousCoReviewStopIntent`); the Stop hook computes the boolean inputs
+(the marker in THIS turn's assistant message, the T019 in-flight registry, the pending-verdict state, whether
+"What Needs Your Review" carries a real decision, message heuristics). NOT a per-host capability matrix — a host
+with no background execution never produces an async signal, so it is only ever `continue` or `real`.
 
-### Attributes
+### Outcomes + precedence (evaluated 1→5 in order)
 
-| Attribute | Type | Source | Contract |
-| --- | --- | --- | --- |
-| intermediate signal | bool | `MarkerPresent`+`MarkerFromAssistant` OR `OwnedWorkInFlight` (T019 registry) | intermediate requires ALL of: work started; still running/pending; agent retains ownership + intends to continue; no user decision/auth/external/review needed |
-| marker | assistant-only | `<!-- SPECREW-STOP-INTENT: intermediate -->` in the assistant's CURRENT turn | a portable FALLBACK, never sole authority; a marker from USER content is not authority |
-| contradiction | bool | `LifecycleBoundaryPending` / `RuntimeWorkTerminalOrAbsent` / `MessageRequestsUserAction` / `AgentBlockedOrHandingBack` / marker-from-user | ANY forces `real` + normal enforcement, overriding the marker |
-| result | { intent; enforce_packet; reason } | the classifier | `intermediate` → `enforce_packet=$false` (one progress sentence + marker; no packet, no verdict-boundary marker); `real` → `enforce_packet=$true` (existing rules) |
+| Outcome | enforce_packet / emit_progress | When |
+| --- | --- | --- |
+| `real` | true / false | (1) a pending lifecycle boundary, a required human/external action (a substantive "What Needs Your Review" item counts via `UserActionRequired`), or an unrecoverable failure / intentional hand-back (`AgentBlockedOrHandingBack`); (2) terminal requested-work completion (`RequestedWorkComplete`); (5) nothing to do + nothing pending — an explicit real stop with a reason |
+| `intermediate` | false / true | (3) required owned ASYNC work in flight (`OwnedWorkInFlight` or a valid assistant marker) — one concise, rate-limited progress line + the marker; never duplicate work; resume when the result arrives |
+| `continue` | false / false | (4) authorized, immediately-executable owned work remains (`AuthorizedWorkRemains`) — SUPPRESS the Stop; no packet, no message; continue the existing workflow |
 
-Validation: "needs nothing from the user" is NOT sufficient for intermediate (final completion also needs
-nothing, yet is `real`); the defining condition is OWNED WORK REMAINS ACTIVE + intent to continue. On ANY
-contradiction, classify `real`. Repeated intermediate messages are rate-limited to one per unchanged in-flight
-work generation (a runtime-wiring concern, not part of this pure contract).
+`AuthorizedWorkRemains` must be already-authorized work for the current workflow (not merely a disk task list)
+and never work beyond an unapproved boundary. "Needs nothing from the user" is NOT sufficient for
+`continue`/`intermediate` (final completion also needs nothing yet is `real`); "the session is long / context
+is thin / a natural checkpoint" is an internal concern and NEVER a boundary — compaction handles session length.
+
+### Marker rules
+
+The marker is a portable FALLBACK for host-native async work with NO registry entry, never sole authority. A
+marker QUOTED IN USER CONTENT (`MarkerFromAssistant=false`) is IGNORED — not a signal and it does NOT force
+`real`. Only an AUTHORITATIVELY-KNOWN-TERMINAL task (`RuntimeWorkKnownTerminal`) invalidates a stale marker; an
+UNKNOWN/UNREGISTERED task does not (that is what the fallback is for). A pending boundary, a required user
+action, a hand-back, or a known-terminal task override it. Repeated intermediate messages are rate-limited to
+one per unchanged in-flight work generation (a runtime-wiring concern, not part of this pure contract).
+
+### Packet consistency (`Test-ContinuousCoReviewStopPacketConsistency`)
+
+A real stop's five sections MUST agree that control transferred. If "What Needs Your Review" carries a
+decision/approval/unresolved-tradeoff/confirmation, then "What I Need From You" MUST state the exact requested
+response and "What Happens Next" MUST say the work is HELD pending it; the packet MUST NOT say "nothing
+blocking" / "I'll proceed". A substantive review request combined with "nothing required" / automatic
+continuation FAILS validation. An informational note is NOT a review item and does not belong under that section.
 
 ## Entity: ReviewArtifactClass — iteration 003 (T019)
 

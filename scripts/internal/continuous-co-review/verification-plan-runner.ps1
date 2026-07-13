@@ -94,7 +94,16 @@ function Invoke-ContinuousCoReviewVerificationPlan {
     # STATE GATE: an unconfigured plan runs NOTHING and fabricates NO success.
     $state = Resolve-ContinuousCoReviewVerificationPlanState -Plan $Plan -RepoRoot $resolvedRoot
     if ($state.state -eq 'verification-not-configured') {
-        return [pscustomobject]@{ state = 'verification-not-configured'; command_count = 0; evidence = @(); all_succeeded = $false }
+        return [pscustomobject]@{ state = 'verification-not-configured'; command_count = 0; evidence = @(); all_succeeded = $false; reason = $state.reason }
+    }
+
+    # STRUCTURAL GATE (maintainer decision 2026-07-13): a structurally-invalid plan - a malformed IDENTITY GRAPH,
+    # e.g. a DUPLICATE command_id - is rejected FAIL-FAST, BEFORE any command executes, so it produces ZERO command
+    # side effects. (T019's evidence-join duplicate rejection stays as DEFENSE-IN-DEPTH for records that still
+    # arrive somehow.) command_id uniqueness is part of the plan schema, so it belongs at the validation boundary.
+    $structural = Test-ContinuousCoReviewVerificationPlan -Plan $Plan -RepoRoot $resolvedRoot
+    if (-not $structural.valid) {
+        return [pscustomobject]@{ state = 'verification-plan-invalid'; command_count = $structural.command_count; evidence = @(); all_succeeded = $false; reason = $structural.reason }
     }
 
     # Best-effort current digest, used to STAMP synthetic failure records so every record (real +
@@ -178,5 +187,5 @@ function Invoke-ContinuousCoReviewVerificationPlan {
 
     $failedCount = @($evidence | Where-Object { -not [bool]$_.command_succeeded }).Count
     $allSucceeded = (@($evidence).Count -gt 0) -and ($failedCount -eq 0)
-    return [pscustomobject]@{ state = 'configured'; command_count = @($commands).Count; evidence = @($evidence); all_succeeded = $allSucceeded }
+    return [pscustomobject]@{ state = 'configured'; command_count = @($commands).Count; evidence = @($evidence); all_succeeded = $allSucceeded; reason = $null }
 }

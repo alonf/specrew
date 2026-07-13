@@ -771,11 +771,14 @@ shipped firewall (T004–T006):
     provider/profile identity where applicable) makes it auditable — not a bare enum.
   - **No secrets**: neither the plan nor recorded evidence embeds secret environment VALUES; environment
     customization is expressed as named references / an allowlist, and recorded values are redacted.
-  - **Execution + evidence**: T018 runs commands in DECLARED ORDER and records EVERY attempted command; a
-    failure MUST NEVER become missing evidence or a clean result (a non-zero exit / timeout is recorded as a
-    failed command, never dropped, never clean). Exit 0 records `command_succeeded`, never "all tests passed".
-    `require_result=true` means the command MUST produce a schema-valid `SpecrewTestResult` — its absence or
-    invalidity is a verification FAILURE; otherwise process evidence stays valid with counts unavailable.
+  - **Execution + evidence**: A structurally-invalid plan — a malformed identity graph, e.g. a DUPLICATE
+    `command_id` — is rejected FAIL-FAST at plan validation BEFORE any command executes, producing ZERO command
+    side effects (the T019 evidence-join duplicate rejection remains as defense-in-depth). Otherwise T018 runs
+    commands in DECLARED ORDER and records EVERY attempted command; a failure MUST NEVER become missing evidence
+    or a clean result (a non-zero exit / timeout is recorded as a failed command, never dropped, never clean).
+    Exit 0 records `command_succeeded`, never "all tests passed". `require_result=true` means the command MUST
+    produce a schema-valid `SpecrewTestResult` — its absence or invalidity is a verification FAILURE; otherwise
+    process evidence stays valid with counts unavailable.
   - **No discovery**: an absent/empty plan resolves to an explicit `verification-not-configured` state (never
     a silent success, never a Specrew/Pester default); T018/T019 MUST NOT discover, infer, or invent commands
     (no framework inference from file extensions) and accept plans of ARBITRARY commands + MIXED technologies
@@ -861,36 +864,52 @@ shipped firewall (T004–T006):
   iteration-003 continuous co-review, decision/verdict-shaped packets were
   rendered while co-reviews were still blocking — see
   `iterations/003/research/stop-ordering-defect.md`.)
-- **FR-045a (stop-INTENT classification; dogfood incident 2026-07-13,
-  maintainer-instructed)**: On a background-capable harness a host Stop may be
-  an OPERATIONAL YIELD while Specrew-OWNED work is still in flight — not a
-  conversational handoff — so Specrew MUST classify each Stop as `intermediate`
-  or `real`. A Stop is `intermediate` ONLY when ALL hold: required work has
-  already started; it is still running or its result is pending; the agent
-  retains ownership and intends to continue; and no user decision,
-  authorization, external action, or review is required. An intermediate Stop's
-  message is ONE concise progress sentence plus the assistant-only marker
-  `<!-- SPECREW-STOP-INTENT: intermediate -->`, with NO five-part packet, no
-  "What Needs Your Review" / "What I Need From You", no choices/prompts, no
-  request to nudge/wait/return, and NO verdict-boundary marker; the host's
-  normal background-completion mechanism returns the result and the agent
-  continues automatically, joining the existing task identity. A Stop is `real`
-  when any of these holds: work is complete and ready to report; a lifecycle
-  boundary was reached; human judgment/authorization is required; an external
+- **FR-045a (stop-INTENT classification; dogfood incident + correction
+  2026-07-13, maintainer-instructed)**: Specrew MUST classify each host Stop into
+  THREE outcomes — `continue`, `intermediate`, or `real` — so an authorized
+  workflow is neither stalled nor falsely handed back. The false premise "no
+  in-flight work ⇒ real stop" is REJECTED: absence of async work only means the
+  event is not an async yield; it does NOT create a reason to hand control to the
+  user. `continue`: authorized, immediately-executable OWNED work remains for the
+  current workflow and can proceed now, with no human decision/authorization/
+  review/external action and no required async result pending → SUPPRESS the Stop
+  (no packet, no message); the agent continues the existing workflow. Do not
+  infer `continue` merely from a task list on disk — it must be work already
+  authorized for the current workflow, and work beyond an unapproved boundary is
+  never `continue`. `intermediate`: authorized work remains AND required owned
+  ASYNC work is still running/awaiting a result and the agent resumes from it →
+  ONE concise, rate-limited progress sentence plus the assistant-only marker
+  `<!-- SPECREW-STOP-INTENT: intermediate -->`, with NO packet, NO verdict marker,
+  and NEVER launching duplicate work. `real`: the requested work is complete and
+  ready to report; a lifecycle boundary; human judgment/authorization/an external
   action is required; execution failed/timed out and cannot continue
-  automatically; or the agent intentionally hands control back. Real stops keep
-  the existing boundary / non-boundary packet rules unchanged. "The agent needs
-  nothing from the user" is NOT sufficient for intermediate — final completion
-  also needs nothing yet is REAL; the defining condition is that OWNED WORK
-  REMAINS ACTIVE and the agent intends to continue. The marker is a portable
-  FALLBACK, not sole authority: the Stop hook also consults known Specrew
-  in-flight runtime state (the T019 registry). On CONTRADICTION — a pending
-  lifecycle verdict boundary, runtime state saying the work is terminal/absent,
-  a message requesting user action, the agent saying it is blocked/handing back,
-  or a marker sourced from user content — classify as REAL and apply normal
-  enforcement. This is NOT a per-host capability matrix: a host with no
-  background execution never produces an in-flight signal and behaves exactly as
-  before.
+  automatically; or the agent genuinely, intentionally transfers control → the
+  existing boundary / non-boundary / final-report packet rules, clearly stating
+  the actual user action when one is required. PRECEDENCE: (1) a pending lifecycle
+  boundary OR a required human/external action (a substantive "What Needs Your
+  Review" item counts) OR an unrecoverable failure / intentional hand-back →
+  real; (2) terminal requested-work completion → real; (3) required owned async
+  work in flight → intermediate; (4) authorized immediately-executable work
+  remains → continue; (5) otherwise → real, WITH an explicit reason, never an
+  empty handoff. "Needs nothing from the user" is NOT sufficient for
+  `continue`/`intermediate` (final completion also needs nothing yet is `real`);
+  "the session is long / context is thin / a natural checkpoint" is an internal
+  concern and NEVER a boundary — compaction handles session length. MARKER: a
+  portable FALLBACK for host-native async work with no Specrew registry entry,
+  never sole authority. A marker QUOTED IN USER CONTENT is IGNORED (not a signal
+  and it does NOT force real). Only an AUTHORITATIVELY-KNOWN-TERMINAL task
+  invalidates a stale marker; an UNKNOWN/UNREGISTERED task does not (that is what
+  the fallback is for). A pending boundary, a required user action, a hand-back,
+  or a known-terminal task override it. NOT a per-host capability matrix. PACKET
+  CONSISTENCY: a real stop's sections MUST agree that control transferred. If
+  "What Needs Your Review" carries a decision, approval request, unresolved
+  tradeoff, or requested confirmation, then it IS a review-required real stop:
+  "What I Need From You" MUST state the exact requested response, "What Happens
+  Next" MUST say the work is HELD pending it, and the packet MUST NOT say "nothing
+  blocking" / "flag this if…" / "I'll proceed"; an informational note is NOT a
+  review item and does not belong under that section. A substantive review request
+  combined with "nothing required" or automatic continuation FAILS packet
+  validation.
 
 ### Non-Functional Requirements
 

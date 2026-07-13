@@ -188,4 +188,27 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         (@(Test-ContinuousCoReviewPlanEvidenceInjectable -PlanEvidence @($foreign) -Plan $plan -CurrentDigest $digest))[0].classification |
             Should -Be 'unjoinable-no-matching-command'
     }
+
+    It 'FAIL-FAST: a DUPLICATE command_id is rejected at validation BEFORE any command runs — ZERO side effects (maintainer decision 2026-07-13)' {
+        $repo = New-PlanRunRepo
+        # Both commands are individually valid + would create a sentinel file if executed; the plan is structurally
+        # invalid (duplicate command_id 'dup'), so the runner must reject it fail-fast and run NOTHING.
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-dup'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'dup'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'Set-Content -LiteralPath ran-a.txt -Value a'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } },
+                [pscustomobject]@{ command_id = 'dup'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'Set-Content -LiteralPath ran-b.txt -Value b'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+        $result.state | Should -Be 'verification-plan-invalid'
+        [string]$result.reason | Should -Match 'duplicate command_id'
+        @($result.evidence).Count | Should -Be 0 -Because 'a malformed identity graph runs ZERO commands'
+        $result.all_succeeded | Should -BeFalse
+        # PROOF of zero side effects: neither command's sentinel exists, and no digest-bound evidence was recorded.
+        Test-Path -LiteralPath (Join-Path $repo 'ran-a.txt') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $repo 'ran-b.txt') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $repo '.specrew/review/test-evidence') | Should -BeFalse -Because 'no command ran, so no evidence was recorded'
+    }
 }
