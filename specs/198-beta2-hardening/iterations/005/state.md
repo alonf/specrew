@@ -1,0 +1,185 @@
+# Iteration State: 005
+
+**Schema**: v1
+**Last Completed Task**: T039 (integration + support-tier reconciliation + documentation — the receipt is now written from a REAL host fire by the dispatcher, the tiers + hook-health + Codex preflight are surfaced through a non-protected doctor aggregator, a reconciliation suite proves the tier model / health receipts / evidence stay mutually consistent, and the user-facing support-tier + Codex-trust docs shipped; T035-T038 previously committed, see below)
+**Tasks Remaining**: none (Iteration 005 complete). FR-054 (Codex plugin packaging) is NOT a Beta2 deliverable and is deferred to issue #3084 / Beta3.
+**In Progress**: none
+**Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
+**Updated**: 2026-07-14T00:00:00Z
+
+<!--
+  Current Phase / Iteration Status are set canonically by the sync
+  machinery (Proposal 090) once execution begins — omitted at planning
+  scaffold time to match the sanctioned shape (iteration 002 precedent),
+  never hand-authored with a non-canonical value.
+-->
+
+## Execution Summary
+
+- **T035 done (FR-050): truthful host+surface support-tier model + renderer.**
+  Shipped `scripts/internal/continuous-co-review/host-support-tier.ps1` — the ONE
+  place a host+surface support CLAIM is recorded (data + a pure lookup + a
+  doctor/status renderer `Format-SpecrewHostSupportTierReport`). The closed set is
+  exactly four tiers (`verified` / `configuration-compatible` / `unsupported` /
+  `unverified`), enforced structurally so a fabricated tier is a build-time error.
+  CLI is the authoritative surface; the false "Copilot VS Code / cloud gets CLI
+  Stop-hook enforcement" claim is removed — Copilot VS Code and cloud are
+  `unsupported`, Cursor desktop is `unverified`, and an unknown host/surface fails
+  honest to `unverified` (never a fabricated `verified`). References issue #3084 for
+  the Beta3 follow-up. Commit 56f783c1. Test:
+  `tests/continuous-co-review/unit/host-support-tier.Tests.ps1`.
+
+- **T036 done (FR-051): Codex Stop-contract conformance + untrusted-headless preflight + fail-open guard.**
+  An ISOLATED executable fixture against the installed `codex-cli 0.144.1` (scratch
+  dir, `CODEX_HOME` redirected, real `~/.codex` verified byte-unchanged) proved the
+  OBSERVED contract: `{"decision":"block","reason":…}` on stdout at exit 0 is the
+  shape that force-continues; the Codex-manual `{"continue":…,"stopReason":…}` shape
+  does NOT gate; exit-2 does NOT gate; a malformed emit SILENTLY fails open; and an
+  UNTRUSTED headless hook is SILENTLY skipped. Evidence:
+  `iterations/005/evidence/codex-stop-contract-characterization.md` (commit
+  0f6eff24). Specrew's existing `StopBlockShape = 'decision-block'` is confirmed
+  correct, so the adapter response shape needed NO change; the load-bearing follow-ups
+  are the trust gate and the silent fail-open. Those are addressed by two consumers in
+  `hook-health-receipt.ps1`: `Test-SpecrewCodexHeadlessGovernanceReady` (the
+  untrusted-headless PREFLIGHT — ready ONLY when a current healthy codex/cli receipt
+  exists, else NOT-ready with an actionable instruction; NEVER silently governs) and
+  `Test-SpecrewHookGateEmissionWellFormed` (the Stop-gate emission validator so a
+  regression to a malformed/continue-shape/garbage emit is caught, never a silent
+  bypass). Tests: `codex-headless-preflight.Tests.ps1`,
+  `codex-stop-gate-fail-open.Tests.ps1`.
+
+- **T037 done (FR-052): Copilot CLI contract verification.**
+  An isolated executable probe of `GitHub Copilot CLI 1.0.70` (fresh scratch dir,
+  `COPILOT_HOME` redirected, real `~/.copilot` verified byte-for-byte unchanged, 2003
+  files) proved: USER-level `sessionStart` / `userPromptSubmitted` / `agentStop` hooks
+  fire in BOTH `copilot -p` and interactive mode and are NOT trust-gated (so Specrew's
+  user-level governance hook is not subject to the repo-trust gate); REPO-level hooks in
+  `-p` require the `trustedFolders` opt-in (an untrusted `-p` folder silently skips repo
+  hooks); `agentStop {"decision":"block","reason":…}` blocks + force-continues with the
+  reason as the next prompt; allow terminates; NO built-in loop guard; and malformed /
+  non-zero-exit agentStop FAILS OPEN. The INTENTIONAL reviewer suppression
+  (`SPECREW_REFOCUS_DISABLE=1` — the hook FIRES then no-ops) is cleanly distinguished
+  from an ACCIDENTAL never-fired bypass by a single observable: did the hook fire?
+  Evidence: `iterations/005/evidence/copilot-cli-contract-characterization.md` (commit
+  589c6d26). Test: `tests/continuous-co-review/unit/copilot-cli-contract.Tests.ps1`.
+
+  **Maintainer ruling on the T036/T037 evidence (2026-07-14):** flip both `codex`/`cli`
+  and `copilot`/`cli` from `unverified` → `verified`, each carrying an HONEST evidence
+  PROVENANCE (what was RUNNER-observed vs HUMAN-observed) plus any NARROWER limitation,
+  recorded on the row so the claim never overstates — a bare `verified` with no recorded
+  evidence is exactly the false-green this feature exists to prevent. For codex/cli:
+  Stop response-shape gating is runner-observed (the T036 probe), and the interactive
+  native trust request + subsequent hook execution in a real Codex session is
+  human-observed (the maintainer exercised it directly); the untrusted-headless silent
+  skip is recorded SEPARATELY as a narrower limitation, NOT a whole-CLI downgrade. For
+  copilot/cli: the T037 probe is runner-observed; the repo-hook `trustedFolders` opt-in
+  is the recorded limitation, and the user-level hook Specrew rides is not trust-gated.
+  Commit b8fefe8f. **No ~/.codex mutation:** Codex owns its trust decision — Specrew
+  NEVER writes `~/.codex`, NEVER seeds a `trusted_hash`, and NEVER passes
+  `--dangerously-bypass-hook-trust` as a standing workaround.
+
+- **T038 done (FR-053): sanitized hook-health receipts + classifier + doctor/status renderer.**
+  Shipped `scripts/internal/continuous-co-review/hook-health-receipt.ps1`: the receipt
+  WRITER (`Write-SpecrewHookHealthReceipt` — sanitized BY CONSTRUCTION to EXACTLY six
+  fields: host; surface; event; observed_host_version; timestamp;
+  adapter_contract_version — no prompt, argument, environment value, or secret can
+  enter), the READER + CLASSIFIER (`Resolve-SpecrewHookHealth`), and the renderer
+  (`Format-SpecrewHookHealthReport`). The health rules are a closed set with NO
+  fail-open-to-healthy branch: present + fresh + well-formed + host-version-matched +
+  adapter-contract-matched → `healthy`; MISSING / host-version DRIFT / adapter-contract
+  DRIFT → `unverified`; STALE / MALFORMED / CONFLICTING → `degraded`. Missing health is
+  NEVER `healthy`. Commit cf53400a. Test:
+  `tests/continuous-co-review/unit/hook-health-receipt.Tests.ps1`.
+
+- **T039 done (this iteration's integration + reconciliation + documentation) — UNCOMMITTED per the "do not commit" directive:**
+
+  1. **Real host-fired receipt (FR-053 integration).** Wired
+     `Write-SpecrewHookHealthReceipt` into the hook DISPATCHER
+     (`specrew-hook-dispatcher.ps1`) so a GENUINE SessionStart or Stop-class event
+     (`SessionStart` / `Stop` / `stop` / `agentStop`) records a sanitized receipt for
+     the current host + surface=`cli` + event. The write is placed EARLY (right after
+     the project-root self-gate) so a real fire is captured even if later
+     catalog/state parsing degrades to a no-op. It is STRICTLY fail-open: a new
+     `Write-DispatcherHookHealthReceipt` guards on the lifecycle event, resolves the
+     module the same fail-open way sibling helpers are resolved
+     (`Resolve-DispatcherHookHealthModulePath` — SPECREW_MODULE_PATH / PSScriptRoot /
+     ProjectRoot walk-up, then the installed module base; Test-Path; dot-source;
+     Get-Command guard), and wraps everything in try/catch so a module-absent /
+     resolve / write failure NEVER blocks or alters normal dispatch (the whole
+     dispatcher still exits 0). The observed host version has no cheap+bounded source
+     (the host event payload carries none, and a per-fire `--version` subprocess would
+     tax the tight Stop budget), so it records `'unknown'` unless a zero-cost
+     `SPECREW_OBSERVED_HOST_VERSION` override is set — honest, never fabricated. The
+     change is applied to all three tracked dispatcher copies
+     (`scripts/internal/specrew-hook-dispatcher.ps1`,
+     `extensions/specrew-speckit/scripts/specrew-hook-dispatcher.ps1`, and the
+     `.specify/…` project-side mirror); the extension + `.specify` copies are
+     byte-identical, and the module copy differs only by its pre-existing self-leak
+     markers + trailing-newline (no new divergence introduced). Proven end-to-end: a
+     real dispatcher invocation writes `claude-cli-sessionstart.json` /
+     `…-stop.json` / `…-agentstop.json`, skips PostToolUse, and the receipt resolves to
+     `healthy` when fresh.
+
+  2. **Doctor/status surfacing (FR-050 + FR-053 + FR-051), without editing the protected surface.**
+     The natural home (`specrew hooks status` in `scripts/specrew-hooks.ps1`) is an
+     F-184 PROTECTED file, so per the design a NEW non-protected aggregator module was
+     created: `scripts/internal/continuous-co-review/host-support-doctor.ps1`
+     (`Format-SpecrewHostSupportDoctorReport`) stitches the three renders — the
+     host-support tiers + the hook-health evidence + the Codex-headless-governance-ready
+     result — into a single doctor/status STRING. It self-loads its two siblings
+     fail-open so it is truly DROP-IN: the protected surface can add exactly ONE
+     dot-source + ONE call (documented inline at the bottom of the module) with no edit
+     to the protected file, and any non-protected status path can call it the same way.
+     Wired into `scripts/internal/continuous-co-review/_load.ps1` and the `Specrew.psd1`
+     FileList. The aggregator only FORMATS what its resolvers return — it can never
+     upgrade a tier or a health status (no health-washing seam).
+
+  3. **Reconciliation suite (FR-050 + FR-053 + FR-051).**
+     `tests/continuous-co-review/unit/host-support-reconciliation.Tests.ps1` (18 tests,
+     registered in `tests/f198-regression-suite.ps1`) reconciles the tier model, the
+     hook-health receipts, and the committed evidence against each other:
+     codex/cli + copilot/cli = `verified` AND carry their provenance; cloud (any host)
+     = `unsupported`; Copilot VS Code = `unsupported`; an unknown host/surface =
+     `unverified`; the health closed set is exactly {healthy, unverified, degraded} and
+     missing/stale/malformed is NEVER healthy; the committed evidence files corroborate
+     each flip; and — the core cross-model invariant — a `verified` TIER never implies
+     `healthy` HEALTH (a surface-contract claim is not a live firing hook), so the two
+     axes cannot cross-contaminate.
+
+  4. **Documentation.** User-facing support-tier + host-compatibility section added to
+     `docs/troubleshooting.md` (the four tiers; CLI authoritative; Claude/Codex
+     config-compatible surfaces; Copilot VS Code + cloud `unsupported`; Cursor
+     `unverified`; a symptom-guide entry) plus the Codex one-time interactive-trust
+     instruction (start Codex interactively once, approve the native trust prompt, let a
+     hook fire to record a receipt; Specrew never writes `~/.codex`). References issue
+     #3084 for Beta3. It does NOT reintroduce any false "Copilot VS Code / cloud gets
+     CLI Stop-hook enforcement" claim. This `state.md` is the Iteration 005 execution
+     record.
+
+## Notes
+
+- **Verification.** The full F-198 honesty regression suite
+  (`pwsh -File tests/f198-regression-suite.ps1`) is GREEN — all 35 suites pass,
+  including the self-leak firewall (the dispatcher comments + the aggregator are in
+  scanned surfaces and stay deny-list clean), T035/T036/T037/T038, and the new T039
+  reconciliation suite (18/18). The reconciliation suite also passes standalone.
+  End-to-end dispatcher firing (SessionStart / Stop / agentStop write a receipt;
+  PostToolUse does not; every dispatch exits 0) and the doctor aggregator render
+  (verified tiers with provenance + a fresh receipt reading `healthy` + the Codex
+  preflight flipping ready) were both exercised directly.
+
+- **Protected-file discipline (F-184).** No edit to `scripts/specrew-hooks.ps1` or
+  `scripts/internal/specrew-hook-health.ps1`. The doctor surfacing is delivered through
+  the new non-protected aggregator + a documented one-line call the maintainer may add
+  to the protected `Show-Status` at their discretion.
+
+- **Mirror parity.** The task's explicit parity requirement (extension source ↔
+  `.specify` mirror) holds byte-for-byte. The broader `ProviderMirrorParity.Tests.ps1`
+  (module ↔ extension ↔ `.specify`) is a self-host meta-test that is not part of the
+  F-198 suite and was already RED on an unrelated provider (`specrew-bootstrap-provider`)
+  before this work; the dispatcher change introduces no NEW divergence between the module
+  and extension copies.
+
+- **Scope.** FR-054 (Codex plugin packaging regression) is NOT a Beta2 deliverable and
+  stays in issue #3084 / Beta3, alongside richer desktop / IDE / cloud certification and
+  host capability negotiation. Nothing here implements it.

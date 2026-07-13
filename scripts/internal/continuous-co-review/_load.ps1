@@ -23,6 +23,10 @@ $proposal197ReviewerModules = @(
     # F-198 iter-005 / T038 (FR-053) + T036 preflight (FR-051): sanitized hook-health receipts (missing is never
     # healthy) + the Codex untrusted-headless governance preflight (read-only; never mutates ~/.codex). Self-contained.
     'hook-health-receipt.ps1'
+    # F-198 iter-005 / T039 (FR-050 + FR-053 + FR-051): the doctor/status AGGREGATOR - one call renders the
+    # host-support tiers + hook-health evidence + the Codex headless preflight. Loaded AFTER its two siblings
+    # above (it also self-loads them fail-open so it stays drop-in for the protected doctor surface).
+    'host-support-doctor.ps1'
     'review-blackboard-writer.ps1'
     'inline-review-gate-evaluator.ps1'
     'review-run-index-writer.ps1'

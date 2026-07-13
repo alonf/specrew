@@ -774,6 +774,80 @@ function Write-StopBlockOutput {
 }
 
 # ---------------------------------------------------------------------------
+# Hook-health receipt (FR-053): durable PROOF-OF-FIRE. A deployed hook config is
+# NOT proof the host loaded and fired it; only a receipt written from a GENUINE
+# host-triggered SessionStart/Stop fire is. This records that receipt best-effort.
+# STRICTLY fail-open: a module-absent / resolve / dot-source / write failure must
+# NEVER block or alter the hook's normal dispatch (every path swallows and returns).
+# ---------------------------------------------------------------------------
+function Resolve-DispatcherHookHealthModulePath {
+    # Locate the shipped hook-health-receipt helper (it lives in the Specrew MODULE tree,
+    # not the extension tree), the same fail-open way Find-DispatcherHostManifestPath resolves
+    # a host manifest: walk SPECREW_MODULE_PATH / PSScriptRoot / ProjectRoot up to a dir that
+    # holds it, then fall back to the installed module base. Returns $null if it is not found.
+    param([AllowNull()][string]$ProjectRoot)
+    $rel = 'scripts/internal/continuous-co-review/hook-health-receipt.ps1'
+    foreach ($start in @($env:SPECREW_MODULE_PATH, $PSScriptRoot, $ProjectRoot)) {
+        if ([string]::IsNullOrWhiteSpace($start) -or -not (Test-Path -LiteralPath $start -PathType Container)) { continue }
+        $candidate = (Resolve-Path -LiteralPath $start).Path
+        while (-not [string]::IsNullOrWhiteSpace($candidate)) {
+            $probe = Join-Path $candidate $rel
+            if (Test-Path -LiteralPath $probe -PathType Leaf) { return $probe }
+            $parent = Split-Path -Parent $candidate
+            if ($parent -eq $candidate) { break }
+            $candidate = $parent
+        }
+    }
+    try {
+        $module = Get-Module -ListAvailable Specrew | Sort-Object Version -Descending |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.ModuleBase $rel) -PathType Leaf } |
+            Select-Object -First 1
+        if ($module) { return (Join-Path $module.ModuleBase $rel) }
+    }
+    catch { $null = $_ }
+    return $null
+}
+
+function Test-DispatcherIsLifecycleReceiptEvent {
+    # The lifecycle proof points FR-053 records: SessionStart and any Stop-class event (the
+    # neutral DispatcherEvent is 'Stop'/'stop' for most hosts, 'agentStop' for copilot). Every
+    # other event (PostToolUse / UserPromptSubmit / PreToolUse / PreInvocation) is skipped.
+    param([AllowNull()][string]$EventName)
+    if ([string]::IsNullOrWhiteSpace($EventName)) { return $false }
+    $n = $EventName.Trim().ToLowerInvariant()
+    return ($n -eq 'sessionstart' -or $n -eq 'stop' -or $n -eq 'agentstop')
+}
+
+function Get-DispatcherObservedHostVersion {
+    # The observed host version stamped into the receipt. The host event payload carries NO
+    # host CLI version, and a per-fire `--version` subprocess would tax the tight Stop budget -
+    # so this stays cheap+bounded: honor a zero-cost explicit override
+    # (SPECREW_OBSERVED_HOST_VERSION, when a launch path set one), else the honest 'unknown'
+    # (an unobserved version is recorded as unknown, never fabricated).
+    $v = $env:SPECREW_OBSERVED_HOST_VERSION
+    if (-not [string]::IsNullOrWhiteSpace($v)) { return $v.Trim() }
+    return 'unknown'
+}
+
+function Write-DispatcherHookHealthReceipt {
+    # Record a sanitized hook-health receipt for a genuine host fire (best-effort). Returns
+    # nothing and swallows EVERY failure so the hook's dispatch is never affected (fail-open).
+    param([string]$HostKind, [string]$EventName, [AllowNull()][string]$ProjectRoot)
+    try {
+        if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
+        if (-not (Test-DispatcherIsLifecycleReceiptEvent -EventName $EventName)) { return }
+        if (-not (Get-Command -Name 'Write-SpecrewHookHealthReceipt' -ErrorAction SilentlyContinue)) {
+            $modulePath = Resolve-DispatcherHookHealthModulePath -ProjectRoot $ProjectRoot
+            if ([string]::IsNullOrWhiteSpace($modulePath)) { return }
+            . $modulePath
+        }
+        if (-not (Get-Command -Name 'Write-SpecrewHookHealthReceipt' -ErrorAction SilentlyContinue)) { return }
+        $null = Write-SpecrewHookHealthReceipt -ProjectRoot $ProjectRoot -HostName $HostKind -Surface 'cli' -Event $EventName -ObservedHostVersion (Get-DispatcherObservedHostVersion)
+    }
+    catch { $null = $_ }
+}
+
+# ---------------------------------------------------------------------------
 # Main — every failure path inside this try lands on exit 0 (P1).
 # ---------------------------------------------------------------------------
 try {
@@ -785,6 +859,11 @@ try {
         Write-DecisionOnlyNoopIfNeeded -EventName $Event -Binding $earlyHostRuntimeBinding
         exit 0
     }
+
+    # FR-053: the hook has genuinely fired inside a real Specrew project - record the sanitized
+    # lifecycle receipt (SessionStart / Stop) as durable proof-of-fire. Fully fail-open; placed
+    # EARLY so a real fire is captured even if later catalog/state parsing degrades to a no-op.
+    Write-DispatcherHookHealthReceipt -HostKind $HostKind -EventName $Event -ProjectRoot $projectRoot
 
     # Host event JSON: -EventJson (tests/bindings) or stdin (Claude hooks).
     $rawEvent = $EventJson

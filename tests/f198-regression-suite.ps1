@@ -54,6 +54,7 @@ $registry = @(
     @{ area = 'T038 FR-053 hook-health receipts - sanitized 6-field receipt, missing/stale/malformed/conflicting/drift never healthy, doctor/status renderer'; path = 'tests/continuous-co-review/unit/hook-health-receipt.Tests.ps1'; kind = 'pester' }
     @{ area = 'T036 FR-051 Codex untrusted-headless governance preflight - ready only when healthy, no ~/.codex mutation, actionable instruction, never silent-govern'; path = 'tests/continuous-co-review/unit/codex-headless-preflight.Tests.ps1'; kind = 'pester' }
     @{ area = 'T036 FR-051 Codex Stop-gate fail-open regression - dispatcher emits well-formed decision-block JSON; malformed/continue-shape/garbage rejected (never a silent bypass)'; path = 'tests/continuous-co-review/unit/codex-stop-gate-fail-open.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T039 FR-050/FR-053/FR-051 host-support/hook-health/evidence reconciliation - codex+copilot cli verified WITH provenance, cloud/Copilot-VS-Code unsupported, unknown->unverified, closed status never health-washes, verified tier != healthy health, doctor aggregator surfaces all three'; path = 'tests/continuous-co-review/unit/host-support-reconciliation.Tests.ps1'; kind = 'pester' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]
