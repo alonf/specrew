@@ -30,11 +30,14 @@ function Write-Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor R
 $repoRoot = (Resolve-Path (Join-Path -Path $PSScriptRoot -ChildPath '..\..')).Path
 $manifestPath = Join-Path -Path $repoRoot -ChildPath 'Specrew.psd1'
 
-# Roots that ship through a mechanism OTHER than the manifest FileList, so their files are
-# NOT expected to be individually declared. The publish workflow copies docs/ recursively
-# (publish-module.yml: "Include docs/ recursively"), independent of FileList; deriving it
-# as a scan root would false-positive every doc that isn't separately pinned.
-$nonManifestShipRoots = @('docs')
+# Roots EXCLUDED from the broad source->declared scan. The publish workflow copies docs/ recursively
+# (publish-module.yml: "Include docs/ recursively"), independent of FileList; deriving it as a scan root would
+# false-positive every doc that isn't separately pinned. specs/ is a DEV feature-spec tree that ships NOTHING via
+# the manifest EXCEPT the explicitly-declared specs/197-continuous-co-review/contracts/ runtime schemas (the
+# Squad-runtime deploy copies them to .specrew/review/contracts). Those files are pinned in FileList AND their
+# packaging completeness is guarded directly by tests/integration/packaged-artifact-deploy.Tests.ps1, so scanning
+# ALL of specs/ here would false-positive every non-deployable feature-spec file (spec.md, tasks.md, iterations/, ...).
+$nonManifestShipRoots = @('docs', 'specs')
 
 function Get-DeployableRoots {
     param([string[]]$FileList, [string[]]$ExcludeRoots = @())
