@@ -254,4 +254,49 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
+
+    # T019 step 6 (resolver HARDENING, maintainer 2026-07-13): prefer the EXPLICIT reviewed ids
+    # (reviewed_digest_tree_id, then reviewed_tree_id); use the generic tree_id ONLY as a legacy fallback when
+    # neither explicit id exists; and if the two explicit ids DISAGREE, fail closed with a named conflict so no
+    # caller blocks, promotes, or stamps findings using either value.
+    It 'T019 step 6 resolver: precedence (explicit ids first, tree_id legacy-only) + fail-closed conflict' {
+        # agreeing explicit ids (a differing legacy tree_id is ignored, no conflict).
+        $agree = Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry ([pscustomobject]@{ reviewed_digest_tree_id = 'aaa'; reviewed_tree_id = 'aaa'; tree_id = 'zzz' })
+        $agree.conflict | Should -BeFalse
+        $agree.tree_id | Should -Be 'aaa'
+        # reviewed_digest_tree_id preferred over a differing tree_id (tree_id is NOT an explicit id -> no conflict).
+        $pref = Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry ([pscustomobject]@{ reviewed_digest_tree_id = 'aaa'; tree_id = 'zzz' })
+        $pref.conflict | Should -BeFalse; $pref.tree_id | Should -Be 'aaa'
+        # reviewed_tree_id alone (explicit).
+        (Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry ([pscustomobject]@{ reviewed_tree_id = 'bbb' })).tree_id | Should -Be 'bbb'
+        # LEGACY: tree_id only (neither explicit) -> legacy fallback.
+        (Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry ([pscustomobject]@{ tree_id = 'ccc' })).tree_id | Should -Be 'ccc'
+        # CONFLICT: two populated EXPLICIT ids disagree -> fail closed, named conflict, no usable value.
+        $conflict = Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry ([pscustomobject]@{ reviewed_digest_tree_id = 'aaa'; reviewed_tree_id = 'bbb' })
+        $conflict.conflict | Should -BeTrue
+        $conflict.tree_id | Should -BeNullOrEmpty
+        $conflict.reason | Should -Match 'reviewed-tree-identity-conflict'
+        # none present.
+        (Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry ([pscustomobject]@{ run_id = 'x' })).tree_id | Should -BeNullOrEmpty
+    }
+
+    It 'T019 step 6 (resolver hardening): a done blocking verdict with CONFLICTING reviewed-tree ids fails closed - no stop-block, a named conflict note' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            $blockingVerdict = '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.txt", "comment": "dummy", "disposition": "blocking" } ] }'
+            $runId = 'conflict-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+            $pendingDir = Join-Path $root '.specrew/review/pending'
+            $runDir = Join-Path $pendingDir $runId
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $resultPath = Join-Path $runDir 'result.out'
+            Set-Content -LiteralPath $resultPath -Value $blockingVerdict -Encoding UTF8
+            ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = ('a' * 40); reviewed_tree_id = ('b' * 40) } | ConvertTo-Json) |
+                Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+
+            $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
+            $reap.stop_block | Should -BeNullOrEmpty -Because 'an ambiguous reviewed-tree identity must NOT block using either value'
+            (@($reap.inject_notes) -join "`n") | Should -Match 'reviewed-tree-identity-conflict' -Because 'the conflict is surfaced for a human to reconcile'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
