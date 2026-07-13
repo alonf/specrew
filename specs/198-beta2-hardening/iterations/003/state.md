@@ -639,13 +639,19 @@
   across 5+ co-review sites with divergent, incomplete candidate lists (past `dev`-trunk + fresh-checkout fixes
   had propagated to only one copy each; none did upstream / single-pre-feature-branch / fail-loud). Consolidated
   into ONE `co-review-trunk-resolver.ps1` (`Resolve-ContinuousCoReviewTrunkRef`) with strict 6-level precedence
-  — explicit `co_review_trunk` → `origin/HEAD` → branch upstream → conventional refs (main/master/develop/dev)
-  → local-only single pre-feature branch → else FAIL with a config instruction. It NEVER creates/renames/moves a
-  branch; greenfield (only the feature branch) → empty-tree baseline (not an ambiguity). The merge-base anchor,
-  signoff gate + wiring, worktree baseline resolver, lineage resolver, CLI, navigator, and worktree-navigator
-  all consume it; every `'main'` default + duplicated loop removed; the baseline resolver now fails LOUDLY on a
-  genuinely ambiguous trunk instead of silently reviewing everything. trunk-resolver.Tests.ps1 (10 tests, the
-  6 required scenarios + precedence + greenfield + never-mutates) = F-198 registry suite #25; full registry
+  — explicit `co_review_trunk` → `origin/HEAD` → the current branch's tracking-REMOTE HEAD → conventional refs
+  (main/master/develop/dev) → local-only single pre-feature branch → else FAIL with a config instruction. It
+  NEVER creates/renames/moves a branch; greenfield (only the feature branch) → empty-tree baseline (not an
+  ambiguity). The merge-base anchor, signoff gate + wiring, worktree baseline resolver, lineage resolver, CLI,
+  navigator, and worktree-navigator all consume it; every `'main'` default + duplicated loop removed.
+  AMENDMENT (maintainer 2026-07-13, same day): (a) level 3 never treats `@{upstream}` itself as trunk — a
+  branch tracking `origin/<self>` (feature → origin/feature) would merge-base with itself and hide the whole
+  feature diff; level 3 now resolves the branch's tracking REMOTE's default (`refs/remotes/<remote>/HEAD`),
+  generalizing origin to e.g. an `upstream` fork remote. (b) The worktree baseline consumer fails LOUDLY on
+  EVERY resolver `ok=false` (ambiguous, explicit-unresolvable, no-commit) and reserves the empty-tree baseline
+  for the explicit `greenfield` result ONLY (unrelated-histories also fails loudly). trunk-resolver.Tests.ps1
+  now 16 tests (12 resolver incl. the origin/feature regression + tracking-remote-head; 4 consumer: non-empty
+  baseline, greenfield empty-tree, ambiguous throws, no-commit throws) = F-198 registry suite #25; registry
   25/25 green.
 
 ## Notes

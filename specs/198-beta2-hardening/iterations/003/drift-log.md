@@ -81,18 +81,31 @@ T027, with no reopen of the shipped firewall (T004–T006).
 - **Resolution (consolidated in place, maintainer-directed 2026-07-13)**: ONE shared resolver
   `co-review-trunk-resolver.ps1` (`Resolve-ContinuousCoReviewTrunkRef`) with strict precedence — (1)
   explicit `co_review_trunk` (a `-Trunk` override, else config), (2) `refs/remotes/origin/HEAD`, (3) the
-  current branch's configured upstream, (4) conventional refs `main`/`master`/`develop`/`dev` (local or
+  current branch's tracking REMOTE's default branch (`branch.<name>.remote` → `refs/remotes/<remote>/HEAD`,
+  never the `@{upstream}` ref itself), (4) conventional refs `main`/`master`/`develop`/`dev` (local or
   `origin/`, priority order), (5) a local-only repo with exactly ONE pre-feature branch, (6) else FAIL with
   a config instruction. It **never creates, renames, or moves a branch** (read-only; proven by test). A
   greenfield repo (only the feature branch) resolves to `greenfield` → the empty-tree baseline (legitimate,
   not an ambiguity). The merge-base anchor, signoff gate + wiring, worktree baseline resolver, lineage
   resolver, CLI, navigator, and worktree-navigator now all consume it; the duplicated loops and every
-  `'main'` default are removed. The baseline resolver fails LOUDLY on a genuinely ambiguous/misconfigured
-  trunk (levels 6 / explicit-unresolvable) rather than silently reviewing everything.
-- **Evidence**: `tests/continuous-co-review/unit/trunk-resolver.Tests.ps1` (10 tests: local-only master,
-  local-only main, origin/HEAD→develop precedence, explicit override + `-Trunk` wins, unresolvable-explicit
-  fails, ambiguous fails, single pre-feature branch, no-commit fails, greenfield ok-null, never-mutates).
-  Registered as F-198 regression suite #25; full registry green.
+  `'main'` default are removed.
+- **Amendment (maintainer 2026-07-13, same day)**: (a) precedence level 3 must NEVER treat `@{upstream}`
+  itself as trunk — a branch that tracks `origin/<self>` (e.g. `feature → origin/feature`) would otherwise
+  merge-base with itself and hide the entire feature diff. Level 3 now takes the branch's tracking REMOTE and
+  resolves THAT remote's symbolic default (`refs/remotes/<remote>/HEAD`), generalizing level 2's hardcoded
+  origin to e.g. an `upstream` fork remote; a local-tracking (`.`) or missing upstream falls through to
+  conventional/local-only resolution. (b) The worktree baseline consumer now fails LOUDLY on EVERY resolver
+  `ok=false` (ambiguous, explicit-unresolvable, **and no-commit**) and reserves the empty-tree baseline for
+  the explicit successful `greenfield` result ONLY — a resolved trunk that shares no history with HEAD
+  (unrelated histories) also fails loudly rather than silently reviewing everything.
+- **Evidence**: `tests/continuous-co-review/unit/trunk-resolver.Tests.ps1` (16 tests). Resolver Describe (12):
+  local-only master, local-only main, origin/HEAD→develop precedence, the **origin/feature tracking
+  regression** (resolves main/origin-main, never origin/feature), the **non-origin tracking-remote-head**
+  positive, explicit override + `-Trunk` wins, unresolvable-explicit fails, ambiguous fails, single
+  pre-feature branch, no-commit fails, greenfield ok-null, never-mutates. Consumer Describe (4): origin/feature
+  tracking → NON-EMPTY baseline (merge-base with main, not HEAD, not empty-tree); greenfield → empty-tree;
+  ambiguous `ok=false` → throws; no-commit `ok=false` → throws. Registered as F-198 regression suite #25; full
+  25-suite registry green.
 - **Scope note**: a HARDENING consolidation of existing behavior (found + fixed in 003), not a new
   requirement and not a scope expansion — it realizes the FR-025 anchor's intent uniformly. Recorded here
   rather than reopening a closed record.

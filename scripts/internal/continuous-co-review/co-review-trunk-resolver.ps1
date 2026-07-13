@@ -5,7 +5,8 @@
 # PRECEDENCE (maintainer 2026-07-13):
 #   1. Explicit co_review_trunk (a -Trunk override, else .specrew/config.yml co_review_trunk).
 #   2. refs/remotes/origin/HEAD (the remote's advertised default branch).
-#   3. The configured UPSTREAM of the current branch (branch.<name>.merge -> @{upstream}).
+#   3. The current branch's tracking REMOTE's default branch (branch.<name>.remote -> refs/remotes/<remote>/HEAD;
+#      NEVER the @{upstream} ref itself, so a branch tracking origin/<self> does not become its own trunk).
 #   4. Existing CONVENTIONAL refs (main, master, develop, dev), local or origin/, in that priority order.
 #   5. A LOCAL-ONLY repository with exactly ONE pre-feature branch -> that branch.
 #   6. AMBIGUOUS -> fail with a clear configuration instruction.
@@ -88,12 +89,19 @@ function Resolve-ContinuousCoReviewTrunkRef {
         return & $mk $true $oh.lines[0] 'origin-head' ''
     }
 
-    # 3. The configured UPSTREAM of the current branch.
-    $up = Invoke-ContinuousCoReviewTrunkGit -RepoRoot $RepoRoot -Arguments @('rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}')
-    if ($up.ok -and $up.lines.Count -gt 0) {
-        $upstream = $up.lines[0]
-        if ($upstream -ne $currentBranch -and (Test-ContinuousCoReviewGitRefExists -RepoRoot $RepoRoot -Ref $upstream)) {
-            return & $mk $true $upstream 'branch-upstream' ''
+    # 3. If the current branch tracks a REMOTE, resolve THAT remote's symbolic default branch
+    #    (refs/remotes/<remote>/HEAD) - NEVER the @{upstream} ref itself. A branch that tracks origin/<self>
+    #    (e.g. feature -> origin/feature) must not treat origin/<self> as trunk: the merge-base with itself is
+    #    empty, hiding the entire feature diff. A local-tracking upstream ('.') or no upstream falls through to
+    #    conventional/local-only resolution. (This generalizes level 2's hardcoded origin to the branch's actual
+    #    tracking remote, e.g. an 'upstream' fork remote whose HEAD is the canonical trunk.)
+    if (-not [string]::IsNullOrWhiteSpace($currentBranch)) {
+        $trackingRemote = @((Invoke-ContinuousCoReviewTrunkGit -RepoRoot $RepoRoot -Arguments @('config', '--get', "branch.$currentBranch.remote")).lines)
+        if ($trackingRemote.Count -gt 0 -and $trackingRemote[0] -ne '' -and $trackingRemote[0] -ne '.') {
+            $remoteHead = @((Invoke-ContinuousCoReviewTrunkGit -RepoRoot $RepoRoot -Arguments @('symbolic-ref', '--quiet', '--short', "refs/remotes/$($trackingRemote[0])/HEAD")).lines)
+            if ($remoteHead.Count -gt 0 -and (Test-ContinuousCoReviewGitRefExists -RepoRoot $RepoRoot -Ref $remoteHead[0])) {
+                return & $mk $true $remoteHead[0] 'tracking-remote-head' ''
+            }
         }
     }
 
