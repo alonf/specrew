@@ -487,6 +487,24 @@ function Get-ContinuousCoReviewNavigatorFailureReason {
     catch { return $null }
 }
 
+# T019 step 6 (registry-key-drift fix, the DRIFT-198-I003-002 root): resolve the reviewed-tree identity from a
+# pending REGISTRY entry CONSISTENTLY. The live worktree fire path writes reviewed_digest_tree_id (detached
+# entry) + tree_id (service) but NOT reviewed_tree_id - yet the stale-verdict downgrade and the blackboard
+# stamp below historically read reviewed_tree_id ONLY, so the digest-match-before-blocking was silently skipped
+# and stale navigator blocks recurred. ONE resolver (digest spelling first), used by promotion + the stamp +
+# the downgrade, so the reviewed-tree identity cannot diverge across those sites (FR-017 / T019 A2 contract).
+function Get-ContinuousCoReviewNavigatorRegistryTreeId {
+    param($Registry)
+    if ($null -eq $Registry) { return '' }
+    foreach ($key in @('reviewed_digest_tree_id', 'tree_id', 'reviewed_tree_id')) {
+        if ($Registry.PSObject.Properties.Name -contains $key) {
+            $v = [string]$Registry.$key
+            if (-not [string]::IsNullOrWhiteSpace($v)) { return $v }
+        }
+    }
+    return ''
+}
+
 function Invoke-ContinuousCoReviewNavigatorReap {
     # T079 REAP (runs at the top of every navigator Stop, AND - via -CrossSession - as the SessionStart
     # sweep). Walks every pending registry entry and classifies it:
@@ -531,7 +549,9 @@ function Invoke-ContinuousCoReviewNavigatorReap {
         # Promote the reviewed-state DIGEST (the gate's identity, computed off the Stop budget by the orchestrator and
         # propagated to the registry), falling back to the HEAD-tree only for older records. Promoting the HEAD-tree
         # never matched the gate's working-tree digest -> every promoted pass read 'stale' (P-145 identity divergence).
-        $treeId = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewed_digest_tree_id') -and -not [string]::IsNullOrWhiteSpace([string]$reg.reviewed_digest_tree_id)) { [string]$reg.reviewed_digest_tree_id } elseif ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'tree_id')) { [string]$reg.tree_id } else { $null }
+        # T019 step 6: ONE reviewed-tree resolver (was reviewed_digest_tree_id ?? tree_id inline here; now shared with the stamp + downgrade so they cannot diverge).
+        $treeId = Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry $reg
+        if ([string]::IsNullOrWhiteSpace($treeId)) { $treeId = $null }
 
         $isTerminal = ($status -in $terminalStatuses)
         # TRI-STATE presence (finding 2): 'present' / 'absent' (definite) / 'unknown' (transient error).
@@ -583,7 +603,9 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                 if ($status -eq 'done' -and $verdict.ok) {
                     # T083: route the REAL reviewer's full findings (all severities) to the durable
                     # blackboard (fail-open -> $null; the stub is excluded inside). T084: surface the thread.
-                    $regTreeIdForStamp = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewed_tree_id')) { [string]$reg.reviewed_tree_id } else { $null }
+                    # T019 step 6 FIX: was reviewed_tree_id ONLY (a key the live path never writes -> always $null, so findings-result carried no tree id); now the shared resolver.
+                    $regTreeIdForStamp = Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry $reg
+                    if ([string]::IsNullOrWhiteSpace($regTreeIdForStamp)) { $regTreeIdForStamp = $null }
                     $threadRef = Write-ContinuousCoReviewNavigatorBlackboard -RepoRoot $RepoRoot -RunId $runId -Verdict $verdict -Now $Now -ReviewedTreeId $regTreeIdForStamp
                     $threadSuffix = if ($threadRef) { " Full findings (all severities): $threadRef" } else { '' }
                     $latchPath = Join-Path $RepoRoot '.specrew/runtime/co-review-escalation-latch.json'
@@ -664,7 +686,8 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                         # an unknown id keeps the block (never suppress a real block on a gap).
                         if (-not $latchHandled) {
                             try {
-                                $runTreeId = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'reviewed_tree_id')) { [string]$reg.reviewed_tree_id } else { '' }
+                                # T019 step 6 FIX (DRIFT-002 root): was reviewed_tree_id ONLY (never written by the live path -> $runTreeId empty -> this whole digest-match-before-blocking was SKIPPED, so stale blocks recurred); now the shared resolver reads the digest spelling the fire path actually writes.
+                                $runTreeId = Get-ContinuousCoReviewNavigatorRegistryTreeId -Registry $reg
                                 if (-not [string]::IsNullOrWhiteSpace($runTreeId) -and (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
                                     $currentDigest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $RepoRoot
                                     if ($null -ne $currentDigest -and [bool]$currentDigest.ok -and -not [string]::IsNullOrWhiteSpace([string]$currentDigest.tree_id) -and ([string]$currentDigest.tree_id -ne $runTreeId)) {

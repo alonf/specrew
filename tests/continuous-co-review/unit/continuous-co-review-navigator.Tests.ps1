@@ -206,4 +206,52 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         }
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
+
+    # T019 step 6 (DRIFT-198-I003-002 root cause): the stale-verdict downgrade at reap time read the registry's
+    # `reviewed_tree_id` - a key the live worktree fire path NEVER writes (it writes reviewed_digest_tree_id +
+    # tree_id) - so the digest-match-before-blocking was silently skipped and a blocking verdict on an ALREADY-
+    # SUPERSEDED tree recurred as a fresh stop-block. These plant a terminal 'done' blocking registry (the
+    # live-path spelling, reviewed_digest_tree_id) and assert the fix: a stale tree downgrades to ADVISORY, the
+    # current tree still stop-blocks. Before the fix (Get-...RegistryTreeId), the stale case wrongly stop-blocked.
+    It 'T019 step 6 (DRIFT-002 root): a done blocking verdict on a STALE tree (reviewed_digest_tree_id != current) surfaces as ADVISORY, not a stop-block' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            $blockingVerdict = '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.txt", "comment": "dummy blocking finding", "disposition": "blocking" } ] }'
+            $currentDigest = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+            $currentDigest | Should -Not -BeNullOrEmpty
+            $runId = 'stale-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+            $pendingDir = Join-Path $root '.specrew/review/pending'
+            $runDir = Join-Path $pendingDir $runId
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $resultPath = Join-Path $runDir 'result.out'
+            Set-Content -LiteralPath $resultPath -Value $blockingVerdict -Encoding UTF8
+            ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = ('0' * 40) } | ConvertTo-Json) |
+                Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+
+            $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
+            $reap.stop_block | Should -BeNullOrEmpty -Because 'a blocking verdict on a stale tree must NOT be a fresh stop-block'
+            (@($reap.inject_notes) -join "`n") | Should -Match 'reviewed an OLDER tree' -Because 'the DRIFT-002 downgrade now fires because the resolver reads the reviewed_digest_tree_id the fire path actually writes'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
+    It 'T019 step 6 control: a done blocking verdict on the CURRENT tree IS a stop-block (the downgrade does not over-suppress)' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            $blockingVerdict = '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.txt", "comment": "dummy blocking finding", "disposition": "blocking" } ] }'
+            $currentDigest = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+            $runId = 'current-' + [guid]::NewGuid().ToString('N').Substring(0, 8)
+            $pendingDir = Join-Path $root '.specrew/review/pending'
+            $runDir = Join-Path $pendingDir $runId
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $resultPath = Join-Path $runDir 'result.out'
+            Set-Content -LiteralPath $resultPath -Value $blockingVerdict -Encoding UTF8
+            ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = $currentDigest } | ConvertTo-Json) |
+                Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+
+            $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
+            $reap.stop_block | Should -Not -BeNullOrEmpty -Because 'a blocking verdict at the CURRENT digest is a real stop-block, not downgraded'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
 }
