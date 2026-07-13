@@ -176,3 +176,41 @@ Gradle/Go/Rust/custom). Schema: `contracts/specrew-test-result.schema.json`.
 
 Specrew VALIDATES this against the schema and records it verbatim; an invalid, or requested-but-absent,
 result fails LOUDLY (never degrades to a richer pass claim).
+
+## Entity: ReviewIdentitySet — iteration 003 (T019, characterization 2026-07-13)
+
+**Purpose**: the five identities a review run and its findings are bound by, unified so evidence, lineage,
+staleness, and the verdict gate cannot disagree. Characterization-only in the current slice (the resolver
+`review-identity-contracts.ps1` is PURE + UNWIRED); the runtime wiring is T019 step 6. Full current→target
+detail in `iterations/003/research/t019-review-identity-and-artifact-lifecycle.md`.
+
+### Attributes
+
+| Identity | Type | Current key(s) / source | Contract |
+| --- | --- | --- | --- |
+| baseline | git ref | `baseline_ref` (merge-base/empty-tree today); last-reviewed `reviewed_ref` computed but not threaded | FR-016: next auto-fire baseline = last-REVIEWED checkpoint identity, merge-base fallback |
+| reviewed digest | tree-id | `reviewed_digest_tree_id` / `reviewed_tree_id` / `tree_id` (three spellings) | FR-017: ONE identity stamped into EVERY run-record surface incl. findings |
+| evidence digest | tree-id | `.specrew/review/test-evidence/<digest>.json` `reviewed_digest_tree_id` | DRIFT-002: injectable ONLY on EXACT match; full/partial digest-B injection is a named mismatch |
+| run lineage | id chain | run-id `yyyyMMddTHHmmssfff-<8hex>`; `baseline_ref`+`reviewed_ref` chain; pending registry `status` | FR-017: ≤1 in-flight review per lineage; out-of-order older completion superseded |
+| per-finding identity | tuple | `(source_run_id, finding_id)` + `fingerprint`; no tree/baseline in schema | FR-017: bind to reviewed tree AND baseline so mixed runs separate per-finding |
+
+Validation: an empty/unknown digest never matches (fail-closed); `launch_review` is never asserted on the
+Stop path (the navigator owns firing).
+
+## Entity: ReviewArtifactClass — iteration 003 (T019)
+
+**Purpose**: the lifecycle class of every review artifact family, so retention (machine-local vs durable vs
+pruned/archived) is decidable. Base class is path-static; disposition is digest-driven; the archive-vs-prune
+window is a T019-owned policy knob (step 6). Carried here with DRIFT-198-I003-002 (maintainer 2026-07-13).
+
+### Attributes
+
+| Attribute | Type | Validation Rules | Description |
+| --- | --- | --- | --- |
+| base_class | enum | `transient` \| `durable` \| `unknown` | from the on-disk family; `unknown` is a contract gap, never silently durable |
+| git_tracked | bool | matches shipped `.gitignore` | inline/test-evidence/signoff-gate tracked; pending/runtime/.review ephemeral |
+| disposition | enum | `transient`→`prunable`; `durable`→`durable`\|`superseded`\|`archived`\|`prunable` | digest-driven; obsolete durable records await an archive/prune policy decision |
+
+Lifecycle: a durable record whose digest is no longer the latest for its lineage becomes `superseded`, then
+`archived` (forensic value) or `prunable` (past retention). No shipped code prunes durable records today
+(the accumulation gap); the retention runtime is T019 step 6.

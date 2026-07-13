@@ -39,6 +39,7 @@ $registry = @(
     @{ area = 'file-primary reviewer result - codex empty-stdout file delivery (shared engine)'; path = 'tests/continuous-co-review/unit/reviewer-file-primary-result.Tests.ps1'; kind = 'pester' }
     @{ area = 'reviewed-state digest + exec-bit restoration (T034b partial)'; path = 'tests/continuous-co-review/unit/reviewed-state-digest.Tests.ps1'; kind = 'pester' }
     @{ area = 'universal recorded-run runner - language/framework-neutral evidence (T018/FR-015)'; path = 'tests/continuous-co-review/unit/recorded-run.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T019 review-identity + artifact-lifecycle contracts (characterization, UNWIRED)'; path = 'tests/continuous-co-review/unit/t019-identity-contracts.Tests.ps1'; kind = 'pester' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]

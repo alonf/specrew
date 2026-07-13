@@ -3,7 +3,7 @@
 **Schema**: v1
 **Last Completed Task**: T018 (universal language/framework-NEUTRAL recorded-run evidence runner `Invoke-ContinuousCoReviewRecordedRun` — direct command-execution facts + OPTIONAL run-produced schema-valid SpecrewTestResult; caller counts forbidden; fail-loud; evidence-only; 10/10 focused + full 19-suite registry green; T013/T014/T015/T016/T017/T020 also complete)
 **Tasks Remaining**: T019, T030, T031, T032, T033, T034b
-**In Progress**: none active — T019 (checkpoint baselines + frozen digest + in-flight dedup + DRIFT-002 exact-digest handling) is next; NOT started (maintainer instruction 2026-07-13: do not begin T019)
+**In Progress**: T019 — the CHARACTERIZATION/CONTRACT slice (steps 1–5: the five identities; the five artifact-lifecycle classes; DRIFT-002 digest-A-vs-B, in-flight-dedup/out-of-order, and FR-045 Stop-ordering fixtures; PURE UNWIRED contract functions) is DONE and green; step 6 (implement against the contracts — runtime wiring) is NOT started, pending maintainer review (instruction 2026-07-13: return after the slice before broad runtime changes)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
 **Updated**: 2026-07-13T03:00:00Z
 
@@ -593,6 +593,24 @@
   calibration), composing with T021-T023 + T027. T004-T006 NOT reopened.
   DRIFT-198-I003-007 records the provenance; retention/cleanup + exact-digest
   artifact ownership carried to T019 alongside DRIFT-002.
+- T019 CHARACTERIZATION/CONTRACT slice (maintainer-directed 2026-07-13: characterization + contract
+  work BEFORE runtime behavior; return before step 6). Grounded in a full file:line recon of the live
+  fire path (worktree-navigator -> co-review-service -> detached-entry -> orchestrator; digest,
+  evidence, run-index, blackboard, gate). Deliverables: (1) the FIVE identities defined — baseline
+  (FR-016 last-reviewed vs the shipped merge-base diff baseline), reviewed digest (unify three key
+  spellings + stamp into EVERY surface incl. findings, FR-017), evidence digest (exact-match-only
+  injection, DRIFT-002), run lineage (<=1 in-flight per lineage + out-of-order supersession),
+  per-finding identity (bind to reviewed tree AND baseline); (2) the FIVE artifact-lifecycle classes
+  (transient/durable/superseded/archived/prunable) mapped to every on-disk family; (3-5) fixtures for
+  DRIFT-002 digest-A-vs-B, in-flight dedup + out-of-order completion, and the FR-045 8-state
+  Stop-ordering matrix. Realized as PURE UNWIRED contract functions (review-identity-contracts.ps1 —
+  deliberately NOT in _load.ps1) + t019-identity-contracts.Tests.ps1 (14/14) + data-model entities +
+  iterations/003/research/t019-review-identity-and-artifact-lifecycle.md. Pinned load-bearing GAPS for
+  step 6: registry key drift (live path writes tree_id + reviewed_digest_tree_id but the T019a stale
+  downgrade reads the never-written reviewed_tree_id, so stale blocks recur); NO in-flight gate on the
+  verdict-packet path (FR-045 hole); evidence lookup is suites-only (ignores T018 runs records);
+  findings-result carries no in-schema tree/baseline. Step 6 (wire the contracts + retention runtime)
+  NOT started.
 
 ## Notes
 

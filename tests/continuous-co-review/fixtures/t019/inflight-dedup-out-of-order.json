@@ -1,0 +1,70 @@
+{
+  "fixture_schema_version": "1.0",
+  "scenario": "FR-017 in-flight dedup + out-of-order completion: a new hook-fired review MUST NOT launch while one is already in flight for the same lineage; and an obsolete in-flight result completing after a newer one is SUPERSEDED (digest != current), never authoritative.",
+  "requirement_refs": ["FR-016", "FR-017", "FR-045"],
+  "note": "Lineage is keyed by the review target baseline lineage (baseline_ref chain), NOT by the per-run checkpoint_id (nav-<run_id>), which is unique per fire. The in-flight registry tracks the SINGLE running review per lineage. Contract predicates under test are PURE (dedup decision + supersession by digest) — no runtime scheduling path is exercised.",
+  "lineage_id": "lineage-029fd862",
+  "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+  "in_flight_registry": [
+    {
+      "run_id": "20260713T090000000-run1aaaa",
+      "lineage_id": "lineage-029fd862",
+      "baseline_ref": "029fd862",
+      "reviewed_digest_tree_id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+      "started_at": "2026-07-13T09:00:00Z",
+      "status": "running"
+    }
+  ],
+  "runs": [
+    {
+      "run_id": "20260713T090000000-run1aaaa",
+      "lineage_id": "lineage-029fd862",
+      "reviewed_digest_tree_id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+      "started_at": "2026-07-13T09:00:00Z",
+      "completed_at": "2026-07-13T09:07:00Z",
+      "comment": "started FIRST (t0) but completes LAST (t3) — the out-of-order case."
+    },
+    {
+      "run_id": "20260713T090130000-run2bbbb",
+      "lineage_id": "lineage-029fd862",
+      "reviewed_digest_tree_id": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "started_at": "2026-07-13T09:01:30Z",
+      "completed_at": "2026-07-13T09:04:00Z",
+      "comment": "started SECOND (t1) but completes FIRST (t2) against the CURRENT digest."
+    }
+  ],
+  "cases": [
+    {
+      "name": "dedup-second-fire-does-not-launch",
+      "new_fire_lineage_id": "lineage-029fd862",
+      "expected_launch": false,
+      "expected_action": "wait-poll-existing",
+      "why": "run1 is already in flight for this lineage; a Stop-fired review must detect the single tracked in-flight run and wait/poll it, never launch a duplicate."
+    },
+    {
+      "name": "different-lineage-fire-may-launch",
+      "new_fire_lineage_id": "lineage-otherbaseline",
+      "expected_launch": true,
+      "expected_action": "launch",
+      "why": "no in-flight review exists for a DIFFERENT lineage, so dedup does not block it."
+    },
+    {
+      "name": "out-of-order-older-completion-superseded",
+      "completing_run_id": "20260713T090000000-run1aaaa",
+      "completing_digest": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
+      "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "expected_authoritative": false,
+      "expected_classification": "superseded",
+      "why": "run1 completes AFTER run2 with a digest that no longer matches the current tree; its result is superseded, never a fresh block or authorization."
+    },
+    {
+      "name": "current-digest-completion-authoritative",
+      "completing_run_id": "20260713T090130000-run2bbbb",
+      "completing_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+      "expected_authoritative": true,
+      "expected_classification": "current",
+      "why": "run2's reviewed digest equals the current tree, so its terminal result is authoritative for this digest."
+    }
+  ]
+}
