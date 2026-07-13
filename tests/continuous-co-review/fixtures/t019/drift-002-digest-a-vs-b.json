@@ -1,48 +1,55 @@
 {
-  "fixture_schema_version": "1.0",
-  "scenario": "DRIFT-198-I003-002 — evidence recorded for digest A must NOT be injected (fully OR partially) into a review of digest B; a partial/mismatched injection is surfaced honestly, never as clean or as proof the A-runs did not occur.",
+  "fixture_schema_version": "1.1",
+  "scenario": "DRIFT-198-I003-002 — evidence recorded for digest A must NOT be injected (fully OR partially) into a review of digest B; and (correction 6) the ENVELOPE digest AND every EMBEDDED suite/run digest must equal the review digest — an envelope claiming digest X that embeds a run stamped digest Y is a surfaced mismatch, never injected.",
   "requirement_refs": ["FR-016", "FR-017", "FR-045", "DRIFT-198-I003-002"],
-  "note": "Field names mirror the on-disk shapes: run record = .specrew/review/inline/<run_id>/status.json (reviewed_digest_tree_id, baseline_ref); evidence = .specrew/review/test-evidence/<digest>.json (T018 recorded-run). Contract predicate under test is PURE digest identity — no runtime path is exercised.",
+  "note": "Envelope = the record's top-level reviewed_digest_tree_id; embedded = each T018 runs[].reviewed_digest_tree_id (and each T015 suites[] entry, which inherits the envelope). Contract predicate under test is PURE digest identity; no runtime path is exercised. Digests below are illustrative fixed strings.",
   "digest_a": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
   "digest_b": "bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222",
-  "evidence_for_a": {
-    "keyed_by_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
-    "runs": [
-      { "command": { "executable": "pwsh", "arguments": ["-File", "suite-x.Tests.ps1"] }, "reviewed_digest_tree_id": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111", "command_succeeded": true, "counts_available": true, "test_result": { "result": "passed", "counts": { "passed": 12, "failed": 0, "skipped": 0 }, "source": "specrew-test-result" } },
-      { "command": { "executable": "pwsh", "arguments": ["-File", "suite-y.Tests.ps1"] }, "reviewed_digest_tree_id": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111", "command_succeeded": true, "counts_available": true, "test_result": { "result": "passed", "counts": { "passed": 6, "failed": 0, "skipped": 0 }, "source": "specrew-test-result" } }
-    ]
-  },
-  "review_at_b": {
-    "run_id": "20260713T090000000-bbbb2222",
-    "reviewed_digest_tree_id": "bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222",
-    "baseline_ref": "029fd862",
-    "status": "running"
-  },
   "cases": [
     {
-      "name": "full-mismatch-injection-refused",
-      "evidence_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
-      "review_digest": "bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222",
-      "expected_injected": false,
-      "expected_classification": "digest-mismatch-not-injected",
-      "why": "the evidence digest (A) does not equal the reviewed digest (B); the A-record is neither fully nor partially injected."
+      "name": "exact-digest-injection-allowed",
+      "envelope_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+      "review_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+      "embedded_digests": ["aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111", "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111"],
+      "expected_injected": true,
+      "expected_classification": "exact-digest-injected",
+      "why": "envelope AND every embedded run digest equal the review digest — the ONLY injectable case."
     },
     {
-      "name": "partial-subset-injection-surfaced-as-mismatch",
-      "evidence_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+      "name": "full-envelope-mismatch-refused",
+      "envelope_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+      "review_digest": "bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222",
+      "embedded_digests": ["aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111"],
+      "expected_injected": false,
+      "expected_classification": "envelope-digest-mismatch-not-injected",
+      "why": "the envelope digest (A) does not equal the reviewed digest (B); the A-record is not injected."
+    },
+    {
+      "name": "partial-subset-into-other-digest-surfaced",
+      "envelope_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
       "review_digest": "bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222",
       "injected_subset": ["suite-x.Tests.ps1"],
       "expected_injected": false,
       "expected_classification": "partial-injection-mismatch-surfaced",
-      "why": "even a SUBSET of the A-record injected for a B review is a mismatch; it is surfaced honestly, never presented as clean and never as proof the A-runs did not occur."
+      "why": "even a SUBSET of the A-record injected for a B review is a mismatch, surfaced honestly — never clean, never proof the A-runs did not occur."
     },
     {
-      "name": "exact-digest-injection-allowed",
-      "evidence_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
+      "name": "envelope-matches-but-embedded-run-digest-differs",
+      "envelope_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
       "review_digest": "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111",
-      "expected_injected": true,
-      "expected_classification": "exact-digest-injected",
-      "why": "the evidence digest equals the reviewed digest — the ONLY case where the record gains runner-observed standing for that tree."
+      "embedded_digests": ["aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111", "bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222"],
+      "expected_injected": false,
+      "expected_classification": "embedded-digest-mismatch-surfaced",
+      "why": "correction 6: the envelope matches the review digest, but an EMBEDDED run is stamped a different digest (B) — a smuggled cross-digest run; not injected."
+    },
+    {
+      "name": "empty-digest-fails-closed",
+      "envelope_digest": "",
+      "review_digest": "",
+      "embedded_digests": [],
+      "expected_injected": false,
+      "expected_classification": "envelope-digest-mismatch-not-injected",
+      "why": "an empty digest never matches — fail-closed, never treated as a trivial match."
     }
   ]
 }

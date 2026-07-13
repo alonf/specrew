@@ -3,7 +3,7 @@
 **Schema**: v1
 **Last Completed Task**: T018 (universal language/framework-NEUTRAL recorded-run evidence runner `Invoke-ContinuousCoReviewRecordedRun` — direct command-execution facts + OPTIONAL run-produced schema-valid SpecrewTestResult; caller counts forbidden; fail-loud; evidence-only; 10/10 focused + full 19-suite registry green; T013/T014/T015/T016/T017/T020 also complete)
 **Tasks Remaining**: T019, T030, T031, T032, T033, T034b
-**In Progress**: T019 — the CHARACTERIZATION/CONTRACT slice (steps 1–5: the five identities; the five artifact-lifecycle classes; DRIFT-002 digest-A-vs-B, in-flight-dedup/out-of-order, and FR-045 Stop-ordering fixtures; PURE UNWIRED contract functions) is DONE and green; step 6 (implement against the contracts — runtime wiring) is NOT started, pending maintainer review (instruction 2026-07-13: return after the slice before broad runtime changes)
+**In Progress**: T019 — the CHARACTERIZATION/CONTRACT slice (steps 1–5) is DONE and green, INCLUDING the CONTRACT-CORRECTION pass after the maintainer's needs-rework review (6 corrections: baseline_tree_id vs commit ancestry; absolute digest-mismatch precedence; fail-closed finding joins; run-state-gated pruning; deterministic lineage id + monotonic same-digest authority; envelope+embedded digest validation — 18/18 + 20/20 registry); step 6 (implement against the contracts — runtime wiring) is NOT started, pending maintainer review (instruction 2026-07-13: return after the corrected contracts are green before broad runtime changes)
 **Baseline Ref**: 2d475962 (before-implement authorization commit)
 **Updated**: 2026-07-13T03:00:00Z
 
@@ -611,6 +611,18 @@
   verdict-packet path (FR-045 hole); evidence lookup is suites-only (ignores T018 runs records);
   findings-result carries no in-schema tree/baseline. Step 6 (wire the contracts + retention runtime)
   NOT started.
+- T019 CONTRACT-CORRECTION pass (maintainer needs-rework review 2026-07-13: spec_conformance + implementation_quality
+  needs-rework — wiring against the first-cut contracts would have encoded stale-authority + cleanup defects; the four
+  runtime gaps, esp. registry key drift, are valid). Six corrections applied to the PURE UNWIRED contracts, fixtures,
+  doc, and data-model: (1) baseline_tree_id (auto-fire diff = last ACCEPTED reviewed TREE) SEPARATED from commit
+  ancestry; (2) digest-mismatch precedence ABSOLUTE across every outcome (a stale clean/actionable/human-judgment/infra
+  result is superseded, never blocks/decides/authorizes); (3) finding->run joins FAIL CLOSED (source_run_id==run_id +
+  reviewed tree + baseline_tree_id present); (4) transient artifacts prunable ONLY after the owning run is
+  terminal/reaped/abandoned; (5) DETERMINISTIC persisted lineage id (anchor+target) + MONOTONIC same-digest authority
+  (max run_id) for concurrent completions; (6) injection validates the envelope AND every embedded suite/run digest.
+  New contract fns (Resolve-...AutoFireBaselineTreeId, Get-...LineageId, Resolve-...SameDigestAuthority) + a
+  finding-join-and-disposition fixture; t019-identity-contracts.Tests.ps1 18/18 + full registry 20/20. Still UNWIRED;
+  step 6 remains NOT started, pending maintainer approval of the corrected contracts.
 
 ## Notes
 

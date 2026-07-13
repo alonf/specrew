@@ -186,15 +186,16 @@ detail in `iterations/003/research/t019-review-identity-and-artifact-lifecycle.m
 
 ### Attributes
 
-| Identity | Type | Current key(s) / source | Contract |
+| Identity | Type | Current key(s) / source | Contract (corrected 2026-07-13) |
 | --- | --- | --- | --- |
-| baseline | git ref | `baseline_ref` (merge-base/empty-tree today); last-reviewed `reviewed_ref` computed but not threaded | FR-016: next auto-fire baseline = last-REVIEWED checkpoint identity, merge-base fallback |
+| baseline | tree-id + commit refs | `baseline_ref` (merge-base/empty-tree today); last-reviewed `reviewed_ref` computed but not threaded | auto-fire DIFF baseline = `baseline_tree_id` (last ACCEPTED reviewed TREE, max `run_id`); git ancestry uses commit refs SEPARATELY; merge-base fallback (FR-016) |
 | reviewed digest | tree-id | `reviewed_digest_tree_id` / `reviewed_tree_id` / `tree_id` (three spellings) | FR-017: ONE identity stamped into EVERY run-record surface incl. findings |
-| evidence digest | tree-id | `.specrew/review/test-evidence/<digest>.json` `reviewed_digest_tree_id` | DRIFT-002: injectable ONLY on EXACT match; full/partial digest-B injection is a named mismatch |
-| run lineage | id chain | run-id `yyyyMMddTHHmmssfff-<8hex>`; `baseline_ref`+`reviewed_ref` chain; pending registry `status` | FR-017: ≤1 in-flight review per lineage; out-of-order older completion superseded |
-| per-finding identity | tuple | `(source_run_id, finding_id)` + `fingerprint`; no tree/baseline in schema | FR-017: bind to reviewed tree AND baseline so mixed runs separate per-finding |
+| evidence digest | tree-id | `.specrew/review/test-evidence/<digest>.json` `reviewed_digest_tree_id` | DRIFT-002: injectable ONLY when the envelope AND every embedded run/suite digest equal the reviewed digest; full/partial/embedded mismatch is named + refused |
+| run lineage | id chain | run-id `yyyyMMddTHHmmssfff-<8hex>`; `baseline_ref`+`reviewed_ref` chain; pending registry `status` | FR-017: DETERMINISTIC persisted lineage id (anchor+target); ≤1 in-flight per lineage; out-of-order superseded; MONOTONIC same-digest authority (max `run_id`) |
+| per-finding identity | tuple | `(source_run_id, finding_id)` + `fingerprint`; no tree/baseline in schema | FAIL CLOSED: `source_run_id` == `run_id` AND reviewed tree + `baseline_tree_id` present; else `valid=false` |
 
-Validation: an empty/unknown digest never matches (fail-closed); `launch_review` is never asserted on the
+Validation: an empty/unknown digest never matches (fail-closed); digest-mismatch precedence is ABSOLUTE across
+every review outcome (a stale result never blocks/decides/authorizes); `launch_review` is never asserted on the
 Stop path (the navigator owns firing).
 
 ## Entity: ReviewArtifactClass — iteration 003 (T019)
@@ -209,7 +210,7 @@ window is a T019-owned policy knob (step 6). Carried here with DRIFT-198-I003-00
 | --- | --- | --- | --- |
 | base_class | enum | `transient` \| `durable` \| `unknown` | from the on-disk family; `unknown` is a contract gap, never silently durable |
 | git_tracked | bool | matches shipped `.gitignore` | inline/test-evidence/signoff-gate tracked; pending/runtime/.review ephemeral |
-| disposition | enum | `transient`→`prunable`; `durable`→`durable`\|`superseded`\|`archived`\|`prunable` | digest-driven; obsolete durable records await an archive/prune policy decision |
+| disposition | enum | `transient`→`transient`\|`prunable`; `durable`→`durable`\|`superseded`\|`archived`\|`prunable` | a transient record is prunable ONLY after its owning run is terminal/reaped/abandoned (never while running); obsolete durable records await an archive/prune policy decision |
 
 Lifecycle: a durable record whose digest is no longer the latest for its lineage becomes `superseded`, then
 `archived` (forensic value) or `prunable` (past retention). No shipped code prunes durable records today

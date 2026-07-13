@@ -1,70 +1,73 @@
 {
-  "fixture_schema_version": "1.0",
-  "scenario": "FR-017 in-flight dedup + out-of-order completion: a new hook-fired review MUST NOT launch while one is already in flight for the same lineage; and an obsolete in-flight result completing after a newer one is SUPERSEDED (digest != current), never authoritative.",
+  "fixture_schema_version": "1.1",
+  "scenario": "FR-017 lineage + concurrency: (dedup) <=1 in-flight review per lineage; (out-of-order) an obsolete completion whose digest != current is superseded; (correction 5) a DETERMINISTIC persisted lineage id, and a MONOTONIC authority rule for SAME-DIGEST concurrent completions (exactly one authoritative = max run_id); (correction 1) the auto-fire baseline is the last-ACCEPTED reviewed TREE.",
   "requirement_refs": ["FR-016", "FR-017", "FR-045"],
-  "note": "Lineage is keyed by the review target baseline lineage (baseline_ref chain), NOT by the per-run checkpoint_id (nav-<run_id>), which is unique per fire. The in-flight registry tracks the SINGLE running review per lineage. Contract predicates under test are PURE (dedup decision + supersession by digest) — no runtime scheduling path is exercised.",
+  "note": "Lineage is keyed by the STABLE anchor (merge-base commit) + target — not the advancing baseline_tree_id and not the per-fire checkpoint_id. run_ids are fire-time-sortable (yyyyMMddTHHmmssfff-<hex>), so max run_id is a monotone authority. Contract predicates under test are PURE.",
+
+  "lineage_id_determinism": {
+    "anchor_ref": "029fd862",
+    "target_ref": "198-beta2-hardening",
+    "note": "Get-ContinuousCoReviewLineageId(anchor,target) is deterministic (same inputs -> same id) and stable across the lineage; a different anchor or target yields a different id.",
+    "different_anchor_ref": "deadbeef"
+  },
+
+  "auto_fire_baseline": {
+    "note": "the next auto-fire diffs advance from the LAST ACCEPTED reviewed TREE (a tree-id), not a commit ref; git ancestry uses commit refs separately.",
+    "accepted_runs": [
+      { "run_id": "20260713T080000000-acc1", "reviewed_tree_id": "tree-older", "reviewed_ref": "commitA" },
+      { "run_id": "20260713T083000000-acc2", "reviewed_tree_id": "tree-newer", "reviewed_ref": "commitB" }
+    ],
+    "expected_baseline_tree_id": "tree-newer",
+    "expected_from_run_id": "20260713T083000000-acc2",
+    "empty_accepted_expected_baseline_tree_id": null
+  },
+
   "lineage_id": "lineage-029fd862",
   "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
   "in_flight_registry": [
-    {
-      "run_id": "20260713T090000000-run1aaaa",
-      "lineage_id": "lineage-029fd862",
-      "baseline_ref": "029fd862",
-      "reviewed_digest_tree_id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
-      "started_at": "2026-07-13T09:00:00Z",
-      "status": "running"
-    }
+    { "run_id": "20260713T090000000-run1aaaa", "lineage_id": "lineage-029fd862", "reviewed_digest_tree_id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1", "started_at": "2026-07-13T09:00:00Z", "status": "running" }
   ],
-  "runs": [
-    {
-      "run_id": "20260713T090000000-run1aaaa",
-      "lineage_id": "lineage-029fd862",
-      "reviewed_digest_tree_id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
-      "started_at": "2026-07-13T09:00:00Z",
-      "completed_at": "2026-07-13T09:07:00Z",
-      "comment": "started FIRST (t0) but completes LAST (t3) — the out-of-order case."
-    },
-    {
-      "run_id": "20260713T090130000-run2bbbb",
-      "lineage_id": "lineage-029fd862",
-      "reviewed_digest_tree_id": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
-      "started_at": "2026-07-13T09:01:30Z",
-      "completed_at": "2026-07-13T09:04:00Z",
-      "comment": "started SECOND (t1) but completes FIRST (t2) against the CURRENT digest."
-    }
-  ],
+
   "cases": [
     {
       "name": "dedup-second-fire-does-not-launch",
       "new_fire_lineage_id": "lineage-029fd862",
-      "expected_launch": false,
-      "expected_action": "wait-poll-existing",
-      "why": "run1 is already in flight for this lineage; a Stop-fired review must detect the single tracked in-flight run and wait/poll it, never launch a duplicate."
+      "expected_launch": false, "expected_action": "wait-poll-existing",
+      "why": "run1 is already in flight for this lineage; a Stop-fired review waits/polls it, never launches a duplicate."
     },
     {
       "name": "different-lineage-fire-may-launch",
       "new_fire_lineage_id": "lineage-otherbaseline",
-      "expected_launch": true,
-      "expected_action": "launch",
-      "why": "no in-flight review exists for a DIFFERENT lineage, so dedup does not block it."
+      "expected_launch": true, "expected_action": "launch",
+      "why": "no in-flight review exists for a DIFFERENT lineage."
     },
     {
       "name": "out-of-order-older-completion-superseded",
-      "completing_run_id": "20260713T090000000-run1aaaa",
       "completing_digest": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1",
       "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
-      "expected_authoritative": false,
-      "expected_classification": "superseded",
-      "why": "run1 completes AFTER run2 with a digest that no longer matches the current tree; its result is superseded, never a fresh block or authorization."
+      "expected_authoritative": false, "expected_classification": "superseded",
+      "why": "an older-digest completion (arriving out of order) never matches the current tree; superseded, never a fresh block or authorization."
     },
     {
       "name": "current-digest-completion-authoritative",
-      "completing_run_id": "20260713T090130000-run2bbbb",
       "completing_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
       "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
-      "expected_authoritative": true,
-      "expected_classification": "current",
-      "why": "run2's reviewed digest equals the current tree, so its terminal result is authoritative for this digest."
+      "expected_authoritative": true, "expected_classification": "current",
+      "why": "its reviewed digest equals the current tree (single-run case; ties resolved by same-digest authority below)."
     }
-  ]
+  ],
+
+  "same_digest_concurrent": {
+    "note": "TWO terminal runs complete for the SAME current digest (a genuine concurrent race). Exactly one is authoritative by the monotonic rule = max run_id; the other is superseded. A third run at a stale digest is not eligible.",
+    "current_reviewed_digest": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2",
+    "runs": [
+      { "run_id": "20260713T090100000-concurA", "reviewed_digest_tree_id": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2", "terminal": true },
+      { "run_id": "20260713T090230000-concurB", "reviewed_digest_tree_id": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2", "terminal": true },
+      { "run_id": "20260713T085900000-staleC", "reviewed_digest_tree_id": "d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1d1", "terminal": true },
+      { "run_id": "20260713T090400000-runningD", "reviewed_digest_tree_id": "d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2d2", "terminal": false }
+    ],
+    "expected_authoritative_run_id": "20260713T090230000-concurB",
+    "expected_superseded_run_ids": ["20260713T090100000-concurA"],
+    "why": "concurB has the max run_id among same-digest TERMINAL runs -> authoritative (monotone). concurA is superseded. staleC (wrong digest) and runningD (not terminal) are not eligible."
+  }
 }

@@ -15,6 +15,16 @@ EVERY run-record surface + navigator digest-match-before-blocking + in-flight de
 DRIFT-198-I003-002 (digest-A evidence not injected into a digest-B review) + the retention/cleanup ownership
 carried here 2026-07-13.
 
+**Correction pass (maintainer needs-rework review, 2026-07-13)** — the first cut would have encoded stale-authority
+and cleanup defects; the contracts below are corrected: (1) `baseline_tree_id` (the auto-fire diff baseline = the
+last ACCEPTED reviewed TREE) is SEPARATE from commit ancestry (git ancestry keeps using `reviewed_ref`/`baseline_ref`
+commit refs); (2) digest-mismatch precedence is ABSOLUTE across every review outcome — a stale result never blocks,
+requests a decision, or authorizes a packet; (3) finding→run joins FAIL CLOSED (`source_run_id` must equal `run_id`,
+and the reviewed tree + `baseline_tree_id` must be present); (4) a transient artifact is prunable ONLY after its
+owning run is terminal/reaped/abandoned; (5) a deterministic, persisted lineage id + a monotonic authority rule for
+same-digest concurrent completions (max `run_id`); (6) injection validates the envelope digest AND every embedded
+suite/run digest. The pure contract functions + fixtures reflect these (18/18 green).
+
 ---
 
 ## Part A — Identity contracts (step 1)
@@ -33,9 +43,12 @@ the runtime must satisfy once wired. Field names are the actual on-disk JSON key
 - **Gap**: FR-016 says the last-reviewed identity is *threaded as the next auto-fire's baseline*, but it is only
   **computed for the gate** (freshness/coverage) — it is **NOT** threaded back into the reviewer's `-BaselineRef`,
   which still uses merge-base-with-trunk.
-- **Target**: the navigator's next auto-fire baseline = the last-reviewed checkpoint identity (merge-base fallback
-  when none exists); the signoff `--live` merge-base doctrine is unchanged (FR-016). The `baseline_ref` recorded on
-  a run is the identity actually reviewed against.
+- **Target (corrected)**: the auto-fire DIFF baseline is a **`baseline_tree_id`** — the last **ACCEPTED** reviewed
+  TREE (a tree-id / digest), resolved by `Resolve-ContinuousCoReviewAutoFireBaselineTreeId` (last-accepted = max
+  `run_id`); when no accepted run exists it is null and the runtime falls back to the merge-base anchor (a commit
+  ref). This is **separate** from **git ancestry**, which continues to use commit refs (`reviewed_ref`/`baseline_ref`)
+  for the lineage chain walk. The signoff `--live` merge-base doctrine is unchanged (FR-016). Do NOT conflate the
+  tree the auto-fire diffs from (a tree-id) with the commit refs used for ancestry.
 
 ### A2. Reviewed digest
 
@@ -61,10 +74,12 @@ the runtime must satisfy once wired. Field names are the actual on-disk JSON key
 - **Gap**: the lookup requires a non-empty **`suites`** array (`:112–114`), so the T018 recorded-run **`runs`**
   records are invisible to it; and the exact-match rule handles full mismatch but has no explicit **partial-subset**
   outcome — the DRIFT-002 recurring "saw only a subset" case.
-- **Target (DRIFT-198-I003-002)**: a digest-A record is injectable into a review ONLY when its evidence digest
-  EXACTLY equals the reviewed digest; a full OR partial (subset) digest-B injection is a **named mismatch**,
-  surfaced honestly — never presented as clean and never as proof the A-runs did not occur. Lookup must recognize
-  both `suites` and `runs` records.
+- **Target (DRIFT-198-I003-002, corrected)**: injection validates the **envelope digest AND every embedded
+  suite/run digest** (`Test-ContinuousCoReviewEvidenceInjectable -EnvelopeDigest -ReviewDigest -EmbeddedDigests`).
+  Injectable ONLY when the envelope AND every embedded `runs[].reviewed_digest_tree_id` equal the reviewed digest;
+  an envelope that matches but embeds a foreign digest is `embedded-digest-mismatch-surfaced`; a full or subset
+  digest-B injection is a named mismatch, never presented as clean and never as proof the A-runs did not occur;
+  empty digests fail closed. Lookup must recognize both `suites` and `runs` records.
 
 ### A4. Run lineage
 
@@ -78,10 +93,12 @@ the runtime must satisfy once wired. Field names are the actual on-disk JSON key
 - **Gap**: dedup is by **last-fired DIGEST**, not by an in-flight **lineage** — two drivers (manual `--live` +
   Stop-hook navigator) firing seconds apart on the same lineage are not serialized (the recorded collision, see
   `stop-ordering-defect.md`). "Single tracked in-flight review" (FR-045) has no representation.
-- **Target (FR-017)**: at most one tracked in-flight review **per lineage**; a Stop-fired review that finds a
-  running review for its lineage waits/polls it and never launches a duplicate; an obsolete in-flight result that
-  completes out of order (digest ≠ current) is superseded, never a fresh block. Lineage is keyed by the review-target
-  baseline lineage, NOT the per-fire `checkpoint_id` (`nav-<run_id>`).
+- **Target (FR-017, corrected)**: a **deterministic, persisted lineage id** (`Get-ContinuousCoReviewLineageId` over
+  the STABLE anchor commit + target, so every run in a lineage computes the same id — the advancing `baseline_tree_id`
+  cannot key it); at most one tracked in-flight review **per lineage** (waits/polls, never a duplicate); an obsolete
+  out-of-order completion (digest ≠ current) is superseded; and for **same-digest concurrent completions**, a
+  **monotonic authority rule** (`Resolve-ContinuousCoReviewSameDigestAuthority` = max `run_id`) makes EXACTLY ONE
+  authoritative and supersedes the rest. Lineage is NOT keyed by the per-fire `checkpoint_id` (`nav-<run_id>`).
 
 ### A5. Per-finding identity
 
@@ -94,8 +111,11 @@ the runtime must satisfy once wired. Field names are the actual on-disk JSON key
   current) cannot be separated per-finding. The navigator stamps `reviewed_tree_id` onto the persisted
   `findings-result.json` **out of schema** (`navigator:456`) by reading `$reg.reviewed_tree_id` (`:586`) — **a
   registry key the live worktree fire path never writes** (see Part D).
-- **Target (FR-017 sharpening)**: a finding's global identity binds `(finding_id, source_run_id)` to the reviewed
-  tree AND baseline of its run, so a mixed set distinguishes stale from still-valid **per-finding**.
+- **Target (FR-017 sharpening, corrected — FAIL CLOSED)**: `Get-ContinuousCoReviewFindingIdentity` binds
+  `(finding_id, source_run_id)` to the reviewed tree AND `baseline_tree_id` of its run **only when the join is
+  valid** — `source_run_id` MUST equal the run's `run_id`, and the reviewed tree + `baseline_tree_id` MUST both be
+  present; any violation returns `valid=$false` with a reason (a cross-run smuggle or a missing identity is
+  rejected, never silently bound). Only valid joins separate a mixed run set per-finding.
 
 ---
 
@@ -107,7 +127,7 @@ the classes and the decision inputs, not the window.
 
 | Class | Meaning | Retention rule |
 | --- | --- | --- |
-| **transient** | machine-local / ephemeral; exists only for a run or cycle | deleted at run/reap end; safe to delete any time (→ `prunable`) |
+| **transient** | machine-local / ephemeral; exists only for a run or cycle | prunable ONLY after the owning run is terminal/reaped/**abandoned** (never while it is running) |
 | **durable** | current review evidence for the latest reviewed digest of its lineage | retained; tracked in git |
 | **superseded** | a durable record no longer the latest for its lineage | retained until a policy decides archive vs prune |
 | **archived** | a superseded record intentionally kept for forensics, moved out of the active set | retained long-term, out of the hot path |
@@ -138,16 +158,16 @@ the classes and the decision inputs, not the window.
 ## Part C — Fixtures (steps 3–5) and the pure contracts
 
 The fixtures encode the scenarios as data; the pure functions in `review-identity-contracts.ps1` encode the
-decisions; `t019-identity-contracts.Tests.ps1` asserts the two agree (14/14 green in this slice).
+decisions; `t019-identity-contracts.Tests.ps1` asserts the two agree (**18/18** green after the correction pass).
 
 | Fixture | Proves | Contract function |
 | --- | --- | --- |
-| `drift-002-digest-a-vs-b.json` (step 3) | digest-A evidence is neither fully nor partially injected into a digest-B review; a subset is a named mismatch; only exact-digest is injectable | `Test-ContinuousCoReviewEvidenceInjectable` |
-| `inflight-dedup-out-of-order.json` (step 4) | a second fire on a running lineage does not launch; an out-of-order older completion (digest ≠ current) is superseded | `Test-ContinuousCoReviewInFlightDuplicate`, `Test-ContinuousCoReviewResultSuperseded` |
-| `fr045-stop-ordering-matrix.json` (step 5) | the 8-state Stop routing; EXACTLY one state (clean-current-digest) is capturable + marker-carrying; `launch_review` is never true on the Stop path | `Resolve-ContinuousCoReviewStopRouting` |
+| `drift-002-digest-a-vs-b.json` (step 3, corr. 6) | injection validates the envelope AND every embedded run digest; a foreign embedded digest, a full/subset digest-B injection, and an empty digest are all refused; only exact-digest is injectable | `Test-ContinuousCoReviewEvidenceInjectable` |
+| `inflight-dedup-out-of-order.json` (step 4, corr. 1+5) | dedup (≤1 in-flight per lineage); out-of-order older completion superseded; deterministic lineage id; monotonic same-digest authority (max `run_id`); auto-fire baseline = last-accepted reviewed TREE | `Test-ContinuousCoReviewInFlightDuplicate`, `Test-ContinuousCoReviewResultSuperseded`, `Resolve-ContinuousCoReviewSameDigestAuthority`, `Get-ContinuousCoReviewLineageId`, `Resolve-ContinuousCoReviewAutoFireBaselineTreeId` |
+| `fr045-stop-ordering-matrix.json` (step 5, corr. 2) | the 11-state Stop routing with ABSOLUTE digest-mismatch precedence (stale clean/actionable/human-judgment/infra all superseded); exactly one capturable + marker state; `launch_review` never true | `Resolve-ContinuousCoReviewStopRouting` |
+| `finding-join-and-disposition.json` (corr. 3+4) | finding→run joins fail closed (mismatched `source_run_id`, missing tree/baseline); transient artifacts prunable only after the owning run is terminal/reaped/abandoned | `Get-ContinuousCoReviewFindingIdentity`, `Resolve-ContinuousCoReviewRecordDisposition` |
 
-Per-finding identity (`Get-ContinuousCoReviewFindingIdentity`) and artifact classes
-(`Get-ContinuousCoReviewArtifactClass`, `Resolve-ContinuousCoReviewRecordDisposition`) are exercised directly.
+Artifact base classes (`Get-ContinuousCoReviewArtifactClass`) are exercised directly.
 
 ---
 

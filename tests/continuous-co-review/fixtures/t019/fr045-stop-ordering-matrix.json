@@ -1,6 +1,6 @@
 {
-  "fixture_schema_version": "1.0",
-  "scenario": "FR-045 (GOV-002) Stop-ordering state matrix: given the review state at a Stop event, which routing is allowed. Only a terminal, clean, EXACT-current-digest result may render the six-section packet + the SPECREW-VERDICT-BOUNDARY marker and be capturable as a verdict. Blocked/pending/stale/superseded/timeout states never carry a marker and are never verdict-capture evidence.",
+  "fixture_schema_version": "1.1",
+  "scenario": "FR-045 (GOV-002) Stop-ordering state matrix. Correction 2: digest-mismatch precedence is ABSOLUTE across every outcome — a stale result (reviewed digest != current) can NEVER block, request a decision, report as actionable, or authorize a packet; it is superseded and routes to re-review (or wait, if a current-digest review is in flight). Only a terminal, clean, EXACT-current-digest result renders the packet + marker and is capturable.",
   "requirement_refs": ["FR-045", "FR-016", "FR-017", "FR-041", "FR-042", "FR-043", "DRIFT-198-I003-002"],
   "spec_ref": "specs/198-beta2-hardening/iterations/003/research/stop-ordering-defect.md",
   "note": "The routing decision under test is a PURE function of (review_terminal, review_outcome, digest_matches_current, in_flight_present). No Stop-hook path or capture layer is exercised in this slice.",
@@ -14,76 +14,70 @@
   "matrix": [
     {
       "state": "in-flight-current-digest",
-      "review_terminal": false,
-      "review_outcome": "running",
-      "digest_matches_current": true,
-      "in_flight_present": true,
+      "review_terminal": false, "review_outcome": "running", "digest_matches_current": true, "in_flight_present": true,
       "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "wait-poll-existing", "capturable_as_verdict": false },
-      "why": "a required review for the current digest is running: detect the single tracked in-flight run, block advancement internally, wait/poll it, never a packet/marker/duplicate."
+      "why": "a required review for the current digest is running: detect the single tracked in-flight run, wait/poll it, never a packet/marker/duplicate."
     },
     {
       "state": "duplicate-stop-during-in-flight",
-      "review_terminal": false,
-      "review_outcome": "running",
-      "digest_matches_current": true,
-      "in_flight_present": true,
+      "review_terminal": false, "review_outcome": "running", "digest_matches_current": true, "in_flight_present": true,
       "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "wait-poll-existing", "capturable_as_verdict": false },
-      "why": "a second Stop while one review is in flight must NOT launch a second review; same wait/poll routing, no packet."
+      "why": "a second Stop while one review is in flight must NOT launch a second review; same wait/poll routing."
     },
     {
       "state": "clean-current-digest",
-      "review_terminal": true,
-      "review_outcome": "clean",
-      "digest_matches_current": true,
-      "in_flight_present": false,
+      "review_terminal": true, "review_outcome": "clean", "digest_matches_current": true, "in_flight_present": false,
       "expected": { "render_packet": true, "render_marker": true, "launch_review": false, "action": "render-boundary-packet", "capturable_as_verdict": true },
       "why": "THE ONLY marker-carrying, capturable path: terminal + clean + exact current digest. The packet is bound to the accepted reviewed-tree digest."
     },
     {
       "state": "actionable-findings-current-digest",
-      "review_terminal": true,
-      "review_outcome": "actionable",
-      "digest_matches_current": true,
-      "in_flight_present": false,
+      "review_terminal": true, "review_outcome": "actionable", "digest_matches_current": true, "in_flight_present": false,
       "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "fix-and-re-review", "capturable_as_verdict": false },
-      "why": "actionable findings suppress the packet + marker; fix then re-review. Never a solicitable verdict."
+      "why": "actionable findings AT THE CURRENT DIGEST suppress the packet + marker; fix then re-review."
     },
     {
-      "state": "human-judgment-required",
-      "review_terminal": true,
-      "review_outcome": "human-judgment",
-      "digest_matches_current": true,
-      "in_flight_present": false,
+      "state": "human-judgment-required-current-digest",
+      "review_terminal": true, "review_outcome": "human-judgment", "digest_matches_current": true, "in_flight_present": false,
       "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "narrow-non-boundary-question", "capturable_as_verdict": false },
-      "why": "a mid-review human decision is a NARROW non-boundary question with no approval options and no marker; structurally not a lifecycle verdict."
+      "why": "a mid-review human decision AT THE CURRENT DIGEST is a NARROW non-boundary question, no options, no marker."
     },
     {
-      "state": "timeout-or-infra-failure",
-      "review_terminal": true,
-      "review_outcome": "infra-failure",
-      "digest_matches_current": true,
-      "in_flight_present": false,
+      "state": "timeout-or-infra-failure-current-digest",
+      "review_terminal": true, "review_outcome": "infra-failure", "digest_matches_current": true, "in_flight_present": false,
       "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "report-specific-failure", "capturable_as_verdict": false },
-      "why": "a timeout / infrastructure failure reports the SPECIFIC failure + retry/spend policy; it is NEVER represented as a clean review."
+      "why": "a timeout / infra failure AT THE CURRENT DIGEST reports the SPECIFIC failure + retry/spend policy; never represented as clean."
     },
     {
-      "state": "stale-completion-digest-mismatch",
-      "review_terminal": true,
-      "review_outcome": "clean",
-      "digest_matches_current": false,
-      "in_flight_present": false,
+      "state": "stale-clean-digest-mismatch",
+      "review_terminal": true, "review_outcome": "clean", "digest_matches_current": false, "in_flight_present": false,
       "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "re-review-current-digest", "capturable_as_verdict": false },
-      "why": "a completed CLEAN review whose reviewed digest != current is SUPERSEDED (stale-vs-current advisory), not authoritative; a fresh review of the current digest is needed. Digest-clean is not enough — it must be the CURRENT digest."
+      "why": "a completed CLEAN review whose digest != current is SUPERSEDED — digest-clean is not enough, it must be the CURRENT digest; a fresh review of the current digest is needed."
     },
     {
-      "state": "superseded-earlier-digest-packet",
-      "review_terminal": true,
-      "review_outcome": "clean",
-      "digest_matches_current": false,
-      "in_flight_present": true,
+      "state": "stale-actionable-digest-mismatch",
+      "review_terminal": true, "review_outcome": "actionable", "digest_matches_current": false, "in_flight_present": false,
+      "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "re-review-current-digest", "capturable_as_verdict": false },
+      "why": "ABSOLUTE PRECEDENCE: a stale actionable result must NOT block (never fix-and-re-review on an old tree); it is superseded — re-review the current digest."
+    },
+    {
+      "state": "stale-human-judgment-digest-mismatch",
+      "review_terminal": true, "review_outcome": "human-judgment", "digest_matches_current": false, "in_flight_present": false,
+      "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "re-review-current-digest", "capturable_as_verdict": false },
+      "why": "ABSOLUTE PRECEDENCE: a stale result must NOT request a decision; it is superseded — re-review the current digest."
+    },
+    {
+      "state": "stale-infra-failure-digest-mismatch",
+      "review_terminal": true, "review_outcome": "infra-failure", "digest_matches_current": false, "in_flight_present": false,
+      "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "re-review-current-digest", "capturable_as_verdict": false },
+      "why": "ABSOLUTE PRECEDENCE: a stale infra failure is superseded (no authoritative result for the current digest exists) — re-review the current digest."
+    },
+    {
+      "state": "superseded-earlier-digest-while-current-inflight",
+      "review_terminal": true, "review_outcome": "clean", "digest_matches_current": false, "in_flight_present": true,
       "expected": { "render_packet": false, "render_marker": false, "launch_review": false, "action": "wait-poll-existing", "capturable_as_verdict": false },
       "why": "an earlier-digest clean result while a current-digest review is still in flight is superseded; wait for the in-flight current-digest review, never capture the earlier one."
     }
   ],
-  "invariant": "capturable_as_verdict is true for EXACTLY ONE state (clean-current-digest); render_marker implies capturable_as_verdict and both imply terminal AND clean AND digest_matches_current; a duplicate Stop never sets launch_review true while in_flight_present is true."
+  "invariant": "capturable_as_verdict is true for EXACTLY ONE state (clean-current-digest); render_marker implies capturable_as_verdict and both imply terminal AND clean AND digest_matches_current; a digest mismatch forces render_packet=render_marker=capturable=false for EVERY outcome; launch_review is never true on the Stop path."
 }
