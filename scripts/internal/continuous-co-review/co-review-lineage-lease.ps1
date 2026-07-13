@@ -249,3 +249,42 @@ function Test-ContinuousCoReviewLeasePromotionAuthority {
         reason                    = $reason
     }
 }
+
+# Resolve the repo's lineage id for the fire path: the STABLE merge-base commit with trunk (resolved to a commit
+# id so aliases are equivalent - T019 final-correction 3) + the branch target. Falls back to a stable
+# repo-derived key when git cannot resolve (non-repo / detached / no trunk), so two concurrent fires of the SAME
+# checkout still contend on the SAME lease file. Uses Get-ContinuousCoReviewLineageId when the contract module is
+# loaded, else a self-contained hash.
+function Resolve-ContinuousCoReviewRepoLineageId {
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $anchor = ''
+    $target = ''
+    try {
+        $trunk = ''
+        foreach ($cand in @('origin/HEAD', 'origin/main', 'origin/master', 'origin/dev', 'main', 'master', 'dev')) {
+            $null = (& git -C $RepoRoot rev-parse --verify --quiet ('{0}^{{commit}}' -f $cand) 2>$null)
+            if ($LASTEXITCODE -eq 0) { $trunk = $cand; break }
+        }
+        if (-not [string]::IsNullOrWhiteSpace($trunk)) {
+            $mb = (& git -C $RepoRoot merge-base HEAD $trunk 2>$null)
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($mb)) { $anchor = ([string]$mb).Trim() }
+        }
+        if ([string]::IsNullOrWhiteSpace($anchor)) {
+            $head = (& git -C $RepoRoot rev-parse HEAD 2>$null)
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($head)) { $anchor = ([string]$head).Trim() }
+        }
+        $br = (& git -C $RepoRoot rev-parse --abbrev-ref HEAD 2>$null)
+        if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($br)) { $target = ([string]$br).Trim() }
+    }
+    catch { $null = $_ }
+    if ([string]::IsNullOrWhiteSpace($anchor)) { $anchor = 'no-anchor' }
+    if ([string]::IsNullOrWhiteSpace($target)) {
+        $rp = (Resolve-Path -LiteralPath $RepoRoot -ErrorAction SilentlyContinue)
+        $target = if ($null -ne $rp) { $rp.Path } else { [string]$RepoRoot }
+    }
+    if (Get-Command -Name 'Get-ContinuousCoReviewLineageId' -ErrorAction SilentlyContinue) {
+        return Get-ContinuousCoReviewLineageId -AnchorCommitId $anchor -TargetIdentity $target
+    }
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes(("{0}`n{1}" -f $anchor, $target))
+    return 'lin-' + [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($bytes)).Replace('-', '').ToLowerInvariant().Substring(0, 16)
+}

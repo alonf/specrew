@@ -41,6 +41,7 @@ $registry = @(
     @{ area = 'universal recorded-run runner - language/framework-neutral evidence (T018/FR-015)'; path = 'tests/continuous-co-review/unit/recorded-run.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 review-identity + artifact-lifecycle contracts (characterization, UNWIRED)'; path = 'tests/continuous-co-review/unit/t019-identity-contracts.Tests.ps1'; kind = 'pester' }
     @{ area = 'T019 step 6 per-lineage review lease (atomic acquire, owner-only release, crash recovery)'; path = 'tests/continuous-co-review/unit/lineage-lease.Tests.ps1'; kind = 'pester' }
+    @{ area = 'T019 step 6 lease-gated reviewer spawn - suppress on failed acquire (co-review-service)'; path = 'tests/continuous-co-review/unit/co-review-service.Tests.ps1'; kind = 'pester' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]

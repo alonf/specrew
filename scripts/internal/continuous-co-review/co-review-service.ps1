@@ -76,6 +76,7 @@ function Start-ContinuousCoReviewServiceRun {
         # surfaced by the orchestrator's selection, never silently substituted.
         [string]$RequestedHost,
         [int]$TimeoutSeconds = 900,
+        [string]$LineageId,
         [switch]$Detached
     )
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -97,6 +98,18 @@ function Start-ContinuousCoReviewServiceRun {
     }
 
     if ([string]::IsNullOrWhiteSpace($TreeId)) { $TreeId = Get-ContinuousCoReviewCheckpointIdentity -RepoRoot $resolved }
+
+    # T019 step 6 piece 2: acquire the per-lineage LEASE ATOMICALLY BEFORE spawning any reviewer. A failed acquire
+    # (a duplicate same-generation fire, or a NEWER tree queued behind a LIVE owner reviewing an older tree)
+    # SUPPRESSES the spawn - no reviewer starts, so it consumes neither provider spend NOR a review round. The
+    # GENERATION is the reviewed-tree digest (TreeId). The owner PROCESS is stamped to the supervisor after spawn.
+    if ([string]::IsNullOrWhiteSpace($LineageId)) { $LineageId = Resolve-ContinuousCoReviewRepoLineageId -RepoRoot $resolved }
+    $leaseAcq = Request-ContinuousCoReviewLineageLease -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -RunId $RunId
+    if (-not $leaseAcq.acquired) {
+        return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = 'suppressed'; detached = $true; spawned = $false; suppressed_reason = ([string]$leaseAcq.reason); lineage_id = $LineageId; tree_id = $TreeId; generation = $TreeId }
+    }
+    $leaseOwnerToken = [string]$leaseAcq.lease.owner_token
+
     $regPath = Join-Path (Get-ContinuousCoReviewNavigatorPendingDir -RepoRoot $resolved) "$RunId.json"
     $resultPath = Join-Path $runDir 'result.out'
     $now = [datetime]::UtcNow
@@ -114,7 +127,7 @@ function Start-ContinuousCoReviewServiceRun {
         $json = ([pscustomobject]$record | ConvertTo-Json -Depth 8)
         if (Get-Command -Name 'Write-SpecrewFileAtomic' -ErrorAction SilentlyContinue) { Write-SpecrewFileAtomic -Path $regPath -Content $json } else { [System.IO.File]::WriteAllText($regPath, $json) }
     }
-    & $writeReg $null 'running' $null
+    & $writeReg $null 'running' @{ lineage_id = $LineageId; generation = $TreeId; owner_token = $leaseOwnerToken }
     # Spawn detached, stdio redirected to files. An un-redirected child inherits our pipes and BLOCKS the parent.
     $entry = Join-Path $PSScriptRoot 'worktree-review-detached-entry.ps1'
     $spawnArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $entry, '-RepoRoot', $resolved, '-RunDir', $runDir, '-RunId', $RunId, '-RegistryPath', $regPath, '-TimeoutSeconds', $TimeoutSeconds)
@@ -141,11 +154,13 @@ function Start-ContinuousCoReviewServiceRun {
             $spawn = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = ($quoted -join ' '); ProcessStartupInformation = $startup } -ErrorAction Stop
         }
         catch {
+            $null = Complete-ContinuousCoReviewLineageLease -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken
             & $writeReg $null 'failed' @{ failure_reason = ('detached-spawn-failed: ' + $_.Exception.Message) }
             throw
         }
         if ($null -eq $spawn -or [int]$spawn.ReturnValue -ne 0 -or -not $spawn.ProcessId) {
             $rc = if ($null -ne $spawn) { [string]$spawn.ReturnValue } else { 'null' }
+            $null = Complete-ContinuousCoReviewLineageLease -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken
             & $writeReg $null 'failed' @{ failure_reason = ("detached-spawn-failed: Win32_Process.Create rc=$rc") }
             throw "Win32_Process.Create failed (rc=$rc)"
         }
@@ -160,13 +175,17 @@ function Start-ContinuousCoReviewServiceRun {
                 -RedirectStandardOutput (Join-Path $runDir 'entry.out.log') -RedirectStandardError (Join-Path $runDir 'entry.err.log')
         }
         catch {
+            $null = Complete-ContinuousCoReviewLineageLease -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken
             & $writeReg $null 'failed' @{ failure_reason = ('detached-spawn-failed: ' + $_.Exception.Message) }
             throw
         }
         $supPid = [int]$proc.Id
     }
-    & $writeReg $supPid 'running' $null
-    return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = 'running'; supervisor_pid = $supPid; tree_id = $TreeId; detached = $true }
+    # Stamp the lease's owner PROCESS to the reviewer supervisor now that it exists, so crash recovery tracks the
+    # process actually running the review (not the parent that acquired the lease).
+    $null = Update-ContinuousCoReviewLineageLeaseOwnerProcess -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken -OwnerPid $supPid
+    & $writeReg $supPid 'running' @{ lineage_id = $LineageId; generation = $TreeId; owner_token = $leaseOwnerToken }
+    return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = 'running'; supervisor_pid = $supPid; tree_id = $TreeId; detached = $true; lineage_id = $LineageId; generation = $TreeId }
 }
 
 function Get-ContinuousCoReviewServiceStatus {
