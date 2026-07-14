@@ -138,6 +138,67 @@ Describe 'Get-ContinuousCoReviewTestEvidenceForDigest' {
         [string]$injected.reviewed_digest_tree_id | Should -Be $digest
     }
 
+    It 'a same-digest FAIL-then-PASS re-run keeps BOTH attempts durable and visible - a failure never becomes missing evidence (review finding f2, run 20260714T201103653)' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-attempts')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 7') -CommandId 'flaky' -TimeoutSeconds 60
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0') -CommandId 'flaky' -TimeoutSeconds 60
+        $rec = Get-Content -LiteralPath (Join-Path $repo ('.specrew/review/test-evidence/' + $digest + '.json')) -Raw | ConvertFrom-Json
+        $flaky = @(@($rec.runs) | Where-Object { [string]$_.command_id -eq 'flaky' } | Sort-Object { [int]$_.attempt })
+        @($flaky).Count | Should -Be 2 -Because 'the later success must NOT erase the earlier failed attempt'
+        [int]$flaky[0].attempt | Should -Be 1
+        $flaky[0].command_succeeded | Should -BeFalse -Because 'the failure stays durable, never a clean-only history'
+        [int]$flaky[1].attempt | Should -Be 2
+        $flaky[1].command_succeeded | Should -BeTrue
+        # the join treats the LATEST attempt as authoritative; the earlier one is HISTORY, never ambiguity.
+        $plan = [pscustomobject]@{ commands = @([pscustomobject]@{ command_id = 'flaky' }) }
+        $joined = @(Test-ContinuousCoReviewPlanEvidenceInjectable -PlanEvidence $flaky -Plan $plan -CurrentDigest $digest)
+        [string]$joined[0].classification | Should -Be 'attempt-superseded-history'
+        [string]$joined[1].classification | Should -Be 'exact-digest-command-joined'
+        $joined[1].injectable | Should -BeTrue
+        # and the PRODUCTION injection keeps BOTH visible (history is evidence, not noise).
+        $wt = Join-Path $TestDrive 'worktree-attempts'
+        $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest) | Should -BeTrue
+        $injected = Get-Content -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') -Raw | ConvertFrom-Json
+        @(@($injected.runs) | Where-Object { [string]$_.command_id -eq 'flaky' }).Count | Should -Be 2
+    }
+
+    It 'AMBIGUOUS duplicate plan runs are WITHHELD at the PRODUCTION injection boundary and surfaced - never silently injected (review finding f1, run 20260714T201103653)' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-join-boundary')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        # one legitimate identity-less self-evidence run...
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0') -TimeoutSeconds 60
+        # ...then TAMPER: two runs with the SAME command_id and NO attempt discrimination (the ambiguous
+        # duplicate the join contract refuses), smuggled into the digest-keyed store.
+        $storePath = Join-Path $repo ('.specrew/review/test-evidence/' + $digest + '.json')
+        $rec = Get-Content -LiteralPath $storePath -Raw | ConvertFrom-Json
+        $dupA = ($rec.runs | Select-Object -First 1) | ConvertTo-Json -Depth 12 | ConvertFrom-Json
+        $dupA | Add-Member -NotePropertyName 'command_id' -NotePropertyValue 'dup' -Force
+        $dupB = ($rec.runs | Select-Object -First 1) | ConvertTo-Json -Depth 12 | ConvertFrom-Json
+        $dupB | Add-Member -NotePropertyName 'command_id' -NotePropertyValue 'dup' -Force
+        $rec.runs = @(@($rec.runs) + $dupA + $dupB)
+        ($rec | ConvertTo-Json -Depth 12) | Set-Content -LiteralPath $storePath -Encoding UTF8
+
+        $wt = Join-Path $TestDrive 'worktree-join-boundary'
+        $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest) | Should -BeTrue -Because 'the legitimate identity-less run still injects'
+        $injected = Get-Content -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') -Raw | ConvertFrom-Json
+        @(@($injected.runs) | Where-Object { (@($_.PSObject.Properties.Name) -contains 'command_id') -and [string]$_.command_id -eq 'dup' }).Count | Should -Be 0 -Because 'ambiguous duplicates never reach the reviewer'
+        @($injected.withheld_runs).Count | Should -Be 2 -Because 'the refusal is SURFACED in the injected artifact, never silent'
+        foreach ($w in @($injected.withheld_runs)) { [string]$w.classification | Should -Be 'duplicate-command-id-surfaced' }
+        # the ORIGIN-side durable record is untouched by the withholding (copy-only surgery).
+        $originRec = Get-Content -LiteralPath $storePath -Raw | ConvertFrom-Json
+        @(@($originRec.runs) | Where-Object { (@($_.PSObject.Properties.Name) -contains 'command_id') -and [string]$_.command_id -eq 'dup' }).Count | Should -Be 2
+        # with a REAL plan that does not name the id, the runs are withheld as unjoinable.
+        $wt2 = Join-Path $TestDrive 'worktree-join-boundary2'
+        $null = New-Item -ItemType Directory -Path (Join-Path $wt2 '.review') -Force
+        $foreignPlan = [pscustomobject]@{ commands = @([pscustomobject]@{ command_id = 'something-else' }) }
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt2 -DigestTreeId $digest -Plan $foreignPlan) | Should -BeTrue
+        $injected2 = Get-Content -LiteralPath (Join-Path $wt2 '.review/implementer-evidence.json') -Raw | ConvertFrom-Json
+        foreach ($w in @($injected2.withheld_runs)) { [string]$w.classification | Should -Be 'unjoinable-no-matching-command' }
+    }
+
     It 'REFUSES an embedded entry with NO digest identity (fail closed on missing, not only foreign)' {
         $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-missing-id')
         $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id

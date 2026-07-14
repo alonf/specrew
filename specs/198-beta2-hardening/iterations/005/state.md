@@ -2,13 +2,15 @@
 
 **Schema**: v1
 **Last Completed Task**: the Prop-145 hook-health REDESIGN (Option A, amended) — INDEPENDENT hook-liveness + a NON-PROMOTING `ambient-path-binding` version diagnostic; byte-capped shell-safe probe; System32 cmd.exe interpreter; exact-digest T018 runs injected as reviewer-visible evidence. **Iteration 005 is NOT yet complete** — a Proposal-145 review returned three authoritative findings (bounded output, ambient executable-identity, unsupported evidence). After characterizing that NO host exposes a trustworthy non-ambient executable identity, the maintainer chose Option A: the version is a non-authoritative diagnostic, health rests on observed hook-liveness, readiness on fresh liveness + config/trust — receipts are MONITORING evidence, never authentication. Implemented + green on Windows AND Linux; pending the T018 recording + one authorized confirming review round. See the Co-review section at the bottom.
-**Tasks Remaining**: run the maintainer's STANDING 5-round authorization (2026-07-14: "authorized up to 5
-additional review rounds") to a CLEAN round — each round: resolved-against-disk citing the latest fixes
-commit → one `--live` review → verify findings against disk → fix with paired tests → full verification →
-commit → re-bind evidence. The loop STOPS on: a clean round (closes Iteration 005, releases T019 pieces 5-7),
-a HUMAN-DECISION finding (escalate immediately), or round 5 of 5 exhausted. History: eighth round (the single
-authorization) → 5 findings fixed (6de77f5e); ninth round (1 of 5) → 3 schema-conformance findings fixed —
-see the round sections below. NO rounds beyond the authorized five. FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Tasks Remaining**: the MAINTAINER'S decision after the 5-round authorization was RUN TO EXHAUSTION
+(2026-07-14). Every round returned actionable findings, every finding was verified against disk, fixed with
+paired falsification tests, committed, and the evidence re-bound: round 1/5 → 3 schema-conformance
+(8c1495e3); round 2/5 → 4 evidence-integrity (95d18d13); round 3/5 → 5 fail-closed-binding (e695cd60);
+round 4/5 → 3 numeric/memory-boundary (c198bdac); round 5/5 → 2 evidence-lifecycle (see the Thirteenth
+round). The finding rate is DECLINING (5→3→4→5→3→2 across the whole sequence) but no round has come back
+clean yet. **Iteration 005 closure + the release of T019 pieces 5-7 still require ONE clean round — the
+maintainer decides whether to authorize further rounds, change reviewer host/scope, or accept-with-ack.**
+NO round launches without a new verdict. FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-14T17:30:00Z
@@ -571,6 +573,32 @@ human-decision — numeric/memory boundary classes, all verified and fixed with 
 
 Focused suites 89/89 green on Windows; full registry + Linux Docker verify re-run; evidence re-bound to the
 fixes commit. Rounds consumed: 4 of 5 — the NEXT round is the LAST authorized.
+
+### Thirteenth round — round 5 of 5, the FINAL authorized round (2026-07-14, run 20260714T201103653-ca6b1ffb) + 2 fixes
+
+The last authorized round ran after `resolved-against-disk --fix-evidence-ref c198bdac` and returned **2 blocking
+findings**, none human-decision — evidence-lifecycle classes, both verified and fixed with paired regressions:
+
+1. **f1 (plan-join never wired into production injection).** `Test-ContinuousCoReviewPlanEvidenceInjectable`
+   (duplicate + joinability rejection) was referenced only by tests; the production copy injected an
+   exact-digest record wholesale. Fixed: the join now GATES `Copy-ContinuousCoReviewImplementerEvidence` —
+   a `-Plan` seam (the FR-049 supplier wiring point) enforces membership when a plan is supplied, ambiguous
+   duplicates are refused with or without one, withheld runs are surfaced IN the injected artifact
+   (`withheld_runs`, never a silent drop), identity-less self-evidence passes through, and a
+   validator-unavailable state refuses injection (fail-closed).
+2. **f2 (same-id re-run erased the earlier attempt).** `Save-ContinuousCoReviewRunRecord` replaced on
+   command_id, so a later success erased an earlier failure from the durable reviewer evidence (against
+   FR-048 record-every-attempt). Fixed: plan-identified runs APPEND with a per-id `attempt` sequence —
+   (command_id, attempt) is the durable identity, command_id stays the join key; the join treats the LATEST
+   attempt as authoritative and classifies earlier ones `attempt-superseded-history` (kept visible in the
+   injected evidence, never ambiguous-refused, never erased). Identity-less self-evidence keeps the
+   T111-style latest-run-wins doctrine, and can never displace a plan attempt. Regression: same-digest
+   fail-then-pass keeps both attempts durable + injected. (Fix-of-the-fix caught locally: `@()` over a
+   generic List trips a PS binder error — materialized via `.ToArray()`, documented.)
+
+Focused suites 91/91 green on Windows; full registry + Linux Docker verify re-run; evidence re-bound to the
+fixes commit. **Rounds consumed: 5 of 5 — the authorization is EXHAUSTED.** Iteration 005 closure still
+requires a CLEAN round; the maintainer decides whether to authorize more.
 
 ## Notes
 

@@ -152,7 +152,11 @@ function Copy-ContinuousCoReviewImplementerEvidence {
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$WorktreePath,
-        [AllowEmptyString()][string]$DigestTreeId
+        [AllowEmptyString()][string]$DigestTreeId,
+        # OPTIONAL selected VerificationPlan (the FR-049 supplier seam): when supplied, plan-run joinability is
+        # enforced against ITS command set; absent, membership is derived from the record's own ids (vacuous)
+        # while ambiguous duplicates are still refused (review finding f1, run 20260714T201103653).
+        [AllowNull()]$Plan = $null
     )
     try {
         if ([string]::IsNullOrWhiteSpace($DigestTreeId)) { return $false }
@@ -160,6 +164,50 @@ function Copy-ContinuousCoReviewImplementerEvidence {
         if ($null -eq $record) { return $false }
         $reviewDir = Join-Path $WorktreePath '.review'
         if (-not (Test-Path -LiteralPath $reviewDir -PathType Container)) { return $false }
+
+        # FR-048 JOIN AT THE INJECTION BOUNDARY (review finding f1, run 20260714T201103653): the duplicate /
+        # joinability contract gates the PRODUCTION copy, not only tests. Plan-identified runs are joined via
+        # Test-ContinuousCoReviewPlanEvidenceInjectable; non-injectable runs are WITHHELD from the copy and
+        # surfaced in `withheld_runs` (a reviewer-visible refusal, never a silent drop), while
+        # attempt-superseded HISTORY stays visible (finding f2: a failure never becomes missing evidence).
+        # Identity-less self-evidence runs are not plan evidence and pass through under the envelope +
+        # embedded-digest checks the lookup already enforced. Fail-closed if the join validator is missing.
+        if (($record.PSObject.Properties.Name -contains 'runs') -and ($null -ne $record.runs)) {
+            $idRuns = @(@($record.runs) | Where-Object { $null -ne $_ -and (@($_.PSObject.Properties.Name) -contains 'command_id') -and -not [string]::IsNullOrWhiteSpace([string]$_.command_id) })
+            if ($idRuns.Count -gt 0) {
+                if (-not (Get-Command -Name 'Test-ContinuousCoReviewPlanEvidenceInjectable' -ErrorAction SilentlyContinue)) {
+                    $vpc = Join-Path $PSScriptRoot 'verification-plan-contract.ps1'
+                    if (Test-Path -LiteralPath $vpc -PathType Leaf) { . $vpc }
+                }
+                if (-not (Get-Command -Name 'Test-ContinuousCoReviewPlanEvidenceInjectable' -ErrorAction SilentlyContinue)) {
+                    [Console]::Error.WriteLine('[co-review] WARN IMPLEMENTER_EVIDENCE_NOT_INJECTED plan-evidence join validator unavailable; refusing to inject unjoined plan runs.')
+                    return $false
+                }
+                $joinPlan = if ($null -ne $Plan) { $Plan } else {
+                    [pscustomobject]@{ commands = @(@($idRuns | ForEach-Object { [string]$_.command_id } | Sort-Object -Unique) | ForEach-Object { [pscustomobject]@{ command_id = $_ } }) }
+                }
+                $joined = @(Test-ContinuousCoReviewPlanEvidenceInjectable -PlanEvidence $idRuns -Plan $joinPlan -CurrentDigest $DigestTreeId)
+                $withheld = @()
+                $keepRuns = New-Object System.Collections.Generic.List[object]
+                foreach ($r in @($record.runs)) {
+                    if ($null -eq $r) { continue }
+                    $rid = if (@($r.PSObject.Properties.Name) -contains 'command_id') { [string]$r.command_id } else { '' }
+                    if ([string]::IsNullOrWhiteSpace($rid)) { $keepRuns.Add($r) | Out-Null; continue }
+                    $jidx = [Array]::IndexOf($idRuns, $r)
+                    $cls = if ($jidx -ge 0 -and $jidx -lt $joined.Count) { [string]$joined[$jidx].classification } else { 'unjoined' }
+                    if ($cls -in @('exact-digest-command-joined', 'attempt-superseded-history')) { $keepRuns.Add($r) | Out-Null }
+                    else { $withheld += [pscustomobject]@{ command_id = $rid; classification = $cls } }
+                }
+                if (@($withheld).Count -gt 0) {
+                    foreach ($w in $withheld) { [Console]::Error.WriteLine(("[co-review] WARN PLAN_RUN_WITHHELD command_id '{0}' ({1}) - refused at the injection boundary (FR-048 join)." -f $w.command_id, $w.classification)) }
+                    $record = $record | Select-Object *   # shallow copy: the origin-side durable record stays untouched
+                    $record.runs = $keepRuns.ToArray()
+                    $record | Add-Member -NotePropertyName 'withheld_runs' -NotePropertyValue @($withheld) -Force
+                    $hasSuitesLeft = ($record.PSObject.Properties.Name -contains 'suites') -and (@($record.suites).Count -gt 0)
+                    if ((@($record.runs).Count -eq 0) -and (-not $hasSuitesLeft)) { return $false }
+                }
+            }
+        }
         # FR-009/SC-002 ORIGIN-PATH HYGIENE (review finding f5, run 20260714T190233598): the injected COPY is
         # reviewer-visible, so every origin-absolute path in it (working_directory, argument vectors like a
         # docker volume mount, artifact paths) is relativized to '<project>' against the governance AND git
@@ -623,10 +671,12 @@ function Save-ContinuousCoReviewRunRecord {
         Persist ONE run/attempt entry into the digest-keyed store's `runs` array. SHARED by the real
         recorded-run writer AND the synthetic verification-failure records (review finding f4, run
         20260714T182921446): FR-048's record-every-attempt means the DURABLE store, not only an in-memory
-        return - an unpersisted attempted-failure is missing reviewer evidence. DURABLE UNIQUENESS KEY
-        (finding f5, run 20260714T123137002): command_id when present IS the identity (a re-run of the same
-        command_id replaces its prior record; two distinct ids with the same invocation both persist);
-        identity-less runs key on executable + arguments + working_directory. Throws on write failure.
+        return - an unpersisted attempted-failure is missing reviewer evidence. IDENTITY (finding f5 run
+        20260714T123137002 + finding f2 run 20260714T201103653): command_id when present is the plan JOIN
+        key and (command_id, attempt) is the durable identity - same-id re-runs APPEND with an increasing
+        attempt sequence so a failure is never erased by a later success; two distinct ids with the same
+        invocation both persist. Identity-less runs (implementer self-evidence) keep latest-run-wins on
+        executable + arguments + working_directory. Throws on write failure.
     #>
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
@@ -646,21 +696,43 @@ function Save-ContinuousCoReviewRunRecord {
     if ($null -eq $record) { $record = [pscustomobject]@{ schema_version = '1.0'; reviewed_digest_tree_id = $TreeId; recorded_at = $RecordedAt } }
     $existingRuns = @()
     if (($record.PSObject.Properties.Name -contains 'runs') -and ($null -ne $record.runs)) { $existingRuns = @($record.runs) }
-    $entryKey = if (-not [string]::IsNullOrWhiteSpace($CommandId)) { 'command-id:' + $CommandId }
-    else { 'invocation:' + $Executable + ' ' + (@($Arguments) -join ' ') + '|wd:' + [string]$WorkingDirectory }
-    $kept = @($existingRuns | Where-Object {
-            if ($null -eq $_) { return $false }
-            $exId = ''
-            if (@($_.PSObject.Properties | ForEach-Object { $_.Name }) -contains 'command_id') { $exId = [string]$_.command_id }
-            $exKey = if (-not [string]::IsNullOrWhiteSpace($exId)) { 'command-id:' + $exId }
-            else {
+    if (-not [string]::IsNullOrWhiteSpace($CommandId)) {
+        # ATTEMPT HISTORY for plan-identified runs (review finding f2, run 20260714T201103653): a re-run of the
+        # SAME command_id at the same digest APPENDS with a monotonically increasing per-id `attempt` sequence -
+        # it never replaces the prior record, so an earlier non-zero/timeout/required-result FAILURE can never
+        # be erased by a later success (FR-048: every attempt recorded; a failure never becomes missing
+        # evidence). command_id stays the plan JOIN key; (command_id, attempt) is the durable identity, and the
+        # join treats the LATEST attempt as authoritative with earlier attempts surfaced as history.
+        $maxAttempt = 0
+        foreach ($er in $existingRuns) {
+            if ($null -eq $er) { continue }
+            $erProps = @($er.PSObject.Properties.Name)
+            if (($erProps -contains 'command_id') -and ([string]$er.command_id -ceq $CommandId)) {
+                $erAttempt = if ($erProps -contains 'attempt') { [int]$er.attempt } else { 1 }
+                if ($erAttempt -gt $maxAttempt) { $maxAttempt = $erAttempt }
+            }
+        }
+        $entryObj = [pscustomobject]$Entry
+        $entryObj | Add-Member -NotePropertyName 'attempt' -NotePropertyValue ($maxAttempt + 1) -Force
+        $record | Add-Member -NotePropertyName 'runs' -NotePropertyValue @(@($existingRuns | Where-Object { $null -ne $_ }) + @($entryObj)) -Force
+    }
+    else {
+        # Identity-less runs (the implementer's OWN dev-loop self-evidence, e.g. the recorded registry runs)
+        # keep the T111-style LATEST-RUN-WINS replacement on the invocation key - they are not plan attempts,
+        # and the freshest run for this exact tree is the record's meaning.
+        $entryKey = 'invocation:' + $Executable + ' ' + (@($Arguments) -join ' ') + '|wd:' + [string]$WorkingDirectory
+        $kept = @($existingRuns | Where-Object {
+                if ($null -eq $_) { return $false }
+                $exId = ''
+                if (@($_.PSObject.Properties | ForEach-Object { $_.Name }) -contains 'command_id') { $exId = [string]$_.command_id }
+                if (-not [string]::IsNullOrWhiteSpace($exId)) { return $true }   # plan attempts are never displaced by an identity-less run
                 $exWd = ''
                 try { $exWd = [string]$_.command.working_directory } catch { $exWd = '' }
-                'invocation:' + [string]$_.command.executable + ' ' + (@($_.command.arguments) -join ' ') + '|wd:' + $exWd
-            }
-            return ($exKey -ne $entryKey)
-        })
-    $record | Add-Member -NotePropertyName 'runs' -NotePropertyValue @(@($kept) + @([pscustomobject]$Entry)) -Force
+                $exKey = 'invocation:' + [string]$_.command.executable + ' ' + (@($_.command.arguments) -join ' ') + '|wd:' + $exWd
+                return ($exKey -ne $entryKey)
+            })
+        $record | Add-Member -NotePropertyName 'runs' -NotePropertyValue @(@($kept) + @([pscustomobject]$Entry)) -Force
+    }
     $record | Add-Member -NotePropertyName 'reviewed_digest_tree_id' -NotePropertyValue $TreeId -Force
     $record | Add-Member -NotePropertyName 'recorded_at' -NotePropertyValue $RecordedAt -Force
     [System.IO.File]::WriteAllText($path, ($record | ConvertTo-Json -Depth 12))

@@ -448,8 +448,12 @@ function Resolve-ContinuousCoReviewVerificationPlanState {
 # the plan, and the CURRENT reviewed-tree digest, decide per record whether it is injectable. REJECTS a
 # record that is: DIGEST-MISMATCHED (record digest empty or != current — absolute precedence, matching
 # the review-identity evidence contract); UNJOINABLE (command_id empty or not a command in the plan); or
-# a DUPLICATE (its command_id appears more than once in the evidence — ambiguous, so EVERY occurrence is
-# refused). Returns an ordered array of { command_id; injectable; classification }.
+# a DUPLICATE (its command_id appears more than once WITHOUT distinct attempt numbers — ambiguous, so
+# EVERY occurrence is refused). ATTEMPT HISTORY (review finding f2, run 20260714T201103653): same-id
+# records carrying DISTINCT `attempt` numbers are legitimate history, not ambiguity - the LATEST attempt
+# is the injectable authoritative record and earlier attempts classify `attempt-superseded-history`
+# (kept visible downstream, never treated as the current verdict, never erased). Returns an ordered
+# array of { command_id; injectable; classification }.
 function Test-ContinuousCoReviewPlanEvidenceInjectable {
     param(
         [Parameter(Mandatory)][AllowNull()]$PlanEvidence,
@@ -464,13 +468,31 @@ function Test-ContinuousCoReviewPlanEvidenceInjectable {
         $cid = [string](Get-ContinuousCoReviewContractProp -Object $c -Name 'command_id')
         if (-not [string]::IsNullOrWhiteSpace($cid)) { $planIds[$cid] = $true }
     }
-    # Pre-count command_ids present in the evidence so a duplicated id refuses ALL its occurrences.
-    $idCounts = @{}
+    # Group same-id occurrences: DISTINCT attempt numbers = legitimate history (latest wins, earlier =
+    # superseded history); same-id occurrences WITHOUT distinct attempts = ambiguous duplicates (all refused).
+    $idGroups = @{}
     foreach ($rec in @($PlanEvidence)) {
         if ($null -eq $rec) { continue }
         $cid = [string](Get-ContinuousCoReviewContractProp -Object $rec -Name 'command_id')
         if ([string]::IsNullOrWhiteSpace($cid)) { continue }
-        if ($idCounts.ContainsKey($cid)) { $idCounts[$cid] = $idCounts[$cid] + 1 } else { $idCounts[$cid] = 1 }
+        if (-not $idGroups.ContainsKey($cid)) { $idGroups[$cid] = New-Object System.Collections.Generic.List[object] }
+        $idGroups[$cid].Add($rec) | Out-Null
+    }
+    $idVerdicts = @{}   # cid -> @{ ambiguous = bool; latest = <rec> }
+    foreach ($cid in @($idGroups.Keys)) {
+        # .ToArray(), not @(): the @() wrap over a generic List here trips a PS binder 'Argument types do not
+        # match' - ToArray is the deterministic materialization.
+        $group = $idGroups[$cid].ToArray()
+        if ($group.Count -le 1) { $idVerdicts[$cid] = @{ ambiguous = $false; latest = $group[0] }; continue }
+        $attempts = @($group | ForEach-Object { $a = Get-ContinuousCoReviewContractProp -Object $_ -Name 'attempt'; if ($null -ne $a) { [int]$a } else { $null } })
+        $allNumbered = (@($attempts | Where-Object { $null -eq $_ }).Count -eq 0)
+        $distinct = (@($attempts | Sort-Object -Unique).Count -eq $group.Count)
+        if ($allNumbered -and $distinct) {
+            $latest = $group[0]; $latestA = [int]$attempts[0]
+            for ($gi = 1; $gi -lt $group.Count; $gi++) { if ([int]$attempts[$gi] -gt $latestA) { $latest = $group[$gi]; $latestA = [int]$attempts[$gi] } }
+            $idVerdicts[$cid] = @{ ambiguous = $false; latest = $latest }
+        }
+        else { $idVerdicts[$cid] = @{ ambiguous = $true; latest = $null } }
     }
 
     $results = @()
@@ -484,8 +506,12 @@ function Test-ContinuousCoReviewPlanEvidenceInjectable {
         elseif ([string]::IsNullOrWhiteSpace($cid) -or (-not $planIds.ContainsKey($cid))) {
             $classification = 'unjoinable-no-matching-command'
         }
-        elseif ($idCounts.ContainsKey($cid) -and ($idCounts[$cid] -gt 1)) {
+        elseif ($idVerdicts.ContainsKey($cid) -and [bool]$idVerdicts[$cid].ambiguous) {
             $classification = 'duplicate-command-id-surfaced'
+        }
+        elseif ($idVerdicts.ContainsKey($cid) -and ($null -ne $idVerdicts[$cid].latest) -and (-not [object]::ReferenceEquals($idVerdicts[$cid].latest, $rec))) {
+            # earlier attempt of a legitimately re-run command: HISTORY - visible, never the current verdict.
+            $classification = 'attempt-superseded-history'
         }
         else {
             $injectable = $true
