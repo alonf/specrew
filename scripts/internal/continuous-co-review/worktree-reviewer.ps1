@@ -130,8 +130,12 @@ function ConvertTo-ContinuousCoReviewOriginRelativized {
         $full = [System.IO.Path]::GetFullPath($root).TrimEnd([char]'\', [char]'/')
         $fwd = $full.Replace('\', '/')
         $bwd = $full.Replace('/', '\')
-        # file:/// URL form first (most specific), then the bare absolute path in either separator form.
+        # file:/// URL form first (most specific), then the JSON-ESCAPED backslash form (review finding f5,
+        # run 20260714T190233598: a serialized JSON evidence copy carries 'C:\\Dev\\...' - the doubled form
+        # must relativize too or the origin leaks through every JSON artifact), then the bare absolute path
+        # in either separator form.
         $out = [regex]::Replace($out, ('file:///' + [regex]::Escape($fwd)), 'file:///<project>', $ci)
+        $out = [regex]::Replace($out, [regex]::Escape($bwd.Replace('\', '\\')), '<project>', $ci)
         $out = [regex]::Replace($out, [regex]::Escape($fwd), '<project>', $ci)
         $out = [regex]::Replace($out, [regex]::Escape($bwd), '<project>', $ci)
     }

@@ -170,6 +170,29 @@ Describe 'F-198 Prop-145 hook-health (liveness + version diagnostic)' {
             Write-RawReceipt -Root $root -HostName 'codex' -Event 'SessionStart' -Content '{"host":"codex","surface":"cli","event":"SessionStart","observed_host_version":"codex-cli 0.44.0","version_source":"ambient-path-binding","timestamp":"2026-07-14T12:00:00.0000000Z","adapter_contract_version":3,"secret":"leak"}' | Out-Null
             (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -Now $script:BaseTime.AddHours(1)).hook_status | Should -Be 'malformed'
         }
+        It 'wrong-SURFACE (a cli-named receipt whose embedded surface is cloud) -> conflicting, never healthy (review finding f1, run 20260714T190233598)' {
+            $root = New-HhrTempRoot
+            # A well-formed v3 receipt written INTO the codex-cli-* filename but claiming surface 'cloud' - the
+            # project-writable store makes this a one-file tamper that previously classified for the CLI query.
+            Write-RawReceipt -Root $root -HostName 'codex' -Event 'SessionStart' -Content '{"host":"codex","surface":"cloud","event":"SessionStart","observed_host_version":"codex-cli 0.44.0","version_source":"ambient-path-binding","timestamp":"2026-07-14T12:00:00.0000000Z","adapter_contract_version":3}' | Out-Null
+            $h = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -Now $script:BaseTime.AddHours(1)
+            $h.hook_status | Should -Be 'conflicting' -Because 'the embedded surface must agree with the filename/query identity'
+            $h.hook_status | Should -Not -Be 'healthy'
+        }
+        It 'an UNRECOGNIZED lifecycle event -> malformed, never healthy (review finding f3, run 20260714T190233598)' {
+            $root = New-HhrTempRoot
+            Write-RawReceipt -Root $root -HostName 'codex' -Event 'forged' -Content '{"host":"codex","surface":"cli","event":"forged","observed_host_version":"codex-cli 0.44.0","version_source":"ambient-path-binding","timestamp":"2026-07-14T12:00:00.0000000Z","adapter_contract_version":3}' | Out-Null
+            $h = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -Now $script:BaseTime.AddHours(1)
+            $h.hook_status | Should -Be 'malformed' -Because 'liveness comes only from a recognized lifecycle fire (SessionStart | Stop | agentStop)'
+        }
+        It 'a filename/event DISAGREEMENT (stop-named file claiming SessionStart) -> conflicting (review finding f3, run 20260714T190233598)' {
+            $root = New-HhrTempRoot
+            # written under the ...-stop.json identity but claiming to be the SessionStart fire - this would
+            # otherwise distort which receipt is treated as the SessionStart version evidence.
+            Write-RawReceipt -Root $root -HostName 'codex' -Event 'Stop' -Content '{"host":"codex","surface":"cli","event":"SessionStart","observed_host_version":"codex-cli 0.44.0","version_source":"ambient-path-binding","timestamp":"2026-07-14T12:00:00.0000000Z","adapter_contract_version":3}' | Out-Null
+            $h = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -Now $script:BaseTime.AddHours(1)
+            $h.hook_status | Should -Be 'conflicting' -Because 'the embedded event must match the filename identity it was selected under'
+        }
         It 'wrong-host (receipt host field disagrees with the requested host) -> conflicting' {
             $root = New-HhrTempRoot
             Write-RawReceipt -Root $root -HostName 'codex' -Event 'SessionStart' -Content '{"host":"claude","surface":"cli","event":"SessionStart","observed_host_version":"x 0.1.0","version_source":"ambient-path-binding","timestamp":"2026-07-14T12:00:00.0000000Z","adapter_contract_version":3}' | Out-Null

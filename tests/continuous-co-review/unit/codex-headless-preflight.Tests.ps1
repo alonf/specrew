@@ -47,6 +47,16 @@ Describe 'F-198 Prop-145 Codex headless-governance preflight' {
             $root = New-PreflightRoot; Add-CodexReceipt -Root $root -At $script:BaseTime
             (Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -FreshnessHours 24 -Now $script:BaseTime.AddHours(72)).ready | Should -BeFalse
         }
+        It 'a cli-named receipt whose embedded surface is cloud -> not ready (review finding f1, run 20260714T190233598)' {
+            $root = New-PreflightRoot
+            $path = Get-SpecrewHookHealthReceiptPath -ProjectRoot $root -HostName 'codex' -Surface 'cli' -Event 'SessionStart'
+            $dir = Split-Path -Parent $path
+            if (-not (Test-Path -LiteralPath $dir -PathType Container)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+            [System.IO.File]::WriteAllText($path, '{"host":"codex","surface":"cloud","event":"SessionStart","observed_host_version":"codex-cli 0.44.0","version_source":"ambient-path-binding","timestamp":"2026-07-14T12:00:00.0000000Z","adapter_contract_version":3}', [System.Text.UTF8Encoding]::new($false))
+            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now ([datetime]::Parse('2026-07-14T13:00:00Z').ToUniversalTime())
+            $pf.ready | Should -BeFalse -Because 'a surface-mismatched receipt is conflicting evidence, never readiness'
+            $pf.hook_status | Should -Be 'conflicting'
+        }
         It 'a FUTURE-dated receipt -> not ready (malformed liveness; never a false-green under clock skew or a tampered store) (review finding f2, run 20260714T172315119)' {
             $root = New-PreflightRoot; Add-CodexReceipt -Root $root -At $script:BaseTime.AddHours(6)
             $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -FreshnessHours 24 -Now $script:BaseTime

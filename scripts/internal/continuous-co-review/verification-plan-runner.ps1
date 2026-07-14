@@ -178,19 +178,27 @@ function Invoke-ContinuousCoReviewVerificationPlan {
 
     $resolvedRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
 
-    # STATE GATE: an unconfigured plan runs NOTHING and fabricates NO success.
-    $state = Resolve-ContinuousCoReviewVerificationPlanState -Plan $Plan -RepoRoot $resolvedRoot
-    if ($state.state -eq 'verification-not-configured') {
-        return [pscustomobject]@{ state = 'verification-not-configured'; command_count = 0; evidence = @(); all_succeeded = $false; reason = $state.reason }
+    # NULL plan = the explicit NO-SUPPLIER state (verification-not-configured): nothing was declared, so there
+    # is nothing to validate. Everything else validates FIRST.
+    if ($null -eq $Plan) {
+        return [pscustomobject]@{ state = 'verification-not-configured'; command_count = 0; evidence = @(); all_succeeded = $false; reason = 'plan is null' }
     }
 
-    # STRUCTURAL GATE (maintainer decision 2026-07-13): a structurally-invalid plan - a malformed IDENTITY GRAPH,
-    # e.g. a DUPLICATE command_id - is rejected FAIL-FAST, BEFORE any command executes, so it produces ZERO command
-    # side effects. (T019's evidence-join duplicate rejection stays as DEFENSE-IN-DEPTH for records that still
-    # arrive somehow.) command_id uniqueness is part of the plan schema, so it belongs at the validation boundary.
+    # STRUCTURAL GATE BEFORE THE STATE GATE (maintainer decision 2026-07-13; reordered per review finding f2,
+    # run 20260714T190233598): a SUPPLIED plan is validated against the FULL closed schema (schema_version const,
+    # closed key sets, typed fields, identity graph) BEFORE any state classification - a schema-invalid plan
+    # (e.g. {commands:[]} with no schema_version, or an all-invalid commands list) must fail LOUDLY as
+    # verification-plan-invalid with ZERO execution, never downgrade to the benign not-configured state.
     $structural = Test-ContinuousCoReviewVerificationPlan -Plan $Plan -RepoRoot $resolvedRoot
     if (-not $structural.valid) {
         return [pscustomobject]@{ state = 'verification-plan-invalid'; command_count = $structural.command_count; evidence = @(); all_succeeded = $false; reason = $structural.reason }
+    }
+
+    # STATE GATE: a SCHEMA-VALID plan with zero commands is the explicit not-configured state - it runs NOTHING
+    # and fabricates NO success.
+    $state = Resolve-ContinuousCoReviewVerificationPlanState -Plan $Plan -RepoRoot $resolvedRoot
+    if ($state.state -eq 'verification-not-configured') {
+        return [pscustomobject]@{ state = 'verification-not-configured'; command_count = 0; evidence = @(); all_succeeded = $false; reason = $state.reason }
     }
 
     # DIAGNOSTIC-DISCLOSURE GATE (fail-fast, zero side effects): a structurally invalid authorization object

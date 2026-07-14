@@ -116,6 +116,28 @@ Describe 'Get-ContinuousCoReviewTestEvidenceForDigest' {
         Test-Path -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') | Should -BeFalse
     }
 
+    It 'the INJECTED evidence copy is ORIGIN-RELATIVIZED - zero origin-absolute paths reach the reviewer (review finding f5, run 20260714T190233598)' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-relativize')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        # a real run: the recorder stamps the ABSOLUTE working directory; the argument vector carries a
+        # docker-style volume mount naming the origin root (the exact leak the reviewer demonstrated).
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0', ('-v'), ($repo + ':/repo')) -TimeoutSeconds 60
+        $wt = Join-Path $TestDrive 'worktree-relativize'
+        $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest) | Should -BeTrue
+        $raw = Get-Content -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') -Raw
+        $resolvedRepo = (Resolve-Path -LiteralPath $repo).Path
+        $raw | Should -Not -Match ([regex]::Escape($resolvedRepo)) -Because 'the reviewer-visible copy must carry no origin-absolute path'
+        $raw | Should -Not -Match ([regex]::Escape($resolvedRepo.Replace('\', '\\'))) -Because 'the JSON-escaped backslash form must be relativized too'
+        $raw | Should -Match ([regex]::Escape('<project>')) -Because 'structure stays reviewable; only the origin prefix is neutralized'
+        # the ORIGIN-side durable record is untouched (relativization applies to the copy only).
+        $originRaw = Get-Content -LiteralPath (Join-Path $repo ('.specrew/review/test-evidence/' + $digest + '.json')) -Raw
+        $originRaw | Should -Match ([regex]::Escape($resolvedRepo.Replace('\', '\\')))
+        # and the scrubbed copy still parses with its digest identity intact.
+        $injected = $raw | ConvertFrom-Json
+        [string]$injected.reviewed_digest_tree_id | Should -Be $digest
+    }
+
     It 'REFUSES an embedded entry with NO digest identity (fail closed on missing, not only foreign)' {
         $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-missing-id')
         $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id

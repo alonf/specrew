@@ -159,6 +159,22 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         foreach ($e in @($result.evidence)) { $e.timed_out | Should -BeFalse }
     }
 
+    It 'a SCHEMA-INVALID plan fails LOUDLY as verification-plan-invalid - never downgraded to the benign not-configured state (review finding f2, run 20260714T190233598)' {
+        $repo = New-PlanRunRepo
+        # {commands:[]} with NO schema_version: pre-fix the state gate ran first and classified this as the
+        # benign 'not configured' state instead of a loud contract violation.
+        $r1 = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan ([pscustomobject]@{ commands = @() })
+        [string]$r1.state | Should -Be 'verification-plan-invalid'
+        [string]$r1.reason | Should -Match 'schema_version'
+        @($r1.evidence).Count | Should -Be 0
+        # an ALL-INVALID commands list is a schema violation, not an unconfigured seam.
+        $r2 = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan ([pscustomobject]@{ schema_version = '1.0'; plan_id = 'p'; commands = @([pscustomobject]@{ command_id = 'a' }) })
+        [string]$r2.state | Should -Be 'verification-plan-invalid'
+        @($r2.evidence).Count | Should -Be 0
+        # a NULL plan stays the explicit no-supplier state.
+        [string](Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $null).state | Should -Be 'verification-not-configured'
+    }
+
     It 'an EMPTY plan runs NOTHING and returns the explicit verification-not-configured state (no fabricated success)' {
         $repo = New-PlanRunRepo
         $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan ([pscustomobject]@{ schema_version = '1.0'; plan_id = 'plan-empty'; commands = @() })

@@ -129,13 +129,19 @@ function Test-SelfLeakAnnotated {
     # The annotation FORM is part of the contract (a malformed suppression is a false-green
     # authorization path — independent-review catch, run b12861a6): .md sanctions ONLY inside an
     # HTML comment; hash-comment kinds (.ps1/.psd1/.psm1/.yml/.yaml/.sh + extensionless shell
-    # wrappers) ONLY behind a `#`. File kinds with no sanctioned form cannot be annotated at all
-    # (fail-closed: no bypass without a validatable form).
+    # wrappers) ONLY as a WHOLE-LINE `#` comment — the line's first non-whitespace character must be
+    # the hash (review finding f4, run 20260714T190233598: an annotation-looking token inside a QUOTED
+    # VALUE, e.g. $x = 'text # specrew-self-ok: r', previously matched and suppressed a deny-listed
+    # leak; a mid-line hash is not provably comment syntax without a language parser, so the sanctioned
+    # form is one that cannot sit inside a same-line string value. Residual ceiling: a here-string /
+    # YAML block-scalar LINE can still start with '#' — a full parser is out of scope for this lint;
+    # every sanctioned annotation in the deploy surface is a whole-line comment). File kinds with no
+    # sanctioned form cannot be annotated at all (fail-closed: no bypass without a validatable form).
     $extension = [System.IO.Path]::GetExtension($FilePath)
     $pattern = switch -Regex ($extension) {
         '^\.(md|markdown)$' { '<!--\s*specrew-self-ok:(?<reason>([^-]|-(?!->))*)-->' ; break }
-        '^\.(ps1|psd1|psm1|yml|yaml|sh)$' { '#[^#]*?specrew-self-ok:(?<reason>.+)$' ; break }
-        '^$' { '#[^#]*?specrew-self-ok:(?<reason>.+)$' ; break }   # extensionless shell wrappers
+        '^\.(ps1|psd1|psm1|yml|yaml|sh)$' { '^\s*#[^#]*?specrew-self-ok:(?<reason>.+)$' ; break }
+        '^$' { '^\s*#[^#]*?specrew-self-ok:(?<reason>.+)$' ; break }   # extensionless shell wrappers
         default { $null }
     }
     if ($null -eq $pattern) { return $false }
@@ -214,7 +220,7 @@ if (@($findings).Count -gt 0) {
     Write-Host ""
     Write-Host ("[self-leak-lint] To sanction an intentional self-reference, annotate the hit line (or the line above):") -ForegroundColor Yellow
     Write-Host ("  .md:              <!-- specrew-self-ok: <reason> -->") -ForegroundColor Yellow
-    Write-Host ("  .ps1/.psd1/.yml:  # specrew-self-ok: <reason>") -ForegroundColor Yellow
+    Write-Host ("  .ps1/.psd1/.yml:  # specrew-self-ok: <reason>   (a WHOLE-LINE comment - the line must start with #)") -ForegroundColor Yellow
     Write-Host ("[self-leak-lint] The rule and the resolution-point teaching live in {0}." -f $ruleDoc) -ForegroundColor Yellow
     exit 1
 }

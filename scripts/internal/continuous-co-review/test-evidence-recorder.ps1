@@ -160,7 +160,28 @@ function Copy-ContinuousCoReviewImplementerEvidence {
         if ($null -eq $record) { return $false }
         $reviewDir = Join-Path $WorktreePath '.review'
         if (-not (Test-Path -LiteralPath $reviewDir -PathType Container)) { return $false }
-        [System.IO.File]::WriteAllText((Join-Path $reviewDir 'implementer-evidence.json'), ($record | ConvertTo-Json -Depth 8))
+        # FR-009/SC-002 ORIGIN-PATH HYGIENE (review finding f5, run 20260714T190233598): the injected COPY is
+        # reviewer-visible, so every origin-absolute path in it (working_directory, argument vectors like a
+        # docker volume mount, artifact paths) is relativized to '<project>' against the governance AND git
+        # origin roots - identity hygiene plus no origin route for the confined reviewer. The origin-side
+        # durable record is untouched. Fail-closed: if the relativizer is unavailable, inject NOTHING (a leak
+        # is worse than absent evidence).
+        if (-not (Get-Command -Name 'ConvertTo-ContinuousCoReviewOriginRelativized' -ErrorAction SilentlyContinue)) {
+            $wr = Join-Path $PSScriptRoot 'worktree-reviewer.ps1'
+            if (Test-Path -LiteralPath $wr -PathType Leaf) { . $wr }
+        }
+        if (-not (Get-Command -Name 'ConvertTo-ContinuousCoReviewOriginRelativized' -ErrorAction SilentlyContinue)) {
+            [Console]::Error.WriteLine('[co-review] WARN IMPLEMENTER_EVIDENCE_NOT_INJECTED origin-relativizer unavailable; refusing to inject an unscrubbed evidence copy.')
+            return $false
+        }
+        $originRoots = @((Resolve-Path -LiteralPath $RepoRoot).Path)
+        try {
+            $gitTop = (& git -C $RepoRoot rev-parse --show-toplevel 2>$null)
+            if (-not [string]::IsNullOrWhiteSpace([string]$gitTop)) { $originRoots += ([string]$gitTop) }
+        }
+        catch { $null = $_ }
+        $scrubbed = ConvertTo-ContinuousCoReviewOriginRelativized -Content ($record | ConvertTo-Json -Depth 8) -OriginRoots $originRoots
+        [System.IO.File]::WriteAllText((Join-Path $reviewDir 'implementer-evidence.json'), $scrubbed)
         return $true
     }
     catch {

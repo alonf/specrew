@@ -508,6 +508,42 @@ human-decision — all verified and fixed with paired regressions:
 Focused suites 134/134 green on Windows; full registry + Linux Docker verify re-run; evidence re-bound to the
 fixes commit. Rounds consumed: 2 of 5.
 
+### Eleventh round — round 3 of the 5-round authorization (2026-07-14, run 20260714T190233598-5d3bf1fe) + 5 fixes
+
+Round 3 ran after `resolved-against-disk --fix-evidence-ref 95d18d13` and returned **5 blocking findings**, none
+human-decision — all verified and fixed with paired regressions:
+
+1. **f1 (embedded surface unchecked).** The receipt resolver bound host+surface by FILENAME and checked the
+   embedded host, but never the embedded surface — a project-writable `codex-cli-*.json` claiming
+   `surface: cloud` classified (and could read healthy) for the CLI query. Fixed: surface mismatch →
+   `conflicting`, never healthy/ready. Classifier + preflight production regressions.
+2. **f2 (state gate before schema gate).** The plan runner classified not-configured BEFORE schema validation,
+   downgrading a schema-invalid plan (`{commands:[]}` without schema_version; an all-invalid list) to the
+   benign no-supplier state. Fixed: a SUPPLIED plan validates against the full closed schema FIRST
+   (fail-loud `verification-plan-invalid`, zero execution); a null plan stays not-configured; a schema-valid
+   empty plan stays not-configured. Runner-level regressions.
+3. **f3 (unknown/unbound receipt events).** Well-formedness only required a non-empty event — a fresh forged
+   `codex-cli-forged.json` with `event: forged` reached freshness and read healthy, and a filename/event
+   disagreement could distort the SessionStart version evidence. Fixed: events restricted to the lifecycle
+   set (SessionStart | Stop | agentStop → malformed otherwise) and bound to the filename identity
+   (disagreement → conflicting). Paired regressions.
+4. **f4 (self-leak annotation inside quoted values).** The hash-kind annotation pattern matched a `#` anywhere
+   on the line, so a deny-listed leak could be suppressed by an annotation-looking token INSIDE a quoted
+   value (same line or line above). Fixed: the sanctioned hash form is a WHOLE-LINE comment
+   (`^\s*#...specrew-self-ok:`); every existing deploy-surface annotation already conforms (born-clean guard
+   still green). Abuse regressions (quoted same-line, quoted line-above) + a paired indented-comment case;
+   residual here-string/block-scalar ceiling documented in the lint.
+5. **f5 (origin-absolute paths in the injected evidence).** `Copy-ContinuousCoReviewImplementerEvidence` wrote
+   the origin-side record verbatim — reviewer-visible `working_directory` and docker-mount arguments carried
+   the origin root (FR-009/SC-002 violation, and an origin route for the confined reviewer). Fixed: the COPY
+   is relativized via the shared FR-009 relativizer against the governance + git roots (fail-closed: no
+   relativizer → no injection), and the relativizer now also neutralizes the JSON-ESCAPED backslash form.
+   Regression: injected JSON carries `<project>` and no origin prefix in either form; the origin-side durable
+   record is untouched.
+
+Focused suites 166/166 + self-leak-lint fully green on Windows; full registry + Linux Docker verify re-run;
+evidence re-bound to the fixes commit. Rounds consumed: 3 of 5.
+
 ## Notes
 
 - **Verification (current — see the cross-platform evidence record).** The full F-198 honesty regression

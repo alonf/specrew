@@ -679,6 +679,31 @@ function Resolve-SpecrewHookHealth {
         return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'conflicting' -VersionStatus 'unavailable' -VersionSource '' -Reason ("a receipt's host field ('{0}') disagrees with the requested host ('{1}'); the evidence is internally inconsistent." -f ([string]$hostMismatch[0].host), $hostToken) -Receipt $hostMismatch[0]
     }
 
+    # WRONG-SURFACE (review finding f1, run 20260714T190233598): filename selection binds host+surface, but the
+    # EMBEDDED surface field must agree too - a project-writable codex-cli-*.json carrying surface='cloud' must
+    # never classify (let alone read healthy) for the CLI query. Same fail-closed posture as wrong-host.
+    $surfaceMismatch = @($good | Where-Object { (ConvertTo-SpecrewHookHealthToken -Value ([string]$_.surface)) -ne $surfaceToken })
+    if ($surfaceMismatch.Count -gt 0) {
+        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'conflicting' -VersionStatus 'unavailable' -VersionSource '' -Reason ("a receipt's surface field ('{0}') disagrees with the requested surface ('{1}'); the evidence is internally inconsistent." -f ([string]$surfaceMismatch[0].surface), $surfaceToken) -Receipt $surfaceMismatch[0]
+    }
+
+    # UNKNOWN / UNBOUND EVENT (review finding f3, run 20260714T190233598): liveness comes ONLY from a recognized
+    # lifecycle fire, and each receipt's embedded event must MATCH the filename identity it was selected under -
+    # a fresh forged '<host>-<surface>-forged.json' with event='forged' must never reach freshness
+    # classification, and a suffix/event disagreement must not distort which receipt is treated as the
+    # SessionStart version evidence.
+    $lifecycleEventTokens = @('sessionstart', 'stop', 'agentstop')
+    for ($ri = 0; $ri -lt $files.Count; $ri++) {
+        $rcptEv = ConvertTo-SpecrewHookHealthToken -Value ([string]$parsed[$ri].Receipt.event)
+        if ($rcptEv -notin $lifecycleEventTokens) {
+            return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'malformed' -VersionStatus 'unavailable' -VersionSource '' -Reason ("a receipt's event ('{0}') is not a recognized lifecycle event (SessionStart | Stop | agentStop); it cannot be read as liveness." -f ([string]$parsed[$ri].Receipt.event)) -Receipt $parsed[$ri].Receipt
+        }
+        $expectedName = ('{0}-{1}-{2}.json' -f $hostToken, $surfaceToken, $rcptEv)
+        if (-not [string]::Equals($files[$ri].Name, $expectedName, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'conflicting' -VersionStatus 'unavailable' -VersionSource '' -Reason ("a receipt's embedded event ('{0}') disagrees with its filename identity ('{1}'); the evidence is internally inconsistent." -f ([string]$parsed[$ri].Receipt.event), $files[$ri].Name) -Receipt $parsed[$ri].Receipt
+        }
+    }
+
     # WRONG-CONTRACT: a receipt written under a different adapter contract does not conform to the current contract.
     $contractMismatch = @($good | Where-Object { [int]$_.adapter_contract_version -ne $currentContract })
     if ($contractMismatch.Count -gt 0) {

@@ -132,6 +132,34 @@ $result = Invoke-Lint -FixtureRoot $fixture
 if ($result.ExitCode -ne 1) { Write-Fail "bare-prose annotation in .md: expected exit 1, got $($result.ExitCode)" } else { Write-Pass "bare-prose (non-comment) annotation line does not sanction (run fa5ff2f3 abuse path)" }
 Remove-Item -Recurse -Force $fixture
 
+Write-Host "Test 4c: annotation token inside a QUOTED VALUE on the HIT line is unannotated -> RED (review finding f4, run 20260714T190233598)"
+$fixture = New-Fixture -Name 'quotedsameline'
+# The hit line carries the token inside a quoted YAML value - a mid-line hash is not provably comment
+# syntax, so it must NOT sanction (the pre-fix pattern accepted any hash anywhere on the line).
+"note: 'install from FakeGallery today # specrew-self-ok: smuggled inside a value'" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 1) { Write-Fail "quoted same-line pseudo-annotation: expected exit 1, got $($result.ExitCode): $($result.Output)" }
+else { Write-Pass "a quoted-value pseudo-annotation on the hit line does not sanction (whole-line comment required)" }
+Remove-Item -Recurse -Force $fixture
+
+Write-Host "Test 4d: annotation token inside a QUOTED VALUE on the LINE ABOVE is unannotated -> RED; a whole-line comment above still sanctions (paired)"
+$fixture = New-Fixture -Name 'quotedlineabove'
+"prev: 'text # specrew-self-ok: smuggled in the line above'`ninstall from FakeGallery today" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 1) { Write-Fail "quoted line-above pseudo-annotation: expected exit 1, got $($result.ExitCode): $($result.Output)" }
+else { Write-Pass "a quoted-value pseudo-annotation on the line above does not sanction" }
+Remove-Item -Recurse -Force $fixture
+# paired legitimate: an INDENTED whole-line comment above the hit still sanctions (the anchor allows leading whitespace).
+$fixture = New-Fixture -Name 'indentedcomment'
+"  # specrew-self-ok: indented whole-line comment reason`ninstall from FakeGallery today" | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.yml') -Encoding UTF8
+'neutral' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
+$result = Invoke-Lint -FixtureRoot $fixture
+if ($result.ExitCode -ne 0) { Write-Fail "indented whole-line comment annotation: expected exit 0, got $($result.ExitCode): $($result.Output)" }
+else { Write-Pass "an indented whole-line comment annotation still sanctions (the fix is not over-tight)" }
+Remove-Item -Recurse -Force $fixture
+
 Write-Host "Test 5: clean surface -> green; non-consumer files never scanned"
 $fixture = New-Fixture -Name 'clean'
 'neutral one' | Set-Content -LiteralPath (Join-Path $fixture 'templates\seeded.md') -Encoding UTF8
