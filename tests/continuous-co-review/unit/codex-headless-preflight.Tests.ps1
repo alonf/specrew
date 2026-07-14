@@ -38,9 +38,22 @@ Describe 'F-198 T036 FR-051 Codex untrusted-headless governance preflight' {
             param([string]$Root, [datetime]$At = $script:BaseTime, [string]$Version = $script:CodexVersion)
             Write-SpecrewHookHealthReceipt -ProjectRoot $Root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion $Version -TimestampUtc $At | Out-Null
         }
+
+        # Deterministically control the version the preflight INDEPENDENTLY probes: a fake `codex` on PATH that
+        # self-reports $script:CodexVersion. This makes the internal live probe deterministic (no dependency on
+        # whether/which real codex is installed) so these tests exercise the RECEIPT + readiness logic, not the host.
+        # (The probe WIRING itself is also proven end to end by the production-path suite with its own PATH fakes;
+        # the probe-FAILURE branch is proven below by temporarily emptying PATH.)
+        $script:FakeHostDir = Join-Path ([System.IO.Path]::GetTempPath()) ('hhr-pf-bin-' + [guid]::NewGuid().ToString('N'))
+        New-Item -ItemType Directory -Path $script:FakeHostDir -Force | Out-Null
+        [System.IO.File]::WriteAllText((Join-Path $script:FakeHostDir 'codex.cmd'), ("@echo off`r`necho " + $script:CodexVersion), [System.Text.UTF8Encoding]::new($false))
+        $script:SavedPath = $env:PATH
+        $env:PATH = $script:FakeHostDir + [System.IO.Path]::PathSeparator + $env:PATH
     }
 
     AfterAll {
+        if ($null -ne $script:SavedPath) { $env:PATH = $script:SavedPath }
+        if ($script:FakeHostDir -and (Test-Path -LiteralPath $script:FakeHostDir)) { Remove-Item -LiteralPath $script:FakeHostDir -Recurse -Force -ErrorAction SilentlyContinue }
         foreach ($root in $script:TempRoots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
@@ -102,6 +115,23 @@ Describe 'F-198 T036 FR-051 Codex untrusted-headless governance preflight' {
             $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -ExpectedHostVersion 'codex-cli 0.144.3' -Now $script:BaseTime.AddHours(1)
             $pf.ready | Should -BeFalse
             $pf.status | Should -Be 'unverified'
+        }
+    }
+
+    Context 'the preflight INDEPENDENTLY probes the live codex version (never trusts a bare receipt)' {
+        It 'when the live codex probe cannot resolve, it is NOT ready even with a fresh receipt (never defaults to accept)' {
+            $root = New-PreflightRoot
+            Add-HealthyCodexReceipt -Root $root   # a fresh, real SessionStart receipt exists...
+            $empty = New-PreflightRoot
+            $saved = $env:PATH
+            try {
+                $env:PATH = $empty   # ...but codex cannot be resolved to independently confirm the CURRENT version
+                $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime.AddHours(1)
+            }
+            finally { $env:PATH = $saved }
+            $pf.ready | Should -BeFalse
+            $pf.status | Should -Be 'unverified'
+            $pf.instruction | Should -Match '(?i)could not independently probe'
         }
     }
 

@@ -1,16 +1,19 @@
-# F-198 Iteration 005 — PRODUCTION-PATH honesty regression suite for the co-review findings 2/3/4/5.
+# F-198 Iteration 005 — PRODUCTION-PATH honesty matrix for the co-review findings 2/3/4/5/6/7/8.
 #
-# The pre-existing T036/T038/T039 suites exercise the hook-health HELPERS directly (Write-SpecrewHookHealthReceipt,
-# Resolve-SpecrewHookHealth) and therefore MISS the real firing paths. This suite drives the REAL surfaces:
-#   * finding 2 (receipt-before-validation false-green): the REAL dispatcher via its -Event/-EventJson arg contract
-#       - a malformed / empty / non-host-shaped lifecycle input records NO receipt; a genuine host-shaped
-#         SessionStart/Stop fire DOES.
-#   * finding 3 (a secret can enter the receipt): the REAL dispatcher reading the ambient SPECREW_OBSERVED_HOST_VERSION
-#       - a secret / argument-bearing / whitespace value is NOT persisted (collapses to 'unknown'); a clean '1.2.3' passes.
-#   * finding 5 ('unknown' reads healthy): the PRODUCTION default path (resolver + Codex preflight called WITHOUT an
-#         expected version) - an 'unknown'/unobserved receipt is unverified (never healthy/ready); a real version is healthy.
-#   * finding 4 (doctor aggregator unwired): the REAL `specrew hooks doctor` command surfaces tiers + hook-health +
-#         the Codex preflight, and never health-washes.
+# This drives the REAL surfaces (the deployed dispatcher + the real `specrew hooks doctor` command), not the
+# helpers in isolation, and it REPLACES the earlier version of this suite that ENCODED the very defects the
+# maintainer flagged (it asserted an ambient env value was persisted, and that an arbitrary version read healthy
+# with NO current-version comparison). The corrected model (maintainer decision 2026-07-14, "fix fully now"):
+#
+#   * observed_host_version is a BOUNDED, shell-free `--version` probe of the resolved host CLI, run ONLY at
+#     SessionStart. SPECREW_OBSERVED_HOST_VERSION is GONE - no ambient/secret value is ever the source or persisted.
+#   * `healthy`/`ready` REQUIRE the SessionStart-observed version to MATCH an INDEPENDENTLY probed CURRENT version
+#     (the doctor + Codex preflight probe the live host binding and supply it). A bare receipt never reads healthy.
+#   * Stop launches NO probe and cannot overwrite/promote the SessionStart version fact.
+#
+# The probe target is controlled deterministically with a FAKE `codex` on PATH (a .cmd shim, exactly like an
+# npm-installed CLI), so these tests never depend on which real CLI is installed. The fake also drops a marker
+# file every time it runs, which lets us PROVE that Stop launches no probe.
 #
 # 'script' suite (Write-Pass/Write-Fail; exit 0 green / 1 red) - it spawns the REAL dispatcher + REAL CLI as children.
 [CmdletBinding()]
@@ -37,15 +40,49 @@ $fixture = New-RefocusDispatcherFixture -ProjectRoot $projectRoot -RepoRoot $rep
 $dispatcher = $fixture.dispatcher
 $hostBinding = $fixture.host_binding
 
+# The receipt module in-process (to set up doctor-project receipts and read them back).
+. (Join-Path $repoRoot 'scripts\internal\continuous-co-review\hook-health-receipt.ps1')
+
 $hookHealthStore = Join-Path $projectRoot '.specrew\runtime\hook-health'
 function Reset-HookHealthStore { if (Test-Path -LiteralPath $hookHealthStore) { Remove-Item -LiteralPath $hookHealthStore -Recurse -Force } }
 function Get-ReceiptFiles { if (-not (Test-Path -LiteralPath $hookHealthStore)) { return @() } return @(Get-ChildItem -LiteralPath $hookHealthStore -Filter '*.json' -File -ErrorAction SilentlyContinue) }
+function Get-ReceiptForEvent {
+    param([string]$Event)
+    $file = Join-Path $hookHealthStore ('codex-cli-' + $Event.ToLowerInvariant() + '.json')
+    if (-not (Test-Path -LiteralPath $file)) { return $null }
+    return (Get-Content -LiteralPath $file -Raw)
+}
+function Get-ReceiptVersion {
+    param([string]$Event)
+    $raw = Get-ReceiptForEvent -Event $Event
+    if ($null -eq $raw) { return '<no-receipt>' }
+    return [string]($raw | ConvertFrom-Json).observed_host_version
+}
+
+# A clearly-synthetic version that can NEVER collide with a real installed codex (real codex is 0.144.x).
+$script:FakeVersion = 'codex-cli 0.0.0-specrewtest'
+
+function New-FakeCodexBin {
+    # A fake `codex` .cmd on its own dir. It (1) drops a marker every time it runs (so we can prove Stop never
+    # probes) and (2) self-reports a version. -Garbage makes it print non-version text (-> the probe normalizes to
+    # unknown). -Version overrides the reported version. Returns the dir (prepend it to a child's PATH).
+    param([string]$Version = $script:FakeVersion, [switch]$Garbage)
+    $dir = Join-Path $scratchRoot ('bin-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    $emit = if ($Garbage) { 'this is not a version' } else { $Version }
+    $body = "@echo off`r`necho fired>>`"%~dp0probe-fired.txt`"`r`necho $emit"
+    [System.IO.File]::WriteAllText((Join-Path $dir 'codex.cmd'), $body, [System.Text.UTF8Encoding]::new($false))
+    return $dir
+}
+function Reset-ProbeMarker { param([string]$BinDir) Remove-Item -LiteralPath (Join-Path $BinDir 'probe-fired.txt') -Force -ErrorAction SilentlyContinue }
+function Test-ProbeFired { param([string]$BinDir) return (Test-Path -LiteralPath (Join-Path $BinDir 'probe-fired.txt') -PathType Leaf) }
 
 function Invoke-Dispatcher {
-    # Drive the REAL dispatcher exactly as a host does: event JSON on stdin, the codex host binding, and the
-    # project as the working directory. SPECREW_MODULE_PATH points the receipt-module resolver at this repo's
-    # scripts/internal/continuous-co-review/hook-health-receipt.ps1 (a downstream deploy resolves the installed module).
-    param([string]$Event = 'SessionStart', [string]$StdinJson = '', [hashtable]$ExtraEnv = @{})
+    # Drive the REAL dispatcher exactly as a host does: event JSON on stdin, the codex host binding, project cwd.
+    # SPECREW_MODULE_PATH points the receipt-module resolver at this repo's module. -PathPrepend puts a fake host
+    # bin dir first on the child PATH so the SessionStart probe resolves it; -ExtraEnv injects extra env (e.g. an
+    # ambient SPECREW_OBSERVED_HOST_VERSION we prove is ignored).
+    param([string]$Event = 'SessionStart', [string]$StdinJson = '', [hashtable]$ExtraEnv = @{}, [string]$PathPrepend)
     $stdoutPath = Join-Path $scratchRoot 'stdout.txt'
     $stderrPath = Join-Path $scratchRoot 'stderr.txt'
     $stdinPath = Join-Path $scratchRoot 'stdin.json'
@@ -53,6 +90,7 @@ function Invoke-Dispatcher {
     $dispatcherArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $dispatcher, '-Event', $Event, '-HostKind', 'codex')
     if (-not [string]::IsNullOrWhiteSpace($hostBinding)) { $dispatcherArgs += @('-HostBinding', $hostBinding) }
     $env0 = @{ SPECREW_MODULE_PATH = $repoRoot }
+    if (-not [string]::IsNullOrWhiteSpace($PathPrepend)) { $env0['PATH'] = $PathPrepend + [System.IO.Path]::PathSeparator + $env:PATH }
     foreach ($k in $ExtraEnv.Keys) { $env0[$k] = $ExtraEnv[$k] }
     $saved = @{}
     foreach ($k in $env0.Keys) { $saved[$k] = [Environment]::GetEnvironmentVariable($k); [Environment]::SetEnvironmentVariable($k, $env0[$k]) }
@@ -68,13 +106,16 @@ function Invoke-Dispatcher {
 
 function Invoke-SpecrewCli {
     # Drive the REAL `specrew` CLI dispatcher (scripts/specrew.ps1) end to end. SPECREW_MODULE_PATH is deliberately
-    # NOT set so the CLI runs in-place (no dev-tree re-dispatch); the doctor script resolves its module by $PSScriptRoot.
-    param([string[]]$CliArgs)
+    # NOT set so the CLI runs in-place. -PathPrepend puts a fake host bin dir first on the child PATH so the
+    # doctor's/preflight's independent live probe resolves it.
+    param([string[]]$CliArgs, [string]$PathPrepend)
     $stdoutPath = Join-Path $scratchRoot 'cli-stdout.txt'
     $stderrPath = Join-Path $scratchRoot 'cli-stderr.txt'
     $cli = Join-Path $repoRoot 'scripts\specrew.ps1'
     $savedMp = [Environment]::GetEnvironmentVariable('SPECREW_MODULE_PATH')
+    $savedPath = [Environment]::GetEnvironmentVariable('PATH')
     [Environment]::SetEnvironmentVariable('SPECREW_MODULE_PATH', $null)
+    if (-not [string]::IsNullOrWhiteSpace($PathPrepend)) { [Environment]::SetEnvironmentVariable('PATH', $PathPrepend + [System.IO.Path]::PathSeparator + $savedPath) }
     try {
         $proc = Start-Process -FilePath 'pwsh' -ArgumentList (@('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $cli) + $CliArgs) `
             -WorkingDirectory $repoRoot -Wait -PassThru -NoNewWindow -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
@@ -83,23 +124,23 @@ function Invoke-SpecrewCli {
     }
     finally {
         [Environment]::SetEnvironmentVariable('SPECREW_MODULE_PATH', $savedMp)
+        [Environment]::SetEnvironmentVariable('PATH', $savedPath)
     }
 }
+
+$validSessionStart = '{"session_id":"sess-abc-123","source":"startup"}'
 
 # -----------------------------------------------------------------------------------------------------------
 Write-Host "`n--- FINDING 2: the dispatcher records a receipt ONLY after the host envelope validates ---" -ForegroundColor Cyan
 
-$validSessionStart = '{"session_id":"sess-abc-123","source":"startup"}'
-
-# A genuine, host-shaped SessionStart fire DOES record a receipt (proof-of-fire).
+$goodBin = New-FakeCodexBin
 Reset-HookHealthStore
-$r = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $validSessionStart
+$r = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $validSessionStart -PathPrepend $goodBin
 Assert-True ($r.ExitCode -eq 0) 'F2: a valid SessionStart fire exits 0 (fail-open)'
 Assert-True (@(Get-ReceiptFiles).Count -eq 1) 'F2: a GENUINE host-shaped SessionStart fire records exactly one receipt'
 
-# Each false/broken lifecycle input records NO receipt (the pre-fix false-green).
 $noReceiptCases = @(
-    @{ Name = 'empty event (no stdin, no -EventJson)'; Json = '' }
+    @{ Name = 'empty event (no stdin)'; Json = '' }
     @{ Name = 'malformed JSON'; Json = 'THIS_IS_NOT_JSON {{{ <<<' }
     @{ Name = 'non-host-shaped JSON array'; Json = '[1,2,3]' }
     @{ Name = 'non-host-shaped object (no host session id)'; Json = '{"foo":"bar"}' }
@@ -107,107 +148,102 @@ $noReceiptCases = @(
 )
 foreach ($c in $noReceiptCases) {
     Reset-HookHealthStore
-    $rr = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $c.Json
+    $rr = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $c.Json -PathPrepend $goodBin
     Assert-True ($rr.ExitCode -eq 0) ("F2: '{0}' still dispatches fail-open (exit 0)" -f $c.Name)
     Assert-True (@(Get-ReceiptFiles).Count -eq 0) ("F2: '{0}' records NO receipt (no false-green)" -f $c.Name)
 }
 
-# A non-lifecycle event (PostToolUse) never records a receipt even when host-shaped.
 Reset-HookHealthStore
-$rp = Invoke-Dispatcher -Event 'PostToolUse' -StdinJson '{"session_id":"sess-abc-123","tool_name":"Bash"}'
+$rp = Invoke-Dispatcher -Event 'PostToolUse' -StdinJson '{"session_id":"sess-abc-123","tool_name":"Bash"}' -PathPrepend $goodBin
 Assert-True (@(Get-ReceiptFiles).Count -eq 0) 'F2: a host-shaped PostToolUse records NO receipt (only SessionStart/Stop are lifecycle proof points)'
 
 # -----------------------------------------------------------------------------------------------------------
-Write-Host "`n--- FINDING 3: an ambient SPECREW_OBSERVED_HOST_VERSION secret is NEVER persisted ---" -ForegroundColor Cyan
+Write-Host "`n--- FINDING 3: the version is a SessionStart probe fact; SPECREW_OBSERVED_HOST_VERSION is ignored and never persisted ---" -ForegroundColor Cyan
 
-function Get-DispatchedObservedVersion {
-    param([string]$EnvVersion)
-    Reset-HookHealthStore
-    $extra = @{}
-    if ($null -ne $EnvVersion) { $extra['SPECREW_OBSERVED_HOST_VERSION'] = $EnvVersion }
-    $null = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $validSessionStart -ExtraEnv $extra
-    $files = @(Get-ReceiptFiles)
-    if ($files.Count -ne 1) { return "<no-receipt:$($files.Count)>" }
-    return [string](Get-Content -LiteralPath $files[0].FullName -Raw | ConvertFrom-Json).observed_host_version
-}
+# 3a: an ambient (even version-shaped / secret) SPECREW_OBSERVED_HOST_VERSION is IGNORED - the probe wins, and the
+#     env value never lands in the receipt.
+Reset-HookHealthStore
+$secret = 'SECRET_token_123'
+$null = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $validSessionStart -PathPrepend $goodBin -ExtraEnv @{ SPECREW_OBSERVED_HOST_VERSION = $secret }
+Assert-True ((Get-ReceiptVersion -Event 'SessionStart') -eq $script:FakeVersion) 'F3: the recorded version is the PROBE result, not the ambient SPECREW_OBSERVED_HOST_VERSION'
+$rawA = Get-ReceiptForEvent -Event 'SessionStart'
+Assert-True ($null -ne $rawA -and ($rawA -notmatch 'SECRET_token_123') -and ($rawA -notmatch 'token_123')) 'F3: the ambient secret / version-shaped token never appears anywhere in the receipt'
 
-Assert-True ((Get-DispatchedObservedVersion -EnvVersion '1.2.3') -eq '1.2.3') 'F3: a CLEAN version (1.2.3) is persisted verbatim'
-Assert-True ((Get-DispatchedObservedVersion -EnvVersion 'codex-cli-0.144.1') -eq 'codex-cli-0.144.1') 'F3: a clean hyphenated version token passes'
-Assert-True ((Get-DispatchedObservedVersion -EnvVersion 'SECRET=abc123 export TOKEN=zzz') -eq 'unknown') 'F3: a SECRET/argument-bearing value is NOT persisted (collapses to unknown)'
-Assert-True ((Get-DispatchedObservedVersion -EnvVersion 'codex cli 0.144.1') -eq 'unknown') 'F3: a whitespace-laden value is rejected to unknown'
-Assert-True ((Get-DispatchedObservedVersion -EnvVersion "1.2.3`n--dangerously-bypass-hook-trust") -eq 'unknown') 'F3: a multi-line value is rejected to unknown'
-Assert-True ((Get-DispatchedObservedVersion -EnvVersion ('a' * 200)) -eq 'unknown') 'F3: an over-long value is rejected to unknown'
-Assert-True ((Get-DispatchedObservedVersion -EnvVersion $null) -eq 'unknown') 'F3: an unset version records the honest unknown sentinel'
-
-# -----------------------------------------------------------------------------------------------------------
-Write-Host "`n--- FINDING 5: an 'unknown' observed version is UNVERIFIED on the production default path ---" -ForegroundColor Cyan
-
-. (Join-Path $repoRoot 'scripts\internal\continuous-co-review\hook-health-receipt.ps1')
-$baseTime = [datetime]::Parse('2026-07-14T12:00:00Z').ToUniversalTime()
-
-function New-HealthTempRoot {
-    $root = Join-Path $scratchRoot ('recon-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
-    New-Item -ItemType Directory -Path $root -Force | Out-Null
-    return $root
-}
-
-# The resolver, called with NO expected version (exactly how Format-SpecrewHookHealthReport and the Codex
-# preflight call it): an 'unknown'/unobserved receipt is unverified; a real version is healthy.
-$rootUnknown = New-HealthTempRoot
-Write-SpecrewHookHealthReceipt -ProjectRoot $rootUnknown -HostName 'codex' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion 'unknown' -TimestampUtc $baseTime | Out-Null
-$hUnknown = Resolve-SpecrewHookHealth -ProjectRoot $rootUnknown -HostName 'codex' -Surface 'cli' -Now $baseTime.AddHours(1)
-Assert-True ($hUnknown.status -eq 'unverified') "F5: default path - an 'unknown' observed version resolves UNVERIFIED"
-Assert-True ($hUnknown.status -ne 'healthy') "F5: default path - an 'unknown' observed version is NEVER healthy"
-
-$rootReal = New-HealthTempRoot
-Write-SpecrewHookHealthReceipt -ProjectRoot $rootReal -HostName 'codex' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion '1.2.3' -TimestampUtc $baseTime | Out-Null
-$hReal = Resolve-SpecrewHookHealth -ProjectRoot $rootReal -HostName 'codex' -Surface 'cli' -Now $baseTime.AddHours(1)
-Assert-True ($hReal.status -eq 'healthy') 'F5: default path - a REAL observed version resolves healthy'
-
-# A literal EMPTY observed version cannot occur on the production path (the dispatcher emits 'unknown', never ''),
-# and an empty required field is caught EARLIER as a MALFORMED receipt -> degraded (the pre-existing T038
-# malformed-empty contract). Either way it is NEVER healthy - assert that honestly.
-$rootEmpty = New-HealthTempRoot
-Write-SpecrewHookHealthReceipt -ProjectRoot $rootEmpty -HostName 'codex' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion '' -TimestampUtc $baseTime | Out-Null
-$hEmpty = Resolve-SpecrewHookHealth -ProjectRoot $rootEmpty -HostName 'codex' -Surface 'cli' -Now $baseTime.AddHours(1)
-Assert-True ($hEmpty.status -ne 'healthy') 'F5: an empty observed version is never healthy'
-Assert-True (@('unverified', 'degraded') -contains $hEmpty.status) 'F5: an empty observed version is a non-healthy closed-set status (degraded via the malformed-empty contract)'
-
-# The Codex headless preflight (which calls the resolver WITHOUT an expected version) must not report ready on 'unknown'.
-$pfUnknown = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $rootUnknown -Now $baseTime.AddHours(1)
-Assert-True (-not $pfUnknown.ready) "F5: the Codex preflight is NOT ready on an 'unknown' receipt"
-Assert-True ($pfUnknown.status -eq 'unverified') "F5: the Codex preflight reports unverified on 'unknown'"
-$pfReal = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $rootReal -Now $baseTime.AddHours(1)
-Assert-True ($pfReal.ready) 'F5: the Codex preflight IS ready on a real-version fresh receipt'
+# 3b: when the probe yields no usable version (garbage output), the receipt is the honest 'unknown' - the ambient
+#     env value is NOT used as a fallback (token_123/abc123 can never influence health).
+$garbageBin = New-FakeCodexBin -Garbage
+Reset-HookHealthStore
+$null = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $validSessionStart -PathPrepend $garbageBin -ExtraEnv @{ SPECREW_OBSERVED_HOST_VERSION = 'token_123' }
+Assert-True ((Get-ReceiptVersion -Event 'SessionStart') -eq 'unknown') 'F3: a probe that yields no version records unknown (the ambient env value is NOT a fallback)'
+$rawB = Get-ReceiptForEvent -Event 'SessionStart'
+Assert-True ($null -ne $rawB -and ($rawB -notmatch 'token_123')) 'F3: the version-shaped ambient token is not persisted even when the probe fails'
 
 # -----------------------------------------------------------------------------------------------------------
-Write-Host "`n--- FINDING 4: `specrew hooks doctor` surfaces tiers + hook-health + the Codex preflight ---" -ForegroundColor Cyan
+Write-Host "`n--- FINDING 6: Stop launches NO version probe (and records 'unknown') ---" -ForegroundColor Cyan
 
-$doctorProject = Join-Path $scratchRoot 'doctor-project'
-New-Item -ItemType Directory -Path (Join-Path $doctorProject '.specrew') -Force | Out-Null
+Reset-HookHealthStore
+Reset-ProbeMarker -BinDir $goodBin
+$null = Invoke-Dispatcher -Event 'Stop' -StdinJson $validSessionStart -PathPrepend $goodBin
+Assert-True (-not (Test-ProbeFired -BinDir $goodBin)) 'F6: a Stop fire does NOT launch the version probe (the fake codex was never executed)'
+Assert-True ((Get-ReceiptVersion -Event 'Stop') -eq 'unknown') 'F6: the Stop receipt records observed version = unknown (proof-of-fire only)'
 
-# No receipts yet -> all three sections render, health is unverified (no healthy row), preflight NOT ready.
-$d1 = Invoke-SpecrewCli -CliArgs @('hooks', 'doctor', '--project-path', $doctorProject)
+Reset-HookHealthStore
+Reset-ProbeMarker -BinDir $goodBin
+$null = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $validSessionStart -PathPrepend $goodBin
+Assert-True (Test-ProbeFired -BinDir $goodBin) 'F6: a SessionStart fire DOES launch the version probe (the fake codex ran)'
+Assert-True ((Get-ReceiptVersion -Event 'SessionStart') -eq $script:FakeVersion) 'F6: the SessionStart receipt records the probed version'
+
+# -----------------------------------------------------------------------------------------------------------
+Write-Host "`n--- FINDING 7: a later Stop cannot overwrite or promote the SessionStart version fact ---" -ForegroundColor Cyan
+
+Reset-HookHealthStore
+$null = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $validSessionStart -PathPrepend $goodBin
+$null = Invoke-Dispatcher -Event 'Stop' -StdinJson $validSessionStart -PathPrepend $goodBin
+Assert-True ((Get-ReceiptVersion -Event 'SessionStart') -eq $script:FakeVersion) 'F7: after a later Stop, the SessionStart receipt still holds the probed version'
+Assert-True ((Get-ReceiptVersion -Event 'Stop') -eq 'unknown') 'F7: the Stop receipt is a separate file that carries unknown (it never overwrites the SessionStart version fact)'
+
+# -----------------------------------------------------------------------------------------------------------
+Write-Host "`n--- FINDINGS 4/5/8: `specrew hooks doctor` surfaces tiers + hook-health + preflight, and PROBES the live version ---" -ForegroundColor Cyan
+
+function New-DoctorProject {
+    param([string]$Name, [AllowNull()][string]$ReceiptVersion)
+    $p = Join-Path $scratchRoot $Name
+    New-Item -ItemType Directory -Path (Join-Path $p '.specrew') -Force | Out-Null
+    if (-not [string]::IsNullOrWhiteSpace($ReceiptVersion)) {
+        Write-SpecrewHookHealthReceipt -ProjectRoot $p -HostName 'codex' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion $ReceiptVersion | Out-Null
+    }
+    return $p
+}
+function Test-HasHealthyCodexRow { param([string]$Output) return [bool](@($Output -split "`r?`n" | Where-Object { $_ -match '^\s+codex\s+cli\s+healthy\b' }).Count) }
+
+# (4) No receipt -> all three sections render; NO healthy row; preflight NOT ready.
+$dpNone = New-DoctorProject -Name 'doctor-none' -ReceiptVersion $null
+$d1 = Invoke-SpecrewCli -CliArgs @('hooks', 'doctor', '--project-path', $dpNone)
 Assert-True ($d1.ExitCode -eq 0) 'F4: `specrew hooks doctor` exits 0'
-Assert-True ($d1.Output -match 'host-support tiers') 'F4: the doctor report surfaces the host-support TIERS section'
-Assert-True ($d1.Output -match 'hook-health evidence') 'F4: the doctor report surfaces the hook-health EVIDENCE section'
-Assert-True ($d1.Output -match 'governance preflight') 'F4: the doctor report surfaces the Codex untrusted-headless PREFLIGHT section'
+Assert-True ($d1.Output -match 'host-support tiers') 'F4: the report surfaces the host-support TIERS section'
+Assert-True ($d1.Output -match 'hook-health evidence') 'F4: the report surfaces the hook-health EVIDENCE section'
+Assert-True ($d1.Output -match 'governance preflight') 'F4: the report surfaces the Codex untrusted-headless PREFLIGHT section'
+Assert-True (-not (Test-HasHealthyCodexRow -Output $d1.Output)) 'F4: a no-receipt project renders NO healthy health row (never health-washed)'
 Assert-True ($d1.Output -match 'ready to govern a headless run:\s*NO') 'F4: no receipt -> the Codex preflight renders NOT ready'
-Assert-True (-not (@($d1.Output -split "`r?`n" | Where-Object { $_ -match '^\s+(claude|codex|codex|copilot)\s+cli\s+healthy\b' }).Count)) 'F4: a no-receipt project renders NO healthy health row (never health-washed)'
 
-# A fresh codex/cli receipt with a REAL observed version -> the SAME command reports it healthy + ready (honest surfacing).
-Write-SpecrewHookHealthReceipt -ProjectRoot $doctorProject -HostName 'codex' -Event 'Stop' -Surface 'cli' -ObservedHostVersion '1.2.3' | Out-Null
-$d2 = Invoke-SpecrewCli -CliArgs @('hooks', 'doctor', '--project-path', $doctorProject)
-Assert-True (@($d2.Output -split "`r?`n" | Where-Object { $_ -match '^\s+codex\s+cli\s+healthy\b' }).Count -ge 1) 'F4: a fresh real-version codex receipt surfaces a healthy codex row through the REAL command'
-Assert-True ($d2.Output -match 'ready to govern a headless run:\s*YES') 'F4: with a current codex receipt the command reports the Codex preflight READY'
+# (5+8) A fresh SessionStart receipt whose version MATCHES the live probe -> healthy + ready (via the REAL command).
+$dpMatch = New-DoctorProject -Name 'doctor-match' -ReceiptVersion $script:FakeVersion
+$d2 = Invoke-SpecrewCli -CliArgs @('hooks', 'doctor', '--project-path', $dpMatch) -PathPrepend $goodBin
+Assert-True (Test-HasHealthyCodexRow -Output $d2.Output) 'F5/F8: a receipt whose version matches the independently probed live codex surfaces a HEALTHY codex row'
+Assert-True ($d2.Output -match 'ready to govern a headless run:\s*YES') 'F5/F8: with a matching live probe the Codex preflight reports READY'
 
-# An 'unknown'-version receipt must NOT flip the command to healthy/ready (finding 5 through the real command).
-$doctorProject2 = Join-Path $scratchRoot 'doctor-project-unknown'
-New-Item -ItemType Directory -Path (Join-Path $doctorProject2 '.specrew') -Force | Out-Null
-Write-SpecrewHookHealthReceipt -ProjectRoot $doctorProject2 -HostName 'codex' -Event 'Stop' -Surface 'cli' -ObservedHostVersion 'unknown' | Out-Null
-$d3 = Invoke-SpecrewCli -CliArgs @('hooks', 'doctor', '--project-path', $doctorProject2)
-Assert-True (-not (@($d3.Output -split "`r?`n" | Where-Object { $_ -match '^\s+codex\s+cli\s+healthy\b' }).Count)) 'F4: an unknown-version codex receipt does NOT surface a healthy row through the command (finding 5)'
-Assert-True ($d3.Output -match 'ready to govern a headless run:\s*NO') 'F4: an unknown-version codex receipt keeps the Codex preflight NOT ready through the command'
+# (8) The SAME receipt, but the live probe does NOT match (no fake on PATH -> real/absent codex != the fake version)
+#     -> NOT healthy, NOT ready. This proves the doctor/preflight genuinely PROBE the live version and never trust a
+#     bare receipt (the false-green this fix closes).
+$d3 = Invoke-SpecrewCli -CliArgs @('hooks', 'doctor', '--project-path', $dpMatch)
+Assert-True (-not (Test-HasHealthyCodexRow -Output $d3.Output)) 'F8: the same receipt is NOT healthy when the live probe does not match it (the doctor probes; it never trusts a bare receipt)'
+Assert-True ($d3.Output -match 'ready to govern a headless run:\s*NO') 'F8: the same receipt is NOT ready when the live probe does not match it'
+
+# (5) An 'unknown'-version receipt never reads healthy/ready through the real command, even with the fake on PATH.
+$dpUnknown = New-DoctorProject -Name 'doctor-unknown' -ReceiptVersion 'unknown'
+$d4 = Invoke-SpecrewCli -CliArgs @('hooks', 'doctor', '--project-path', $dpUnknown) -PathPrepend $goodBin
+Assert-True (-not (Test-HasHealthyCodexRow -Output $d4.Output)) 'F5: an unknown-version receipt never surfaces a healthy row through the command'
+Assert-True ($d4.Output -match 'ready to govern a headless run:\s*NO') 'F5: an unknown-version receipt keeps the Codex preflight NOT ready'
 
 # -----------------------------------------------------------------------------------------------------------
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force -ErrorAction SilentlyContinue }

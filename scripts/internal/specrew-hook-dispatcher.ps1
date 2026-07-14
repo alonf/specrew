@@ -818,31 +818,36 @@ function Test-DispatcherIsLifecycleReceiptEvent {
     return ($n -eq 'sessionstart' -or $n -eq 'stop' -or $n -eq 'agentstop')
 }
 
-function Get-DispatcherObservedHostVersion {
-    # The observed host version stamped into the receipt. The host event payload carries NO
-    # host CLI version, and a per-fire `--version` subprocess would tax the tight Stop budget -
-    # so this stays cheap+bounded: honor a zero-cost explicit override
-    # (SPECREW_OBSERVED_HOST_VERSION, when a launch path set one), else the honest 'unknown'
-    # (an unobserved version is recorded as unknown, never fabricated).
-    #
-    # SECURITY (FR-053, co-review finding 3 - "NO environment values or secrets recorded"): the ambient
-    # SPECREW_OBSERVED_HOST_VERSION is UNTRUSTED input that would otherwise persist VERBATIM into a durable
-    # receipt. The six-field receipt allow-list bounds field NAMES, not their VALUES, so an arbitrary/secret env
-    # value (e.g. 'SECRET=abc123 export TOKEN=zzz') would survive. Gate it against a STRICT version shape - a
-    # leading alphanumeric then a bounded run of [alnum . _ + -], NO whitespace, NO '=', <= 64 chars. Anything
-    # that fails (a secret, an argument blob, a multi-line value, an over-long string) collapses to the honest
-    # 'unknown' sentinel. No unvalidated ambient content is EVER persisted anywhere in the receipt.
-    $v = $env:SPECREW_OBSERVED_HOST_VERSION
-    if (-not [string]::IsNullOrWhiteSpace($v)) {
-        $trimmed = $v.Trim()
-        if ($trimmed -match '^[0-9A-Za-z][0-9A-Za-z._+\-]{0,63}$') { return $trimmed }
+function Test-DispatcherIsSessionStartEvent {
+    # The ONE lifecycle event at which the host-version probe runs. Stop/agentStop must NEVER probe (a per-Stop
+    # `--version` subprocess would tax the tight Stop budget, and only SessionStart is the trusted version fact) -
+    # they record proof-of-fire with an 'unknown' version and never overwrite/promote the SessionStart version.
+    param([AllowNull()][string]$EventName)
+    if ([string]::IsNullOrWhiteSpace($EventName)) { return $false }
+    return ($EventName.Trim().ToLowerInvariant() -eq 'sessionstart')
+}
+
+function Get-DispatcherSessionStartHostVersion {
+    # The observed host version for a SessionStart receipt: a BOUNDED, shell-free probe of the resolved host CLI's
+    # own `--version` (Get-SpecrewHostVersionProbe, provided by the hook-health module the caller already loaded).
+    # NEVER reads an ambient env value - SPECREW_OBSERVED_HOST_VERSION is GONE as a version source (co-review
+    # finding 3): no ambient/secret value can be persisted, because the version can ONLY come from running the
+    # resolved executable. Any probe failure (unresolved / timeout / malformed / ambiguous) -> the honest 'unknown'.
+    param([string]$HostKind)
+    try {
+        if (-not (Get-Command -Name 'Get-SpecrewHostVersionProbe' -ErrorAction SilentlyContinue)) { return 'unknown' }
+        $probe = Get-SpecrewHostVersionProbe -HostName $HostKind
+        if ($null -ne $probe -and $probe.ok -and -not [string]::IsNullOrWhiteSpace([string]$probe.version)) { return [string]$probe.version }
     }
+    catch { $null = $_ }
     return 'unknown'
 }
 
 function Write-DispatcherHookHealthReceipt {
-    # Record a sanitized hook-health receipt for a genuine host fire (best-effort). Returns
-    # nothing and swallows EVERY failure so the hook's dispatch is never affected (fail-open).
+    # Record a sanitized hook-health receipt for a genuine host fire (best-effort). Returns nothing and swallows
+    # EVERY failure so the hook's dispatch is never affected (fail-open). The observed host version is a BOUNDED
+    # SessionStart PROBE (Stop/agentStop record 'unknown', NEVER launch a probe, and NEVER overwrite/promote the
+    # SessionStart version fact - which lives in the separate SessionStart receipt file).
     param([string]$HostKind, [string]$EventName, [AllowNull()][string]$ProjectRoot)
     try {
         if ([string]::IsNullOrWhiteSpace($ProjectRoot)) { return }
@@ -853,7 +858,9 @@ function Write-DispatcherHookHealthReceipt {
             . $modulePath
         }
         if (-not (Get-Command -Name 'Write-SpecrewHookHealthReceipt' -ErrorAction SilentlyContinue)) { return }
-        $null = Write-SpecrewHookHealthReceipt -ProjectRoot $ProjectRoot -HostName $HostKind -Surface 'cli' -Event $EventName -ObservedHostVersion (Get-DispatcherObservedHostVersion)
+        # SessionStart -> a bounded live version probe; Stop/agentStop -> 'unknown' (no probe, never promotes health).
+        $observed = if (Test-DispatcherIsSessionStartEvent -EventName $EventName) { Get-DispatcherSessionStartHostVersion -HostKind $HostKind } else { 'unknown' }
+        $null = Write-SpecrewHookHealthReceipt -ProjectRoot $ProjectRoot -HostName $HostKind -Surface 'cli' -Event $EventName -ObservedHostVersion $observed
     }
     catch { $null = $_ }
 }

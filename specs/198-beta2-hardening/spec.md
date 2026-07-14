@@ -827,11 +827,20 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   governance bypass. If project hooks are not loaded in `-p` by default, EITHER set the documented opt-in
   whenever Specrew expects governance OR report that mode `unsupported` — never silently claim it is gated.
 - **FR-053 (minimum hook-health evidence)**: A deployed configuration is NOT proof the host loaded it. A REAL
-  host-triggered SessionStart/Stop probe MUST record a SANITIZED receipt (host; surface=cli; event; observed
+  host-triggered SessionStart/Stop fire MUST record a SANITIZED receipt (host; surface=cli; event; observed
   host version; timestamp; adapter contract version) — with NO prompt, command arguments, environment values, or
   secrets recorded. Missing / stale / conflicting / malformed receipts report `unverified` / `degraded`, and
   MUST NEVER report `healthy`. The result is exposed through the existing doctor/status surface (or the narrowest
   established equivalent). This is NOT Beta3's full capability-negotiation system.
+  - **FR-053a (observed-version provenance + independent match — iter-005 false-green correction, maintainer
+    decision 2026-07-14)**: the `observed host version` MUST be a BOUNDED, shell-free `--version` probe of the
+    canonical host executable, run ONLY at SessionStart (later events record `unknown` and MUST NOT launch a probe
+    or overwrite/promote the SessionStart version fact). It MUST NOT be sourced from any ambient environment value
+    (`SPECREW_OBSERVED_HOST_VERSION` is removed); a probe failure / timeout / ambiguity / malformed output records
+    `unknown` → `unverified`. `healthy` / `ready` MUST additionally REQUIRE an INDEPENDENTLY obtained CURRENT host
+    version (the doctor + Codex preflight probe the live host binding and supply it) that MATCHES the
+    SessionStart-observed version — a missing current version is NEVER defaulted to acceptance, and a bare receipt
+    never reads healthy. The adapter contract version is bumped so every pre-correction receipt retires as drift.
 - **FR-054 (Codex plugin packaging scope, CONDITIONAL)**: IF Beta2 ships Codex plugin installation, a regression
   MUST prove a plugin that intends no Codex hooks uses exactly `hooks: {}` and cannot auto-discover another
   host's `hooks/hooks.json`. IF plugin installation is NOT a Beta2 deliverable, it stays in issue #3084 and is

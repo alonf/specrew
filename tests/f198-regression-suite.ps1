@@ -60,7 +60,7 @@ $registry = @(
     # validates (F2, no false-green) and NEVER persists an ambient secret version (F3, collapses to 'unknown'); the
     # resolver + Codex preflight default path treat 'unknown'/unobserved as unverified not healthy (F5); and the REAL
     # `specrew hooks doctor` command surfaces tiers + hook-health + the Codex preflight without health-washing (F4).
-    @{ area = 'iter-005 findings 2/3/4/5 production-path honesty - dispatcher receipt-after-validation, no ambient secret in receipt, unknown-never-healthy default path, `specrew hooks doctor` surfacing'; path = 'tests/integration/f198-iter005-hook-health-production-path.tests.ps1'; kind = 'script' }
+    @{ area = 'iter-005 findings 2/3/4/5/6/7/8 production-path honesty - receipt-after-validation, SessionStart --version probe (env source removed, no ambient value persisted), Stop launches no probe, later-Stop cannot clobber the SessionStart version fact, doctor/preflight independently probe the current version (a bare receipt never reads healthy), `specrew hooks doctor` surfacing'; path = 'tests/integration/f198-iter005-hook-health-production-path.tests.ps1'; kind = 'script' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]

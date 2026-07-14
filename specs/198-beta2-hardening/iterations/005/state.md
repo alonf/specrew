@@ -1,8 +1,8 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Last Completed Task**: T039 (integration + reconciliation + docs; committed). **Iteration 005 is NOT yet complete** — the serialized co-review (2026-07-14) returned 5 blocking findings (two false-greens, an ambient-value leak, an unsurfaced doctor, and this task-plan drift); they are being fixed, then ONE clean re-review closes the iteration and releases T019 pieces 5-7. See the Co-review section at the bottom.
-**Tasks Remaining**: the 5 serialized-co-review blocking findings (in fix), then ONE clean re-review. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING that re-review** (see the Co-review section at the bottom). FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Last Completed Task**: the iter-005 false-green CORRECTION (SessionStart version probe + expected-version gate; committed). **Iteration 005 is NOT yet complete** — the FIRST serialized co-review (2026-07-14) returned 5 blocking findings (all fixed); the RE-REVIEW then returned ONE human-judgment finding (findings 3+5 were only partially fixed — the ambient value was merely shape-filtered, and `healthy` was still reachable with no live current-version comparison), the loop guard fired, and the maintainer chose "fix fully now" (option 1). That full probe-based fix is DONE + green; ONE final clean re-review closes the iteration and releases T019 pieces 5-7. See the Co-review section at the bottom.
+**Tasks Remaining**: ONE final clean re-review (the option-1 probe fix is committed + the full registry is green). **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING that re-review** (see the Co-review section at the bottom). FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-14T00:00:00Z
@@ -191,6 +191,45 @@ actionable findings are FIXED, not waved through:
 After the fixes commit and the full-registry evidence re-binds to the NEW committed digest,
 exactly ONE re-review runs. **Iteration 005 completion (and the release of T019 pieces 5-7)
 is PENDING that clean re-review** — it is NOT complete at the earlier `203e4b5a` digest.
+
+### Re-review (2026-07-14) — ONE human-judgment finding on findings 3+5, fixed fully (maintainer option 1)
+
+The ONE re-review (auto-anchored, independent host) ran against the NEW committed digest `9e76af7a…`
+after the 5 fixes and returned **ONE blocking finding, flagged HUMAN DECISION REQUIRED** — the loop guard
+correctly fired on a second review→fix cycle on the same findings. Verified against the code, the reviewer was
+right: findings 3 + 5 were only PARTIALLY fixed —
+
+- **f3 (ambient value):** the strict version-shape whitelist bounded the SHAPE, not the PROVENANCE — a
+  version-shaped secret (`token_123`) still passed and persisted; the ROOT cause (reading the version from an
+  ambient env var at all) was untouched.
+- **f5 (`unknown` reads healthy):** `unknown`→`unverified` closed one value, but `healthy`/`ready` was still
+  reachable for ANY non-`unknown` version with NO current-vs-observed comparison, because the production callers
+  (doctor + preflight) omitted `ExpectedHostVersion` — a bare receipt still earned healthy.
+- The prior production-path tests ENCODED both defects (asserted the ambient value was persisted, and that an
+  arbitrary version read healthy without a comparison).
+
+**MAINTAINER DECISION (2026-07-14): fix fully now (option 1).** Implemented per the approved design (spec FR-053a):
+
+- `observed_host_version` is now a BOUNDED, shell-free `--version` probe of the resolved host executable, run
+  ONLY at SessionStart; `SPECREW_OBSERVED_HOST_VERSION` is REMOVED as a version source; probe failure / timeout /
+  ambiguity / malformed → `unknown`. Stop launches no probe and cannot overwrite/promote the SessionStart fact.
+- `healthy`/`ready` now REQUIRE an INDEPENDENTLY probed CURRENT version (the doctor + the Codex preflight probe
+  the live host binding and supply it) that MATCHES the SessionStart-observed version; a missing current version
+  is never defaulted to acceptance. Adapter contract bumped 1→2 (every pre-fix receipt retires as drift).
+- The encoded tests were REWRITTEN and the full production-path matrix added: env ignored / never persisted; a
+  version-shaped ambient token cannot influence health; missing expected → never healthy; a matching probe →
+  healthy; mismatch / timeout / malformed / unresolved-executable / stale → unverified/degraded; Stop launches no
+  probe; a later Stop cannot overwrite the SessionStart fact; the doctor + preflight pass an independently probed
+  expected version.
+- Files: `scripts/internal/continuous-co-review/hook-health-receipt.ps1` (the probe + the SessionStart-anchored
+  expected-version-gated resolver + the probing doctor/preflight consumers), the 3 dispatcher copies
+  (SessionStart-only probe, env source removed, byte-identical parity), `spec.md` FR-053a, and the four test
+  suites (`hook-health-receipt.Tests.ps1`, `codex-headless-preflight.Tests.ps1`,
+  `host-support-reconciliation.Tests.ps1`, `tests/integration/f198-iter005-hook-health-production-path.tests.ps1`).
+  NO deferral to #3084 for this defect (per the maintainer ruling — it is a Beta2 false-green correction).
+
+After this correction commits and the full-registry evidence re-binds to the new committed digest, ONE final
+clean re-review closes Iteration 005 and releases T019 pieces 5-7.
 
 ## Notes
 

@@ -57,6 +57,7 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
                 'absent' { }
                 'stale' {
                     Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.144.1' -TimestampUtc $script:BaseTime | Out-Null
+                    $resolveArgs.ExpectedHostVersion = 'codex-cli 0.144.1'   # pass the version match so the receipt reaches the STALE check (not the no-expected gate)
                     $resolveArgs.Now = $script:BaseTime.AddHours(72)
                 }
                 'malformed-json' { Write-RawReceipt -Root $root -HostName 'codex' -Event 'SessionStart' -Content 'THIS_IS_NOT_JSON {{{ <<<' | Out-Null }
@@ -65,8 +66,13 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
                 'malformed-empty' { Write-RawReceipt -Root $root -HostName 'codex' -Event 'SessionStart' -Content '{"host":"codex","surface":"cli","event":"SessionStart","observed_host_version":"","timestamp":"2026-07-14T12:00:00.0000000Z","adapter_contract_version":1}' | Out-Null }
                 'malformed-timestamp' { Write-RawReceipt -Root $root -HostName 'codex' -Event 'SessionStart' -Content '{"host":"codex","surface":"cli","event":"SessionStart","observed_host_version":"codex-cli 0.144.1","timestamp":"not-a-time","adapter_contract_version":1}' | Out-Null }
                 'conflicting' {
-                    Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.144.1' -TimestampUtc $script:BaseTime | Out-Null
-                    Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -ObservedHostVersion 'codex-cli 0.144.3' -TimestampUtc $script:BaseTime.AddMinutes(5) | Out-Null
+                    # Two well-formed SessionStart receipts (both glob-matching codex-cli-*.json, both event=SessionStart)
+                    # that disagree on the observed version = internally inconsistent version evidence. A Stop receipt
+                    # carries no version, so a conflict is between SessionStart receipts ONLY - constructed via raw
+                    # files at the CURRENT adapter contract so the conflict (step 3b) is reached before contract drift.
+                    $c = Get-SpecrewHookHealthAdapterContractVersion
+                    Write-RawReceipt -Root $root -HostName 'codex' -Event 'SessionStart' -Content ('{{"host":"codex","surface":"cli","event":"SessionStart","observed_host_version":"codex-cli 0.144.1","timestamp":"2026-07-14T12:00:00.0000000Z","adapter_contract_version":{0}}}' -f $c) | Out-Null
+                    Write-RawReceipt -Root $root -HostName 'codex' -Event 'sessionstart-b' -Content ('{{"host":"codex","surface":"cli","event":"SessionStart","observed_host_version":"codex-cli 0.144.3","timestamp":"2026-07-14T12:05:00.0000000Z","adapter_contract_version":{0}}}' -f $c) | Out-Null
                 }
                 'host-drift' {
                     Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.144.1' -TimestampUtc $script:BaseTime | Out-Null
@@ -96,9 +102,9 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
 
         It 'still healthy at the exact freshness boundary but degraded just past it' {
             $root = New-HhrTempRoot
-            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -ObservedHostVersion 'codex-cli 0.144.1' -TimestampUtc $script:BaseTime | Out-Null
-            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -FreshnessHours 24 -Now $script:BaseTime.AddHours(24)).status | Should -Be 'healthy'
-            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -FreshnessHours 24 -Now $script:BaseTime.AddHours(24.5)).status | Should -Be 'degraded'
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.144.1' -TimestampUtc $script:BaseTime | Out-Null
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -ExpectedHostVersion 'codex-cli 0.144.1' -FreshnessHours 24 -Now $script:BaseTime.AddHours(24)).status | Should -Be 'healthy'
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -ExpectedHostVersion 'codex-cli 0.144.1' -FreshnessHours 24 -Now $script:BaseTime.AddHours(24.5)).status | Should -Be 'degraded'
         }
     }
 
@@ -176,13 +182,11 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
         It 'sanitizes to EXACTLY the six fields and flattens control chars even when fed multi-line text (structural safety only)' {
             $root = New-HhrTempRoot
             # The WRITER's guarantee is STRUCTURAL: the field-set allow-list means caller text can only ever land in
-            # observed_host_version (NEVER as a new key), and the sanitizer flattens CR/LF/TAB. VALUE-level
-            # version-shape gating (collapsing a secret / argument-bearing / whitespace-laden value to 'unknown') is
-            # enforced at the UNTRUSTED ambient boundary - Get-DispatcherObservedHostVersion in the dispatcher,
-            # exercised by the F-198 iter-005 production-path suite (finding 3) - NOT here, because the writer cannot
-            # tell a legitimate spaced host version from a secret. So feed BENIGN multi-line content (no secret) and
-            # assert the structural guarantees only. (Previously this fed 'SECRET=... TOKEN=...' and accepted it
-            # surviving in the value - the finding-3 false claim that the writer was the secret boundary.)
+            # observed_host_version (NEVER as a new key), and the sanitizer flattens CR/LF/TAB. The observed version
+            # itself is no longer sourced from ambient input at all - the dispatcher records ONLY a BOUNDED
+            # SessionStart `--version` probe fact (Get-SpecrewHostVersionProbe), and SPECREW_OBSERVED_HOST_VERSION is
+            # gone; that probe boundary is exercised by the F-198 iter-005 production-path suite (finding 3). So this
+            # test feeds BENIGN multi-line content and asserts the writer's structural guarantees only.
             $multiline = "1.2.3`nbuild`tmeta"
             $w = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -ObservedHostVersion $multiline -TimestampUtc $script:BaseTime
             $raw = Get-Content -LiteralPath $w.Path -Raw
@@ -206,10 +210,15 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
 
     Context 'the doctor/status renderer reports the health result truthfully' {
         It 'renders each host with its resolved status and never healthy-washes a non-healthy row' {
+            # Build the rows explicitly and render them: this asserts the RENDER is truthful (a healthy row shows
+            # healthy; a receipt-less host shows unverified). The live per-host `--version` probe that a
+            # ProjectRoot render performs is exercised deterministically by the production-path suite (PATH fakes),
+            # not here - a unit render must not depend on which real CLI happens to be installed.
             $root = New-HhrTempRoot
             Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.144.1' -TimestampUtc $script:BaseTime | Out-Null
-            # claude has NO receipt -> must render unverified.
-            $report = Format-SpecrewHookHealthReport -ProjectRoot $root -Hosts @('codex', 'claude') -Now $script:BaseTime.AddHours(1)
+            $codexRow = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -ExpectedHostVersion 'codex-cli 0.144.1' -Now $script:BaseTime.AddHours(1)
+            $claudeRow = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Now $script:BaseTime.AddHours(1)   # no receipt -> unverified
+            $report = Format-SpecrewHookHealthReport -Rows @($codexRow, $claudeRow)
             $report | Should -Match 'codex\s+cli\s+healthy'
             $report | Should -Match 'claude\s+cli\s+unverified'
             $report | Should -Not -Match 'claude\s+cli\s+healthy'
@@ -225,6 +234,89 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
             $report | Should -Match 'unverified'
             $report | Should -Match 'degraded'
             $report | Should -Match 'codex\s+cli\s+degraded'
+        }
+    }
+
+    Context 'the host-version probe (Get-SpecrewHostVersionProbe) is bounded, shell-free, and fails closed' {
+        BeforeAll {
+            function New-FakeHostExe {
+                param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string]$BatchBody)
+                $dir = New-HhrTempRoot
+                $path = Join-Path $dir ($Name + '.cmd')
+                [System.IO.File]::WriteAllText($path, ("@echo off`r`n" + $BatchBody), [System.Text.UTF8Encoding]::new($false))
+                return $path
+            }
+        }
+
+        It 'normalizes a clean single-line version verbatim' {
+            ConvertTo-SpecrewNormalizedVersionLine -Stdout "codex-cli 0.44.0`n" | Should -Be 'codex-cli 0.44.0'
+        }
+        It 'returns empty (malformed) when no dotted-numeric version is present' {
+            ConvertTo-SpecrewNormalizedVersionLine -Stdout "Usage: codex [options]`nRuns codex" | Should -Be ''
+        }
+        It 'returns empty (ambiguous) when more than one line carries a version' {
+            ConvertTo-SpecrewNormalizedVersionLine -Stdout "tool 1.2.3`nlib 4.5.6" | Should -Be ''
+        }
+        It 'probes a resolved fake executable and returns its self-reported version' {
+            $exe = New-FakeHostExe -Name 'codex' -BatchBody 'echo codex-cli 0.44.0'
+            $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe
+            $p.ok | Should -BeTrue
+            $p.version | Should -Be 'codex-cli 0.44.0'
+        }
+        It 'fails to unknown when the executable does not resolve' {
+            $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride (Join-Path (New-HhrTempRoot) 'absent.cmd')
+            $p.ok | Should -BeFalse
+            $p.version | Should -Be 'unknown'
+        }
+        It 'fails to unknown on malformed (no-version) output' {
+            $exe = New-FakeHostExe -Name 'codex' -BatchBody 'echo not a version at all'
+            (Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe).version | Should -Be 'unknown'
+        }
+        It 'fails to unknown on a non-zero exit' {
+            $exe = New-FakeHostExe -Name 'codex' -BatchBody "echo 1.2.3`r`nexit /b 3"
+            (Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe).ok | Should -BeFalse
+        }
+        It 'fails to unknown on timeout (a hung probe is killed)' {
+            $exe = New-FakeHostExe -Name 'codex' -BatchBody "ping -n 6 127.0.0.1 >nul`r`necho 1.2.3"
+            $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe -TimeoutSeconds 1
+            $p.ok | Should -BeFalse
+            $p.version | Should -Be 'unknown'
+        }
+        It 'has no probe spec for an unknown host -> unknown' {
+            (Get-SpecrewHostVersionProbe -HostName 'no-such-host').ok | Should -BeFalse
+        }
+    }
+
+    Context 'healthy REQUIRES a SessionStart version probe AND an independently supplied current version' {
+        It 'a valid SessionStart receipt WITHOUT a supplied current version is unverified (never defaulted to accept)' {
+            $root = New-HhrTempRoot
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.44.0' -TimestampUtc $script:BaseTime | Out-Null
+            $h = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -Now $script:BaseTime.AddHours(1)
+            $h.status | Should -Be 'unverified'
+            $h.status | Should -Not -Be 'healthy'
+        }
+        It 'a matching supplied current version yields healthy' {
+            $root = New-HhrTempRoot
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.44.0' -TimestampUtc $script:BaseTime | Out-Null
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -ExpectedHostVersion 'codex-cli 0.44.0' -Now $script:BaseTime.AddHours(1)).status | Should -Be 'healthy'
+        }
+        It 'a Stop-only receipt (no SessionStart version probe) is unverified even with a supplied current version' {
+            $root = New-HhrTempRoot
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -ObservedHostVersion 'unknown' -TimestampUtc $script:BaseTime | Out-Null
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -ExpectedHostVersion 'codex-cli 0.44.0' -Now $script:BaseTime.AddHours(1)).status | Should -Be 'unverified'
+        }
+        It 'a later Stop receipt does NOT overwrite or promote the SessionStart version fact' {
+            $root = New-HhrTempRoot
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.44.0' -TimestampUtc $script:BaseTime | Out-Null
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -ObservedHostVersion 'unknown' -TimestampUtc $script:BaseTime.AddMinutes(30) | Out-Null
+            $h = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -ExpectedHostVersion 'codex-cli 0.44.0' -Now $script:BaseTime.AddHours(1)
+            $h.status | Should -Be 'healthy'
+            $h.receipt.observed_host_version | Should -Be 'codex-cli 0.44.0'   # the version fact came from SessionStart, not the later Stop
+        }
+        It 'a SessionStart receipt whose probe failed (observed unknown) is unverified even with a supplied current version' {
+            $root = New-HhrTempRoot
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'unknown' -TimestampUtc $script:BaseTime | Out-Null
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -ExpectedHostVersion 'codex-cli 0.44.0' -Now $script:BaseTime.AddHours(1)).status | Should -Be 'unverified'
         }
     }
 }
