@@ -833,14 +833,20 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   MUST NEVER report `healthy`. The result is exposed through the existing doctor/status surface (or the narrowest
   established equivalent). This is NOT Beta3's full capability-negotiation system.
   - **FR-053a (observed-version provenance + independent match — iter-005 false-green correction, maintainer
-    decision 2026-07-14)**: the `observed host version` MUST be a BOUNDED, shell-free `--version` probe of the
-    canonical host executable, run ONLY at SessionStart (later events record `unknown` and MUST NOT launch a probe
-    or overwrite/promote the SessionStart version fact). It MUST NOT be sourced from any ambient environment value
-    (`SPECREW_OBSERVED_HOST_VERSION` is removed); a probe failure / timeout / ambiguity / malformed output records
-    `unknown` → `unverified`. `healthy` / `ready` MUST additionally REQUIRE an INDEPENDENTLY obtained CURRENT host
-    version (the doctor + Codex preflight probe the live host binding and supply it) that MATCHES the
-    SessionStart-observed version — a missing current version is NEVER defaulted to acceptance, and a bare receipt
-    never reads healthy. The adapter contract version is bumped so every pre-correction receipt retires as drift.
+    decision 2026-07-14; shell-safe + cross-platform amendment 2026-07-14)**: the `observed host version` MUST be a
+    BOUNDED, SHELL-SAFE, CROSS-PLATFORM `--version` probe of the canonical host executable, run ONLY at SessionStart
+    (later events record `unknown` and MUST NOT launch a probe or overwrite/promote the SessionStart version fact).
+    Shell-safe means: a NATIVE executable (Windows `.exe`; any POSIX binary or shebang script) is invoked DIRECTLY
+    with a fixed argument vector — genuinely shell-free, no shell process in the invocation on any OS; a Windows
+    `.cmd`/`.bat` shim (the ONLY case an OS cannot exec directly, and Windows-only) is invoked via the required
+    interpreter with the resolved path REFUSED if it bears a shell metacharacter, so no untrusted input reaches the
+    interpreter and the injection surface is FALSIFIED by a production-path test (never assumed). It MUST NOT be
+    sourced from any ambient environment value (`SPECREW_OBSERVED_HOST_VERSION` is removed); a probe failure /
+    timeout / ambiguity / malformed output / refused path records `unknown` → `unverified`. `healthy` / `ready` MUST
+    additionally REQUIRE an INDEPENDENTLY obtained CURRENT host version (the doctor + Codex preflight probe the live
+    host binding and supply it) that MATCHES the SessionStart-observed version — a missing current version is NEVER
+    defaulted to acceptance, and a bare receipt never reads healthy. The adapter contract version is bumped so every
+    pre-correction receipt retires as drift.
 - **FR-054 (Codex plugin packaging scope, CONDITIONAL)**: IF Beta2 ships Codex plugin installation, a regression
   MUST prove a plugin that intends no Codex hooks uses exactly `hooks: {}` and cannot auto-discover another
   host's `hooks/hooks.json`. IF plugin installation is NOT a Beta2 deliverable, it stays in issue #3084 and is

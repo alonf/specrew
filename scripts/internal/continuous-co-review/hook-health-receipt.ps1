@@ -103,12 +103,14 @@ function Get-SpecrewHookHealthStatusSet {
 # ambient environment value (SPECREW_OBSERVED_HOST_VERSION is gone), and `healthy`/`ready` must NEVER be earned
 # without an INDEPENDENT current-version comparison. Both the WRITE side (the dispatcher, at SessionStart ONLY) and
 # the READ side (the doctor + the Codex preflight, at their explicit boundary) obtain a version through THIS one
-# probe: resolve the canonical host executable, run its fixed version argument DIRECTLY (argument vector, never a
-# shell string), bound the time, and NORMALIZE stdout to the tool's own self-reported version line. That
+# probe: resolve the canonical host executable, run its fixed version argument SHELL-SAFE + cross-platform (a
+# native binary or shebang script is exec'd DIRECTLY with an argument vector - genuinely shell-free on every OS;
+# a Windows .cmd/.bat shim, the only interpreter-mediated case, is injection-guarded; never a shell string built
+# from untrusted input), bound the time, and NORMALIZE stdout to the tool's own self-reported version line. That
 # self-reported line IS the minimum sanitized identity needed for comparison (a tool/version change reports a
 # different line -> mismatch -> unverified); no user path and no env value is ever persisted. Any failure
 # (no spec, unresolved executable, launch failure, timeout, non-zero exit, empty / ambiguous / malformed output)
-# fails to 'unknown' -> unverified. NEVER a shell, NEVER an env version, NEVER a promotion without a live match.
+# fails to 'unknown' -> unverified. NEVER an ambient shell-string, NEVER an env version, NEVER a promotion without a live match.
 
 # The CLI-first gated hosts (FR-050) and the fixed, single version argument each exposes. An unlisted host has no
 # probe spec, so its probe fails to 'unknown' (unverified) - support is never assumed.
@@ -147,11 +149,21 @@ function ConvertTo-SpecrewNormalizedVersionLine {
 }
 
 function Invoke-SpecrewBoundedVersionProcess {
-    # Run a RESOLVED executable with a fixed argument VECTOR, bounded by a timeout, capturing stdout. No shell
-    # STRING is ever built (UseShellExecute=$false + ArgumentList), so neither the arguments nor the output are
-    # shell-interpreted - there is no injection surface. On Windows a .cmd/.bat shim (e.g. an npm-installed CLI) is
-    # launched via ComSpec /c with the resolved path + args STILL passed as a vector (no concatenated untrusted
-    # string). Returns { ok; stdout; problem }. Never throws; a hung probe is killed (tree) on timeout.
+    # Run a RESOLVED executable with a fixed argument VECTOR, bounded by a timeout, capturing stdout. SHELL-SAFE
+    # (FR-053a) + CROSS-PLATFORM:
+    #   * A NATIVE executable image (Windows .exe) OR ANY POSIX binary / shebang script (Linux/macOS) is invoked
+    #     DIRECTLY (UseShellExecute=$false, FileName=the resolved path, args as an ArgumentList VECTOR). The OS
+    #     execs it - a shebang is honored by the KERNEL, never by a shell WE spawn - so there is NO shell process in
+    #     the invocation and NO shell-string is built. This is the ONLY path on non-Windows, and the path Windows
+    #     .exe hosts (codex/claude here) take: genuinely shell-free.
+    #   * A Windows .cmd/.bat shim (e.g. an npm-installed CLI) is the ONE case the OS cannot exec directly - only
+    #     cmd.exe interprets it - and it is WINDOWS-ONLY (guarded on $onWindows; a POSIX shim is a shebang script the
+    #     kernel execs above). It is hardened to INJECTION-SAFE: the resolved path is REFUSED if it bears any cmd
+    #     expansion/operator metacharacter (%, !, &, ^, |, <, >, ") - a legitimate install path never has one; a
+    #     metacharacter path is a PATH-hijack red flag - so no untrusted content can reach the interpreter, and the
+    #     command line is `/d /c "<refused-safe path>" <fixed args>` (path always quoted, args the fixed --version).
+    #     No untrusted input reaches a shell; the injection surface is FALSIFIED by test (never assumed).
+    # Returns { ok; stdout; problem }. Never throws; a hung probe is killed (tree) on timeout.
     param(
         [Parameter(Mandatory)][string]$ExecutablePath,
         [string[]]$Arguments = @('--version'),
@@ -160,21 +172,33 @@ function Invoke-SpecrewBoundedVersionProcess {
     $out = [ordered]@{ ok = $false; stdout = ''; problem = $null }
     $proc = $null
     try {
+        $onWindows = [System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)
         $psi = [System.Diagnostics.ProcessStartInfo]::new()
-        $ext = [System.IO.Path]::GetExtension($ExecutablePath).ToLowerInvariant()
-        if ($ext -eq '.cmd' -or $ext -eq '.bat') {
-            $comspec = $env:ComSpec; if ([string]::IsNullOrWhiteSpace($comspec)) { $comspec = 'cmd.exe' }
-            $psi.FileName = $comspec
-            $psi.ArgumentList.Add('/c'); $psi.ArgumentList.Add($ExecutablePath)
-        }
-        else {
-            $psi.FileName = $ExecutablePath
-        }
-        foreach ($a in $Arguments) { $psi.ArgumentList.Add([string]$a) }
         $psi.UseShellExecute = $false
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
         $psi.CreateNoWindow = $true
+        $ext = [System.IO.Path]::GetExtension($ExecutablePath).ToLowerInvariant()
+        if ($onWindows -and ($ext -eq '.cmd' -or $ext -eq '.bat')) {
+            # INJECTION GUARD: refuse a shim path bearing any cmd expansion/operator metacharacter, so nothing
+            # untrusted can reach the interpreter (the fixed --version args carry none). A refused path -> unknown.
+            if ($ExecutablePath -match '[%!&^|<>"]') {
+                $out.problem = 'resolved shim path contains a shell metacharacter; refused (injection guard)'
+                return [pscustomobject]$out
+            }
+            $comspec = $env:ComSpec; if ([string]::IsNullOrWhiteSpace($comspec)) { $comspec = 'cmd.exe' }
+            $psi.FileName = $comspec
+            # Explicit, self-quoted command line: /d (no AutoRun) /c "<path>" <fixed args>. Built explicitly because
+            # .NET ArgumentList's C-runtime quoting does NOT match cmd.exe's rules; the path is refused above if it
+            # bears an injection metacharacter, so this raw string has no injection surface.
+            $argline = '/d /c "' + $ExecutablePath + '"'
+            foreach ($a in $Arguments) { $argline += ' ' + [string]$a }
+            $psi.Arguments = $argline
+        }
+        else {
+            $psi.FileName = $ExecutablePath
+            foreach ($a in $Arguments) { $psi.ArgumentList.Add([string]$a) }
+        }
         $proc = [System.Diagnostics.Process]::Start($psi)
         $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
         $null = $proc.StandardError.ReadToEndAsync()
@@ -204,7 +228,7 @@ function Invoke-SpecrewBoundedVersionProcess {
 
 function Get-SpecrewHostVersionProbe {
     # The ONE host-CLI version probe. Resolves the canonical executable for a HostKind and runs its fixed version
-    # argument bounded + shell-free (see Invoke-SpecrewBoundedVersionProcess), then normalizes stdout to the tool's
+    # argument bounded + shell-safe / cross-platform (see Invoke-SpecrewBoundedVersionProcess), then normalizes stdout to the tool's
     # self-reported version line. Returns { ok; host; version; source; problem }. ANY failure -> ok=$false,
     # version='unknown'. NEVER throws, NEVER reads an ambient version env value. `version` is the ONLY value that
     # can promote health, and it can originate ONLY here. -CommandOverride/-ArgsOverride are the TEST seam (point

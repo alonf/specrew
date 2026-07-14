@@ -220,7 +220,14 @@ Describe 'F-198 T039 host-support / hook-health / evidence reconciliation' {
             # reads healthy. Deterministically control the version they independently probe with a fake `codex` on
             # PATH that self-reports '1.2.3', matching the SessionStart receipt we write.
             $fakeDir = New-ReconTempRoot
-            [System.IO.File]::WriteAllText((Join-Path $fakeDir 'codex.cmd'), "@echo off`r`necho 1.2.3", [System.Text.UTF8Encoding]::new($false))
+            if ($IsWindows) {
+                [System.IO.File]::WriteAllText((Join-Path $fakeDir 'codex.cmd'), "@echo off`r`necho 1.2.3", [System.Text.UTF8Encoding]::new($false))
+            }
+            else {
+                $fk = Join-Path $fakeDir 'codex'
+                [System.IO.File]::WriteAllText($fk, "#!/usr/bin/env sh`necho '1.2.3'`n", [System.Text.UTF8Encoding]::new($false))
+                [System.IO.File]::SetUnixFileMode($fk, [System.IO.UnixFileMode]'UserRead,UserWrite,UserExecute,GroupRead,GroupExecute,OtherRead,OtherExecute')
+            }
             $null = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion '1.2.3' -TimestampUtc $script:BaseTime
             $saved = $env:PATH
             try {

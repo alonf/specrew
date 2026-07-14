@@ -46,7 +46,14 @@ Describe 'F-198 T036 FR-051 Codex untrusted-headless governance preflight' {
         # the probe-FAILURE branch is proven below by temporarily emptying PATH.)
         $script:FakeHostDir = Join-Path ([System.IO.Path]::GetTempPath()) ('hhr-pf-bin-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $script:FakeHostDir -Force | Out-Null
-        [System.IO.File]::WriteAllText((Join-Path $script:FakeHostDir 'codex.cmd'), ("@echo off`r`necho " + $script:CodexVersion), [System.Text.UTF8Encoding]::new($false))
+        if ($IsWindows) {
+            [System.IO.File]::WriteAllText((Join-Path $script:FakeHostDir 'codex.cmd'), ("@echo off`r`necho " + $script:CodexVersion), [System.Text.UTF8Encoding]::new($false))
+        }
+        else {
+            $fk = Join-Path $script:FakeHostDir 'codex'
+            [System.IO.File]::WriteAllText($fk, ("#!/usr/bin/env sh`necho '" + $script:CodexVersion + "'`n"), [System.Text.UTF8Encoding]::new($false))
+            [System.IO.File]::SetUnixFileMode($fk, [System.IO.UnixFileMode]'UserRead,UserWrite,UserExecute,GroupRead,GroupExecute,OtherRead,OtherExecute')
+        }
         $script:SavedPath = $env:PATH
         $env:PATH = $script:FakeHostDir + [System.IO.Path]::PathSeparator + $env:PATH
     }

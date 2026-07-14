@@ -1,8 +1,8 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Last Completed Task**: the iter-005 false-green CORRECTION (SessionStart version probe + expected-version gate; committed). **Iteration 005 is NOT yet complete** — the FIRST serialized co-review (2026-07-14) returned 5 blocking findings (all fixed); the RE-REVIEW then returned ONE human-judgment finding (findings 3+5 were only partially fixed — the ambient value was merely shape-filtered, and `healthy` was still reachable with no live current-version comparison), the loop guard fired, and the maintainer chose "fix fully now" (option 1). That full probe-based fix is DONE + green; ONE final clean re-review closes the iteration and releases T019 pieces 5-7. See the Co-review section at the bottom.
-**Tasks Remaining**: ONE final clean re-review (the option-1 probe fix is committed + the full registry is green). **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING that re-review** (see the Co-review section at the bottom). FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Last Completed Task**: the iter-005 false-green CORRECTION, now SHELL-SAFE + CROSS-PLATFORM (SessionStart version probe + independent current-version gate + FR-053a shell-safe reconciliation; Linux-verified). **Iteration 005 is NOT yet complete** — three co-review cycles fired the loop guard (5 findings → partial-fix on 3+5 → shell-free contract gap), each escalated to the maintainer and fixed under an explicit ruling. The shell-safe fix is DONE + green on Windows AND Linux; ONE final clean re-review closes the iteration and releases T019 pieces 5-7. See the Co-review section at the bottom.
+**Tasks Remaining**: commit the shell-safe reconciliation + ONE final clean re-review. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING that re-review** (see the Co-review section at the bottom). FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-14T00:00:00Z
@@ -230,6 +230,36 @@ right: findings 3 + 5 were only PARTIALLY fixed —
 
 After this correction commits and the full-registry evidence re-binds to the new committed digest, ONE final
 clean re-review closes Iteration 005 and releases T019 pieces 5-7.
+
+### Second re-review + shell-safe / cross-platform reconciliation (2026-07-14, maintainer option 1 + Linux)
+
+The committed option-1 fix re-review first PAUSED on the 2-round budget ceiling (`review-spending-limit-reached`,
+escalated to human — 21 blocking items cleared, the latest change not yet reviewed). The maintainer authorized
+`--remediate more-time`; the budgeted round then reviewed the latest change and returned ONE human-judgment finding:
+FR-053a mandated a "shell-free" probe, but the probe routed Windows `.cmd`/`.bat` shims through `cmd.exe /c` — a
+contract/impl mismatch I introduced (I wrote "shell-free" while building a shell-mediated shim path). The loop guard
+fired; the maintainer chose **option 1 (shell-safe reconciliation) + Linux compatibility**.
+
+Implemented (FR-053a amended shell-free → SHELL-SAFE + CROSS-PLATFORM):
+
+- A NATIVE executable (Windows `.exe`; any POSIX binary / shebang script) is invoked DIRECTLY with a fixed argument
+  vector — genuinely shell-free on every OS (codex/claude resolve to `.exe`; all Linux hosts take this path). A
+  Windows `.cmd`/`.bat` shim (the ONLY interpreter-mediated case, and Windows-only) is invoked via cmd.exe with the
+  resolved path REFUSED if it bears a shell metacharacter (`% ! & ^ | < > "`) — no untrusted input reaches the
+  interpreter; the injection surface is FALSIFIED by test (a `&`-bearing shim path is refused and never executes).
+- CROSS-PLATFORM tests: every fake is now a Windows `.cmd` OR a POSIX shebang script (`SetUnixFileMode +x`); the
+  production-path test's backslash path literals were corrected to forward slashes (they broke `Join-Path` on Linux).
+  Added falsification tests (native-direct shell-free; the Windows shim injection-guard, `-Skip` on non-Windows).
+- **Verified on BOTH OSes.** Windows: the full 36-suite registry is green. Linux (Docker, pwsh 7.4.2, Pester 5.6.1):
+  the probe smoke, the three unit suites (43/0 + 1 correctly-skipped Windows-only injection test, 10/0, 19/0), and the
+  FULL production-path integration (all 8 findings) are all green. CI runs on `ubuntu-latest`, so Linux correctness is
+  a release requirement — now met and demonstrated, not merely reasoned.
+- Files: `scripts/internal/continuous-co-review/hook-health-receipt.ps1` (the shell-safe cross-platform probe
+  invocation), `spec.md` FR-053a, and the four test suites. The 3 dispatcher copies are UNCHANGED (the probe is
+  module-internal) and remain byte-identical. NO deferral to #3084 for this defect.
+
+After this reconciliation commits and the evidence re-binds to the new committed digest, ONE final clean re-review
+closes Iteration 005 and releases T019 pieces 5-7.
 
 ## Notes
 

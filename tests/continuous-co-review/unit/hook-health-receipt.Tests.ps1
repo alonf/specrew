@@ -237,13 +237,34 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
         }
     }
 
-    Context 'the host-version probe (Get-SpecrewHostVersionProbe) is bounded, shell-free, and fails closed' {
+    Context 'the host-version probe (Get-SpecrewHostVersionProbe) is bounded, shell-safe, cross-platform, and fails closed' {
         BeforeAll {
             function New-FakeHostExe {
-                param([Parameter(Mandatory)][string]$Name, [Parameter(Mandatory)][string]$BatchBody)
+                # Cross-platform fake host executable: a Windows .cmd shim, or a POSIX shebang script (chmod +x). The
+                # behavior is chosen by INTENT so each OS emits the right script; the resolved path is returned to probe.
+                param(
+                    [Parameter(Mandatory)][string]$Name,
+                    [string]$Version = 'codex-cli 0.44.0',
+                    [switch]$Garbage, [switch]$NonZeroExit, [switch]$Hang
+                )
                 $dir = New-HhrTempRoot
-                $path = Join-Path $dir ($Name + '.cmd')
-                [System.IO.File]::WriteAllText($path, ("@echo off`r`n" + $BatchBody), [System.Text.UTF8Encoding]::new($false))
+                if ($IsWindows) {
+                    $path = Join-Path $dir ($Name + '.cmd')
+                    $lines = @('@echo off')
+                    if ($Hang) { $lines += 'ping -n 30 127.0.0.1 >nul' }
+                    if ($Garbage) { $lines += 'echo not a version at all' } else { $lines += ('echo ' + $Version) }
+                    if ($NonZeroExit) { $lines += 'exit /b 3' }
+                    [System.IO.File]::WriteAllText($path, ($lines -join "`r`n"), [System.Text.UTF8Encoding]::new($false))
+                }
+                else {
+                    $path = Join-Path $dir $Name
+                    $lines = @('#!/usr/bin/env sh')
+                    if ($Hang) { $lines += 'sleep 30' }
+                    if ($Garbage) { $lines += 'echo "not a version at all"' } else { $lines += ("echo '" + $Version + "'") }
+                    if ($NonZeroExit) { $lines += 'exit 3' }
+                    [System.IO.File]::WriteAllText($path, (($lines -join "`n") + "`n"), [System.Text.UTF8Encoding]::new($false))
+                    [System.IO.File]::SetUnixFileMode($path, [System.IO.UnixFileMode]'UserRead,UserWrite,UserExecute,GroupRead,GroupExecute,OtherRead,OtherExecute')
+                }
                 return $path
             }
         }
@@ -258,32 +279,62 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
             ConvertTo-SpecrewNormalizedVersionLine -Stdout "tool 1.2.3`nlib 4.5.6" | Should -Be ''
         }
         It 'probes a resolved fake executable and returns its self-reported version' {
-            $exe = New-FakeHostExe -Name 'codex' -BatchBody 'echo codex-cli 0.44.0'
+            $exe = New-FakeHostExe -Name 'codex' -Version 'codex-cli 0.44.0'
             $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe
             $p.ok | Should -BeTrue
             $p.version | Should -Be 'codex-cli 0.44.0'
         }
         It 'fails to unknown when the executable does not resolve' {
-            $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride (Join-Path (New-HhrTempRoot) 'absent.cmd')
+            $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride (Join-Path (New-HhrTempRoot) 'absent-host-exe')
             $p.ok | Should -BeFalse
             $p.version | Should -Be 'unknown'
         }
         It 'fails to unknown on malformed (no-version) output' {
-            $exe = New-FakeHostExe -Name 'codex' -BatchBody 'echo not a version at all'
+            $exe = New-FakeHostExe -Name 'codex' -Garbage
             (Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe).version | Should -Be 'unknown'
         }
         It 'fails to unknown on a non-zero exit' {
-            $exe = New-FakeHostExe -Name 'codex' -BatchBody "echo 1.2.3`r`nexit /b 3"
+            $exe = New-FakeHostExe -Name 'codex' -NonZeroExit
             (Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe).ok | Should -BeFalse
         }
         It 'fails to unknown on timeout (a hung probe is killed)' {
-            $exe = New-FakeHostExe -Name 'codex' -BatchBody "ping -n 6 127.0.0.1 >nul`r`necho 1.2.3"
+            $exe = New-FakeHostExe -Name 'codex' -Hang
             $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe -TimeoutSeconds 1
             $p.ok | Should -BeFalse
             $p.version | Should -Be 'unknown'
         }
         It 'has no probe spec for an unknown host -> unknown' {
             (Get-SpecrewHostVersionProbe -HostName 'no-such-host').ok | Should -BeFalse
+        }
+
+        It 'invokes a NATIVE executable directly and returns its version (shell-free, all platforms)' {
+            # A real native executable is exec'd directly (no shell). On Windows use pwsh.exe (a real .exe - the same
+            # direct invocation path codex/claude take here); elsewhere the POSIX shebang fake IS the direct-exec path.
+            if ($IsWindows) {
+                $exe = (Get-Command pwsh -CommandType Application).Source
+                $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe
+                $p.ok | Should -BeTrue
+                $p.version | Should -Match '\d+\.\d+'
+            }
+            else {
+                $exe = New-FakeHostExe -Name 'codex' -Version 'codex-cli 0.44.0'
+                $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $exe
+                $p.ok | Should -BeTrue
+                $p.version | Should -Be 'codex-cli 0.44.0'
+            }
+        }
+        It 'refuses a Windows .cmd shim whose resolved path bears a shell metacharacter (injection guard) and never executes it' -Skip:(-not $IsWindows) {
+            $dir = New-HhrTempRoot
+            $injDir = Join-Path $dir 'inj&x'
+            New-Item -ItemType Directory -Path $injDir -Force | Out-Null
+            $marker = Join-Path $dir 'INJECTED.txt'
+            $shim = Join-Path $injDir 'codex.cmd'
+            [System.IO.File]::WriteAllText($shim, "@echo off`r`necho pwned>`"$marker`"`r`necho codex-cli 9.9.9", [System.Text.UTF8Encoding]::new($false))
+            $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $shim
+            $p.ok | Should -BeFalse
+            $p.version | Should -Be 'unknown'
+            $p.problem | Should -Match 'injection guard'
+            (Test-Path -LiteralPath $marker) | Should -BeFalse   # the shim never ran
         }
     }
 

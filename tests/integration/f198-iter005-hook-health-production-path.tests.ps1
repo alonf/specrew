@@ -27,8 +27,8 @@ function Write-Pass { param([string]$Message) Write-Host "PASS: $Message" -Foreg
 function Write-Fail { param([string]$Message) Write-Host "FAIL: $Message" -ForegroundColor Red; $script:Failures++ }
 function Assert-True { param([bool]$Condition, [string]$Message) if ($Condition) { Write-Pass $Message } else { Write-Fail $Message } }
 
-$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
-$scratchRoot = Join-Path $repoRoot '.scratch\f198-hook-health-prod'
+$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
+$scratchRoot = Join-Path $repoRoot '.scratch/f198-hook-health-prod'
 $projectRoot = Join-Path $scratchRoot 'project'
 if (Test-Path -LiteralPath $scratchRoot) { Remove-Item -LiteralPath $scratchRoot -Recurse -Force }
 New-Item -ItemType Directory -Path $scratchRoot -Force | Out-Null
@@ -41,9 +41,9 @@ $dispatcher = $fixture.dispatcher
 $hostBinding = $fixture.host_binding
 
 # The receipt module in-process (to set up doctor-project receipts and read them back).
-. (Join-Path $repoRoot 'scripts\internal\continuous-co-review\hook-health-receipt.ps1')
+. (Join-Path $repoRoot 'scripts/internal/continuous-co-review/hook-health-receipt.ps1')
 
-$hookHealthStore = Join-Path $projectRoot '.specrew\runtime\hook-health'
+$hookHealthStore = Join-Path $projectRoot '.specrew/runtime/hook-health'
 function Reset-HookHealthStore { if (Test-Path -LiteralPath $hookHealthStore) { Remove-Item -LiteralPath $hookHealthStore -Recurse -Force } }
 function Get-ReceiptFiles { if (-not (Test-Path -LiteralPath $hookHealthStore)) { return @() } return @(Get-ChildItem -LiteralPath $hookHealthStore -Filter '*.json' -File -ErrorAction SilentlyContinue) }
 function Get-ReceiptForEvent {
@@ -63,15 +63,24 @@ function Get-ReceiptVersion {
 $script:FakeVersion = 'codex-cli 0.0.0-specrewtest'
 
 function New-FakeCodexBin {
-    # A fake `codex` .cmd on its own dir. It (1) drops a marker every time it runs (so we can prove Stop never
-    # probes) and (2) self-reports a version. -Garbage makes it print non-version text (-> the probe normalizes to
-    # unknown). -Version overrides the reported version. Returns the dir (prepend it to a child's PATH).
+    # A fake `codex` on its own dir - a Windows .cmd shim OR a POSIX shebang script (chmod +x), so the real
+    # dispatcher/CLI probe resolves + runs it on either OS. It (1) drops a marker every time it runs (so we can prove
+    # Stop never probes) and (2) self-reports a version. -Garbage prints non-version text (-> the probe normalizes to
+    # unknown). Returns the dir (prepend it to a child's PATH).
     param([string]$Version = $script:FakeVersion, [switch]$Garbage)
     $dir = Join-Path $scratchRoot ('bin-' + [guid]::NewGuid().ToString('N').Substring(0, 8))
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $emit = if ($Garbage) { 'this is not a version' } else { $Version }
-    $body = "@echo off`r`necho fired>>`"%~dp0probe-fired.txt`"`r`necho $emit"
-    [System.IO.File]::WriteAllText((Join-Path $dir 'codex.cmd'), $body, [System.Text.UTF8Encoding]::new($false))
+    if ($IsWindows) {
+        $body = "@echo off`r`necho fired>>`"%~dp0probe-fired.txt`"`r`necho $emit"
+        [System.IO.File]::WriteAllText((Join-Path $dir 'codex.cmd'), $body, [System.Text.UTF8Encoding]::new($false))
+    }
+    else {
+        $p = Join-Path $dir 'codex'
+        $body = "#!/usr/bin/env sh`necho fired >> `"`$(dirname `"`$0`")/probe-fired.txt`"`necho '$emit'`n"
+        [System.IO.File]::WriteAllText($p, $body, [System.Text.UTF8Encoding]::new($false))
+        [System.IO.File]::SetUnixFileMode($p, [System.IO.UnixFileMode]'UserRead,UserWrite,UserExecute,GroupRead,GroupExecute,OtherRead,OtherExecute')
+    }
     return $dir
 }
 function Reset-ProbeMarker { param([string]$BinDir) Remove-Item -LiteralPath (Join-Path $BinDir 'probe-fired.txt') -Force -ErrorAction SilentlyContinue }
@@ -111,7 +120,7 @@ function Invoke-SpecrewCli {
     param([string[]]$CliArgs, [string]$PathPrepend)
     $stdoutPath = Join-Path $scratchRoot 'cli-stdout.txt'
     $stderrPath = Join-Path $scratchRoot 'cli-stderr.txt'
-    $cli = Join-Path $repoRoot 'scripts\specrew.ps1'
+    $cli = Join-Path $repoRoot 'scripts/specrew.ps1'
     $savedMp = [Environment]::GetEnvironmentVariable('SPECREW_MODULE_PATH')
     $savedPath = [Environment]::GetEnvironmentVariable('PATH')
     [Environment]::SetEnvironmentVariable('SPECREW_MODULE_PATH', $null)
