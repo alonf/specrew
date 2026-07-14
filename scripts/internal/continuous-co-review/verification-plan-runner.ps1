@@ -248,8 +248,11 @@ function Invoke-ContinuousCoReviewVerificationPlan {
         $argsRaw = Get-ContinuousCoReviewContractProp -Object $cmd -Name 'arguments'
         $arguments = if ($null -eq $argsRaw) { @() } else { @($argsRaw) }
         $workingDir = [string](Get-ContinuousCoReviewContractProp -Object $cmd -Name 'working_directory')
+        # WIDE-typed passthrough (review finding f2, run 20260714T193411985): no [int] narrowing here - a
+        # contract-valid Int64/BigInteger timeout must reach the policy CLAMP, never throw an overflow that
+        # aborts the plan without a durable attempt record.
         $timeoutRaw = Get-ContinuousCoReviewContractProp -Object $cmd -Name 'timeout_seconds'
-        $requestedTimeout = if ($null -eq $timeoutRaw) { 0 } else { [int]$timeoutRaw }
+        $requestedTimeout = if ($null -eq $timeoutRaw) { 0 } else { $timeoutRaw }
         $resultPath = [string](Get-ContinuousCoReviewContractProp -Object $cmd -Name 'result_path')
         $requireResult = [bool](Get-ContinuousCoReviewContractProp -Object $cmd -Name 'require_result')
         $provenance = Get-ContinuousCoReviewContractProp -Object $cmd -Name 'provenance'

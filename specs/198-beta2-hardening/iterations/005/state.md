@@ -544,6 +544,34 @@ human-decision — all verified and fixed with paired regressions:
 Focused suites 166/166 + self-leak-lint fully green on Windows; full registry + Linux Docker verify re-run;
 evidence re-bound to the fixes commit. Rounds consumed: 3 of 5.
 
+### Twelfth round — round 4 of the 5-round authorization (2026-07-14, run 20260714T193411985-32babdb1) + 3 fixes
+
+Round 4 ran after `resolved-against-disk --fix-evidence-ref e695cd60` and returned **3 blocking findings**, none
+human-decision — numeric/memory boundary classes, all verified and fixed with paired regressions:
+
+1. **f1 (counts beyond Int64).** PS parses a JSON integer past Int64.MaxValue as BigInteger; the validator
+   rejected the schema-valid result as `non-integer-count`. RESOLVED per the reviewer's sanctioned alternative:
+   the CONTRACT now carries an authoritative maximum (Int64.MaxValue) on each count — every schema-valid count
+   is representable + serializable verbatim; beyond-range is the NAMED violation
+   `count-exceeds-authoritative-maximum`. Regression at Int64.MaxValue+1.
+2. **f2 (timeout overflow aborts the plan).** timeout_seconds has no schema maximum, but the runner's `[int]`
+   narrowing threw OverflowException on a contract-valid Int64/BigInteger — aborting the whole plan with no
+   durable attempt record instead of the FR-048 policy CLAMP. Fixed: wide-typed passthrough; the resolver
+   normalizes any numeric (beyond-Int64 → clamp) deterministically. Regressions at Int32.MaxValue+1 and
+   beyond Int64 (both execute, clamped).
+3. **f3 (unbounded stream memory).** The recorder's whole-stream async read retained arbitrary supplier
+   stdout/stderr in memory — a noisy/hostile command could exhaust the engine within its timeout allowance
+   and defeat the kill + durable-failure machinery. Fixed: incremental bounded concurrent drain — running
+   UTF-8 byte counts, incremental SHA-256 (surrogate-carry preserves whole-stream hash fidelity), a bounded
+   tail shift-buffer, discard past the bounds, deadline-kill of the process tree. Regressions: 16MB+4MB
+   streams with EXACT byte counts + whole-string hash equality; a source contract bans the whole-stream read
+   pattern in this file. (Fix-of-the-fix caught locally: a byte[] built via an if-EXPRESSION enumerates to
+   Object[] and every [byte[]] binding then mutates a COPY — the ring read back as NULs; direct assignment +
+   an explanatory comment.)
+
+Focused suites 89/89 green on Windows; full registry + Linux Docker verify re-run; evidence re-bound to the
+fixes commit. Rounds consumed: 4 of 5 — the NEXT round is the LAST authorized.
+
 ## Notes
 
 - **Verification (current — see the cross-platform evidence record).** The full F-198 honesty regression

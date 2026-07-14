@@ -175,6 +175,26 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         [string](Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $null).state | Should -Be 'verification-not-configured'
     }
 
+    It 'a contract-valid timeout BEYOND Int32 (and beyond Int64) CLAMPS to engine policy and the command still executes - never an overflow abort with no attempt record (review finding f2, run 20260714T193411985)' {
+        $repo = New-PlanRunRepo
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-wide-timeout'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'int32max+1'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0'); timeout_seconds = 2147483648; provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } },
+                [pscustomobject]@{ command_id = 'beyond-int64'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0'); timeout_seconds = ([System.Numerics.BigInteger]::Parse('9223372036854775808')); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+        $result.all_succeeded | Should -BeTrue -Because 'over-policy timeouts CLAMP per FR-048; they never throw the plan away'
+        @($result.evidence).Count | Should -Be 2
+        foreach ($e in @($result.evidence)) { $e.command_succeeded | Should -BeTrue; $e.timed_out | Should -BeFalse }
+        # and the resolver itself clamps both boundaries deterministically.
+        $max = Get-ContinuousCoReviewMaxVerificationTimeoutSeconds
+        (Resolve-ContinuousCoReviewVerificationTimeout -Requested 2147483648).effective_seconds | Should -Be $max
+        (Resolve-ContinuousCoReviewVerificationTimeout -Requested ([System.Numerics.BigInteger]::Parse('9223372036854775808'))).effective_seconds | Should -Be $max
+    }
+
     It 'an EMPTY plan runs NOTHING and returns the explicit verification-not-configured state (no fabricated success)' {
         $repo = New-PlanRunRepo
         $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan ([pscustomobject]@{ schema_version = '1.0'; plan_id = 'plan-empty'; commands = @() })

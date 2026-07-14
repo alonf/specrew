@@ -172,6 +172,36 @@ Describe 'T018 universal recorded-run runner (FR-015 amended - language/framewor
         [long](@($rec.runs)[0].test_result.counts.passed) | Should -Be $big
     }
 
+    It 'a count BEYOND the authoritative maximum (Int64.MaxValue) is a NAMED contract violation - never a confusing non-integer rejection (review finding f1, run 20260714T193411985)' {
+        $repo = New-RunRepo
+        $rp = (Join-Path $repo 'result.json') -replace '\\', '/'
+        # 9223372036854775808 = Int64.MaxValue + 1: PS parses it as BigInteger; the contract now carries an
+        # explicit maximum, so this is deterministically invalid with a named reason.
+        $cmd = "Set-Content -LiteralPath '$rp' -Value '{ `"schema_version`": `"1.0`", `"result`": `"passed`", `"counts`": { `"passed`": 9223372036854775808, `"failed`": 0, `"skipped`": 0 } }'; exit 0"
+        { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd) -ResultPath 'result.json' -RequireResult } |
+            Should -Throw -ExpectedMessage '*count-exceeds-authoritative-maximum*'
+    }
+
+    It 'MULTI-MEGABYTE stdout+stderr is drained with BOUNDED memory - exact byte counts + whole-stream hash fidelity, only the bounded tail persists (review finding f3, run 20260714T193411985)' {
+        $repo = New-RunRepo
+        # 16 MB stdout + 4 MB stderr, written in 64 KB chunks with no newlines (exact byte accounting).
+        $cmd = '$s = [string]::new([char]88, 65536); for ($i = 0; $i -lt 256; $i++) { [Console]::Out.Write($s) }; for ($i = 0; $i -lt 64; $i++) { [Console]::Error.Write($s) }; exit 0'
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd) -OutputTailBytes 1024 -TimeoutSeconds 300
+        $e.command_succeeded | Should -BeTrue
+        [long]$e.stdout_meta.byte_count | Should -Be 16777216 -Because 'the full byte count is recorded exactly, without holding the stream'
+        [long]$e.stderr_meta.byte_count | Should -Be 4194304
+        # HASH FIDELITY: the incremental hash must equal the whole-string hash of the same content.
+        $expected = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData([System.Text.Encoding]::UTF8.GetBytes([string]::new([char]88, 16777216)))).Replace('-', '').ToLowerInvariant()
+        [string]$e.stdout_meta.sha256 | Should -Be $expected
+        $e.stdout_meta.truncated | Should -BeTrue
+        ([System.Text.Encoding]::UTF8.GetByteCount([string]$e.stdout_meta.truncated_tail)) | Should -BeLessOrEqual 1024 -Because 'only the bounded tail is ever held or persisted'
+    }
+
+    It 'the recorder holds NO whole-stream buffer (source contract: ReadToEndAsync is banned in this file)' {
+        $src = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/test-evidence-recorder.ps1') -Raw
+        $src | Should -Not -Match 'ReadToEndAsync' -Because 'an unbounded read reintroduces the memory-exhaustion channel a hostile command exploits within its timeout allowance'
+    }
+
     It '5. a REQUIRED result that is MISSING or MALFORMED FAILS LOUDLY (never degrades to a richer claim)' {
         $repo = New-RunRepo
         { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', 'exit 0') -ResultPath 'result.json' -RequireResult } |

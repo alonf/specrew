@@ -220,10 +220,19 @@ function Test-ContinuousCoReviewSpecrewTestResult {
         foreach ($k in @('passed', 'failed', 'skipped')) {
             if ($cprops -contains $k) {
                 $v = $Object.counts.$k
+                # BEYOND the authoritative maximum (review finding f1, run 20260714T193411985): PS parses a
+                # JSON integer past Int64.MaxValue as BigInteger. The contract now carries an EXPLICIT
+                # maximum (Int64.MaxValue) so every schema-valid count is representable + serializable
+                # verbatim; a beyond-range count is a NAMED contract violation, never a confusing
+                # non-integer rejection and never a lossy narrowing.
+                if ($v -is [System.Numerics.BigInteger]) {
+                    if ($v -lt 0) { return @{ valid = $false; reason = "negative-count:$k" } }
+                    return @{ valid = $false; reason = "count-exceeds-authoritative-maximum:$k" }
+                }
                 if (($v -isnot [int]) -and ($v -isnot [long])) { return @{ valid = $false; reason = "non-integer-count:$k" } }
                 if ([long]$v -lt 0) { return @{ valid = $false; reason = "negative-count:$k" } }
-                # PRESERVE the schema-valid range verbatim (finding f3): the schema sets no maximum, so a
-                # count beyond Int32 is recorded as-is - narrowing to [int] threw instead of recording.
+                # PRESERVE the schema-valid range verbatim (finding f3, run 20260714T180554025): a count
+                # beyond Int32 is recorded as-is - narrowing to [int] threw instead of recording.
                 $counts[$k] = [long]$v
             }
         }
@@ -404,22 +413,115 @@ function Invoke-ContinuousCoReviewRecordedRun {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
     try { [void]$proc.Start() } catch { throw "recorded-run: failed to START '$Executable' (fail-loud): $($_.Exception.Message)" }
-    $outTask = $proc.StandardOutput.ReadToEndAsync(); $errTask = $proc.StandardError.ReadToEndAsync()
+
+    # BOUNDED-MEMORY CONCURRENT DRAIN (review finding f3, run 20260714T193411985): the previous whole-stream
+    # async read retained the ENTIRE stdout/stderr of an arbitrary supplier command in memory - OutputTailBytes bounded only what was
+    # PERSISTED, so a noisy/hostile command could exhaust the engine within its timeout allowance and defeat
+    # the very kill + durable-failure machinery meant to contain it. Both pipes are now drained incrementally
+    # with FIXED memory: a running UTF-8 byte count, an INCREMENTAL SHA-256 over the encoded bytes (a dangling
+    # high surrogate is carried to the next chunk so the hash equals the whole-string hash), and a bounded
+    # shift-buffer holding only the last effective-tail bytes. Everything past those bounds is read + DISCARDED
+    # so the child never blocks on a full pipe.
+    $utf8 = [System.Text.Encoding]::UTF8
+    $tailKeep = if ($effectiveTailBytes -gt 0) { $effectiveTailBytes } else { 0 }
+    $bufOut = [char[]]::new(8192); $bufErr = [char[]]::new(8192)
+    $outEof = $false; $errEof = $false
+    $bytesOut = 0L; $bytesErr = 0L
+    $hashOut = [System.Security.Cryptography.IncrementalHash]::CreateHash([System.Security.Cryptography.HashAlgorithmName]::SHA256)
+    $hashErr = [System.Security.Cryptography.IncrementalHash]::CreateHash([System.Security.Cryptography.HashAlgorithmName]::SHA256)
+    # Direct assignment, NEVER via an if-expression: a byte[] returned from an if/scriptblock ENUMERATES into
+    # a boxed Object[], and every later [byte[]] parameter binding then converts it to a FRESH COPY - the ring
+    # writes land in the copy and the tail reads back as NULs (the same enumeration trap the contract's
+    # RawProp accessor documents).
+    $tailOut = $null; $tailErr = $null
+    if ($tailKeep -gt 0) { $tailOut = [byte[]]::new($tailKeep); $tailErr = [byte[]]::new($tailKeep) }
+    $tailOutFill = 0; $tailErrFill = 0
+    $carryOut = ''; $carryErr = ''
+    $appendTail = {
+        param([byte[]]$Ring, [int]$Fill, [byte[]]$Chunk)
+        $cap = $Ring.Length
+        if ($Chunk.Length -ge $cap) { [System.Buffer]::BlockCopy($Chunk, $Chunk.Length - $cap, $Ring, 0, $cap); return $cap }
+        $overflow = ($Fill + $Chunk.Length) - $cap
+        if ($overflow -gt 0) { [System.Buffer]::BlockCopy($Ring, $overflow, $Ring, 0, $Fill - $overflow); $Fill -= $overflow }
+        [System.Buffer]::BlockCopy($Chunk, 0, $Ring, $Fill, $Chunk.Length)
+        return $Fill + $Chunk.Length
+    }
+    $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
+    $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
     $timedOut = $false
-    if ($TimeoutSeconds -gt 0) {
-        if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
-            $timedOut = $true
-            try { $proc.Kill($true) } catch { $null = $_ }   # ENTIRE process tree
-            try { [void]$proc.WaitForExit(5000) } catch { $null = $_ }
+    $deadlineMs = if ($TimeoutSeconds -gt 0) { [long]$TimeoutSeconds * 1000 } else { [long]::MaxValue }
+    while (-not ($outEof -and $errEof)) {
+        if ($sw.ElapsedMilliseconds -ge $deadlineMs) { $timedOut = $true; break }
+        $pending = @(); if (-not $outEof) { $pending += $tOut }; if (-not $errEof) { $pending += $tErr }
+        $slice = if ($deadlineMs -eq [long]::MaxValue) { 250 } else { [int][Math]::Max(1, [Math]::Min(250, $deadlineMs - $sw.ElapsedMilliseconds)) }
+        $idx = [System.Threading.Tasks.Task]::WaitAny([System.Threading.Tasks.Task[]]$pending, $slice)
+        if ($idx -lt 0) { continue }
+        $done = $pending[$idx]
+        if (-not $outEof -and $done -eq $tOut) {
+            $n = 0; try { $n = $tOut.GetAwaiter().GetResult() } catch { $n = 0 }
+            if ($n -le 0) { $outEof = $true }
+            else {
+                $text = $carryOut + [string]::new($bufOut, 0, $n); $carryOut = ''
+                if ($text.Length -gt 0 -and [char]::IsHighSurrogate($text[$text.Length - 1])) { $carryOut = [string]$text[$text.Length - 1]; $text = $text.Substring(0, $text.Length - 1) }
+                if ($text.Length -gt 0) {
+                    $chunk = $utf8.GetBytes($text)
+                    $bytesOut += $chunk.Length
+                    $hashOut.AppendData($chunk)
+                    if ($tailKeep -gt 0) { $tailOutFill = & $appendTail $tailOut $tailOutFill $chunk }
+                }
+                $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
+            }
         }
+        elseif (-not $errEof -and $done -eq $tErr) {
+            $n = 0; try { $n = $tErr.GetAwaiter().GetResult() } catch { $n = 0 }
+            if ($n -le 0) { $errEof = $true }
+            else {
+                $text = $carryErr + [string]::new($bufErr, 0, $n); $carryErr = ''
+                if ($text.Length -gt 0 -and [char]::IsHighSurrogate($text[$text.Length - 1])) { $carryErr = [string]$text[$text.Length - 1]; $text = $text.Substring(0, $text.Length - 1) }
+                if ($text.Length -gt 0) {
+                    $chunk = $utf8.GetBytes($text)
+                    $bytesErr += $chunk.Length
+                    $hashErr.AppendData($chunk)
+                    if ($tailKeep -gt 0) { $tailErrFill = & $appendTail $tailErr $tailErrFill $chunk }
+                }
+                $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
+            }
+        }
+    }
+    if ($timedOut) {
+        try { $proc.Kill($true) } catch { $null = $_ }   # ENTIRE process tree
+        try { [void]$proc.WaitForExit(5000) } catch { $null = $_ }
     }
     else { $proc.WaitForExit() }
     $sw.Stop()
-    $stdout = try { $outTask.GetAwaiter().GetResult() } catch { '' }
-    $stderr = try { $errTask.GetAwaiter().GetResult() } catch { '' }
+    # Flush any dangling high surrogate (stream ended mid-pair) - encodes as the replacement bytes, exactly
+    # like the old whole-string GetBytes of a lone surrogate.
+    foreach ($flush in @(@($carryOut, $true), @($carryErr, $false))) {
+        $c = [string]$flush[0]
+        if (-not [string]::IsNullOrEmpty($c)) {
+            $chunk = $utf8.GetBytes($c)
+            if ([bool]$flush[1]) { $bytesOut += $chunk.Length; $hashOut.AppendData($chunk); if ($tailKeep -gt 0) { $tailOutFill = & $appendTail $tailOut $tailOutFill $chunk } }
+            else { $bytesErr += $chunk.Length; $hashErr.AppendData($chunk); if ($tailKeep -gt 0) { $tailErrFill = & $appendTail $tailErr $tailErrFill $chunk } }
+        }
+    }
+    $shaOut = [System.BitConverter]::ToString($hashOut.GetHashAndReset()).Replace('-', '').ToLowerInvariant(); $hashOut.Dispose()
+    $shaErr = [System.BitConverter]::ToString($hashErr.GetHashAndReset()).Replace('-', '').ToLowerInvariant(); $hashErr.Dispose()
     $exitCode = if ($timedOut) { $null } else { try { [int]$proc.ExitCode } catch { $null } }
     $commandSucceeded = ((-not $timedOut) -and ($null -ne $exitCode) -and ($exitCode -eq 0))
     try { $proc.Dispose() } catch { $null = $_ }
+
+    # Assemble the bounded metas from the incremental parts (same shape + semantics as
+    # Get-ContinuousCoReviewBoundedOutputMeta, without ever holding the full stream).
+    $newMeta = {
+        param([long]$ByteCount, [string]$Sha, [byte[]]$Ring, [int]$Fill)
+        if ($tailKeep -le 0) {
+            return [ordered]@{ byte_count = $ByteCount; sha256 = $Sha; truncated = ($ByteCount -gt 0); truncated_tail = ''; tail_disclosure = 'suppressed' }
+        }
+        $rawTail = if ($Fill -gt 0) { $utf8.GetString($Ring, 0, $Fill) } else { '' }
+        return [ordered]@{ byte_count = $ByteCount; sha256 = $Sha; truncated = ($ByteCount -gt $tailKeep); truncated_tail = (Get-ContinuousCoReviewRedactedOutputText -Text $rawTail); tail_disclosure = $tailLabel }
+    }
+    $stdoutMeta = & $newMeta $bytesOut $shaOut $tailOut $tailOutFill
+    $stderrMeta = & $newMeta $bytesErr $shaErr $tailErr $tailErrFill
 
     # OPTIONAL SpecrewTestResult - rich counts ONLY from a schema-valid result THIS run produced.
     $testResult = $null
@@ -472,8 +574,8 @@ function Invoke-ContinuousCoReviewRecordedRun {
         exit_code               = $exitCode
         timed_out               = $timedOut
         command_succeeded       = $commandSucceeded
-        stdout_meta             = (Get-ContinuousCoReviewBoundedOutputMeta -Text $stdout -TailBytes $effectiveTailBytes -TailDisclosureLabel $tailLabel)
-        stderr_meta             = (Get-ContinuousCoReviewBoundedOutputMeta -Text $stderr -TailBytes $effectiveTailBytes -TailDisclosureLabel $tailLabel)
+        stdout_meta             = $stdoutMeta
+        stderr_meta             = $stderrMeta
         artifacts               = @($artifacts)
         counts_available        = ($null -ne $testResult)
         test_result             = $testResult

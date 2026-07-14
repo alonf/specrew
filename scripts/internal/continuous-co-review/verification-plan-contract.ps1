@@ -68,18 +68,28 @@ function Get-ContinuousCoReviewVerificationProvenanceValues {
 
 # Resolve a supplier's REQUESTED timeout to the effective, ENGINE-BOUNDED seconds. A requested 0/absent
 # (or negative) becomes the engine DEFAULT — NEVER unlimited; a request over the engine MAX is clamped
-# to the max and flagged. Pure; returns { effective_seconds; clamped; source; reason }.
+# to the max and flagged. WIDE-TYPED (review finding f2, run 20260714T193411985): the schema puts NO
+# maximum on timeout_seconds, so a contract-valid Int64 (or a JSON integer beyond Int64, parsed as
+# BigInteger) must CLAMP deterministically per FR-048 - a narrowing [int] cast previously threw an
+# OverflowException that aborted the whole plan with no durable failed-attempt record. Pure; returns
+# { effective_seconds; clamped; source; reason }.
 function Resolve-ContinuousCoReviewVerificationTimeout {
-    param([int]$Requested = 0)
+    param([AllowNull()]$Requested = 0)
     $max = Get-ContinuousCoReviewMaxVerificationTimeoutSeconds
     $default = Get-ContinuousCoReviewDefaultVerificationTimeoutSeconds
-    if ($Requested -le 0) {
+    # Normalize to a wide numeric: null/non-numeric -> 0 (engine default); beyond Int64 -> Int64.MaxValue
+    # (the clamp below reduces it to the engine max anyway - deterministic, never a throw).
+    $reqNum = 0L
+    if ($null -ne $Requested) {
+        try { $reqNum = [long]$Requested } catch { $reqNum = [long]::MaxValue }
+    }
+    if ($reqNum -le 0) {
         return [pscustomobject]@{ effective_seconds = $default; clamped = $false; source = 'engine-default'; reason = "requested 0/absent -> engine default ${default}s (a supplier can never request an unlimited run)" }
     }
-    if ($Requested -gt $max) {
-        return [pscustomobject]@{ effective_seconds = $max; clamped = $true; source = 'engine-max-clamp'; reason = "requested ${Requested}s exceeds the engine max ${max}s -> clamped to ${max}s" }
+    if ($reqNum -gt $max) {
+        return [pscustomobject]@{ effective_seconds = $max; clamped = $true; source = 'engine-max-clamp'; reason = "requested ${reqNum}s exceeds the engine max ${max}s -> clamped to ${max}s" }
     }
-    return [pscustomobject]@{ effective_seconds = $Requested; clamped = $false; source = 'supplier-requested'; reason = $null }
+    return [pscustomobject]@{ effective_seconds = [int]$reqNum; clamped = $false; source = 'supplier-requested'; reason = $null }
 }
 
 # PLATFORM-APPROPRIATE path comparison for CONTAINMENT checks (review finding f1, run
@@ -122,7 +132,9 @@ function Test-ContinuousCoReviewIsSchemaString {
 }
 function Test-ContinuousCoReviewIsSchemaInteger {
     param([AllowNull()]$Value)
-    return (($Value -is [int]) -or ($Value -is [long]) -or ($Value -is [int16]) -or ($Value -is [byte]))
+    # BigInteger included (review finding f2, run 20260714T193411985): a JSON integer beyond Int64 parses as
+    # BigInteger and is schema-valid where the contract sets no maximum; policy clamping bounds it downstream.
+    return (($Value -is [int]) -or ($Value -is [long]) -or ($Value -is [int16]) -or ($Value -is [byte]) -or ($Value -is [System.Numerics.BigInteger]))
 }
 
 # PATH SAFETY (FR-048 amendment 4). A working_directory / result_path MUST be repository-relative and
@@ -264,7 +276,7 @@ function Test-ContinuousCoReviewVerificationCommand {
         if (-not (Test-ContinuousCoReviewIsSchemaInteger -Value $toRaw)) {
             return [pscustomobject]@{ valid = $false; reason = 'timeout_seconds must be an INTEGER (schema type; never coerced from a string/decimal)' }
         }
-        if ([long]$toRaw -lt 0) {
+        if ($toRaw -lt 0) {
             return [pscustomobject]@{ valid = $false; reason = 'timeout_seconds must be >= 0 (schema minimum)' }
         }
     }
