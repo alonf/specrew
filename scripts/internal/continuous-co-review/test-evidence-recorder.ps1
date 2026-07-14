@@ -380,12 +380,255 @@ function Get-ContinuousCoReviewBoundedOutputMeta {
     return [ordered]@{ byte_count = $bytes.Length; sha256 = $sha; truncated = $truncated; truncated_tail = (Get-ContinuousCoReviewRedactedOutputText -Text $rawTail); tail_disclosure = $TailDisclosureLabel }
 }
 
+# ============================ HARNESS / CORE SEAM (harness-purity refactor 2026-07-15) ============================
+# The recorded-run runner was one function doing seven jobs (spawn, bounded drain, result lifecycle, artifact
+# digesting, identity tagging, record assembly, persistence) - high cyclomatic complexity + harness (process/IO)
+# welded to the CORE honesty semantics, so the observation semantics could not be unit-tested without spawning a
+# real process. It is now split:
+#   - Invoke-ContinuousCoReviewBoundedProcess : the HARNESS primitive - launch + bounded-memory concurrent drain,
+#     returns RAW observed facts (exit/timing + byte counts/hashes/bounded raw tails). No honesty semantics.
+#   - Get-ContinuousCoReviewOutputMetaFromFacts + New-ContinuousCoReviewRunRecordObject : the PURE core - map raw
+#     facts to the durable record (redaction, disclosure labeling, command_succeeded, classification, identity).
+#     No process, no clock, no filesystem - fully unit-testable over synthetic facts.
+#   - Invoke-ContinuousCoReviewRecordedRun : thin glue - digest-bind, stale-result guard, call the harness, read
+#     + validate the result file, digest artifacts, call the pure assembler, persist. The observable behavior is
+#     byte-for-byte the pre-refactor behavior (the existing recorded-run + plan-runner suites are the safety net;
+#     new pure-core suites cover the assembler without spawning).
+
+function Invoke-ContinuousCoReviewBoundedProcess {
+    <#
+        HARNESS PRIMITIVE (no honesty semantics): launch a process and drain BOTH pipes with BOUNDED MEMORY -
+        a running UTF-8 byte count, an incremental SHA-256 (surrogate-pair carry keeps whole-stream hash
+        fidelity), and a bounded shift-buffer holding only the last TailBytes bytes (everything past the bounds
+        is read + DISCARDED so the child never blocks). Kills the whole process tree on the deadline. Returns
+        RAW observed facts only: { exit_code; timed_out; duration_seconds; stdout=@{byte_count;sha256;truncated;
+        raw_tail}; stderr=@{...} }. The raw_tail is UNREDACTED bounded diagnostic text - redaction/disclosure
+        labeling is a CORE concern applied downstream, never here. FAILS LOUD only on process START failure.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Executable,
+        [string[]]$Arguments = @(),
+        [Parameter(Mandatory)][string]$WorkingDirectory,
+        [int]$TimeoutSeconds = 0,
+        [System.Collections.IDictionary]$ChildEnvironment,
+        [int]$TailBytes = 0
+    )
+    $psi = [System.Diagnostics.ProcessStartInfo]::new()
+    $psi.FileName = $Executable
+    foreach ($a in @($Arguments)) { [void]$psi.ArgumentList.Add([string]$a) }
+    $psi.WorkingDirectory = $WorkingDirectory
+    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
+    $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    # CHILD-ENVIRONMENT ALLOWLIST with EXECUTION semantics (review finding f2, run 20260714T123137002): a
+    # CONSTRUCTED environment CLEARS the inherited ambient first, so every unlisted ambient value (hence every
+    # ambient secret) is structurally ABSENT from the child. Absent parameter -> the child inherits the ambient
+    # environment unchanged (the legacy T018 self-evidence behavior).
+    if ($PSBoundParameters.ContainsKey('ChildEnvironment') -and $null -ne $ChildEnvironment) {
+        $psi.Environment.Clear()
+        foreach ($k in @($ChildEnvironment.Keys)) {
+            if ([string]::IsNullOrWhiteSpace([string]$k)) { continue }
+            $psi.Environment[[string]$k] = [string]$ChildEnvironment[$k]
+        }
+    }
+    $sw = [System.Diagnostics.Stopwatch]::StartNew()
+    $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
+    try { [void]$proc.Start() } catch { throw "bounded-process: failed to START '$Executable' (fail-loud): $($_.Exception.Message)" }
+
+    $utf8 = [System.Text.Encoding]::UTF8
+    $cap = Get-ContinuousCoReviewMaxOutputTailBytes
+    $tailKeep = if ($TailBytes -gt 0) { [Math]::Min($TailBytes, $cap) } else { 0 }   # ENGINE CAP: no unbounded retained tail.
+    $bufOut = [char[]]::new(8192); $bufErr = [char[]]::new(8192)
+    $outEof = $false; $errEof = $false
+    $bytesOut = 0L; $bytesErr = 0L
+    $hashOut = [System.Security.Cryptography.IncrementalHash]::CreateHash([System.Security.Cryptography.HashAlgorithmName]::SHA256)
+    $hashErr = [System.Security.Cryptography.IncrementalHash]::CreateHash([System.Security.Cryptography.HashAlgorithmName]::SHA256)
+    # Direct assignment, NEVER via an if-expression: a byte[] returned from an if/scriptblock ENUMERATES into a
+    # boxed Object[], and every later [byte[]] binding then converts it to a FRESH COPY - the ring writes land in
+    # the copy and the tail reads back as NULs (the enumeration trap the contract's RawProp accessor documents).
+    $tailOut = $null; $tailErr = $null
+    if ($tailKeep -gt 0) { $tailOut = [byte[]]::new($tailKeep); $tailErr = [byte[]]::new($tailKeep) }
+    $tailOutFill = 0; $tailErrFill = 0
+    $carryOut = ''; $carryErr = ''
+    $appendTail = {
+        param([byte[]]$Ring, [int]$Fill, [byte[]]$Chunk)
+        $c = $Ring.Length
+        if ($Chunk.Length -ge $c) { [System.Buffer]::BlockCopy($Chunk, $Chunk.Length - $c, $Ring, 0, $c); return $c }
+        $overflow = ($Fill + $Chunk.Length) - $c
+        if ($overflow -gt 0) { [System.Buffer]::BlockCopy($Ring, $overflow, $Ring, 0, $Fill - $overflow); $Fill -= $overflow }
+        [System.Buffer]::BlockCopy($Chunk, 0, $Ring, $Fill, $Chunk.Length)
+        return $Fill + $Chunk.Length
+    }
+    $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
+    $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
+    $timedOut = $false
+    $deadlineMs = if ($TimeoutSeconds -gt 0) { [long]$TimeoutSeconds * 1000 } else { [long]::MaxValue }
+    while (-not ($outEof -and $errEof)) {
+        if ($sw.ElapsedMilliseconds -ge $deadlineMs) { $timedOut = $true; break }
+        $pending = @(); if (-not $outEof) { $pending += $tOut }; if (-not $errEof) { $pending += $tErr }
+        $slice = if ($deadlineMs -eq [long]::MaxValue) { 250 } else { [int][Math]::Max(1, [Math]::Min(250, $deadlineMs - $sw.ElapsedMilliseconds)) }
+        $idx = [System.Threading.Tasks.Task]::WaitAny([System.Threading.Tasks.Task[]]$pending, $slice)
+        if ($idx -lt 0) { continue }
+        $done = $pending[$idx]
+        if (-not $outEof -and $done -eq $tOut) {
+            $n = 0; try { $n = $tOut.GetAwaiter().GetResult() } catch { $n = 0 }
+            if ($n -le 0) { $outEof = $true }
+            else {
+                $text = $carryOut + [string]::new($bufOut, 0, $n); $carryOut = ''
+                if ($text.Length -gt 0 -and [char]::IsHighSurrogate($text[$text.Length - 1])) { $carryOut = [string]$text[$text.Length - 1]; $text = $text.Substring(0, $text.Length - 1) }
+                if ($text.Length -gt 0) {
+                    $chunk = $utf8.GetBytes($text); $bytesOut += $chunk.Length; $hashOut.AppendData($chunk)
+                    if ($tailKeep -gt 0) { $tailOutFill = & $appendTail $tailOut $tailOutFill $chunk }
+                }
+                $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
+            }
+        }
+        elseif (-not $errEof -and $done -eq $tErr) {
+            $n = 0; try { $n = $tErr.GetAwaiter().GetResult() } catch { $n = 0 }
+            if ($n -le 0) { $errEof = $true }
+            else {
+                $text = $carryErr + [string]::new($bufErr, 0, $n); $carryErr = ''
+                if ($text.Length -gt 0 -and [char]::IsHighSurrogate($text[$text.Length - 1])) { $carryErr = [string]$text[$text.Length - 1]; $text = $text.Substring(0, $text.Length - 1) }
+                if ($text.Length -gt 0) {
+                    $chunk = $utf8.GetBytes($text); $bytesErr += $chunk.Length; $hashErr.AppendData($chunk)
+                    if ($tailKeep -gt 0) { $tailErrFill = & $appendTail $tailErr $tailErrFill $chunk }
+                }
+                $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
+            }
+        }
+    }
+    if ($timedOut) {
+        try { $proc.Kill($true) } catch { $null = $_ }   # ENTIRE process tree
+        try { [void]$proc.WaitForExit(5000) } catch { $null = $_ }
+    }
+    else { $proc.WaitForExit() }
+    $sw.Stop()
+    # Flush any dangling high surrogate (stream ended mid-pair) - encodes as the replacement bytes, exactly like
+    # the old whole-string GetBytes of a lone surrogate.
+    foreach ($flush in @(@($carryOut, $true), @($carryErr, $false))) {
+        $c = [string]$flush[0]
+        if (-not [string]::IsNullOrEmpty($c)) {
+            $chunk = $utf8.GetBytes($c)
+            if ([bool]$flush[1]) { $bytesOut += $chunk.Length; $hashOut.AppendData($chunk); if ($tailKeep -gt 0) { $tailOutFill = & $appendTail $tailOut $tailOutFill $chunk } }
+            else { $bytesErr += $chunk.Length; $hashErr.AppendData($chunk); if ($tailKeep -gt 0) { $tailErrFill = & $appendTail $tailErr $tailErrFill $chunk } }
+        }
+    }
+    $shaOut = [System.BitConverter]::ToString($hashOut.GetHashAndReset()).Replace('-', '').ToLowerInvariant(); $hashOut.Dispose()
+    $shaErr = [System.BitConverter]::ToString($hashErr.GetHashAndReset()).Replace('-', '').ToLowerInvariant(); $hashErr.Dispose()
+    $exitCode = if ($timedOut) { $null } else { try { [int]$proc.ExitCode } catch { $null } }
+    try { $proc.Dispose() } catch { $null = $_ }
+    $rawTailOut = if ($tailKeep -gt 0 -and $tailOutFill -gt 0) { $utf8.GetString($tailOut, 0, $tailOutFill) } else { '' }
+    $rawTailErr = if ($tailKeep -gt 0 -and $tailErrFill -gt 0) { $utf8.GetString($tailErr, 0, $tailErrFill) } else { '' }
+    return [pscustomobject]@{
+        exit_code        = $exitCode
+        timed_out        = $timedOut
+        duration_seconds = [math]::Round($sw.Elapsed.TotalSeconds, 3)
+        stdout           = [pscustomobject]@{ byte_count = $bytesOut; sha256 = $shaOut; truncated = ($bytesOut -gt $tailKeep); raw_tail = $rawTailOut }
+        stderr           = [pscustomobject]@{ byte_count = $bytesErr; sha256 = $shaErr; truncated = ($bytesErr -gt $tailKeep); raw_tail = $rawTailErr }
+    }
+}
+
+function Get-ContinuousCoReviewOutputMetaFromFacts {
+    # PURE: raw stream facts (byte_count/sha256/raw_tail from the harness) + the effective tail policy -> the
+    # persisted stdout/stderr meta. TailBytes<=0 SUPPRESSES text (count/hash only); >0 keeps a REDACTED bounded
+    # tail. Same shape + semantics as Get-ContinuousCoReviewBoundedOutputMeta, over already-bounded facts.
+    param([Parameter(Mandatory)]$Facts, [int]$TailBytes = 0, [string]$TailDisclosureLabel = 'bounded-redacted-tail')
+    $byteCount = [long]$Facts.byte_count
+    if ($TailBytes -le 0) {
+        return [ordered]@{ byte_count = $byteCount; sha256 = [string]$Facts.sha256; truncated = ($byteCount -gt 0); truncated_tail = ''; tail_disclosure = 'suppressed' }
+    }
+    return [ordered]@{ byte_count = $byteCount; sha256 = [string]$Facts.sha256; truncated = [bool]$Facts.truncated; truncated_tail = (Get-ContinuousCoReviewRedactedOutputText -Text ([string]$Facts.raw_tail)); tail_disclosure = $TailDisclosureLabel }
+}
+
+function New-ContinuousCoReviewRunRecordObject {
+    <#
+        PURE record ASSEMBLER (no process, no clock, no filesystem): given the harness-observed facts + the
+        run identity + the validated-result outcome + the disclosure decision, build the durable record object.
+        This is the CORE honesty logic - command_succeeded, missing-diagnostics surfacing, required-result
+        classification, the auditable disclosure record, and plan identity - made unit-testable over synthetic
+        facts. Returns the ordered record hashtable (the caller persists it).
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Executable,
+        [AllowNull()][string]$DeclaredExecutable,
+        [string[]]$Arguments = @(),
+        [Parameter(Mandatory)][string]$WorkingDirectory,
+        [Parameter(Mandatory)][string]$TreeId,
+        [Parameter(Mandatory)][datetime]$StartedAt,
+        [Parameter(Mandatory)][datetime]$Now,
+        [Parameter(Mandatory)]$Process,   # the Invoke-...BoundedProcess result
+        [int]$EffectiveTailBytes = 0,
+        [string]$TailLabel = 'bounded-redacted-tail',
+        [AllowNull()]$TestResult = $null,
+        [AllowNull()]$RequiredResultFailure = $null,   # UNTYPED: a [string] default of $null coerces to '' and '' -ne $null is TRUE (a false required-result failure). Untyped keeps a real $null.
+        [object[]]$Artifacts = @(),
+        [AllowNull()]$DisclosureInfo = $null,   # applied only when non-null
+        [AllowNull()][string]$CommandId = $null,
+        [AllowNull()]$Provenance = $null,
+        [AllowNull()][string[]]$EnvRefs = $null
+    )
+    $exitCode = $Process.exit_code
+    $timedOut = [bool]$Process.timed_out
+    $hasRequiredFailure = -not [string]::IsNullOrEmpty([string]$RequiredResultFailure)
+    $commandSucceeded = ((-not $timedOut) -and ($null -ne $exitCode) -and ([int]$exitCode -eq 0))
+    if ($hasRequiredFailure) { $commandSucceeded = $false }   # a required-result miss is NEVER success
+
+    $commandBlock = [ordered]@{ executable = $Executable; arguments = @($Arguments); working_directory = $WorkingDirectory }
+    if (-not [string]::IsNullOrWhiteSpace($DeclaredExecutable) -and ([string]$DeclaredExecutable -ne [string]$Executable)) {
+        $commandBlock['declared_executable'] = [string]$DeclaredExecutable
+    }
+    $entry = [ordered]@{
+        command                 = $commandBlock
+        reviewed_digest_tree_id = $TreeId
+        started_at              = $StartedAt.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        ended_at                = $StartedAt.AddSeconds([double]$Process.duration_seconds).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        duration_seconds        = [math]::Round([double]$Process.duration_seconds, 3)
+        exit_code               = $exitCode
+        timed_out               = $timedOut
+        command_succeeded       = $commandSucceeded
+        stdout_meta             = (Get-ContinuousCoReviewOutputMetaFromFacts -Facts $Process.stdout -TailBytes $EffectiveTailBytes -TailDisclosureLabel $TailLabel)
+        stderr_meta             = (Get-ContinuousCoReviewOutputMetaFromFacts -Facts $Process.stderr -TailBytes $EffectiveTailBytes -TailDisclosureLabel $TailLabel)
+        artifacts               = @($Artifacts)
+        counts_available        = ($null -ne $TestResult)
+        test_result             = $TestResult
+        recorded_at             = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+    # HONEST MISSING-DIAGNOSTICS (maintainer decision 2026-07-14): a FAILED command whose output text was
+    # suppressed states it cannot be diagnosed from this record alone - the failure stays a failure; missing
+    # diagnostics NEVER become a clean result.
+    if ((-not $commandSucceeded) -and ($EffectiveTailBytes -le 0)) { $entry['failure_diagnostics'] = 'insufficient-without-disclosure' }
+    # REQUIRED-RESULT FAILURE CLASSIFICATION on the REAL record (finding f1, run 20260714T215545754).
+    if ($hasRequiredFailure) {
+        $entry['classification'] = 'required-result-missing-or-invalid'
+        $entry['failure_reason'] = [string]$RequiredResultFailure
+    }
+    # AUDITABLE DISCLOSURE RECORD (durable BY DESIGN - the audit trail the reviewer reads; labeled sensitive).
+    if ($null -ne $DisclosureInfo) {
+        $entry['diagnostic_disclosure'] = [ordered]@{
+            authorized_by         = [string]$DisclosureInfo.authorized_by
+            reason                = [string]$DisclosureInfo.disclosure_reason
+            command_id            = [string]$DisclosureInfo.command_id
+            disclosed_at          = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            tail_bytes            = [int]$DisclosureInfo.max_tail_bytes
+            potentially_sensitive = $true
+            durability            = 'durable-digest-bound'
+        }
+    }
+    # PLAN IDENTITY persisted INTO the durable record (review finding f5, run 20260714T123137002): the T019
+    # join binds on command_id + reviewed digest, so identity/provenance/env_ref NAMES must survive serialization.
+    if (-not [string]::IsNullOrWhiteSpace($CommandId)) { $entry['command_id'] = [string]$CommandId }
+    if ($null -ne $Provenance) { $entry['provenance'] = $Provenance }
+    if ($null -ne $EnvRefs) { $entry['env_refs'] = @(@($EnvRefs) | Where-Object { $_ -is [string] -and -not [string]::IsNullOrWhiteSpace($_) }) }
+    return $entry
+}
+
 function Invoke-ContinuousCoReviewRecordedRun {
     <#
-        The universal, language/framework-NEUTRAL recorded-run runner (FR-015). Executes the declared command,
-        records DIRECT facts bound to the exact reviewed-tree digest, and (ONLY if the command produced a schema-valid
-        SpecrewTestResult at -ResultPath during this run) records its counts. No console parsing; no caller counts;
-        FAIL-LOUD on digest-unavailable, start failure, a REQUIRED-but-missing/invalid result, or a recording failure.
+        The universal, language/framework-NEUTRAL recorded-run runner (FR-015). Thin glue over the HARNESS
+        (Invoke-...BoundedProcess) and the PURE CORE (New-...RunRecordObject): binds evidence to the exact
+        reviewed-tree digest, guards the stale result, executes, reads + validates the run-produced
+        SpecrewTestResult, digests artifacts, assembles the record, and persists it. No console parsing; no
+        caller counts; FAIL-LOUD on digest-unavailable, start failure, a REQUIRED-but-missing/invalid result,
+        or a recording failure.
     #>
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
@@ -447,139 +690,13 @@ function Invoke-ContinuousCoReviewRecordedRun {
         }
     }
 
-    # EXECUTE (process-tree contained via Kill(entireProcessTree) on timeout).
-    $psi = [System.Diagnostics.ProcessStartInfo]::new()
-    $psi.FileName = $Executable
-    foreach ($a in @($Arguments)) { [void]$psi.ArgumentList.Add([string]$a) }
-    $psi.WorkingDirectory = $cwd
-    $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
-    $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
-    # CHILD-ENVIRONMENT ALLOWLIST with EXECUTION semantics (review finding f2, run 20260714T123137002): when a
-    # caller supplies a CONSTRUCTED environment, the child receives EXACTLY that map - the inherited ambient
-    # environment is CLEARED first, so every unlisted ambient value (hence every ambient secret) is structurally
-    # ABSENT from the child. The VALUES pass through process creation only and are never recorded. When the
-    # parameter is absent the child inherits the ambient environment unchanged (the legacy T018 self-evidence
-    # behavior, where the recorder wraps the implementer's own dev commands).
-    if ($PSBoundParameters.ContainsKey('ChildEnvironment') -and $null -ne $ChildEnvironment) {
-        $psi.Environment.Clear()
-        foreach ($k in @($ChildEnvironment.Keys)) {
-            if ([string]::IsNullOrWhiteSpace([string]$k)) { continue }
-            $psi.Environment[[string]$k] = [string]$ChildEnvironment[$k]
-        }
-    }
+    # EXECUTE via the HARNESS primitive (process-tree contained via Kill(entireProcessTree) on timeout; the
+    # bounded-memory concurrent drain lives entirely in Invoke-...BoundedProcess). It returns RAW observed
+    # facts; all honesty semantics (redaction, disclosure, classification) are applied by the pure assembler.
     $startedAt = $Now
-    $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
-    try { [void]$proc.Start() } catch { throw "recorded-run: failed to START '$Executable' (fail-loud): $($_.Exception.Message)" }
-
-    # BOUNDED-MEMORY CONCURRENT DRAIN (review finding f3, run 20260714T193411985): the previous whole-stream
-    # async read retained the ENTIRE stdout/stderr of an arbitrary supplier command in memory - OutputTailBytes bounded only what was
-    # PERSISTED, so a noisy/hostile command could exhaust the engine within its timeout allowance and defeat
-    # the very kill + durable-failure machinery meant to contain it. Both pipes are now drained incrementally
-    # with FIXED memory: a running UTF-8 byte count, an INCREMENTAL SHA-256 over the encoded bytes (a dangling
-    # high surrogate is carried to the next chunk so the hash equals the whole-string hash), and a bounded
-    # shift-buffer holding only the last effective-tail bytes. Everything past those bounds is read + DISCARDED
-    # so the child never blocks on a full pipe.
-    $utf8 = [System.Text.Encoding]::UTF8
-    $tailKeep = if ($effectiveTailBytes -gt 0) { $effectiveTailBytes } else { 0 }
-    $bufOut = [char[]]::new(8192); $bufErr = [char[]]::new(8192)
-    $outEof = $false; $errEof = $false
-    $bytesOut = 0L; $bytesErr = 0L
-    $hashOut = [System.Security.Cryptography.IncrementalHash]::CreateHash([System.Security.Cryptography.HashAlgorithmName]::SHA256)
-    $hashErr = [System.Security.Cryptography.IncrementalHash]::CreateHash([System.Security.Cryptography.HashAlgorithmName]::SHA256)
-    # Direct assignment, NEVER via an if-expression: a byte[] returned from an if/scriptblock ENUMERATES into
-    # a boxed Object[], and every later [byte[]] parameter binding then converts it to a FRESH COPY - the ring
-    # writes land in the copy and the tail reads back as NULs (the same enumeration trap the contract's
-    # RawProp accessor documents).
-    $tailOut = $null; $tailErr = $null
-    if ($tailKeep -gt 0) { $tailOut = [byte[]]::new($tailKeep); $tailErr = [byte[]]::new($tailKeep) }
-    $tailOutFill = 0; $tailErrFill = 0
-    $carryOut = ''; $carryErr = ''
-    $appendTail = {
-        param([byte[]]$Ring, [int]$Fill, [byte[]]$Chunk)
-        $cap = $Ring.Length
-        if ($Chunk.Length -ge $cap) { [System.Buffer]::BlockCopy($Chunk, $Chunk.Length - $cap, $Ring, 0, $cap); return $cap }
-        $overflow = ($Fill + $Chunk.Length) - $cap
-        if ($overflow -gt 0) { [System.Buffer]::BlockCopy($Ring, $overflow, $Ring, 0, $Fill - $overflow); $Fill -= $overflow }
-        [System.Buffer]::BlockCopy($Chunk, 0, $Ring, $Fill, $Chunk.Length)
-        return $Fill + $Chunk.Length
-    }
-    $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
-    $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
-    $timedOut = $false
-    $deadlineMs = if ($TimeoutSeconds -gt 0) { [long]$TimeoutSeconds * 1000 } else { [long]::MaxValue }
-    while (-not ($outEof -and $errEof)) {
-        if ($sw.ElapsedMilliseconds -ge $deadlineMs) { $timedOut = $true; break }
-        $pending = @(); if (-not $outEof) { $pending += $tOut }; if (-not $errEof) { $pending += $tErr }
-        $slice = if ($deadlineMs -eq [long]::MaxValue) { 250 } else { [int][Math]::Max(1, [Math]::Min(250, $deadlineMs - $sw.ElapsedMilliseconds)) }
-        $idx = [System.Threading.Tasks.Task]::WaitAny([System.Threading.Tasks.Task[]]$pending, $slice)
-        if ($idx -lt 0) { continue }
-        $done = $pending[$idx]
-        if (-not $outEof -and $done -eq $tOut) {
-            $n = 0; try { $n = $tOut.GetAwaiter().GetResult() } catch { $n = 0 }
-            if ($n -le 0) { $outEof = $true }
-            else {
-                $text = $carryOut + [string]::new($bufOut, 0, $n); $carryOut = ''
-                if ($text.Length -gt 0 -and [char]::IsHighSurrogate($text[$text.Length - 1])) { $carryOut = [string]$text[$text.Length - 1]; $text = $text.Substring(0, $text.Length - 1) }
-                if ($text.Length -gt 0) {
-                    $chunk = $utf8.GetBytes($text)
-                    $bytesOut += $chunk.Length
-                    $hashOut.AppendData($chunk)
-                    if ($tailKeep -gt 0) { $tailOutFill = & $appendTail $tailOut $tailOutFill $chunk }
-                }
-                $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
-            }
-        }
-        elseif (-not $errEof -and $done -eq $tErr) {
-            $n = 0; try { $n = $tErr.GetAwaiter().GetResult() } catch { $n = 0 }
-            if ($n -le 0) { $errEof = $true }
-            else {
-                $text = $carryErr + [string]::new($bufErr, 0, $n); $carryErr = ''
-                if ($text.Length -gt 0 -and [char]::IsHighSurrogate($text[$text.Length - 1])) { $carryErr = [string]$text[$text.Length - 1]; $text = $text.Substring(0, $text.Length - 1) }
-                if ($text.Length -gt 0) {
-                    $chunk = $utf8.GetBytes($text)
-                    $bytesErr += $chunk.Length
-                    $hashErr.AppendData($chunk)
-                    if ($tailKeep -gt 0) { $tailErrFill = & $appendTail $tailErr $tailErrFill $chunk }
-                }
-                $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
-            }
-        }
-    }
-    if ($timedOut) {
-        try { $proc.Kill($true) } catch { $null = $_ }   # ENTIRE process tree
-        try { [void]$proc.WaitForExit(5000) } catch { $null = $_ }
-    }
-    else { $proc.WaitForExit() }
-    $sw.Stop()
-    # Flush any dangling high surrogate (stream ended mid-pair) - encodes as the replacement bytes, exactly
-    # like the old whole-string GetBytes of a lone surrogate.
-    foreach ($flush in @(@($carryOut, $true), @($carryErr, $false))) {
-        $c = [string]$flush[0]
-        if (-not [string]::IsNullOrEmpty($c)) {
-            $chunk = $utf8.GetBytes($c)
-            if ([bool]$flush[1]) { $bytesOut += $chunk.Length; $hashOut.AppendData($chunk); if ($tailKeep -gt 0) { $tailOutFill = & $appendTail $tailOut $tailOutFill $chunk } }
-            else { $bytesErr += $chunk.Length; $hashErr.AppendData($chunk); if ($tailKeep -gt 0) { $tailErrFill = & $appendTail $tailErr $tailErrFill $chunk } }
-        }
-    }
-    $shaOut = [System.BitConverter]::ToString($hashOut.GetHashAndReset()).Replace('-', '').ToLowerInvariant(); $hashOut.Dispose()
-    $shaErr = [System.BitConverter]::ToString($hashErr.GetHashAndReset()).Replace('-', '').ToLowerInvariant(); $hashErr.Dispose()
-    $exitCode = if ($timedOut) { $null } else { try { [int]$proc.ExitCode } catch { $null } }
-    $commandSucceeded = ((-not $timedOut) -and ($null -ne $exitCode) -and ($exitCode -eq 0))
-    try { $proc.Dispose() } catch { $null = $_ }
-
-    # Assemble the bounded metas from the incremental parts (same shape + semantics as
-    # Get-ContinuousCoReviewBoundedOutputMeta, without ever holding the full stream).
-    $newMeta = {
-        param([long]$ByteCount, [string]$Sha, [byte[]]$Ring, [int]$Fill)
-        if ($tailKeep -le 0) {
-            return [ordered]@{ byte_count = $ByteCount; sha256 = $Sha; truncated = ($ByteCount -gt 0); truncated_tail = ''; tail_disclosure = 'suppressed' }
-        }
-        $rawTail = if ($Fill -gt 0) { $utf8.GetString($Ring, 0, $Fill) } else { '' }
-        return [ordered]@{ byte_count = $ByteCount; sha256 = $Sha; truncated = ($ByteCount -gt $tailKeep); truncated_tail = (Get-ContinuousCoReviewRedactedOutputText -Text $rawTail); tail_disclosure = $tailLabel }
-    }
-    $stdoutMeta = & $newMeta $bytesOut $shaOut $tailOut $tailOutFill
-    $stderrMeta = & $newMeta $bytesErr $shaErr $tailErr $tailErrFill
+    $procParams = @{ Executable = $Executable; Arguments = @($Arguments); WorkingDirectory = $cwd; TimeoutSeconds = $TimeoutSeconds; TailBytes = $effectiveTailBytes }
+    if ($PSBoundParameters.ContainsKey('ChildEnvironment') -and $null -ne $ChildEnvironment) { $procParams.ChildEnvironment = $ChildEnvironment }
+    $procFacts = try { Invoke-ContinuousCoReviewBoundedProcess @procParams } catch { throw "recorded-run: $($_.Exception.Message)" }
 
     # OPTIONAL SpecrewTestResult - rich counts ONLY from a schema-valid result THIS run produced.
     # OBSERVED-FACTS PRESERVATION (review finding f1, run 20260714T215545754): a REQUIRED-result miss/invalid
@@ -612,9 +729,8 @@ function Invoke-ContinuousCoReviewRecordedRun {
             else { $testResult = [ordered]@{ result = $v.result; counts = $v.counts; source = 'specrew-test-result' } }
         }
     }
-    if ($null -ne $requiredResultFailure) { $commandSucceeded = $false }   # a required-result miss is NEVER a successful command
 
-    # OUTPUT-ARTIFACT digests.
+    # OUTPUT-ARTIFACT digests (I/O; the pure assembler receives the finished digest records).
     $artifacts = @()
     foreach ($ap in @($ArtifactPath)) {
         if ([string]::IsNullOrWhiteSpace($ap)) { continue }
@@ -626,55 +742,20 @@ function Invoke-ContinuousCoReviewRecordedRun {
         }
     }
 
-    $commandBlock = [ordered]@{ executable = $Executable; arguments = @($Arguments); working_directory = $cwd }
-    if ($PSBoundParameters.ContainsKey('DeclaredExecutable') -and -not [string]::IsNullOrWhiteSpace($DeclaredExecutable) -and ([string]$DeclaredExecutable -ne [string]$Executable)) {
-        $commandBlock['declared_executable'] = [string]$DeclaredExecutable
+    # ASSEMBLE the durable record via the PURE core (no process/clock/filesystem in there).
+    $recordParams = @{
+        Executable = $Executable; Arguments = @($Arguments); WorkingDirectory = $cwd; TreeId = $treeId
+        StartedAt = $startedAt; Now = $Now; Process = $procFacts
+        EffectiveTailBytes = $effectiveTailBytes; TailLabel = $tailLabel
+        TestResult = $testResult; RequiredResultFailure = $requiredResultFailure; Artifacts = @($artifacts)
     }
-    $entry = [ordered]@{
-        command                 = $commandBlock
-        reviewed_digest_tree_id = $treeId
-        started_at              = $startedAt.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-        ended_at                = $startedAt.AddSeconds($sw.Elapsed.TotalSeconds).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-        duration_seconds        = [math]::Round($sw.Elapsed.TotalSeconds, 3)
-        exit_code               = $exitCode
-        timed_out               = $timedOut
-        command_succeeded       = $commandSucceeded
-        stdout_meta             = $stdoutMeta
-        stderr_meta             = $stderrMeta
-        artifacts               = @($artifacts)
-        counts_available        = ($null -ne $testResult)
-        test_result             = $testResult
-        recorded_at             = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-    }
-    # HONEST MISSING-DIAGNOSTICS SURFACING (maintainer decision 2026-07-14): a FAILED command whose output
-    # text was suppressed states explicitly that it cannot be diagnosed from this record alone - the failure
-    # stays a failure (command_succeeded=$false is untouched; missing diagnostics NEVER become a clean
-    # result), and the reviewer's remedy is a human-authorized diagnostic disclosure, not a guess.
-    if ((-not $commandSucceeded) -and ($effectiveTailBytes -le 0)) {
-        $entry['failure_diagnostics'] = 'insufficient-without-disclosure'
-    }
-    # REQUIRED-RESULT FAILURE CLASSIFICATION on the REAL record (finding f1, run 20260714T215545754).
-    if ($null -ne $requiredResultFailure) {
-        $entry['classification'] = 'required-result-missing-or-invalid'
-        $entry['failure_reason'] = $requiredResultFailure
-    }
-    # AUDITABLE DISCLOSURE RECORD (durable BY DESIGN - the disclosure exists to reach the reviewer through
-    # the digest-keyed evidence store, and durability is what makes it auditable; clearly labeled sensitive).
-    if ($disclosureApplies) {
-        $entry['diagnostic_disclosure'] = [ordered]@{
-            authorized_by         = [string]$disclosureInfo.authorized_by
-            reason                = [string]$disclosureInfo.disclosure_reason
-            command_id            = [string]$disclosureInfo.command_id
-            disclosed_at          = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-            tail_bytes            = [int]$disclosureInfo.max_tail_bytes
-            potentially_sensitive = $true
-            durability            = 'durable-digest-bound'
-        }
-    }
-    # PLAN IDENTITY persisted INTO the durable record (review finding f5, run 20260714T123137002): the T019
-    # evidence join binds on command_id + reviewed digest, so identity/provenance/env_ref NAMES must survive
-    # serialization - an in-memory-only tag is invisible to any reader of the digest-keyed store.
-    if ($PSBoundParameters.ContainsKey('CommandId') -and -not [string]::IsNullOrWhiteSpace($CommandId)) { $entry['command_id'] = [string]$CommandId }
+    if ($disclosureApplies) { $recordParams.DisclosureInfo = $disclosureInfo }
+    if ($PSBoundParameters.ContainsKey('DeclaredExecutable')) { $recordParams.DeclaredExecutable = $DeclaredExecutable }
+    if ($PSBoundParameters.ContainsKey('CommandId') -and -not [string]::IsNullOrWhiteSpace($CommandId)) { $recordParams.CommandId = $CommandId }
+    if ($PSBoundParameters.ContainsKey('Provenance') -and $null -ne $Provenance) { $recordParams.Provenance = $Provenance }
+    if ($PSBoundParameters.ContainsKey('EnvRefs') -and $null -ne $EnvRefs) { $recordParams.EnvRefs = $EnvRefs }
+    $entry = New-ContinuousCoReviewRunRecordObject @recordParams
+    $commandSucceeded = [bool]$entry.command_succeeded
     if ($PSBoundParameters.ContainsKey('Provenance') -and $null -ne $Provenance) { $entry['provenance'] = $Provenance }
     if ($PSBoundParameters.ContainsKey('EnvRefs') -and $null -ne $EnvRefs) { $entry['env_refs'] = @(@($EnvRefs) | Where-Object { $_ -is [string] -and -not [string]::IsNullOrWhiteSpace($_) }) }
 

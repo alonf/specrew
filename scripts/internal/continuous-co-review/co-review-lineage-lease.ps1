@@ -242,6 +242,58 @@ function Update-ContinuousCoReviewLineageLeaseOwnerProcess {
 # VERDICT AUTHORITY is NOT lease ownership alone (maintainer 2026-07-13). Promotion/blocking authority requires
 # ALL of: owner match (run_id + owner token); generation == the RESULT's reviewed-tree digest; the T019 identity
 # joins pass (reviewed tree + baseline); and the result is NOT superseded by the current digest.
+# SUPERVISOR SELF-ADOPTION at startup (lease-lifecycle hardening 2026-07-15): closes the
+# parent-crash-before-handoff window. The spawning parent stamps the lease's owner process to the supervisor
+# AFTER the spawn - if the parent dies in between, the lease names a dead parent and a concurrent fire could
+# reclaim it and spawn a SECOND reviewer while this supervisor lives. The supervisor therefore adopts the
+# lease itself at startup (token+generation-matched - the same owner-only rule as every lease mutation, so a
+# reclaimed/replaced lease REFUSES the adoption and the supervisor must exit rather than run unprotected).
+# Idempotent with the parent's handoff: both stamp the same supervisor PID.
+function Confirm-ContinuousCoReviewSupervisorLeaseAdoption {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$LineageId,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Generation,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$OwnerToken,
+        [Parameter(Mandatory)][int]$SupervisorPid
+    )
+    if ([string]::IsNullOrWhiteSpace($LineageId) -or [string]::IsNullOrWhiteSpace($Generation) -or [string]::IsNullOrWhiteSpace($OwnerToken)) {
+        return [pscustomobject]@{ adopted = $false; reason = 'missing-lease-identity (legacy registry without lease fields - adoption not applicable)' ; applicable = $false }
+    }
+    $ok = Update-ContinuousCoReviewLineageLeaseOwnerProcess -RepoRoot $RepoRoot -LineageId $LineageId -Generation $Generation -OwnerToken $OwnerToken -OwnerPid $SupervisorPid
+    if ($ok) { return [pscustomobject]@{ adopted = $true; reason = 'adopted'; applicable = $true } }
+    return [pscustomobject]@{ adopted = $false; reason = 'lease-lost-at-startup: the lease no longer matches this run''s owner token/generation (reclaimed or replaced while unowned) - the supervisor must NOT run unprotected'; applicable = $true }
+}
+
+# THE DETACHED ENTRY'S LEASE GATE (lease-lifecycle hardening 2026-07-15): the one testable boundary the
+# detached supervisor entry calls FIRST. Reads the run registry's lease identity and self-adopts. Returns
+# { proceed; reason }: proceed=$false means the supervisor must mark its registry failed and EXIT without
+# reviewing (its lease was lost - another authoritative reviewer may already own the lineage). A legacy
+# registry without lease fields proceeds (nothing to adopt - the pre-lease compatibility path).
+function Invoke-ContinuousCoReviewSupervisorLeaseGate {
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$RegistryPath,
+        [Parameter(Mandatory)][int]$SupervisorPid
+    )
+    try {
+        if (-not (Test-Path -LiteralPath $RegistryPath -PathType Leaf)) { return [pscustomobject]@{ proceed = $true; reason = 'no-registry (nothing to adopt)' } }
+        $reg = Get-Content -LiteralPath $RegistryPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $props = @($reg.PSObject.Properties.Name)
+        $lineage = if ($props -contains 'lineage_id') { [string]$reg.lineage_id } else { '' }
+        $generation = if ($props -contains 'generation') { [string]$reg.generation } else { '' }
+        $token = if ($props -contains 'owner_token') { [string]$reg.owner_token } else { '' }
+        $adoption = Confirm-ContinuousCoReviewSupervisorLeaseAdoption -RepoRoot $RepoRoot -LineageId $lineage -Generation $generation -OwnerToken $token -SupervisorPid $SupervisorPid
+        if ((-not [bool]$adoption.applicable) -or [bool]$adoption.adopted) { return [pscustomobject]@{ proceed = $true; reason = [string]$adoption.reason } }
+        return [pscustomobject]@{ proceed = $false; reason = [string]$adoption.reason }
+    }
+    catch {
+        # fail toward NOT running an unprotectable reviewer only when we positively know the lease was lost;
+        # an unreadable registry is indistinguishable from legacy - proceed (the orchestrator's own guards run).
+        return [pscustomobject]@{ proceed = $true; reason = ('lease-gate-unreadable: ' + $_.Exception.Message) }
+    }
+}
+
 function Test-ContinuousCoReviewLeasePromotionAuthority {
     param(
         [AllowNull()]$Lease,

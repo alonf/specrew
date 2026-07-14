@@ -182,6 +182,45 @@ Set-Content -LiteralPath (Join-Path '$resultsFwd' 'r-$i.txt') -Value ([string]`$
         @(Get-ChildItem -LiteralPath (Split-Path (Get-ContinuousCoReviewLineageLeasePath -RepoRoot $repo -LineageId 'L') -Parent) -Filter '*.reclaim.*' -File -ErrorAction SilentlyContinue).Count | Should -Be 0
     }
 
+    It '10a. SUPERVISOR SELF-ADOPTION closes the parent-crash-before-handoff window: the live supervisor claims the dead parent''s lease, and no concurrent fire can then reclaim it (lease-lifecycle T6, 2026-07-15)' {
+        $repo = New-LeaseRepo
+        # the CRASH WINDOW: the acquiring parent died after the spawn, before the handoff - the lease still
+        # names the dead parent while the supervisor (this process, standing in) is alive.
+        $dead = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'exit 0') -PassThru
+        $null = $dead.WaitForExit(10000)
+        Set-RawLease -RepoRoot $repo -LineageId 'L' -Fields @{ schema_version = '1.0'; lineage_id = 'L'; generation = 'genA'; run_id = 'run1'; owner_token = 'TOK1'; pid = $dead.Id; process_start_id = 'stale-start-id'; acquired_at = '2020-01-01T00:00:00Z'; pending_tree = $null }
+        # the registry the entry would read (written by the parent BEFORE the spawn).
+        $regPath = Join-Path $repo 'run1.json'
+        ([pscustomobject]@{ schema_version = '1.0'; run_id = 'run1'; status = 'running'; lineage_id = 'L'; generation = 'genA'; owner_token = 'TOK1' } | ConvertTo-Json) | Set-Content -LiteralPath $regPath -Encoding UTF8
+
+        $gate = Invoke-ContinuousCoReviewSupervisorLeaseGate -RepoRoot $repo -RegistryPath $regPath -SupervisorPid $PID
+        $gate.proceed | Should -BeTrue -Because 'the token+generation-matched adoption claims the dead parent''s lease for the live supervisor'
+        $lease = Get-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L'
+        [int](Get-ContinuousCoReviewLeaseProp -Object $lease -Name 'pid') | Should -Be $PID
+        # the window is CLOSED: a concurrent fire now sees a LIVE owner - duplicate/queue, never a reclaim
+        # that would double-spawn.
+        (Request-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L' -Generation 'genA' -RunId 'racer' -AcquiringPid $PID).reason | Should -Be 'duplicate-same-generation'
+        (Request-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L' -Generation 'genB' -RunId 'racer2' -AcquiringPid $PID).reason | Should -Be 'queued-newer-tree'
+    }
+
+    It '10b. a supervisor whose lease was RECLAIMED during the crash window REFUSES to run - never two authoritative reviewers (lease-lifecycle T6 refusal, 2026-07-15)' {
+        $repo = New-LeaseRepo
+        # the lease was reclaimed+replaced while unowned: it now carries a DIFFERENT owner token.
+        Set-RawLease -RepoRoot $repo -LineageId 'L' -Fields @{ schema_version = '1.0'; lineage_id = 'L'; generation = 'genA'; run_id = 'run2-replacement'; owner_token = 'OTHERTOKEN'; pid = $PID; process_start_id = (Get-ContinuousCoReviewProcessStartIdentity -ProcessId $PID); acquired_at = '2026-07-15T00:00:00Z'; pending_tree = $null }
+        $regPath = Join-Path $repo 'run1.json'
+        ([pscustomobject]@{ schema_version = '1.0'; run_id = 'run1'; status = 'running'; lineage_id = 'L'; generation = 'genA'; owner_token = 'TOK1' } | ConvertTo-Json) | Set-Content -LiteralPath $regPath -Encoding UTF8
+
+        $gate = Invoke-ContinuousCoReviewSupervisorLeaseGate -RepoRoot $repo -RegistryPath $regPath -SupervisorPid $PID
+        $gate.proceed | Should -BeFalse -Because 'the lease belongs to another run now; this supervisor must exit rather than run unprotected'
+        [string]$gate.reason | Should -Match 'lease-lost-at-startup'
+        # the replacement lease is UNTOUCHED by the refusal.
+        [string](Get-ContinuousCoReviewLeaseProp -Object (Get-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L') -Name 'owner_token') | Should -Be 'OTHERTOKEN'
+        # paired: a LEGACY registry without lease fields proceeds (nothing to adopt - compatibility).
+        $legacyReg = Join-Path $repo 'legacy.json'
+        ([pscustomobject]@{ schema_version = '1.0'; run_id = 'legacy'; status = 'running' } | ConvertTo-Json) | Set-Content -LiteralPath $legacyReg -Encoding UTF8
+        (Invoke-ContinuousCoReviewSupervisorLeaseGate -RepoRoot $repo -RegistryPath $legacyReg -SupervisorPid $PID).proceed | Should -BeTrue
+    }
+
     It '8. PID-reuse protection: a matching PID but a DIFFERENT process-start identity is NOT the owner' {
         (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $PID -ProcessStartId 'a-different-start-id') | Should -BeFalse -Because 'a reused PID belonging to another process is not the owner'
         (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $PID -ProcessStartId (Get-ContinuousCoReviewProcessStartIdentity -ProcessId $PID)) | Should -BeTrue

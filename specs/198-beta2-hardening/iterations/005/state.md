@@ -666,6 +666,49 @@ output suppressed by the default privacy posture, while a direct re-run of the i
 committed digest. **Round budget: 1 of 2 consumed. Round 2 is HELD pending the maintainer's f2 decision —
 spending it before that decision guarantees an unclean round on f2 alone.**
 
+### Architecture-stabilization phase (2026-07-15, maintainer directive "state-of-the-art tool; spend as much effort as needed; do not cut corners")
+
+BEFORE spending the 2-round authorization's round 2, the maintainer directed a no-compromise stabilization
+pass. Three workstreams, all committed and verified:
+
+**P1 — lease lifecycle modeled + hardened.** The per-lineage review lease had accreted four review-discovered
+defects (token wildcard, same-generation dead-owner suppression, reclaim race, discarded handoff), evidence it
+was under-modeled. It is now an EXPLICIT state machine — `iterations/005/lease-lifecycle-model.md` (states,
+transitions, a crash matrix mapping every failure to its falsifying test, invariants, documented residual
+ceilings). The remaining crash window (parent dies AFTER spawn, BEFORE the owner-process handoff) is closed by
+SUPERVISOR SELF-ADOPTION: the detached entry adopts the lease at startup (token+generation-matched); if the
+lease was reclaimed/replaced during the window it REFUSES to run rather than review unprotected. Two
+fault-injection tests (10a adopt-and-close-window, 10b refuse-when-reclaimed) + the existing 7b/7c
+concurrency races.
+
+**P2 — reproducible, digest-bound host probes (f2 the no-compromise way).** Rather than downgrade the
+codex/copilot `verified` tiers to `unverified`, the actual runtime evidence the reviewer demanded now exists as
+COMMITTED, REPLAYABLE probes: `tests/host-probes/codex-stop-contract-probe.ps1` (3/3 — decision:block gates
+structurally via Stop-hook re-fire; {} allows; the Codex-manual {continue} shape does not gate) and
+`tests/host-probes/copilot-hook-firing-probe.ps1` (2/2 — user hooks fire in `-p` untrusted, repo hooks
+trust-gated). Both isolate via CODEX_HOME/COPILOT_HOME, verify the real config byte-unchanged, degrade honestly
+to `skipped` when the CLI/auth is absent, and emit a SpecrewTestResult recorded via T018 at the reviewed
+digest. The tier provenance (`host-support-tier.ps1`) now cites these probes; the codex interactive-trust piece
+stays HUMAN-OBSERVED (PTY-less, not probe-reproducible) and is honestly labeled. Evidence:
+`iterations/005/evidence/host-probe-runtime-evidence.md`. This RESOLVES the escalated f2 finding with
+runtime evidence, not a policy downgrade.
+
+**Harness-purity refactor (maintainer criteria 1/3/5).** The recorded-run runner
+(`Invoke-ContinuousCoReviewRecordedRun`) was one function doing seven jobs — process spawn + bounded drain
+welded to the core honesty semantics, so the observation logic could not be unit-tested without spawning. Split
+into: `Invoke-ContinuousCoReviewBoundedProcess` (harness: launch + bounded drain → raw facts),
+`Get-ContinuousCoReviewOutputMetaFromFacts` + `New-ContinuousCoReviewRunRecordObject` (pure core: facts → the
+durable record; redaction, disclosure, classification, identity — NO process/clock/filesystem), and the runner
+as thin glue. Behavior-preserving (the existing recorded-run + plan-runner suites green); NEW pure-core suite
+`recorded-run-core.Tests.ps1` (10/10) proves the honesty semantics over synthetic facts WITHOUT spawning a
+process — the harness-purity payoff made concrete. (Fix-of-the-fix caught locally: `[string]$x = $null`
+coerces to '' and '' -ne $null is true — a false required-result failure; the param is now untyped.)
+
+Also fixed the round-1 advisory: `iterations/003/plan.md` T019/T034b statuses reconciled to tracker truth.
+Focused suites 143/143 (+ the 2 probes) green on Windows; full registry + Linux Docker verify re-run; evidence
+re-bound. **Round 2 of 2 remains AVAILABLE and is now spent against a stabilized, harness-pure, probe-backed
+slice.**
+
 ## Notes
 
 - **Verification (current — see the cross-platform evidence record).** The full F-198 honesty regression
