@@ -518,6 +518,24 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest) | Should -Not -BeNullOrEmpty
     }
 
+    It 'the selected-plan RESOLVER: absent -> unavailable; schema-invalid -> unavailable (loud, never silently none or silently used); valid -> available (maintainer wiring directive 2026-07-15)' {
+        $repo = New-PlanRunRepo
+        $r1 = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo
+        $r1.available | Should -BeFalse
+        [string]$r1.reason | Should -Match 'supplier'
+        New-Item -ItemType Directory -Path (Join-Path $repo '.specrew') -Force | Out-Null
+        Set-Content -LiteralPath (Join-Path $repo '.specrew/verification-plan.json') -Value '{ "plan_id": "p" }' -Encoding UTF8
+        $r2 = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo
+        $r2.available | Should -BeFalse -Because 'a schema-invalid supplier output is refused - never silently none, never silently used'
+        [string]$r2.reason | Should -Match 'schema-invalid'
+        '{ "schema_version": "1.0", "plan_id": "p", "commands": [ { "command_id": "c1", "executable": "pwsh", "provenance": { "kind": "project-config", "source": "cfg" } } ] }' |
+            Set-Content -LiteralPath (Join-Path $repo '.specrew/verification-plan.json') -Encoding UTF8
+        $r3 = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo
+        $r3.available | Should -BeTrue
+        [string]$r3.plan.plan_id | Should -Be 'p'
+        [string]$r3.source | Should -Match 'verification-plan\.json'
+    }
+
     It 'FAIL-FAST: a DUPLICATE command_id is rejected at validation BEFORE any command runs — ZERO side effects (maintainer decision 2026-07-13)' {
         $repo = New-PlanRunRepo
         # Both commands are individually valid + would create a sentinel file if executed; the plan is structurally

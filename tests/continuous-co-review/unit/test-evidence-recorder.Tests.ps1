@@ -156,12 +156,50 @@ Describe 'Get-ContinuousCoReviewTestEvidenceForDigest' {
         [string]$joined[0].classification | Should -Be 'attempt-superseded-history'
         [string]$joined[1].classification | Should -Be 'exact-digest-command-joined'
         $joined[1].injectable | Should -BeTrue
-        # and the PRODUCTION injection keeps BOTH visible (history is evidence, not noise).
+        # and the PRODUCTION injection keeps BOTH visible under the SELECTED plan (history is evidence, not noise).
         $wt = Join-Path $TestDrive 'worktree-attempts'
         $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
-        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest) | Should -BeTrue
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest -Plan $plan) | Should -BeTrue
         $injected = Get-Content -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') -Raw | ConvertFrom-Json
         @(@($injected.runs) | Where-Object { [string]$_.command_id -eq 'flaky' }).Count | Should -Be 2
+    }
+
+    It 'plan-identified evidence with NO selected plan is withheld FAIL-CLOSED as selected-plan-unavailable - the validating plan is never derived from the evidence (maintainer wiring directive 2026-07-15)' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-no-plan')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0') -TimeoutSeconds 60
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0', '-planrun') -CommandId 'orphan-plan-run' -TimeoutSeconds 60
+        $wt = Join-Path $TestDrive 'worktree-no-plan'
+        $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest) | Should -BeTrue -Because 'the identity-less self-evidence still injects'
+        $injected = Get-Content -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') -Raw | ConvertFrom-Json
+        @(@($injected.runs) | Where-Object { (@($_.PSObject.Properties.Name) -contains 'command_id') -and [string]$_.command_id -eq 'orphan-plan-run' }).Count | Should -Be 0 -Because 'without a SELECTED plan there is nothing authoritative to join against - fail closed, never self-derived'
+        @(@($injected.withheld_runs) | Where-Object { [string]$_.command_id -eq 'orphan-plan-run' }).Count | Should -Be 1
+        [string](@($injected.withheld_runs) | Where-Object { [string]$_.command_id -eq 'orphan-plan-run' }).classification | Should -Be 'selected-plan-unavailable'
+    }
+
+    It 'the PRODUCTION sequence resolver -> injection joins against the ACTUAL selected plan from .specrew/verification-plan.json (paired production path, maintainer wiring directive 2026-07-15)' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-selected-plan')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        # the FR-049 supplier's canonical output: a schema-valid selected plan naming ONE command.
+        $planDoc = [ordered]@{
+            schema_version = '1.0'; plan_id = 'selected-p1'
+            commands       = @([ordered]@{ command_id = 'named-by-plan'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0'); provenance = [ordered]@{ kind = 'project-config'; source = '.specrew/verification-plan.json' } })
+        }
+        New-Item -ItemType Directory -Path (Join-Path $repo '.specrew') -Force | Out-Null
+        ($planDoc | ConvertTo-Json -Depth 8) | Set-Content -LiteralPath (Join-Path $repo '.specrew/verification-plan.json') -Encoding UTF8
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0') -CommandId 'named-by-plan' -TimeoutSeconds 60
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0', '-x') -CommandId 'smuggled-id' -TimeoutSeconds 60
+        # the SAME sequence the orchestrator runs: resolve the selected plan, pass it to the injection.
+        $sel = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $repo
+        $sel.available | Should -BeTrue
+        $wt = Join-Path $TestDrive 'worktree-selected-plan'
+        $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest -Plan $sel.plan) | Should -BeTrue
+        $injected = Get-Content -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') -Raw | ConvertFrom-Json
+        @(@($injected.runs) | Where-Object { (@($_.PSObject.Properties.Name) -contains 'command_id') -and [string]$_.command_id -eq 'named-by-plan' }).Count | Should -Be 1 -Because 'the plan-named run joins'
+        @(@($injected.runs) | Where-Object { (@($_.PSObject.Properties.Name) -contains 'command_id') -and [string]$_.command_id -eq 'smuggled-id' }).Count | Should -Be 0 -Because 'an id absent from the SELECTED plan never injects - the plan is authoritative, not the evidence'
+        [string](@($injected.withheld_runs) | Where-Object { [string]$_.command_id -eq 'smuggled-id' }).classification | Should -Be 'unjoinable-no-matching-command'
     }
 
     It 'AMBIGUOUS duplicate plan runs are WITHHELD at the PRODUCTION injection boundary and surfaced - never silently injected (review finding f1, run 20260714T201103653)' {
@@ -182,7 +220,8 @@ Describe 'Get-ContinuousCoReviewTestEvidenceForDigest' {
 
         $wt = Join-Path $TestDrive 'worktree-join-boundary'
         $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
-        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest) | Should -BeTrue -Because 'the legitimate identity-less run still injects'
+        $dupPlan = [pscustomobject]@{ commands = @([pscustomobject]@{ command_id = 'dup' }) }
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest -Plan $dupPlan) | Should -BeTrue -Because 'the legitimate identity-less run still injects'
         $injected = Get-Content -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') -Raw | ConvertFrom-Json
         @(@($injected.runs) | Where-Object { (@($_.PSObject.Properties.Name) -contains 'command_id') -and [string]$_.command_id -eq 'dup' }).Count | Should -Be 0 -Because 'ambiguous duplicates never reach the reviewer'
         @($injected.withheld_runs).Count | Should -Be 2 -Because 'the refusal is SURFACED in the injected artifact, never silent'

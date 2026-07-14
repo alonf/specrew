@@ -153,9 +153,10 @@ function Copy-ContinuousCoReviewImplementerEvidence {
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$WorktreePath,
         [AllowEmptyString()][string]$DigestTreeId,
-        # OPTIONAL selected VerificationPlan (the FR-049 supplier seam): when supplied, plan-run joinability is
-        # enforced against ITS command set; absent, membership is derived from the record's own ids (vacuous)
-        # while ambiguous duplicates are still refused (review finding f1, run 20260714T201103653).
+        # The ACTUAL SELECTED VerificationPlan (the FR-049 supplier seam; maintainer wiring directive
+        # 2026-07-15): plan-run joinability is enforced against ITS command set and NOTHING else - the
+        # validating plan is NEVER derived from the evidence itself. Absent (no supplier configured), every
+        # plan-identified run is withheld fail-closed as `selected-plan-unavailable`.
         [AllowNull()]$Plan = $null
     )
     try {
@@ -165,34 +166,43 @@ function Copy-ContinuousCoReviewImplementerEvidence {
         $reviewDir = Join-Path $WorktreePath '.review'
         if (-not (Test-Path -LiteralPath $reviewDir -PathType Container)) { return $false }
 
-        # FR-048 JOIN AT THE INJECTION BOUNDARY (review finding f1, run 20260714T201103653): the duplicate /
-        # joinability contract gates the PRODUCTION copy, not only tests. Plan-identified runs are joined via
-        # Test-ContinuousCoReviewPlanEvidenceInjectable; non-injectable runs are WITHHELD from the copy and
-        # surfaced in `withheld_runs` (a reviewer-visible refusal, never a silent drop), while
-        # attempt-superseded HISTORY stays visible (finding f2: a failure never becomes missing evidence).
-        # Identity-less self-evidence runs are not plan evidence and pass through under the envelope +
-        # embedded-digest checks the lookup already enforced. Fail-closed if the join validator is missing.
+        # FR-048 JOIN AT THE INJECTION BOUNDARY (review finding f1, run 20260714T201103653; maintainer wiring
+        # directive 2026-07-15): the duplicate / joinability contract gates the PRODUCTION copy, not only
+        # tests. Plan-identified runs are joined via Test-ContinuousCoReviewPlanEvidenceInjectable against the
+        # ACTUAL SELECTED VerificationPlan the caller passes - NEVER a plan derived from the evidence itself
+        # (self-derivation would validate any smuggled command_id against its own record). When plan-identified
+        # evidence exists and NO selected plan is available, every such run is WITHHELD fail-closed as
+        # `selected-plan-unavailable`. Non-injectable runs are surfaced in `withheld_runs` (a reviewer-visible
+        # refusal, never a silent drop); attempt-superseded HISTORY stays visible (finding f2: a failure never
+        # becomes missing evidence). Identity-less self-evidence runs are not plan evidence and pass through
+        # under the envelope + embedded-digest checks the lookup already enforced. Fail-closed if the join
+        # validator is missing.
         if (($record.PSObject.Properties.Name -contains 'runs') -and ($null -ne $record.runs)) {
             $idRuns = @(@($record.runs) | Where-Object { $null -ne $_ -and (@($_.PSObject.Properties.Name) -contains 'command_id') -and -not [string]::IsNullOrWhiteSpace([string]$_.command_id) })
             if ($idRuns.Count -gt 0) {
-                if (-not (Get-Command -Name 'Test-ContinuousCoReviewPlanEvidenceInjectable' -ErrorAction SilentlyContinue)) {
-                    $vpc = Join-Path $PSScriptRoot 'verification-plan-contract.ps1'
-                    if (Test-Path -LiteralPath $vpc -PathType Leaf) { . $vpc }
+                $joined = $null
+                if ($null -ne $Plan) {
+                    if (-not (Get-Command -Name 'Test-ContinuousCoReviewPlanEvidenceInjectable' -ErrorAction SilentlyContinue)) {
+                        $vpc = Join-Path $PSScriptRoot 'verification-plan-contract.ps1'
+                        if (Test-Path -LiteralPath $vpc -PathType Leaf) { . $vpc }
+                    }
+                    if (-not (Get-Command -Name 'Test-ContinuousCoReviewPlanEvidenceInjectable' -ErrorAction SilentlyContinue)) {
+                        [Console]::Error.WriteLine('[co-review] WARN IMPLEMENTER_EVIDENCE_NOT_INJECTED plan-evidence join validator unavailable; refusing to inject unjoined plan runs.')
+                        return $false
+                    }
+                    $joined = @(Test-ContinuousCoReviewPlanEvidenceInjectable -PlanEvidence $idRuns -Plan $Plan -CurrentDigest $DigestTreeId)
                 }
-                if (-not (Get-Command -Name 'Test-ContinuousCoReviewPlanEvidenceInjectable' -ErrorAction SilentlyContinue)) {
-                    [Console]::Error.WriteLine('[co-review] WARN IMPLEMENTER_EVIDENCE_NOT_INJECTED plan-evidence join validator unavailable; refusing to inject unjoined plan runs.')
-                    return $false
-                }
-                $joinPlan = if ($null -ne $Plan) { $Plan } else {
-                    [pscustomobject]@{ commands = @(@($idRuns | ForEach-Object { [string]$_.command_id } | Sort-Object -Unique) | ForEach-Object { [pscustomobject]@{ command_id = $_ } }) }
-                }
-                $joined = @(Test-ContinuousCoReviewPlanEvidenceInjectable -PlanEvidence $idRuns -Plan $joinPlan -CurrentDigest $DigestTreeId)
                 $withheld = @()
                 $keepRuns = New-Object System.Collections.Generic.List[object]
                 foreach ($r in @($record.runs)) {
                     if ($null -eq $r) { continue }
                     $rid = if (@($r.PSObject.Properties.Name) -contains 'command_id') { [string]$r.command_id } else { '' }
                     if ([string]::IsNullOrWhiteSpace($rid)) { $keepRuns.Add($r) | Out-Null; continue }
+                    if ($null -eq $Plan) {
+                        # plan-identified evidence with NO selected plan: fail-closed, surfaced.
+                        $withheld += [pscustomobject]@{ command_id = $rid; classification = 'selected-plan-unavailable' }
+                        continue
+                    }
                     $jidx = [Array]::IndexOf($idRuns, $r)
                     $cls = if ($jidx -ge 0 -and $jidx -lt $joined.Count) { [string]$joined[$jidx].classification } else { 'unjoined' }
                     if ($cls -in @('exact-digest-command-joined', 'attempt-superseded-history')) { $keepRuns.Add($r) | Out-Null }

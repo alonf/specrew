@@ -752,7 +752,19 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         $implementerEvidencePresent = $false
         try {
             if (Get-Command -Name 'Copy-ContinuousCoReviewImplementerEvidence' -ErrorAction SilentlyContinue) {
-                $implementerEvidencePresent = [bool](Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $RepoRoot -WorktreePath $wt.worktree_path -DigestTreeId $reviewedDigestId)
+                # THE ACTUAL SELECTED PLAN into the injection boundary (maintainer wiring directive 2026-07-15):
+                # resolved via the one production seam (the FR-049 supplier's canonical output), NEVER derived
+                # from the evidence. Unavailable/invalid -> $null, and the copy then withholds plan-identified
+                # runs fail-closed as selected-plan-unavailable.
+                $selectedPlan = $null
+                try {
+                    if (Get-Command -Name 'Get-ContinuousCoReviewSelectedVerificationPlan' -ErrorAction SilentlyContinue) {
+                        $selRes = Get-ContinuousCoReviewSelectedVerificationPlan -RepoRoot $RepoRoot
+                        if ($null -ne $selRes -and [bool]$selRes.available) { $selectedPlan = $selRes.plan }
+                    }
+                }
+                catch { $selectedPlan = $null }
+                $implementerEvidencePresent = [bool](Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $RepoRoot -WorktreePath $wt.worktree_path -DigestTreeId $reviewedDigestId -Plan $selectedPlan)
             }
         } catch { $implementerEvidencePresent = $false }
         # ROUND: same lineage (change-set overlaps the prior round's) + the prior was blocking -> this is a fix

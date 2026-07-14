@@ -142,6 +142,52 @@ function New-ContinuousCoReviewVerificationFailureRecord {
     }
 }
 
+# THE SELECTED-PLAN RESOLVER (maintainer wiring directive 2026-07-15): the ONE production seam that loads
+# the project's SELECTED VerificationPlan for the evidence-injection boundary and any other consumer. The
+# FR-049 supplier chain (config-authoritative -> detected -> profile -> provider-gated) TARGETS this seam by
+# writing its selected plan to the canonical config-authoritative location `.specrew/verification-plan.json`.
+# Returns { available; plan; source; reason } and NEVER throws:
+#   - file absent           -> available=$false (the explicit no-supplier state; consumers fail closed)
+#   - unparseable JSON      -> available=$false + a LOUD warn (a broken supplier output is never silently 'none')
+#   - structurally invalid  -> available=$false + a LOUD warn naming the schema violation
+#   - valid                 -> available=$true with the parsed plan
+# It NEVER derives a plan from evidence, defaults, or discovery - selection is the supplier's job (FR-048/FR-049).
+function Get-ContinuousCoReviewSelectedVerificationPlan {
+    param([Parameter(Mandatory)][string]$RepoRoot)
+    $result = [pscustomobject]@{ available = $false; plan = $null; source = $null; reason = $null }
+    try {
+        $path = Join-Path $RepoRoot '.specrew/verification-plan.json'
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            $result.reason = 'no supplier output at .specrew/verification-plan.json (FR-049 supplier not configured)'
+            return $result
+        }
+        $plan = $null
+        try { $plan = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json }
+        catch {
+            $result.reason = "selected plan at '$path' is unparseable: $($_.Exception.Message)"
+            [Console]::Error.WriteLine("[co-review] WARN SELECTED_PLAN_UNREADABLE $($result.reason)")
+            return $result
+        }
+        if (-not (Get-Command -Name 'Test-ContinuousCoReviewVerificationPlan' -ErrorAction SilentlyContinue)) {
+            $cp = Join-Path $PSScriptRoot 'verification-plan-contract.ps1'; if (Test-Path -LiteralPath $cp -PathType Leaf) { . $cp }
+        }
+        $structural = Test-ContinuousCoReviewVerificationPlan -Plan $plan -RepoRoot $RepoRoot
+        if (-not [bool]$structural.valid) {
+            $result.reason = "selected plan at '$path' is schema-invalid: $($structural.reason)"
+            [Console]::Error.WriteLine("[co-review] WARN SELECTED_PLAN_INVALID $($result.reason)")
+            return $result
+        }
+        $result.available = $true
+        $result.plan = $plan
+        $result.source = $path
+        return $result
+    }
+    catch {
+        $result.reason = "selected-plan resolution failed: $($_.Exception.Message)"
+        return $result
+    }
+}
+
 function Invoke-ContinuousCoReviewVerificationPlan {
     <#
         Execute a framework-neutral VerificationPlan in DECLARED order. Returns

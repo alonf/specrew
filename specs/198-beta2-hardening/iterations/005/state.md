@@ -600,6 +600,28 @@ Focused suites 91/91 green on Windows; full registry + Linux Docker verify re-ru
 fixes commit. **Rounds consumed: 5 of 5 — the authorization is EXHAUSTED.** Iteration 005 closure still
 requires a CLEAN round; the maintainer decides whether to authorize more.
 
+### Selected-plan production wiring (2026-07-15, maintainer directive preceding the 2-round authorization)
+
+Per the maintainer's verdict, the round-5 injection-boundary fix was repaired BEFORE any further round: the
+validating plan is NEVER derived from the evidence itself (the round-5 fallback synthesized a pseudo-plan
+from the record's own command_ids — self-derivation would validate any smuggled id against its own record).
+Now: (1) `Get-ContinuousCoReviewSelectedVerificationPlan` is the ONE production seam that loads the project's
+SELECTED plan from the FR-049 supplier's canonical config-authoritative output
+`.specrew/verification-plan.json` — absent → explicit unavailable; unparseable/schema-invalid → unavailable
+with a LOUD warn (never silently none, never silently used); valid → the plan. (2) The orchestrator resolves
+it and passes the ACTUAL plan into `Copy-ContinuousCoReviewImplementerEvidence -Plan`. (3) With
+plan-identified evidence and NO selected plan, every such run is withheld FAIL-CLOSED as
+`selected-plan-unavailable` (surfaced in `withheld_runs`); identity-less self-evidence still injects. Paired
+production-path tests: the fail-closed no-plan case; the full resolver→injection sequence against the real
+config file (plan-named id joins, a smuggled id is `unjoinable-no-matching-command`); resolver edge cases
+(absent / schema-invalid / valid). Focused suites 93/93 + runner 20/20 green on Windows; full registry +
+Linux Docker verify re-run; evidence re-bound.
+
+**Standing authorization (2026-07-15): up to 2 additional full current-digest rounds, same reviewer. STOP
+immediately on a clean round (closes Iteration 005). If round 2 is not clean: STOP and return for
+architectural reassessment — round-2 findings are verified/triaged but NOT auto-fixed. No further rounds are
+implicitly authorized.**
+
 ## Notes
 
 - **Verification (current — see the cross-platform evidence record).** The full F-198 honesty regression
