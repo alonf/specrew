@@ -362,14 +362,112 @@ try {
     if ($r4i.Out -notmatch 'five-part context packet') { Fail "Case 4i: material block must demand the five-part context packet. Out: $($r4i.Out)" }
     Write-Pass "Case 4i: handover active_feature scopes material enforcement in multi-feature pre-boundary state"
 
-    # ---- Case 5: INTAKE QUESTION -> a cooperative NUDGE (not a block). Short intake question, spec exists.
+    # ==== Maintainer packet-hardening fixtures (a)-(f), 2026-07-14: the Stop packet demand keys on the TURN'S
+    # ====   OWN delta (session baseline), long read-only investigations, and the unchanged boundary contract.
+
+    # ---- Case PH-a: SHORT CONSULTATION, no writes -> no packet demand.
+    $pha = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $pha
+    New-HandoverSnapshot -Proj $pha -ChangedUserFiles 0
+    $tha = New-Transcript -Proj $pha -Turns @(@{ role = 'user'; text = 'what does the resolver do?' }, @{ role = 'assistant'; text = 'It resolves the machinery path list from the one source of truth.' })
+    $rha = Invoke-Conformance -Proj $pha -TranscriptPath $tha
+    if ($rha.Blocked) { Fail "Case PH-a: a short consultation with no writes MUST NOT demand the packet. Out: $($rha.Out)" }
+    Write-Pass "Case PH-a: a short consultation turn with no writes owes no packet (maintainer fixture a)"
+
+    # ---- Case PH-b: READ-ONLY STATUS over a PRE-EXISTING dirty tree -> no packet demand. The exact 2026-07-14
+    #      regression: files an earlier session left dirty made a status answer read as material and forced a
+    #      duplicate five-part packet. SessionStart absorbs the surface into the baseline; the identical surface
+    #      at the Stop is then NOT this turn's work.
+    $phb = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phb
+    New-HandoverSnapshot -Proj $phb -ChangedUserFiles 2   # the previous session's dirty surface
+    $rbBase = Invoke-Conformance -Proj $phb -Event SessionStart
+    if ($rbBase.Code -ne 0) { Fail "Case PH-b: the SessionStart baseline lane must exit 0. Out: $($rbBase.Out)" }
+    if (-not (Test-Path -LiteralPath (Join-Path $phb '.specrew\runtime\conformance-material-baseline.json'))) { Fail "Case PH-b: SessionStart must persist the material baseline." }
+    New-HandoverSnapshot -Proj $phb -ChangedUserFiles 2   # the SAME surface, refreshed at this turn's stop
+    $thb = New-Transcript -Proj $phb -Turns @(@{ role = 'user'; text = 'status' }, @{ role = 'assistant'; text = 'Iteration 003 is executing; 8 tasks done, T019 in progress, validator has 40 soft warnings.' })
+    $rhb = Invoke-Conformance -Proj $phb -TranscriptPath $thb
+    if ($rhb.Blocked) { Fail "Case PH-b: a read-only status turn over a PRE-EXISTING dirty surface (== session baseline) MUST NOT demand the packet. Out: $($rhb.Out)" }
+    Write-Pass "Case PH-b: read-only status over a pre-session dirty tree owes no packet - the SessionStart baseline absorbs foreign dirt (maintainer fixture b)"
+
+    # ---- Case PH-c: SUBSTANTIAL STATE-CHANGING WORK -> packet required. Same project: the surface CHANGES
+    #      relative to the baseline (new files appear), the last message has no packet -> block.
+    New-HandoverSnapshot -Proj $phb -ChangedUserFiles 4 -FileList 'src/provider.ps1, tests/provider.tests.ps1, src/new-module.ps1, tests/new-module.tests.ps1'
+    $thc = New-Transcript -Proj $phb -Turns @(@{ role = 'user'; text = 'fix it' }, @{ role = 'assistant'; text = 'I implemented the module and its tests. Stopping here.' })
+    $rhc = Invoke-Conformance -Proj $phb -TranscriptPath $thc
+    if (-not $rhc.Blocked) { Fail "Case PH-c: state-changing work (surface != baseline) without the packet MUST block. Out: $($rhc.Out)" }
+    if ($rhc.Out -notmatch 'five-part context packet') { Fail "Case PH-c: the demand must be the five-part non-boundary packet. Out: $($rhc.Out)" }
+    Write-Pass "Case PH-c: substantial state-changing work still requires the five-heading packet (maintainer fixture c)"
+
+    # ---- Case PH-e: an ALREADY VALID packet is accepted without another turn (same changed surface).
+    $the = New-Transcript -Proj $phb -Turns @(@{ role = 'user'; text = 'fix it' }, @{ role = 'assistant'; text = $materialPacket })
+    $rhe = Invoke-Conformance -Proj $phb -TranscriptPath $the
+    if ($rhe.Blocked) { Fail "Case PH-e: a rendered five-part packet MUST be accepted without another forced turn. Out: $($rhe.Out)" }
+    Write-Pass "Case PH-e: an already-valid five-part packet is accepted as-is - no duplicate turn (maintainer fixture e)"
+
+    # ---- Case PH-b2: after the packet discharged the changed surface, a follow-up READ-ONLY turn over the
+    #      (still dirty, unchanged) tree owes nothing - the baseline advanced at the discharged stop.
+    New-HandoverSnapshot -Proj $phb -ChangedUserFiles 4 -FileList 'src/provider.ps1, tests/provider.tests.ps1, src/new-module.ps1, tests/new-module.tests.ps1'
+    $thb2 = New-Transcript -Proj $phb -Turns @(@{ role = 'user'; text = 'thanks' }, @{ role = 'assistant'; text = 'Summarized above; nothing else changed.' })
+    $rhb2 = Invoke-Conformance -Proj $phb -TranscriptPath $thb2
+    if ($rhb2.Blocked) { Fail "Case PH-b2: a read-only follow-up over the SAME discharged surface MUST NOT re-demand the packet. Out: $($rhb2.Out)" }
+    Write-Pass "Case PH-b2: the baseline advances at a discharged stop, so unchanged-dirty follow-ups stay quiet"
+
+    # ---- Case PH-d: LONG READ-ONLY INVESTIGATION (no material delta) -> packet required. >= 15 assistant
+    #      entries since the last human message = a genuinely long turn with a real re-entry cost.
+    $phd = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $phd
+    New-HandoverSnapshot -Proj $phd -ChangedUserFiles 0   # read-only: no user files, no commits
+    $longTurns = @(@{ role = 'user'; text = 'investigate the flaky test' })
+    for ($li = 1; $li -le 16; $li++) { $longTurns += @{ role = 'assistant'; text = "Investigation step $li - reading module $li and correlating the failure signature." } }
+    $thd = New-Transcript -Proj $phd -Turns $longTurns
+    $rhd = Invoke-Conformance -Proj $phd -TranscriptPath $thd
+    if (-not $rhd.Blocked) { Fail "Case PH-d: a LONG read-only investigation (16 assistant entries) without the packet MUST block. Out: $($rhd.Out)" }
+    if ($rhd.Out -notmatch 'five-part context packet') { Fail "Case PH-d: the long-turn demand is the five-part packet. Out: $($rhd.Out)" }
+    # and the SAME long turn WITH the packet is accepted.
+    $longTurnsOk = @($longTurns[0..($longTurns.Count - 2)]) + @(@{ role = 'assistant'; text = $materialPacket })
+    $thdOk = New-Transcript -Proj $phd -Turns $longTurnsOk
+    $rhdOk = Invoke-Conformance -Proj $phd -TranscriptPath $thdOk
+    if ($rhdOk.Blocked) { Fail "Case PH-d: the long-turn packet, once rendered, MUST be accepted. Out: $($rhdOk.Out)" }
+    Write-Pass "Case PH-d: a long read-only investigation owes the packet; rendering it satisfies the demand (maintainer fixture d)"
+
+    # ---- Case PH-f: BOUNDARY stop contract UNCHANGED - the six-section directive + the exact verdict marker,
+    #      even with a session baseline on disk (the baseline lane never weakens boundary authorization).
+    $phf = New-Fixture -Working 'plan' -LastAuth 'clarify'
+    New-HandoverSnapshot -Proj $phf -ChangedUserFiles 2
+    $null = Invoke-Conformance -Proj $phf -Event SessionStart   # baseline present; must not matter at a boundary
+    $thf = New-Transcript -Proj $phf -Turns @(@{ role = 'user'; text = 'continue' }, @{ role = 'assistant'; text = 'plan.md is written; moving on.' })
+    $rhf = Invoke-Conformance -Proj $phf -TranscriptPath $thf
+    if (-not $rhf.Blocked) { Fail "Case PH-f: a pending-verdict boundary stop MUST still block regardless of the material baseline. Out: $($rhf.Out)" }
+    if ($rhf.Out -notmatch 'Discussion Prompts') { Fail "Case PH-f: the boundary demand is the SIX-section packet (Discussion Prompts included). Out: $($rhf.Out)" }
+    if ($rhf.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case PH-f: the boundary demand carries the exact contiguous verdict marker. Out: $($rhf.Out)" }
+    Write-Pass "Case PH-f: the six-section boundary contract is untouched by the packet-hardening lanes (maintainer fixture f)"
+
+    # ---- Case 5 (reconciled 2026-07-14 to the T099/FR-040 design-N3 contract): an intake question on an IDLE
+    #      conversational stop (no boundary pending, no material work) no longer pays the per-line transcript
+    #      parse, so the conformance provider emits NOTHING there - the bootstrap orientation surface owns idle
+    #      intake drift. This case was RED at HEAD since the T099 gate change; the fixture now asserts the
+    #      ratified contract instead of the retired trigger. The intake nudge itself is proven in Case 5b on a
+    #      stop that already warranted the parse.
     $p5 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p5
     $t5 = New-Transcript -Proj $p5 -Turns @(@{ role = 'assistant'; text = "Welcome! What would you like to build today?" })
     $r5 = Invoke-Conformance -Proj $p5 -TranscriptPath $t5
-    if ($r5.Blocked) { Fail "Case 5: a short intake question is a redirect nudge, not a packet block. Out: $($r5.Out)" }
-    if ($r5.Out -notmatch 'INTAKE QUESTION') { Fail "Case 5: an intake question while a spec exists MUST fire the #1 redirect nudge. Out: $($r5.Out)" }
-    Write-Pass "Case 5: an intake question while an active feature exists fires the #1 redirect NUDGE (SC-008 #1)"
+    if ($r5.Blocked) { Fail "Case 5: a short intake question is never a packet block. Out: $($r5.Out)" }
+    if ($r5.Out -match 'INTAKE QUESTION') { Fail "Case 5: an idle conversational stop does not pay the parse, so no intake nudge fires there (T099/N3). Out: $($r5.Out)" }
+    Write-Pass "Case 5: an idle conversational intake stop emits nothing - idle intake drift belongs to the bootstrap orientation surface (T099/FR-040 N3)"
+
+    # ---- Case 5b: INTAKE QUESTION on a stop that ALREADY warranted the parse (material surface + rendered
+    #      packet) -> the #1 redirect NUDGE still fires (the lane survives; only the idle trigger was retired).
+    $p5b = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p5b
+    New-HandoverSnapshot -Proj $p5b -ChangedUserFiles 2
+    $packetWithIntake = $materialPacket + "`n`nBefore I continue: what would you like to build next?"
+    $t5b = New-Transcript -Proj $p5b -Turns @(@{ role = 'assistant'; text = $packetWithIntake })
+    $r5b = Invoke-Conformance -Proj $p5b -TranscriptPath $t5b
+    if ($r5b.Blocked) { Fail "Case 5b: the packet is rendered, so no block. Out: $($r5b.Out)" }
+    if ($r5b.Out -notmatch 'INTAKE QUESTION') { Fail "Case 5b: an intake question on a parsed (material) stop MUST fire the #1 redirect nudge. Out: $($r5b.Out)" }
+    Write-Pass "Case 5b: the intake redirect nudge still fires on a stop that warranted the parse (SC-008 #1, post-T099 shape)"
 
     # ---- Case 6: RAW SPEC KIT -> a cooperative NUDGE. Short message running `specify workflow`, no spec.
     $p6 = New-Fixture -Working 'plan' -LastAuth 'plan'

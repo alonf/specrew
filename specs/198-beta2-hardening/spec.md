@@ -553,9 +553,36 @@ pin-surface consistency assertions.
   - the exact reviewed-tree digest (evidence is bound to it);
   - start/end timestamps + duration;
   - exit code + timeout status;
-  - bounded/redacted stdout/stderr metadata (never full/raw dumps);
+  - stdout/stderr metadata: byte counts + sha256 integrity hashes; output TEXT is
+    **PRIVATE BY DEFAULT** (amended by maintainer ruling 2026-07-14, run 20260714T130410888):
+    the default persists NO output text (count/hash only) because no pattern redactor can
+    recognize an arbitrary secret; a caller MAY explicitly opt into a bounded, engine-capped,
+    credential-pattern-redacted tail (defense-in-depth only — the redactor is never claimed to
+    catch arbitrary secrets); supplier-declared plan commands NEVER persist raw output
+    automatically. A FAILED command whose output was suppressed records
+    `failure_diagnostics: insufficient-without-disclosure` — missing diagnostics are surfaced
+    honestly and NEVER become a clean or higher-confidence result. The ONLY door to persisted
+    diagnostic text for a plan command is an explicit **human-authorized diagnostic disclosure**:
+    `{ authorized_by, reason, command_id, max_tail_bytes? }` — bounded (engine cap), scoped to
+    the ONE named command/run, auditable (the authorization persists in the durable record),
+    labeled potentially sensitive, DURABLE in the digest-keyed store by design (durability is
+    what makes it auditable and reviewer-reachable), and never automatic;
   - output-artifact digests;
   - whether the command executed successfully (`command_succeeded`).
+
+  **Child-environment execution semantics (amended by maintainer ruling 2026-07-14)**: a
+  supplier-declared plan command's child environment MUST be constructed from an **EMPTY map**
+  plus a **normative, platform-specific engine baseline** in which EVERY variable is justified
+  by paired runtime-evidence tests (currently EMPTY on both Windows and Linux — a resolved
+  full-path child launches with no inherited environment), plus exactly the plan-declared
+  `env_refs` names resolved from the ambient environment at spawn. `HOME`/`USERPROFILE`/
+  `APPDATA`/`LOCALAPPDATA` are NEVER implicit baseline; `PSModulePath`, locale, terminal, and
+  tool-specific variables are explicit `env_refs` unless runtime evidence proves the ENGINE
+  requires them. The executable is resolved to a full path against the ambient parent
+  environment BEFORE the child environment is constructed, so an inherited `PATH` is not
+  implicitly required; an unresolvable executable is a RECORDED failure
+  (`executable-not-resolvable`), never a silent skip. Purpose: reproducibility and least
+  privilege — not hiding evidence from the reviewer.
 
   It MUST NOT build framework-specific parsers or maintain an adapter catalog, and MUST NEVER
   parse human-readable console output to infer test counts — Specrew cannot know every downstream
@@ -853,6 +880,24 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   MUST prove a plugin that intends no Codex hooks uses exactly `hooks: {}` and cannot auto-discover another
   host's `hooks/hooks.json`. IF plugin installation is NOT a Beta2 deliverable, it stays in issue #3084 and is
   NOT implemented here.
+- **FR-055 (non-boundary Stop-packet classification honesty — maintainer directive 2026-07-14)**: The
+  conformance Stop-provider MUST NOT classify an ordinary consultation, explanation, or read-only status turn
+  as material merely because the working tree is dirty or a tool/file read occurred: the material demand keys
+  on the TURN'S OWN delta — the dirty-tree surface captured at SessionStart (and advanced at every discharged
+  stop) is the session BASELINE, and only a surface that DIFFERS from it owes the five-heading packet. The
+  surface key MUST ignore Specrew-managed-count drift. The packet demand MUST still fire after actual
+  state-changing work, after a genuinely LONG read-only investigation (deterministic assistant-entry count
+  since the last human message at/over a fixed threshold — a real re-entry need), and the five-heading
+  structure is unchanged where required. Lifecycle BOUNDARY packets and boundary authorization are untouched.
+  Post-response duplication MUST be prevented by ARRANGING the packet in the original response: a PostToolUse
+  tracked-change emits a ONE-PER-OBLIGATION-WINDOW non-blocking nudge instructing the agent to end its final
+  message with the packet; an already-valid packet is accepted without another forced turn. Classification is
+  deterministic (no model-judged compliance); where a host lacks the deterministic signals the provider fails
+  OPEN toward the pre-existing enforcement, never toward a fabricated pass. Regression fixtures MUST cover:
+  (a) short consultation with no writes → no demand; (b) read-only status over a pre-session dirty tree → no
+  demand; (c) substantial state-changing work → packet required; (d) long read-only investigation → packet
+  required; (e) an already-valid packet → accepted without another turn; (f) a boundary stop keeps the
+  six-section contract.
 
 #### Toolchain currency — owner: implementer; iteration 001
 

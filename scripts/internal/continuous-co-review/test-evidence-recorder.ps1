@@ -183,6 +183,45 @@ function Test-ContinuousCoReviewSpecrewTestResult {
     return @{ valid = $true; reason = 'ok'; result = [string]$Object.result; counts = $counts }
 }
 
+# ENGINE CAP on any persisted output tail (maintainer decision 2026-07-14): no caller - and no authorized
+# diagnostic disclosure - can persist more than this many bytes of (redacted) output text per stream.
+$script:ContinuousCoReviewMaxOutputTailBytes = 8192
+function Get-ContinuousCoReviewMaxOutputTailBytes { return $script:ContinuousCoReviewMaxOutputTailBytes }
+
+function Test-ContinuousCoReviewDiagnosticDisclosure {
+    <#
+        Validate a HUMAN-AUTHORIZED diagnostic-disclosure request (maintainer decision 2026-07-14, run
+        20260714T130410888 finding f1): raw verification output is PRIVATE BY DEFAULT; a reviewer who cannot
+        reach an accurate conclusion without diagnostics may request disclosure, and a HUMAN authorizes it.
+        The object is REQUIRED to carry: authorized_by (the human identity), reason (why the absence blocks
+        an accurate conclusion), and command_id (the ONE named command it is scoped to). max_tail_bytes is
+        optional and always clamped to the engine cap. Returns { valid; reason; authorized_by;
+        disclosure_reason; command_id; max_tail_bytes }.
+    #>
+    param([Parameter(Mandatory)][AllowNull()]$Disclosure)
+    if ($null -eq $Disclosure) { return [pscustomobject]@{ valid = $false; reason = 'disclosure is null' } }
+    $get = {
+        param($Name)
+        if ($Disclosure -is [System.Collections.IDictionary]) { if ($Disclosure.Contains($Name)) { return $Disclosure[$Name] } return $null }
+        $p = $Disclosure.PSObject.Properties[$Name]; if ($null -ne $p) { return $p.Value } return $null
+    }
+    $by = [string](& $get 'authorized_by')
+    if ([string]::IsNullOrWhiteSpace($by)) { return [pscustomobject]@{ valid = $false; reason = 'authorized_by is required (the HUMAN who authorized the disclosure; disclosure is never automatic)' } }
+    $why = [string](& $get 'reason')
+    if ([string]::IsNullOrWhiteSpace($why)) { return [pscustomobject]@{ valid = $false; reason = 'reason is required (why the absence of diagnostics prevents an accurate conclusion)' } }
+    $cid = [string](& $get 'command_id')
+    if ([string]::IsNullOrWhiteSpace($cid)) { return [pscustomobject]@{ valid = $false; reason = 'command_id is required (disclosure is scoped to ONE named command, never blanket)' } }
+    $cap = Get-ContinuousCoReviewMaxOutputTailBytes
+    $reqBytes = & $get 'max_tail_bytes'
+    $bytes = $cap
+    if ($null -ne $reqBytes) {
+        try { $bytes = [int]$reqBytes } catch { return [pscustomobject]@{ valid = $false; reason = 'max_tail_bytes must be an integer when supplied' } }
+        if ($bytes -le 0) { return [pscustomobject]@{ valid = $false; reason = 'max_tail_bytes must be positive (a zero/negative disclosure discloses nothing - omit the disclosure instead)' } }
+        if ($bytes -gt $cap) { $bytes = $cap }   # BOUNDED: a request can never buy an unbounded dump.
+    }
+    return [pscustomobject]@{ valid = $true; reason = $null; authorized_by = $by; disclosure_reason = $why; command_id = $cid; max_tail_bytes = $bytes }
+}
+
 function Get-ContinuousCoReviewRedactedOutputText {
     # SECRET-PATTERN REDACTION for output text destined for a persisted, reviewer-visible record (review finding
     # f3, run 20260714T123137002): credential-shaped content is masked BEFORE serialization so a command that
@@ -206,20 +245,24 @@ function Get-ContinuousCoReviewRedactedOutputText {
 function Get-ContinuousCoReviewBoundedOutputMeta {
     # BOUNDED + REDACTED metadata for a captured output stream: byte count + sha256 + a bounded, REDACTED tail -
     # never the full raw dump (an unbounded reviewer-visible artifact + potential secret leak). TailBytes <= 0 is
-    # the SUPPRESSION mode (review finding f3): NO output text is persisted at all - count/hash only - the mode
-    # supplier-declared verification-plan commands use, because arbitrary plan output may carry secrets no pattern
-    # can recognize. byte_count/sha256 always describe the RAW output (the integrity facts); the tail, when
-    # present, is a REDACTED excerpt, so it is diagnostic text - not a hash preimage.
-    param([AllowNull()][string]$Text, [int]$TailBytes = 2048)
+    # the SUPPRESSION mode (review finding f3; the DEFAULT since the 2026-07-14 maintainer decision): NO output
+    # text is persisted at all - count/hash only - because arbitrary output may carry secrets no pattern can
+    # recognize. byte_count/sha256 always describe the RAW output (the integrity facts); the tail, when present,
+    # is a REDACTED excerpt, so it is diagnostic text - not a hash preimage. tail_disclosure states HONESTLY what
+    # happened to the text: 'suppressed' (private by default), 'bounded-redacted-tail' (an explicit caller
+    # opt-in), or 'authorized-diagnostic' (a human-authorized, command-scoped disclosure; potentially sensitive).
+    param([AllowNull()][string]$Text, [int]$TailBytes = 0, [string]$TailDisclosureLabel = 'bounded-redacted-tail')
     $t = if ($null -eq $Text) { '' } else { [string]$Text }
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($t)
     $sha = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($bytes)).Replace('-', '').ToLowerInvariant()
     if ($TailBytes -le 0) {
-        return [ordered]@{ byte_count = $bytes.Length; sha256 = $sha; truncated = ($bytes.Length -gt 0); truncated_tail = '' }
+        return [ordered]@{ byte_count = $bytes.Length; sha256 = $sha; truncated = ($bytes.Length -gt 0); truncated_tail = ''; tail_disclosure = 'suppressed' }
     }
+    $cap = Get-ContinuousCoReviewMaxOutputTailBytes
+    if ($TailBytes -gt $cap) { $TailBytes = $cap }   # ENGINE CAP: no caller persists an unbounded tail.
     $truncated = $bytes.Length -gt $TailBytes
     $rawTail = if (-not $truncated) { $t } else { [System.Text.Encoding]::UTF8.GetString($bytes, $bytes.Length - $TailBytes, $TailBytes) }
-    return [ordered]@{ byte_count = $bytes.Length; sha256 = $sha; truncated = $truncated; truncated_tail = (Get-ContinuousCoReviewRedactedOutputText -Text $rawTail) }
+    return [ordered]@{ byte_count = $bytes.Length; sha256 = $sha; truncated = $truncated; truncated_tail = (Get-ContinuousCoReviewRedactedOutputText -Text $rawTail); tail_disclosure = $TailDisclosureLabel }
 }
 
 function Invoke-ContinuousCoReviewRecordedRun {
@@ -238,13 +281,28 @@ function Invoke-ContinuousCoReviewRecordedRun {
         [string]$ResultPath,          # OPTIONAL: where the command WRITES its SpecrewTestResult JSON (produced THIS run)
         [switch]$RequireResult,       # a missing/invalid result at -ResultPath then FAILS LOUD (never a richer claim)
         [string[]]$ArtifactPath = @(),
-        [int]$OutputTailBytes = 2048, # <= 0 suppresses persisted output text entirely (count/hash only)
+        [int]$OutputTailBytes = 0,    # DEFAULT 0 (maintainer decision 2026-07-14): output text is PRIVATE BY DEFAULT - count/hash only. >0 is an explicit caller opt-in, clamped to the engine cap.
         [string]$CommandId,           # OPTIONAL plan identity - persisted INTO the durable record (the T019 join key)
         $Provenance,                  # OPTIONAL provenance object - persisted INTO the durable record
         [string[]]$EnvRefs,           # OPTIONAL env var NAMES (never values) - persisted INTO the durable record
         [System.Collections.IDictionary]$ChildEnvironment,   # OPTIONAL constructed child environment (allowlist semantics)
+        [string]$DeclaredExecutable,  # OPTIONAL supplier-declared executable name (the resolved full path is what executes)
+        [AllowNull()]$DiagnosticDisclosure = $null,          # OPTIONAL human-authorized, command_id-scoped disclosure { authorized_by; reason; command_id; max_tail_bytes? } - NEVER automatic
         [datetime]$Now = [datetime]::UtcNow
     )
+    # DIAGNOSTIC DISCLOSURE (maintainer decision 2026-07-14): validated FAIL-LOUD (a malformed authorization
+    # is a caller error, never silently ignored and never silently honored), and applied ONLY when its
+    # command_id EXACTLY matches THIS run's CommandId - scoped to the one named command, never blanket.
+    $disclosureApplies = $false; $disclosureInfo = $null
+    if ($null -ne $DiagnosticDisclosure) {
+        $disclosureInfo = Test-ContinuousCoReviewDiagnosticDisclosure -Disclosure $DiagnosticDisclosure
+        if (-not [bool]$disclosureInfo.valid) {
+            throw "recorded-run: the supplied DiagnosticDisclosure is INVALID ($($disclosureInfo.reason)) - failing loudly rather than guessing at a disclosure authorization."
+        }
+        $disclosureApplies = (-not [string]::IsNullOrWhiteSpace($CommandId)) -and ([string]$disclosureInfo.command_id -ceq [string]$CommandId)
+    }
+    $effectiveTailBytes = if ($disclosureApplies) { [int]$disclosureInfo.max_tail_bytes } else { $OutputTailBytes }
+    $tailLabel = if ($disclosureApplies) { 'authorized-diagnostic' } else { 'bounded-redacted-tail' }
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $cwd = if ([string]::IsNullOrWhiteSpace($WorkingDirectory)) { $resolved } else { (Resolve-Path -LiteralPath $WorkingDirectory).Path }
     if (-not (Get-Command -Name 'Get-ContinuousCoReviewReviewedStateDigest' -ErrorAction SilentlyContinue)) {
@@ -336,8 +394,12 @@ function Invoke-ContinuousCoReviewRecordedRun {
         }
     }
 
+    $commandBlock = [ordered]@{ executable = $Executable; arguments = @($Arguments); working_directory = $cwd }
+    if ($PSBoundParameters.ContainsKey('DeclaredExecutable') -and -not [string]::IsNullOrWhiteSpace($DeclaredExecutable) -and ([string]$DeclaredExecutable -ne [string]$Executable)) {
+        $commandBlock['declared_executable'] = [string]$DeclaredExecutable
+    }
     $entry = [ordered]@{
-        command                 = [ordered]@{ executable = $Executable; arguments = @($Arguments); working_directory = $cwd }
+        command                 = $commandBlock
         reviewed_digest_tree_id = $treeId
         started_at              = $startedAt.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         ended_at                = $startedAt.AddSeconds($sw.Elapsed.TotalSeconds).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -345,12 +407,32 @@ function Invoke-ContinuousCoReviewRecordedRun {
         exit_code               = $exitCode
         timed_out               = $timedOut
         command_succeeded       = $commandSucceeded
-        stdout_meta             = (Get-ContinuousCoReviewBoundedOutputMeta -Text $stdout -TailBytes $OutputTailBytes)
-        stderr_meta             = (Get-ContinuousCoReviewBoundedOutputMeta -Text $stderr -TailBytes $OutputTailBytes)
+        stdout_meta             = (Get-ContinuousCoReviewBoundedOutputMeta -Text $stdout -TailBytes $effectiveTailBytes -TailDisclosureLabel $tailLabel)
+        stderr_meta             = (Get-ContinuousCoReviewBoundedOutputMeta -Text $stderr -TailBytes $effectiveTailBytes -TailDisclosureLabel $tailLabel)
         artifacts               = @($artifacts)
         counts_available        = ($null -ne $testResult)
         test_result             = $testResult
         recorded_at             = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+    # HONEST MISSING-DIAGNOSTICS SURFACING (maintainer decision 2026-07-14): a FAILED command whose output
+    # text was suppressed states explicitly that it cannot be diagnosed from this record alone - the failure
+    # stays a failure (command_succeeded=$false is untouched; missing diagnostics NEVER become a clean
+    # result), and the reviewer's remedy is a human-authorized diagnostic disclosure, not a guess.
+    if ((-not $commandSucceeded) -and ($effectiveTailBytes -le 0)) {
+        $entry['failure_diagnostics'] = 'insufficient-without-disclosure'
+    }
+    # AUDITABLE DISCLOSURE RECORD (durable BY DESIGN - the disclosure exists to reach the reviewer through
+    # the digest-keyed evidence store, and durability is what makes it auditable; clearly labeled sensitive).
+    if ($disclosureApplies) {
+        $entry['diagnostic_disclosure'] = [ordered]@{
+            authorized_by         = [string]$disclosureInfo.authorized_by
+            reason                = [string]$disclosureInfo.disclosure_reason
+            command_id            = [string]$disclosureInfo.command_id
+            disclosed_at          = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            tail_bytes            = [int]$disclosureInfo.max_tail_bytes
+            potentially_sensitive = $true
+            durability            = 'durable-digest-bound'
+        }
     }
     # PLAN IDENTITY persisted INTO the durable record (review finding f5, run 20260714T123137002): the T019
     # evidence join binds on command_id + reviewed digest, so identity/provenance/env_ref NAMES must survive

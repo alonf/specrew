@@ -24,9 +24,14 @@
 #   - BOUNDARY stop: HasPendingVerdict (working boundary ahead of last-authorized, no captured verdict - the #2884
 #     silent advance). REUSES the canonical Get-SpecrewPendingVerdictState (FR-008; not a parallel inference engine).
 #     The block directive carries the CONTIGUOUS last_authorized -> successor verdict marker (145 F2).
-#   - MATERIAL non-boundary stop: the current Stop handover reports changed user files or new commits, but the last
-#     assistant message lacks the five-part context packet. This uses the same rolling-handover material signal as
-#     the resume floor and deliberately does NOT block on prose length alone.
+#   - MATERIAL non-boundary stop: the current Stop handover reports changed user files or new commits AND that
+#     surface DIFFERS from the session BASELINE (captured on SessionStart + advanced at every discharged stop -
+#     maintainer packet-hardening 2026-07-14: a read-only consultation/status turn over files an EARLIER session
+#     left dirty owes nothing), but the last assistant message lacks the five-part context packet. This uses the
+#     same rolling-handover material signal as the resume floor and deliberately does NOT block on prose length
+#     alone. A LONG read-only investigation (>= the assistant-entry threshold since the last human message) owes
+#     the packet too - the re-entry cost is the turn itself. A PostToolUse tracked-change fires a ONE-PER-SURFACE
+#     pre-arrangement nudge so the packet lands IN the original response instead of a forced duplicate turn.
 #   FALSE-POSITIVE GUARD: if the last assistant message already surfaced the exact pending boundary crossing (the
 #   marker the capture path would accept) -> no block.
 #
@@ -56,6 +61,7 @@ $script:SpecrewMaterialHandoverMaxAgeSec = 300  # handover provider runs immedia
 $script:SpecrewMaterialRetryWindowSec = 600  # after a material stop block, keep enforcing only during the forced-continue loop.
 $script:SpecrewSubstantialChars = 600
 $script:SpecrewContinueLoopGuardBound = 3  # FR-045a: bound on consecutive `continue` classifications for the SAME material surface before the guard trips the classifier to a real stop (a runaway continue can never loop forever).
+$script:SpecrewLongTurnAssistantEntries = 15  # maintainer 2026-07-14 fixture (d): a read-only turn with >= this many assistant transcript entries since the last HUMAN message is a LONG investigation and owes the five-part packet (re-entry cost is the turn itself, not the diff).
 
 function Test-SpecrewReentryPacketPresent {
     # >=4 of the 6 canonical section-header phrases present in the (flattened) last assistant message = the packet
@@ -162,7 +168,17 @@ function Get-SpecrewCurrentStopMaterialSignal {
     # provider (order 40) and writes the latest Stop snapshot. Treat it as material ONLY when the current, fresh
     # Stop snapshot's newest activity bullet reports changed user files or new commits. Conversation-only Stop
     # refreshes update recorded_at but do not prepend an activity bullet, so their bullet timestamp will not match.
-    param([string]$ProjectRoot, [AllowNull()][string]$BootstrapDir)
+    # 2026-07-14 (maintainer packet-hardening): -AllowedSources widens the lane (the PostToolUse pre-arrangement
+    # nudge reads PostToolUse-captured bullets); -AnySnapshot bypasses the source/freshness gates entirely (the
+    # SessionStart BASELINE lane wants the last known surface, however old). The surface KEY is computed for ANY
+    # recognized bullet (material or not) and STRIPS the volatile '(+N Specrew-managed)' clause, so managed-count
+    # drift alone never reads as a new material surface.
+    param(
+        [string]$ProjectRoot,
+        [AllowNull()][string]$BootstrapDir,
+        [string[]]$AllowedSources = @('stop', 'agentstop'),
+        [switch]$AnySnapshot
+    )
     $result = [pscustomobject]@{ material = $false; key = $null; reason = 'no-material-signal'; user_file_count = 0; new_commit_count = 0; active_feature = $null; active_boundary = $null }
     try {
         if ([string]::IsNullOrWhiteSpace($BootstrapDir)) { $result.reason = 'no-bootstrap-dir'; return $result }
@@ -180,17 +196,20 @@ function Get-SpecrewCurrentStopMaterialSignal {
         $result.active_feature = [string]$handover.active_feature
         $result.active_boundary = [string]$handover.active_boundary
 
-        $source = [string]$handover.source
-        if ([string]::IsNullOrWhiteSpace($source) -or $source.ToLowerInvariant() -notin @('stop', 'agentstop')) {
-            $result.reason = 'not-stop-handover'; return $result
-        }
+        $recordedAt = [datetime]::UtcNow
+        if (-not $AnySnapshot) {
+            $source = [string]$handover.source
+            if ([string]::IsNullOrWhiteSpace($source) -or $source.ToLowerInvariant() -notin @($AllowedSources | ForEach-Object { $_.ToLowerInvariant() })) {
+                $result.reason = 'not-stop-handover'; return $result
+            }
 
-        $recordedRaw = [string]$handover.recorded_at
-        if ([string]::IsNullOrWhiteSpace($recordedRaw)) { $result.reason = 'missing-recorded-at'; return $result }
-        $recordedAt = [datetime]::Parse($recordedRaw).ToUniversalTime()
-        $age = ([datetime]::UtcNow - $recordedAt).TotalSeconds
-        if ($age -lt -30 -or $age -gt $script:SpecrewMaterialHandoverMaxAgeSec) {
-            $result.reason = 'stale-handover'; return $result
+            $recordedRaw = [string]$handover.recorded_at
+            if ([string]::IsNullOrWhiteSpace($recordedRaw)) { $result.reason = 'missing-recorded-at'; return $result }
+            $recordedAt = [datetime]::Parse($recordedRaw).ToUniversalTime()
+            $age = ([datetime]::UtcNow - $recordedAt).TotalSeconds
+            if ($age -lt -30 -or $age -gt $script:SpecrewMaterialHandoverMaxAgeSec) {
+                $result.reason = 'stale-handover'; return $result
+            }
         }
 
         $activityTitle = 'What I just did (last 3-5 turns or last boundary work)'
@@ -203,12 +222,23 @@ function Get-SpecrewCurrentStopMaterialSignal {
         $rx = [regex]::new('^\s*-\s+\[(?<stamp>[^\]]+)\]\s+\((?<source>[^)]+)\)\s+(?<files>\d+)\s+changed user file\(s\)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
         $m = $rx.Match($bulletText)
         if (-not $m.Success) { $result.reason = 'activity-unrecognized'; return $result }
-        if (($m.Groups['source'].Value).ToLowerInvariant() -notin @('stop', 'agentstop')) { $result.reason = 'activity-not-stop'; return $result }
+        if (-not $AnySnapshot) {
+            if (($m.Groups['source'].Value).ToLowerInvariant() -notin @($AllowedSources | ForEach-Object { $_.ToLowerInvariant() })) { $result.reason = 'activity-not-stop'; return $result }
 
-        $activityAt = [datetime]::Parse($m.Groups['stamp'].Value).ToUniversalTime()
-        if ([math]::Abs(($recordedAt - $activityAt).TotalSeconds) -gt 5) {
-            $result.reason = 'activity-not-current-stop'; return $result
+            $activityAt = [datetime]::Parse($m.Groups['stamp'].Value).ToUniversalTime()
+            if ([math]::Abs(($recordedAt - $activityAt).TotalSeconds) -gt 5) {
+                $result.reason = 'activity-not-current-stop'; return $result
+            }
         }
+
+        # The stable material-surface KEY: the bullet minus its timestamp/source prefix and minus the VOLATILE
+        # '(+N Specrew-managed)' clause (managed scaffolding accumulates independently of user work - its count
+        # drifting must never fake a NEW user-material surface). Computed for ANY recognized bullet so the
+        # SessionStart baseline and the Stop-lane delta compare like with like.
+        $stableMaterialSurface = ($bulletText -replace '^\s*-\s+\[[^\]]+\]\s+\([^)]+\)\s+', '').Trim()
+        $stableMaterialSurface = ($stableMaterialSurface -replace '\s*\(\+\d+\s+Specrew-managed\)', '').Trim()
+        $surfaceHash = Get-SpecrewFireIdentity -Parts @($stableMaterialSurface)
+        $result.key = ('material|{0}' -f $surfaceHash)
 
         $files = [int]$m.Groups['files'].Value
         $commitMatch = [regex]::Match($bulletText, ';\s+(?<commits>\d+)\s+new commit\(s\)', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
@@ -219,15 +249,45 @@ function Get-SpecrewCurrentStopMaterialSignal {
         $result.reason = 'current-stop-material-delta'
         $result.user_file_count = $files
         $result.new_commit_count = $commits
-        $stableMaterialSurface = ($bulletText -replace '^\s*-\s+\[[^\]]+\]\s+\([^)]+\)\s+', '').Trim()
-        $surfaceHash = Get-SpecrewFireIdentity -Parts @($stableMaterialSurface)
-        $result.key = ('material|{0}' -f $surfaceHash)
         return $result
     }
     catch {
         $result.reason = 'material-signal-unreadable'
         return $result
     }
+}
+
+function Get-SpecrewLongTurnSignal {
+    # Maintainer 2026-07-14 fixture (d): a GENUINELY LONG read-only investigation owes the five-part packet even
+    # when no file changed - the human's re-entry cost is the turn itself, not the diff. DETERMINISTIC + CHEAP: a
+    # raw string scan (NO per-line JSON parse - the T099 perf doctrine) of the transcript tail counts assistant
+    # entries SINCE the last HUMAN user line (a '"type":"user"' line WITHOUT a '"tool_use_id"' marker - tool
+    # results ride user-role lines on Claude-format transcripts). Count >= the threshold -> long; with no human
+    # line in the window every assistant line in the tail counts, so a saturated window reads long by count
+    # alone while a short no-human transcript stays quiet. A host whose transcript lines carry neither marker counts 0 and is never
+    # long (fail-open - the documented honest ceiling; the material-delta lane still enforces there). The hash
+    # keys the enforcement to the LAST HUMAN line, which is STABLE across a forced-continue loop, so consecutive
+    # packet-less retries accumulate on ONE loop-guard key and the block cap can trip (never an uncapped loop).
+    param([AllowNull()][string]$TranscriptPath)
+    $result = [pscustomobject]@{ long = $false; assistant_entries = 0; hash = '' }
+    try {
+        if ([string]::IsNullOrWhiteSpace($TranscriptPath) -or -not (Test-Path -LiteralPath $TranscriptPath -PathType Leaf)) { return $result }
+        $tail = @(Get-Content -LiteralPath $TranscriptPath -Tail 200 -Encoding UTF8 -ErrorAction Stop)
+        $assistantRx = [regex]::new('"type"\s*:\s*"assistant"')
+        $userRx = [regex]::new('"type"\s*:\s*"user"')
+        $count = 0; $humanLine = $null
+        for ($i = $tail.Count - 1; $i -ge 0; $i--) {
+            $ln = [string]$tail[$i]
+            if ($assistantRx.IsMatch($ln)) { $count++; continue }
+            if ($userRx.IsMatch($ln) -and -not $ln.Contains('"tool_use_id"')) { $humanLine = $ln; break }
+        }
+        $result.assistant_entries = $count
+        $result.long = ($count -ge $script:SpecrewLongTurnAssistantEntries)
+        $anchor = if ($null -ne $humanLine) { $humanLine } else { 'saturated-no-human-line-in-window' }
+        $result.hash = Get-SpecrewFireIdentity -Parts @($anchor)
+        return $result
+    }
+    catch { return $result }
 }
 
 function Reset-SpecrewBlockCount {
@@ -328,8 +388,75 @@ try {
     if ([string]::IsNullOrWhiteSpace($projectRoot) -or -not (Test-Path -LiteralPath (Join-Path $projectRoot '.specrew'))) {
         return  # not a governed project root - nothing to check.
     }
-    if (-not [string]::IsNullOrWhiteSpace($sourceEventArg) -and ($sourceEventArg.ToLowerInvariant() -notin @('stop', 'agentstop'))) {
-        return  # only an end-of-turn Stop-class event (the registration already gates this; defensive).
+    $eventLower = if ([string]::IsNullOrWhiteSpace($sourceEventArg)) { 'stop' } else { $sourceEventArg.ToLowerInvariant() }
+    if ($eventLower -notin @('stop', 'agentstop', 'sessionstart', 'posttooluse')) {
+        return  # Stop-class enforcement + the SessionStart baseline + the PostToolUse nudge lanes only (defensive).
+    }
+
+    # --- SESSIONSTART BASELINE lane (maintainer packet-hardening 2026-07-14): absorb the CURRENT dirty-tree
+    # surface as this session's baseline so a read-only turn is never blamed for files an EARLIER session (or an
+    # external writer) left dirty - the false material demand that forced a duplicate five-part packet after a
+    # plain status answer. Best-effort + silent: any failure just leaves no baseline (the Stop lane then fails
+    # toward enforcement, the safe direction). ---
+    if ($eventLower -eq 'sessionstart') {
+        try {
+            $bd = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
+            $sig = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bd -AnySnapshot
+            $blKey = if ($null -ne $sig -and -not [string]::IsNullOrWhiteSpace([string]$sig.key)) { [string]$sig.key } else { 'baseline|no-surface' }
+            Set-SpecrewMaterialSatisfiedKey -Path (Join-Path $projectRoot '.specrew/runtime/conformance-material-baseline.json') -Key $blKey
+        }
+        catch { $null = $_ }
+        return
+    }
+
+    # --- POSTTOOLUSE PRE-ARRANGEMENT NUDGE lane (maintainer packet-hardening 2026-07-14): when a tool call
+    # inside the CURRENT turn produces a tracked user-file change (the handover provider, order 30, just
+    # refreshed on this same event), remind the agent ONCE per material surface to END its final message with
+    # the five-heading packet - arranging the packet IN the original response instead of rejecting a complete
+    # response afterwards and forcing a duplicate turn. Non-blocking, deduplicated, fail-open. ---
+    if ($eventLower -eq 'posttooluse') {
+        try {
+            $bd = Resolve-SpecrewBootstrapDir -ProjectRoot $projectRoot
+            $sig = Get-SpecrewCurrentStopMaterialSignal -ProjectRoot $projectRoot -BootstrapDir $bd -AllowedSources @('posttooluse')
+            if ($null -eq $sig -or -not [bool]$sig.material) { return }
+            $key = [string]$sig.key
+            $rt = Join-Path $projectRoot '.specrew/runtime'
+            $baseKey = Get-SpecrewMaterialSatisfiedKey -Path (Join-Path $rt 'conformance-material-baseline.json')
+            if (-not [string]::IsNullOrWhiteSpace($baseKey) -and ($key -eq $baseKey)) { return }        # pre-session surface, not this turn's work
+            $satKey = Get-SpecrewMaterialSatisfiedKey -Path (Join-Path $rt 'conformance-material-satisfied.json')
+            if (-not [string]::IsNullOrWhiteSpace($satKey) -and ($key -eq $satKey)) { return }          # a packet already covered this surface
+            $nudgedPath = Join-Path $rt 'conformance-material-nudged.json'
+            $nudgedKey = Get-SpecrewMaterialSatisfiedKey -Path $nudgedPath
+            if (-not [string]::IsNullOrWhiteSpace($nudgedKey)) {
+                if ($nudgedKey -eq $key) { return }                                                     # this exact surface already nudged
+                # ONE reminder per OBLIGATION WINDOW: while an earlier nudge's surface is still undischarged
+                # (not absorbed into the baseline, not satisfied by a packet), every additional touched file
+                # mutates the surface key - re-nudging each mutation is a per-tool-call drumbeat, not signal.
+                if (($nudgedKey -ne $baseKey) -and ($nudgedKey -ne $satKey)) { return }
+            }
+            # Workshop / pre-boundary intake exclusion (the same rule the Stop lane applies): a lens-workshop or
+            # pre-boundary scaffold turn owes no packet, so it gets no nudge either.
+            $featureRef = [string]$sig.active_feature
+            if (Test-SpecrewWorkshopInProgress -ProjectRoot $projectRoot -BootstrapDir $bd -FeatureRef $featureRef) { return }
+            try {
+                $scP = Join-Path $projectRoot '.specrew/start-context.json'
+                if (Test-Path -LiteralPath $scP -PathType Leaf) {
+                    $scObj = Get-Content -LiteralPath $scP -Raw -Encoding UTF8 | ConvertFrom-Json
+                    $hasBoundary = ($scObj.PSObject.Properties['session_state'] -and $null -ne $scObj.session_state -and $scObj.session_state.PSObject.Properties['boundary_type'] -and -not [string]::IsNullOrWhiteSpace([string]$scObj.session_state.boundary_type))
+                    $hasAuth = $false
+                    if ($scObj.PSObject.Properties['boundary_enforcement'] -and $null -ne $scObj.boundary_enforcement) {
+                        if ($scObj.boundary_enforcement.PSObject.Properties['last_authorized_boundary'] -and -not [string]::IsNullOrWhiteSpace([string]$scObj.boundary_enforcement.last_authorized_boundary)) { $hasAuth = $true }
+                        if ($scObj.boundary_enforcement.PSObject.Properties['verdict_history'] -and @($scObj.boundary_enforcement.verdict_history).Count -gt 0) { $hasAuth = $true }
+                    }
+                    if ((-not $hasBoundary) -and (-not $hasAuth) -and (-not (Test-SpecrewWorkshopComplete -ProjectRoot $projectRoot -BootstrapDir $bd -FeatureRef $featureRef))) { return }
+                }
+            }
+            catch { $null = $_ }
+            Set-SpecrewMaterialSatisfiedKey -Path $nudgedPath -Key $key
+            Write-Output ('[specrew-conformance] MATERIAL WORK IN PROGRESS this turn ({0} changed user file(s), {1} new commit(s)). When you finish, END your final message with the five-heading non-boundary context packet - ## What I Just Did / ## Why I Stopped / ## What Needs Your Review / ## What Happens Next / ## What I Need From You, every artifact reference a bare file:/// URL. Rendering it IN this response is the contract; a packet-less stop after material work gets force-continued into a duplicate turn.' -f [int]$sig.user_file_count, [int]$sig.new_commit_count)
+        }
+        catch { $null = $_ }
+        return
     }
 
     # --- component resolution (fail-open: a component that cannot load simply disables its lane) ---
@@ -429,6 +556,36 @@ try {
     $materialStop = ($null -ne $materialSignal -and [bool]$materialSignal.material)
     $blockStatePath = Join-Path $projectRoot '.specrew/runtime/conformance-stop-block.json'
     $materialSatisfiedPath = Join-Path $projectRoot '.specrew/runtime/conformance-material-satisfied.json'
+    $materialBaselinePath = Join-Path $projectRoot '.specrew/runtime/conformance-material-baseline.json'
+    # The FILE-SURFACE key of the current snapshot (material or not) - what the session baseline advances to
+    # once this stop's obligation is discharged. Captured BEFORE any long-turn key override.
+    $fileSurfaceKey = if ($null -ne $materialSignal) { [string]$materialSignal.key } else { '' }
+    # --- TURN-DELTA GATE (maintainer packet-hardening 2026-07-14): a dirty tree is MATERIAL for THIS stop only
+    # when its surface DIFFERS from the session baseline captured at SessionStart / the last discharged stop.
+    # Files an earlier session (or an external writer) left dirty were absorbed into the baseline, so an
+    # ordinary read-only consultation or status turn no longer owes a packet for work it did not do. No
+    # baseline on disk (a host without SessionStart hooks, a stale deployment) -> fail toward enforcement,
+    # exactly the pre-existing behavior. ---
+    $materialBaselineKey = Get-SpecrewMaterialSatisfiedKey -Path $materialBaselinePath
+    $materialBaselineSuppressed = $false
+    if ($materialStop -and -not [string]::IsNullOrWhiteSpace($materialBaselineKey) -and ([string]$materialSignal.key -eq $materialBaselineKey)) {
+        $materialStop = $false
+        $materialBaselineSuppressed = $true
+    }
+    # --- LONG-TURN lane (maintainer fixture (d) 2026-07-14): a read-only turn with no material delta still owes
+    # the packet when it was a GENUINELY LONG investigation (assistant-entry count since the last human message
+    # >= the threshold) - the re-entry cost is the turn, not the diff. Deterministic, cheap (raw string scan),
+    # fail-open on unrecognized transcript shapes. ---
+    $longTurn = $null
+    if (-not $materialStop -and $null -ne $materialSignal) {
+        $longTurn = Get-SpecrewLongTurnSignal -TranscriptPath $transcriptPathArg
+        if ($null -ne $longTurn -and [bool]$longTurn.long) {
+            $materialStop = $true
+            $materialSignal.material = $true
+            $materialSignal.key = ('material|longturn|{0}' -f [string]$longTurn.hash)
+            $materialSignal.reason = 'long-turn-investigation'
+        }
+    }
     $continueGuardPath = Join-Path $projectRoot '.specrew/runtime/conformance-continue-guard.json'  # FR-045a continue loop-guard store ({key,count,epoch}); keyed by "continue|<materialSurfaceHash>", NO time window (a changed surface = intervening progress = reset to 0).
     $existingBlockRecord = Get-SpecrewBlockRecord -Path $blockStatePath
     $materialRetryKey = Get-SpecrewRecentMaterialRetryKey -Record $existingBlockRecord
@@ -718,6 +875,14 @@ try {
             Set-SpecrewMaterialSatisfiedKey -Path $materialSatisfiedPath -Key ([string]$materialSignal.key)
         }
         Reset-SpecrewBlockCount -Path $blockStatePath
+        # BASELINE ADVANCE (maintainer packet-hardening 2026-07-14): this stop's obligation is DISCHARGED -
+        # either nothing was owed, or the packet was rendered for the material surface - so the current FILE
+        # surface becomes the new session baseline: later read-only turns over the same dirty tree stay quiet,
+        # while any NEW work re-arms the delta. A blocked / capped / intermediate stop does NOT advance the
+        # baseline (the obligation is still outstanding).
+        if ((-not [string]::IsNullOrWhiteSpace($fileSurfaceKey)) -and (($blockKind -eq 'none') -or ($materialStop -and $packetPresent))) {
+            Set-SpecrewMaterialSatisfiedKey -Path $materialBaselinePath -Key $fileSurfaceKey
+        }
     }
 
     # If not blocking (not warranted, or capped), surface the cooperative nudges instead.
@@ -753,7 +918,7 @@ try {
             # NO content snippet is recorded: dx_lat_len + dx_lat_hits diagnose a false-negative (hits<4 = the
             # packet was not seen; len distinguishes a short stale message from the long packet) WITHOUT writing
             # any conversation text to the (local, git-ignored) journal. Maintainer privacy call 2026-06-28.
-            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)) }
+            $rec = [pscustomobject]@{ event = $evt; recorded_at = (Get-Date).ToUniversalTime().ToString('o'); has_pending = $hasPending; working = $jWorking; last_authorized = $jAuth; substantial = $substantial; material = $materialStop; block_kind = $blockKind; stop_intent = $stopIntentOutcome; stop_intent_reason = $stopIntentReason; intake = $intakeHit; raw = $rawHit; host = $hostKindArg; source = $sourceEventArg; dx_transcript_arg = (-not [string]::IsNullOrWhiteSpace($transcriptPathArg)); dx_transcript_exists = ((-not [string]::IsNullOrWhiteSpace($transcriptPathArg)) -and (Test-Path -LiteralPath $transcriptPathArg -PathType Leaf)); dx_cc_loaded = $ccLoaded; dx_lat_len = $diagLat.Length; dx_lat_hits = $diagHits; dx_packet_present = $packetPresent; dx_material_retry = (-not [string]::IsNullOrWhiteSpace($materialRetryKey)); dx_baseline_suppressed = $materialBaselineSuppressed; dx_long_turn = ($null -ne $longTurn -and [bool]$longTurn.long) }
             ($rec | ConvertTo-Json -Compress) | Add-Content -LiteralPath $journalPath -Encoding UTF8
         }
         catch { $null = $_ }

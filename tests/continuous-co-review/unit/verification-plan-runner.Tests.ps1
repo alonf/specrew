@@ -19,6 +19,12 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/verification-plan-contract.ps1')
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/verification-plan-runner.ps1')
 
+        # The opaque third command, PER PLATFORM (paired cross-platform evidence, maintainer 2026-07-14):
+        # cmd.exe on Windows, sh on Linux/macOS - both bare names the pre-spawn resolver must resolve.
+        $script:ShellExe = if ($IsWindows) { 'cmd' } else { 'sh' }
+        $script:ShellEchoArgs = if ($IsWindows) { @('/c', 'echo ok') } else { @('-c', 'echo ok') }
+        $script:ShellDoneArgs = if ($IsWindows) { @('/c', 'echo done') } else { @('-c', 'echo done') }
+
         function New-PlanRunRepo {
             $repo = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
             New-Item -ItemType Directory -Path $repo -Force | Out-Null
@@ -44,7 +50,7 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
             commands       = @(
                 [pscustomobject]@{ command_id = 'cmd-git'; executable = 'git'; arguments = @('--version'); provenance = [pscustomobject]@{ kind = 'project-detected'; source = 'git-detected' }; label = 'git (opaque)' },
                 [pscustomobject]@{ command_id = 'cmd-pwsh'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0'); provenance = [pscustomobject]@{ kind = 'profile-selected'; source = 'verify-profile'; profile = 'pwsh-ci' }; label = 'pwsh (opaque)' },
-                [pscustomobject]@{ command_id = 'cmd-cmd'; executable = 'cmd'; arguments = @('/c', 'echo ok'); provenance = [pscustomobject]@{ kind = 'project-config'; source = '.specrew/verify.yml' }; label = 'cmd (opaque)' }
+                [pscustomobject]@{ command_id = 'cmd-shell'; executable = $script:ShellExe; arguments = $script:ShellEchoArgs; provenance = [pscustomobject]@{ kind = 'project-config'; source = '.specrew/verify.yml' }; label = 'shell (opaque)' }
             )
         }
         $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
@@ -55,14 +61,16 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         @($result.evidence).Count | Should -Be 3 -Because 'one evidence record per declared command'
 
         $ev = @($result.evidence)
-        # ORDER preserved: evidence[i] corresponds to declared command[i].
-        [string]$ev[0].command.executable | Should -Be 'git'
-        [string]$ev[1].command.executable | Should -Be 'pwsh'
-        [string]$ev[2].command.executable | Should -Be 'cmd'
+        # ORDER preserved: evidence[i] corresponds to declared command[i]. The record carries the RESOLVED
+        # full path (what actually executed) + the supplier-declared name (2026-07-14: pre-spawn resolution).
+        [string]$ev[0].command.declared_executable | Should -Be 'git'
+        [string]$ev[1].command.declared_executable | Should -Be 'pwsh'
+        [string]$ev[2].command.declared_executable | Should -Be $script:ShellExe
+        foreach ($e in $ev) { [System.IO.Path]::IsPathRooted([string]$e.command.executable) | Should -BeTrue }
         # each carries ITS command_id and provenance OBJECT, in order.
         [string]$ev[0].command_id | Should -Be 'cmd-git'
         [string]$ev[1].command_id | Should -Be 'cmd-pwsh'
-        [string]$ev[2].command_id | Should -Be 'cmd-cmd'
+        [string]$ev[2].command_id | Should -Be 'cmd-shell'
         [string]$ev[0].provenance.kind | Should -Be 'project-detected'
         [string]$ev[1].provenance.kind | Should -Be 'profile-selected'
         [string]$ev[1].provenance.profile | Should -Be 'pwsh-ci'
@@ -85,7 +93,7 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
             commands       = @(
                 [pscustomobject]@{ command_id = 'ok1'; executable = 'git'; arguments = @('--version'); provenance = [pscustomobject]@{ kind = 'project-detected'; source = 'git' } },
                 [pscustomobject]@{ command_id = 'boom'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 7'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } },
-                [pscustomobject]@{ command_id = 'ok2'; executable = 'cmd'; arguments = @('/c', 'echo done'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+                [pscustomobject]@{ command_id = 'ok2'; executable = $script:ShellExe; arguments = $script:ShellDoneArgs; provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
             )
         }
         $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
@@ -170,7 +178,7 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
             plan_id        = 'plan-join-run'
             commands       = @(
                 [pscustomobject]@{ command_id = 'j1'; executable = 'git'; arguments = @('--version'); provenance = [pscustomobject]@{ kind = 'project-detected'; source = 'git' } },
-                [pscustomobject]@{ command_id = 'j2'; executable = 'cmd'; arguments = @('/c', 'echo ok'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+                [pscustomobject]@{ command_id = 'j2'; executable = $script:ShellExe; arguments = $script:ShellEchoArgs; provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
             )
         }
         $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
@@ -247,6 +255,115 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
             Remove-Item Env:CCR_TEST_ALLOWED -ErrorAction SilentlyContinue
             Remove-Item Env:CCR_TEST_SECRET -ErrorAction SilentlyContinue
         }
+    }
+
+    It 'ENGINE BASELINE EVIDENCE (paired, cross-platform): a plan child launches and succeeds with the EMPTY-map constructed environment — the runtime proof behind the (empty) normative baseline (finding f1, run 20260714T130410888)' {
+        $repo = New-PlanRunRepo
+        $pwshExe = (Get-Process -Id $PID).Path
+        # No env_refs declared -> the child receives EXACTLY the engine baseline (currently empty). The
+        # command still launching + exiting 0 IS the evidence that the baseline needs nothing more on this
+        # platform; this test runs on Windows AND Linux (the paired evidence the maintainer required).
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-baseline-evidence'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'bare'; executable = $pwshExe; arguments = @('-NoProfile', '-NonInteractive', '-Command', 'Set-Content -LiteralPath launched.txt -Value ok -NoNewline; exit 0'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+        $result.all_succeeded | Should -BeTrue -Because 'the engine baseline (empty) is sufficient to launch a child on this platform - runtime evidence, not assertion'
+        Get-Content -LiteralPath (Join-Path $repo 'launched.txt') -Raw | Should -Be 'ok'
+        # And the baseline function itself is EMPTY on this platform - any future addition demands new evidence.
+        @(Get-ContinuousCoReviewVerificationEngineBaseline).Count | Should -Be 0
+        # The constructed map carries ONLY declared refs that exist ambiently - nothing implicit.
+        @((Get-ContinuousCoReviewVerificationChildEnvironment -EnvRefs @()).Keys).Count | Should -Be 0
+    }
+
+    It 'EXCLUDES user-identity + infrastructure ambient values from the child — HOME/USERPROFILE/APPDATA/LOCALAPPDATA/TEMP absent; a parent-PATH sentinel does NOT flow (maintainer decision 2026-07-14)' {
+        $repo = New-PlanRunRepo
+        $pwshExe = (Get-Process -Id $PID).Path
+        $sentinelDir = 'ccr-path-sentinel-dir-5150'
+        $origPath = [System.Environment]::GetEnvironmentVariable('PATH')
+        [System.Environment]::SetEnvironmentVariable('PATH', ($origPath + [System.IO.Path]::PathSeparator + $sentinelDir))
+        try {
+            # Probe the child's view: the maintainer-excluded identity paths must be ABSENT, and the parent's
+            # PATH content (carrying the sentinel) must NOT flow (the child may self-synthesize its own PATH;
+            # what is forbidden is INHERITING the ambient one).
+            $cmdText = 'Set-Content -LiteralPath childenv.txt -Value ("h=[$env:HOME] u=[$env:USERPROFILE] a=[$env:APPDATA] l=[$env:LOCALAPPDATA] t=[$env:TEMP] p=[$env:PATH]") -NoNewline'
+            $plan = [pscustomobject]@{
+                schema_version = '1.0'
+                plan_id        = 'plan-exclusions'
+                commands       = @(
+                    [pscustomobject]@{ command_id = 'probe'; executable = $pwshExe; arguments = @('-NoProfile', '-NonInteractive', '-Command', $cmdText); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+                )
+            }
+            $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+            @($result.evidence)[0].command_succeeded | Should -BeTrue
+            $probe = Get-Content -LiteralPath (Join-Path $repo 'childenv.txt') -Raw
+            $probe | Should -Match 'h=\[\]' -Because 'HOME is excluded from the automatic baseline (maintainer ruling)'
+            $probe | Should -Match 'u=\[\]' -Because 'USERPROFILE is excluded'
+            $probe | Should -Match 'a=\[\]' -Because 'APPDATA is excluded'
+            $probe | Should -Match 'l=\[\]' -Because 'LOCALAPPDATA is excluded'
+            $probe | Should -Match 't=\[\]' -Because 'TEMP is a tool concern, declared via env_refs when needed'
+            $probe | Should -Not -Match 'ccr-path-sentinel-dir-5150' -Because 'the ambient parent PATH does not flow to the child (the executable was resolved BEFORE spawn)'
+        }
+        finally { [System.Environment]::SetEnvironmentVariable('PATH', $origPath) }
+    }
+
+    It 'RESOLVES a bare-name executable BEFORE spawn (ambient PATH, full path recorded with the declared name); an UNRESOLVABLE executable is a RECORDED failure and the plan continues' {
+        $repo = New-PlanRunRepo
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-resolution'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'ghost'; executable = 'ccr-definitely-not-a-real-executable-0451'; arguments = @(); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } },
+                [pscustomobject]@{ command_id = 'bare-pwsh'; executable = 'pwsh'; arguments = @('-NoProfile', '-NonInteractive', '-Command', 'exit 0'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+        @($result.evidence).Count | Should -Be 2 -Because 'the unresolvable command is RECORDED, never dropped; the next command still runs'
+        $result.all_succeeded | Should -BeFalse
+        $ev = @($result.evidence)
+        $ev[0].command_succeeded | Should -BeFalse
+        [string]$ev[0].classification | Should -Be 'executable-not-resolvable'
+        $ev[1].command_succeeded | Should -BeTrue -Because 'the bare name resolved to a full path against the AMBIENT parent environment before spawn'
+        # the durable record carries the RESOLVED full path + the supplier-declared name.
+        [System.IO.Path]::IsPathRooted([string]$ev[1].command.executable) | Should -BeTrue
+        [string]$ev[1].command.declared_executable | Should -Be 'pwsh'
+    }
+
+    It 'plan-level DiagnosticDisclosure: applied ONLY to the named command_id; a malformed disclosure FAILS FAST with zero commands run' {
+        $repo = New-PlanRunRepo
+        $pwshExe = (Get-Process -Id $PID).Path
+        $say = '[Console]::Out.WriteLine(''diagnostic-detail-for-reviewer''); exit 0'
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-disclosure'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'quiet'; executable = $pwshExe; arguments = @('-NoProfile', '-Command', $say); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } },
+                [pscustomobject]@{ command_id = 'disclosed'; executable = $pwshExe; arguments = @('-NoProfile', '-Command', $say); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $disclosure = [pscustomobject]@{ authorized_by = 'Alon Fliess'; reason = 'reviewer cannot conclude without the failing output'; command_id = 'disclosed' }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan -DiagnosticDisclosure $disclosure
+        $result.all_succeeded | Should -BeTrue
+        $ev = @($result.evidence)
+        [string]$ev[0].stdout_meta.tail_disclosure | Should -Be 'suppressed' -Because 'the disclosure is scoped: the OTHER command stays private'
+        [string]$ev[1].stdout_meta.tail_disclosure | Should -Be 'authorized-diagnostic'
+        [string]$ev[1].stdout_meta.truncated_tail | Should -Match 'diagnostic-detail-for-reviewer'
+        [string]$ev[1].diagnostic_disclosure.authorized_by | Should -Be 'Alon Fliess'
+        # MALFORMED disclosure -> fail-fast, ZERO side effects (mirrors the malformed-identity gate).
+        $repo2 = New-PlanRunRepo
+        $plan2 = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-disclosure-bad'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'c1'; executable = $pwshExe; arguments = @('-NoProfile', '-Command', 'Set-Content -LiteralPath ran.txt -Value x'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        { Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo2 -Plan $plan2 -DiagnosticDisclosure ([pscustomobject]@{ reason = 'r'; command_id = 'c1' }) } |
+            Should -Throw -ExpectedMessage '*DiagnosticDisclosure*'
+        Test-Path -LiteralPath (Join-Path $repo2 'ran.txt') | Should -BeFalse -Because 'a malformed authorization runs ZERO commands'
     }
 
     It 'persists NO output text for a plan command — a printed sentinel is absent from the digest-keyed store (finding f3, run 20260714T123137002)' {

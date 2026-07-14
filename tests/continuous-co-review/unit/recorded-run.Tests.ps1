@@ -68,12 +68,14 @@ Describe 'T018 universal recorded-run runner (FR-015 amended - language/framewor
         [int]$e.test_result.counts.skipped | Should -Be 3
     }
 
-    It 'REDACTS credential-shaped output before persistence — a sentinel secret printed to stdout AND stderr is absent from the durable record (finding f3, run 20260714T123137002)' {
+    It 'REDACTS credential-shaped output on an EXPLICITLY opted-in tail — a sentinel secret printed to stdout AND stderr is absent from the durable record (finding f3, run 20260714T123137002; opt-in per the 2026-07-14 default flip)' {
         $repo = New-RunRepo
         # The secret VALUES are assembled at runtime so they exist ONLY in the output streams — never as an
         # argument literal (declared arguments are recorded by design; output is the f3 leak channel).
+        # -OutputTailBytes is EXPLICIT here: the default is now 0 (suppression), so redaction is the
+        # defense-in-depth layer for callers who opt into a tail.
         $cmd = '[Console]::Out.WriteLine(''MY_API_TOKEN='' + (''stdout-sentinel'' + ''-secret-'' + ''9731'')); [Console]::Error.WriteLine(''password: '' + (''stderr-sentinel'' + ''-secret-'' + ''9732'')); exit 0'
-        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd)
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd) -OutputTailBytes 2048
         $e.command_succeeded | Should -BeTrue
         # the DURABLE record — reload from the digest-keyed store, not the in-memory return.
         $storePath = Join-Path $repo ('.specrew/review/test-evidence/' + [string]$e.reviewed_digest_tree_id + '.json')
@@ -81,19 +83,71 @@ Describe 'T018 universal recorded-run runner (FR-015 amended - language/framewor
         $raw | Should -Not -Match 'stdout-sentinel-secret-9731' -Because 'a credential-shaped stdout value is redacted before serialization'
         $raw | Should -Not -Match 'stderr-sentinel-secret-9732' -Because 'a credential-shaped stderr value is redacted before serialization'
         $raw | Should -Match '\[redacted\]'
+        [string]$e.stdout_meta.tail_disclosure | Should -Be 'bounded-redacted-tail' -Because 'an explicit caller opt-in is labeled honestly'
         # the integrity facts still describe the RAW output.
         [int]$e.stdout_meta.byte_count | Should -BeGreaterThan 0
         [int]$e.stderr_meta.byte_count | Should -BeGreaterThan 0
     }
 
-    It 'OutputTailBytes 0 SUPPRESSES persisted output text entirely — count/hash only (finding f3 suppression mode)' {
+    It 'the DEFAULT path persists NO output text — an UNSTRUCTURED secret printed alone is absent from the durable record (maintainer decision 2026-07-14: private by default)' {
         $repo = New-RunRepo
-        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', '(''arbitrary-output'' + ''-sentinel-'' + ''3141''); exit 0') -OutputTailBytes 0
+        # The sentinel is deliberately NOT credential-shaped (no KEY=VALUE, no bearer/header syntax): a bare
+        # token printed on its own line is exactly what no pattern redactor can recognize — the falsification
+        # the default-suppression decision exists for.
+        $cmd = '[Console]::Out.WriteLine((''svE9'' + ''kQ2rT8'' + ''xW4bare'')); [Console]::Error.WriteLine((''nZ7p'' + ''M3cJ6'' + ''hL1bare'')); exit 0'
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd)
         $e.command_succeeded | Should -BeTrue
         [string]$e.stdout_meta.truncated_tail | Should -Be ''
-        [int]$e.stdout_meta.byte_count | Should -BeGreaterThan 0
+        [string]$e.stdout_meta.tail_disclosure | Should -Be 'suppressed'
+        [string]$e.stderr_meta.tail_disclosure | Should -Be 'suppressed'
         $raw = Get-Content -LiteralPath (Join-Path $repo ('.specrew/review/test-evidence/' + [string]$e.reviewed_digest_tree_id + '.json')) -Raw
-        $raw | Should -Not -Match 'arbitrary-output-sentinel-3141' -Because 'suppression persists NO output text at all'
+        $raw | Should -Not -Match 'svE9kQ2rT8xW4bare' -Because 'the default path persists NO output text, so an unrecognizable secret cannot leak'
+        $raw | Should -Not -Match 'nZ7pM3cJ6hL1bare'
+        # the integrity facts remain.
+        [int]$e.stdout_meta.byte_count | Should -BeGreaterThan 0
+        [string]$e.stdout_meta.sha256 | Should -Match '^[0-9a-f]{64}$'
+    }
+
+    It 'a FAILED command with suppressed output states failure_diagnostics=insufficient-without-disclosure — and stays a FAILURE (never a clean result)' {
+        $repo = New-RunRepo
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', '[Console]::Error.WriteLine(''the real cause''); exit 9')
+        $e.command_succeeded | Should -BeFalse
+        [int]$e.exit_code | Should -Be 9
+        [string]$e.failure_diagnostics | Should -Be 'insufficient-without-disclosure' -Because 'missing diagnostics are surfaced honestly, never papered over'
+    }
+
+    It 'HUMAN-AUTHORIZED diagnostic disclosure is command-SCOPED, BOUNDED, AUDITABLE, labeled sensitive, and DURABLE (maintainer decision 2026-07-14)' {
+        $repo = New-RunRepo
+        $cmd = '[Console]::Out.WriteLine(''diagnostic line for the reviewer''); exit 0'
+        $disclosure = [pscustomobject]@{ authorized_by = 'Alon Fliess'; reason = 'failure not diagnosable from exit code alone'; command_id = 'target-cmd'; max_tail_bytes = 10485760 }
+        # SCOPED: a run whose CommandId does NOT match the disclosure stays suppressed.
+        $other = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd) -CommandId 'other-cmd' -DiagnosticDisclosure $disclosure
+        [string]$other.stdout_meta.tail_disclosure | Should -Be 'suppressed' -Because 'disclosure is scoped to the ONE named command_id'
+        $other.PSObject.Properties.Name | Should -Not -Contain 'diagnostic_disclosure'
+        # APPLIED: the named command persists a bounded, redacted, sensitive-labeled tail + the audit record.
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd) -CommandId 'target-cmd' -DiagnosticDisclosure $disclosure
+        [string]$e.stdout_meta.tail_disclosure | Should -Be 'authorized-diagnostic'
+        [string]$e.stdout_meta.truncated_tail | Should -Match 'diagnostic line for the reviewer'
+        [int]$e.diagnostic_disclosure.tail_bytes | Should -Be 8192 -Because 'a 10MB request is CLAMPED to the engine cap - disclosure is bounded, never a dump'
+        [string]$e.diagnostic_disclosure.authorized_by | Should -Be 'Alon Fliess'
+        [string]$e.diagnostic_disclosure.reason | Should -Not -BeNullOrEmpty
+        $e.diagnostic_disclosure.potentially_sensitive | Should -BeTrue
+        [string]$e.diagnostic_disclosure.durability | Should -Be 'durable-digest-bound'
+        # DURABLE: the disclosure survives serialization (that is what makes it auditable).
+        $rec = Get-Content -LiteralPath (Join-Path $repo ('.specrew/review/test-evidence/' + [string]$e.reviewed_digest_tree_id + '.json')) -Raw | ConvertFrom-Json
+        $persisted = @($rec.runs) | Where-Object { [string]$_.command_id -eq 'target-cmd' }
+        [string]$persisted.diagnostic_disclosure.authorized_by | Should -Be 'Alon Fliess'
+        [string]$persisted.stdout_meta.truncated_tail | Should -Match 'diagnostic line for the reviewer'
+    }
+
+    It 'a MALFORMED disclosure authorization FAILS LOUD — never silently honored, never silently dropped' {
+        $repo = New-RunRepo
+        { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', 'exit 0') -CommandId 'c1' -DiagnosticDisclosure ([pscustomobject]@{ reason = 'r'; command_id = 'c1' }) } |
+            Should -Throw -ExpectedMessage '*authorized_by*' -Because 'disclosure without a human authorizer is not a disclosure'
+        { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', 'exit 0') -CommandId 'c1' -DiagnosticDisclosure ([pscustomobject]@{ authorized_by = 'a'; command_id = 'c1' }) } |
+            Should -Throw -ExpectedMessage '*reason*'
+        { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', 'exit 0') -CommandId 'c1' -DiagnosticDisclosure ([pscustomobject]@{ authorized_by = 'a'; reason = 'r' }) } |
+            Should -Throw -ExpectedMessage '*command_id*' -Because 'an unscoped (blanket) disclosure is refused'
     }
 
     It '5. a REQUIRED result that is MISSING or MALFORMED FAILS LOUDLY (never degrades to a richer claim)' {

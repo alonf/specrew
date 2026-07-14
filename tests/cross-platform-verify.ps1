@@ -30,7 +30,13 @@ $units = @(
     'tests/continuous-co-review/unit/hook-health-receipt.Tests.ps1',
     'tests/continuous-co-review/unit/codex-headless-preflight.Tests.ps1',
     'tests/continuous-co-review/unit/host-support-reconciliation.Tests.ps1',
-    'tests/continuous-co-review/unit/test-evidence-recorder.Tests.ps1'
+    'tests/continuous-co-review/unit/test-evidence-recorder.Tests.ps1',
+    # 2026-07-14 (maintainer f2/f3 residual decision): the verification-plan child-environment (empty-map +
+    # evidence-justified engine baseline) and the recorder's private-by-default output contract carry PAIRED
+    # cross-platform evidence - these suites ARE that evidence and MUST run on both OSes.
+    'tests/continuous-co-review/unit/verification-plan-contract.Tests.ps1',
+    'tests/continuous-co-review/unit/verification-plan-runner.Tests.ps1',
+    'tests/continuous-co-review/unit/recorded-run.Tests.ps1'
 )
 foreach ($u in $units) {
     $c = New-PesterConfiguration; $c.Run.Path = (Join-Path $repo $u); $c.Output.Verbosity = 'None'; $c.Run.PassThru = $true

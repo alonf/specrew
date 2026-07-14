@@ -20,37 +20,85 @@ Set-StrictMode -Version Latest
 #    provenance (the object) + env_ref NAMES into the digest-keyed store (the T019 join identity).
 #  - working_directory + result_path are REPOSITORY-relative (the schema semantics) and are anchored
 #    against RepoRoot before execution - never against the caller process CWD.
-#  - env_refs have EXECUTION semantics: the child process receives ONLY a safe non-secret baseline + the
-#    declared env_ref NAMES (values resolved from the ambient environment at spawn) - an unlisted ambient
-#    secret is structurally absent from the child. Env VALUES are NEVER recorded; persisted records carry
-#    NO output text for plan commands (count/hash only), so printed output cannot leak into evidence.
+#  - env_refs have EXECUTION semantics AND are the AUTHORITATIVE allowlist: the child environment is built
+#    from an EMPTY map + the normative (currently empty) engine baseline + the declared env_ref NAMES
+#    (values resolved from the ambient environment at spawn) - every unlisted ambient value is structurally
+#    absent from the child. The executable is resolved to a full path BEFORE the environment is constructed,
+#    so an inherited PATH is never implicitly required. Env VALUES are NEVER recorded; persisted records
+#    carry NO output text for plan commands unless a HUMAN-AUTHORIZED, command-scoped diagnostic disclosure
+#    is supplied (count/hash only by default), so printed output cannot leak into evidence.
 #
 # WHAT THIS NEVER DOES: it never discovers, infers, selects, or invents a command — it executes EXACTLY
 # what the plan declares. Command DISCOVERY is a separate downstream supplier's job; T018 executes and
 # T019 injects, neither selects.
 
-# The CONSTRUCTED child environment for a supplier-declared verification command (review finding f2, run
-# 20260714T123137002 - env_refs must have EXECUTION semantics, not just record semantics): a SAFE BASELINE of
-# non-secret infrastructure variable NAMES + the plan-declared env_ref NAMES, each copied from the ambient
-# environment AT SPAWN when present there. Everything else - every unlisted ambient value, hence every ambient
-# secret - is structurally ABSENT from the child process. Values pass through process creation only; the
-# evidence records env_ref NAMES separately and VALUES never (redaction by construction).
+# The NORMATIVE, platform-specific ENGINE baseline (maintainer decision 2026-07-14, run 20260714T130410888
+# finding f1): the ONLY variable names the engine may pass to a plan child WITHOUT a declared env_ref, and
+# ONLY because runtime evidence proves the ENGINE ITSELF (constructed-environment process launch) requires
+# them at spawn. CURRENT EVIDENCE (the paired 'engine baseline evidence' tests in
+# verification-plan-runner.Tests.ps1, run on Windows AND Linux): a resolved-full-path child launches and
+# exits 0 with a COMPLETELY EMPTY constructed environment on BOTH platforms - so the baseline is EMPTY on
+# both. HOME / USERPROFILE / APPDATA / LOCALAPPDATA are excluded by maintainer ruling; PSModulePath, locale,
+# terminal, and tool-specific variables are supplier-declared env_refs, never implicit baseline. Any future
+# addition to this list MUST land together with a paired runtime-evidence test proving the engine fails to
+# LAUNCH a child without it on that platform.
+function Get-ContinuousCoReviewVerificationEngineBaseline {
+    if ($IsWindows) { return @() }
+    return @()
+}
+
+# The CONSTRUCTED child environment for a supplier-declared verification command (review findings f2 run
+# 20260714T123137002 + f1 run 20260714T130410888 - env_refs are the AUTHORITATIVE allowlist): built from an
+# EMPTY map, then EXACTLY the normative engine baseline (above; currently empty) + the plan-declared env_ref
+# NAMES, each copied from the ambient environment AT SPAWN when present there. Every other ambient value -
+# hence every ambient secret AND every implicit infrastructure value (HOME, PATH, TEMP, PSModulePath, ...) -
+# is structurally ABSENT from the child process. A command that needs such a variable declares it as an
+# env_ref (least privilege + reproducibility; the contract, not the engine, decides what flows). Values pass
+# through process creation only; the evidence records env_ref NAMES separately and VALUES never.
 function Get-ContinuousCoReviewVerificationChildEnvironment {
     param([string[]]$EnvRefs = @())
-    $baseline = @(
-        'PATH', 'PATHEXT', 'PSModulePath',
-        'SystemRoot', 'SystemDrive', 'windir', 'ComSpec',
-        'TEMP', 'TMP', 'TMPDIR',
-        'HOME', 'USERPROFILE', 'LOCALAPPDATA', 'APPDATA',
-        'LANG', 'LC_ALL', 'TERM'
-    )
-    $names = @($baseline) + @(@($EnvRefs) | Where-Object { $_ -is [string] -and -not [string]::IsNullOrWhiteSpace($_) })
     $map = @{}
+    $names = @(Get-ContinuousCoReviewVerificationEngineBaseline) + @(@($EnvRefs) | Where-Object { $_ -is [string] -and -not [string]::IsNullOrWhiteSpace($_) })
     foreach ($n in $names) {
         $v = [System.Environment]::GetEnvironmentVariable([string]$n)
         if ($null -ne $v) { $map[[string]$n] = [string]$v }
     }
     return $map
+}
+
+# EXECUTABLE RESOLUTION BEFORE SPAWN (maintainer decision 2026-07-14): the declared executable is resolved
+# to a full path AGAINST THE AMBIENT PARENT ENVIRONMENT before the child environment is constructed, so the
+# child never needs an inherited PATH just to be launched. A rooted path must exist; a relative path with a
+# directory separator anchors to RepoRoot and must resolve INSIDE it; a bare name resolves via Get-Command
+# (the parent's PATH, at spawn). An unresolvable executable is a RECORDED failure - never a silent skip.
+function Resolve-ContinuousCoReviewVerificationExecutable {
+    param(
+        [Parameter(Mandatory)][string]$Executable,
+        [Parameter(Mandatory)][string]$RepoRoot
+    )
+    if ([System.IO.Path]::IsPathRooted($Executable)) {
+        if (Test-Path -LiteralPath $Executable -PathType Leaf) {
+            return [pscustomobject]@{ resolved = $true; path = ([System.IO.Path]::GetFullPath($Executable)); method = 'rooted-path'; reason = $null }
+        }
+        return [pscustomobject]@{ resolved = $false; path = $null; method = 'rooted-path'; reason = "declared executable '$Executable' does not exist" }
+    }
+    if ($Executable -match '[\\/]') {
+        $rootFull = ([System.IO.Path]::GetFullPath($RepoRoot)).TrimEnd([char]'\', [char]'/')
+        $full = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($rootFull, $Executable))
+        $rootPrefix = $rootFull + [System.IO.Path]::DirectorySeparatorChar
+        if (-not $full.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return [pscustomobject]@{ resolved = $false; path = $null; method = 'repo-relative'; reason = "declared executable '$Executable' resolves outside the repository root" }
+        }
+        if (Test-Path -LiteralPath $full -PathType Leaf) {
+            return [pscustomobject]@{ resolved = $true; path = $full; method = 'repo-relative'; reason = $null }
+        }
+        return [pscustomobject]@{ resolved = $false; path = $null; method = 'repo-relative'; reason = "declared executable '$Executable' does not exist under the repository root" }
+    }
+    $cmd = @(Get-Command -Name $Executable -CommandType Application -ErrorAction SilentlyContinue) | Select-Object -First 1
+    if ($null -ne $cmd -and -not [string]::IsNullOrWhiteSpace([string]$cmd.Source)) {
+        return [pscustomobject]@{ resolved = $true; path = [string]$cmd.Source; method = 'ambient-path-resolution'; reason = $null }
+    }
+    return [pscustomobject]@{ resolved = $false; path = $null; method = 'ambient-path-resolution'; reason = "declared executable '$Executable' is not resolvable on the engine's PATH" }
 }
 
 # One digest+command_id-bound FAILURE record for an attempted-but-unsuccessful command. Shaped close to
@@ -105,6 +153,11 @@ function Invoke-ContinuousCoReviewVerificationPlan {
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][AllowNull()]$Plan,
+        # OPTIONAL human-authorized, command-scoped diagnostic disclosure (maintainer decision 2026-07-14):
+        # { authorized_by; reason; command_id; max_tail_bytes? }. NEVER automatic - absent means every plan
+        # command persists NO output text. Validated FAIL-FAST here (a structurally invalid authorization is
+        # a caller error and runs ZERO commands); scoping to the named command_id is enforced by the recorder.
+        [AllowNull()]$DiagnosticDisclosure = $null,
         [datetime]$Now = [datetime]::UtcNow
     )
 
@@ -134,6 +187,15 @@ function Invoke-ContinuousCoReviewVerificationPlan {
     $structural = Test-ContinuousCoReviewVerificationPlan -Plan $Plan -RepoRoot $resolvedRoot
     if (-not $structural.valid) {
         return [pscustomobject]@{ state = 'verification-plan-invalid'; command_count = $structural.command_count; evidence = @(); all_succeeded = $false; reason = $structural.reason }
+    }
+
+    # DIAGNOSTIC-DISCLOSURE GATE (fail-fast, zero side effects): a structurally invalid authorization object
+    # is a CALLER error - refuse it BEFORE any command executes, exactly like the malformed-identity gate.
+    if ($null -ne $DiagnosticDisclosure) {
+        $dv = Test-ContinuousCoReviewDiagnosticDisclosure -Disclosure $DiagnosticDisclosure
+        if (-not [bool]$dv.valid) {
+            throw "verification-plan: the supplied DiagnosticDisclosure is INVALID ($($dv.reason)) - refusing to run ANY command under a malformed disclosure authorization (never automatic, never degraded)."
+        }
     }
 
     # Best-effort current digest, used to STAMP synthetic failure records so every record (real +
@@ -183,10 +245,20 @@ function Invoke-ContinuousCoReviewVerificationPlan {
         # ENGINE-BOUNDED timeout — never the raw 0/unlimited a supplier requested.
         $boundedTimeout = (Resolve-ContinuousCoReviewVerificationTimeout -Requested $requestedTimeout).effective_seconds
 
+        # RESOLVE THE EXECUTABLE BEFORE SPAWN (maintainer decision 2026-07-14): full-path resolution against
+        # the AMBIENT parent environment happens here, so the constructed child environment never needs an
+        # inherited PATH for launch. Unresolvable -> a RECORDED failure; the plan continues (never dropped).
+        $exeResolution = Resolve-ContinuousCoReviewVerificationExecutable -Executable $executable -RepoRoot $resolvedRoot
+        if (-not [bool]$exeResolution.resolved) {
+            $evidence += New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'executable-not-resolvable' -Reason $exeResolution.reason -Now $Now
+            continue
+        }
+
         $runParams = @{
-            RepoRoot         = $resolvedRoot
-            Executable       = $executable
-            Arguments        = $arguments
+            RepoRoot           = $resolvedRoot
+            Executable         = $exeResolution.path
+            DeclaredExecutable = $executable
+            Arguments          = $arguments
             TimeoutSeconds   = $boundedTimeout
             RequireResult    = $requireResult
             # IDENTITY INTO THE DURABLE RECORD (review finding f5, run 20260714T123137002): the recorder
@@ -195,16 +267,20 @@ function Invoke-ContinuousCoReviewVerificationPlan {
             CommandId        = $commandId
             Provenance       = $provenance
             EnvRefs          = @($envRefs)
-            # NO PERSISTED OUTPUT TEXT for supplier-declared commands (review finding f3): arbitrary plan
-            # output may carry secrets no pattern can recognize, so tails are SUPPRESSED (count/hash only);
-            # the recorded facts (exit code, duration, digest, optional SpecrewTestResult) carry the verdict.
+            # NO PERSISTED OUTPUT TEXT for supplier-declared commands (review finding f3 + maintainer
+            # decision 2026-07-14): arbitrary plan output may carry secrets no pattern can recognize, so
+            # tails are SUPPRESSED (count/hash only); the recorded facts (exit code, duration, digest,
+            # optional SpecrewTestResult) carry the verdict. The ONLY door is the human-authorized,
+            # command_id-scoped DiagnosticDisclosure the recorder enforces - never automatic.
             OutputTailBytes  = 0
-            # ENV ALLOWLIST EXECUTION SEMANTICS (review finding f2): the child receives ONLY the safe
-            # baseline + the declared env_refs, resolved from the ambient environment at spawn - an
-            # unlisted ambient secret is structurally absent. Values are never recorded.
+            # ENV ALLOWLIST EXECUTION SEMANTICS (review findings f2 + f1 run 20260714T130410888): the child
+            # receives an EMPTY-map-constructed environment - the normative engine baseline + the declared
+            # env_refs only, resolved from the ambient environment at spawn - every unlisted ambient value
+            # is structurally absent. Values are never recorded.
             ChildEnvironment = (Get-ContinuousCoReviewVerificationChildEnvironment -EnvRefs $envRefs)
             Now              = $Now
         }
+        if ($null -ne $DiagnosticDisclosure) { $runParams.DiagnosticDisclosure = $DiagnosticDisclosure }
         # REPO-ROOT ANCHORING (review finding f4): the schema defines working_directory AND result_path as
         # REPOSITORY-relative. Anchor BOTH against RepoRoot here so execution is independent of the caller
         # process CWD and result_path never silently re-anchors to the working directory. (Path safety was

@@ -2,10 +2,18 @@
 
 **Schema**: v1
 **Last Completed Task**: the Prop-145 hook-health REDESIGN (Option A, amended) — INDEPENDENT hook-liveness + a NON-PROMOTING `ambient-path-binding` version diagnostic; byte-capped shell-safe probe; System32 cmd.exe interpreter; exact-digest T018 runs injected as reviewer-visible evidence. **Iteration 005 is NOT yet complete** — a Proposal-145 review returned three authoritative findings (bounded output, ambient executable-identity, unsupported evidence). After characterizing that NO host exposes a trustworthy non-ambient executable identity, the maintainer chose Option A: the version is a non-authoritative diagnostic, health rests on observed hook-liveness, readiness on fresh liveness + config/trust — receipts are MONITORING evidence, never authentication. Implemented + green on Windows AND Linux; pending the T018 recording + one authorized confirming review round. See the Co-review section at the bottom.
-**Tasks Remaining**: re-record the Windows + Linux evidence at the digest of the confirming-round-fixes commit, then the MAINTAINER'S decision on the re-review round that would close Iteration 005 — the ONE authorized confirming round ran (20260714T123137002-4f3689f3: hook-health CLEAN, prior evidence finding resolved by the injected machine record, 5 new blocking findings on the adjacent T018/T019 verification machinery — all FIXED with paired tests, see the Sixth round section) and is SPENT; no further round launches automatically. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Tasks Remaining**: the MAINTAINER'S decision on the re-review round that would close Iteration 005. The round-2
+re-review (20260714T130410888-bc28813e) judged the sixth-round f2/f3 fixes incomplete and escalated HUMAN DECISION;
+the maintainer's 2026-07-14 instruction-bearing verdict is now implemented in full (empty-map child environment +
+evidence-justified empty engine baseline + pre-spawn executable resolution; output private-by-default + the
+human-authorized command-scoped durable diagnostic-disclosure door; the FR-055 Stop-packet classification
+hardening) — see the Seventh round section. Fixes verified (focused + full registry on Windows; cross-platform
+verify on Linux Docker), committed, evidence re-bound to the committed digest. NO review round launches
+automatically. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a separately-authorized
+clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
-**Updated**: 2026-07-14T13:10:00Z
+**Updated**: 2026-07-14T17:30:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -358,6 +366,53 @@ Files: `test-evidence-recorder.ps1`, `verification-plan-contract.ps1`, `verifica
 test suites. After this commit the evidence re-binds (Windows focused + full registry + Linux Docker re-recorded at
 the new committed digest); NO further review round is launched automatically — the one authorized confirming round
 is spent, and the maintainer decides whether to authorize the re-review that would close Iteration 005.
+
+### Seventh round — the f2/f3 residual HUMAN DECISION + full fix (2026-07-14, run 20260714T130410888-bc28813e)
+
+The post-fix re-review (round 2, run `20260714T130410888-bc28813e`, 13:04–13:08Z) returned ONE blocking finding
+flagged **HUMAN DECISION REQUIRED**: the sixth-round f2/f3 fixes were incomplete — (f2 residual) the constructed
+child environment still passed an implicit ambient baseline (`HOME`, `USERPROFILE`, `LOCALAPPDATA`, `APPDATA`,
+`TEMP`, `PATH`, `PSModulePath`, locale/terminal) the env_refs contract never sanctioned; (f3 residual) the generic
+recorded-run default still persisted a 2048-byte redacted tail, and pattern redaction cannot recognize an
+arbitrary bare secret. The loop guard correctly stopped the autonomous review/fix loop; both residual claims were
+VERIFIED against disk before escalating.
+
+**MAINTAINER DECISION (2026-07-14, instruction-bearing verdict):** implemented in full —
+
+1. **Child environment (f2):** constructed from an **EMPTY map**; a **normative, platform-specific engine
+   baseline** where every variable requires paired runtime-evidence tests (probes prove a resolved-full-path
+   child launches with a completely empty environment on Windows AND Linux, so the baseline is **EMPTY on
+   both**); `HOME`/`USERPROFILE`/`APPDATA`/`LOCALAPPDATA` excluded by ruling; `PSModulePath`/locale/terminal/
+   tool vars are explicit env_refs; the executable is **resolved to a full path BEFORE the environment is
+   constructed** (rooted / repo-relative / ambient-PATH `Get-Command`; unresolvable → recorded
+   `executable-not-resolvable` failure, never a silent skip). Contract recorded in the VerificationPlan schema
+   (`env_refs` description) + spec FR-015. Paired cross-platform tests: engine-baseline evidence (empty-env
+   launch), identity-path exclusions + a parent-PATH sentinel that must NOT flow, declared-ref visibility,
+   undeclared-ambient absence, bare-name resolution, unresolvable-recorded-failure.
+2. **Output (f3), B1 + disclosure door:** generic recorded-run default `OutputTailBytes` **2048 → 0** (output
+   text private by default; count/hash/artifact-digest/structured-result facts unchanged); explicit opt-in
+   tails clamped to an **8 KB engine cap** and labeled (`tail_disclosure`: suppressed | bounded-redacted-tail |
+   authorized-diagnostic); a FAILED command with suppressed output records
+   `failure_diagnostics: insufficient-without-disclosure` (honest, never a clean result); a **human-authorized
+   diagnostic disclosure** `{ authorized_by, reason, command_id, max_tail_bytes? }` is the only door — bounded,
+   scoped to the ONE named command, auditable, labeled `potentially_sensitive`, **DURABLE** in the digest-keyed
+   store by design (durability is the audit trail; tested), and never automatic (malformed → fail-loud; plan
+   runner refuses fail-fast with zero commands run). Redaction remains defense-in-depth on opted-in tails.
+   Falsification: an UNSTRUCTURED bare secret printed alone is absent from the durable record on the default
+   path. Policy: raw verification output is private by default; a reviewer may request explicit human-authorized
+   disclosure when its absence prevents an accurate conclusion.
+3. **Stop-packet hardening (new scope, FR-055 + DRIFT-198-I003-008):** the five-heading packet demand now keys
+   on the TURN'S OWN delta (SessionStart/discharged-stop baseline; managed-count drift stripped from the surface
+   key), a deterministic long-turn lane covers packet-worthy read-only investigations, a PostToolUse
+   one-per-obligation-window nudge arranges the packet IN the original response, and the six-section boundary
+   contract is untouched. Six maintainer fixtures (PH-a…PH-f) green; suite Case 5 was found ALREADY RED at HEAD
+   (stale vs the ratified T099/N3 contract) and reconciled test-only, with Case 5b proving the intake nudge
+   survives where the parse runs.
+
+Per the review-control directive: fixes are committed, evidence re-binds to the new committed digest (Windows
+focused + full registry + Linux Docker via the T018 wrapper), and **NO review round launches** — the maintainer
+authorizes any re-review separately. Iteration 005 completion (and the release of T019 pieces 5-7) remains
+PENDING that separately-authorized clean re-review.
 
 ## Notes
 

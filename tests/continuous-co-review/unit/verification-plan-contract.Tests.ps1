@@ -14,6 +14,22 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
         function Get-Fixture([string]$name) { Get-Content -LiteralPath (Join-Path $script:FixtureDir $name) -Raw | ConvertFrom-Json }
         # a reusable valid provenance object for inline cases that are not testing provenance itself.
         function New-Prov { param([string]$Kind = 'project-config', [string]$Source = 'src') [pscustomobject]@{ kind = $Kind; source = $Source } }
+        # Create a REAL reparse link (junction, then symlink) and VERIFY it dereferences: on Linux, 'Junction'
+        # can produce a plain non-link artifact instead of failing, which would vacuously pass every safety
+        # assertion. Only a verified link counts as made; a non-link artifact is removed before the next attempt.
+        function New-EscapeLink {
+            param([Parameter(Mandatory)][string]$LinkPath, [Parameter(Mandatory)][string]$Target)
+            foreach ($kind in @('Junction', 'SymbolicLink')) {
+                try {
+                    New-Item -ItemType $kind -Path $LinkPath -Target $Target -ErrorAction Stop | Out-Null
+                    $it = Get-Item -LiteralPath $LinkPath -Force -ErrorAction Stop
+                    if ($null -ne $it.ResolveLinkTarget($true)) { return $true }
+                }
+                catch { $null = $_ }
+                Remove-Item -LiteralPath $LinkPath -Force -Recurse -ErrorAction SilentlyContinue
+            }
+            return $false
+        }
     }
 
     Context 'provenance vocabulary + auditable object' {
@@ -97,7 +113,12 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
         It 'rejects rooted + escaping paths; accepts a repo-relative one and returns its canonical form' {
             $root = Join-Path $TestDrive 'psroot'
             New-Item -ItemType Directory -Path $root -Force | Out-Null
-            (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'C:\Windows').safe | Should -BeFalse
+            # A drive-letter path is ROOTED only on Windows; on Linux 'C:\Windows' is an ordinary (odd) relative
+            # filename, so the Windows-form assertion is platform-scoped. The POSIX rooted form is rejected on
+            # BOTH platforms (IsPathRooted('/x') is true on Windows too) - the cross-platform rooted coverage.
+            if ($IsWindows) {
+                (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'C:\Windows').safe | Should -BeFalse
+            }
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path '/etc/passwd').safe | Should -BeFalse
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path '../escape').safe | Should -BeFalse
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'sub/../still-inside').safe | Should -BeTrue
@@ -109,9 +130,10 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
             $root = Join-Path $TestDrive 'jroot'
             $outside = Join-Path $TestDrive 'joutside'
             New-Item -ItemType Directory -Path $root, $outside -Force | Out-Null
-            $made = $false
-            try { New-Item -ItemType Junction -Path (Join-Path $root 'link') -Target $outside -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
-            if (-not $made) { Set-ItResult -Skipped -Because 'this environment cannot create a junction'; return }
+            # VERIFY the artifact is a REAL link (ResolveLinkTarget non-null): on Linux 'Junction' can produce a
+            # plain non-link artifact instead of failing, which would vacuously pass the safety check.
+            $made = New-EscapeLink -LinkPath (Join-Path $root 'link') -Target $outside
+            if (-not $made) { Set-ItResult -Skipped -Because 'this environment cannot create a junction or symlink'; return }
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'link').safe | Should -BeFalse -Because 'the junction dereferences outside the repo root'
         }
         It 'rejects a path BELOW an escaping ancestor link - not only the link itself (finding f1, run 20260714T123137002)' {
@@ -122,11 +144,7 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
             # items are a normal directory + file whose own ResolveLinkTarget() is null.
             New-Item -ItemType Directory -Path (Join-Path $outside 'subdir') -Force | Out-Null
             Set-Content -LiteralPath (Join-Path $outside 'subdir/result.json') -Value '{}' -NoNewline
-            $made = $false
-            try { New-Item -ItemType Junction -Path (Join-Path $root 'link') -Target $outside -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
-            if (-not $made) {
-                try { New-Item -ItemType SymbolicLink -Path (Join-Path $root 'link') -Target $outside -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
-            }
+            $made = New-EscapeLink -LinkPath (Join-Path $root 'link') -Target $outside
             if (-not $made) { Set-ItResult -Skipped -Because 'this environment cannot create a junction or symlink'; return }
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'link/subdir').safe |
                 Should -BeFalse -Because 'an escaping ancestor re-roots everything below it outside the repo'
@@ -137,11 +155,7 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
             $root = Join-Path $TestDrive 'iroot'
             New-Item -ItemType Directory -Path (Join-Path $root 'realdir') -Force | Out-Null
             Set-Content -LiteralPath (Join-Path $root 'realdir/f.txt') -Value 'x' -NoNewline
-            $made = $false
-            try { New-Item -ItemType Junction -Path (Join-Path $root 'inlink') -Target (Join-Path $root 'realdir') -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
-            if (-not $made) {
-                try { New-Item -ItemType SymbolicLink -Path (Join-Path $root 'inlink') -Target (Join-Path $root 'realdir') -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
-            }
+            $made = New-EscapeLink -LinkPath (Join-Path $root 'inlink') -Target (Join-Path $root 'realdir')
             if (-not $made) { Set-ItResult -Skipped -Because 'this environment cannot create a junction or symlink'; return }
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'inlink/f.txt').safe |
                 Should -BeTrue -Because 'the link resolves inside the repo root; below-link content is validated, not refused'

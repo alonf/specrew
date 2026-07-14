@@ -472,6 +472,50 @@ T027, with no reopen of the shipped firewall (T004–T006).
   recorded data model; no new requirement. Recorded here (found/fixed in
   003) rather than reopening the closed 002 record.
 
+## DRIFT-198-I003-008 — Stop-packet material misclassification (spec-updated: FR-055) + a stale committed test
+
+- **Divergence (observed live, 2026-07-14)**: the conformance Stop-provider classified a READ-ONLY status
+  turn as material because the rolling-handover signal keys on the ABSOLUTE dirty-tree surface — files an
+  earlier session left dirty (plus Specrew-managed-count drift inside the hashed surface) read as this turn's
+  work, forcing a duplicate five-heading packet after a complete answer. Maintainer directive (2026-07-14,
+  instruction-bearing verdict) authorized the redesign; recorded as **FR-055**.
+- **Resolution (spec-updated + implemented)**: SessionStart/discharged-stop session BASELINE + turn-delta
+  gate; volatile managed-count clause stripped from the surface key; deterministic LONG-TURN lane (fixture d);
+  PostToolUse one-per-obligation-window pre-arrangement nudge; boundary contract untouched; six regression
+  fixtures (a)–(f) in `tests/integration/conformance-detection.tests.ps1` (cases PH-a…PH-f).
+- **Adjacent pre-existing defect (reconciled, flagged for maintainer visibility)**: suite Case 5 (idle
+  conversational intake question → #1 nudge) was **already RED at HEAD** (verified in a detached worktree at
+  `de9cf834`): the T099/FR-040 design-N3 perf change deliberately stopped paying the transcript parse on idle
+  stops (committed code cites "an idle intake drift is caught by the bootstrap orientation surface instead"),
+  but the committed test still asserted the retired trigger, and the suite is not in the f198 registry so the
+  red was invisible. Case 5 is reconciled to the ratified T099 contract (idle stop → no conformance output)
+  and a new Case 5b proves the intake nudge still fires on a stop that warranted the parse. Test-only change;
+  no behavior change beyond FR-055.
+
+## DRIFT-198-I003-009 — state-narrative destruction root cause (implementation-corrected)
+
+- **Divergence (recurring; root cause identified 2026-07-14)**: `Update-IterationStateFromTaskProgress`
+  (`scripts/internal/task-progress.ps1`) replaced the ENTIRE `## Execution Summary` section — everything up to
+  the next `## ` heading — with its three generated digest bullets on EVERY task-progress sync. Any hook- or
+  command-driven sync therefore silently destroyed the hand-authored execution narrative in a committed
+  state.md. Two observed hits: the iteration-003 "reset" repaired in commit `47106751` (previous session; root
+  cause then unidentified) and the 2026-07-14T15:29Z truncation of this iteration's state.md (642 lines →
+  29). The damage violates honest-state (Rule 7) and destroys the durable execution record the lifecycle
+  depends on.
+- **Resolution (implementation-corrected)**: the generated digest now refreshes a marker-bounded MANAGED
+  block (`<!-- specrew:task-progress-summary:begin/end -->`); user narrative in the section is preserved;
+  machinery-owned legacy shapes (the generated digest, the scaffold placeholder) migrate wholesale. Paired
+  regression: `tests/unit/task-progress-managed-summary.tests.ps1` (4 cases, registered in the F-198
+  registry) + a narrative-preservation case appended to `tests/integration/task-progress-tracking.tests.ps1`
+  (that harness needs Spec Kit >= 0.12.9 to bootstrap and is environmentally unrunnable on this machine —
+  pre-existing). The damaged `iterations/003/state.md` was REPAIRED from the committed rich record (canonical
+  header + managed digest merged in; the long header narratives moved into the Execution Summary), and a live
+  sync against the repaired file proved 700 → 700 lines with the narrative intact.
+- **Scope note**: maintainer prompt-2 default from the previous session was "file as a follow-up issue" —
+  superseded by the root cause being identified DURING this directive's work and the repair being futile
+  without the writer fix (the next sync would re-destroy the restored record). Flagged for the maintainer's
+  confirmation; send-back reverts cleanly (the fix is one function + tests).
+
 ### Resolution Strategies (Unused)
 
 The following resolution strategies remain available if drift is detected later in execution:

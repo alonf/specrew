@@ -15,9 +15,12 @@ record and are spot-checkable there. It records the REPLAYABLE COMMANDS and a su
 ## Replayable commands (committed; replayable from a fresh checkout)
 
 - **Windows + Linux, focused:** `pwsh -File tests/cross-platform-verify.ps1` — runs the hook-health unit suites
-  (`hook-health-receipt`, `codex-headless-preflight`, `host-support-reconciliation`, `test-evidence-recorder`) plus
-  the production-path integration script, and exits 0 iff all are green. Recorded via T018 as two runs (Windows and
-  Linux, keyed distinctly by `-Label`) against the committed reviewed digest.
+  (`hook-health-receipt`, `codex-headless-preflight`, `host-support-reconciliation`, `test-evidence-recorder`) plus —
+  since the 2026-07-14 f2/f3-residual decision — the verification-plan suites (`verification-plan-contract`,
+  `verification-plan-runner`, `recorded-run`), whose empty-map child-environment / engine-baseline / suppressed-output
+  tests ARE the paired cross-platform runtime evidence, plus the production-path integration script; exits 0 iff all
+  are green. Recorded via T018 as two runs (Windows and Linux, keyed distinctly by `-Label`) against the committed
+  reviewed digest.
 - **Windows, full:** `pwsh -File tests/f198-regression-suite.ps1` — the full F-198 honesty regression suite.
 - **Linux execution:** the committed `pwsh -File tests/cross-platform-verify.ps1 -Label linux` is run against the
   SAME committed tree in `mcr.microsoft.com/powershell:latest` (pwsh 7.4.2) with the repository mounted at `/repo`

@@ -95,7 +95,7 @@
             ]
           },
           "env_refs": {
-            "description": "OPTIONAL allowlist of env var NAMES to pass through. NAMES ONLY — a literal 'env'/'environment' value map is forbidden (no secret values may appear in a plan or its recorded evidence).",
+            "description": "OPTIONAL allowlist of env var NAMES to pass through. NAMES ONLY — a literal 'env'/'environment' value map is forbidden (no secret values may appear in a plan or its recorded evidence). AUTHORITATIVE (2026-07-14): the child environment is constructed from an EMPTY map + the engine's normative platform baseline (Get-ContinuousCoReviewVerificationEngineBaseline — currently EMPTY on Windows and Linux, every entry requiring paired runtime-evidence tests) + exactly these declared names, resolved from the ambient environment at spawn. HOME/USERPROFILE/APPDATA/LOCALAPPDATA are never implicit; PSModulePath/locale/terminal/tool variables must be declared here. The executable is resolved to a full path BEFORE the environment is constructed, so PATH is not implicitly required.",
             "type": "array",
             "items": { "type": "string", "minLength": 1, "pattern": "^[^=]+$" }
           },

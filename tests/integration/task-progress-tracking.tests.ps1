@@ -299,4 +299,36 @@ foreach ($pendingId in @('T001', 'T002', 'T003', 'T004', 'T005', 'T006')) {
 }
 Write-Pass 'Iteration-2 bare-ID task progress is not downgraded by the Iteration-1 feature-root tasks.md'
 
+# --- Hand-authored Execution Summary narrative is NEVER machinery-destroyed (DRIFT-198-I003-009, 2026-07-14) ---
+# The old whole-section replacement collapsed a rich committed execution record to three generated bullets on any
+# task-progress sync (the observed iteration-003/005 state truncations). The digest now lives in a marker-bounded
+# managed block; the narrative below it survives every sync, idempotently.
+$narrativeState = Join-Path $iterationRoot 'state.md'
+$narrativeSentinel = 'Piece 3 DONE - the navigator FIRE decision now consumes the per-lineage lease (rich narrative sentinel 7719).'
+$existingState = Get-Content -LiteralPath $narrativeState -Raw -Encoding UTF8
+[System.IO.File]::WriteAllText($narrativeState, ($existingState.TrimEnd() + [Environment]::NewLine), [System.Text.UTF8Encoding]::new($false))
+$withNarrative = $existingState -replace '(?ms)(^##\s+Execution Summary\s*\r?\n)', ('$1' + [Environment]::NewLine + '- ' + $narrativeSentinel + [Environment]::NewLine)
+[System.IO.File]::WriteAllText($narrativeState, $withNarrative, [System.Text.UTF8Encoding]::new($false))
+Sync-IterationTaskProgress -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' | Out-Null
+$afterFirstSync = Get-Content -LiteralPath $narrativeState -Raw -Encoding UTF8
+if ($afterFirstSync -notmatch [regex]::Escape($narrativeSentinel)) {
+    Write-Fail 'A task-progress sync DESTROYED the hand-authored Execution Summary narrative (DRIFT-198-I003-009 regression).'
+    exit 1
+}
+if ($afterFirstSync -notmatch [regex]::Escape('<!-- specrew:task-progress-summary:begin -->') -or $afterFirstSync -notmatch 'Task progress: \d+ complete') {
+    Write-Fail 'The generated task-progress digest should be present in its marker-bounded managed block after a sync.'
+    exit 1
+}
+Sync-IterationTaskProgress -ProjectRoot $projectRoot -FeatureRef '020-session-state-durability' -IterationNumber '002' | Out-Null
+$afterSecondSync = Get-Content -LiteralPath $narrativeState -Raw -Encoding UTF8
+if ($afterSecondSync -notmatch [regex]::Escape($narrativeSentinel)) {
+    Write-Fail 'The SECOND sync destroyed the narrative - the managed block refresh is not scoped.'
+    exit 1
+}
+if (([regex]::Matches($afterSecondSync, [regex]::Escape('<!-- specrew:task-progress-summary:begin -->'))).Count -ne 1) {
+    Write-Fail 'Repeated syncs must refresh ONE managed block idempotently, never accumulate duplicates.'
+    exit 1
+}
+Write-Pass 'Hand-authored Execution Summary narrative survives task-progress syncs; the managed digest refreshes idempotently (DRIFT-198-I003-009)'
+
 exit 0
