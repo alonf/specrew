@@ -448,6 +448,40 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         foreach ($j in $joined) { $j.injectable | Should -BeTrue; $j.classification | Should -Be 'exact-digest-command-joined' }
     }
 
+    It 'SYNTHETIC failure records PERSIST to the digest-keyed store - every attempt is durable, joinable reviewer evidence (review finding f4, run 20260714T182921446)' {
+        $repo = New-PlanRunRepo
+        # Every RUNNABLE-plan synthetic classification (a structurally-invalid command cannot ride a runnable
+        # plan - the whole-plan fail-fast gate precedes the per-command branch): pre-spawn resolution failure,
+        # require_result with no result_path, and a runtime required-result miss (the recorder's fail-loud
+        # caught + recorded as a synthetic failure).
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-synthetic-durable'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'ghost'; executable = 'ccr-no-such-exe-7719'; arguments = @(); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } },
+                [pscustomobject]@{ command_id = 'noresult'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0'); require_result = $true; provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } },
+                [pscustomobject]@{ command_id = 'missres'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0'); result_path = 'never-written.json'; require_result = $true; provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+        @($result.evidence).Count | Should -Be 3
+        $result.all_succeeded | Should -BeFalse
+
+        # RELOAD from the DURABLE digest-keyed store - the in-memory return is not the reviewer's evidence.
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $rec = Get-Content -LiteralPath (Join-Path $repo ".specrew/review/test-evidence/$digest.json") -Raw | ConvertFrom-Json
+        @($rec.runs).Count | Should -Be 3 -Because 'every attempted-but-failed command persists, never only the in-memory return'
+        $byId = @{}; foreach ($r in @($rec.runs)) { $byId[[string]$r.command_id] = $r }
+        [string]$byId['ghost'].classification | Should -Be 'executable-not-resolvable'
+        [string]$byId['noresult'].classification | Should -Be 'required-result-missing-or-invalid'
+        [string]$byId['missres'].classification | Should -Be 'required-result-missing-or-invalid'
+        foreach ($r in @($rec.runs)) { $r.command_succeeded | Should -BeFalse; [string]$r.reviewed_digest_tree_id | Should -Be $digest }
+        # the persisted failures JOIN at the exact digest and the PRODUCTION lookup accepts the record.
+        $joined = @(Test-ContinuousCoReviewPlanEvidenceInjectable -PlanEvidence @($rec.runs) -Plan $plan -CurrentDigest $digest)
+        foreach ($j in $joined) { $j.injectable | Should -BeTrue }
+        (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest) | Should -Not -BeNullOrEmpty
+    }
+
     It 'FAIL-FAST: a DUPLICATE command_id is rejected at validation BEFORE any command runs — ZERO side effects (maintainer decision 2026-07-13)' {
         $repo = New-PlanRunRepo
         # Both commands are individually valid + would create a sentinel file if executed; the plan is structurally

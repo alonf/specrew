@@ -344,11 +344,19 @@ function Invoke-ContinuousCoReviewRecordedRun {
     $treeId = [string]$dg.tree_id
 
     # STALE-RESULT REJECTION: delete any PRE-EXISTING result file BEFORE the run, so a stale result can never be read
-    # as this run's. A rich claim must come from a result THIS run produced.
+    # as this run's. A rich claim must come from a result THIS run produced. DELETION IS VERIFIED (review finding
+    # f1, run 20260714T182921446): an undeletable stale result (lock/permission) previously survived the silent
+    # delete and could be accepted as this run's rich result - now the run REFUSES to execute (fail-loud, zero
+    # side effects) rather than risk a stale claim.
     $resultFull = $null
     if (-not [string]::IsNullOrWhiteSpace($ResultPath)) {
         $resultFull = if ([System.IO.Path]::IsPathRooted($ResultPath)) { $ResultPath } else { Join-Path $cwd $ResultPath }
-        if (Test-Path -LiteralPath $resultFull -PathType Leaf) { Remove-Item -LiteralPath $resultFull -Force -ErrorAction SilentlyContinue }
+        if (Test-Path -LiteralPath $resultFull -PathType Leaf) {
+            Remove-Item -LiteralPath $resultFull -Force -ErrorAction SilentlyContinue
+            if (Test-Path -LiteralPath $resultFull -PathType Leaf) {
+                throw "recorded-run: a PRE-EXISTING result at '$ResultPath' could not be deleted before the run - refusing to execute (an undeletable stale result could be read as this run's; fail-loud, FR-015)."
+            }
+        }
     }
 
     # EXECUTE (process-tree contained via Kill(entireProcessTree) on timeout).
@@ -401,6 +409,15 @@ function Invoke-ContinuousCoReviewRecordedRun {
         else {
             $obj = $null
             try { $obj = Get-Content -LiteralPath $resultFull -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $obj = $null }
+            # TRANSIENT RESULT LIFECYCLE (review finding f3, run 20260714T182921446): the reviewed digest is
+            # bound BEFORE execution, so a result file LEFT in the tree flips the current digest the moment the
+            # evidence is recorded - orphaning the very evidence it carried. The result file is a TRANSPORT: its
+            # validated content persists in the durable record; the file itself is deleted right after reading
+            # (valid OR invalid), restoring the tree to the digest the evidence certifies. A cleanup failure
+            # only WARNS - the digest then flips and this evidence honestly orphans itself (a digest mismatch is
+            # never wrong evidence), rather than failing a completed run.
+            try { Remove-Item -LiteralPath $resultFull -Force -ErrorAction Stop }
+            catch { [Console]::Error.WriteLine("[co-review] WARN RESULT_FILE_NOT_CLEANED '$ResultPath' could not be deleted after reading; the reviewed digest will differ from the bound digest and this evidence orphans itself.") }
             $v = Test-ContinuousCoReviewSpecrewTestResult -Object $obj
             if (-not $v.valid) {
                 if ($RequireResult) { throw "recorded-run: the SpecrewTestResult at '$ResultPath' is INVALID ($($v.reason)) - failing loudly rather than degrading to a richer pass claim (FR-015)." }
@@ -470,39 +487,58 @@ function Invoke-ContinuousCoReviewRecordedRun {
 
     # WRITE bound to the digest, into the digest-keyed store's `runs` array. FAIL LOUD if recording fails.
     try {
-        $dir = Get-ContinuousCoReviewTestEvidenceDirectory -RepoRoot $resolved
-        if (-not (Test-Path -LiteralPath $dir -PathType Container)) { $null = New-Item -ItemType Directory -Path $dir -Force }
-        $path = Join-Path $dir ($treeId + '.json')
-        $record = $null
-        if (Test-Path -LiteralPath $path -PathType Leaf) { try { $record = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json } catch { $record = $null } }
-        if ($null -eq $record) { $record = [pscustomobject]@{ schema_version = '1.0'; reviewed_digest_tree_id = $treeId; recorded_at = $entry.recorded_at } }
-        $existingRuns = @()
-        if (($record.PSObject.Properties.Name -contains 'runs') -and ($null -ne $record.runs)) { $existingRuns = @($record.runs) }
-        # DURABLE UNIQUENESS KEY (review finding f5): a command_id, when present, IS the identity - two distinct
-        # plan commands with the SAME invocation must both persist (separately joinable), while a re-run of the
-        # SAME command_id replaces its prior record. Identity-less (legacy) runs key on executable + arguments +
-        # working_directory, so the same invocation from different working directories no longer clobbers.
-        $entryKey = if (-not [string]::IsNullOrWhiteSpace($CommandId)) { 'command-id:' + $CommandId }
-        else { 'invocation:' + $Executable + ' ' + (@($Arguments) -join ' ') + '|wd:' + $cwd }
-        $kept = @($existingRuns | Where-Object {
-                if ($null -eq $_) { return $false }
-                $exId = ''
-                if (@($_.PSObject.Properties | ForEach-Object { $_.Name }) -contains 'command_id') { $exId = [string]$_.command_id }
-                $exKey = if (-not [string]::IsNullOrWhiteSpace($exId)) { 'command-id:' + $exId }
-                else {
-                    $exWd = ''
-                    try { $exWd = [string]$_.command.working_directory } catch { $exWd = '' }
-                    'invocation:' + [string]$_.command.executable + ' ' + (@($_.command.arguments) -join ' ') + '|wd:' + $exWd
-                }
-                return ($exKey -ne $entryKey)
-            })
-        $record | Add-Member -NotePropertyName 'runs' -NotePropertyValue @(@($kept) + @([pscustomobject]$entry)) -Force
-        $record | Add-Member -NotePropertyName 'reviewed_digest_tree_id' -NotePropertyValue $treeId -Force
-        $record | Add-Member -NotePropertyName 'recorded_at' -NotePropertyValue $entry.recorded_at -Force
-        [System.IO.File]::WriteAllText($path, ($record | ConvertTo-Json -Depth 12))
+        Save-ContinuousCoReviewRunRecord -RepoRoot $resolved -TreeId $treeId -Entry ([pscustomobject]$entry) -CommandId $CommandId -Executable $Executable -Arguments @($Arguments) -WorkingDirectory $cwd -RecordedAt ([string]$entry.recorded_at)
     }
     catch {
         throw "recorded-run: evidence RECORDING failed for '$Executable' bound to ${treeId} (fail-loud, FR-015): $($_.Exception.Message)"
     }
     return [pscustomobject]$entry
+}
+
+function Save-ContinuousCoReviewRunRecord {
+    <#
+        Persist ONE run/attempt entry into the digest-keyed store's `runs` array. SHARED by the real
+        recorded-run writer AND the synthetic verification-failure records (review finding f4, run
+        20260714T182921446): FR-048's record-every-attempt means the DURABLE store, not only an in-memory
+        return - an unpersisted attempted-failure is missing reviewer evidence. DURABLE UNIQUENESS KEY
+        (finding f5, run 20260714T123137002): command_id when present IS the identity (a re-run of the same
+        command_id replaces its prior record; two distinct ids with the same invocation both persist);
+        identity-less runs key on executable + arguments + working_directory. Throws on write failure.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [Parameter(Mandatory)][string]$TreeId,
+        [Parameter(Mandatory)]$Entry,
+        [AllowNull()][AllowEmptyString()][string]$CommandId,
+        [Parameter(Mandatory)][string]$Executable,
+        [string[]]$Arguments = @(),
+        [AllowNull()][AllowEmptyString()][string]$WorkingDirectory,
+        [Parameter(Mandatory)][string]$RecordedAt
+    )
+    $dir = Get-ContinuousCoReviewTestEvidenceDirectory -RepoRoot $RepoRoot
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { $null = New-Item -ItemType Directory -Path $dir -Force }
+    $path = Join-Path $dir ($TreeId + '.json')
+    $record = $null
+    if (Test-Path -LiteralPath $path -PathType Leaf) { try { $record = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json } catch { $record = $null } }
+    if ($null -eq $record) { $record = [pscustomobject]@{ schema_version = '1.0'; reviewed_digest_tree_id = $TreeId; recorded_at = $RecordedAt } }
+    $existingRuns = @()
+    if (($record.PSObject.Properties.Name -contains 'runs') -and ($null -ne $record.runs)) { $existingRuns = @($record.runs) }
+    $entryKey = if (-not [string]::IsNullOrWhiteSpace($CommandId)) { 'command-id:' + $CommandId }
+    else { 'invocation:' + $Executable + ' ' + (@($Arguments) -join ' ') + '|wd:' + [string]$WorkingDirectory }
+    $kept = @($existingRuns | Where-Object {
+            if ($null -eq $_) { return $false }
+            $exId = ''
+            if (@($_.PSObject.Properties | ForEach-Object { $_.Name }) -contains 'command_id') { $exId = [string]$_.command_id }
+            $exKey = if (-not [string]::IsNullOrWhiteSpace($exId)) { 'command-id:' + $exId }
+            else {
+                $exWd = ''
+                try { $exWd = [string]$_.command.working_directory } catch { $exWd = '' }
+                'invocation:' + [string]$_.command.executable + ' ' + (@($_.command.arguments) -join ' ') + '|wd:' + $exWd
+            }
+            return ($exKey -ne $entryKey)
+        })
+    $record | Add-Member -NotePropertyName 'runs' -NotePropertyValue @(@($kept) + @([pscustomobject]$Entry)) -Force
+    $record | Add-Member -NotePropertyName 'reviewed_digest_tree_id' -NotePropertyValue $TreeId -Force
+    $record | Add-Member -NotePropertyName 'recorded_at' -NotePropertyValue $RecordedAt -Force
+    [System.IO.File]::WriteAllText($path, ($record | ConvertTo-Json -Depth 12))
 }

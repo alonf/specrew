@@ -190,6 +190,49 @@ Describe 'T018 universal recorded-run runner (FR-015 amended - language/framewor
         $params | Should -Not -Contain 'Counts'
     }
 
+    It 'an UNDELETABLE pre-existing result REFUSES to execute - never risk reading a stale result as this run''s (review finding f1, run 20260714T182921446)' {
+        $repo = New-RunRepo
+        # The stale result lives in a SUBDIR so the undeletable condition (per-OS below) does not disturb the
+        # digest computation or the sentinel check at the repo root.
+        New-Item -ItemType Directory -Path (Join-Path $repo 'sub') -Force | Out-Null
+        $rp = Join-Path $repo 'sub/result.json'
+        Set-Content -LiteralPath $rp -Value '{ "schema_version": "1.0", "result": "passed", "counts": { "passed": 999, "failed": 0, "skipped": 0 } }'
+        $handle = $null; $restoreMode = $null
+        try {
+            if ($IsWindows) {
+                # Windows: share READ (so the digest's git machinery can still read the tree) but deny DELETE.
+                $handle = [System.IO.File]::Open($rp, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+            }
+            else {
+                # POSIX: an open handle does NOT block unlink; a read-only PARENT directory does - but NOT for
+                # root (CAP_DAC_OVERRIDE bypasses permission checks), so a root container cannot construct the
+                # undeletable condition at all. CI's ubuntu-latest runs non-root and exercises this for real.
+                if ((& id -u) -eq '0') { Set-ItResult -Skipped -Because 'root bypasses directory permissions; the undeletable condition cannot be constructed as root'; return }
+                $restoreMode = [System.IO.File]::GetUnixFileMode((Join-Path $repo 'sub'))
+                [System.IO.File]::SetUnixFileMode((Join-Path $repo 'sub'), [System.IO.UnixFileMode]'UserRead,UserExecute,GroupRead,GroupExecute,OtherRead,OtherExecute')
+            }
+            { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', 'Set-Content -LiteralPath ran.txt -Value x; exit 0') -ResultPath 'sub/result.json' -RequireResult } |
+                Should -Throw -ExpectedMessage '*could not be deleted*' -Because 'a stale result that survives deletion could be read as this run''s rich claim'
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+            if ($null -ne $restoreMode) { [System.IO.File]::SetUnixFileMode((Join-Path $repo 'sub'), $restoreMode) }
+        }
+        Test-Path -LiteralPath (Join-Path $repo 'ran.txt') | Should -BeFalse -Because 'the run refused BEFORE executing (zero side effects)'
+    }
+
+    It 'a structured-result run leaves the reviewed digest UNCHANGED - the result file is transient transport (review finding f3, run 20260714T182921446)' {
+        $repo = New-RunRepo
+        $before = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $rp = (Join-Path $repo 'result.json') -replace '\\', '/'
+        $cmd = "@{ schema_version='1.0'; result='passed'; counts=@{ passed=1; failed=0; skipped=0 } } | ConvertTo-Json | Set-Content -LiteralPath '$rp'; exit 0"
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd) -ResultPath 'result.json' -RequireResult
+        $e.counts_available | Should -BeTrue -Because 'the validated content persists in the record'
+        Test-Path -LiteralPath (Join-Path $repo 'result.json') | Should -BeFalse -Because 'the result file is deleted after validation - it is transport, not tree content'
+        [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id | Should -Be $before -Because 'the evidence must certify the exact tree left for review, not a tree mutated by its own result file'
+        [string]$e.reviewed_digest_tree_id | Should -Be $before
+    }
+
     It '7. STALE/pre-existing result is REJECTED (deleted before the run, never read as this run''s)' {
         $repo = New-RunRepo
         $rp = Join-Path $repo 'result.json'

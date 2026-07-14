@@ -33,13 +33,17 @@ Describe 'F-198 Prop-145 hook-health (liveness + version diagnostic)' {
             param(
                 [Parameter(Mandatory)][string]$Name,
                 [string]$Version = 'codex-cli 0.44.0',
-                [switch]$Garbage, [switch]$NonZeroExit, [switch]$Hang, [switch]$BigStdout, [switch]$BigStderr
+                [switch]$Garbage, [switch]$NonZeroExit, [switch]$Hang, [switch]$BigStdout, [switch]$BigStderr, [switch]$MultibyteStdout
             )
             $dir = New-HhrTempRoot
+            # MULTIBYTE emitter (review finding f2, run 20260714T182921446): 3000 euro signs = 3,000 CHARS
+            # (under a char-counted 8192 cap) but 9,000 UTF-8 BYTES (over the contract's 8 KB byte cap).
+            $euroCmd = '[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; [Console]::Out.Write([string]::new([char]0x20AC, 3000))'
             if ($IsWindows) {
                 $path = Join-Path $dir ($Name + '.cmd')
                 $lines = @('@echo off')
                 if ($Hang) { $lines += 'ping -n 30 127.0.0.1 >nul' }
+                if ($MultibyteStdout) { $lines += ('pwsh -NoProfile -Command "' + $euroCmd + '"') }
                 if ($BigStdout) { $lines += 'for /L %%i in (1,1,400) do @echo AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' }
                 if ($BigStderr) { $lines += ('echo ' + $Version); $lines += 'for /L %%i in (1,1,400) do @echo BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB 1>&2' }
                 if (-not ($BigStdout -or $BigStderr)) { if ($Garbage) { $lines += 'echo not a version at all' } else { $lines += ('echo ' + $Version) } }
@@ -50,6 +54,7 @@ Describe 'F-198 Prop-145 hook-health (liveness + version diagnostic)' {
                 $path = Join-Path $dir $Name
                 $lines = @('#!/usr/bin/env sh')
                 if ($Hang) { $lines += 'sleep 30' }
+                if ($MultibyteStdout) { $lines += ("pwsh -NoProfile -Command '" + $euroCmd + "'") }
                 if ($BigStdout) { $lines += 'i=0; while [ $i -lt 400 ]; do echo AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA; i=$((i+1)); done' }
                 if ($BigStderr) { $lines += ("echo '" + $Version + "'"); $lines += 'i=0; while [ $i -lt 400 ]; do echo BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB 1>&2; i=$((i+1)); done' }
                 if (-not ($BigStdout -or $BigStderr)) { if ($Garbage) { $lines += 'echo "not a version at all"' } else { $lines += ("echo '" + $Version + "'") } }
@@ -249,6 +254,11 @@ Describe 'F-198 Prop-145 hook-health (liveness + version diagnostic)' {
         It 'fails closed on OVERSIZED stdout (byte cap)' {
             $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride (New-FakeHostExe -Name 'codex' -BigStdout)
             $p.ok | Should -BeFalse
+            $p.version | Should -Be 'unknown'
+        }
+        It 'fails closed on MULTIBYTE output crossing the 8 KB BYTE boundary below 8,192 chars - the cap counts encoded bytes, not chars (review finding f2, run 20260714T182921446)' {
+            $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride (New-FakeHostExe -Name 'codex' -MultibyteStdout)
+            $p.ok | Should -BeFalse -Because '3,000 euro signs are 3,000 chars but 9,000 UTF-8 bytes - past the contract''s raw-byte cap'
             $p.version | Should -Be 'unknown'
         }
         It 'fails closed on OVERSIZED stderr (byte cap), even with a valid version on stdout' {

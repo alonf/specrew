@@ -479,6 +479,35 @@ Focused suites 80/80 green on Windows; full registry + Linux Docker verify re-ru
 the fixes commit. Rounds consumed of the 5-round authorization: 1. The loop continues per the authorization —
 clean closes Iteration 005; a human-decision finding stops immediately.
 
+### Tenth round — round 2 of the 5-round authorization (2026-07-14, run 20260714T182921446-f1e5c4f0) + 4 fixes
+
+Round 2 ran after `resolved-against-disk --fix-evidence-ref 8c1495e3` and returned **4 blocking findings**, none
+human-decision — all verified and fixed with paired regressions:
+
+1. **f1 (unverified stale-result deletion).** The pre-run stale-result delete swallowed errors and never
+   verified the file disappeared — an undeletable (locked/permission) schema-valid stale result could be read
+   as this run's rich claim. Fixed: deletion is VERIFIED; still-present → the run REFUSES to execute
+   (fail-loud, zero side effects). Regression: Windows share-read/deny-delete handle; Linux read-only parent —
+   both throw before execution, sentinel proves the command never ran.
+2. **f2 (char-counted probe cap).** FR-053a's 8 KB probe cap counted decoded CHARS — multibyte output consumed
+   ~3x the contract bytes before tripping. Fixed: UTF-8-pinned stream decoding + ENCODED-BYTE accounting per
+   chunk (`SpecrewHostVersionProbeMaxOutputBytes`). Regression: 3,000 euro signs (3,000 chars, 9,000 bytes)
+   fail closed.
+3. **f3 (result file flips the reviewed digest).** A run-produced result_path file stayed in the tree while
+   the digest was bound pre-execution — the evidence could never exact-match the reviewed state. Fixed:
+   TRANSIENT result lifecycle — the file is a transport, deleted right after reading (valid or invalid); its
+   validated content persists in the record; a cleanup failure warns and the evidence honestly orphans
+   itself. Regression: digest identical before/after a structured-result run.
+4. **f4 (synthetic failures not durable).** Verification failure records existed only on the in-memory
+   return — the digest-keyed store (what the reviewer injection reads) omitted attempted failures,
+   contradicting FR-048 record-every-attempt. Fixed: the store writer is extracted
+   (`Save-ContinuousCoReviewRunRecord`) and every synthetic failure persists through it (digest-unavailable →
+   loud warn, in-memory only). Regression: each runnable-plan failure classification reloads from disk,
+   joins at the exact digest, and passes the production lookup.
+
+Focused suites 134/134 green on Windows; full registry + Linux Docker verify re-run; evidence re-bound to the
+fixes commit. Rounds consumed: 2 of 5.
+
 ## Notes
 
 - **Verification (current — see the cross-platform evidence record).** The full F-198 honesty regression

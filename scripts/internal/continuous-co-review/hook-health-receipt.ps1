@@ -146,11 +146,12 @@ $script:SpecrewHostVersionProbeSpec = @{
     copilot = @{ command = 'copilot'; args = @('--version') }
 }
 
-# Byte (char) cap for a --version probe's captured stdout AND stderr - bounds MEMORY, not just time (Prop-145
-# finding 1). A real `--version` prints a few bytes; anything past this cap is a misbehaving / hostile process, so
-# the probe FAILS CLOSED (-> unknown -> unverified). The pipe keeps draining past the cap (discarded) so the child
-# never blocks; NOTHING is written to disk.
-$script:SpecrewHostVersionProbeMaxOutputChars = 8192
+# BYTE cap for a --version probe's captured stdout AND stderr - bounds MEMORY, not just time (Prop-145 finding 1;
+# re-anchored to ENCODED BYTES per review finding f2, run 20260714T182921446: a char-counted cap let multibyte
+# output consume ~3x the contract's 8 KB before tripping). A real `--version` prints a few bytes; anything past
+# this cap is a misbehaving / hostile process, so the probe FAILS CLOSED (-> unknown -> unverified). The pipe
+# keeps draining past the cap (discarded) so the child never blocks; NOTHING is written to disk.
+$script:SpecrewHostVersionProbeMaxOutputBytes = 8192
 
 function Get-SpecrewHostVersionProbeSpec {
     # The probe spec for a host key (a COPY), or $null if the host has no spec. Read-only accessor.
@@ -244,18 +245,24 @@ function Invoke-SpecrewBoundedVersionProcess {
             $psi.FileName = $ExecutablePath
             foreach ($a in $Arguments) { $psi.ArgumentList.Add([string]$a) }
         }
+        # DETERMINISTIC decode (finding f2): pin both stream readers to UTF-8 so the byte accounting below is
+        # exact and platform-independent (real host version strings are ASCII, which UTF-8 subsumes).
+        $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+        $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
         $proc = [System.Diagnostics.Process]::Start($psi)
 
-        # BYTE-CAPPED CONCURRENT DRAIN (Prop-145 finding 1): the timeout bounds TIME; this bounds MEMORY. Read BOTH
-        # streams concurrently on THIS thread via ReadAsync + WaitAny (no PowerShell scriptblock on a threadpool
-        # thread), accumulating at most $cap chars each, then CONTINUING to read + DISCARD so the child never blocks
-        # on a full pipe. Nothing is written to disk. Exceeding the cap fails CLOSED. On the deadline the whole
-        # descendant tree is killed.
-        $cap = $script:SpecrewHostVersionProbeMaxOutputChars
+        # BYTE-CAPPED CONCURRENT DRAIN (Prop-145 finding 1; ENCODED-BYTE accounting per finding f2, run
+        # 20260714T182921446): the timeout bounds TIME; this bounds MEMORY on the contract's RAW-BYTE boundary -
+        # each decoded chunk is charged its UTF-8 ENCODED byte count, so multibyte output cannot consume past the
+        # 8 KB cap under a char count. Read BOTH streams concurrently on THIS thread via ReadAsync + WaitAny (no
+        # PowerShell scriptblock on a threadpool thread), then CONTINUE to read + DISCARD past the cap so the
+        # child never blocks on a full pipe. Nothing is written to disk. Exceeding the cap fails CLOSED. On the
+        # deadline the whole descendant tree is killed.
+        $cap = $script:SpecrewHostVersionProbeMaxOutputBytes
         $deadlineMs = [Math]::Max(1000, $TimeoutSeconds * 1000)
         $sw = [System.Diagnostics.Stopwatch]::StartNew()
-        $sbOut = [System.Text.StringBuilder]::new(); $ovOut = $false; $outEof = $false
-        $sbErr = [System.Text.StringBuilder]::new(); $ovErr = $false; $errEof = $false
+        $sbOut = [System.Text.StringBuilder]::new(); $ovOut = $false; $outEof = $false; $bytesOut = 0
+        $sbErr = [System.Text.StringBuilder]::new(); $ovErr = $false; $errEof = $false; $bytesErr = 0
         $bufOut = [char[]]::new(4096); $bufErr = [char[]]::new(4096)
         $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
         $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
@@ -271,7 +278,11 @@ function Invoke-SpecrewBoundedVersionProcess {
                 $n = 0; try { $n = $tOut.GetAwaiter().GetResult() } catch { $n = 0 }
                 if ($n -le 0) { $outEof = $true }
                 else {
-                    if (-not $ovOut) { $room = $cap - $sbOut.Length; if ($room -gt 0) { [void]$sbOut.Append($bufOut, 0, [Math]::Min($n, $room)) }; if ($n -gt $room) { $ovOut = $true } }
+                    if (-not $ovOut) {
+                        $chunkBytes = [System.Text.Encoding]::UTF8.GetByteCount($bufOut, 0, $n)
+                        if (($bytesOut + $chunkBytes) -gt $cap) { $ovOut = $true }
+                        else { [void]$sbOut.Append($bufOut, 0, $n); $bytesOut += $chunkBytes }
+                    }
                     $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
                 }
             }
@@ -279,7 +290,11 @@ function Invoke-SpecrewBoundedVersionProcess {
                 $n = 0; try { $n = $tErr.GetAwaiter().GetResult() } catch { $n = 0 }
                 if ($n -le 0) { $errEof = $true }
                 else {
-                    if (-not $ovErr) { $room = $cap - $sbErr.Length; if ($room -gt 0) { [void]$sbErr.Append($bufErr, 0, [Math]::Min($n, $room)) }; if ($n -gt $room) { $ovErr = $true } }
+                    if (-not $ovErr) {
+                        $chunkBytes = [System.Text.Encoding]::UTF8.GetByteCount($bufErr, 0, $n)
+                        if (($bytesErr + $chunkBytes) -gt $cap) { $ovErr = $true }
+                        else { [void]$sbErr.Append($bufErr, 0, $n); $bytesErr += $chunkBytes }
+                    }
                     $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
                 }
             }

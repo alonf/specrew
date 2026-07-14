@@ -211,6 +211,23 @@ function Invoke-ContinuousCoReviewVerificationPlan {
     }
     catch { $digestTreeId = $null }
 
+    # PERSIST every synthetic failure into the digest-keyed store (review finding f4, run 20260714T182921446):
+    # FR-048's record-every-attempt means the DURABLE store the reviewer injection reads, not only this
+    # invocation's return value - an unpersisted attempted-failure would be missing reviewer evidence. Write
+    # failures throw (the same fail-loud posture as the real recorder's store write). Digest-unavailable ->
+    # the store has no key; WARN and keep the record in-memory only (the fail-loud digest gate already stops
+    # REAL runs in that state).
+    $persistFailure = {
+        param($rec)
+        if (-not [string]::IsNullOrWhiteSpace([string]$digestTreeId)) {
+            Save-ContinuousCoReviewRunRecord -RepoRoot $resolvedRoot -TreeId $digestTreeId -Entry $rec -CommandId ([string]$rec.command_id) -Executable ([string]$rec.command.executable) -Arguments @($rec.command.arguments) -WorkingDirectory ([string]$rec.command.working_directory) -RecordedAt ([string]$rec.recorded_at)
+        }
+        else {
+            [Console]::Error.WriteLine('[co-review] WARN SYNTHETIC_FAILURE_NOT_PERSISTED reviewed-state digest unavailable; the attempt record exists only in this invocation''s return value.')
+        }
+        return $rec
+    }
+
     # CONFIGURED: execute each declared command IN ORDER (never sorted); RECORD EVERY ATTEMPT.
     # Array-preserving read (NO @() wrapper — the accessor's `, $val` return would otherwise nest as a
     # single wrapper element; the bare assignment captures the real command array, 1 or N elements).
@@ -236,13 +253,13 @@ function Invoke-ContinuousCoReviewVerificationPlan {
         # recorded as a failed attempt and skipped — never executed, never dropped, never made clean.
         $cmdCheck = Test-ContinuousCoReviewVerificationCommand -Command $cmd -RepoRoot $resolvedRoot
         if (-not $cmdCheck.valid) {
-            $evidence += New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'structurally-un-runnable' -Reason $cmdCheck.reason -Now $Now
+            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'structurally-un-runnable' -Reason $cmdCheck.reason -Now $Now))
             continue
         }
 
         # require_result with nowhere to write the result can NEVER be satisfied -> verification failure.
         if ($requireResult -and [string]::IsNullOrWhiteSpace($resultPath)) {
-            $evidence += New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'required-result-missing-or-invalid' -Reason 'require_result=true but no result_path declared to satisfy it' -Now $Now
+            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'required-result-missing-or-invalid' -Reason 'require_result=true but no result_path declared to satisfy it' -Now $Now))
             continue
         }
 
@@ -254,7 +271,7 @@ function Invoke-ContinuousCoReviewVerificationPlan {
         # inherited PATH for launch. Unresolvable -> a RECORDED failure; the plan continues (never dropped).
         $exeResolution = Resolve-ContinuousCoReviewVerificationExecutable -Executable $executable -RepoRoot $resolvedRoot
         if (-not [bool]$exeResolution.resolved) {
-            $evidence += New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'executable-not-resolvable' -Reason $exeResolution.reason -Now $Now
+            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification 'executable-not-resolvable' -Reason $exeResolution.reason -Now $Now))
             continue
         }
 
@@ -307,7 +324,7 @@ function Invoke-ContinuousCoReviewVerificationPlan {
             # never thrown away and never promoted to a clean result.
             $msg = [string]$_.Exception.Message
             $cls = if ($requireResult -and (($msg -match 'REQUIRED') -or ($msg -match 'INVALID'))) { 'required-result-missing-or-invalid' } else { 'recorded-run-failed' }
-            $evidence += New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification $cls -Reason $msg -Now $Now
+            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification $cls -Reason $msg -Now $Now))
         }
     }
 
