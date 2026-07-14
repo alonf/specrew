@@ -138,30 +138,57 @@ function Request-ContinuousCoReviewLineageLease {
         $existing = Get-ContinuousCoReviewLineageLease -RepoRoot $RepoRoot -LineageId $LineageId
         if ($null -eq $existing) { continue }   # vanished (a concurrent release) -> retry the atomic create
 
+        # OWNER LIVENESS FIRST (review finding f3, run 20260714T215545754): the same-generation duplicate
+        # answer is only honest for a LIVE incumbent - a supervisor that crashed while holding THIS generation
+        # previously suppressed every same-generation retry forever (dead-owner reclaim was reachable only via
+        # a DIFFERENT generation).
         $existingGen = [string](Get-ContinuousCoReviewLeaseProp -Object $existing -Name 'generation')
-        if ($existingGen -ceq $Generation) {
-            # SAME generation (same reviewed-tree epoch) = a duplicate fire. Do NOT acquire, do NOT spawn.
-            return [pscustomobject]@{ acquired = $false; lease = $null; reason = 'duplicate-same-generation'; existing = $existing; reclaimed = $false }
-        }
-
-        # DIFFERENT generation: is the incumbent owner still ALIVE?
         $ownerPid = Get-ContinuousCoReviewLeaseProp -Object $existing -Name 'pid'
         $ownerStart = [string](Get-ContinuousCoReviewLeaseProp -Object $existing -Name 'process_start_id')
-        if (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $ownerPid -ProcessStartId $ownerStart) {
+        $ownerAlive = Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $ownerPid -ProcessStartId $ownerStart
+
+        if ($existingGen -ceq $Generation -and $ownerAlive) {
+            # SAME generation (same reviewed-tree epoch), LIVE owner = a duplicate fire. Do NOT acquire, do NOT spawn.
+            return [pscustomobject]@{ acquired = $false; lease = $null; reason = 'duplicate-same-generation'; existing = $existing; reclaimed = $false }
+        }
+        if ($ownerAlive) {
             # LIVE owner reviewing an OLDER tree: NEVER steal, NEVER spawn a second reviewer. QUEUE our newer tree.
             $null = Set-ContinuousCoReviewLineageLeasePendingTree -RepoRoot $RepoRoot -LineageId $LineageId -PendingTree $Generation -ExpectGeneration $existingGen
             return [pscustomobject]@{ acquired = $false; lease = $null; reason = 'queued-newer-tree'; existing = $existing; reclaimed = $false }
         }
 
-        # DEAD owner (crash) = RECLAIM. Delete the stale lease (only if it is STILL the dead one we inspected, to
-        # avoid racing a concurrent reclaimer), then loop to retry the atomic create.
+        # DEAD owner (crash) = ATOMIC RECLAIM (review finding f4, run 20260714T215545754): the old
+        # check-then-delete raced - reclaimer A could re-read dead token X while reclaimer B deleted X and
+        # CreateNew'd a valid replacement Y, then A's path-only delete removed Y and a second reviewer could
+        # spawn against a live one. The reclaim is now CLAIM-BY-RENAME: File.Move of the exact lease path is
+        # atomic and single-winner - only the process that owns the moved file may inspect and dispose of it.
+        #   - moved file carries the DEAD token  -> dispose it; loop to the atomic CreateNew.
+        #   - moved file carries a DIFFERENT token (we displaced a concurrent replacement) -> move it BACK.
+        #     If the restore collides with an even newer CreateNew, the displaced lease is dropped with a LOUD
+        #     warn: its owner's completion degrades to non-authoritative/advisory (the lease file is the
+        #     authority), which is the SAFE direction - never two authoritative reviewers.
+        $deadToken = [string](Get-ContinuousCoReviewLeaseProp -Object $existing -Name 'owner_token')
+        $reclaimPath = $path + '.reclaim.' + [guid]::NewGuid().ToString('N')
+        try { [System.IO.File]::Move($path, $reclaimPath) }
+        catch { continue }   # another reclaimer/creator won the path - retry the loop against the new state
+        $movedToken = ''
         try {
-            $reRead = Get-ContinuousCoReviewLineageLease -RepoRoot $RepoRoot -LineageId $LineageId
-            $deadToken = [string](Get-ContinuousCoReviewLeaseProp -Object $existing -Name 'owner_token')
-            $curToken = [string](Get-ContinuousCoReviewLeaseProp -Object $reRead -Name 'owner_token')
-            if ($curToken -eq $deadToken) { Remove-Item -LiteralPath $path -Force -ErrorAction Stop }
+            $moved = Get-Content -LiteralPath $reclaimPath -Raw -Encoding UTF8 | ConvertFrom-Json
+            $movedToken = [string](Get-ContinuousCoReviewLeaseProp -Object $moved -Name 'owner_token')
         }
-        catch { $null = $_ }
+        catch { $movedToken = '' }
+        if ($movedToken -ceq $deadToken) {
+            # we claimed the exact dead incumbent - dispose and retry the atomic create.
+            try { Remove-Item -LiteralPath $reclaimPath -Force -ErrorAction Stop } catch { $null = $_ }
+        }
+        else {
+            # we displaced a CONCURRENT replacement - restore it.
+            try { [System.IO.File]::Move($reclaimPath, $path) }
+            catch {
+                try { Remove-Item -LiteralPath $reclaimPath -Force -ErrorAction SilentlyContinue } catch { $null = $_ }
+                [Console]::Error.WriteLine("[co-review] WARN LEASE_REPLACEMENT_DISPLACED a concurrent replacement lease for lineage '$LineageId' was displaced during reclaim and could not be restored; its owner's completion degrades to advisory (never two authoritative reviewers).")
+            }
+        }
     }
     return [pscustomobject]@{ acquired = $false; lease = $null; reason = 'acquire-contended'; existing = (Get-ContinuousCoReviewLineageLease -RepoRoot $RepoRoot -LineageId $LineageId); reclaimed = $false }
 }

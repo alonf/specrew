@@ -381,7 +381,30 @@ function Invoke-ContinuousCoReviewVerificationPlan {
             # never thrown away and never promoted to a clean result.
             $msg = [string]$_.Exception.Message
             $cls = if ($requireResult -and (($msg -match 'REQUIRED') -or ($msg -match 'INVALID'))) { 'required-result-missing-or-invalid' } else { 'recorded-run-failed' }
-            $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification $cls -Reason $msg -Now $Now))
+            # OBSERVED-FACTS PRESERVATION (review finding f1, run 20260714T215545754): a required-result miss
+            # now PERSISTS the full real process record (timestamps, exit code, output metadata) before its
+            # fail-loud throw - REUSE that record (the latest attempt for this command_id at the digest)
+            # instead of substituting a zero-detail synthetic one. Anything else (start failure,
+            # digest-unavailable, recording failure) still synthesizes.
+            $reused = $null
+            if ($cls -eq 'required-result-missing-or-invalid' -and -not [string]::IsNullOrWhiteSpace([string]$digestTreeId)) {
+                try {
+                    $storeRec = Get-Content -LiteralPath (Join-Path (Get-ContinuousCoReviewTestEvidenceDirectory -RepoRoot $resolvedRoot) ($digestTreeId + '.json')) -Raw | ConvertFrom-Json
+                    $mine = @(@($storeRec.runs) | Where-Object { $null -ne $_ -and (@($_.PSObject.Properties.Name) -contains 'command_id') -and ([string]$_.command_id -ceq $commandId) })
+                    if (@($mine).Count -gt 0) {
+                        $reused = @($mine | Sort-Object { if (@($_.PSObject.Properties.Name) -contains 'attempt') { [int]$_.attempt } else { 1 } })[-1]
+                    }
+                }
+                catch { $reused = $null }
+            }
+            if ($null -ne $reused) {
+                $reused | Add-Member -NotePropertyName 'attempted' -NotePropertyValue $true -Force
+                $reused | Add-Member -NotePropertyName 'classification' -NotePropertyValue $cls -Force
+                $evidence += $reused
+            }
+            else {
+                $evidence += (& $persistFailure (New-ContinuousCoReviewVerificationFailureRecord -Executable $executable -Arguments $arguments -CommandId $commandId -Provenance $provenance -EnvRefs $envRefs -DigestTreeId $digestTreeId -Classification $cls -Reason $msg -Now $Now))
+            }
         }
     }
 

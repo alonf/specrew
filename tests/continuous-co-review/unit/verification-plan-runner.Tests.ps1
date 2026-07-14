@@ -125,6 +125,36 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         $ev.command_succeeded | Should -BeFalse
         $ev.command_id | Should -Be 'needs-result'
         [string]$ev.classification | Should -Be 'required-result-missing-or-invalid'
+        # OBSERVED FACTS preserved (review finding f1, run 20260714T215545754): the REAL process record - not
+        # a zero-detail synthetic - carries the actual exit code, timing, and output metadata.
+        [int]$ev.exit_code | Should -Be 0 -Because 'the command itself exited 0; the VERIFICATION failed on the missing required result'
+        @($ev.PSObject.Properties.Name) | Should -Contain 'stdout_meta'
+        [string]$ev.stdout_meta.sha256 | Should -Match '^[0-9a-f]{64}$'
+        [string]$ev.started_at | Should -Not -BeNullOrEmpty
+        # and the DURABLE store carries the same real record.
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $rec = Get-Content -LiteralPath (Join-Path $repo ".specrew/review/test-evidence/$digest.json") -Raw | ConvertFrom-Json
+        $durable = @(@($rec.runs) | Where-Object { [string]$_.command_id -eq 'needs-result' })
+        @($durable).Count | Should -Be 1
+        [int]$durable[0].exit_code | Should -Be 0
+        [string]$durable[0].classification | Should -Be 'required-result-missing-or-invalid'
+        $durable[0].command_succeeded | Should -BeFalse
+
+        # the INVALID-result variant preserves the observed facts identically.
+        $pwshExe2 = (Get-Process -Id $PID).Path
+        $plan2 = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-run-req-invalid'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'bad-result'; executable = $pwshExe2; arguments = @('-NoProfile', '-Command', 'Set-Content -LiteralPath badresult.json -Value ''not json {''; exit 0'); result_path = 'badresult.json'; require_result = $true; provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result2 = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan2
+        $ev2 = @($result2.evidence)[0]
+        $ev2.command_succeeded | Should -BeFalse
+        [string]$ev2.classification | Should -Be 'required-result-missing-or-invalid'
+        [int]$ev2.exit_code | Should -Be 0
+        [long]$ev2.stdout_meta.byte_count | Should -BeGreaterOrEqual 0
     }
 
     It 'REDACTS env — records only env_ref NAMES, never values' {

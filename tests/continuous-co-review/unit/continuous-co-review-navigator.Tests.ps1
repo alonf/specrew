@@ -355,6 +355,33 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'the blackboard findings-result carrying the reviewed_tree_id stamp VALIDATES against the shipped FindingsResult schema; unknown fields still reject (review finding f6, run 20260714T215545754)' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            $schemaRoot = Get-ContinuousCoReviewContractRoot -RepoRoot $script:RepoRoot
+            $treeId = ('a' * 40)
+            $findings = [pscustomobject]@{
+                schema_version   = '1.0'; run_id = 'schema-stamp-run'; status = 'no_findings'; findings = @()
+                created_at       = '2026-07-15T00:00:00Z'
+                reviewed_tree_id = $treeId
+            }
+            # the stamped object is SANCTIONED by the evolved schema...
+            { Assert-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $schemaRoot -InputObject $findings } | Should -Not -Throw
+            # ...while the schema stays CLOSED: an unknown field still rejects.
+            $smuggled = [pscustomobject]@{
+                schema_version = '1.0'; run_id = 'x'; status = 'no_findings'; findings = @(); created_at = '2026-07-15T00:00:00Z'; smuggled_field = 1
+            }
+            { Assert-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $schemaRoot -InputObject $smuggled } | Should -Throw
+            # PRODUCTION-PATH: the VALIDATED blackboard write persists, and the exact persisted object
+            # round-trips through the shipped schema.
+            Write-ContinuousCoReviewBlackboardThread -RepoRoot $root -CheckpointId 'nav-schema-stamp-run' -FindingsResult $findings -SchemaRoot $schemaRoot | Out-Null
+            $persisted = Get-Content -LiteralPath (Join-Path $root '.specrew/review/inline/schema-stamp-run/findings-result.json') -Raw | ConvertFrom-Json
+            [string]$persisted.reviewed_tree_id | Should -Be $treeId
+            { Assert-ReviewerContractObject -ContractName 'FindingsResult' -SchemaRoot $schemaRoot -InputObject $persisted } | Should -Not -Throw
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'T019 step 6 piece 2c: the OWNER completion RELEASES its lease on retirement' {
         $root = script:New-NavigatorProject -FileContent 'base'
         try {

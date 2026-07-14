@@ -622,6 +622,46 @@ immediately on a clean round (closes Iteration 005). If round 2 is not clean: ST
 architectural reassessment — round-2 findings are verified/triaged but NOT auto-fixed. No further rounds are
 implicitly authorized.**
 
+### Fourteenth round — round 1 of the 2-round authorization (2026-07-14, run 20260714T215545754-7b682c45): 7 findings, 6 fixed, 1 ESCALATED
+
+Round 1 of 2 ran after the selected-plan wiring repair (b00c38fa) and returned **7 findings** (6 blocking +
+1 advisory) — a deeper class than prior rounds. Five blocking + the advisory were verified and fixed with
+paired regressions; ONE blocking finding is ESCALATED to the maintainer (it contradicts a recorded
+maintainer ruling — not fixable either direction without a human verdict):
+
+1. **f1 (required-result miss lost observed facts) — FIXED.** The recorder threw before persisting, and the
+   runner substituted a zero-detail synthetic record. Now the FULL real process record (timestamps, exit
+   code, output byte counts/hashes) persists with command_succeeded=false + the required-result
+   classification BEFORE the fail-loud throw, and the runner REUSES the persisted record. Regressions assert
+   the observed exit/duration/output metadata for both missing and invalid required results.
+2. **f2 (host-support tiers `verified` without runtime evidence) — ESCALATED, NOT TOUCHED.** The reviewer
+   holds that the codex/cli + copilot/cli `verified` rows rest on characterization PROSE (no digest-matched
+   recorded-run evidence of the actual host probes) and demands either recorded probe evidence or an
+   `unverified` downgrade. This DIRECTLY CONTRADICTS the maintainer's recorded 2026-07-14 ruling (verified
+   WITH honest human-observed/runner-observed provenance). No committed re-runnable probe scripts exist (the
+   T036/T037 fixtures were session-scratch). The maintainer decides: record real probe evidence, downgrade,
+   or overrule with an ack.
+3. **f3 (same-generation dead-owner suppression) — FIXED.** duplicate-same-generation now applies only to a
+   LIVE owner; a provably dead same-generation incumbent is reclaimed. Paired same-gen retry + live-dup tests.
+4. **f4 (reclaim check-then-delete race) — FIXED.** Reclaim is CLAIM-BY-RENAME (atomic single-winner
+   File.Move of the exact incumbent); a displaced concurrent replacement is restored, or on a restore
+   collision dropped LOUDLY (its owner degrades to advisory — never two authoritative reviewers). A
+   barrier-synchronized two-process race test proves single-winner + the replacement lease survives.
+5. **f5 (discarded owner-handoff result) — FIXED.** The post-spawn lease re-stamp is a REQUIRED transaction:
+   on failure the spawned supervisor is stopped, the registry marked failed, the lease released, and the
+   service fails loudly — never status=running with an unprotected reviewer. Production-path test with a
+   real spawned process + a forced handoff failure.
+6. **f6 (FindingsResult schema violation) — FIXED.** The reviewed_tree_id stamp is now a SANCTIONED optional
+   field of FindingsResult.v1 (schema evolved with provenance), and the navigator's blackboard write passes
+   the resolved SchemaRoot so the persisted object VALIDATES against the shipped contract. Production-path
+   round-trip test; unknown fields still reject.
+7. **advisory (iteration-003 tracker contradiction) — FIXED.** plan.md reconciled to tasks-progress/state
+   truth (T019 in-progress, T034b planned).
+
+Focused suites 122/122 green on Windows; full registry + Linux Docker verify re-run; evidence re-bound.
+**Round budget: 1 of 2 consumed. Round 2 is HELD pending the maintainer's f2 decision — spending it before
+that decision guarantees an unclean round on f2 alone.**
+
 ## Notes
 
 - **Verification (current — see the cross-platform evidence record).** The full F-198 honesty regression

@@ -182,8 +182,21 @@ function Start-ContinuousCoReviewServiceRun {
         $supPid = [int]$proc.Id
     }
     # Stamp the lease's owner PROCESS to the reviewer supervisor now that it exists, so crash recovery tracks the
-    # process actually running the review (not the parent that acquired the lease).
-    $null = Update-ContinuousCoReviewLineageLeaseOwnerProcess -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken -OwnerPid $supPid
+    # process actually running the review (not the parent that acquired the lease). REQUIRED POST-SPAWN
+    # TRANSACTION (review finding f5, run 20260714T215545754): if this handoff fails, the lease still names the
+    # SHORT-LIVED acquiring parent - once that parent exits, dead-owner reclamation could spawn a CONCURRENT
+    # reviewer while this supervisor is still live. A failed handoff therefore deterministically STOPS the
+    # spawned supervisor, marks the registry failed, releases the lease, and FAILS LOUDLY - never status=running
+    # with an unprotected reviewer.
+    $handoffOk = $false
+    try { $handoffOk = [bool](Update-ContinuousCoReviewLineageLeaseOwnerProcess -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken -OwnerPid $supPid) }
+    catch { $handoffOk = $false }
+    if (-not $handoffOk) {
+        try { Stop-Process -Id $supPid -Force -ErrorAction Stop } catch { [Console]::Error.WriteLine("[co-review] WARN SUPERVISOR_STOP_FAILED pid=$supPid after a failed lease owner handoff: $($_.Exception.Message)") }
+        $null = Complete-ContinuousCoReviewLineageLease -RepoRoot $resolved -LineageId $LineageId -Generation $TreeId -OwnerToken $leaseOwnerToken
+        & $writeReg $null 'failed' @{ failure_reason = 'lease-owner-handoff-failed: the supervisor could not be stamped as the lease owner; the spawned reviewer was stopped (never an unprotected running reviewer)' }
+        throw "lease-owner-handoff-failed for run $RunId (lineage '$LineageId', generation '$TreeId'): the lease could not be re-stamped to the supervisor; the spawned reviewer was stopped."
+    }
     & $writeReg $supPid 'running' @{ lineage_id = $LineageId; generation = $TreeId; owner_token = $leaseOwnerToken }
     return [pscustomobject]@{ run_id = $RunId; run_dir = $runDir; status = 'running'; supervisor_pid = $supPid; tree_id = $TreeId; detached = $true; lineage_id = $LineageId; generation = $TreeId }
 }

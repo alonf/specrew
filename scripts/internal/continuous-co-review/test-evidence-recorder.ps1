@@ -582,10 +582,16 @@ function Invoke-ContinuousCoReviewRecordedRun {
     $stderrMeta = & $newMeta $bytesErr $shaErr $tailErr $tailErrFill
 
     # OPTIONAL SpecrewTestResult - rich counts ONLY from a schema-valid result THIS run produced.
+    # OBSERVED-FACTS PRESERVATION (review finding f1, run 20260714T215545754): a REQUIRED-result miss/invalid
+    # no longer throws away the process observation - the failure is NOTED here, the FULL real record
+    # (timestamps, duration, exit code, output byte counts/hashes) is built and PERSISTED with
+    # command_succeeded=$false + the required-result classification, and THEN the fail-loud throw fires.
+    # FR-015's directly-observed facts and FR-048's record-every-attempt both survive the failure.
     $testResult = $null
+    $requiredResultFailure = $null
     if (-not [string]::IsNullOrWhiteSpace($ResultPath)) {
         if (-not (Test-Path -LiteralPath $resultFull -PathType Leaf)) {
-            if ($RequireResult) { throw "recorded-run: a SpecrewTestResult was REQUIRED at '$ResultPath' but the command produced none - failing loudly (FR-015), never inferring counts from console output." }
+            if ($RequireResult) { $requiredResultFailure = "recorded-run: a SpecrewTestResult was REQUIRED at '$ResultPath' but the command produced none - failing loudly (FR-015), never inferring counts from console output." }
         }
         else {
             $obj = $null
@@ -601,11 +607,12 @@ function Invoke-ContinuousCoReviewRecordedRun {
             catch { [Console]::Error.WriteLine("[co-review] WARN RESULT_FILE_NOT_CLEANED '$ResultPath' could not be deleted after reading; the reviewed digest will differ from the bound digest and this evidence orphans itself.") }
             $v = Test-ContinuousCoReviewSpecrewTestResult -Object $obj
             if (-not $v.valid) {
-                if ($RequireResult) { throw "recorded-run: the SpecrewTestResult at '$ResultPath' is INVALID ($($v.reason)) - failing loudly rather than degrading to a richer pass claim (FR-015)." }
+                if ($RequireResult) { $requiredResultFailure = "recorded-run: the SpecrewTestResult at '$ResultPath' is INVALID ($($v.reason)) - failing loudly rather than degrading to a richer pass claim (FR-015)." }
             }
             else { $testResult = [ordered]@{ result = $v.result; counts = $v.counts; source = 'specrew-test-result' } }
         }
     }
+    if ($null -ne $requiredResultFailure) { $commandSucceeded = $false }   # a required-result miss is NEVER a successful command
 
     # OUTPUT-ARTIFACT digests.
     $artifacts = @()
@@ -646,6 +653,11 @@ function Invoke-ContinuousCoReviewRecordedRun {
     if ((-not $commandSucceeded) -and ($effectiveTailBytes -le 0)) {
         $entry['failure_diagnostics'] = 'insufficient-without-disclosure'
     }
+    # REQUIRED-RESULT FAILURE CLASSIFICATION on the REAL record (finding f1, run 20260714T215545754).
+    if ($null -ne $requiredResultFailure) {
+        $entry['classification'] = 'required-result-missing-or-invalid'
+        $entry['failure_reason'] = $requiredResultFailure
+    }
     # AUDITABLE DISCLOSURE RECORD (durable BY DESIGN - the disclosure exists to reach the reviewer through
     # the digest-keyed evidence store, and durability is what makes it auditable; clearly labeled sensitive).
     if ($disclosureApplies) {
@@ -672,6 +684,10 @@ function Invoke-ContinuousCoReviewRecordedRun {
     }
     catch {
         throw "recorded-run: evidence RECORDING failed for '$Executable' bound to ${treeId} (fail-loud, FR-015): $($_.Exception.Message)"
+    }
+    # FAIL LOUD on a required-result miss - AFTER the real observed record persisted (finding f1).
+    if ($null -ne $requiredResultFailure) {
+        throw ($requiredResultFailure + ' (the full observed process record was persisted with command_succeeded=false)')
     }
     return [pscustomobject]$entry
 }

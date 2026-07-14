@@ -134,6 +134,54 @@ Set-Content -LiteralPath (Join-Path '$resultsFwd' 'r-$i.txt') -Value ([string]`$
         (Request-ContinuousCoReviewLineageLease -RepoRoot $repo2 -LineageId 'L' -Generation 'genB' -RunId 'run2').reason | Should -Be 'queued-newer-tree'
     }
 
+    It '7b. a provably-DEAD owner holding the SAME generation is reclaimed - a crash can no longer suppress every same-generation retry forever (review finding f3, run 20260714T215545754)' {
+        $repo = New-LeaseRepo
+        $dead = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'exit 0') -PassThru
+        $null = $dead.WaitForExit(10000)
+        Set-RawLease -RepoRoot $repo -LineageId 'L' -Fields @{ schema_version = '1.0'; lineage_id = 'L'; generation = 'genA'; run_id = 'dead-run'; owner_token = 'x'; pid = $dead.Id; process_start_id = 'stale-start-id'; acquired_at = '2020-01-01T00:00:00Z'; pending_tree = $null }
+        # retry the IDENTICAL generation: pre-fix this returned duplicate-same-generation forever.
+        $r = Request-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L' -Generation 'genA' -RunId 'retry-same-gen' -AcquiringPid $PID
+        $r.acquired | Should -BeTrue -Because 'a dead same-generation owner is reclaimed, not treated as an active duplicate'
+        $r.reclaimed | Should -BeTrue
+        # paired: a LIVE same-generation owner is still a duplicate (the suppression is about liveness, not gone).
+        $repo2 = New-LeaseRepo
+        (Request-ContinuousCoReviewLineageLease -RepoRoot $repo2 -LineageId 'L' -Generation 'genA' -RunId 'live-owner' -AcquiringPid $PID).acquired | Should -BeTrue
+        (Request-ContinuousCoReviewLineageLease -RepoRoot $repo2 -LineageId 'L' -Generation 'genA' -RunId 'dup-fire' -AcquiringPid $PID).reason | Should -Be 'duplicate-same-generation'
+    }
+
+    It '7c. CONCURRENT reclaim is single-winner CLAIM-BY-RENAME - the loser can never delete the winner''s replacement lease (review finding f4, run 20260714T215545754)' {
+        $repo = New-LeaseRepo
+        $dead = Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'exit 0') -PassThru
+        $null = $dead.WaitForExit(10000)
+        Set-RawLease -RepoRoot $repo -LineageId 'L' -Fields @{ schema_version = '1.0'; lineage_id = 'L'; generation = 'genOLD'; run_id = 'dead-run'; owner_token = 'DEADTOKEN'; pid = $dead.Id; process_start_id = 'stale-start-id'; acquired_at = '2020-01-01T00:00:00Z'; pending_tree = $null }
+        # TWO barrier-synchronized real processes race the reclaim of the SAME dead lease.
+        $moduleDir = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review'
+        $barrier = Join-Path $repo 'barrier.go'
+        $workers = @()
+        foreach ($w in @('A', 'B')) {
+            $outFile = Join-Path $repo "reclaim-$w.json"
+            $cmd = ". '$moduleDir/review-identity-contracts.ps1'; . '$moduleDir/co-review-lineage-lease.ps1'; " +
+            "while (-not (Test-Path -LiteralPath '$barrier')) { Start-Sleep -Milliseconds 5 }; " +
+            "`$r = Request-ContinuousCoReviewLineageLease -RepoRoot '$repo' -LineageId 'L' -Generation 'genNEW' -RunId 'reclaimer-$w'; " +
+            "[pscustomobject]@{ acquired = `$r.acquired; reason = `$r.reason } | ConvertTo-Json -Compress | Set-Content -LiteralPath '$outFile' -Encoding UTF8; " +
+            "if (`$r.acquired) { Start-Sleep -Seconds 8 }   # a real supervisor stays alive; exiting instantly would make the winner a legitimately reclaimable dead owner"
+            $workers += Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', $cmd) -PassThru
+        }
+        Set-Content -LiteralPath $barrier -Value 'go' -Encoding UTF8   # release both at once
+        foreach ($p in $workers) { $null = $p.WaitForExit(60000) }
+        $ra = Get-Content -LiteralPath (Join-Path $repo 'reclaim-A.json') -Raw | ConvertFrom-Json
+        $rb = Get-Content -LiteralPath (Join-Path $repo 'reclaim-B.json') -Raw | ConvertFrom-Json
+        # INVARIANTS: exactly one winner, and the on-disk lease is the WINNER's replacement (never deleted by
+        # the loser's stale-token path-delete - the pre-fix race).
+        @(@($ra, $rb) | Where-Object { [bool]$_.acquired }).Count | Should -Be 1 -Because 'the reclaim is single-winner'
+        $final = Get-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L'
+        $final | Should -Not -BeNullOrEmpty -Because 'the replacement lease must survive the losing reclaimer'
+        [string](Get-ContinuousCoReviewLeaseProp -Object $final -Name 'owner_token') | Should -Not -Be 'DEADTOKEN'
+        [string](Get-ContinuousCoReviewLeaseProp -Object $final -Name 'generation') | Should -Be 'genNEW'
+        # and no orphaned reclaim-intermediate files remain.
+        @(Get-ChildItem -LiteralPath (Split-Path (Get-ContinuousCoReviewLineageLeasePath -RepoRoot $repo -LineageId 'L') -Parent) -Filter '*.reclaim.*' -File -ErrorAction SilentlyContinue).Count | Should -Be 0
+    }
+
     It '8. PID-reuse protection: a matching PID but a DIFFERENT process-start identity is NOT the owner' {
         (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $PID -ProcessStartId 'a-different-start-id') | Should -BeFalse -Because 'a reused PID belonging to another process is not the owner'
         (Test-ContinuousCoReviewLeaseOwnerAlive -OwnerPid $PID -ProcessStartId (Get-ContinuousCoReviewProcessStartIdentity -ProcessId $PID)) | Should -BeTrue

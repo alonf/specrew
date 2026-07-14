@@ -75,4 +75,39 @@ Describe 'Continuous co-review service lease-gated spawn (T019 step 6 piece 2b)'
         { Start-ContinuousCoReviewServiceRun -RepoRoot $repo -RunId 'fresh' -TreeId '1111111111111111111111111111111111111111' -LineageId 'L-fresh' -Detached } | Should -Throw
         (Get-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L-fresh') | Should -BeNullOrEmpty -Because 'the acquire succeeded (reached the spawn) and the lease was RELEASED on the spawn failure, so the lineage is not stuck'
     }
+
+    It 'a FAILED lease owner-handoff STOPS the spawned supervisor, marks the registry failed, and releases the lease - never status=running with an unprotected reviewer (review finding f5, run 20260714T215545754)' {
+        $repo = Join-Path $TestDrive 'lease-handoff'
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        # The mocked spawn launches a REAL harmless long-lived process so the transaction has a live target.
+        if ($IsWindows) {
+            Mock -CommandName Invoke-CimMethod -MockWith {
+                $p = Microsoft.PowerShell.Management\Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120') -PassThru -WindowStyle Hidden
+                Set-Content -LiteralPath (Join-Path $TestDrive 'lease-handoff-pid.txt') -Value $p.Id -Encoding UTF8
+                [pscustomobject]@{ ReturnValue = 0; ProcessId = $p.Id }
+            }
+        }
+        else {
+            Mock -CommandName Start-Process -MockWith {
+                $p = Microsoft.PowerShell.Management\Start-Process pwsh -ArgumentList @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 120') -PassThru
+                Set-Content -LiteralPath (Join-Path $TestDrive 'lease-handoff-pid.txt') -Value $p.Id -Encoding UTF8
+                $p
+            }
+        }
+        # FORCE the ownership handoff to fail: the post-spawn transaction must then stop the supervisor.
+        Mock -CommandName Update-ContinuousCoReviewLineageLeaseOwnerProcess -MockWith { $false }
+
+        { Start-ContinuousCoReviewServiceRun -RepoRoot $repo -RunId 'handoff-fail' -TreeId '2222222222222222222222222222222222222222' -LineageId 'L-handoff' -Detached } |
+            Should -Throw -ExpectedMessage '*lease-owner-handoff-failed*'
+        # the spawned supervisor was deterministically STOPPED (no unprotected running reviewer).
+        $supPid = [int](Get-Content -LiteralPath (Join-Path $TestDrive 'lease-handoff-pid.txt') -Raw).Trim()
+        $alive = $null; try { $alive = Get-Process -Id $supPid -ErrorAction Stop } catch { $alive = $null }
+        if ($null -ne $alive) { try { Stop-Process -Id $supPid -Force } catch { $null = $_ } }   # cleanup if the assertion is about to fail
+        $alive | Should -BeNullOrEmpty -Because 'a supervisor whose lease handoff failed must not keep running unprotected'
+        # the registry records the failure (never running), and the lease is released.
+        $reg = Get-Content -LiteralPath (Join-Path $repo '.specrew/review/pending/handoff-fail.json') -Raw | ConvertFrom-Json
+        [string]$reg.status | Should -Be 'failed'
+        [string]$reg.failure_reason | Should -Match 'lease-owner-handoff-failed'
+        (Get-ContinuousCoReviewLineageLease -RepoRoot $repo -LineageId 'L-handoff') | Should -BeNullOrEmpty -Because 'the lease is released so the lineage is not stuck'
+    }
 }

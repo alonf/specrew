@@ -468,7 +468,14 @@ function Write-ContinuousCoReviewNavigatorBlackboard {
             if ($findings.PSObject.Properties.Name -contains 'reviewed_tree_id') { $findings.reviewed_tree_id = $ReviewedTreeId }
             else { $findings | Add-Member -NotePropertyName reviewed_tree_id -NotePropertyValue $ReviewedTreeId -Force }
         }
-        Write-ContinuousCoReviewBlackboardThread -RepoRoot $RepoRoot -CheckpointId ("nav-$RunId") -FindingsResult $findings -CreatedAt $Now | Out-Null
+        # VALIDATED write (review finding f6, run 20260714T215545754): the reviewed_tree_id stamp is now a
+        # SANCTIONED optional field of FindingsResult.v1 (the schema was evolved with it), and the write passes
+        # the resolved SchemaRoot so the persisted object is validated against the shipped contract - an
+        # invalid object can no longer be persisted silently. SchemaRoot resolution is deploy-aware; if it
+        # cannot resolve, the writer's own mandatory-parameter failure surfaces in the catch (no silent write).
+        $navSchemaRoot = $null
+        try { if (Get-Command -Name 'Get-ContinuousCoReviewContractRoot' -ErrorAction SilentlyContinue) { $navSchemaRoot = Get-ContinuousCoReviewContractRoot -RepoRoot $RepoRoot } } catch { $navSchemaRoot = $null }
+        Write-ContinuousCoReviewBlackboardThread -RepoRoot $RepoRoot -CheckpointId ("nav-$RunId") -FindingsResult $findings -SchemaRoot $navSchemaRoot -CreatedAt $Now | Out-Null
         return ".specrew/review/inline/$RunId/"
     }
     catch { return $null }
