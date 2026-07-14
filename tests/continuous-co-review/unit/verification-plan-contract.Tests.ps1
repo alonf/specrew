@@ -151,6 +151,26 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'link/subdir/result.json').safe |
                 Should -BeFalse -Because 'a file below an escaping ancestor link would execute/write outside RepoRoot'
         }
+        It 'CASE-VARIANT containment on a case-sensitive platform: ../Repo escapes /tmp/.../repo for working_directory, result_path, and a symlink target (review finding f1, run 20260714T172315119)' -Skip:$IsWindows {
+            # On a case-sensitive filesystem 'repo' and 'Repo' are DIFFERENT directories; the pre-fix
+            # OrdinalIgnoreCase containment read the sibling as inside. (On Windows they are the SAME
+            # directory, so this regression is Linux/macOS-only by design.)
+            $parent = Join-Path $TestDrive 'case-parent'
+            $root = Join-Path $parent 'repo'
+            $sibling = Join-Path $parent 'Repo'
+            New-Item -ItemType Directory -Path $root, $sibling -Force | Out-Null
+            (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path '../Repo/out.json').safe | Should -BeFalse -Because 'the case-variant sibling is OUTSIDE the repository on this platform'
+            # the same guard protects BOTH schema path fields at the command level.
+            $cmdWd = [pscustomobject]@{ command_id = 'c1'; executable = 'x'; working_directory = '../Repo'; provenance = (New-Prov) }
+            (Test-ContinuousCoReviewVerificationCommand -Command $cmdWd -RepoRoot $root).valid | Should -BeFalse -Because 'working_directory must not escape via a case-variant'
+            $cmdRp = [pscustomobject]@{ command_id = 'c2'; executable = 'x'; result_path = '../Repo/result.json'; provenance = (New-Prov) }
+            (Test-ContinuousCoReviewVerificationCommand -Command $cmdRp -RepoRoot $root).valid | Should -BeFalse -Because 'result_path must not escape via a case-variant'
+            # a symlink whose TARGET is the case-variant sibling is equally an escape.
+            $made = New-EscapeLink -LinkPath (Join-Path $root 'caselink') -Target $sibling
+            if ($made) {
+                (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'caselink').safe | Should -BeFalse -Because 'the link target resolves to the case-variant sibling outside the root'
+            }
+        }
         It 'accepts a link whose target stays INSIDE the repo root (containment, not link-phobia)' {
             $root = Join-Path $TestDrive 'iroot'
             New-Item -ItemType Directory -Path (Join-Path $root 'realdir') -Force | Out-Null
@@ -159,6 +179,52 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
             if (-not $made) { Set-ItResult -Skipped -Because 'this environment cannot create a junction or symlink'; return }
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'inlink/f.txt').safe |
                 Should -BeTrue -Because 'the link resolves inside the repo root; below-link content is validated, not refused'
+        }
+    }
+
+    Context 'closed schema enforcement — schema_version const + no unknown properties at any level (review finding f5, run 20260714T172315119)' {
+        It 'a MISSING or WRONG schema_version is rejected (const 1.0)' {
+            $noVer = [pscustomobject]@{ plan_id = 'p'; commands = @([pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov) }) }
+            $rNo = Test-ContinuousCoReviewVerificationPlan -Plan $noVer
+            $rNo.valid | Should -BeFalse
+            [string]$rNo.reason | Should -Match 'schema_version'
+            $wrongVer = [pscustomobject]@{ schema_version = '2.0'; plan_id = 'p'; commands = @([pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov) }) }
+            $rWrong = Test-ContinuousCoReviewVerificationPlan -Plan $wrongVer
+            $rWrong.valid | Should -BeFalse
+            [string]$rWrong.reason | Should -Match 'unsupported'
+        }
+        It 'an UNKNOWN plan-level property is rejected (additionalProperties:false)' {
+            $plan = [pscustomobject]@{ schema_version = '1.0'; plan_id = 'p'; commands = @([pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov) }); surprise = 'field' }
+            $r = Test-ContinuousCoReviewVerificationPlan -Plan $plan
+            $r.valid | Should -BeFalse
+            [string]$r.reason | Should -Match "surprise"
+        }
+        It 'a SECRET-bearing map under an arbitrary command property name is rejected - not only env/environment' {
+            $cmd = [pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov); secret_env = [pscustomobject]@{ API_TOKEN = 'hunter2' } }
+            $r = Test-ContinuousCoReviewVerificationCommand -Command $cmd
+            $r.valid | Should -BeFalse -Because 'the closed schema leaves NO unrecognized field for a literal secret map to ride'
+            [string]$r.reason | Should -Match 'secret_env'
+            # the two hard-coded names keep their clearer, teaching error.
+            $cmdEnv = [pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov); env = [pscustomobject]@{ T = 'v' } }
+            [string](Test-ContinuousCoReviewVerificationCommand -Command $cmdEnv).reason | Should -Match 'env_refs'
+        }
+        It 'an UNKNOWN provenance property is rejected' {
+            $cmd = [pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = ([pscustomobject]@{ kind = 'project-config'; source = 's'; note = 'extra' }) }
+            $r = Test-ContinuousCoReviewVerificationCommand -Command $cmd
+            $r.valid | Should -BeFalse
+            [string]$r.reason | Should -Match 'note'
+        }
+        It 'a FULLY-populated valid plan with every optional field stays valid (the closed set is complete, not over-tight)' {
+            $plan = [pscustomobject]@{
+                schema_version = '1.0'; plan_id = 'p'
+                commands       = @([pscustomobject]@{
+                        command_id = 'a'; executable = 'pwsh'; arguments = @('-NoProfile', '-Command', 'exit 0')
+                        working_directory = 'sub'; timeout_seconds = 60; result_path = 'r.json'; require_result = $true
+                        env_refs = @('CI'); label = 'the works'
+                        provenance = [pscustomobject]@{ kind = 'provider-gated'; source = 's'; provider = 'dotnet'; profile = 'ci' }
+                    })
+            }
+            (Test-ContinuousCoReviewVerificationPlan -Plan $plan).valid | Should -BeTrue
         }
     }
 

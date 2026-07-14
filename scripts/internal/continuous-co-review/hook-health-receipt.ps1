@@ -62,6 +62,12 @@ $script:SpecrewHookHealthSurface = 'cli'
 # receipt out. Overridable per call so a governed headless run can demand a tighter window.
 $script:SpecrewHookHealthDefaultFreshnessHours = 24
 
+# Clock-skew tolerance for FUTURE-dated receipts (review finding f2, run 20260714T172315119): a receipt
+# whose timestamp is ahead of now by more than this is NOT plausible clock skew - it is a malformed (or
+# tampered, the store is project-writable) record that would otherwise read 'healthy' until its future
+# instant plus the freshness window. Beyond the tolerance -> MALFORMED, never healthy/ready.
+$script:SpecrewHookHealthClockSkewToleranceMinutes = 5
+
 # The EXACT receipt field set. Sanitized BY CONSTRUCTION: the writer builds a receipt field-by-field from ONLY
 # these keys, and the reader REJECTS any receipt whose key-set differs (missing OR extra) as MALFORMED. There is no
 # code path by which a prompt, a command argument, an environment value, or a secret can enter a receipt.
@@ -678,7 +684,12 @@ function Resolve-SpecrewHookHealth {
     # hook path being OBSERVED firing). Monitoring evidence, not authenticated.
     $repLive = @($good | Sort-Object { ConvertTo-SpecrewHookHealthUtcInstant -Timestamp $_.timestamp } -Descending)[0]
     $ageLive = ($nowUtc - (ConvertTo-SpecrewHookHealthUtcInstant -Timestamp $repLive.timestamp)).TotalHours
-    $hookStatus = if ($ageLive -gt $FreshnessHours) { 'stale' } else { 'healthy' }
+    # FUTURE-dated guard (review finding f2, run 20260714T172315119): a negative age beyond the small
+    # explicit clock-skew tolerance means the freshest receipt claims to be from the future - under clock
+    # skew or a tampered project-writable store that would stay 'healthy' until <future>+freshness. Such a
+    # receipt is MALFORMED (never healthy, so never ready); within-tolerance skew still reads normally.
+    $skewToleranceHours = $script:SpecrewHookHealthClockSkewToleranceMinutes / 60.0
+    $hookStatus = if ($ageLive -lt (-1.0 * $skewToleranceHours)) { 'malformed' } elseif ($ageLive -gt $FreshnessHours) { 'stale' } else { 'healthy' }
 
     # VERSION DIAGNOSTIC (INDEPENDENT) from the freshest SessionStart receipt - NEVER changes hook_status. A version
     # probe failure leaves this 'unavailable' but does NOT erase the hook-liveness above.
@@ -710,6 +721,7 @@ function Resolve-SpecrewHookHealth {
     $livePhrase = switch ($hookStatus) {
         'healthy' { ('hook liveness healthy: a fresh, well-formed receipt shows the configured hook path was observed firing {0:N1}h ago (operational monitoring evidence, not authentication)' -f [Math]::Max(0.0, $ageLive)) }
         'stale' { ('hook liveness stale: the freshest receipt is {0:N1}h old (> {1}h); the hook may have stopped firing (removed / trust revoked)' -f $ageLive, $FreshnessHours) }
+        'malformed' { ('hook liveness malformed: the freshest receipt is FUTURE-dated by {0:N1}h (beyond the {1}-minute clock-skew tolerance) - not plausible liveness evidence; never healthy or ready' -f (-1.0 * $ageLive), $script:SpecrewHookHealthClockSkewToleranceMinutes) }
         default { ('hook liveness {0}' -f $hookStatus) }
     }
     $verPhrase = switch ($versionStatus) {

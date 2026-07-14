@@ -141,6 +141,20 @@ Describe 'F-198 Prop-145 hook-health (liveness + version diagnostic)' {
             Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.44.0' -TimestampUtc $script:BaseTime.AddHours(-100) | Out-Null
             (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -FreshnessHours 24 -Now $script:BaseTime).hook_status | Should -Be 'stale'
         }
+        It 'a FUTURE-dated receipt beyond the clock-skew tolerance -> malformed, NEVER healthy (review finding f2, run 20260714T172315119)' {
+            $root = New-HhrTempRoot
+            # Well-shaped receipt dated 2 HOURS in the future: pre-fix this read healthy until <future>+freshness
+            # (a false-green under clock skew or a tampered project-writable store).
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.44.0' -TimestampUtc $script:BaseTime.AddHours(2) | Out-Null
+            $h = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -FreshnessHours 24 -Now $script:BaseTime
+            $h.hook_status | Should -Be 'malformed' -Because 'a receipt from the future is not plausible liveness evidence'
+            $h.hook_status | Should -Not -Be 'healthy'
+        }
+        It 'a future timestamp WITHIN the small clock-skew tolerance still reads healthy (tolerated skew, not a false alarm)' {
+            $root = New-HhrTempRoot
+            Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion 'codex-cli 0.44.0' -TimestampUtc $script:BaseTime.AddMinutes(2) | Out-Null
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -FreshnessHours 24 -Now $script:BaseTime).hook_status | Should -Be 'healthy'
+        }
         It 'malformed JSON -> hook_status=malformed' {
             $root = New-HhrTempRoot
             Write-RawReceipt -Root $root -HostName 'codex' -Event 'SessionStart' -Content 'NOT JSON {{{' | Out-Null

@@ -228,8 +228,13 @@ function Test-ContinuousCoReviewLeasePromotionAuthority {
     $leaseTok = [string](Get-ContinuousCoReviewLeaseProp -Object $Lease -Name 'owner_token')
     $leaseGen = [string](Get-ContinuousCoReviewLeaseProp -Object $Lease -Name 'generation')
 
+    # OWNER MATCH requires the run id AND a NON-EMPTY, exactly-equal owner token (review finding f4, run
+    # 20260714T172315119): an empty completing token was a wildcard, so knowledge/forgery of a run ID - or
+    # a legacy/corrupt registry that lost its token - could substitute for lease ownership. A missing token
+    # is now non-authoritative exactly like a wrong one (the completion degrades to advisory downstream);
+    # the live spawn path stamps the acquired lease's owner_token into every registry it writes.
     $ownerMatch = ($null -ne $Lease) -and (-not [string]::IsNullOrWhiteSpace($CompletingRunId)) -and ($leaseRun -ceq $CompletingRunId) -and
-                  (([string]::IsNullOrWhiteSpace($CompletingOwnerToken)) -or ($leaseTok -ceq $CompletingOwnerToken))
+                  (-not [string]::IsNullOrWhiteSpace($CompletingOwnerToken)) -and ($leaseTok -ceq $CompletingOwnerToken)
     $generationMatchesResult = (-not [string]::IsNullOrWhiteSpace($ResultReviewedDigest)) -and ($leaseGen -ceq $ResultReviewedDigest)
     $notSuperseded = (-not [string]::IsNullOrWhiteSpace($ResultReviewedDigest)) -and ($ResultReviewedDigest -ceq $CurrentDigest)
     $authoritative = $ownerMatch -and $generationMatchesResult -and $IdentityJoinsPass -and $notSuperseded

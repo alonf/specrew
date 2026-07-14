@@ -88,11 +88,26 @@ Set-Content -LiteralPath (Join-Path '$resultsFwd' 'r-$i.txt') -Value ([string]`$
     It '5. verdict authority requires ALL four conditions; non-owner + stale-generation + superseded + identity-fail each fail closed' {
         $lease = [pscustomobject]@{ run_id = 'owner-run'; owner_token = 'TOK'; generation = 'digestA' }
         (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -CompletingOwnerToken 'TOK' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $true).authoritative | Should -BeTrue
-        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'OTHER' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $true).reason | Should -Be 'not-lease-owner'
-        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -ResultReviewedDigest 'digestOLD' -CurrentDigest 'digestOLD' -IdentityJoinsPass $true).reason | Should -Be 'generation-mismatch'
-        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestNEW' -IdentityJoinsPass $true).reason | Should -Be 'superseded-by-current'
-        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $false).reason | Should -Be 'identity-join-failed'
-        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $null -CompletingRunId 'owner-run' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $true).authoritative | Should -BeFalse -Because 'no lease -> no authority'
+        # dimension-isolation cases carry the CORRECT owner token (an empty token is itself non-authoritative
+        # since the 2026-07-14 wildcard fix - covered by its own regression below).
+        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'OTHER' -CompletingOwnerToken 'TOK' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $true).reason | Should -Be 'not-lease-owner'
+        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -CompletingOwnerToken 'TOK' -ResultReviewedDigest 'digestOLD' -CurrentDigest 'digestOLD' -IdentityJoinsPass $true).reason | Should -Be 'generation-mismatch'
+        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -CompletingOwnerToken 'TOK' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestNEW' -IdentityJoinsPass $true).reason | Should -Be 'superseded-by-current'
+        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -CompletingOwnerToken 'TOK' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $false).reason | Should -Be 'identity-join-failed'
+        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $null -CompletingRunId 'owner-run' -CompletingOwnerToken 'TOK' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $true).authoritative | Should -BeFalse -Because 'no lease -> no authority'
+    }
+
+    It '5b. a MISSING completing owner token is non-authoritative exactly like a WRONG one - never a wildcard (review finding f4, run 20260714T172315119)' {
+        $lease = [pscustomobject]@{ run_id = 'owner-run'; owner_token = 'TOK'; generation = 'digestA' }
+        # the forgery case: knowledge of the run ID alone (empty token) must NOT substitute for ownership.
+        $empty = Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -CompletingOwnerToken '' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $true
+        $empty.authoritative | Should -BeFalse -Because 'an empty token was the wildcard hole: run-id knowledge substituted for lease ownership'
+        $empty.owner_match | Should -BeFalse
+        $empty.reason | Should -Be 'not-lease-owner'
+        # omitted entirely (the navigator''s legacy/corrupt-registry shape) - same non-authority.
+        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $true).reason | Should -Be 'not-lease-owner'
+        # wrong token - the pre-existing refusal, unchanged.
+        (Test-ContinuousCoReviewLeasePromotionAuthority -Lease $lease -CompletingRunId 'owner-run' -CompletingOwnerToken 'FORGED' -ResultReviewedDigest 'digestA' -CurrentDigest 'digestA' -IdentityJoinsPass $true).reason | Should -Be 'not-lease-owner'
     }
 
     It '6. OWNER-ONLY release: a wrong owner token cannot release; the correct token does' {

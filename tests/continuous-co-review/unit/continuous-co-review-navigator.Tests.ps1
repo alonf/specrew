@@ -329,6 +329,32 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'a completion whose registry LOST its owner token is advisory only even when its run_id matches the lease - a missing token is not a wildcard (review finding f4, run 20260714T172315119)' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            $currentDigest = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+            $lineage = 'L-tokenless'
+            # The lease is owned by run 'incumbent'. The completing registry NAMES that same run_id but carries
+            # NO owner_token (legacy/corrupt registry, or a forger who learned the run id) - previously the
+            # empty token was a WILDCARD and this completion could block/promote as the owner.
+            (Request-ContinuousCoReviewLineageLease -RepoRoot $root -LineageId $lineage -Generation $currentDigest -RunId 'incumbent' -AcquiringPid $PID).acquired | Should -BeTrue
+            $blockingVerdict = '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.txt", "comment": "dummy", "disposition": "blocking" } ] }'
+            $runId = 'incumbent'
+            $pendingDir = Join-Path $root '.specrew/review/pending'
+            $runDir = Join-Path $pendingDir $runId
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $resultPath = Join-Path $runDir 'result.out'
+            Set-Content -LiteralPath $resultPath -Value $blockingVerdict -Encoding UTF8
+            ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = $currentDigest; lineage_id = $lineage; generation = $currentDigest } | ConvertTo-Json) |
+                Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+
+            $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
+            $reap.stop_block | Should -BeNullOrEmpty -Because 'a token-less completion must NOT block: run-id knowledge alone is not lease ownership'
+            (@($reap.inject_notes) -join "`n") | Should -Match 'lease authority' -Because 'the token-less completion is surfaced as advisory'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     It 'T019 step 6 piece 2c: the OWNER completion RELEASES its lease on retirement' {
         $root = script:New-NavigatorProject -FileContent 'base'
         try {

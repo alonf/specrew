@@ -332,6 +332,33 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
         [string]$ev[1].command.declared_executable | Should -Be 'pwsh'
     }
 
+    It 'CASE-VARIANT repo-relative EXECUTABLE containment on a case-sensitive platform: ../Repo/tool is refused (review finding f1, run 20260714T172315119)' -Skip:$IsWindows {
+        $repo = New-PlanRunRepo
+        $parent = Split-Path -Parent $repo
+        # the sibling differs from the repo leaf ONLY BY CASE (guid 'N' format is lowercase hex): under the
+        # pre-fix OrdinalIgnoreCase containment '../<LEAF-UPPERCASED>/tool.sh' canonicalized to a path that
+        # READ as inside the repo root, so a REAL executable outside the repository would resolve + execute.
+        $sibling = Join-Path $parent ((Split-Path -Leaf $repo).ToUpperInvariant())
+        New-Item -ItemType Directory -Path $sibling -Force | Out-Null
+        $tool = Join-Path $sibling 'tool.sh'
+        Set-Content -LiteralPath $tool -Value "#!/bin/sh`ntouch escaped.txt`nexit 0" -NoNewline
+        & chmod +x $tool 2>&1 | Out-Null
+        $rel = '../' + (Split-Path -Leaf $sibling) + '/tool.sh'
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-case-exe'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'esc'; executable = $rel; arguments = @(); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+        $result.all_succeeded | Should -BeFalse
+        $ev = @($result.evidence)[0]
+        $ev.command_succeeded | Should -BeFalse
+        [string]$ev.classification | Should -Be 'executable-not-resolvable' -Because 'a repo-relative executable escaping via a path outside the root is refused before spawn'
+        Test-Path -LiteralPath (Join-Path $sibling 'escaped.txt') | Should -BeFalse -Because 'the escaping tool never executed'
+    }
+
     It 'plan-level DiagnosticDisclosure: applied ONLY to the named command_id; a malformed disclosure FAILS FAST with zero commands run' {
         $repo = New-PlanRunRepo
         $pwshExe = (Get-Process -Id $PID).Path

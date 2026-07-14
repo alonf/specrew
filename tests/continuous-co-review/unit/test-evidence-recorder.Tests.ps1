@@ -96,6 +96,39 @@ Describe 'Get-ContinuousCoReviewTestEvidenceForDigest' {
         [string]$injected.reviewed_digest_tree_id | Should -Be $digest
         @($injected.runs).Count | Should -BeGreaterThan 0
     }
+
+    It 'REFUSES a mixed-digest record on the PRODUCTION lookup/copy path - envelope AND every embedded digest must match (review finding f3, run 20260714T172315119)' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-mixed')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $null = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0') -TimeoutSeconds 60
+        $storePath = Join-Path $repo ('.specrew/review/test-evidence/' + $digest + '.json')
+        # TAMPER: smuggle a run recorded at a FOREIGN digest into the digest-B-keyed record. Pre-fix the
+        # lookup validated only the envelope and this record injected as digest-B evidence.
+        $rec = Get-Content -LiteralPath $storePath -Raw | ConvertFrom-Json
+        $foreign = ($rec.runs | Select-Object -First 1) | ConvertTo-Json -Depth 12 | ConvertFrom-Json
+        $foreign.reviewed_digest_tree_id = ('a' * 40)
+        $rec.runs = @(@($rec.runs) + $foreign)
+        ($rec | ConvertTo-Json -Depth 12) | Set-Content -LiteralPath $storePath -Encoding UTF8
+        (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest) | Should -BeNullOrEmpty -Because 'a record carrying ANY foreign embedded digest is refused fail-closed'
+        $wt = Join-Path $TestDrive 'worktree-mixed'
+        $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest) | Should -BeFalse -Because 'the reviewer gets NO evidence, never wrong evidence'
+        Test-Path -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') | Should -BeFalse
+    }
+
+    It 'REFUSES an embedded entry with NO digest identity (fail closed on missing, not only foreign)' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-missing-id')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $null = Write-ContinuousCoReviewTestEvidence -RepoRoot $repo -Suite 'unit' -Passed 3 -ExitCode 0
+        # the CURRENT writer stamps the digest into every suite entry - the record is injectable as written...
+        (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest) | Should -Not -BeNullOrEmpty
+        # ...but stripping an embedded identity (the legacy pre-fix shape / a tampered entry) refuses it.
+        $storePath = Join-Path $repo ('.specrew/review/test-evidence/' + $digest + '.json')
+        $rec = Get-Content -LiteralPath $storePath -Raw | ConvertFrom-Json
+        @($rec.suites)[0].PSObject.Properties.Remove('reviewed_digest_tree_id')
+        ($rec | ConvertTo-Json -Depth 12) | Set-Content -LiteralPath $storePath -Encoding UTF8
+        (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest) | Should -BeNullOrEmpty -Because 'an identity-less embedded entry cannot certify any digest'
+    }
 }
 
 Describe 'Copy-ContinuousCoReviewImplementerEvidence' {

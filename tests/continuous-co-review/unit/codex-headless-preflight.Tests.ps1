@@ -47,6 +47,12 @@ Describe 'F-198 Prop-145 Codex headless-governance preflight' {
             $root = New-PreflightRoot; Add-CodexReceipt -Root $root -At $script:BaseTime
             (Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -FreshnessHours 24 -Now $script:BaseTime.AddHours(72)).ready | Should -BeFalse
         }
+        It 'a FUTURE-dated receipt -> not ready (malformed liveness; never a false-green under clock skew or a tampered store) (review finding f2, run 20260714T172315119)' {
+            $root = New-PreflightRoot; Add-CodexReceipt -Root $root -At $script:BaseTime.AddHours(6)
+            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -FreshnessHours 24 -Now $script:BaseTime
+            $pf.ready | Should -BeFalse -Because 'readiness must rest on FRESH observed evidence, and a future-dated receipt is not that'
+            $pf.hook_status | Should -Be 'malformed'
+        }
         It 'the instruction keeps the trust/config prerequisites + operational-confidence framing' {
             $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot (New-PreflightRoot) -Now $script:BaseTime
             $pf.instruction | Should -Match '(?i)interactiv'

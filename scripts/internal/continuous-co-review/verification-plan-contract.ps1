@@ -82,10 +82,32 @@ function Resolve-ContinuousCoReviewVerificationTimeout {
     return [pscustomobject]@{ effective_seconds = $Requested; clamped = $false; source = 'supplier-requested'; reason = $null }
 }
 
+# PLATFORM-APPROPRIATE path comparison for CONTAINMENT checks (review finding f1, run
+# 20260714T172315119): case-insensitive comparison is a Windows filesystem semantic; on a case-sensitive
+# platform '/tmp/repo' and '/tmp/Repo' are DIFFERENT directories, so an ignore-case containment check
+# lets '../Repo/...' escape the repository. Every containment comparison routes through this.
+function Get-ContinuousCoReviewPathComparison {
+    if ($IsWindows) { return [System.StringComparison]::OrdinalIgnoreCase }
+    return [System.StringComparison]::Ordinal
+}
+
+# CLOSED-SCHEMA property enforcement (review finding f5, run 20260714T172315119): the authoritative
+# verification-plan.schema.json declares additionalProperties:false at every level - an unknown property
+# (including a literal secret-bearing map under ANY name) must be REJECTED at the validation boundary,
+# not just the two hard-coded env/environment names. Returns the unknown property names (empty = clean).
+function Get-ContinuousCoReviewUnknownProperties {
+    param([Parameter(Mandatory)][AllowNull()]$Object, [Parameter(Mandatory)][string[]]$Allowed)
+    if ($null -eq $Object) { return @() }
+    $names = if ($Object -is [System.Collections.IDictionary]) { @($Object.Keys | ForEach-Object { [string]$_ }) }
+    else { @($Object.PSObject.Properties.Name) }
+    return @($names | Where-Object { $_ -notin $Allowed })
+}
+
 # PATH SAFETY (FR-048 amendment 4). A working_directory / result_path MUST be repository-relative and
 # resolve INSIDE RepoRoot. REJECTED when: null-safe-empty is fine; a rooted/absolute path; a `..`
 # escape (checked lexically via GetFullPath so a not-yet-created path is still guarded); or — for a
-# path that already exists — a symlink/junction whose real target resolves OUTSIDE RepoRoot. Returns
+# path that already exists — a symlink/junction whose real target resolves OUTSIDE RepoRoot. Containment
+# comparisons are PLATFORM-APPROPRIATE (case-sensitive off Windows). Returns
 # { safe; reason; canonical_relative }.
 function Test-ContinuousCoReviewVerificationPathSafe {
     param(
@@ -101,9 +123,10 @@ function Test-ContinuousCoReviewVerificationPathSafe {
     }
     $rootFull = ([System.IO.Path]::GetFullPath($RepoRoot)).TrimEnd([char]'\', [char]'/')
     $rootPrefix = $rootFull + [System.IO.Path]::DirectorySeparatorChar
+    $pathCmp = Get-ContinuousCoReviewPathComparison
     $combined = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($rootFull, $Path))
     # LEXICAL escape guard: after canonicalizing '..', the path must still sit under the root prefix.
-    if (-not ($combined.Equals($rootFull, [System.StringComparison]::OrdinalIgnoreCase) -or $combined.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase))) {
+    if (-not ($combined.Equals($rootFull, $pathCmp) -or $combined.StartsWith($rootPrefix, $pathCmp))) {
         return [pscustomobject]@{ safe = $false; reason = "path '$Path' escapes the repository root via '..'"; canonical_relative = $null }
     }
     # SYMLINK/JUNCTION escape guard on EVERY existing path COMPONENT, not only the final item (review finding
@@ -124,7 +147,7 @@ function Test-ContinuousCoReviewVerificationPathSafe {
             $target = $item.ResolveLinkTarget($true)
             if ($null -ne $target) {
                 $real = ([System.IO.Path]::GetFullPath($target.FullName)).TrimEnd([char]'\', [char]'/')
-                if (-not ($real.Equals($rootFull, [System.StringComparison]::OrdinalIgnoreCase) -or ($real + [System.IO.Path]::DirectorySeparatorChar).StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase))) {
+                if (-not ($real.Equals($rootFull, $pathCmp) -or ($real + [System.IO.Path]::DirectorySeparatorChar).StartsWith($rootPrefix, $pathCmp))) {
                     return [pscustomobject]@{ safe = $false; reason = "path '$Path' traverses component '$component' which resolves via a symlink/junction OUTSIDE the repository root"; canonical_relative = $null }
                 }
                 # keep walking through the RESOLVED location so nested links are validated against the root too.
@@ -147,6 +170,11 @@ function Test-ContinuousCoReviewVerificationProvenance {
     }
     if ($Provenance -is [string]) {
         return [pscustomobject]@{ valid = $false; reason = 'provenance must be an OBJECT { kind, source, ... }, not a bare string/enum' }
+    }
+    # CLOSED KEY SET (finding f5): the schema declares additionalProperties:false on provenance.
+    $unknownProv = Get-ContinuousCoReviewUnknownProperties -Object $Provenance -Allowed @('kind', 'source', 'provider', 'profile')
+    if (@($unknownProv).Count -gt 0) {
+        return [pscustomobject]@{ valid = $false; reason = "provenance carries unknown propert$(if (@($unknownProv).Count -gt 1) { 'ies' } else { 'y' }) '$($unknownProv -join "', '")' (the schema is CLOSED: kind, source, provider, profile only)" }
     }
     $kind = [string](Get-ContinuousCoReviewContractProp -Object $Provenance -Name 'kind')
     if ($kind -notin (Get-ContinuousCoReviewVerificationProvenanceValues)) {
@@ -185,6 +213,14 @@ function Test-ContinuousCoReviewVerificationCommand {
     )
     if ($null -eq $Command) {
         return [pscustomobject]@{ valid = $false; reason = 'command is null' }
+    }
+    # CLOSED KEY SET (review finding f5, run 20260714T172315119): the schema declares
+    # additionalProperties:false - an unknown property (including a literal secret-bearing map under ANY
+    # name, not only the two hard-coded env/environment names below) is REJECTED at the boundary. The
+    # env/environment special-case stays AFTER this for its clearer, teaching error message.
+    $unknownCmd = Get-ContinuousCoReviewUnknownProperties -Object $Command -Allowed @('command_id', 'executable', 'arguments', 'working_directory', 'timeout_seconds', 'result_path', 'require_result', 'provenance', 'env_refs', 'label', 'env', 'environment')
+    if (@($unknownCmd).Count -gt 0) {
+        return [pscustomobject]@{ valid = $false; reason = "command carries unknown propert$(if (@($unknownCmd).Count -gt 1) { 'ies' } else { 'y' }) '$($unknownCmd -join "', '")' (the schema is CLOSED; no secret values can ride an unrecognized field)" }
     }
     $commandId = [string](Get-ContinuousCoReviewContractProp -Object $Command -Name 'command_id')
     if ([string]::IsNullOrWhiteSpace($commandId)) {
@@ -269,6 +305,17 @@ function Test-ContinuousCoReviewVerificationPlan {
     )
     if ($null -eq $Plan) {
         return [pscustomobject]@{ valid = $false; reason = 'plan is null'; command_count = 0 }
+    }
+    # SCHEMA VERSION + CLOSED KEY SET (review finding f5, run 20260714T172315119): the authoritative
+    # schema requires schema_version const '1.0' and additionalProperties:false at the plan level.
+    $schemaVersion = [string](Get-ContinuousCoReviewContractProp -Object $Plan -Name 'schema_version')
+    if ($schemaVersion -cne '1.0') {
+        $svReason = if ([string]::IsNullOrWhiteSpace($schemaVersion)) { 'plan schema_version is required (exactly ''1.0'' for this contract)' } else { "plan schema_version '$schemaVersion' is unsupported (exactly '1.0' for this contract; a future shape bumps it)" }
+        return [pscustomobject]@{ valid = $false; reason = $svReason; command_count = 0 }
+    }
+    $unknownPlan = Get-ContinuousCoReviewUnknownProperties -Object $Plan -Allowed @('schema_version', 'plan_id', 'commands')
+    if (@($unknownPlan).Count -gt 0) {
+        return [pscustomobject]@{ valid = $false; reason = "plan carries unknown propert$(if (@($unknownPlan).Count -gt 1) { 'ies' } else { 'y' }) '$($unknownPlan -join "', '")' (the schema is CLOSED: schema_version, plan_id, commands only)"; command_count = 0 }
     }
     $planId = [string](Get-ContinuousCoReviewContractProp -Object $Plan -Name 'plan_id')
     if ([string]::IsNullOrWhiteSpace($planId)) {

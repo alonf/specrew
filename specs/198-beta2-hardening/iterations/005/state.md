@@ -2,15 +2,15 @@
 
 **Schema**: v1
 **Last Completed Task**: the Prop-145 hook-health REDESIGN (Option A, amended) — INDEPENDENT hook-liveness + a NON-PROMOTING `ambient-path-binding` version diagnostic; byte-capped shell-safe probe; System32 cmd.exe interpreter; exact-digest T018 runs injected as reviewer-visible evidence. **Iteration 005 is NOT yet complete** — a Proposal-145 review returned three authoritative findings (bounded output, ambient executable-identity, unsupported evidence). After characterizing that NO host exposes a trustworthy non-ambient executable identity, the maintainer chose Option A: the version is a non-authoritative diagnostic, health rests on observed hook-liveness, readiness on fresh liveness + config/trust — receipts are MONITORING evidence, never authentication. Implemented + green on Windows AND Linux; pending the T018 recording + one authorized confirming review round. See the Co-review section at the bottom.
-**Tasks Remaining**: the MAINTAINER'S decision on the re-review round that would close Iteration 005. The round-2
-re-review (20260714T130410888-bc28813e) judged the sixth-round f2/f3 fixes incomplete and escalated HUMAN DECISION;
-the maintainer's 2026-07-14 instruction-bearing verdict is now implemented in full (empty-map child environment +
-evidence-justified empty engine baseline + pre-spawn executable resolution; output private-by-default + the
-human-authorized command-scoped durable diagnostic-disclosure door; the FR-055 Stop-packet classification
-hardening) — see the Seventh round section. Fixes verified (focused + full registry on Windows; cross-platform
-verify on Linux Docker), committed, evidence re-bound to the committed digest. NO review round launches
-automatically. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a separately-authorized
-clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Tasks Remaining**: the MAINTAINER'S decision on the next re-review round. The seventh-round directive was
+implemented in full and committed (f8df5f8a); the maintainer then AUTHORIZED one re-review (executed as
+resolved-against-disk + one `--live` round, run 20260714T172315119-93949663), which returned 5 blocking
+findings on the wider feature slice (containment case-sensitivity, future-dated receipt false-green,
+embedded-digest injection bypass, lease-token wildcard, open plan schema) — all fixed with paired
+falsification tests, see the Eighth round section. Fixes verified (focused suites; full registry; Linux
+Docker) and the evidence re-bound to the fixes commit. NO review round launches automatically.
+**Iteration 005 completion + the release of T019 pieces 5-7 is PENDING the next separately-authorized clean
+re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-14T17:30:00Z
@@ -413,6 +413,48 @@ Per the review-control directive: fixes are committed, evidence re-binds to the 
 focused + full registry + Linux Docker via the T018 wrapper), and **NO review round launches** — the maintainer
 authorizes any re-review separately. Iteration 005 completion (and the release of T019 pieces 5-7) remains
 PENDING that separately-authorized clean re-review.
+
+### Eighth round — the maintainer-authorized re-review (2026-07-14, run 20260714T172315119-93949663) + 5 fixes
+
+The maintainer's "authorized" verdict was executed as: `--remediate resolved-against-disk --fix-evidence-ref
+f8df5f8a` (recorded by Alon Fliess), then ONE re-review (`--live --code-writer-host claude`, auto-anchored)
+against the committed digest `3a3c3d7e…` with the injected three-run T018 evidence. The round returned
+**5 blocking findings**, none human-decision — all VERIFIED against disk before fixing, all fixed with paired
+falsification tests per the completion protocol:
+
+1. **f1 (containment case-sensitivity).** Every containment comparison (path-safety lexical guard + symlink
+   targets in `verification-plan-contract.ps1`; repo-relative executables in `verification-plan-runner.ps1`)
+   used OrdinalIgnoreCase — on a case-sensitive platform `../Repo/...` escaped `/tmp/.../repo`. Fixed:
+   `Get-ContinuousCoReviewPathComparison` (ignore-case ONLY on Windows) routed through every check. Linux-only
+   case-variant regressions (`-Skip:$IsWindows`) for working_directory, result_path, symlink target, and a
+   repo-relative executable whose case-variant sibling carries a REAL executable that must never run.
+2. **f2 (future-dated receipt false-green).** Hook-health freshness never rejected a negative age: a
+   well-shaped future-dated receipt read `healthy` (and Codex preflight `ready`) until its future instant plus
+   the freshness window. Fixed: beyond a 5-minute clock-skew tolerance → `malformed` (never healthy/ready);
+   within-tolerance skew still healthy. Paired classifier + preflight tests.
+3. **f3 (embedded-digest bypass).** The production evidence lookup validated only the envelope digest, so a
+   digest-B-keyed record carrying a digest-A run injected as B evidence. Fixed: the lookup/copy path now
+   enforces `Test-ContinuousCoReviewEvidenceInjectable` (envelope AND every embedded digest; missing embedded
+   identity fails closed), and BOTH writers stamp `reviewed_digest_tree_id` into every embedded entry.
+   Production regressions: a tampered mixed-digest record and an identity-stripped entry are refused at
+   lookup AND Copy (the reviewer gets no evidence, never wrong evidence).
+4. **f4 (lease-token wildcard).** `Test-ContinuousCoReviewLeasePromotionAuthority` treated an empty
+   CompletingOwnerToken as a wildcard — run-id knowledge (or a token-less legacy/corrupt registry) substituted
+   for lease ownership. Fixed: owner match now requires a NON-EMPTY, exactly-equal token; the live spawn path
+   already stamps the token into every registry it writes, so only token-less registries demote to advisory.
+   Unit regression (empty/omitted/forged token all `not-lease-owner`) + a navigator production-path regression
+   (a token-less completion naming the lease's own run_id blocks nothing; advisory note only).
+5. **f5 (open schema at the validation boundary).** The in-code plan validator never enforced
+   `schema_version == '1.0'` or the schema's `additionalProperties:false`, so unknown fields (including a
+   literal secret-bearing map under any name other than env/environment) validated and executed. Fixed:
+   closed key sets at plan/command/provenance levels + the schema_version const, with the env/environment
+   teaching error preserved. Regressions: missing/wrong version, unknown plan/command/provenance properties,
+   a `secret_env` map, and a fully-populated valid plan proving the closed set is complete, not over-tight.
+
+Focused suites 152/152 green on Windows (2 Linux-only cases correctly skipped there); full registry +
+cross-platform Linux verify re-run and the evidence re-bound to the fixes commit's digest. Per the standing
+directive, NO further round launches — the round consumed the authorization, and the maintainer decides
+whether to authorize the next (potentially closing) re-review.
 
 ## Notes
 

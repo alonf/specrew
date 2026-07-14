@@ -74,14 +74,17 @@ function Write-ContinuousCoReviewTestEvidence {
         }
 
         $entry = [pscustomobject]@{
-            suite            = $Suite
-            passed           = $Passed
-            failed           = $Failed
-            skipped          = $Skipped
-            exit_code        = $ExitCode
-            duration_seconds = [math]::Round($DurationSeconds, 3)
-            command          = if ([string]::IsNullOrWhiteSpace($Command)) { $null } else { $Command }
-            recorded_at      = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            suite                   = $Suite
+            passed                  = $Passed
+            failed                  = $Failed
+            skipped                 = $Skipped
+            exit_code               = $ExitCode
+            duration_seconds        = [math]::Round($DurationSeconds, 3)
+            command                 = if ([string]::IsNullOrWhiteSpace($Command)) { $null } else { $Command }
+            # EMBEDDED digest identity (review finding f3, run 20260714T172315119): every embedded entry
+            # carries the digest it certifies, so the injectable check can enforce envelope AND embedded.
+            reviewed_digest_tree_id = $treeId
+            recorded_at             = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
         # Same-suite re-record REPLACES (the latest run for this exact tree wins); others accumulate.
         $kept = @(@($record.suites) | Where-Object { $null -ne $_ -and [string]$_.suite -ne $Suite })
@@ -117,6 +120,24 @@ function Get-ContinuousCoReviewTestEvidenceForDigest {
         $hasSuites = ($record.PSObject.Properties.Name -contains 'suites') -and (@($record.suites).Count -gt 0)
         $hasRuns = ($record.PSObject.Properties.Name -contains 'runs') -and (@($record.runs).Count -gt 0)
         if (-not ($hasSuites -or $hasRuns)) { return $null }
+        # ENVELOPE AND EVERY EMBEDDED DIGEST (review finding f3, run 20260714T172315119 - the binding T019
+        # rule Test-ContinuousCoReviewEvidenceInjectable encodes): a record keyed for digest B carrying an
+        # entry recorded at digest A (or carrying NO embedded identity) is REFUSED - fail closed, so the
+        # reviewer gets NO evidence rather than wrong evidence. Legacy suite entries without an embedded
+        # digest retire with their orphaned digests; the current writers stamp every entry.
+        if (-not (Get-Command -Name 'Test-ContinuousCoReviewEvidenceInjectable' -ErrorAction SilentlyContinue)) {
+            $ric = Join-Path $PSScriptRoot 'review-identity-contracts.ps1'
+            if (Test-Path -LiteralPath $ric -PathType Leaf) { . $ric }
+        }
+        if (-not (Get-Command -Name 'Test-ContinuousCoReviewEvidenceInjectable' -ErrorAction SilentlyContinue)) { return $null }   # cannot validate -> cannot inject
+        $embedded = @()
+        if ($hasSuites) { foreach ($s in @($record.suites)) { $embedded += [string]$(if ($null -ne $s -and ($s.PSObject.Properties.Name -contains 'reviewed_digest_tree_id')) { $s.reviewed_digest_tree_id } else { '' }) } }
+        if ($hasRuns) { foreach ($r in @($record.runs)) { $embedded += [string]$(if ($null -ne $r -and ($r.PSObject.Properties.Name -contains 'reviewed_digest_tree_id')) { $r.reviewed_digest_tree_id } else { '' }) } }
+        $inj = Test-ContinuousCoReviewEvidenceInjectable -EnvelopeDigest ([string]$record.reviewed_digest_tree_id) -ReviewDigest $DigestTreeId -EmbeddedDigests $embedded
+        if (-not [bool]$inj.injectable) {
+            [Console]::Error.WriteLine("[co-review] WARN EVIDENCE_NOT_INJECTABLE $($inj.classification) for digest $DigestTreeId - refusing the record (fail closed; no evidence beats wrong evidence).")
+            return $null
+        }
         return $record
     }
     catch { return $null }

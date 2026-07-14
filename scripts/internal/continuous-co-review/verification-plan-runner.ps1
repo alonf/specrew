@@ -86,7 +86,11 @@ function Resolve-ContinuousCoReviewVerificationExecutable {
         $rootFull = ([System.IO.Path]::GetFullPath($RepoRoot)).TrimEnd([char]'\', [char]'/')
         $full = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($rootFull, $Executable))
         $rootPrefix = $rootFull + [System.IO.Path]::DirectorySeparatorChar
-        if (-not $full.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        # PLATFORM-APPROPRIATE containment (review finding f1, run 20260714T172315119): case-insensitive
+        # only on Windows - on a case-sensitive filesystem '../Repo/tool' is OUTSIDE '/tmp/repo'.
+        $cmp = if (Get-Command -Name 'Get-ContinuousCoReviewPathComparison' -ErrorAction SilentlyContinue) { Get-ContinuousCoReviewPathComparison }
+        elseif ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+        if (-not $full.StartsWith($rootPrefix, $cmp)) {
             return [pscustomobject]@{ resolved = $false; path = $null; method = 'repo-relative'; reason = "declared executable '$Executable' resolves outside the repository root" }
         }
         if (Test-Path -LiteralPath $full -PathType Leaf) {
