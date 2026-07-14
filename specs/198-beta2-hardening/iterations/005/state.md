@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Last Completed Task**: the Prop-145 hook-health REDESIGN (Option A, amended) — INDEPENDENT hook-liveness + a NON-PROMOTING `ambient-path-binding` version diagnostic; byte-capped shell-safe probe; System32 cmd.exe interpreter; exact-digest T018 runs injected as reviewer-visible evidence. **Iteration 005 is NOT yet complete** — a Proposal-145 review returned three authoritative findings (bounded output, ambient executable-identity, unsupported evidence). After characterizing that NO host exposes a trustworthy non-ambient executable identity, the maintainer chose Option A: the version is a non-authoritative diagnostic, health rests on observed hook-liveness, readiness on fresh liveness + config/trust — receipts are MONITORING evidence, never authentication. Implemented + green on Windows AND Linux; pending the T018 recording + one authorized confirming review round. See the Co-review section at the bottom.
-**Tasks Remaining**: T018-record Windows + Linux at the committed reviewed digest + confirm the injected runs at review time + ONE confirming review round. (The Option-A-amended implementation landed as 760a0dc2; at that digest only the two WINDOWS runs were recorded before the session stopped — no linux-labeled run exists in the evidence store at any digest yet — so BOTH OSes are recorded at the digest of THIS state-reconciliation commit.) **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Tasks Remaining**: re-record the Windows + Linux evidence at the digest of the confirming-round-fixes commit, then the MAINTAINER'S decision on the re-review round that would close Iteration 005 — the ONE authorized confirming round ran (20260714T123137002-4f3689f3: hook-health CLEAN, prior evidence finding resolved by the injected machine record, 5 new blocking findings on the adjacent T018/T019 verification machinery — all FIXED with paired tests, see the Sixth round section) and is SPENT; no further round launches automatically. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
-**Updated**: 2026-07-14T12:20:00Z
+**Updated**: 2026-07-14T13:10:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -176,7 +176,7 @@ actionable findings are FIXED, not waved through:
 2. **Receipt-before-validation false-green (dispatcher).** The receipt was written before the
    host event JSON was validated, so a malformed lifecycle event recorded a receipt that read
    `healthy`. Fixed: the write moves AFTER host-envelope validation (dispatch stays fail-open)
-   + a production-path test.
+   - a production-path test.
 3. **Ambient value could enter the receipt (dispatcher).** `observed_host_version` copied
    `SPECREW_OBSERVED_HOST_VERSION` verbatim (a secret could persist). Fixed: validated against
    a strict version-shaped whitelist → else `unknown`; a production-path test proves a
@@ -317,6 +317,47 @@ evidence-bearing commit (the digest-keyed machine record in the co-review eviden
 `.review/implementer-evidence.json` (the reviewer's authoritative machine evidence — see
 `iterations/005/evidence/shell-safe-cross-platform-verification.md`). Exactly one confirming review round is then
 requested.
+
+### Sixth round — the authorized confirming round (2026-07-14, run 20260714T123137002-4f3689f3) + 5 T018/T019 fixes
+
+The maintainer-authorized ONE confirming round ran against the reconciled committed digest with the three
+T018-recorded runs (Windows focused + full 36-suite registry + Linux Docker) injected as
+`.review/implementer-evidence.json` — the prior "evidence unverifiable-here" finding did NOT recur (the injected
+digest-bound machine record resolved it), and the Prop-145 hook-health redesign itself returned NO findings. The
+round returned **5 NEW blocking findings**, all on the adjacent T018/T019 verification-plan machinery (the
+recorder plus the plan contract/runner), none flagged human-decision. Per the completion protocol they are FIXED,
+not waved through — each with a paired falsification test:
+
+1. **f1 (contract, ancestor-link escape).** Path safety dereferenced only the FINAL item, so an ordinary file/dir
+   below an escaping symlink/junction ancestor read safe. Fixed: every existing path component is walked root-down;
+   a link component must resolve inside RepoRoot and the walk continues from the RESOLVED location (nested links
+   validated too). Tests: below-link dir + file refused; an inside-repo link stays accepted.
+2. **f2 (runner, env_refs execution semantics).** `env_refs` were recorded but never applied — the child inherited
+   the FULL ambient environment. Fixed: the child now receives EXACTLY a safe non-secret baseline + the declared
+   env_ref names (values resolved at spawn, never recorded) via a constructed-environment seam in the recorder
+   (`-ChildEnvironment` clears + rebuilds the process environment). Test: a declared name is visible in the child;
+   an unlisted ambient sentinel is structurally absent; the store carries neither value.
+3. **f3 (recorder, output persistence).** `truncated_tail` persisted literal command output (a printed secret would
+   persist into reviewer-visible digest-bound evidence). Fixed two-layer: supplier-declared plan commands persist
+   NO output text at all (`-OutputTailBytes 0` — count/hash only), and every remaining tail passes a
+   credential-pattern redactor (`Get-ContinuousCoReviewRedactedOutputText`: KEY=VALUE credentials, authorization/
+   bearer headers, URL userinfo) before serialization. Tests: runtime-assembled sentinels printed to stdout+stderr
+   are absent from the reloaded durable record; suppression mode persists no output text.
+4. **f4 (runner, CWD-relative paths).** `working_directory`/`result_path` were resolved against the caller process
+   CWD (and result_path against the working directory), contradicting the schema's repository-relative semantics.
+   Fixed: both anchor against RepoRoot before execution. Test: a plan invoked from OUTSIDE the repository runs in
+   RepoRoot/subdir and finds its required result at RepoRoot-relative result_path.
+5. **f5 (recorder+runner, identity not durable).** command_id/provenance/env_refs were tagged only on the in-memory
+   return — the persisted run could not join on command_id + reviewed digest, and the dedup key
+   (executable+arguments) let two distinct plan commands with the same invocation clobber each other. Fixed: the
+   recorder persists command_id/provenance/env_ref names INTO the durable record; the uniqueness key is command_id
+   when present (else executable+arguments+working_directory). Test: two same-invocation/different-id commands
+   reload as two separately joinable records that pass the T019 evidence join at the exact digest.
+
+Files: `test-evidence-recorder.ps1`, `verification-plan-contract.ps1`, `verification-plan-runner.ps1` + their three
+test suites. After this commit the evidence re-binds (Windows focused + full registry + Linux Docker re-recorded at
+the new committed digest); NO further review round is launched automatically — the one authorized confirming round
+is spent, and the maintainer decides whether to authorize the re-review that would close Iteration 005.
 
 ## Notes
 

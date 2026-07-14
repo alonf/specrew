@@ -16,12 +16,42 @@ Set-StrictMode -Version Latest
 #    and a distinct reason — NEVER dropped and NEVER promoted to a clean result.
 #  - Timeout is ALWAYS the ENGINE-BOUNDED value (Resolve-ContinuousCoReviewVerificationTimeout) — never
 #    the raw 0/unlimited a supplier requested.
-#  - Each record binds to the reviewed-tree DIGEST and its COMMAND_ID; provenance (the object) and the
-#    env_ref NAMES are tagged. Env VALUES are NEVER read or recorded (redaction by construction).
+#  - Each record binds to the reviewed-tree DIGEST and its COMMAND_ID; the recorder PERSISTS command_id +
+#    provenance (the object) + env_ref NAMES into the digest-keyed store (the T019 join identity).
+#  - working_directory + result_path are REPOSITORY-relative (the schema semantics) and are anchored
+#    against RepoRoot before execution - never against the caller process CWD.
+#  - env_refs have EXECUTION semantics: the child process receives ONLY a safe non-secret baseline + the
+#    declared env_ref NAMES (values resolved from the ambient environment at spawn) - an unlisted ambient
+#    secret is structurally absent from the child. Env VALUES are NEVER recorded; persisted records carry
+#    NO output text for plan commands (count/hash only), so printed output cannot leak into evidence.
 #
 # WHAT THIS NEVER DOES: it never discovers, infers, selects, or invents a command — it executes EXACTLY
 # what the plan declares. Command DISCOVERY is a separate downstream supplier's job; T018 executes and
 # T019 injects, neither selects.
+
+# The CONSTRUCTED child environment for a supplier-declared verification command (review finding f2, run
+# 20260714T123137002 - env_refs must have EXECUTION semantics, not just record semantics): a SAFE BASELINE of
+# non-secret infrastructure variable NAMES + the plan-declared env_ref NAMES, each copied from the ambient
+# environment AT SPAWN when present there. Everything else - every unlisted ambient value, hence every ambient
+# secret - is structurally ABSENT from the child process. Values pass through process creation only; the
+# evidence records env_ref NAMES separately and VALUES never (redaction by construction).
+function Get-ContinuousCoReviewVerificationChildEnvironment {
+    param([string[]]$EnvRefs = @())
+    $baseline = @(
+        'PATH', 'PATHEXT', 'PSModulePath',
+        'SystemRoot', 'SystemDrive', 'windir', 'ComSpec',
+        'TEMP', 'TMP', 'TMPDIR',
+        'HOME', 'USERPROFILE', 'LOCALAPPDATA', 'APPDATA',
+        'LANG', 'LC_ALL', 'TERM'
+    )
+    $names = @($baseline) + @(@($EnvRefs) | Where-Object { $_ -is [string] -and -not [string]::IsNullOrWhiteSpace($_) })
+    $map = @{}
+    foreach ($n in $names) {
+        $v = [System.Environment]::GetEnvironmentVariable([string]$n)
+        if ($null -ne $v) { $map[[string]$n] = [string]$v }
+    }
+    return $map
+}
 
 # One digest+command_id-bound FAILURE record for an attempted-but-unsuccessful command. Shaped close to
 # a real recorded-run record so the T019 evidence-join validator and downstream readers treat it
@@ -154,23 +184,39 @@ function Invoke-ContinuousCoReviewVerificationPlan {
         $boundedTimeout = (Resolve-ContinuousCoReviewVerificationTimeout -Requested $requestedTimeout).effective_seconds
 
         $runParams = @{
-            RepoRoot       = $resolvedRoot
-            Executable     = $executable
-            Arguments      = $arguments
-            TimeoutSeconds = $boundedTimeout
-            RequireResult  = $requireResult
-            Now            = $Now
+            RepoRoot         = $resolvedRoot
+            Executable       = $executable
+            Arguments        = $arguments
+            TimeoutSeconds   = $boundedTimeout
+            RequireResult    = $requireResult
+            # IDENTITY INTO THE DURABLE RECORD (review finding f5, run 20260714T123137002): the recorder
+            # persists command_id + provenance + env_ref NAMES into the digest-keyed store BEFORE
+            # serialization, so the persisted run joins on the authoritative command_id + reviewed digest.
+            CommandId        = $commandId
+            Provenance       = $provenance
+            EnvRefs          = @($envRefs)
+            # NO PERSISTED OUTPUT TEXT for supplier-declared commands (review finding f3): arbitrary plan
+            # output may carry secrets no pattern can recognize, so tails are SUPPRESSED (count/hash only);
+            # the recorded facts (exit code, duration, digest, optional SpecrewTestResult) carry the verdict.
+            OutputTailBytes  = 0
+            # ENV ALLOWLIST EXECUTION SEMANTICS (review finding f2): the child receives ONLY the safe
+            # baseline + the declared env_refs, resolved from the ambient environment at spawn - an
+            # unlisted ambient secret is structurally absent. Values are never recorded.
+            ChildEnvironment = (Get-ContinuousCoReviewVerificationChildEnvironment -EnvRefs $envRefs)
+            Now              = $Now
         }
-        if (-not [string]::IsNullOrWhiteSpace($workingDir)) { $runParams.WorkingDirectory = $workingDir }
-        if (-not [string]::IsNullOrWhiteSpace($resultPath)) { $runParams.ResultPath = $resultPath }
+        # REPO-ROOT ANCHORING (review finding f4): the schema defines working_directory AND result_path as
+        # REPOSITORY-relative. Anchor BOTH against RepoRoot here so execution is independent of the caller
+        # process CWD and result_path never silently re-anchors to the working directory. (Path safety was
+        # validated above; the anchored absolute paths are inside RepoRoot by construction.)
+        if (-not [string]::IsNullOrWhiteSpace($workingDir)) { $runParams.WorkingDirectory = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($resolvedRoot, $workingDir)) }
+        if (-not [string]::IsNullOrWhiteSpace($resultPath)) { $runParams.ResultPath = [System.IO.Path]::GetFullPath([System.IO.Path]::Combine($resolvedRoot, $resultPath)) }
 
         try {
             # Execute EXACTLY what the command declares (never inferred/invented) via the universal runner.
             $ev = Invoke-ContinuousCoReviewRecordedRun @runParams
-            # Tag the digest-bound evidence with its identity + auditable provenance + env_ref NAMES.
-            $ev | Add-Member -NotePropertyName 'command_id' -NotePropertyValue $commandId -Force
-            $ev | Add-Member -NotePropertyName 'provenance' -NotePropertyValue $provenance -Force
-            $ev | Add-Member -NotePropertyName 'env_refs' -NotePropertyValue @($envRefs) -Force
+            # command_id/provenance/env_refs are persisted INTO the durable record by the recorder (finding
+            # f5); only the runner-level annotations are tagged here (in-memory, per-attempt).
             $ev | Add-Member -NotePropertyName 'attempted' -NotePropertyValue $true -Force
             $ev | Add-Member -NotePropertyName 'classification' -NotePropertyValue 'executed' -Force
             $evidence += $ev

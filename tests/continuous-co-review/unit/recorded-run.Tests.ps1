@@ -68,6 +68,34 @@ Describe 'T018 universal recorded-run runner (FR-015 amended - language/framewor
         [int]$e.test_result.counts.skipped | Should -Be 3
     }
 
+    It 'REDACTS credential-shaped output before persistence — a sentinel secret printed to stdout AND stderr is absent from the durable record (finding f3, run 20260714T123137002)' {
+        $repo = New-RunRepo
+        # The secret VALUES are assembled at runtime so they exist ONLY in the output streams — never as an
+        # argument literal (declared arguments are recorded by design; output is the f3 leak channel).
+        $cmd = '[Console]::Out.WriteLine(''MY_API_TOKEN='' + (''stdout-sentinel'' + ''-secret-'' + ''9731'')); [Console]::Error.WriteLine(''password: '' + (''stderr-sentinel'' + ''-secret-'' + ''9732'')); exit 0'
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd)
+        $e.command_succeeded | Should -BeTrue
+        # the DURABLE record — reload from the digest-keyed store, not the in-memory return.
+        $storePath = Join-Path $repo ('.specrew/review/test-evidence/' + [string]$e.reviewed_digest_tree_id + '.json')
+        $raw = Get-Content -LiteralPath $storePath -Raw
+        $raw | Should -Not -Match 'stdout-sentinel-secret-9731' -Because 'a credential-shaped stdout value is redacted before serialization'
+        $raw | Should -Not -Match 'stderr-sentinel-secret-9732' -Because 'a credential-shaped stderr value is redacted before serialization'
+        $raw | Should -Match '\[redacted\]'
+        # the integrity facts still describe the RAW output.
+        [int]$e.stdout_meta.byte_count | Should -BeGreaterThan 0
+        [int]$e.stderr_meta.byte_count | Should -BeGreaterThan 0
+    }
+
+    It 'OutputTailBytes 0 SUPPRESSES persisted output text entirely — count/hash only (finding f3 suppression mode)' {
+        $repo = New-RunRepo
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', '(''arbitrary-output'' + ''-sentinel-'' + ''3141''); exit 0') -OutputTailBytes 0
+        $e.command_succeeded | Should -BeTrue
+        [string]$e.stdout_meta.truncated_tail | Should -Be ''
+        [int]$e.stdout_meta.byte_count | Should -BeGreaterThan 0
+        $raw = Get-Content -LiteralPath (Join-Path $repo ('.specrew/review/test-evidence/' + [string]$e.reviewed_digest_tree_id + '.json')) -Raw
+        $raw | Should -Not -Match 'arbitrary-output-sentinel-3141' -Because 'suppression persists NO output text at all'
+    }
+
     It '5. a REQUIRED result that is MISSING or MALFORMED FAILS LOUDLY (never degrades to a richer claim)' {
         $repo = New-RunRepo
         { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', 'exit 0') -ResultPath 'result.json' -RequireResult } |

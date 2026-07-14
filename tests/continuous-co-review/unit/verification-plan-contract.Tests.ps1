@@ -114,6 +114,38 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
             if (-not $made) { Set-ItResult -Skipped -Because 'this environment cannot create a junction'; return }
             (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'link').safe | Should -BeFalse -Because 'the junction dereferences outside the repo root'
         }
+        It 'rejects a path BELOW an escaping ancestor link - not only the link itself (finding f1, run 20260714T123137002)' {
+            $root = Join-Path $TestDrive 'aroot'
+            $outside = Join-Path $TestDrive 'aoutside'
+            New-Item -ItemType Directory -Path $root, $outside -Force | Out-Null
+            # real, ORDINARY content outside the repo, reachable only through the escaping link: the final
+            # items are a normal directory + file whose own ResolveLinkTarget() is null.
+            New-Item -ItemType Directory -Path (Join-Path $outside 'subdir') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $outside 'subdir/result.json') -Value '{}' -NoNewline
+            $made = $false
+            try { New-Item -ItemType Junction -Path (Join-Path $root 'link') -Target $outside -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
+            if (-not $made) {
+                try { New-Item -ItemType SymbolicLink -Path (Join-Path $root 'link') -Target $outside -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
+            }
+            if (-not $made) { Set-ItResult -Skipped -Because 'this environment cannot create a junction or symlink'; return }
+            (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'link/subdir').safe |
+                Should -BeFalse -Because 'an escaping ancestor re-roots everything below it outside the repo'
+            (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'link/subdir/result.json').safe |
+                Should -BeFalse -Because 'a file below an escaping ancestor link would execute/write outside RepoRoot'
+        }
+        It 'accepts a link whose target stays INSIDE the repo root (containment, not link-phobia)' {
+            $root = Join-Path $TestDrive 'iroot'
+            New-Item -ItemType Directory -Path (Join-Path $root 'realdir') -Force | Out-Null
+            Set-Content -LiteralPath (Join-Path $root 'realdir/f.txt') -Value 'x' -NoNewline
+            $made = $false
+            try { New-Item -ItemType Junction -Path (Join-Path $root 'inlink') -Target (Join-Path $root 'realdir') -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
+            if (-not $made) {
+                try { New-Item -ItemType SymbolicLink -Path (Join-Path $root 'inlink') -Target (Join-Path $root 'realdir') -ErrorAction Stop | Out-Null; $made = $true } catch { $made = $false }
+            }
+            if (-not $made) { Set-ItResult -Skipped -Because 'this environment cannot create a junction or symlink'; return }
+            (Test-ContinuousCoReviewVerificationPathSafe -RepoRoot $root -Path 'inlink/f.txt').safe |
+                Should -BeTrue -Because 'the link resolves inside the repo root; below-link content is validated, not refused'
+        }
     }
 
     Context 'plan validity — plan_id, order preserved, unique command_id, count' {

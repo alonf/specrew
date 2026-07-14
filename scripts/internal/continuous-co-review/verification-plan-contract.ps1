@@ -106,17 +106,29 @@ function Test-ContinuousCoReviewVerificationPathSafe {
     if (-not ($combined.Equals($rootFull, [System.StringComparison]::OrdinalIgnoreCase) -or $combined.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase))) {
         return [pscustomobject]@{ safe = $false; reason = "path '$Path' escapes the repository root via '..'"; canonical_relative = $null }
     }
-    # SYMLINK/JUNCTION escape guard: only resolvable when the target already exists on disk. Follow the
-    # link chain to its final real target and require it to stay inside RepoRoot.
-    if (Test-Path -LiteralPath $combined) {
+    # SYMLINK/JUNCTION escape guard on EVERY existing path COMPONENT, not only the final item (review finding
+    # f1, run 20260714T123137002): an escaping link ANYWHERE in the chain re-roots everything BELOW it outside
+    # the repository, and a path whose final item is an ordinary file/dir under such a link would previously
+    # read as safe. Walk root-down; when a component is a link, resolve its FINAL target, require the target
+    # inside RepoRoot, and CONTINUE the walk from the resolved location so links nested below a linked
+    # directory are validated too. A not-yet-created suffix stops the walk (the lexical guard above already
+    # bounds it). Only resolvable for components that exist on disk.
+    $relSuffix = $combined.Substring($rootFull.Length).TrimStart([char]'\', [char]'/')
+    $currentReal = $rootFull
+    foreach ($component in ($relSuffix -split '[\\/]+')) {
+        if ([string]::IsNullOrWhiteSpace($component)) { continue }
+        $currentReal = [System.IO.Path]::Combine($currentReal, $component)
+        if (-not (Test-Path -LiteralPath $currentReal)) { break }
         try {
-            $item = Get-Item -LiteralPath $combined -Force -ErrorAction Stop
+            $item = Get-Item -LiteralPath $currentReal -Force -ErrorAction Stop
             $target = $item.ResolveLinkTarget($true)
             if ($null -ne $target) {
                 $real = ([System.IO.Path]::GetFullPath($target.FullName)).TrimEnd([char]'\', [char]'/')
                 if (-not ($real.Equals($rootFull, [System.StringComparison]::OrdinalIgnoreCase) -or ($real + [System.IO.Path]::DirectorySeparatorChar).StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase))) {
-                    return [pscustomobject]@{ safe = $false; reason = "path '$Path' resolves via a symlink/junction OUTSIDE the repository root"; canonical_relative = $null }
+                    return [pscustomobject]@{ safe = $false; reason = "path '$Path' traverses component '$component' which resolves via a symlink/junction OUTSIDE the repository root"; canonical_relative = $null }
                 }
+                # keep walking through the RESOLVED location so nested links are validated against the root too.
+                $currentReal = $real
             }
         }
         catch { $null = $_ }

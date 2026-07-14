@@ -189,6 +189,121 @@ Describe 'T019 verification-plan runner (executes a mixed plan; records every at
             Should -Be 'unjoinable-no-matching-command'
     }
 
+    It 'ANCHORS working_directory + result_path to RepoRoot — CWD-independent execution; result_path never re-anchors to the working directory (finding f4, run 20260714T123137002)' {
+        $repo = New-PlanRunRepo
+        New-Item -ItemType Directory -Path (Join-Path $repo 'subdir') -Force | Out-Null
+        $pwshExe = (Get-Process -Id $PID).Path
+        # The command runs with working_directory='subdir' (repo-relative), proves its own cwd into
+        # subdir/cwd.txt, and writes the REQUIRED result to '../rootresult.json' — i.e. to RepoRoot —
+        # matching the schema's REPO-relative result_path 'rootresult.json'.
+        $cmdText = 'Set-Content -LiteralPath cwd.txt -Value ((Get-Location).Path) -NoNewline; ' +
+        '@{ schema_version = ''1.0''; result = ''passed'' } | ConvertTo-Json | Set-Content -LiteralPath ../rootresult.json'
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-anchor'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'anchored'; executable = $pwshExe; arguments = @('-NoProfile', '-Command', $cmdText); working_directory = 'subdir'; result_path = 'rootresult.json'; require_result = $true; provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        # Invoke from OUTSIDE the repository: the old CWD-relative resolution would look for 'subdir'
+        # under the CALLER cwd (and 'rootresult.json' under the working directory) and fail.
+        Push-Location $TestDrive
+        try { $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan }
+        finally { Pop-Location }
+        $result.all_succeeded | Should -BeTrue -Because 'both paths anchor to RepoRoot, independent of the caller cwd'
+        $ev = @($result.evidence)[0]
+        $ev.command_succeeded | Should -BeTrue
+        [string]$ev.test_result.result | Should -Be 'passed' -Because 'the REQUIRED result was found at RepoRoot/rootresult.json, not subdir/rootresult.json'
+        $observedCwd = Get-Content -LiteralPath (Join-Path $repo 'subdir/cwd.txt') -Raw
+        ([System.IO.Path]::GetFullPath($observedCwd.Trim())) | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $repo 'subdir'))) -Because 'the child ran in RepoRoot/subdir'
+    }
+
+    It 'env_refs have EXECUTION semantics — a declared name is visible in the child; an unlisted ambient secret is ABSENT (finding f2, run 20260714T123137002)' {
+        $repo = New-PlanRunRepo
+        $pwshExe = (Get-Process -Id $PID).Path
+        $env:CCR_TEST_ALLOWED = 'allowed-value-123'
+        $env:CCR_TEST_SECRET = 'ambient-sentinel-secret-777'
+        try {
+            $cmdText = 'Set-Content -LiteralPath envprobe.txt -Value "allowed=[$env:CCR_TEST_ALLOWED] secret=[$env:CCR_TEST_SECRET]" -NoNewline'
+            $plan = [pscustomobject]@{
+                schema_version = '1.0'
+                plan_id        = 'plan-env-exec'
+                commands       = @(
+                    [pscustomobject]@{ command_id = 'envx'; executable = $pwshExe; arguments = @('-NoProfile', '-Command', $cmdText); env_refs = @('CCR_TEST_ALLOWED'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+                )
+            }
+            $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+            @($result.evidence)[0].command_succeeded | Should -BeTrue
+            $probe = Get-Content -LiteralPath (Join-Path $repo 'envprobe.txt') -Raw
+            $probe | Should -Match 'allowed=\[allowed-value-123\]' -Because 'a declared env_ref passes through to the child at spawn'
+            $probe | Should -Match 'secret=\[\]' -Because 'an unlisted ambient value is structurally ABSENT from the child'
+            # and the durable store never carries the values, listed or not.
+            $storeDir = Join-Path $repo '.specrew/review/test-evidence'
+            $raw = Get-Content -LiteralPath (@(Get-ChildItem -LiteralPath $storeDir -Filter '*.json')[0].FullName) -Raw
+            $raw | Should -Not -Match 'allowed-value-123'
+            $raw | Should -Not -Match 'ambient-sentinel-secret-777'
+        }
+        finally {
+            Remove-Item Env:CCR_TEST_ALLOWED -ErrorAction SilentlyContinue
+            Remove-Item Env:CCR_TEST_SECRET -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'persists NO output text for a plan command — a printed sentinel is absent from the digest-keyed store (finding f3, run 20260714T123137002)' {
+        $repo = New-PlanRunRepo
+        $pwshExe = (Get-Process -Id $PID).Path
+        # The sentinels are ASSEMBLED at runtime so they exist ONLY in the command's OUTPUT — never as an
+        # argument literal (declared arguments are plan content and are recorded by design).
+        $cmdText = '[Console]::Out.WriteLine((''plan-stdout'' + ''-sentinel-'' + ''0451'')); [Console]::Error.WriteLine((''plan-stderr'' + ''-sentinel-'' + ''0452'')); exit 0'
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-no-tail'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'printer'; executable = $pwshExe; arguments = @('-NoProfile', '-Command', $cmdText); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+        $result.all_succeeded | Should -BeTrue
+        $storeDir = Join-Path $repo '.specrew/review/test-evidence'
+        $raw = Get-Content -LiteralPath (@(Get-ChildItem -LiteralPath $storeDir -Filter '*.json')[0].FullName) -Raw
+        $raw | Should -Not -Match 'plan-stdout-sentinel-0451' -Because 'supplier-declared command output is SUPPRESSED, not persisted'
+        $raw | Should -Not -Match 'plan-stderr-sentinel-0452'
+        # the integrity facts remain: byte counts + hashes describe the raw output.
+        $rec = $raw | ConvertFrom-Json
+        [int](@($rec.runs)[0].stdout_meta.byte_count) | Should -BeGreaterThan 0
+        [string](@($rec.runs)[0].stdout_meta.truncated_tail) | Should -Be ''
+    }
+
+    It 'two plan commands with the SAME invocation but DIFFERENT command_ids persist as separately joinable durable runs (finding f5, run 20260714T123137002)' {
+        $repo = New-PlanRunRepo
+        $plan = [pscustomobject]@{
+            schema_version = '1.0'
+            plan_id        = 'plan-twin'
+            commands       = @(
+                [pscustomobject]@{ command_id = 'twin-a'; executable = 'git'; arguments = @('--version'); provenance = [pscustomobject]@{ kind = 'project-detected'; source = 'git' } },
+                [pscustomobject]@{ command_id = 'twin-b'; executable = 'git'; arguments = @('--version'); provenance = [pscustomobject]@{ kind = 'project-config'; source = 'cfg' } }
+            )
+        }
+        $result = Invoke-ContinuousCoReviewVerificationPlan -RepoRoot $repo -Plan $plan
+        $result.all_succeeded | Should -BeTrue
+        @($result.evidence).Count | Should -Be 2
+
+        # RELOAD the durable digest-keyed store — the identity must survive serialization, not live only
+        # on the in-memory return.
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        $rec = Get-Content -LiteralPath (Join-Path $repo ".specrew/review/test-evidence/$digest.json") -Raw | ConvertFrom-Json
+        @($rec.runs).Count | Should -Be 2 -Because 'same invocation + different command_id must NOT clobber'
+        @(@($rec.runs) | ForEach-Object { [string]$_.command_id } | Sort-Object) | Should -Be @('twin-a', 'twin-b')
+        foreach ($r in @($rec.runs)) {
+            [string]$r.provenance.kind | Should -Not -BeNullOrEmpty -Because 'provenance survives serialization'
+            [string]$r.reviewed_digest_tree_id | Should -Be $digest
+        }
+        # and the T019 join validator joins BOTH persisted records at the exact digest.
+        $joined = @(Test-ContinuousCoReviewPlanEvidenceInjectable -PlanEvidence @($rec.runs) -Plan $plan -CurrentDigest $digest)
+        @($joined).Count | Should -Be 2
+        foreach ($j in $joined) { $j.injectable | Should -BeTrue; $j.classification | Should -Be 'exact-digest-command-joined' }
+    }
+
     It 'FAIL-FAST: a DUPLICATE command_id is rejected at validation BEFORE any command runs — ZERO side effects (maintainer decision 2026-07-13)' {
         $repo = New-PlanRunRepo
         # Both commands are individually valid + would create a sentinel file if executed; the plan is structurally

@@ -183,16 +183,43 @@ function Test-ContinuousCoReviewSpecrewTestResult {
     return @{ valid = $true; reason = 'ok'; result = [string]$Object.result; counts = $counts }
 }
 
+function Get-ContinuousCoReviewRedactedOutputText {
+    # SECRET-PATTERN REDACTION for output text destined for a persisted, reviewer-visible record (review finding
+    # f3, run 20260714T123137002): credential-shaped content is masked BEFORE serialization so a command that
+    # prints a token/password/credential-URL does not persist it into digest-bound evidence. Pattern-based
+    # redaction is inherently a best-effort layer - the STRUCTURAL guarantees are the child-environment
+    # allowlist (secrets never reach a plan child) and full tail SUPPRESSION for supplier-declared plan
+    # commands (-TailBytes 0); this masks the recognizable credential shapes in the tails that remain.
+    param([AllowNull()][string]$Text)
+    if ([string]::IsNullOrEmpty($Text)) { return '' }
+    $t = [string]$Text
+    # KEY=VALUE / KEY: VALUE where the key smells like a credential - keep the name, mask the value.
+    $t = [regex]::Replace($t, '(?im)([A-Z0-9_\-\.]*(?:TOKEN|SECRET|PASSWORD|PASSWD|PWD|API[_-]?KEY|ACCESS[_-]?KEY|CLIENT[_-]?SECRET|CREDENTIAL|AUTH)[A-Z0-9_\-\.]*\s*[=:]\s*)(\S+)', '$1[redacted]')
+    # Authorization headers + bearer/basic tokens.
+    $t = [regex]::Replace($t, '(?im)\b(authorization\s*:\s*)(\S.*)$', '$1[redacted]')
+    $t = [regex]::Replace($t, '(?i)\b(bearer|basic)\s+[A-Za-z0-9+/=_\-\.]{8,}', '$1 [redacted]')
+    # URL userinfo credentials (scheme://user:password@host).
+    $t = [regex]::Replace($t, '(?i)\b([a-z][a-z0-9+.\-]*://[^/\s:@]+):([^@\s/]+)@', '$1:[redacted]@')
+    return $t
+}
+
 function Get-ContinuousCoReviewBoundedOutputMeta {
-    # BOUNDED/REDACTED metadata for a captured output stream: byte count + sha256 + a bounded TAIL - never the full raw
-    # dump (an unbounded reviewer-visible artifact + potential secret leak).
+    # BOUNDED + REDACTED metadata for a captured output stream: byte count + sha256 + a bounded, REDACTED tail -
+    # never the full raw dump (an unbounded reviewer-visible artifact + potential secret leak). TailBytes <= 0 is
+    # the SUPPRESSION mode (review finding f3): NO output text is persisted at all - count/hash only - the mode
+    # supplier-declared verification-plan commands use, because arbitrary plan output may carry secrets no pattern
+    # can recognize. byte_count/sha256 always describe the RAW output (the integrity facts); the tail, when
+    # present, is a REDACTED excerpt, so it is diagnostic text - not a hash preimage.
     param([AllowNull()][string]$Text, [int]$TailBytes = 2048)
     $t = if ($null -eq $Text) { '' } else { [string]$Text }
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($t)
     $sha = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::HashData($bytes)).Replace('-', '').ToLowerInvariant()
+    if ($TailBytes -le 0) {
+        return [ordered]@{ byte_count = $bytes.Length; sha256 = $sha; truncated = ($bytes.Length -gt 0); truncated_tail = '' }
+    }
     $truncated = $bytes.Length -gt $TailBytes
-    $tail = if (-not $truncated) { $t } else { [System.Text.Encoding]::UTF8.GetString($bytes, $bytes.Length - $TailBytes, $TailBytes) }
-    return [ordered]@{ byte_count = $bytes.Length; sha256 = $sha; truncated = $truncated; truncated_tail = $tail }
+    $rawTail = if (-not $truncated) { $t } else { [System.Text.Encoding]::UTF8.GetString($bytes, $bytes.Length - $TailBytes, $TailBytes) }
+    return [ordered]@{ byte_count = $bytes.Length; sha256 = $sha; truncated = $truncated; truncated_tail = (Get-ContinuousCoReviewRedactedOutputText -Text $rawTail) }
 }
 
 function Invoke-ContinuousCoReviewRecordedRun {
@@ -211,7 +238,11 @@ function Invoke-ContinuousCoReviewRecordedRun {
         [string]$ResultPath,          # OPTIONAL: where the command WRITES its SpecrewTestResult JSON (produced THIS run)
         [switch]$RequireResult,       # a missing/invalid result at -ResultPath then FAILS LOUD (never a richer claim)
         [string[]]$ArtifactPath = @(),
-        [int]$OutputTailBytes = 2048,
+        [int]$OutputTailBytes = 2048, # <= 0 suppresses persisted output text entirely (count/hash only)
+        [string]$CommandId,           # OPTIONAL plan identity - persisted INTO the durable record (the T019 join key)
+        $Provenance,                  # OPTIONAL provenance object - persisted INTO the durable record
+        [string[]]$EnvRefs,           # OPTIONAL env var NAMES (never values) - persisted INTO the durable record
+        [System.Collections.IDictionary]$ChildEnvironment,   # OPTIONAL constructed child environment (allowlist semantics)
         [datetime]$Now = [datetime]::UtcNow
     )
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
@@ -242,6 +273,19 @@ function Invoke-ContinuousCoReviewRecordedRun {
     $psi.WorkingDirectory = $cwd
     $psi.UseShellExecute = $false; $psi.CreateNoWindow = $true
     $psi.RedirectStandardOutput = $true; $psi.RedirectStandardError = $true
+    # CHILD-ENVIRONMENT ALLOWLIST with EXECUTION semantics (review finding f2, run 20260714T123137002): when a
+    # caller supplies a CONSTRUCTED environment, the child receives EXACTLY that map - the inherited ambient
+    # environment is CLEARED first, so every unlisted ambient value (hence every ambient secret) is structurally
+    # ABSENT from the child. The VALUES pass through process creation only and are never recorded. When the
+    # parameter is absent the child inherits the ambient environment unchanged (the legacy T018 self-evidence
+    # behavior, where the recorder wraps the implementer's own dev commands).
+    if ($PSBoundParameters.ContainsKey('ChildEnvironment') -and $null -ne $ChildEnvironment) {
+        $psi.Environment.Clear()
+        foreach ($k in @($ChildEnvironment.Keys)) {
+            if ([string]::IsNullOrWhiteSpace([string]$k)) { continue }
+            $psi.Environment[[string]$k] = [string]$ChildEnvironment[$k]
+        }
+    }
     $startedAt = $Now
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
     $proc = [System.Diagnostics.Process]::new(); $proc.StartInfo = $psi
@@ -308,6 +352,12 @@ function Invoke-ContinuousCoReviewRecordedRun {
         test_result             = $testResult
         recorded_at             = $Now.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     }
+    # PLAN IDENTITY persisted INTO the durable record (review finding f5, run 20260714T123137002): the T019
+    # evidence join binds on command_id + reviewed digest, so identity/provenance/env_ref NAMES must survive
+    # serialization - an in-memory-only tag is invisible to any reader of the digest-keyed store.
+    if ($PSBoundParameters.ContainsKey('CommandId') -and -not [string]::IsNullOrWhiteSpace($CommandId)) { $entry['command_id'] = [string]$CommandId }
+    if ($PSBoundParameters.ContainsKey('Provenance') -and $null -ne $Provenance) { $entry['provenance'] = $Provenance }
+    if ($PSBoundParameters.ContainsKey('EnvRefs') -and $null -ne $EnvRefs) { $entry['env_refs'] = @(@($EnvRefs) | Where-Object { $_ -is [string] -and -not [string]::IsNullOrWhiteSpace($_) }) }
 
     # WRITE bound to the digest, into the digest-keyed store's `runs` array. FAIL LOUD if recording fails.
     try {
@@ -319,8 +369,24 @@ function Invoke-ContinuousCoReviewRecordedRun {
         if ($null -eq $record) { $record = [pscustomobject]@{ schema_version = '1.0'; reviewed_digest_tree_id = $treeId; recorded_at = $entry.recorded_at } }
         $existingRuns = @()
         if (($record.PSObject.Properties.Name -contains 'runs') -and ($null -ne $record.runs)) { $existingRuns = @($record.runs) }
-        $entryKey = ($Executable + ' ' + (@($Arguments) -join ' '))
-        $kept = @($existingRuns | Where-Object { $null -ne $_ -and (([string]$_.command.executable + ' ' + (@($_.command.arguments) -join ' ')) -ne $entryKey) })
+        # DURABLE UNIQUENESS KEY (review finding f5): a command_id, when present, IS the identity - two distinct
+        # plan commands with the SAME invocation must both persist (separately joinable), while a re-run of the
+        # SAME command_id replaces its prior record. Identity-less (legacy) runs key on executable + arguments +
+        # working_directory, so the same invocation from different working directories no longer clobbers.
+        $entryKey = if (-not [string]::IsNullOrWhiteSpace($CommandId)) { 'command-id:' + $CommandId }
+        else { 'invocation:' + $Executable + ' ' + (@($Arguments) -join ' ') + '|wd:' + $cwd }
+        $kept = @($existingRuns | Where-Object {
+                if ($null -eq $_) { return $false }
+                $exId = ''
+                if (@($_.PSObject.Properties | ForEach-Object { $_.Name }) -contains 'command_id') { $exId = [string]$_.command_id }
+                $exKey = if (-not [string]::IsNullOrWhiteSpace($exId)) { 'command-id:' + $exId }
+                else {
+                    $exWd = ''
+                    try { $exWd = [string]$_.command.working_directory } catch { $exWd = '' }
+                    'invocation:' + [string]$_.command.executable + ' ' + (@($_.command.arguments) -join ' ') + '|wd:' + $exWd
+                }
+                return ($exKey -ne $entryKey)
+            })
         $record | Add-Member -NotePropertyName 'runs' -NotePropertyValue @(@($kept) + @([pscustomobject]$entry)) -Force
         $record | Add-Member -NotePropertyName 'reviewed_digest_tree_id' -NotePropertyValue $treeId -Force
         $record | Add-Member -NotePropertyName 'recorded_at' -NotePropertyValue $entry.recorded_at -Force
