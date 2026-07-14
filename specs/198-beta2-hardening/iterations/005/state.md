@@ -1,8 +1,8 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Last Completed Task**: the iter-005 false-green CORRECTION, now SHELL-SAFE + CROSS-PLATFORM (SessionStart version probe + independent current-version gate + FR-053a shell-safe reconciliation; Linux-verified). **Iteration 005 is NOT yet complete** — three co-review cycles fired the loop guard (5 findings → partial-fix on 3+5 → shell-free contract gap), each escalated to the maintainer and fixed under an explicit ruling. The shell-safe fix is DONE + green on Windows AND Linux; ONE final clean re-review closes the iteration and releases T019 pieces 5-7. See the Co-review section at the bottom.
-**Tasks Remaining**: commit the shell-safe reconciliation + ONE final clean re-review. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING that re-review** (see the Co-review section at the bottom). FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Last Completed Task**: the iter-005 shell-safe fix, now with a TRUSTED shim interpreter + reconciled evidence (the 4th review round's two mechanical findings). **Iteration 005 is NOT yet complete** — four co-review cycles fired the loop guard (5 findings → partial-fix on 3+5 → shell-free contract gap → ambient-interpreter + evidence-traceability), each escalated to the maintainer and fixed under an explicit ruling. The latest fix (trusted System32 cmd.exe interpreter + evidence reconciliation) is DONE + green on Windows AND Linux; per the maintainer's routing for mechanical findings, it is returned for the maintainer to authorize any further review budget (no auto re-review). See the Co-review section at the bottom.
+**Tasks Remaining**: the maintainer's decision on further review budget (the mechanical fixes are committed + verified). **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-14T00:00:00Z
@@ -258,19 +258,44 @@ Implemented (FR-053a amended shell-free → SHELL-SAFE + CROSS-PLATFORM):
   invocation), `spec.md` FR-053a, and the four test suites. The 3 dispatcher copies are UNCHANGED (the probe is
   module-internal) and remain byte-identical. NO deferral to #3084 for this defect.
 
-After this reconciliation commits and the evidence re-binds to the new committed digest, ONE final clean re-review
-closes Iteration 005 and releases T019 pieces 5-7.
+This reconciliation was committed as `a5838c87` and the evidence re-bound to digest `0062bd89…`
+(`command_succeeded=true`). The one authorized `--remediate more-time` re-review then reviewed the change and
+returned two mechanical findings (below).
+
+### Fourth round — trusted shim interpreter + evidence reconciliation (2026-07-14, maintainer-routed mechanical fixes)
+
+The `more-time` re-review of the shell-safe reconciliation returned TWO blocking findings, both actionable +
+mechanical (verified against disk before fixing, per the maintainer's routing):
+
+1. **Ambient interpreter (`hook-health-receipt.ps1`).** The shim injection-guard covered the shim PATH, but the
+   INTERPRETER itself was `$env:ComSpec` (or PATH-resolved `cmd.exe`) — a caller controlling the inherited
+   environment could substitute an arbitrary executable and run attacker code during SessionStart / doctor /
+   preflight (and still emit a matching version). Fixed: cmd.exe is now resolved from the trusted OS system
+   directory (`[Environment]::SystemDirectory` → Win32 GetSystemDirectory, NOT the mutable `%ComSpec%`/`%PATH%`),
+   fail-closed if absent. A unit test AND a production-path test FALSIFY the hijack: a bogus / empty `$env:ComSpec`
+   is ignored and the probe still uses the trusted System32 cmd.exe.
+2. **`state.md` overclaim + inconsistency.** The record claimed done/green without a worktree-traceable digest-bound
+   execution record, said "35 suites" in one place while another said "36", and kept forward-looking "must re-bind"
+   language after the re-bind had happened. Fixed: the suite count is reconciled to 36; the stale language is
+   corrected to past tense; and the exact cross-platform commands + results + reviewed digest are recorded durably
+   in `iterations/005/evidence/shell-safe-cross-platform-verification.md`, with the digest-bound machine record in
+   the co-review evidence store.
+
+Per the maintainer's routing for mechanical findings, these fixes are committed and RETURNED; NO further review round
+is launched automatically — the maintainer decides whether to authorize additional review budget.
 
 ## Notes
 
-- **Verification.** The full F-198 honesty regression suite
-  (`pwsh -File tests/f198-regression-suite.ps1`) is GREEN — all 35 suites pass,
-  including the self-leak firewall (the dispatcher comments + the aggregator are in
-  scanned surfaces and stay deny-list clean), T035/T036/T037/T038, and the new T039
-  reconciliation suite (18/18). The reconciliation suite also passes standalone.
-  End-to-end dispatcher firing (SessionStart / Stop / agentStop write a receipt;
-  PostToolUse does not; every dispatch exits 0) and the doctor aggregator render
-  (verified tiers with provenance + a fresh receipt reading `healthy` + the Codex
+- **Verification (current — see the cross-platform evidence record).** The full F-198 honesty regression
+  suite (`pwsh -File tests/f198-regression-suite.ps1`) is GREEN on Windows — all **36** suites pass (the
+  self-leak firewall with the dispatcher comments + aggregator in scanned surfaces staying deny-list clean;
+  T035/T036/T037/T038/T039; and the iter-005 hook-health production-path suite). It ALSO passes on Linux via
+  Docker (pwsh 7.4.2). The EXACT commands, results, and reviewed digest for BOTH OSes are recorded durably in
+  `specs/198-beta2-hardening/iterations/005/evidence/shell-safe-cross-platform-verification.md`, and the
+  digest-bound machine record of the registry run is in the co-review evidence store
+  (`.specrew/review/test-evidence/<committed-digest>.json`, `command_succeeded=true`). End-to-end dispatcher
+  firing (SessionStart / Stop / agentStop write a receipt; PostToolUse does not; every dispatch exits 0) and the
+  doctor aggregator render (verified tiers with provenance + a fresh receipt reading `healthy` + the Codex
   preflight flipping ready) were both exercised directly.
 
 - **Protected-file discipline (F-184).** No edit to `scripts/specrew-hooks.ps1` or

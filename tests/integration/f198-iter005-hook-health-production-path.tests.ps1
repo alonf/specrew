@@ -212,6 +212,20 @@ Assert-True ((Get-ReceiptVersion -Event 'SessionStart') -eq $script:FakeVersion)
 Assert-True ((Get-ReceiptVersion -Event 'Stop') -eq 'unknown') 'F7: the Stop receipt is a separate file that carries unknown (it never overwrites the SessionStart version fact)'
 
 # -----------------------------------------------------------------------------------------------------------
+if ($IsWindows) {
+    Write-Host "`n--- INTERPRETER TRUST (Windows): a hijacked ComSpec cannot substitute the shim interpreter ---" -ForegroundColor Cyan
+    # Only a Windows .cmd/.bat shim routes through cmd.exe. Fire SessionStart with a HIJACKED $env:ComSpec (a bogus /
+    # attacker path) plus the fake codex.cmd shim on PATH. The dispatcher's probe must bind cmd.exe to the TRUSTED
+    # System32 and IGNORE the hijacked ComSpec, so the receipt records the SHIM's version - not a probe failure and
+    # not attacker output. If ComSpec were honored, the bogus interpreter would fail (-> 'unknown') or run attacker code.
+    $evilComSpec = Join-Path $scratchRoot 'evil-comspec.exe'
+    [System.IO.File]::WriteAllText($evilComSpec, 'not a real interpreter', [System.Text.UTF8Encoding]::new($false))
+    Reset-HookHealthStore
+    $null = Invoke-Dispatcher -Event 'SessionStart' -StdinJson $validSessionStart -PathPrepend $goodBin -ExtraEnv @{ ComSpec = $evilComSpec }
+    Assert-True ((Get-ReceiptVersion -Event 'SessionStart') -eq $script:FakeVersion) 'INTERP: a hijacked $env:ComSpec is ignored - the shim probe used the trusted System32 cmd.exe and recorded the shim version'
+}
+
+# -----------------------------------------------------------------------------------------------------------
 Write-Host "`n--- FINDINGS 4/5/8: `specrew hooks doctor` surfaces tiers + hook-health + preflight, and PROBES the live version ---" -ForegroundColor Cyan
 
 function New-DoctorProject {

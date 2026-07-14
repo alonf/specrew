@@ -158,11 +158,15 @@ function Invoke-SpecrewBoundedVersionProcess {
     #     .exe hosts (codex/claude here) take: genuinely shell-free.
     #   * A Windows .cmd/.bat shim (e.g. an npm-installed CLI) is the ONE case the OS cannot exec directly - only
     #     cmd.exe interprets it - and it is WINDOWS-ONLY (guarded on $onWindows; a POSIX shim is a shebang script the
-    #     kernel execs above). It is hardened to INJECTION-SAFE: the resolved path is REFUSED if it bears any cmd
-    #     expansion/operator metacharacter (%, !, &, ^, |, <, >, ") - a legitimate install path never has one; a
-    #     metacharacter path is a PATH-hijack red flag - so no untrusted content can reach the interpreter, and the
-    #     command line is `/d /c "<refused-safe path>" <fixed args>` (path always quoted, args the fixed --version).
-    #     No untrusted input reaches a shell; the injection surface is FALSIFIED by test (never assumed).
+    #     kernel execs above). It is hardened on BOTH the interpreter and the argument:
+    #       - TRUSTED INTERPRETER: cmd.exe is resolved from the OS system directory ([Environment]::SystemDirectory,
+    #         the Win32 GetSystemDirectory) - NOT the mutable %ComSpec%/%SystemRoot% env vars and NOT PATH - so a
+    #         caller controlling the inherited environment cannot substitute an arbitrary executable; fail-closed if
+    #         the trusted cmd.exe is absent.
+    #       - INJECTION-SAFE ARGUMENT: the resolved shim path is REFUSED if it bears any cmd expansion/operator
+    #         metacharacter (%, !, &, ^, |, <, >, ") - a legitimate install path never has one - so no untrusted
+    #         content reaches the interpreter, and the command line is `/d /c "<refused-safe path>" <fixed args>`.
+    #     No untrusted input reaches a shell and the interpreter is trusted; both surfaces are FALSIFIED by test.
     # Returns { ok; stdout; problem }. Never throws; a hung probe is killed (tree) on timeout.
     param(
         [Parameter(Mandatory)][string]$ExecutablePath,
@@ -186,7 +190,16 @@ function Invoke-SpecrewBoundedVersionProcess {
                 $out.problem = 'resolved shim path contains a shell metacharacter; refused (injection guard)'
                 return [pscustomobject]$out
             }
-            $comspec = $env:ComSpec; if ([string]::IsNullOrWhiteSpace($comspec)) { $comspec = 'cmd.exe' }
+            # TRUSTED INTERPRETER: bind cmd.exe to the OS command processor in the system directory, resolved via the
+            # Win32 API ([Environment]::SystemDirectory -> GetSystemDirectory, NOT the mutable %ComSpec%/%SystemRoot%
+            # env vars and NOT PATH). A caller/project that controls the inherited environment must NOT be able to
+            # substitute an arbitrary executable for the interpreter (which would run attacker code during
+            # SessionStart / doctor / preflight, and could still emit a matching version so the receipt reads healthy).
+            # FAIL CLOSED (-> unknown) if the trusted cmd.exe is not present.
+            $sysDir = [System.Environment]::SystemDirectory
+            if ([string]::IsNullOrWhiteSpace($sysDir)) { $out.problem = 'cannot resolve the trusted system directory for the shim interpreter'; return [pscustomobject]$out }
+            $comspec = Join-Path $sysDir 'cmd.exe'
+            if (-not (Test-Path -LiteralPath $comspec -PathType Leaf)) { $out.problem = 'trusted cmd.exe not found in the system directory; shim probe refused'; return [pscustomobject]$out }
             $psi.FileName = $comspec
             # Explicit, self-quoted command line: /d (no AutoRun) /c "<path>" <fixed args>. Built explicitly because
             # .NET ArgumentList's C-runtime quoting does NOT match cmd.exe's rules; the path is refused above if it

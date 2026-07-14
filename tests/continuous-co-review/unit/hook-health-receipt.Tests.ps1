@@ -336,6 +336,22 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
             $p.problem | Should -Match 'injection guard'
             (Test-Path -LiteralPath $marker) | Should -BeFalse   # the shim never ran
         }
+        It 'ignores a hijacked $env:ComSpec and binds the shim interpreter to the trusted System32 cmd.exe' -Skip:(-not $IsWindows) {
+            $dir = New-HhrTempRoot
+            $shim = Join-Path $dir 'codex.cmd'
+            [System.IO.File]::WriteAllText($shim, "@echo off`r`necho codex-cli 0.44.0", [System.Text.UTF8Encoding]::new($false))
+            $evil = Join-Path $dir 'evil.exe'
+            [System.IO.File]::WriteAllText($evil, 'not a real interpreter', [System.Text.UTF8Encoding]::new($false))
+            $saved = $env:ComSpec
+            try {
+                $env:ComSpec = $evil   # a caller controlling the environment points the "interpreter" at attacker code...
+                $p = Get-SpecrewHostVersionProbe -HostName 'codex' -CommandOverride $shim
+            }
+            finally { $env:ComSpec = $saved }
+            # ...but the probe resolves cmd.exe from the trusted System32, ignores the hijacked ComSpec, and still works.
+            $p.ok | Should -BeTrue
+            $p.version | Should -Be 'codex-cli 0.44.0'
+        }
     }
 
     Context 'healthy REQUIRES a SessionStart version probe AND an independently supplied current version' {
