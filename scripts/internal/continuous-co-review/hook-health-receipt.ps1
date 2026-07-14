@@ -15,21 +15,21 @@ Set-StrictMode -Version Latest
 # Resolve-SpecrewHookHealth here without either protected file being edited. Pure I/O + string building.
 # No function here collides with the protected specrew-hook-health.ps1 surface (distinct receipt-scoped names).
 #
-# THE HEALTH RULES (critical - a receipt is `healthy` ONLY when EVERY condition holds):
-#   present SessionStart probe + fresh + well-formed + adapter-contract matched + the caller-supplied INDEPENDENT
-#     current host version MATCHES the SessionStart-observed version                           -> healthy
-#   MISSING (no receipt: never fired / not deployed / trust revoked with no fresh fire)        -> unverified
-#   NO SessionStart receipt (only a Stop-class receipt: fired, but no version was probed)      -> unverified
-#   UNOBSERVED version (the SessionStart probe failed -> observed_host_version 'unknown'/blank) -> unverified
-#   NO current version supplied (caller passed no independently probed version to compare)      -> unverified
-#   host-version DRIFT (independently probed current version != SessionStart-observed version)  -> unverified
-#   adapter-contract DRIFT (receipt written under a different Specrew adapter contract)         -> unverified
-#   STALE (SessionStart receipt older than the freshness bound: trust revoked / hook removed)   -> degraded
-#   MALFORMED (unparseable / wrong field-set / empty required field / bad timestamp)            -> degraded
-#   CONFLICTING (SessionStart receipts disagree on host version or adapter-contract version)    -> degraded
-# MISSING HEALTH IS NEVER `healthy`. Every non-healthy path returns unverified/degraded - the closed status set has
-# NO fail-open-to-healthy branch, and NO branch reaches healthy without a live current-version match (NFR-001).
-# The observed version is a BOUNDED SessionStart PROBE fact (the host CLI's own --version), NEVER an env value.
+# THE MODEL (Prop-145, maintainer decision 2026-07-14) - TWO INDEPENDENT concepts, never one overloaded status:
+#   HOOK LIVENESS (hook_status): whether the configured hook path was recently OBSERVED firing. This is MONITORING
+#     evidence, NOT authenticated - the receipt store is project-writable and the dispatcher can be invoked directly,
+#     so a same-user process could write a receipt. `healthy` here is OPERATIONAL confidence, never proof of the host
+#     process; do not describe a receipt as authenticated or as something a PATH shim / same-user process cannot
+#     produce. Values: healthy (fresh + well-formed lifecycle receipt) | stale | malformed (incl. a pre-v3 receipt
+#     missing version_source, wrong adapter contract) | conflicting (SessionStart receipts / host field disagree) |
+#     absent (no receipt).
+#   VERSION DIAGNOSTIC (version_status + version_source): a NON-AUTHORITATIVE, NON-PROMOTING ambient PATH-resolved
+#     `--version` reading. It NEVER changes hook_status or readiness. A 'diagnostic-match' means only that the
+#     SessionStart reading and a later probe resolved EQUIVALENT reported versions through the ambient command
+#     binding. Values: diagnostic-match | diagnostic-drift | unavailable | untrusted-source; source ambient-path-binding.
+#   A version probe failure leaves version_status 'unavailable' but does NOT erase valid hook liveness.
+# No strong executable identity is available on current host contracts, so none is claimed. The observed version is
+# a BOUNDED SessionStart reading (the host CLI's own --version), NEVER an env value.
 #
 # THE CODEX TRUST GATE (FR-051, maintainer decision 2026-07-14) = NO-PERSISTENT-MUTATION. Codex OWNS its trust
 # decision. Specrew NEVER writes ~/.codex, NEVER seeds a trusted_hash, NEVER passes --dangerously-bypass-hook-trust
@@ -45,36 +45,50 @@ Set-StrictMode -Version Latest
 # ------------------------------------------------------------------------------------------------------------
 
 # The Specrew-owned ADAPTER CONTRACT VERSION stamped into every receipt. Bump this when the receipt shape or the
-# host adapter's hook contract changes - a receipt written under a DIFFERENT value is drift (-> unverified), so an
-# old receipt can never masquerade as current health across a contract change.
-# v2 (F-198 iter-005 false-green fix): observed_host_version is now a BOUNDED SessionStart PROBE fact (the host
-# CLI's own self-reported version line), NEVER an ambient env value, and `healthy` REQUIRES an independently probed
-# CURRENT version to match it. Every pre-fix v1 receipt (env-sourced / unguarded) is therefore drift -> unverified
-# until a fresh SessionStart probe rewrites it - the contract bump alone retires the false-green receipts.
-$script:SpecrewHookHealthAdapterContractVersion = 2
+# host adapter's hook contract changes - a receipt written under a DIFFERENT value is contract drift (the reader
+# rejects it), so an old receipt can never masquerade as current evidence across a contract change.
+# v3 (F-198 iter-005, Prop-145 amendment 2026-07-14): the receipt now records a version_source classification and
+# SEPARATES two concepts - HOOK-LIVENESS evidence (host/surface/event/timestamp: the configured hook path was
+# OBSERVED firing) from the VERSION DIAGNOSTIC (observed_host_version + version_source='ambient-path-binding': a
+# bounded PATH-binding `--version` reading that is NON-AUTHORITATIVE and NEVER promotes health/readiness). Every
+# pre-v3 receipt lacks version_source, so it fails the field-set check as malformed and is retired.
+$script:SpecrewHookHealthAdapterContractVersion = 3
 
 # Beta2 is CLI-first (FR-050). Receipts describe the CLI surface unless a caller overrides it.
 $script:SpecrewHookHealthSurface = 'cli'
 
-# Freshness bound (hours). A receipt older than this is STALE (-> degraded): it proved the hook fired THEN, not
-# that it is firing NOW. This is also how hook-removal / trust-revocation is detected - no new fire ages the last
+# Freshness bound (hours). A receipt older than this is STALE hook-liveness: the configured hook path was observed
+# firing THEN, not NOW. This is also how hook-removal / trust-revocation surfaces - no new fire ages the last
 # receipt out. Overridable per call so a governed headless run can demand a tighter window.
 $script:SpecrewHookHealthDefaultFreshnessHours = 24
 
 # The EXACT receipt field set. Sanitized BY CONSTRUCTION: the writer builds a receipt field-by-field from ONLY
-# these keys, and the reader REJECTS any receipt whose key-set differs (missing OR extra) as MALFORMED. There is
-# no code path by which a prompt, a command argument, an environment value, or a secret can enter a receipt.
+# these keys, and the reader REJECTS any receipt whose key-set differs (missing OR extra) as MALFORMED. There is no
+# code path by which a prompt, a command argument, an environment value, or a secret can enter a receipt.
+# host/surface/event/timestamp = HOOK-LIVENESS evidence; observed_host_version + version_source = VERSION DIAGNOSTIC.
 $script:SpecrewHookHealthReceiptFields = @(
     'host'
     'surface'
     'event'
     'observed_host_version'
+    'version_source'
     'timestamp'
     'adapter_contract_version'
 )
 
-# The closed health status set. There is NO fourth "assume-healthy" value.
-$script:SpecrewHookHealthStatusSet = @('healthy', 'unverified', 'degraded')
+# Closed set: HOOK-LIVENESS status - whether the configured hook path was recently OBSERVED firing. This is
+# MONITORING evidence, NOT authenticated: the receipt store is project-writable and the dispatcher can be invoked
+# directly, so a same-user process could write a receipt. `healthy` here is operational confidence, never proof of
+# the host process. Do not describe a receipt as authenticated or as something a PATH shim/same-user process cannot
+# produce.
+$script:SpecrewHookLivenessStatusSet = @('healthy', 'stale', 'malformed', 'conflicting', 'absent')
+
+# Closed set: VERSION DIAGNOSTIC status. NEVER promotes hook-liveness or readiness. A 'diagnostic-match' means only
+# that SessionStart and the current probe resolved EQUIVALENT reported versions through the AMBIENT command binding.
+$script:SpecrewHookVersionStatusSet = @('diagnostic-match', 'diagnostic-drift', 'unavailable', 'untrusted-source')
+
+# The only recognized version-diagnostic source: an ambient PATH-resolved `--version` reading (non-authoritative).
+$script:SpecrewHookVersionSource = 'ambient-path-binding'
 
 # Recognized Stop-gate BLOCK envelopes (must mirror the dispatcher's StopBlockShape map + the observed FR-051
 # contract): decision:block (claude/codex/copilot), decision:continue (antigravity), followup_message (cursor).
@@ -90,27 +104,33 @@ function Get-SpecrewHookHealthReceiptFields {
     return @($script:SpecrewHookHealthReceiptFields)
 }
 
-function Get-SpecrewHookHealthStatusSet {
-    # The closed health status set (healthy | unverified | degraded).
-    return @($script:SpecrewHookHealthStatusSet)
+function Get-SpecrewHookLivenessStatusSet {
+    # The closed HOOK-LIVENESS status set (healthy | stale | malformed | conflicting | absent).
+    return @($script:SpecrewHookLivenessStatusSet)
+}
+
+function Get-SpecrewHookVersionStatusSet {
+    # The closed VERSION-DIAGNOSTIC status set (diagnostic-match | diagnostic-drift | unavailable | untrusted-source).
+    return @($script:SpecrewHookVersionStatusSet)
 }
 
 # ------------------------------------------------------------------------------------------------------------
-# Host CLI version probe (F-198 iter-005 false-green fix) - the SINGLE source of an observed/current host version
+# Host CLI version probe (Prop-145 amendment) - a NON-AUTHORITATIVE, NON-PROMOTING version DIAGNOSTIC
 # ------------------------------------------------------------------------------------------------------------
 #
-# WHY (co-review findings 3 + 5, maintainer decision 2026-07-14): the observed host version must NEVER come from an
-# ambient environment value (SPECREW_OBSERVED_HOST_VERSION is gone), and `healthy`/`ready` must NEVER be earned
-# without an INDEPENDENT current-version comparison. Both the WRITE side (the dispatcher, at SessionStart ONLY) and
-# the READ side (the doctor + the Codex preflight, at their explicit boundary) obtain a version through THIS one
-# probe: resolve the canonical host executable, run its fixed version argument SHELL-SAFE + cross-platform (a
-# native binary or shebang script is exec'd DIRECTLY with an argument vector - genuinely shell-free on every OS;
-# a Windows .cmd/.bat shim, the only interpreter-mediated case, is injection-guarded; never a shell string built
-# from untrusted input), bound the time, and NORMALIZE stdout to the tool's own self-reported version line. That
-# self-reported line IS the minimum sanitized identity needed for comparison (a tool/version change reports a
-# different line -> mismatch -> unverified); no user path and no env value is ever persisted. Any failure
-# (no spec, unresolved executable, launch failure, timeout, non-zero exit, empty / ambiguous / malformed output)
-# fails to 'unknown' -> unverified. NEVER an ambient shell-string, NEVER an env version, NEVER a promotion without a live match.
+# WHY (Prop-145, maintainer decision 2026-07-14): no supported host contract exposes a way to identify the host
+# executable/version that a project could not also influence - the probe can only resolve the host command through
+# the AMBIENT PATH. So this probe is a DIAGNOSTIC, labeled source 'ambient-path-binding': the `--version` a project
+# could equally influence by prepending a shim. It is NON-AUTHORITATIVE and NEVER promotes hook-liveness or
+# readiness. Both the WRITE side (the dispatcher, at SessionStart ONLY) and the READ side (the doctor's per-host
+# boundary) obtain it through THIS one probe: resolve the host command on PATH, run its fixed host-declared version
+# argument SHELL-SAFE + cross-platform (a native binary or shebang script is exec'd DIRECTLY with an argument vector
+# - shell-free on every OS; a Windows .cmd/.bat shim, the only interpreter-mediated case, uses the System32 cmd.exe
+# with an injection-guarded path), byte-cap the output (bounds memory), and NORMALIZE stdout to the tool's
+# self-reported version line. A 'match' between the SessionStart reading and a later probe means only that both
+# resolved EQUIVALENT reported versions through the ambient command binding. Any failure (no spec, unresolved
+# executable, launch failure, timeout, non-zero exit, oversized/empty/ambiguous/malformed output) fails CLOSED to
+# 'unknown'. No user path and no env value is ever persisted.
 
 # The CLI-first gated hosts (FR-050) and the fixed, single version argument each exposes. An unlisted host has no
 # probe spec, so its probe fails to 'unknown' (unverified) - support is never assumed.
@@ -119,6 +139,12 @@ $script:SpecrewHostVersionProbeSpec = @{
     codex   = @{ command = 'codex';   args = @('--version') }
     copilot = @{ command = 'copilot'; args = @('--version') }
 }
+
+# Byte (char) cap for a --version probe's captured stdout AND stderr - bounds MEMORY, not just time (Prop-145
+# finding 1). A real `--version` prints a few bytes; anything past this cap is a misbehaving / hostile process, so
+# the probe FAILS CLOSED (-> unknown -> unverified). The pipe keeps draining past the cap (discarded) so the child
+# never blocks; NOTHING is written to disk.
+$script:SpecrewHostVersionProbeMaxOutputChars = 8192
 
 function Get-SpecrewHostVersionProbeSpec {
     # The probe spec for a host key (a COPY), or $null if the host has no spec. Read-only accessor.
@@ -213,21 +239,67 @@ function Invoke-SpecrewBoundedVersionProcess {
             foreach ($a in $Arguments) { $psi.ArgumentList.Add([string]$a) }
         }
         $proc = [System.Diagnostics.Process]::Start($psi)
-        $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
-        $null = $proc.StandardError.ReadToEndAsync()
-        if (-not $proc.WaitForExit($TimeoutSeconds * 1000)) {
+
+        # BYTE-CAPPED CONCURRENT DRAIN (Prop-145 finding 1): the timeout bounds TIME; this bounds MEMORY. Read BOTH
+        # streams concurrently on THIS thread via ReadAsync + WaitAny (no PowerShell scriptblock on a threadpool
+        # thread), accumulating at most $cap chars each, then CONTINUING to read + DISCARD so the child never blocks
+        # on a full pipe. Nothing is written to disk. Exceeding the cap fails CLOSED. On the deadline the whole
+        # descendant tree is killed.
+        $cap = $script:SpecrewHostVersionProbeMaxOutputChars
+        $deadlineMs = [Math]::Max(1000, $TimeoutSeconds * 1000)
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        $sbOut = [System.Text.StringBuilder]::new(); $ovOut = $false; $outEof = $false
+        $sbErr = [System.Text.StringBuilder]::new(); $ovErr = $false; $errEof = $false
+        $bufOut = [char[]]::new(4096); $bufErr = [char[]]::new(4096)
+        $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
+        $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
+        $timedOut = $false
+        while (-not ($outEof -and $errEof)) {
+            if ($sw.ElapsedMilliseconds -ge $deadlineMs) { $timedOut = $true; break }
+            $pending = @(); if (-not $outEof) { $pending += $tOut }; if (-not $errEof) { $pending += $tErr }
+            $slice = [int][Math]::Min(200, [Math]::Max(1, $deadlineMs - $sw.ElapsedMilliseconds))
+            $idx = [System.Threading.Tasks.Task]::WaitAny([System.Threading.Tasks.Task[]]$pending, $slice)
+            if ($idx -lt 0) { continue }
+            $done = $pending[$idx]
+            if (-not $outEof -and $done -eq $tOut) {
+                $n = 0; try { $n = $tOut.GetAwaiter().GetResult() } catch { $n = 0 }
+                if ($n -le 0) { $outEof = $true }
+                else {
+                    if (-not $ovOut) { $room = $cap - $sbOut.Length; if ($room -gt 0) { [void]$sbOut.Append($bufOut, 0, [Math]::Min($n, $room)) }; if ($n -gt $room) { $ovOut = $true } }
+                    $tOut = $proc.StandardOutput.ReadAsync($bufOut, 0, $bufOut.Length)
+                }
+            }
+            elseif (-not $errEof -and $done -eq $tErr) {
+                $n = 0; try { $n = $tErr.GetAwaiter().GetResult() } catch { $n = 0 }
+                if ($n -le 0) { $errEof = $true }
+                else {
+                    if (-not $ovErr) { $room = $cap - $sbErr.Length; if ($room -gt 0) { [void]$sbErr.Append($bufErr, 0, [Math]::Min($n, $room)) }; if ($n -gt $room) { $ovErr = $true } }
+                    $tErr = $proc.StandardError.ReadAsync($bufErr, 0, $bufErr.Length)
+                }
+            }
+        }
+        if ($timedOut) {
+            try { $proc.Kill($true) } catch { $null = $_ }   # kill the whole descendant tree
+            $out.problem = ("version probe timed out after {0}s" -f $TimeoutSeconds)
+            return [pscustomobject]$out
+        }
+        # Both streams reached EOF -> the process finished writing; confirm it exited (bounded) and read the code.
+        $graceMs = [int][Math]::Max(0, $deadlineMs - $sw.ElapsedMilliseconds)
+        if (-not $proc.WaitForExit($graceMs)) {
             try { $proc.Kill($true) } catch { $null = $_ }
             $out.problem = ("version probe timed out after {0}s" -f $TimeoutSeconds)
             return [pscustomobject]$out
         }
-        $stdout = ''
-        try { $stdout = $stdoutTask.GetAwaiter().GetResult() } catch { $stdout = '' }
+        if ($ovOut -or $ovErr) {
+            $out.problem = 'version probe output exceeded the byte cap; refused (fail-closed)'
+            return [pscustomobject]$out
+        }
         if ($proc.ExitCode -ne 0) {
             $out.problem = ("version probe exited {0}" -f $proc.ExitCode)
             return [pscustomobject]$out
         }
         $out.ok = $true
-        $out.stdout = [string]$stdout
+        $out.stdout = $sbOut.ToString()
         return [pscustomobject]$out
     }
     catch {
@@ -240,28 +312,29 @@ function Invoke-SpecrewBoundedVersionProcess {
 }
 
 function Get-SpecrewHostVersionProbe {
-    # The ONE host-CLI version probe. Resolves the canonical executable for a HostKind and runs its fixed version
-    # argument bounded + shell-safe / cross-platform (see Invoke-SpecrewBoundedVersionProcess), then normalizes stdout to the tool's
-    # self-reported version line. Returns { ok; host; version; source; problem }. ANY failure -> ok=$false,
-    # version='unknown'. NEVER throws, NEVER reads an ambient version env value. `version` is the ONLY value that
-    # can promote health, and it can originate ONLY here. -CommandOverride/-ArgsOverride are the TEST seam (point
-    # the probe at a controllable fake executable); production callers pass neither and use the spec.
+    # The ONE host-CLI version probe - a NON-AUTHORITATIVE, NON-PROMOTING DIAGNOSTIC. Resolves the host command on
+    # the AMBIENT PATH and runs its fixed host-declared version argument bounded + shell-safe / cross-platform
+    # (see Invoke-SpecrewBoundedVersionProcess), then normalizes stdout to the tool's self-reported version line.
+    # Returns { ok; host; version; source; problem }; source is always 'ambient-path-binding'. ANY failure ->
+    # ok=$false, version='unknown'. NEVER throws, NEVER reads an ambient version env value. The production probe uses
+    # ONLY the fixed host-declared arguments from the spec; -CommandOverride is the TEST seam that points the probe
+    # at a controllable fake executable (still ambient-path-binding). This value NEVER promotes health or readiness.
     param(
         [Parameter(Mandatory)][string]$HostName,
         [int]$TimeoutSeconds = 6,
-        [AllowNull()][string]$CommandOverride,
-        [AllowNull()][string[]]$ArgsOverride
+        [AllowNull()][string]$CommandOverride
     )
-    $result = [ordered]@{ ok = $false; host = ''; version = 'unknown'; source = 'sessionstart-version-probe'; problem = $null }
+    $result = [ordered]@{ ok = $false; host = ''; version = 'unknown'; source = $script:SpecrewHookVersionSource; problem = $null }
     try {
         $key = ConvertTo-SpecrewHookHealthToken -Value $HostName
         $result.host = $key
 
+        # Arguments are ALWAYS the fixed host-declared vector (never caller-controlled): the spec's args, or the
+        # standard --version for a CommandOverride test target. No arbitrary arguments are ever accepted.
         $command = $null
         $vargs = @('--version')
         if (-not [string]::IsNullOrWhiteSpace($CommandOverride)) {
             $command = $CommandOverride
-            if ($null -ne $ArgsOverride) { $vargs = @($ArgsOverride) }
         }
         else {
             $spec = Get-SpecrewHostVersionProbeSpec -HostName $key
@@ -358,22 +431,33 @@ function ConvertTo-SpecrewHookHealthSafeString {
 
 function New-SpecrewHookHealthReceiptObject {
     # Build the SANITIZED receipt object field-by-field from ONLY the allowed inputs. No parameter here carries a
-    # prompt / arg vector / env table / secret, and nothing but these six fields is ever emitted (FR-053).
+    # prompt / arg vector / env table / secret, and nothing but these seven fields is ever emitted. host/surface/
+    # event/timestamp = HOOK-LIVENESS evidence; observed_host_version + version_source = the VERSION DIAGNOSTIC.
     param(
         [Parameter(Mandatory)][Alias('Host')][string]$HostName,
         [Parameter(Mandatory)][string]$Event,
         [string]$Surface = $script:SpecrewHookHealthSurface,
         [AllowNull()][string]$ObservedHostVersion,
+        [AllowNull()][string]$ObservedVersionSource,
         [AllowNull()][int]$AdapterContractVersion,
         [AllowNull()][datetime]$TimestampUtc
     )
     $contract = if ($PSBoundParameters.ContainsKey('AdapterContractVersion')) { [int]$AdapterContractVersion } else { $script:SpecrewHookHealthAdapterContractVersion }
     $ts = if ($PSBoundParameters.ContainsKey('TimestampUtc') -and $null -ne $TimestampUtc) { $TimestampUtc.ToUniversalTime() } else { (Get-Date).ToUniversalTime() }
+    $obsVer = ConvertTo-SpecrewHookHealthSafeString -Value $ObservedHostVersion -MaxLength 200
+    # version_source: honor an explicit caller value; else default from whether a real version diagnostic was
+    # captured ('ambient-path-binding' when a version is present, 'unavailable' when it is 'unknown'/blank).
+    $vsource = if ($PSBoundParameters.ContainsKey('ObservedVersionSource') -and -not [string]::IsNullOrWhiteSpace($ObservedVersionSource)) {
+        ConvertTo-SpecrewHookHealthSafeString -Value $ObservedVersionSource -MaxLength 40
+    }
+    elseif ([string]::IsNullOrWhiteSpace($obsVer) -or $obsVer -ieq 'unknown') { 'unavailable' }
+    else { $script:SpecrewHookVersionSource }
     return [pscustomobject][ordered]@{
         host                     = ConvertTo-SpecrewHookHealthSafeString -Value $HostName -MaxLength 64
         surface                  = ConvertTo-SpecrewHookHealthSafeString -Value $Surface -MaxLength 32
         event                    = ConvertTo-SpecrewHookHealthSafeString -Value $Event -MaxLength 64
-        observed_host_version    = ConvertTo-SpecrewHookHealthSafeString -Value $ObservedHostVersion -MaxLength 200
+        observed_host_version    = $obsVer
+        version_source           = $vsource
         timestamp                = $ts.ToString('o')
         adapter_contract_version = $contract
     }
@@ -390,12 +474,14 @@ function Write-SpecrewHookHealthReceipt {
         [Parameter(Mandatory)][string]$Event,
         [string]$Surface = $script:SpecrewHookHealthSurface,
         [AllowNull()][string]$ObservedHostVersion,
+        [AllowNull()][string]$ObservedVersionSource,
         [AllowNull()][int]$AdapterContractVersion,
         [AllowNull()][datetime]$TimestampUtc
     )
     try {
         $builder = @{ HostName = $HostName; Event = $Event; Surface = $Surface }
         if ($PSBoundParameters.ContainsKey('ObservedHostVersion')) { $builder.ObservedHostVersion = $ObservedHostVersion }
+        if ($PSBoundParameters.ContainsKey('ObservedVersionSource')) { $builder.ObservedVersionSource = $ObservedVersionSource }
         if ($PSBoundParameters.ContainsKey('AdapterContractVersion')) { $builder.AdapterContractVersion = $AdapterContractVersion }
         if ($PSBoundParameters.ContainsKey('TimestampUtc')) { $builder.TimestampUtc = $TimestampUtc }
         $receipt = New-SpecrewHookHealthReceiptObject @builder
@@ -468,7 +554,7 @@ function Read-SpecrewHookHealthReceiptFile {
         return [pscustomobject]@{ Path = $Path; WellFormed = $false; Receipt = $obj; Problem = ('field-set-mismatch (missing=[{0}] extra=[{1}])' -f ($missing -join ','), ($extra -join ',')) }
     }
 
-    foreach ($stringField in @('host', 'surface', 'event', 'observed_host_version', 'timestamp')) {
+    foreach ($stringField in @('host', 'surface', 'event', 'observed_host_version', 'version_source', 'timestamp')) {
         if ([string]::IsNullOrWhiteSpace([string]$obj.$stringField)) {
             return [pscustomobject]@{ Path = $Path; WellFormed = $false; Receipt = $obj; Problem = ("empty required field '{0}'" -f $stringField) }
         }
@@ -496,37 +582,42 @@ function Read-SpecrewHookHealthReceiptFile {
 }
 
 function New-SpecrewHookHealthResult {
-    # Uniform health verdict shape. `status` is always a closed-set member; a receipt is attached when one is
-    # relevant (the representative / offending receipt). This is the ONLY constructor for a health verdict, so
-    # the closed set can never be circumvented.
+    # Uniform verdict shape with INDEPENDENT fields (Prop-145): hook_status (liveness) and version_status
+    # (diagnostic) are computed and reported separately - version_status NEVER promotes hook_status. Each is a
+    # closed-set member. This is the ONLY constructor for a verdict, so the closed sets can never be circumvented.
     param(
         [Parameter(Mandatory)][string]$HostName,
         [Parameter(Mandatory)][string]$Surface,
-        [Parameter(Mandatory)][ValidateSet('healthy', 'unverified', 'degraded')][string]$Status,
+        [Parameter(Mandatory)][ValidateSet('healthy', 'stale', 'malformed', 'conflicting', 'absent')][string]$HookStatus,
+        [Parameter(Mandatory)][ValidateSet('diagnostic-match', 'diagnostic-drift', 'unavailable', 'untrusted-source')][string]$VersionStatus,
+        [string]$VersionSource = '',
         [Parameter(Mandatory)][string]$Reason,
         [AllowNull()]$Receipt
     )
     return [pscustomobject][ordered]@{
-        host    = $HostName
-        surface = $Surface
-        status  = $Status
-        reason  = $Reason
-        receipt = $Receipt
+        host           = $HostName
+        surface        = $Surface
+        hook_status    = $HookStatus
+        version_status = $VersionStatus
+        version_source = $VersionSource
+        reason         = $Reason
+        receipt        = $Receipt
     }
 }
 
 function Resolve-SpecrewHookHealth {
-    # Classify hook-health for a host+surface from its receipt(s). Returns { host; surface; status; reason; receipt }.
-    # `status` is `healthy` ONLY when a SessionStart version-probe receipt is present + fresh + well-formed +
-    # adapter-contract matched AND the caller-supplied INDEPENDENT current host version (-ExpectedHostVersion)
-    # MATCHES the SessionStart-observed version; EVERY other path returns unverified/degraded (missing health is
-    # NEVER healthy, and a missing current version is never defaulted to acceptance). PURE (no subprocess) - the
-    # caller probes the live host binding and supplies -ExpectedHostVersion. Never throws.
+    # Classify a host+surface into INDEPENDENT fields (Prop-145): hook_status (LIVENESS - was the configured hook
+    # path recently OBSERVED firing) and version_status (a NON-PROMOTING ambient-path-binding version DIAGNOSTIC).
+    # version_status NEVER changes hook_status. Returns { host; surface; hook_status; version_status; version_source;
+    # reason; receipt }. Receipts are MONITORING evidence, not authenticated (the store is project-writable and the
+    # dispatcher can be invoked directly) - `healthy` is operational confidence, never proof of the host process.
+    # PURE (no subprocess): the caller may probe the live host and supply -ExpectedHostVersion for the DIAGNOSTIC
+    # only. Never throws.
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [Parameter(Mandatory)][Alias('Host')][string]$HostName,
         [string]$Surface = $script:SpecrewHookHealthSurface,
-        [AllowNull()][string]$ExpectedHostVersion,           # REQUIRED for healthy: the independently probed CURRENT host version; absent -> unverified (never defaulted to acceptance)
+        [AllowNull()][string]$ExpectedHostVersion,           # a current ambient-path-binding reading, for the version DIAGNOSTIC only (never promotes liveness/readiness)
         [AllowNull()][int]$ExpectedAdapterContractVersion,   # defaults to the current adapter contract version
         [int]$FreshnessHours = $script:SpecrewHookHealthDefaultFreshnessHours,
         [AllowNull()][datetime]$Now
@@ -534,7 +625,6 @@ function Resolve-SpecrewHookHealth {
 
     $nowUtc = if ($PSBoundParameters.ContainsKey('Now')) { $Now.ToUniversalTime() } else { (Get-Date).ToUniversalTime() }
     $currentContract = if ($PSBoundParameters.ContainsKey('ExpectedAdapterContractVersion')) { [int]$ExpectedAdapterContractVersion } else { $script:SpecrewHookHealthAdapterContractVersion }
-
     $store = Get-SpecrewHookHealthStorePath -ProjectRoot $ProjectRoot
     $hostToken = ConvertTo-SpecrewHookHealthToken -Value $HostName
     $surfaceToken = ConvertTo-SpecrewHookHealthToken -Value $Surface
@@ -545,85 +635,90 @@ function Resolve-SpecrewHookHealth {
         $files = @(Get-ChildItem -LiteralPath $store -Filter $pattern -File -ErrorAction SilentlyContinue)
     }
 
-    # 1. MISSING -> unverified. No receipt means the hook never fired here (never deployed, host never loaded it,
-    #    or trust was revoked with no subsequent fire). Missing health can NEVER be interpreted as healthy.
+    # ABSENT: no receipt -> the configured hook path was not observed firing here.
     if ($files.Count -eq 0) {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'unverified' -Reason 'no hook-health receipt (the hook never fired here: not deployed, host never loaded it, or trust revoked). Missing health is never healthy - fire the hook once to record a receipt.' -Receipt $null
+        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'absent' -VersionStatus 'unavailable' -VersionSource '' -Reason 'no hook-health receipt (the configured hook path was not observed firing here: not deployed, host never loaded it, or trust revoked with no subsequent fire).' -Receipt $null
     }
 
     $parsed = @($files | ForEach-Object { Read-SpecrewHookHealthReceiptFile -Path $_.FullName })
 
-    # 2. MALFORMED (any candidate) -> degraded. A corrupt/tampered receipt cannot be read as health.
+    # MALFORMED: any corrupt / tampered / nonconforming receipt (incl. a pre-v3 receipt missing version_source)
+    # cannot be read as liveness.
     $malformed = @($parsed | Where-Object { -not $_.WellFormed })
     if ($malformed.Count -gt 0) {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'degraded' -Reason ('a hook-health receipt is malformed ({0}); cannot attest health - re-fire the hook to rewrite it.' -f $malformed[0].Problem) -Receipt $malformed[0].Receipt
+        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'malformed' -VersionStatus 'unavailable' -VersionSource '' -Reason ('a hook-health receipt is malformed ({0}); it cannot be read as liveness - re-fire the hook to rewrite it.' -f $malformed[0].Problem) -Receipt $malformed[0].Receipt
     }
 
     $good = @($parsed | ForEach-Object { $_.Receipt })
 
-    # 3. VERSION EVIDENCE COMES FROM THE SessionStart RECEIPT ONLY (F-198 iter-005). The host version is PROBED at
-    #    SessionStart; a Stop (or any non-SessionStart) receipt proves the hook FIRED but records version='unknown'
-    #    and MUST NOT supply or promote the version fact. So the version verdict is computed from the SessionStart
-    #    receipt(s) EXCLUSIVELY - a later Stop can never overwrite or promote the SessionStart-observed version.
+    # WRONG-HOST: a well-formed receipt whose host field disagrees with the requested host (tampered / mis-keyed) is
+    # internally inconsistent evidence.
+    $hostMismatch = @($good | Where-Object { (ConvertTo-SpecrewHookHealthToken -Value ([string]$_.host)) -ne $hostToken })
+    if ($hostMismatch.Count -gt 0) {
+        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'conflicting' -VersionStatus 'unavailable' -VersionSource '' -Reason ("a receipt's host field ('{0}') disagrees with the requested host ('{1}'); the evidence is internally inconsistent." -f ([string]$hostMismatch[0].host), $hostToken) -Receipt $hostMismatch[0]
+    }
+
+    # WRONG-CONTRACT: a receipt written under a different adapter contract does not conform to the current contract.
+    $contractMismatch = @($good | Where-Object { [int]$_.adapter_contract_version -ne $currentContract })
+    if ($contractMismatch.Count -gt 0) {
+        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'malformed' -VersionStatus 'unavailable' -VersionSource '' -Reason ('adapter-contract drift (receipt={0}, current={1}); the receipt does not conform to the current contract - re-fire the hook to rewrite it.' -f [int]$contractMismatch[0].adapter_contract_version, $currentContract) -Receipt $contractMismatch[0]
+    }
+
+    # CONFLICTING: well-formed SessionStart receipts that disagree on the observed version are internally
+    # inconsistent evidence about what fired.
     $sessionStart = @($good | Where-Object { ([string]$_.event).Trim().ToLowerInvariant() -eq 'sessionstart' })
-    if ($sessionStart.Count -eq 0) {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'unverified' -Reason 'a hook-health receipt exists but none is a SessionStart version probe (a Stop-only receipt proves the hook fired, not WHICH host version fired it). The version-matched half of healthy cannot be attested - start a fresh session so SessionStart records a bounded host-version probe.' -Receipt $good[0]
+    if ($sessionStart.Count -gt 0) {
+        $distinctVersions = @($sessionStart | ForEach-Object { ([string]$_.observed_host_version).Trim() } | Sort-Object -Unique)
+        if ($distinctVersions.Count -gt 1) {
+            return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus 'conflicting' -VersionStatus 'unavailable' -VersionSource '' -Reason ('conflicting SessionStart receipts (observed versions=[{0}]); the evidence disagrees with itself.' -f ($distinctVersions -join ' | ')) -Receipt $null
+        }
     }
 
-    # 3b. CONFLICTING SessionStart receipts -> degraded. Well-formed SessionStart receipts that disagree on the
-    #     observed host version or the adapter contract are internally inconsistent evidence (mixed versions).
-    $distinctHostVersions = @($sessionStart | ForEach-Object { ([string]$_.observed_host_version).Trim() } | Sort-Object -Unique)
-    $distinctContracts = @($sessionStart | ForEach-Object { [int]$_.adapter_contract_version } | Sort-Object -Unique)
-    if ($distinctHostVersions.Count -gt 1 -or $distinctContracts.Count -gt 1) {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'degraded' -Reason ('conflicting SessionStart hook-health receipts (host versions=[{0}], adapter contracts=[{1}]); the version evidence disagrees with itself.' -f ($distinctHostVersions -join ' | '), ($distinctContracts -join ' | ')) -Receipt $null
+    # HOOK LIVENESS from the freshest well-formed lifecycle receipt (SessionStart OR Stop - both are the configured
+    # hook path being OBSERVED firing). Monitoring evidence, not authenticated.
+    $repLive = @($good | Sort-Object { ConvertTo-SpecrewHookHealthUtcInstant -Timestamp $_.timestamp } -Descending)[0]
+    $ageLive = ($nowUtc - (ConvertTo-SpecrewHookHealthUtcInstant -Timestamp $repLive.timestamp)).TotalHours
+    $hookStatus = if ($ageLive -gt $FreshnessHours) { 'stale' } else { 'healthy' }
+
+    # VERSION DIAGNOSTIC (INDEPENDENT) from the freshest SessionStart receipt - NEVER changes hook_status. A version
+    # probe failure leaves this 'unavailable' but does NOT erase the hook-liveness above.
+    $versionStatus = 'unavailable'
+    $versionSource = ''
+    $repSS = $null
+    if ($sessionStart.Count -gt 0) {
+        $repSS = @($sessionStart | Sort-Object { ConvertTo-SpecrewHookHealthUtcInstant -Timestamp $_.timestamp } -Descending)[0]
+        $versionSource = ([string]$repSS.version_source).Trim()
+        $obsVer = ([string]$repSS.observed_host_version).Trim()
+        if ($versionSource -eq $script:SpecrewHookVersionSource) {
+            # A recognized ambient-path-binding reading: compare against the caller's current ambient reading.
+            if ([string]::IsNullOrWhiteSpace($obsVer) -or $obsVer -ieq 'unknown') { $versionStatus = 'unavailable' }
+            elseif ([string]::IsNullOrWhiteSpace($ExpectedHostVersion)) { $versionStatus = 'unavailable' }
+            elseif ($obsVer -eq $ExpectedHostVersion.Trim()) { $versionStatus = 'diagnostic-match' }
+            else { $versionStatus = 'diagnostic-drift' }
+        }
+        elseif ([string]::IsNullOrWhiteSpace($versionSource) -or $versionSource -ieq 'unavailable') {
+            # The SessionStart probe captured no version (recorded 'unavailable') - non-promoting, does not erase liveness.
+            $versionStatus = 'unavailable'
+        }
+        else {
+            # An unrecognized version_source (tampered / legacy) - never treated as a valid diagnostic.
+            $versionStatus = 'untrusted-source'
+        }
     }
 
-    # Representative = the freshest SessionStart receipt (all agree on version/contract past 3b). Pass the RAW
-    # timestamp value (NOT [string]-cast) so ConvertTo-...UtcInstant sees the [datetime] ConvertFrom-Json produced
-    # and treats its unspecified Kind as UTC - a [string] cast here would re-drop the 'Z' and skew freshness.
-    $representative = @($sessionStart | Sort-Object { ConvertTo-SpecrewHookHealthUtcInstant -Timestamp $_.timestamp } -Descending)[0]
-    $repTs = ConvertTo-SpecrewHookHealthUtcInstant -Timestamp $representative.timestamp
-
-    # 4. ADAPTER-CONTRACT DRIFT -> unverified. The receipt was written under a different Specrew adapter contract
-    #    (e.g. a pre-fix v1 env-sourced receipt under the current v2 probe contract - retired as drift).
-    if ([int]$representative.adapter_contract_version -ne $currentContract) {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'unverified' -Reason ('adapter-contract-version drift (receipt={0}, current={1}); the receipt predates the current adapter contract - re-verify by starting a fresh session.' -f [int]$representative.adapter_contract_version, $currentContract) -Receipt $representative
+    $repReceipt = if ($null -ne $repSS) { $repSS } else { $repLive }
+    $livePhrase = switch ($hookStatus) {
+        'healthy' { ('hook liveness healthy: a fresh, well-formed receipt shows the configured hook path was observed firing {0:N1}h ago (operational monitoring evidence, not authentication)' -f [Math]::Max(0.0, $ageLive)) }
+        'stale' { ('hook liveness stale: the freshest receipt is {0:N1}h old (> {1}h); the hook may have stopped firing (removed / trust revoked)' -f $ageLive, $FreshnessHours) }
+        default { ('hook liveness {0}' -f $hookStatus) }
     }
-
-    # 4b. UNOBSERVED HOST VERSION -> unverified. A SessionStart receipt whose observed_host_version is 'unknown' or
-    #     blank means the bounded version probe FAILED at SessionStart (unresolved executable / timeout / non-zero
-    #     exit / empty / ambiguous / malformed output) - the host-version-matched half of healthy is unverifiable.
-    #     Unobserved health is never healthy.
-    $observedVersion = ([string]$representative.observed_host_version).Trim()
-    if ([string]::IsNullOrWhiteSpace($observedVersion) -or $observedVersion -ieq 'unknown') {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'unverified' -Reason "the SessionStart hook fired but its bounded host-version probe did not observe a real version (observed_host_version is 'unknown'); the host-version-matched half of healthy cannot be attested - start a fresh session where the host CLI '--version' resolves. Unobserved health is never healthy." -Receipt $representative
+    $verPhrase = switch ($versionStatus) {
+        'diagnostic-match' { 'version diagnostic: match (ambient-path-binding, non-authoritative - both readings resolved an equivalent reported version through the ambient command)' }
+        'diagnostic-drift' { 'version diagnostic: drift (ambient-path-binding, non-authoritative - the current ambient reading differs from the SessionStart reading)' }
+        'untrusted-source' { "version diagnostic: untrusted source (the receipt's version_source is not the recognized ambient-path-binding diagnostic)" }
+        default { 'version diagnostic: unavailable (no ambient version reading to compare; non-promoting)' }
     }
-
-    # 5. NO INDEPENDENT CURRENT VERSION -> unverified (F-198 iter-005 finding 5, the false-green this fix closes).
-    #    `healthy` REQUIRES an INDEPENDENTLY obtained CURRENT host version: the caller (the doctor / the Codex
-    #    preflight) probes the LIVE host binding and passes it as -ExpectedHostVersion to compare against the
-    #    SessionStart-observed version. A MISSING expected version is NEVER defaulted to acceptance - a bare receipt
-    #    with no live comparison cannot earn healthy. The prior code fell straight through to healthy here.
-    if ([string]::IsNullOrWhiteSpace($ExpectedHostVersion)) {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'unverified' -Reason ("no independently probed CURRENT host version was supplied to compare against the SessionStart-observed version ('{0}'); healthy requires a live current-version match, never a bare receipt. The doctor / Codex preflight must probe the host binding and supply it." -f $observedVersion) -Receipt $representative
-    }
-
-    # 6. HOST-VERSION DRIFT -> unverified. The independently probed CURRENT version no longer matches the
-    #    SessionStart-observed version (a host upgrade, or a changed executable resolution reporting a new version).
-    if ($observedVersion -ne $ExpectedHostVersion.Trim()) {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'unverified' -Reason ("host-version drift (SessionStart observed '{0}', current probe '{1}'); the recorded session does not attest the current host - re-verify by starting a fresh session." -f $observedVersion, $ExpectedHostVersion.Trim()) -Receipt $representative
-    }
-
-    # 7. STALE -> degraded. The SessionStart receipt proved the hook fired THEN, not that it fires NOW (this is also
-    #    how a removed hook / revoked trust surfaces: no new session ages the last SessionStart receipt past the bound).
-    $ageHours = ($nowUtc - $repTs).TotalHours
-    if ($ageHours -gt $FreshnessHours) {
-        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'degraded' -Reason ('stale SessionStart hook-health receipt (age {0:N1}h > freshness bound {1}h); the hook may have stopped firing (removed / trust revoked) - start a fresh session to refresh.' -f $ageHours, $FreshnessHours) -Receipt $representative
-    }
-
-    # 8. HEALTHY - present SessionStart probe + fresh + well-formed + adapter-contract matched + the independently
-    #    probed CURRENT version MATCHES the SessionStart-observed version. Only now.
-    return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'healthy' -Reason ("present SessionStart version probe + fresh (age {0:N1}h <= {1}h) + well-formed + adapter-contract matched + current-version match ('{2}')." -f [Math]::Max(0.0, $ageHours), $FreshnessHours, $observedVersion) -Receipt $representative
+    return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -HookStatus $hookStatus -VersionStatus $versionStatus -VersionSource $versionSource -Reason ("{0}. {1}." -f $livePhrase, $verPhrase) -Receipt $repReceipt
 }
 
 # ------------------------------------------------------------------------------------------------------------
@@ -632,11 +727,11 @@ function Resolve-SpecrewHookHealth {
 
 function Format-SpecrewHookHealthReport {
     # Renderer for the doctor/status surface (called by the protected surface; this file is NOT protected). Given
-    # resolved rows, OR a ProjectRoot + host list to resolve, return a deterministic STRING table + a legend.
-    # Never healthy-washes: it renders exactly the status Resolve-SpecrewHookHealth returned. When resolving from a
-    # ProjectRoot it INDEPENDENTLY probes each host's live version at this explicit boundary and passes it as the
-    # expected current version (finding 5) - a host is healthy only if its live version matches its SessionStart
-    # receipt. Pre-resolved -Rows bypass the probe (the test/inspection seam). Returns a STRING (no console writes).
+    # resolved rows, OR a ProjectRoot + host list to resolve, return a deterministic STRING table + a legend showing
+    # the INDEPENDENT fields: hook-liveness status and the NON-AUTHORITATIVE version DIAGNOSTIC. Never promotes: it
+    # renders exactly what Resolve-SpecrewHookHealth returned. When resolving from a ProjectRoot it performs the
+    # ambient version probe per host for the DIAGNOSTIC ONLY (it never affects liveness). Pre-resolved -Rows bypass
+    # the probe (the test/inspection seam). Returns a STRING (no console writes).
     param(
         [object[]]$Rows,
         [string]$ProjectRoot,
@@ -655,9 +750,7 @@ function Format-SpecrewHookHealthReport {
         foreach ($h in $hostList) {
             $resolveArgs = @{ ProjectRoot = $ProjectRoot; HostName = $h; Surface = $Surface }
             if ($PSBoundParameters.ContainsKey('Now')) { $resolveArgs.Now = $Now }
-            # Independently probe the LIVE host version at this explicit doctor/status boundary (finding 5) and pass
-            # it as the expected current version. A failed / 'unknown' probe passes nothing -> the resolver returns
-            # unverified (never healthy without a live current-version match).
+            # Ambient version probe at this doctor boundary -> feeds the version DIAGNOSTIC ONLY (never liveness).
             if (Get-Command -Name 'Get-SpecrewHostVersionProbe' -ErrorAction SilentlyContinue) {
                 $probe = Get-SpecrewHostVersionProbe -HostName $h
                 if ($null -ne $probe -and $probe.ok -and -not [string]::IsNullOrWhiteSpace([string]$probe.version) -and ([string]$probe.version) -ne 'unknown') {
@@ -670,20 +763,19 @@ function Format-SpecrewHookHealthReport {
 
     $sb = [System.Text.StringBuilder]::new()
     [void]$sb.AppendLine('=== Specrew hook-health evidence (FR-053) ===')
-    [void]$sb.AppendLine('A deployed hook config is NOT proof the host loaded it. Health = a REAL host-fired receipt,')
-    [void]$sb.AppendLine('sanitized (host; surface; event; observed host version; timestamp; adapter contract version).')
-    [void]$sb.AppendLine('Missing / stale / conflicting / malformed / drifted evidence is unverified/degraded - NEVER healthy.')
+    [void]$sb.AppendLine('Hook liveness is MONITORING evidence: a fresh receipt shows the configured hook path was observed')
+    [void]$sb.AppendLine('firing. The receipt store is project-writable, so this is operational confidence, not authentication.')
+    [void]$sb.AppendLine('The version is a NON-AUTHORITATIVE ambient-path-binding diagnostic and never promotes liveness/readiness.')
     [void]$sb.AppendLine('')
-    [void]$sb.AppendLine(('  {0,-9} {1,-8} {2,-11} {3}' -f 'HOST', 'SURFACE', 'STATUS', 'REASON'))
-    [void]$sb.AppendLine(('  {0,-9} {1,-8} {2,-11} {3}' -f '----', '-------', '------', '------'))
+    [void]$sb.AppendLine(('  {0,-9} {1,-8} {2,-12} {3,-18} {4}' -f 'HOST', 'SURFACE', 'HOOK', 'VERSION-DIAG', 'SOURCE'))
+    [void]$sb.AppendLine(('  {0,-9} {1,-8} {2,-12} {3,-18} {4}' -f '----', '-------', '----', '------------', '------'))
     foreach ($row in $data) {
-        [void]$sb.AppendLine(('  {0,-9} {1,-8} {2,-11} {3}' -f $row.host, $row.surface, $row.status, $row.reason))
+        $vsrc = if ([string]::IsNullOrWhiteSpace([string]$row.version_source)) { '-' } else { [string]$row.version_source }
+        [void]$sb.AppendLine(('  {0,-9} {1,-8} {2,-12} {3,-18} {4}' -f $row.host, $row.surface, $row.hook_status, $row.version_status, $vsrc))
     }
     [void]$sb.AppendLine('')
-    [void]$sb.AppendLine('Statuses:')
-    [void]$sb.AppendLine('  healthy     - a present + fresh + well-formed receipt matching the current host/adapter contract')
-    [void]$sb.AppendLine('  unverified  - no receipt, or host-version / adapter-contract drift (missing health is never healthy)')
-    [void]$sb.AppendLine('  degraded    - a stale, malformed, or conflicting receipt (evidence exists but cannot attest health)')
+    [void]$sb.AppendLine('Hook liveness:  healthy (fresh receipt observed) | stale | malformed | conflicting | absent')
+    [void]$sb.AppendLine('Version diag.:  diagnostic-match | diagnostic-drift | unavailable | untrusted-source (never promotes health)')
     return $sb.ToString()
 }
 
@@ -692,61 +784,46 @@ function Format-SpecrewHookHealthReport {
 # ------------------------------------------------------------------------------------------------------------
 
 function Test-SpecrewCodexHeadlessGovernanceReady {
-    # Before an untrusted HEADLESS `codex exec` relies on Specrew governance, PREFLIGHT the trusted/observed
-    # hook-health state. It INDEPENDENTLY probes the live codex version ONCE at this explicit preflight boundary (a
-    # bounded probe here is allowed; only a per-Stop probe was rejected) and passes it as the expected current
-    # version, then consults the pure Resolve-SpecrewHookHealth for codex/cli. Returns
-    # { ready; host; surface; status; reason; instruction; receipt }.
-    #   healthy (present SessionStart probe + fresh + matched + live version MATCHES) -> ready = $true.
-    #   anything else (incl. a failed live probe)                                     -> ready = $false + instruction.
-    # This function NEVER writes ~/.codex, NEVER seeds a trusted_hash, NEVER passes --dangerously-bypass-hook-trust,
-    # and NEVER reports ready without a current receipt whose observed version matches the live codex. NOT governed.
+    # PREFLIGHT for an untrusted HEADLESS `codex exec` relying on Specrew governance. Readiness rests on FRESH
+    # HOOK-LIVENESS (a recent, well-formed codex/cli receipt) plus the existing Codex config/trust prerequisites -
+    # NOT on the version, which is a non-promoting diagnostic. Readiness is OPERATIONAL CONFIDENCE, not tamper-proof
+    # host authentication (the receipt store is project-writable and the dispatcher can be invoked directly).
+    # Consults the pure Resolve-SpecrewHookHealth for codex/cli. Returns { ready; host; surface; hook_status;
+    # version_status; version_source; reason; instruction; receipt }. NEVER writes ~/.codex, NEVER seeds a
+    # trusted_hash, NEVER passes --dangerously-bypass-hook-trust.
+    #   fresh hook liveness (hook_status==healthy)          -> ready = $true.
+    #   missing / stale / malformed / conflicting liveness  -> ready = $false + the actionable instruction.
+    # A caller-supplied -ExpectedHostVersion (an ambient reading) populates the version DIAGNOSTIC only; it never
+    # changes readiness.
     param(
         [Parameter(Mandatory)][string]$ProjectRoot,
         [AllowNull()][string]$ExpectedHostVersion,
         [int]$FreshnessHours = $script:SpecrewHookHealthDefaultFreshnessHours,
         [AllowNull()][datetime]$Now
     )
-    # The independently obtained CURRENT codex version to compare against the SessionStart-observed version
-    # (finding 5): honor an explicit caller value (test seam), else probe the LIVE codex binding ONCE here. A
-    # FAILED probe leaves $expected blank -> the resolver returns unverified -> NOT ready (never defaulted to accept).
-    $expected = $null
-    $probeProblem = $null
-    if ($PSBoundParameters.ContainsKey('ExpectedHostVersion') -and -not [string]::IsNullOrWhiteSpace($ExpectedHostVersion)) {
-        $expected = $ExpectedHostVersion.Trim()
-    }
-    elseif (Get-Command -Name 'Get-SpecrewHostVersionProbe' -ErrorAction SilentlyContinue) {
-        $probe = Get-SpecrewHostVersionProbe -HostName 'codex'
-        if ($null -ne $probe -and $probe.ok) { $expected = [string]$probe.version }
-        elseif ($null -ne $probe) { $probeProblem = [string]$probe.problem }
-        else { $probeProblem = 'probe unavailable' }
-    }
-    else { $probeProblem = 'probe unavailable' }
-
     $resolveArgs = @{ ProjectRoot = $ProjectRoot; HostName = 'codex'; Surface = 'cli'; FreshnessHours = $FreshnessHours }
-    if (-not [string]::IsNullOrWhiteSpace($expected)) { $resolveArgs.ExpectedHostVersion = $expected }
+    if ($PSBoundParameters.ContainsKey('ExpectedHostVersion') -and -not [string]::IsNullOrWhiteSpace($ExpectedHostVersion)) { $resolveArgs.ExpectedHostVersion = $ExpectedHostVersion }
     if ($PSBoundParameters.ContainsKey('Now')) { $resolveArgs.Now = $Now }
     $health = Resolve-SpecrewHookHealth @resolveArgs
 
-    $ready = ($health.status -eq 'healthy')
+    $ready = ($health.hook_status -eq 'healthy')
     $instruction = if ($ready) {
-        'A current trusted/observed SessionStart hook-health receipt exists for codex/cli and the live codex version matches it; headless governance may be relied upon for this run.'
-    }
-    elseif ([string]::IsNullOrWhiteSpace($expected)) {
-        ("NOT ready: could not independently probe the current codex version ({0}), so the SessionStart-observed version cannot be confirmed current. Ensure the codex CLI is installed and `codex --version` resolves, then re-run. Specrew will NOT write Codex's trust store, NOT seed a trusted_hash, and NOT pass --dangerously-bypass-hook-trust." -f $(if ([string]::IsNullOrWhiteSpace($probeProblem)) { 'probe unavailable' } else { $probeProblem }))
+        'A fresh codex/cli hook-liveness receipt was observed, so Specrew governance may be relied upon for this run as OPERATIONAL CONFIDENCE - not tamper-proof host authentication (the receipt store is project-writable). Specrew will NOT write Codex''s trust store, NOT seed a trusted_hash, and NOT pass --dangerously-bypass-hook-trust.'
     }
     else {
-        'NOT ready to govern this headless codex run. Start Codex interactively ONCE (run `codex` in this project), approve the NATIVE Codex hook-trust prompt for the Specrew hook, let a SessionStart hook fire (which records a bounded host-version probe receipt), then re-run. Specrew will NOT write Codex''s trust store, NOT seed a trusted_hash, and NOT pass --dangerously-bypass-hook-trust; without a current receipt whose observed version matches the live codex this run must NOT proceed as governed.'
+        ('NOT ready to govern this headless codex run (hook liveness: {0}). Start Codex interactively ONCE (run `codex` in this project), approve the NATIVE Codex hook-trust prompt for the Specrew hook, let a SessionStart hook fire (which records a hook-liveness monitoring receipt), then re-run. Specrew will NOT write Codex''s trust store, NOT seed a trusted_hash, and NOT pass --dangerously-bypass-hook-trust; readiness is operational confidence, not tamper-proof host authentication.' -f $health.hook_status)
     }
 
     return [pscustomobject][ordered]@{
-        ready       = $ready
-        host        = 'codex'
-        surface     = 'cli'
-        status      = $health.status
-        reason      = $health.reason
-        instruction = $instruction
-        receipt     = $health.receipt
+        ready          = $ready
+        host           = 'codex'
+        surface        = 'cli'
+        hook_status    = $health.hook_status
+        version_status = $health.version_status
+        version_source = $health.version_source
+        reason         = $health.reason
+        instruction    = $instruction
+        receipt        = $health.receipt
     }
 }
 

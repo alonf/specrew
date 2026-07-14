@@ -1,165 +1,85 @@
 $ErrorActionPreference = 'Stop'
 
-# F-198 Iteration 005 / T036 (FR-051, maintainer decision 2026-07-14): the Codex untrusted-headless governance
-# PREFLIGHT. The Codex trust gate is NO-PERSISTENT-MUTATION - Codex owns its trust decision. So the preflight
-# ONLY consults hook-health evidence and:
-#   - reports ready ONLY when a current trusted/observed receipt exists (healthy);
-#   - on absent/stale/drifted health, reports NOT ready + the actionable instruction (start Codex interactively
-#     once, approve the NATIVE trust prompt) - it NEVER silently continues as governed;
-#   - NEVER writes ~/.codex, NEVER seeds a trusted_hash, NEVER passes --dangerously-bypass-hook-trust;
-#   - NEVER reports ready on a missing receipt (missing health is not healthy).
+# F-198 Prop-145: the Codex headless-governance PREFLIGHT rests on FRESH HOOK-LIVENESS + the existing config/trust
+# prerequisites - NOT the version (a non-promoting diagnostic). Readiness is OPERATIONAL confidence, not tamper-proof
+# host authentication. It NEVER writes ~/.codex, seeds a trusted_hash, or passes --dangerously-bypass-hook-trust.
 
-Describe 'F-198 T036 FR-051 Codex untrusted-headless governance preflight' {
+Describe 'F-198 Prop-145 Codex headless-governance preflight' {
     BeforeAll {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/hook-health-receipt.ps1')
-
         $script:BaseTime = [datetime]::Parse('2026-07-14T12:00:00Z').ToUniversalTime()
-        $script:CodexVersion = 'codex-cli 0.144.1'
         $script:TempRoots = New-Object System.Collections.Generic.List[string]
-
-        function New-PreflightRoot {
-            $root = Join-Path ([System.IO.Path]::GetTempPath()) ('hhr-pf-' + [guid]::NewGuid().ToString('N'))
-            New-Item -ItemType Directory -Path $root -Force | Out-Null
-            $script:TempRoots.Add($root) | Out-Null
-            return $root
-        }
-
-        function Get-TreeSnapshot {
-            # Deterministic snapshot of every file under a root: relative path + length + content hash.
-            param([string]$Root)
-            if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return @() }
-            return @(Get-ChildItem -LiteralPath $Root -Recurse -File -Force -ErrorAction SilentlyContinue |
-                    Sort-Object FullName |
-                    ForEach-Object { '{0}|{1}|{2}' -f $_.FullName.Substring($Root.Length), $_.Length, (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash })
-        }
-
-        function Add-HealthyCodexReceipt {
-            param([string]$Root, [datetime]$At = $script:BaseTime, [string]$Version = $script:CodexVersion)
-            Write-SpecrewHookHealthReceipt -ProjectRoot $Root -HostName 'codex' -Event 'SessionStart' -ObservedHostVersion $Version -TimestampUtc $At | Out-Null
-        }
-
-        # Deterministically control the version the preflight INDEPENDENTLY probes: a fake `codex` on PATH that
-        # self-reports $script:CodexVersion. This makes the internal live probe deterministic (no dependency on
-        # whether/which real codex is installed) so these tests exercise the RECEIPT + readiness logic, not the host.
-        # (The probe WIRING itself is also proven end to end by the production-path suite with its own PATH fakes;
-        # the probe-FAILURE branch is proven below by temporarily emptying PATH.)
-        $script:FakeHostDir = Join-Path ([System.IO.Path]::GetTempPath()) ('hhr-pf-bin-' + [guid]::NewGuid().ToString('N'))
-        New-Item -ItemType Directory -Path $script:FakeHostDir -Force | Out-Null
-        if ($IsWindows) {
-            [System.IO.File]::WriteAllText((Join-Path $script:FakeHostDir 'codex.cmd'), ("@echo off`r`necho " + $script:CodexVersion), [System.Text.UTF8Encoding]::new($false))
-        }
-        else {
-            $fk = Join-Path $script:FakeHostDir 'codex'
-            [System.IO.File]::WriteAllText($fk, ("#!/usr/bin/env sh`necho '" + $script:CodexVersion + "'`n"), [System.Text.UTF8Encoding]::new($false))
-            [System.IO.File]::SetUnixFileMode($fk, [System.IO.UnixFileMode]'UserRead,UserWrite,UserExecute,GroupRead,GroupExecute,OtherRead,OtherExecute')
-        }
-        $script:SavedPath = $env:PATH
-        $env:PATH = $script:FakeHostDir + [System.IO.Path]::PathSeparator + $env:PATH
+        function New-PreflightRoot { $r = Join-Path ([System.IO.Path]::GetTempPath()) ('hhr-pf-' + [guid]::NewGuid().ToString('N')); New-Item -ItemType Directory -Path $r -Force | Out-Null; $script:TempRoots.Add($r) | Out-Null; return $r }
+        function Add-CodexReceipt { param([string]$Root, [datetime]$At = $script:BaseTime, [string]$Version = 'codex-cli 0.44.0', [string]$Event = 'SessionStart') Write-SpecrewHookHealthReceipt -ProjectRoot $Root -HostName 'codex' -Event $Event -Surface 'cli' -ObservedHostVersion $Version -TimestampUtc $At | Out-Null }
+        function Get-TreeSnapshot { param([string]$Root) if (-not (Test-Path -LiteralPath $Root -PathType Container)) { return @() } return @(Get-ChildItem -LiteralPath $Root -Recurse -File -Force -ErrorAction SilentlyContinue | Sort-Object FullName | ForEach-Object { '{0}|{1}|{2}' -f $_.FullName.Substring($Root.Length), $_.Length, (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash }) }
+        $script:Forbidden = @('trusted host version', 'actual host-process version', 'unforgeable', 'authenticated')
     }
+    AfterAll { foreach ($r in $script:TempRoots) { Remove-Item -LiteralPath $r -Recurse -Force -ErrorAction SilentlyContinue } }
 
-    AfterAll {
-        if ($null -ne $script:SavedPath) { $env:PATH = $script:SavedPath }
-        if ($script:FakeHostDir -and (Test-Path -LiteralPath $script:FakeHostDir)) { Remove-Item -LiteralPath $script:FakeHostDir -Recurse -Force -ErrorAction SilentlyContinue }
-        foreach ($root in $script:TempRoots) { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
-    }
-
-    Context 'a current trusted/observed receipt -> ready' {
-        It 'reports ready = true when a fresh codex/cli receipt exists' {
-            $root = New-PreflightRoot
-            Add-HealthyCodexReceipt -Root $root
-            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -ExpectedHostVersion $script:CodexVersion -Now $script:BaseTime.AddHours(1)
+    Context 'readiness rests on FRESH hook liveness (not the version)' {
+        It 'a fresh codex/cli receipt -> ready' {
+            $root = New-PreflightRoot; Add-CodexReceipt -Root $root
+            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime.AddHours(1)
             $pf.ready | Should -BeTrue
-            $pf.status | Should -Be 'healthy'
-            $pf.host | Should -Be 'codex'
-            $pf.surface | Should -Be 'cli'
-            $pf.instruction | Should -Match '(?i)relied upon'
+            $pf.hook_status | Should -Be 'healthy'
+            $pf.host | Should -Be 'codex'; $pf.surface | Should -Be 'cli'
+        }
+        It 'ready even when the version diagnostic drifts (version never gates readiness)' {
+            $root = New-PreflightRoot; Add-CodexReceipt -Root $root -Version 'codex-cli 0.44.0'
+            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -ExpectedHostVersion 'codex-cli 9.9.9' -Now $script:BaseTime.AddHours(1)
+            $pf.ready | Should -BeTrue
+            $pf.version_status | Should -Be 'diagnostic-drift'
+        }
+        It 'ready even when the version is unavailable (probe failed at SessionStart)' {
+            $root = New-PreflightRoot; Add-CodexReceipt -Root $root -Version 'unknown'
+            (Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime.AddHours(1)).ready | Should -BeTrue
         }
     }
 
-    Context 'no receipt -> NOT ready + the actionable instruction (never silent-govern)' {
-        It 'reports ready = false with status unverified when NO receipt exists' {
-            $root = New-PreflightRoot
-            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime
+    Context 'not-ready when liveness is missing / stale, with the actionable instruction' {
+        It 'no receipt -> not ready (hook_status absent)' {
+            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot (New-PreflightRoot) -Now $script:BaseTime
             $pf.ready | Should -BeFalse
-            $pf.status | Should -Be 'unverified'
+            $pf.hook_status | Should -Be 'absent'
         }
-
-        It 'the instruction tells the user to start Codex interactively and approve the NATIVE trust prompt' {
-            $root = New-PreflightRoot
-            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime
+        It 'stale receipt -> not ready' {
+            $root = New-PreflightRoot; Add-CodexReceipt -Root $root -At $script:BaseTime
+            (Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -FreshnessHours 24 -Now $script:BaseTime.AddHours(72)).ready | Should -BeFalse
+        }
+        It 'the instruction keeps the trust/config prerequisites + operational-confidence framing' {
+            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot (New-PreflightRoot) -Now $script:BaseTime
             $pf.instruction | Should -Match '(?i)interactiv'
             $pf.instruction | Should -Match '(?i)trust'
             $pf.instruction | Should -Match '(?i)codex'
-        }
-
-        It 'the instruction explicitly refuses to write trust or bypass the gate (no-persistent-mutation)' {
-            $root = New-PreflightRoot
-            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime
             $pf.instruction | Should -Match '(?i)NOT'
             $pf.instruction | Should -Match '(?i)bypass'
-            $pf.instruction | Should -Match '(?i)not proceed as governed'
+            $pf.instruction | Should -Match '(?i)operational confidence'
         }
-
-        It 'never reports ready on a missing receipt (missing health is not healthy)' {
-            $root = New-PreflightRoot
-            (Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime).ready | Should -BeFalse
-        }
-    }
-
-    Context 'a stale or drifted receipt is NOT current -> NOT ready' {
-        It 'reports NOT ready when the only receipt is stale' {
-            $root = New-PreflightRoot
-            Add-HealthyCodexReceipt -Root $root -At $script:BaseTime
-            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -FreshnessHours 24 -Now $script:BaseTime.AddHours(72)
-            $pf.ready | Should -BeFalse
-            $pf.status | Should -Be 'degraded'
-        }
-
-        It 'reports NOT ready when the observed host version drifted from the receipt' {
-            $root = New-PreflightRoot
-            Add-HealthyCodexReceipt -Root $root -Version 'codex-cli 0.144.1'
-            $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -ExpectedHostVersion 'codex-cli 0.144.3' -Now $script:BaseTime.AddHours(1)
-            $pf.ready | Should -BeFalse
-            $pf.status | Should -Be 'unverified'
-        }
-    }
-
-    Context 'the preflight INDEPENDENTLY probes the live codex version (never trusts a bare receipt)' {
-        It 'when the live codex probe cannot resolve, it is NOT ready even with a fresh receipt (never defaults to accept)' {
-            $root = New-PreflightRoot
-            Add-HealthyCodexReceipt -Root $root   # a fresh, real SessionStart receipt exists...
-            $empty = New-PreflightRoot
-            $saved = $env:PATH
-            try {
-                $env:PATH = $empty   # ...but codex cannot be resolved to independently confirm the CURRENT version
-                $pf = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime.AddHours(1)
+        It 'never claims authentication / unforgeability / host-process proof (ready or not)' {
+            $rd = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot (New-PreflightRoot) -Now $script:BaseTime
+            $root2 = New-PreflightRoot; Add-CodexReceipt -Root $root2
+            $ry = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root2 -Now $script:BaseTime.AddHours(1)
+            foreach ($bad in $script:Forbidden) {
+                $rd.instruction | Should -Not -Match ([regex]::Escape($bad))
+                $ry.instruction | Should -Not -Match ([regex]::Escape($bad))
             }
-            finally { $env:PATH = $saved }
-            $pf.ready | Should -BeFalse
-            $pf.status | Should -Be 'unverified'
-            $pf.instruction | Should -Match '(?i)could not independently probe'
         }
     }
 
-    Context 'the preflight is READ-ONLY (no-persistent-mutation: never writes trust, never mutates state)' {
-        It 'creates no file and no .codex/trust store when preflighting a missing-receipt project' {
+    Context 'the preflight is READ-ONLY (never writes ~/.codex, never mutates state)' {
+        It 'creates no file when preflighting a missing-receipt project' {
             $root = New-PreflightRoot
             $before = Get-TreeSnapshot -Root $root
             $null = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime
-            $after = Get-TreeSnapshot -Root $root
-            ($after -join "`n") | Should -Be ($before -join "`n")
+            ((Get-TreeSnapshot -Root $root) -join "`n") | Should -Be ($before -join "`n")
             (Test-Path -LiteralPath (Join-Path $root '.codex')) | Should -BeFalse
-            (Test-Path -LiteralPath (Get-SpecrewHookHealthStorePath -ProjectRoot $root)) | Should -BeFalse
         }
-
-        It 'does not mutate an existing receipt store when preflighting a healthy project' {
-            $root = New-PreflightRoot
-            Add-HealthyCodexReceipt -Root $root
+        It 'does not mutate an existing receipt store' {
+            $root = New-PreflightRoot; Add-CodexReceipt -Root $root
             $before = Get-TreeSnapshot -Root $root
             $null = Test-SpecrewCodexHeadlessGovernanceReady -ProjectRoot $root -Now $script:BaseTime.AddHours(1)
-            $after = Get-TreeSnapshot -Root $root
-            ($after -join "`n") | Should -Be ($before -join "`n")
+            ((Get-TreeSnapshot -Root $root) -join "`n") | Should -Be ($before -join "`n")
         }
     }
 }

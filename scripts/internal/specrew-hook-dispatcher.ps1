@@ -858,9 +858,11 @@ function Write-DispatcherHookHealthReceipt {
             . $modulePath
         }
         if (-not (Get-Command -Name 'Write-SpecrewHookHealthReceipt' -ErrorAction SilentlyContinue)) { return }
-        # SessionStart -> a bounded live version probe; Stop/agentStop -> 'unknown' (no probe, never promotes health).
+        # SessionStart -> a bounded ambient version DIAGNOSTIC (non-authoritative, non-promoting); Stop/agentStop ->
+        # no probe. version_source is 'ambient-path-binding' when a reading was captured, else 'unavailable'.
         $observed = if (Test-DispatcherIsSessionStartEvent -EventName $EventName) { Get-DispatcherSessionStartHostVersion -HostKind $HostKind } else { 'unknown' }
-        $null = Write-SpecrewHookHealthReceipt -ProjectRoot $ProjectRoot -HostName $HostKind -Surface 'cli' -Event $EventName -ObservedHostVersion $observed
+        $vsource = if (-not [string]::IsNullOrWhiteSpace($observed) -and $observed -ne 'unknown') { 'ambient-path-binding' } else { 'unavailable' }
+        $null = Write-SpecrewHookHealthReceipt -ProjectRoot $ProjectRoot -HostName $HostKind -Surface 'cli' -Event $EventName -ObservedHostVersion $observed -ObservedVersionSource $vsource
     }
     catch { $null = $_ }
 }

@@ -1,8 +1,8 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Last Completed Task**: the iter-005 shell-safe fix, now with a TRUSTED shim interpreter + reconciled evidence (the 4th review round's two mechanical findings). **Iteration 005 is NOT yet complete** — four co-review cycles fired the loop guard (5 findings → partial-fix on 3+5 → shell-free contract gap → ambient-interpreter + evidence-traceability), each escalated to the maintainer and fixed under an explicit ruling. The latest fix (trusted System32 cmd.exe interpreter + evidence reconciliation) is DONE + green on Windows AND Linux; per the maintainer's routing for mechanical findings, it is returned for the maintainer to authorize any further review budget (no auto re-review). See the Co-review section at the bottom.
-**Tasks Remaining**: the maintainer's decision on further review budget (the mechanical fixes are committed + verified). **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Last Completed Task**: the Prop-145 hook-health REDESIGN (Option A, amended) — INDEPENDENT hook-liveness + a NON-PROMOTING `ambient-path-binding` version diagnostic; byte-capped shell-safe probe; System32 cmd.exe interpreter; exact-digest T018 runs injected as reviewer-visible evidence. **Iteration 005 is NOT yet complete** — a Proposal-145 review returned three authoritative findings (bounded output, ambient executable-identity, unsupported evidence). After characterizing that NO host exposes a trustworthy non-ambient executable identity, the maintainer chose Option A: the version is a non-authoritative diagnostic, health rests on observed hook-liveness, readiness on fresh liveness + config/trust — receipts are MONITORING evidence, never authentication. Implemented + green on Windows AND Linux; pending the T018 recording + one authorized confirming review round. See the Co-review section at the bottom.
+**Tasks Remaining**: commit + T018-record Windows/Linux at the committed digest + confirm the injected runs + one confirming review round. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-14T00:00:00Z
@@ -283,6 +283,37 @@ mechanical (verified against disk before fixing, per the maintainer's routing):
 
 Per the maintainer's routing for mechanical findings, these fixes are committed and RETURNED; NO further review round
 is launched automatically — the maintainer decides whether to authorize additional review budget.
+
+### Fifth round — Proposal-145 review + Option A hook-health redesign (2026-07-14)
+
+The confirming round's Proposal-145 review returned THREE authoritative findings (focused tests green + the System32
+cmd.exe fix correct, but not approvable):
+
+1. **Bounded output.** The version probe was time-bounded but not MEMORY-bounded (`ReadToEndAsync`). FIXED: a
+   byte-capped (8 KB) concurrent drain of stdout+stderr, tree-killed on timeout, fail-closed on overflow, nothing to disk.
+2. **Ambient executable identity.** The host EXECUTABLE was still ambient-PATH resolved, so a prepended shim could be
+   described as the host and (with matching versions) promote health. Characterization (2026-07-14) confirmed NO host
+   (claude/codex/copilot) exposes a trustworthy non-ambient executable path/version — only the deploy-baked
+   `-HostKind` (kind, not version). Per the maintainer's **Option A (amended)**: the version is a NON-PROMOTING
+   `ambient-path-binding` DIAGNOSTIC; the receipt (contract **v3**, +field `version_source`) SEPARATES hook-liveness
+   from the version; the resolver returns INDEPENDENT `hook_status` (healthy|stale|malformed|conflicting|absent) +
+   `version_status` (diagnostic-match|diagnostic-drift|unavailable|untrusted-source); readiness rests on fresh
+   hook-liveness + the existing Codex config/trust prereqs, NEVER the version. Receipts are MONITORING evidence, not
+   authentication (the store is project-writable and the dispatcher can be invoked directly) — the earlier over-claim
+   that "a PATH shim cannot forge hook-fire" is RETRACTED. `-ArgsOverride` removed (fixed host-declared args only).
+   FR-053a amended + recorded as explicit design drift. Forbidden vocabulary ("trusted host version", "actual
+   host-process version", "unforgeable hook receipt") is absent from the implementation.
+3. **Unsupported evidence.** The prior evidence doc overclaimed (placeholders, uncommitted script, Windows-only
+   machine record, stripped store). FIXED: a committed, replayable `tests/cross-platform-verify.ps1`; the T019
+   step-6 evidence-injection reader broadened to accept T018 `runs` (so exact-digest recorded runs are injected as
+   `.review/implementer-evidence.json`); the evidence doc rewritten to reference the injected machine record, not
+   hand-copied fields.
+
+Verified green on Windows (the focused suites + the full F-198 regression registry) AND Linux (Docker
+`cross-platform-verify`). The exact replayable commands are committed; their Windows + Linux runs are recorded via the
+T018 wrapper against the committed reviewed digest and injected as `.review/implementer-evidence.json` (the reviewer's
+authoritative machine evidence — see `iterations/005/evidence/shell-safe-cross-platform-verification.md`). Exactly one
+confirming review round is then requested.
 
 ## Notes
 

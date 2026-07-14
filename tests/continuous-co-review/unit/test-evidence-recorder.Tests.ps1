@@ -73,6 +73,29 @@ Describe 'Get-ContinuousCoReviewTestEvidenceForDigest' {
         (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest) | Should -Not -BeNullOrEmpty
         (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId ('0' * 40)) | Should -BeNullOrEmpty
     }
+
+    It 'accepts and injects a T018 runs-only exact-digest record (Prop-145 / T019 step-6 unblock)' {
+        $repo = New-EvidenceTestRepo -Root (Join-Path $TestDrive 'repo-runs')
+        $digest = [string](Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $repo).tree_id
+        # Invoke-ContinuousCoReviewRecordedRun writes a `runs` record (never `suites`), keyed by the reviewed digest.
+        $ev = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable 'pwsh' -Arguments @('-NoProfile', '-Command', 'exit 0') -TimeoutSeconds 60
+        $ev | Should -Not -BeNullOrEmpty
+        [string]$ev.reviewed_digest_tree_id | Should -Be $digest
+
+        # the reader now returns a runs-only record (previously suites-only -> rejected)...
+        $record = Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId $digest
+        $record | Should -Not -BeNullOrEmpty
+        @($record.runs).Count | Should -BeGreaterThan 0
+        (Get-ContinuousCoReviewTestEvidenceForDigest -RepoRoot $repo -DigestTreeId ('0' * 40)) | Should -BeNullOrEmpty
+
+        # ...and it INJECTS into the reviewer worktree as authoritative reviewer input on an exact digest match.
+        $wt = Join-Path $TestDrive 'worktree-runs'
+        $null = New-Item -ItemType Directory -Path (Join-Path $wt '.review') -Force
+        (Copy-ContinuousCoReviewImplementerEvidence -RepoRoot $repo -WorktreePath $wt -DigestTreeId $digest) | Should -BeTrue
+        $injected = Get-Content -LiteralPath (Join-Path $wt '.review/implementer-evidence.json') -Raw | ConvertFrom-Json
+        [string]$injected.reviewed_digest_tree_id | Should -Be $digest
+        @($injected.runs).Count | Should -BeGreaterThan 0
+    }
 }
 
 Describe 'Copy-ContinuousCoReviewImplementerEvidence' {

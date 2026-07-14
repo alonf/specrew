@@ -115,126 +115,83 @@ Describe 'F-198 T039 host-support / hook-health / evidence reconciliation' {
         }
     }
 
-    Context 'the HEALTH closed set never health-washes' {
-        It 'the status set is EXACTLY {healthy, unverified, degraded}' {
-            $set = @(Get-SpecrewHookHealthStatusSet)
-            $set.Count | Should -Be 3
-            $set | Should -Contain 'healthy'
-            $set | Should -Contain 'unverified'
-            $set | Should -Contain 'degraded'
+    Context 'the health closed sets + no health-washing' {
+        It 'the hook-liveness set is EXACTLY {healthy, stale, malformed, conflicting, absent}' {
+            $set = @(Get-SpecrewHookLivenessStatusSet)
+            $set.Count | Should -Be 5
+            foreach ($v in @('healthy', 'stale', 'malformed', 'conflicting', 'absent')) { $set | Should -Contain $v }
         }
-
-        It 'a project with NO receipt resolves unverified for every gated host - never healthy' {
+        It 'the version-diagnostic set is EXACTLY {diagnostic-match, diagnostic-drift, unavailable, untrusted-source}' {
+            $set = @(Get-SpecrewHookVersionStatusSet)
+            $set.Count | Should -Be 4
+            foreach ($v in @('diagnostic-match', 'diagnostic-drift', 'unavailable', 'untrusted-source')) { $set | Should -Contain $v }
+        }
+        It 'a project with NO receipt resolves hook_status=absent for every gated host - never healthy' {
             $root = New-ReconTempRoot
             foreach ($h in @('claude', 'codex', 'copilot')) {
-                $health = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName $h -Surface 'cli' -Now $script:BaseTime
-                $health.status | Should -Be 'unverified'
-                $health.status | Should -Not -Be 'healthy'
+                (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName $h -Surface 'cli' -Now $script:BaseTime).hook_status | Should -Be 'absent'
             }
         }
-
-        It 'a malformed receipt is degraded, never healthy' {
+        It 'a malformed receipt is hook_status=malformed, never healthy' {
             $root = New-ReconTempRoot
             $store = Join-Path $root '.specrew/runtime/hook-health'
             New-Item -ItemType Directory -Path $store -Force | Out-Null
             [System.IO.File]::WriteAllText((Join-Path $store 'claude-cli-stop.json'), 'THIS_IS_NOT_JSON {{{')
-            $health = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -Now $script:BaseTime
-            $health.status | Should -Be 'degraded'
-            $health.status | Should -Not -Be 'healthy'
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -Now $script:BaseTime).hook_status | Should -Be 'malformed'
         }
-
-        It 'a stale receipt is degraded, never healthy' {
+        It 'a stale receipt is hook_status=stale, never healthy' {
             $root = New-ReconTempRoot
-            # A SessionStart receipt written the SAME way the dispatcher writes it, but far in the past -> stale. The
-            # supplied current version MATCHES the observed one so the receipt reaches the STALE check (not the
-            # no-current-version gate) - proving staleness, not a missing comparison, is what degrades it.
-            $stale = $script:BaseTime.AddHours(-100)
-            $null = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'claude' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion 'x' -TimestampUtc $stale
-            $health = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -ExpectedHostVersion 'x' -Now $script:BaseTime -FreshnessHours 24
-            $health.status | Should -Be 'degraded'
-            $health.status | Should -Not -Be 'healthy'
+            $null = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'claude' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion 'x 1.2.3' -TimestampUtc $script:BaseTime.AddHours(-100)
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -Now $script:BaseTime -FreshnessHours 24).hook_status | Should -Be 'stale'
         }
     }
 
-    Context 'the DISPATCHER write path produces health-resolvable evidence (integration reconciliation)' {
-        It 'a receipt from the dispatcher-called writer resolves healthy when fresh + a REAL observed version matches the current probe, and carries EXACTLY the 6 sanitized fields' {
+    Context 'the dispatcher write path produces liveness-resolvable evidence (integration reconciliation)' {
+        It 'a receipt from the dispatcher-called writer is hook_status=healthy when fresh, and carries EXACTLY the 7 sanitized fields incl version_source' {
             $root = New-ReconTempRoot
-            # The SAME entry point the hook dispatcher invokes on a real SessionStart fire - here with a REAL observed
-            # host version (a bounded SessionStart --version probe fact; SPECREW_OBSERVED_HOST_VERSION is gone). Healthy
-            # REQUIRES that observed version to MATCH an independently supplied current version (finding 5) - so the
-            # resolver is given the matching current version, exactly as the doctor/preflight supply their live probe.
             $written = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'claude' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion '1.2.3' -TimestampUtc $script:BaseTime
             $written | Should -Not -BeNullOrEmpty
-            $health = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -ExpectedHostVersion '1.2.3' -Now $script:BaseTime.AddMinutes(5)
-            $health.status | Should -Be 'healthy'
-
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -Now $script:BaseTime.AddMinutes(5)).hook_status | Should -Be 'healthy'
             $keys = @($written.Receipt.PSObject.Properties | ForEach-Object { $_.Name }) | Sort-Object
-            $expected = @(Get-SpecrewHookHealthReceiptFields) | Sort-Object
-            ($keys -join ',') | Should -Be ($expected -join ',') -Because 'the receipt must be sanitized by construction - exactly the six allowed fields, so no prompt/arg/env/secret can enter it'
+            ($keys -join ',') | Should -Be ((@(Get-SpecrewHookHealthReceiptFields) | Sort-Object) -join ',') -Because 'exactly the seven sanitized fields, so no prompt/arg/env/secret can enter it'
         }
-
-        It 'a dispatcher receipt stamped ''unknown'' (the SessionStart version probe failed) resolves UNVERIFIED, never healthy (finding 5)' {
+        It 'a dispatcher receipt stamped unknown (probe failed) is STILL hook_status=healthy but version_status=unavailable (liveness not erased)' {
             $root = New-ReconTempRoot
-            # The dispatcher stamps observed_host_version='unknown' whenever the bounded SessionStart --version probe
-            # fails (unresolved / timeout / malformed). Such a receipt proves the hook fired but cannot attest WHICH
-            # host version fired it, so it must read unverified - NEVER healthy - even when a current version is supplied.
             $null = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'claude' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion 'unknown' -TimestampUtc $script:BaseTime
-            $health = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -ExpectedHostVersion '1.2.3' -Now $script:BaseTime.AddMinutes(5)
-            $health.status | Should -Be 'unverified'
-            $health.status | Should -Not -Be 'healthy'
+            $h = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -ExpectedHostVersion '1.2.3' -Now $script:BaseTime.AddMinutes(5)
+            $h.hook_status | Should -Be 'healthy'
+            $h.version_status | Should -Be 'unavailable'
         }
     }
 
-    Context 'a verified TIER never implies healthy HEALTH (the two axes must not cross-contaminate)' {
-        It 'codex/cli is verified in the tier model YET unverified in hook-health when no receipt exists' {
+    Context 'a verified TIER never implies healthy hook-liveness (the two axes must not cross-contaminate)' {
+        It 'codex/cli is verified in the tier model YET hook_status=absent when no receipt exists' {
             $root = New-ReconTempRoot
             (Get-SpecrewHostSupportTier -HostName 'codex' -Surface 'cli').tier | Should -Be 'verified'
-            $health = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -Surface 'cli' -Now $script:BaseTime
-            $health.status | Should -Be 'unverified' -Because 'a verified surface-contract claim must NEVER be read as a live firing hook - that is the health-washing this reconciliation forbids'
+            (Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'codex' -Surface 'cli' -Now $script:BaseTime).hook_status | Should -Be 'absent' -Because 'a verified surface-contract claim must never be read as live hook liveness'
         }
     }
 
     Context 'the doctor AGGREGATOR surfaces all three consistently and never upgrades a status' {
-        It 'a no-receipt project renders verified tiers with provenance, unverified health (no healthy), and a NOT-ready Codex preflight' {
+        It 'a no-receipt project renders verified tiers with provenance, absent hook-liveness (no healthy row), and a NOT-ready Codex preflight' {
             $root = New-ReconTempRoot
-            $report = Format-SpecrewHostSupportDoctorReport -ProjectRoot $root -Now $script:BaseTime
+            $report = Format-SpecrewHostSupportDoctorReport -ProjectRoot $root -Hosts @('codex') -Now $script:BaseTime
 
-            # tiers section: the verified flips + their provenance are present.
             $report | Should -Match 'host-support tiers'
             $report | Should -Match 'Evidence provenance'
             $report | Should -Match 'codex/cli:'
-            $report | Should -Match 'copilot/cli:'
 
-            # health section: no receipts -> unverified, and NOT a single healthy row.
             $report | Should -Match 'hook-health evidence'
-            ($report -split "`r?`n" | Where-Object { $_ -match '^\s+(claude|codex|copilot)\s+cli\s+healthy\b' }) | Should -BeNullOrEmpty -Because 'a project with no receipts must never render a healthy health row'
+            ($report -split "`r?`n" | Where-Object { $_ -match '^\s+(claude|codex|copilot)\s+cli\s+healthy\b' }) | Should -BeNullOrEmpty -Because 'a project with no receipts must never render a healthy hook-liveness row'
 
-            # codex preflight: NOT ready without a current receipt.
             $report | Should -Match 'governance preflight'
             $report | Should -Match 'ready to govern a headless run: NO'
         }
 
-        It 'once a fresh codex/cli SessionStart receipt exists AND the live codex version matches, the aggregator reports it healthy AND the preflight flips ready' {
+        It 'once a fresh codex/cli receipt exists, the aggregator reports hook liveness healthy AND the preflight flips ready (the version is only a diagnostic)' {
             $root = New-ReconTempRoot
-            # The doctor + preflight now REQUIRE a live current-version match (finding 5) - a bare receipt no longer
-            # reads healthy. Deterministically control the version they independently probe with a fake `codex` on
-            # PATH that self-reports '1.2.3', matching the SessionStart receipt we write.
-            $fakeDir = New-ReconTempRoot
-            if ($IsWindows) {
-                [System.IO.File]::WriteAllText((Join-Path $fakeDir 'codex.cmd'), "@echo off`r`necho 1.2.3", [System.Text.UTF8Encoding]::new($false))
-            }
-            else {
-                $fk = Join-Path $fakeDir 'codex'
-                [System.IO.File]::WriteAllText($fk, "#!/usr/bin/env sh`necho '1.2.3'`n", [System.Text.UTF8Encoding]::new($false))
-                [System.IO.File]::SetUnixFileMode($fk, [System.IO.UnixFileMode]'UserRead,UserWrite,UserExecute,GroupRead,GroupExecute,OtherRead,OtherExecute')
-            }
             $null = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion '1.2.3' -TimestampUtc $script:BaseTime
-            $saved = $env:PATH
-            try {
-                $env:PATH = $fakeDir + [System.IO.Path]::PathSeparator + $env:PATH
-                $report = Format-SpecrewHostSupportDoctorReport -ProjectRoot $root -Hosts @('codex') -Now $script:BaseTime.AddMinutes(5)
-            }
-            finally { $env:PATH = $saved }
+            $report = Format-SpecrewHostSupportDoctorReport -ProjectRoot $root -Hosts @('codex') -Now $script:BaseTime.AddMinutes(5)
             ($report -split "`r?`n" | Where-Object { $_ -match '^\s+codex\s+cli\s+healthy\b' }) | Should -Not -BeNullOrEmpty
             $report | Should -Match 'ready to govern a headless run: YES'
         }

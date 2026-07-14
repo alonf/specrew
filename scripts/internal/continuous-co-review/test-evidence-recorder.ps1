@@ -98,7 +98,10 @@ function Write-ContinuousCoReviewTestEvidence {
 }
 
 function Get-ContinuousCoReviewTestEvidenceForDigest {
-    <# The digest-keyed lookup: returns the record ONLY when it certifies exactly this tree id. #>
+    <# The digest-keyed lookup: returns the record ONLY when it certifies exactly this tree id and carries at least
+       one non-empty evidence array. Accepts BOTH the T111 `suites` array (implementer-supplied counts) AND the T018
+       `runs` array (universal recorded-run records written by Invoke-ContinuousCoReviewRecordedRun) - the T019
+       step-6 unblock so exact-digest recorded runs are injectable as reviewer-visible evidence, not just suites. #>
     param(
         [Parameter(Mandatory)][string]$RepoRoot,
         [Parameter(Mandatory)][string]$DigestTreeId
@@ -111,7 +114,9 @@ function Get-ContinuousCoReviewTestEvidenceForDigest {
         if ($null -eq $record) { return $null }
         if (-not ($record.PSObject.Properties.Name -contains 'reviewed_digest_tree_id')) { return $null }
         if ([string]$record.reviewed_digest_tree_id -ne $DigestTreeId) { return $null }
-        if (-not ($record.PSObject.Properties.Name -contains 'suites') -or @($record.suites).Count -eq 0) { return $null }
+        $hasSuites = ($record.PSObject.Properties.Name -contains 'suites') -and (@($record.suites).Count -gt 0)
+        $hasRuns = ($record.PSObject.Properties.Name -contains 'runs') -and (@($record.runs).Count -gt 0)
+        if (-not ($hasSuites -or $hasRuns)) { return $null }
         return $record
     }
     catch { return $null }

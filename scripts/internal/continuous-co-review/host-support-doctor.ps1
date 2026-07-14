@@ -56,7 +56,8 @@ function Format-SpecrewCodexHeadlessReadinessReport {
         if ($PSBoundParameters.ContainsKey('ExpectedHostVersion') -and -not [string]::IsNullOrWhiteSpace($ExpectedHostVersion)) { $preArgs.ExpectedHostVersion = $ExpectedHostVersion }
         if ($PSBoundParameters.ContainsKey('Now')) { $preArgs.Now = $Now }
         $pre = Test-SpecrewCodexHeadlessGovernanceReady @preArgs
-        [void]$sb.AppendLine(('  codex/cli ready to govern a headless run: {0}  (hook-health status: {1})' -f $(if ($pre.ready) { 'YES' } else { 'NO' }), $pre.status))
+        [void]$sb.AppendLine(('  codex/cli ready to govern a headless run: {0}  (hook liveness: {1}; version diagnostic: {2})' -f $(if ($pre.ready) { 'YES' } else { 'NO' }), $pre.hook_status, $pre.version_status))
+        [void]$sb.AppendLine('  (readiness is operational confidence from fresh hook-liveness monitoring, not tamper-proof host authentication)')
         [void]$sb.AppendLine(('  reason:      {0}' -f $pre.reason))
         [void]$sb.AppendLine(('  next step:   {0}' -f $pre.instruction))
     }
