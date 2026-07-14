@@ -659,8 +659,12 @@ maintainer ruling — not fixable either direction without a human verdict):
    truth (T019 in-progress, T034b planned).
 
 Focused suites 122/122 green on Windows; full registry + Linux Docker verify re-run; evidence re-bound.
-**Round budget: 1 of 2 consumed. Round 2 is HELD pending the maintainer's f2 decision — spending it before
-that decision guarantees an unclean round on f2 alone.**
+Recording note (honesty): the FIRST recorded registry run at the fixes digest failed (exit 1) with its
+output suppressed by the default privacy posture, while a direct re-run of the identical command was
+38/38 green — a flake with no diagnosable record. The registry recording now opts into the sanctioned
+8 KB diagnostic tail (the engine's own suite output; no secrets), and the re-recorded run is green at the
+committed digest. **Round budget: 1 of 2 consumed. Round 2 is HELD pending the maintainer's f2 decision —
+spending it before that decision guarantees an unclean round on f2 alone.**
 
 ## Notes
 
