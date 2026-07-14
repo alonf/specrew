@@ -2,10 +2,10 @@
 
 **Schema**: v1
 **Last Completed Task**: the Prop-145 hook-health REDESIGN (Option A, amended) — INDEPENDENT hook-liveness + a NON-PROMOTING `ambient-path-binding` version diagnostic; byte-capped shell-safe probe; System32 cmd.exe interpreter; exact-digest T018 runs injected as reviewer-visible evidence. **Iteration 005 is NOT yet complete** — a Proposal-145 review returned three authoritative findings (bounded output, ambient executable-identity, unsupported evidence). After characterizing that NO host exposes a trustworthy non-ambient executable identity, the maintainer chose Option A: the version is a non-authoritative diagnostic, health rests on observed hook-liveness, readiness on fresh liveness + config/trust — receipts are MONITORING evidence, never authentication. Implemented + green on Windows AND Linux; pending the T018 recording + one authorized confirming review round. See the Co-review section at the bottom.
-**Tasks Remaining**: commit + T018-record Windows/Linux at the committed digest + confirm the injected runs + one confirming review round. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Tasks Remaining**: T018-record Windows + Linux at the committed reviewed digest + confirm the injected runs at review time + ONE confirming review round. (The Option-A-amended implementation landed as 760a0dc2; at that digest only the two WINDOWS runs were recorded before the session stopped — no linux-labeled run exists in the evidence store at any digest yet — so BOTH OSes are recorded at the digest of THIS state-reconciliation commit.) **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING a clean re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
-**Updated**: 2026-07-14T00:00:00Z
+**Updated**: 2026-07-14T12:20:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -310,10 +310,13 @@ cmd.exe fix correct, but not approvable):
    hand-copied fields.
 
 Verified green on Windows (the focused suites + the full F-198 regression registry) AND Linux (Docker
-`cross-platform-verify`). The exact replayable commands are committed; their Windows + Linux runs are recorded via the
-T018 wrapper against the committed reviewed digest and injected as `.review/implementer-evidence.json` (the reviewer's
-authoritative machine evidence — see `iterations/005/evidence/shell-safe-cross-platform-verification.md`). Exactly one
-confirming review round is then requested.
+`cross-platform-verify`). The exact replayable commands are committed. Per the recording protocol, the Windows AND
+Linux runs are recorded via the T018 wrapper against the committed reviewed digest immediately AFTER the
+evidence-bearing commit (the digest-keyed machine record in the co-review evidence store), and at review time
+`Copy-ContinuousCoReviewImplementerEvidence` injects that record into the reviewer worktree as
+`.review/implementer-evidence.json` (the reviewer's authoritative machine evidence — see
+`iterations/005/evidence/shell-safe-cross-platform-verification.md`). Exactly one confirming review round is then
+requested.
 
 ## Notes
 
