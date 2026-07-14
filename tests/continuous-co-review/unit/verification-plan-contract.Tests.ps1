@@ -214,6 +214,40 @@ Describe 'T019 verification-plan contract (framework-neutral, ordered, FR-048 am
             $r.valid | Should -BeFalse
             [string]$r.reason | Should -Match 'note'
         }
+        It 'a NULL-valued env/environment property is rejected by PRESENCE - null is not a pass (review finding f1, run 20260714T180554025)' {
+            foreach ($name in @('env', 'environment')) {
+                $cmd = [ordered]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov) }
+                $cmd[$name] = $null
+                $r = Test-ContinuousCoReviewVerificationCommand -Command ([pscustomobject]$cmd)
+                $r.valid | Should -BeFalse -Because "a present '$name' violates additionalProperties:false regardless of its value"
+                [string]$r.reason | Should -Match 'env_refs'
+            }
+        }
+        It 'SCHEMA TYPES are validated, never coerced - wrong-typed fields at every level are rejected (review finding f2, run 20260714T180554025)' {
+            $base = { param($over) $c = [ordered]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov) }; foreach ($k in $over.Keys) { $c[$k] = $over[$k] }; [pscustomobject]$c }
+            # the reviewer's exact example: require_result 'false' would CAST to $true.
+            [string](Test-ContinuousCoReviewVerificationCommand -Command (& $base @{ require_result = 'false' })).reason | Should -Match 'BOOLEAN'
+            (Test-ContinuousCoReviewVerificationCommand -Command (& $base @{ require_result = $true })).valid | Should -BeTrue
+            # numeric identity fields must not stringify.
+            [string](Test-ContinuousCoReviewVerificationCommand -Command ([pscustomobject]@{ command_id = 123; executable = 'x'; provenance = (New-Prov) })).reason | Should -Match 'command_id must be a STRING'
+            [string](Test-ContinuousCoReviewVerificationCommand -Command ([pscustomobject]@{ command_id = 'a'; executable = 42; provenance = (New-Prov) })).reason | Should -Match 'executable must be a STRING'
+            # timeout: integer, nonnegative - a nonnumeric value must fail HERE (deterministic evidence), not
+            # throw later inside the runner's cast.
+            [string](Test-ContinuousCoReviewVerificationCommand -Command (& $base @{ timeout_seconds = 'abc' })).reason | Should -Match 'INTEGER'
+            [string](Test-ContinuousCoReviewVerificationCommand -Command (& $base @{ timeout_seconds = -5 })).reason | Should -Match '>= 0'
+            (Test-ContinuousCoReviewVerificationCommand -Command (& $base @{ timeout_seconds = 60 })).valid | Should -BeTrue
+            # path/label strings.
+            [string](Test-ContinuousCoReviewVerificationCommand -Command (& $base @{ working_directory = 123 })).reason | Should -Match 'working_directory must be a STRING'
+            [string](Test-ContinuousCoReviewVerificationCommand -Command (& $base @{ result_path = $true })).reason | Should -Match 'result_path must be a STRING'
+            [string](Test-ContinuousCoReviewVerificationCommand -Command (& $base @{ label = 7 })).reason | Should -Match 'label must be a STRING'
+            # provenance field types.
+            [string](Test-ContinuousCoReviewVerificationCommand -Command ([pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = ([pscustomobject]@{ kind = 'project-config'; source = 99 }) })).reason | Should -Match 'provenance.source must be a STRING'
+            # plan-level: plan_id + schema_version types.
+            $numPlanId = [pscustomobject]@{ schema_version = '1.0'; plan_id = 5; commands = @([pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov) }) }
+            [string](Test-ContinuousCoReviewVerificationPlan -Plan $numPlanId).reason | Should -Match 'plan_id must be a STRING'
+            $numVer = [pscustomobject]@{ schema_version = 1.0; plan_id = 'p'; commands = @([pscustomobject]@{ command_id = 'a'; executable = 'x'; provenance = (New-Prov) }) }
+            [string](Test-ContinuousCoReviewVerificationPlan -Plan $numVer).reason | Should -Match 'STRING'
+        }
         It 'a FULLY-populated valid plan with every optional field stays valid (the closed set is complete, not over-tight)' {
             $plan = [pscustomobject]@{
                 schema_version = '1.0'; plan_id = 'p'

@@ -150,6 +150,28 @@ Describe 'T018 universal recorded-run runner (FR-015 amended - language/framewor
             Should -Throw -ExpectedMessage '*command_id*' -Because 'an unscoped (blanket) disclosure is refused'
     }
 
+    It 'a present-but-NULL counts is schema-INVALID - never treated as absent to grant structured standing (review finding f3, run 20260714T180554025)' {
+        $repo = New-RunRepo
+        $rp = (Join-Path $repo 'result.json') -replace '\\', '/'
+        # counts:null is written literally into the artifact; the schema types counts as an OBJECT when present.
+        $cmd = "Set-Content -LiteralPath '$rp' -Value '{ `"schema_version`": `"1.0`", `"result`": `"passed`", `"counts`": null }'; exit 0"
+        { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd) -ResultPath 'result.json' -RequireResult } |
+            Should -Throw -ExpectedMessage '*INVALID*' -Because 'counts:null must fail the required-result gate, not read as counts-absent'
+    }
+
+    It 'schema-valid counts BEYOND Int32 are recorded VERBATIM - the schema has no maximum (review finding f3, run 20260714T180554025)' {
+        $repo = New-RunRepo
+        $rp = (Join-Path $repo 'result.json') -replace '\\', '/'
+        $big = 2147483648   # Int32.MaxValue + 1: schema-valid, previously threw in the [int] narrowing
+        $cmd = "@{ schema_version='1.0'; result='passed'; counts=@{ passed=[long]$big; failed=0; skipped=0 } } | ConvertTo-Json | Set-Content -LiteralPath '$rp'; exit 0"
+        $e = Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', $cmd) -ResultPath 'result.json' -RequireResult
+        $e.counts_available | Should -BeTrue
+        [long]$e.test_result.counts.passed | Should -Be $big -Because 'a schema-valid Int64 count is recorded verbatim per FR-015, never narrowed into a throw'
+        # and it survives the durable store round-trip.
+        $rec = Get-Content -LiteralPath (Join-Path $repo ('.specrew/review/test-evidence/' + [string]$e.reviewed_digest_tree_id + '.json')) -Raw | ConvertFrom-Json
+        [long](@($rec.runs)[0].test_result.counts.passed) | Should -Be $big
+    }
+
     It '5. a REQUIRED result that is MISSING or MALFORMED FAILS LOUDLY (never degrades to a richer claim)' {
         $repo = New-RunRepo
         { Invoke-ContinuousCoReviewRecordedRun -RepoRoot $repo -Executable $script:Pwsh -Arguments @('-NoProfile', '-Command', 'exit 0') -ResultPath 'result.json' -RequireResult } |

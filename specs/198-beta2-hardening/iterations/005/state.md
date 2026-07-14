@@ -2,15 +2,13 @@
 
 **Schema**: v1
 **Last Completed Task**: the Prop-145 hook-health REDESIGN (Option A, amended) — INDEPENDENT hook-liveness + a NON-PROMOTING `ambient-path-binding` version diagnostic; byte-capped shell-safe probe; System32 cmd.exe interpreter; exact-digest T018 runs injected as reviewer-visible evidence. **Iteration 005 is NOT yet complete** — a Proposal-145 review returned three authoritative findings (bounded output, ambient executable-identity, unsupported evidence). After characterizing that NO host exposes a trustworthy non-ambient executable identity, the maintainer chose Option A: the version is a non-authoritative diagnostic, health rests on observed hook-liveness, readiness on fresh liveness + config/trust — receipts are MONITORING evidence, never authentication. Implemented + green on Windows AND Linux; pending the T018 recording + one authorized confirming review round. See the Co-review section at the bottom.
-**Tasks Remaining**: the MAINTAINER'S decision on the next re-review round. The seventh-round directive was
-implemented in full and committed (f8df5f8a); the maintainer then AUTHORIZED one re-review (executed as
-resolved-against-disk + one `--live` round, run 20260714T172315119-93949663), which returned 5 blocking
-findings on the wider feature slice (containment case-sensitivity, future-dated receipt false-green,
-embedded-digest injection bypass, lease-token wildcard, open plan schema) — all fixed with paired
-falsification tests, see the Eighth round section. Fixes verified (focused suites; full registry; Linux
-Docker) and the evidence re-bound to the fixes commit. NO review round launches automatically.
-**Iteration 005 completion + the release of T019 pieces 5-7 is PENDING the next separately-authorized clean
-re-review.** FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
+**Tasks Remaining**: run the maintainer's STANDING 5-round authorization (2026-07-14: "authorized up to 5
+additional review rounds") to a CLEAN round — each round: resolved-against-disk citing the latest fixes
+commit → one `--live` review → verify findings against disk → fix with paired tests → full verification →
+commit → re-bind evidence. The loop STOPS on: a clean round (closes Iteration 005, releases T019 pieces 5-7),
+a HUMAN-DECISION finding (escalate immediately), or round 5 of 5 exhausted. History: eighth round (the single
+authorization) → 5 findings fixed (6de77f5e); ninth round (1 of 5) → 3 schema-conformance findings fixed —
+see the round sections below. NO rounds beyond the authorized five. FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-14T17:30:00Z
@@ -455,6 +453,31 @@ Focused suites 152/152 green on Windows (2 Linux-only cases correctly skipped th
 cross-platform Linux verify re-run and the evidence re-bound to the fixes commit's digest. Per the standing
 directive, NO further round launches — the round consumed the authorization, and the maintainer decides
 whether to authorize the next (potentially closing) re-review.
+
+### Ninth round — round 1 of the 5-round authorization (2026-07-14, run 20260714T180554025-b1f7ddce) + 3 fixes
+
+The maintainer authorized **up to 5 additional review rounds** (2026-07-14). Round 1 ran after
+`resolved-against-disk --fix-evidence-ref 6de77f5e` and returned **3 blocking findings**, none human-decision —
+schema-conformance edges in the eighth-round f5 fix and the SpecrewTestResult validator. All verified and fixed
+with paired regressions:
+
+1. **f1 (null-valued env bypass).** The closed-key allowlist kept `env`/`environment` (for the teaching error)
+   but the forbidden-map check tested VALUE non-null — `"env": null` validated. Fixed: presence-based rejection
+   (`Test-ContinuousCoReviewPropertyPresent`); the teaching error is preserved; null-valued regressions added.
+2. **f2 (type coercion instead of validation).** String fields stringified numerics; `timeout_seconds` was not
+   checked as a nonnegative integer; `require_result` not as boolean (`"false"` cast to `$true`);
+   `working_directory`/`result_path`/`label`/`plan_id`/`schema_version`/provenance fields untyped. Fixed:
+   schema-type validation (string/integer/boolean, minimum 0) at plan/command/provenance levels — validated,
+   never coerced; wrong-type regressions for every field including the reviewer's exact `require_result:
+   "false"` example.
+3. **f3 (counts:null + Int64 narrowing).** A present-but-null `counts` was treated as absent (granting
+   structured-result standing to a schema-invalid artifact), and schema-valid counts beyond Int32 threw in the
+   `[int]` narrowing instead of recording verbatim. Fixed: presence-based null rejection
+   (`counts-null-not-object`) + `[long]` preservation; required-result regressions for both.
+
+Focused suites 80/80 green on Windows; full registry + Linux Docker verify re-run and the evidence re-bound to
+the fixes commit. Rounds consumed of the 5-round authorization: 1. The loop continues per the authorization —
+clean closes Iteration 005; a human-decision finding stops immediately.
 
 ## Notes
 

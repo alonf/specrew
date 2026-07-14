@@ -187,7 +187,11 @@ function Test-ContinuousCoReviewSpecrewTestResult {
     if ($props -notcontains 'result') { return @{ valid = $false; reason = 'missing-result' } }
     if (([string]$Object.result) -notin @('passed', 'failed', 'errored', 'skipped')) { return @{ valid = $false; reason = 'bad-result-enum' } }
     $counts = $null
-    if (($props -contains 'counts') -and ($null -ne $Object.counts)) {
+    if ($props -contains 'counts') {
+        # PRESENCE-based null rejection (review finding f3, run 20260714T180554025): the schema types counts
+        # as an OBJECT when present - a present-but-null counts is schema-INVALID, never treated as absent
+        # (which would grant structured-result standing to a malformed artifact).
+        if ($null -eq $Object.counts) { return @{ valid = $false; reason = 'counts-null-not-object' } }
         if ($Object.counts -isnot [System.Management.Automation.PSCustomObject]) { return @{ valid = $false; reason = 'counts-not-an-object' } }
         $cprops = @($Object.counts.PSObject.Properties.Name)
         if (@($cprops | Where-Object { $_ -notin @('passed', 'failed', 'skipped') }).Count -gt 0) { return @{ valid = $false; reason = 'unknown-count' } }
@@ -197,7 +201,9 @@ function Test-ContinuousCoReviewSpecrewTestResult {
                 $v = $Object.counts.$k
                 if (($v -isnot [int]) -and ($v -isnot [long])) { return @{ valid = $false; reason = "non-integer-count:$k" } }
                 if ([long]$v -lt 0) { return @{ valid = $false; reason = "negative-count:$k" } }
-                $counts[$k] = [int]$v
+                # PRESERVE the schema-valid range verbatim (finding f3): the schema sets no maximum, so a
+                # count beyond Int32 is recorded as-is - narrowing to [int] threw instead of recording.
+                $counts[$k] = [long]$v
             }
         }
     }

@@ -103,6 +103,28 @@ function Get-ContinuousCoReviewUnknownProperties {
     return @($names | Where-Object { $_ -notin $Allowed })
 }
 
+# PRESENCE test (review finding f1, run 20260714T180554025): schema conformance is about a property EXISTING,
+# not its value being non-null - '"env": null' is as forbidden as a populated map under additionalProperties:false.
+function Test-ContinuousCoReviewPropertyPresent {
+    param([Parameter(Mandatory)][AllowNull()]$Object, [Parameter(Mandatory)][string]$Name)
+    if ($null -eq $Object) { return $false }
+    if ($Object -is [System.Collections.IDictionary]) { return $Object.Contains($Name) }
+    return ($null -ne $Object.PSObject.Properties[$Name])
+}
+
+# SCHEMA TYPE checks (review finding f2, run 20260714T180554025): the authoritative schema types every field;
+# the in-code validator must VALIDATE them, never coerce - '"require_result": "false"' casting to $true and a
+# numeric command_id stringifying are exactly the schema-invalid-but-accepted class. JSON integers arrive as
+# int/long from ConvertFrom-Json; PS-built plans must supply real types too.
+function Test-ContinuousCoReviewIsSchemaString {
+    param([AllowNull()]$Value)
+    return ($Value -is [string])
+}
+function Test-ContinuousCoReviewIsSchemaInteger {
+    param([AllowNull()]$Value)
+    return (($Value -is [int]) -or ($Value -is [long]) -or ($Value -is [int16]) -or ($Value -is [byte]))
+}
+
 # PATH SAFETY (FR-048 amendment 4). A working_directory / result_path MUST be repository-relative and
 # resolve INSIDE RepoRoot. REJECTED when: null-safe-empty is fine; a rooted/absolute path; a `..`
 # escape (checked lexically via GetFullPath so a not-yet-created path is still guarded); or — for a
@@ -176,6 +198,13 @@ function Test-ContinuousCoReviewVerificationProvenance {
     if (@($unknownProv).Count -gt 0) {
         return [pscustomobject]@{ valid = $false; reason = "provenance carries unknown propert$(if (@($unknownProv).Count -gt 1) { 'ies' } else { 'y' }) '$($unknownProv -join "', '")' (the schema is CLOSED: kind, source, provider, profile only)" }
     }
+    # SCHEMA TYPES (finding f2, run 20260714T180554025): every provenance field is a string - a numeric
+    # source (etc.) must be REJECTED, never silently stringified.
+    foreach ($sf in @('kind', 'source', 'provider', 'profile')) {
+        if ((Test-ContinuousCoReviewPropertyPresent -Object $Provenance -Name $sf) -and -not (Test-ContinuousCoReviewIsSchemaString -Value (Get-ContinuousCoReviewVerificationRawProp -Object $Provenance -Name $sf))) {
+            return [pscustomobject]@{ valid = $false; reason = "provenance.$sf must be a STRING (schema type; values are validated, never coerced)" }
+        }
+    }
     $kind = [string](Get-ContinuousCoReviewContractProp -Object $Provenance -Name 'kind')
     if ($kind -notin (Get-ContinuousCoReviewVerificationProvenanceValues)) {
         return [pscustomobject]@{ valid = $false; reason = "provenance.kind '$kind' is not one of: $((Get-ContinuousCoReviewVerificationProvenanceValues) -join ', ')" }
@@ -222,6 +251,29 @@ function Test-ContinuousCoReviewVerificationCommand {
     if (@($unknownCmd).Count -gt 0) {
         return [pscustomobject]@{ valid = $false; reason = "command carries unknown propert$(if (@($unknownCmd).Count -gt 1) { 'ies' } else { 'y' }) '$($unknownCmd -join "', '")' (the schema is CLOSED; no secret values can ride an unrecognized field)" }
     }
+    # SCHEMA TYPES (review finding f2, run 20260714T180554025): validate, never coerce. String fields must BE
+    # strings (a numeric command_id is invalid, not '123'); timeout_seconds is a nonnegative INTEGER;
+    # require_result is a BOOLEAN ('"false"' must not cast to $true).
+    foreach ($sf in @('command_id', 'executable', 'working_directory', 'result_path', 'label')) {
+        if ((Test-ContinuousCoReviewPropertyPresent -Object $Command -Name $sf) -and -not (Test-ContinuousCoReviewIsSchemaString -Value (Get-ContinuousCoReviewVerificationRawProp -Object $Command -Name $sf))) {
+            return [pscustomobject]@{ valid = $false; reason = "$sf must be a STRING (schema type; values are validated, never coerced)" }
+        }
+    }
+    if (Test-ContinuousCoReviewPropertyPresent -Object $Command -Name 'timeout_seconds') {
+        $toRaw = Get-ContinuousCoReviewVerificationRawProp -Object $Command -Name 'timeout_seconds'
+        if (-not (Test-ContinuousCoReviewIsSchemaInteger -Value $toRaw)) {
+            return [pscustomobject]@{ valid = $false; reason = 'timeout_seconds must be an INTEGER (schema type; never coerced from a string/decimal)' }
+        }
+        if ([long]$toRaw -lt 0) {
+            return [pscustomobject]@{ valid = $false; reason = 'timeout_seconds must be >= 0 (schema minimum)' }
+        }
+    }
+    if (Test-ContinuousCoReviewPropertyPresent -Object $Command -Name 'require_result') {
+        $rrRaw = Get-ContinuousCoReviewVerificationRawProp -Object $Command -Name 'require_result'
+        if ($rrRaw -isnot [bool]) {
+            return [pscustomobject]@{ valid = $false; reason = "require_result must be a BOOLEAN (schema type; the string 'false' would coerce to `$true - validated, never coerced)" }
+        }
+    }
     $commandId = [string](Get-ContinuousCoReviewContractProp -Object $Command -Name 'command_id')
     if ([string]::IsNullOrWhiteSpace($commandId)) {
         return [pscustomobject]@{ valid = $false; reason = 'command_id is required (a stable id, unique within the plan)' }
@@ -251,10 +303,11 @@ function Test-ContinuousCoReviewVerificationCommand {
         return [pscustomobject]@{ valid = $false; reason = $provCheck.reason }
     }
 
-    # NO SECRETS: a literal env/environment map is forbidden; only env_refs (NAMES) are allowed.
+    # NO SECRETS: a literal env/environment map is forbidden; only env_refs (NAMES) are allowed. PRESENCE-based
+    # (review finding f1, run 20260714T180554025): '"env": null' is as forbidden as a populated map - the schema
+    # sets additionalProperties:false, so the PROPERTY existing is the violation, not its value.
     foreach ($forbidden in @('env', 'environment')) {
-        $literal = Get-ContinuousCoReviewContractProp -Object $Command -Name $forbidden
-        if ($null -ne $literal) {
+        if (Test-ContinuousCoReviewPropertyPresent -Object $Command -Name $forbidden) {
             return [pscustomobject]@{ valid = $false; reason = "a literal '$forbidden' map is forbidden (no secret values in a plan); declare env var NAMES via env_refs instead" }
         }
     }
@@ -308,7 +361,11 @@ function Test-ContinuousCoReviewVerificationPlan {
     }
     # SCHEMA VERSION + CLOSED KEY SET (review finding f5, run 20260714T172315119): the authoritative
     # schema requires schema_version const '1.0' and additionalProperties:false at the plan level.
-    $schemaVersion = [string](Get-ContinuousCoReviewContractProp -Object $Plan -Name 'schema_version')
+    $svRaw = Get-ContinuousCoReviewVerificationRawProp -Object $Plan -Name 'schema_version'
+    if ((Test-ContinuousCoReviewPropertyPresent -Object $Plan -Name 'schema_version') -and -not (Test-ContinuousCoReviewIsSchemaString -Value $svRaw)) {
+        return [pscustomobject]@{ valid = $false; reason = 'plan schema_version must be the STRING ''1.0'' (schema type; a numeric 1.0 is not the contract const)'; command_count = 0 }
+    }
+    $schemaVersion = [string]$svRaw
     if ($schemaVersion -cne '1.0') {
         $svReason = if ([string]::IsNullOrWhiteSpace($schemaVersion)) { 'plan schema_version is required (exactly ''1.0'' for this contract)' } else { "plan schema_version '$schemaVersion' is unsupported (exactly '1.0' for this contract; a future shape bumps it)" }
         return [pscustomobject]@{ valid = $false; reason = $svReason; command_count = 0 }
@@ -316,6 +373,9 @@ function Test-ContinuousCoReviewVerificationPlan {
     $unknownPlan = Get-ContinuousCoReviewUnknownProperties -Object $Plan -Allowed @('schema_version', 'plan_id', 'commands')
     if (@($unknownPlan).Count -gt 0) {
         return [pscustomobject]@{ valid = $false; reason = "plan carries unknown propert$(if (@($unknownPlan).Count -gt 1) { 'ies' } else { 'y' }) '$($unknownPlan -join "', '")' (the schema is CLOSED: schema_version, plan_id, commands only)"; command_count = 0 }
+    }
+    if ((Test-ContinuousCoReviewPropertyPresent -Object $Plan -Name 'plan_id') -and -not (Test-ContinuousCoReviewIsSchemaString -Value (Get-ContinuousCoReviewVerificationRawProp -Object $Plan -Name 'plan_id'))) {
+        return [pscustomobject]@{ valid = $false; reason = 'plan_id must be a STRING (schema type; values are validated, never coerced)'; command_count = 0 }
     }
     $planId = [string](Get-ContinuousCoReviewContractProp -Object $Plan -Name 'plan_id')
     if ([string]::IsNullOrWhiteSpace($planId)) {
