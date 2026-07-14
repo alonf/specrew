@@ -155,10 +155,12 @@ Describe 'F-198 T039 host-support / hook-health / evidence reconciliation' {
     }
 
     Context 'the DISPATCHER write path produces health-resolvable evidence (integration reconciliation)' {
-        It 'a receipt from the dispatcher-called writer resolves healthy when fresh, and carries EXACTLY the 6 sanitized fields' {
+        It 'a receipt from the dispatcher-called writer resolves healthy when fresh + a REAL observed version, and carries EXACTLY the 6 sanitized fields' {
             $root = New-ReconTempRoot
-            # This is the SAME entry point the hook dispatcher invokes on a real SessionStart/Stop fire.
-            $written = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'claude' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion 'unknown' -TimestampUtc $script:BaseTime
+            # The SAME entry point the hook dispatcher invokes on a real SessionStart/Stop fire - here with a REAL
+            # observed host version (the launch path stamped SPECREW_OBSERVED_HOST_VERSION), which is what a healthy
+            # receipt REQUIRES (F-198 iter-005 finding 5: an 'unknown' observed version can never read healthy).
+            $written = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'claude' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion '1.2.3' -TimestampUtc $script:BaseTime
             $written | Should -Not -BeNullOrEmpty
             $health = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -Now $script:BaseTime.AddMinutes(5)
             $health.status | Should -Be 'healthy'
@@ -166,6 +168,18 @@ Describe 'F-198 T039 host-support / hook-health / evidence reconciliation' {
             $keys = @($written.Receipt.PSObject.Properties | ForEach-Object { $_.Name }) | Sort-Object
             $expected = @(Get-SpecrewHookHealthReceiptFields) | Sort-Object
             ($keys -join ',') | Should -Be ($expected -join ',') -Because 'the receipt must be sanitized by construction - exactly the six allowed fields, so no prompt/arg/env/secret can enter it'
+        }
+
+        It 'a dispatcher receipt stamped ''unknown'' (no launch-supplied host version) resolves UNVERIFIED, never healthy (finding 5)' {
+            $root = New-ReconTempRoot
+            # The dispatcher stamps observed_host_version='unknown' whenever no launch path supplied
+            # SPECREW_OBSERVED_HOST_VERSION. Such a receipt proves the hook fired but cannot attest WHICH host
+            # version fired it, so the default doctor/preflight path (no expected version) must read it unverified -
+            # NEVER healthy. This is the finding-5 false-green guard on the reconciliation surface.
+            $null = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'claude' -Event 'SessionStart' -Surface 'cli' -ObservedHostVersion 'unknown' -TimestampUtc $script:BaseTime
+            $health = Resolve-SpecrewHookHealth -ProjectRoot $root -HostName 'claude' -Surface 'cli' -Now $script:BaseTime.AddMinutes(5)
+            $health.status | Should -Be 'unverified'
+            $health.status | Should -Not -Be 'healthy'
         }
     }
 
@@ -198,9 +212,10 @@ Describe 'F-198 T039 host-support / hook-health / evidence reconciliation' {
             $report | Should -Match 'ready to govern a headless run: NO'
         }
 
-        It 'once a fresh codex/cli receipt exists, the aggregator reports it healthy AND the preflight flips ready' {
+        It 'once a fresh codex/cli receipt with a REAL observed version exists, the aggregator reports it healthy AND the preflight flips ready' {
             $root = New-ReconTempRoot
-            $null = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -Surface 'cli' -ObservedHostVersion 'unknown' -TimestampUtc $script:BaseTime
+            # A REAL observed host version is required for healthy (finding 5) - an 'unknown' receipt stays unverified.
+            $null = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -Surface 'cli' -ObservedHostVersion '1.2.3' -TimestampUtc $script:BaseTime
             $report = Format-SpecrewHostSupportDoctorReport -ProjectRoot $root -Now $script:BaseTime.AddMinutes(5)
             ($report -split "`r?`n" | Where-Object { $_ -match '^\s+codex\s+cli\s+healthy\b' }) | Should -Not -BeNullOrEmpty
             $report | Should -Match 'ready to govern a headless run: YES'

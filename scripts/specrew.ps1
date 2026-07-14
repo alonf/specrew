@@ -73,7 +73,7 @@ Commands:
   status   Alias for where
   update   Refresh Specrew or upgrade Spec Kit / Squad in an existing project
   team     Manage team members (add, update, remove, list)
-  hooks    Inspect/install/repair host hooks (status, install [--host], remove [--host])
+  hooks    Inspect/install/repair host hooks (status, install [--host], remove [--host], doctor)
   handover Author the rolling cross-session handover body (author [--from <file>])
   version  Show the installed Specrew version and slash-command compatibility
   install-shell-wrappers  Install/refresh the Unix shell wrappers (macOS/Linux)
@@ -92,6 +92,7 @@ Examples:
   specrew update --all
   specrew team list
   specrew hooks status
+  specrew hooks doctor
   specrew hooks install --host codex
   specrew hooks remove --host cursor
   specrew handover author --from .specrew/handover-draft.md
@@ -674,6 +675,23 @@ switch ($Command) {
         # F-174 iter-11 (FR-028 layer 2): discoverable hook install/repair/status surface.
         # No Assert-WhitelistedArguments / no project-setup gate — `status` must run even in a broken
         # project (it is the repair surface); the script parses its own Unix-style flags.
+
+        # F-198 iter-005 (T038/T039; FR-050/FR-053/FR-051): the `doctor` subcommand surfaces host-support tiers +
+        # hook-health receipt evidence + the Codex untrusted-headless preflight via the non-protected aggregator
+        # seam. Its natural home (`hooks status` in specrew-hooks.ps1) is F-184-protected, so doctor routes to its
+        # own non-protected script here (this dispatcher is NOT protected). Every other subcommand still forwards
+        # unchanged to the protected specrew-hooks.ps1.
+        $hooksArguments = @($Arguments)
+        if ($hooksArguments.Count -gt 0 -and $hooksArguments[0] -ieq 'doctor') {
+            $doctorScript = Join-Path $scriptRoot 'specrew-hooks-doctor.ps1'
+            if (-not (Test-Path -LiteralPath $doctorScript)) {
+                Write-Host "ERROR: specrew-hooks-doctor.ps1 not found at $doctorScript" -ForegroundColor Red
+                exit 1
+            }
+            & pwsh -NoProfile -ExecutionPolicy Bypass -File $doctorScript @($hooksArguments | Select-Object -Skip 1)
+            exit $LASTEXITCODE
+        }
+
         $hooksScript = Join-Path $scriptRoot 'specrew-hooks.ps1'
         if (-not (Test-Path -LiteralPath $hooksScript)) {
             Write-Host "ERROR: specrew-hooks.ps1 not found at $hooksScript" -ForegroundColor Red

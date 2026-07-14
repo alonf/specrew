@@ -824,8 +824,19 @@ function Get-DispatcherObservedHostVersion {
     # so this stays cheap+bounded: honor a zero-cost explicit override
     # (SPECREW_OBSERVED_HOST_VERSION, when a launch path set one), else the honest 'unknown'
     # (an unobserved version is recorded as unknown, never fabricated).
+    #
+    # SECURITY (FR-053, co-review finding 3 - "NO environment values or secrets recorded"): the ambient
+    # SPECREW_OBSERVED_HOST_VERSION is UNTRUSTED input that would otherwise persist VERBATIM into a durable
+    # receipt. The six-field receipt allow-list bounds field NAMES, not their VALUES, so an arbitrary/secret env
+    # value (e.g. 'SECRET=abc123 export TOKEN=zzz') would survive. Gate it against a STRICT version shape - a
+    # leading alphanumeric then a bounded run of [alnum . _ + -], NO whitespace, NO '=', <= 64 chars. Anything
+    # that fails (a secret, an argument blob, a multi-line value, an over-long string) collapses to the honest
+    # 'unknown' sentinel. No unvalidated ambient content is EVER persisted anywhere in the receipt.
     $v = $env:SPECREW_OBSERVED_HOST_VERSION
-    if (-not [string]::IsNullOrWhiteSpace($v)) { return $v.Trim() }
+    if (-not [string]::IsNullOrWhiteSpace($v)) {
+        $trimmed = $v.Trim()
+        if ($trimmed -match '^[0-9A-Za-z][0-9A-Za-z._+\-]{0,63}$') { return $trimmed }
+    }
     return 'unknown'
 }
 
@@ -860,11 +871,6 @@ try {
         exit 0
     }
 
-    # FR-053: the hook has genuinely fired inside a real Specrew project - record the sanitized
-    # lifecycle receipt (SessionStart / Stop) as durable proof-of-fire. Fully fail-open; placed
-    # EARLY so a real fire is captured even if later catalog/state parsing degrades to a no-op.
-    Write-DispatcherHookHealthReceipt -HostKind $HostKind -EventName $Event -ProjectRoot $projectRoot
-
     # Host event JSON: -EventJson (tests/bindings) or stdin (Claude hooks).
     $rawEvent = $EventJson
     if ([string]::IsNullOrWhiteSpace($rawEvent) -and -not [Console]::IsInputRedirected) { $rawEvent = '' }
@@ -894,6 +900,20 @@ try {
     }
     $sessionId = Get-SanitizedSessionId -RawSessionId $rawSessionId
     $source = if ($null -ne $hostEvent -and $hostEvent.PSObject.Properties['source']) { [string]$hostEvent.source } else { $null }
+
+    # FR-053 (co-review finding 2): record the sanitized lifecycle receipt as durable proof-of-fire ONLY
+    # AFTER the host envelope validated as a GENUINE, well-formed lifecycle fire - a non-null host-shaped JSON
+    # object carrying a recognized host session id ($rawSessionId is populated ONLY from that host-shaped
+    # payload). A MALFORMED event already exited above via EVENT_PARSE; an EMPTY ($hostEvent = $null) or a
+    # NON-HOST-SHAPED payload (a JSON array/scalar, an empty object, or an object with no host session id) leaves
+    # $rawSessionId blank and therefore records NO receipt - so Resolve-SpecrewHookHealth can never read a
+    # false-green from a broken/incompatible hook payload (the finding-2 defect). Still placed EARLY (before
+    # catalog/state parsing) so a real fire is captured even if later parsing degrades, and STILL strictly
+    # fail-open: Write-DispatcherHookHealthReceipt swallows every failure and never blocks or alters dispatch (a
+    # malformed/empty event still dispatches/quiets exactly as before - it just records no receipt).
+    if (($null -ne $hostEvent) -and ($hostEvent -is [psobject]) -and (-not [string]::IsNullOrWhiteSpace($rawSessionId))) {
+        Write-DispatcherHookHealthReceipt -HostKind $HostKind -EventName $Event -ProjectRoot $projectRoot
+    }
 
     $hostRuntimeBinding = Resolve-DispatcherHostRuntimeBinding -Kind $HostKind -ProjectRoot $projectRoot -EncodedBinding $HostBinding
     $catalog = Get-DispatcherCatalog -ProjectRoot $projectRoot
@@ -937,6 +957,7 @@ try {
     $fragments = New-Object System.Collections.Generic.List[object]
     $failedSessionStartProviders = New-Object System.Collections.Generic.List[string]
     # FR-004/FR-015: stop-block reasons requested by Stop-class consumers (the packet-at-stop force-continue).
+    # specrew-self-ok: provenance comment citing the self-host feature that shaped this behavior
     # F-197 (maintainer-authorized 2026-06-24): ACCUMULATE across ALL providers in one Stop run rather than
     # last-writer-wins. The navigator (order 50) runs after conformance (order 40); if both emit a stop-block in
     # the same run, a single $stopBlockReason variable let the navigator's reason OVERWRITE conformance's,
@@ -1035,6 +1056,7 @@ try {
             # capture) silently never runs. Pass only the bounded clean args to handover. The transcript FILE route
             # (--transcript-path, extracted below) is the robust primary; tier-3 (last_assistant_message) stays
             # DEFERRED. Other inject providers (bootstrap needs session_id/source) still get --event-json.
+            # specrew-self-ok: provenance comment citing the self-host feature that shaped this behavior
             # F-197 (maintainer-authorized 2026-06-24): co-review-navigator joins the clean-args allow-list. It
             # binds Stop-class AND SessionStart, and on Codex Stop the same 10s-of-KB last_assistant_message in
             # --event-json blew the Windows command-line limit, so the navigator silently never launched. It
@@ -1108,6 +1130,7 @@ try {
             if ($stdoutTrim.StartsWith('<<<SPECREW-STOP-BLOCK>>>')) {
                 # FR-004/FR-015: a Stop-class consumer (conformance, navigator) requests a force-continue so the
                 # re-entry packet renders AT the stop. Accumulate the reason (do NOT add it as a normal injection
+                # specrew-self-ok: provenance comment citing the self-host feature that shaped this behavior
                 # fragment); F-197 merges all providers' reasons below so a later provider can't clobber an
                 # earlier one. Skip blanks and exact duplicates so the merge stays clean.
                 $thisReason = $stdoutTrim.Substring('<<<SPECREW-STOP-BLOCK>>>'.Length).Trim()
@@ -1152,6 +1175,7 @@ try {
     # fail-open: an unknown/none shape or any miss falls through to the normal (allow/inject) path. The provider
     # supplies its OWN consecutive-block cap for hosts lacking stop_hook_active (copilot/antigravity).
     if ($stopBlockReasons.Count -gt 0) {
+        # specrew-self-ok: provenance comment citing the self-host feature that shaped this behavior
         # F-197: MERGE every blocking provider's reason this run so a co-occurring conformance + navigator
         # stop-block surfaces BOTH directives (the navigator at order 50 used to overwrite conformance at
         # order 40). One blocking provider = a 1-element join = byte-identical to the prior single-reason path.

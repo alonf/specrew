@@ -55,6 +55,12 @@ $registry = @(
     @{ area = 'T036 FR-051 Codex untrusted-headless governance preflight - ready only when healthy, no ~/.codex mutation, actionable instruction, never silent-govern'; path = 'tests/continuous-co-review/unit/codex-headless-preflight.Tests.ps1'; kind = 'pester' }
     @{ area = 'T036 FR-051 Codex Stop-gate fail-open regression - dispatcher emits well-formed decision-block JSON; malformed/continue-shape/garbage rejected (never a silent bypass)'; path = 'tests/continuous-co-review/unit/codex-stop-gate-fail-open.Tests.ps1'; kind = 'pester' }
     @{ area = 'T039 FR-050/FR-053/FR-051 host-support/hook-health/evidence reconciliation - codex+copilot cli verified WITH provenance, cloud/Copilot-VS-Code unsupported, unknown->unverified, closed status never health-washes, verified tier != healthy health, doctor aggregator surfaces all three'; path = 'tests/continuous-co-review/unit/host-support-reconciliation.Tests.ps1'; kind = 'pester' }
+    # iter-005 co-review findings 2/3/4/5 fixed with PRODUCTION-PATH coverage (the prior suites exercised the helpers
+    # directly and missed the real firing paths): the REAL dispatcher records a receipt ONLY after the host envelope
+    # validates (F2, no false-green) and NEVER persists an ambient secret version (F3, collapses to 'unknown'); the
+    # resolver + Codex preflight default path treat 'unknown'/unobserved as unverified not healthy (F5); and the REAL
+    # `specrew hooks doctor` command surfaces tiers + hook-health + the Codex preflight without health-washing (F4).
+    @{ area = 'iter-005 findings 2/3/4/5 production-path honesty - dispatcher receipt-after-validation, no ambient secret in receipt, unknown-never-healthy default path, `specrew hooks doctor` surfacing'; path = 'tests/integration/f198-iter005-hook-health-production-path.tests.ps1'; kind = 'script' }
 )
 
 $failed = New-Object System.Collections.Generic.List[string]

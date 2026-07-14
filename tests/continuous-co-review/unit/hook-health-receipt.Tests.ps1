@@ -173,13 +173,18 @@ Describe 'F-198 T038 FR-053 hook-health receipts' {
             $parsed.surface | Should -Be 'cli'
         }
 
-        It 'records NO prompt, command-argument, or environment key even when the writer is fed argument-like text' {
+        It 'sanitizes to EXACTLY the six fields and flattens control chars even when fed multi-line text (structural safety only)' {
             $root = New-HhrTempRoot
-            # Feed a version string laced with argument-looking + secret-looking + multi-line content. The field-set
-            # allow-list means it can only land in observed_host_version (never as a new key), and the sanitizer
-            # flattens control chars - so no prompt/arg/env/secret KEY can ever appear.
-            $dirty = "codex-cli 0.144.1`n--dangerously-bypass-hook-trust`tSECRET=abc123 export TOKEN=zzz"
-            $w = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -ObservedHostVersion $dirty -TimestampUtc $script:BaseTime
+            # The WRITER's guarantee is STRUCTURAL: the field-set allow-list means caller text can only ever land in
+            # observed_host_version (NEVER as a new key), and the sanitizer flattens CR/LF/TAB. VALUE-level
+            # version-shape gating (collapsing a secret / argument-bearing / whitespace-laden value to 'unknown') is
+            # enforced at the UNTRUSTED ambient boundary - Get-DispatcherObservedHostVersion in the dispatcher,
+            # exercised by the F-198 iter-005 production-path suite (finding 3) - NOT here, because the writer cannot
+            # tell a legitimate spaced host version from a secret. So feed BENIGN multi-line content (no secret) and
+            # assert the structural guarantees only. (Previously this fed 'SECRET=... TOKEN=...' and accepted it
+            # surviving in the value - the finding-3 false claim that the writer was the secret boundary.)
+            $multiline = "1.2.3`nbuild`tmeta"
+            $w = Write-SpecrewHookHealthReceipt -ProjectRoot $root -HostName 'codex' -Event 'Stop' -ObservedHostVersion $multiline -TimestampUtc $script:BaseTime
             $raw = Get-Content -LiteralPath $w.Path -Raw
             $parsed = $raw | ConvertFrom-Json
             @($parsed.PSObject.Properties.Name).Count | Should -Be 6

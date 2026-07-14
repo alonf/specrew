@@ -109,13 +109,20 @@ function Format-SpecrewHostSupportDoctorReport {
 }
 
 # ------------------------------------------------------------------------------------------------------------
-# ONE-LINE SURFACING for the PROTECTED doctor surface (scripts/specrew-hooks.ps1) - DO NOT edit that file as
-# part of this module; this is the documented seam a maintainer may add at their discretion. Inside Show-Status,
-# after the existing status/diagnostic block, add:
+# PRODUCTION SURFACING (F-198 iter-005 finding 4 - RESOLVED). This aggregator is WIRED into a real user command:
 #
-#   . (Join-Path $PSScriptRoot 'internal/continuous-co-review/host-support-doctor.ps1')   # one-time dot-source
-#   Write-Host (Format-SpecrewHostSupportDoctorReport -ProjectRoot $projectPath)          # the one-line render
+#     specrew hooks doctor
 #
-# The dot-source is self-contained (this module loads its own two siblings fail-open), so the render is truly a
-# single added call. A non-protected status path may call Format-SpecrewHostSupportDoctorReport the same way.
+# routed by the non-protected CLI dispatcher (scripts/specrew.ps1, `hooks` arm) to the non-protected script
+# scripts/specrew-hooks-doctor.ps1, which dot-sources THIS module and calls Format-SpecrewHostSupportDoctorReport.
+# That seam was chosen because the natural home (`specrew hooks status` in scripts/specrew-hooks.ps1) and the
+# hook inspector (scripts/internal/specrew-hook-health.ps1) are BOTH F-184-protected surfaces (enforced by
+# tests/continuous-co-review/governance/protected-surface-guard.Tests.ps1), so editing them for surfacing was not
+# authorized. `specrew hooks doctor` reaches this render WITHOUT touching any protected file. The command path is
+# covered end-to-end by tests/integration/f198-iter005-hook-health-production-path.tests.ps1.
+#
+# Any OTHER non-protected status path may surface the same report with a single self-contained call (this module
+# loads its own two siblings fail-open):
+#   . (Join-Path $PSScriptRoot 'internal/continuous-co-review/host-support-doctor.ps1')
+#   Write-Host (Format-SpecrewHostSupportDoctorReport -ProjectRoot $projectPath)
 # ------------------------------------------------------------------------------------------------------------

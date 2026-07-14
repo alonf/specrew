@@ -355,6 +355,18 @@ function Resolve-SpecrewHookHealth {
         return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'unverified' -Reason ('adapter-contract-version drift (receipt={0}, current={1}); the receipt predates the current adapter contract - re-verify by firing the hook.' -f [int]$representative.adapter_contract_version, $currentContract) -Receipt $representative
     }
 
+    # 4b. UNOBSERVED HOST VERSION -> unverified (F-198 iter-005 finding 5). A receipt whose observed_host_version
+    #     is 'unknown' or blank proved the hook FIRED but could NOT attest WHICH host version fired it - so the
+    #     'host-version-matched' half of `healthy` is unverifiable. `healthy` REQUIRES a real, non-'unknown'
+    #     observed version. The dispatcher stamps 'unknown' whenever no launch path supplied
+    #     SPECREW_OBSERVED_HOST_VERSION, and BOTH the default doctor path and Test-SpecrewCodexHeadlessGovernanceReady
+    #     consult this resolver WITHOUT an expected version - so without this gate an 'unknown' receipt would fall
+    #     straight through to healthy -> ready, the exact false-green this fixes. Unobserved health is never healthy.
+    $observedVersion = ([string]$representative.observed_host_version).Trim()
+    if ([string]::IsNullOrWhiteSpace($observedVersion) -or $observedVersion -ieq 'unknown') {
+        return New-SpecrewHookHealthResult -HostName $hostToken -Surface $surfaceToken -Status 'unverified' -Reason "the hook fired but its receipt did not observe a real host version (observed_host_version is 'unknown'/unobserved); the host-version-matched half of healthy cannot be attested - re-fire with the launch path that stamps the observed host version (SPECREW_OBSERVED_HOST_VERSION). Unobserved health is never healthy." -Receipt $representative
+    }
+
     # 5. HOST-VERSION DRIFT -> unverified. The currently observed host version no longer matches the receipt.
     if (-not [string]::IsNullOrWhiteSpace($ExpectedHostVersion)) {
         if (([string]$representative.observed_host_version).Trim() -ne $ExpectedHostVersion.Trim()) {

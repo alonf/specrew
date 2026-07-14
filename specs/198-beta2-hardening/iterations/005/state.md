@@ -1,8 +1,8 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Last Completed Task**: T039 (integration + support-tier reconciliation + documentation — the receipt is now written from a REAL host fire by the dispatcher, the tiers + hook-health + Codex preflight are surfaced through a non-protected doctor aggregator, a reconciliation suite proves the tier model / health receipts / evidence stay mutually consistent, and the user-facing support-tier + Codex-trust docs shipped; T035-T038 previously committed, see below)
-**Tasks Remaining**: none (Iteration 005 complete). FR-054 (Codex plugin packaging) is NOT a Beta2 deliverable and is deferred to issue #3084 / Beta3.
+**Last Completed Task**: T039 (integration + reconciliation + docs; committed). **Iteration 005 is NOT yet complete** — the serialized co-review (2026-07-14) returned 5 blocking findings (two false-greens, an ambient-value leak, an unsurfaced doctor, and this task-plan drift); they are being fixed, then ONE clean re-review closes the iteration and releases T019 pieces 5-7. See the Co-review section at the bottom.
+**Tasks Remaining**: the 5 serialized-co-review blocking findings (in fix), then ONE clean re-review. **Iteration 005 completion + the release of T019 pieces 5-7 is PENDING that re-review** (see the Co-review section at the bottom). FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
 **In Progress**: none
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-14T00:00:00Z
@@ -155,6 +155,42 @@
      #3084 for Beta3. It does NOT reintroduce any false "Copilot VS Code / cloud gets
      CLI Stop-hook enforcement" claim. This `state.md` is the Iteration 005 execution
      record.
+
+## Serialized co-review (2026-07-14) + task-plan reconciliation
+
+The maintainer-directed ONE serialized co-review (signoff, auto-anchored to the feature
+merge-base, independent host) ran against the committed Iteration 005 slice and returned
+**ACTIONABLE — 5 blocking findings** (the digest-bound full-registry evidence was
+`command_succeeded` at reviewed digest `203e4b5a…` beforehand). Per the completion protocol,
+actionable findings are FIXED, not waved through:
+
+1. **Task-plan drift (this finding).** T039 was originally the CONDITIONAL Codex
+   plugin-packaging regression (FR-054), but the integration/reconciliation/docs work above
+   was executed + committed under the "T039" label, and T035-T039 were left unchecked.
+   **DECISION (2026-07-14 — authorizes the task-plan change):** Codex plugin installation is
+   NOT a Beta2 deliverable — Specrew deploys `~/.codex/hooks.json` (a hooks CONFIG per
+   `hosts/codex/host.psd1`), not a plugin — so the FR-054 plugin regression is DEFERRED to
+   issue #3084 and renumbered **T040**. **T039 is redefined to the integration +
+   reconciliation + docs work actually executed** (matching the commits). T035-T039 are now
+   checked in tasks.md.
+2. **Receipt-before-validation false-green (dispatcher).** The receipt was written before the
+   host event JSON was validated, so a malformed lifecycle event recorded a receipt that read
+   `healthy`. Fixed: the write moves AFTER host-envelope validation (dispatch stays fail-open)
+   + a production-path test.
+3. **Ambient value could enter the receipt (dispatcher).** `observed_host_version` copied
+   `SPECREW_OBSERVED_HOST_VERSION` verbatim (a secret could persist). Fixed: validated against
+   a strict version-shaped whitelist → else `unknown`; a production-path test proves a
+   secret-bearing value is not persisted.
+4. **Doctor aggregator not surfaced.** Loadable but no production command called it (only a
+   comment). Fixed: wired into an authorized production status/doctor seam + a test exercising
+   the real command path.
+5. **`unknown` version read healthy (hook-health).** With no expected version the resolver
+   returned `healthy`; the dispatcher stamps `unknown`. Fixed: `unknown`/unobserved →
+   `unverified`, never `healthy`/`ready`; production-default-path test.
+
+After the fixes commit and the full-registry evidence re-binds to the NEW committed digest,
+exactly ONE re-review runs. **Iteration 005 completion (and the release of T019 pieces 5-7)
+is PENDING that clean re-review** — it is NOT complete at the earlier `203e4b5a` digest.
 
 ## Notes
 
