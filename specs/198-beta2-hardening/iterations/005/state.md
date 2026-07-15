@@ -709,6 +709,47 @@ Focused suites 143/143 (+ the 2 probes) green on Windows; full registry + Linux 
 re-bound. **Round 2 of 2 remains AVAILABLE and is now spent against a stabilized, harness-pure, probe-backed
 slice.**
 
+### Fifteenth round — round 2 of 2, the FINAL authorized round (2026-07-14, run 20260714T235716273-eac6505c): NOT CLEAN — STOPPED for architectural reassessment (maintainer directive)
+
+Round 2 of 2 ran against the stabilized tree (ce3a317d) and returned **8 blocking findings**, none
+human-flagged. Per the maintainer's standing directive ("if the second round is not clean, stop and return for
+architectural reassessment; no further rounds are implicitly authorized"), the loop is STOPPED — NOT
+auto-fixed. All 8 verified real against disk before triage. They cluster into FIVE architectural themes, four
+of which map to the maintainer's stated refactor criteria:
+
+1. **FAIL-OPEN in the trust/authority machinery** (findings 1, 2, 7 — the dominant theme). The supervisor
+   lease gate proceeds=true on missing module / thrown gate / unreadable registry (worktree-review-detached-
+   entry.ps1 + Invoke-ContinuousCoReviewSupervisorLeaseGate); the navigator terminal promotion treats a run
+   as authoritative when the lease-authority helpers are absent or throw (continuous-co-review-navigator.ps1
+   ~649/661). A trust boundary that cannot PROVE authority must fail CLOSED (non-authoritative), never PERMIT.
+   The "legacy compatibility" / "load resilience" fallbacks I added are the wrong default for a gate. This is
+   maintainer criterion 5 (the core is not harness-pure — absence-of-proof is being treated as permission).
+2. **ATOMIC-MUTATION primitive applied inconsistently** (finding 6). Round 1's claim-by-rename fixed the
+   check-then-mutate race for ONE mutation (dead-owner reclaim); the SAME race remains on owner-only release,
+   the pending-tree update, and the owner handoff (all read-validate-then-Remove-Item/Set-Content by path). The
+   atomic compare-and-swap must be the mutation PRIMITIVE, applied uniformly — a consolidation (criteria 1/2),
+   not three more point-fixes.
+3. **Schema NOT enforced at the gate-evidence CONSUMER** (finding 8). The navigator accepts ANY parseable JSON
+   (even `{}`, illegal status, prose-wrapped) as `ok=true` and can promote a corrupt/substitute result as
+   clean gate evidence. The closed FindingsResult.v1 contract is validated at the PRODUCER but not at the
+   navigator CONSUMER; it must be validated there (Test-ReviewerContractObject + run_id match) with every
+   load/validation failure treated as non-authoritative.
+4. **PROBE completeness vs the verified claim** (findings 4, 5). The digest-bound probes prove 3 codex / 2
+   copilot scenarios, but the `verified` tiers claim MORE (FR-051: block-reason-reaches-next-turn, loop-guard
+   bound, malformed/fail-open visibility; FR-052: agentStop event-distinct firing + gating). Either EXTEND the
+   probes to cover the full claim and re-record, or NARROW the verified-tier claim to exactly what the probes
+   prove. (The reviewer correctly notes characterization prose has no evidence standing under this contract.)
+5. **Injected-clock provenance** (finding 3). The plan runner captures `Now` once and passes it to every
+   command, so multi-command plans record every command's started_at as the plan start, obscuring real
+   ordering/latency (FR-015 directly-observed-timestamps). The live clock must be read per command attempt (an
+   injected clock reserved behind a test-clock abstraction).
+
+**This is a genuine architecture pass, not a fix-round** — themes 1+2 touch the trust core (fail-closed
+authority + a uniform atomic-mutation primitive), which is exactly the lease/authority-model rework the
+earlier assessment flagged as the ~1-week upper bound. Returned to the maintainer for the reassessment
+decision; the round-state stays blocking (not resolved-against-disk) pending that decision. NO further rounds
+are authorized.
+
 ## Notes
 
 - **Verification (current — see the cross-platform evidence record).** The full F-198 honesty regression
