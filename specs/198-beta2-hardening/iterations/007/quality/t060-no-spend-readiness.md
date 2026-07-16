@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Task**: T060
-**Status**: in progress — discovery complete; Linux and macOS provisioning remain prerequisites
+**Status**: in progress — Windows and WSL Linux are provisioned; local-macOS package prepared but not executed
 **Evidence Date**: 2026-07-17
 **Target Commit**: `55cf338a6565ce4a2a846473da5f8f51b29e31fa`
 **Provider Spend**: zero
@@ -28,28 +28,53 @@ Windows is ready for a separately authorized live slot. This does not choose a h
 
 ## Linux Readiness
 
-Two WSL distributions contain complementary pieces but neither is currently live-ready as a complete production host.
+Ubuntu 24.04 is now ready for a separately authorized Copilot smoke. PowerShell `7.6.3` was installed from Microsoft's Ubuntu 24.04 product repository; native Copilot remains `GitHub Copilot CLI 1.0.27`. No model was invoked.
 
-| Distribution | PowerShell | Native harness | Runtime | Decision |
-| --- | --- | --- | --- | --- |
-| Ubuntu | `/usr/bin/pwsh` present | none. The inherited Windows Copilot shell wrapper exits `127` because native `node` is absent | cgroup v2 exists but its root is not user-writable | unavailable |
-| Ubuntu 24.04 | missing | native Copilot CLI `1.0.27`; local credential directory present | cgroup v2 exists but its root is not user-writable | provisionable, not ready |
+The temporary cgroup delegation uses a transient systemd service, not a persistent globally writable cgroup root:
 
-The minimal Linux prerequisite is to install PowerShell in Ubuntu 24.04 and create one bounded, run-owned cgroup-v2 root through a root bootstrap, then execute the review as the ordinary user and remove the cgroup root afterward. The Microsoft package source is configured, but installation and cgroup bootstrap were not authorized by the no-spend discovery grant and were not performed.
+```text
+wsl.exe -d Ubuntu-24.04 -u root -e systemd-run --quiet --wait --collect --pipe --uid=alon \
+  --property=Delegate=yes --property=Type=exec \
+  --setenv=HOME=/home/alon \
+  --setenv=PATH=/home/alon/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+  pwsh <bounded T060 command>
+```
+
+Inside that service, systemd owns the parent boundary and delegates its cgroup subtree to the ordinary user. The production no-spend preflight created and removed its bounded child cgroup and returned:
+
+```json
+{
+  "platform": "linux",
+  "user": "alon",
+  "pwsh": "7.6.3",
+  "copilot": "GitHub Copilot CLI 1.0.27.",
+  "harness_id": "copilot-cli-file-primary",
+  "harness_ok": true,
+  "harness_reason": "copilot-file-primary-ready",
+  "runtime_id": "linux-cgroup-v2-runtime",
+  "runtime_ok": true,
+  "runtime_reason": "linux-cgroup-v2-runtime-ready"
+}
+```
+
+The transient unit was collected after the command. A future live run still requires its own explicit provider slot and must use the same bounded systemd delegation.
 
 ## macOS Readiness
 
-- GitHub-hosted `macos-latest` is real and its production process-group runtime passed T059 twice.
-- GitHub's current macOS 15 and macOS 26 image inventories include PowerShell/Pester but do not list Claude, Codex, Copilot, Cursor, or Antigravity as installed tools.
-- Repository runner metadata reports zero self-hosted runners.
-- Repository Actions secret metadata contains no provider-specific credential such as `OPENAI_API_KEY`, `CODEX_ACCESS_TOKEN`, `ANTHROPIC_API_KEY`, or `COPILOT_GITHUB_TOKEN`. Secret values were never read.
+The hosted-provider workflow and GitHub Actions credential-secret plan are dropped. T059's successful GitHub-hosted macOS process-group/fake-provider proof remains deterministic evidence only.
 
-The minimal macOS prerequisite is therefore a bounded workflow that installs one cataloged CLI on the hosted runner and receives its credential through a dedicated GitHub Actions secret. The recommended allocation uses Codex on macOS so Claude remains available as the independent final reviewer. Installing the CLI, adding/using a credential, and invoking it all require authority beyond this discovery grant; the provider invocation still needs its own separate slot grant.
+T060 now supplies a local-machine package at `scripts/t060-local-macos-smoke.ps1`, a strict returned-package validator at `scripts/validate-t060-local-macos-evidence.ps1`, and exact setup/handoff instructions at `docs/operations/t060-local-macos-smoke.md`. The package:
 
-Official runner inventories consulted:
+- requires a clean detached clone at the handoff's exact 40-character commit;
+- verifies the public origin URL, canonical reviewed-state digest, Codex CLI/auth status, file-primary harness, and real macOS process-group runtime before spend;
+- separates `Preflight` from an explicitly acknowledged `Invoke` mode;
+- invokes the synchronous production campaign command at most once with the human-provided run ID and authorization reference;
+- labels evidence `local-machine`, preserves the append-only grant/reservation/spend/result store, and hashes the copied preflight/result/report/progress artifacts; and
+- accepts valid findings evidence without misreporting it as a clean smoke.
 
-- https://github.com/actions/runner-images/blob/main/images/macos/macos-15-Readme.md
-- https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md
+The package has not run on the Mac and therefore promotes no macOS live support. Its preflight and its later one-provider invocation are separate actions; the current grant authorizes neither provider use nor a retry.
+
+The five-case package/validator fixture suite passes valid-pass, valid-findings, tampered-result, false hosted-source/wrong-commit, and single-deliberate-call cases. The complete explicit F-198 registry passes all 55 suites in 603.2 seconds. These are deterministic no-provider tests, not a Mac execution claim.
 
 ## Proposed Five-Run Allocation
 
@@ -57,12 +82,12 @@ Official runner inventories consulted:
 | --- | --- | --- | --- | --- | --- |
 | 1 | T060 | Windows | Cursor | already installed, authenticated, and accepted by the bounded Windows shim resolver | not granted |
 | 2 | T060 | Windows | Antigravity | already installed, authenticated, native, and model-list probed | not granted |
-| 3 | T060 | Linux | Copilot | the only native Linux harness currently present; requires PowerShell/cgroup provisioning first | not granted |
-| 4 | T060 | macOS | Codex | officially installable on hosted macOS; same-host evidence is allowed but labeled weaker | not granted |
+| 3 | T060 | Linux | Copilot | native CLI plus PowerShell and transient delegated cgroup production preflight are ready | not granted |
+| 4 | T060 | macOS | Codex | run on the maintainer's local Mac; package/validator are prepared and source is labeled `local-machine` | not granted |
 | 5 | T061 | Windows | Claude | strongest installed reviewer independent of the Codex code-writer; reserved for exact-digest signoff | not granted |
 
 The sequence is proposed execution planning, not a grant. Each row requires a fresh explicit human authorization immediately before the provider invocation. A finding, invalid result, timeout, or other post-invocation failure stops the sequence; no hidden retry or automatic correction is allowed.
 
 ## Current Decision
 
-Do not spend a provider slot yet. Provision and re-run no-spend preflight for Linux and macOS first, commit the campaign execution surface, then request the first explicit provider slot against that exact committed digest.
+Do not spend a provider slot yet. Commit and push this provisioning surface, run the package's no-spend preflight on the local Mac, then request the first explicit provider slot against the exact committed digest. No hosted-macOS provider workflow or GitHub Actions credential secret is part of T060.

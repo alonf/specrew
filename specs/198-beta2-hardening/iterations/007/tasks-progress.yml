@@ -92,7 +92,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: "No-spend discovery complete: Windows is ready; Linux requires PowerShell/cgroup provisioning and hosted macOS requires a cataloged CLI plus a dedicated provider credential secret. No provider invocation is authorized."
+    blocked_reason: "Provisioning commit in progress: Windows is ready; Ubuntu 24.04 PowerShell plus transient delegated cgroup production preflight now pass; hosted-macOS provider workflow/secret are dropped and the pinned local-Mac Codex package/validator are prepared. The Mac no-spend preflight and every provider invocation still require their stated authorization; this grant authorizes zero provider slots."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"
