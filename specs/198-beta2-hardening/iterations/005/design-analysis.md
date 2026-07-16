@@ -392,5 +392,5 @@ The first slice is not release-complete and MUST NOT be represented as satisfyin
 - **Reviewed workshop checkpoint**: `0650461165dc5db4bc285b0dfa27e5d64fcb7f87` (the exact consolidated design shown at the gate).
 - **Decision verdict**: approved for plan with Option B.
 - **Verdict evidence**: the maintainer replied `1` on 2026-07-16 to the rendered three-option design gate where option 1 was **approved for plan with Option B**.
-- **Decision record commit**: pending the focused commit that first contains this verdict; it will be resolved before the pre-plan gate runs.
+- **Decision record commit**: `f39203e84f6f30bea9b233b118747e793e2e43a7` (the focused commit that first contains the verdict).
 - **Boundary status**: design-analysis to plan authorized; tasks and implementation remain unauthorized.
