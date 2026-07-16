@@ -8,7 +8,7 @@
 **Effective Review Class**: `strongest-available`
 **Overall Verdict**: `ready`
 **Approval Ref**: `—`
-**Reviewed By**: Planner
+**Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-16
 **Post-Implementation Verification**: pending (runtime evidence is recorded after implementation and independent review)
 
@@ -30,7 +30,7 @@
 
 | Condition | Status | Evidence | Decision |
 | --- | --- | --- | --- |
-| `condition-a-human-authorization` | `open-for-verdict` | Tasks authorization permits artifact authoring only. No fresh Iteration 006 **approved for before-implement** verdict exists. | Do not modify production code until the maintainer explicitly authorizes before-implement. |
+| `condition-a-human-authorization` | `met` | The maintainer selected option 1 on 2026-07-16: **approved for before-implement**, against task-boundary commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`. The stale Iteration 003 matcher entry is not used as evidence. | Iteration 006 T041–T050 implementation is authorized; Iteration 007 and scope expansion are not. |
 | `condition-b-traceability` | `met` | T041–T050 map to FR-057–FR-065 and SC-017–SC-021 in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/tasks.md; the after-tasks check must confirm both directions. | Any orphan or uncovered requirement blocks implementation readiness. |
 | `condition-c-fail-direction-review` | `met` | Every authority, schema, currentness, timeout, containment, and recovery uncertainty is specified as non-authoritative/fail-closed in the plan and tasks. | A fail-direction change reopens design and is recorded in the drift log before code proceeds. |
 | `condition-d-capacity-discipline` | `met` | 16/26 story_points including 1.0 verification and 1.5 independent-review/rework capacity. Core integrity work has no silent defer candidate. | A spill triggers a human replan; do not raise the cap or drop proof. |
@@ -48,7 +48,7 @@
 
 ## Notes
 
-- `Overall Verdict: ready` means planning-time hardening analysis is complete and ready for the human before-implement decision. It does not authorize implementation.
+- `Overall Verdict: ready` records completed planning-time hardening analysis. The separate fresh human verdict in `condition-a-human-authorization` now authorizes Iteration 006 implementation.
 - Runtime Evidence Status remains `pending-post-implementation` until T049/T050 evidence exists.
 - The generic quality resolver's non-applicable concurrency/recovery inference is overridden by the explicit campaign allowance, atomic claim, timeout, and crash-reconciliation requirements.
 - No concern is deferred and no new dependency is approved.

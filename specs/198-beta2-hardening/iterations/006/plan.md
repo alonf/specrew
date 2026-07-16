@@ -3,7 +3,7 @@
 **Schema**: v1
 **Spec**: [../../spec.md](../../spec.md)
 **Design Decision**: Option B, authorized at file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/gates/design-analysis-005.md
-**Status**: planning
+**Status**: executing
 **Capacity**: 16/26 story_points
 **Started**: 2026-07-16
 **Completed**:
@@ -37,7 +37,7 @@ Partial traceability above is a delivery boundary, not a completion claim. Beta2
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
-| T041 | Legacy-authority cutover seam and foundation map | FR-057, FR-065, SC-017 | US1 | 1.0 | Implementer | scripts/internal/continuous-co-review/**, specs/198-beta2-hardening/iterations/006/** | planned | — | — | — |
+| T041 | Legacy-authority cutover seam and foundation map | FR-057, FR-065, SC-017 | US1 | 1.0 | Implementer | scripts/internal/continuous-co-review/**, specs/198-beta2-hardening/iterations/006/** | in-progress | — | — | — |
 | T042 | Versioned campaign, run, invocation, result, and finding contracts | FR-057, FR-060, FR-061, SC-020 | US1 | 1.5 | Implementer | scripts/internal/continuous-co-review/reviewer-contracts.ps1, scripts/internal/continuous-co-review/review-identity-contracts.ps1, tests/continuous-co-review/** | planned | — | — | — |
 | T043 | Pure campaign allowance, reservation, spend, and rerun policy | FR-057, FR-058, FR-062, FR-063, SC-017, SC-021 | US1 | 2.0 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
 | T044 | Pure run state, result acceptance, currentness, and finding-lineage policy | FR-057, FR-059, FR-061, FR-062, SC-018, SC-020 | US1 | 2.0 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |

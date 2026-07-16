@@ -1,9 +1,11 @@
 # Iteration State: 006
 
 **Schema**: v1
-**Last Completed Task**: T041–T050 task artifact, bidirectional traceability PASS, and planning-time hardening gate authored and validated.
-**Tasks Remaining**: Human before-implement review/verdict; T041–T050 execution; independent review; runtime evidence reconciliation; retrospective and closeout.
-**In Progress**: implementation-readiness gate; production code remains unauthorized
+**Current Phase**: before-implement
+**Iteration Status**: executing
+**Last Completed Task**: Fresh Iteration 006 before-implement verdict recorded and hardening gate activated against the committed execution contract.
+**Tasks Remaining**: T041–T050 execution; independent review; runtime evidence reconciliation; retrospective and closeout.
+**In Progress**: T041 legacy-authority cutover seam and executable foundation map
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 
@@ -45,4 +47,12 @@ The later tasks sync repeated the same defect by matching Iteration 003 verdict 
 - **Hardening**: `Overall Verdict: ready`; all five canonical concerns plus concurrency, result/currentness, performance/spend, and scope/proof honesty are addressed at planning time.
 - **Quality focus**: fail-closed authority, immutable single-winner facts, exact target currentness, strict result ingress, crash recovery, test integrity, and truthful support claims.
 - **Team**: one serial Implementer; Claude is the selected independent Reviewer for T050.
-- **Authorization**: tasks are authorized; implementation is not. A fresh explicit **approved for before-implement** verdict is required.
+- **Authorization**: tasks and Iteration 006 implementation are authorized by the fresh verdict below. Iteration 007 and any scope expansion remain unauthorized.
+
+## Fresh Before-Implement Verdict
+
+- **Verdict**: approved for before-implement
+- **Evidence**: the maintainer replied `1` on 2026-07-16 to the explicit Iteration 006 readiness gate where option 1 was **approved for before-implement**.
+- **Authorized execution contract**: task-boundary commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`; current reviewed readiness/drift commit `1f2d17d58b829cf700f71bdd07f74c4032a35c54`.
+- **Scope**: execute T041–T050 for the 16 SP authority foundation. Five-harness/three-platform production completeness remains Iteration 007 and is not authorized here.
+- **Ledger note**: the stale global matcher had already reused Iteration 003 verdict `2d475962`; this fresh human evidence, not that old entry, is the authority for Iteration 006 implementation. The lifecycle ledger was not hand-edited.
