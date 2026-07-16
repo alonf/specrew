@@ -389,4 +389,8 @@ The first slice is not release-complete and MUST NOT be represented as satisfyin
 - **Reason**: The maintainer repeatedly prioritized simplicity and stability while requiring complete five-harness implementation, OS runtime control, exact target binding, reusable partial findings, explicit reruns/allowance, and performance awareness. Option B satisfies those needs without retaining the failed process-owned lease or adding a database/event framework.
 - **Modifications and instructions**: repository code remains the sole code-mutation authority; review repositories are the sole review-state mutation authority; all five harnesses and all three OS runtimes are Beta2 completeness requirements; timeout reason must be written after verified kill; findings feed retrospective evidence; production gate/artifact adapters remain Beta3; performance is P1 below stability/integrity; workshop intermediate stops suppress the generic packet.
 - **Workshop evidence baseline commit**: `b19f01df8691bc125bd656a954623601e6620b0f` (pre-reassessment implementation HEAD; not represented as the later design-decision commit).
-- **Boundary status**: design choice human-confirmed one lens at a time; no plan verdict or implementation authorization has been given.
+- **Reviewed workshop checkpoint**: `0650461165dc5db4bc285b0dfa27e5d64fcb7f87` (the exact consolidated design shown at the gate).
+- **Decision verdict**: approved for plan with Option B.
+- **Verdict evidence**: the maintainer replied `1` on 2026-07-16 to the rendered three-option design gate where option 1 was **approved for plan with Option B**.
+- **Decision record commit**: pending the focused commit that first contains this verdict; it will be resolved before the pre-plan gate runs.
+- **Boundary status**: design-analysis to plan authorized; tasks and implementation remain unauthorized.
