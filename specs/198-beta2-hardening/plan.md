@@ -182,6 +182,9 @@ iteration design-analyses.
 | 002 governance correctness core | FR-001..FR-007, FR-020..FR-023 (+ codex/copilot timeout measurements per clarify Q1) | 6–8 | ratchet paired tests; honesty-check paired tests; catalog resolution fixture |
 | 003 containment + round economy | FR-008..FR-019 | 6–8 | containment fixtures incl. false-kill guard; reviewer-can-still-see-it per exclusion |
 | 004 distribution + release | FR-024..FR-032, FR-035, FR-036, FR-040 | 5–6 | provider-shape init/update fixtures; seven-surface pre-tag check; v0.40.0-beta2 |
+| 005 local-host certification + failed-design evidence | FR-050..FR-054 | historical | T035–T039 delivered; final review exposed the superseded lease/authority architecture |
+| 006 authority foundation | FR-057..FR-065, SC-017..SC-021 (foundation portions) | 16 | pure campaign/run policy; immutable JSON facts; exact targets; strict terminal-result ingress; concurrency/recovery fixtures |
+| 007 production completeness | FR-060..FR-064, SC-019..SC-021 (completion portions) | 17 | five real harness adapters; three OS runtime adapters; progress/retro projection; five live smokes + three-OS matrix |
 
 ## Iteration 001 Detail (Option B)
 
@@ -225,9 +228,12 @@ git-extension dependency).
 
 ## Complexity Tracking
 
-No new dependency, no new service, no new concurrency. The bundle's
-complexity is breadth (four streams), governed by the iteration slicing;
-each iteration stays within the 5–8 SP cap with its own design-analysis.
+The original four-stream, 5–8 SP model remains historical context for
+Iterations 001–004. The Iteration 005 architectural reassessment adds no
+dependency or service, but it does introduce explicit multi-process claim,
+allowance, and recovery correctness. The replacement Beta2 work is therefore
+split into Iteration 006 (16 SP authority foundation) and Iteration 007
+(17 SP production completeness), both below the current 26 SP cap.
 
 ## Phase 0 Research
 
@@ -252,3 +258,18 @@ file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/review-diagrams
 Re-checked after Option B detailing: no host-conditional logic introduced;
 all volatility in data files; fail directions match I3; teaching texts
 carry doors not powers. PASS.
+
+## 2026-07-16 Architectural Reassessment Amendment
+
+The maintainer approved Option B after the Iteration 005 review rounds exposed
+fail-open authority, inconsistent mutation, unvalidated result consumption,
+overstated probe claims, and false timing provenance. The controlling design is
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/005/design-analysis.md.
+
+The amendment supersedes the Iteration 005 T035–T040 block as an implementation
+plan for the new requirements; it does not erase those tasks as historical
+evidence. Iteration 006 delivers the 16 SP authority foundation in
+file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/plan.md.
+Iteration 007 is reserved for the 17 SP five-harness/three-platform production
+completion slice. Beta2 release remains blocked until both slices pass their
+separate lifecycle gates and clean review.

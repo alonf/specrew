@@ -3,7 +3,7 @@
 **Schema**: v1
 **Last Completed Task**: Human-confirmed eight-lens architectural reassessment after the final authorized review returned eight blocking findings. The replacement `ReviewCampaign` / one-invocation `ReviewRun` architecture, immutable JSON coordination, five-harness contract, three-OS runtime control, result/recovery semantics, performance profile, component map, and implementation rules are durable. See file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/005/design-analysis.md.
 **Tasks Remaining**: Iteration 005 implementation is stopped and its mutable process-owned lease is superseded. The authoritative specification now contains FR-057–FR-065 and SC-017–SC-021. New capacity-compliant plan/tasks must replace, not extend, the T035–T040 compatibility slice; a new human plan/tasks verdict is required before implementation. Beta2 remains release-blocked until both replacement slices and all five live harness proofs complete. FR-054 remains deferred to issue #3084 / Beta3.
-**In Progress**: specification/design consolidation and execution replanning; no replacement implementation authorized
+**In Progress**: Iteration 006 authority-foundation planning; no task artifact or replacement implementation authorized
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
 **Updated**: 2026-07-16T03:45:00Z
 
@@ -754,6 +754,8 @@ The maintainer rejected further point-fixing and confirmed a replacement archite
 The former lease document is marked superseded and remains only as failure-history evidence. The replacement separates campaign allowance/re-review policy, one-invocation run state, active claim generations, terminal result applicability, target currentness, and OS/harness mechanisms. The existing Iteration 005 code may inform migration tests but carries no authority to claim the new requirements delivered.
 
 Capacity analysis estimates the replacement Beta2 slice at 30–34 SP and recommends two plan-gated implementation iterations (working baseline 16 SP + 17 SP). The first is an authority foundation and is not release-complete; the second supplies five-harness/three-platform production completeness. No implementation boundary has been crossed.
+
+The maintainer selected option 1 at the design gate on 2026-07-16, authorizing **approved for plan with Option B**. The durable gate is file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/gates/design-analysis-005.md and the first replacement plan is file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/plan.md. This authorization advances design-analysis to plan only; tasks and implementation remain unauthorized.
 
 ## Notes
 
