@@ -33,7 +33,7 @@ Replace the failed mutable process-owned lease with the authority foundation for
 
 Partial traceability above is a delivery boundary, not a completion claim. Beta2 remains release-blocked until Iteration 007 completes the five-harness and three-platform proof.
 
-## Planned Work
+## Tasks
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
@@ -60,6 +60,7 @@ Task identifiers reserve the next feature sequence after deferred T040. The sepa
 | Overcommit Threshold | 1.0 | No overcommit allowed |
 | Capacity Status | ok | 10 SP headroom; no cap change required |
 | Iteration Bounding | scope | The authority foundation is the coherent completion boundary |
+| Time Limit (hours) | n/a | Scope-bounded iteration; no time ceiling is configured |
 | Defer Strategy | manual | Core authority/integrity tasks are not silently deferrable |
 | Calibration Enabled | true | Retro records phase variance and review cost |
 
