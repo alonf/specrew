@@ -1,33 +1,51 @@
 # Iteration State: 007
 
 **Schema**: v1
-**Last Completed Task**: (none)
-**Tasks Remaining**: T030–T034b and T051–T061 are planned; task authoring and implementation are not yet authorized
-**In Progress**: (none)
-**Baseline Ref**: 93fb7d0294d50bfa62eeed4f34e41cf96ab5dc34
-**Updated**: 2026-07-16T13:14:07Z
+**Last Completed Task**: T030–T034b/T051–T061 task artifact, Iteration 003 reconciliation, bidirectional traceability, and planning-time hardening gate authored
+**Tasks Remaining**: Human before-implement verdict; T030–T034b and T051–T061 execution; five base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: implementation-readiness gate; production code remains unauthorized
+**Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
+**Updated**: 2026-07-16
 
-## Planning Summary
+## Scope
 
-- The maintainer authorized Iteration 007 planning after Iteration 006 closeout.
-- The plan is 20.25/26 SP and preserves 5.75 SP headroom.
-- Iteration 003 reconciliation is recorded in `iteration-003-reconciliation.md`: superseded T019 lease pieces are not rewired; T030–T032, T033, and the residual T034b are carried.
-- The exact Claude file-primary prompt contract and prose-file/raw-file regression pair delivered in Iteration 006 are subtracted. The remaining malformed-output matrix and all other production adapters stay in scope.
-- Five base paid provider invocations are planned, one per harness, with separate human authorization required for every slot. No rerun is preauthorized.
-- `DRIFT-198-I006-001` remains open. Fresh scoped verdicts govern this iteration; the stale global ledger entry is not used as authority. T033 is the explicit correction/invalidation vehicle.
-- Execution has not started. Plan approval authorizes task decomposition only; tasks and before-implement verdicts remain required.
+Iteration 007 completes the five-harness/three-operating-system production code-review architecture defined by file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/007/plan.md. It also carries T030–T033 and the T034b residual under file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/007/iteration-003-reconciliation.md.
+
+FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/injection dependency remains an explicit open Beta2 item requiring its own replanned slice before T029 or feature closeout.
+
+## Fresh Tasks Verdict
+
+- **Verdict**: approved for tasks
+- **Evidence**: on 2026-07-16 the maintainer explicitly wrote `approved for tasks — authorize task authoring from plan commit 9fd802b7`, followed by three binding instructions.
+- **Authorized plan**: commit `9fd802b78c9a977fcbbe5651772af800d62fb45f`
+- **Scope**: author task/readiness artifacts, record the gate-episode drift addendum, and run traceability. Implementation remains unauthorized until a separate `approved for before-implement` verdict.
+- **Instruction 1**: add the stale-session pending-verdict fabrication, divergent packet numbering, and unsafe bare-number alias evidence to `DRIFT-198-I006-001` and T033.
+- **Instruction 2**: five paid slots are the best-case floor, not expected cost; every base or correction invocation requires separate human authorization.
+- **Instruction 3**: keep FR-048/FR-049/SC-015 open outside Iteration 007 and block feature closeout from treating it as covered.
+- **Ledger note**: the global matcher remains unfit as scoped authority under `DRIFT-198-I006-001`. This explicit verdict and its plan commit—not stale `session_state`, option numbering, or a numeric alias—authorize task authoring.
+
+## Readiness Summary
+
+- **Plan/capacity**: 20.25/26 story_points; 16 tasks; 5.75 SP headroom.
+- **Traceability**: PASS; 16/16 tasks have valid refs and metadata, 25/25 scoped requirements have task coverage, and there are no scoped orphans/uncovered requirements.
+- **Hardening**: `Overall Verdict: ready`; human implementation authorization remains open. Security, failure semantics, retry/spend, three-OS runtime control, strict ingress, capture/ledger integrity, currentness, recovery, and truthful proof have named controls/tasks.
+- **Provider budget**: five successful-path slots, one per harness. T061 corrections/reruns are outside that floor and stop for a new explicit slot each time.
+- **Open Beta2 item**: FR-048/FR-049/SC-015 requires a separate future iteration plan/tasks/review and blocks T029/feature closeout.
+- **Team**: one serial Implementer; the remaining fifth harness supplies the independent T061 Reviewer result.
+- **Authorization**: tasks/readiness artifacts are authorized; implementation is not.
 
 ## Current Production Truth
 
 - Checked-in review authority mode remains `legacy`.
-- Iteration 006 campaign/run core, immutable repositories, exact Git target, strict ingress, fake runtime/harness composition, and bounded Claude file-primary adapter exist and are independently reviewed.
-- Five-harness/three-OS production completeness, live smokes, workshop-intermediate Stop, progress/retro projection, capture-integrity carry work, and final campaign cutover remain unimplemented/unproven.
+- Iteration 006 foundation and Claude file-primary slice are delivered and independently reviewed.
+- T019 mutable lease/navigator/stamping/pruning mechanisms are not executable Iteration 007 work.
+- Production command wiring, capture/ledger work, workshop Stop, remaining harnesses, three runtime ports, progress/retro, three-OS matrix, five live smokes, and campaign cutover remain pending.
 
 ## Notes
 
-- Update this file after each task completes.
-- Keep task identifiers aligned to plan.md and the later feature task artifact.
-- Do not edit Iteration 003 state/progress to simulate completion; use the reconciliation and later task ownership move.
+- Update this file and tasks-progress.yml after each task completes.
+- Do not edit Iteration 003 state/progress to simulate the ownership move.
+- Until T033 is verified, use explicit scoped verdict phrases and boundary commits; never treat a bare number as authorization.
 
 <!-- >>> specrew-managed escalation-state >>> -->
 ## Repair Escalation
