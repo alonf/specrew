@@ -5,7 +5,7 @@
 ## Summary
 
 **Total drift events**: 3
-**Resolution state**: The maintainer supplied fresh Iteration 006 tasks and before-implement verdicts, reconciled the T050 ownership records, and explicitly authorized one Claude file-primary prompt-contract slice to move from Iteration 007 into T050. The canonical cross-iteration matcher defect remains unresolved and is not treated as authority.
+**Resolution state**: The maintainer supplied fresh Iteration 006 tasks and before-implement verdicts, reconciled the T050 ownership records, and explicitly authorized one Claude file-primary prompt-contract slice to move from Iteration 007 into T050. Iteration 007 T033 now provides the scoped append-only correction door and records both stale uses; the underlying legacy matcher/backlog question remains visible and is not treated as authority.
 **Specification drift**: Boundary authorization currently matches only the boundary-name pair and treated an old Iteration 003 `plan -> tasks` verdict as authorization for Iteration 006, contrary to the one-approval/one-crossing contract. Separately, approved T042/T046 owner globs named placeholder files rather than the delivered files. Finally, the v2/v5 malformed Claude outputs justified an explicitly authorized cross-iteration delivery change: the Claude file-primary candidate contract and its deterministic pair move into T050, while the remaining adapter matrix stays Iteration 007 scope.
 
 ## Events
@@ -31,7 +31,7 @@ This addendum is part of the open `DRIFT-198-I006-001` evidence, not a new drift
 
 - **Concrete evidence**: file:///C:/Dev/specrew-beta2-hardening/.specrew/start-context.json records Iteration 006 session commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`, while the matched authorization history entries predate this iteration and cite Iteration 003 commits `138a74da74cd8055b22a36200917a13e2e7b1bea` and `2d47596202086397be65a2a2c305dd56138b501e`.
 - **Resolution**: human-decision
-- **Resolution detail**: The maintainer supplied **approved for tasks** against plan commit `169599ef7b7accfe92ccf37e9cfe96182f1d52f4`, then separately supplied **approved for before-implement** against task-boundary commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`. Those fresh decisions authorize the current artifact and implementation stages respectively. The matcher defect remains visible and is not point-fixed inside the review-orchestration foundation without a scoped plan amendment.
+- **Resolution detail**: The maintainer supplied **approved for tasks** against plan commit `169599ef7b7accfe92ccf37e9cfe96182f1d52f4`, then separately supplied **approved for before-implement** against task-boundary commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`. Those fresh decisions authorize the current artifact and implementation stages respectively. Iteration 007 T033 later appended corrections `correction-73ccb3f6407aabe32dadc7781e2acd3513ce4f466cad2f0def1a05c2b124eca9` and `correction-6283109f289f3491db9baa23a5e9b8cb9619adfb9c490b753d70e98d9824fcde` for the two exact Iteration 006 commit/tree crossings while retaining the original Iteration 003 verdicts. The underlying legacy matcher question remains visible for scoped amendment/backlog treatment; T061 still independently verifies the final tree.
 
 ### DRIFT-198-I006-002 — T042/T046 ownership records named placeholder files instead of delivered components
 

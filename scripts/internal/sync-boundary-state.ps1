@@ -565,6 +565,10 @@ function Sync-SpecrewPendingVerdictStopArtifact {
         Boundary          = $null
         ApprovalPhrase    = $null
         Marker            = $null
+        CrossingId        = $null
+        BoundaryCommitHash = $null
+        ArtifactStateKind = $null
+        ArtifactStateId   = $null
     }
 
     if ($null -eq $pendingState -or -not [bool]$pendingState.HasPendingVerdict) {
@@ -588,7 +592,10 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $marker = ('<!-- SPECREW-VERDICT-BOUNDARY: {0} -->' -f $boundary)
     $lastAuthorized = if ([string]::IsNullOrWhiteSpace([string]$pendingState.LastAuthorizedBoundary)) { '(none recorded yet)' } else { [string]$pendingState.LastAuthorizedBoundary }
     $featureRef = if ([string]::IsNullOrWhiteSpace([string]$SessionState.feature_ref)) { '(none)' } else { [string]$SessionState.feature_ref }
-    $authCommit = if ([string]::IsNullOrWhiteSpace([string]$SessionState.auth_commit_hash)) { '(none)' } else { [string]$SessionState.auth_commit_hash }
+    $boundaryCommit = if ([string]::IsNullOrWhiteSpace([string]$pendingState.BoundaryCommitHash)) { '(none)' } else { [string]$pendingState.BoundaryCommitHash }
+    $crossingId = if ([string]::IsNullOrWhiteSpace([string]$pendingState.CrossingId)) { '(legacy-unscoped)' } else { [string]$pendingState.CrossingId }
+    $artifactStateKind = if ([string]::IsNullOrWhiteSpace([string]$pendingState.ArtifactStateKind)) { '(none)' } else { [string]$pendingState.ArtifactStateKind }
+    $artifactStateId = if ([string]::IsNullOrWhiteSpace([string]$pendingState.ArtifactStateId)) { '(none)' } else { [string]$pendingState.ArtifactStateId }
     $workingBoundary = if ([string]::IsNullOrWhiteSpace([string]$pendingState.WorkingBoundary)) { [string]$SessionState.boundary_type } else { [string]$pendingState.WorkingBoundary }
     $recordedAt = if ([string]::IsNullOrWhiteSpace([string]$SessionState.recorded_at)) { (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') } else { [string]$SessionState.recorded_at }
 
@@ -607,7 +614,9 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $lines.Add(('Working boundary: {0}' -f $workingBoundary)) | Out-Null
     $lines.Add(('Last authorized boundary: {0}' -f $lastAuthorized)) | Out-Null
     $lines.Add(('Feature: {0}' -f $featureRef)) | Out-Null
-    $lines.Add(('Auth commit hash: {0}' -f $authCommit)) | Out-Null
+    $lines.Add(('Crossing ID: {0}' -f $crossingId)) | Out-Null
+    $lines.Add(('Boundary commit hash: {0}' -f $boundaryCommit)) | Out-Null
+    $lines.Add(('Artifact state: {0} {1}' -f $artifactStateKind, $artifactStateId)) | Out-Null
     $lines.Add(('Multi-boundary gap: {0}' -f ([bool]$pendingState.IsMultiBoundaryGap).ToString().ToLowerInvariant())) | Out-Null
     $lines.Add(('Recorded at: {0}' -f $recordedAt)) | Out-Null
     $lines.Add('') | Out-Null
@@ -619,6 +628,10 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $result.Boundary = $boundary
     $result.ApprovalPhrase = $approvalPhrase
     $result.Marker = $marker
+    $result.CrossingId = $pendingState.CrossingId
+    $result.BoundaryCommitHash = $pendingState.BoundaryCommitHash
+    $result.ArtifactStateKind = $pendingState.ArtifactStateKind
+    $result.ArtifactStateId = $pendingState.ArtifactStateId
     return $result
 }
 
@@ -1623,6 +1636,11 @@ function Invoke-SpecrewBoundaryStateSync {
     Update-SpecrewStartContext -Path $paths.ContextPath -SessionState $sessionState
     $pendingVerdictStop = $null
     try {
+        Set-SpecrewPendingBoundaryCrossingScope `
+            -ProjectRoot $paths.ProjectRoot `
+            -WorkingBoundary $BoundaryType `
+            -BoundaryCommitHash $effectiveAuthCommitHash `
+            -RecordedAt $sessionState.recorded_at | Out-Null
         $pendingVerdictStop = Sync-SpecrewPendingVerdictStopArtifact -ProjectRoot $paths.ProjectRoot -SessionState $sessionState
     }
     catch {
@@ -1633,6 +1651,10 @@ function Invoke-SpecrewBoundaryStateSync {
             Boundary          = $null
             ApprovalPhrase    = $null
             Marker            = $null
+            CrossingId        = $null
+            BoundaryCommitHash = $null
+            ArtifactStateKind = $null
+            ArtifactStateId   = $null
         }
     }
     Update-SpecrewMarkdownStateFile -Path $paths.IdentityPath -SessionState $sessionState -DefaultBody (Get-SpecrewIdentityBody -SessionState $sessionState) -AdditionalFrontmatter $identityAdditionalFrontmatter -PreferredBody $IdentityBody -UsePreferredBody:(-not [string]::IsNullOrWhiteSpace($IdentityBody)) -SchemaVersion 'v1'
@@ -1760,5 +1782,9 @@ function Invoke-SpecrewBoundaryStateSync {
         pending_verdict_boundary = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.Boundary } else { $null }
         pending_verdict_approval_phrase = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.ApprovalPhrase } else { $null }
         pending_verdict_marker = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.Marker } else { $null }
+        pending_verdict_crossing_id = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.CrossingId } else { $null }
+        pending_verdict_boundary_commit_hash = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.BoundaryCommitHash } else { $null }
+        pending_verdict_artifact_state_kind = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.ArtifactStateKind } else { $null }
+        pending_verdict_artifact_state_id = if ($null -ne $pendingVerdictStop) { $pendingVerdictStop.ArtifactStateId } else { $null }
     }
 }

@@ -121,6 +121,11 @@ function Assert-ArtifactContains {
     }
 
     $content = Get-Content -LiteralPath $artifactPath -Raw -Encoding UTF8
+    $context = Get-Content -LiteralPath (Join-Path $ProjectRoot '.specrew\start-context.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    $scope = $context.boundary_enforcement.pending_crossing
+    if ($null -eq $scope -or [string]$scope.crossing_id -notmatch '^crossing-[0-9a-f]{64}$') {
+        Fail 'Pending-verdict artifact was written without a stable scoped crossing identity.'
+    }
     foreach ($expected in @(
         "Boundary to ask for: $ExpectedBoundary",
         "Human approval phrase: $ExpectedApproval",
@@ -133,6 +138,21 @@ function Assert-ArtifactContains {
         }
         if (-not [string]::IsNullOrWhiteSpace($SyncOutput) -and $SyncOutput -notmatch [regex]::Escape($expected)) {
             Fail ("Boundary sync output did not surface expected text '{0}'. Output:`n{1}" -f $expected, $SyncOutput)
+        }
+    }
+
+    foreach ($expectedScopedLine in @(
+        "Crossing ID: $($scope.crossing_id)",
+        "Boundary commit hash: $($scope.boundary_commit_hash)",
+        "Artifact state: git-tree $($scope.artifact_state_id)"
+    )) {
+        if ($content -notmatch [regex]::Escape($expectedScopedLine)) {
+            Fail ("Pending-verdict artifact did not contain scoped identity '{0}'. Content:`n{1}" -f $expectedScopedLine, $content)
+        }
+    }
+    foreach ($expectedScopedValue in @($scope.crossing_id, $scope.boundary_commit_hash, $scope.artifact_state_id)) {
+        if (-not [string]::IsNullOrWhiteSpace($SyncOutput) -and $SyncOutput -notmatch [regex]::Escape([string]$expectedScopedValue)) {
+            Fail ("Boundary sync output did not expose scoped identity '{0}'. Output:`n{1}" -f $expectedScopedValue, $SyncOutput)
         }
     }
 

@@ -23,9 +23,9 @@ tasks:
     blocked_reason: ""
   T033:
     title: "Append-only ledger correction/invalidation door and effective-state readers"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-16T18:27:24+03:00"
-    completed_at: ""
+    completed_at: "2026-07-16T19:13:58+03:00"
     blocked_reason: ""
   T034b:
     title: "Strict design-context final campaign-path regression and live compatibility proof"
@@ -35,8 +35,8 @@ tasks:
     blocked_reason: ""
   T051:
     title: "Public campaign command, one-way authority cutover, and campaign-aware verdict gate"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-16T19:13:58+03:00"
     completed_at: ""
     blocked_reason: ""
   T052:

@@ -536,7 +536,10 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
 
         $contextPath = Join-Path $root '.specrew\start-context.json'
         $featureRef = '(none)'
-        $authCommit = '(none)'
+        $boundaryCommit = if ([string]::IsNullOrWhiteSpace([string]$pending.BoundaryCommitHash)) { '(none)' } else { [string]$pending.BoundaryCommitHash }
+        $crossingId = if ([string]::IsNullOrWhiteSpace([string]$pending.CrossingId)) { '(legacy-unscoped)' } else { [string]$pending.CrossingId }
+        $artifactStateKind = if ([string]::IsNullOrWhiteSpace([string]$pending.ArtifactStateKind)) { '(none)' } else { [string]$pending.ArtifactStateKind }
+        $artifactStateId = if ([string]::IsNullOrWhiteSpace([string]$pending.ArtifactStateId)) { '(none)' } else { [string]$pending.ArtifactStateId }
         $workingBoundary = [string]$pending.WorkingBoundary
         if (Test-Path -LiteralPath $contextPath -PathType Leaf) {
             try {
@@ -544,9 +547,7 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
                 $ss = $ctx.PSObject.Properties['session_state'].Value
                 if ($ss) {
                     $featureValue = $ss.PSObject.Properties['feature_ref'].Value
-                    $commitValue = $ss.PSObject.Properties['auth_commit_hash'].Value
                     if (-not [string]::IsNullOrWhiteSpace([string]$featureValue)) { $featureRef = [string]$featureValue }
-                    if (-not [string]::IsNullOrWhiteSpace([string]$commitValue)) { $authCommit = [string]$commitValue }
                 }
                 # working boundary via the CANONICAL v1/v2-tolerant reader (was session_state.boundary_type only,
                 # which read $null on a v2 start-context). $pending.WorkingBoundary still takes precedence above.
@@ -579,7 +580,9 @@ function Sync-SpecrewPendingVerdictArtifactAfterAuthorization {
             ('Working boundary: {0}' -f $workingBoundary),
             ('Last authorized boundary: {0}' -f $lastAuthorized),
             ('Feature: {0}' -f $featureRef),
-            ('Auth commit hash: {0}' -f $authCommit),
+            ('Crossing ID: {0}' -f $crossingId),
+            ('Boundary commit hash: {0}' -f $boundaryCommit),
+            ('Artifact state: {0} {1}' -f $artifactStateKind, $artifactStateId),
             ('Multi-boundary gap: {0}' -f ([bool]$pending.IsMultiBoundaryGap).ToString().ToLowerInvariant()),
             ('Recorded at: {0}' -f $NowUtc),
             '',
@@ -732,9 +735,16 @@ function Update-SpecrewRollingHandover {
             # human-legible proof from verdict_history[-1].
             $be = & $getProp $ctx 'boundary_enforcement'
             if ($null -ne $be) {
-                $lab = & $getProp $be 'last_authorized_boundary'
+                $effectiveBe = $be
+                if (Get-Command -Name 'Get-SpecrewBoundaryEnforcementState' -ErrorAction SilentlyContinue) {
+                    $enforcementRead = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+                    if ($null -ne $enforcementRead.EffectiveState -and $enforcementRead.Issues.Count -eq 0) {
+                        $effectiveBe = [pscustomobject]$enforcementRead.EffectiveState
+                    }
+                }
+                $lab = & $getProp $effectiveBe 'last_authorized_boundary'
                 if (-not [string]::IsNullOrWhiteSpace($lab)) { $lastAuthBoundary = [string]$lab }
-                $vhArr = @(& $getProp $be 'verdict_history')
+                $vhArr = @(& $getProp $effectiveBe 'verdict_history')
                 if ($vhArr.Count -gt 0) {
                     $lastV = $vhArr[$vhArr.Count - 1]
                     $vtext = & $getProp $lastV 'verdict_text'

@@ -1636,7 +1636,12 @@ function Test-ApprovedFeatureStatusVerdictEvidence {
     $hasVerdictHistoryEvidence = $false
     $enforcement = $context.PSObject.Properties['boundary_enforcement']
     if ($null -ne $enforcement -and $null -ne $enforcement.Value -and $null -ne $enforcement.Value.PSObject.Properties['verdict_history']) {
-        $hasVerdictHistoryEvidence = @($enforcement.Value.verdict_history | Where-Object {
+        $effectiveVerdictHistory = @()
+        $enforcementRead = Get-SpecrewBoundaryEnforcementState -ProjectRoot $ProjectRoot
+        if ($null -ne $enforcementRead.EffectiveState -and $enforcementRead.Issues.Count -eq 0) {
+            $effectiveVerdictHistory = @($enforcementRead.EffectiveState['verdict_history'])
+        }
+        $hasVerdictHistoryEvidence = @($effectiveVerdictHistory | Where-Object {
                 $null -ne $_ -and
                 $null -ne $_.PSObject.Properties['authorizing_human'] -and
                 -not [string]::IsNullOrWhiteSpace([string]$_.PSObject.Properties['authorizing_human'].Value) -and

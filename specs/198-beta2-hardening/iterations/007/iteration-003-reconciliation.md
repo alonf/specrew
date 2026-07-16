@@ -26,14 +26,14 @@ No Iteration 007 task may import a legacy lease/result as campaign authority, mu
 | T030 | planned/pending | Carry at 0.75 SP | Machinery/hook turns cannot become human verdict evidence. |
 | T031 | planned/pending | Carry at 0.5 SP | Tokenizer, temporal ordering, and cursor invariants remain live capture-integrity work. |
 | T032 | planned/pending | Carry at 0.5 SP | Exact 2026-07-11 fabrication sequence remains the deterministic acceptance fixture. |
-| T033 | planned/pending | Promote at 1.0 SP | Append-only correction/invalidation is the explicit IA-006-04 vehicle for `DRIFT-198-I006-001`; no quiet matcher point-fix. |
+| T033 | done; independent T061 verification pending | Delivered at 1.0 SP | Append-only correction/invalidation is the explicit IA-006-04 vehicle for `DRIFT-198-I006-001`; two historical misuse episodes are corrected by exact entry/crossing identity, raw history is retained, and no quiet matcher point-fix was made. |
 | T034b | strict-resolution code integrated; final live compatibility pending | Carry only the 0.5 SP residual | Do not cherry-pick again. Prove the landed physical-containment and strict design-context behavior through the production campaign adapters/live path. |
 
 The source Iteration 003 plan/state/progress files remain historical execution records. Iteration 007 does not rewrite them during planning; the feature-level task artifact will record the ownership move after the plan-to-tasks verdict.
 
 ## Open Authority Constraint
 
-`DRIFT-198-I006-001` remains open until T033 is implemented and independently verified. Iteration 007 boundary decisions must use fresh scoped human verdicts and the boundary commit being reviewed; the stale global ledger entry is not authority. T033 may append a correction/invalidation fact and make effective-state readers honor it, but it may not edit or delete prior events and may not conceal the underlying matcher/backlog question.
+`DRIFT-198-I006-001` has its T033 scoped correction disposition and local verification; T061 still must independently verify the final tree before iteration signoff. Iteration 007 boundary decisions use fresh scoped human verdicts and the boundary commit/tree being reviewed; stale ledger entries are not authority. The raw events remain immutable, and the underlying legacy matcher/backlog question remains visible rather than receiving a quiet point-fix.
 
 ## Release Boundary
 
