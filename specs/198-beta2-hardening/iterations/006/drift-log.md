@@ -4,9 +4,9 @@
 
 ## Summary
 
-**Total drift events**: 2
-**Resolution state**: The maintainer supplied fresh Iteration 006 tasks and before-implement verdicts against the current plan/task artifacts. The T050 ownership-record drift is reconciled to the delivered files; the canonical cross-iteration matcher defect remains unresolved and is not treated as authority.
-**Specification drift**: Boundary authorization currently matches only the boundary-name pair and treated an old Iteration 003 `plan -> tasks` verdict as authorization for Iteration 006, contrary to the one-approval/one-crossing contract. Separately, approved T042/T046 owner globs named placeholder files rather than the files that delivered FR-057/FR-059; this second drift is corrected below without changing the specification or implementation scope.
+**Total drift events**: 3
+**Resolution state**: The maintainer supplied fresh Iteration 006 tasks and before-implement verdicts, reconciled the T050 ownership records, and explicitly authorized one Claude file-primary prompt-contract slice to move from Iteration 007 into T050. The canonical cross-iteration matcher defect remains unresolved and is not treated as authority.
+**Specification drift**: Boundary authorization currently matches only the boundary-name pair and treated an old Iteration 003 `plan -> tasks` verdict as authorization for Iteration 006, contrary to the one-approval/one-crossing contract. Separately, approved T042/T046 owner globs named placeholder files rather than the delivered files. Finally, the v2/v5 malformed Claude outputs justified an explicitly authorized cross-iteration delivery change: the Claude file-primary candidate contract and its deterministic pair move into T050, while the remaining adapter matrix stays Iteration 007 scope.
 
 ## Events
 
@@ -33,6 +33,18 @@
 - **Concrete evidence**: Closed contracts are implemented by file:///C:/Dev/specrew-beta2-hardening/scripts/internal/continuous-co-review/review-authority-core.ps1; the production and fixture target port is implemented by file:///C:/Dev/specrew-beta2-hardening/scripts/internal/continuous-co-review/review-target-port.ps1. The prior owner-glob text is preserved in Git history and in the immutable reviewer result.
 - **Resolution**: human-decision
 - **Resolution detail**: T050's authorized correction scope reconciles file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/plan.md and file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/tasks.md to those delivered components. No requirement, scope, effort, or implementation behavior changes.
+
+### DRIFT-198-I006-003 — Claude file-primary prompt contract pulled forward from Iteration 007
+
+- **Type**: violation
+- **Severity**: minor
+- **Detected at**: 2026-07-16
+- **Task reference**: T050 after `run-i006-t050-claude-v5` repeated the v2 prose-wrapped-JSON failure
+- **Requirement citation**: FR-060 requires one synchronous process/file contract in which reviewers write candidate output in staging and malformed output fails closed; FR-064 requires deterministic malformed-output fixtures for every adapter. The approved Iteration 006 plan originally deferred real harness adapters and the full malformed-output adapter matrix to Iteration 007.
+- **Divergence**: The foundation contract and strict ingress behaved correctly, but Claude twice returned prose-wrapped JSON on stdout. Closing T050 with another run now requires a production Claude delivery seam that writes raw JSON directly to the controller candidate path plus the exact negative/positive regression pair. Delivering that slice in Iteration 006 changes the approved iteration boundary even though it remains within the authoritative FR-060/FR-064 feature scope.
+- **Concrete evidence**: v5's immutable result is file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v5/result.json. The pulled-forward adapter is file:///C:/Dev/specrew-beta2-hardening/scripts/internal/continuous-co-review/review-claude-harness-port.ps1 and the deterministic pair is in file:///C:/Dev/specrew-beta2-hardening/tests/continuous-co-review/unit/review-campaign-orchestrator.Tests.ps1.
+- **Resolution**: human-decision
+- **Resolution detail**: The maintainer explicitly authorized this bounded pull-forward under T050: file-primary Claude candidate delivery, strict no-salvage ingress, and the two real-evidence-modeled regressions. Iteration 007 must subtract this exact slice. Its full malformed-output fixture matrix, remaining Claude adapter hardening, the other four harness adapters, production runtimes, live-smoke matrix, and cross-platform proof remain deferred and unauthorized here.
 
 ## Planning Tool Note
 

@@ -6,6 +6,7 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         $script:RepoRoot = (Resolve-Path "$PSScriptRoot/../../..").Path
         $script:OrchestratorPath = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1'
         . $script:OrchestratorPath
+        . (Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/review-claude-harness-port.ps1')
 
         function script:New-OrchestratorCandidate {
             param([string]$Run = 'run-one', [string]$Digest = 'digest-one', [string]$Completion = 'complete', [string]$Verdict = 'pass', [object[]]$Findings = @())
@@ -43,6 +44,31 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
             [IO.File]::WriteAllText((Join-Path $Path 'app.txt'), 'v1')
             & git -C $Path -c user.name=orchestrator-test -c user.email=test@example.invalid add -A 2>&1 | Out-Null
             & git -C $Path -c user.name=orchestrator-test -c user.email=test@example.invalid commit -qm initial 2>&1 | Out-Null
+        }
+        function script:New-ClaudeFilePrimaryFixtureHarness {
+            param(
+                [Parameter(Mandatory)]$FileCandidate,
+                [Parameter(Mandatory)][string]$Stdout
+            )
+            $promptPath = Join-Path $TestDrive ('claude-file-primary-' + [guid]::NewGuid().ToString('N') + '.md')
+            [IO.File]::WriteAllText($promptPath, @'
+Write the candidate directly to this exact path:
+CANDIDATE_RESULT_PATH=__CANDIDATE_RESULT_PATH__
+The run is __RUN_ID__ and the target digest is __TARGET_DIGEST__.
+The file must contain only the raw JSON object. Do not use stdout for authority.
+'@)
+            $candidateText = if ($FileCandidate -is [string]) { $FileCandidate } else { $FileCandidate | ConvertTo-Json -Depth 20 -Compress }
+            $agentInvoker = {
+                param($worktreePath, $prompt, $timeout)
+                $match = [regex]::Match($prompt, '(?m)^CANDIDATE_RESULT_PATH=(?<path>.+)$')
+                if (-not $match.Success) { throw 'fixture-candidate-path-not-in-prompt' }
+                [IO.File]::WriteAllText($match.Groups['path'].Value.Trim(), $candidateText, [Text.UTF8Encoding]::new($false))
+                return [pscustomobject]@{
+                    exit_code = 0; stdout = $Stdout; stderr = ''
+                    telemetry = [pscustomobject]@{ timed_out = $false; containment = 'fixture'; containment_degraded_reason = $null }
+                }
+            }.GetNewClosure()
+            return New-ReviewClaudeFilePrimaryHarnessPort -PromptTemplatePath $promptPath -TimeoutSeconds 900 -AgentInvoker $agentInvoker -AvailabilityProbe { $true }
         }
     }
 
@@ -157,6 +183,34 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         $result.result.can_approve_current | Should -BeFalse
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 1
         @(Get-ChildItem -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs') -Directory).Count | Should -Be 1
+    }
+
+    It 'rejects a prose-wrapped candidate file even when Claude stdout contains valid raw JSON' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'claude-file-prose')
+        $candidate = New-OrchestratorCandidate
+        $rawJson = $candidate | ConvertTo-Json -Depth 20 -Compress
+        $harness = New-ClaudeFilePrimaryFixtureHarness -FileCandidate ("All checks are complete.`n`n" + $rawJson) -Stdout $rawJson
+        $result = Invoke-OrchestratorFixture -Context $context -Target (New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one) -Harness $harness -Runtime (New-ReviewFixtureRuntimePort)
+
+        $result.status | Should -Be 'terminal'
+        $result.result.runtime_outcome | Should -Be 'invalid-output'
+        $result.result.validation | Should -Be 'invalid'
+        $result.result.can_approve_current | Should -BeFalse
+        $result.result.findings.Count | Should -Be 0
+    }
+
+    It 'accepts file-primary raw JSON while ignoring prose-wrapped Claude stdout for authority' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'claude-file-raw')
+        $candidate = New-OrchestratorCandidate
+        $stdout = "All checks are complete.`n`n" + ($candidate | ConvertTo-Json -Depth 20 -Compress)
+        $harness = New-ClaudeFilePrimaryFixtureHarness -FileCandidate $candidate -Stdout $stdout
+        $result = Invoke-OrchestratorFixture -Context $context -Target (New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one) -Harness $harness -Runtime (New-ReviewFixtureRuntimePort)
+
+        $result.status | Should -Be 'terminal' -Because $result.reason
+        $result.result.runtime_outcome | Should -Be 'completed'
+        $result.result.validation | Should -Be 'valid'
+        $result.result.verdict | Should -Be 'pass'
+        $result.result.can_approve_current | Should -BeTrue
     }
 
     It 'publishes verified timeout partials, moved results, and a visible complete rerun under new run IDs' {

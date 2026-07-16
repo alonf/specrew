@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T049 foundation verification plus three T050 correction passes; 91/91 foundation tests and all 45 F-198 registry suites pass, while SC-019 remains explicitly incomplete.
+**Last Completed Task**: T049 foundation verification plus the current T050 correction verification; 93/93 foundation tests and all 45 F-198 registry suites pass, while SC-019 remains explicitly incomplete.
 **Tasks Remaining**: T050 independent Claude review; retrospective and closeout.
-**In Progress**: T050 v4 published one now-corrected timing-contract finding; exactly one Claude v5 run is authorized after the correction commit and no hidden retry is allowed.
+**In Progress**: T050 v5 was strict invalid-output because Claude prefixed prose; the authorized Claude file-primary pull-forward is underway, followed by exactly one committed-digest v6 run with no hidden retry.
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 
@@ -47,7 +47,7 @@ The later tasks sync repeated the same defect by matching Iteration 003 verdict 
 - **Hardening**: `Overall Verdict: ready`; all five canonical concerns plus concurrency, result/currentness, performance/spend, and scope/proof honesty are addressed at planning time.
 - **Quality focus**: fail-closed authority, immutable single-winner facts, exact target currentness, strict result ingress, crash recovery, test integrity, and truthful support claims.
 - **Team**: one serial Implementer; Claude is the selected independent Reviewer for T050.
-- **Authorization**: tasks and Iteration 006 implementation are authorized by the fresh verdict below. Iteration 007 and any scope expansion remain unauthorized.
+- **Authorization**: tasks and Iteration 006 implementation are authorized by the fresh verdict below. The maintainer additionally authorized only the Claude file-primary prompt contract and exact regression pair to move forward from Iteration 007 under T050; every other Iteration 007 scope expansion remains unauthorized.
 
 ## Fresh Before-Implement Verdict
 
@@ -63,6 +63,9 @@ The later tasks sync repeated the same defect by matching Iteration 003 verdict 
 - Separately authorized `run-i006-t050-claude-v3` reviewed digest `6942d56832910922d4967aaf539a1744f2ebd122` with verified containment, termination, and currentness. It published `completion=complete`, `verdict=findings`, `runtime_outcome=completed`, `validation=valid`, and `can_approve_current=false`.
 - Its four validated findings are corrected: byte-stable immutable replay, truthful `claim-contended` classification, recovery-owned snapshot disposal until verified termination, and T042/T046 owner-glob reconciliation. The metadata drift is recorded as `DRIFT-198-I006-002`.
 - Separately authorized `run-i006-t050-claude-v4` reviewed digest `5ffcca9fb50d47abd922e5352baaeca16e0d83f5` and published one current note: the result-duration ceiling left no overhead above the maximum invocation timeout. The bounded correction caps invocation/config timeout at 7,200 seconds and derives the duration maximum from timeout, maximum grace, and bounded orchestration overhead without clamping evidence.
-- The current correction passes 50/50 focused tests plus the config-boundary regression, 91/91 foundation tests, bidirectional traceability, five consecutive legacy lease-race repetitions, and all 45 F-198 registry suites. Exactly one Claude v5 invocation against the post-correction committed digest is authorized; findings stop without a fix, while a clean result closes T050.
-- `DRIFT-198-I006-001` stays open and iteration closeout must not rely on the stale global ledger. The v2 prose-wrapped-JSON failure remains deterministic malformed-output-fixture and production prompt-contract work for the Iteration 007 adapter suite.
+- Separately authorized `run-i006-t050-claude-v5` reviewed digest `8a8702862cd0caed22103b9617057a66d04dd548` with verified containment, termination, and currentness, but the strict controller published `runtime_outcome=invalid-output`, `validation=invalid`, and zero authoritative findings because Claude prefixed prose to an embedded pass object. The embedded pass is not accepted retroactively.
+- `DRIFT-198-I006-003` records the maintainer-authorized pull-forward: Claude writes only raw JSON directly to the candidate file, stdout is never parsed for authority, and the exact prose-file rejection/raw-file acceptance pair moves into T050. Iteration 007 must subtract that slice but retains the full malformed-output matrix and remaining adapter hardening.
+- The current scoped correction passes 52/52 focused authority/ingress/orchestrator tests, 93/93 foundation tests, 2/2 packaged-artifact tests, bidirectional traceability, syntax/JSON/manifest/diff checks, and all 45 F-198 registry suites.
+- Exactly one Claude v6 invocation against the post-hardening committed digest is authorized. A clean result closes T050; findings or invalid output stop with no fix or further spend under this grant.
+- `DRIFT-198-I006-001` stays open and iteration closeout must not rely on the stale global ledger. No matcher point-fix is authorized.
 - Durable review status is recorded at file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/review.md. Machine-local controller evidence remains under file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/.

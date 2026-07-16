@@ -49,6 +49,8 @@ $proposal197ReviewerModules = @(
     'review-result-ingestor.ps1'
     # F-198 iter-006 / T048: synchronous port-composed campaign/run orchestration + fixtures.
     'review-campaign-orchestrator.ps1'
+    # F-198 T050 scoped pull-forward: Claude writes strict candidate JSON directly to staging.
+    'review-claude-harness-port.ps1'
     # T019 piece 4b / FR-045a: the PURE Stop-intent classifier (intermediate operational yield vs a real handoff).
     'stop-intent-contract.ps1'
     'co-review-lineage-lease.ps1'

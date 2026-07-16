@@ -4,7 +4,7 @@
 **Implementation commit**: `8f0c939b87d3ddb5bbdfa737d933369c83013b81`
 **Reviewed-state digest**: `57b0c02b107e42c66759190b91e8d46705ae9816`
 **Recorded at**: 2026-07-16
-**Independent review**: incomplete T050; v4 produced one valid current timing-contract finding, the bounded correction is green, and exactly one v5 rerun is authorized after commit
+**Independent review**: incomplete T050; v5 was strict invalid-output, the authorized Claude file-primary correction is in verification, and exactly one post-commit v6 rerun is granted
 
 The reviewed-state digest certifies the exact reviewable worktree content used by the recorded
 foundation run, including preserved tracked worktree changes and excluding only runtime/machinery
@@ -133,10 +133,45 @@ Post-correction verification on 2026-07-16:
 
 The v4 result remains immutable machine-local evidence at
 file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v4/.
-The maintainer authorized exactly one Claude v5 invocation against the post-correction committed
-digest, with a new run ID and no hidden retry. `DRIFT-198-I006-001` remains open and closeout must not
-rely on the stale global ledger. The v2 prose-wrapped-JSON failure remains a deterministic malformed-
-output fixture plus production prompt-contract hardening obligation for Iteration 007.
+At that stop, the maintainer authorized exactly one Claude v5 invocation against the post-correction
+committed digest, with a new run ID and no hidden retry. `DRIFT-198-I006-001` remained open and
+closeout could not rely on the stale global ledger. The v2 prose-wrapped-JSON failure was still a
+deterministic malformed-output fixture plus production prompt-contract hardening obligation for
+Iteration 007; the next section records the later scoped pull-forward that superseded that placement.
+
+## T050 v5 invalid output and scoped file-primary pull-forward
+
+Separately authorized run `run-i006-t050-claude-v5` reviewed exact digest
+`8a8702862cd0caed22103b9617057a66d04dd548`. It observed 475.187 seconds with verified containment,
+termination, and currentness, but Claude prefixed prose to an embedded pass object. Strict ingress
+correctly published `completion=none`, `verdict=incomplete`, `runtime_outcome=invalid-output`,
+`validation=invalid`, zero authoritative findings, and `can_approve_current=false`. The embedded pass
+is not accepted retroactively and stdout is not salvaged.
+
+The maintainer authorized `DRIFT-198-I006-003` as one narrow pull-forward from Iteration 007. The
+Claude adapter now puts the controller-owned candidate path in the invocation prompt, requires the
+reviewer to write only a raw JSON object directly to that file, and never parses stdout for
+authority. A deterministic pair proves both directions: a prose-wrapped candidate file is rejected
+even when stdout is raw valid JSON, while a raw candidate file is accepted when stdout repeats the
+real prose-wrapped failure shape. Strict ingress itself remains unchanged.
+
+Post-pull-forward verification on 2026-07-16:
+
+- Focused authority/ingress/orchestrator suites: PASS, 52/52.
+- `pwsh -NoProfile -File tests/f198-iteration006-foundation.ps1`: PASS, 93/93, 25.054 s observed suite duration.
+- `pwsh -NoProfile -File tests/f198-regression-suite.ps1 -PerTestTimeoutSeconds 300`: PASS, all 45 suites, 393.5 s wall time.
+- Packaged-artifact deployment: PASS, 2/2.
+- Bidirectional traceability: PASS, 10/10 tasks and 14/14 scoped requirements, with no gaps or invalid references.
+- Changed PowerShell syntax, authority-mode JSON, module manifest, loader/FileList coverage, and `git diff --check`: PASS. PSScriptAnalyzer is not installed, so no analyzer result is inferred.
+
+Iteration 007 must subtract this exact Claude delivery slice and pair; its full malformed-output
+fixture matrix and remaining adapter hardening are unchanged.
+
+The authoritative v5 result is machine-local at
+file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v5/.
+Exactly one Claude v6 invocation is authorized against the post-hardening committed digest, with a
+new run ID and no hidden retry. A clean v6 closes T050; findings or invalid output stop without a fix
+or further spend under this grant.
 
 ## Requirement evidence
 

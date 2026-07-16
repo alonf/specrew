@@ -19,7 +19,7 @@ Replace the failed mutable process-owned lease with the authority foundation for
 | FR-057 | Campaign/run ownership, pure policy, repository-only review-state mutation | Complete foundation |
 | FR-058 | Immutable grants, reservations, spend, claim generations, and deterministic reconciliation | Complete foundation |
 | FR-059 | External Git worktree target, pre/post HEAD, canonical reviewed-state digest, and `snapshot-moved` applicability | Complete code-target foundation |
-| FR-060 | Versioned invocation/result contracts, candidate validation, identity binding, and controller publication | Common contract complete; five real harness adapters deferred to Iteration 007 |
+| FR-060 | Versioned invocation/result contracts, candidate validation, identity binding, and controller publication | Common contract complete; Claude file-primary candidate delivery and its exact malformed/raw pair pulled forward under T050; remaining adapter completion deferred to Iteration 007 |
 | FR-061 | Runtime port, terminal-result classification, and timeout publication ordering | Core semantics and executable fake runtime complete; three production OS runtimes deferred to Iteration 007 |
 | FR-062 | Rerun allowance, partial-result recovery, and finding-lineage policy | Core policy/reconciliation complete; retrospective projection deferred to Iteration 007 |
 | FR-063 | Preflight-before-spend, per-attempt production clock, phase timing contract, and bounded progress model | Foundation complete; optional usage metrics and production heartbeat deferred to Iteration 007 |
@@ -44,9 +44,9 @@ Partial traceability above is a delivery boundary, not a completion claim. Beta2
 | T045 | Immutable JSON repositories, claim generations, and reconciliation | FR-057, FR-058, FR-062, SC-017, SC-020 | US1 | 2.5 | Implementer | scripts/internal/continuous-co-review/**, .specrew/review/**, tests/continuous-co-review/** | completed | Codex | 2.5 | 9 tests include multi-process single-winner and released-slot generations |
 | T046 | External Git review target, exact currentness, and thin non-code fixture | FR-059, FR-065, SC-018 | US2 | 1.5 | Implementer | scripts/internal/continuous-co-review/review-target-port.ps1, scripts/internal/continuous-co-review/reviewed-state-digest.ps1, scripts/internal/continuous-co-review/worktree-reviewer.ps1, tests/continuous-co-review/** | completed | Codex | 1.5 | Real external worktree preserves origin and exact dirty-state digest |
 | T047 | Candidate result ingress, authoritative terminal publication, and Markdown projection | FR-059, FR-060, FR-061, FR-062, SC-018, SC-020 | US2 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | completed | Codex | 1.5 | 8 strict ingress/identity/partial/moved/timeout/duration tests pass |
-| T048 | Synchronous CLI orchestration with target, harness, runtime, store, and clock ports | FR-057, FR-060, FR-061, FR-063, SC-020, SC-021 | US2 | 1.5 | Implementer | scripts/specrew-review.ps1, scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | completed | Codex | 1.5 | 11 end-to-end scenarios pass, including runtime preflight, claim contention, and shared timeout-ceiling outcomes |
-| T049 | Foundation integration, concurrency, crash-recovery, currentness, and quality evidence | FR-063, FR-064, FR-065, SC-017, SC-018, SC-019, SC-020, SC-021 | US3 | 1.0 | Implementer | tests/continuous-co-review/**, specs/198-beta2-hardening/iterations/006/quality/** | completed | Codex | 1.0 | 91/91 foundation tests and all 45 F-198 registry suites green; SC-019 truthfully incomplete |
-| T050 | Independent foundation review and bounded correction allowance | FR-062, FR-064, SC-017, SC-018, SC-020, SC-021 | US3 | 1.5 | Reviewer | .specrew/review/**, specs/198-beta2-hardening/iterations/006/** | in-progress | Claude | — | v4 published one timing-contract note; bounded correction is green; exactly one post-commit v5 run is authorized with no hidden retry |
+| T048 | Synchronous CLI orchestration with target, harness, runtime, store, and clock ports | FR-057, FR-060, FR-061, FR-063, SC-020, SC-021 | US2 | 1.5 | Implementer | scripts/specrew-review.ps1, scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | completed | Codex | 1.5 | 11 base end-to-end scenarios pass; T050 adds the separately authorized Claude file-primary pair |
+| T049 | Foundation integration, concurrency, crash-recovery, currentness, and quality evidence | FR-063, FR-064, FR-065, SC-017, SC-018, SC-019, SC-020, SC-021 | US3 | 1.0 | Implementer | tests/continuous-co-review/**, specs/198-beta2-hardening/iterations/006/quality/** | completed | Codex | 1.0 | Current correction tree passes 93/93 foundation tests and all 45 F-198 registry suites; SC-019 truthfully incomplete |
+| T050 | Independent foundation review, bounded correction allowance, and scoped Claude file-primary pull-forward | FR-060, FR-062, FR-064, SC-017, SC-018, SC-020, SC-021 | US3 | 1.5 | Reviewer | scripts/internal/continuous-co-review/review-claude-harness-port.ps1, tests/continuous-co-review/unit/review-campaign-orchestrator.Tests.ps1, .specrew/review/**, specs/198-beta2-hardening/iterations/006/** | in-progress | Claude | — | v5 was strict invalid-output; file-primary hardening and its pair are authorized; exactly one post-commit v6 run is granted with no hidden retry |
 
 Task identifiers reserve the next feature sequence after deferred T040. The separate task artifact is authored only after the plan-to-tasks verdict.
 
@@ -78,6 +78,19 @@ Task identifiers reserve the next feature sequence after deferred T040. The sepa
 ### Deferral Rule
 
 The authority core, exact target identity, immutable repositories, strict result ingress, recovery, and foundation verification cannot be deferred without reopening the plan. If execution estimates grow, stop and replan rather than raise the cap or remove integrity proof. P1 production heartbeat, safe optional token/usage metrics, retrospective projection, five real harness adapters, three production runtime adapters, live smokes, and cross-OS proof remain in Iteration 007 by design.
+
+### Scoped Iteration 007 Pull-Forward
+
+The maintainer authorized a bounded T050 amendment after v2 and v5 both returned prose-wrapped JSON.
+Iteration 006 now delivers the thin Claude file-primary prompt contract: the reviewer writes exactly
+one raw candidate JSON object directly to the controller-owned staging path, and stdout is never an
+authority input. The paired proof rejects prose-wrapped content in that file even when stdout contains
+valid JSON, and accepts raw file JSON even when stdout contains prose.
+
+Iteration 007 must subtract that exact Claude delivery slice and pair from its task estimate. It still
+owns the full malformed-output fixture matrix, all remaining Claude hardening, the other four real
+harness adapters, all three production runtime adapters, five bounded live smokes, progress/retro
+projection, and the three-OS matrix. This pull-forward does not satisfy SC-019 or Beta2 completeness.
 
 ## Architecture and Execution Order
 
@@ -138,7 +151,7 @@ Required Phase 1 gates are `dead-field`, `anti-pattern`, `test-integrity`, `stac
 
 - Every planned task traces to FR-057–FR-065 and/or SC-017–SC-021.
 - FR-057/FR-058 and SC-017 are the authority foundation’s primary completion boundary.
-- FR-060/FR-061/FR-064 and SC-019 remain partially delivered until Iteration 007 lands all five harness adapters, all three runtime adapters, the three-OS matrix, and five bounded live smokes.
+- FR-060/FR-061/FR-064 and SC-019 remain partially delivered until Iteration 007 lands the remaining adapter work, all three runtime adapters, the three-OS matrix, and five bounded live smokes. The Claude file-primary candidate slice and its exact two-case regression are already delivered by T050 and must not be planned twice.
 - T029 and Beta2 release remain blocked until Iteration 007 is clean.
 - FR-054 remains deferred to issue #3084 and is not reopened.
 

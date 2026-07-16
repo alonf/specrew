@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-16
-**Post-Implementation Verification**: T049 foundation evidence recorded; T050 v4 timing finding corrected and one authorized v5 rerun pending
+**Post-Implementation Verification**: T049 evidence recorded; T050 v5 failed strict ingress; scoped Claude file-primary hardening and one authorized post-commit v6 rerun are pending
 
 ## Concern Review
 
@@ -30,7 +30,7 @@
 
 | Condition | Status | Evidence | Decision |
 | --- | --- | --- | --- |
-| `condition-a-human-authorization` | `met` | The maintainer selected option 1 on 2026-07-16: **approved for before-implement**, against task-boundary commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`. The stale Iteration 003 matcher entry is not used as evidence. | Iteration 006 T041–T050 implementation is authorized; Iteration 007 and scope expansion are not. |
+| `condition-a-human-authorization` | `met` | The maintainer selected option 1 on 2026-07-16: **approved for before-implement**, against task-boundary commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`. The stale Iteration 003 matcher entry is not used as evidence. A later explicit T050 amendment authorizes only Claude file-primary candidate delivery and its exact two-case regression to move from Iteration 007. | Iteration 006 T041–T050 plus that recorded narrow pull-forward are authorized; every other Iteration 007 expansion remains unauthorized. |
 | `condition-b-traceability` | `met` | T041–T050 map to FR-057–FR-065 and SC-017–SC-021 in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/tasks.md; the after-tasks check must confirm both directions. | Any orphan or uncovered requirement blocks implementation readiness. |
 | `condition-c-fail-direction-review` | `met` | Every authority, schema, currentness, timeout, containment, and recovery uncertainty is specified as non-authoritative/fail-closed in the plan and tasks. | A fail-direction change reopens design and is recorded in the drift log before code proceeds. |
 | `condition-d-capacity-discipline` | `met` | 16/26 story_points including 1.0 verification and 1.5 independent-review/rework capacity. Core integrity work has no silent defer candidate. | A spill triggers a human replan; do not raise the cap or drop proof. |
@@ -49,6 +49,6 @@
 ## Notes
 
 - `Overall Verdict: ready` records completed planning-time hardening analysis. The separate fresh human verdict in `condition-a-human-authorization` now authorizes Iteration 006 implementation.
-- T049 runtime evidence is recorded in `quality/foundation-evidence.md`; the concern rows remain `pending-post-implementation` until independent T050 evidence exists.
+- T049 runtime evidence and the T050 v2–v5 attempt history are recorded at file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/quality/foundation-evidence.md; the concern rows remain `pending-post-implementation` until complete clean T050 evidence exists.
 - The generic quality resolver's non-applicable concurrency/recovery inference is overridden by the explicit campaign allowance, atomic claim, timeout, and crash-reconciliation requirements.
 - No concern is deferred and no new dependency is approved.

@@ -269,6 +269,7 @@
         'scripts/internal/continuous-co-review/review-target-port.ps1',
         'scripts/internal/continuous-co-review/review-result-ingestor.ps1',
         'scripts/internal/continuous-co-review/review-campaign-orchestrator.ps1',
+        'scripts/internal/continuous-co-review/review-claude-harness-port.ps1',
         'scripts/internal/continuous-co-review/review-blackboard-writer.ps1',
         'scripts/internal/continuous-co-review/review-identity-contracts.ps1',
         'scripts/internal/continuous-co-review/review-run-index-writer.ps1',
