@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T054 Codex and Copilot production harness adapters
-**Tasks Remaining**: T034b and T055–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: T055 Cursor and Antigravity production harness adapters
+**Last Completed Task**: T055 Cursor and Antigravity production harness adapters
+**Tasks Remaining**: T034b and T056–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T056 Windows Job Object runtime adapter
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-16
@@ -64,6 +64,8 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **T053 evidence**: the 20-case shared conformance suite covers bounded templates/rendering, catalog dispatch, raw zero/findings candidates, prose/fence/trailing/malformed/oversize/unknown/missing/wrong-run/wrong-digest/version/duplicate/invalid-UTF8 rejection, executable/candidate preflight, a valid stdout object remaining non-authoritative, and no hidden retry. Authority, ingress, orchestration, host-catalog, public-command, packaged-deploy, module-load, manifest, and self-leak checks pass. The first aggregate run exposed an explicit Cursor timeout compatibility regression; production now derives the same 600-second fallback without changing the tolerant catalog reader. The post-correction F-198 registry passes all 48 suites in 438.8 seconds, and scoped Iteration 007 governance passes with historical warnings only.
 - **T054 done**: Codex and Copilot now have separate thin production constructors over the T053 contract. Each consumes only its cataloged executable/vector/transport, appends the rendered prompt once as the final argument, propagates only the two suppression controls, writes authority through `candidate.json`, and never retries or parses stdout.
 - **T054 evidence**: eight paired adapter cases prove generic factory dispatch, exact command ordering, argument-primary prompt transport, bounded identity/path rendering, unavailable-command preflight, raw candidate acceptance, stdout non-authority, and exactly one injected invocation for both hosts. The shared contract, host catalog, module load, and packaged artifact stay green; all 49 F-198 suites pass in 445.6 seconds. Provider spend remains zero.
+- **T055 done**: Cursor and Antigravity now use the same thin production adapter pattern. A no-model local help probe from the OS temp directory confirmed Cursor's `--print`, `--trust`, and `--force` meanings and Antigravity's print/timeout surface; no reviewer/provider invocation occurred. The catalog carries the verified Cursor vector and preserves Antigravity's order-sensitive `--print`-then-prompt contract.
+- **T055 evidence**: eight paired cases prove generic factory dispatch, exact headless vectors and final prompt placement, bounded identity/path rendering, minimal environment, unavailable preflight, raw candidate acceptance, stdout non-authority, and exactly one injected invocation. Shared, prior-adapter, catalog, package, and all 50 F-198 registry suites pass; the aggregate completed in 451.9 seconds. All five adapter implementations now exist, but support remains unproven until the separately authorized live smokes.
 - **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only; T051 now separately delivers the FR-045 packet/current-review gate assigned by the approved Iteration 003 reconciliation.
 - **Provider spend**: none.
 
@@ -73,7 +75,7 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - Iteration 006 foundation and Claude file-primary slice are delivered and independently reviewed.
 - T019 mutable lease/navigator/stamping/pruning mechanisms are not executable Iteration 007 work.
 - Machinery-turn exclusion, tokenizer/temporal/cursor capture hardening, exact fabrication fixtures, and the append-only scoped correction door are delivered. The underlying legacy matcher/backlog question remains visible; no quiet global matcher rewrite was made.
-- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. The workshop-intermediate Stop, shared five-vector harness contract, strict candidate matrix, and Claude/Codex/Copilot thin production adapters are delivered. Cursor/Antigravity adapters, three runtime ports, progress/retro, three-OS matrix, five live smokes, and proved campaign cutover remain pending.
+- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. The workshop-intermediate Stop, shared strict candidate contract/matrix, and all five thin production harness adapters are delivered deterministically. Three runtime ports, progress/retro, three-OS matrix, five live smokes, and proved campaign cutover remain pending; no harness is promoted by source/tests alone.
 
 ## Notes
 

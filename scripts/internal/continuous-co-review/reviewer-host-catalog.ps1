@@ -67,7 +67,9 @@ function Get-ContinuousCoReviewReviewerHostRows {
         # stalls headless), --no-custom-instructions keeps stray instruction files out of the
         # composed-prompt contract. The invocation core appends the prompt last, directly after -p.
         @{ host = 'copilot'; command = 'copilot'; agentic_args = @('--allow-all-tools', '--allow-all-paths', '--no-ask-user', '--no-custom-instructions', '--no-color', '--log-level', 'none', '-p'); prompt_via_stdin = $false; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80; default_timeout_seconds = 300; production_harness_id = 'copilot-cli-file-primary'; production_constructor = 'New-ReviewCopilotFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
-        @{ host = 'cursor-agent'; command = 'cursor-agent'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70; production_harness_id = 'cursor-agent-file-primary'; production_constructor = 'New-ReviewCursorAgentFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
+        # Cursor's installed help confirms --print is non-interactive, --trust suppresses the headless workspace
+        # trust prompt, and --force prevents tool-approval stalls. The common contract appends the prompt last.
+        @{ host = 'cursor-agent'; command = 'cursor-agent'; agentic_args = @('--print', '--trust', '--force'); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70; production_harness_id = 'cursor-agent-file-primary'; production_constructor = 'New-ReviewCursorAgentFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
         # antigravity ships as `agy` (verified live on the maintainer machine 2026-07-08). The WORKING
         # headless vector is probe-validated and ORDER-SENSITIVE: flags BEFORE --print, prompt
         # POSITIONAL directly after it (the invocation core appends the prompt last):
