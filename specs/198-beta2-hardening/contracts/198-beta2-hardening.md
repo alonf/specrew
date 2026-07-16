@@ -88,3 +88,55 @@ W14 warning at resolution time, keyed off the RESOLVED value.
 `--integration <key> --script ps --ignore-agent-tools` (key confirmed by
 the recorded probe; opt-in extensions added only with recorded dependency
 evidence).
+
+## Controlled external review contract — iterations 006/007
+
+### Public authority selection
+
+| Symbol | Signature | Purpose | Errors |
+| --- | --- | --- | --- |
+| review authority mode | `{ schema_version: "1.0", mode: "legacy / disabled / campaign" }` | select exactly one promotion path | missing/malformed/unknown/unsupported → neither path enabled |
+| `specrew review` campaign delegation | existing public CLI surface → one synchronous `ReviewCampaign` / `ReviewRun` operation | preserve user surface while replacing authority internals | no fallback from campaign failure to legacy promotion |
+
+Cutover order is `legacy -> disabled -> campaign`. Legacy artifacts remain readable historical evidence but are
+never imported into campaign authority. Repository code is mutated only by the repository owner/implementer;
+reviewers operate on an external frozen target and write only run-owned candidate data.
+
+### Versioned process/file exchange
+
+| Contract | Required fields | Authority |
+| --- | --- | --- |
+| `ReviewInvocation` | `schema_version`, `campaign_id`, `run_id`, `target_digest`, `snapshot_path`, `review_scope`, `prompt_path`, `candidate_result_path`, `candidate_report_path`, `deadline` | controller-authored immutable request |
+| `ReviewerCandidate` | `schema_version`, `run_id`, `target_digest`, `completion`, `verdict`, `summary`, `findings[]` | untrusted staged input only |
+| `ReviewResult` | campaign/run/digest/harness identity; completion/verdict/runtime; termination/containment/currentness/validation; approval flag; bounded failure/summary/findings; timestamps/duration | sole controller-published terminal authority |
+
+All five harness adapters implement the same exchange. The candidate file contains only one raw JSON object—no
+prose, fences, or trailing material. Stdout/stderr are telemetry and are never parsed, salvaged, or extracted into
+authority. Candidate limits are closed and bounded: unknown fields, wrong identity, malformed/wrapped JSON,
+oversize payloads, illegal state combinations, or unsupported versions fail closed.
+
+### Runtime and timeout
+
+| Platform | Production mechanism | Terminal invariant |
+| --- | --- | --- |
+| Windows | Job Object | all descendants assigned/terminated; death and streams verified |
+| Linux | cgroup | membership bounded to the run; complete cgroup killed and verified |
+| macOS | process group | isolated group signaled/killed and verified |
+
+A timeout result is published only after descendant death and stream closure are verified. Valid partial findings
+may be retained with the timeout/failure reason, but are advisory and require a complete separately authorized
+run before approval. Every invoked run publishes exactly one terminal result or a loud reconciliation state;
+pre-invocation failures release rather than spend their slot.
+
+### Progress, cost, and reruns
+
+Progress/heartbeat and safe usage metrics are informational projections, never result authority. Finding counts
+are shown only from complete valid checkpoints. Every actual provider invocation consumes one visible allowance
+slot and uses a unique run ID. No adapter retries invisibly; findings, invalid output, timeout, or infrastructure
+failure return control for a new human grant.
+
+### Support claim
+
+Beta2 may claim production code review only after deterministic conformance for all five adapters on Windows,
+Linux, and macOS plus one paid live smoke per harness distributed across all three operating systems. An
+unavailable harness/OS combination remains unproven. Generic gate/artifact adapters remain Beta3 scope.

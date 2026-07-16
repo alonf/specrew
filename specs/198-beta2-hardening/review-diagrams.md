@@ -98,3 +98,87 @@ sequenceDiagram
     Sync->>Sync: revert to recorded AuthCommitHash
   end
 ```
+
+## Component: controlled external review replacement (iterations 006/007)
+
+```mermaid
+flowchart LR
+  Human[Human allowance] --> CLI[specrew review]
+  CLI --> Cutover[Authority mode: legacy / disabled / campaign]
+  Cutover --> Campaign[ReviewCampaignCoordinator]
+  Campaign --> Repos[Immutable campaign/run/claim repositories]
+  Campaign --> Target[External Git ReviewTargetPort]
+  Campaign --> Harness[HarnessPort]
+  Campaign --> Runtime[RuntimePort]
+  Harness --> Claude[Claude]
+  Harness --> Codex[Codex]
+  Harness --> Copilot[Copilot]
+  Harness --> Cursor[Cursor]
+  Harness --> Antigravity[Antigravity]
+  Runtime --> Job[Windows Job Object]
+  Runtime --> Cgroup[Linux cgroup]
+  Runtime --> PGroup[macOS process group]
+  Harness --> Candidate[Run-owned candidate.json]
+  Candidate --> Ingress[Strict ResultIngestor]
+  Runtime --> Ingress
+  Target --> Ingress
+  Ingress --> Result[Immutable controller result.json + report.md]
+  Result --> Signoff[Exact-digest signoff gate]
+  Result --> Retro[Retro evidence projection]
+```
+
+The reviewer never writes the origin repository or terminal authority. The repository is the sole code-mutation
+authority; campaign repositories are the sole review-state mutation authority.
+
+## Sequence: one paid run, timeout, and visible rerun
+
+```mermaid
+sequenceDiagram
+  participant Human
+  participant CLI as Campaign CLI
+  participant Store as Immutable Store
+  participant Target as Git Target
+  participant Harness
+  participant Runtime as OS Runtime
+  participant Ingress
+  Human->>CLI: authorize exactly one slot
+  CLI->>Store: reserve run ID / claim generation
+  CLI->>Target: freeze external target + exact digest
+  CLI->>Harness: no-spend preflight
+  CLI->>Runtime: launch one invocation
+  CLI->>Store: spend slot at invocation start
+  Runtime->>Harness: supervise descendant tree
+  alt completes
+    Harness->>Ingress: raw candidate JSON file
+    Runtime->>Ingress: completed + death/streams verified
+  else timeout
+    Runtime->>Runtime: kill descendants and close streams
+    Runtime->>Ingress: timed-out + termination verified
+    Harness->>Ingress: optional valid partial candidate
+  end
+  Ingress->>Store: publish one terminal result
+  Store-->>Human: result, digest/currentness, findings, timing
+  opt human authorizes rerun
+    Human->>CLI: new slot + new run ID
+  end
+```
+
+## Sequence: workshop intermediate Stop
+
+```mermaid
+sequenceDiagram
+  participant Workshop
+  participant State as Durable workshop state
+  participant Stop as Stop provider
+  participant Human
+  Workshop->>State: record active feature/iteration/lens + pending question
+  Workshop-->>Human: render lens content and explicit question
+  Stop->>State: verify exact active scope and pending question
+  alt lifecycle boundary pending
+    Stop-->>Human: full boundary packet
+  else valid workshop intermediate
+    Stop-->>Human: no duplicate generic five-section packet
+  else fabricated/abandoned/interrupted state
+    Stop-->>Human: ordinary non-boundary context packet
+  end
+```

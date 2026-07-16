@@ -316,3 +316,77 @@ window is a T019-owned policy knob (step 6). Carried here with DRIFT-198-I003-00
 Lifecycle: a durable record whose digest is no longer the latest for its lineage becomes `superseded`, then
 `archived` (forensic value) or `prunable` (past retention). No shipped code prunes durable records today
 (the accumulation gap); the retention runtime is T019 step 6.
+
+## Approved Replacement Model: ReviewCampaign and ReviewRun — iterations 006/007
+
+This model supersedes the unwired T019 mutable-lease authority for production review. The T019 entities above
+remain useful historical characterization and fixture provenance, but campaign authority is derived only from
+the closed contracts and immutable facts below.
+
+### ReviewCampaign
+
+One human-bounded review objective for a target lineage.
+
+| Field | Rule |
+| --- | --- |
+| `schema_version` | exactly `1.0` |
+| `campaign_id` | `cmp-*`, immutable |
+| `target_lineage` | `lin-*`, immutable |
+| `created_at` | controller-observed timestamp |
+
+Allowance is not a mutable campaign counter. Human `GrantFact` records add numbered slots; a `ReservationFact`
+claims one slot for one run; invocation creates an immutable `SpendFact`; a pre-invocation release creates a
+`ReleaseFact`. Conflicting or overlapping facts fail closed.
+
+### ReviewRun
+
+One reviewer invocation. Its state path is `requested -> reserved -> preflighted -> claimed -> invoked ->
+validating -> terminal`, with explicit pre- and post-invocation failure closures. A retry is always another
+`run_id`; there is no attempt counter hidden inside a run.
+
+| Field | Rule |
+| --- | --- |
+| `campaign_id`, `run_id` | closed campaign/run identity |
+| `target_digest` | exact frozen reviewed-state digest; empty/unknown never matches |
+| `harness_id` | selected production adapter identity |
+| `state` | one closed state from the path above |
+
+### ClaimFact
+
+Claims are immutable generations under one campaign target lineage. A generation has a `held`, `released`, or
+`abandoned` disposition. At most one highest-generation held claim is active; ambiguity/conflict fails closed.
+PID ownership, timestamp-wins authority, a shared result filename, and a generic lock are not part of this model.
+
+### ReviewInvocation and ReviewerCandidate
+
+The controller writes `ReviewInvocation` with campaign/run/digest identity, snapshot path, bounded scope, prompt
+path, run-owned candidate/report paths, and deadline. Every production harness must write exactly one raw JSON
+`ReviewerCandidate` object to the candidate path. The candidate contains `run_id`, `target_digest`, `completion`,
+`verdict`, bounded summary, and bounded findings. Prose wrappers, Markdown fences, trailing text, unknown fields,
+wrong identity, or oversize data are rejected; stdout never becomes candidate authority.
+
+### ReviewResult
+
+Only the controller publishes the immutable terminal result. It binds campaign/run/digest/harness identity to
+completion/verdict, runtime outcome, verified termination, containment, currentness, validation, approval
+eligibility, failure reason, timing, and controller-assigned finding lineage. A result approves only when it is a
+complete valid pass, the runtime completed, termination and containment are verified, and the reviewed digest is
+still current. `snapshot-moved`, timeout, partial, invalid, or interrupted findings remain advisory evidence.
+
+The maximum invocation timeout is 7,200 seconds. Maximum `duration_ms` is derived from that ceiling plus maximum
+termination grace and bounded orchestration overhead; observed duration is validated and never clamped.
+
+### ProgressObservation and RetroEvidenceProjection
+
+Progress observations are append-only informational facts containing campaign/run identity, stage, controller
+timestamp, optional heartbeat/activity, and an optional finding count only when sourced from a complete valid
+checkpoint. They never authorize a result. The retrospective projection reads validated terminal results and
+progress facts, retaining target digest/currentness, runtime/failure reason, timings, and finding lineage so retro
+problem descriptions remain evidence-backed. Missing heartbeat, counts, or safe usage metrics is reported as
+unavailable and does not invalidate an otherwise authoritative terminal result.
+
+### Retention Boundary
+
+Beta2 does not add automatic campaign pruning. Immutable campaign/run/grant/reservation/spend/claim/result facts
+remain durable. Future archival or deletion requires a separately designed policy and cannot silently reactivate
+the old T019 retention runtime.
