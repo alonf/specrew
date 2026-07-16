@@ -124,8 +124,8 @@ function Assert-ArtifactContains {
     foreach ($expected in @(
         "Boundary to ask for: $ExpectedBoundary",
         "Human approval phrase: $ExpectedApproval",
-        "Approval option 1: $ExpectedApproval",
-        'Concise approval aliases: 1, option 1',
+        "Approval choice: $ExpectedApproval",
+        'Numeric labels are non-authoritative; reply with the full human approval phrase.',
         $ExpectedMarker
     )) {
         if ($content -notmatch [regex]::Escape($expected)) {

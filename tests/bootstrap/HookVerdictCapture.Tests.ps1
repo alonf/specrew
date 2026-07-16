@@ -55,8 +55,8 @@ function Write-PendingArtifact {
             '',
             "Boundary to ask for: $Boundary",
             "Human approval phrase: $Approval",
-            "Approval option 1: $Approval",
-            'Concise approval aliases: 1, option 1'
+            "Approval choice: $Approval",
+            'Numeric labels are non-authoritative; reply with the full human approval phrase.'
         ) -join "`n", [System.Text.UTF8Encoding]::new($false))
 }
 

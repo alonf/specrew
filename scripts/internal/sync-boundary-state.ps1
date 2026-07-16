@@ -599,8 +599,8 @@ function Sync-SpecrewPendingVerdictStopArtifact {
     $lines.Add('') | Out-Null
     $lines.Add(('Boundary to ask for: {0}' -f $boundary)) | Out-Null
     $lines.Add(('Human approval phrase: {0}' -f $approvalPhrase)) | Out-Null
-    $lines.Add('Approval option 1: {0}' -f $approvalPhrase) | Out-Null
-    $lines.Add('Concise approval aliases: 1, option 1') | Out-Null
+    $lines.Add('Approval choice: {0}' -f $approvalPhrase) | Out-Null
+    $lines.Add('Numeric labels are non-authoritative; reply with the full human approval phrase.') | Out-Null
     $lines.Add('Marker last line exactly:') | Out-Null
     $lines.Add($marker) | Out-Null
     $lines.Add('') | Out-Null

@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T030 machinery-turn exclusion from verdict evidence
-**Tasks Remaining**: T031–T034b and T051–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: T031 approval-tokenizer tightening, temporal ordering, and cursor-invariant guards
+**Last Completed Task**: T031 approval-tokenizer tightening, temporal ordering, and cursor-invariant guards
+**Tasks Remaining**: T032–T034b and T051–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T032 exact fabrication-sequence regression fixtures
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-16
@@ -50,6 +50,8 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 
 - **T030 done**: parsed user-role turns now retain `human` versus `machinery` verdict-evidence provenance. Claude `isMeta=true` feedback and complete injected envelopes are ineligible in both marker-bound and future fallback selection; a genuine prompt-submit turn remains eligible even when its text is identical to prior machinery.
 - **T030 evidence**: the paired genuine/isMeta text regression, synthetic-envelope regression, shared parse-once suite, both handover suites, and all 45 F-198 honesty-registry suites pass.
+- **T031 done**: the tokenizer accepts only a leading explicit approval utterance; approval mentions, quotes, teaching text, questions, ambiguous acknowledgements, and bare numeric labels remain non-authoritative. The pure disabled-fallback evaluator requires a genuine human verdict after a packet that names the exact pending cursor.
+- **T031 evidence**: paired tokenizer/cursor/order tests, marker-bound numeric rejection, pending-stop teaching, hook capture, transcript parse-once, canonical-state, and atomic-sync tests pass. All 45 F-198 honesty-registry suites pass in 447.7 seconds. The separate `boundary-sync-atomicity` fixture's missing-ledger failure reproduces unchanged at clean pre-T031 commit `1e027875` and is not used as T031 evidence.
 - **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only. FR-045 packet/current-review gating remains assigned to T051 by the approved Iteration 003 reconciliation and is not claimed here.
 - **Provider spend**: none.
 
@@ -58,7 +60,7 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - Checked-in review authority mode remains `legacy`.
 - Iteration 006 foundation and Claude file-primary slice are delivered and independently reviewed.
 - T019 mutable lease/navigator/stamping/pruning mechanisms are not executable Iteration 007 work.
-- Machinery-turn exclusion is delivered; tokenizer/temporal capture hardening and the append-only correction door remain pending.
+- Machinery-turn exclusion and tokenizer/temporal/cursor capture hardening are delivered; exact fabrication-sequence fixtures and the append-only correction door remain pending.
 - Production command wiring, workshop Stop, remaining harnesses, three runtime ports, progress/retro, three-OS matrix, five live smokes, and campaign cutover remain pending.
 
 ## Notes

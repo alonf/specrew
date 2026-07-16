@@ -169,8 +169,8 @@ if ($null -ne $result) {
         Write-Output ('Pending verdict stop artifact: {0}' -f $result.pending_verdict_stop_path)
         Write-Output ('Boundary to ask for: {0}' -f $result.pending_verdict_boundary)
         Write-Output ('Human approval phrase: {0}' -f $result.pending_verdict_approval_phrase)
-        Write-Output ('Approval option 1: {0}' -f $result.pending_verdict_approval_phrase)
-        Write-Output 'Concise approval aliases: 1, option 1'
+        Write-Output ('Approval choice: {0}' -f $result.pending_verdict_approval_phrase)
+        Write-Output 'Numeric labels are non-authoritative; reply with the full human approval phrase.'
         Write-Output 'Marker last line exactly:'
         Write-Output ([string]$result.pending_verdict_marker)
         Write-Output 'Render the full six-section boundary packet using this exact marker, then stop.'

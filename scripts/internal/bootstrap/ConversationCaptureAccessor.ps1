@@ -134,9 +134,9 @@ function Get-SpecrewTranscriptTailLines {
 
 function Test-SpecrewHumanVerdictToken {
     # F-174 iteration 011 (T004, FR-026): classify a HUMAN turn's response to a boundary VERDICT packet —
-    # CONSERVATIVELY. The gate-stop packet offers: (1) Approve as-is, (2) Approve with instructions, (3) Send
-    # back, (4) Discuss prompt #N. A human types one of those, a bare option number, an "approve [X -> Y] [with
-    # instructions]" line, or a send-back / discuss / question. SAFETY RULE (the maintainer's): only IsApproval
+    # CONSERVATIVELY. The gate-stop packet may number its choices for readability, but a bare number is never a
+    # verdict: the human must type an actual "approve [X -> Y] [with instructions]" utterance, a send-back, a
+    # discuss request, or a question. SAFETY RULE (the maintainer's): only IsApproval
     # when the turn CLEARLY approves; anything negated / send-back / discuss / ambiguous / a bare question -> NOT
     # an approval, so the caller records the crossing un-authorized rather than inventing one. Pure string logic;
     # never throws.
@@ -162,11 +162,11 @@ function Test-SpecrewHumanVerdictToken {
     # NEGATED change clause - "approved, no changes needed" / "no further changes required" are APPROVALS, not
     # send-backs. The negative lookbehind (variable-length, .NET-supported) rejects the clause when a negation
     # word precedes "changes" within the same sentence; an affirmative "changes needed" still trips send-back.
-    if ($lower -match '\bsend\s*back\b' -or $lower -match '\breject(ed|ing)?\b' -or $lower -match '^\s*3\b' -or $lower -match '(?<!\b(?:no|zero|without|nothing|none|not)\b[^.!?]{0,20})\bchanges?\s+(needed|required|requested)\b') {
+    if ($lower -match '\bsend\s*back\b' -or $lower -match '\breject(ed|ing)?\b' -or $lower -match '(?<!\b(?:no|zero|without|nothing|none|not)\b[^.!?]{0,20})\bchanges?\s+(needed|required|requested)\b') {
         $r.IsSendBack = $true; $r.Action = 'send-back'; return $r
     }
     # Discuss a specific prompt — NOT an authorization (discussion is not approval).
-    if ($lower -match '\bdiscuss\b' -or $lower -match '^\s*4\b' -or $lower -match '\bprompt\s*#?\d') {
+    if ($lower -match '\bdiscuss\b' -or $lower -match '\bprompt\s*#?\d') {
         $r.IsDiscuss = $true; $r.Action = 'discuss'; return $r
     }
     # Negated / deferred approval -> NOT an approval (defends "do not approve", "not yet", "hold off ... approve").
@@ -177,13 +177,16 @@ function Test-SpecrewHumanVerdictToken {
     # before I approve?", "should I approve this or not?") is deliberation, not authorization - reject it so the
     # Stop-hook capture can NEVER fabricate an approval the human did not actually give (FR-026 / SC-013).
     if ($t.EndsWith('?')) { return $r }
-    # CLEAR approval: an "approve"/"approved" verb (incl. canonical "approved for <boundary>"), OR a bare option
-    # 1/2 where the WHOLE turn is just that number. Deliberately NARROW — "start"/"proceed"/"continue"/"ok"/"yes"
-    # are NOT treated as boundary approvals (too ambiguous against the safety rule); they fall to pending so the
-    # human re-confirms rather than risk an invented approval.
-    $optionOnly = [regex]::Match($lower, '^\s*(?:option\s*)?([12])\s*[.):]?\s*$')
-    if ($lower -match '\bapprove(d|s)?\b' -or $optionOnly.Success) {
-        if ($optionOnly.Success) { $r.ApprovalOption = [int]$optionOnly.Groups[1].Value }
+    # CLEAR approval: the utterance itself STARTS with approve/approved (optionally "I/we", a confirming "yes -",
+    # or a numbered LABEL followed by the explicit words). Anchoring is the mention/quote/teaching firewall:
+    # "if you already approved", "reply with approved...", quoted examples, and bare numbers do not match.
+    # "start"/"proceed"/"continue"/"ok"/bare "yes" remain too ambiguous and fall to pending.
+    $approvalUtterance = [regex]::Match(
+        $lower,
+        '^\s*(?:(?:option\s*)?([12])\s*[.):\-\u2013\u2014]\s*)?(?:(?:yes|confirmed)\s*[,;:\-\u2013\u2014]\s*)?(?:(?:i|we)\s+)?approv(?:e|ed|es)\b'
+    )
+    if ($approvalUtterance.Success) {
+        if ($approvalUtterance.Groups[1].Success) { $r.ApprovalOption = [int]$approvalUtterance.Groups[1].Value }
         $r.IsApproval = $true; $r.Action = 'approve'; return $r
     }
     return $r
@@ -219,62 +222,24 @@ function Test-SpecrewBoundaryPacketLikeText {
     return $false
 }
 
-function Test-SpecrewAssistantApprovalOption {
-    # For concise "1" / "option 1" fallback approvals, prove option 1 in the rendered packet was actually an
-    # approval option. This avoids treating "option 2" rejection/modification choices as authorization.
-    [OutputType([bool])]
-    param(
-        [Parameter()][AllowNull()][string]$AssistantText,
-        [Parameter(Mandatory)][int]$OptionNumber,
-        [Parameter()][AllowNull()][string]$ApprovalPhrase
-    )
-    if ([string]::IsNullOrWhiteSpace($AssistantText)) { return $false }
-    $optionPattern = '(?is)(?:^|[\r\n]|[•\-\*]\s*)\s*(?:option\s*)?' + [regex]::Escape([string]$OptionNumber) + '\s*(?:[.):\-]|-)\s*(.{0,220})'
-    foreach ($m in [regex]::Matches($AssistantText, $optionPattern)) {
-        $body = [string]$m.Groups[1].Value
-        if ($body -match '(?i)\bapprov') { return $true }
-        if (-not [string]::IsNullOrWhiteSpace($ApprovalPhrase) -and $body -match [regex]::Escape($ApprovalPhrase)) { return $true }
-    }
-    return $false
-}
-
-function Get-SpecrewPendingVerdictFallbackCapture {
-    # Preferred capture is marker-bound. This fallback covers weak hosts/models that rendered a boundary packet but
-    # dropped/mis-targeted the invisible marker. It still requires a real human approval and binds only to the single
-    # pending crossing computed from start-context.json; the agent never supplies the boundary being authorized.
+function Find-SpecrewPendingVerdictFallbackCandidate {
+    # Pure candidate evaluator for the currently-disabled markerless fallback. Keeping this separate lets the
+    # machinery/tokenizer/order/cursor contract be proved before re-enable: the pending cursor, an earlier packet
+    # that explicitly names that cursor's approval phrase, and a later genuine human verdict must all agree.
     [OutputType([pscustomobject])]
     param(
         [Parameter()][AllowNull()][object[]]$Turns,
-        [Parameter()][AllowNull()][string]$ProjectRoot
+        [Parameter()][AllowNull()]$Pending
     )
 
     $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-pending-state' }
     if ($null -eq $Turns -or @($Turns).Count -eq 0) { $result.Reason = 'no-turns'; return $result }
-    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or -not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) { return $result }
+    if ($null -eq $Pending -or -not [bool]$Pending.HasPendingVerdict) { return $result }
 
-    $pending = $null
-    try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pending = $null }
-    if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { return $result }
-
-    # INTERIM MITIGATION (maintainer instruction at the iteration-002 closeout verdict,
-    # 2026-07-11, DEC-198-GOV-003): the pending-artifact fallback is DISABLED. It fabricated
-    # two authorizations in one day - both ~37s after a packet render, during the agent's own
-    # stop cycle, pairing a machinery/stale turn with the pending artifact's synthesized
-    # approval phrase - while the human's actual replies were send-backs. Marker-bound capture
-    # stays active: an uncaptured verdict now costs one re-confirm keystroke instead of a
-    # fabricated authorization. This return sits AFTER the cheap guards so the reason taxonomy
-    # stays honest: 'disabled' is reported only when a live pending crossing was actually
-    # declined. Re-enable ONLY when the fallback redesign passes its acceptance criteria
-    # (machinery-turn exclusion, tokenizer tightening, temporal-ordering guard, and the
-    # exact-sequence regression fixtures - the iteration-003 capture-integrity tasks).
-    # The body below is retained unreached as the redesign's reference implementation.
-    $result.Reason = 'fallback-capture-disabled-interim'
-    return $result
-
-    $pendingFromMarker = [string]$pending.PendingFromMarkerBoundary
-    $pendingToMarker = [string]$pending.PendingToMarkerBoundary
-    $pendingFrom = [string]$pending.PendingFromBoundary
-    $pendingTo = [string]$pending.PendingToBoundary
+    $pendingFromMarker = [string]$Pending.PendingFromMarkerBoundary
+    $pendingToMarker = [string]$Pending.PendingToMarkerBoundary
+    $pendingFrom = [string]$Pending.PendingFromBoundary
+    $pendingTo = [string]$Pending.PendingToBoundary
     if ([string]::IsNullOrWhiteSpace($pendingFromMarker) -or [string]::IsNullOrWhiteSpace($pendingToMarker) -or [string]::IsNullOrWhiteSpace($pendingTo)) {
         $result.Reason = 'pending-state-incomplete'
         return $result
@@ -311,22 +276,16 @@ function Get-SpecrewPendingVerdictFallbackCapture {
         for ($j = $i - 1; $j -ge 0; $j--) {
             if ([string]$Turns[$j].role -eq 'assistant') { $priorAssistant = [string]$Turns[$j].text; break }
         }
-        $packetLike = Test-SpecrewBoundaryPacketLikeText -Text $priorAssistant -ApprovalPhrase $approvalPhrase
-        $exactNamedApproval = ($approveForMatches -contains $pendingToMarker) -or ($humanText.ToLowerInvariant() -match [regex]::Escape($approvalPhrase))
-
-        if ($null -ne $verdict.ApprovalOption) {
-            if ([int]$verdict.ApprovalOption -ne 1) {
-                $result.Reason = 'approval-option-not-authorizing-fallback'
-                return $result
-            }
-            if (-not (Test-SpecrewAssistantApprovalOption -AssistantText $priorAssistant -OptionNumber 1 -ApprovalPhrase $approvalPhrase)) {
-                $result.Reason = 'approval-option-not-proven'
-                return $result
-            }
+        if ([string]::IsNullOrWhiteSpace($priorAssistant)) {
+            $result.Reason = 'candidate-predates-packet'
+            return $result
         }
-        elseif (-not $exactNamedApproval -and -not $packetLike) {
-            $result.Reason = 'no-boundary-packet-context'
-            continue
+
+        $packetLike = Test-SpecrewBoundaryPacketLikeText -Text $priorAssistant -ApprovalPhrase $approvalPhrase
+        $packetNamesPending = $priorAssistant -match [regex]::Escape($approvalPhrase)
+        if (-not $packetLike -or -not $packetNamesPending) {
+            $result.Reason = 'packet-cursor-mismatch'
+            return $result
         }
 
         $result.Found = $true
@@ -340,6 +299,42 @@ function Get-SpecrewPendingVerdictFallbackCapture {
 
     $result.Reason = 'no-clear-human-approval'
     return $result
+}
+
+function Get-SpecrewPendingVerdictFallbackCapture {
+    # Preferred capture is marker-bound. This fallback covers weak hosts/models that rendered a boundary packet but
+    # dropped/mis-targeted the invisible marker. It still requires a real human approval and binds only to the single
+    # pending crossing computed from start-context.json; the agent never supplies the boundary being authorized.
+    [OutputType([pscustomobject])]
+    param(
+        [Parameter()][AllowNull()][object[]]$Turns,
+        [Parameter()][AllowNull()][string]$ProjectRoot
+    )
+
+    $result = [pscustomobject]@{ Found = $false; FromBoundary = $null; ToBoundary = $null; VerdictText = $null; HumanText = $null; Reason = 'no-pending-state' }
+    if ($null -eq $Turns -or @($Turns).Count -eq 0) { $result.Reason = 'no-turns'; return $result }
+    if ([string]::IsNullOrWhiteSpace($ProjectRoot) -or -not (Get-Command Get-SpecrewPendingVerdictState -ErrorAction SilentlyContinue)) { return $result }
+
+    $pending = $null
+    try { $pending = Get-SpecrewPendingVerdictState -ProjectRoot $ProjectRoot } catch { $pending = $null }
+    if ($null -eq $pending -or -not [bool]$pending.HasPendingVerdict) { return $result }
+
+    # INTERIM MITIGATION (maintainer instruction at the iteration-002 closeout verdict,
+    # 2026-07-11, DEC-198-GOV-003): the pending-artifact fallback is DISABLED. It fabricated
+    # two authorizations in one day - both ~37s after a packet render, during the agent's own
+    # stop cycle, pairing a machinery/stale turn with the pending artifact's synthesized
+    # approval phrase - while the human's actual replies were send-backs. Marker-bound capture
+    # stays active: an uncaptured verdict now costs one re-confirm keystroke instead of a
+    # fabricated authorization. This return sits AFTER the cheap guards so the reason taxonomy
+    # stays honest: 'disabled' is reported only when a live pending crossing was actually
+    # declined. Re-enable ONLY when the fallback redesign passes its acceptance criteria
+    # (machinery-turn exclusion, tokenizer tightening, temporal-ordering guard, and the
+    # exact-sequence regression fixtures - the iteration-003 capture-integrity tasks).
+    # The pure evaluator below is exercised directly until the remaining fixture/correction-door gate is complete.
+    $result.Reason = 'fallback-capture-disabled-interim'
+    return $result
+
+    return (Find-SpecrewPendingVerdictFallbackCandidate -Turns $Turns -Pending $pending)
 }
 
 function Get-SpecrewCapturedBoundaryVerdict {
