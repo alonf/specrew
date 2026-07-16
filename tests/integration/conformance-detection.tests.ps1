@@ -51,15 +51,19 @@ function New-Spec {
 }
 
 function New-LensApplicability {
-    # Write a feature-level lens-applicability.json so Get-SpecrewWorkshopProgress sees the workshop state.
-    # $Done lenses get a moved_on flag (recorded done); selected minus done = remaining (>0 == workshop in progress).
-    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @(), [string]$FeatureRef = '050-host-neutral-gate')
+    # Write both the feature projection and the exact iteration artifact. The feature projection feeds the
+    # existing progress accessor; FR-056 authorizes a workshop-intermediate Stop only from the exact iteration.
+    param([string]$Proj, [string[]]$Selected, [string[]]$Done = @(), [string]$FeatureRef = '050-host-neutral-gate', [string]$Iteration = '001')
     $dir = Join-Path $Proj (Join-Path 'specs' $FeatureRef)
     New-Item -ItemType Directory -Path $dir -Force | Out-Null
     $workshop = [ordered]@{}
     foreach ($d in $Done) { $workshop[$d] = [ordered]@{ moved_on = $true } }
     $obj = [ordered]@{ workshop_intake = $true; confirmation_required = $true; selected = $Selected; workshop = $workshop }
-    Set-Content -LiteralPath (Join-Path $dir 'lens-applicability.json') -Value ($obj | ConvertTo-Json -Depth 6) -Encoding UTF8
+    $json = $obj | ConvertTo-Json -Depth 6
+    Set-Content -LiteralPath (Join-Path $dir 'lens-applicability.json') -Value $json -Encoding UTF8
+    $iterationDir = Join-Path $dir ("iterations/{0}" -f $Iteration)
+    New-Item -ItemType Directory -Path $iterationDir -Force | Out-Null
+    Set-Content -LiteralPath (Join-Path $iterationDir 'lens-applicability.json') -Value $json -Encoding UTF8
 }
 
 function New-Transcript {
@@ -211,6 +215,15 @@ $longProse = ('I went ahead and refactored the resolver and the three call sites
     'I also want to flag that the dependency bump touches two manifests and a lockfile, so we should decide whether to land ' +
     'that separately or fold it into this change; either way I can prepare both and you can pick the one you would rather take.')
 
+$workshopQuestion = @'
+### architecture-core lens
+
+The architecture-core discussion has established the component boundary and the remaining choice is who owns the durable transition. The current iteration record still names this as the first unfinished lens.
+
+Should the repository own that transition directly, or should the application service own it behind a port?
+<!-- SPECREW-WORKSHOP-QUESTION: feature=050-host-neutral-gate; iteration=001; lens=architecture-core -->
+'@
+
 try {
     # ---- Case 1: BOUNDARY block. Working 'plan' ahead of authorized 'clarify', no packet -> emit the block sentinel
     #              with the packet directive + the CONTIGUOUS clarify -> plan verdict marker.
@@ -248,12 +261,12 @@ try {
     if ($r4.Blocked) { Fail "Case 4: a substantial non-boundary DISCUSSION answer MUST NOT block (the length trigger was dropped; conversation flows). Out: $($r4.Out)" }
     Write-Pass "Case 4: a SUBSTANTIAL non-boundary hand-back (a long discussion/status answer) does NOT block - only decision-yield boundaries force the packet (maintainer 2026-06-21)"
 
-    # ---- Case 4b: SUBSTANTIAL but PRE-SPEC (workshop excluded). Same long message, NO spec, no pending -> NO block.
+    # ---- Case 4b: SUBSTANTIAL but PRE-SPEC. Same long message, NO spec, no pending -> NO block.
     $p4b = New-Fixture -Working 'plan' -LastAuth 'plan'
     $t4b = New-Transcript -Proj $p4b -Turns @(@{ role = 'assistant'; text = $longProse })
     $r4b = Invoke-Conformance -Proj $p4b -TranscriptPath $t4b
-    if ($r4b.Blocked) { Fail "Case 4b: a substantial message pre-spec (intake/workshop) MUST NOT block - the workshop is excluded. Out: $($r4b.Out)" }
-    Write-Pass "Case 4b: a substantial message PRE-SPEC (the design-workshop window) does NOT block (workshop exclusion)"
+    if ($r4b.Blocked) { Fail "Case 4b: a substantial message pre-spec MUST NOT block on length alone. Out: $($r4b.Out)" }
+    Write-Pass "Case 4b: a substantial PRE-SPEC message does not create a packet obligation by length alone"
 
     # ---- Case 4c: MATERIAL non-boundary stop. The current Stop handover reports changed user files and the last
     #               assistant message has no packet -> emit the block sentinel with the five-part context directive.
@@ -319,21 +332,19 @@ try {
     if ($r4f3.Blocked) { Fail "Case 4f: rendering the material context packet must reset/release the material retry block. Out: $($r4f3.Out)" }
     Write-Pass "Case 4f: material stop-block retries until the packet is rendered, then releases"
 
-    # ---- Case 4g: MATERIAL but PRE-BOUNDARY WORKSHOP. A fresh governed-feature scaffold can change files before
-    #               lens-applicability/session_state exists. That is still initial workshop intake, so it must not
-    #               force the five-part material-work packet on a product-domain question.
+    # ---- Case 4g / FR-056(b): the same material question OUTSIDE exact durable workshop state still owes the
+    #               ordinary packet. A question-shaped turn alone must never create the exception.
     $p4g = New-Fixture -Working '' -LastAuth ''
     New-Spec -Proj $p4g
     New-HandoverSnapshot -Proj $p4g -ChangedUserFiles 3 -FileList 'AGENTS.md, CLAUDE.md, specs/001-multi-ai-arena-ui/spec.md'
-    $t4g = New-Transcript -Proj $p4g -Turns @(@{ role = 'assistant'; text = 'Product-domain first pass. Who are the users, what pain should this mock solve, and should this be static or a working prototype?' })
+    $t4g = New-Transcript -Proj $p4g -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
     $r4g = Invoke-Conformance -Proj $p4g -TranscriptPath $t4g
-    if ($r4g.Blocked) { Fail "Case 4g: pre-boundary workshop scaffold material MUST NOT block for the material packet. Out: $($r4g.Out)" }
-    if ($r4g.Out -match 'MATERIAL-WORK STOP') { Fail "Case 4g: pre-boundary workshop scaffold material MUST NOT emit a material packet nudge. Out: $($r4g.Out)" }
-    Write-Pass "Case 4g: pre-boundary workshop scaffold material does NOT force the five-part material packet"
+    if (-not $r4g.Blocked -or $r4g.Out -notmatch 'five-part context packet') { Fail "Case 4g: a material workshop-shaped turn without exact iteration state MUST require the ordinary packet. Out: $($r4g.Out)" }
+    Write-Pass "Case 4g: a workshop-shaped material turn outside exact durable workshop state still requires the five-part packet"
 
     # ---- Case 4h: MATERIAL after WORKSHOP COMPLETE, even if lifecycle state still has no active boundary/auth.
-    #               Clean/dirty is not the rule: a new commit is material. The pre-boundary scaffold suppression
-    #               must not mask post-workshop material work just because start-context has not advanced.
+    #               Clean/dirty is not the rule: a new commit is material. Anchorless lifecycle state must not mask
+    #               post-workshop material work merely because start-context has not advanced.
     $p4h = New-Fixture -Working '' -LastAuth ''
     New-Spec -Proj $p4h
     New-LensApplicability -Proj $p4h -Selected @('product-domain','architecture-core') -Done @('product-domain','architecture-core')
@@ -614,36 +625,69 @@ try {
     if ($r15.Blocked) { Fail "Case 15: with no readable last message the provider MUST NOT block (cannot claim the packet is absent; 145 F1-CC). Out: $($r15.Out)" }
     Write-Pass "Case 15: an unreadable last message (no transcript / CC unresolved) degrades to NO block (fail-open, never fail-closed on a missing component; 145 F1-CC)"
 
-    # ---- Case 16 (DOGFOOD BUG / FR-015 workshop exclusion): the lens workshop CONTINUES after spec.md is scaffolded.
-    #      A substantial lens question post-scaffold (spec exists + lens-applicability with lenses REMAINING) MUST NOT
-    #      block - the design workshop is the only exclusion. (The old pre-spec proxy false-blocked exactly this.)
+    # ---- Case 16 / FR-056(a,e): exact feature+iteration+first-remaining-lens state plus the current question marker
+    #      produces one workshop-intermediate pause, no generic packet, and a durable bounded re-entry record.
     $p16 = New-Fixture -Working 'plan' -LastAuth 'plan'
     New-Spec -Proj $p16
-    New-LensApplicability -Proj $p16 -Selected @('product-domain','architecture-core','component-design','ui-ux','data-storage','integration-api','requirements-nfr','code-implementation','observability-resilience') -Done @()
-    $t16 = New-Transcript -Proj $p16 -Turns @(@{ role = 'assistant'; text = $longProse })
-    $r16 = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
-    if ($r16.Blocked) { Fail "Case 16: a substantial lens question DURING the workshop (spec scaffolded, lenses remaining) MUST NOT block - the workshop is the FR-015 exclusion. Out: $($r16.Out)" }
-    Write-Pass "Case 16: a substantial lens question post-scaffold (workshop in progress) does NOT block - robust workshop exclusion (dogfood bug / FR-015)"
+    New-LensApplicability -Proj $p16 -Selected @('architecture-core','data-storage') -Done @()
+    New-HandoverSnapshot -Proj $p16 -ChangedUserFiles 2
+    $t16 = New-Transcript -Proj $p16 -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
+    $r16a = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
+    $r16bDuplicate = Invoke-Conformance -Proj $p16 -TranscriptPath $t16
+    if ($r16a.Blocked -or $r16a.Out -match 'five-part context packet') { Fail "Case 16: a proved current-lens question MUST remain the final visible turn. Out: $($r16a.Out)" }
+    if ($r16bDuplicate.Blocked -or $r16bDuplicate.Out -match 'five-part context packet') { Fail "Case 16: a duplicate Stop delivery MUST remain a no-op. Out: $($r16bDuplicate.Out)" }
+    $workshopHandoverPath = Join-Path $p16 '.specrew\handover\workshop-question.json'
+    if (-not (Test-Path -LiteralPath $workshopHandoverPath -PathType Leaf)) { Fail 'Case 16: workshop-intermediate must persist bounded re-entry context' }
+    $workshopHandover = Get-Content -LiteralPath $workshopHandoverPath -Raw | ConvertFrom-Json
+    if ([string]$workshopHandover.feature_ref -ne '050-host-neutral-gate' -or [string]$workshopHandover.iteration_number -ne '001' -or [string]$workshopHandover.lens -ne 'architecture-core' -or [string]::IsNullOrWhiteSpace([string]$workshopHandover.question)) {
+        Fail "Case 16: durable re-entry context must retain exact feature/iteration/lens/question: $($workshopHandover | ConvertTo-Json -Compress)"
+    }
+    Write-Pass "Case 16: exact current-lens question stops once without a generic packet and retains durable re-entry context"
 
-    # ---- Case 16b: the workshop exclusion overrides even the BOUNDARY trigger - a pending verdict during the
-    #      workshop still must not block (lens questions are not boundary stops).
+    # ---- Case 16b / FR-056(d): lifecycle boundary state has precedence even when every workshop-question signal
+    #      is otherwise valid. The six-section packet and exact boundary marker remain mandatory.
     $p16b = New-Fixture -Working 'plan' -LastAuth 'clarify'
     New-Spec -Proj $p16b
-    New-LensApplicability -Proj $p16b -Selected @('product-domain','architecture-core','data-storage') -Done @()
-    $t16b = New-Transcript -Proj $p16b -Turns @(@{ role = 'assistant'; text = 'Lens 1 of 3: product domain. Who are the users?' })
+    New-LensApplicability -Proj $p16b -Selected @('architecture-core','data-storage') -Done @()
+    New-HandoverSnapshot -Proj $p16b -ChangedUserFiles 2
+    $t16b = New-Transcript -Proj $p16b -Turns @(@{ role = 'assistant'; text = $workshopQuestion })
     $r16b = Invoke-Conformance -Proj $p16b -TranscriptPath $t16b
-    if ($r16b.Blocked) { Fail "Case 16b: a pending verdict DURING the workshop must still be suppressed (the workshop exclusion overrides the boundary trigger). Out: $($r16b.Out)" }
-    Write-Pass "Case 16b: the workshop exclusion overrides the boundary trigger - no block during the lens workshop even with a pending verdict"
+    if (-not $r16b.Blocked -or $r16b.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 16b: a lifecycle boundary MUST override workshop state and demand the boundary packet. Out: $($r16b.Out)" }
+    Write-Pass "Case 16b: lifecycle boundary state overrides the workshop marker and retains the six-section contract"
 
-    # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) -> the exclusion CLEARS, and a real
-    #      boundary stop blocks again. Proves the exclusion is scoped to the in-progress workshop, not "forever after a spec".
+    # ---- Case 16c / FR-056(c): durable remaining-lens state plus prose that merely claims a workshop is still
+    #      insufficient. Without the exact marker/current-lens proof, a material hand-back owes the packet.
+    $p16c = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16c
+    New-LensApplicability -Proj $p16c -Selected @('architecture-core','data-storage') -Done @()
+    New-HandoverSnapshot -Proj $p16c -ChangedUserFiles 2
+    $fabricatedWorkshop = 'I am in the architecture-core workshop and this is definitely a lens question. The component material is finished and the rest can wait. Which ownership option should we choose?'
+    $t16c = New-Transcript -Proj $p16c -Turns @(@{ role = 'assistant'; text = $fabricatedWorkshop })
+    $r16c = Invoke-Conformance -Proj $p16c -TranscriptPath $t16c
+    if (-not $r16c.Blocked -or $r16c.Out -notmatch 'five-part context packet') { Fail "Case 16c: workshop-claim prose without the exact marker MUST NOT bypass material enforcement. Out: $($r16c.Out)" }
+    Write-Pass "Case 16c: fabricated workshop prose cannot bypass the ordinary material-work packet"
+
+    # ---- Case 16d / FR-056 narrow scope: a real old iteration artifact and matching marker are still stale when
+    #      active session state names another iteration. The old question cannot suppress the current Stop packet.
+    $p16d = New-Fixture -Working 'plan' -LastAuth 'plan'
+    New-Spec -Proj $p16d
+    New-LensApplicability -Proj $p16d -Selected @('architecture-core','data-storage') -Done @() -Iteration '002'
+    New-HandoverSnapshot -Proj $p16d -ChangedUserFiles 2
+    $staleIterationQuestion = $workshopQuestion.Replace('iteration=001', 'iteration=002')
+    $t16d = New-Transcript -Proj $p16d -Turns @(@{ role = 'assistant'; text = $staleIterationQuestion })
+    $r16d = Invoke-Conformance -Proj $p16d -TranscriptPath $t16d
+    if (-not $r16d.Blocked -or $r16d.Out -notmatch 'five-part context packet') { Fail "Case 16d: a marker/artifact for a non-active iteration MUST NOT bypass material enforcement. Out: $($r16d.Out)" }
+    Write-Pass "Case 16d: stale iteration state and its matching marker cannot suppress the active iteration's packet"
+
+    # ---- Case 17: workshop COMPLETE (all selected lenses done -> remaining = 0) cannot prove an intermediate pause;
+    #      a real boundary stop blocks again.
     $p17 = New-Fixture -Working 'plan' -LastAuth 'clarify'
     New-Spec -Proj $p17
     New-LensApplicability -Proj $p17 -Selected @('product-domain','data-storage') -Done @('product-domain','data-storage')
     $t17 = New-Transcript -Proj $p17 -Turns @(@{ role = 'assistant'; text = 'spec.md written; plan.md drafted.' })
     $r17 = Invoke-Conformance -Proj $p17 -TranscriptPath $t17
-    if (-not $r17.Blocked) { Fail "Case 17: with the workshop COMPLETE (remaining=0), a real boundary silent-advance MUST block again - the exclusion clears. Out: $($r17.Out)" }
-    Write-Pass "Case 17: the workshop exclusion CLEARS when all lenses are done (remaining=0) - a real boundary then blocks (exclusion scoped to the in-progress workshop)"
+    if (-not $r17.Blocked) { Fail "Case 17: with the workshop COMPLETE (remaining=0), a real boundary silent-advance MUST block. Out: $($r17.Out)" }
+    Write-Pass "Case 17: completed workshop state cannot suppress a lifecycle boundary"
 
     # ---- Case 18 (#3 negation guard): the contract's OWN prohibition prose ('do NOT run the raw `specify.exe
     #      workflow`') must NOT fire the #3 redirect (no spec, no pending -> only #3 could fire).
@@ -671,9 +715,8 @@ try {
     if ($r19.Out -notmatch 'SPECREW-VERDICT-BOUNDARY: clarify -> plan') { Fail "Case 19: the block must demand the contiguous verdict marker. Out: $($r19.Out)" }
     Write-Pass "Case 19: a boundary packet with HEADERS but NO marker still BLOCKS - the marker (not the headers) authorizes the boundary (Antigravity dogfood gap); fixture properties asserted (145 TI-1)"
 
-    # ---- Case 20 (145 OB-1): the workshop exclusion must scope to the ACTIVE feature. A DIFFERENT abandoned feature
-    #      whose lens workshop still has lenses remaining MUST NOT suppress the ACTIVE feature's boundary block (the old
-    #      whole-project scan let one stale feature silently disable enforcement for the active one - the #2884 slip).
+    # ---- Case 20 (145 OB-1): workshop validation must scope to the ACTIVE feature. A DIFFERENT abandoned feature
+    #      whose lens workshop still has lenses remaining MUST NOT affect the ACTIVE feature's boundary block.
     $p20 = New-Fixture -Working 'plan' -LastAuth 'clarify'  # ACTIVE feature 050 at a real boundary; NO lens-applicability of its own
     $abDir = Join-Path $p20 'specs\049-abandoned'
     New-Item -ItemType Directory -Path $abDir -Force | Out-Null
@@ -681,8 +724,8 @@ try {
     Set-Content -LiteralPath (Join-Path $abDir 'lens-applicability.json') -Value (([ordered]@{ workshop_intake = $true; confirmation_required = $true; selected = @('product-domain', 'architecture-core', 'data-storage'); workshop = [ordered]@{} }) | ConvertTo-Json -Depth 6) -Encoding UTF8
     $t20 = New-Transcript -Proj $p20 -Turns @(@{ role = 'assistant'; text = 'plan.md written; proceeding.' })
     $r20 = Invoke-Conformance -Proj $p20 -TranscriptPath $t20
-    if (-not $r20.Blocked) { Fail "Case 20: a DIFFERENT abandoned feature's in-progress workshop MUST NOT suppress the ACTIVE feature's boundary block (145 OB-1 cross-feature scope leak). Out: $($r20.Out)" }
-    Write-Pass "Case 20: an abandoned feature's unfinished workshop does NOT suppress the ACTIVE feature's enforcement - the exclusion is scoped to the active feature (145 OB-1)"
+    if (-not $r20.Blocked) { Fail "Case 20: a DIFFERENT abandoned feature's in-progress workshop MUST NOT affect the ACTIVE feature's boundary block (145 OB-1 cross-feature scope leak). Out: $($r20.Out)" }
+    Write-Pass "Case 20: an abandoned feature's unfinished workshop does not affect the active feature's enforcement"
 
     # ---- Case 21 (145 TI-2): a #3 raw-Spec-Kit hit concurrent with a FIRING boundary block folds the redirect INTO
     #      the block directive (the standalone-nudge path is covered by Case 6; the fold-into-block path was not).

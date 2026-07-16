@@ -41,14 +41,14 @@ tasks:
     blocked_reason: ""
   T052:
     title: "Workshop-aware intermediate Stop"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-16T20:02:24+03:00"
-    completed_at: ""
+    completed_at: "2026-07-16T20:40:22+03:00"
     blocked_reason: ""
   T053:
     title: "Shared production harness contract/catalog and complete malformed-output matrix"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-16T20:40:22+03:00"
     completed_at: ""
     blocked_reason: ""
   T054:

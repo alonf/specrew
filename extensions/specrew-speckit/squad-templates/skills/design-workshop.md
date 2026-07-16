@@ -187,6 +187,15 @@ coding agent writes code and surfaces the rules task-scoped. The acceptance gate
    and one "confirm all" question, even for a tiny feature or light-depth lenses. A lens turn may summarize the
    already-confirmed agenda, but it must focus on exactly one lens's decision points, ask for that lens's answer,
    and wait for the human (or an explicit "you decide for this lens" / "skip this lens") before moving on.
+   **Mark only a genuine pending lens question (FR-055/FR-056).** Before you stop and wait for an answer,
+   ensure the exact iteration's `lens-applicability.json` exists and reflects the current confirmed agenda. The
+   visible message must name the exact current lens id and end with the question. Then append this exact marker
+   as the final line, replacing all placeholders:
+   `<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; iteration=<NNN>; lens=<lens-id> -->`.
+   Use the marker only while waiting on the human's answer to that current lens. Never put it on a handover,
+   completion, abandonment, or lifecycle-boundary packet; a lifecycle boundary always uses its six-section
+   packet. The Stop provider validates the marker against the exact first remaining lens, so prose that merely
+   says a workshop is active cannot bypass the ordinary re-entry packet.
    **Pace a dense lens — after presenting, you MUST offer all-at-once OR one-at-a-time (A8/FR-041b UX, every host).**
    A lens with several decision points (architecture-core, component-design, security-compliance) lands as an
    overwhelming **wall** if you present everything and end with one open question that secretly bundles five

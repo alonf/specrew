@@ -49,6 +49,9 @@ Assert-Match -Text $ws -Pattern '(?i)grouped, pre-checked|grouped pre-checked|gr
 Assert-Match -Text $ws -Pattern 'dependency_policy' 'T015: dependency-selection capture (FR-013)'
 Assert-Match -Text $ws -Pattern '(?i)code-rules\.local\.yml' 'T015: project overlay for company/org rules (FR-012)'
 Assert-Match -Text $ws -Pattern '`code-implementation`' 'T015: code-implementation is in the lens enumeration'
+Assert-Match -Text $ws -Pattern '<!-- SPECREW-WORKSHOP-QUESTION: feature=<feature-ref>; iteration=<NNN>; lens=<lens-id> -->' 'T052: genuine pending lens questions carry the exact workshop-intermediate marker contract'
+Assert-Match -Text $ws -Pattern '(?i)exact iteration.+lens-applicability\.json' 'T052: marker production requires exact durable iteration state'
+Assert-Match -Text $ws -Pattern '(?is)Never put it on a handover.+lifecycle-boundary packet' 'T052: handover and lifecycle boundaries cannot borrow the workshop-intermediate marker'
 
 # ---------------------------------------------------------------------------
 # T016 — multi-host parity (FR-005, SC-003)
