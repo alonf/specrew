@@ -5,6 +5,27 @@ Set-StrictMode -Version Latest
 # no filesystem, Git, process, environment, or clock I/O. Callers pass immutable facts and observed
 # timestamps in; adapters execute the returned decisions.
 
+$script:ReviewAuthorityMaxInvocationTimeoutSeconds = 7200
+$script:ReviewAuthorityMaxTerminationGraceSeconds = 10
+$script:ReviewAuthorityOrchestrationOverheadAllowanceSeconds = 120
+# A terminal duration includes the invocation timeout, termination grace, and bounded controller
+# overhead. Keep this value derived here so changing any contributing ceiling changes the schema
+# bound in the same edit; measured duration evidence is validated as observed and is never clamped.
+$script:ReviewAuthorityMaxDurationMilliseconds = [long](
+    $script:ReviewAuthorityMaxInvocationTimeoutSeconds +
+    $script:ReviewAuthorityMaxTerminationGraceSeconds +
+    $script:ReviewAuthorityOrchestrationOverheadAllowanceSeconds
+) * 1000L
+
+function Get-ReviewAuthorityTimingLimits {
+    return [pscustomobject][ordered]@{
+        max_invocation_timeout_seconds = $script:ReviewAuthorityMaxInvocationTimeoutSeconds
+        max_termination_grace_seconds = $script:ReviewAuthorityMaxTerminationGraceSeconds
+        orchestration_overhead_allowance_seconds = $script:ReviewAuthorityOrchestrationOverheadAllowanceSeconds
+        max_duration_ms = $script:ReviewAuthorityMaxDurationMilliseconds
+    }
+}
+
 function Get-ReviewAuthorityPropertyNames {
     param([AllowNull()]$Object)
     if ($null -eq $Object) { return @() }
@@ -280,7 +301,7 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'summary' -Errors $errors -MaxLength 4000
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'started_at' -Errors $errors -MaxLength 64
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'ended_at' -Errors $errors -MaxLength 64
-            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'duration_ms' -Errors $errors -Minimum 0 -Maximum 86400000
+            Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'duration_ms' -Errors $errors -Minimum 0 -Maximum $script:ReviewAuthorityMaxDurationMilliseconds
         }
         'GrantFact' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 16 -Enum @('grant')

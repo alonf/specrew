@@ -166,7 +166,13 @@ function Invoke-ReviewCampaignRun {
         [Parameter(Mandatory)]$ClockPort,
         [Parameter(Mandatory)][string]$PromptPath,
         [string]$ReviewScope = 'Review the complete frozen target and return the versioned candidate JSON contract.',
-        [ValidateRange(1, 86400)][int]$TimeoutSeconds = 900,
+        [ValidateScript({
+            $limits = Get-ReviewAuthorityTimingLimits
+            if ($_ -lt 1 -or $_ -gt [int]$limits.max_invocation_timeout_seconds) {
+                throw "TimeoutSeconds must be between 1 and $($limits.max_invocation_timeout_seconds)."
+            }
+            return $true
+        })][int]$TimeoutSeconds = 900,
         [scriptblock]$ProgressSink,
         [string]$AuthorityConfigPath
     )

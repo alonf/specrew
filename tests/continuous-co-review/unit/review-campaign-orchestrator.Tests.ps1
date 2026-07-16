@@ -32,9 +32,9 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
             param(
                 [Parameter(Mandatory)]$Context, [string]$Run = 'run-one', [string]$Reservation = 'res-one',
                 [Parameter(Mandatory)]$Target, [Parameter(Mandatory)]$Harness, [Parameter(Mandatory)]$Runtime,
-                [scriptblock]$ProgressSink
+                [scriptblock]$ProgressSink, [int]$TimeoutSeconds = 900
             )
-            return Invoke-ReviewCampaignRun -StoreRoot $Context.store -StagingRoot $Context.staging -CampaignId cmp-demo -RunId $Run -ReservationId $Reservation -TargetLineage lin-code -TargetPort $Target -HarnessPort $Harness -RuntimePort $Runtime -ClockPort (New-OrchestratorClock) -PromptPath $Context.prompt -ProgressSink $ProgressSink -AuthorityConfigPath $Context.config
+            return Invoke-ReviewCampaignRun -StoreRoot $Context.store -StagingRoot $Context.staging -CampaignId cmp-demo -RunId $Run -ReservationId $Reservation -TargetLineage lin-code -TargetPort $Target -HarnessPort $Harness -RuntimePort $Runtime -ClockPort (New-OrchestratorClock) -PromptPath $Context.prompt -ProgressSink $ProgressSink -TimeoutSeconds $TimeoutSeconds -AuthorityConfigPath $Context.config
         }
         function script:New-OrchestratorGitRepo {
             param([string]$Path)
@@ -69,6 +69,17 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         @($events).Count | Should -BeGreaterThan 2
         @($events | Where-Object { $_.authority }).Count | Should -Be 0
         @($events | Where-Object { $null -ne $_.validated_finding_count -and $_.stage -ne 'terminal' }).Count | Should -Be 0
+    }
+
+    It 'accepts the shared invocation-timeout ceiling and rejects a value above it before reservation' {
+        $limits = Get-ReviewAuthorityTimingLimits
+        $atMax = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'timeout-at-max')
+        $accepted = Invoke-OrchestratorFixture -Context $atMax -Target (New-ReviewFixtureTargetPort -SnapshotPath $atMax.snapshot -TargetDigest digest-one) -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) -Runtime (New-ReviewFixtureRuntimePort) -TimeoutSeconds $limits.max_invocation_timeout_seconds
+        $accepted.status | Should -Be 'terminal' -Because $accepted.reason
+
+        $aboveMax = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'timeout-above-max')
+        { Invoke-OrchestratorFixture -Context $aboveMax -Target (New-ReviewFixtureTargetPort -SnapshotPath $aboveMax.snapshot -TargetDigest digest-one) -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) -Runtime (New-ReviewFixtureRuntimePort) -TimeoutSeconds ($limits.max_invocation_timeout_seconds + 1) } | Should -Throw -ExpectedMessage '*TimeoutSeconds must be between 1 and 7200*'
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $aboveMax.store -CampaignId cmp-demo -Kind reservations).Count | Should -Be 0
     }
 
     It 'runs the production Git target through the same synchronous contract' {

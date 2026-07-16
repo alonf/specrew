@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-16
-**Post-Implementation Verification**: T049 foundation evidence recorded; T050 independent review pending
+**Post-Implementation Verification**: T049 foundation evidence recorded; T050 v4 timing finding corrected and one authorized v5 rerun pending
 
 ## Concern Review
 

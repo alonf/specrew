@@ -64,6 +64,13 @@ if (-not (Get-Command -Name 'Get-ContinuousCoReviewCheckpointDiff' -ErrorAction 
     if (Test-Path -LiteralPath $script:NavigatorEngineLoad -PathType Leaf) { . $script:NavigatorEngineLoad }
 }
 
+# The project config reader shares the campaign authority's one timing ceiling. Load the pure core
+# explicitly when another caller supplied the checkpoint functions without the normal _load.ps1 path.
+if (-not (Get-Command -Name 'Get-ReviewAuthorityTimingLimits' -ErrorAction SilentlyContinue)) {
+    $script:NavigatorReviewAuthorityCore = Join-Path $PSScriptRoot 'review-authority-core.ps1'
+    if (Test-Path -LiteralPath $script:NavigatorReviewAuthorityCore -PathType Leaf) { . $script:NavigatorReviewAuthorityCore }
+}
+
 function Get-ContinuousCoReviewNavigatorModuleBase {
     # T082 HAZARD A: the detached reviewer pwsh runs with cwd = the materialized read-only WORKTREE,
     # which contains NO Specrew scripts (it is a `git archive` content export of the reviewed project).
@@ -103,17 +110,25 @@ function Get-ContinuousCoReviewNavigatorTimeoutSeconds {
     # ruling: "300 is too short according to all our tests"; the floor is the terminal
     # fallback, never a clamp on explicit values).
     param([Parameter(Mandatory)][string]$RepoRoot, [int]$Default = 600, [AllowNull()][string]$HostName)
+    $maxTimeoutSeconds = [int](Get-ReviewAuthorityTimingLimits).max_invocation_timeout_seconds
     $configPath = Join-Path $RepoRoot '.specrew/config.yml'
     if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        $configLines = @()
         try {
-            foreach ($line in Get-Content -LiteralPath $configPath -Encoding UTF8) {
-                if ($line -match '^\s*co_review_timeout_seconds:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
-                    $parsed = 0
-                    if ([int]::TryParse(($Matches['value'].Trim()), [ref]$parsed) -and $parsed -gt 0) { return $parsed }
+            $configLines = @(Get-Content -LiteralPath $configPath -Encoding UTF8)
+        }
+        catch { $null = $_ }
+        foreach ($line in $configLines) {
+            if ($line -match '^\s*co_review_timeout_seconds:\s*[''"]?(?<value>[^''"#]+?)[''"]?\s*(?:#.*)?$') {
+                $parsed = 0
+                if ([int]::TryParse(($Matches['value'].Trim()), [ref]$parsed) -and $parsed -gt 0) {
+                    if ($parsed -gt $maxTimeoutSeconds) {
+                        throw ('co-review-timeout-exceeds-maximum:{0}:{1}' -f $parsed, $maxTimeoutSeconds)
+                    }
+                    return $parsed
                 }
             }
         }
-        catch { $null = $_ }
     }
     if (-not [string]::IsNullOrWhiteSpace($HostName) -and (Get-Command -Name 'Get-ContinuousCoReviewHostDefaultTimeoutSeconds' -ErrorAction SilentlyContinue)) {
         $catalogValue = Get-ContinuousCoReviewHostDefaultTimeoutSeconds -HostName $HostName

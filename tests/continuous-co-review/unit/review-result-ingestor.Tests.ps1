@@ -108,6 +108,31 @@ Describe 'Strict candidate result ingress and controller publication (T047)' {
         (Get-Content -LiteralPath $afterKill.report_path -Raw) | Should -Match 'process tree verified dead'
     }
 
+    It 'publishes maximum-timeout-plus-grace evidence unchanged and rejects duration beyond the derived bound' {
+        $limits = Get-ReviewAuthorityTimingLimits
+        $maxObservedDuration = [long](
+            $limits.max_invocation_timeout_seconds + $limits.max_termination_grace_seconds
+        ) * 1000L
+        $store = Join-Path $TestDrive 'duration-max-store'; $staging = Join-Path $TestDrive 'duration-max-staging'
+        Write-IngressCandidate -Staging $staging -Candidate (New-IngressCandidate -Completion partial -Verdict incomplete) | Out-Null
+
+        $published = Invoke-TestIngress -Store $store -Staging $staging -Override @{
+            RuntimeOutcome = 'timed-out'; TerminationVerified = $true; Containment = 'verified'
+            DurationMs = $maxObservedDuration; FailureReason = 'maximum timeout and grace elapsed; reviewer tree verified dead'
+        }
+        $published.published | Should -BeTrue
+        $published.result.duration_ms | Should -Be $maxObservedDuration -Because 'measured evidence must not be clamped'
+        (Read-ReviewAuthorityFactFile -Path $published.result_path -ContractName ReviewResult).duration_ms | Should -Be $maxObservedDuration
+
+        $beyondStore = Join-Path $TestDrive 'duration-beyond-store'; $beyondStaging = Join-Path $TestDrive 'duration-beyond-staging'
+        Write-IngressCandidate -Staging $beyondStaging -Candidate (New-IngressCandidate -Completion partial -Verdict incomplete) | Out-Null
+        { Invoke-TestIngress -Store $beyondStore -Staging $beyondStaging -Override @{
+                RuntimeOutcome = 'timed-out'; TerminationVerified = $true; Containment = 'verified'
+                DurationMs = ([long]$limits.max_duration_ms + 1); FailureReason = 'duration exceeded the derived publication contract'
+            } } | Should -Throw -ExpectedMessage '*out-of-range:duration_ms*'
+        Test-Path -LiteralPath (Join-Path $beyondStore 'campaigns/cmp-demo/runs/run-one/result.json') | Should -BeFalse
+    }
+
     It 'keeps moved-snapshot findings visible with lineage while preventing current approval' {
         $store = Join-Path $TestDrive 'moved-store'; $staging = Join-Path $TestDrive 'moved-staging'
         $finding = New-IngressFinding -LocalId reviewer-new -Severity minor

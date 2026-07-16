@@ -31,21 +31,32 @@ New-Item -ItemType Directory -Force -Path (Join-Path $fx '.specrew') | Out-Null
 $v = Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $fx -HostName 'copilot'
 if ($v -ne 777) { Write-Fail "config must win over catalog, got $v" } else { Write-Pass "config 777 beats catalog copilot 300" }
 
-Write-Host "Test 3: resolution chain - catalog per-host when no config"
+Write-Host "Test 3: config timeout accepts the shared ceiling and fails closed above it"
+'co_review_timeout_seconds: 7200' | Set-Content (Join-Path $fx '.specrew\config.yml')
+$v = Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $fx -HostName 'copilot'
+if ($v -ne 7200) { Write-Fail "config ceiling expected 7200, got $v" } else { Write-Pass "config accepts shared 7200-second ceiling" }
+'co_review_timeout_seconds: 7201' | Set-Content (Join-Path $fx '.specrew\config.yml')
+$ceilingFailure = $null
+try { $null = Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $fx -HostName 'copilot' }
+catch { $ceilingFailure = $_.Exception.Message }
+if ($ceilingFailure -notmatch 'co-review-timeout-exceeds-maximum:7201:7200') { Write-Fail "config above ceiling must fail closed, got '$ceilingFailure'" }
+else { Write-Pass "config 7201 fails closed at the read boundary" }
+
+Write-Host "Test 4: resolution chain - catalog per-host when no config"
 Remove-Item (Join-Path $fx '.specrew\config.yml') -Force
 $v = Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $fx -HostName 'antigravity'
 if ($v -ne 900) { Write-Fail "catalog antigravity 900 expected, got $v" } else { Write-Pass "no config -> catalog antigravity 900" }
 $v = Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $fx -HostName 'copilot'
 if ($v -ne 300) { Write-Fail "catalog copilot 300 expected, got $v" } else { Write-Pass "no config -> catalog copilot 300" }
 
-Write-Host "Test 4: resolution chain - the 600 floor is the terminal fallback"
+Write-Host "Test 5: resolution chain - the 600 floor is the terminal fallback"
 $v = Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $fx -HostName 'no-such-host'
 if ($v -ne 600) { Write-Fail "unknown host must fall to the 600 floor, got $v" } else { Write-Pass "unknown host -> 600 floor" }
 $v = Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $fx
 if ($v -ne 600) { Write-Fail "no host must fall to the 600 floor, got $v" } else { Write-Pass "no host -> 600 floor (maintainer ruling: 300 was too short)" }
 Remove-Item -Recurse -Force $fx
 
-Write-Host "Test 5: independence provenance - flag beats env, env beats unverified (FR-023)"
+Write-Host "Test 6: independence provenance - flag beats env, env beats unverified (FR-023)"
 . (Join-Path $repoRoot 'scripts\internal\continuous-co-review\worktree-review-orchestrator.ps1')
 # Hermetic fixture (independent-review catch): the resolver authorizes hosts from
 # <RepoRoot>/.specrew/reviewer-hosts.json, which is untracked runtime state - absent in a

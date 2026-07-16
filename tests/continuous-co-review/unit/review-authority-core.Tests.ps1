@@ -26,14 +26,14 @@ Describe 'Review authority closed contracts (T042)' {
                 [string]$RunId = 'run-one', [string]$Digest = 'digest-one', [string]$Completion = 'complete',
                 [string]$Verdict = 'pass', [string]$RuntimeOutcome = 'completed', [bool]$TerminationVerified = $true,
                 [string]$Containment = 'verified', [string]$Currentness = 'current', [string]$Validation = 'valid',
-                [bool]$CanApprove = $true, [object[]]$Findings = @()
+                [bool]$CanApprove = $true, [object[]]$Findings = @(), [long]$DurationMs = 1000
             )
             [pscustomobject][ordered]@{
                 schema_version = '1.0'; campaign_id = 'cmp-demo'; run_id = $RunId; target_digest = $Digest; harness_id = 'fixture'
                 completion = $Completion; verdict = $Verdict; runtime_outcome = $RuntimeOutcome; termination_verified = $TerminationVerified
                 containment = $Containment; currentness = $Currentness; validation = $Validation; can_approve_current = $CanApprove
                 failure_reason = $null; summary = 'terminal'; findings = @($Findings)
-                started_at = '2026-07-16T00:00:00.0000000Z'; ended_at = '2026-07-16T00:00:01.0000000Z'; duration_ms = 1000
+                started_at = '2026-07-16T00:00:00.0000000Z'; ended_at = '2026-07-16T00:00:01.0000000Z'; duration_ms = $DurationMs
             }
         }
         function script:New-Grant {
@@ -84,6 +84,23 @@ Describe 'Review authority closed contracts (T042)' {
             $result.valid | Should -BeTrue -Because ("{0}: {1}" -f $case.name, ($result.errors -join '; '))
             $result.category | Should -Be 'valid'
         }
+    }
+
+    It 'derives the terminal duration ceiling from the shared timeout, grace, and overhead limits' {
+        $limits = Get-ReviewAuthorityTimingLimits
+        $limits.max_invocation_timeout_seconds | Should -Be 7200
+        $limits.max_termination_grace_seconds | Should -Be 10
+        $limits.orchestration_overhead_allowance_seconds | Should -Be 120
+        $limits.max_duration_ms | Should -Be ((
+            $limits.max_invocation_timeout_seconds +
+            $limits.max_termination_grace_seconds +
+            $limits.orchestration_overhead_allowance_seconds
+        ) * 1000)
+
+        (Test-ReviewAuthorityContractObject -ContractName ReviewResult -InputObject (New-TerminalResult -DurationMs $limits.max_duration_ms)).valid | Should -BeTrue
+        $beyond = Test-ReviewAuthorityContractObject -ContractName ReviewResult -InputObject (New-TerminalResult -DurationMs ($limits.max_duration_ms + 1))
+        $beyond.valid | Should -BeFalse
+        ($beyond.errors -join ';') | Should -Match 'out-of-range:duration_ms'
     }
 
     It 'rejects unknown fields, unsupported versions, illegal states, and identity substitution' {

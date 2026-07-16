@@ -4,7 +4,7 @@
 **Implementation commit**: `8f0c939b87d3ddb5bbdfa737d933369c83013b81`
 **Reviewed-state digest**: `57b0c02b107e42c66759190b91e8d46705ae9816`
 **Recorded at**: 2026-07-16
-**Independent review**: incomplete T050; the second authorized Claude invocation produced a valid current findings result, all findings are corrected, and the corrected tree requires a new human allowance
+**Independent review**: incomplete T050; v4 produced one valid current timing-contract finding, the bounded correction is green, and exactly one v5 rerun is authorized after commit
 
 The reviewed-state digest certifies the exact reviewable worktree content used by the recorded
 foundation run, including preserved tracked worktree changes and excluding only runtime/machinery
@@ -106,6 +106,37 @@ The v3 result remains immutable machine-local evidence at
 file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v3/.
 Because its findings are now corrected, it cannot approve the changed tree. Another complete run is
 required and consumes a new provider slot only after a separate human grant.
+
+## T050 v4 timing-contract review and third correction
+
+Separately authorized run `run-i006-t050-claude-v4` reviewed exact digest
+`5ffcca9fb50d47abd922e5352baaeca16e0d83f5`. It completed in 638.140 seconds with verified
+containment and termination, current applicability, valid strict JSON, and one note finding. The
+finding showed that the 86,400,000 ms terminal-duration maximum equaled the former 86,400-second
+invocation-timeout maximum, so a truthful max-timeout run plus termination/controller overhead could
+not publish a terminal result.
+
+The authorized correction lowers the invocation ceiling to 7,200 seconds and defines the terminal
+duration maximum as `(7,200-second invocation timeout + 10-second maximum termination grace +
+120-second bounded orchestration overhead) * 1000`, yielding 7,330,000 ms. The orchestrator parameter,
+terminal-result validation, and project `co_review_timeout_seconds` reader consume the same pure
+timing definition. Tests prove the parameter accepts 7,200 and rejects 7,201 before reservation, the
+config reader accepts 7,200 and fails closed at 7,201, maximum timeout plus maximum grace publishes
+the exact observed duration unchanged, and 7,330,001 ms fails closed. No duration evidence is clamped.
+
+Post-correction verification on 2026-07-16:
+
+- Focused authority/ingress/orchestrator suites: PASS, 50/50; config-boundary regression: PASS.
+- `pwsh -NoProfile -File tests/f198-iteration006-foundation.ps1`: PASS, 91/91, 26.059 s observed suite duration.
+- `pwsh -NoProfile -File tests/f198-regression-suite.ps1`: PASS, all 45 suites, 421.1 s wall time.
+- PowerShell parser and `git diff --check`: PASS.
+
+The v4 result remains immutable machine-local evidence at
+file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v4/.
+The maintainer authorized exactly one Claude v5 invocation against the post-correction committed
+digest, with a new run ID and no hidden retry. `DRIFT-198-I006-001` remains open and closeout must not
+rely on the stale global ledger. The v2 prose-wrapped-JSON failure remains a deterministic malformed-
+output fixture plus production prompt-contract hardening obligation for Iteration 007.
 
 ## Requirement evidence
 
