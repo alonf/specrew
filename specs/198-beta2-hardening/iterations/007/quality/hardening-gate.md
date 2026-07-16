@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-16
-**Post-Implementation Verification**: in progress — T030–T034b and T051–T058 locally verified; T059 local Windows/Linux proof green, hosted three-OS CI pending
+**Post-Implementation Verification**: in progress — T030–T034b and T051–T059 verified; hosted three-OS deterministic CI is green; T060–T061 live proof remains pending
 
 ## Concern Review
 
@@ -51,16 +51,16 @@
 - Final T061 complete valid current zero-blocking exact-digest result or an explicit blocked outcome.
 - Proof that FR-048/FR-049/SC-015 remains open and was not claimed by closeout artifacts.
 
-## T059 Interim Verification
+## T059 Verification
 
 - The deterministic workflow, fake-provider safety seam, strict-ingress/timeout cases, authority-store concurrency, spend allowance, target/currentness, recovery, and native runtime suites are implemented as one bounded Windows/Linux/macOS CI job.
 - Local Windows and Linux evidence is green, including real Job Object and delegated cgroup-v2 containment. The full 54-suite F198 registry and packaged deploy gate are green.
-- Hosted macOS ran the all-adapter matrix but did not reach the final process-group suite because an earlier containment suite failed. T059 remains in progress and T060 cannot begin until the corrected whole matrix passes.
-- Hosted run `29536313910` then ran all three OS jobs: Windows passed; macOS passed the 13-case adapter matrix before exposing two containment portability defects; Ubuntu exposed insufficient parent-only cgroup delegation. Scoped corrections are locally verified, but a new hosted run must pass before T059 closes.
+- Hosted run `29536313910` ran all three OS jobs: Windows passed; macOS passed the 13-case adapter matrix before exposing two containment portability defects; Ubuntu exposed insufficient parent-only cgroup delegation. That run remains immutable failed evidence.
+- Hosted run `29537492190` and check suite `79984185680` completed `success` against exact correction commit `27015b9e060e9f9696132ff3ed58631d9c538e38`. The bounded deterministic test and cleanup steps passed on hosted Windows, Ubuntu, and macOS, including the production Job Object, cgroup-v2, and macOS process-group paths. T059 is complete and T060's deterministic dependency is satisfied.
 - No provider was invoked. Deterministic evidence does not promote live support.
 
 ## Notes
 
 - `Overall Verdict: ready` records completed planning-time hardening. The separate fresh human verdict in `condition-a-human-authorization` authorizes Iteration 007 implementation but no provider invocation.
-- Runtime evidence for T030–T034b and T051–T058 is locally verified; T059–T061 evidence remains pending until those tasks execute. T034b deterministic compatibility does not substitute for T060's later live current-digest evidence.
+- Runtime evidence for T030–T034b and T051–T059 is verified; T060–T061 live evidence remains pending until separately authorized provider slots execute. T034b/T059 deterministic compatibility does not substitute for T060's later live current-digest evidence.
 - No concern is deferred inside Iteration 007; the command-plan dependency is a separate feature-level slice, not a hidden deferral from this iteration.

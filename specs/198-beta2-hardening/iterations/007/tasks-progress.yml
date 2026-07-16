@@ -83,10 +83,10 @@ tasks:
     blocked_reason: ""
   T059:
     title: "Deterministic all-adapter fault suite on Windows/Linux/macOS CI"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-16T23:35:59+03:00"
-    completed_at: ""
-    blocked_reason: "Hosted run 29536313910 failed on Ubuntu cgroup privilege and macOS containment portability; scoped correction is locally green and awaits a new committed three-OS run"
+    completed_at: "2026-07-17T00:54:25+03:00"
+    blocked_reason: ""
   T060:
     title: "First four live harness smokes across three OSes, support truth, campaign cutover, and docs"
     status: "pending"

@@ -2,7 +2,7 @@
 
 **Schema**: v1
 **Task**: T059
-**Status**: first hosted run failed; scoped correction locally verified; hosted three-OS rerun pending
+**Status**: complete — corrected hosted Windows/Linux/macOS run and check suite succeeded
 **Evidence Date**: 2026-07-17
 **Provider Spend**: zero
 
@@ -41,15 +41,19 @@
 - The macOS all-adapter fake-provider matrix passed 13/13 and all preceding shared suites passed. The job later exposed two worktree-containment portability defects: physical `/var` resolves to `/private/var`, and the legacy sampler incorrectly assumed Linux `/proc` on macOS.
 - The correction compares physical paths with `realpath` on POSIX and adds a read-only macOS sampler using `Get-Process` executable metadata plus BSD `ps` command-line data. It does not add mutation or authority.
 - The 1-second timeout fixture also proved unstable under virtualized WSL cold starts because containment could fire before the fake provider wrote its descendant PID. Only the fixture timeout is now 5 seconds. The descendant-death case then passed three consecutive privileged-WSL runs and one Windows run.
-- Hosted run 1 remains immutable failed evidence. A new commit/run must pass all three deterministic matrix jobs before T059 closes.
+- Hosted run 1 remains immutable failed evidence and promotes no support.
+- GitHub Actions run `29537492190` executed exact correction commit `27015b9e060e9f9696132ff3ed58631d9c538e38`. The enclosing run and GitHub Actions check suite `79984185680` completed `success`.
+- Ubuntu job `87752152915` completed `success`; it ran the fake-provider suite under the bounded privileged cgroup-v2 lane and cleaned its delegated root.
+- macOS job `87752152937` completed `success`; it reached and passed the full bounded suite, including physical-path containment, read-only sampling, and the production process-group cases. This is real `macos-latest` hosted-runner evidence.
+- Windows job `87752152924` completed `success`; it passed the bounded deterministic suite, post-checkout cleanup, and the production Job Object cases.
 
-## Pending Hosted Evidence
+## Acceptance and Next Boundary
 
-- No macOS runner is available locally. Hosted run 1 supplied real macOS evidence and the required failures above; the post-correction hosted rerun is pending.
-- T059 therefore remains `in-progress`. It may become `done` only after the committed matrix runs green on hosted Windows, Linux, and macOS, including the macOS production process-group cases.
+- No macOS runner is available locally. Hosted run 2 supplies the required real macOS proof, including the production process-group cases.
+- T059 is `done`: the committed correction has green hosted deterministic evidence on Windows, Ubuntu, and macOS, with the enclosing workflow/check suite terminal-success.
 - Source presence, Windows/Linux local results, fake adapters, and OS-unsupported simulations do not count as macOS or live-harness proof.
-- T060 remains blocked on T059 completion. All five paid live harness slots remain separately human-authorized work, and T061 correction/rerun slots remain outside that floor.
+- T060 is no longer dependency-blocked, but no paid live harness invocation is authorized by T059. All five base slots remain separately human-authorized work, and T061 correction/rerun slots remain outside that floor.
 
 ## Drift Decision
 
-The T059 comparison against FR-060, FR-061, FR-062, FR-064, SC-017 through SC-021, and NFR-007 is `PASS`: the implementation matches the planned deterministic proof surface, retains strict failure direction, and makes the missing hosted macOS evidence explicit instead of claiming completion. No Iteration 007-local drift event is required.
+The T059 comparison against FR-060, FR-061, FR-062, FR-064, SC-017 through SC-021, and NFR-007 is `PASS`: the implementation matches the planned deterministic proof surface, retains strict failure direction, preserves the failed first run, and binds completion to the corrected hosted three-OS evidence. No Iteration 007-local drift event is required.
