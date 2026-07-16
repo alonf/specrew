@@ -52,6 +52,8 @@ $proposal197ReviewerModules = @(
     # Shared file-primary production harness contract, followed by thin provider adapters.
     'review-harness-contract.ps1'
     'review-claude-harness-port.ps1'
+    'review-codex-harness-port.ps1'
+    'review-copilot-harness-port.ps1'
     # T019 piece 4b / FR-045a: the PURE Stop-intent classifier (intermediate operational yield vs a real handoff).
     'stop-intent-contract.ps1'
     'co-review-lineage-lease.ps1'
