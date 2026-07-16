@@ -1,11 +1,11 @@
 # Iteration State: 006
 
 **Schema**: v1
-**Current Phase**: retro
-**Iteration Status**: retro
-**Last Completed Task**: Iteration 006 retrospective authored from the accepted T050 review and recorded execution evidence.
-**Tasks Remaining**: retrospective verdict and iteration closeout.
-**In Progress**: retrospective complete; awaiting explicit human authorization for iteration closeout.
+**Current Phase**: iteration-closeout
+**Iteration Status**: complete
+**Last Completed Task**: Iteration 006 retrospective approved with explicit Iteration 007 reconciliation instructions.
+**Tasks Remaining**: iteration-closeout verdict; no Iteration 006 implementation task remains.
+**In Progress**: closeout boundary awaiting explicit human authorization; Iteration 007 planning is not authorized.
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 
@@ -79,3 +79,19 @@ The later tasks sync repeated the same defect by matching Iteration 003 verdict 
 - **Authorized review**: commit `098e0a34b2a059914e297ee13f5fc210ea8e0305`, grounded in the clean v6 result for implementation commit `2157017f77a225f9497c44ffb013e101bff6f2a7` and digest `bedc0172de77fda277f764cd07b90d5af291e2cc`.
 - **Scope**: enter retrospective and author the evidence-based retrospective. Iteration closeout remains unauthorized until a separate **approved for retro** verdict.
 - **Ledger note**: `DRIFT-198-I006-001` makes the global cross-iteration matcher unfit as authority for this crossing. The scoped verdict is recorded here; the stale ledger was not synchronized or hand-edited.
+
+## Fresh Retro Verdict
+
+- **Verdict**: approved for retro
+- **Evidence**: the maintainer typed **approved for retro** on 2026-07-16 against committed retrospective `0858c8e96587793202ade89acac5a3d69aacf8fa`.
+- **Scope**: perform Iteration 006 closeout work only. This approval does not authorize Iteration 007 planning, task authoring, or implementation.
+- **Instruction carried forward**: add Iteration 003 reconciliation to the Iteration 007 planning agenda; defer superseded T019 pieces with recorded rationale; carry T030–T032 and T034b forward; promote T033, the append-only ledger-correction door, as the explicit vehicle for IA-006-04 and `DRIFT-198-I006-001` disposition.
+- **Ledger note**: the stale global matcher remains non-authoritative. This scoped verdict records the crossing without synchronizing or hand-editing the global ledger.
+
+## Iteration 007 Planning Agenda — Recorded, Not Authorized
+
+1. Reconcile the unfinished Iteration 003 task set against the replacement campaign/run foundation before estimating Iteration 007.
+2. Identify the T019 pieces superseded by Iteration 006, defer each with explicit rationale, and preserve any still-live obligation rather than dropping it silently.
+3. Carry T030, T031, T032, and T034b into the planning input.
+4. Promote T033's append-only invalidation/correction mechanism as the planned disposition path for IA-006-04 and `DRIFT-198-I006-001`.
+5. Keep this agenda dormant until a later human verdict explicitly authorizes Iteration 007 planning.

@@ -287,3 +287,6 @@ closed:
   - feature: 198-beta2-hardening
     iteration: 002
     closed_at: 2026-07-11T14:27:48Z
+  - feature: 198-beta2-hardening
+    iteration: 006
+    closed_at: 2026-07-16T11:24:34Z

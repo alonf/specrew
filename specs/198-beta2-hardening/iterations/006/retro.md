@@ -2,7 +2,8 @@
 
 **Schema**: v1
 **Date**: 2026-07-16
-**Status**: awaiting iteration-closeout verdict
+**Status**: accepted
+**Human Approval**: approved for retro, 2026-07-16
 **Review Basis**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/review.md
 **Drift Basis**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/drift-log.md
 
@@ -142,9 +143,10 @@ the deliberately incomplete production-adapter scope remain explicit carry-forwa
 | IA-006-01 | Iteration 007 Planner | Subtract the delivered Claude file-primary slice and retain the full remaining adapter/runtime/live-smoke matrix. | Iteration 007 plan | open |
 | IA-006-02 | Adapter Implementer | Apply file-primary raw-JSON prompt contracts and strict deterministic malformed-output fixtures to every production harness. | Iteration 007 | open |
 | IA-006-03 | Iteration 007 Planner | Add an explicit paid-slot and wall-time budget alongside SP, using the 31-minute valid-run evidence plus bounded contingency; keep authorization per slot. | Iteration 007 plan | open |
-| IA-006-04 | Engine Maintainer | Disposition DRIFT-198-I006-001 through a scoped amendment or engine backlog task; do not point-fix it during closeout. | Before relying on global matcher authority | open |
+| IA-006-04 | Iteration 007 Planner/Engine Maintainer | Promote T033, the append-only ledger-correction door, as the explicit vehicle for DRIFT-198-I006-001; do not point-fix the matcher during closeout. | Iteration 007 plan | open |
 | IA-006-05 | Implementer/Reviewer | Run scoped governance validation before the first boundary commit and repeat it against an absolute path in an isolated committed tree. | Every later F-198 boundary | open |
 | IA-006-06 | Observability Implementer | Project cheap progress and accumulated findings into durable inputs that can feed retrospective problem descriptions without becoming result authority. | Iteration 007 | open |
+| IA-006-07 | Iteration 007 Planner | Reconcile Iteration 003 explicitly: defer superseded T019 pieces with recorded rationale, carry T030–T032 and T034b forward, and map T033 to IA-006-04 before plan approval. | Iteration 007 plan | open |
 
 ## Process Notes
 
@@ -155,3 +157,5 @@ the deliberately incomplete production-adapter scope remain explicit carry-forwa
   retrospective governance records.
 - Iteration closeout is not authorized by the review-signoff verdict. It requires a separate human
   decision after this retrospective is validated and committed.
+- The maintainer approved this retrospective with an instruction-bearing verdict. That verdict
+  authorizes iteration-closeout work only; it does not authorize Iteration 007 planning or execution.
