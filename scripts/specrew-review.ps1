@@ -688,6 +688,27 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckDegradedRunId)) {
 # accept-partial/override-block act immediately. This human-typed command is the trust boundary.
 if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
     try {
+        . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+        $remediationAuthority = Get-ContinuousCoReviewAuthorityDecision
+        if (-not $remediationAuthority.valid -or [string]$remediationAuthority.mode -eq 'disabled') {
+            throw ("Review authority is unavailable ({0}); neither legacy nor campaign remediation may mutate review state." -f $remediationAuthority.reason)
+        }
+        if ([bool]$remediationAuthority.campaign_authority_enabled) {
+            if ([string]$parsedArgs.Remediate -cne 'override-block') { throw "Campaign remediation '$($parsedArgs.Remediate)' does not create signoff authority; use a new explicitly authorized run." }
+            if ([string]::IsNullOrWhiteSpace([string]$parsedArgs.RunId) -or [string]::IsNullOrWhiteSpace([string]$parsedArgs.AckReason)) {
+                throw 'Campaign override-block requires --run-id and --ack-reason; the disposition is never implicit.'
+            }
+            $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.RunId)
+            $actor = (& git -C $resolvedProjectPath config user.name 2>$null)
+            if ([string]::IsNullOrWhiteSpace([string]$actor)) { $actor = [string]$env:USERNAME }
+            if ([string]::IsNullOrWhiteSpace([string]$actor)) { $actor = 'human' }
+            $store = Join-Path $resolvedProjectPath '.specrew/review/authority'
+            $disposition = Add-ReviewCampaignHumanDisposition -StoreRoot $store -CampaignId $identity.campaign_id -RunId ([string]$parsedArgs.RunId) -Decision accept-current -AuthorizedBy ([string]$actor).Trim() -AuthorizationRef ("public-cli:override-block:{0}" -f $parsedArgs.RunId) -Rationale ([string]$parsedArgs.AckReason)
+            if ($Json) { $disposition | ConvertTo-Json -Depth 10 }
+            else { Write-Host ("campaign finding disposition recorded for run {0} by {1}" -f $parsedArgs.RunId, $actor) -ForegroundColor Green }
+            exit 0
+        }
+        if (-not [bool]$remediationAuthority.legacy_promotion_enabled) { throw 'Review authority is not available for legacy remediation.' }
         . (Join-Path $PSScriptRoot 'internal/continuous-co-review/worktree-review-orchestrator.ps1')
         $remParams = @{ RepoRoot = $resolvedProjectPath; Choice = [string]$parsedArgs.Remediate }
         if ($parsedArgs.TimeoutSecondsExplicit) { $remParams.TimeoutSeconds = [int]$parsedArgs.TimeoutSeconds }
@@ -708,9 +729,53 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.Remediate)) {
 }
 
 if ($Live) {
-    # iter-008: the MANUAL door drives the worktree co-review SERVICE - the ONE method. It auto-resolves
-    # baseline/design-context/host (no required --host/--design-context-ref) and runs in a read-only worktree. The
-    # diff-cramming first cut of this never-released feature is being removed; there is no legacy path to select.
+    # Resolve the singular authority seam without loading campaign/runtime modules into the
+    # legacy command scope. The legacy timeout resolver depends on its historical load order.
+    . (Join-Path $PSScriptRoot 'internal/continuous-co-review/review-authority-cutover.ps1')
+    $authorityDecision = Get-ContinuousCoReviewAuthorityDecision
+    if (-not $authorityDecision.valid -or [string]$authorityDecision.mode -eq 'disabled') {
+        Write-Error ("Review authority is unavailable ({0}); neither legacy nor campaign review may run." -f $authorityDecision.reason)
+        exit 1
+    }
+
+    # T051 / FR-057 / FR-065: the existing public surface delegates to exactly one authority path.
+    # Campaign failure never falls back to the historical service, and the historical service never
+    # promotes after campaign cutover. The checked-in mode stays legacy until T060's proved cutover.
+    if ([bool]$authorityDecision.campaign_authority_enabled) {
+        try {
+            . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
+            $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName ([string]$parsedArgs.Host)) } else { 900 }
+            $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
+            $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
+                -RunId ([string]$parsedArgs.RunId) -ReviewerHost ([string]$parsedArgs.Host) -GrantAuthorizationRef ([string]$parsedArgs.AuthorizationRef) -TimeoutSeconds $tos
+            if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
+            elseif ($Quiet) {
+                $verdict = if ($null -ne $campaignRun.result) { [string]$campaignRun.result.verdict } else { 'none' }
+                Write-Host ("review-run campaign={0} run_id={1} status={2} verdict={3} invoked={4}" -f $campaignRun.campaign_id, $campaignRun.run_id, $campaignRun.status, $verdict, ([bool]$campaignRun.invoked).ToString().ToLowerInvariant())
+            }
+            else {
+                $border = ('=' * 60)
+                $color = if ($null -ne $campaignRun.result -and [bool]$campaignRun.result.can_approve_current) { 'Green' } else { 'Yellow' }
+                Write-Host $border -ForegroundColor $color
+                Write-Host 'SPECREW CAMPAIGN REVIEW' -ForegroundColor $color
+                Write-Host $border -ForegroundColor $color
+                Write-Host ("Campaign: {0}" -f $campaignRun.campaign_id)
+                Write-Host ("Run: {0}  Status: {1}  Invoked: {2}" -f $campaignRun.run_id, $campaignRun.status, $campaignRun.invoked)
+                if ($null -ne $campaignRun.result) {
+                    Write-Host ("Verdict: {0}  Completion: {1}  Currentness: {2}  Can approve current: {3}" -f $campaignRun.result.verdict, $campaignRun.result.completion, $campaignRun.result.currentness, $campaignRun.result.can_approve_current)
+                    if (-not [string]::IsNullOrWhiteSpace([string]$campaignRun.result.failure_reason)) { Write-Host ("Failure: {0}" -f $campaignRun.result.failure_reason) -ForegroundColor Yellow }
+                    foreach ($finding in @($campaignRun.result.findings)) { Write-Host ("  [{0}] {1}: {2}" -f $finding.severity, $finding.title, $finding.description) }
+                }
+                else { Write-Host ("Reason: {0}" -f $campaignRun.reason) -ForegroundColor Yellow }
+                Write-Host ("Authority store: {0}" -f $campaignRun.store_root)
+            }
+            if ([string]$campaignRun.status -cne 'terminal') { exit 1 }
+            exit 0
+        }
+        catch { Write-Error $_.Exception.Message; exit 1 }
+    }
+
+    # Legacy diagnostic path retained only while the singular cutover seam says mode=legacy.
     $coReviewEngine = 'worktree'
 
     if ($coReviewEngine -eq 'worktree') {

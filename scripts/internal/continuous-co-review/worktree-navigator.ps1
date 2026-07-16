@@ -27,6 +27,30 @@ function Invoke-ContinuousCoReviewWorktreeNavigator {
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
     $decision = [pscustomobject]@{ action = 'no-op'; reason = ''; engine = 'worktree'; fired_run_id = $null; fired_tree_id = $null; stop_block = $null; inject_notes = @() }
 
+    $authority = Get-ContinuousCoReviewAuthorityDecision
+    if (-not $authority.valid -or [string]$authority.mode -eq 'disabled') {
+        $decision.reason = ('review-authority-disabled:' + [string]$authority.reason)
+        return $decision
+    }
+    if ([bool]$authority.campaign_authority_enabled) {
+        if ($SessionStart) { $decision.reason = 'campaign-cross-session-no-legacy-reap'; return $decision }
+        try { $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolved }
+        catch {
+            $decision.reason = 'campaign-packet-gate-failed'
+            $decision.stop_block = "Campaign review authority could not be read safely: $($_.Exception.Message)`n(Campaign review block, not a lifecycle verdict - do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)"
+            return $decision
+        }
+        $decision.reason = [string]$packet.reason
+        if ([bool]$packet.render_boundary_packet) {
+            $decision.inject_notes = @(("[co-review] campaign run {0} authorizes the exact current digest; the lifecycle boundary packet may now be rendered." -f $packet.run_id))
+        }
+        elseif ([string]$packet.route -eq 'review-running') {
+            $decision.inject_notes = @(("[co-review] campaign run {0} is still reviewing the current digest; no decision is required." -f $packet.run_id))
+        }
+        else { $decision.stop_block = Build-ReviewCampaignNavigatorStopBlock -PacketDecision $packet }
+        return $decision
+    }
+
     # REAP (reuse) — surfaces any completed verdict (incl. the worktree engine's result.out) + cleans orphans.
     $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $resolved -TrunkName $TrunkName -CrossSession:$SessionStart -TranscriptPath $TranscriptPath
     $decision.stop_block = $reap.stop_block

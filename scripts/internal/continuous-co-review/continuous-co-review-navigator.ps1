@@ -1157,6 +1157,21 @@ function Build-ContinuousCoReviewNavigatorStopBlock {
     return $sb.ToString().TrimEnd()
 }
 
+function Build-ReviewCampaignNavigatorStopBlock {
+    # T051 / FR-045: campaign outcomes can block lifecycle progress, but only a clean or explicitly
+    # human-dispositioned exact-digest result may release the ordinary boundary packet. This block is
+    # deliberately marker-free so it cannot be captured as lifecycle authorization evidence.
+    param([Parameter(Mandatory)]$PacketDecision)
+    $sb = [Text.StringBuilder]::new()
+    [void]$sb.AppendLine(('Specrew campaign review — {0}.' -f ([string]$PacketDecision.route)))
+    [void]$sb.AppendLine([string]$PacketDecision.message)
+    if (-not [string]::IsNullOrWhiteSpace([string]$PacketDecision.run_id)) { [void]$sb.AppendLine(('Run: {0}' -f [string]$PacketDecision.run_id)) }
+    [void]$sb.AppendLine(('Implementer action: {0}' -f [string]$PacketDecision.implementer_action))
+    if ([bool]$PacketDecision.ask_narrow_question) { [void]$sb.AppendLine('Ask only the narrow review-disposition question; do not offer lifecycle approval options.') }
+    [void]$sb.AppendLine('(Campaign review block, not a lifecycle verdict — do NOT emit a SPECREW-VERDICT-BOUNDARY marker.)')
+    return $sb.ToString().TrimEnd()
+}
+
 function Get-ContinuousCoReviewNavigatorImplementStage {
     # Map the active boundary cursor (start-context.json session_state.boundary_type) to the gate-review
     # registry stage. Implementation work happens AFTER the before-implement verdict is authorized and

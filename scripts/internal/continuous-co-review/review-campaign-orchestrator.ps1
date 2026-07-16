@@ -151,6 +151,210 @@ function Complete-ReviewPreInvocationFailure {
     return Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $TargetDigest -HarnessId $HarnessId -RuntimeOutcome $RuntimeOutcome -Invoked $false -TerminationVerified $true -Containment $Containment -Currentness unknown -StartedAt $StartedAt -EndedAt $ObservedAt -DurationMs $DurationMs -FailureReason $Reason
 }
 
+function Get-ReviewCampaignStableToken {
+    param([Parameter(Mandatory)][string]$Value, [ValidateRange(8, 32)][int]$Length = 16)
+    $bytes = [Text.Encoding]::UTF8.GetBytes($Value)
+    return [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant().Substring(0, $Length)
+}
+
+function ConvertTo-ReviewCampaignSlug {
+    param([Parameter(Mandatory)][string]$Value, [ValidateRange(8, 60)][int]$MaximumLength = 48)
+    $slug = ($Value.ToLowerInvariant() -replace '[^a-z0-9]+', '-').Trim('-')
+    if ([string]::IsNullOrWhiteSpace($slug)) { $slug = 'review' }
+    if ($slug.Length -le $MaximumLength) { return $slug }
+    $hash = Get-ReviewCampaignStableToken -Value $Value -Length 12
+    return ($slug.Substring(0, $MaximumLength - 13).TrimEnd('-') + '-' + $hash)
+}
+
+function Resolve-ReviewCampaignPublicIdentity {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [string]$FeatureId,
+        [string]$IterationNumber,
+        [string]$RunId
+    )
+    $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $feature = $FeatureId
+    if ([string]::IsNullOrWhiteSpace($feature)) {
+        $featureRoot = $null
+        if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorFeatureRoot' -ErrorAction SilentlyContinue) {
+            try { $featureRoot = Get-ContinuousCoReviewNavigatorFeatureRoot -RepoRoot $root } catch { $featureRoot = $null }
+        }
+        if (-not [string]::IsNullOrWhiteSpace([string]$featureRoot)) { $feature = Split-Path -Leaf $featureRoot }
+    }
+    if ([string]::IsNullOrWhiteSpace($feature)) {
+        $branch = Invoke-ReviewTargetGit -WorkingDirectory $root -Arguments @('branch', '--show-current')
+        if ($branch.exit_code -eq 0 -and -not [string]::IsNullOrWhiteSpace($branch.stdout) -and (Test-Path -LiteralPath (Join-Path $root "specs/$($branch.stdout)") -PathType Container)) {
+            $feature = $branch.stdout
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($feature)) { throw 'review-campaign-active-feature-unresolved' }
+    $featureDirectory = Join-Path $root "specs/$feature"
+    if (-not (Test-Path -LiteralPath $featureDirectory -PathType Container)) { throw "review-campaign-feature-missing:$feature" }
+
+    $iteration = $IterationNumber
+    if ([string]::IsNullOrWhiteSpace($iteration)) {
+        $iterationsRoot = Join-Path $featureDirectory 'iterations'
+        if (Test-Path -LiteralPath $iterationsRoot -PathType Container) {
+            $iteration = @(Get-ChildItem -LiteralPath $iterationsRoot -Directory | Where-Object { $_.Name -match '^\d{3,}$' } | Sort-Object Name -Descending | Select-Object -First 1 -ExpandProperty Name)
+        }
+    }
+    if ($iteration -is [array]) { $iteration = if ($iteration.Count -gt 0) { [string]$iteration[0] } else { '' } }
+    if ([string]::IsNullOrWhiteSpace([string]$iteration) -or [string]$iteration -notmatch '^\d{3,}$') { throw 'review-campaign-active-iteration-unresolved' }
+
+    $featureSlug = ConvertTo-ReviewCampaignSlug -Value $feature -MaximumLength 44
+    $campaignId = "cmp-$featureSlug-i$iteration"
+    $lineageId = "lin-$featureSlug"
+    if ([string]::IsNullOrWhiteSpace($RunId)) {
+        $stamp = [DateTimeOffset]::UtcNow.ToString('yyyyMMddTHHmmssfff')
+        $RunId = "run-$stamp-" + [guid]::NewGuid().ToString('N').Substring(0, 8)
+    }
+    if (-not (Test-ReviewAuthorityIdentifier -Value $RunId -Kind run)) { throw "review-campaign-invalid-run-id:$RunId" }
+    $reservationId = 'res-' + (Get-ReviewCampaignStableToken -Value "$campaignId/$RunId/reservation" -Length 20)
+    return [pscustomobject][ordered]@{
+        campaign_id = $campaignId; run_id = $RunId; reservation_id = $reservationId
+        target_lineage = $lineageId; feature_id = $feature; iteration_number = [string]$iteration
+    }
+}
+
+function New-ReviewUnavailableHarnessPort {
+    param([string]$HarnessId = 'unavailable-harness', [string]$Reason = 'production-harness-unavailable')
+    $preflight = { param($invocation) [pscustomobject]@{ ok = $false; reason = $Reason } }.GetNewClosure()
+    $invoke = { param($invocation, $environment) throw $Reason }.GetNewClosure()
+    return [pscustomobject]@{ id = $HarnessId; preflight = $preflight; invoke = $invoke }
+}
+
+function New-ReviewUnavailableRuntimePort {
+    param([string]$Reason = 'production-runtime-unavailable')
+    $preflight = { param($invocation) [pscustomobject]@{ ok = $false; reason = $Reason } }.GetNewClosure()
+    $invoke = { param($harness, $invocation, $onStarted, $environment) throw $Reason }.GetNewClosure()
+    return [pscustomobject]@{ id = 'unavailable-runtime'; preflight = $preflight; invoke = $invoke }
+}
+
+function New-ReviewCampaignProductionPorts {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [string]$ReviewerHost,
+        [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900
+    )
+    $target = New-GitReviewTargetPort -OriginRepo $RepoRoot
+    $harness = if (Get-Command -Name 'New-ReviewProductionHarnessPort' -ErrorAction SilentlyContinue) {
+        New-ReviewProductionHarnessPort -HostName $ReviewerHost -TimeoutSeconds $TimeoutSeconds
+    }
+    else { New-ReviewUnavailableHarnessPort -HarnessId $(if ($ReviewerHost) { $ReviewerHost } else { 'unselected-harness' }) -Reason 'production-harness-catalog-not-installed' }
+    $runtime = if (Get-Command -Name 'New-ReviewProductionRuntimePort' -ErrorAction SilentlyContinue) {
+        New-ReviewProductionRuntimePort -TimeoutSeconds $TimeoutSeconds
+    }
+    else { New-ReviewUnavailableRuntimePort -Reason 'production-os-runtime-not-installed' }
+    return [pscustomobject]@{
+        target = $target; harness = $harness; runtime = $runtime; clock = New-ReviewSystemClockPort
+        prompt_path = (Join-Path $PSScriptRoot 'reviewer-spawn-contract.md')
+    }
+}
+
+function Invoke-ReviewCampaignCommand {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [string]$FeatureId,
+        [string]$IterationNumber,
+        [string]$RunId,
+        [string]$ReviewerHost,
+        [string]$GrantAuthorizationRef,
+        [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900,
+        [string]$AuthorityConfigPath,
+        [string]$StoreRoot,
+        [string]$StagingRoot,
+        [AllowNull()]$Ports,
+        [scriptblock]$ProgressSink
+    )
+    $authority = Get-ContinuousCoReviewAuthorityDecision -ConfigPath $AuthorityConfigPath
+    if (-not $authority.campaign_authority_enabled) {
+        return [pscustomobject]@{ status = 'suppressed'; reason = ('campaign-authority-disabled:' + $authority.reason); invoked = $false; result = $null; authority_mode = $authority.mode }
+    }
+    $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId $FeatureId -IterationNumber $IterationNumber -RunId $RunId
+    if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
+    if ([string]::IsNullOrWhiteSpace($StagingRoot)) { $StagingRoot = Join-Path $root '.specrew/review/staging' }
+    if (-not [string]::IsNullOrWhiteSpace($GrantAuthorizationRef)) {
+        # One human authorization reference creates at most one campaign slot. A new run that reuses
+        # the same reference sees the already-spent grant; it does not mint another allowance slot.
+        $grantId = 'grant-' + (Get-ReviewCampaignStableToken -Value "$($identity.campaign_id)/$GrantAuthorizationRef" -Length 20)
+        $grant = [pscustomobject][ordered]@{
+            schema_version = '1.0'; fact_type = 'grant'; campaign_id = $identity.campaign_id; grant_id = $grantId
+            slots = 1; authority_kind = 'human'; authorization_ref = $GrantAuthorizationRef
+            observed_at = [DateTimeOffset]::UtcNow.ToString('o')
+        }
+        $existingGrant = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -Kind grants | Where-Object { [string]$_.grant_id -ceq $grantId })
+        if ($existingGrant.Count -eq 0) {
+            try { Add-ReviewCampaignGrantFact -StoreRoot $StoreRoot -Fact $grant | Out-Null }
+            catch {
+                if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw }
+                $existingGrant = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $identity.campaign_id -Kind grants | Where-Object { [string]$_.grant_id -ceq $grantId })
+                if ($existingGrant.Count -ne 1) { throw }
+            }
+        }
+        if ($existingGrant.Count -gt 0 -and ([string]$existingGrant[0].authorization_ref -cne $GrantAuthorizationRef -or [int]$existingGrant[0].slots -ne 1)) {
+            throw "review-store-corruption:grant-identity-mismatch:$grantId"
+        }
+    }
+    if ($null -eq $Ports) { $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -TimeoutSeconds $TimeoutSeconds }
+    $run = Invoke-ReviewCampaignRun -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $identity.campaign_id -RunId $identity.run_id `
+        -ReservationId $identity.reservation_id -TargetLineage $identity.target_lineage -TargetPort $Ports.target -HarnessPort $Ports.harness `
+        -RuntimePort $Ports.runtime -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `
+        -ProgressSink $ProgressSink -AuthorityConfigPath $AuthorityConfigPath
+    return [pscustomobject][ordered]@{
+        status = $run.status; reason = $run.reason; invoked = $run.invoked; result = $run.result
+        result_path = $(if ($run.PSObject.Properties['result_path']) { $run.result_path } else { $null })
+        report_path = $(if ($run.PSObject.Properties['report_path']) { $run.report_path } else { $null })
+        campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
+        store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+    }
+}
+
+function Add-ReviewCampaignHumanDisposition {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId,
+        [Parameter(Mandatory)][ValidateSet('accept-current', 'require-correction')][string]$Decision,
+        [Parameter(Mandatory)][string]$AuthorizedBy,
+        [Parameter(Mandatory)][string]$AuthorizationRef,
+        [Parameter(Mandatory)][string]$Rationale
+    )
+    $result = Get-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage result
+    if ($null -eq $result) { throw 'review-human-disposition-result-missing' }
+    if ([string]$result.completion -cne 'complete' -or [string]$result.validation -cne 'valid' -or [string]$result.currentness -cne 'current') {
+        throw 'review-human-disposition-requires-complete-current-valid-result'
+    }
+    if ($Decision -ceq 'accept-current' -and [string]$result.verdict -cne 'findings') { throw 'review-human-disposition-accept-requires-findings-result' }
+    if ([string]::IsNullOrWhiteSpace($AuthorizedBy) -or [string]::IsNullOrWhiteSpace($AuthorizationRef) -or [string]::IsNullOrWhiteSpace($Rationale)) {
+        throw 'review-human-disposition-requires-explicit-human-evidence'
+    }
+    $token = Get-ReviewCampaignStableToken -Value "$CampaignId/$RunId/$($result.target_digest)/$Decision/$AuthorizationRef" -Length 20
+    $fact = [pscustomobject][ordered]@{
+        schema_version = '1.0'; fact_type = 'human-disposition'; disposition_id = "disposition-$token"
+        campaign_id = $CampaignId; run_id = $RunId; target_digest = [string]$result.target_digest; decision = $Decision
+        authority_kind = 'human'; authorized_by = $AuthorizedBy; authorization_ref = $AuthorizationRef; rationale = $Rationale
+        observed_at = [DateTimeOffset]::UtcNow.ToString('o')
+    }
+    $existing = @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId | Where-Object { [string]$_.disposition_id -ceq $fact.disposition_id })
+    if ($existing.Count -gt 0) {
+        return [pscustomobject]@{ fact = $existing[0]; created = $false; idempotent = $true; path = $null }
+    }
+    try { $write = Write-ReviewCampaignHumanDispositionFact -StoreRoot $StoreRoot -Fact $fact }
+    catch {
+        if ($_.Exception.Message -notlike 'review-store-corruption:conflicting-immutable-fact:*') { throw }
+        $existing = @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId | Where-Object { [string]$_.disposition_id -ceq $fact.disposition_id })
+        if ($existing.Count -ne 1) { throw }
+        return [pscustomobject]@{ fact = $existing[0]; created = $false; idempotent = $true; path = $null }
+    }
+    return [pscustomobject]@{ fact = $fact; created = $write.created; idempotent = $write.idempotent; path = $write.path }
+}
+
 function Invoke-ReviewCampaignRun {
     [CmdletBinding()]
     param(

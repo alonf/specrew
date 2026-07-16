@@ -66,7 +66,7 @@ function Write-ReviewAuthorityImmutableFact {
         [Parameter(Mandatory)]$Fact,
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact'
         )][string]$ContractName,
         [string]$ExpectedCampaignId,
         [string]$ExpectedRunId,
@@ -104,7 +104,7 @@ function Read-ReviewAuthorityFactFile {
         [Parameter(Mandatory)][string]$Path,
         [ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact'
         )][string]$ContractName,
         [int]$MaxBytes = 1048576
     )
@@ -243,6 +243,83 @@ function Publish-ReviewRunResultFact {
     )
     $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + "/runs/$RunId/result.json"
     return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName ReviewResult -ExpectedCampaignId $CampaignId -ExpectedRunId $RunId
+}
+
+function Get-ReviewAuthorityCampaignRunResults {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId
+    )
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/runs'
+    $runsRoot = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.Directory]::Exists($runsRoot)) { return @() }
+    $results = [Collections.Generic.List[object]]::new()
+    foreach ($runDirectory in [IO.Directory]::EnumerateDirectories($runsRoot) | Sort-Object) {
+        $runId = [IO.Path]::GetFileName($runDirectory)
+        if (-not (Test-ReviewAuthorityIdentifier -Value $runId -Kind run)) { throw "review-store-corruption:invalid-run-directory:$runId" }
+        $path = Join-Path $runDirectory 'result.json'
+        if (-not [IO.File]::Exists($path)) { continue }
+        $fact = Read-ReviewAuthorityFactFile -Path $path -ContractName ReviewResult
+        if ([string]$fact.campaign_id -cne $CampaignId -or [string]$fact.run_id -cne $runId) {
+            throw "review-store-corruption:result-path-identity-mismatch:$runId"
+        }
+        $results.Add($fact) | Out-Null
+    }
+    return @($results)
+}
+
+function Get-ReviewRunLatestStateFact {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$RunId
+    )
+    foreach ($stage in @('validating', 'invoked', 'claimed', 'preflighted', 'reserved', 'requested')) {
+        $fact = Get-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage $stage
+        if ($null -ne $fact) { return $fact }
+    }
+    return $null
+}
+
+function Write-ReviewCampaignHumanDispositionFact {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$StoreRoot, [Parameter(Mandatory)]$Fact)
+    $campaignId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'campaign_id')
+    $runId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'run_id')
+    $dispositionId = [string](Get-ReviewAuthorityProperty -Object $Fact -Name 'disposition_id')
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $campaignId) + "/dispositions/$runId/$dispositionId.json"
+    return Write-ReviewAuthorityImmutableFact -StoreRoot $StoreRoot -RelativePath $relative -Fact $Fact -ContractName HumanDispositionFact -ExpectedCampaignId $campaignId -ExpectedRunId $runId -ExpectedTargetDigest ([string]$Fact.target_digest)
+}
+
+function Get-ReviewCampaignHumanDispositionFacts {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$StoreRoot,
+        [Parameter(Mandatory)][string]$CampaignId,
+        [string]$RunId
+    )
+    $relative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + '/dispositions'
+    if (-not [string]::IsNullOrWhiteSpace($RunId)) {
+        if (-not (Test-ReviewAuthorityIdentifier -Value $RunId -Kind run)) { throw "review-store-invalid-run-id:$RunId" }
+        $relative += "/$RunId"
+    }
+    $root = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $relative
+    if (-not [IO.Directory]::Exists($root)) { return @() }
+    $facts = [Collections.Generic.List[object]]::new()
+    foreach ($file in [IO.Directory]::EnumerateFiles($root, '*.json', [IO.SearchOption]::AllDirectories) | Sort-Object) {
+        $fact = Read-ReviewAuthorityFactFile -Path $file -ContractName HumanDispositionFact
+        $expectedRelative = (Get-ReviewAuthorityCampaignRelativeRoot -CampaignId $CampaignId) + "/dispositions/$([string]$fact.run_id)/$([string]$fact.disposition_id).json"
+        $expectedPath = Get-ReviewAuthorityStorePath -StoreRoot $StoreRoot -RelativePath $expectedRelative
+        if ([IO.Path]::GetFullPath($file) -cne [IO.Path]::GetFullPath($expectedPath) -or
+            [string]$fact.campaign_id -cne $CampaignId -or
+            (-not [string]::IsNullOrWhiteSpace($RunId) -and [string]$fact.run_id -cne $RunId)) {
+            throw 'review-store-corruption:human-disposition-path-identity-mismatch'
+        }
+        $facts.Add($fact) | Out-Null
+    }
+    return @($facts)
 }
 
 function Get-ReviewRunAuthorityFact {

@@ -65,6 +65,30 @@ Describe 'Review authority cutover is singular and fail closed' {
         }
     }
 
+    It 'enforces the one-way legacy to disabled to campaign transition' {
+        (Resolve-ContinuousCoReviewAuthorityTransition -CurrentMode legacy -ProposedMode campaign).permitted | Should -BeFalse
+        (Resolve-ContinuousCoReviewAuthorityTransition -CurrentMode legacy -ProposedMode campaign).reason | Should -Be 'campaign-cutover-requires-disabled-stage'
+        (Resolve-ContinuousCoReviewAuthorityTransition -CurrentMode legacy -ProposedMode disabled).permitted | Should -BeTrue
+        (Resolve-ContinuousCoReviewAuthorityTransition -CurrentMode disabled -ProposedMode campaign).permitted | Should -BeTrue
+        (Resolve-ContinuousCoReviewAuthorityTransition -CurrentMode campaign -ProposedMode legacy).permitted | Should -BeFalse
+        (Resolve-ContinuousCoReviewAuthorityTransition -CurrentMode disabled -ProposedMode legacy -CampaignFactCount 1).reason | Should -Be 'legacy-reactivation-refused-after-campaign-facts'
+        (Resolve-ContinuousCoReviewAuthorityTransition -CurrentMode disabled -ProposedMode legacy -CampaignFactCount 0).permitted | Should -BeTrue
+    }
+
+    It 'requires two persisted setter calls and refuses legacy reactivation after campaign facts exist' {
+        $repo = Join-Path $TestDrive 'setter-repo'
+        New-Item -ItemType Directory -Path $repo -Force | Out-Null
+        $path = Write-AuthorityFixture -Name 'setter' -Json '{"schema_version":"1.0","mode":"legacy"}'
+        { Set-ContinuousCoReviewAuthorityMode -ConfigPath $path -Mode campaign -RepoRoot $repo } | Should -Throw -ExpectedMessage '*campaign-cutover-requires-disabled-stage*'
+        (Set-ContinuousCoReviewAuthorityMode -ConfigPath $path -Mode disabled -RepoRoot $repo).mode | Should -Be 'disabled'
+        (Set-ContinuousCoReviewAuthorityMode -ConfigPath $path -Mode campaign -RepoRoot $repo).mode | Should -Be 'campaign'
+        (Set-ContinuousCoReviewAuthorityMode -ConfigPath $path -Mode disabled -RepoRoot $repo).mode | Should -Be 'disabled'
+        $factDirectory = Join-Path $repo '.specrew/review/authority/campaigns/cmp-demo'
+        New-Item -ItemType Directory -Path $factDirectory -Force | Out-Null
+        [IO.File]::WriteAllText((Join-Path $factDirectory 'fact.json'), '{}')
+        { Set-ContinuousCoReviewAuthorityMode -ConfigPath $path -Mode legacy -RepoRoot $repo } | Should -Throw -ExpectedMessage '*legacy-reactivation-refused-after-campaign-facts*'
+    }
+
     It 'keeps the approved component and port map explicit' {
         $map = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'specs/198-beta2-hardening/iterations/006/foundation-map.md') -Raw
         foreach ($required in @(

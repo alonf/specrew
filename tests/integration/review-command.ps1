@@ -235,17 +235,18 @@ if (Test-Path -LiteralPath (Join-Path $liveProjectRoot ".specrew\review\inline\$
     Write-Fail 'an unregistered-host refusal must not write promoted gate evidence'
     exit 1
 }
-# D-197-I010-006 budget-drift regression: with NO --timeout-seconds, the --live door must resolve the
-# SAME config-aware default as the auto path (300s baseline) - NOT the stale hardcoded 120 that starved
-# agentic reviewers (nor the dead-code 900). The refused run still writes its status envelope.
+# D-197-I010-006 / F-198 FR-022 budget-drift regression: with NO --timeout-seconds, the --live door
+# must resolve the SAME config/catalog/floor chain as the auto path. An unknown host reaches the
+# intentional 600-second terminal floor (300 was superseded as too short); the refused run still
+# writes its status envelope.
 $liveStatusPath = Join-Path $liveProjectRoot ".specrew\review\pending\$liveRunId\status.json"
 if (Test-Path -LiteralPath $liveStatusPath -PathType Leaf) {
     $liveStatus = Get-Content -LiteralPath $liveStatusPath -Raw | ConvertFrom-Json
-    if ([int]$liveStatus.timeout_seconds -ne 300) {
-        Write-Fail ("default --live budget must be the config-aware 300s baseline, got '{0}'" -f $liveStatus.timeout_seconds)
+    if ([int]$liveStatus.timeout_seconds -ne 600) {
+        Write-Fail ("default --live budget must use the shared 600s terminal floor, got '{0}'" -f $liveStatus.timeout_seconds)
         exit 1
     }
-    Write-Pass 'Default --live budget resolves to the config-aware 300s baseline (not the stale 120)'
+    Write-Pass 'Default --live budget resolves through the shared chain to the 600s terminal floor'
 }
 else {
     Write-Fail "expected the refused run's status envelope at $liveStatusPath (needed for the default-budget assertion)"

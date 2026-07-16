@@ -90,3 +90,55 @@ function Test-ContinuousCoReviewAuthorityEnabled {
     if ($Authority -ceq 'legacy') { return [bool]$Decision.legacy_promotion_enabled }
     return [bool]$Decision.campaign_authority_enabled
 }
+
+function Resolve-ContinuousCoReviewAuthorityTransition {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][ValidateSet('legacy', 'disabled', 'campaign')][string]$CurrentMode,
+        [Parameter(Mandatory)][ValidateSet('legacy', 'disabled', 'campaign')][string]$ProposedMode,
+        [ValidateRange(0, [int]::MaxValue)][int]$CampaignFactCount = 0
+    )
+    if ($CurrentMode -ceq $ProposedMode) {
+        return [pscustomobject]@{ permitted = $true; reason = 'authority-mode-unchanged'; current_mode = $CurrentMode; proposed_mode = $ProposedMode }
+    }
+    $permitted = switch ("$CurrentMode->$ProposedMode") {
+        'legacy->disabled' { $true }
+        'disabled->campaign' { $true }
+        'campaign->disabled' { $true }
+        'disabled->legacy' { $CampaignFactCount -eq 0 }
+        default { $false }
+    }
+    $reason = if (-not $permitted -and $CurrentMode -ceq 'legacy' -and $ProposedMode -ceq 'campaign') { 'campaign-cutover-requires-disabled-stage' }
+    elseif (-not $permitted -and $ProposedMode -ceq 'legacy' -and $CampaignFactCount -gt 0) { 'legacy-reactivation-refused-after-campaign-facts' }
+    elseif (-not $permitted) { 'authority-transition-refused' }
+    else { 'authority-transition-permitted' }
+    return [pscustomobject]@{ permitted = $permitted; reason = $reason; current_mode = $CurrentMode; proposed_mode = $ProposedMode }
+}
+
+function Set-ContinuousCoReviewAuthorityMode {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ConfigPath,
+        [Parameter(Mandatory)][ValidateSet('legacy', 'disabled', 'campaign')][string]$Mode,
+        [Parameter(Mandatory)][string]$RepoRoot
+    )
+    $current = Get-ContinuousCoReviewAuthorityDecision -ConfigPath $ConfigPath
+    if (-not $current.valid) { throw "authority-cutover-current-state-invalid:$($current.reason)" }
+    $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $campaignStore = Join-Path $root '.specrew/review/authority'
+    $campaignFactCount = if ([IO.Directory]::Exists($campaignStore)) {
+        @([IO.Directory]::EnumerateFiles($campaignStore, '*.json', [IO.SearchOption]::AllDirectories)).Count
+    }
+    else { 0 }
+    $transition = Resolve-ContinuousCoReviewAuthorityTransition -CurrentMode ([string]$current.mode) -ProposedMode $Mode -CampaignFactCount $CampaignFactCount
+    if (-not $transition.permitted) { throw "authority-cutover-refused:$($transition.reason)" }
+    $json = ([ordered]@{ schema_version = '1.0'; mode = $Mode } | ConvertTo-Json -Compress)
+    $full = [IO.Path]::GetFullPath($ConfigPath)
+    $temp = $full + '.tmp-' + [guid]::NewGuid().ToString('N')
+    try {
+        [IO.File]::WriteAllText($temp, $json, [Text.UTF8Encoding]::new($false))
+        [IO.File]::Move($temp, $full, $true)
+    }
+    finally { if ([IO.File]::Exists($temp)) { [IO.File]::Delete($temp) } }
+    return Get-ContinuousCoReviewAuthorityDecision -ConfigPath $full
+}

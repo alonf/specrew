@@ -53,7 +53,7 @@ function Get-ReviewAuthorityProperty {
 function Test-ReviewAuthorityIdentifier {
     param(
         [AllowNull()]$Value,
-        [Parameter(Mandatory)][ValidateSet('campaign', 'run', 'grant', 'reservation', 'finding', 'lineage')][string]$Kind
+        [Parameter(Mandatory)][ValidateSet('campaign', 'run', 'grant', 'reservation', 'finding', 'lineage', 'disposition')][string]$Kind
     )
     if ($Value -isnot [string]) { return $false }
     $prefix = switch ($Kind) {
@@ -63,6 +63,7 @@ function Test-ReviewAuthorityIdentifier {
         'reservation' { 'res' }
         'finding' { 'finding' }
         'lineage' { 'lin' }
+        'disposition' { 'disposition' }
     }
     return ([string]$Value -cmatch ('^{0}-[a-z0-9][a-z0-9-]{{0,63}}$' -f $prefix))
 }
@@ -164,7 +165,7 @@ function Test-ReviewAuthorityIdField {
     param(
         [Parameter(Mandatory)]$Object,
         [Parameter(Mandatory)][string]$Name,
-        [Parameter(Mandatory)][ValidateSet('campaign', 'run', 'grant', 'reservation', 'finding', 'lineage')][string]$Kind,
+        [Parameter(Mandatory)][ValidateSet('campaign', 'run', 'grant', 'reservation', 'finding', 'lineage', 'disposition')][string]$Kind,
         [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[string]]$Errors
     )
     Test-ReviewAuthorityStringField -Object $Object -Name $Name -Errors $Errors -MaxLength 68
@@ -233,7 +234,7 @@ function Test-ReviewAuthorityContractObject {
     param(
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact'
         )][string]$ContractName,
         [Parameter(Mandatory)]$InputObject,
         [string]$ExpectedCampaignId,
@@ -253,6 +254,7 @@ function Test-ReviewAuthorityContractObject {
         'SpendFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'invocation_started_at') }
         'ReleaseFact' { @('schema_version', 'fact_type', 'campaign_id', 'reservation_id', 'run_id', 'reason', 'observed_at') }
         'ClaimFact' { @('schema_version', 'fact_type', 'campaign_id', 'run_id', 'target_lineage', 'generation', 'disposition', 'observed_at') }
+        'HumanDispositionFact' { @('schema_version', 'fact_type', 'disposition_id', 'campaign_id', 'run_id', 'target_digest', 'decision', 'authority_kind', 'authorized_by', 'authorization_ref', 'rationale', 'observed_at') }
     }
     if (-not (Test-ReviewAuthorityClosedShape -Object $InputObject -Allowed $fields -Errors $errors)) {
         return [pscustomobject]@{ valid = $false; category = 'schema-invalid'; errors = @($errors) }
@@ -267,6 +269,7 @@ function Test-ReviewAuthorityContractObject {
     if ($fields -contains 'run_id') { Test-ReviewAuthorityIdField -Object $InputObject -Name 'run_id' -Kind run -Errors $errors }
     if ($fields -contains 'target_digest') { Test-ReviewAuthorityStringField -Object $InputObject -Name 'target_digest' -Errors $errors -MaxLength 128 }
     if ($fields -contains 'harness_id') { Test-ReviewAuthorityStringField -Object $InputObject -Name 'harness_id' -Errors $errors -MaxLength 64 }
+    if ($fields -contains 'disposition_id') { Test-ReviewAuthorityIdField -Object $InputObject -Name 'disposition_id' -Kind disposition -Errors $errors }
 
     switch ($ContractName) {
         'ReviewCampaign' {
@@ -334,6 +337,16 @@ function Test-ReviewAuthorityContractObject {
             Test-ReviewAuthorityIdField -Object $InputObject -Name 'target_lineage' -Kind lineage -Errors $errors
             Test-ReviewAuthorityIntegerField -Object $InputObject -Name 'generation' -Errors $errors -Minimum 1 -Maximum ([int]::MaxValue)
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'disposition' -Errors $errors -MaxLength 16 -Enum @('held', 'released', 'abandoned')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
+        }
+        'HumanDispositionFact' {
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'fact_type' -Errors $errors -MaxLength 32 -Enum @('human-disposition')
+            Test-ReviewAuthorityIdField -Object $InputObject -Name 'disposition_id' -Kind disposition -Errors $errors
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'decision' -Errors $errors -MaxLength 32 -Enum @('accept-current', 'require-correction')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'authority_kind' -Errors $errors -MaxLength 16 -Enum @('human')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'authorized_by' -Errors $errors -MaxLength 200
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'authorization_ref' -Errors $errors -MaxLength 256
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'rationale' -Errors $errors -MaxLength 2000
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'observed_at' -Errors $errors -MaxLength 64
         }
     }
@@ -418,7 +431,7 @@ function Test-ReviewAuthorityContractJson {
     param(
         [Parameter(Mandatory)][ValidateSet(
             'ReviewCampaign', 'ReviewRun', 'ReviewInvocation', 'ReviewerCandidate', 'ReviewResult',
-            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact'
+            'GrantFact', 'ReservationFact', 'SpendFact', 'ReleaseFact', 'ClaimFact', 'HumanDispositionFact'
         )][string]$ContractName,
         [Parameter(Mandatory)][AllowEmptyString()][string]$Json,
         [int]$MaxBytes = 262144,

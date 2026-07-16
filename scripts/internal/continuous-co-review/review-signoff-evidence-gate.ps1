@@ -194,6 +194,155 @@ function Get-ContinuousCoReviewChainReachesAnchor {
     return [pscustomobject]@{ reached = $false; gap_at = 'chain-too-long' }
 }
 
+function New-ReviewCampaignVerdictPacketDecision {
+    param(
+        [Parameter(Mandatory)][string]$Route,
+        [Parameter(Mandatory)][string]$Reason,
+        [Parameter(Mandatory)][string]$Message,
+        [string]$CampaignId,
+        [string]$RunId,
+        [string]$TargetDigest,
+        [bool]$RenderBoundaryPacket = $false,
+        [bool]$AskNarrowQuestion = $false,
+        [string]$ImplementerAction = 'wait'
+    )
+    return [pscustomobject][ordered]@{
+        schema_version = '1.0'; route = $Route; reason = $Reason; message = $Message
+        campaign_id = $CampaignId; run_id = $RunId; target_digest = $TargetDigest
+        render_boundary_packet = $RenderBoundaryPacket; render_verdict_marker = $RenderBoundaryPacket
+        ask_narrow_question = $AskNarrowQuestion; implementer_action = $ImplementerAction
+    }
+}
+
+function Resolve-ReviewCampaignVerdictPacketDecision {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$CampaignId,
+        [Parameter(Mandatory)][string]$CurrentDigest,
+        [AllowEmptyCollection()][string[]]$OrderedRunIds = @(),
+        [AllowEmptyCollection()][object[]]$Results = @(),
+        [AllowNull()]$ActiveRun,
+        [AllowEmptyCollection()][object[]]$HumanDispositions = @()
+    )
+    if (-not (Test-ReviewAuthorityIdentifier -Value $CampaignId -Kind campaign) -or [string]::IsNullOrWhiteSpace($CurrentDigest)) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-or-digest-invalid' -Message 'Campaign identity or current digest is unavailable; no lifecycle verdict may be requested.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+    }
+    $byRun = @{}
+    foreach ($result in @($Results)) {
+        $validation = Test-ReviewAuthorityContractObject -ContractName ReviewResult -InputObject $result -ExpectedCampaignId $CampaignId
+        if (-not $validation.valid) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('campaign-result-invalid:' + $validation.category) -Message 'Campaign result authority is malformed or identity-mismatched; no lifecycle verdict may be requested.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        }
+        $runId = [string]$result.run_id
+        if ($byRun.ContainsKey($runId)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'duplicate-terminal-result-for-run' -Message 'Conflicting terminal results exist for one run; review authority fails closed.' -CampaignId $CampaignId -RunId $runId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        }
+        $byRun[$runId] = $result
+    }
+    $ordered = [Collections.Generic.List[string]]::new()
+    foreach ($runId in @($OrderedRunIds)) {
+        if (-not (Test-ReviewAuthorityIdentifier -Value $runId -Kind run) -or $ordered.Contains($runId)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'campaign-run-order-invalid' -Message 'Campaign run order is malformed or ambiguous; review authority fails closed.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        }
+        $ordered.Add($runId) | Out-Null
+    }
+
+    if ($null -ne $ActiveRun) {
+        $activeValidation = Test-ReviewAuthorityContractObject -ContractName ReviewRun -InputObject $ActiveRun -ExpectedCampaignId $CampaignId
+        if (-not $activeValidation.valid) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'active-run-invalid' -Message 'The active campaign run is malformed; review authority fails closed.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'repair-review-state'
+        }
+        $activeRunId = [string]$ActiveRun.run_id
+        if ($byRun.ContainsKey($activeRunId)) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'terminal-result-still-has-active-claim' -Message 'A terminal result exists while its run claim is still active; reconciliation must retire the claim before signoff.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'reconcile-run-claim'
+        }
+        if ([string]$ActiveRun.target_digest -ceq $CurrentDigest) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-running' -Reason 'current-review-in-flight' -Message 'The single campaign review for the current digest is still running; no human decision is required.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'poll-existing-run'
+        }
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'in-flight-review-target-moved' -Message 'The active review targets an earlier digest and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $activeRunId -TargetDigest $CurrentDigest -ImplementerAction 'complete-or-reconcile-then-rerun-current'
+    }
+
+    if ($ordered.Count -eq 0) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-required' -Reason 'no-authoritative-campaign-result' -Message 'No claim-ordered campaign result can authorize the current digest.' -CampaignId $CampaignId -TargetDigest $CurrentDigest -ImplementerAction 'request-authorized-review'
+    }
+
+    # A newer claimed invocation supersedes every older result, including an older clean result.
+    # Otherwise a final timed-out/partial review (for example T061's signoff harness) could silently
+    # fall back to an earlier pass. A claimed run without its terminal result is recovery work, not
+    # permission to select around the gap.
+    $latestRunId = $ordered[$ordered.Count - 1]
+    if (-not $byRun.ContainsKey($latestRunId)) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'latest-claimed-run-missing-result' -Message 'The latest claimed campaign run has no terminal result; reconciliation must close the gap before signoff.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'reconcile-run-claim'
+    }
+    $latest = $byRun[$latestRunId]
+    if ([string]$latest.target_digest -cne $CurrentDigest -or [string]$latest.currentness -ceq 'snapshot-moved') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-stale' -Reason 'latest-result-not-current' -Message 'The latest campaign result remains useful evidence but targets a moved or earlier snapshot and cannot authorize the current tree.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'request-current-digest-review'
+    }
+    if ([string]$latest.runtime_outcome -ceq 'timed-out') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-timeout' -Reason 'latest-review-timed-out' -Message ('The review timed out: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+    }
+    if ([string]$latest.completion -cne 'complete') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-partial' -Reason 'latest-review-incomplete' -Message 'Validated partial findings remain advisory, but a complete separately authorized run is required.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'use-partial-findings-and-request-rerun-grant'
+    }
+    if ([string]$latest.validation -cne 'valid' -or [string]$latest.currentness -cne 'current') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+    }
+    if ([bool]$latest.can_approve_current -and [string]$latest.verdict -ceq 'pass') {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-clean' -Reason 'complete-current-clean-result' -Message 'The authoritative campaign result is a complete valid pass for the exact current digest.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
+    }
+    if ([string]$latest.verdict -ceq 'findings') {
+        $matchingDispositions = @($HumanDispositions | Where-Object {
+            $v = Test-ReviewAuthorityContractObject -ContractName HumanDispositionFact -InputObject $_ -ExpectedCampaignId $CampaignId -ExpectedRunId $latestRunId -ExpectedTargetDigest $CurrentDigest
+            $v.valid
+        })
+        $requiresCorrection = @($matchingDispositions | Where-Object { [string]$_.decision -ceq 'require-correction' }).Count -gt 0
+        $accepted = @($matchingDispositions | Where-Object { [string]$_.decision -ceq 'accept-current' }).Count -gt 0
+        if ($accepted -and -not $requiresCorrection) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'boundary-human-disposition' -Reason 'complete-current-findings-human-accepted' -Message 'The exact current result has an explicit identity-bound human disposition accepting its findings.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -RenderBoundaryPacket $true -ImplementerAction 'render-boundary-packet'
+        }
+        $actionable = @($latest.findings | Where-Object { [string]$_.resolution -ceq 'open' -and [string]$_.severity -in @('blocking', 'major') }).Count -gt 0
+        if ($actionable -or $requiresCorrection) {
+            return New-ReviewCampaignVerdictPacketDecision -Route 'review-actionable' -Reason 'complete-current-actionable-findings' -Message 'The exact current review has actionable findings; suppress the boundary packet, correct them, and run a separately authorized review.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'fix-and-request-rerun-grant'
+        }
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-human-decision' -Reason 'complete-current-advisory-findings' -Message 'The exact current review has advisory findings that require a narrow human disposition before any boundary packet.' -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -AskNarrowQuestion $true -ImplementerAction 'ask-narrow-non-boundary-question'
+    }
+    return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason ('latest-review-' + [string]$latest.runtime_outcome) -Message ('The campaign review failed: ' + [string]$latest.failure_reason) -CampaignId $CampaignId -RunId $latestRunId -TargetDigest $CurrentDigest -ImplementerAction 'report-failure-and-request-rerun-grant'
+}
+
+function Get-ReviewCampaignVerdictPacketDecision {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [string]$CampaignId,
+        [string]$TargetLineage,
+        [string]$StoreRoot,
+        [string]$FeatureId,
+        [string]$IterationNumber,
+        [string[]]$ExcludedPathPatterns = @()
+    )
+    $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    if ([string]::IsNullOrWhiteSpace($CampaignId) -or [string]::IsNullOrWhiteSpace($TargetLineage)) {
+        $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId $FeatureId -IterationNumber $IterationNumber -RunId 'run-gate-probe'
+        if ([string]::IsNullOrWhiteSpace($CampaignId)) { $CampaignId = [string]$identity.campaign_id }
+        if ([string]::IsNullOrWhiteSpace($TargetLineage)) { $TargetLineage = [string]$identity.target_lineage }
+    }
+    if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
+    $digest = Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root -ExcludedPathPatterns $ExcludedPathPatterns
+    if ($null -eq $digest -or -not $digest.ok -or [string]::IsNullOrWhiteSpace([string]$digest.tree_id)) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'digest-unresolvable' -Message 'The current reviewed-state digest could not be computed; no lifecycle verdict may be requested.' -CampaignId $CampaignId -ImplementerAction 'repair-review-state'
+    }
+    $claimFacts = @(Get-ReviewAuthorityClaimFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -TargetLineage $TargetLineage)
+    $orderedRunIds = @($claimFacts | Where-Object { [string]$_.fact_type -ceq 'claim-held' } | Sort-Object { [int]$_.generation } | ForEach-Object { [string]$_.run_id })
+    $activeClaim = Get-ReviewAuthorityActiveClaim -Facts $claimFacts
+    $activeRun = if ($null -ne $activeClaim) { Get-ReviewRunLatestStateFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId ([string]$activeClaim.run_id) } else { $null }
+    if ($null -ne $activeClaim -and $null -eq $activeRun) {
+        return New-ReviewCampaignVerdictPacketDecision -Route 'review-failure' -Reason 'active-claim-run-state-missing' -Message 'An active campaign claim has no readable run state; reconciliation must repair the authority gap before signoff.' -CampaignId $CampaignId -RunId ([string]$activeClaim.run_id) -TargetDigest ([string]$digest.tree_id) -ImplementerAction 'reconcile-run-claim'
+    }
+    $results = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    $dispositions = @(Get-ReviewCampaignHumanDispositionFacts -StoreRoot $StoreRoot -CampaignId $CampaignId)
+    return Resolve-ReviewCampaignVerdictPacketDecision -CampaignId $CampaignId -CurrentDigest ([string]$digest.tree_id) -OrderedRunIds $orderedRunIds -Results $results -ActiveRun $activeRun -HumanDispositions $dispositions
+}
+
 function Get-ContinuousCoReviewSignoffGateDecision {
     param(
         [Parameter(Mandatory)]
@@ -207,10 +356,38 @@ function Get-ContinuousCoReviewSignoffGateDecision {
 
         # T094/FR-036: an explicit degraded-evidence acknowledgement (authorized_by + rationale).
         # When omitted, the persisted per-run ack (degraded-ack.json) is honoured instead.
-        [AllowNull()] $DegradedAcknowledgement
+        [AllowNull()] $DegradedAcknowledgement,
+
+        [string] $AuthorityConfigPath,
+        [string] $CampaignId,
+        [string] $TargetLineage,
+        [string] $FeatureId,
+        [string] $IterationNumber,
+        [string] $CampaignStoreRoot
     )
 
     $resolvedRepoRoot = (Resolve-Path -LiteralPath $RepoRoot).Path
+
+    $authority = if (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorAction SilentlyContinue) {
+        Get-ContinuousCoReviewAuthorityDecision -ConfigPath $AuthorityConfigPath
+    }
+    else { [pscustomobject]@{ mode = 'disabled'; valid = $false; legacy_promotion_enabled = $false; campaign_authority_enabled = $false; reason = 'authority-cutover-helper-missing' } }
+    if (-not $authority.valid -or [string]$authority.mode -ceq 'disabled') {
+        return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason ('review-authority-disabled:' + [string]$authority.reason) -Message 'Review authority is missing, malformed, or disabled; neither legacy nor campaign evidence may authorize signoff.'
+    }
+    if ([bool]$authority.campaign_authority_enabled) {
+        try {
+            $packet = Get-ReviewCampaignVerdictPacketDecision -RepoRoot $resolvedRepoRoot -CampaignId $CampaignId -TargetLineage $TargetLineage -StoreRoot $CampaignStoreRoot -FeatureId $FeatureId -IterationNumber $IterationNumber -ExcludedPathPatterns $ExcludedPathPatterns
+        }
+        catch {
+            return New-ContinuousCoReviewSignoffGateDecision -Decision 'block' -Reason 'campaign-review-state-invalid' -Message ('Campaign review authority could not be read safely: ' + $_.Exception.Message)
+        }
+        $decision = New-ContinuousCoReviewSignoffGateDecision -Decision $(if ($packet.render_boundary_packet) { 'allow' } else { 'block' }) -Reason $packet.reason -Message $packet.message -CurrentTreeId $packet.target_digest -MatchedRunId $packet.run_id
+        foreach ($property in @('route', 'campaign_id', 'render_boundary_packet', 'render_verdict_marker', 'ask_narrow_question', 'implementer_action')) {
+            $decision | Add-Member -NotePropertyName $property -NotePropertyValue $packet.$property
+        }
+        return $decision
+    }
 
     # A well-formed human-authorized recorded override short-circuits, with the authorization
     # captured in the decision evidence (auditable, never silent).

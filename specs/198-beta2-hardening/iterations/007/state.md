@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T033 append-only ledger correction/invalidation door and effective-state readers
-**Tasks Remaining**: T034b and T051–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: T051 public campaign command, one-way authority cutover, and campaign-aware verdict gate
+**Last Completed Task**: T051 public campaign command, one-way authority cutover, and campaign-aware verdict gate
+**Tasks Remaining**: T034b and T052–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T052 workshop-aware intermediate Stop
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-16
@@ -56,7 +56,9 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **T032 evidence**: both fixtures leave the context/authorization ledger and pending-verdict artifact byte-identical, with zero capture and zero authorization. The focused suite and all 45 F-198 honesty-registry suites pass in 404.0 seconds.
 - **T033 done**: authorization entries now have stable derived IDs; corrections append exact original-entry and crossing identities without deleting raw verdicts; pending crossings bind the from/to/working boundaries to a boundary commit and Git tree; effective gate, ratchet, status, handover, and governance readers honor scoped corrections. A cleared scoped state never falls back to stale `session_state`, repeat packets retain one phrase/marker/crossing identity, and numeric replies remain non-authoritative.
 - **T033 evidence**: two real `DRIFT-198-I006-001` misuse episodes were appended as corrections `correction-73ccb3f6407aabe32dadc7781e2acd3513ce4f466cad2f0def1a05c2b124eca9` and `correction-6283109f289f3491db9baa23a5e9b8cb9619adfb9c490b753d70e98d9824fcde`; raw history remains 23 entries and current authority remains `before-implement`. The dedicated paired suite, affected verdict/ratchet/stop suites, deployed mirror test, Iteration 007 governance validation, and all 46 F-198 registry suites pass in 442.5 seconds. T061 still owns independent final-tree verification.
-- **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only. FR-045 packet/current-review gating remains assigned to T051 by the approved Iteration 003 reconciliation and is not claimed here.
+- **T051 done**: `specrew review --live` now resolves one checked authority mode and delegates campaign execution through the synchronous campaign application service without legacy fallback. The checked-in mode remains `legacy`; the persisted transition door requires `legacy -> disabled -> campaign`, derives campaign-fact presence from the repository, and refuses legacy reactivation after facts exist.
+- **T051 evidence**: campaign results and exact human dispositions are immutable, identity/path bound, and selected strictly by latest claimed run so a later partial/failure cannot fall back to an older clean result. Missing active-run state, malformed/disabled mode, unclaimed legacy evidence, stale/moved targets, partials, timeouts, actionable/advisory findings, and unverified termination all fail closed without a boundary marker. Exact current clean or human-dispositioned findings alone release the boundary packet. Public-command, project-path, whitelist, parser/diff, focused 132-test authority group, and all 47 F-198 suites pass; the aggregate registry completed in 484.6 seconds. Repository-wide governance reports `PASS` for Iteration 007 and the pre-existing unrelated Iteration 005 missing-`plan.md` failure remains untouched.
+- **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only; T051 now separately delivers the FR-045 packet/current-review gate assigned by the approved Iteration 003 reconciliation.
 - **Provider spend**: none.
 
 ## Current Production Truth
@@ -65,7 +67,7 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - Iteration 006 foundation and Claude file-primary slice are delivered and independently reviewed.
 - T019 mutable lease/navigator/stamping/pruning mechanisms are not executable Iteration 007 work.
 - Machinery-turn exclusion, tokenizer/temporal/cursor capture hardening, exact fabrication fixtures, and the append-only scoped correction door are delivered. The underlying legacy matcher/backlog question remains visible; no quiet global matcher rewrite was made.
-- Production command wiring, workshop Stop, remaining harnesses, three runtime ports, progress/retro, three-OS matrix, five live smokes, and campaign cutover remain pending.
+- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. Workshop Stop, production harnesses, three runtime ports, progress/retro, three-OS matrix, five live smokes, and proved campaign cutover remain pending.
 
 ## Notes
 
