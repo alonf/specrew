@@ -5,8 +5,8 @@ updated_at: "2026-07-16"
 tasks:
   T030:
     title: "Machinery-turn exclusion from verdict evidence"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-16T17:30:58+03:00"
     completed_at: ""
     blocked_reason: ""
   T031:

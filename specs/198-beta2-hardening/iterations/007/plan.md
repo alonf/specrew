@@ -4,7 +4,7 @@
 **Spec**: [../../spec.md](../../spec.md)
 **Design Decision**: Option B, authorized at file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/gates/design-analysis-005.md
 **Reconciliation**: [iteration-003-reconciliation.md](iteration-003-reconciliation.md)
-**Status**: planning
+**Status**: executing
 **Capacity**: 20.25/26 story_points
 **Started**: 2026-07-16
 **Completed**:
@@ -42,7 +42,7 @@ This iteration proves code review only. Generic gate/artifact target adapters re
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
-| T030 | Machinery-turn exclusion from verdict evidence (carried from Iteration 003) | FR-041, NFR-002, NFR-007 | US1 | 0.75 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/** | planned | — | — | — |
+| T030 | Machinery-turn exclusion from verdict evidence (carried from Iteration 003) | FR-041, NFR-002, NFR-007 | US1 | 0.75 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/** | in-progress | — | — | — |
 | T031 | Approval-tokenizer tightening, temporal ordering, and cursor-invariant guards (carried) | FR-042, NFR-007 | US1 | 0.5 | Implementer | scripts/internal/bootstrap/ConversationCaptureAccessor.ps1, tests/integration/** | planned | — | — | — |
 | T032 | Exact fabrication-sequence regression fixtures (carried) | FR-043, NFR-007 | US1 | 0.5 | Implementer | tests/integration/verdict-capture-blocks.tests.ps1, tests/integration/** | planned | — | — | — |
 | T033 | Append-only ledger correction/invalidation door and effective-state readers (promoted carry) | FR-044, NFR-002, NFR-007 | US1 | 1.0 | Implementer | extensions/specrew-speckit/scripts/shared-governance.ps1, .specify/extensions/specrew-speckit/scripts/shared-governance.ps1, scripts/internal/sync-boundary-state.ps1, tests/** | planned | — | — | — |

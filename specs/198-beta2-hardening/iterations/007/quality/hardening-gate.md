@@ -8,7 +8,7 @@
 **Effective Review Class**: `strongest-available`
 **Overall Verdict**: `ready`
 **Approval Ref**: `—`
-**Reviewed By**: Planner
+**Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-16
 **Post-Implementation Verification**: pending
 
@@ -31,7 +31,7 @@
 
 | Condition | Status | Evidence | Decision |
 | --- | --- | --- | --- |
-| `condition-a-human-authorization` | `open-for-verdict` | The tasks verdict authorizes artifacts only. No fresh `approved for before-implement` verdict exists for commit produced by this boundary. | Do not modify production code or spend provider slots. |
+| `condition-a-human-authorization` | `met` | On 2026-07-16 the maintainer explicitly wrote `approved for before-implement` against task-boundary commit `d9cdd16457e322628957ea74de959a5457358852`. No stale matcher entry, stale `session_state`, option number, or numeric alias is used as evidence. | T030–T034b and T051–T061 implementation is authorized. Provider invocations remain separately gated one slot at a time. |
 | `condition-b-traceability` | `met` | 16/16 tasks map to valid scoped requirements and 25/25 scoped requirements have coverage in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/tasks.md. | Any later orphan/uncovered requirement reopens the gate. |
 | `condition-c-fail-direction-review` | `met` | Authority, schema, currentness, timeout, containment, capture, and recovery uncertainty is explicitly non-authoritative/fail-closed. | A fail-direction change requires drift and human replan. |
 | `condition-d-capacity-discipline` | `met` | 20.25/26 SP includes deterministic proof, live validation, independent review, and expected engineering rework. | Do not raise the cap or drop P0 proof silently. |
@@ -53,6 +53,6 @@
 
 ## Notes
 
-- `Overall Verdict: ready` means planning-time hardening is complete and ready for the human before-implement decision. It does not authorize implementation or a provider invocation.
+- `Overall Verdict: ready` records completed planning-time hardening. The separate fresh human verdict in `condition-a-human-authorization` authorizes Iteration 007 implementation but no provider invocation.
 - Runtime evidence remains pending until the owning tasks execute.
 - No concern is deferred inside Iteration 007; the command-plan dependency is a separate feature-level slice, not a hidden deferral from this iteration.

@@ -1,10 +1,13 @@
 # Iteration State: 007
 
 **Schema**: v1
-**Last Completed Task**: T030–T034b/T051–T061 task artifact, Iteration 003 reconciliation, bidirectional traceability, and planning-time hardening gate authored
-**Tasks Remaining**: Human before-implement verdict; T030–T034b and T051–T061 execution; five base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: implementation-readiness gate; production code remains unauthorized
+**Current Phase**: before-implement
+**Iteration Status**: executing
+**Last Completed Task**: Fresh Iteration 007 before-implement verdict recorded and hardening gate activated against task-boundary commit d9cdd164
+**Tasks Remaining**: T030–T034b and T051–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T030 machinery-turn exclusion from verdict evidence
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
+**Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-16
 
 ## Scope
@@ -32,7 +35,16 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **Provider budget**: five successful-path slots, one per harness. T061 corrections/reruns are outside that floor and stop for a new explicit slot each time.
 - **Open Beta2 item**: FR-048/FR-049/SC-015 requires a separate future iteration plan/tasks/review and blocks T029/feature closeout.
 - **Team**: one serial Implementer; the remaining fifth harness supplies the independent T061 Reviewer result.
-- **Authorization**: tasks/readiness artifacts are authorized; implementation is not.
+- **Authorization**: tasks and Iteration 007 implementation are authorized by the fresh verdict below. Provider invocations remain unauthorized until separately granted one slot at a time.
+
+## Fresh Before-Implement Verdict
+
+- **Verdict**: approved for before-implement
+- **Evidence**: on 2026-07-16 the maintainer explicitly wrote `approved for before-implement` in direct response to the Iteration 007 tasks-boundary packet.
+- **Authorized execution contract**: task-boundary commit `d9cdd16457e322628957ea74de959a5457358852`, produced from approved plan commit `9fd802b78c9a977fcbbe5651772af800d62fb45f`.
+- **Scope**: execute T030–T034b and T051–T061 within the approved 20.25 SP Iteration 007 contract. FR-048/FR-049/SC-015 remains outside this iteration and still blocks T029 and feature closeout.
+- **Provider limit**: this verdict grants zero provider invocations. Each of the five best-case base slots and every correction/rerun slot requires its own explicit human authorization.
+- **Ledger note**: this explicit scoped verdict and task-boundary commit are the authority. The stale global matcher, stale `session_state`, option numbering, and numeric aliases are not used; the known-unsafe boundary synchronizer was not invoked. T033 owns the durable append-only correction.
 
 ## Current Production Truth
 
