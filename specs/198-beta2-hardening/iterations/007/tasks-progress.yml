@@ -86,7 +86,7 @@ tasks:
     status: "in-progress"
     started_at: "2026-07-16T23:35:59+03:00"
     completed_at: ""
-    blocked_reason: "Implementation and local Windows/Linux proof complete; awaiting committed hosted Windows/Linux/macOS CI, with no local macOS runner available"
+    blocked_reason: "Hosted run 29536313910 failed on Ubuntu cgroup privilege and macOS containment portability; scoped correction is locally green and awaits a new committed three-OS run"
   T060:
     title: "First four live harness smokes across three OSes, support truth, campaign cutover, and docs"
     status: "pending"

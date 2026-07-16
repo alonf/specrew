@@ -368,12 +368,13 @@ function Get-ContinuousCoReviewContainmentSamples {
     # Get-SpecrewProcessTreeDescendants (the T100 registry) for the pid list, then reads per-pid metadata
     # BEST-EFFORT + READ-ONLY (never mutates/kills): Windows CIM Win32_Process (executable path + command-line
     # tokens; Windows exposes no cheap cwd, so detection there is exe/command-line-primary per FR-011's
-    # "cwd/command-line sampling"); POSIX /proc (cwd, exe, cmdline). Returns @({pid; image; source; path}).
+    # "cwd/command-line sampling"); Linux /proc (cwd, exe, cmdline); macOS Get-Process + BSD ps (executable +
+    # command line, with the known worktree as the relative-argv cwd fallback). Returns @({pid; image; source; path}).
     #
     # PROMPT vs ACCESS (DRIFT-198-I003-004): the reviewer HOST is handed the review PROMPT as a SINGLE positional
     # command-line arg (`codex exec "<prompt>"`). Because the command line is parsed into STRUCTURED argv with
     # platform-appropriate quoting (Get-ContinuousCoReviewPathLikeTokens → CommandLineToArgvW on Windows; NUL-split
-    # /proc/<pid>/cmdline on POSIX), that whole prompt is ONE non-path token - so a prompt that merely NAMES origin
+    # /proc/<pid>/cmdline on Linux; quote-aware BSD ps fallback on macOS), that whole prompt is ONE non-path token - so a prompt that merely NAMES origin
     # paths is never mistaken for origin ACCESS, while a REAL origin path passed as its OWN arg (by the host or any
     # descendant) IS observed. This SUPERSEDED the earlier prompt-token-subtraction workaround, whose whitespace-split
     # tokenizer both false-positived on prompt mentions AND could be BYPASSED by a quoted origin path with spaces
@@ -413,6 +414,26 @@ function Get-ContinuousCoReviewContainmentSamples {
             # Windows has no cheap per-process cwd: resolve RELATIVE traversal args against the worktree the reviewer was
             # launched in (descendants inherit that cwd). This assumed-cwd is BEST-EFFORT (a child that chdir'd elsewhere
             # is not precisely resolved) - acceptable because argv is a diagnostic WARNING, not a hard fail.
+            foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $WorktreeCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+        }
+        if ($procsSeen -eq 0 -and $procIds.Count -gt 0 -and -not $degraded) { $degraded = $true; $degradedReason = 'no-process-metadata-read' }
+    }
+    elseif ($IsMacOS) {
+        foreach ($procId in $procIds) {
+            $process = try { Get-Process -Id $procId -ErrorAction Stop } catch { $null }
+            if ($null -eq $process) { continue }
+            $procsSeen++
+            $image = try { [string]$process.ProcessName } catch { '' }
+            $exe = try { [string]$process.Path } catch { '' }
+            if (-not [string]::IsNullOrWhiteSpace($exe)) {
+                if ([string]::IsNullOrWhiteSpace($image)) { $image = [System.IO.Path]::GetFileName($exe) }
+                [void]$samples.Add(@{ pid = $procId; image = $image; source = 'exe'; path = $exe })
+            }
+            $commandLine = try { (& ps -p $procId -o command= 2>$null | Out-String).Trim() } catch { '' }
+            $argv = Expand-ContinuousCoReviewArgvPathCandidates -Argv (Get-ContinuousCoReviewCommandLineArgv -CommandLine $commandLine)
+            foreach ($tok in (Select-ContinuousCoReviewAbsolutePathTokens -Argv $argv)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
+            # macOS exposes no /proc cwd. Descendants inherit the reviewer worktree unless they chdir; argv remains
+            # a best-effort diagnostic signal, so use the known launch cwd without upgrading it to a strong signal.
             foreach ($tok in (Resolve-ContinuousCoReviewRelativeOriginTokens -Argv $argv -Cwd $WorktreeCwd)) { [void]$samples.Add(@{ pid = $procId; image = $image; source = 'arg'; path = $tok }) }
         }
         if ($procsSeen -eq 0 -and $procIds.Count -gt 0 -and -not $degraded) { $degraded = $true; $degradedReason = 'no-process-metadata-read' }

@@ -55,7 +55,8 @@
 
 - The deterministic workflow, fake-provider safety seam, strict-ingress/timeout cases, authority-store concurrency, spend allowance, target/currentness, recovery, and native runtime suites are implemented as one bounded Windows/Linux/macOS CI job.
 - Local Windows and Linux evidence is green, including real Job Object and delegated cgroup-v2 containment. The full 54-suite F198 registry and packaged deploy gate are green.
-- Hosted macOS process-group and whole-matrix evidence has not run. T059 remains in progress and T060 cannot begin until the hosted matrix passes.
+- Hosted macOS ran the all-adapter matrix but did not reach the final process-group suite because an earlier containment suite failed. T059 remains in progress and T060 cannot begin until the corrected whole matrix passes.
+- Hosted run `29536313910` then ran all three OS jobs: Windows passed; macOS passed the 13-case adapter matrix before exposing two containment portability defects; Ubuntu exposed insufficient parent-only cgroup delegation. Scoped corrections are locally verified, but a new hosted run must pass before T059 closes.
 - No provider was invoked. Deterministic evidence does not promote live support.
 
 ## Notes

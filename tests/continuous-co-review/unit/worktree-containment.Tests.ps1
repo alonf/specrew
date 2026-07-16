@@ -134,8 +134,14 @@ Describe 'shared physical-path canonicalizer (Get-ContinuousCoReviewPhysicalPath
         $d = Join-Path ([System.IO.Path]::GetTempPath()) ('pp-plain-' + [guid]::NewGuid().ToString('N'))
         try {
             New-Item -ItemType Directory -Path $d -Force | Out-Null
-            Set-Content -LiteralPath (Join-Path $d 'f.txt') -Value 'x' -Encoding UTF8
-            (Get-ContinuousCoReviewPhysicalPath -Path (Join-Path $d 'f.txt')) | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $d 'f.txt')).TrimEnd([char]'\', [char]'/'))
+            $plainPath = Join-Path $d 'f.txt'
+            Set-Content -LiteralPath $plainPath -Value 'x' -Encoding UTF8
+            $expected = [System.IO.Path]::GetFullPath($plainPath).TrimEnd([char]'\', [char]'/')
+            if (-not $IsWindows) {
+                $physical = try { (& realpath $plainPath 2>$null | Out-String).Trim() } catch { '' }
+                if (-not [string]::IsNullOrWhiteSpace($physical)) { $expected = $physical }
+            }
+            (Get-ContinuousCoReviewPhysicalPath -Path $plainPath) | Should -Be $expected
         }
         finally { Remove-Item -LiteralPath $d -Recurse -Force -ErrorAction SilentlyContinue }
     }

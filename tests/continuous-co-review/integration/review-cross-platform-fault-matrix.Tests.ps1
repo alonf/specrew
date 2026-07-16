@@ -186,7 +186,9 @@ exit 0
 
     It 'kills a timed-out fake provider and descendant before publishing partial timeout evidence' {
         $case = New-T059Case -Root (Join-Path $TestDrive 'timeout-tree') -HostName claude -Mode timeout -RunId 'run-timeout-tree'
-        $run = Invoke-T059NativeCase -Case $case -TimeoutSeconds 1
+        # Five seconds is still bounded while leaving enough cold-start margin on hosted/virtualized
+        # POSIX runners for the fake provider to create its descendant before timeout containment fires.
+        $run = Invoke-T059NativeCase -Case $case -TimeoutSeconds 5
         $run.runtime.runtime_outcome | Should -Be 'timed-out'
         $run.runtime.termination_verified | Should -BeTrue -Because $run.runtime.failure_reason
         $run.runtime.containment | Should -Be 'verified'
@@ -232,5 +234,8 @@ exit 0
         }
         $workflow | Should -Match 'Deterministic fake-provider review runtime'
         $workflow | Should -Match 'never live support evidence'
+        $workflow | Should -Match 'Scope AllUsers'
+        $workflow | Should -Match 'sudo --preserve-env=SPECREW_REVIEW_CGROUP_ROOT,SPECREW_REQUIRE_POSIX_RUNTIME_PROOF'
+        $workflow | Should -Match 'sudo git config --global --add safe\.directory'
     }
 }
