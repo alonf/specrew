@@ -446,6 +446,44 @@ function Test-ReviewAuthorityContractJson {
     if (-not $trimmed.StartsWith('{') -or -not $trimmed.EndsWith('}')) {
         return [pscustomobject]@{ valid = $false; category = 'prose-wrapped-json'; errors = @('prose-wrapped-json') }
     }
+    try {
+        $document = [System.Text.Json.JsonDocument]::Parse($trimmed)
+        try {
+            if ($document.RootElement.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) {
+                return [pscustomobject]@{ valid = $false; category = 'schema-invalid'; errors = @('wrong-type:$:object') }
+            }
+            $duplicatePaths = [Collections.Generic.List[string]]::new()
+            $pending = [Collections.Generic.Stack[object]]::new()
+            $pending.Push([pscustomobject]@{ element = $document.RootElement; path = '$' })
+            while ($pending.Count -gt 0) {
+                $node = $pending.Pop()
+                $element = [System.Text.Json.JsonElement]$node.element
+                $path = [string]$node.path
+                if ($element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+                    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+                    foreach ($property in $element.EnumerateObject()) {
+                        $childPath = if ($path -ceq '$') { '$.' + $property.Name } else { $path + '.' + $property.Name }
+                        if (-not $seen.Add($property.Name)) { $duplicatePaths.Add($childPath) | Out-Null }
+                        $pending.Push([pscustomobject]@{ element = $property.Value; path = $childPath })
+                    }
+                }
+                elseif ($element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+                    $index = 0
+                    foreach ($item in $element.EnumerateArray()) {
+                        $pending.Push([pscustomobject]@{ element = $item; path = "$path[$index]" })
+                        $index++
+                    }
+                }
+            }
+            if ($duplicatePaths.Count -gt 0) {
+                return [pscustomobject]@{ valid = $false; category = 'duplicate-field'; errors = @($duplicatePaths | ForEach-Object { 'duplicate-field:' + $_ }) }
+            }
+        }
+        finally { $document.Dispose() }
+    }
+    catch [System.Text.Json.JsonException] {
+        return [pscustomobject]@{ valid = $false; category = 'invalid-json'; errors = @('invalid-json') }
+    }
     try { $object = $trimmed | ConvertFrom-Json -Depth 20 -ErrorAction Stop }
     catch { return [pscustomobject]@{ valid = $false; category = 'invalid-json'; errors = @('invalid-json') } }
     return Test-ReviewAuthorityContractObject -ContractName $ContractName -InputObject $object -ExpectedCampaignId $ExpectedCampaignId -ExpectedRunId $ExpectedRunId -ExpectedTargetDigest $ExpectedTargetDigest

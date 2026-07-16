@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T052 workshop-aware intermediate Stop
-**Tasks Remaining**: T034b and T053–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: T053 shared production harness contract/catalog and complete malformed-output matrix
+**Last Completed Task**: T053 shared production harness contract/catalog and complete malformed-output matrix
+**Tasks Remaining**: T034b and T054–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T054 Codex and Copilot production harness adapters
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-16
@@ -60,6 +60,8 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **T051 evidence**: campaign results and exact human dispositions are immutable, identity/path bound, and selected strictly by latest claimed run so a later partial/failure cannot fall back to an older clean result. Missing active-run state, malformed/disabled mode, unclaimed legacy evidence, stale/moved targets, partials, timeouts, actionable/advisory findings, and unverified termination all fail closed without a boundary marker. Exact current clean or human-dispositioned findings alone release the boundary packet. Public-command, project-path, whitelist, parser/diff, focused 132-test authority group, and all 47 F-198 suites pass; the aggregate registry completed in 484.6 seconds. Repository-wide governance reports `PASS` for Iteration 007 and the pre-existing unrelated Iteration 005 missing-`plan.md` failure remains untouched.
 - **T052 done**: a Stop is workshop-intermediate only when one exact marker binds the active feature and active iteration to its first remaining selected lens, the iteration artifact is readable, and the visible lens content ends in a pending human question. The provider records bounded non-authoritative re-entry context, suppresses duplicate delivery, and never lets workshop state override a lifecycle boundary or let fabricated/stale prose bypass the ordinary material packet.
 - **T052 evidence**: canonical and `.specify` providers are byte-identical; all six design-workshop skill surfaces emit the same marker contract; exact question, outside-state, fabricated-prose, boundary-precedence, interrupted-handover, and stale-iteration fixtures pass. Existing FR-055 and stop-intent behavior remains green, the deployed self-leak firewall is clean, and all 47 F-198 suites pass in one 435.9-second post-correction run.
+- **T053 done**: one shared bounded prompt/process/file contract now owns exact placeholder rendering, external `candidate.json` delivery, minimal Specrew-suppression environment propagation, stdout non-authority, preflight, and one-call execution. The canonical catalog freezes all five production vectors while unimplemented adapters fail truthfully; Claude is a thin catalog adapter. Campaign staging defaults outside the origin and an origin-owned staging override fails before grant creation. Strict ingress additionally rejects invalid UTF-8 and duplicate fields without salvage.
+- **T053 evidence**: the 20-case shared conformance suite covers bounded templates/rendering, catalog dispatch, raw zero/findings candidates, prose/fence/trailing/malformed/oversize/unknown/missing/wrong-run/wrong-digest/version/duplicate/invalid-UTF8 rejection, executable/candidate preflight, a valid stdout object remaining non-authoritative, and no hidden retry. Authority, ingress, orchestration, host-catalog, public-command, packaged-deploy, module-load, manifest, and self-leak checks pass. The first aggregate run exposed an explicit Cursor timeout compatibility regression; production now derives the same 600-second fallback without changing the tolerant catalog reader. The post-correction F-198 registry passes all 48 suites in 438.8 seconds, and scoped Iteration 007 governance passes with historical warnings only.
 - **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only; T051 now separately delivers the FR-045 packet/current-review gate assigned by the approved Iteration 003 reconciliation.
 - **Provider spend**: none.
 
@@ -69,7 +71,7 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - Iteration 006 foundation and Claude file-primary slice are delivered and independently reviewed.
 - T019 mutable lease/navigator/stamping/pruning mechanisms are not executable Iteration 007 work.
 - Machinery-turn exclusion, tokenizer/temporal/cursor capture hardening, exact fabrication fixtures, and the append-only scoped correction door are delivered. The underlying legacy matcher/backlog question remains visible; no quiet global matcher rewrite was made.
-- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. The workshop-intermediate Stop is delivered. Production harnesses, three runtime ports, progress/retro, three-OS matrix, five live smokes, and proved campaign cutover remain pending.
+- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. The workshop-intermediate Stop, shared five-vector harness contract, strict candidate matrix, and Claude thin production adapter are delivered. Codex/Copilot/Cursor/Antigravity adapters, three runtime ports, progress/retro, three-OS matrix, five live smokes, and proved campaign cutover remain pending.
 
 ## Notes
 

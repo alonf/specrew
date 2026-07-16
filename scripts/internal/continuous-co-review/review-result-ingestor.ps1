@@ -50,8 +50,14 @@ function Read-ReviewCandidateResult {
     $stream = [IO.FileStream]::new($Path, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
     try {
         if ($stream.Length -gt $MaxBytes) { return [pscustomobject]@{ present = $true; valid = $false; category = 'payload-too-large'; errors = @("payload-too-large:$MaxBytes"); candidate = $null } }
-        $reader = [IO.StreamReader]::new($stream, [Text.UTF8Encoding]::new($false), $true, 4096, $true)
-        try { $json = $reader.ReadToEnd() } finally { $reader.Dispose() }
+        $reader = [IO.StreamReader]::new($stream, [Text.UTF8Encoding]::new($false, $true), $false, 4096, $true)
+        try {
+            try { $json = $reader.ReadToEnd() }
+            catch [Text.DecoderFallbackException] {
+                return [pscustomobject]@{ present = $true; valid = $false; category = 'invalid-utf8'; errors = @('invalid-utf8'); candidate = $null }
+            }
+        }
+        finally { $reader.Dispose() }
     }
     finally { $stream.Dispose() }
     $validation = Test-ReviewAuthorityContractJson -ContractName ReviewerCandidate -Json $json -MaxBytes $MaxBytes -ExpectedRunId $ExpectedRunId -ExpectedTargetDigest $ExpectedTargetDigest

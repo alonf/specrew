@@ -55,7 +55,10 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
 Write the candidate directly to this exact path:
 CANDIDATE_RESULT_PATH=__CANDIDATE_RESULT_PATH__
 The run is __RUN_ID__ and the target digest is __TARGET_DIGEST__.
-The file must contain only the raw JSON object. Do not use stdout for authority.
+Review scope: __REVIEW_SCOPE__
+Deadline: __DEADLINE__
+Do not modify the source. The file must contain ONLY the raw JSON object: no prose and no Markdown fences.
+Stdout is telemetry and is never parsed for authority.
 '@)
             $candidateText = if ($FileCandidate -is [string]) { $FileCandidate } else { $FileCandidate | ConvertTo-Json -Depth 20 -Compress }
             $agentInvoker = {

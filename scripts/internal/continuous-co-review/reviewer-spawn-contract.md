@@ -69,7 +69,10 @@ session state there — an ephemeral subdir or file (`sessions/`, `projects/`, `
 **modified or deleted is still tampering** — those dirs are hashed, not skipped. This is **monitored
 confinement, not OS-enforced filesystem isolation**; the T016 monitor likewise reports, it does not sandbox.
 
-**Result delivery — stdout-primary AND file-primary (2026-07-12).** The prompt asks the reviewer for its
+**Legacy-engine result delivery — stdout-primary AND file-primary (2026-07-12).** This section describes
+only the legacy worktree engine. Campaign authority must not reuse this prompt or import its stdout/file
+salvage rules: campaign adapters use `reviewer-candidate-prompt.md`, one raw `candidate.json`, strict ingress,
+and stdout that is never parsed for authority. The legacy prompt asks the reviewer for its
 FindingsResult two ways: incrementally APPENDED to `.review/findings.jsonl` (one finding per line, so a
 timeout still surfaces what it found) AND as a final JSON object on **stdout**. Hosts differ: `claude`
 returns the authoritative object on stdout (STDOUT-PRIMARY); `codex exec` DELIVERS via the file and exits 0

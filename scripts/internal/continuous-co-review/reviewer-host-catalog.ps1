@@ -50,7 +50,7 @@ function Get-ContinuousCoReviewReviewerHostRows {
     # Hosts with an empty agentic_args have no headless agentic CLI yet (the worktree model needs one); they remain
     # selectable/authorizable but are not agentically invokable until their command is filled in.
     return @(
-        @{ host = 'claude'; command = 'claude'; agentic_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true; model = 'opus-4.8-1m-context'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 85; default_timeout_seconds = 600 }
+        @{ host = 'claude'; command = 'claude'; agentic_args = @('-p', '--permission-mode', 'bypassPermissions'); prompt_via_stdin = $true; model = 'opus-4.8-1m-context'; adapter_id = 'reviewer-host-adapter-claude-prompt'; rank = 85; default_timeout_seconds = 600; production_harness_id = 'claude-code-file-primary'; production_constructor = 'New-ReviewClaudeFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
         # codex runs with --dangerously-bypass-approvals-and-sandbox BY DESIGN: the worktree reviewer already runs in an
         # EPHEMERAL, isolated, read-only-source git-tree worktree (precisely the "externally sandboxed environment" that
         # flag is documented for). codex's INNER Windows restricted-token sandbox is therefore redundant AND fragile
@@ -58,7 +58,7 @@ function Get-ContinuousCoReviewReviewerHostRows {
         # waiting for that trust) plus its sandbox-setup helper resolvable next to the launcher. Bypassing removes BOTH
         # failure modes with zero per-run / per-machine config. (F-197 reviewer robustness; drift D-197-I009-009 / T102.
         # NOTE: reviewing UNTRUSTED third-party code should use the per-run trust-injection mode instead — see T102.)
-        @{ host = 'codex'; command = 'codex'; agentic_args = @('exec', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check'); prompt_via_stdin = $false; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85; default_timeout_seconds = 600 }
+        @{ host = 'codex'; command = 'codex'; agentic_args = @('exec', '--dangerously-bypass-approvals-and-sandbox', '--skip-git-repo-check'); prompt_via_stdin = $false; model = 'chatgpt'; adapter_id = 'reviewer-host-adapter-codex-exec'; rank = 85; default_timeout_seconds = 600; production_harness_id = 'codex-cli-file-primary'; production_constructor = 'New-ReviewCodexFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
         # copilot headless vector probe-validated live 2026-07-10 (F-198 iteration 001; scratch
         # probe answered in 6s and exited): `-p <prompt>` is non-interactive exit-after-completion,
         # --allow-all-tools is REQUIRED for non-interactive mode, --allow-all-paths lets the
@@ -66,8 +66,8 @@ function Get-ContinuousCoReviewReviewerHostRows {
         # same doctrine as the codex bypass above), --no-ask-user keeps it autonomous (no ask_user
         # stalls headless), --no-custom-instructions keeps stray instruction files out of the
         # composed-prompt contract. The invocation core appends the prompt last, directly after -p.
-        @{ host = 'copilot'; command = 'copilot'; agentic_args = @('--allow-all-tools', '--allow-all-paths', '--no-ask-user', '--no-custom-instructions', '--no-color', '--log-level', 'none', '-p'); prompt_via_stdin = $false; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80; default_timeout_seconds = 300 }
-        @{ host = 'cursor-agent'; command = 'cursor-agent'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70 }
+        @{ host = 'copilot'; command = 'copilot'; agentic_args = @('--allow-all-tools', '--allow-all-paths', '--no-ask-user', '--no-custom-instructions', '--no-color', '--log-level', 'none', '-p'); prompt_via_stdin = $false; model = 'gpt-5.5-or-claude-4.8'; adapter_id = 'reviewer-host-adapter-copilot-prompt'; rank = 80; default_timeout_seconds = 300; production_harness_id = 'copilot-cli-file-primary'; production_constructor = 'New-ReviewCopilotFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
+        @{ host = 'cursor-agent'; command = 'cursor-agent'; agentic_args = @(); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-cursor-agent-prompt'; rank = 70; production_harness_id = 'cursor-agent-file-primary'; production_constructor = 'New-ReviewCursorAgentFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
         # antigravity ships as `agy` (verified live on the maintainer machine 2026-07-08). The WORKING
         # headless vector is probe-validated and ORDER-SENSITIVE: flags BEFORE --print, prompt
         # POSITIONAL directly after it (the invocation core appends the prompt last):
@@ -79,8 +79,34 @@ function Get-ContinuousCoReviewReviewerHostRows {
         # review budget so OUR watchdog owns the kill (agy's default truncated a real 310s review to a
         # partial-harvest salvage). agy's native `models` subcommand is the first real consumer for the
         # model_probe seam (DEFER-197-I010-002).
-        @{ host = 'antigravity'; command = 'agy'; agentic_args = @('--dangerously-skip-permissions', '--print-timeout', '15m', '--print'); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65; default_timeout_seconds = 900 }
+        @{ host = 'antigravity'; command = 'agy'; agentic_args = @('--dangerously-skip-permissions', '--print-timeout', '15m', '--print'); prompt_via_stdin = $false; model = 'configured-by-user'; adapter_id = 'reviewer-host-adapter-antigravity-prompt'; rank = 65; default_timeout_seconds = 900; production_harness_id = 'antigravity-file-primary'; production_constructor = 'New-ReviewAntigravityFilePrimaryHarnessPort'; result_transport = 'file-primary'; candidate_contract_version = '1.0' }
     )
+}
+
+function Get-ContinuousCoReviewProductionHarnessDefinition {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$HostName)
+
+    $needle = $HostName.ToLowerInvariant()
+    $row = @(Get-ContinuousCoReviewReviewerHostRows) | Where-Object { $_.host -ceq $needle } | Select-Object -First 1
+    if ($null -eq $row) { return $null }
+    foreach ($required in @('production_harness_id', 'production_constructor', 'result_transport', 'candidate_contract_version')) {
+        if (-not $row.Contains($required)) { return $null }
+    }
+    if ([string]$row.result_transport -cne 'file-primary' -or [string]$row.candidate_contract_version -cne '1.0') { return $null }
+    $defaultTimeout = Get-ContinuousCoReviewHostDefaultTimeoutSeconds -HostName $needle
+    if ($null -eq $defaultTimeout) { $defaultTimeout = 600 }
+    return [pscustomobject][ordered]@{
+        host = [string]$row.host
+        harness_id = [string]$row.production_harness_id
+        constructor = [string]$row.production_constructor
+        command = [string]$row.command
+        pre_arguments = @($row.agentic_args)
+        prompt_transport = $(if ([bool]$row.prompt_via_stdin) { 'stdin' } else { 'argument' })
+        result_transport = [string]$row.result_transport
+        candidate_contract_version = [string]$row.candidate_contract_version
+        default_timeout_seconds = [int]$defaultTimeout
+    }
 }
 
 function Get-ContinuousCoReviewHostDefaultTimeoutSeconds {

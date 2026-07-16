@@ -250,7 +250,7 @@ function New-ReviewCampaignProductionPorts {
     else { New-ReviewUnavailableRuntimePort -Reason 'production-os-runtime-not-installed' }
     return [pscustomobject]@{
         target = $target; harness = $harness; runtime = $runtime; clock = New-ReviewSystemClockPort
-        prompt_path = (Join-Path $PSScriptRoot 'reviewer-spawn-contract.md')
+        prompt_path = (Join-Path $PSScriptRoot 'reviewer-candidate-prompt.md')
     }
 }
 
@@ -277,7 +277,14 @@ function Invoke-ReviewCampaignCommand {
     $root = (Resolve-Path -LiteralPath $RepoRoot).Path
     $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId $FeatureId -IterationNumber $IterationNumber -RunId $RunId
     if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
-    if ([string]::IsNullOrWhiteSpace($StagingRoot)) { $StagingRoot = Join-Path $root '.specrew/review/staging' }
+    if ([string]::IsNullOrWhiteSpace($StagingRoot)) {
+        $repoToken = Get-ReviewCampaignStableToken -Value $root -Length 20
+        $StagingRoot = Join-Path ([IO.Path]::GetTempPath()) "specrew-review-staging/$repoToken"
+    }
+    $StagingRoot = [IO.Path]::GetFullPath($StagingRoot)
+    if (Test-ReviewTargetPathUnderRoot -Path $StagingRoot -Root $root) {
+        throw "review-campaign-staging-root-inside-origin:$StagingRoot"
+    }
     if (-not [string]::IsNullOrWhiteSpace($GrantAuthorizationRef)) {
         # One human authorization reference creates at most one campaign slot. A new run that reuses
         # the same reference sees the already-spent grant; it does not mint another allowance slot.
