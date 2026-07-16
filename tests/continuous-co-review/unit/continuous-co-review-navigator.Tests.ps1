@@ -256,6 +256,34 @@ $v = [ordered]@{ schema_version='1.0'; status='no_findings'; disposition='pass';
         finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
     }
 
+    It 'T041 cutover: a legacy terminal result stays advisory when campaign authority is active' {
+        $root = script:New-NavigatorProject -FileContent 'base'
+        try {
+            Mock -CommandName Get-ContinuousCoReviewAuthorityDecision -MockWith {
+                [pscustomobject]@{
+                    mode = 'campaign'; valid = $true; legacy_promotion_enabled = $false
+                    campaign_authority_enabled = $true; reason = 'authority-mode-campaign'
+                }
+            }
+            $blockingVerdict = '{ "schema_version": "1.0", "status": "findings", "disposition": "reject", "blocking": true, "findings": [ { "id": "F1", "severity": "blocking", "location": "src/app.txt", "comment": "legacy finding", "disposition": "blocking" } ] }'
+            $currentDigest = (Get-ContinuousCoReviewReviewedStateDigest -RepoRoot $root).tree_id
+            $runId = 'legacy-after-cutover'
+            $pendingDir = Join-Path $root '.specrew/review/pending'
+            $runDir = Join-Path $pendingDir $runId
+            New-Item -ItemType Directory -Path $runDir -Force | Out-Null
+            $resultPath = Join-Path $runDir 'result.out'
+            Set-Content -LiteralPath $resultPath -Value $blockingVerdict -Encoding UTF8
+            ([ordered]@{ schema_version = '1.0'; run_id = $runId; status = 'done'; result_path = $resultPath; run_dir = $runDir; reviewed_digest_tree_id = $currentDigest } | ConvertTo-Json) |
+                Set-Content -LiteralPath (Join-Path $pendingDir "$runId.json") -Encoding UTF8
+
+            $reap = Invoke-ContinuousCoReviewNavigatorReap -RepoRoot $root
+            $reap.stop_block | Should -BeNullOrEmpty
+            (@($reap.inject_notes) -join "`n") | Should -Match 'legacy authority disabled'
+            Test-Path -LiteralPath (Join-Path $root ".specrew/review/inline/$runId/review-run.json") | Should -BeFalse -Because 'legacy evidence must not be promoted after campaign cutover'
+        }
+        finally { Remove-Item -LiteralPath $root -Recurse -Force -ErrorAction SilentlyContinue }
+    }
+
     # T019 step 6 (resolver HARDENING, maintainer 2026-07-13): prefer the EXPLICIT reviewed ids
     # (reviewed_digest_tree_id, then reviewed_tree_id); use the generic tree_id ONLY as a legacy fallback when
     # neither explicit id exists; and if the two explicit ids DISAGREE, fail closed with a named conflict so no

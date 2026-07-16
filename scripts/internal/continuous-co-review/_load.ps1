@@ -6,6 +6,9 @@ Set-StrictMode -Version Latest
 # contract helpers, and the diff-provider's Invoke-...Git wrapper used by the dedup). Verified by AST call-graph
 # from the live entry points (worktree navigator + service + detached + signoff gate + host-auth).
 $proposal197ReviewerModules = @(
+    # F-198 iter-006 / T041: ONE fail-closed terminal-authority cutover seam. It is loaded first so
+    # every legacy/new consumer gets the same mutually-exclusive decision.
+    'review-authority-cutover.ps1'
     # The ONE shared trunk resolver (6-level precedence) - loaded FIRST so the anchor writer, signoff gate,
     # baseline resolver, and lineage resolver all consume it instead of duplicating 'main' defaults.
     'co-review-trunk-resolver.ps1'
@@ -36,6 +39,16 @@ $proposal197ReviewerModules = @(
     # T019 step 6: the review-identity contracts + the per-lineage lease runtime are now WIRED (were unwired
     # characterization). Pure/self-contained; consumed by the navigator reap (authority) + the fire path (lease).
     'review-identity-contracts.ps1'
+    # F-198 iter-006 / T042-T044: closed review contracts + pure campaign/run authority decisions.
+    'review-authority-core.ps1'
+    # F-198 iter-006 / T045: immutable JSON campaign/run/claim repositories + reconciliation.
+    'review-authority-store.ps1'
+    # F-198 iter-006 / T046: production external-Git target + thin target-neutral fixture.
+    'review-target-port.ps1'
+    # F-198 iter-006 / T047: strict candidate ingress + controller-owned JSON/Markdown publication.
+    'review-result-ingestor.ps1'
+    # F-198 iter-006 / T048: synchronous port-composed campaign/run orchestration + fixtures.
+    'review-campaign-orchestrator.ps1'
     # T019 piece 4b / FR-045a: the PURE Stop-intent classifier (intermediate operational yield vs a real handoff).
     'stop-intent-contract.ps1'
     'co-review-lineage-lease.ps1'

@@ -643,6 +643,16 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                 # that carry no lineage_id (no lease was acquired).
                 $leaseNonAuth = $false
                 $leaseNonAuthReason = ''
+                # F-198 / T041: the legacy reaper may keep surfacing historical findings, but it may
+                # promote/block only while the ONE cutover seam explicitly enables legacy authority.
+                # Missing helper/configuration is non-authoritative, never a permit fallback.
+                $legacyAuthorityDecision = if (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorAction SilentlyContinue) {
+                    Get-ContinuousCoReviewAuthorityDecision
+                }
+                else {
+                    [pscustomobject]@{ mode = 'disabled'; valid = $false; legacy_promotion_enabled = $false; reason = 'authority-cutover-helper-missing' }
+                }
+                $legacyNonAuth = -not [bool]$legacyAuthorityDecision.legacy_promotion_enabled
                 if ($status -eq 'done' -and $verdict.ok -and -not $identityConflict) {
                     try {
                         $lgLineage = if ($null -ne $reg -and ($reg.PSObject.Properties.Name -contains 'lineage_id')) { [string]$reg.lineage_id } else { '' }
@@ -660,16 +670,19 @@ function Invoke-ContinuousCoReviewNavigatorReap {
                     }
                     catch { $null = $_ }
                 }
-                if ($status -eq 'done' -and $verdict.ok -and ($identityConflict -or $leaseNonAuth)) {
+                if ($status -eq 'done' -and $verdict.ok -and ($identityConflict -or $leaseNonAuth -or $legacyNonAuth)) {
                     if ($identityConflict) {
                         # T019 step 6 (resolver hardening, maintainer 2026-07-13): the registry's two EXPLICIT reviewed-tree
                         # identities disagree, so WHICH tree was reviewed is ambiguous. FAIL CLOSED - do NOT block, promote,
                         # or stamp findings using either value; surface the named conflict for a human to reconcile.
                         $result.inject_notes.Add(("[co-review] run {0}: {1}. The reviewed-tree identity is ambiguous, so this run's findings are NEITHER blocked, promoted, nor stamped - reconcile the registry's reviewed_digest_tree_id vs reviewed_tree_id." -f $runId, [string]$treeIdRes.reason)) | Out-Null
                     }
-                    else {
+                    elseif ($leaseNonAuth) {
                         # T019 step 6 piece 2c: NOT the current lease owner for its generation -> advisory only.
                         $result.inject_notes.Add(("[co-review] run {0}: lease authority '{1}' - this completion is not the current lease owner for its generation, so its findings are advisory only (NOT promoted or blocked)." -f $runId, $leaseNonAuthReason)) | Out-Null
+                    }
+                    else {
+                        $result.inject_notes.Add(("[co-review] run {0}: legacy authority disabled ({1}, mode={2}); findings remain advisory historical evidence and are NOT promoted or blocked." -f $runId, [string]$legacyAuthorityDecision.reason, [string]$legacyAuthorityDecision.mode)) | Out-Null
                     }
                 }
                 elseif ($status -eq 'done' -and $verdict.ok) {

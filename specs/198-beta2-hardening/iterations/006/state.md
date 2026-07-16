@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: Fresh Iteration 006 before-implement verdict recorded and hardening gate activated against the committed execution contract.
-**Tasks Remaining**: T041–T050 execution; independent review; runtime evidence reconciliation; retrospective and closeout.
-**In Progress**: T041 legacy-authority cutover seam and executable foundation map
+**Last Completed Task**: T048 synchronous campaign orchestration; the focused core/store/orchestrator lane passes 46/46 including the production Git target, released-slot generations, timeout partials, visible reruns, and crash recovery.
+**Tasks Remaining**: T049 committed-tree quality evidence; T050 independent Claude review; retrospective and closeout.
+**In Progress**: T049 foundation integration, quality gates, and digest-bound evidence
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 

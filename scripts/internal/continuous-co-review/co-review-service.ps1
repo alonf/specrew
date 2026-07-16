@@ -80,6 +80,26 @@ function Start-ContinuousCoReviewServiceRun {
         [switch]$Detached
     )
     $resolved = (Resolve-Path -LiteralPath $RepoRoot).Path
+    # F-198 / T041: this legacy service cannot start a reviewer unless the single cutover seam says
+    # legacy authority is active. Campaign/disabled/invalid/missing states suppress BEFORE run-dir,
+    # lease, pending-registry, or process creation, so the obsolete path cannot consume spend.
+    $authorityDecision = if (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorAction SilentlyContinue) {
+        Get-ContinuousCoReviewAuthorityDecision
+    }
+    else {
+        [pscustomobject]@{ mode = 'disabled'; valid = $false; legacy_promotion_enabled = $false; reason = 'authority-cutover-helper-missing' }
+    }
+    if (-not [bool]$authorityDecision.legacy_promotion_enabled) {
+        return [pscustomobject]@{
+            run_id            = $RunId
+            run_dir           = $null
+            status            = 'suppressed'
+            detached          = [bool]$Detached
+            spawned           = $false
+            suppressed_reason = ('legacy-authority-disabled:' + [string]$authorityDecision.reason)
+            authority_mode    = [string]$authorityDecision.mode
+        }
+    }
     if ([string]::IsNullOrWhiteSpace($RunId)) { $RunId = New-ContinuousCoReviewServiceRunId }
     $runDir = Get-ContinuousCoReviewNavigatorRunDir -RepoRoot $resolved -RunId $RunId
     if (-not (Test-Path -LiteralPath $runDir)) { New-Item -ItemType Directory -Path $runDir -Force | Out-Null }
