@@ -4,7 +4,7 @@
 **Implementation commit**: `8f0c939b87d3ddb5bbdfa737d933369c83013b81`
 **Reviewed-state digest**: `57b0c02b107e42c66759190b91e8d46705ae9816`
 **Recorded at**: 2026-07-16
-**Independent review**: pending T050
+**Independent review**: incomplete T050; one authorized Claude invocation produced authoritative `invalid-output`, and a complete rerun requires a new human allowance
 
 The reviewed-state digest certifies the exact reviewable worktree content used by the recorded
 foundation run, including preserved tracked worktree changes and excluding only runtime/machinery
@@ -41,9 +41,43 @@ Post-correction verification on 2026-07-16:
 - `pwsh -NoProfile -File tests/f198-regression-suite.ps1 -PerTestTimeoutSeconds 300`: PASS, all 45 suites, 421.9 s wall time.
 - PowerShell parser and `git diff --check`: PASS.
 
-The original `57b0c...` record above remains immutable historical T049 evidence. The final corrected
-reviewable-tree record is written after this documentation commit and is the only digest eligible for
-T050 acceptance.
+The original `57b0c...` record above remains immutable historical T049 evidence. Digest
+`2540aad2e6c0b3205eecece4a457a2cf38545078` became the target of the first provider invocation and is
+also historical after the advisory corrections below. A new exact-tree record is written after the
+correction commit and is the only digest eligible for a complete T050 rerun.
+
+## T050 invalid attempt and advisory correction
+
+Campaign `cmp-i006-t050-claude-v2`, run `run-i006-t050-claude-v2`, invoked Claude 2.1.210 once after
+all preflights passed. The run observed 639.140 seconds, verified containment and process-tree
+termination, and classified the target as current. Claude returned prose followed by JSON instead of a
+single JSON object, so the strict ingestor correctly published `completion=none`, `verdict=incomplete`,
+`runtime_outcome=invalid-output`, `validation=invalid`, and `can_approve_current=false`, with failure
+reason `prose-wrapped-json: prose-wrapped-json`. No candidate finding became authoritative.
+
+The five embedded comments were nevertheless preserved as fallible advisory input and addressed
+within T050's approved correction scope:
+
+1. Duplicate-combination detection now reads the persisted ReviewRun `schema_version` and its fixture
+   uses the closed stored shape.
+2. Runtime preflight has its own required spend-policy key and publishes
+   `preflight-failed:runtime`, rather than blaming the harness.
+3. Reused reservation IDs are rejected before allowance state can become ambiguous.
+4. The unused `$claimHeld` variable was removed.
+5. The foundation map now warns that changing to campaign mode before Iteration 007 public-command
+   wiring suppresses legacy authority without a command-reachable replacement.
+
+Post-advisory-correction verification on 2026-07-16:
+
+- Focused authority/store/orchestrator suites: PASS, 48/48.
+- `pwsh -NoProfile -File tests/f198-iteration006-foundation.ps1`: PASS, 87/87, 30.950 s observed suite duration.
+- `pwsh -NoProfile -File tests/f198-regression-suite.ps1 -PerTestTimeoutSeconds 300`: PASS, all 45 suites, 426.4 s wall time.
+- `git diff --check`: PASS.
+
+The authoritative result and derived report are machine-local at
+file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v2/.
+The durable review summary is file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/review.md.
+The provider allowance is spent; no complete rerun may start without a separate human grant.
 
 ## Requirement evidence
 

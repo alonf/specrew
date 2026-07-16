@@ -21,3 +21,8 @@ Legacy lease and result files remain readable historical evidence after cutover.
 or promoted into campaign authority automatically. Five real harness adapters, three production runtime
 adapters, progress/retro projection, cross-OS proof, live smokes, and final legacy removal belong to
 Iteration 007; this map does not claim those capabilities are complete.
+
+Operational warning: do not change the checked-in mode from `legacy` before Iteration 007 wires a
+production command to the campaign orchestrator. `campaign` deliberately suppresses legacy spawn and
+promotion; in Iteration 006 the replacement application service is executable through tests and the
+bounded T050 operational adapter, but it is not yet a public production CLI path.

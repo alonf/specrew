@@ -165,16 +165,18 @@ Describe 'Pure campaign allowance and rerun policy (T043)' {
         $second.permitted | Should -BeTrue
         $second.fact.slot | Should -Be 2
 
+        (Resolve-ReviewCampaignReservationDecision -CampaignId cmp-demo -RunId run-three -ReservationId res-one -ObservedAt latest -Grants @(Grant) -Reservations @($first.fact)).reason | Should -Be 'reservation-id-already-used'
+
         (Resolve-ReviewCampaignReservationDecision -CampaignId cmp-demo -RunId run-three -ReservationId res-three -ObservedAt latest -Grants @(Grant) -Reservations @($first.fact, $second.fact)).reason | Should -Be 'allowance-exhausted'
     }
 
     It 'requires all cheap preflights before spend and keeps an invoked failure spent' {
         $reservation = Reservation
-        $failed = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; harness = $false }
+        $failed = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; harness = $false; runtime = $true }
         $failed.permitted | Should -BeFalse
         $failed.reason | Should -Match 'preflight-failed:harness'
 
-        $spent = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; harness = $true }
+        $spent = Resolve-ReviewCampaignSpendDecision -Reservation $reservation -InvocationStartedAt now -Preflight @{ target = $true; store = $true; contract = $true; containment = $true; harness = $true; runtime = $true }
         $spent.permitted | Should -BeTrue
         $spent.fact.fact_type | Should -Be 'spend'
 
@@ -239,7 +241,7 @@ Describe 'Pure campaign allowance and rerun policy (T043)' {
     }
 
     It 'surfaces a duplicate target/harness/contract combination before spend' {
-        $runs = @([pscustomobject]@{ run_id = 'run-one'; target_digest = 'digest'; harness_id = 'claude'; contract_version = '1.0' })
+        $runs = @([pscustomobject]@{ schema_version = '1.0'; run_id = 'run-one'; target_digest = 'digest'; harness_id = 'claude'; state = 'requested' })
         $duplicate = Test-ReviewCampaignDuplicateCombination -TargetDigest digest -HarnessId claude -ContractVersion '1.0' -Runs $runs
         $duplicate.duplicate | Should -BeTrue
         $duplicate.prior_run_ids | Should -Contain 'run-one'

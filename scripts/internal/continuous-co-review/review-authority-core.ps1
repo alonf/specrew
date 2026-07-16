@@ -502,6 +502,9 @@ function Resolve-ReviewCampaignReservationDecision {
     if (@($Reservations | Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') -ceq $RunId }).Count -gt 0) {
         return [pscustomobject]@{ permitted = $false; reason = 'run-already-reserved'; fact = $null }
     }
+    if (@($Reservations | Where-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'reservation_id') -ceq $ReservationId }).Count -gt 0) {
+        return [pscustomobject]@{ permitted = $false; reason = 'reservation-id-already-used'; fact = $null }
+    }
     $state = Get-ReviewCampaignAllowanceState -CampaignId $CampaignId -Grants $Grants -Reservations $Reservations -Spends $Spends -Releases $Releases
     if (-not $state.valid) { return [pscustomobject]@{ permitted = $false; reason = 'allowance-corrupt'; fact = $null; errors = $state.errors } }
     if ($state.available.Count -eq 0) { return [pscustomobject]@{ permitted = $false; reason = 'allowance-exhausted'; fact = $null } }
@@ -527,7 +530,7 @@ function Resolve-ReviewCampaignSpendDecision {
     if (-not $reservationValidation.valid) { return [pscustomobject]@{ permitted = $false; reason = 'invalid-reservation'; fact = $null; errors = $reservationValidation.errors } }
     $reservationId = [string](Get-ReviewAuthorityProperty -Object $Reservation -Name 'reservation_id')
     $failedChecks = @()
-    foreach ($name in @('target', 'store', 'contract', 'containment', 'harness')) {
+    foreach ($name in @('target', 'store', 'contract', 'containment', 'harness', 'runtime')) {
         if ($null -eq $Preflight -or -not $Preflight.ContainsKey($name) -or -not [bool]$Preflight[$name]) { $failedChecks += $name }
     }
     if ($failedChecks.Count -gt 0) { return [pscustomobject]@{ permitted = $false; reason = ('preflight-failed:' + ($failedChecks -join ',')); fact = $null } }
@@ -627,7 +630,7 @@ function Test-ReviewCampaignDuplicateCombination {
     $matches = @($Runs | Where-Object {
         [string](Get-ReviewAuthorityProperty -Object $_ -Name 'target_digest') -ceq $TargetDigest -and
         [string](Get-ReviewAuthorityProperty -Object $_ -Name 'harness_id') -ceq $HarnessId -and
-        [string](Get-ReviewAuthorityProperty -Object $_ -Name 'contract_version') -ceq $ContractVersion
+        [string](Get-ReviewAuthorityProperty -Object $_ -Name 'schema_version') -ceq $ContractVersion
     })
     return [pscustomobject]@{ duplicate = ($matches.Count -gt 0); prior_run_ids = @($matches | ForEach-Object { [string](Get-ReviewAuthorityProperty -Object $_ -Name 'run_id') }) }
 }

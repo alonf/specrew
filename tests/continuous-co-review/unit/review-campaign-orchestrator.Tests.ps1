@@ -89,17 +89,21 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
     }
 
     It 'fails preflight and launch before spend, releasing allowance without invoking a provider' {
-        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'preflight-launch') -Slots 2
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'preflight-launch') -Slots 3
         $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one
         $preflight = Invoke-OrchestratorFixture -Context $context -Run run-one -Reservation res-one -Target $target -Harness (New-ReviewFixtureHarnessPort -PreflightPass $false) -Runtime (New-ReviewFixtureRuntimePort)
         $preflight.invoked | Should -BeFalse
         $preflight.result.runtime_outcome | Should -Be 'preflight-failed'
 
-        $launch = Invoke-OrchestratorFixture -Context $context -Run run-two -Reservation res-two -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-two)) -Runtime (New-ReviewFixtureRuntimePort -Outcome launch-failed)
+        $runtimePreflight = Invoke-OrchestratorFixture -Context $context -Run run-two -Reservation res-two -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-two)) -Runtime (New-ReviewFixtureRuntimePort -PreflightPass $false)
+        $runtimePreflight.invoked | Should -BeFalse
+        $runtimePreflight.reason | Should -Be 'preflight-failed:runtime'
+
+        $launch = Invoke-OrchestratorFixture -Context $context -Run run-three -Reservation res-three -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-three)) -Runtime (New-ReviewFixtureRuntimePort -Outcome launch-failed)
         $launch.invoked | Should -BeFalse
         $launch.result.runtime_outcome | Should -Be 'launch-failed'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 0
-        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases).Count | Should -Be 2
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases).Count | Should -Be 3
     }
 
     It 'bounds a long target preflight exception, releases allowance, and publishes the failure' {
