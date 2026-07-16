@@ -1,11 +1,11 @@
 # Iteration State: 007
 
 **Schema**: v1
-**Current Phase**: before-implement
+**Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: Fresh Iteration 007 before-implement verdict recorded and hardening gate activated against task-boundary commit d9cdd164
-**Tasks Remaining**: T030–T034b and T051–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: T030 machinery-turn exclusion from verdict evidence
+**Last Completed Task**: T030 machinery-turn exclusion from verdict evidence
+**Tasks Remaining**: T031–T034b and T051–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T031 approval-tokenizer tightening, temporal ordering, and cursor-invariant guards
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-16
@@ -46,12 +46,20 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **Provider limit**: this verdict grants zero provider invocations. Each of the five best-case base slots and every correction/rerun slot requires its own explicit human authorization.
 - **Ledger note**: this explicit scoped verdict and task-boundary commit are the authority. The stale global matcher, stale `session_state`, option numbering, and numeric aliases are not used; the known-unsafe boundary synchronizer was not invoked. T033 owns the durable append-only correction.
 
+## Execution Progress
+
+- **T030 done**: parsed user-role turns now retain `human` versus `machinery` verdict-evidence provenance. Claude `isMeta=true` feedback and complete injected envelopes are ineligible in both marker-bound and future fallback selection; a genuine prompt-submit turn remains eligible even when its text is identical to prior machinery.
+- **T030 evidence**: the paired genuine/isMeta text regression, synthetic-envelope regression, shared parse-once suite, both handover suites, and all 45 F-198 honesty-registry suites pass.
+- **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only. FR-045 packet/current-review gating remains assigned to T051 by the approved Iteration 003 reconciliation and is not claimed here.
+- **Provider spend**: none.
+
 ## Current Production Truth
 
 - Checked-in review authority mode remains `legacy`.
 - Iteration 006 foundation and Claude file-primary slice are delivered and independently reviewed.
 - T019 mutable lease/navigator/stamping/pruning mechanisms are not executable Iteration 007 work.
-- Production command wiring, capture/ledger work, workshop Stop, remaining harnesses, three runtime ports, progress/retro, three-OS matrix, five live smokes, and campaign cutover remain pending.
+- Machinery-turn exclusion is delivered; tokenizer/temporal capture hardening and the append-only correction door remain pending.
+- Production command wiring, workshop Stop, remaining harnesses, three runtime ports, progress/retro, three-OS matrix, five live smokes, and campaign cutover remain pending.
 
 ## Notes
 

@@ -108,10 +108,14 @@ try {
 
     # ---- Part C: the transcript reader (Get-SpecrewCapturedBoundaryVerdict) ---------------------------------
     function New-Transcript {
-        param([object[]]$Turns)   # each: @{ role='assistant'|'user'; text='...' } in chronological order
+        param([object[]]$Turns)   # each: @{ role='assistant'|'user'; text='...'; is_meta=$true? } in chronological order
         $path = Join-Path $scratch ("tx-" + [guid]::NewGuid().ToString('N') + ".jsonl")
         $lines = foreach ($t in $Turns) {
-            (@{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } } | ConvertTo-Json -Depth 8 -Compress)
+            $record = [ordered]@{ type = $t.role; message = @{ role = $t.role; content = @(@{ type = 'text'; text = $t.text }) } }
+            if (($t -is [System.Collections.IDictionary] -and $t.Contains('is_meta')) -or $null -ne $t.PSObject.Properties['is_meta']) {
+                $record.isMeta = [bool]$t.is_meta
+            }
+            ($record | ConvertTo-Json -Depth 8 -Compress)
         }
         [System.IO.File]::WriteAllText($path, ($lines -join "`n"), [System.Text.UTF8Encoding]::new($false))
         return $path
@@ -205,14 +209,28 @@ try {
     if ($c7.FromBoundary -ne 'intake' -or $c7.ToBoundary -ne 'specify') { Fail "C7: expected intake->specify capture, got '$($c7.FromBoundary)->$($c7.ToBoundary)'" }
     Write-Pass "reader: later unanswered marker does NOT hide an earlier approved marker (Stop timing gap)"
 
-    # C8: Codex records hook feedback as a role=user <hook_prompt> item. It can contain example approval text in
-    # the hook instruction; it is NOT a human verdict and must never authorize a boundary.
-    $c8 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+    # C8: Claude records hook feedback as role=user but isMeta=true. The IDENTICAL approval text captures as a
+    # genuine human turn and does not capture as machinery. Codex's <hook_prompt> envelope is likewise machinery.
+    $pairedVerdictText = 'approved for clarify'
+    $c8a = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: specify -> clarify --> verdict?" },
+            @{ role = 'user'; text = $pairedVerdictText }))
+    if (-not $c8a.Found) { Fail "C8a: genuine human approval text must capture (reason=$($c8a.Reason))" }
+    $c8b = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: specify -> clarify --> verdict?" },
+            @{ role = 'user'; text = $pairedVerdictText; is_meta = $true }))
+    if ($c8b.Found) { Fail "C8b: identical isMeta hook feedback must not be treated as a human approval" }
+    if ($c8b.Reason -ne 'awaiting-response') { Fail "C8b: expected awaiting-response after excluding isMeta feedback, got '$($c8b.Reason)'" }
+    $c8d = Get-SpecrewCapturedBoundaryVerdict -LastUserMessage $pairedVerdictText -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: specify -> clarify --> verdict?" },
+            @{ role = 'user'; text = $pairedVerdictText; is_meta = $true }))
+    if (-not $c8d.Found) { Fail "C8d: a genuine prompt-submit approval identical to prior isMeta text must capture (reason=$($c8d.Reason))" }
+    $c8c = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: specify -> clarify --> verdict?" },
             @{ role = 'user'; text = '<hook_prompt hook_run_id="stop:2:C:\Users\alon.HOME\.codex\hooks.json">Please reply with: approved for clarify</hook_prompt>' }))
-    if ($c8.Found) { Fail "C8: hook_prompt must not be treated as a human approval" }
-    if ($c8.Reason -ne 'awaiting-response') { Fail "C8: expected awaiting-response after ignoring hook_prompt, got '$($c8.Reason)'" }
-    Write-Pass "reader: Codex hook_prompt feedback is ignored for verdict capture"
+    if ($c8c.Found) { Fail "C8c: hook_prompt must not be treated as a human approval" }
+    if ($c8c.Reason -ne 'awaiting-response') { Fail "C8c: expected awaiting-response after ignoring hook_prompt, got '$($c8c.Reason)'" }
+    Write-Pass "reader: identical human/isMeta text is provenance-separated, genuine prompt-submit survives dedup, and Codex hook_prompt is ignored"
 
     # C9: Antigravity transcript roles parse as real assistant/user turns, including USER_REQUEST wrapper removal.
     $c9 = Get-SpecrewCapturedBoundaryVerdict -TranscriptPath (New-AntigravityTranscript -Turns @(
@@ -292,6 +310,13 @@ No open prompts.
     if (-not $c15.Found) { Fail "C15: prompt-submit supplied user approval should capture against the prior marker (reason=$($c15.Reason))" }
     if ($c15.FromBoundary -ne 'plan' -or $c15.ToBoundary -ne 'tasks') { Fail "C15: expected plan->tasks capture, got '$($c15.FromBoundary)->$($c15.ToBoundary)'" }
     Write-Pass "reader: marker-bound capture stays fully active under the mitigation"
+
+    # C15b: the prompt-submit seam must not reintroduce machinery that the structured transcript parser rejects.
+    $c15b = Get-SpecrewCapturedBoundaryVerdict -LastUserMessage '<hook_prompt hook_run_id="stop:test">approved for tasks</hook_prompt>' -TranscriptPath (New-Transcript -Turns @(
+            @{ role = 'assistant'; text = "packet <!-- SPECREW-VERDICT-BOUNDARY: plan -> tasks --> verdict?" }))
+    if ($c15b.Found) { Fail "C15b: synthetic hook_prompt text must not authorize the prior marker" }
+    if ($c15b.Reason -ne 'awaiting-response') { Fail "C15b: expected awaiting-response after excluding synthetic hook_prompt, got '$($c15b.Reason)'" }
+    Write-Pass "reader: synthetic prompt-submit seam excludes hook machinery"
 
     # C16: prompt-submit markerless fallback likewise refuses while disabled.
     $c16 = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -LastUserMessage '1' -TranscriptPath (New-Transcript -Turns @(

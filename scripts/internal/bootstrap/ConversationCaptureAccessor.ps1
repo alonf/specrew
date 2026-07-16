@@ -55,6 +55,42 @@ function Get-SpecrewConversationContentText {
     return , $parts.ToArray()
 }
 
+function Test-SpecrewConversationMetaFlag {
+    # Claude persists Stop-hook feedback as type=user/message.role=user with isMeta=true. Role alone is therefore
+    # not evidence of human authorship. Keep this pure and tolerant of both camel/snake spellings so host schema
+    # drift fails closed for the known metadata bit without teaching on the feedback's approval-shaped text.
+    [OutputType([bool])]
+    param([Parameter()][AllowNull()]$Object)
+    if ($null -eq $Object) { return $false }
+    foreach ($name in @('isMeta', 'is_meta')) {
+        $value = Get-SpecrewConversationProp $Object $name
+        if ($value -is [bool] -and [bool]$value) { return $true }
+        if ([string]$value -match '(?i)^\s*(?:true|1)\s*$') { return $true }
+    }
+    return $false
+}
+
+function Test-SpecrewConversationMachineryEnvelope {
+    # Envelope-only fallback for hosts such as Codex whose hook output may be surfaced as a user-shaped text item.
+    # Match the complete injected wrapper, never its inner wording: the identical inner text remains valid when a
+    # human actually types it. Other system-only wrappers are excluded for the same provenance reason.
+    [OutputType([bool])]
+    param([Parameter()][AllowNull()][string]$Text)
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $false }
+    return [bool]($Text -match '(?is)^\s*<(?:hook_prompt\b|task-notification\b|turn_aborted\b|system-reminder\b)[\s\S]*</(?:hook_prompt|task-notification|turn_aborted|system-reminder)>\s*$')
+}
+
+function Test-SpecrewTurnIsHumanVerdictEvidence {
+    # Verdict readers call this instead of trusting role=user. Parsed turns carry an explicit provenance label;
+    # legacy/ad-hoc turns without the label remain compatible only when they are not a known machinery envelope.
+    [OutputType([bool])]
+    param([Parameter()][AllowNull()]$Turn)
+    if ($null -eq $Turn -or [string](Get-SpecrewConversationProp $Turn 'role') -ne 'user') { return $false }
+    $evidence = [string](Get-SpecrewConversationProp $Turn 'verdict_evidence')
+    if (-not [string]::IsNullOrWhiteSpace($evidence)) { return $evidence -eq 'human' }
+    return -not (Test-SpecrewConversationMachineryEnvelope -Text ([string](Get-SpecrewConversationProp $Turn 'text')))
+}
+
 function Get-SpecrewTranscriptTailLines {
     # Fast bounded tail reader for hook hot paths. Get-Content -Tail is seconds-scale on large Codex JSONL
     # transcripts on Windows; Stop hooks call this several times, so use a backward byte window and drop the
@@ -249,7 +285,7 @@ function Get-SpecrewPendingVerdictFallbackCapture {
 
     for ($i = @($Turns).Count - 1; $i -ge 0; $i--) {
         $turn = $Turns[$i]
-        if ([string]$turn.role -ne 'user') { continue }
+        if (-not (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $turn)) { continue }
         $humanText = [string]$turn.text
         $verdict = Test-SpecrewHumanVerdictToken -Text $humanText
         if (-not $verdict.IsApproval) {
@@ -339,8 +375,11 @@ function Get-SpecrewCapturedBoundaryVerdict {
         $syntheticUser = $syntheticUser -replace '(?is)^\s*<USER_REQUEST>\s*', '' -replace '(?is)\s*</USER_REQUEST>\s*$', ''
         $syntheticUser = $syntheticUser.Trim()
         $lastTurn = if ($turns.Count -gt 0) { $turns[$turns.Count - 1] } else { $null }
-        $lastIsSameUser = ($null -ne $lastTurn -and [string]$lastTurn.role -eq 'user' -and [string]$lastTurn.text -eq $syntheticUser)
-        if (-not $lastIsSameUser) { $turns.Add([pscustomobject]@{ role = 'user'; text = $syntheticUser }) | Out-Null }
+        $lastIsSameUser = ($null -ne $lastTurn -and (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $lastTurn) -and [string]$lastTurn.text -eq $syntheticUser)
+        $syntheticIsMachinery = Test-SpecrewConversationMachineryEnvelope -Text $syntheticUser
+        if (-not $lastIsSameUser -and -not $syntheticIsMachinery) {
+            $turns.Add([pscustomobject]@{ role = 'user'; text = $syntheticUser; verdict_evidence = 'human' }) | Out-Null
+        }
     }
     if ($turns.Count -eq 0) { $result.Reason = 'no-turns'; return $result }
 
@@ -375,7 +414,7 @@ function Get-SpecrewCapturedBoundaryVerdict {
         # The FIRST human turn AFTER that packet (the response to it; before it = the request, not the verdict).
         $humanText = $null
         for ($j = $i + 1; $j -lt $turns.Count; $j++) {
-            if ([string]$turns[$j].role -eq 'user') { $humanText = [string]$turns[$j].text; break }
+            if (Test-SpecrewTurnIsHumanVerdictEvidence -Turn $turns[$j]) { $humanText = [string]$turns[$j].text; break }
         }
         if ([string]::IsNullOrWhiteSpace($humanText)) { $sawAwaiting = $true; continue }
 
@@ -562,7 +601,10 @@ function Get-SpecrewConversationTurnRolePartsFromObject {
     else { return $null }
 
     if ($role -notin @('user', 'assistant')) { return $null }   # drop developer/system/tool roles
-    return [pscustomobject]@{ role = $role; parts = @($parts) }
+    $joinedParts = @($parts) -join "`n"
+    $isMachinery = $role -eq 'user' -and ((Test-SpecrewConversationMetaFlag -Object $o) -or (Test-SpecrewConversationMachineryEnvelope -Text $joinedParts))
+    $verdictEvidence = if ($role -ne 'user') { 'not-user' } elseif ($isMachinery) { 'machinery' } else { 'human' }
+    return [pscustomobject]@{ role = $role; parts = @($parts); verdict_evidence = $verdictEvidence }
 }
 
 function Format-SpecrewConversationTurnText {
@@ -580,6 +622,10 @@ function Format-SpecrewConversationTurnText {
     if ($role -notin @('user', 'assistant')) { return $null }
     # -Raw (T002): join parts with a newline to keep block boundaries; DEFAULT joins with a space for the flat tail.
     $text = if ($Raw) { (@($parts) -join "`n") } else { (@($parts) -join ' ') }
+    $verdictEvidence = [string](Get-SpecrewConversationProp $Turn 'verdict_evidence')
+    if ([string]::IsNullOrWhiteSpace($verdictEvidence)) {
+        $verdictEvidence = if ($role -ne 'user') { 'not-user' } elseif (Test-SpecrewConversationMachineryEnvelope -Text $text) { 'machinery' } else { 'human' }
+    }
     # strip query/redaction wrappers + the most obvious system-injected blocks (keep a short marker so the
     # signal survives without the bulk). These are targeted removals; they do not touch '## ' packet structure.
     $text = $text -replace '</?user_query>', '' -replace '</?environment_details>', '' -replace '\[REDACTED\]', ''
@@ -590,7 +636,7 @@ function Format-SpecrewConversationTurnText {
     $text = if ($Raw) { $text.Trim() } else { ($text -replace '\s+', ' ').Trim() }
     if ($role -eq 'user' -and $text -match '^\s*<hook_prompt\b[\s\S]*</hook_prompt>\s*$') { return $null }
     if ([string]::IsNullOrWhiteSpace($text)) { return $null }
-    return [pscustomobject]@{ role = $role; text = $text }
+    return [pscustomobject]@{ role = $role; text = $text; verdict_evidence = $verdictEvidence }
 }
 
 function Get-SpecrewTranscriptParsedTurns {
