@@ -89,10 +89,10 @@ tasks:
     blocked_reason: ""
   T060:
     title: "First four live harness smokes across three OSes, support truth, campaign cutover, and docs"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-17T01:18:38+03:00"
     completed_at: ""
-    blocked_reason: ""
+    blocked_reason: "No-spend discovery complete: Windows is ready; Linux requires PowerShell/cgroup provisioning and hosted macOS requires a cataloged CLI plus a dedicated provider credential secret. No provider invocation is authorized."
   T061:
     title: "Fifth harness smoke as independent exact-digest signoff"
     status: "pending"
