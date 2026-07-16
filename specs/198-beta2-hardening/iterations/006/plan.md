@@ -1,7 +1,7 @@
 # Iteration Plan: 006
 
 **Schema**: v1
-**Spec**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md
+**Spec**: [../../spec.md](../../spec.md)
 **Design Decision**: Option B, authorized at file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/gates/design-analysis-005.md
 **Status**: planning
 **Capacity**: 16/26 story_points
@@ -37,16 +37,16 @@ Partial traceability above is a delivery boundary, not a completion claim. Beta2
 
 | Task | Title | Requirement | Story | Effort | Owner | Owner File Globs | Status | Agent | Actual | Verdict |
 | --- | --- | --- | --- | ---: | --- | --- | --- | --- | --- | --- |
-| T041 | Legacy-authority cutover seam and foundation map | FR-057, FR-065 | US1 | 1.0 | Implementer | scripts/internal/continuous-co-review/**, specs/198-beta2-hardening/iterations/006/** | planned | — | — | — |
-| T042 | Versioned campaign, run, invocation, result, and finding contracts | FR-057, FR-060, FR-061 | US1 | 1.5 | Implementer | scripts/internal/continuous-co-review/reviewer-contracts.ps1, scripts/internal/continuous-co-review/review-identity-contracts.ps1, tests/continuous-co-review/** | planned | — | — | — |
-| T043 | Pure campaign allowance, reservation, spend, and rerun policy | FR-057, FR-058, FR-062 | US1 | 2.0 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
-| T044 | Pure run state, result acceptance, currentness, and finding-lineage policy | FR-057, FR-059, FR-061, FR-062 | US1 | 2.0 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
-| T045 | Immutable JSON repositories, claim generations, and reconciliation | FR-058, FR-062 | US1 | 2.5 | Implementer | scripts/internal/continuous-co-review/**, .specrew/review/**, tests/continuous-co-review/** | planned | — | — | — |
-| T046 | External Git review target, exact currentness, and thin non-code fixture | FR-059, FR-065 | US2 | 1.5 | Implementer | scripts/internal/continuous-co-review/worktree-*.ps1, scripts/internal/continuous-co-review/reviewed-state-digest.ps1, tests/continuous-co-review/** | planned | — | — | — |
-| T047 | Candidate result ingress, authoritative terminal publication, and Markdown projection | FR-060, FR-061, FR-062 | US2 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
-| T048 | Synchronous CLI orchestration with target, harness, runtime, store, and clock ports | FR-060, FR-061, FR-063 | US2 | 1.5 | Implementer | scripts/specrew-review.ps1, scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
-| T049 | Foundation integration, concurrency, crash-recovery, currentness, and quality evidence | SC-017, SC-018, SC-020, FR-064 | US3 | 1.0 | Implementer | tests/continuous-co-review/**, specs/198-beta2-hardening/iterations/006/quality/** | planned | — | — | — |
-| T050 | Independent foundation review and bounded correction allowance | FR-064, SC-017, SC-018, SC-020 | US3 | 1.5 | Reviewer | .specrew/review/**, specs/198-beta2-hardening/iterations/006/** | planned | — | — | — |
+| T041 | Legacy-authority cutover seam and foundation map | FR-057, FR-065, SC-017 | US1 | 1.0 | Implementer | scripts/internal/continuous-co-review/**, specs/198-beta2-hardening/iterations/006/** | planned | — | — | — |
+| T042 | Versioned campaign, run, invocation, result, and finding contracts | FR-057, FR-060, FR-061, SC-020 | US1 | 1.5 | Implementer | scripts/internal/continuous-co-review/reviewer-contracts.ps1, scripts/internal/continuous-co-review/review-identity-contracts.ps1, tests/continuous-co-review/** | planned | — | — | — |
+| T043 | Pure campaign allowance, reservation, spend, and rerun policy | FR-057, FR-058, FR-062, FR-063, SC-017, SC-021 | US1 | 2.0 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
+| T044 | Pure run state, result acceptance, currentness, and finding-lineage policy | FR-057, FR-059, FR-061, FR-062, SC-018, SC-020 | US1 | 2.0 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
+| T045 | Immutable JSON repositories, claim generations, and reconciliation | FR-057, FR-058, FR-062, SC-017, SC-020 | US1 | 2.5 | Implementer | scripts/internal/continuous-co-review/**, .specrew/review/**, tests/continuous-co-review/** | planned | — | — | — |
+| T046 | External Git review target, exact currentness, and thin non-code fixture | FR-059, FR-065, SC-018 | US2 | 1.5 | Implementer | scripts/internal/continuous-co-review/worktree-*.ps1, scripts/internal/continuous-co-review/reviewed-state-digest.ps1, tests/continuous-co-review/** | planned | — | — | — |
+| T047 | Candidate result ingress, authoritative terminal publication, and Markdown projection | FR-059, FR-060, FR-061, FR-062, SC-018, SC-020 | US2 | 1.5 | Implementer | scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
+| T048 | Synchronous CLI orchestration with target, harness, runtime, store, and clock ports | FR-057, FR-060, FR-061, FR-063, SC-020, SC-021 | US2 | 1.5 | Implementer | scripts/specrew-review.ps1, scripts/internal/continuous-co-review/**, tests/continuous-co-review/** | planned | — | — | — |
+| T049 | Foundation integration, concurrency, crash-recovery, currentness, and quality evidence | FR-063, FR-064, FR-065, SC-017, SC-018, SC-019, SC-020, SC-021 | US3 | 1.0 | Implementer | tests/continuous-co-review/**, specs/198-beta2-hardening/iterations/006/quality/** | planned | — | — | — |
+| T050 | Independent foundation review and bounded correction allowance | FR-062, FR-064, SC-017, SC-018, SC-020, SC-021 | US3 | 1.5 | Reviewer | .specrew/review/**, specs/198-beta2-hardening/iterations/006/** | planned | — | — | — |
 
 Task identifiers reserve the next feature sequence after deferred T040. The separate task artifact is authored only after the plan-to-tasks verdict.
 

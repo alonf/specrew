@@ -80,6 +80,21 @@ wrapper (no pass counts inferred from console text).
 - [x] T039 [owner: Implementer] [sp: 1.0] **Integration + support-tier reconciliation + docs** — the real host-fired hook-health receipt wired into the dispatcher (fail-open, AFTER host-envelope validation so a malformed event records no receipt — co-review fix); observed-version sanitized (no ambient secret) + unknown-version → unverified; the doctor/status aggregator surfacing tiers + health + Codex-preflight through an authorized command seam; the reconciliation invariant (a `verified` TIER never implies `healthy` HEALTH); iterations/005/state.md + the host-support-tier / Codex-trust user docs (Trace: FR-050, FR-053, FR-051; owns: dispatcher receipt seam, host-support-doctor.ps1, docs) **[Task-plan reconciliation 2026-07-14 (co-review finding #1): T039 was originally the conditional plugin regression; redefined to the integration work actually executed + committed — decision recorded in iterations/005/state.md; the plugin regression → T040]**
 - [ ] T040 [owner: Implementer] [sp: 0.5 CONDITIONAL — DEFERRED to #3084] **Codex plugin packaging regression** — Codex plugin installation is NOT a Beta2 deliverable (Specrew deploys `~/.codex/hooks.json`, a config file per `hosts/codex/host.psd1`, not a plugin), so per the reviewer's explicit conditional this stays in issue #3084: prove `hooks: {}` for a no-hook plugin + no cross-host `hooks/hooks.json` auto-discovery (Trace: FR-054; DEFERRED — NOT a Beta2 blocker)
 
+## Iteration 006 — Review authority foundation (16.0 SP; approved for tasks 2026-07-16)
+
+Iteration 006 replaces rather than extends the failed mutable lease authority. It delivers the campaign/run policy and storage foundation only. Five real harness adapters, three production OS runtime adapters, progress/retro projection, cross-OS proof, and live smokes remain Iteration 007; this section must not be used to claim Beta2 complete.
+
+- [ ] T041 [owner: Implementer] [sp: 1.0] **Legacy-authority cutover seam and executable foundation map** — define the single production switch where legacy terminal promotion is disabled before new campaign authority can be enabled; preserve old lease/result artifacts as read-only evidence; make dual-authority, no-authority-fallback-to-permit, and silent legacy reactivation impossible. Acceptance: a deterministic state-matrix fixture proves legacy-only diagnostic mode, new-only authority mode, and fail-closed invalid/missing mode; no row permits both authorities; the component/port map matches the approved design. (Trace: FR-057, FR-065; SC-017; depends: none; owns: `scripts/internal/continuous-co-review/**`, `tests/continuous-co-review/**`, `specs/198-beta2-hardening/iterations/006/**`)
+- [ ] T042 [owner: Implementer] [sp: 1.5] **Closed versioned campaign/run/invocation/result/finding contracts** — define bounded dependency-free JSON contracts for campaign ID, run ID, target identity, grants/reservations/spend, run transitions, candidate reviewer result, controller terminal result, and finding lineage. Unknown fields, illegal states, wrong versions, wrong run/target IDs, prose-wrapped JSON, and unbounded collections fail closed with actionable categories. Acceptance: positive/negative schema fixtures exercise every required identity and reject each malformed/substitute shape before storage or promotion. (Trace: FR-057, FR-060, FR-061; SC-020; depends: T041; owns: `scripts/internal/continuous-co-review/reviewer-contracts.ps1`, `scripts/internal/continuous-co-review/review-identity-contracts.ps1`, `tests/continuous-co-review/**`)
+- [ ] T043 [owner: Implementer] [sp: 2.0] **Pure campaign allowance, reservation, spend, and rerun policy** — implement filesystem/process/Git/clock-free decisions for human grants, atomic slot reservation, pre-invocation release, invocation spend, ordered reruns, selected result, partial-result follow-up, and duplicate-target warning. A rerun is always a visible new run and consumes a separately granted slot after invocation; hidden retries and agent-created allowance are impossible. Acceptance: table-driven tests cover every legal/illegal transition, preflight-before-spend, crash between reservation and invocation, partial findings plus mandatory complete rerun, and exhausted allowance. (Trace: FR-057, FR-058, FR-062, FR-063; SC-017, SC-021; depends: T042; owns: `scripts/internal/continuous-co-review/**`, `tests/continuous-co-review/**`)
+- [ ] T044 [owner: Implementer] [sp: 2.0] **Pure ReviewRun, result-acceptance, currentness, and finding-lineage policy** — implement one-invocation run transitions and pure classification of complete/incomplete/timeout/containment/invalid-result outcomes; preserve validated partial findings; label moved targets `snapshot-moved`; prevent moved/incomplete evidence from approving current code; link findings across reruns without severity rewriting. Acceptance: exhaustive transition tests prove no illegal transition, no second authoritative terminal result, no uncertainty-to-permission branch, and correct relevance/currentness behavior. (Trace: FR-057, FR-059, FR-061, FR-062; SC-018, SC-020; depends: T042; owns: `scripts/internal/continuous-co-review/**`, `tests/continuous-co-review/**`)
+- [ ] T045 [owner: Implementer] [sp: 2.5] **Immutable JSON campaign/run/claim repositories and deterministic reconciliation** — publish unique immutable facts with atomic `FileMode.CreateNew`; use run-owned claim generations with held/released/abandoned facts; reconcile incomplete reservation, invocation, claim, and terminal sequences without generic locks, CAS framework, database, event store, or process-owner handoff. Acceptance: barrier-synchronized multi-process fixtures prove one reservation/claim winner, immutable history, fail-closed conflicting facts, crash recovery at every write boundary, idempotent replay, and no shared result filename. (Trace: FR-057, FR-058, FR-062; SC-017, SC-020; depends: T042, T043, T044; owns: `scripts/internal/continuous-co-review/**`, `.specrew/review/**`, `tests/continuous-co-review/**`)
+- [ ] T046 [owner: Implementer] [sp: 1.5] **External Git review target, exact currentness, and thin non-code target fixture** — materialize production code review in a disposable external Git worktree with shared objects; record pre/post HEAD plus canonical reviewed-state digest; verify origin HEAD/state unchanged; expose a target-neutral port and a thin executable non-code fixture without production gate/artifact adapters. Acceptance: Git fixtures prove external placement, origin immutability, exact digest binding, moved-snapshot classification, cleanup, and target-port neutrality. (Trace: FR-059, FR-065; SC-018; depends: T042; owns: `scripts/internal/continuous-co-review/worktree-reviewer.ps1`, `scripts/internal/continuous-co-review/worktree-review-orchestrator.ps1`, `scripts/internal/continuous-co-review/reviewed-state-digest.ps1`, `tests/continuous-co-review/**`)
+- [ ] T047 [owner: Implementer] [sp: 1.5] **Candidate result ingress, authoritative terminal publication, and Markdown projection** — accept reviewer writes only in run-owned staging; validate bounded JSON plus run/target identity; classify controller-owned outcome; publish exactly one immutable authoritative `result.json` and derived human report; retain valid partial findings with provenance while requiring a complete rerun for approval. Acceptance: fixtures cover valid, invalid, substituted, duplicate, partial, moved-snapshot, and post-kill timeout candidates; only validated controller publication is consumable authority. (Trace: FR-059, FR-060, FR-061, FR-062; SC-018, SC-020; depends: T042, T044, T045, T046; owns: `scripts/internal/continuous-co-review/**`, `tests/continuous-co-review/**`)
+- [ ] T048 [owner: Implementer] [sp: 1.5] **Synchronous CLI orchestration through target/harness/runtime/store/clock ports** — compose campaign and run coordinators with the production Git target, fake harness/runtime adapters, immutable stores, strict ingestor, and production `SystemClock` read per attempt; run preflight before allowance spend; expose bounded stage/liveness/activity progress without treating progress as authority; perform no hidden retry/background scheduling. Acceptance: executable end-to-end fixtures prove successful, invalid-result, timeout, crash/recovery, moved-target, and partial/rerun flows with directly observed per-attempt timing. (Trace: FR-057, FR-060, FR-061, FR-063; SC-020, SC-021; depends: T043, T044, T045, T046, T047; owns: `scripts/specrew-review.ps1`, `scripts/internal/continuous-co-review/**`, `tests/continuous-co-review/**`)
+- [ ] T049 [owner: Implementer] [sp: 1.0] **Foundation integration, concurrency, recovery, currentness, and quality evidence** — assemble the deterministic foundation suite and record command/digest-bound evidence for SC-017, SC-018, and the core portion of SC-020; assert truthful non-completion of SC-019 and the Iteration 007 obligations; run the repository quality gates applicable to changed PowerShell/JSON surfaces. Acceptance: paired abuse/legitimate cases pass on the committed tree, exact task/requirement coverage is recorded, and no live-harness or production-OS completeness is inferred from fake fixtures. (Trace: FR-063, FR-064, FR-065; SC-017, SC-018, SC-019, SC-020, SC-021; depends: T041–T048; owns: `tests/continuous-co-review/**`, `specs/198-beta2-hardening/iterations/006/quality/**`)
+- [ ] T050 [owner: Reviewer] [sp: 1.5] **Independent current-tree foundation review and bounded correction allowance** — run Claude against the exact committed Iteration 006 implementation through the new review contract; preserve all validated findings; fix actionable findings only within the approved scope; require a complete new run for any re-review and separately authorized human allowance after invocation. The 1.5 SP is capacity reservation, not permission for unlimited rounds. Acceptance: the accepted terminal result matches the current reviewed digest, or the iteration remains blocked with findings/failure reason visible; no stale/partial result can close the iteration. (Trace: FR-062, FR-064; SC-017, SC-018, SC-020, SC-021; depends: T049; owns: `.specrew/review/**`, `specs/198-beta2-hardening/iterations/006/**`)
+
 ## Bidirectional traceability (tasks ↔ requirements)
 
 | FR | Tasks | | FR | Tasks |
@@ -100,6 +115,13 @@ wrapper (no pass counts inferred from console text).
 | FR-038 | T001, T002 | | FR-039 | T003 |
 | FR-041 | T030 | | FR-042 | T031 |
 | FR-043 | T032 | | FR-044 | T033 |
+| FR-057 | T041, T042, T043, T044, T045, T048 | | SC-017 | T041, T043, T045, T049, T050 |
+| FR-058 | T043, T045 | | SC-018 | T044, T046, T047, T049, T050 |
+| FR-059 | T044, T046, T047 | | SC-019 | T049 (truthful partial/non-completion proof; production completion is Iteration 007) |
+| FR-060 | T042, T047, T048 | | SC-020 | T042, T044, T045, T047, T048, T049, T050 |
+| FR-061 | T042, T044, T047, T048 | | SC-021 | T043, T048, T049, T050 |
+| FR-062 | T043, T044, T045, T047, T050 | | FR-063 | T043, T048, T049 |
+| FR-064 | T049, T050 | | FR-065 | T041, T046, T049 |
 
 Every FR-001..FR-047 has ≥1 task; every task traces to ≥1 FR. FR-045
 (stop-ordering) rides T019 + T030–T032; FR-046/FR-047 (technology-assumption
@@ -109,6 +131,20 @@ the paired-test and message-content shape (NFR-007 explicitly tagged on T005,
 T010, T016, T017, T018, T020). SC-014 (fresh consumer E2E on published beta2 bits) is
 the maintainer's manual stable-promotion gate input — post-feature by
 design (clarify 2026-07-09), deliberately not a task.
+
+Iteration 006 traceability is complete for its bounded authority-foundation scope: every T041–T050 task maps to at least one FR/SC, and every FR-057–FR-065 plus SC-017–SC-021 has at least one task. SC-019 is explicitly partial: T049 proves that fake foundation fixtures do not earn a five-harness/three-platform claim; production completion remains Iteration 007 and Beta2 stays blocked.
+
+### Iteration 006 traceability check
+
+- **Verdict**: PASS
+- **Coverage ratio**: 14/14 scoped requirements (100%)
+- **Task count**: 10
+- **Orphan tasks**: none
+- **Invalid requirement references**: none
+- **Tasks missing owner, effort, or story metadata**: none
+- **Uncovered requirements**: none
+- **Partial requirement**: SC-019 is covered by T049's truthful non-completion proof; its production five-harness/three-platform acceptance remains Iteration 007.
+- **Checked source**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/plan.md against file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/spec.md on 2026-07-16.
 
 ## Dependencies & parallel safety
 
@@ -130,3 +166,10 @@ design (clarify 2026-07-09), deliberately not a task.
   shared-surface risk on `shared-governance.ps1` and the deploy manifest).
 - Iterations 002–004 task grain is refined at each iteration's
   design-analysis before execution; FR coverage above stays the floor.
+- Iteration 006 executes T041 → T042; T043/T044 may be developed as separate
+  pure-policy units but integrate before T045; T046 may proceed after T042;
+  T047 requires T044–T046; T048 requires T043–T047; T049 follows all
+  implementation tasks; T050 follows a committed green T049 tree.
+- Stability is P0, so the default remains one Implementer and serial
+  integration. The task graph documents logical separability but does not
+  authorize same-specialty parallelism or overlapping owner globs.
