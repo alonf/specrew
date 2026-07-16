@@ -468,7 +468,10 @@ function Test-ContinuousCoReviewContainmentViolations {
         if ([string]::IsNullOrWhiteSpace($resolved)) { $resolved = $path }
         $procId = try { [int]$s.pid } catch { 0 }
         $image = try { [string]$s.image } catch { '' }
-        $imageLeaf = if (-not [string]::IsNullOrWhiteSpace($image)) { try { [System.IO.Path]::GetFileName($image) } catch { $image } } else { 'unknown' }
+        # A fixture or cross-host observation may carry either separator style. Path.GetFileName only
+        # recognizes the current platform's separator, so split both styles to preserve the basename-
+        # only redaction contract on every CI OS.
+        $imageLeaf = if (-not [string]::IsNullOrWhiteSpace($image)) { @($image -split '[\\/]' | Where-Object { $_ -ne '' })[-1] } else { 'unknown' }
         $source = try { [string]$s.source } catch { '' }; if ([string]::IsNullOrWhiteSpace($source)) { $source = 'unknown' }
         $boundedPath = if ($resolved.Length -gt 256) { $resolved.Substring(0, 256) + '...[truncated]' } else { $resolved }
         $key = "$procId|$source|$boundedPath"

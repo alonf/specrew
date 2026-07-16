@@ -232,7 +232,9 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
     }
 
     It 'FALSE-KILL GUARD (never mid-flight kill): detecting a violation RECORDS it but does NOT terminate the process' {
-        $child = Start-Process pwsh -ArgumentList '-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 30' -PassThru -WindowStyle Hidden
+        $start = @{ FilePath = 'pwsh'; ArgumentList = @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 30'); PassThru = $true }
+        if ($IsWindows) { $start.WindowStyle = 'Hidden' }
+        $child = Start-Process @start
         try {
             $samples = @(@{ pid = $child.Id; image = 'pwsh'; source = 'arg'; path = $script:OriginSecret })
             $v = Test-ContinuousCoReviewContainmentViolations -Samples $samples -OriginRoots @($script:Origin) -RunId 'RUN-K'
@@ -243,7 +245,9 @@ Describe 'T016 containment-violation detector (FR-011 / SC-003)' {
     }
 
     It 'SAMPLER is read-only: it rides the process tree and returns path samples for a live child without terminating it' {
-        $child = Start-Process pwsh -ArgumentList '-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 30' -PassThru -WindowStyle Hidden
+        $start = @{ FilePath = 'pwsh'; ArgumentList = @('-NoProfile', '-NonInteractive', '-Command', 'Start-Sleep -Seconds 30'); PassThru = $true }
+        if ($IsWindows) { $start.WindowStyle = 'Hidden' }
+        $child = Start-Process @start
         try {
             $samples = Get-ContinuousCoReviewContainmentSamples -RootPid $child.Id
             @($samples).Count | Should -BeGreaterThan 0 -Because 'a live child has at least an executable path / command line to sample'

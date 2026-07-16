@@ -4,11 +4,11 @@
 **Current Phase**: implement
 **Iteration Status**: executing
 **Last Completed Task**: T034b strict design-context campaign-path compatibility proof
-**Tasks Remaining**: T059–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: T059 deterministic all-adapter fault suite on Windows/Linux/macOS CI
+**Tasks Remaining**: T059 hosted three-OS CI acceptance; T060–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T059 implementation and local Windows/Linux proof are complete; hosted Windows/Linux/macOS CI proof is pending
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
-**Updated**: 2026-07-16
+**Updated**: 2026-07-17
 
 ## Scope
 
@@ -74,6 +74,8 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **T058 evidence**: five dedicated projection cases, campaign duplicate/partial/complete cases, public-command diagnostics, real Windows Job Object heartbeat/timeout cases, six privileged-WSL POSIX cases, and packaged-artifact deployment pass. Windows termination grace is aligned to the shared 10-second duration derivation. All 53 explicit F-198 registry suites pass in 484.5 seconds; scoped Iteration 007 governance passes with historical warnings only. Usage remains honestly `unavailable` when a harness supplies no safe numeric metrics, and provider spend remains zero.
 - **T034b done**: the already-landed auto-resolution and component-wise physical containment code is extracted into one shared module consumed by both legacy worktree review and the production campaign command. The CLI now carries parsed design-context refs into that selector. Every invalid explicit ref fails before production-port selection, grant persistence, reservation, snapshot, or spend; valid refs enter the frozen invocation as repo-relative JSON only. An omitted unresolved context adds a bounded `DESIGN_CONTEXT_EMPTY` prompt block and the controller forces the terminal result to partial/incomplete/non-approvable even if a candidate says pass.
 - **T034b evidence**: mixed and all-invalid campaign fixtures, valid exact-target/ref propagation, optimistic-pass empty-context degradation, legacy traversal/root/junction behavior, packaged deployment, and controller ingress pass. The focused Windows group passes 94/94 with one POSIX-only skip; focused WSL case-sensitive containment passes 2/2; all 53 explicit F-198 suites pass in 563.5 seconds; fresh scoped governance and the T034b drift check pass with historical warnings only. A broad WSL run also exposed three pre-existing T016 test-portability issues (Windows-path basename expectation and two unsupported `Start-Process -WindowStyle` uses); they do not affect the focused T034b cases and are explicit T059 inputs rather than hidden green claims. T060 still owns the later live-smoke current-target-digest evidence. Provider spend remains zero.
+- **T059 in progress**: one explicitly fake-provider CI job now runs the bounded adapter/runtime/authority suite on `windows-latest`, `ubuntu-latest`, and `macos-latest`. Every production adapter builds its normal vector before a test-only seam substitutes the unique fake executable; all five accept raw file-primary JSON, reject prose-wrapped output without hidden retry, and preserve one invocation. The timeout fixture requires descendant death before partial publication. The matrix also carries store/allowance concurrency, recovery, currentness, target containment, public routing, and the native runtime suite.
+- **T059 local evidence**: Windows matrix 13/13, exact CI group 113/113 plus the added authority-store 9/9 and spend 13/13, containment 18/18, package 2/2, and all 54 F-198 suites green in 520.4 seconds. Privileged WSL cgroup-v2 evidence passes matrix 13/13, POSIX runtime 6/6, containment 11 pass with 7 Windows-only skips, authority-store 9/9, and spend 13/13. The earlier cross-host basename and `WindowStyle` portability failures are corrected. No local macOS runner exists and no external workflow run was authorized, so T059 remains in progress until hosted three-OS CI passes. The scoped drift check is PASS with no new event. Provider spend remains zero.
 - **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only; T051 now separately delivers the FR-045 packet/current-review gate assigned by the approved Iteration 003 reconciliation.
 - **Provider spend**: none.
 
@@ -83,7 +85,7 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - Iteration 006 foundation and Claude file-primary slice are delivered and independently reviewed.
 - T019 mutable lease/navigator/stamping/pruning mechanisms are not executable Iteration 007 work.
 - Machinery-turn exclusion, tokenizer/temporal/cursor capture hardening, exact fabrication fixtures, and the append-only scoped correction door are delivered. The underlying legacy matcher/backlog question remains visible; no quiet global matcher rewrite was made.
-- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. The workshop-intermediate Stop, shared strict candidate contract/matrix, all five thin production harness adapters, all three production runtime ports, progress/retro, and strict campaign design-context compatibility are implemented. The truthful three-OS matrix (including macOS-specific conformance), five live smokes, and proved campaign cutover remain pending; no harness or OS pair is promoted by source/tests alone.
+- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. The workshop-intermediate Stop, shared strict candidate contract/matrix, all five thin production harness adapters, all three production runtime ports, progress/retro, strict campaign design-context compatibility, and the hosted three-OS deterministic workflow are implemented. Local Windows/Linux deterministic evidence is green; hosted macOS/whole-matrix acceptance, five live smokes, and proved campaign cutover remain pending. No harness or OS pair is promoted by source/tests alone.
 
 ## Notes
 

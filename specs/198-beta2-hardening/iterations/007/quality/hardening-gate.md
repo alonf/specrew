@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-16
-**Post-Implementation Verification**: pending
+**Post-Implementation Verification**: in progress — T030–T034b and T051–T058 locally verified; T059 local Windows/Linux proof green, hosted three-OS CI pending
 
 ## Concern Review
 
@@ -50,6 +50,13 @@
 - Three-OS CI matrix plus five separately authorized live harness results.
 - Final T061 complete valid current zero-blocking exact-digest result or an explicit blocked outcome.
 - Proof that FR-048/FR-049/SC-015 remains open and was not claimed by closeout artifacts.
+
+## T059 Interim Verification
+
+- The deterministic workflow, fake-provider safety seam, strict-ingress/timeout cases, authority-store concurrency, spend allowance, target/currentness, recovery, and native runtime suites are implemented as one bounded Windows/Linux/macOS CI job.
+- Local Windows and Linux evidence is green, including real Job Object and delegated cgroup-v2 containment. The full 54-suite F198 registry and packaged deploy gate are green.
+- Hosted macOS process-group and whole-matrix evidence has not run. T059 remains in progress and T060 cannot begin until the hosted matrix passes.
+- No provider was invoked. Deterministic evidence does not promote live support.
 
 ## Notes
 
