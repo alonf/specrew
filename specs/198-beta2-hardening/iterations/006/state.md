@@ -1,19 +1,19 @@
 # Iteration State: 006
 
 **Schema**: v1
-**Current Phase**: review-signoff
-**Iteration Status**: executing
-**Last Completed Task**: T050 independent Claude review; v6 is a complete valid current pass for digest `bedc0172de77fda277f764cd07b90d5af291e2cc` with zero findings.
-**Tasks Remaining**: review-signoff verdict; retrospective and iteration closeout.
-**In Progress**: review-signoff boundary awaiting explicit human authorization; no later boundary is implied.
+**Current Phase**: retro
+**Iteration Status**: retro
+**Last Completed Task**: Iteration 006 retrospective authored from the accepted T050 review and recorded execution evidence.
+**Tasks Remaining**: retrospective verdict and iteration closeout.
+**In Progress**: retrospective complete; awaiting explicit human authorization for iteration closeout.
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 
 <!--
   Current Phase and Iteration Status are omitted at planning scaffold time.
   The global cursor is normally written by sync machinery. DRIFT-198-I006-001 prevents using that
-  stale cross-iteration ledger as authority here, so this scoped state records the review-signoff
-  gate directly from T050 controller evidence and still requires an explicit human verdict.
+  stale cross-iteration ledger as authority here, so this scoped state records lifecycle crossings
+  directly from fresh Iteration 006 human verdicts and their committed evidence.
 -->
 
 ## Scope
@@ -71,3 +71,11 @@ The later tasks sync repeated the same defect by matching Iteration 003 verdict 
 - The single authorized `run-i006-t050-claude-v6` reviewed committed HEAD `2157017f77a225f9497c44ffb013e101bff6f2a7` at digest `bedc0172de77fda277f764cd07b90d5af291e2cc`. The controller published `completion=complete`, `verdict=pass`, `runtime_outcome=completed`, `validation=valid`, `currentness=current`, verified containment/termination, zero findings, and `can_approve_current=true` after 507.609 seconds. T050 is complete.
 - `DRIFT-198-I006-001` stays open and iteration closeout must not rely on the stale global ledger. No matcher point-fix is authorized.
 - Durable review status is recorded at file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/review.md. Machine-local controller evidence remains under file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/.
+
+## Fresh Review-Signoff Verdict
+
+- **Verdict**: approved for review-signoff
+- **Evidence**: the maintainer replied `1` on 2026-07-16 to the explicit Iteration 006 review-signoff packet where option 1 was **approved for review-signoff**.
+- **Authorized review**: commit `098e0a34b2a059914e297ee13f5fc210ea8e0305`, grounded in the clean v6 result for implementation commit `2157017f77a225f9497c44ffb013e101bff6f2a7` and digest `bedc0172de77fda277f764cd07b90d5af291e2cc`.
+- **Scope**: enter retrospective and author the evidence-based retrospective. Iteration closeout remains unauthorized until a separate **approved for retro** verdict.
+- **Ledger note**: `DRIFT-198-I006-001` makes the global cross-iteration matcher unfit as authority for this crossing. The scoped verdict is recorded here; the stale ledger was not synchronized or hand-edited.
