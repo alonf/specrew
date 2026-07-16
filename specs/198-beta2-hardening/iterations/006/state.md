@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: iteration-closeout
 **Iteration Status**: complete
-**Last Completed Task**: Iteration 006 retrospective approved with explicit Iteration 007 reconciliation instructions.
-**Tasks Remaining**: iteration-closeout verdict; no Iteration 006 implementation task remains.
-**In Progress**: closeout boundary awaiting explicit human authorization; Iteration 007 planning is not authorized.
+**Last Completed Task**: Iteration 006 closeout approved by the maintainer.
+**Tasks Remaining**: none within Iteration 006; Iteration 007 planning awaits separate authorization.
+**In Progress**: none.
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 
@@ -95,3 +95,12 @@ The later tasks sync repeated the same defect by matching Iteration 003 verdict 
 3. Carry T030, T031, T032, and T034b into the planning input.
 4. Promote T033's append-only invalidation/correction mechanism as the planned disposition path for IA-006-04 and `DRIFT-198-I006-001`.
 5. Keep this agenda dormant until a later human verdict explicitly authorizes Iteration 007 planning.
+
+## Fresh Iteration-Closeout Verdict
+
+- **Verdict**: approved for iteration-closeout
+- **Evidence**: the maintainer replied `1` on 2026-07-16 to the explicit Iteration 006 closeout packet where option 1 was **approved for iteration-closeout**.
+- **Authorized closeout**: commit `4f883de863c29a376807b411b75e36ccb36f4fed` with 10/10 tasks done, 16/26 SP consumed, accepted review and retrospective, a rendered dashboard, and an append-only closed-index entry.
+- **Result**: Iteration 006 is human-authorized closed.
+- **Scope**: no Iteration 007 planning, task authoring, implementation, feature closeout, or release work is authorized by this verdict.
+- **Ledger note**: `DRIFT-198-I006-001` remains open. The stale global matcher was not synchronized or hand-edited; this scoped record is the closeout authority.

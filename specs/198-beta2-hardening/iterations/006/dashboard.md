@@ -7,7 +7,8 @@
 **Rendering Mode**: monochrome
 **Color Mode**: monochrome
 **Historical Notice**: Historical snapshot captured during iteration closeout. Re-running the dashboard later produces a new live view and must not overwrite this file.
-**Scoped Authority Notice**: Iteration closeout still requires a separate human verdict. The boundary-enforcement lines below are diagnostic only; `DRIFT-198-I006-001` forbids using the global matcher as closeout authority.
+**Closeout Verdict**: approved for iteration-closeout, 2026-07-16
+**Scoped Authority Notice**: Iteration closeout was awaiting a separate human verdict when this snapshot was rendered; the maintainer subsequently approved it. The boundary-enforcement lines below remain diagnostic only because `DRIFT-198-I006-001` forbids using the global matcher as closeout authority.
 
 ## Dashboard
 
