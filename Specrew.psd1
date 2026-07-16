@@ -275,6 +275,7 @@
         'scripts/internal/continuous-co-review/review-copilot-harness-port.ps1',
         'scripts/internal/continuous-co-review/review-cursor-harness-port.ps1',
         'scripts/internal/continuous-co-review/review-harness-contract.ps1',
+        'scripts/internal/continuous-co-review/review-windows-runtime-port.ps1',
         'scripts/internal/continuous-co-review/review-blackboard-writer.ps1',
         'scripts/internal/continuous-co-review/review-identity-contracts.ps1',
         'scripts/internal/continuous-co-review/review-run-index-writer.ps1',
