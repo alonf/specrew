@@ -43,6 +43,9 @@ $proposal197ReviewerModules = @(
     'review-authority-core.ps1'
     # F-198 iter-006 / T045: immutable JSON campaign/run/claim repositories + reconciliation.
     'review-authority-store.ps1'
+    # T034b: one strict design-context + physical-containment implementation shared by legacy
+    # worktree review and the campaign application service.
+    'review-design-context.ps1'
     # F-198 iter-006 / T046: production external-Git target + thin target-neutral fixture.
     'review-target-port.ps1'
     # F-198 iter-006 / T047: strict candidate ingress + controller-owned JSON/Markdown publication.

@@ -7,6 +7,7 @@ Set-StrictMode -Version Latest
 # an uncontainable reviewer - the divergent $proc.Kill fallback is deleted per design N1).
 $specrewProcessTreeHelper = Join-Path (Split-Path -Parent $PSScriptRoot) 'agent-tasks/process-tree.ps1'
 if (Test-Path -LiteralPath $specrewProcessTreeHelper -PathType Leaf) { . $specrewProcessTreeHelper }
+if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewDesignContextSelection' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-design-context.ps1') }
 
 function Invoke-WorktreeReviewerGitCapture {
     param(
@@ -227,59 +228,6 @@ function Write-ContinuousCoReviewProcessContext {
     [void]$lines.Add('- Is tasks-progress / state HONEST (nothing marked done that is not actually done/tested)?')
     [void]$lines.Add('- Does the work stay within planned scope for this lifecycle position (see the lifecycle note)?')
     [System.IO.File]::WriteAllText((Join-Path $procDir 'process-context.md'), (ConvertTo-ContinuousCoReviewOriginRelativized -Content ($lines -join "`n") -OriginRoots $originRoots))
-}
-
-function Get-ContinuousCoReviewPhysicalPath {
-    # THE shared physical-path canonicalizer (FR-008 + FR-010 containment). Resolves a path to its REAL
-    # physical location by walking EVERY component and following each existing symlink/junction to its
-    # target - intermediate DIRECTORY links included, not just the final component (the gap co-review
-    # 44760c20 found: FileInfo.ResolveLinkTarget only resolves the final item). Both T013 (worktree
-    # outside-origin guard) and the strict design-context validation MUST use this ONE helper so their
-    # containment semantics cannot drift.
-    #
-    # FAIL-CLOSED: returns $null if a component that EXISTS cannot be resolved reliably (the caller treats
-    # $null as "unresolved / outside"). A not-yet-existing TRAILING component is kept lexically (so a
-    # worktree dir about to be created still canonicalizes) - once a component does not exist, deeper
-    # components cannot either, so the remainder is purely lexical.
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path)
-    if ([string]::IsNullOrWhiteSpace($Path)) { return $null }
-    $full = try { [System.IO.Path]::GetFullPath($Path) } catch { return $null }
-    $root = [System.IO.Path]::GetPathRoot($full)
-    if ([string]::IsNullOrEmpty($root)) { return $null }
-    $segs = @($full.Substring($root.Length) -split '[\\/]' | Where-Object { $_ -ne '' })
-    $cur = $root.TrimEnd([char]'\', [char]'/')
-    if ([string]::IsNullOrEmpty($cur)) { $cur = [string]$root }   # POSIX filesystem root '/'
-    for ($i = 0; $i -lt $segs.Count; $i++) {
-        $cur = Join-Path $cur $segs[$i]
-        $item = try { Get-Item -LiteralPath $cur -Force -ErrorAction Stop } catch { $null }
-        if ($null -eq $item) {
-            # Non-existent component: append the rest lexically (nothing physical left to resolve).
-            for ($j = $i + 1; $j -lt $segs.Count; $j++) { $cur = Join-Path $cur $segs[$j] }
-            break
-        }
-        $tgt = $null
-        try { $tgt = $item.ResolveLinkTarget($true) } catch { return $null }   # existing but unresolvable -> fail closed
-        if ($null -ne $tgt) { $cur = [System.IO.Path]::GetFullPath($tgt.FullName).TrimEnd([char]'\', [char]'/') }
-    }
-    return [System.IO.Path]::GetFullPath($cur).TrimEnd([char]'\', [char]'/')
-}
-
-function Test-ContinuousCoReviewPathUnderRoot {
-    # THE shared CONTAINMENT predicate (co-review 40365de9): is $Path physically equal to, or a
-    # descendant of, $Root? Resolves BOTH sides with the shared component-wise physical-path canonicalizer
-    # (Get-ContinuousCoReviewPhysicalPath), then compares with PLATFORM-APPROPRIATE case sensitivity -
-    # Windows/NTFS is case-insensitive, POSIX is case-sensitive - so a case-distinct sibling (e.g.
-    # /tmp/repo vs the repo /tmp/Repo) is NOT falsely accepted as "under root" on Linux. Both T013 and the
-    # strict design-context validation use THIS predicate so their case + resolution semantics cannot
-    # drift. FAIL-CLOSED: an unresolvable path or root returns $false ("cannot prove it is under root") -
-    # design-context treats $false as reject; T013 treats a $true (under an origin) as refuse and
-    # separately fails closed on an unresolvable candidate.
-    param([Parameter(Mandatory)][AllowEmptyString()][string]$Path, [Parameter(Mandatory)][AllowEmptyString()][string]$Root)
-    $pReal = Get-ContinuousCoReviewPhysicalPath -Path $Path
-    $rReal = Get-ContinuousCoReviewPhysicalPath -Path $Root
-    if ([string]::IsNullOrEmpty($pReal) -or [string]::IsNullOrEmpty($rReal)) { return $false }
-    $cmp = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
-    return ($pReal.Equals($rReal, $cmp) -or $pReal.StartsWith($rReal + [System.IO.Path]::DirectorySeparatorChar, $cmp))
 }
 
 # ============================ T016 — containment-violation detector (FR-011 / SC-003) ============================

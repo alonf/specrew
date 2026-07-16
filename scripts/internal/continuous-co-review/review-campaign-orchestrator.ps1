@@ -9,6 +9,7 @@ if (-not (Get-Command -Name 'Invoke-ReviewResultIngress' -ErrorAction SilentlyCo
 if (-not (Get-Command -Name 'New-GitReviewTargetSnapshot' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-target-port.ps1') }
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-authority-cutover.ps1') }
 if (-not (Get-Command -Name 'New-ReviewProgressEvent' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-progress-projection.ps1') }
+if (-not (Get-Command -Name 'Resolve-ContinuousCoReviewDesignContextSelection' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-design-context.ps1') }
 
 function New-ReviewSystemClockPort {
     return [pscustomobject]@{
@@ -274,6 +275,8 @@ function Invoke-ReviewCampaignCommand {
         [string]$RunId,
         [string]$ReviewerHost,
         [string]$GrantAuthorizationRef,
+        [AllowEmptyCollection()][string[]]$DesignContextRefs = @(),
+        [string]$ReviewScope = 'Review the complete frozen target and return the versioned candidate JSON contract.',
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900,
         [string]$AuthorityConfigPath,
         [string]$StoreRoot,
@@ -291,6 +294,29 @@ function Invoke-ReviewCampaignCommand {
     }
     $root = (Resolve-Path -LiteralPath $RepoRoot).Path
     $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId $FeatureId -IterationNumber $IterationNumber -RunId $RunId
+    # T034b: reject every invalid explicit ref before grant persistence, harness selection,
+    # reservation, snapshot creation, or provider spend. Omitted refs use the same auto resolver
+    # as legacy review and carry an explicit bounded partial-evidence degrade when none resolve.
+    $designContext = Resolve-ContinuousCoReviewDesignContextSelection -RepoRoot $root -DesignContextFiles $DesignContextRefs
+    if (-not $designContext.valid) {
+        return [pscustomobject][ordered]@{
+            status = 'not-started'; reason = [string]$designContext.reason; invoked = $false; result = $null
+            campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
+            authority_mode = 'campaign'; design_context = 'unresolved'; resolved_design_context = @()
+            unresolved_design_context = @($designContext.unresolved_refs)
+            diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+        }
+    }
+    try { $ReviewScope = Add-ContinuousCoReviewDesignContextToScope -ReviewScope $ReviewScope -Selection $designContext }
+    catch {
+        return [pscustomobject][ordered]@{
+            status = 'not-started'; reason = [string]$_.Exception.Message; invoked = $false; result = $null
+            campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
+            authority_mode = 'campaign'; design_context = [string]$designContext.classification
+            resolved_design_context = @($designContext.resolved_refs); unresolved_design_context = @()
+            diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+        }
+    }
     if ([string]::IsNullOrWhiteSpace($StoreRoot)) { $StoreRoot = Join-Path $root '.specrew/review/authority' }
     if ([string]::IsNullOrWhiteSpace($StagingRoot)) {
         $repoToken = Get-ReviewCampaignStableToken -Value $root -Length 20
@@ -326,6 +352,7 @@ function Invoke-ReviewCampaignCommand {
     $run = Invoke-ReviewCampaignRun -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $identity.campaign_id -RunId $identity.run_id `
         -ReservationId $identity.reservation_id -TargetLineage $identity.target_lineage -TargetPort $Ports.target -HarnessPort $Ports.harness `
         -RuntimePort $Ports.runtime -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `
+        -ReviewScope $ReviewScope -DesignContextEmpty:([bool]$designContext.design_context_empty) `
         -ProgressSink $progressCollector.sink -AuthorityConfigPath $AuthorityConfigPath
     return [pscustomobject][ordered]@{
         status = $run.status; reason = $run.reason; invoked = $run.invoked; result = $run.result
@@ -333,6 +360,8 @@ function Invoke-ReviewCampaignCommand {
         report_path = $(if ($run.PSObject.Properties['report_path']) { $run.report_path } else { $null })
         campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
         store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+        design_context = [string]$designContext.classification; resolved_design_context = @($designContext.resolved_refs)
+        unresolved_design_context = @()
         diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
     }
 }
@@ -393,6 +422,7 @@ function Invoke-ReviewCampaignRun {
         [Parameter(Mandatory)]$ClockPort,
         [Parameter(Mandatory)][string]$PromptPath,
         [string]$ReviewScope = 'Review the complete frozen target and return the versioned candidate JSON contract.',
+        [switch]$DesignContextEmpty,
         [ValidateScript({
             $limits = Get-ReviewAuthorityTimingLimits
             if ($_ -lt 1 -or $_ -gt [int]$limits.max_invocation_timeout_seconds) {
@@ -524,7 +554,8 @@ function Invoke-ReviewCampaignRun {
         $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort
         $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
         $startedAt = ConvertTo-ReviewObservedTimestampString -Value $spends[0].invocation_started_at
-        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason ([string]$runtimeResult.failure_reason)
+        $degradeReason = if ($DesignContextEmpty) { 'DESIGN_CONTEXT_EMPTY: no spec, design analysis, or formal contract resolved; this run is partial evidence and cannot approve the current target.' } else { $null }
+        $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason ([string]$runtimeResult.failure_reason) -ControllerDegradeReason $degradeReason
         if ($ingress.published) {
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) | Out-Null
             $findingCount = if ($ingress.candidate_category -ceq 'valid' -and [string]$ingress.result.completion -ceq 'complete' -and [string]$ingress.result.validation -ceq 'valid') { @($ingress.result.findings).Count } else { $null }

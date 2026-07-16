@@ -267,6 +267,7 @@
         'scripts/internal/continuous-co-review/review-authority-mode.json',
         'scripts/internal/continuous-co-review/review-authority-store.ps1',
         'scripts/internal/continuous-co-review/review-antigravity-harness-port.ps1',
+        'scripts/internal/continuous-co-review/review-design-context.ps1',
         'scripts/internal/continuous-co-review/review-target-port.ps1',
         'scripts/internal/continuous-co-review/review-result-ingestor.ps1',
         'scripts/internal/continuous-co-review/review-progress-projection.ps1',

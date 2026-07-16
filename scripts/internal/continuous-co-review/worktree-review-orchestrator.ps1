@@ -59,66 +59,6 @@ function Resolve-ContinuousCoReviewWorktreeBaseline {
     return ([string]$mb).Trim()
 }
 
-function Resolve-ContinuousCoReviewWorktreeDesignContext {
-    # Auto-resolve the design context: the feature's spec.md + the latest iteration's design-analysis.md.
-    # Sources, in order (f1 fix, codex finding 2026-07-08): (1) .specify/feature.json (fast, but
-    # GITIGNORED machine-local state - a fresh clone lacks it), (2) .specrew/start-context.json
-    # session_state (the durable lifecycle pointer), (3) a single specs/*/spec.md directory when
-    # unambiguous. Returns project-relative paths (or @() if genuinely unresolved - the CALLER now
-    # records + degrades an empty resolution instead of silently reviewing blind).
-    param([Parameter(Mandatory)][string]$RepoRoot)
-    $out = New-Object System.Collections.Generic.List[string]
-    $featureDir = $null
-    $fj = Join-Path $RepoRoot '.specify/feature.json'
-    if (Test-Path -LiteralPath $fj -PathType Leaf) {
-        try { $featureDir = ([string]((Get-Content $fj -Raw -Encoding UTF8 | ConvertFrom-Json).feature_directory)).Replace('\', '/').TrimEnd('/') } catch { $featureDir = $null }
-    }
-    if ([string]::IsNullOrWhiteSpace($featureDir)) {
-        # Durable fallback: the lifecycle start-context names the active feature.
-        try {
-            $scPath = Join-Path $RepoRoot '.specrew/start-context.json'
-            if (Test-Path -LiteralPath $scPath -PathType Leaf) {
-                $sc = Get-Content -LiteralPath $scPath -Raw -Encoding UTF8 | ConvertFrom-Json
-                if ($sc.PSObject.Properties['session_state'] -and $null -ne $sc.session_state) {
-                    $ref = if ($sc.session_state.PSObject.Properties['feature_ref']) { [string]$sc.session_state.feature_ref } else { '' }
-                    if (-not [string]::IsNullOrWhiteSpace($ref) -and (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path 'specs' $ref)) -PathType Container)) {
-                        $featureDir = ('specs/' + $ref)
-                    }
-                }
-            }
-        }
-        catch { $null = $_ }
-    }
-    if ([string]::IsNullOrWhiteSpace($featureDir)) {
-        # Last resort: a SINGLE unambiguous specs/*/spec.md (multi-feature repos stay unresolved).
-        try {
-            $specDirs = @(Get-ChildItem -LiteralPath (Join-Path $RepoRoot 'specs') -Directory -ErrorAction Stop | Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'spec.md') -PathType Leaf })
-            if ($specDirs.Count -eq 1) { $featureDir = ('specs/' + $specDirs[0].Name) }
-        }
-        catch { $null = $_ }
-    }
-    if ([string]::IsNullOrWhiteSpace($featureDir)) { return @() }
-    if (Test-Path -LiteralPath (Join-Path $RepoRoot (Join-Path $featureDir 'spec.md')) -PathType Leaf) { [void]$out.Add("$featureDir/spec.md") }
-    $iterRoot = Join-Path $RepoRoot (Join-Path $featureDir 'iterations')
-    if (Test-Path -LiteralPath $iterRoot -PathType Container) {
-        $latest = @(Get-ChildItem -LiteralPath $iterRoot -Directory -EA SilentlyContinue | Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } -Descending | Select-Object -First 1)
-        if ($latest -and (Test-Path -LiteralPath (Join-Path $latest[0].FullName 'design-analysis.md') -PathType Leaf)) {
-            [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, (Join-Path $latest[0].FullName 'design-analysis.md')).Replace('\', '/')))
-        }
-    }
-    # Surface the FORMAL contracts (JSON Schema / OpenAPI / proto / Avro / GraphQL) - the AUTHORITY for machine
-    # formats (casing, field names, types, enums). spec.md + design-analysis are PROSE and describe intent
-    # informally; without the contract the reviewer would rule conformance from the narrative and can confidently
-    # contradict the real schema (the curation-steers-the-reviewer failure the worktree pivot was meant to escape).
-    $contractsDir = Join-Path $RepoRoot (Join-Path $featureDir 'contracts')
-    if (Test-Path -LiteralPath $contractsDir -PathType Container) {
-        foreach ($cf in @(Get-ChildItem -LiteralPath $contractsDir -File -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Extension -match '(?i)^\.(json|ya?ml|proto|graphql|avsc|xsd)$' })) {
-            [void]$out.Add(([System.IO.Path]::GetRelativePath($RepoRoot, $cf.FullName)).Replace('\', '/'))
-        }
-    }
-    return @($out)
-}
-
 function Resolve-ContinuousCoReviewReviewerHost {
     # Select the reviewer host: code-writer-INDEPENDENT + AUTHORIZED (reviewer-hosts.json), via the legacy policy
     # (reused, NOT reinvented). Returns @{ host; model } or $null (no authorized host -> the caller fails-soft with
@@ -639,51 +579,20 @@ function Invoke-ContinuousCoReviewWorktreeReviewRun {
         if ([string]::IsNullOrWhiteSpace($BaselineRef)) { & $writeStatus 'failed' @{ failure_reason = 'baseline-unresolved' }; return (Get-Content $statusPath -Raw | ConvertFrom-Json) }
         $currentPhase = 'design-context-resolution'
         & $recordPhaseStart $currentPhase
-        $explicitDesignContext = ($DesignContextFiles -and @($DesignContextFiles).Count -gt 0)
-        if (-not $explicitDesignContext) { $DesignContextFiles = @(Resolve-ContinuousCoReviewWorktreeDesignContext -RepoRoot $RepoRoot) }
-        # T034b integration of Devin cca79708 (DEC-200-I004-006, co-review a5ea8d4a f8), maintainer-
-        # authorized pull-forward 2026-07-12: EXPLICITLY supplied design-context refs must ALL resolve —
-        # any unresolved explicit ref FAILS the run HERE, before reviewer selection or execution, with an
-        # actionable reason listing the unresolved refs (status.json carries unresolved_design_context).
-        # Only omitted/empty input keeps the documented DESIGN_CONTEXT_EMPTY degrade below; an
-        # explicit-but-wrong ref must NEVER yield a design-blind review (the unreadable-context
-        # false-green rule) — never softened to a warn.
-        if ($explicitDesignContext) {
-            # HARDENED (co-review 13a8f2bd, 44760c20): existence alone is NOT enough - a rooted path, a
-            # ../ traversal, or an INTERMEDIATE directory symlink/junction can make a ref point to a file
-            # OUTSIDE the project, which materialization would then copy into .review/design, leaking
-            # ambient host content to the reviewer. A ref must resolve to an EXISTING FILE whose
-            # COMPONENT-WISE PHYSICAL path stays UNDER the physically-resolved repo root: reject rooted
-            # inputs, and canonicalize both sides with the SHARED Get-ContinuousCoReviewPhysicalPath (the
-            # SAME helper T013 uses - shared so their containment semantics cannot drift). FAIL-CLOSED: a
-            # ref whose physical path cannot be resolved, or is not under the repo root, is unresolved.
-            # POLICY: an IN-REPO symlink/junction whose physical target is still under the repo root is
-            # ALLOWED (its resolved path passes containment); only targets OUTSIDE the repo are rejected.
-            $unresolvedRefs = New-Object System.Collections.Generic.List[string]
-            foreach ($dc in @($DesignContextFiles)) {
-                $ref = [string]$dc
-                $ok = $false
-                if (-not [string]::IsNullOrWhiteSpace($ref) -and -not [System.IO.Path]::IsPathRooted($ref)) {
-                    $full = try { [System.IO.Path]::GetFullPath((Join-Path $RepoRoot $ref)) } catch { $null }
-                    # Existing file whose COMPONENT-WISE PHYSICAL path is under the repo root, via the
-                    # SHARED containment predicate (same physical resolution + platform-appropriate case
-                    # as T013 - so a case-distinct sibling cannot slip on POSIX).
-                    if ($full -and (Test-Path -LiteralPath $full -PathType Leaf) -and (Test-ContinuousCoReviewPathUnderRoot -Path $full -Root $RepoRoot)) { $ok = $true }
-                }
-                if (-not $ok) { [void]$unresolvedRefs.Add($ref) }
-            }
-            if ($unresolvedRefs.Count -gt 0) {
-                $reason = ('design-context-unresolved: explicit design-context ref(s) did not resolve to a file whose physical path is UNDER the repo root (no rooted paths, no ../ traversal, no symlink/junction escape - intermediate components included): {0} (fix the path(s) or omit the flag to use auto-resolution)' -f (@($unresolvedRefs) -join ', '))
-                & $writeStatus 'failed' @{ failure_reason = $reason; unresolved_design_context = @($unresolvedRefs) }
-                return (Get-Content $statusPath -Raw | ConvertFrom-Json)
-            }
+        # T034b: legacy worktree review and the production campaign path share this exact
+        # fail-before-selection decision and component-wise physical-containment primitive.
+        $designContextSelection = Resolve-ContinuousCoReviewDesignContextSelection -RepoRoot $RepoRoot -DesignContextFiles $DesignContextFiles
+        if (-not $designContextSelection.valid) {
+            & $writeStatus 'failed' @{ failure_reason = $designContextSelection.reason; unresolved_design_context = @($designContextSelection.unresolved_refs) }
+            return (Get-Content $statusPath -Raw | ConvertFrom-Json)
         }
+        $DesignContextFiles = @($designContextSelection.resolved_refs)
         # f1 (codex 2026-07-08): an EMPTY design context is RECORDED + DEGRADES the run - never a
         # silent blind review. The reviewer is told (prompt note), status.json carries it, and the
         # done-write forces completeness=partial so the T094 tier demands a human ack for the
         # evidence. Not a terminal failure: a genuinely spec-less repo (greenfield empty-tree
         # baseline) may legitimately review code-only.
-        $designContextEmpty = (@($DesignContextFiles).Count -eq 0)
+        $designContextEmpty = [bool]$designContextSelection.design_context_empty
         if ($designContextEmpty) {
             [Console]::Error.WriteLine('[co-review] WARN DESIGN_CONTEXT_EMPTY no spec/design-analysis resolved (.review/design will be empty); the run is labelled partial and the reviewer is told to flag it.')
         }

@@ -149,6 +149,7 @@ function Invoke-ReviewResultIngress {
         [Parameter(Mandatory)][string]$EndedAt,
         [Parameter(Mandatory)][long]$DurationMs,
         [string]$FailureReason,
+        [string]$ControllerDegradeReason,
         [object[]]$PriorFindings = @()
     )
     $paths = Get-ReviewRunStagingPaths -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId
@@ -182,11 +183,21 @@ function Invoke-ReviewResultIngress {
     else { [string]$classification.reason }
     $derivedFailure = ConvertTo-ReviewAuthorityBoundedText -Value $derivedFailure -MaximumLength 2000
     $summary = if ($candidateRead.valid) { [string]$candidateRead.candidate.summary } else { [string]$classification.reason }
+    $completion = [string]$classification.completion
+    $verdict = [string]$classification.verdict
+    $canApproveCurrent = [bool]$classification.can_approve_current
+    if (-not [string]::IsNullOrWhiteSpace($ControllerDegradeReason)) {
+        # Controller-known missing evidence outranks a reviewer's optimistic candidate. Preserve
+        # validated findings, but never let a design-blind run become approval authority.
+        $completion = 'partial'; $verdict = 'incomplete'; $canApproveCurrent = $false
+        $combinedFailure = if ([string]::IsNullOrWhiteSpace($derivedFailure)) { $ControllerDegradeReason } else { "$ControllerDegradeReason $derivedFailure" }
+        $derivedFailure = ConvertTo-ReviewAuthorityBoundedText -Value $combinedFailure -MaximumLength 2000
+    }
     $result = [pscustomobject][ordered]@{
         schema_version = '1.0'; campaign_id = $CampaignId; run_id = $RunId; target_digest = $TargetDigest; harness_id = $HarnessId
-        completion = [string]$classification.completion; verdict = [string]$classification.verdict; runtime_outcome = $effectiveOutcome
+        completion = $completion; verdict = $verdict; runtime_outcome = $effectiveOutcome
         termination_verified = $TerminationVerified; containment = $Containment; currentness = $Currentness; validation = $validationState
-        can_approve_current = [bool]$classification.can_approve_current; failure_reason = $derivedFailure; summary = $summary; findings = @($terminalFindings)
+        can_approve_current = $canApproveCurrent; failure_reason = $derivedFailure; summary = $summary; findings = @($terminalFindings)
         started_at = $StartedAt; ended_at = $EndedAt; duration_ms = $DurationMs
     }
     $published = Publish-ReviewRunResultFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Fact $result

@@ -54,5 +54,5 @@
 ## Notes
 
 - `Overall Verdict: ready` records completed planning-time hardening. The separate fresh human verdict in `condition-a-human-authorization` authorizes Iteration 007 implementation but no provider invocation.
-- Runtime evidence for T030–T033 is locally verified; T034b and T051–T061 evidence remains pending until those tasks execute.
+- Runtime evidence for T030–T034b and T051–T058 is locally verified; T059–T061 evidence remains pending until those tasks execute. T034b deterministic compatibility does not substitute for T060's later live current-digest evidence.
 - No concern is deferred inside Iteration 007; the command-plan dependency is a separate feature-level slice, not a hidden deferral from this iteration.
