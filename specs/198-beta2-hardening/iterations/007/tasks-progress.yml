@@ -17,14 +17,14 @@ tasks:
     blocked_reason: ""
   T032:
     title: "Exact fabrication-sequence regression fixtures"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-16T18:13:00+03:00"
-    completed_at: ""
+    completed_at: "2026-07-16T18:27:24+03:00"
     blocked_reason: ""
   T033:
     title: "Append-only ledger correction/invalidation door and effective-state readers"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-16T18:27:24+03:00"
     completed_at: ""
     blocked_reason: ""
   T034b:

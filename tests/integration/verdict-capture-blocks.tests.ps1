@@ -14,6 +14,7 @@ function Fail { param([string]$m) Write-Host "FAIL: $m" -ForegroundColor Red; ex
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 . (Join-Path $repoRoot 'scripts\internal\bootstrap\ConversationCaptureAccessor.ps1')
 . (Join-Path $repoRoot 'extensions\specrew-speckit\scripts\shared-governance.ps1')
+. (Join-Path $repoRoot 'scripts\internal\bootstrap\HandoverStore.ps1')
 
 $scratch = Join-Path $repoRoot '.scratch\verdict-capture-blocks'
 if (Test-Path -LiteralPath $scratch) { Remove-Item -LiteralPath $scratch -Recurse -Force }
@@ -158,6 +159,58 @@ try {
         }
         [System.IO.File]::WriteAllText((Join-Path $proj '.specrew\start-context.json'), ($ctx | ConvertTo-Json -Depth 12), [System.Text.UTF8Encoding]::new($false))
         return $proj
+    }
+    function Write-FabricationPendingArtifact {
+        param(
+            [string]$ProjectRoot,
+            [string]$Boundary,
+            [string]$ApprovalPhrase,
+            [string]$Sentinel
+        )
+        $path = Join-Path $ProjectRoot '.specrew\runtime\pending-verdict-stop.md'
+        New-Item -ItemType Directory -Path (Split-Path -Parent $path) -Force | Out-Null
+        $content = @(
+            '# Specrew Pending Verdict Stop',
+            '',
+            "Boundary to ask for: $Boundary",
+            "Human approval phrase: $ApprovalPhrase",
+            "Fixture sentinel: $Sentinel"
+        ) -join "`n"
+        [System.IO.File]::WriteAllText($path, $content, [System.Text.UTF8Encoding]::new($false))
+        return $path
+    }
+    function Assert-FabricationFixtureDoesNotAuthorize {
+        param(
+            [string]$FixtureName,
+            [string]$LastAuthorizedBoundary,
+            [string]$WorkingBoundary,
+            [string]$ExpectedBoundary,
+            [string]$ExpectedApprovalPhrase
+        )
+        $fixturePath = Join-Path $repoRoot "tests\integration\fixtures\verdict-capture-fabrication\$FixtureName"
+        if (-not (Test-Path -LiteralPath $fixturePath -PathType Leaf)) { Fail "fabrication fixture missing: $FixtureName" }
+
+        $project = New-PendingProject -LastAuthorizedBoundary $LastAuthorizedBoundary -WorkingBoundary $WorkingBoundary
+        $artifactPath = Write-FabricationPendingArtifact -ProjectRoot $project -Boundary $ExpectedBoundary -ApprovalPhrase $ExpectedApprovalPhrase -Sentinel $FixtureName
+        $contextPath = Join-Path $project '.specrew\start-context.json'
+        $contextBefore = [System.IO.File]::ReadAllBytes($contextPath)
+        $artifactBefore = [System.IO.File]::ReadAllBytes($artifactPath)
+
+        $capture = Invoke-SpecrewBoundaryVerdictCapture `
+            -ProjectRoot $project `
+            -TranscriptPath $fixturePath `
+            -LastAuthorizedBoundary $LastAuthorizedBoundary `
+            -Source 'stop' `
+            -NowUtc '2026-07-11T12:12:30Z'
+
+        if ($capture.captured -or $capture.authorized) { Fail "${FixtureName}: machinery-only transcript authorized a boundary" }
+        if ($capture.reason -ne 'fallback-capture-disabled-interim') { Fail "${FixtureName}: expected disabled fallback, got '$($capture.reason)'" }
+        if (-not (Test-Path -LiteralPath $artifactPath -PathType Leaf)) { Fail "${FixtureName}: pending artifact was consumed" }
+        if (-not [System.Linq.Enumerable]::SequenceEqual([byte[]]$contextBefore, [byte[]][System.IO.File]::ReadAllBytes($contextPath))) { Fail "${FixtureName}: authorization ledger/context changed" }
+        if (-not [System.Linq.Enumerable]::SequenceEqual([byte[]]$artifactBefore, [byte[]][System.IO.File]::ReadAllBytes($artifactPath))) { Fail "${FixtureName}: pending artifact content changed" }
+
+        $enforcement = (Get-Content -LiteralPath $contextPath -Raw -Encoding UTF8 | ConvertFrom-Json -Depth 12).boundary_enforcement
+        if (@($enforcement.verdict_history).Count -ne 0 -or [string]$enforcement.last_authorized_boundary -ne $LastAuthorizedBoundary) { Fail "${FixtureName}: effective authorization state changed" }
     }
     $marker = '<!-- SPECREW-VERDICT-BOUNDARY: tasks -> before-implement -->'
 
@@ -372,10 +425,7 @@ No open prompts.
     if ($c16.Reason -ne 'fallback-capture-disabled-interim') { Fail "C16: expected fallback-capture-disabled-interim, got '$($c16.Reason)'" }
     Write-Pass "reader (interim): prompt-submit markerless path refuses while the mitigation is active"
 
-    # C17 (DEC-198-GOV-003 regression, maintainer-instructed): the EXACT fabrication sequence -
-    # a rendered packet followed by hook-injected approval-shaped machinery text in a user-role
-    # turn, with NO human reply - must produce NO fallback authorization while the mitigation is
-    # active. Same for agent-authored approval text.
+    # C17 (DEC-198-GOV-003 regression, maintainer-instructed): the tokenizer-level form of the exact sequence.
     $hookFeedbackTurn = 'Stop hook feedback: Specrew: boundary state is pending. AWAITING YOUR VERDICT: if you already approved, please re-confirm. Give the boundary verdict to authorize it.'
     $c17a = Get-SpecrewCapturedBoundaryVerdict -ProjectRoot $pendingPlanTasks -TranscriptPath (New-Transcript -Turns @(
             @{ role = 'assistant'; text = $markerlessPacket },
@@ -387,6 +437,23 @@ No open prompts.
             @{ role = 'assistant'; text = 'approved for tasks - proceeding.' }))
     if ($c17b.Found) { Fail "C17b: agent-authored approval text produced a fallback authorization" }
     Write-Pass "regression: agent-authored approval text cannot produce fallback authorization"
+
+    # C18 (T032/FR-043): replay BOTH July 11 field incidents as immutable transcript fixtures through the actual
+    # authority writer. Each fixture contains a rendered markerless packet, hook feedback persisted as a user-role
+    # turn, and no human reply. Capture must leave the context/ledger and pending artifact byte-identical.
+    Assert-FabricationFixtureDoesNotAuthorize `
+        -FixtureName 'dec-198-gov-001.jsonl' `
+        -LastAuthorizedBoundary 'review-signoff' `
+        -WorkingBoundary 'retro' `
+        -ExpectedBoundary 'review-signoff -> retro' `
+        -ExpectedApprovalPhrase 'approved for retro'
+    Assert-FabricationFixtureDoesNotAuthorize `
+        -FixtureName 'dec-198-gov-003.jsonl' `
+        -LastAuthorizedBoundary 'retro' `
+        -WorkingBoundary 'iteration-closeout' `
+        -ExpectedBoundary 'retro -> iteration-closeout' `
+        -ExpectedApprovalPhrase 'approved for iteration-closeout'
+    Write-Pass "T032 exact fabrication fixtures: no ledger entry and no pending-artifact consumption"
 
     Write-Host "`n=== verdict-capture-blocks.tests.ps1: all assertions passed ===" -ForegroundColor Green
     exit 0
