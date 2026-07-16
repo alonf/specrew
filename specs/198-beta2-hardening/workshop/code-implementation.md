@@ -38,3 +38,13 @@ Dependency stance: `use-existing-no-new-dependency`.
 
 Manifest: `specs/198-beta2-hardening/implementation-rules.yml` (validated
 shape against the F-197 precedent).
+
+## Iteration 005 rearchitecture reassessment — 2026-07-16
+
+The maintainer retained this repository and manifest as the sole code-rules source and kept the resolved `powershell-markdown-yaml-json` stack with no new dependency. The full reassessment record is in the iteration workshop.
+
+The existing baseline remains checked, with decisions re-anchored to the controlled external review architecture: pure state-machine policy; repository-only immutable `FileMode.CreateNew` authority facts; unique claim generations rather than generic locks/CAS; closed versioned request/result contracts; explicit target, harness, runtime, store, and clock adapters; no hidden provider retries; post-termination timeout-result publication; three-OS runtime fixtures; and one bounded live smoke for each supported harness.
+
+The former `evidence-driven-performance` exception is removed. Performance is P1 below stability/integrity and now requires phase timing, preflight-before-spend, shared-object worktrees, bounded prompts, delta-assisted full-snapshot re-review, duplicate warnings, low-cost heartbeats, minimal hashing, and safe optional usage metrics.
+
+The maintainer selected `claude` as the independent reviewer while Codex is the code-writer. The canonical authorization command succeeded with reference `workshop-198-beta2-hardening`; no model or effort is pinned.

@@ -1,19 +1,11 @@
 # Iteration State: 005
 
 **Schema**: v1
-**Last Completed Task**: the Prop-145 hook-health REDESIGN (Option A, amended) — INDEPENDENT hook-liveness + a NON-PROMOTING `ambient-path-binding` version diagnostic; byte-capped shell-safe probe; System32 cmd.exe interpreter; exact-digest T018 runs injected as reviewer-visible evidence. **Iteration 005 is NOT yet complete** — a Proposal-145 review returned three authoritative findings (bounded output, ambient executable-identity, unsupported evidence). After characterizing that NO host exposes a trustworthy non-ambient executable identity, the maintainer chose Option A: the version is a non-authoritative diagnostic, health rests on observed hook-liveness, readiness on fresh liveness + config/trust — receipts are MONITORING evidence, never authentication. Implemented + green on Windows AND Linux; pending the T018 recording + one authorized confirming review round. See the Co-review section at the bottom.
-**Tasks Remaining**: the MAINTAINER'S decision after the 5-round authorization was RUN TO EXHAUSTION
-(2026-07-14). Every round returned actionable findings, every finding was verified against disk, fixed with
-paired falsification tests, committed, and the evidence re-bound: round 1/5 → 3 schema-conformance
-(8c1495e3); round 2/5 → 4 evidence-integrity (95d18d13); round 3/5 → 5 fail-closed-binding (e695cd60);
-round 4/5 → 3 numeric/memory-boundary (c198bdac); round 5/5 → 2 evidence-lifecycle (see the Thirteenth
-round). The finding rate is DECLINING (5→3→4→5→3→2 across the whole sequence) but no round has come back
-clean yet. **Iteration 005 closure + the release of T019 pieces 5-7 still require ONE clean round — the
-maintainer decides whether to authorize further rounds, change reviewer host/scope, or accept-with-ack.**
-NO round launches without a new verdict. FR-054/plugin packaging (now T040) is NOT a Beta2 deliverable — deferred to issue #3084 / Beta3.
-**In Progress**: none
+**Last Completed Task**: Human-confirmed eight-lens architectural reassessment after the final authorized review returned eight blocking findings. The replacement `ReviewCampaign` / one-invocation `ReviewRun` architecture, immutable JSON coordination, five-harness contract, three-OS runtime control, result/recovery semantics, performance profile, component map, and implementation rules are durable. See file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/005/design-analysis.md.
+**Tasks Remaining**: Iteration 005 implementation is stopped and its mutable process-owned lease is superseded. The authoritative specification now contains FR-057–FR-065 and SC-017–SC-021. New capacity-compliant plan/tasks must replace, not extend, the T035–T040 compatibility slice; a new human plan/tasks verdict is required before implementation. Beta2 remains release-blocked until both replacement slices and all five live harness proofs complete. FR-054 remains deferred to issue #3084 / Beta3.
+**In Progress**: specification/design consolidation and execution replanning; no replacement implementation authorized
 **Baseline Ref**: cf53400a (the T038 commit; T039 is integration work layered on the already-committed T035-T038 modules)
-**Updated**: 2026-07-14T17:30:00Z
+**Updated**: 2026-07-16T03:45:00Z
 
 <!--
   Current Phase / Iteration Status are set canonically by the sync
@@ -749,6 +741,19 @@ authority + a uniform atomic-mutation primitive), which is exactly the lease/aut
 earlier assessment flagged as the ~1-week upper bound. Returned to the maintainer for the reassessment
 decision; the round-state stays blocking (not resolved-against-disk) pending that decision. NO further rounds
 are authorized.
+
+### Architectural reassessment completed (2026-07-16)
+
+The maintainer rejected further point-fixing and confirmed a replacement architecture through eight individual lens decisions. Durable sources:
+
+- file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/005/lens-applicability.json
+- file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/005/design-analysis.md
+- file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/005/drift-log.md
+- file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/implementation-rules.yml
+
+The former lease document is marked superseded and remains only as failure-history evidence. The replacement separates campaign allowance/re-review policy, one-invocation run state, active claim generations, terminal result applicability, target currentness, and OS/harness mechanisms. The existing Iteration 005 code may inform migration tests but carries no authority to claim the new requirements delivered.
+
+Capacity analysis estimates the replacement Beta2 slice at 30–34 SP and recommends two plan-gated implementation iterations (working baseline 16 SP + 17 SP). The first is an authority foundation and is not release-complete; the second supplies five-harness/three-platform production completeness. No implementation boundary has been crossed.
 
 ## Notes
 

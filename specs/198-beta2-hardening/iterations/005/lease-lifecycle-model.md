@@ -1,5 +1,11 @@
 # Lease lifecycle model (per-lineage review lease)
 
+**Status**: SUPERSEDED — historical failed-design evidence only
+**Superseded**: 2026-07-16 by the human-confirmed `ReviewCampaign` / `ReviewRun` architecture
+**Replacement authority**: file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/005/design-analysis.md
+
+This document describes the mutable process-owned lease that the final authorized review proved architecturally unsound. It MUST NOT guide new implementation, result promotion, or plan/task design. The replacement uses run-owned immutable claim generations only for active execution; durable terminal run/result facts govern later validation and applicability. It removes parent/supervisor handoff, self-adoption, mutable `pending_tree`, owner-token release, and lease-based terminal authority.
+
 **Feature**: 198-beta2-hardening (T019 step 6 piece 2; hardened 2026-07-15)
 **Module**: `scripts/internal/continuous-co-review/co-review-lineage-lease.ps1` (+ the service handoff in
 `co-review-service.ps1` and the supervisor gate in `worktree-review-detached-entry.ps1`)

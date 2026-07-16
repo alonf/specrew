@@ -13,7 +13,7 @@ Standard-depth pass, human-confirmed 2026-07-09 (full record:
 - **Who**: downstream consumer developers/agents (inherit broken CI,
   self-leaked methodology, silent boundary bypass, wrong per-host review
   budgets); the maintainer/release owner (stable 0.40.0 held per
-  DEC-197-REL-001); reviewer agents on all four hosts; the governance trust
+  DEC-197-REL-001); reviewer agents across all five supported CLI harnesses; the governance trust
   story itself.
 - **Pain** (field-evidenced): (1) reviewer containment/identity gaps (203);
   (2) broken-by-construction consumer distribution + self-leak (204/205);
@@ -63,6 +63,15 @@ inherit them:
 - **NFR order**: honesty > agent-action transparency (human addition) >
   loud failure > host neutrality > teach-don't-trap > evidence-over-presence;
   paired-test rule binds every honesty invariant.
+- **Iteration 005 reassessment (human-confirmed 2026-07-16)**: replace the failed
+  process-owned mutable lease design with a `ReviewCampaign` above one-invocation
+  `ReviewRun` state machines; dependency-free immutable JSON facts; repository-only
+  authority mutation; run-owned claim generations; a synchronous process/file
+  contract implemented by all five supported harness adapters; OS process-tree
+  control on Windows, macOS, and Linux; explicit timeout results and recoverable
+  partial findings; exact snapshot currentness; and P1 performance/cost optimization
+  below P0 stability and integrity. Detailed records live under the Iteration 005
+  workshop directory.
 
 ## Clarifications
 
@@ -293,7 +302,9 @@ the W14 warning, halt/kill message content.
    exists; the signoff `--live` merge-base doctrine is unchanged (203-W9).
 3. **Given** edits landing between fire and detached execution, **When**
    the child runs, **Then** it materializes the frozen fire-time tree and
-   labels the run stale-vs-current when the tree has moved (203-W10).
+   labels the run `snapshot-moved` when the tree has moved; it preserves
+   findings and their severities with per-finding relevance hints while
+   refusing to treat the result as approval of the current snapshot (203-W10).
 4. **Given** round 1 found f1 and round 2 confirms f1 fixed while finding
    f2, **When** the ceiling is evaluated, **Then** the counter does not
    increment; only true no-movement rounds climb (203-W12).
@@ -445,8 +456,9 @@ pin-surface consistency assertions.
   advanced; the pending skip remains authoritative and re-surfaces at the
   next touchpoint (#2906).
 - The detached review child fires after the branch moved → frozen
-  fire-time tree is materialized; the run is labeled stale-vs-current
-  (W10).
+  fire-time tree is materialized; the run is labeled `snapshot-moved`, its
+  findings remain visible with relevance hints, and it cannot approve the
+  current snapshot (W10).
 - A machinery-list edit that removes an exclusion → both strips change
   together; the paired reviewer-can-still-see-it test updates in the same
   change (W5).
@@ -604,14 +616,24 @@ pin-surface consistency assertions.
   the trunk merge-base when none exists; the signoff `--live` merge-base
   doctrine is unchanged.
 - **FR-017 (W10, amended by clarify 2026-07-11 — Devin-crew field
-  diagnosis)**: The fire-time checkpoint tree id MUST pass through the
+  diagnosis; currentness semantics amended by maintainer 2026-07-16)**: The fire-time checkpoint tree id MUST pass through the
   detached chain; the child MUST materialize exactly that frozen tree;
   the reviewed tree id MUST be stamped into EVERY run record surface
   (including the findings result, not only the run index); the NAVIGATOR
   surfacing path MUST perform the same digest match the signoff gate
-  already does BEFORE blocking on a run's findings — a verdict whose
-  snapshot no longer matches the current tree surfaces as
-  stale-vs-current (advisory), never as a fresh block; and a new
+  already does BEFORE blocking on a run's findings. A result whose reviewed
+  snapshot no longer matches the current tree is labeled `snapshot-moved`,
+  not discarded or described as irrelevant: it cannot approve or freshly
+  block the current tree, but every finding remains visible with its original
+  severity and seeds the next incremental review. Where a finding carries a
+  precise path, compare that path's reviewed/current blob identity and label
+  it `likely-still-relevant` when unchanged or `needs-re-evaluation` when
+  changed; a finding without a precise target is `relevance-unassessed`.
+  These relevance labels are informative and never independently grant gate
+  authority. The implementer-facing message MUST name both snapshot identities,
+  state that the review does not approve the current snapshot, summarize the
+  changed-path count, and explain that relevant findings may be fixed before a
+  re-review. A new
   hook-fired review MUST NOT launch while one is already in flight for
   the same lineage (in-flight dedup).
 - **FR-018 (W11, amended by clarify 2026-07-10 + follow-up)**: The
@@ -898,6 +920,133 @@ blockers that MUST hold before beta2 ships; they must NOT be deferred into Beta3
   demand; (c) substantial state-changing work → packet required; (d) long read-only investigation → packet
   required; (e) an already-valid packet → accepted without another turn; (f) a boundary stop keeps the
   six-section contract.
+- **FR-056 (workshop-aware intermediate Stop — maintainer directive 2026-07-16)**: While a design workshop is
+  durably recorded as in progress and the assistant has rendered the current lens content plus a question that
+  explicitly awaits the human's answer, the Stop provider MUST classify that pause as a workshop-intermediate
+  stop and MUST NOT force the generic five-heading non-boundary context packet. The rendered workshop turn is
+  already the re-entry context and remains the final visible message. This exception MUST be deterministic and
+  narrowly scoped to the active feature, iteration, lens, and pending human question; prose that merely claims
+  to be a workshop MUST NOT suppress enforcement. Lifecycle boundary stops override workshop state and retain
+  their full boundary packet. Leaving, abandoning, or handing over a workshop without a pending lens question
+  retains the ordinary non-boundary material-work packet requirement. Regression fixtures MUST cover: (a) an
+  active workshop lens question stops once with no duplicate five-heading packet; (b) the same material turn
+  outside durable workshop state still requires the packet; (c) a fabricated workshop phrase cannot bypass
+  enforcement; (d) a lifecycle boundary during a workshop still requires the boundary packet; and (e) an
+  interrupted workshop handover still renders sufficient durable re-entry context.
+
+#### Controlled external review rearchitecture — owner: implementer + reviewer; Beta2 release blocker
+
+- **FR-057 (campaign/run authority model)**: The review subsystem MUST model a
+  `ReviewCampaign` above a sequence of `ReviewRun` records. A campaign owns target
+  lineage, human-granted review allowance, reservations/spend, finding lineage, and
+  selection of the current applicable result. Each run represents exactly ONE
+  external reviewer invocation against ONE frozen target. Legal transitions MUST be
+  decided by a pure state-machine core behind ports; Git, filesystem, process,
+  harness, operating-system, and clock mechanisms remain adapters. Campaign, run,
+  and claim repositories are the sole logical mutation paths for their authority
+  records. The system guarantees at most one authoritative selected result for a
+  campaign/target state; it MUST NOT claim exactly-once execution of an external AI
+  process.
+- **FR-058 (immutable JSON authority and allowance accounting)**: Durable review
+  authority MUST use dependency-free, schema-versioned JSON facts organized by
+  campaign and unique `run_id`. Lifecycle stages, results, validation,
+  classification, grants, reservations, invocation/spend, pre-invocation release,
+  and claim-generation facts are created once using atomic no-overwrite
+  `CreateNew` semantics. Claims belong to run identities, not launcher/supervisor
+  processes; released and abandoned generations are appended, never rewritten or
+  deleted. Only a human may grant more allowance. Actual provider invocation spends
+  its reserved slot even if it later fails; a proven pre-invocation failure releases
+  the slot. An identical existing fact is idempotent success; a conflicting fact is
+  repository corruption and fails closed. Beta2 MUST NOT introduce a generic lock,
+  mutable revision/CAS framework, SQLite dependency, general event store, or
+  automatic pruning subsystem. Legacy review state remains read-only and cannot be
+  silently promoted into the new authority model.
+- **FR-059 (review target isolation and currentness)**: Production code review MUST
+  run in a disposable external Git worktree that shares Git objects without exposing
+  the origin as the reviewer workspace. Specrew hooks/skills/machinery are disabled
+  through the controlled harness environment and may be removed from the disposable
+  tree; the reviewer is not required to have Specrew installed. The origin repository
+  is the sole code-mutation authority. Pre/post origin HEAD plus the canonical
+  reviewed-state digest determine exact currentness; execution observed with cwd or
+  executable under the origin is `containment-violated`. Snapshot movement follows
+  FR-017: findings remain visible with relevance provenance but cannot approve the
+  current snapshot. The core MUST expose a real `ReviewTargetPort`, prove production
+  code review, and include a thin non-code contract fixture so later gate/artifact
+  support is not blocked by a code-specific abstraction.
+- **FR-060 (common reviewer contract and complete harness implementations)**: The
+  controller and harness adapters MUST use one synchronous, versioned local
+  process/file contract carrying campaign/run identity, target digest, frozen
+  workspace, review scope, bounded prompt reference, candidate JSON/report paths,
+  and deadline. Reviewers write only candidate output in staging (or adapters
+  materialize candidates from captured stdout); the controller alone validates and
+  publishes authoritative `result.json` plus human-readable `report.md`. Candidate
+  JSON MUST be bounded, closed-schema, and identity-bound; Markdown is never parsed
+  for authority. Thin real adapters MUST implement this contract for Claude Code,
+  Codex CLI, GitHub Copilot CLI, Cursor Agent, and Antigravity. Each adapter uses its
+  conformance-proven prompt mechanism and may reuse necessary existing
+  authentication/configuration for stable execution, but credentials, raw
+  environments, full prompts, and unrestricted raw output MUST NOT enter durable
+  records. Unsupported schemas, malformed output, unknown required fields, or
+  identity mismatch fail closed. A shared contract plus only one implemented harness
+  does NOT satisfy Beta2 completeness.
+- **FR-061 (cross-platform runtime control and explicit terminal results)**: The
+  controller MUST supervise the complete reviewer process tree through an OS runtime
+  adapter: Windows Job Objects, Linux cgroups, and a conformance-proven macOS native
+  process-group mechanism. Harness timeout is configurable; the default maximum
+  termination grace is 10 seconds. On timeout, the controller MUST terminate and
+  verify the process tree dead, close streams, capture and validate bounded partial
+  output, and only then publish the controller-generated terminal `result.json` and
+  `report.md` with `completion=partial`, `verdict=incomplete`,
+  `runtime_outcome=timed-out`, observed timing, termination evidence, clear failure
+  reason, and any valid partial findings. Every invoked run MUST publish exactly one
+  terminal authoritative result envelope, including post-invocation failures;
+  controller-owned runtime classification is not delegated to the reviewer.
+- **FR-062 (re-review, recovery, finding lineage, and retrospective evidence)**:
+  Valid findings recovered from an interrupted or snapshot-moved run remain advisory
+  evidence with original severity and completeness/relevance provenance. They never
+  form a complete verdict. A complete rerun is a separate `run_id`, consumes another
+  already-authorized allowance slot, and is launched automatically only while such a
+  slot remains; otherwise the system requests a new human grant. Adapters MUST NOT
+  retry providers secretly. Finding lineage links likely matching findings across
+  partial, complete, moved-snapshot, and rerun results without requiring AI harnesses
+  to reproduce a shared ID. Restart reconciliation MUST deterministically continue
+  validation/classification, release a non-invoked reservation, close an invoked dead
+  run as spent/abandoned, and retire its claim through immutable facts. Retrospective
+  generation consumes validated JSON findings—not Markdown—and retains campaign,
+  run, finding, harness, target, completeness, relevance, and resolution provenance.
+- **FR-063 (observable and economical execution)**: Informational CLI progress MUST
+  distinguish lifecycle stage, elapsed/remaining time, process-tree liveness, and
+  output activity without promoting activity to semantic review progress. Finding
+  counts appear only from complete schema-valid checkpoints. Authority-bearing
+  evidence MUST include target identity, invocation/spend, process start/terminal
+  outcome, deadline/termination, containment, validation, and currentness. Production
+  time records controller-observed UTC start/end plus monotonic duration with
+  system-observed provenance; injected clocks are test-only. Cheap Git/target/store/
+  contract/containment/harness preflight MUST finish before provider invocation and
+  spend. Prompts MUST remain bounded and omit source content; incremental reruns may
+  include changed-file and unresolved-finding summaries while the complete frozen
+  snapshot remains reviewable and covered by the verdict. Duplicate target/harness/
+  contract combinations are surfaced before spend; required identity hashing occurs
+  only at integrity points; low-cost heartbeats MUST NOT rehash the repository. Phase
+  durations and safe numeric token/usage/cost data are recorded when available.
+- **FR-064 (conformance proof and truthful support)**: Beta2 completion requires one
+  bounded real review from EACH of the five supported harnesses producing valid JSON
+  and Markdown. Those five paid smokes are distributed so Windows, macOS, and Linux
+  each have live evidence. Deterministic executable fixtures MUST exercise every
+  adapter and all failure paths on the three-OS CI matrix, including malformed
+  output, wrong identity, timeout, interruption, and complete-tree termination. A
+  harness that is unavailable, unauthenticated, incompatible, or unable to finish
+  its real smoke remains honestly unproven, and overall five-harness completeness
+  does not pass. A particular harness/OS pair MUST NOT be described as live-proven
+  without corresponding evidence.
+- **FR-065 (delivery and deferral boundary)**: Beta2 owns the shared campaign/run
+  foundation, production code review, the thin non-code target fixture, all five real
+  harness adapters, and Windows/macOS/Linux runtime control. Production generic gate
+  and artifact target adapters are deferred to Beta3 iteration A (estimated 12–16 SP,
+  planning midpoint 14). Prioritized first-class lifecycle profiles are deferred to
+  Beta3 iteration B (estimated 8–12 SP, planning midpoint 10). Beta3 MUST reuse the
+  `ReviewTargetPort` and campaign/run foundation rather than create bespoke review
+  engines per artifact type.
 
 #### Toolchain currency — owner: implementer; iteration 001
 
@@ -1107,7 +1256,25 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
   from `state.md` + `tasks-progress.yml`, compared against the accepted
   review verdict + run records.
 - **Run record (extended)**: gains `independence_source`, frozen fire-time
-  tree id, stale-vs-current label, last-reviewed checkpoint identity.
+  tree id, currentness (`exact | snapshot-moved`), last-reviewed checkpoint
+  identity, and per-finding relevance hints (`likely-still-relevant |
+  needs-re-evaluation | relevance-unassessed`) that never grant authority.
+- **ReviewCampaign**: target lineage plus human allowance grants, atomic
+  reservations/spend, finding lineage, ordered runs, and the selected applicable
+  terminal result.
+- **ReviewRun**: one unique reviewer invocation against one frozen target, with
+  immutable requested/running/terminal/result/validation/classification facts and
+  controller-observed runtime evidence.
+- **Claim generation**: immutable held/released/abandoned facts that serialize one
+  active run per lineage without process ownership or mutable lease handoff.
+- **ReviewTarget**: versioned target identity and frozen workspace supplied through
+  a target adapter; code review is production, while a non-code fixture proves the
+  abstraction boundary.
+- **Terminal review result**: controller-published machine envelope for every invoked
+  run, including complete, partial, timed-out, and failed outcomes; Markdown is its
+  human projection.
+- **Finding lineage**: controller-owned cross-run relationship retaining per-run IDs,
+  severity, completeness, currentness/relevance, and retrospective resolution.
 
 ## Success Criteria *(mandatory)*
 
@@ -1176,6 +1343,38 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
   prompt — never a silent success and never a Specrew/Pester default. The
   beta2 feature/release MUST NOT close until this end-to-end path has a
   production plan supplier feeding the FR-048 seam. (Release dependency.)
+- **SC-016 (workshop-intermediate Stop UX)**: A material architecture-lens turn with durable active-workshop
+  state, rendered lens content, and a pending human question stops exactly once without a generic five-heading
+  follow-up; the equivalent non-workshop turn still demands that packet, and a lifecycle boundary still demands
+  its boundary packet. (FR-056)
+- **SC-017 (authority/allowance concurrency)**: Barrier-synchronized multi-process
+  fixtures prove exactly one winner for the next claim generation, no two active
+  claims per lineage, no reservation/spend above human grants, idempotent identical
+  recovery, and fail-closed conflicting facts. (FR-057, FR-058)
+- **SC-018 (isolated exact target)**: A reviewer runs in an external disposable
+  worktree with Specrew disabled and cannot mutate the origin; equal pre/post HEAD
+  plus canonical digest permits current classification, while a seeded origin
+  movement yields `snapshot-moved`, retains findings/relevance hints, and cannot
+  approve the current snapshot. The non-code target fixture passes the same target
+  contract. (FR-017, FR-059)
+- **SC-019 (five harnesses / three platforms)**: Claude, Codex, Copilot, Cursor, and
+  Antigravity each complete one bounded real review with valid identity-bound JSON
+  and Markdown; the five runs collectively include Windows, macOS, and Linux live
+  evidence, while every adapter and runtime passes the deterministic three-OS
+  contract/termination matrix. Missing live evidence keeps the related support claim
+  unproven. (FR-060, FR-061, FR-064)
+- **SC-020 (timeout, partial evidence, and recovery)**: A seeded process-tree timeout
+  proves every descendant dead within the configured grace before a timed-out result
+  is published; valid partial findings remain visible but incomplete; a permitted
+  rerun uses a new run ID and allowance slot; fault injection at every lifecycle
+  publication boundary reconciles without overwrite, duplicate spend, or incomplete
+  approval. (FR-061, FR-062)
+- **SC-021 (diagnostics, cost, and retrospective traceability)**: A review exposes
+  bounded stage/liveness/activity progress and phase timing; preflight failures spend
+  no allowance; incremental rerun context remains bounded while full-snapshot access
+  is preserved; no durable diagnostic contains credentials/raw environment; and a
+  complete plus partial finding pair is deduplicated into retrospective problem
+  evidence retaining all required provenance. (FR-062, FR-063)
 
 ## Assumptions
 
@@ -1189,7 +1388,7 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
   current reality (observed for beta1) and remains the release mechanism
   for beta2; the credentials doc is stale and will be fixed (FR-040).
 - The T100 child-process registry provides cwd/command-line visibility on all
-  four hosts for the FR-011 monitor; strong-signal (cwd/exe-under-origin) access
+  five supported CLI harnesses for the FR-011 monitor; strong-signal (cwd/exe-under-origin) access
   fails loud, an argv-under-origin match is a best-effort diagnostic warning, and
   the monitor records its sampling health so weaker visibility (fewer samples, a
   sampling error, or a short-lived descendant between heartbeats) degrades to fewer
@@ -1206,14 +1405,15 @@ co-review-evidence CI lane (design note only); cross-host OS sandbox APIs
   human decision.
 - **Iteration Facilitator**: Crew coordinator (this session), one
   iteration at a time per the A4 slicing.
-- **Capacity Model**: story points; ~5–8 SP per iteration across four
-  iterations (~22 SP), plus Iteration 005 (~4 SP) → **~26 SP total, an
-  EXPLICIT maintainer variance above the 15–25 SP triage envelope**
-  (approved 2026-07-14). Reason: confirmed Beta2 host-contract defects
-  (Codex/Copilot Stop contracts) and minimum hook-health detection are
-  release blockers discovered late in F-198 (reviewer, issue #3084). The
-  variance is bounded here — no further scope inflation; any additional
-  opportunity or architectural modernization goes to issue #3084.
+- **Capacity Model**: the original four iterations plus the first Iteration 005
+  compatibility slice consumed/planned roughly 26 SP under the maintainer-approved
+  2026-07-14 variance. The final authorized review proved that slice architecturally
+  unsound. The replacement Beta2 architecture is provisionally 30–34 additional SP
+  including deterministic proof, five bounded live harness smokes, and expected
+  review/rework; it MUST be split into capacity-compliant implementation iterations
+  rather than hidden inside the old ~4 SP estimate. Exact task estimates and the
+  split require plan approval. Beta3 generic gate/artifact adapters add ~14 SP and
+  prioritized lifecycle profiles ~10 SP outside the Beta2 release blocker.
 - **Drift Signals**: drift-log.md with requirement citations; the
   governance validator at every boundary commit; the paired-test rule
   (NFR-007) as review enforcement; SelfLeakLintLane red as an
