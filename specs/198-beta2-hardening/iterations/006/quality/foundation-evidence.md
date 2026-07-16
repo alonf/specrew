@@ -24,6 +24,27 @@ is digest-excluded so recording evidence cannot change the identity it certifies
 | Whitespace integrity | `git diff --check` | PASS | Worktree diff |
 | PSScriptAnalyzer | `Get-Command Invoke-ScriptAnalyzer` then error-severity scan when present | SKIP: tool not installed | No analyzer result is inferred |
 
+## Pre-review operational correction
+
+The first T050 operational rehearsal did not start Claude: the legacy launcher halted at its historical
+round ceiling with `reviewed:false`. A later new-contract preflight then exposed a real recovery defect
+before provider invocation. Windows rejected the initially long external worktree path, and the raw
+adapter exception exceeded the immutable release fact's 512-character bound; publication of that
+release failed and masked the target error. Commit `8cadb7aa` now bounds release reasons to 512 and
+terminal failure reasons to 2000 with an explicit `...[truncated]` marker. The regression uses a
+4,000-character target exception and proves the controller still releases the reservation, publishes
+a visible preflight failure, and records no spend.
+
+Post-correction verification on 2026-07-16:
+
+- `pwsh -NoProfile -File tests/f198-iteration006-foundation.ps1`: PASS, 87/87.
+- `pwsh -NoProfile -File tests/f198-regression-suite.ps1 -PerTestTimeoutSeconds 300`: PASS, all 45 suites, 421.9 s wall time.
+- PowerShell parser and `git diff --check`: PASS.
+
+The original `57b0c...` record above remains immutable historical T049 evidence. The final corrected
+reviewable-tree record is written after this documentation commit and is the only digest eligible for
+T050 acceptance.
+
 ## Requirement evidence
 
 | Requirement | Result | Executable evidence |
