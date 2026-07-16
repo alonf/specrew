@@ -102,6 +102,26 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases).Count | Should -Be 2
     }
 
+    It 'bounds a long target preflight exception, releases allowance, and publishes the failure' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'long-preflight')
+        $longTarget = [pscustomobject]@{
+            prepare = { param($runId) throw ('target materialization failed: ' + ('x' * 4000)) }
+            currentness = { param($snapshot) throw 'unreachable' }
+            integrity = { param($snapshot) throw 'unreachable' }
+            dispose = { param($snapshot) $null }
+        }
+        $result = Invoke-OrchestratorFixture -Context $context -Target $longTarget -Harness (New-ReviewFixtureHarnessPort) -Runtime (New-ReviewFixtureRuntimePort)
+        $result.status | Should -Be 'failed'
+        $result.invoked | Should -BeFalse
+        $result.result.runtime_outcome | Should -Be 'preflight-failed'
+        $result.result.failure_reason.Length | Should -Be 2000
+        $result.result.failure_reason | Should -Match '\.\.\.\[truncated\]$'
+        $release = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases)
+        $release.Count | Should -Be 1
+        $release[0].reason.Length | Should -Be 512
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 0
+    }
+
     It 'publishes invalid output once without a hidden provider retry' {
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'invalid')
         $result = Invoke-OrchestratorFixture -Context $context -Target (New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one) -Harness (New-ReviewFixtureHarnessPort -RawCandidate 'not-json') -Runtime (New-ReviewFixtureRuntimePort)

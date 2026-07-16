@@ -54,6 +54,18 @@ function Add-ReviewAuthorityError {
     $Errors.Add($Message) | Out-Null
 }
 
+function ConvertTo-ReviewAuthorityBoundedText {
+    param(
+        [AllowNull()]$Value,
+        [Parameter(Mandatory)][ValidateRange(16, 1000000)][int]$MaximumLength
+    )
+    if ($null -eq $Value) { return $null }
+    $text = [string]$Value
+    if ($text.Length -le $MaximumLength) { return $text }
+    $marker = '...[truncated]'
+    return $text.Substring(0, $MaximumLength - $marker.Length) + $marker
+}
+
 function Test-ReviewAuthorityStringField {
     param(
         [Parameter(Mandatory)]$Object,
@@ -556,7 +568,8 @@ function Resolve-ReviewCampaignReleaseDecision {
         schema_version = '1.0'; fact_type = 'release'
         campaign_id = [string](Get-ReviewAuthorityProperty -Object $Reservation -Name 'campaign_id')
         reservation_id = $reservationId; run_id = [string](Get-ReviewAuthorityProperty -Object $Reservation -Name 'run_id')
-        reason = $Reason; observed_at = $ObservedAt
+        reason = ConvertTo-ReviewAuthorityBoundedText -Value $Reason -MaximumLength 512
+        observed_at = $ObservedAt
     }
     return [pscustomobject]@{ permitted = $true; reason = 'proven-pre-invocation-release'; fact = $fact }
 }

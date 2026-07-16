@@ -174,6 +174,7 @@ function Invoke-ReviewResultIngress {
     elseif ($candidateRead.valid -and $classification.reason -ceq 'complete-result') { $null }
     elseif (-not $candidateRead.valid) { '{0}: {1}' -f $candidateRead.category, ($candidateRead.errors -join ',') }
     else { [string]$classification.reason }
+    $derivedFailure = ConvertTo-ReviewAuthorityBoundedText -Value $derivedFailure -MaximumLength 2000
     $summary = if ($candidateRead.valid) { [string]$candidateRead.candidate.summary } else { [string]$classification.reason }
     $result = [pscustomobject][ordered]@{
         schema_version = '1.0'; campaign_id = $CampaignId; run_id = $RunId; target_digest = $TargetDigest; harness_id = $HarnessId

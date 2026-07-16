@@ -201,6 +201,14 @@ Describe 'Pure campaign allowance and rerun policy (T043)' {
         $reused.active[0].run_id | Should -Be 'run-two'
     }
 
+    It 'bounds immutable release diagnostics without losing explicit truncation provenance' {
+        $release = Resolve-ReviewCampaignReleaseDecision -Reservation (Reservation) -Reason ('adapter failure ' + ('x' * 2000)) -ObservedAt later
+        $release.permitted | Should -BeTrue
+        $release.fact.reason.Length | Should -Be 512
+        $release.fact.reason | Should -Match '\.\.\.\[truncated\]$'
+        (Test-ReviewAuthorityContractObject -ContractName ReleaseFact -InputObject $release.fact).valid | Should -BeTrue
+    }
+
     It 'fails closed on conflicting slot history and on agent allowance' {
         $duplicate = Get-ReviewCampaignAllowanceState -CampaignId cmp-demo -Grants @(Grant 1) -Reservations @((Reservation), (Reservation -Run run-two -Id res-two))
         $duplicate.valid | Should -BeFalse
