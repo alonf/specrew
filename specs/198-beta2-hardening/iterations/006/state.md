@@ -1,17 +1,19 @@
 # Iteration State: 006
 
 **Schema**: v1
-**Current Phase**: before-implement
+**Current Phase**: review-signoff
 **Iteration Status**: executing
-**Last Completed Task**: T049 foundation verification plus the current T050 correction verification; 93/93 foundation tests and all 45 F-198 registry suites pass, while SC-019 remains explicitly incomplete.
-**Tasks Remaining**: T050 independent Claude review; retrospective and closeout.
-**In Progress**: T050 v5 was strict invalid-output because Claude prefixed prose; the authorized Claude file-primary pull-forward is underway, followed by exactly one committed-digest v6 run with no hidden retry.
+**Last Completed Task**: T050 independent Claude review; v6 is a complete valid current pass for digest `bedc0172de77fda277f764cd07b90d5af291e2cc` with zero findings.
+**Tasks Remaining**: review-signoff verdict; retrospective and iteration closeout.
+**In Progress**: review-signoff boundary awaiting explicit human authorization; no later boundary is implied.
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 
 <!--
   Current Phase and Iteration Status are omitted at planning scaffold time.
-  Canonical lifecycle state is written only by the sync machinery.
+  The global cursor is normally written by sync machinery. DRIFT-198-I006-001 prevents using that
+  stale cross-iteration ledger as authority here, so this scoped state records the review-signoff
+  gate directly from T050 controller evidence and still requires an explicit human verdict.
 -->
 
 ## Scope
@@ -66,6 +68,6 @@ The later tasks sync repeated the same defect by matching Iteration 003 verdict 
 - Separately authorized `run-i006-t050-claude-v5` reviewed digest `8a8702862cd0caed22103b9617057a66d04dd548` with verified containment, termination, and currentness, but the strict controller published `runtime_outcome=invalid-output`, `validation=invalid`, and zero authoritative findings because Claude prefixed prose to an embedded pass object. The embedded pass is not accepted retroactively.
 - `DRIFT-198-I006-003` records the maintainer-authorized pull-forward: Claude writes only raw JSON directly to the candidate file, stdout is never parsed for authority, and the exact prose-file rejection/raw-file acceptance pair moves into T050. Iteration 007 must subtract that slice but retains the full malformed-output matrix and remaining adapter hardening.
 - The current scoped correction passes 52/52 focused authority/ingress/orchestrator tests, 93/93 foundation tests, 2/2 packaged-artifact tests, bidirectional traceability, syntax/JSON/manifest/diff checks, and all 45 F-198 registry suites.
-- Exactly one Claude v6 invocation against the post-hardening committed digest is authorized. A clean result closes T050; findings or invalid output stop with no fix or further spend under this grant.
+- The single authorized `run-i006-t050-claude-v6` reviewed committed HEAD `2157017f77a225f9497c44ffb013e101bff6f2a7` at digest `bedc0172de77fda277f764cd07b90d5af291e2cc`. The controller published `completion=complete`, `verdict=pass`, `runtime_outcome=completed`, `validation=valid`, `currentness=current`, verified containment/termination, zero findings, and `can_approve_current=true` after 507.609 seconds. T050 is complete.
 - `DRIFT-198-I006-001` stays open and iteration closeout must not rely on the stale global ledger. No matcher point-fix is authorized.
 - Durable review status is recorded at file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/review.md. Machine-local controller evidence remains under file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/.

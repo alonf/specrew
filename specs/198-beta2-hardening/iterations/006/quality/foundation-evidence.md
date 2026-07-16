@@ -4,7 +4,7 @@
 **Implementation commit**: `8f0c939b87d3ddb5bbdfa737d933369c83013b81`
 **Reviewed-state digest**: `57b0c02b107e42c66759190b91e8d46705ae9816`
 **Recorded at**: 2026-07-16
-**Independent review**: incomplete T050; v5 was strict invalid-output, the authorized Claude file-primary correction is in verification, and exactly one post-commit v6 rerun is granted
+**Independent review**: complete T050; v6 is a valid current pass with zero findings for digest `bedc0172de77fda277f764cd07b90d5af291e2cc`
 
 The reviewed-state digest certifies the exact reviewable worktree content used by the recorded
 foundation run, including preserved tracked worktree changes and excluding only runtime/machinery
@@ -169,9 +169,24 @@ fixture matrix and remaining adapter hardening are unchanged.
 
 The authoritative v5 result is machine-local at
 file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v5/.
-Exactly one Claude v6 invocation is authorized against the post-hardening committed digest, with a
-new run ID and no hidden retry. A clean v6 closes T050; findings or invalid output stop without a fix
-or further spend under this grant.
+At that stop, the maintainer granted one Claude v6 provider slot against the post-hardening committed
+digest, with a new run ID and no hidden retry. A clean v6 would close T050; findings or invalid output
+would stop without a fix or further spend under that grant.
+
+## T050 v6 clean independent review
+
+The single authorized `run-i006-t050-claude-v6` reviewed committed HEAD
+`2157017f77a225f9497c44ffb013e101bff6f2a7` at exact reviewed-state digest
+`bedc0172de77fda277f764cd07b90d5af291e2cc`. The file-primary adapter supplied the controller-owned
+candidate path and did not copy or parse stdout. After 507.609 seconds, the controller published a
+complete, valid, current pass with verified containment and termination, zero findings, and
+`can_approve_current=true`. Claude independently reran the foundation suite at 93/93 on that exact
+tree. No hidden retry occurred.
+
+The authoritative result and controller report are machine-local at
+file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v6/.
+T050 is complete. This clean foundation result does not satisfy SC-019 or the remaining Iteration 007
+adapter/runtime/live-smoke/cross-platform obligations.
 
 ## Requirement evidence
 

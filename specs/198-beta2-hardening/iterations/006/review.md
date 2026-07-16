@@ -1,34 +1,42 @@
 # Iteration 006 Review Evidence
 
 **Task**: T050
-**Status**: incomplete — v5 failed strict ingress; the scoped file-primary hardening is underway and exactly one v6 rerun is authorized after a green committed correction
+**Status**: complete — v6 is a valid current pass with zero findings and can approve the reviewed snapshot
+**Overall Verdict**: accepted
 **Reviewer**: Claude Code 2.1.210
 **Recorded**: 2026-07-16
 
+## Review Mechanism
+
+The maintainer explicitly made the new campaign/run contract the independent T050 review mechanism
+and required a clean v6 to close T050 and open this review-signoff gate. v6 is that one authorized
+live provider invocation. A second legacy inline provider run would exceed the grant and duplicate
+the reviewed work, so none was started.
+
 ## Current Authoritative Outcome
 
-Run `run-i006-t050-claude-v5` reviewed exact digest
-`8a8702862cd0caed22103b9617057a66d04dd548`. The controller verified containment, termination, and
-currentness, but strict ingress rejected Claude's prose-prefixed candidate. The controller published
-zero authoritative findings and did not accept the embedded pass object. Invalid output cannot
-approve the tree.
+Run `run-i006-t050-claude-v6` reviewed committed HEAD
+`2157017f77a225f9497c44ffb013e101bff6f2a7` at exact digest
+`bedc0172de77fda277f764cd07b90d5af291e2cc`. The controller verified containment, termination, and
+currentness, accepted the strict file-primary candidate, and published a complete valid pass with
+zero findings. This result can approve the reviewed snapshot.
 
 | Field | Authoritative value |
 | --- | --- |
 | Campaign | `cmp-i006-t050-claude-v2` |
-| Run | `run-i006-t050-claude-v5` |
-| Completion | `none` |
-| Verdict | `incomplete` |
-| Runtime outcome | `invalid-output` |
-| Validation | `invalid` |
+| Run | `run-i006-t050-claude-v6` |
+| Completion | `complete` |
+| Verdict | `pass` |
+| Runtime outcome | `completed` |
+| Validation | `valid` |
 | Currentness | `current` |
 | Containment | `verified` |
 | Termination verified | `true` |
-| Can approve current | `false` |
-| Observed duration | 475.187 seconds |
+| Can approve current | `true` |
+| Observed duration | 507.609 seconds |
 
 The immutable result and its Markdown projection are at
-file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v5/.
+file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v6/.
 
 ## Attempt Ledger
 
@@ -40,6 +48,7 @@ file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/author
 | `run-i006-t050-claude-v3` | yes | one separately granted provider slot spent | complete, valid, current findings result; cannot approve |
 | `run-i006-t050-claude-v4` | yes | one separately granted provider slot spent | complete, valid, current note finding; cannot approve |
 | `run-i006-t050-claude-v5` | yes | one separately granted provider slot spent | authoritative invalid-output; embedded pass remains non-authoritative |
+| `run-i006-t050-claude-v6` | yes | one separately granted provider slot spent | complete, valid, current pass; zero findings; can approve |
 
 The invalid v2 attempt remains immutable historical evidence at
 file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v2/.
@@ -80,14 +89,11 @@ raw candidate file while ignoring prose-wrapped stdout. This exact adapter slice
 subtracted from Iteration 007; its full malformed-output matrix and remaining adapter hardening remain
 deferred.
 
-## Remaining Acceptance Condition
+## Acceptance Condition Satisfied
 
-T050 remains open. The v5 result is immutable, current for its target digest, and correctly
-non-authoritative because its candidate was malformed. The maintainer authorized exactly one Claude
-v6 invocation after the scoped hardening passes the full suites and is committed. It must use a new
-run ID, target that exact committed digest, and publish a complete schema-valid result through the
-candidate file. There is no hidden retry: findings or invalid output stop the workflow without a fix
-or further spend, while a clean result closes T050.
+T050 is complete. The scoped hardening passed the full suites and was committed before the provider
+slot was spent. v6 used a new run ID, matched the stable post-commit digest, delivered through the
+candidate file, and published a complete schema-valid current pass. No hidden retry occurred.
 
 ## Carry-Forward Obligations
 
