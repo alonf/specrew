@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T049 foundation verification plus T050 advisory correction; 87/87 foundation tests and all 45 F-198 registry suites pass, while SC-019 remains explicitly incomplete.
+**Last Completed Task**: T049 foundation verification plus two T050 correction passes; 88/88 foundation tests and all 45 F-198 registry suites pass, while SC-019 remains explicitly incomplete.
 **Tasks Remaining**: T050 independent Claude review; retrospective and closeout.
-**In Progress**: T050 awaits a separately authorized complete Claude rerun; the spent current-tree attempt published authoritative `invalid-output` and cannot approve.
+**In Progress**: T050 awaits a separately authorized complete Claude rerun; valid current run `run-i006-t050-claude-v3` published four now-corrected findings and cannot approve.
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 
@@ -59,8 +59,8 @@ The later tasks sync repeated the same defect by matching Iteration 003 verdict 
 
 ## T050 Review Status
 
-- Claude was invoked once against reviewed digest `2540aad2e6c0b3205eecece4a457a2cf38545078`. Containment and termination were verified and currentness was `current`, but the candidate wrapped JSON in prose.
-- The controller published `completion=none`, `verdict=incomplete`, `runtime_outcome=invalid-output`, `validation=invalid`, and `can_approve_current=false`. The provider slot remains spent.
-- Five comments inside the invalid candidate were retained as advisory input. Three minor defects were fixed (duplicate-combination field, truthful runtime preflight classification, and duplicate reservation IDs), one dead variable was removed, and one pre-cutover warning was added to the foundation map.
-- The correction patch passes 48/48 focused authority/store/orchestrator tests, 87/87 foundation tests, and all 45 F-198 registry suites. A complete new Claude run against the resulting committed digest requires a separate human allowance; no hidden rerun is authorized.
+- The first provider run against digest `2540aad2e6c0b3205eecece4a457a2cf38545078` published authoritative `invalid-output`; its five advisory comments were corrected and independently confirmed by the next run.
+- Separately authorized `run-i006-t050-claude-v3` reviewed digest `6942d56832910922d4967aaf539a1744f2ebd122` with verified containment, termination, and currentness. It published `completion=complete`, `verdict=findings`, `runtime_outcome=completed`, `validation=valid`, and `can_approve_current=false`.
+- Its four validated findings are corrected: byte-stable immutable replay, truthful `claim-contended` classification, recovery-owned snapshot disposal until verified termination, and T042/T046 owner-glob reconciliation. The metadata drift is recorded as `DRIFT-198-I006-002`.
+- The current correction passes 49/49 focused tests, 88/88 foundation tests, bidirectional traceability, five consecutive legacy lease-race repetitions, and all 45 F-198 registry suites. A complete new Claude run against the resulting committed digest requires another separate human allowance; no hidden rerun is authorized.
 - Durable review status is recorded at file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/review.md. Machine-local controller evidence remains under file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/.

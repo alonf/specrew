@@ -87,8 +87,12 @@ function Write-ReviewAuthorityImmutableFact {
     }
     catch [System.IO.IOException] {
         if (-not [System.IO.File]::Exists($path)) { throw }
-        $existingFact = Read-ReviewAuthorityFactFile -Path $path
-        $existing = ConvertTo-ReviewAuthorityCanonicalJson -Fact $existingFact
+        # Validate that the completed CreateNew winner is readable, then compare the canonical bytes
+        # that were actually persisted. ConvertFrom-Json coerces ISO-8601 strings to DateTime on newer
+        # PowerShell versions; reserializing that object can change offset/precision and falsely turn an
+        # identical replay into corruption.
+        $null = Read-ReviewAuthorityFactFile -Path $path
+        $existing = [System.IO.File]::ReadAllText($path, [System.Text.UTF8Encoding]::new($false))
         if ($existing -ceq $json) { return [pscustomobject]@{ created = $false; idempotent = $true; path = $path } }
         throw "review-store-corruption:conflicting-immutable-fact:$RelativePath"
     }

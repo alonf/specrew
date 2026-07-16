@@ -4,7 +4,7 @@
 **Implementation commit**: `8f0c939b87d3ddb5bbdfa737d933369c83013b81`
 **Reviewed-state digest**: `57b0c02b107e42c66759190b91e8d46705ae9816`
 **Recorded at**: 2026-07-16
-**Independent review**: incomplete T050; one authorized Claude invocation produced authoritative `invalid-output`, and a complete rerun requires a new human allowance
+**Independent review**: incomplete T050; the second authorized Claude invocation produced a valid current findings result, all findings are corrected, and the corrected tree requires a new human allowance
 
 The reviewed-state digest certifies the exact reviewable worktree content used by the recorded
 foundation run, including preserved tracked worktree changes and excluding only runtime/machinery
@@ -78,6 +78,34 @@ The authoritative result and derived report are machine-local at
 file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v2/.
 The durable review summary is file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/review.md.
 The provider allowance is spent; no complete rerun may start without a separate human grant.
+
+## T050 valid review and second correction
+
+Separately authorized run `run-i006-t050-claude-v3` reviewed exact digest
+`6942d56832910922d4967aaf539a1744f2ebd122`. It completed in 721.328 seconds with verified
+containment and termination, `current` applicability, valid strict JSON, and a complete findings
+verdict. It independently reran the foundation suite at 87/87 and confirmed all five earlier advisory
+corrections. The controller published four current findings and `can_approve_current=false`.
+
+The four findings are corrected within T050 scope: immutable replay compares validated persisted
+canonical text without timestamp coercion; active claim contention has a distinct closed
+`claim-contended` outcome; possibly live snapshots remain for recovery until termination is verified;
+and T042/T046 owner globs identify their delivered components, with the drift recorded as
+`DRIFT-198-I006-002`.
+
+Post-correction verification on 2026-07-16:
+
+- Focused authority/store/orchestrator suites: PASS, 49/49.
+- `pwsh -NoProfile -File tests/f198-iteration006-foundation.ps1`: PASS, 88/88, 31.475 s observed suite duration.
+- Bidirectional traceability: PASS, 10/10 tasks and 14/14 scoped requirements, no gaps.
+- The legacy lineage-lease race fixture passes five consecutive runs, 75/75 tests, after synchronizing
+  the winner lifetime with every contender's first decision.
+- `pwsh -NoProfile -File tests/f198-regression-suite.ps1 -PerTestTimeoutSeconds 300`: PASS, all 45 suites, 432.2 s wall time.
+
+The v3 result remains immutable machine-local evidence at
+file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v3/.
+Because its findings are now corrected, it cannot approve the changed tree. Another complete run is
+required and consumes a new provider slot only after a separate human grant.
 
 ## Requirement evidence
 

@@ -134,7 +134,7 @@ function Invoke-ReviewResultIngress {
         [Parameter(Mandatory)][string]$RunId,
         [Parameter(Mandatory)][string]$TargetDigest,
         [Parameter(Mandatory)][string]$HarnessId,
-        [Parameter(Mandatory)][ValidateSet('completed', 'preflight-failed', 'launch-failed', 'timed-out', 'terminated', 'invalid-output', 'identity-mismatch', 'containment-violated', 'abandoned')][string]$RuntimeOutcome,
+        [Parameter(Mandatory)][ValidateSet('completed', 'preflight-failed', 'claim-contended', 'launch-failed', 'timed-out', 'terminated', 'invalid-output', 'identity-mismatch', 'containment-violated', 'abandoned')][string]$RuntimeOutcome,
         [Parameter(Mandatory)][bool]$Invoked,
         [Parameter(Mandatory)][bool]$TerminationVerified,
         [Parameter(Mandatory)][ValidateSet('verified', 'violated', 'unknown')][string]$Containment,

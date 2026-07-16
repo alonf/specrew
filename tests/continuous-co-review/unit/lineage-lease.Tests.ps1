@@ -30,6 +30,7 @@ Describe 'T019 step 6 piece 2: per-lineage review lease (atomic acquire, owner-o
     It '1. concurrent atomic acquisition: exactly ONE winner (barrier-synchronized race)' {
         $repo = New-LeaseRepo
         $module = Join-Path $script:RepoRoot 'scripts/internal/continuous-co-review/co-review-lineage-lease.ps1'
+        $finishFile = Join-Path $repo 'finish.flag'
         $startFile = (Join-Path $repo 'start.flag') -replace '\\', '/'
         $resultsDir = Join-Path $repo 'results'; New-Item -ItemType Directory -Path $resultsDir -Force | Out-Null
         $repoFwd = $repo -replace '\\', '/'
@@ -44,6 +45,7 @@ Describe 'T019 step 6 piece 2: per-lineage review lease (atomic acquire, owner-o
 while (-not (Test-Path -LiteralPath '$startFile')) { Start-Sleep -Milliseconds 5 }
 `$r = Request-ContinuousCoReviewLineageLease -RepoRoot '$repoFwd' -LineageId 'L' -Generation 'genA' -RunId 'run-$i'
 Set-Content -LiteralPath (Join-Path '$resultsFwd' 'r-$i.txt') -Value ([string]`$r.acquired) -Encoding UTF8
+if (`$r.acquired) { while (-not (Test-Path -LiteralPath '$finishFile')) { Start-Sleep -Milliseconds 5 } }
 "@
             $racerFile = Join-Path $repo "racer-$i.ps1"
             Set-Content -LiteralPath $racerFile -Value $racer -Encoding UTF8
@@ -51,6 +53,12 @@ Set-Content -LiteralPath (Join-Path '$resultsFwd' 'r-$i.txt') -Value ([string]`$
         }
         Start-Sleep -Milliseconds 500   # let every racer reach the barrier
         Set-Content -LiteralPath ($startFile -replace '/', [System.IO.Path]::DirectorySeparatorChar) -Value 'go' -Encoding UTF8
+        $resultDeadline = [DateTime]::UtcNow.AddSeconds(20)
+        while (@(Get-ChildItem -LiteralPath $resultsDir -Filter 'r-*.txt').Count -lt $N -and [DateTime]::UtcNow -lt $resultDeadline) { Start-Sleep -Milliseconds 10 }
+        # Keep the first winner alive until every concurrent contender has observed that live owner.
+        # Otherwise the winner can exit early and correct dead-owner recovery creates a second,
+        # sequential winner, making this atomic-acquisition test timing-dependent.
+        Set-Content -LiteralPath $finishFile -Value 'done' -Encoding UTF8
         foreach ($p in $procs) { $null = $p.WaitForExit(20000) }
         $vals = @(Get-ChildItem -LiteralPath $resultsDir -Filter 'r-*.txt' | ForEach-Object { (Get-Content -LiteralPath $_.FullName -Raw).Trim() })
         $vals.Count | Should -Be $N -Because 'every racer recorded a result'

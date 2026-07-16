@@ -142,7 +142,7 @@ function Complete-ReviewPreInvocationFailure {
     param(
         [string]$StoreRoot, [string]$StagingRoot, [string]$CampaignId, [string]$RunId, [string]$TargetDigest, [string]$HarnessId,
         $Reservation, [object[]]$Spends, [string]$Reason, [string]$ObservedAt, [string]$StartedAt, [long]$DurationMs,
-        [ValidateSet('preflight-failed', 'launch-failed')][string]$RuntimeOutcome, [ValidateSet('verified', 'unknown')][string]$Containment = 'unknown'
+        [ValidateSet('preflight-failed', 'claim-contended', 'launch-failed')][string]$RuntimeOutcome, [ValidateSet('verified', 'unknown')][string]$Containment = 'unknown'
     )
     if ($null -ne $Reservation) {
         $releaseDecision = Resolve-ReviewCampaignReleaseDecision -Reservation $Reservation -Reason $Reason -ObservedAt $ObservedAt -Spends $Spends
@@ -183,7 +183,7 @@ function Invoke-ReviewCampaignRun {
     $reservation = $reservationResult.fact
     Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage reserved -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $placeholderDigest -HarnessId ([string]$HarnessPort.id) -State reserved) | Out-Null
 
-    $snapshot = $null
+    $snapshot = $null; $disposeSnapshot = $true
     try {
         try {
             $snapshot = & $TargetPort.prepare $RunId
@@ -218,7 +218,7 @@ function Invoke-ReviewCampaignRun {
         $claim = Request-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort)
         if (-not $claim.acquired) {
             $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
-            $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason ('claim-not-acquired:' + $claim.reason) -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome preflight-failed -Containment verified
+            $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason ('claim-not-acquired:' + $claim.reason) -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome claim-contended -Containment verified
             return [pscustomobject]@{ status = 'not-started'; reason = ('claim-not-acquired:' + $claim.reason); invoked = $false; result = $failed.result; result_path = $failed.result_path }
         }
         Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage claimed -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -State claimed) | Out-Null
@@ -267,9 +267,13 @@ function Invoke-ReviewCampaignRun {
             Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'terminal' -Message $ingress.reason -ProcessTreeLive $false -OutputActivity $runtimeResult.output_activity -ValidatedFindingCount $findingCount
             return [pscustomobject]@{ status = 'terminal'; reason = $ingress.reason; invoked = $true; result = $ingress.result; result_path = $ingress.result_path; report_path = $ingress.report_path }
         }
+        # A reviewer tree may still be using the frozen target. Recovery owns disposal after it proves
+        # termination; removing the worktree here could race a live process or strand an OS-specific
+        # cleanup failure.
+        $disposeSnapshot = $false
         return [pscustomobject]@{ status = 'awaiting-termination-verification'; reason = $ingress.reason; invoked = $true; result = $null; result_path = $null }
     }
     finally {
-        if ($null -ne $snapshot) { try { $null = & $TargetPort.dispose $snapshot } catch { $null = $_ } }
+        if ($null -ne $snapshot -and $disposeSnapshot) { try { $null = & $TargetPort.dispose $snapshot } catch { $null = $_ } }
     }
 }

@@ -4,9 +4,9 @@
 
 ## Summary
 
-**Total drift events**: 1
-**Resolution state**: The maintainer supplied fresh Iteration 006 tasks and before-implement verdicts against the current plan/task artifacts. Implementation may proceed from that durable human evidence, while the canonical cross-iteration matcher defect remains unresolved and is not treated as authority.
-**Specification drift**: Boundary authorization currently matches only the boundary-name pair and treated an old Iteration 003 `plan -> tasks` verdict as authorization for Iteration 006, contrary to the one-approval/one-crossing contract.
+**Total drift events**: 2
+**Resolution state**: The maintainer supplied fresh Iteration 006 tasks and before-implement verdicts against the current plan/task artifacts. The T050 ownership-record drift is reconciled to the delivered files; the canonical cross-iteration matcher defect remains unresolved and is not treated as authority.
+**Specification drift**: Boundary authorization currently matches only the boundary-name pair and treated an old Iteration 003 `plan -> tasks` verdict as authorization for Iteration 006, contrary to the one-approval/one-crossing contract. Separately, approved T042/T046 owner globs named placeholder files rather than the files that delivered FR-057/FR-059; this second drift is corrected below without changing the specification or implementation scope.
 
 ## Events
 
@@ -21,6 +21,18 @@
 - **Concrete evidence**: file:///C:/Dev/specrew-beta2-hardening/.specrew/start-context.json records Iteration 006 session commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`, while the matched authorization history entries predate this iteration and cite Iteration 003 commits `138a74da74cd8055b22a36200917a13e2e7b1bea` and `2d47596202086397be65a2a2c305dd56138b501e`.
 - **Resolution**: human-decision
 - **Resolution detail**: The maintainer supplied **approved for tasks** against plan commit `169599ef7b7accfe92ccf37e9cfe96182f1d52f4`, then separately supplied **approved for before-implement** against task-boundary commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`. Those fresh decisions authorize the current artifact and implementation stages respectively. The matcher defect remains visible and is not point-fixed inside the review-orchestration foundation without a scoped plan amendment.
+
+### DRIFT-198-I006-002 — T042/T046 ownership records named placeholder files instead of delivered components
+
+- **Type**: violation
+- **Severity**: minor
+- **Detected at**: 2026-07-16
+- **Task reference**: T042 and T046 during authoritative Claude run `run-i006-t050-claude-v3`
+- **Requirement citation**: FR-057 requires the pure campaign/run state-machine core behind ports; FR-059 requires a real `ReviewTargetPort` plus production-code and non-code proofs. The task contract requires owner file globs to identify the files carrying each deliverable.
+- **Divergence**: T042 named `reviewer-contracts.ps1` and `review-identity-contracts.ps1`, although the closed contracts were consolidated in `review-authority-core.ps1`. T046 named `worktree-review-orchestrator.ps1`, although the target port was delivered in `review-target-port.ps1`. The implementation satisfies the requirements, but the approved ownership metadata did not identify its actual files.
+- **Concrete evidence**: Closed contracts are implemented by file:///C:/Dev/specrew-beta2-hardening/scripts/internal/continuous-co-review/review-authority-core.ps1; the production and fixture target port is implemented by file:///C:/Dev/specrew-beta2-hardening/scripts/internal/continuous-co-review/review-target-port.ps1. The prior owner-glob text is preserved in Git history and in the immutable reviewer result.
+- **Resolution**: human-decision
+- **Resolution detail**: T050's authorized correction scope reconciles file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/plan.md and file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/tasks.md to those delivered components. No requirement, scope, effort, or implementation behavior changes.
 
 ## Planning Tool Note
 

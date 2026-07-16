@@ -126,6 +126,18 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 0
     }
 
+    It 'classifies a losing active-claim race truthfully before spend' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'claim-contention')
+        Request-ReviewAuthorityClaim -StoreRoot $context.store -CampaignId cmp-demo -RunId run-other -TargetLineage lin-code -ObservedAt '2026-07-16T00:00:00Z' | Out-Null
+        $result = Invoke-OrchestratorFixture -Context $context -Target (New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one) -Harness (New-ReviewFixtureHarnessPort) -Runtime (New-ReviewFixtureRuntimePort)
+        $result.status | Should -Be 'not-started'
+        $result.invoked | Should -BeFalse
+        $result.result.runtime_outcome | Should -Be 'claim-contended'
+        $result.result.failure_reason | Should -Be 'claim-not-acquired:active-claim'
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 0
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases).Count | Should -Be 1
+    }
+
     It 'publishes invalid output once without a hidden provider retry' {
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'invalid')
         $result = Invoke-OrchestratorFixture -Context $context -Target (New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one) -Harness (New-ReviewFixtureHarnessPort -RawCandidate 'not-json') -Runtime (New-ReviewFixtureRuntimePort)
@@ -162,9 +174,14 @@ Describe 'Synchronous review campaign orchestration through ports (T048)' {
 
     It 'leaves an invoked crash unclosed until recovery verifies terminal state' {
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'crash')
-        $result = Invoke-OrchestratorFixture -Context $context -Target (New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one) -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) -Runtime (New-ReviewFixtureRuntimePort -Outcome abandoned -TerminationVerified $false -Containment unknown -FailureReason 'fixture controller crash')
+        $fixtureTarget = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one
+        $disposeLog = [System.Collections.Generic.List[string]]::new()
+        $recordDispose = { param($snapshot) $disposeLog.Add([string]$snapshot.snapshot_path) | Out-Null }.GetNewClosure()
+        $observedTarget = [pscustomobject]@{ kind = $fixtureTarget.kind; prepare = $fixtureTarget.prepare; currentness = $fixtureTarget.currentness; integrity = $fixtureTarget.integrity; dispose = $recordDispose }
+        $result = Invoke-OrchestratorFixture -Context $context -Target $observedTarget -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate)) -Runtime (New-ReviewFixtureRuntimePort -Outcome abandoned -TerminationVerified $false -Containment unknown -FailureReason 'fixture controller crash')
         $result.status | Should -Be 'awaiting-termination-verification'
         $result.invoked | Should -BeTrue
+        $disposeLog.Count | Should -Be 0 -Because 'a possibly live reviewer tree still owns the frozen target until recovery verifies termination'
         Test-Path -LiteralPath (Join-Path $context.store 'campaigns/cmp-demo/runs/run-one/result.json') | Should -BeFalse
         (Get-ReviewRunReconciliationPlan -StoreRoot $context.store -CampaignId cmp-demo -RunId run-one -TargetLineage lin-code).actions | Should -Be @('publish-spent-abandoned-result', 'retire-claim-abandoned')
 

@@ -53,6 +53,15 @@ Describe 'Immutable review authority JSON store (T045)' {
         $again.created | Should -BeFalse
         $again.idempotent | Should -BeTrue
 
+        # SystemClock uses DateTimeOffset.ToString('o'). ConvertFrom-Json may coerce this to local
+        # DateTime and change offset/precision on serialization; immutable byte replay must still win.
+        $precise = New-StoreGrant -Grant grant-precise
+        $precise.observed_at = [DateTimeOffset]::UtcNow.ToString('o')
+        $preciseFirst = Add-ReviewCampaignGrantFact -StoreRoot $store -Fact $precise
+        $preciseAgain = Add-ReviewCampaignGrantFact -StoreRoot $store -Fact $precise
+        $preciseFirst.created | Should -BeTrue
+        $preciseAgain.idempotent | Should -BeTrue
+
         { Add-ReviewCampaignGrantFact -StoreRoot $store -Fact (New-StoreGrant -Slots 2) } | Should -Throw -ExpectedMessage '*review-store-corruption:conflicting-immutable-fact*'
         (Read-ReviewAuthorityFactFile -Path $first.path -ContractName GrantFact).slots | Should -Be 1
     }

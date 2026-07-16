@@ -270,7 +270,7 @@ function Test-ReviewAuthorityContractObject {
         'ReviewResult' {
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'completion' -Errors $errors -MaxLength 16 -Enum @('complete', 'partial', 'none')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'verdict' -Errors $errors -MaxLength 16 -Enum @('pass', 'findings', 'incomplete', 'failed')
-            Test-ReviewAuthorityStringField -Object $InputObject -Name 'runtime_outcome' -Errors $errors -MaxLength 32 -Enum @('completed', 'preflight-failed', 'launch-failed', 'timed-out', 'terminated', 'invalid-output', 'identity-mismatch', 'containment-violated', 'abandoned')
+            Test-ReviewAuthorityStringField -Object $InputObject -Name 'runtime_outcome' -Errors $errors -MaxLength 32 -Enum @('completed', 'preflight-failed', 'claim-contended', 'launch-failed', 'timed-out', 'terminated', 'invalid-output', 'identity-mismatch', 'containment-violated', 'abandoned')
             Test-ReviewAuthorityBooleanField -Object $InputObject -Name 'termination_verified' -Errors $errors
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'containment' -Errors $errors -MaxLength 16 -Enum @('verified', 'violated', 'unknown')
             Test-ReviewAuthorityStringField -Object $InputObject -Name 'currentness' -Errors $errors -MaxLength 32 -Enum @('current', 'snapshot-moved', 'unknown')
@@ -684,7 +684,7 @@ function Resolve-ReviewCurrentness {
 function Resolve-ReviewResultClassification {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][ValidateSet('completed', 'preflight-failed', 'launch-failed', 'timed-out', 'terminated', 'invalid-output', 'identity-mismatch', 'containment-violated', 'abandoned')][string]$RuntimeOutcome,
+        [Parameter(Mandatory)][ValidateSet('completed', 'preflight-failed', 'claim-contended', 'launch-failed', 'timed-out', 'terminated', 'invalid-output', 'identity-mismatch', 'containment-violated', 'abandoned')][string]$RuntimeOutcome,
         [Parameter(Mandatory)][bool]$Invoked,
         [Parameter(Mandatory)][bool]$TerminationVerified,
         [Parameter(Mandatory)][ValidateSet('verified', 'violated', 'unknown')][string]$Containment,
