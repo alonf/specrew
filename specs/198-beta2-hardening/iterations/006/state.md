@@ -28,6 +28,8 @@ Iteration 006 is the first of two replacement Beta2 slices. It delivers the auth
 
 Before the Iteration 006 plan sync, the global lifecycle cursor still reflected an unrelated Iteration 003 `before-implement` session, and the repository-wide validator reported the pre-existing noncanonical `Current Phase: implement` value in that iteration. The plan sync moved the mechanical session to Iteration 006 `plan`, but the authorization check then reused the old Iteration 003 `plan -> tasks` verdict and produced no fresh pending marker. That stale match is recorded in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/drift-log.md. The fresh verdict below repairs the human-evidence gap for task/readiness artifact authoring without claiming the matcher defect is fixed.
 
+The later tasks sync repeated the same defect by matching Iteration 003 verdict `2d475962` for `tasks -> before-implement`. It produced no pending marker and mechanically refocused to before-implement. That old verdict is not accepted as Iteration 006 implementation authority; production code remains blocked pending a fresh human verdict against commit `32d70abf5e6cf1f5e9f3a4081ae561d2508e0979`.
+
 ## Fresh Tasks Verdict
 
 - **Verdict**: approved for tasks
