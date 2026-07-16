@@ -38,6 +38,21 @@ zero findings. This result can approve the reviewed snapshot.
 The immutable result and its Markdown projection are at
 file:///C:/Dev/specrew-beta2-hardening/.specrew/review/campaign-t050-i006/authority-store-v2/campaigns/cmp-i006-t050-claude-v2/runs/run-i006-t050-claude-v6/.
 
+## Task Verdicts
+
+| Task | Requirement | Verdict | Notes |
+| --- | --- | --- | --- |
+| T041 | FR-057, FR-065, SC-017 | pass | The legacy-authority cutover seam and foundation map are implemented and covered by the focused foundation tests. |
+| T042 | FR-057, FR-060, FR-061, SC-020 | pass | Closed campaign, run, invocation, result, and finding contracts are implemented in the pure authority core. |
+| T043 | FR-057, FR-058, FR-062, FR-063, SC-017, SC-021 | pass | Allowance, reservation, spend, and rerun policy enforce human authorization and prohibit hidden retry. |
+| T044 | FR-057, FR-059, FR-061, FR-062, SC-018, SC-020 | pass | Run state, strict result acceptance, exact currentness, and deterministic finding lineage pass their policy tests. |
+| T045 | FR-057, FR-058, FR-062, SC-017, SC-020 | pass | Immutable JSON repositories, claim generations, and reconciliation pass concurrency and released-slot tests. |
+| T046 | FR-059, FR-065, SC-018 | pass | External Git targets preserve origin and exact dirty-state identity, including the bounded non-code fixture. |
+| T047 | FR-059, FR-060, FR-061, FR-062, SC-018, SC-020 | pass | Strict ingress and terminal publication cover identity, partial, moved, timeout, and truthful duration evidence. |
+| T048 | FR-057, FR-060, FR-061, FR-063, SC-020, SC-021 | pass | Synchronous orchestration is complete, including the separately authorized file-primary Claude adapter pair. |
+| T049 | FR-063, FR-064, FR-065, SC-017, SC-018, SC-019, SC-020, SC-021 | pass | Foundation and registry suites are green; SC-019 remains truthfully bounded to Iteration 006 scope rather than overclaimed. |
+| T050 | FR-060, FR-062, FR-064, SC-017, SC-018, SC-020, SC-021 | pass | Claude v6 returned a complete, valid, current zero-finding pass for the committed post-hardening digest. |
+
 ## Attempt Ledger
 
 | Attempt | Provider invoked | Allowance effect | Outcome |
@@ -94,6 +109,10 @@ deferred.
 T050 is complete. The scoped hardening passed the full suites and was committed before the provider
 slot was spent. v6 used a new run ID, matched the stable post-commit digest, delivered through the
 candidate file, and published a complete schema-valid current pass. No hidden retry occurred.
+
+## Gap Ledger
+
+No known gaps remain.
 
 ## Carry-Forward Obligations
 
