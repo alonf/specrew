@@ -56,7 +56,12 @@ $proposal197ReviewerModules = @(
     'review-copilot-harness-port.ps1'
     'review-cursor-harness-port.ps1'
     'review-antigravity-harness-port.ps1'
+    'review-runtime-contract.ps1'
     'review-windows-runtime-port.ps1'
+    'review-posix-runtime-common.ps1'
+    'review-linux-runtime-port.ps1'
+    'review-macos-runtime-port.ps1'
+    'review-runtime-factory.ps1'
     # T019 piece 4b / FR-045a: the PURE Stop-intent classifier (intermediate operational yield vs a real handoff).
     'stop-intent-contract.ps1'
     'co-review-lineage-lease.ps1'

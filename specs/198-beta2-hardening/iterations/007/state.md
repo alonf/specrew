@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T056 Windows Job Object runtime adapter
-**Tasks Remaining**: T034b and T057–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: T057 Linux cgroup and macOS process-group runtime adapters
+**Last Completed Task**: T057 Linux cgroup and macOS process-group runtime adapters
+**Tasks Remaining**: T034b and T058–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T058 progress, timing/usage, duplicate warning, and retrospective projection
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-16
@@ -68,6 +68,8 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **T055 evidence**: eight paired cases prove generic factory dispatch, exact headless vectors and final prompt placement, bounded identity/path rendering, minimal environment, unavailable preflight, raw candidate acceptance, stdout non-authority, and exactly one injected invocation. Shared, prior-adapter, catalog, package, and all 50 F-198 registry suites pass; the aggregate completed in 451.9 seconds. All five adapter implementations now exist, but support remains unproven until the separately authorized live smokes.
 - **T056 done**: the production Windows runtime validates the closed process contract and real Job Object capability before spend, starts native executables or a narrowly verified PowerShell shim without `cmd.exe`, drains stdout/stderr as non-authoritative streams, and assigns the process to OS containment before publishing the start callback. Timeout, nonzero exit, clean root exit, and callback failure all reap descendants and fail closed when tree-death or stream-closure proof is unavailable.
 - **T056 evidence**: six real Windows cases prove capability preflight, native/shim resolution, pre-spend malformed-spec rejection, clean-exit descendant reap, timeout root/descendant kill, closed inherited streams, and timeout authority publication only after verified death. The shared containment suite remains green (4 pass, 1 Unix skip), all 51 F-198 registry suites pass in 518.5 seconds, and scoped Iteration 007 governance passes with historical warnings only. Provider spend remains zero.
+- **T057 done**: one controller-owned POSIX host now enters containment and writes a bounded readiness fact before it can receive the in-memory reviewer launch payload. Linux requires a delegated cgroup v2 subtree with `cgroup.procs`, `cgroup.events`, and `cgroup.kill`; it proves real membership, uses graceful TERM plus atomic cgroup kill, verifies empty, and removes the run cgroup. macOS uses native `setsid`/`killpg`, verifies `pgid == host pid`, scans the group fail closed, and applies the same stream/death/cleanup terminal ordering. One runtime factory selects Windows, Linux, or macOS without harness conditionals.
+- **T057 evidence**: Windows contract/dispatch and package checks pass; an ordinary WSL session reports the missing cgroup delegation before spend while a privileged WSL cgroup v2 run passes all six cases, including clean descendant reap, timeout root/descendant kill, stream closure, candidate ingress, and residue cleanup. The native process-group mechanism also passes on Unix without being misreported as macOS proof. All 52 F-198 registry suites pass in 532.7 seconds. macOS-specific conformance and the required three-OS matrix remain T059; provider spend remains zero.
 - **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only; T051 now separately delivers the FR-045 packet/current-review gate assigned by the approved Iteration 003 reconciliation.
 - **Provider spend**: none.
 
@@ -77,7 +79,7 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - Iteration 006 foundation and Claude file-primary slice are delivered and independently reviewed.
 - T019 mutable lease/navigator/stamping/pruning mechanisms are not executable Iteration 007 work.
 - Machinery-turn exclusion, tokenizer/temporal/cursor capture hardening, exact fabrication fixtures, and the append-only scoped correction door are delivered. The underlying legacy matcher/backlog question remains visible; no quiet global matcher rewrite was made.
-- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. The workshop-intermediate Stop, shared strict candidate contract/matrix, all five thin production harness adapters, and the Windows Job Object runtime are delivered deterministically. Linux/macOS runtime ports, progress/retro, three-OS matrix, five live smokes, and proved campaign cutover remain pending; no harness is promoted by source/tests alone.
+- Public campaign command and packet-gate wiring are delivered but dormant behind checked-in `legacy` mode. The workshop-intermediate Stop, shared strict candidate contract/matrix, all five thin production harness adapters, and all three production runtime ports are implemented. Progress/retro, the truthful three-OS matrix (including macOS-specific conformance), five live smokes, and proved campaign cutover remain pending; no harness or OS pair is promoted by source/tests alone.
 
 ## Notes
 
