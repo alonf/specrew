@@ -26,4 +26,4 @@ Iteration 006 is the first of two replacement Beta2 slices. It delivers the auth
 
 ## Known Governance Condition
 
-The global lifecycle cursor still reflects an unrelated Iteration 003 `before-implement` session, and the repository-wide validator reports the pre-existing noncanonical `Current Phase: implement` value in that iteration. Iteration 006 planning does not mutate or silently reconcile that unrelated state.
+Before the Iteration 006 plan sync, the global lifecycle cursor still reflected an unrelated Iteration 003 `before-implement` session, and the repository-wide validator reported the pre-existing noncanonical `Current Phase: implement` value in that iteration. The plan sync moved the mechanical session to Iteration 006 `plan`, but the authorization check then reused the old Iteration 003 `plan -> tasks` verdict and produced no fresh pending marker. That stale match is recorded in file:///C:/Dev/specrew-beta2-hardening/specs/198-beta2-hardening/iterations/006/drift-log.md. Task work remains blocked until the maintainer gives a fresh Iteration 006 **approved for tasks** verdict.
