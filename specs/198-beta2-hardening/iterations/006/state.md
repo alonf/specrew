@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: before-implement
 **Iteration Status**: executing
-**Last Completed Task**: T048 synchronous campaign orchestration; the focused core/store/orchestrator lane passes 46/46 including the production Git target, released-slot generations, timeout partials, visible reruns, and crash recovery.
-**Tasks Remaining**: T049 committed-tree quality evidence; T050 independent Claude review; retrospective and closeout.
-**In Progress**: T049 foundation integration, quality gates, and digest-bound evidence
+**Last Completed Task**: T049 foundation verification; 85/85 foundation tests and all 45 F-198 registry suites pass, with machine evidence bound to reviewed digest `57b0c02b107e42c66759190b91e8d46705ae9816` and SC-019 explicitly incomplete.
+**Tasks Remaining**: T050 independent Claude review; retrospective and closeout.
+**In Progress**: T050 bounded independent Claude review against the exact current committed reviewable tree
 **Baseline Ref**: 72e06925 (design-analysis boundary commit)
 **Updated**: 2026-07-16
 

@@ -10,7 +10,7 @@
 **Approval Ref**: `—`
 **Reviewed By**: Maintainer (human verdict) and Planner
 **Reviewed At**: 2026-07-16
-**Post-Implementation Verification**: pending (runtime evidence is recorded after implementation and independent review)
+**Post-Implementation Verification**: T049 foundation evidence recorded; T050 independent review pending
 
 ## Concern Review
 
@@ -49,6 +49,6 @@
 ## Notes
 
 - `Overall Verdict: ready` records completed planning-time hardening analysis. The separate fresh human verdict in `condition-a-human-authorization` now authorizes Iteration 006 implementation.
-- Runtime Evidence Status remains `pending-post-implementation` until T049/T050 evidence exists.
+- T049 runtime evidence is recorded in `quality/foundation-evidence.md`; the concern rows remain `pending-post-implementation` until independent T050 evidence exists.
 - The generic quality resolver's non-applicable concurrency/recovery inference is overridden by the explicit campaign allowance, atomic claim, timeout, and crash-reconciliation requirements.
 - No concern is deferred and no new dependency is approved.
