@@ -122,10 +122,13 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $root = Join-Path $TestDrive 'portable-pgid'; $invocation = New-T057Invocation -Root $root
         $scripts = New-T057FixtureScripts -Root $root; $harness = New-T057Harness -Invocation $invocation -Scripts $scripts -Mode timeout -TimeoutSeconds 1
         $port = New-ReviewMacOSRuntimePort -TimeoutSeconds 1 -TerminationGraceSeconds 0 -CapabilityProbe { [pscustomobject]@{ ok = $true; reason = 'fixture-posix-pgid-ready' } }
-        $runtime = & $port.invoke $harness $invocation {} @{}
+        $heartbeats = [Collections.Generic.List[object]]::new(); $progress = { param($sample) $heartbeats.Add($sample) | Out-Null }.GetNewClosure()
+        $runtime = & $port.invoke $harness $invocation {} @{} $progress
         $runtime.runtime_outcome | Should -Be 'timed-out' -Because $runtime.failure_reason
         $runtime.termination_verified | Should -BeTrue -Because $runtime.failure_reason
         $runtime.cleanup_verified | Should -BeTrue
+        $heartbeats.Count | Should -BeGreaterThan 0
+        @($heartbeats | Where-Object { -not [bool]$_.process_tree_live }).Count | Should -Be 0
         $childPid = [int]([IO.File]::ReadAllText($harness.child_pid_path))
         (Get-Process -Id $childPid -ErrorAction SilentlyContinue) | Should -BeNullOrEmpty
     }

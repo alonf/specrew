@@ -3,9 +3,9 @@
 **Schema**: v1
 **Current Phase**: implement
 **Iteration Status**: executing
-**Last Completed Task**: T057 Linux cgroup and macOS process-group runtime adapters
-**Tasks Remaining**: T034b and T058–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
-**In Progress**: T058 progress, timing/usage, duplicate warning, and retrospective projection
+**Last Completed Task**: T058 progress, heartbeat, timing/usage, duplicate warning, and retrospective projection
+**Tasks Remaining**: T034b and T059–T061 execution; five separately authorized base provider slots plus any separately authorized correction reruns; review, retro, and closeout
+**In Progress**: T034b strict design-context final campaign-path regression and live compatibility proof
 **Baseline Ref**: 9fd802b78c9a977fcbbe5651772af800d62fb45f
 **Execution Contract Ref**: d9cdd16457e322628957ea74de959a5457358852
 **Updated**: 2026-07-16
@@ -70,6 +70,8 @@ FR-048/FR-049/SC-015 is not in this iteration. That command-plan supplier/inject
 - **T056 evidence**: six real Windows cases prove capability preflight, native/shim resolution, pre-spend malformed-spec rejection, clean-exit descendant reap, timeout root/descendant kill, closed inherited streams, and timeout authority publication only after verified death. The shared containment suite remains green (4 pass, 1 Unix skip), all 51 F-198 registry suites pass in 518.5 seconds, and scoped Iteration 007 governance passes with historical warnings only. Provider spend remains zero.
 - **T057 done**: one controller-owned POSIX host now enters containment and writes a bounded readiness fact before it can receive the in-memory reviewer launch payload. Linux requires a delegated cgroup v2 subtree with `cgroup.procs`, `cgroup.events`, and `cgroup.kill`; it proves real membership, uses graceful TERM plus atomic cgroup kill, verifies empty, and removes the run cgroup. macOS uses native `setsid`/`killpg`, verifies `pgid == host pid`, scans the group fail closed, and applies the same stream/death/cleanup terminal ordering. One runtime factory selects Windows, Linux, or macOS without harness conditionals.
 - **T057 evidence**: Windows contract/dispatch and package checks pass; an ordinary WSL session reports the missing cgroup delegation before spend while a privileged WSL cgroup v2 run passes all six cases, including clean descendant reap, timeout root/descendant kill, stream closure, candidate ingress, and residue cleanup. The native process-group mechanism also passes on Unix without being misreported as macOS proof. All 52 F-198 registry suites pass in 532.7 seconds. macOS-specific conformance and the required three-OS matrix remain T059; provider spend remains zero.
+- **T058 done**: the public campaign command collects controller-owned, non-authoritative progress snapshots and renders bounded lifecycle stages, elapsed/conservative remaining time, process-tree liveness, candidate-file activity, complete-valid checkpoint finding counts, and safe optional usage. Runtime callbacks are exception-isolated and sampled in bounded wait slices; renderer mutation cannot rewrite collected diagnostics. Duplicate target/harness/contract combinations warn before spend but remain informational. Retrospective projection reads strict immutable `ReviewResult` JSON only, deduplicates by lineage deterministically, and preserves complete/partial, currentness/relevance/resolution, harness/target, containment/termination, and failure provenance.
+- **T058 evidence**: five dedicated projection cases, campaign duplicate/partial/complete cases, public-command diagnostics, real Windows Job Object heartbeat/timeout cases, six privileged-WSL POSIX cases, and packaged-artifact deployment pass. Windows termination grace is aligned to the shared 10-second duration derivation. All 53 explicit F-198 registry suites pass in 484.5 seconds; scoped Iteration 007 governance passes with historical warnings only. Usage remains honestly `unavailable` when a harness supplies no safe numeric metrics, and provider spend remains zero.
 - **Reconciled boundary**: T030 closes the FR-041 machinery-exclusion obligation only; T051 now separately delivers the FR-045 packet/current-review gate assigned by the approved Iteration 003 reconciliation.
 - **Provider spend**: none.
 

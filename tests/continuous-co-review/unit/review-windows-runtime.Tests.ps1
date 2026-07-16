@@ -73,6 +73,7 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
 
         $blocked = New-ReviewWindowsRuntimePort -CapabilityProbe { [pscustomobject]@{ ok = $false; reason = 'fixture-unavailable' } }
         (& $blocked.preflight $invocation).reason | Should -Be 'fixture-unavailable'
+        { New-ReviewWindowsRuntimePort -TerminationGraceSeconds 11 } | Should -Throw
     }
 
     It 'resolves native executables first and unwraps only the bounded PowerShell shim shape' {
@@ -127,13 +128,16 @@ if ($Mode -eq 'timeout') { Start-Sleep -Seconds 30 }
         $scripts = New-T056FixtureScripts -Root $root
         $harness = New-T056ProcessHarness -Invocation $invocation -Scripts $scripts -Mode timeout -TimeoutSeconds 1
         $started = [Collections.Generic.List[string]]::new(); $onStarted = { $started.Add('started') | Out-Null }.GetNewClosure()
-        $result = & (New-ReviewWindowsRuntimePort -TimeoutSeconds 1 -TerminationGraceSeconds 0).invoke $harness $invocation $onStarted @{}
+        $heartbeats = [Collections.Generic.List[object]]::new(); $progress = { param($sample) $heartbeats.Add($sample) | Out-Null }.GetNewClosure()
+        $result = & (New-ReviewWindowsRuntimePort -TimeoutSeconds 1 -TerminationGraceSeconds 0).invoke $harness $invocation $onStarted @{} $progress
         $result.runtime_outcome | Should -Be 'timed-out'
         $result.termination_verified | Should -BeTrue -Because $result.failure_reason
         $result.failure_reason | Should -Match 'process tree verified dead and streams closed'
         $result.streams_closed | Should -BeTrue
         $result.process_tree_live | Should -BeFalse
         $started.Count | Should -Be 1
+        $heartbeats.Count | Should -BeGreaterThan 0
+        @($heartbeats | Where-Object { -not [bool]$_.process_tree_live }).Count | Should -Be 0 -Because 'runtime heartbeats only describe the live wait; terminal death is controller evidence'
         $childPid = [int]([IO.File]::ReadAllText($harness.child_pid_path))
         (Get-Process -Id $childPid -ErrorAction SilentlyContinue) | Should -BeNullOrEmpty
     }

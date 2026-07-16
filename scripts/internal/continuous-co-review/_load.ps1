@@ -47,6 +47,10 @@ $proposal197ReviewerModules = @(
     'review-target-port.ps1'
     # F-198 iter-006 / T047: strict candidate ingress + controller-owned JSON/Markdown publication.
     'review-result-ingestor.ps1'
+    # F-198 iter-007 / T058: informational progress/diagnostics and validated-JSON retro projections.
+    # Both are non-authoritative and load before the orchestrator that composes them.
+    'review-progress-projection.ps1'
+    'review-retro-projection.ps1'
     # F-198 iter-006 / T048: synchronous port-composed campaign/run orchestration + fixtures.
     'review-campaign-orchestrator.ps1'
     # Shared file-primary production harness contract, followed by thin provider adapters.

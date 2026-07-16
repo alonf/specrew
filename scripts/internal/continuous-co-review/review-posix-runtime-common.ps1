@@ -65,6 +65,8 @@ function New-ReviewPosixRuntimePort {
     $resolveExecutableCommand = ${function:Resolve-ReviewPosixExecutable}
     $waitReadyCommand = ${function:Wait-ReviewPosixReadyFile}
     $testDeadCommand = ${function:Test-ReviewPosixProcessDead}
+    $writeProgressCommand = ${function:Write-ReviewRuntimeProgressSample}
+    $testOutputActivityCommand = ${function:Test-ReviewRuntimeOutputActivity}
     $hostPath = Join-Path $PSScriptRoot 'review-posix-process-host.ps1'
     $pwshPath = [IO.Path]::GetFullPath((Get-Process -Id $PID).Path)
 
@@ -82,7 +84,7 @@ function New-ReviewPosixRuntimePort {
     }.GetNewClosure()
 
     $invoke = {
-        param($harness, $invocation, $onStarted, $environment)
+        param($harness, $invocation, $onStarted, $environment, $progress)
         $process = $null; $descriptor = $null; $readyPath = $null; $started = $false
         $stdoutDrain = $null; $stderrDrain = $null; $containmentVerified = $false
         try {
@@ -132,7 +134,19 @@ function New-ReviewPosixRuntimePort {
             $process.StandardInput.Close()
 
             $effectiveTimeout = [Math]::Min($TimeoutSeconds, [int]$spec.timeout_seconds)
-            $exited = $process.WaitForExit($effectiveTimeout * 1000)
+            $timeoutMilliseconds = [long]$effectiveTimeout * 1000
+            $waitWatch = [Diagnostics.Stopwatch]::StartNew()
+            & $writeProgressCommand -Progress $progress -CandidateResultPath ([string]$spec.candidate_result_path) -ProcessTreeLive $true
+            $exited = $process.HasExited
+            while (-not $exited) {
+                $remaining = $timeoutMilliseconds - $waitWatch.ElapsedMilliseconds
+                if ($remaining -le 0) { $exited = $process.HasExited; break }
+                $slice = [int][Math]::Min(5000, [Math]::Max(1, $remaining))
+                $exited = $process.WaitForExit($slice)
+                if (-not $exited) {
+                    & $writeProgressCommand -Progress $progress -CandidateResultPath ([string]$spec.candidate_result_path) -ProcessTreeLive $true
+                }
+            }
             $timedOut = -not $exited
             $exitCode = if ($exited) { $process.ExitCode } else { $null }
             & $StopContainment $descriptor $(if ($timedOut) { $TerminationGraceSeconds } else { 0 })
@@ -142,7 +156,7 @@ function New-ReviewPosixRuntimePort {
             $rootDead = & $testDeadCommand -ProcessId $process.Id
             $cleanupVerified = [bool](& $CleanupContainment $descriptor)
             $terminationVerified = $streamsClosed -and $containmentEmpty -and $rootDead -and $cleanupVerified
-            $outputActivity = [IO.File]::Exists([string]$spec.candidate_result_path) -and ([IO.FileInfo]([string]$spec.candidate_result_path)).Length -gt 0
+            $outputActivity = & $testOutputActivityCommand -CandidateResultPath ([string]$spec.candidate_result_path)
             if ($timedOut) {
                 return [pscustomobject]@{
                     runtime_outcome = 'timed-out'; termination_verified = $terminationVerified; containment = $(if ($containmentVerified) { 'verified' } else { 'unknown' })

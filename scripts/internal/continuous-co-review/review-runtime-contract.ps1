@@ -27,3 +27,31 @@ function Test-ReviewRuntimeProcessSpec {
     }
     return [pscustomobject]@{ valid = ($errors.Count -eq 0); errors = @($errors) }
 }
+
+function Test-ReviewRuntimeOutputActivity {
+    param([AllowNull()][string]$CandidateResultPath)
+    if ([string]::IsNullOrWhiteSpace($CandidateResultPath)) { return $false }
+    try {
+        return [IO.File]::Exists($CandidateResultPath) -and ([IO.FileInfo]$CandidateResultPath).Length -gt 0
+    }
+    catch { return $false }
+}
+
+function Write-ReviewRuntimeProgressSample {
+    param(
+        [AllowNull()][scriptblock]$Progress,
+        [AllowNull()][string]$CandidateResultPath,
+        [bool]$ProcessTreeLive = $true
+    )
+    if ($null -eq $Progress) { return }
+    try {
+        & $Progress ([pscustomobject][ordered]@{
+            process_tree_live = $ProcessTreeLive
+            output_activity = Test-ReviewRuntimeOutputActivity -CandidateResultPath $CandidateResultPath
+        })
+    }
+    catch {
+        # Progress is advisory. A sampler or sink failure cannot affect process control or authority.
+        $null = $_
+    }
+}

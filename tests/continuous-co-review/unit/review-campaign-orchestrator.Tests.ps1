@@ -100,6 +100,27 @@ Stdout is telemetry and is never parsed for authority.
         @($events | Where-Object { $null -ne $_.validated_finding_count -and $_.stage -ne 'terminal' }).Count | Should -Be 0
     }
 
+    It 'warns about a duplicate target-harness-contract before a separately authorized rerun spends' {
+        $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'duplicate-warning') -Slots 2
+        $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one
+        $first = Invoke-OrchestratorFixture -Context $context -Run run-one -Reservation res-one -Target $target `
+            -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-one)) -Runtime (New-ReviewFixtureRuntimePort)
+        $first.status | Should -Be 'terminal'
+
+        $events = [Collections.Generic.List[object]]::new(); $sink = { param($event) $events.Add($event) | Out-Null }.GetNewClosure()
+        $second = Invoke-OrchestratorFixture -Context $context -Run run-two -Reservation res-two -Target $target `
+            -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-two)) -Runtime (New-ReviewFixtureRuntimePort) -ProgressSink $sink
+        $second.status | Should -Be 'terminal' -Because $second.reason
+
+        $stages = @($events | ForEach-Object { [string]$_.stage })
+        $warningIndex = [array]::IndexOf($stages, 'duplicate-warning')
+        $runningIndex = [array]::IndexOf($stages, 'running')
+        $warningIndex | Should -BeGreaterThan -1
+        $runningIndex | Should -BeGreaterThan $warningIndex
+        @($events | Where-Object { [string]$_.stage -ceq 'duplicate-warning' -and $_.authority }).Count | Should -Be 0
+        @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 2
+    }
+
     It 'accepts the shared invocation-timeout ceiling and rejects a value above it before reservation' {
         $limits = Get-ReviewAuthorityTimingLimits
         $atMax = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'timeout-at-max')
@@ -220,16 +241,20 @@ Stdout is telemetry and is never parsed for authority.
         $context = Initialize-OrchestratorContext -Root (Join-Path $TestDrive 'rerun') -Slots 2
         $target = New-ReviewFixtureTargetPort -SnapshotPath $context.snapshot -TargetDigest digest-one
         $partialCandidate = New-OrchestratorCandidate -Run run-one -Completion partial -Verdict incomplete -Findings @((New-OrchestratorFinding))
-        $partial = Invoke-OrchestratorFixture -Context $context -Run run-one -Reservation res-one -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate $partialCandidate) -Runtime (New-ReviewFixtureRuntimePort -Outcome timed-out -TerminationVerified $true -FailureReason 'timed out after verified kill')
+        $partialEvents = [Collections.Generic.List[object]]::new(); $partialSink = { param($event) $partialEvents.Add($event) | Out-Null }.GetNewClosure()
+        $partial = Invoke-OrchestratorFixture -Context $context -Run run-one -Reservation res-one -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate $partialCandidate) -Runtime (New-ReviewFixtureRuntimePort -Outcome timed-out -TerminationVerified $true -FailureReason 'timed out after verified kill') -ProgressSink $partialSink
         $partial.result.runtime_outcome | Should -Be 'timed-out'
         $partial.result.completion | Should -Be 'partial'
         $partial.result.findings.Count | Should -Be 1
+        @($partialEvents | Where-Object { $null -ne $_.validated_finding_count }).Count | Should -Be 0 -Because 'a valid partial is useful evidence, but not a complete finding-count checkpoint'
 
         $allowance = Get-ReviewCampaignAllowanceState -CampaignId cmp-demo -Grants @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind grants) -Reservations @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind reservations) -Spends @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend) -Releases @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind releases)
         (Resolve-ReviewRerunDecision -PriorResult $partial.result -ProposedRunId run-two -ExistingRunIds @('run-one') -HasAvailableSlot ($allowance.available.Count -gt 0)).action | Should -Be 'launch-visible-rerun'
 
-        $complete = Invoke-OrchestratorFixture -Context $context -Run run-two -Reservation res-two -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-two)) -Runtime (New-ReviewFixtureRuntimePort)
+        $completeEvents = [Collections.Generic.List[object]]::new(); $completeSink = { param($event) $completeEvents.Add($event) | Out-Null }.GetNewClosure()
+        $complete = Invoke-OrchestratorFixture -Context $context -Run run-two -Reservation res-two -Target $target -Harness (New-ReviewFixtureHarnessPort -Candidate (New-OrchestratorCandidate -Run run-two)) -Runtime (New-ReviewFixtureRuntimePort) -ProgressSink $completeSink
         $complete.result.can_approve_current | Should -BeTrue
+        @($completeEvents | Where-Object { [string]$_.stage -ceq 'terminal' })[0].validated_finding_count | Should -Be 0
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $context.store -CampaignId cmp-demo -Kind spend).Count | Should -Be 2
         (Resolve-ReviewCampaignSelectedResult -TargetDigest digest-one -OrderedRunIds @('run-one', 'run-two') -Results @($partial.result, $complete.result)).selected_run_id | Should -Be 'run-two'
 

@@ -29,8 +29,8 @@ tasks:
     blocked_reason: ""
   T034b:
     title: "Strict design-context final campaign-path regression and live compatibility proof"
-    status: "pending"
-    started_at: ""
+    status: "in-progress"
+    started_at: "2026-07-16T23:07:34+03:00"
     completed_at: ""
     blocked_reason: ""
   T051:
@@ -77,9 +77,9 @@ tasks:
     blocked_reason: ""
   T058:
     title: "Progress, heartbeat, timing/usage, duplicate warning, and retrospective projection"
-    status: "in-progress"
+    status: "done"
     started_at: "2026-07-16T22:33:20+03:00"
-    completed_at: ""
+    completed_at: "2026-07-16T23:07:34+03:00"
     blocked_reason: ""
   T059:
     title: "Deterministic all-adapter fault suite on Windows/Linux/macOS CI"

@@ -8,6 +8,7 @@ Set-StrictMode -Version Latest
 if (-not (Get-Command -Name 'Invoke-ReviewResultIngress' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-result-ingestor.ps1') }
 if (-not (Get-Command -Name 'New-GitReviewTargetSnapshot' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-target-port.ps1') }
 if (-not (Get-Command -Name 'Get-ContinuousCoReviewAuthorityDecision' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-authority-cutover.ps1') }
+if (-not (Get-Command -Name 'New-ReviewProgressEvent' -ErrorAction SilentlyContinue)) { . (Join-Path $PSScriptRoot 'review-progress-projection.ps1') }
 
 function New-ReviewSystemClockPort {
     return [pscustomobject]@{
@@ -48,16 +49,23 @@ function Write-ReviewOrchestrationProgress {
         [string]$Message,
         [AllowNull()]$ProcessTreeLive,
         [AllowNull()]$OutputActivity,
-        [AllowNull()]$ValidatedFindingCount
+        [AllowNull()]$ValidatedFindingCount,
+        [ValidateRange(0, 86400000)][long]$ElapsedMilliseconds = 0,
+        [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900,
+        [AllowNull()]$Usage
     )
     if ($null -eq $Sink) { return }
-    $event = [pscustomobject][ordered]@{
-        schema_version = '1.0'; campaign_id = $CampaignId; run_id = $RunId; stage = $Stage
-        observed_at = Read-ReviewClockUtc -ClockPort $ClockPort; message = $Message
-        process_tree_live = $ProcessTreeLive; output_activity = $OutputActivity
-        validated_finding_count = $ValidatedFindingCount; authority = $false
+    try {
+        $event = New-ReviewProgressEvent -CampaignId $CampaignId -RunId $RunId -Stage $Stage -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) `
+            -ElapsedMilliseconds $ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds -Message $Message -ProcessTreeLive $ProcessTreeLive `
+            -OutputActivity $OutputActivity -ValidatedFindingCount $ValidatedFindingCount -Usage $Usage
+        & $Sink $event
     }
-    & $Sink $event
+    catch {
+        # Progress is informational. A renderer/collector failure cannot change review authority,
+        # spend, containment, or terminal publication.
+        $null = $_
+    }
 }
 
 function New-ReviewRunStateFact {
@@ -122,17 +130,20 @@ function New-ReviewFixtureRuntimePort {
         [ValidateSet('completed', 'launch-failed', 'timed-out', 'terminated', 'containment-violated', 'abandoned')][string]$Outcome = 'completed',
         [bool]$TerminationVerified = $true,
         [ValidateSet('verified', 'violated', 'unknown')][string]$Containment = 'verified',
-        [string]$FailureReason
+        [string]$FailureReason,
+        [AllowNull()]$Usage
     )
     $preflight = { param($invocation) [pscustomobject]@{ ok = $PreflightPass; reason = $(if ($PreflightPass) { 'fixture-runtime-ready' } else { 'fixture-runtime-unavailable' }) } }.GetNewClosure()
     $invoke = {
-        param($harness, $invocation, $onStarted, $environment)
+        param($harness, $invocation, $onStarted, $environment, $progress)
         if ($Outcome -ceq 'launch-failed') { return [pscustomobject]@{ runtime_outcome = 'launch-failed'; termination_verified = $true; containment = 'unknown'; failure_reason = $(if ($FailureReason) { $FailureReason } else { 'fixture launch failed' }); process_tree_live = $false; output_activity = $false } }
         & $onStarted
+        if ($null -ne $progress) { try { & $progress ([pscustomobject]@{ process_tree_live = $true; output_activity = $false }) } catch { $null = $_ } }
         $harnessResult = & $harness.invoke $invocation $environment
         return [pscustomobject]@{
             runtime_outcome = $Outcome; termination_verified = $TerminationVerified; containment = $Containment
             failure_reason = $FailureReason; process_tree_live = (-not $TerminationVerified); output_activity = [bool]$harnessResult.output_activity
+            usage = $Usage
         }
     }.GetNewClosure()
     return [pscustomobject]@{ id = 'fixture-runtime'; preflight = $preflight; invoke = $invoke }
@@ -270,9 +281,13 @@ function Invoke-ReviewCampaignCommand {
         [AllowNull()]$Ports,
         [scriptblock]$ProgressSink
     )
+    $progressCollector = New-ReviewProgressCollector -ExternalSink $ProgressSink
     $authority = Get-ContinuousCoReviewAuthorityDecision -ConfigPath $AuthorityConfigPath
     if (-not $authority.campaign_authority_enabled) {
-        return [pscustomobject]@{ status = 'suppressed'; reason = ('campaign-authority-disabled:' + $authority.reason); invoked = $false; result = $null; authority_mode = $authority.mode }
+        return [pscustomobject]@{
+            status = 'suppressed'; reason = ('campaign-authority-disabled:' + $authority.reason); invoked = $false; result = $null
+            authority_mode = $authority.mode; diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
+        }
     }
     $root = (Resolve-Path -LiteralPath $RepoRoot).Path
     $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $root -FeatureId $FeatureId -IterationNumber $IterationNumber -RunId $RunId
@@ -311,13 +326,14 @@ function Invoke-ReviewCampaignCommand {
     $run = Invoke-ReviewCampaignRun -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $identity.campaign_id -RunId $identity.run_id `
         -ReservationId $identity.reservation_id -TargetLineage $identity.target_lineage -TargetPort $Ports.target -HarnessPort $Ports.harness `
         -RuntimePort $Ports.runtime -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `
-        -ProgressSink $ProgressSink -AuthorityConfigPath $AuthorityConfigPath
+        -ProgressSink $progressCollector.sink -AuthorityConfigPath $AuthorityConfigPath
     return [pscustomobject][ordered]@{
         status = $run.status; reason = $run.reason; invoked = $run.invoked; result = $run.result
         result_path = $(if ($run.PSObject.Properties['result_path']) { $run.result_path } else { $null })
         report_path = $(if ($run.PSObject.Properties['report_path']) { $run.report_path } else { $null })
         campaign_id = $identity.campaign_id; run_id = $identity.run_id; target_lineage = $identity.target_lineage
         store_root = [IO.Path]::GetFullPath($StoreRoot); authority_mode = 'campaign'
+        diagnostics = Get-ReviewProgressDiagnostics -Events @($progressCollector.events)
     }
 }
 
@@ -391,12 +407,16 @@ function Invoke-ReviewCampaignRun {
     if (-not $authority.campaign_authority_enabled) { return [pscustomobject]@{ status = 'suppressed'; reason = ('campaign-authority-disabled:' + $authority.reason); invoked = $false; result = $null } }
     $attemptStartedAt = Read-ReviewClockUtc -ClockPort $ClockPort
     $attemptMono = Read-ReviewClockMonotonic -ClockPort $ClockPort
-    Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'requested' -Message 'run requested'
+    $progressWatch = [Diagnostics.Stopwatch]::StartNew()
+    Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'requested' -Message 'run requested' -ElapsedMilliseconds 0 -TimeoutSeconds $TimeoutSeconds
 
     $placeholderDigest = 'pending-target'
     Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage requested -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $placeholderDigest -HarnessId ([string]$HarnessPort.id) -State requested) | Out-Null
     $reservationResult = Request-ReviewCampaignReservationFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -ReservationId $ReservationId -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort)
-    if (-not $reservationResult.acquired) { return [pscustomobject]@{ status = 'not-started'; reason = $reservationResult.reason; invoked = $false; result = $null } }
+    if (-not $reservationResult.acquired) {
+        Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message ([string]$reservationResult.reason) -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
+        return [pscustomobject]@{ status = 'not-started'; reason = $reservationResult.reason; invoked = $false; result = $null }
+    }
     $reservation = $reservationResult.fact
     Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage reserved -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $placeholderDigest -HarnessId ([string]$HarnessPort.id) -State reserved) | Out-Null
 
@@ -421,6 +441,7 @@ function Invoke-ReviewCampaignRun {
                 $reason = 'preflight-failed:' + (@($preflight.Keys | Where-Object { -not [bool]$preflight[$_] } | Sort-Object) -join ',')
                 $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
                 $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason $reason -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome preflight-failed
+                Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $reason -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
                 return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path }
             }
         }
@@ -428,18 +449,33 @@ function Invoke-ReviewCampaignRun {
             $reason = 'preflight-failed:' + $_.Exception.Message
             $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
             $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $placeholderDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason $reason -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome preflight-failed
+            Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $reason -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
             return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path }
         }
 
         Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage preflighted -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -State preflighted) | Out-Null
+        try {
+            $contractVersion = if ($HarnessPort.PSObject.Properties['contract_version']) { [string]$HarnessPort.contract_version } else { '1.0' }
+            $priorResults = @(Get-ReviewAuthorityCampaignRunResults -StoreRoot $StoreRoot -CampaignId $CampaignId)
+            $duplicate = Test-ReviewCampaignDuplicateCombination -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -ContractVersion $contractVersion -Runs $priorResults
+            if ($duplicate.duplicate) {
+                $priorIds = (@($duplicate.prior_run_ids | Select-Object -First 10) -join ',')
+                Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage duplicate-warning -Message ("same target/harness/contract previously reviewed by: $priorIds") -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
+            }
+        }
+        catch {
+            # Duplicate detection is advisory and cannot block or authorize a run.
+            $null = $_
+        }
         $claim = Request-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort)
         if (-not $claim.acquired) {
             $endedAt = Read-ReviewClockUtc -ClockPort $ClockPort; $duration = [Math]::Max(0, (Read-ReviewClockMonotonic -ClockPort $ClockPort) - $attemptMono)
             $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends @() -Reason ('claim-not-acquired:' + $claim.reason) -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome claim-contended -Containment verified
+            Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message ('claim-not-acquired:' + $claim.reason) -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
             return [pscustomobject]@{ status = 'not-started'; reason = ('claim-not-acquired:' + $claim.reason); invoked = $false; result = $failed.result; result_path = $failed.result_path }
         }
         Write-ReviewRunAuthorityFact -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage claimed -Fact (New-ReviewRunStateFact -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -State claimed) | Out-Null
-        Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'preflighted' -Message 'target, store, contract, containment, harness, and runtime preflight passed'
+        Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'preflighted' -Message 'target, store, contract, containment, harness, and runtime preflight passed' -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
 
         $readClockCommand = Get-Command -Name 'Read-ReviewClockUtc' -CommandType Function
         $getFactsCommand = Get-Command -Name 'Get-ReviewAuthorityCampaignFacts' -CommandType Function
@@ -447,6 +483,7 @@ function Invoke-ReviewCampaignRun {
         $writeSpendCommand = Get-Command -Name 'Write-ReviewCampaignSpendFact' -CommandType Function
         $writeRunCommand = Get-Command -Name 'Write-ReviewRunAuthorityFact' -CommandType Function
         $newRunFactCommand = Get-Command -Name 'New-ReviewRunStateFact' -CommandType Function
+        $writeProgressCommand = Get-Command -Name 'Write-ReviewOrchestrationProgress' -CommandType Function
         $onStarted = {
             $startedAt = & $readClockCommand -ClockPort $ClockPort
             $existingSpends = @(& $getFactsCommand -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind spend)
@@ -455,9 +492,17 @@ function Invoke-ReviewCampaignRun {
             if (-not $spendDecision.permitted) { throw ('review-invocation-spend-refused:' + $spendDecision.reason) }
             & $writeSpendCommand -StoreRoot $StoreRoot -Fact $spendDecision.fact | Out-Null
             & $writeRunCommand -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -Stage invoked -Fact (& $newRunFactCommand -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -State invoked) | Out-Null
+            & $writeProgressCommand -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage running -Message 'reviewer invoked under verified containment' -ProcessTreeLive $true -OutputActivity $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
         }.GetNewClosure()
 
-        try { $runtimeResult = & $RuntimePort.invoke $HarnessPort $invocation $onStarted $snapshot.suppression_environment }
+        $runtimeProgress = {
+            param($sample)
+            $treeLive = if ($null -ne $sample -and $sample.PSObject.Properties['process_tree_live']) { $sample.process_tree_live } else { $true }
+            $activity = if ($null -ne $sample -and $sample.PSObject.Properties['output_activity']) { $sample.output_activity } else { $null }
+            & $writeProgressCommand -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage running -Message 'reviewer heartbeat; activity is not semantic progress' -ProcessTreeLive $treeLive -OutputActivity $activity -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
+        }.GetNewClosure()
+
+        try { $runtimeResult = & $RuntimePort.invoke $HarnessPort $invocation $onStarted $snapshot.suppression_environment $runtimeProgress }
         catch { $runtimeResult = [pscustomobject]@{ runtime_outcome = 'abandoned'; termination_verified = $false; containment = 'unknown'; failure_reason = ('runtime-adapter-failed:' + $_.Exception.Message); process_tree_live = $null; output_activity = $null } }
         $spends = @(Get-ReviewAuthorityCampaignFacts -StoreRoot $StoreRoot -CampaignId $CampaignId -Kind spend | Where-Object { [string]$_.run_id -ceq $RunId })
         $invoked = $spends.Count -gt 0
@@ -466,10 +511,12 @@ function Invoke-ReviewCampaignRun {
             $reason = if ($runtimeResult.failure_reason) { [string]$runtimeResult.failure_reason } else { 'launch failed before invocation' }
             $failed = Complete-ReviewPreInvocationFailure -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -Reservation $reservation -Spends $spends -Reason $reason -ObservedAt $endedAt -StartedAt $attemptStartedAt -DurationMs $duration -RuntimeOutcome launch-failed -Containment unknown
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition abandoned -ObservedAt $endedAt | Out-Null
+            Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $reason -ProcessTreeLive $false -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds
             return [pscustomobject]@{ status = 'failed'; reason = $reason; invoked = $false; result = $failed.result; result_path = $failed.result_path }
         }
 
-        Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'terminalizing' -Message 'runtime returned; validating target and candidate' -ProcessTreeLive $runtimeResult.process_tree_live -OutputActivity $runtimeResult.output_activity
+        $observedUsage = if ($runtimeResult.PSObject.Properties['usage']) { $runtimeResult.usage } else { $null }
+        Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'terminalizing' -Message 'runtime returned; validating target and candidate' -ProcessTreeLive $runtimeResult.process_tree_live -OutputActivity $runtimeResult.output_activity -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds -Usage $observedUsage
         $containment = [string]$runtimeResult.containment; $runtimeOutcome = [string]$runtimeResult.runtime_outcome
         try { $integrity = & $TargetPort.integrity $snapshot } catch { $integrity = [pscustomobject]@{ intact = $false; classification = 'integrity-check-failed' } }
         if (-not $integrity.intact) { $containment = 'violated'; $runtimeOutcome = 'containment-violated' }
@@ -480,14 +527,15 @@ function Invoke-ReviewCampaignRun {
         $ingress = Invoke-ReviewResultIngress -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $CampaignId -RunId $RunId -TargetDigest $targetDigest -HarnessId ([string]$HarnessPort.id) -RuntimeOutcome $runtimeOutcome -Invoked $true -TerminationVerified ([bool]$runtimeResult.termination_verified) -Containment $containment -Currentness ([string]$currentness.classification) -StartedAt $startedAt -EndedAt $endedAt -DurationMs $duration -FailureReason ([string]$runtimeResult.failure_reason)
         if ($ingress.published) {
             Complete-ReviewAuthorityClaim -StoreRoot $StoreRoot -CampaignId $CampaignId -RunId $RunId -TargetLineage $TargetLineage -Disposition released -ObservedAt (Read-ReviewClockUtc -ClockPort $ClockPort) | Out-Null
-            $findingCount = if ($ingress.candidate_category -ceq 'valid') { @($ingress.result.findings).Count } else { $null }
-            Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'terminal' -Message $ingress.reason -ProcessTreeLive $false -OutputActivity $runtimeResult.output_activity -ValidatedFindingCount $findingCount
+            $findingCount = if ($ingress.candidate_category -ceq 'valid' -and [string]$ingress.result.completion -ceq 'complete' -and [string]$ingress.result.validation -ceq 'valid') { @($ingress.result.findings).Count } else { $null }
+            Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage 'terminal' -Message $ingress.reason -ProcessTreeLive $false -OutputActivity $runtimeResult.output_activity -ValidatedFindingCount $findingCount -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds -Usage $observedUsage
             return [pscustomobject]@{ status = 'terminal'; reason = $ingress.reason; invoked = $true; result = $ingress.result; result_path = $ingress.result_path; report_path = $ingress.report_path }
         }
         # A reviewer tree may still be using the frozen target. Recovery owns disposal after it proves
         # termination; removing the worktree here could race a live process or strand an OS-specific
         # cleanup failure.
         $disposeSnapshot = $false
+        Write-ReviewOrchestrationProgress -Sink $ProgressSink -ClockPort $ClockPort -CampaignId $CampaignId -RunId $RunId -Stage failed -Message $ingress.reason -ProcessTreeLive $runtimeResult.process_tree_live -OutputActivity $runtimeResult.output_activity -ElapsedMilliseconds $progressWatch.ElapsedMilliseconds -TimeoutSeconds $TimeoutSeconds -Usage $observedUsage
         return [pscustomobject]@{ status = 'awaiting-termination-verification'; reason = $ingress.reason; invoked = $true; result = $null; result_path = $null }
     }
     finally {

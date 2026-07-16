@@ -76,14 +76,20 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
             prompt_path = $prompt
         }
         $store = Join-Path $root '.specrew/review/authority'
+        $progressEvents = [Collections.Generic.List[object]]::new()
+        $progressSink = { param($event) $progressEvents.Add($event) | Out-Null }.GetNewClosure()
         $run = Invoke-ReviewCampaignCommand -RepoRoot $root -FeatureId '001-demo' -IterationNumber '007' -RunId $identity.run_id `
-            -ReviewerHost fixture -GrantAuthorizationRef 'human-slot-public-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports
+            -ReviewerHost fixture -GrantAuthorizationRef 'human-slot-public-one' -AuthorityConfigPath $config -StoreRoot $store -Ports $ports -ProgressSink $progressSink
 
         $run.status | Should -Be 'terminal' -Because $run.reason
         $run.invoked | Should -BeTrue
         $run.campaign_id | Should -Be 'cmp-001-demo-i007'
         $run.result.target_digest | Should -Be $originBefore.reviewed_state_digest
         $run.result.can_approve_current | Should -BeTrue
+        $run.diagnostics.authority | Should -BeFalse
+        $run.diagnostics.event_count | Should -Be @($progressEvents).Count
+        $run.diagnostics.heartbeat_count | Should -BeGreaterThan 0
+        $run.diagnostics.usage.status | Should -Be 'unavailable'
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind grants).Count | Should -Be 1
         @(Get-ReviewAuthorityCampaignFacts -StoreRoot $store -CampaignId $run.campaign_id -Kind spend).Count | Should -Be 1
         $originAfter = Get-GitReviewTargetOriginEvidence -OriginRepo $root

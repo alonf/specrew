@@ -746,12 +746,21 @@ if ($Live) {
             . (Join-Path $PSScriptRoot 'internal/continuous-co-review/_load.ps1')
             $resolvedBudget = if (Get-Command -Name 'Get-ContinuousCoReviewNavigatorTimeoutSeconds' -ErrorAction SilentlyContinue) { [int](Get-ContinuousCoReviewNavigatorTimeoutSeconds -RepoRoot $resolvedProjectPath -HostName ([string]$parsedArgs.Host)) } else { 900 }
             $tos = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { $resolvedBudget }
+            $progressSink = $null
+            if (-not $Json -and -not $Quiet) {
+                $formatProgressCommand = Get-Command -Name 'Format-ReviewProgressEvent' -CommandType Function
+                $progressSink = {
+                    param($event)
+                    $color = if ([string]$event.stage -in @('duplicate-warning', 'failed')) { 'Yellow' } elseif ([string]$event.stage -ceq 'terminal') { 'Cyan' } else { 'DarkGray' }
+                    Write-Host (& $formatProgressCommand -Event $event) -ForegroundColor $color
+                }.GetNewClosure()
+            }
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
-                -RunId ([string]$parsedArgs.RunId) -ReviewerHost ([string]$parsedArgs.Host) -GrantAuthorizationRef ([string]$parsedArgs.AuthorizationRef) -TimeoutSeconds $tos
+                -RunId ([string]$parsedArgs.RunId) -ReviewerHost ([string]$parsedArgs.Host) -GrantAuthorizationRef ([string]$parsedArgs.AuthorizationRef) -TimeoutSeconds $tos -ProgressSink $progressSink
             if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
             elseif ($Quiet) {
                 $verdict = if ($null -ne $campaignRun.result) { [string]$campaignRun.result.verdict } else { 'none' }
-                Write-Host ("review-run campaign={0} run_id={1} status={2} verdict={3} invoked={4}" -f $campaignRun.campaign_id, $campaignRun.run_id, $campaignRun.status, $verdict, ([bool]$campaignRun.invoked).ToString().ToLowerInvariant())
+                Write-Host ("review-run campaign={0} run_id={1} status={2} verdict={3} invoked={4} elapsed_ms={5} usage={6}" -f $campaignRun.campaign_id, $campaignRun.run_id, $campaignRun.status, $verdict, ([bool]$campaignRun.invoked).ToString().ToLowerInvariant(), $campaignRun.diagnostics.elapsed_ms, $campaignRun.diagnostics.usage.status)
             }
             else {
                 $border = ('=' * 60)
@@ -767,6 +776,11 @@ if ($Live) {
                     foreach ($finding in @($campaignRun.result.findings)) { Write-Host ("  [{0}] {1}: {2}" -f $finding.severity, $finding.title, $finding.description) }
                 }
                 else { Write-Host ("Reason: {0}" -f $campaignRun.reason) -ForegroundColor Yellow }
+                $usage = $campaignRun.diagnostics.usage
+                Write-Host ("Observed elapsed: {0:n1}s  Heartbeats: {1}  Usage: {2}" -f ([long]$campaignRun.diagnostics.elapsed_ms / 1000), $campaignRun.diagnostics.heartbeat_count, $usage.status)
+                if ([string]$usage.status -ceq 'available') {
+                    Write-Host ("Usage detail: input={0} output={1} total={2} cost_usd={3}" -f $usage.input_tokens, $usage.output_tokens, $usage.total_tokens, $usage.cost_usd)
+                }
                 Write-Host ("Authority store: {0}" -f $campaignRun.store_root)
             }
             if ([string]$campaignRun.status -cne 'terminal') { exit 1 }

@@ -117,7 +117,7 @@ function New-ReviewWindowsRuntimePort {
     [CmdletBinding()]
     param(
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900,
-        [ValidateRange(0, 30)][int]$TerminationGraceSeconds = 5,
+        [ValidateRange(0, 10)][int]$TerminationGraceSeconds = 5,
         [scriptblock]$CapabilityProbe
     )
     if (-not $CapabilityProbe) { $CapabilityProbe = ${function:Test-ReviewWindowsJobObjectAvailability} }
@@ -129,6 +129,8 @@ function New-ReviewWindowsRuntimePort {
     $waitJobEmptyCommand = ${function:Wait-ReviewWindowsJobEmpty}
     $testProcessDeadCommand = ${function:Test-ReviewProcessDead}
     $resolveLaunchCommand = ${function:Resolve-ReviewWindowsProcessLaunch}
+    $writeProgressCommand = ${function:Write-ReviewRuntimeProgressSample}
+    $testOutputActivityCommand = ${function:Test-ReviewRuntimeOutputActivity}
 
     $preflight = {
         param($invocation)
@@ -141,7 +143,7 @@ function New-ReviewWindowsRuntimePort {
     }.GetNewClosure()
 
     $invoke = {
-        param($harness, $invocation, $onStarted, $environment)
+        param($harness, $invocation, $onStarted, $environment, $progress)
         $process = $null; $containment = $null; $started = $false
         $stdoutDrain = $null; $stderrDrain = $null
         try {
@@ -190,7 +192,19 @@ function New-ReviewWindowsRuntimePort {
             try { $process.StandardInput.Close() } catch { $null = $_ }
 
             $effectiveTimeout = [Math]::Min($TimeoutSeconds, [int]$spec.timeout_seconds)
-            $exited = $process.WaitForExit($effectiveTimeout * 1000)
+            $timeoutMilliseconds = [long]$effectiveTimeout * 1000
+            $waitWatch = [Diagnostics.Stopwatch]::StartNew()
+            & $writeProgressCommand -Progress $progress -CandidateResultPath ([string]$spec.candidate_result_path) -ProcessTreeLive $true
+            $exited = $process.HasExited
+            while (-not $exited) {
+                $remaining = $timeoutMilliseconds - $waitWatch.ElapsedMilliseconds
+                if ($remaining -le 0) { $exited = $process.HasExited; break }
+                $slice = [int][Math]::Min(5000, [Math]::Max(1, $remaining))
+                $exited = $process.WaitForExit($slice)
+                if (-not $exited) {
+                    & $writeProgressCommand -Progress $progress -CandidateResultPath ([string]$spec.candidate_result_path) -ProcessTreeLive $true
+                }
+            }
             $timedOut = -not $exited
             $exitCode = if ($exited) { $process.ExitCode } else { $null }
             & $stopContainmentCommand -Containment $containment -GraceSeconds $(if ($timedOut) { $TerminationGraceSeconds } else { 0 })
@@ -199,7 +213,7 @@ function New-ReviewWindowsRuntimePort {
             $jobEmpty = & $waitJobEmptyCommand -JobHandle $containment.job_handle
             $rootDead = & $testProcessDeadCommand -ProcessId $process.Id
             $terminationVerified = $streamsClosed -and $jobEmpty -and $rootDead
-            $outputActivity = [IO.File]::Exists([string]$spec.candidate_result_path) -and ([IO.FileInfo]([string]$spec.candidate_result_path)).Length -gt 0
+            $outputActivity = & $testOutputActivityCommand -CandidateResultPath ([string]$spec.candidate_result_path)
             if ($timedOut) {
                 return [pscustomobject]@{
                     runtime_outcome = 'timed-out'; termination_verified = $terminationVerified; containment = 'verified'
