@@ -332,6 +332,38 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         }
     }
 
+    It 'uses one external-root policy for live and reconciliation paths with an explicit override' {
+        $root = New-PublicCampaignRepo -Root (Join-Path $TestDrive 'target-root-policy/repo')
+        $override = Join-Path $TestDrive 'explicit-target-root'
+        Mock -CommandName New-GitReviewTargetPort -MockWith {
+            [pscustomobject]@{ kind = 'git'; origin_repo = $OriginRepo; external_root = $ExternalRoot }
+        }
+
+        $default = New-ReviewCampaignTargetPort -RepoRoot $root
+        $explicit = New-ReviewCampaignTargetPort -RepoRoot $root -RequestedRoot $override
+
+        $default.external_root | Should -Be (Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($root))) '.specrew-targets')
+        $explicit.external_root | Should -Be ([IO.Path]::GetFullPath($override))
+        { New-ReviewCampaignTargetPort -RepoRoot $root -RequestedRoot (Join-Path $root 'inside') } | Should -Throw '*review-campaign-target-root-inside-origin*'
+        Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 2 -Exactly
+    }
+
+    It 'falls back to the repo-scoped user-temp root when the repository parent is not usable' {
+        $parent = Join-Path $TestDrive 'fallback-parent'
+        $root = New-PublicCampaignRepo -Root (Join-Path $parent 'repo')
+        [IO.File]::WriteAllText((Join-Path $parent '.specrew-targets'), 'blocks sibling directory creation')
+        Mock -CommandName New-GitReviewTargetPort -MockWith {
+            [pscustomobject]@{ kind = 'git'; origin_repo = $OriginRepo; external_root = $ExternalRoot }
+        }
+
+        $port = New-ReviewCampaignTargetPort -RepoRoot $root
+        $gitRoot = (& git -C $root rev-parse --show-toplevel).Trim()
+        $expected = Join-Path ([IO.Path]::GetTempPath()) ('specrew-review-targets/' + (Get-ReviewCampaignStableToken -Value ([IO.Path]::GetFullPath($gitRoot)) -Length 20))
+
+        $port.external_root | Should -Be ([IO.Path]::GetFullPath($expected))
+        Assert-MockCalled -CommandName New-GitReviewTargetPort -Times 1 -Exactly -ParameterFilter { $ExternalRoot -ceq ([IO.Path]::GetFullPath($expected)) }
+    }
+
     It 'wires the existing public live surface to campaign delegation before the legacy diagnostic path' {
         $source = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/specrew-review.ps1') -Raw
         $campaignBranch = $source.IndexOf('if ([bool]$authorityDecision.campaign_authority_enabled)')
@@ -346,8 +378,10 @@ Describe 'Public campaign review delegation and campaign-aware packet gate (T051
         $source | Should -Match '\$boundDesignContextRefs\s*=\s*@\(\$DesignContextRef\s*\|\s*Where-Object' -Because 'an omitted named array must not become one empty explicit design-context ref'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match "PSObject\.Properties\['store_root'\]" -Because 'a pre-store not-started result must render without a second property error'
         $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-Model\s+\(\[string\]\$parsedArgs\.Model\)' -Because 'the public model selection must reach campaign production-port construction'
+        $source.Substring($campaignBranch, $legacy - $campaignBranch) | Should -Match '-TargetRoot\s+\(\[string\]\$parsedArgs\.RunRoot\)' -Because 'the public workspace-root override must reach the singular target policy'
         $source | Should -Match '--reconcile-run'
         $source | Should -Match 'Invoke-ReviewRunReconciliation' -Because 'the public recovery surface must execute the immutable reconciliation plan'
+        $source | Should -Match 'New-ReviewCampaignTargetPort -RepoRoot \$resolvedProjectPath' -Because 'reconciliation must reuse the same short-root/fallback policy as live review'
 
         $remediationBranch = $source.IndexOf("if (-not [string]::IsNullOrWhiteSpace([string]`$parsedArgs.Remediate))")
         $legacyRemediation = $source.IndexOf("internal/continuous-co-review/worktree-review-orchestrator.ps1", $remediationBranch)

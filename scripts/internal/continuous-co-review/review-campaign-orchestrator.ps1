@@ -188,6 +188,84 @@ function ConvertTo-ReviewCampaignSlug {
     return ($slug.Substring(0, $MaximumLength - 13).TrimEnd('-') + '-' + $hash)
 }
 
+function Test-ReviewCampaignTargetRootWritable {
+    param([Parameter(Mandatory)][string]$Path)
+    $probePath = $null; $createdDirectory = $false
+    try {
+        if (Test-Path -LiteralPath $Path -PathType Leaf) {
+            return [pscustomobject]@{ ok = $false; reason = 'path-is-file' }
+        }
+        if (-not [IO.Directory]::Exists($Path)) {
+            [IO.Directory]::CreateDirectory($Path) | Out-Null
+            $createdDirectory = $true
+        }
+        $probePath = Join-Path $Path ('.specrew-write-probe-' + [guid]::NewGuid().ToString('N'))
+        $stream = [IO.File]::Open($probePath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        $stream.Dispose(); [IO.File]::Delete($probePath); $probePath = $null
+        if ($createdDirectory -and @(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop).Count -eq 0) {
+            [IO.Directory]::Delete($Path, $false); $createdDirectory = $false
+        }
+        return [pscustomobject]@{ ok = $true; reason = 'writable' }
+    }
+    catch {
+        if ($probePath -and [IO.File]::Exists($probePath)) { try { [IO.File]::Delete($probePath) } catch { $null = $_ } }
+        if ($createdDirectory -and [IO.Directory]::Exists($Path)) {
+            try { if (@(Get-ChildItem -LiteralPath $Path -Force -ErrorAction Stop).Count -eq 0) { [IO.Directory]::Delete($Path, $false) } } catch { $null = $_ }
+        }
+        return [pscustomobject]@{ ok = $false; reason = $_.Exception.GetType().Name }
+    }
+}
+
+function Resolve-ReviewCampaignTargetExternalRoot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [string]$RequestedRoot
+    )
+    $root = (Resolve-Path -LiteralPath $RepoRoot).Path
+    $gitRootResult = Invoke-ReviewTargetGit -WorkingDirectory $root -Arguments @('rev-parse', '--show-toplevel')
+    if ($gitRootResult.exit_code -ne 0) { throw ('review-campaign-target-root-repo-invalid:' + $gitRootResult.stderr) }
+    $gitRoot = [IO.Path]::GetFullPath($gitRootResult.stdout)
+
+    if (-not [string]::IsNullOrWhiteSpace($RequestedRoot)) {
+        $requestedFull = [IO.Path]::GetFullPath($RequestedRoot, $root)
+        if (Test-ReviewTargetPathUnderRoot -Path $requestedFull -Root $gitRoot) { throw 'review-campaign-target-root-inside-origin' }
+        $probe = Test-ReviewCampaignTargetRootWritable -Path $requestedFull
+        if (-not $probe.ok) { throw ('review-campaign-target-root-unusable:' + $probe.reason) }
+        return $requestedFull
+    }
+
+    $repoToken = Get-ReviewCampaignStableToken -Value $gitRoot -Length 20
+    $candidates = [Collections.Generic.List[string]]::new()
+    $parent = Split-Path -Parent $root
+    if (-not [string]::IsNullOrWhiteSpace($parent)) { $candidates.Add((Join-Path $parent '.specrew-targets')) | Out-Null }
+    $tempCandidate = Join-Path ([IO.Path]::GetTempPath()) "specrew-review-targets/$repoToken"
+    $candidates.Add($tempCandidate) | Out-Null
+
+    $failures = [Collections.Generic.List[string]]::new()
+    foreach ($candidate in @($candidates | Select-Object -Unique)) {
+        $full = [IO.Path]::GetFullPath($candidate)
+        if (Test-ReviewTargetPathUnderRoot -Path $full -Root $gitRoot) {
+            $failures.Add("inside-origin:$full") | Out-Null
+            continue
+        }
+        $probe = Test-ReviewCampaignTargetRootWritable -Path $full
+        if ($probe.ok) { return $full }
+        $failures.Add("$($probe.reason):$full") | Out-Null
+    }
+    throw ('review-campaign-target-root-unavailable:' + ($failures -join ','))
+}
+
+function New-ReviewCampaignTargetPort {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$RepoRoot,
+        [string]$RequestedRoot
+    )
+    $targetRoot = Resolve-ReviewCampaignTargetExternalRoot -RepoRoot $RepoRoot -RequestedRoot $RequestedRoot
+    return New-GitReviewTargetPort -OriginRepo ((Resolve-Path -LiteralPath $RepoRoot).Path) -ExternalRoot $targetRoot
+}
+
 function Resolve-ReviewCampaignPublicIdentity {
     [CmdletBinding()]
     param(
@@ -261,15 +339,13 @@ function New-ReviewCampaignProductionPorts {
         [Parameter(Mandatory)][string]$RepoRoot,
         [string]$ReviewerHost,
         [string]$Model,
+        [string]$TargetRoot,
         [ValidateRange(1, 7200)][int]$TimeoutSeconds = 900
     )
-    # Keep the disposable checkout beside the repository instead of under Windows' long per-user
-    # temp prefix. The target port still rejects any root inside the source repository, and its
-    # fixed run token + random leaf preserves concurrent-run isolation without exposing run IDs.
-    # This mirrors the path proven by the T060 Windows package and leaves materially more of the
-    # legacy MAX_PATH budget for deeply nested tracked fixtures.
-    $targetRoot = Join-Path (Split-Path -Parent ([IO.Path]::GetFullPath($RepoRoot))) '.specrew-targets'
-    $target = New-GitReviewTargetPort -OriginRepo $RepoRoot -ExternalRoot $targetRoot
+    # The one target-root policy is reused by live execution and reconciliation. It prefers the
+    # short sibling root proven by T060, falls back to a writable user temp root when the parent is
+    # unavailable, supports an explicit external override, and fails with a domain-named reason.
+    $target = New-ReviewCampaignTargetPort -RepoRoot $RepoRoot -RequestedRoot $TargetRoot
     $harness = if (Get-Command -Name 'New-ReviewProductionHarnessPort' -ErrorAction SilentlyContinue) {
         New-ReviewProductionHarnessPort -HostName $ReviewerHost -Model $Model -TimeoutSeconds $TimeoutSeconds
     }
@@ -300,6 +376,7 @@ function Invoke-ReviewCampaignCommand {
         [string]$AuthorityConfigPath,
         [string]$StoreRoot,
         [string]$StagingRoot,
+        [string]$TargetRoot,
         [AllowNull()]$Ports,
         [scriptblock]$ProgressSink
     )
@@ -367,7 +444,7 @@ function Invoke-ReviewCampaignCommand {
             throw "review-store-corruption:grant-identity-mismatch:$grantId"
         }
     }
-    if ($null -eq $Ports) { $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -Model $Model -TimeoutSeconds $TimeoutSeconds }
+    if ($null -eq $Ports) { $Ports = New-ReviewCampaignProductionPorts -RepoRoot $root -ReviewerHost $ReviewerHost -Model $Model -TargetRoot $TargetRoot -TimeoutSeconds $TimeoutSeconds }
     $run = Invoke-ReviewCampaignRun -StoreRoot $StoreRoot -StagingRoot $StagingRoot -CampaignId $identity.campaign_id -RunId $identity.run_id `
         -ReservationId $identity.reservation_id -TargetLineage $identity.target_lineage -TargetPort $Ports.target -HarnessPort $Ports.harness `
         -RuntimePort $Ports.runtime -ClockPort $Ports.clock -PromptPath ([string]$Ports.prompt_path) -TimeoutSeconds $TimeoutSeconds `

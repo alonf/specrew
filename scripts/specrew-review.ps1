@@ -125,7 +125,7 @@ Options:
   --exclude-path         Diff path pattern to exclude; repeatable
   --reviewer-config      JSON host catalog override for live review
   --schema-root          Reviewer contract schema directory override
-  --run-root             Temporary immutable request-bundle workspace root
+  --run-root             External temporary workspace-root override (campaign snapshots must stay outside the repository)
   --timeout-seconds      Reviewer host timeout in seconds (default: 120)
   --preserve-debug       Keep temporary request-bundle workspaces after live review
   --reconcile-run        Resume one interrupted campaign run without invoking a provider
@@ -681,7 +681,7 @@ if (-not [string]::IsNullOrWhiteSpace([string]$parsedArgs.ReconcileRunId)) {
         $identity = Resolve-ReviewCampaignPublicIdentity -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) -RunId ([string]$parsedArgs.ReconcileRunId)
         $timeout = if ([int]$parsedArgs.TimeoutSeconds -gt 0) { [int]$parsedArgs.TimeoutSeconds } else { 900 }
         $store = Join-Path $resolvedProjectPath '.specrew/review/authority'
-        $target = New-GitReviewTargetPort -OriginRepo $resolvedProjectPath
+        $target = New-ReviewCampaignTargetPort -RepoRoot $resolvedProjectPath -RequestedRoot ([string]$parsedArgs.RunRoot)
         $runtime = New-ReviewProductionRuntimePort -TimeoutSeconds $timeout
         $reconciled = Invoke-ReviewRunReconciliation -StoreRoot $store -CampaignId $identity.campaign_id -RunId $identity.run_id `
             -TargetLineage $identity.target_lineage -TargetPort $target -RuntimePort $runtime -ClockPort (New-ReviewSystemClockPort)
@@ -791,7 +791,7 @@ if ($Live) {
             }
             $campaignRun = Invoke-ReviewCampaignCommand -RepoRoot $resolvedProjectPath -FeatureId ([string]$FeatureId) -IterationNumber ([string]$IterationNumber) `
                 -RunId ([string]$parsedArgs.RunId) -ReviewerHost ([string]$parsedArgs.Host) -GrantAuthorizationRef ([string]$parsedArgs.AuthorizationRef) `
-                -DesignContextRefs @($parsedArgs.DesignContextRefs) -Model ([string]$parsedArgs.Model) -TimeoutSeconds $tos -ProgressSink $progressSink
+                -DesignContextRefs @($parsedArgs.DesignContextRefs) -Model ([string]$parsedArgs.Model) -TargetRoot ([string]$parsedArgs.RunRoot) -TimeoutSeconds $tos -ProgressSink $progressSink
             if ($Json) { $campaignRun | ConvertTo-Json -Depth 30 }
             elseif ($Quiet) {
                 $verdict = if ($null -ne $campaignRun.result) { [string]$campaignRun.result.verdict } else { 'none' }
